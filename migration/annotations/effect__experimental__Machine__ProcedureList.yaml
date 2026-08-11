@@ -1,24 +1,3 @@
-"@effect/experimental/Machine/ProcedureList#add":
+"@effect/experimental/Machine/ProcedureList":
   replacement: none
-  note: Machine ProcedureList was not ported; collect schema-backed operations with RpcGroup and implement state handling separately.
-"@effect/experimental/Machine/ProcedureList#addPrivate":
-  replacement: none
-  note: Machine ProcedureList and its public/private split were not ported; enforce visibility in the replacement architecture.
-"@effect/experimental/Machine/ProcedureList#addProcedure":
-  replacement: none
-  note: Machine ProcedureList was not ported; collect schema-backed operations with RpcGroup and implement state handling separately.
-"@effect/experimental/Machine/ProcedureList#addProcedurePrivate":
-  replacement: none
-  note: Machine ProcedureList and its public/private split were not ported; enforce visibility in the replacement architecture.
-"@effect/experimental/Machine/ProcedureList#make":
-  replacement: none
-  note: Machine ProcedureList was not ported; RpcGroup is the closest protocol collection but has no initial state or visibility split.
-"@effect/experimental/Machine/ProcedureList#ProcedureList":
-  replacement: none
-  note: The stateful Machine ProcedureList abstraction was not ported to v4.
-"@effect/experimental/Machine/ProcedureList#TypeId":
-  replacement: none
-  note: The ProcedureList brand was removed with the Machine runtime.
-"@effect/experimental/Machine/ProcedureList#withInitialState":
-  replacement: none
-  note: Machine ProcedureList initial state was not ported; state initialization belongs in the replacement actor or workflow implementation.
+  note: The stateful Machine ProcedureList abstraction and brand were not ported to v4. RpcGroup is the closest protocol collection for its schema-backed operations, but it has no initial state or public/private visibility split. Implement state handling and initialization in the replacement actor or workflow, and enforce visibility in that architecture.

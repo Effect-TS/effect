@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`e5dfd78b252d9314bc3e1dddb9271e1148c22988`)
+Base: `3d390f232bdbc3f0d3d6a2ae3c775084f494b547` (`3d390f232bdbc3f0d3d6a2ae3c775084f494b547`)
 
-Head: `origin/main` (`3fccb56a5982797ec7a1d3814f4c4a11aadc1426`)
+Head: `main` (`b938c8ad2823bd88493187922f7d9090eff037b6`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -312,6 +312,7 @@ These v4 modules did not have a mapped v3 module. Treat them as v4-only unless a
 more specific migration guide says otherwise.
 
 ```text
+@effect/platform-node/NodeMultipartParser (barrel: @effect/platform-node)
 effect/ErrorReporter (barrel: effect)
 effect/Filter (barrel: effect)
 effect/JsonPatch (barrel: effect)
@@ -338,11 +339,9 @@ effect/unstable/eventlog/EventLogSessionAuth (barrel: effect/unstable/eventlog)
 effect/unstable/eventlog/SqlEventLogServerUnencrypted (barrel: effect/unstable/eventlog)
 effect/unstable/http/FindMyWay (barrel: effect/unstable/http)
 effect/unstable/http/HttpStaticServer (barrel: effect/unstable/http)
-effect/unstable/http/Multipasta (barrel: effect/unstable/http)
-effect/unstable/http/Multipasta/HeadersParser (barrel: effect/unstable/http)
-effect/unstable/http/Multipasta/Node (barrel: effect/unstable/http)
-effect/unstable/http/Multipasta/Search (barrel: effect/unstable/http)
-effect/unstable/http/Multipasta/Web (barrel: effect/unstable/http)
+effect/unstable/http/MultipartParser (barrel: effect/unstable/http)
+effect/unstable/http/MultipartParser/HeadersParser (barrel: effect/unstable/http)
+effect/unstable/http/MultipartParser/Search (barrel: effect/unstable/http)
 effect/unstable/httpapi/HttpApiTest (barrel: effect/unstable/httpapi)
 effect/unstable/observability/PrometheusMetrics (barrel: effect/unstable/observability)
 effect/unstable/persistence/Redis (barrel: effect/unstable/persistence)
@@ -360,21 +359,21 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `@effect/ai` -> `effect/unstable/ai`: The @effect/ai package was merged into the effect package; import the effect/unstable/ai barrel or import specific modules directly (e.g. effect/unstable/ai/\<Module\>).
 - `@effect/ai-amazon-bedrock` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4 with no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
-- `@effect/ai-amazon-bedrock/AmazonBedrockClient`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/ai-amazon-bedrock/AmazonBedrockConfig`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/ai-amazon-bedrock/AmazonBedrockLanguageModel`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/ai-amazon-bedrock/AmazonBedrockSchema`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/ai-amazon-bedrock/AmazonBedrockTool`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/ai-amazon-bedrock/EventStreamEncoding`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-amazon-bedrock/AmazonBedrockClient` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4, so AmazonBedrockClient, layer, layerConfig, make, and Service have no direct replacements. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
+- `@effect/ai-amazon-bedrock/AmazonBedrockConfig` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4, so AmazonBedrockConfig has no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
+- `@effect/ai-amazon-bedrock/AmazonBedrockLanguageModel` -> `none`: The @effect/ai-amazon-bedrock language-model integration was removed from v4. Use another supported v4 provider or implement LanguageModel.LanguageModel with @aws-sdk/client-bedrock-runtime.
+- `@effect/ai-amazon-bedrock/AmazonBedrockSchema` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
+- `@effect/ai-amazon-bedrock/AmazonBedrockTool` -> `none`: The @effect/ai-amazon-bedrock package and its Anthropic-on-Bedrock provider tools were removed from v4. Recreate the capability in a custom provider integration if the Bedrock model still requires it.
+- `@effect/ai-amazon-bedrock/EventStreamEncoding` -> `none`: The @effect/ai-amazon-bedrock package and its AWS event-stream decoder were removed from v4. Use the AWS SDK's Bedrock Runtime streaming support or implement decoding in a custom provider client.
 - `@effect/ai-amazon-bedrock/index` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4 with no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
 - `@effect/ai-anthropic/AnthropicTokenizer`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/ai-anthropic/index` -> `@effect/ai-anthropic`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/ai-anthropic package root or import specific modules directly.
 - `@effect/ai-google` -> `none`: The @effect/ai-google provider package was removed from v4 with no direct replacement. Use a supported v4 provider integration for Gemini models or integrate Google's current SDK directly.
-- `@effect/ai-google/Generated`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/ai-google/GoogleClient`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/ai-google/GoogleConfig`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/ai-google/GoogleLanguageModel`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/ai-google/GoogleTool`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-google/Generated` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
+- `@effect/ai-google/GoogleClient` -> `none`: The @effect/ai-google provider package was removed from v4 and has no direct replacement. Use a supported v4 provider integration for Gemini models or integrate Google's current SDK directly.
+- `@effect/ai-google/GoogleConfig` -> `none`: The @effect/ai-google provider package was removed from v4 and has no direct replacement. Use a supported v4 provider integration for Gemini models or integrate Google's current SDK directly.
+- `@effect/ai-google/GoogleLanguageModel` -> `none`: The @effect/ai-google language-model integration was removed from v4. Use a supported v4 provider integration for Gemini models or implement LanguageModel.LanguageModel against Google's current SDK.
+- `@effect/ai-google/GoogleTool` -> `none`: The @effect/ai-google package and its provider-defined tools were removed from v4. Model this capability in the provider integration you adopt, or define an application Tool when the replacement provider supports it.
 - `@effect/ai-google/index` -> `none`: The @effect/ai-google provider package was removed from v4 with no direct replacement. Use a supported v4 provider integration for Gemini models or integrate Google's current SDK directly.
 - `@effect/ai-openai/OpenAiTokenizer`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/ai-openai/index` -> `@effect/ai-openai`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/ai-openai package root or import specific modules directly.
@@ -396,7 +395,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/ai/index` -> `effect/unstable/ai`: The package barrel was removed; import the same namespaces from the effect/unstable/ai barrel or import specific modules directly.
 - `@effect/cli` -> `effect/unstable/cli`: The @effect/cli package was merged into the effect package; import the effect/unstable/cli barrel or import specific modules directly (e.g. effect/unstable/cli/\<Module\>).
 - `@effect/cli/Args` -> `effect/unstable/cli/Argument`
-- `@effect/cli/AutoCorrect`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/cli/AutoCorrect` -> `none`: V4 suggestion distance is internal and fixed; the public configurable distance helper was removed.
 - `@effect/cli/BuiltInOptions` -> `effect/unstable/cli/GlobalFlag`
 - `@effect/cli/CliApp`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/cli/CliConfig`: No single module replacement; follow the curated per-API guidance below.
@@ -405,11 +404,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/cli/CommandDirective`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/cli/ConfigFile`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/cli/HelpDoc` -> `effect/unstable/cli/HelpDoc`
-- `@effect/cli/HelpDoc/Span`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/cli/HelpDoc/Span` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
 - `@effect/cli/Options` -> `effect/unstable/cli/Flag`
 - `@effect/cli/Primitive` -> `effect/unstable/cli/Primitive`
 - `@effect/cli/Prompt` -> `effect/unstable/cli/Prompt`
-- `@effect/cli/Usage`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/cli/Usage` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
 - `@effect/cli/ValidationError` -> `effect/unstable/cli/CliError`
 - `@effect/cli/index` -> `effect/unstable/cli`: The package barrel was removed; import the same namespaces from the effect/unstable/cli barrel or import specific modules directly.
 - `@effect/cluster` -> `effect/unstable/cluster`: The @effect/cluster package was merged into the effect package; import the effect/unstable/cluster barrel or import specific modules directly (e.g. effect/unstable/cluster/\<Module\>).
@@ -464,16 +463,16 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/experimental/EventLogEncryption` -> `effect/unstable/eventlog/EventLogEncryption`
 - `@effect/experimental/EventLogRemote` -> `effect/unstable/eventlog/EventLogMessage`, `effect/unstable/eventlog/EventLogRemote`
 - `@effect/experimental/EventLogServer` -> `effect/unstable/eventlog/EventLogServer`, `effect/unstable/eventlog/EventLogServerEncrypted`
-- `@effect/experimental/EventLogServer/Cloudflare`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/experimental/Machine`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/experimental/Machine/Procedure`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/experimental/Machine/ProcedureList`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/experimental/Machine/SerializableProcedureList`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/experimental/EventLogServer/Cloudflare` -> `none`: The Cloudflare adapter was not ported; combine EventLogServerEncrypted.layer with a custom Durable Object RpcServer.Protocol adapter.
+- `@effect/experimental/Machine` -> `none`: The experimental local Machine actor runtime, model, boot process, constructors, brands, and serializable variants were not ported to v4. Redesign request contracts with Rpc/RpcGroup and choose Cluster Entity, Workflow, or a local actor built from Queue, Ref, PubSub, and scoped fibers according to the required semantics; ClusterWorkflowEngine is a different durable Workflow abstraction. For serializable actors, define schemas with Rpc/RpcGroup and choose Cluster Entity or Workflow explicitly. Context and initialization helpers (including the serializable initialization contract), input/private/public/state extractors, and the Machine-specific handler context were also removed, so request handling and state management must be explicit. Use ordinary Effect tracing controls and Effect.retry instead of the removed Machine-specific wrappers; its defect wrapper was also removed. Snapshot restoration was not ported, so implement persistence explicitly for the replacement architecture.
+- `@effect/experimental/Machine/Procedure` -> `none`: The stateful Machine Procedure model, its serializable variant and guard, and both Procedure brands were not ported to v4. Define request contracts with Rpc (using schemas for serializable procedures) and implement state handling in an explicit actor architecture, because Rpc provides only the request contract. The handler context, context and request extractors, and no-reply sentinel were removed; use the corresponding Rpc request types after redesigning the contract. Replace the removed tagged-request base and helpers with schema-backed Rpc requests and Rpc helper types where appropriate.
+- `@effect/experimental/Machine/ProcedureList` -> `none`: The stateful Machine ProcedureList abstraction and brand were not ported to v4. RpcGroup is the closest protocol collection for its schema-backed operations, but it has no initial state or public/private visibility split. Implement state handling and initialization in the replacement actor or workflow, and enforce visibility in that architecture.
+- `@effect/experimental/Machine/SerializableProcedureList` -> `none`: The serializable stateful ProcedureList abstraction was not ported to v4. RpcGroup is the closest protocol collection for its schema-backed operations, but it has no initial state or public/private visibility split. Implement state handling and initialization in the replacement actor or workflow, and enforce visibility in that architecture.
 - `@effect/experimental/PersistedCache` -> `effect/unstable/persistence/PersistedCache`
 - `@effect/experimental/PersistedQueue` -> `effect/unstable/persistence/PersistedQueue`
 - `@effect/experimental/PersistedQueue/Redis`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/experimental/Persistence` -> `effect/unstable/persistence/Persistable`, `effect/unstable/persistence/Persistence`
-- `@effect/experimental/Persistence/Lmdb`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/experimental/Persistence/Lmdb` -> `none`: The LMDB backend was not ported; implement a custom BackingPersistence layer or use a supported Kvs, Redis, or SQL backend.
 - `@effect/experimental/Persistence/Redis`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/experimental/RateLimiter` -> `effect/unstable/persistence/RateLimiter`
 - `@effect/experimental/RateLimiter/Redis`: No single module replacement; follow the curated per-API guidance below.
@@ -539,7 +538,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/platform/HttpLayerRouter`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform/HttpMethod` -> `effect/unstable/http/HttpMethod`
 - `@effect/platform/HttpMiddleware` -> `effect/unstable/http/HttpMiddleware`
-- `@effect/platform/HttpMultiplex`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform/HttpMultiplex` -> `none`: The HttpMultiplex module, value, constructor, and nominal type id were removed with no v4 counterpart. Replace them with a custom first-match Effect dispatcher requiring HttpServerRequest; initialize an empty dispatcher, then add or fold predicate/app pairs into it. Recreate header helpers with predicates over lower-cased request header values using exact equality, String.startsWith, String.endsWith, or RegExp.test; recreate host helpers with the same comparisons over request.headers.host.
 - `@effect/platform/HttpPlatform` -> `effect/unstable/http/HttpPlatform`
 - `@effect/platform/HttpRouter` -> `effect/unstable/http/HttpRouter`
 - `@effect/platform/HttpServer` -> `effect/unstable/http/HttpServer`
@@ -571,17 +570,17 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/platform/index` -> `none`: The package barrel was removed along with the package; import each module from its new effect location (e.g. effect/FileSystem, effect/unstable/http/HttpClient) per the Import Map.
 - `@effect/printer` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
 - `@effect/printer-ansi` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-- `@effect/printer-ansi/Ansi`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/printer-ansi/AnsiDoc`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/printer-ansi/Color`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/printer-ansi/Ansi` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
+- `@effect/printer-ansi/AnsiDoc` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
+- `@effect/printer-ansi/Color` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
 - `@effect/printer-ansi/index` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-- `@effect/printer/Doc`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/printer/DocStream`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/printer/DocTree`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/printer/Flatten`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/printer/Layout`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/printer/Optimize`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/printer/PageWidth`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/printer/Doc` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
+- `@effect/printer/DocStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
+- `@effect/printer/DocTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
+- `@effect/printer/Flatten` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
+- `@effect/printer/Layout` -> `none`: The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli.
+- `@effect/printer/Optimize` -> `none`: The @effect/printer document optimizer was removed with the document algebra in v4. String-based output needs no equivalent optimization stage.
+- `@effect/printer/PageWidth` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
 - `@effect/printer/index` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
 - `@effect/rpc` -> `effect/unstable/rpc`: The @effect/rpc package was merged into the effect package; import the effect/unstable/rpc barrel or import specific modules directly (e.g. effect/unstable/rpc/\<Module\>).
 - `@effect/rpc/Rpc` -> `effect/unstable/rpc/Rpc`
@@ -602,11 +601,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/sql-drizzle/Mysql`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/sql-drizzle/Pg`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/sql-drizzle/Sqlite`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/sql-kysely/Kysely`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/sql-kysely/Mssql`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/sql-kysely/Mysql`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/sql-kysely/Pg`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/sql-kysely/Sqlite`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/sql-kysely/Kysely` -> `none`: The Effect integration was removed. Use native kysely#Kysely, explicitly wrap promise execution with Effect.tryPromise, and define an application service if needed. No Effect-native equivalent remains; construct native new Kysely(config) and explicitly wrap builder execution and errors with Effect.tryPromise.
+- `@effect/sql-kysely/Mssql` -> `none`: The integration was removed; use native Kysely with MssqlDialect and wrap promises, or rewrite against @effect/sql-mssql for Effect-native queries.
+- `@effect/sql-kysely/Mysql` -> `none`: The integration was removed; use native Kysely with MysqlDialect and wrap promises, or rewrite against @effect/sql-mysql2 for Effect-native queries.
+- `@effect/sql-kysely/Pg` -> `none`: The integration was removed; use native Kysely with PostgresDialect and wrap promises, or rewrite against @effect/sql-pg for Effect-native queries.
+- `@effect/sql-kysely/Sqlite` -> `none`: The integration was removed; use native Kysely with SqliteDialect and wrap promises, or rewrite against a matching @effect/sql-sqlite-\* client.
 - `@effect/sql-kysely/patch.types` -> `none`: The @effect/sql-kysely package was removed in v4 along with its kysely type patches; depend on native kysely types directly and wrap query execution with Effect.tryPromise.
 - `@effect/sql-libsql/index` -> `@effect/sql-libsql`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-libsql package root or import specific modules directly.
 - `@effect/sql-mssql/index` -> `@effect/sql-mssql`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-mssql package root or import specific modules directly.
@@ -632,37 +631,37 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/sql/Statement` -> `effect/unstable/sql/Statement`
 - `@effect/sql/index` -> `effect/unstable/sql`: The package barrel was removed; import the same namespaces from the effect/unstable/sql barrel or import specific modules directly.
 - `@effect/typeclass` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite abstractions against the concrete v4 data type and its module functions.
-- `@effect/typeclass/Alternative`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/Applicative`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/Bicovariant`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Alternative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/Applicative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/Bicovariant` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/Bounded`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/Chainable`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/Contravariant`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/Coproduct`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/Covariant`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/Filterable`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/FlatMap`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/Foldable`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/Invariant`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/Monad`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Chainable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/Contravariant` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/Coproduct` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/Covariant` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/Filterable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/FlatMap` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/Foldable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/Invariant` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/Monad` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/Monoid` -> `effect/Reducer`
-- `@effect/typeclass/Of`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/Pointed`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/Product`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/SemiAlternative`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/SemiApplicative`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/SemiCoproduct`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/SemiProduct`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Of` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/Pointed` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/Product` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/SemiAlternative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/SemiApplicative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/SemiCoproduct` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/SemiProduct` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/Semigroup` -> `effect/Combiner`
-- `@effect/typeclass/Traversable`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/TraversableFilterable`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Traversable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/TraversableFilterable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/data/Array`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/BigInt`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Boolean`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Duration`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Effect`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Either`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/data/Identity`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/Identity` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/data/Micro`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Number`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Option`: No single module replacement; follow the curated per-API guidance below.
@@ -678,13 +677,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/workflow/DurableClock` -> `effect/unstable/workflow/DurableClock`
 - `@effect/workflow/DurableDeferred` -> `effect/unstable/workflow/DurableDeferred`
 - `@effect/workflow/DurableQueue` -> `effect/unstable/workflow/DurableQueue`
-- `@effect/workflow/DurableRateLimiter`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/workflow/DurableRateLimiter` -> `none`: Not ported. Build an Activity whose execute uses persistence RateLimiter.consume with onExceeded: delay, then sleeps for the returned delay with DurableClock.
 - `@effect/workflow/Workflow` -> `effect/unstable/workflow/Workflow`
 - `@effect/workflow/WorkflowEngine` -> `effect/unstable/workflow/WorkflowEngine`
 - `@effect/workflow/WorkflowProxy` -> `effect/unstable/workflow/WorkflowProxy`
 - `@effect/workflow/WorkflowProxyServer` -> `effect/unstable/workflow/WorkflowProxyServer`
 - `effect/Arbitrary`: No single module replacement; follow the curated per-API guidance below.
-- `effect/ChildExecutorDecision`: No single module replacement; follow the curated per-API guidance below.
+- `effect/ChildExecutorDecision` -> `none`: Removed with the v3 channel executor and Channel.concatMapWithCustom. Choose Channel.flatMap, Channel.switchMap, or Channel.mergeAll instead; v4 exposes no child-executor decision ADT.
 - `effect/ConfigError`: No single module replacement; follow the curated per-API guidance below.
 - `effect/ConfigProviderPathPatch`: No single module replacement; follow the curated per-API guidance below.
 - `effect/DefaultServices`: No single module replacement; follow the curated per-API guidance below.
@@ -704,7 +703,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `effect/LogSpan`: No single module replacement; follow the curated per-API guidance below.
 - `effect/Mailbox`: No single module replacement; follow the curated per-API guidance below.
 - `effect/MergeDecision`: No single module replacement; follow the curated per-API guidance below.
-- `effect/MergeState`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MergeState` -> `none`: Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option.
 - `effect/MergeStrategy`: No single module replacement; follow the curated per-API guidance below.
 - `effect/MetricBoundaries`: No single module replacement; follow the curated per-API guidance below.
 - `effect/MetricHook`: No single module replacement; follow the curated per-API guidance below.
@@ -716,21 +715,21 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `effect/MetricRegistry`: No single module replacement; follow the curated per-API guidance below.
 - `effect/MetricState`: No single module replacement; follow the curated per-API guidance below.
 - `effect/Micro`: No single module replacement; follow the curated per-API guidance below.
-- `effect/ModuleVersion`: No single module replacement; follow the curated per-API guidance below.
+- `effect/ModuleVersion` -> `none`: The mutable module-version facility was removed; the v4 build version is private and effect/package.json is metadata, not an equivalent runtime API. No mutable version setter remains; the v3 runtime-isolation mechanism has no public v4 equivalent.
 - `effect/MutableQueue`: No single module replacement; follow the curated per-API guidance below.
 - `effect/ParseResult` -> `effect/SchemaIssue`, `effect/SchemaParser`
 - `effect/Pretty`: No single module replacement; follow the curated per-API guidance below.
-- `effect/RateLimiter`: No single module replacement; follow the curated per-API guidance below.
+- `effect/RateLimiter` -> `none`: The old limit, interval, and algorithm options belonged to the removed in-process limiter; choose and configure an application limiter explicitly. The scoped in-process callable limiter was not ported to v4; effect/unstable/persistence/RateLimiter is a keyed persistence service with different semantics, not a drop-in replacement. The FiberRef-based per-effect cost annotation was removed with the core RateLimiter; pass token cost explicitly to the replacement limiter.
 - `effect/Readable`: No single module replacement; follow the curated per-API guidance below.
 - `effect/RedBlackTree`: No single module replacement; follow the curated per-API guidance below.
 - `effect/Reloadable`: No single module replacement; follow the curated per-API guidance below.
 - `effect/RequestBlock`: No single module replacement; follow the curated per-API guidance below.
 - `effect/RuntimeFlags`: No single module replacement; follow the curated per-API guidance below.
-- `effect/RuntimeFlagsPatch`: No single module replacement; follow the curated per-API guidance below.
+- `effect/RuntimeFlagsPatch` -> `none`: The aggregate RuntimeFlagsPatch abstraction, its enabled/disabled bit sets, set operations, queries, and renderer were removed; no aggregate patch value remains to construct, combine, inspect, or render. Enable, disable, or invert the corresponding semantic behavior directly, combining semantic configurations where needed. Configure scheduler yielding, interruptibility, or metrics directly, and inspect the corresponding semantic facility when needed.
 - `effect/STM`: No single module replacement; follow the curated per-API guidance below.
 - `effect/ScheduleDecision`: No single module replacement; follow the curated per-API guidance below.
-- `effect/ScheduleInterval`: No single module replacement; follow the curated per-API guidance below.
-- `effect/ScheduleIntervals`: No single module replacement; follow the curated per-API guidance below.
+- `effect/ScheduleInterval` -> `none`: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.
+- `effect/ScheduleIntervals` -> `none`: The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition.
 - `effect/Secret`: No single module replacement; follow the curated per-API guidance below.
 - `effect/SingleProducerAsyncInput`: No single module replacement; follow the curated per-API guidance below.
 - `effect/SortedMap`: No single module replacement; follow the curated per-API guidance below.
@@ -752,206 +751,20 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `effect/TSemaphore` -> `effect/TxSemaphore`
 - `effect/TSet` -> `effect/TxHashSet`
 - `effect/TSubscriptionRef` -> `effect/TxSubscriptionRef`
-- `effect/TestAnnotation`: No single module replacement; follow the curated per-API guidance below.
-- `effect/TestAnnotationMap`: No single module replacement; follow the curated per-API guidance below.
-- `effect/TestAnnotations`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TestAnnotation` -> `none`: The legacy test-runner annotation key and built-in counters were removed. Use Vitest skip/repeat/retry options for runner concerns and FiberSet for explicit fiber tracking; there is no annotation-key equivalent.
+- `effect/TestAnnotationMap` -> `none`: TestAnnotationMap was removed with TestAnnotation. Use an application-owned HashMap or Ref only when arbitrary typed annotations are still required; it is not part of the v4 test runner.
+- `effect/TestAnnotations` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
 - `effect/TestClock` -> `effect/testing/TestClock`
 - `effect/TestConfig`: No single module replacement; follow the curated per-API guidance below.
 - `effect/TestContext`: No single module replacement; follow the curated per-API guidance below.
 - `effect/TestLive`: No single module replacement; follow the curated per-API guidance below.
 - `effect/TestServices`: No single module replacement; follow the curated per-API guidance below.
 - `effect/TestSized`: No single module replacement; follow the curated per-API guidance below.
-- `effect/UpstreamPullRequest`: No single module replacement; follow the curated per-API guidance below.
-- `effect/UpstreamPullStrategy`: No single module replacement; follow the curated per-API guidance below.
+- `effect/UpstreamPullRequest` -> `none`: Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull.
+- `effect/UpstreamPullStrategy` -> `none`: Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT.
 - `effect/index`: No single module replacement; follow the curated per-API guidance below.
 
 ## API Reference
-
-### `@effect/ai-amazon-bedrock/AmazonBedrockClient`
-
-- `AmazonBedrockClient.AmazonBedrockClient` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4, so AmazonBedrockClient has no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
-
-- `AmazonBedrockClient.Service` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4, so Service has no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
-
-- `AmazonBedrockClient.layer` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4, so layer has no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
-
-- `AmazonBedrockClient.layerConfig` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4, so layerConfig has no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
-
-- `AmazonBedrockClient.make` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4, so make has no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
-
-### `@effect/ai-amazon-bedrock/AmazonBedrockConfig`
-
-- `AmazonBedrockConfig.AmazonBedrockConfig` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4, so AmazonBedrockConfig has no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
-
-### `@effect/ai-amazon-bedrock/AmazonBedrockLanguageModel`
-
-- `AmazonBedrockLanguageModel.AmazonBedrockReasoningInfo` -> `none`: The @effect/ai-amazon-bedrock language-model integration was removed from v4. Use another supported v4 provider or implement LanguageModel.LanguageModel with @aws-sdk/client-bedrock-runtime.
-
-- `AmazonBedrockLanguageModel.Config` -> `none`: The @effect/ai-amazon-bedrock language-model integration was removed from v4. Use another supported v4 provider or implement LanguageModel.LanguageModel with @aws-sdk/client-bedrock-runtime.
-
-- `AmazonBedrockLanguageModel.Config.Service` -> `none`: The @effect/ai-amazon-bedrock language-model integration was removed from v4. Use another supported v4 provider or implement LanguageModel.LanguageModel with @aws-sdk/client-bedrock-runtime.
-
-- `AmazonBedrockLanguageModel.layer` -> `none`: The @effect/ai-amazon-bedrock language-model integration was removed from v4. Use another supported v4 provider or implement LanguageModel.LanguageModel with @aws-sdk/client-bedrock-runtime.
-
-- `AmazonBedrockLanguageModel.make` -> `none`: The @effect/ai-amazon-bedrock language-model integration was removed from v4. Use another supported v4 provider or implement LanguageModel.LanguageModel with @aws-sdk/client-bedrock-runtime.
-
-- `AmazonBedrockLanguageModel.model` -> `none`: The @effect/ai-amazon-bedrock language-model integration was removed from v4. Use another supported v4 provider or implement LanguageModel.LanguageModel with @aws-sdk/client-bedrock-runtime.
-
-- `AmazonBedrockLanguageModel.withConfigOverride` -> `none`: The @effect/ai-amazon-bedrock language-model integration was removed from v4. Use another supported v4 provider or implement LanguageModel.LanguageModel with @aws-sdk/client-bedrock-runtime.
-
-### `@effect/ai-amazon-bedrock/AmazonBedrockSchema`
-
-- `AmazonBedrockSchema.BedrockFoundationModelId` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.CachePointBlock` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ContentBlock` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ContentBlockDelta` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ContentBlockDeltaEvent` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ContentBlockStart` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ContentBlockStartEvent` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ContentBlockStopEvent` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ConverseMetrics` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ConverseOutput` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ConverseRequest` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ConverseResponse` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ConverseResponseStreamEvent` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ConverseStreamMetadataEvent` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ConverseStreamMetrics` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ConverseStreamTrace` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ConverseTrace` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.DocumentBlock` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.DocumentFormat` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailAssessment` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailConfiguration` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailContentFilter` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailContentPolicyAssessment` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailContextualGroundingFilter` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailContextualGroundingPolicyAssessment` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailConverseContentBlock` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailConverseImageBlock` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailConverseTextBlock` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailCoverage` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailCustomWord` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailImageCoverage` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailInvocationMetrics` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailManagedWord` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailPiiEntityFilter` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailRegexFilter` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailSensitiveInformationPolicyAssessment` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailTextCharactersCoverage` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailTopic` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailTopicPolicyAssessment` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailTraceAssessment` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailUsage` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.GuardrailWordPolicyAssessment` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ImageBlock` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ImageFormat` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.InferenceConfiguration` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.IntZeroOrGreater` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.JsonBlock` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.Message` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.MessageStartEvent` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.MessageStopEvent` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.PerformanceConfiguration` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.PromptRouterTrace` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ReasoningContentBlock` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ReasoningContentBlockDelta` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.StopReason` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.SystemContentBlock` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.TokenUsage` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ToolChoice` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ToolConfiguration` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ToolResultBlock` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ToolSpecification` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ToolUseBlock` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ToolUseBlockDelta` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.ToolUseBlockStart` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-- `AmazonBedrockSchema.VideoBlock` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-
-### `@effect/ai-amazon-bedrock/AmazonBedrockTool`
-
-- `AmazonBedrockTool.AnthropicBash_20241022` -> `none`: The @effect/ai-amazon-bedrock package and its Anthropic-on-Bedrock provider tools were removed from v4. Recreate the capability in a custom provider integration if the Bedrock model still requires it.
-
-- `AmazonBedrockTool.AnthropicBash_20250124` -> `none`: The @effect/ai-amazon-bedrock package and its Anthropic-on-Bedrock provider tools were removed from v4. Recreate the capability in a custom provider integration if the Bedrock model still requires it.
-
-- `AmazonBedrockTool.AnthropicComputerUse_20241022` -> `none`: The @effect/ai-amazon-bedrock package and its Anthropic-on-Bedrock provider tools were removed from v4. Recreate the capability in a custom provider integration if the Bedrock model still requires it.
-
-- `AmazonBedrockTool.AnthropicComputerUse_20250124` -> `none`: The @effect/ai-amazon-bedrock package and its Anthropic-on-Bedrock provider tools were removed from v4. Recreate the capability in a custom provider integration if the Bedrock model still requires it.
-
-- `AmazonBedrockTool.AnthropicTextEditor_20241022` -> `none`: The @effect/ai-amazon-bedrock package and its Anthropic-on-Bedrock provider tools were removed from v4. Recreate the capability in a custom provider integration if the Bedrock model still requires it.
-
-- `AmazonBedrockTool.AnthropicTextEditor_20250124` -> `none`: The @effect/ai-amazon-bedrock package and its Anthropic-on-Bedrock provider tools were removed from v4. Recreate the capability in a custom provider integration if the Bedrock model still requires it.
-
-- `AmazonBedrockTool.AnthropicTextEditor_20250429` -> `none`: The @effect/ai-amazon-bedrock package and its Anthropic-on-Bedrock provider tools were removed from v4. Recreate the capability in a custom provider integration if the Bedrock model still requires it.
-
-- `AmazonBedrockTool.AnthropicTextEditor_20250728` -> `none`: The @effect/ai-amazon-bedrock package and its Anthropic-on-Bedrock provider tools were removed from v4. Recreate the capability in a custom provider integration if the Bedrock model still requires it.
-
-### `@effect/ai-amazon-bedrock/EventStreamEncoding`
-
-- `EventStreamEncoding.makeChannel` -> `none`: The @effect/ai-amazon-bedrock package and its AWS event-stream decoder were removed from v4. Use the AWS SDK's Bedrock Runtime streaming support or implement decoding in a custom provider client.
 
 ### `@effect/ai-anthropic/AnthropicClient`
 
@@ -1708,518 +1521,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Generated.WebSearchToolResultErrorCode` -> `Generated.WebSearchToolResultErrorCode`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
 - `Generated.make` -> `Generated.make`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
-
-### `@effect/ai-google/Generated`
-
-- `Generated.AsyncBatchEmbedContentOperation` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.AsyncBatchEmbedContentRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.AsyncBatchEmbedContentResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.AttributionSourceId` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.BatchEmbedContentsRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.BatchEmbedContentsResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.BatchEmbedTextRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.BatchEmbedTextResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.BatchGenerateContentOperation` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.BatchGenerateContentRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.BatchGenerateContentResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.BatchState` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.BatchStats` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Blob` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CachedContent` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CachedContentUsageMetadata` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Candidate` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CandidateFinishReason` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ChunkingConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CitationMetadata` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CitationSource` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ClientError` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CodeExecution` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CodeExecutionResult` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CodeExecutionResultOutcome` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ComputerUse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ComputerUseEnvironment` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Condition` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ConditionOperation` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Content` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ContentEmbedding` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ContentFilter` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ContentFilterReason` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Corpus` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CountMessageTokensRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CountMessageTokensResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CountTextTokensRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CountTextTokensResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CountTokensRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CountTokensResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CreateFileRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CreateFileResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CreateTunedModelMetadata` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CreateTunedModelOperation` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CreateTunedModelParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.CustomMetadata` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Dataset` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.DeleteCorpusParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.DeleteDocumentParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.DeleteFileSearchStoreParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Document` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.DocumentState` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.DownloadFileResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.DynamicRetrievalConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.DynamicRetrievalConfigMode` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.EmbedContentBatch` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.EmbedContentBatchOutput` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.EmbedContentBatchStats` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.EmbedContentRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.EmbedContentResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.EmbedTextRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.EmbedTextResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Embedding` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Example` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ExecutableCode` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ExecutableCodeLanguage` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.FileData` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.FileSearch` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.FileSearchStore` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.FileSource` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.FileState` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.FunctionCall` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.FunctionCallingConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.FunctionCallingConfigMode` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.FunctionDeclaration` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.FunctionDeclarationBehavior` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.FunctionResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.FunctionResponseBlob` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.FunctionResponsePart` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.FunctionResponseScheduling` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GenerateAnswerRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GenerateAnswerRequestAnswerStyle` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GenerateAnswerResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GenerateContentBatch` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GenerateContentBatchOutput` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GenerateContentRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GenerateContentResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GenerateMessageRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GenerateMessageResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GenerateTextRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GeneratedFile` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GeneratedFileState` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GenerationConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GenerationConfigMediaResolution` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GenerativeLanguageModality` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GoogleAiGenerativelanguageV1BetaGroundingSupport` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GoogleAiGenerativelanguageV1BetaSegment` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GoogleMaps` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GoogleSearch` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GoogleSearchRetrieval` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GroundingAttribution` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GroundingChunk` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GroundingMetadata` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GroundingPassage` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GroundingPassageId` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.GroundingPassages` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.HarmCategory` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Hyperparameters` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ImageConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ImportFileMetadata` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ImportFileOperation` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ImportFileRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ImportFileResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.InlinedEmbedContentRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.InlinedEmbedContentRequests` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.InlinedEmbedContentResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.InlinedEmbedContentResponses` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.InlinedRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.InlinedRequests` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.InlinedResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.InlinedResponses` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.InputConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.InputEmbedContentConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.InputFeedback` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.InputFeedbackBlockReason` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Interval` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.LatLng` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListCachedContentsParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListCachedContentsResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListCorporaParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListCorporaResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListDocumentsParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListDocumentsResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListFileSearchStoresParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListFileSearchStoresResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListFilesParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListFilesResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListGeneratedFilesParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListGeneratedFilesResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListModelsParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListModelsResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListOperationsByModelParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListOperationsByParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListOperationsParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListOperationsResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListPermissionsByCorpusParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListPermissionsParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListPermissionsResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListTunedModelsParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ListTunedModelsResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.LogprobsResult` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.LogprobsResultCandidate` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Maps` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Media` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.MediaResolution` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.MediaResolutionLevel` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Message` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.MessagePrompt` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.MetadataFilter` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ModalityTokenCount` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Model` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.MultiSpeakerVoiceConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Operation` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Part` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Permission` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.PermissionGranteeType` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.PermissionRole` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.PlaceAnswerSources` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.PrebuiltVoiceConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.PredictLongRunningGeneratedVideoResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.PredictLongRunningMetadata` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.PredictLongRunningOperation` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.PredictLongRunningRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.PredictLongRunningResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.PredictRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.PredictResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.PromptFeedback` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.PromptFeedbackBlockReason` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.RetrievalConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.RetrievalMetadata` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.RetrievedContext` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ReviewSnippet` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.SafetyFeedback` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.SafetyRating` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.SafetyRatingProbability` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.SafetySetting` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.SafetySettingThreshold` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Schema` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.SchemaEncoded` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.SearchEntryPoint` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.SemanticRetrieverChunk` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.SemanticRetrieverConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.SpeakerVoiceConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.SpeechConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Status` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.StreamableHttpTransport` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.StringList` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.TaskType` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.TextCompletion` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.TextPrompt` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ThinkingConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ThinkingConfigThinkingLevel` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.ToolConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.TopCandidates` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.TransferOwnershipRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.TransferOwnershipResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.TunedModel` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.TunedModelSource` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.TunedModelState` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.TuningExample` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.TuningExamples` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.TuningSnapshot` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.TuningTask` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Type` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UpdateCachedContentParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UpdateEmbedContentBatchParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UpdateGenerateContentBatchParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UpdatePermissionByCorpusAndPermissionParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UpdatePermissionParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UpdateTunedModelParams` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UploadToFileSearchStoreMetadata` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UploadToFileSearchStoreOperation` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UploadToFileSearchStoreRequest` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UploadToFileSearchStoreResponse` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UrlContext` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UrlContextMetadata` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UrlMetadata` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UrlMetadataUrlRetrievalStatus` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.UsageMetadata` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Video` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.VideoFileMetadata` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.VideoMetadata` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.VoiceConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.Web` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.WhiteSpaceConfig` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-- `Generated.make` -> `none`: The @effect/ai-google package was removed from v4, so this generated Google API schema has no Effect v4 replacement. Use Google's current SDK/API types directly or route supported Gemini models through another v4 provider integration.
-
-### `@effect/ai-google/GoogleClient`
-
-- `GoogleClient.GoogleClient` -> `none`: The @effect/ai-google provider package was removed from v4 and has no direct replacement. Use a supported v4 provider integration for Gemini models or integrate Google's current SDK directly.
-
-- `GoogleClient.Service` -> `none`: The @effect/ai-google provider package was removed from v4 and has no direct replacement. Use a supported v4 provider integration for Gemini models or integrate Google's current SDK directly.
-
-- `GoogleClient.layer` -> `none`: The @effect/ai-google provider package was removed from v4 and has no direct replacement. Use a supported v4 provider integration for Gemini models or integrate Google's current SDK directly.
-
-- `GoogleClient.layerConfig` -> `none`: The @effect/ai-google provider package was removed from v4 and has no direct replacement. Use a supported v4 provider integration for Gemini models or integrate Google's current SDK directly.
-
-- `GoogleClient.make` -> `none`: The @effect/ai-google provider package was removed from v4 and has no direct replacement. Use a supported v4 provider integration for Gemini models or integrate Google's current SDK directly.
-
-### `@effect/ai-google/GoogleConfig`
-
-- `GoogleConfig.GoogleConfig` -> `none`: The @effect/ai-google provider package was removed from v4 and has no direct replacement. Use a supported v4 provider integration for Gemini models or integrate Google's current SDK directly.
-
-### `@effect/ai-google/GoogleLanguageModel`
-
-- `GoogleLanguageModel.Config` -> `none`: The @effect/ai-google language-model integration was removed from v4. Use a supported v4 provider integration for Gemini models or implement LanguageModel.LanguageModel against Google's current SDK.
-
-- `GoogleLanguageModel.Config.Service` -> `none`: The @effect/ai-google language-model integration was removed from v4. Use a supported v4 provider integration for Gemini models or implement LanguageModel.LanguageModel against Google's current SDK.
-
-- `GoogleLanguageModel.layer` -> `none`: The @effect/ai-google language-model integration was removed from v4. Use a supported v4 provider integration for Gemini models or implement LanguageModel.LanguageModel against Google's current SDK.
-
-- `GoogleLanguageModel.make` -> `none`: The @effect/ai-google language-model integration was removed from v4. Use a supported v4 provider integration for Gemini models or implement LanguageModel.LanguageModel against Google's current SDK.
-
-- `GoogleLanguageModel.model` -> `none`: The @effect/ai-google language-model integration was removed from v4. Use a supported v4 provider integration for Gemini models or implement LanguageModel.LanguageModel against Google's current SDK.
-
-### `@effect/ai-google/GoogleTool`
-
-- `GoogleTool.CodeExecution` -> `none`: The @effect/ai-google package and its provider-defined tools were removed from v4. Model this capability in the provider integration you adopt, or define an application Tool when the replacement provider supports it.
-
-- `GoogleTool.GoogleSearch` -> `none`: The @effect/ai-google package and its provider-defined tools were removed from v4. Model this capability in the provider integration you adopt, or define an application Tool when the replacement provider supports it.
-
-- `GoogleTool.GoogleSearchRetrieval` -> `none`: The @effect/ai-google package and its provider-defined tools were removed from v4. Model this capability in the provider integration you adopt, or define an application Tool when the replacement provider supports it.
-
-- `GoogleTool.UrlContext` -> `none`: The @effect/ai-google package and its provider-defined tools were removed from v4. Model this capability in the provider integration you adopt, or define an application Tool when the replacement provider supports it.
 
 ### `@effect/ai-openai/Generated`
 
@@ -5635,11 +4936,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/ai/McpServer`
 
-- `McpServer.layer` -> `McpServer.layer`: Moved to effect/unstable/ai/McpServer. It still runs over a caller-provided RpcServer.Protocol; v4 also accepts optional MCP extensions.
+- `McpServer.layer` -> `McpServer.layer`: Moved to effect/unstable/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai; it still runs over a caller-provided RpcServer.Protocol.
 
-- `McpServer.layerHttpRouter` -> `McpServer.layerHttp`: Renamed and consolidated. V4 layerHttp registers the Streamable HTTP endpoint in the unified HttpRouter; the old HttpLayerRouter-specific function was removed.
+- `McpServer.layerHttp` -> `McpServer.layerHttp`: Moved to effect/unstable/ai/McpServer and the unified HttpRouter. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai.
 
-- `McpServer.run` -> `McpServer.run`: Moved to effect/unstable/ai/McpServer. It remains the Effect-level runner over RpcServer.Protocol and now supports optional extensions and MCP session lifecycle handling.
+- `McpServer.layerHttpRouter` -> `McpServer.layerHttp`: Renamed and consolidated. V4 layerHttp registers the Streamable HTTP endpoint in the unified HttpRouter; pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai.
+
+- `McpServer.layerStdio` -> `McpServer.layerStdio`: Moved to effect/unstable/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai.
+
+- `McpServer.run` -> `McpServer.run`: Moved to effect/unstable/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai; it remains the Effect-level runner over RpcServer.Protocol.
 
 ### `@effect/ai/Model`
 
@@ -5823,10 +5128,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Args.withSchema` -> `Argument.withSchema`: Use the moved combinator with a v4 Schema constraint decoder.
 
-### `@effect/cli/AutoCorrect`
-
-- `AutoCorrect.levensteinDistance` -> `none`: V4 suggestion distance is internal and fixed; the public configurable distance helper was removed.
-
 ### `@effect/cli/BuiltInOptions`
 
 - `BuiltInOptions.BuiltInOptions` -> `GlobalFlag.BuiltIn`: The parsed directive union became a union of global Action and Setting definitions.
@@ -5869,6 +5170,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `CliApp.make` -> `Command.make`: Build the executable Command directly; there is no separate CliApp wrapper.
 
+- `CliApp.run` -> `Command.run`: The CliApp wrapper was removed. Attach the execute function with Command.withHandler, then run the Command with its version; v4 reads arguments through the CLI environment instead of accepting args and execute at this call.
+
 ### `@effect/cli/CliConfig`
 
 - `CliConfig.CliConfig` -> `CliConfig.CliConfig.Service`: The service was redesigned to configure built-in global flags; old parser and help switches were removed.
@@ -5876,6 +5179,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `CliConfig.defaultConfig` -> `CliConfig.defaults`: Renamed to defaults with the redesigned service shape.
 
 - `CliConfig.defaultLayer` -> `CliConfig.layer`: Call CliConfig.layer() to provide the defaults.
+
+- `CliConfig.layer` -> `CliConfig.layer`: The layer constructor remains, but its options configure the redesigned CliConfig.Service for built-in global flags.
 
 - `CliConfig.make` -> `CliConfig.make`: The constructor remains but accepts the redesigned service options.
 
@@ -6023,6 +5328,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HelpDoc.isDescriptionList` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
 
+- `HelpDoc.isEmpty` -> `none`: The Empty variant was removed when HelpDoc became a structured record; inspect the relevant flags, args, subcommands, and examples arrays when an application-specific emptiness test is needed.
+
 - `HelpDoc.isEnumeration` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
 
 - `HelpDoc.isHeader` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
@@ -6040,48 +5347,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `HelpDoc.toAnsiDoc` -> `none`: CliOutput owns rendering and exposes formatted text rather than an AnsiDoc.
 
 - `HelpDoc.toAnsiText` -> `CliOutput.defaultFormatter().formatHelpDoc`: Format the structured help record; inside Effect code prefer the CliOutput.Formatter service.
-
-### `@effect/cli/HelpDoc/Span`
-
-- `Span.Highlight` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.Sequence` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.Span` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.Text` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.URI` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.code` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.concat` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.empty` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.error` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.isSequence` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.isStrong` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.isText` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.isUri` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.isWeak` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.space` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.spans` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.strong` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.text` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.uri` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-
-- `Span.weak` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
 
 ### `@effect/cli/Options`
 
@@ -6235,38 +5500,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Prompt.text` -> `Prompt.text`: Use the moved constructor.
 
-### `@effect/cli/Usage`
-
-- `Usage.Alternation` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
-- `Usage.Concat` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
-- `Usage.Empty` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
-- `Usage.Mixed` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
-- `Usage.Named` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
-- `Usage.Repeated` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
-- `Usage.alternation` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
-- `Usage.concat` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
-- `Usage.empty` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
-- `Usage.enumerate` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
-- `Usage.getHelp` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
-- `Usage.mixed` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
-- `Usage.named` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
-- `Usage.optional` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
-- `Usage.repeated` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-
 ### `@effect/cli/ValidationError`
 
 - `ValidationError.CommandMismatch` -> `none`: The root-command mismatch error was removed.
@@ -6373,6 +5606,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/cluster/Entity`
 
+- `Entity.HandlersFrom` -> `effect/unstable/cluster/Entity#HandlersFrom`: Moved into core Effect; handler results now use Rpc.WrapperOr, which accepts either the raw RPC result or its wrapper.
+
+- `Entity.Replier.Success` -> `effect/unstable/cluster/Entity#Replier.Success`: Moved into core Effect; streaming replies may use Queue.Dequeue with Cause.Done instead of the removed Mailbox type.
+
 - `Entity.TypeId` -> `none`: The entity marker is private in v4. Use Entity.isEntity for runtime refinement.
 
 ### `@effect/cluster/EntityAddress`
@@ -6439,6 +5676,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/cluster/MessageStorage`
 
+- `MessageStorage.Encoded` -> `effect/unstable/cluster/MessageStorage#Encoded`: Moved into core Effect; use the v4 Envelope.Encoded and Reply.Encoded aliases in custom encoded storage implementations.
+
 - `MessageStorage.make` -> `effect/unstable/cluster/MessageStorage#make`: Moved into core Effect. Context service projections now use the Service property instead of Type.
 
 ### `@effect/cluster/Reply`
@@ -6457,9 +5696,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `RunnerAddress.TypeId` -> `none`: The runner-address marker is private in v4. Use the exported RunnerAddress class and schema.
 
+### `@effect/cluster/RunnerStorage`
+
+- `RunnerStorage.makeMemory` -> `effect/unstable/cluster/RunnerStorage#makeMemory`: Moved into core Effect; it still constructs the in-memory RunnerStorage service implementation.
+
 ### `@effect/cluster/Runners`
 
 - `Runners.make` -> `effect/unstable/cluster/Runners#make`: Moved into core Effect with the same callbacks and requirements; Context service projections now use Service instead of Type.
+
+- `Runners.makeNoop` -> `effect/unstable/cluster/Runners#makeNoop`: Moved into core Effect; it returns the Context.Service implementation through the Service projection instead of Type.
 
 ### `@effect/cluster/ShardId`
 
@@ -6583,6 +5828,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `EventJournal.makeEntryId` -> `effect/unstable/eventlog/EventJournal#makeEntryIdUnsafe`: The unchecked EntryId constructor was renamed to makeEntryIdUnsafe.
 
+- `EventJournal.makeMemory` -> `effect/unstable/eventlog/EventJournal#makeMemory`: The in-memory constructor moved into core Effect and now returns the Context.Service implementation through its Service projection.
+
 - `EventJournal.makeRemoteId` -> `effect/unstable/eventlog/EventJournal#makeRemoteIdUnsafe`: The unchecked RemoteId constructor was renamed to makeRemoteIdUnsafe.
 
 ### `@effect/experimental/EventLog`
@@ -6647,126 +5894,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `EventLogServer.makeStorageMemory` -> `effect/unstable/eventlog/EventLogServerEncrypted#makeStorageMemory`: Use the encrypted server memory storage constructor.
 
-### `@effect/experimental/EventLogServer/Cloudflare`
-
-- `Cloudflare.EventLogDurableObject` -> `none`: The Cloudflare adapter was not ported; combine EventLogServerEncrypted.layer with a custom Durable Object RpcServer.Protocol adapter.
-
-### `@effect/experimental/Machine`
-
-- `Machine.Actor` -> `none`: The experimental local Machine actor runtime was not ported to v4; redesign with Rpc, Cluster Entity, Workflow, or local Queue/Ref/PubSub primitives.
-
-- `Machine.ActorTypeId` -> `none`: The experimental local Machine actor runtime and its brands were not ported to v4.
-
-- `Machine.Machine` -> `none`: The experimental local Machine actor model was not ported to v4; ClusterWorkflowEngine is a different durable Workflow abstraction.
-
-- `Machine.Machine.AddContext` -> `none`: The Machine model and its context helper types were not ported to v4.
-
-- `Machine.Machine.Any` -> `none`: The Machine model and its helper types were not ported to v4.
-
-- `Machine.Machine.Context` -> `none`: The Machine model and its context helper types were not ported to v4.
-
-- `Machine.Machine.InitError` -> `none`: The Machine model and its initialization helper types were not ported to v4.
-
-- `Machine.Machine.Initialize` -> `none`: The Machine model and its initialization contract were not ported to v4.
-
-- `Machine.Machine.InitializeSerializable` -> `none`: The serializable Machine initialization contract was not ported to v4.
-
-- `Machine.Machine.Input` -> `none`: The Machine model and its extractor types were not ported to v4.
-
-- `Machine.Machine.Private` -> `none`: The Machine model and its private-request extractor were not ported to v4.
-
-- `Machine.Machine.Public` -> `none`: The Machine model and its public-request extractor were not ported to v4.
-
-- `Machine.Machine.State` -> `none`: The Machine model and its state extractor were not ported to v4.
-
-- `Machine.MachineContext` -> `none`: The Machine-specific handler context was not ported; redesign request handling and state management explicitly.
-
-- `Machine.MachineDefect` -> `none`: The Machine-specific defect wrapper was removed with the Machine runtime.
-
-- `Machine.SerializableActor` -> `none`: Serializable Machine actors were not ported to v4.
-
-- `Machine.SerializableMachine` -> `none`: Serializable Machine definitions were not ported to v4.
-
-- `Machine.SerializableTypeId` -> `none`: The serializable Machine brand was removed with the Machine runtime.
-
-- `Machine.TypeId` -> `none`: The Machine brand was removed with the Machine runtime.
-
-- `Machine.boot` -> `none`: The local Machine actor boot runtime was not ported; choose Cluster Entity or rebuild the local actor with Queue, Ref, PubSub, and scoped fibers.
-
-- `Machine.currentTracingEnabled` -> `none`: The Machine-specific tracing gate was removed with the Machine runtime; use ordinary Effect tracing controls in a redesign.
-
-- `Machine.make` -> `none`: The Machine constructor was not ported; use Rpc/RpcGroup plus Cluster Entity, Workflow, or local concurrency primitives according to the required semantics.
-
-- `Machine.makeSerializable` -> `none`: Serializable Machine actors were not ported; define schemas with Rpc/RpcGroup and choose Cluster Entity or Workflow explicitly.
-
-- `Machine.makeWith` -> `none`: The Machine constructor was not ported; redesign the actor runtime explicitly.
-
-- `Machine.restore` -> `none`: Machine snapshot restoration was not ported; implement persistence for the replacement architecture explicitly.
-
-- `Machine.retry` -> `none`: The Machine-specific retry wrapper was removed; use Effect.retry where appropriate in the redesigned handler.
-
-- `Machine.withTracingEnabled` -> `none`: The Machine-specific tracing gate was removed; use ordinary Effect tracing controls in a redesign.
-
-### `@effect/experimental/Machine/Procedure`
-
-- `Procedure.NoReply` -> `none`: The Machine-specific no-reply sentinel was removed with the Procedure model.
-
-- `Procedure.Procedure` -> `none`: The stateful Machine Procedure contract was not ported; Rpc is only a request contract and requires an explicit runtime architecture.
-
-- `Procedure.Procedure.BaseContext` -> `none`: The Machine Procedure handler context was not ported to v4.
-
-- `Procedure.Procedure.ContextProto` -> `none`: The Machine Procedure handler context was not ported to v4.
-
-- `Procedure.Procedure.InferContext` -> `none`: The Machine Procedure context extractor was removed with the Procedure model.
-
-- `Procedure.Procedure.InferRequest` -> `none`: The Machine Procedure request extractor was removed; use the corresponding Rpc request types after redesigning the contract.
-
-- `Procedure.SerializableProcedure` -> `none`: Serializable stateful Machine procedures were not ported to v4.
-
-- `Procedure.SerializableTypeId` -> `none`: The serializable Procedure brand was removed with the Machine runtime.
-
-- `Procedure.TaggedRequest` -> `none`: The Machine-specific tagged request base was removed; define schema-backed requests with Rpc when appropriate.
-
-- `Procedure.TaggedRequest.Any` -> `none`: The Machine-specific tagged request helper was removed; use Rpc helper types after redesigning the protocol.
-
-- `Procedure.TypeId` -> `none`: The Procedure brand was removed with the Machine runtime.
-
-- `Procedure.isSerializable` -> `none`: The Machine Procedure model and its serializability guard were not ported to v4.
-
-- `Procedure.make` -> `none`: Stateful Machine procedures were not ported; define request contracts with Rpc and implement state handling in the chosen actor architecture.
-
-- `Procedure.makeSerializable` -> `none`: Serializable stateful Machine procedures were not ported; use schema-backed Rpc contracts in a redesign.
-
-### `@effect/experimental/Machine/ProcedureList`
-
-- `ProcedureList.ProcedureList` -> `none`: The stateful Machine ProcedureList abstraction was not ported to v4.
-
-- `ProcedureList.TypeId` -> `none`: The ProcedureList brand was removed with the Machine runtime.
-
-- `ProcedureList.add` -> `none`: Machine ProcedureList was not ported; collect schema-backed operations with RpcGroup and implement state handling separately.
-
-- `ProcedureList.addPrivate` -> `none`: Machine ProcedureList and its public/private split were not ported; enforce visibility in the replacement architecture.
-
-- `ProcedureList.addProcedure` -> `none`: Machine ProcedureList was not ported; collect schema-backed operations with RpcGroup and implement state handling separately.
-
-- `ProcedureList.addProcedurePrivate` -> `none`: Machine ProcedureList and its public/private split were not ported; enforce visibility in the replacement architecture.
-
-- `ProcedureList.make` -> `none`: Machine ProcedureList was not ported; RpcGroup is the closest protocol collection but has no initial state or visibility split.
-
-- `ProcedureList.withInitialState` -> `none`: Machine ProcedureList initial state was not ported; state initialization belongs in the replacement actor or workflow implementation.
-
-### `@effect/experimental/Machine/SerializableProcedureList`
-
-- `SerializableProcedureList.SerializableProcedureList` -> `none`: The serializable stateful ProcedureList abstraction was not ported to v4.
-
-- `SerializableProcedureList.add` -> `none`: SerializableProcedureList was not ported; collect schema-backed operations with RpcGroup and implement state handling separately.
-
-- `SerializableProcedureList.addPrivate` -> `none`: SerializableProcedureList and its public/private split were not ported; enforce visibility in the replacement architecture.
-
-- `SerializableProcedureList.make` -> `none`: SerializableProcedureList was not ported; RpcGroup is the closest protocol collection but has no initial state or visibility split.
-
-- `SerializableProcedureList.withInitialState` -> `none`: SerializableProcedureList initial state was not ported; state initialization belongs in the replacement actor or workflow implementation.
-
 ### `@effect/experimental/PersistedCache`
 
 - `PersistedCache.make` -> `effect/unstable/persistence/PersistedCache#make`: Pass lookup as the first argument and options second; timeToLive now receives exit before request and the service is Persistence.Persistence.
@@ -6821,14 +5948,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Persistence.layerResultMemory` -> `effect/unstable/persistence/Persistence#layerMemory`: The combined memory-backed result layer was renamed to layerMemory.
 
-### `@effect/experimental/Persistence/Lmdb`
-
-- `Lmdb.layer` -> `none`: The LMDB backend was not ported; implement a custom BackingPersistence layer or use a supported Kvs, Redis, or SQL backend.
-
-- `Lmdb.layerResult` -> `none`: The LMDB backend was not ported; implement a custom BackingPersistence layer or use a supported Kvs, Redis, or SQL backend.
-
-- `Lmdb.make` -> `none`: The LMDB backend was not ported; implement a custom BackingPersistence layer or use a supported Kvs, Redis, or SQL backend.
-
 ### `@effect/experimental/Persistence/Redis`
 
 - `Redis.layer` -> `effect/unstable/persistence/Persistence#layerBackingRedis`: The Redis backing adapter was merged into Persistence and now requires the generic Redis.Redis service.
@@ -6846,6 +5965,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `RateLimiter.RateLimiterError` -> `effect/unstable/persistence/RateLimiter#RateLimiterError`: The retained name is now a wrapper error class whose reason is RateLimitExceeded or RateLimitStoreError.
 
 - `RateLimiter.TypeId` -> `effect/unstable/persistence/RateLimiter#TypeId`: Import TypeId from the v4 unstable RateLimiter module; it is now a string brand.
+
+- `RateLimiter.makeSleep` -> `effect/unstable/persistence/RateLimiter#sleep`: The accessor Effect was replaced by sleep; obtain the RateLimiter service and pass it to sleep directly or with its curried overload.
 
 ### `@effect/experimental/RateLimiter/Redis`
 
@@ -6871,11 +5992,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `RequestResolver.dataLoader` -> `effect/RequestResolver#setDelay + effect/RequestResolver#batchN`: Pipe the resolver through setDelay(options.window) and batchN(options.maxBatchSize ?? Infinity); the transformation is now pure.
 
+- `RequestResolver.persisted` -> `effect/RequestResolver#persisted`: Retained after moving to core RequestResolver; requests now implement Persistable and use Persistence.Persistence, timeToLive is optional, and staleWhileRevalidate is supported.
+
 ### `@effect/experimental/Sse`
 
 - `Sse.RetryTypeId` -> `none`: The Retry identifier is private in v4; use effect/unstable/encoding/Sse#Retry and Retry.is instead of inspecting the brand.
 
 ### `@effect/experimental/VariantSchema`
+
+- `VariantSchema.Extract` -> `effect/unstable/schema/VariantSchema#Extract`: Import the retained helper from the v4 module; its erased schema constraint is Schema.Top.
 
 - `VariantSchema.Field.Any` -> `effect/unstable/schema/VariantSchema#Field.Any`: Import the retained Field.Any helper type from the v4 unstable VariantSchema module.
 
@@ -7317,7 +6442,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Error.TypeId` -> `none`: The PlatformError runtime marker is internal in v4; use the PlatformError class/tag.
 
-- `Error.TypeIdError` -> `Data.TaggedError or Schema.ErrorClass`: The platform-specific error-class factory was removed; define tagged data errors or schema-backed error classes directly.
+- `Error.TypeIdError` -> `Data.TaggedError or Schema.Error`: The platform-specific error-class factory was removed; define tagged data errors or schema-backed error classes directly.
 
 - `Error.isPlatformError` -> `value instanceof PlatformError.PlatformError`: PlatformError is a class in v4; use an instanceof check or match its PlatformError tag.
 
@@ -7338,6 +6463,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `FileSystem.AccessFileOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["access"]>[1]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
 - `FileSystem.CopyOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["copy"]>[2]>`: Operation option interfaces are inline in the v4 FileSystem service.
+
+- `FileSystem.File.Descriptor` -> `none`: Native file descriptors are no longer part of the portable File interface; use the File methods and keep any platform handle private in custom implementations.
+
+- `FileSystem.FileDescriptor` -> `none`: The descriptor branding constructor was removed with the public fd field; use File operations instead of exposing a native descriptor.
 
 - `FileSystem.FileTypeId` -> `typeof FileSystem.FileTypeId`: The runtime marker remains exported, but the separate type alias was removed.
 
@@ -7363,7 +6492,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `FileSystem.WatchEventUpdate` -> `FileSystem.WatchEvent.Update`: The constructor was removed; construct a tagged object with \_tag: "Update" and path.
 
-- `FileSystem.WatchOptions` -> `none`: FileSystem.watch now accepts only a path; the recursive watch option was removed.
+- `FileSystem.WatchOptions` -> `FileSystem.WatchOptions`: Retained after moving the module to effect/FileSystem; pass `{ recursive: true }` as the optional second argument to FileSystem.watch.
 
 - `FileSystem.WriteFileOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["writeFile"]>[2]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
@@ -7374,6 +6503,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `FileSystem.make` -> `FileSystem.make`: The constructor remains after moving the module to effect/FileSystem; adapt the implementation to the v4 service shape.
 
 ### `@effect/platform/Headers`
+
+- `Headers.Headers` -> `Headers.Headers`: Import Headers from effect/unstable/http; the immutable string-record interface is retained with its v4 TypeId brand.
 
 - `Headers.HeadersTypeId` -> `Headers.TypeId`: The public Headers type-id symbol was renamed from HeadersTypeId to TypeId.
 
@@ -7629,11 +6760,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiSchema.Empty` -> `effect/unstable/httpapi/HttpApiSchema#Empty`: The API remains and returns Schema.Void annotated with the supplied status.
 
-- `HttpApiSchema.EmptyError` -> `effect/Schema#ErrorClass`: Define a normal schema error with httpApiStatus, then derive its no-content wire schema with asNoContent.
+- `HttpApiSchema.EmptyError` -> `effect/Schema#Error`: Define a normal schema error with httpApiStatus, then derive its no-content wire schema with asNoContent.
 
-- `HttpApiSchema.EmptyErrorClass` -> `effect/Schema#ErrorClass`: The class and no-content codec are separate in v4; combine ErrorClass with HttpApiSchema.asNoContent.
+- `HttpApiSchema.EmptyErrorClass` -> `effect/Schema#Error`: The class and no-content codec are separate in v4; combine Schema.Error with HttpApiSchema.asNoContent.
 
-- `HttpApiSchema.EmptyErrorUnify` -> `none`: Removed with EmptyError; Schema.ErrorClass instances already support yieldable-error behavior.
+- `HttpApiSchema.EmptyErrorUnify` -> `none`: Removed with EmptyError; Schema.Error instances already support yieldable-error behavior.
 
 - `HttpApiSchema.EmptyErrorUnifyIgnore` -> `none`: Removed with EmptyError; do not recreate the old Unify marker.
 
@@ -7765,6 +6896,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpClient.retry` -> `HttpClient.retry`: Retained; the Schedule error channel is included in the resulting client error type.
 
+- `HttpClient.tap` -> `effect/unstable/http/HttpClient#tap`: Moved to the v4 HTTP module with the same response-effect callback and client error/service widening.
+
+- `HttpClient.transform` -> `effect/unstable/http/HttpClient#transform`: Moved to the v4 HTTP module with the same request-aware transformation shape.
+
 - `HttpClient.withSpanNameGenerator` -> `HttpClient.transformResponse(Effect.provideService(HttpClient.SpanNameGenerator, f))`: The convenience combinator was removed; provide the reference around response effects.
 
 - `HttpClient.withTracerDisabledWhen` -> `HttpClient.transformResponse(Effect.provideService(HttpClient.TracerDisabledWhen, predicate))`: The convenience combinator was removed; provide the reference around response effects.
@@ -7837,6 +6972,14 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpLayerRouter.PathInput` -> `HttpRouter.PathInput`: Moved to the consolidated v4 router.
 
+- `HttpLayerRouter.Request.From` -> `HttpRouter.Request.From`: Moved with the layer-oriented router into the consolidated HttpRouter module.
+
+- `HttpLayerRouter.Request.Only` -> `HttpRouter.Request.Only`: Moved with the layer-oriented router into the consolidated HttpRouter module.
+
+- `HttpLayerRouter.Route.Context` -> `HttpRouter.Route.Context`: Moved with the Route helper types into the consolidated HttpRouter module.
+
+- `HttpLayerRouter.Route.Error` -> `HttpRouter.Route.Error`: Moved with the Route helper types into the consolidated HttpRouter module.
+
 - `HttpLayerRouter.RouteContext` -> `HttpRouter.RouteContext`: Moved to the consolidated v4 router.
 
 - `HttpLayerRouter.RouteTypeId` -> `none`: Route nominal ids are internal in v4; construct routes with HttpRouter.route.
@@ -7845,9 +6988,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpLayerRouter.TypeId` -> `none`: The router nominal service id is internal in v4; use HttpRouter.HttpRouter.
 
+- `HttpLayerRouter.add` -> `HttpRouter.add`: Moved to the consolidated HttpRouter; it still returns a route-registration Layer.
+
+- `HttpLayerRouter.addAll` -> `HttpRouter.addAll`: Moved to the consolidated HttpRouter; it still registers route values through a Layer and supports a prefix option.
+
 - `HttpLayerRouter.addHttpApi` -> `HttpApiBuilder.layer`: HTTP API registration moved to effect/unstable/httpapi.
 
 - `HttpLayerRouter.cors` -> `HttpRouter.cors`: HttpLayerRouter was consolidated into v4 HttpRouter.
+
+- `HttpLayerRouter.layer` -> `HttpRouter.layer`: Use the layer for the consolidated HttpRouter service.
 
 - `HttpLayerRouter.make` -> `HttpRouter.make`: The layer-oriented router became the sole v4 HttpRouter implementation.
 
@@ -7856,6 +7005,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `HttpLayerRouter.schemaNoBody` -> `HttpRouter.schemaNoBody`: Moved to the consolidated router with v4 Schema types.
 
 - `HttpLayerRouter.serve` -> `HttpRouter.serve`: Moved to the consolidated router; pass the route-registration layer.
+
+- `HttpLayerRouter.toHttpEffect` -> `HttpRouter.toHttpEffect`: Moved to the consolidated HttpRouter; route-not-found failures now use HttpServerError.HttpServerError.
 
 - `HttpLayerRouter.toWebHandler` -> `HttpRouter.toWebHandler`: Moved to the consolidated router for building a Fetch handler and disposer.
 
@@ -7876,34 +7027,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `HttpMiddleware.withTracerDisabledWhen` -> `Layer.provide(layer, Layer.succeed(HttpMiddleware.TracerDisabledWhen)(predicate))`: Provide the TracerDisabledWhen reference to the target layer.
 
 - `HttpMiddleware.withTracerDisabledWhenEffect` -> `Effect.provideService(effect, HttpMiddleware.TracerDisabledWhen, predicate)`: Provide the TracerDisabledWhen reference locally to the effect.
-
-### `@effect/platform/HttpMultiplex`
-
-- `HttpMultiplex.HttpMultiplex` -> `none`: Represent the removed model as a first-match Effect dispatcher requiring HttpServerRequest.
-
-- `HttpMultiplex.TypeId` -> `none`: The module and nominal type id were removed with no v4 counterpart.
-
-- `HttpMultiplex.add` -> `none`: No v4 multiplex abstraction exists; add a predicate and app to a custom first-match dispatcher.
-
-- `HttpMultiplex.empty` -> `none`: No v4 multiplex value exists; initialize an empty custom dispatcher.
-
-- `HttpMultiplex.headerEndsWith` -> `none`: Use a custom dispatcher predicate over the lower-cased request header and String.endsWith.
-
-- `HttpMultiplex.headerExact` -> `none`: Use a custom dispatcher predicate over the lower-cased request header with exact equality.
-
-- `HttpMultiplex.headerRegex` -> `none`: Use a custom dispatcher predicate over the lower-cased request header and RegExp.test.
-
-- `HttpMultiplex.headerStartsWith` -> `none`: Use a custom dispatcher predicate over the lower-cased request header and String.startsWith.
-
-- `HttpMultiplex.hostEndsWith` -> `none`: Use a custom dispatcher predicate over request.headers.host and String.endsWith.
-
-- `HttpMultiplex.hostExact` -> `none`: Use a custom dispatcher predicate comparing request.headers.host exactly.
-
-- `HttpMultiplex.hostRegex` -> `none`: Use a custom dispatcher predicate over request.headers.host and RegExp.test.
-
-- `HttpMultiplex.hostStartsWith` -> `none`: Use a custom dispatcher predicate over request.headers.host and String.startsWith.
-
-- `HttpMultiplex.make` -> `none`: No constructor was ported; fold predicate/app pairs into a first-match Effect dispatcher.
 
 ### `@effect/platform/HttpPlatform`
 
@@ -7996,6 +7119,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `HttpServer.layerContext` -> `HttpServer.layerServices`: Renamed; it provides the standard HTTP platform services.
 
 - `HttpServer.make` -> `HttpServer.make`: Retained; it returns the Context.Service implementation.
+
+- `HttpServer.serve` -> `effect/unstable/http/HttpServer#serve`: Moved to the v4 HTTP module; the application is now an Effect producing HttpServerResponse rather than the separate HttpApp model.
 
 ### `@effect/platform/HttpServerError`
 
@@ -8109,11 +7234,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Multipart.TypeId` -> `typeof Multipart.TypeId`: The runtime marker remains exported, but the separate type alias was removed.
 
+- `Multipart.makeChannel` -> `effect/unstable/http/Multipart#makeChannel`: The channel constructor moved and no longer accepts bufferSize; input and output chunks use non-empty readonly arrays.
+
 - `Multipart.schemaJson` -> `Multipart.schemaJson`: The JSON-field decoder remains in effect/unstable/http/Multipart and uses v4 Schema constraints.
 
 - `Multipart.withFieldMimeTypes` -> `Effect.provideService(Multipart.FieldMimeTypes, mimeTypes)`: Provide the v4 Context.Reference around the effect.
 
 - `Multipart.withLimits` -> `Effect.provideContext(effect, Multipart.limitsServices(options))`: Build the multipart limit context and provide it to the effect; Option-valued limits became optional plain values.
+
+- `Multipart.withLimits.Options` -> `Multipart.withLimits.Options`: Limit fields now use optional plain numbers or SizeInput values; convert Option.none to undefined and Option.some(value) to value.
 
 - `Multipart.withLimitsStream` -> `Stream.provideContext(stream, Multipart.limitsServices(options))`: Build the multipart limit context and provide it to the stream; Option-valued limits became optional plain values.
 
@@ -8375,948 +7504,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `WorkerRunner.makeSerialized` -> `RpcServer.makeProtocolWorkerRunner`: Serialized tagged-request execution moved to RpcServer with an RpcGroup handler layer.
 
-### `@effect/printer-ansi/Ansi`
-
-- `Ansi.Ansi` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.Ansi.Proto` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.AnsiTypeId` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.beep` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgBlack` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgBlackBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgBlue` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgBlueBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgColor` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgColorBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgCyan` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgCyanBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgGreen` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgGreenBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgMagenta` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgMagentaBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgRed` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgRedBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgWhite` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgWhiteBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgYellow` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bgYellowBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.black` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.blackBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.blue` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.blueBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.bold` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.brightColor` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.color` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.combine` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cursorBackward` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cursorDown` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cursorForward` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cursorHide` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cursorLeft` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cursorMove` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cursorNextLine` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cursorPrevLine` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cursorRestorePosition` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cursorSavePosition` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cursorShow` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cursorTo` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cursorUp` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cyan` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.cyanBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.eraseDown` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.eraseEndLine` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.eraseLine` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.eraseLines` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.eraseScreen` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.eraseStartLine` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.eraseUp` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.green` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.greenBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.italicized` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.magenta` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.magentaBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.red` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.redBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.strikethrough` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.stringify` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.underlined` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.white` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.whiteBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.yellow` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-- `Ansi.yellowBright` -> `none`: The @effect/printer-ansi package was removed in v4 with no public replacement. Use a maintained ANSI library or local escape-string helpers; the v4 CLI ANSI helpers are internal and cannot be imported.
-
-### `@effect/printer-ansi/AnsiDoc`
-
-- `AnsiDoc.AlreadyFlat` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Annotated` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.AnsiDoc` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.AnsiDoc.Compact` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.AnsiDoc.Pretty` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.AnsiDoc.RenderConfig` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.AnsiDoc.Smart` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Cat` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Char` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Column` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Covariant` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Doc` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Doc.Compact` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Doc.Pretty` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Doc.RenderConfig` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Doc.Smart` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Doc.TypeLambda` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Doc.Variance` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.DocTypeId` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.DocTypeLambda` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Empty` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Fail` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.FlatAlt` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Flatten` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Flatten.TypeLambda` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Flatten.Variance` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Flattened` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Invariant` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Line` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Nest` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Nesting` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.NeverFlat` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.Text` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.WithPageWidth` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.align` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.alterAnnotations` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.angleBracketed` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.annotate` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.backslash` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.beep` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cat` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.catWithLine` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.catWithLineBreak` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.catWithSoftLine` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.catWithSoftLineBreak` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.catWithSpace` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cats` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.changesUponFlattening` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.char` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.colon` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.column` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.comma` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.curlyBraced` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cursorBackward` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cursorDown` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cursorForward` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cursorHide` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cursorLeft` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cursorMove` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cursorNextLine` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cursorPrevLine` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cursorRestorePosition` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cursorSavePosition` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cursorShow` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cursorTo` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.cursorUp` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.dot` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.doubleQuoted` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.dquote` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.empty` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.encloseSep` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.equalSign` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.eraseDown` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.eraseEndLine` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.eraseLine` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.eraseLines` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.eraseScreen` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.eraseStartLine` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.eraseUp` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.fail` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.fill` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.fillBreak` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.fillCat` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.fillSep` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.flatAlt` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.flatten` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.group` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.hang` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.hardLine` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.hcat` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.hsep` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.indent` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.isAnnotated` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.isCat` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.isChar` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.isColumn` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.isDoc` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.isFail` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.isFlatAlt` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.isLine` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.isNest` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.isNesting` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.isText` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.isUnion` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.isWithPageWidth` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.langle` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.lbrace` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.lbracket` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.line` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.lineBreak` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.lparen` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.map` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.match` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.nest` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.nesting` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.pageWidth` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.parenthesized` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.punctuate` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.rangle` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.rbrace` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.rbracket` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.reAnnotate` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.reflow` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.render` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.rparen` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.semi` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.seps` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.singleQuoted` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.slash` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.softLine` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.softLineBreak` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.space` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.spaces` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.squareBracketed` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.squote` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.string` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.surround` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.text` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.textSpaces` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.tupled` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.unAnnotate` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.union` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.vbar` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.vcat` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.vsep` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.width` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-- `AnsiDoc.words` -> `none`: The @effect/printer-ansi package and its annotated document algebra were removed in v4. Use strings or another pretty-printing library; for Effect CLI help only, use HelpDoc with CliOutput from effect/unstable/cli.
-
-### `@effect/printer-ansi/Color`
-
-- `Color.Black` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.Blue` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.Color` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.Cyan` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.Green` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.Magenta` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.Red` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.White` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.Yellow` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.black` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.blue` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.cyan` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.green` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.magenta` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.red` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.toCode` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.white` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-- `Color.yellow` -> `none`: The @effect/printer-ansi package was removed in v4, and Effect no longer provides a public ANSI color ADT. Use a maintained ANSI library or local escape-string helpers.
-
-### `@effect/printer/Doc`
-
-- `Doc.Annotated` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Cat` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Char` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Column` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Covariant` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Doc` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Doc.Compact` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Doc.Pretty` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Doc.RenderConfig` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Doc.Smart` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Doc.TypeLambda` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Doc.Variance` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.DocTypeId` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.DocTypeLambda` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Empty` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Fail` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.FlatAlt` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Invariant` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Line` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Nest` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Nesting` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.Text` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.WithPageWidth` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.align` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.alterAnnotations` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.angleBracketed` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.annotate` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.backslash` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.cat` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.catWithLine` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.catWithLineBreak` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.catWithSoftLine` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.catWithSoftLineBreak` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.catWithSpace` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.cats` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.changesUponFlattening` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.char` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.colon` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.column` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.comma` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.curlyBraced` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.dot` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.doubleQuoted` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.dquote` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.empty` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.encloseSep` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.equalSign` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.fail` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.fill` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.fillBreak` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.fillCat` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.fillSep` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.flatAlt` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.flatten` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.getMonoid` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.getSemigroup` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.group` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.hang` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.hardLine` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.hcat` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.hsep` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.indent` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.isAnnotated` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.isCat` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.isChar` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.isColumn` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.isDoc` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.isFail` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.isFlatAlt` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.isLine` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.isNest` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.isNesting` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.isText` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.isUnion` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.isWithPageWidth` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.langle` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.lbrace` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.lbracket` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.line` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.lineBreak` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.lparen` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.map` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.match` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.nest` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.nesting` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.pageWidth` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.parenthesized` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.punctuate` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.rangle` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.rbrace` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.rbracket` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.reAnnotate` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.reflow` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.render` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.renderStream` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.rparen` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.semi` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.seps` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.singleQuoted` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.slash` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.softLine` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.softLineBreak` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.space` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.spaces` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.squareBracketed` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.squote` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.string` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.surround` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.text` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.textSpaces` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.tupled` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.unAnnotate` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.union` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.vbar` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.vcat` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.vsep` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.width` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-- `Doc.words` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-
-### `@effect/printer/DocStream`
-
-- `DocStream.CharStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.DocStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.DocStream.TypeLambda` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.DocStream.Variance` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.DocStreamTypeId` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.DocStreamTypeLambda` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.EmptyStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.FailedStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.Functor` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.Invariant` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.LineStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.PopAnnotationStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.PushAnnotationStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.TextStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.alterAnnotations` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.char` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.empty` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.failed` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.foldMap` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.isCharStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.isDocStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.isEmptyStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.isFailedStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.isLineStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.isPopAnnotationStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.isPushAnnotationStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.isTextStream` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.line` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.map` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.match` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.popAnnotation` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.pushAnnotation` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.reAnnotate` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.text` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-- `DocStream.unAnnotate` -> `none`: The @effect/printer package and its laid-out DocStream intermediate representation were removed in v4. Use a target-specific renderer or another pretty-printing library.
-
-### `@effect/printer/DocTree`
-
-- `DocTree.AnnotationTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.CharTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.ConcatTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.Covariant` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.DocTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.DocTree.TypeLambda` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.DocTree.Variance` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.DocTreeTypeId` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.DocTreeTypeLambda` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.EmptyTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.Invariant` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.LineTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.TextTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.alterAnnotations` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.annotation` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.char` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.concat` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.empty` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.foldMap` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.getMonoid` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.getSemigroup` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.isAnnotationTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.isCharTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.isConcatTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.isDocTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.isEmptyTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.isLineTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.isTextTree` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.line` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.reAnnotate` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.renderSimplyDecorated` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.text` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.treeForm` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-- `DocTree.unAnnotate` -> `none`: The @effect/printer package and its structured DocTree rendering representation were removed in v4. Use a target-specific tree and renderer or another pretty-printing library.
-
-### `@effect/printer/Flatten`
-
-- `Flatten.AlreadyFlat` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.Flatten` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.Flatten.TypeLambda` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.Flatten.Variance` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.FlattenTypeId` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.FlattenTypeLambda` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.Flattened` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.NeverFlat` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.alreadyFlat` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.flattened` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.isAlreadyFlat` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.isFlatten` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.isFlattened` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.isNeverFlat` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.map` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-- `Flatten.neverFlat` -> `none`: This printer-specific flattening result was removed with the @effect/printer document algebra in v4 and has no direct replacement.
-
-### `@effect/printer/Layout`
-
-- `Layout.Layout` -> `none`: The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli.
-
-- `Layout.Layout.FittingPredicate` -> `none`: The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli.
-
-- `Layout.Layout.Options` -> `none`: The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli.
-
-- `Layout.defaultOptions` -> `none`: The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli.
-
-- `Layout.options` -> `none`: The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli.
-
-- `Layout.pretty` -> `none`: The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli.
-
-- `Layout.smart` -> `none`: The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli.
-
-- `Layout.unbounded` -> `none`: The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli.
-
-- `Layout.wadlerLeijen` -> `none`: The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli.
-
-### `@effect/printer/Optimize`
-
-- `Optimize.Deep` -> `none`: The @effect/printer document optimizer was removed with the document algebra in v4. String-based output needs no equivalent optimization stage.
-
-- `Optimize.FusionDepth` -> `none`: The @effect/printer document optimizer was removed with the document algebra in v4. String-based output needs no equivalent optimization stage.
-
-- `Optimize.Optimize` -> `none`: The @effect/printer document optimizer was removed with the document algebra in v4. String-based output needs no equivalent optimization stage.
-
-- `Optimize.Optimize.Depth` -> `none`: The @effect/printer document optimizer was removed with the document algebra in v4. String-based output needs no equivalent optimization stage.
-
-- `Optimize.Shallow` -> `none`: The @effect/printer document optimizer was removed with the document algebra in v4. String-based output needs no equivalent optimization stage.
-
-- `Optimize.optimize` -> `none`: The @effect/printer document optimizer was removed with the document algebra in v4. String-based output needs no equivalent optimization stage.
-
-### `@effect/printer/PageWidth`
-
-- `PageWidth.AvailablePerLine` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
-
-- `PageWidth.PageWidth` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
-
-- `PageWidth.PageWidth.Proto` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
-
-- `PageWidth.PageWidthTypeId` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
-
-- `PageWidth.Unbounded` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
-
-- `PageWidth.availablePerLine` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
-
-- `PageWidth.defaultPageWidth` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
-
-- `PageWidth.isAvailablePerLine` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
-
-- `PageWidth.isPageWidth` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
-
-- `PageWidth.isUnbounded` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
-
-- `PageWidth.remainingWidth` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
-
-- `PageWidth.unbounded` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
-
 ### `@effect/rpc/Rpc`
 
 - `Rpc.AddError` -> `effect/unstable/rpc/Rpc#AddError`: Retained; the added error must now be a Schema.Top and the resulting RPC also preserves its explicit service requirements.
@@ -9349,6 +7536,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Rpc.SuccessChunkEncoded` -> `Rpc.SuccessExitSchema<R>["Encoded"]`: The alias was removed; for a streaming RPC the exit success schema is the stream element schema.
 
+- `Rpc.SuccessEncoded` -> `effect/unstable/rpc/Rpc#SuccessEncoded`: Retained after the module move and now accounts for the RPC's explicit service-requirement parameter.
+
 - `Rpc.SuccessExitEncoded` -> `Rpc.SuccessExitSchema<R>["Encoded"]`: Use the new exit success schema and select its Encoded member; streaming RPC exits use the element schema separately from the terminal void exit.
 
 - `Rpc.SuccessSchema` -> `effect/unstable/rpc/Rpc#SuccessSchema`: Retained and uses the v4 Schema.Top constraint.
@@ -9363,9 +7552,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Rpc.make` -> `effect/unstable/rpc/Rpc#make`: Retained; schemas use v4 Schema.Top constraints and the defect option accepts Rpc.DefectSchema.
 
+- `Rpc.wrap` -> `effect/unstable/rpc/Rpc#wrap`: Retained after the module move; it still applies fork and uninterruptible handler options, while the return type is now uniformly Rpc.Wrapper.
+
 ### `@effect/rpc/RpcClient`
 
 - `RpcClient.Protocol` -> `effect/unstable/rpc/RpcClient#Protocol`: Retained as a Context.Service; custom transports now route multiple client ids through run and send.
+
+- `RpcClient.RpcClient.From` -> `effect/unstable/rpc/RpcClient#RpcClient.From`: Generated clients now preserve full RPC tags as property names, remove the Prefix type parameter, and expose streaming results through the asQueue option instead of asMailbox.
 
 - `RpcClient.RpcClient.NonPrefixed` -> `none`: The prefix-partition helper was removed; v4 clients map every RPC tag directly to an object property.
 
@@ -9383,6 +7576,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/rpc/RpcGroup`
 
+- `RpcGroup.Any` -> `effect/unstable/rpc/RpcGroup#Any`: Moved unchanged as the erased RpcGroup constraint.
+
 - `RpcGroup.HandlerContext` -> `effect/unstable/rpc/RpcGroup#HandlerServices`: Renamed for v4 service terminology and now includes explicit RPC requirements after removing middleware-provided services.
 
 - `RpcGroup.HandlersContext` -> `effect/unstable/rpc/RpcGroup#HandlersServices`: Renamed; it unions HandlerServices across the handler object.
@@ -9390,6 +7585,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `RpcGroup.TypeId` -> `none`: The group marker is private in v4; use RpcGroup.Any for an erased group constraint.
 
 ### `@effect/rpc/RpcMessage`
+
+- `RpcMessage.RequestId` -> `effect/unstable/rpc/RpcMessage#RequestId`: Request ids are now branded string or number values; convert bigint ids before calling the retained RequestId constructor.
 
 - `RpcMessage.RequestIdTypeId` -> `effect/unstable/rpc/RpcMessage#RequestId`: The public symbol marker was removed; use the branded RequestId type and RequestId constructor rather than inspecting its brand.
 
@@ -9442,6 +7639,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `RpcServer.fiberIdClientInterrupt` -> `effect/unstable/rpc/RpcSchema#ClientAbort`: The sentinel FiberId was replaced by a Cause annotation; inspect ClientAbort in the interruption cause when client cancellation must be distinguished.
 
 - `RpcServer.fiberIdTransientInterrupt` -> `none`: The internal transient sentinel was removed; protocol shutdown and disconnect now interrupt with the active parent fiber identity.
+
+- `RpcServer.layer` -> `effect/unstable/rpc/RpcServer#layer`: Moved to core Effect; server requirements are now derived with Rpc.ServicesServer rather than the former combined Rpc.Context alias.
 
 - `RpcServer.layerHttpRouter` -> `effect/unstable/rpc/RpcServer#layerHttp`: Renamed; it installs an HTTP or WebSocket RPC route into the v4 HttpRouter service.
 
@@ -9527,28 +7726,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Sqlite.makeWithConfig` -> `matching drizzle-orm Effect SQLite module#makeWithDefaults`: The generic constructor was removed; select the concrete backend and use makeWithDefaults(config), or make(config) with explicit services.
 
-### `@effect/sql-kysely/Kysely`
-
-- `Kysely.EffectKysely` -> `none`: The Effect integration was removed. Use native kysely#Kysely, explicitly wrap promise execution with Effect.tryPromise, and define an application service if needed.
-
-- `Kysely.make` -> `none`: No Effect-native equivalent remains; construct native new Kysely(config) and explicitly wrap builder execution and errors with Effect.tryPromise.
-
-### `@effect/sql-kysely/Mssql`
-
-- `Mssql.make` -> `none`: The integration was removed; use native Kysely with MssqlDialect and wrap promises, or rewrite against @effect/sql-mssql for Effect-native queries.
-
-### `@effect/sql-kysely/Mysql`
-
-- `Mysql.make` -> `none`: The integration was removed; use native Kysely with MysqlDialect and wrap promises, or rewrite against @effect/sql-mysql2 for Effect-native queries.
-
-### `@effect/sql-kysely/Pg`
-
-- `Pg.make` -> `none`: The integration was removed; use native Kysely with PostgresDialect and wrap promises, or rewrite against @effect/sql-pg for Effect-native queries.
-
-### `@effect/sql-kysely/Sqlite`
-
-- `Sqlite.make` -> `none`: The integration was removed; use native Kysely with SqliteDialect and wrap promises, or rewrite against a matching @effect/sql-sqlite-\* client.
-
 ### `@effect/sql-mssql/MssqlClient`
 
 - `MssqlClient.MssqlClient` -> `@effect/sql-mssql/MssqlClient#MssqlClient`: Retained; the service value is now a Context.Service rather than a GenericTag.
@@ -9619,7 +7796,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Model.Generated` -> `effect/unstable/schema/Model#GeneratedByDb`: Renamed and now read-only, with select and json variants only. Use Model.Field with select, update, and json to preserve writable v3 behavior.
 
+- `Model.extract` -> `effect/unstable/schema/Model#extract`: Retained after moving the model variant helpers into core Effect's unstable schema package.
+
 - `Model.fieldFromKey` -> `effect/Schema#encodeKeys`: The field helper was removed; apply encodeKeys to each concrete struct or model-variant schema that crosses the naming boundary.
+
+- `Model.fields` -> `effect/unstable/schema/Model#fields`: Moved with the variant-model helpers into core Effect's unstable schema package.
 
 - `Model.makeDataLoaders` -> `effect/unstable/sql/SqlModel#makeResolvers`: Returns RequestResolvers instead of callable loaders; execute with SqlResolver.request and use RequestResolver delay/batch combinators for batching controls.
 
@@ -9687,6 +7868,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Statement.make` -> `effect/unstable/sql/Statement#make`: Moved with the same constructor inputs.
 
+- `Statement.makeCompiler` -> `effect/unstable/sql/Statement#makeCompiler`: Moved to core Effect; the constructor options are exposed as Statement.CompilerOptions and retain the dialect-specific callbacks.
+
 - `Statement.setTransformer` -> `Layer.succeed(Statement.CurrentTransformer, transformer)`: The helper was removed; provide the CurrentTransformer reference as a layer.
 
 - `Statement.unsafeFragment` -> `Statement.fragment([Statement.literal(sql, params)])`: The helper was removed; construct the low-level fragment explicitly, or use the active constructor's sql.unsafe for an executable statement.
@@ -9694,26 +7877,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Statement.withTransformer` -> `Effect.provideService(Statement.CurrentTransformer, transformer)`: The helper was removed; locally provide the transformer reference around the effect.
 
 - `Statement.withTransformerDisabled` -> `Effect.provideService(Statement.CurrentTransformer, undefined)`: The helper was removed; locally provide undefined for the transformer reference.
-
-### `@effect/typeclass/Alternative`
-
-- `Alternative.Alternative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/Applicative`
-
-- `Applicative.Applicative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Applicative.getMonoid` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/Bicovariant`
-
-- `Bicovariant.Bicovariant` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Bicovariant.bimapComposition` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Bicovariant.map` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Bicovariant.mapLeft` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 
 ### `@effect/typeclass/Bounded`
 
@@ -9726,100 +7889,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Bounded.clamp` -> `Order.clamp(B.compare)`: Use the v4 Order combinator with { minimum: B.minBound, maximum: B.maxBound }; the Bounded dictionary itself was removed.
 
 - `Bounded.reverse` -> `Order.flip(B.compare)`: Flip the Order and swap the separately stored minimum and maximum bounds; v4 has no bundled Bounded dictionary.
-
-### `@effect/typeclass/Chainable`
-
-- `Chainable.Chainable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Chainable.bind` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Chainable.tap` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Chainable.zipLeft` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/Contravariant`
-
-- `Contravariant.Contravariant` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Contravariant.contramapComposition` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Contravariant.imap` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/Coproduct`
-
-- `Coproduct.Coproduct` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Coproduct.getMonoid` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/Covariant`
-
-- `Covariant.Covariant` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Covariant.as` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Covariant.asVoid` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Covariant.flap` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Covariant.imap` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Covariant.let` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Covariant.mapComposition` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/Filterable`
-
-- `Filterable.Filterable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Filterable.filter` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Filterable.filterMapComposition` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Filterable.partition` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Filterable.partitionMapComposition` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Filterable.separate` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/FlatMap`
-
-- `FlatMap.FlatMap` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `FlatMap.composeK` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `FlatMap.flatten` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `FlatMap.zipRight` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/Foldable`
-
-- `Foldable.Foldable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Foldable.combineMap` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Foldable.coproductMapKind` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Foldable.reduceComposition` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Foldable.reduceKind` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Foldable.toArray` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Foldable.toArrayMap` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/Invariant`
-
-- `Invariant.Invariant` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Invariant.bindTo` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Invariant.imapComposition` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Invariant.tupled` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/Monad`
-
-- `Monad.Monad` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 
 ### `@effect/typeclass/Monoid`
 
@@ -9834,70 +7903,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Monoid.struct` -> `Struct.makeReducer`: Pass a record of v4 Reducers to derive a field-wise Reducer.
 
 - `Monoid.tuple` -> `Tuple.makeReducer`: Pass one array of v4 Reducers instead of rest Monoid arguments.
-
-### `@effect/typeclass/Of`
-
-- `Of.Do` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Of.Of` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Of.ofComposition` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Of.void` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/Pointed`
-
-- `Pointed.Pointed` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/Product`
-
-- `Product.Product` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Product.struct` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Product.tuple` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/SemiAlternative`
-
-- `SemiAlternative.SemiAlternative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/SemiApplicative`
-
-- `SemiApplicative.SemiApplicative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `SemiApplicative.ap` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `SemiApplicative.getSemigroup` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `SemiApplicative.lift2` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `SemiApplicative.zipLeft` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `SemiApplicative.zipRight` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/SemiCoproduct`
-
-- `SemiCoproduct.SemiCoproduct` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `SemiCoproduct.getSemigroup` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/SemiProduct`
-
-- `SemiProduct.SemiProduct` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `SemiProduct.andThenBind` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `SemiProduct.appendElement` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `SemiProduct.nonEmptyStruct` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `SemiProduct.nonEmptyTuple` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `SemiProduct.productComposition` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `SemiProduct.productMany` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `SemiProduct.productManyComposition` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 
 ### `@effect/typeclass/Semigroup`
 
@@ -9930,26 +7935,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Semigroup.struct` -> `Struct.makeCombiner`: Pass a record of v4 Combiners to derive a field-wise Combiner.
 
 - `Semigroup.tuple` -> `Tuple.makeCombiner`: Pass one array of v4 Combiners instead of rest Semigroup arguments.
-
-### `@effect/typeclass/Traversable`
-
-- `Traversable.Traversable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Traversable.traverseComposition` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Traversable.traverseTap` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-### `@effect/typeclass/TraversableFilterable`
-
-- `TraversableFilterable.TraversableFilterable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `TraversableFilterable.traverseFilter` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `TraversableFilterable.traverseFilterMap` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `TraversableFilterable.traversePartition` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `TraversableFilterable.traversePartitionMap` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 
 ### `@effect/typeclass/data/Array`
 
@@ -10094,44 +8079,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Either.SemiProduct` -> `effect/Either`: The @effect/typeclass package and its Either instance dictionaries were removed in v4. Use the concrete effect/Either operations directly.
 
 - `Either.Traversable` -> `effect/Either`: The @effect/typeclass package and its Either instance dictionaries were removed in v4. Use the concrete effect/Either operations directly.
-
-### `@effect/typeclass/data/Identity`
-
-- `Identity.Applicative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.Chainable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.Covariant` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.FlatMap` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.Foldable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.Identity` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.IdentityTypeLambda` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.IdentityTypeLambdaFix` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.Invariant` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.Monad` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.Of` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.Pointed` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.Product` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.SemiApplicative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.SemiProduct` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.Traversable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.getSemiAlternative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-
-- `Identity.getSemiCoproduct` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 
 ### `@effect/typeclass/data/Micro`
 
@@ -10507,10 +8454,6 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `DurableQueue.make` -> `effect/unstable/workflow/DurableQueue#make`: Moved into core Effect; queue persistence now comes from effect/unstable/persistence.
 
-### `@effect/workflow/DurableRateLimiter`
-
-- `DurableRateLimiter.rateLimit` -> `none`: Not ported. Build an Activity whose execute uses persistence RateLimiter.consume with onExceeded: delay, then sleeps for the returned delay with DurableClock.
-
 ### `@effect/workflow/Workflow`
 
 - `Workflow.Any` -> `effect/unstable/workflow/Workflow#Any`: Moved into core Effect. Workflow identity changed from name to \_tag and definitions are now class-compatible constructors.
@@ -10565,7 +8508,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Arbitrary.ArbitraryGenerationContext` -> `Schema.Annotations.ToArbitrary.Context`: Use the v4 arbitrary-derivation context type from Schema.Annotations.
 
-- `Arbitrary.LazyArbitrary` -> `Schema.LazyArbitrary`: The lazy arbitrary type moved onto Schema.
+- `Arbitrary.LazyArbitrary` -> `Schema.Arbitrary`: The arbitrary factory type moved onto Schema.
 
 #### `Arbitrary.make`
 
@@ -10576,19 +8519,19 @@ Arbitrary derivation is now exposed directly by Schema.
 **Example**
 
 ```ts
-Schema.toArbitrary(schema)
+Schema.toArbitrary(schema)(FastCheck)
 ```
 
 #### `Arbitrary.makeLazy`
 
-**Replacement:** `Schema.toArbitraryLazy`
+**Replacement:** `Schema.toArbitrary`
 
 Lazy arbitrary derivation is now exposed directly by Schema.
 
 **Example**
 
 ```ts
-Schema.toArbitraryLazy(schema)
+Schema.toArbitrary(schema)
 ```
 
 ### `effect/Array`
@@ -11027,28 +8970,6 @@ Schema.toArbitraryLazy(schema)
 
 - `Channel.zipRight` -> `Channel.concat`: Use concat for the sequential form; it preserves the right done value. Concurrent mode has no exact replacement.
 
-### `effect/ChildExecutorDecision`
-
-- `ChildExecutorDecision.ChildExecutorDecision` -> `none`: Removed with the v3 channel executor and Channel.concatMapWithCustom. Choose Channel.flatMap, Channel.switchMap, or Channel.mergeAll instead; v4 exposes no child-executor decision ADT.
-
-- `ChildExecutorDecision.ChildExecutorDecision.Proto` -> `none`: Removed with the v3 channel executor and Channel.concatMapWithCustom. Choose Channel.flatMap, Channel.switchMap, or Channel.mergeAll instead; v4 exposes no child-executor decision ADT.
-
-- `ChildExecutorDecision.ChildExecutorDecisionTypeId` -> `none`: Removed with the v3 channel executor and Channel.concatMapWithCustom. Choose Channel.flatMap, Channel.switchMap, or Channel.mergeAll instead; v4 exposes no child-executor decision ADT.
-
-- `ChildExecutorDecision.Close` -> `none`: Removed with the v3 channel executor and Channel.concatMapWithCustom. Choose Channel.flatMap, Channel.switchMap, or Channel.mergeAll instead; v4 exposes no child-executor decision ADT.
-
-- `ChildExecutorDecision.Yield` -> `none`: Removed with the v3 channel executor and Channel.concatMapWithCustom. Choose Channel.flatMap, Channel.switchMap, or Channel.mergeAll instead; v4 exposes no child-executor decision ADT.
-
-- `ChildExecutorDecision.isChildExecutorDecision` -> `none`: Removed with the v3 channel executor and Channel.concatMapWithCustom. Choose Channel.flatMap, Channel.switchMap, or Channel.mergeAll instead; v4 exposes no child-executor decision ADT.
-
-- `ChildExecutorDecision.isClose` -> `none`: Removed with the v3 channel executor and Channel.concatMapWithCustom. Choose Channel.flatMap, Channel.switchMap, or Channel.mergeAll instead; v4 exposes no child-executor decision ADT.
-
-- `ChildExecutorDecision.isContinue` -> `none`: Removed with the v3 channel executor and Channel.concatMapWithCustom. Choose Channel.flatMap, Channel.switchMap, or Channel.mergeAll instead; v4 exposes no child-executor decision ADT.
-
-- `ChildExecutorDecision.isYield` -> `none`: Removed with the v3 channel executor and Channel.concatMapWithCustom. Choose Channel.flatMap, Channel.switchMap, or Channel.mergeAll instead; v4 exposes no child-executor decision ADT.
-
-- `ChildExecutorDecision.match` -> `none`: Removed with the v3 channel executor and Channel.concatMapWithCustom. Choose Channel.flatMap, Channel.switchMap, or Channel.mergeAll instead; v4 exposes no child-executor decision ADT.
-
 ### `effect/Chunk`
 
 - `Chunk.Chunk` -> `Chunk.Chunk`: The model remains Chunk.Chunk\<A\>; continue using Chunk constructors rather than depending on its exposed representation fields.
@@ -11079,7 +9000,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Clock.CancelToken` -> `none`: The public clock scheduler and cancellation-token protocol were removed. Use Effect.sleep for delays and Effect interruption or Fiber.interrupt for cancellation.
 
-- `Clock.Clock` -> `Clock.Clock`: The service interface remains, but unsafeCurrentTimeMillis and unsafeCurrentTimeNanos were renamed to currentTimeMillisUnsafe and currentTimeNanosUnsafe, and the public type-id field was removed.
+- `Clock.Clock` -> `Clock.Clock`: The service interface remains, but unsafeCurrentTimeMillis and unsafeCurrentTimeNanos were renamed to currentTimeMillisUnsafe and currentTimeNanosUnsafe, the public type-id field was removed, and custom implementations must add monotonicTimeNanosUnsafe plus monotonicTimeNanos for elapsed-time measurement.
 
 - `Clock.ClockScheduler` -> `none`: The low-level clock scheduler is no longer public. Express scheduling with Effect.sleep and cancel the running fiber through normal Effect interruption.
 
@@ -11091,7 +9012,7 @@ Schema.toArbitraryLazy(schema)
 
 ### `effect/Config`
 
-- `Config.Config` -> `Config.Config`: The model remains and is still a yieldable Effect; it now also exposes parse(provider, pathPrefix?).
+- `Config.Config` -> `Config.Config`: The model remains a yieldable Effect and exposes parse(provider). Compose logical lookup paths with Config.schema(..., path) and Config.nested; parsing no longer accepts a public path prefix.
 
 - `Config.Config.IsPlainObject` -> `none`: This private conditional helper is no longer exposed; use Config.Wrap for the public recursive wrapping contract.
 
@@ -11103,7 +9024,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Config.LiteralValue` -> `SchemaAST.LiteralValue`: Use the literal value type shared by v4 Schema constructors.
 
-- `Config.all` -> `Config.all`: Unchanged; combine an iterable or record of Config values.
+- `Config.all` -> `Config.all`: Combine an iterable or record of Config values. A wholly absent product can use Config.withDefault or Config.option, while a partially supplied product fails.
 
 - `Config.array` -> `Config.schema(Config.Array(valueSchema), path)`: Array parsing is schema-based in v4; rebuild the element Config as a Schema and pass the optional path to Config.schema.
 
@@ -11139,7 +9060,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Config.port` -> `Config.port`: Unchanged.
 
-- `Config.primitive` -> `Config.schema(customSchema, path)`: Custom primitive parsing moved to Schema codecs; express decoding and diagnostics in a Schema, then pass it to Config.schema.
+- `Config.primitive` -> `Config.schema(customSchema, path)`: Custom primitive parsing moved to Schema codecs; express decoding and diagnostics in a Schema, then pass it to Config.schema. Its canonical StringTree encoding must expose a concrete shape; opaque encodings such as Schema.Any or Schema.Unknown are not supported.
 
 - `Config.redacted` -> `Config.redacted`: The string/path overload remains; replace the v3 Config argument overload with Config.map(config, Redacted.make).
 
@@ -11181,7 +9102,7 @@ Schema.toArbitraryLazy(schema)
 
 - `ConfigError.InvalidData` -> `new Config.ConfigError(new Schema.SchemaError(issue))`: Invalid configuration is now expressed as a SchemaIssue wrapped by SchemaError and Config.ConfigError.
 
-- `ConfigError.MissingData` -> `new Config.ConfigError(new Schema.SchemaError(new SchemaIssue.MissingKey(...)))`: Missing configuration is represented by Schema issues, commonly MissingKey under one or more Pointer nodes.
+- `ConfigError.MissingData` -> `none`: There is no public missing-data error variant. A required absent config ultimately fails with a SchemaError, while Config.withDefault and Config.option handle semantic absence before it enters the public Effect error channel.
 
 - `ConfigError.Options` -> `none`: The shared constructor options type was removed; ConfigProvider.SourceError accepts message and optional cause, while Schema issues have issue-specific constructors.
 
@@ -11197,9 +9118,9 @@ Schema.toArbitraryLazy(schema)
 
 - `ConfigError.isInvalidData` -> `Schema.isSchemaError(error.cause)`: Parsing and validation failures are SchemaError causes; inspect the contained SchemaIssue for finer classification.
 
-- `ConfigError.isMissingData` -> `Schema.isSchemaError(error.cause)`: After narrowing to SchemaError, recursively inspect MissingKey, absent InvalidType/InvalidValue, Pointer, and aggregate issues; there is no public one-step guard.
+- `ConfigError.isMissingData` -> `none`: Do not infer semantic absence from a SchemaIssue. Use Config.withDefault or Config.option; they distinguish absent provider input from successful undefined, invalid input, and partial products.
 
-- `ConfigError.isMissingDataOnly` -> `Config.withDefault / Config.option`: The public classifier was removed; these combinators retain the supported missing-only fallback behavior.
+- `ConfigError.isMissingDataOnly` -> `Config.withDefault / Config.option`: The public classifier was removed. These combinators use provider lookup evidence rather than recursively classifying SchemaIssue values.
 
 - `ConfigError.isOr` -> `error.cause.issue._tag === "AnyOf"`: After narrowing cause with Schema.isSchemaError, inspect the SchemaIssue tag; the old Or node no longer exists.
 
@@ -11213,7 +9134,7 @@ Schema.toArbitraryLazy(schema)
 
 ### `effect/ConfigProvider`
 
-- `ConfigProvider.ConfigProvider` -> `ConfigProvider.ConfigProvider`: The model remains but now exposes load(path), returning a raw Node or undefined, and has one unified provider representation.
+- `ConfigProvider.ConfigProvider` -> `ConfigProvider.ConfigProvider`: The model remains but now exposes `load(path)`, returning `Effect<Node | undefined, SourceError>`, and `mapInput(f)` for provider-owned path transformation. `undefined` means the path is missing; a `Node` means it exists.
 
 - `ConfigProvider.ConfigProvider.Flat` -> `ConfigProvider.ConfigProvider`: Flat providers were removed; implement the unified path-based provider with ConfigProvider.make.
 
@@ -11235,7 +9156,7 @@ Schema.toArbitraryLazy(schema)
 
 - `ConfigProvider.fromEnv` -> `ConfigProvider.fromEnv`: The constructor remains; pass env and preserveEmptyStrings options. Paths use underscore semantics, while sequence separators belong on Config schemas.
 
-- `ConfigProvider.fromFlat` -> `ConfigProvider.make`: Flat providers were unified with ConfigProvider; implement load by returning Value, Record, or Array nodes for each path.
+- `ConfigProvider.fromFlat` -> `ConfigProvider.make`: Flat providers were unified with ConfigProvider; return a `Value`, `Record`, or `Array` node for a found path, or `undefined` when missing.
 
 - `ConfigProvider.fromJson` -> `ConfigProvider.fromUnknown`: Renamed to reflect support for any in-memory JavaScript value.
 
@@ -11245,9 +9166,9 @@ Schema.toArbitraryLazy(schema)
 
 - `ConfigProvider.lowerCase` -> `ConfigProvider.mapInput((path) => path.map((part) => typeof part === "string" ? part.toLowerCase() : part))`: Transform string path segments explicitly with mapInput.
 
-- `ConfigProvider.make` -> `ConfigProvider.make`: The constructor now takes a path lookup returning Effect\<Node | undefined, SourceError\>, rather than a full Config loader and flattened provider.
+- `ConfigProvider.make` -> `ConfigProvider.make`: The constructor now takes a path lookup returning `Effect<Node | undefined, SourceError>`, rather than a full Config loader and flattened provider. Return `undefined` for a missing path and a `Node` for a found path.
 
-- `ConfigProvider.makeFlat` -> `ConfigProvider.make`: The flat-provider constructor was removed; return Value, Record, or Array nodes from the unified path lookup.
+- `ConfigProvider.makeFlat` -> `ConfigProvider.make`: The flat-provider constructor was removed; return a `Value`, `Record`, or `Array` node for a found path, or `undefined` when missing.
 
 - `ConfigProvider.mapInputPath` -> `ConfigProvider.mapInput`: Renamed and generalized: the callback receives and returns the complete Path, including numeric array indexes.
 
@@ -12329,6 +10250,8 @@ FastCheck.nat({ max: 0xffff }).map(String.fromCharCode)
 
 - `FastCheck.constant` -> `FastCheck.constant`: Import FastCheck from effect/testing. The API remains; v4 infers literal types by default.
 
+- `FastCheck.context` -> `FastCheck.context`: Import FastCheck from effect/testing. The API is otherwise unchanged.
+
 #### `FastCheck.fullUnicode`
 
 **Replacement:** `FastCheck.string`
@@ -12691,9 +10614,9 @@ FastCheck.uuid({ version: 4 })
 
 - `FiberRefs.forkAs` -> `none`: Context is inherited automatically when a v4 child fiber is forked; custom per-reference fork patches were removed.
 
-- `FiberRefs.get` -> `Context.getOption`: Read an explicitly stored service from Context; Context.Reference defaults can be read with Context.getReferenceUnsafe.
+- `FiberRefs.get` -> `Context.getOption`: Read the service as an Option. Context.Reference defaults also produce Some; use Context.getOrUndefined when only stored overrides should count.
 
-- `FiberRefs.getOrDefault` -> `Context.getReferenceUnsafe`: Reads an override or the Context.Reference default value.
+- `FiberRefs.getOrDefault` -> `Context.get`: Reads an override or the Context.Reference default value.
 
 - `FiberRefs.joinAs` -> `none`: Child-to-parent FiberRef joining was removed; pass results explicitly or merge ordinary Context values where appropriate.
 
@@ -12839,6 +10762,8 @@ stream.pipe(
 - `HashSet.flatMap` -> `HashSet.fromIterable + Iterable.flatMap`: Preserve set deduplication with HashSet.fromIterable(Iterable.flatMap(self, f)); no direct flatMap remains.
 
 - `HashSet.forEach` -> `Iterable.forEach`: HashSet remains Iterable, so Iterable.forEach(self, f) preserves eager side-effecting traversal.
+
+- `HashSet.mutate` -> `none`: Transient mutation was removed; reassign immutable HashSet.add/remove results or build a complete replacement with HashSet.fromIterable.
 
 - `HashSet.partition` -> `HashSet.filter`: Build [excluded, satisfying] with complementary HashSet.filter calls, or use one reduction when the predicate is expensive.
 
@@ -13120,6 +11045,8 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `List.empty` -> `Array.empty`: List was removed; use Array.empty. It preserves ordering but returns arrays rather than persistent linked lists.
 
+- `List.every` -> `Array.every`: List was removed; run the predicate against the replacement array with Array.every.
+
 - `List.filter` -> `Array.filter`: List was removed; use Array.filter. It preserves ordering but returns arrays rather than persistent linked lists.
 
 - `List.filterMap` -> `Array.filterMap`: List was removed; use Array.filterMap and change the callback from Option to Result.
@@ -13161,6 +11088,8 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 - `List.reverse` -> `Array.reverse`: List was removed; use Array.reverse. It preserves ordering but returns arrays rather than persistent linked lists.
 
 - `List.size` -> `Array.length`: List was removed; use the replacement array length helper or the .length property.
+
+- `List.some` -> `Array.some`: List was removed; run the predicate against the replacement array with Array.some.
 
 - `List.splitAt` -> `Array.splitAt`: List was removed; use Array.splitAt. It preserves ordering but returns arrays rather than persistent linked lists.
 
@@ -13377,30 +11306,6 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 - `MergeDecision.isMergeDecision` -> `Channel.merge`: Replace Channel.mergeWith decision callbacks with Channel.merge and haltStrategy. V4 has no MergeDecision values; custom effectful exit folding must be restructured.
 
 - `MergeDecision.match` -> `Channel.merge`: Replace Channel.mergeWith decision callbacks with Channel.merge and haltStrategy. V4 has no MergeDecision values; custom effectful exit folding must be restructured.
-
-### `effect/MergeState`
-
-- `MergeState.BothRunning` -> `none`: Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option.
-
-- `MergeState.LeftDone` -> `none`: Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option.
-
-- `MergeState.MergeState` -> `none`: Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option.
-
-- `MergeState.MergeState.Proto` -> `none`: Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option.
-
-- `MergeState.MergeStateTypeId` -> `none`: Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option.
-
-- `MergeState.RightDone` -> `none`: Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option.
-
-- `MergeState.isBothRunning` -> `none`: Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option.
-
-- `MergeState.isLeftDone` -> `none`: Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option.
-
-- `MergeState.isMergeState` -> `none`: Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option.
-
-- `MergeState.isRightDone` -> `none`: Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option.
-
-- `MergeState.match` -> `none`: Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option.
 
 ### `effect/MergeStrategy`
 
@@ -13784,6 +11689,8 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Micro.acquireUseRelease` -> `Effect.acquireUseRelease`: Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect.
 
+- `Micro.all` -> `Effect.all`: Micro was removed in v4; use Effect.all with the same iterable-or-record input and concurrency/discard options.
+
 - `Micro.as` -> `Effect.as`: Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect.
 
 - `Micro.asSome` -> `Effect.asSome`: Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect.
@@ -14106,12 +12013,6 @@ Effect.forEach(items, handle, { concurrency: 10 })
 
 - `Micro.yieldNow` -> `Effect.yieldNow`: Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect.
 
-### `effect/ModuleVersion`
-
-- `ModuleVersion.getCurrentVersion` -> `none`: The mutable module-version facility was removed; the v4 build version is private and effect/package.json is metadata, not an equivalent runtime API.
-
-- `ModuleVersion.setCurrentVersion` -> `none`: No mutable version setter remains; the v3 runtime-isolation mechanism has no public v4 equivalent.
-
 ### `effect/MutableHashMap`
 
 - `MutableHashMap.MutableHashMap` -> `MutableHashMap.MutableHashMap`: The MutableHashMap model remains; use its public operations rather than depending on internal representation fields.
@@ -14301,6 +12202,8 @@ SchemaIssue.makeFormatterStandardSchemaV1()(error.issue).issues
 - `ParseResult.DeclarationDecodeUnknown` -> `SchemaGetter.Getter`: Custom declaration decoding now uses SchemaGetter values and Schema.declare annotations.
 
 - `ParseResult.DecodeUnknown` -> `Schema.decodeUnknownEffect`: Use the function type returned by Schema.decodeUnknownEffect.
+
+- `ParseResult.Forbidden` -> `SchemaIssue.Forbidden`: Forbidden failures use the v4 SchemaIssue class; its constructor takes issue annotations plus optional input and parse options, retaining input only when reportInput is true.
 
 - `ParseResult.Missing` -> `SchemaIssue.MissingKey`: Missing-key failures use the v4 SchemaIssue class.
 
@@ -14610,6 +12513,8 @@ Schema.toFormatter(schema)
 
 - `Queue.isEmpty` -> `Effect.map(Queue.size(self), (size) => size === 0)`: The dedicated helper was removed; derive emptiness from Queue.size.
 
+- `Queue.isShutdown` -> `queue.state._tag === "Done"`: The dedicated helper was removed; inspect the public queue lifecycle state. Done includes normal completion and failure, not only explicit shutdown.
+
 - `Queue.slidingStrategy` -> `Queue.make({ strategy: "sliding" })`: Strategies are now constructor options rather than public Strategy values; Queue.sliding is the bounded convenience constructor.
 
 - `Queue.takeUpTo` -> `Queue.poll`: No direct bounded batch helper remains; repeatedly call non-blocking Queue.poll up to the limit, or use Queue.clear when taking every buffered value is acceptable.
@@ -14629,14 +12534,6 @@ Schema.toFormatter(schema)
 - `Random.nextRange` -> `Random.nextBetween`: Direct rename; both produce a floating-point value in the half-open range [min, max).
 
 - `Random.randomWith` -> `Random.Random.use`: Use Random.Random.use for raw service access. Prefer replacing callbacks that selected an old method with the corresponding module-level Random operation.
-
-### `effect/RateLimiter`
-
-- `RateLimiter.RateLimiter` -> `none`: The scoped in-process callable limiter was not ported to v4; effect/unstable/persistence/RateLimiter is a keyed persistence service with different semantics, not a drop-in replacement.
-
-- `RateLimiter.RateLimiter.Options` -> `none`: The old limit, interval, and algorithm options belonged to the removed in-process limiter; choose and configure an application limiter explicitly.
-
-- `RateLimiter.withCost` -> `none`: The FiberRef-based per-effect cost annotation was removed with the core RateLimiter; pass token cost explicitly to the replacement limiter.
 
 ### `effect/RcMap`
 
@@ -14964,7 +12861,9 @@ Schema.toFormatter(schema)
 
 - `Runtime.setFiberRef` -> `Context.add`: FiberRefs became Context.Reference values; add the Reference override to the Context.
 
-- `Runtime.updateFiberRefs` -> `Context.mutate`: There is no aggregate FiberRefs update; mutate targeted Context.Reference overrides explicitly.
+- `Runtime.updateContext` -> `Context transformation + Effect.run*With`: Runtime values were removed; transform the carried Context directly, then pass the result to the corresponding Effect.run\*With function.
+
+- `Runtime.updateFiberRefs` -> `Context.add`: There is no aggregate FiberRefs update; add targeted Context.Reference overrides to the carried Context explicitly.
 
 - `Runtime.updateRuntimeFlags` -> `none`: Runtime flags and aggregate patches were removed; configure each semantic behavior independently.
 
@@ -15041,40 +12940,6 @@ Schema.toFormatter(schema)
 - `RuntimeFlags.toSet` -> `none`: The runtime-flags bitset was removed; there is no set conversion.
 
 - `RuntimeFlags.windDown` -> `none`: The wind-down flag is no longer public.
-
-### `effect/RuntimeFlagsPatch`
-
-- `RuntimeFlagsPatch.RuntimeFlagsPatch` -> `none`: The aggregate runtime-flags patch abstraction was removed.
-
-- `RuntimeFlagsPatch.both` -> `none`: RuntimeFlagsPatch was removed; combine the replacement semantic configurations directly.
-
-- `RuntimeFlagsPatch.disable` -> `none`: RuntimeFlagsPatch was removed; disable the corresponding semantic behavior directly.
-
-- `RuntimeFlagsPatch.disabledSet` -> `none`: RuntimeFlagsPatch and its disabled-bit set were removed.
-
-- `RuntimeFlagsPatch.either` -> `none`: RuntimeFlagsPatch was removed; combine the replacement semantic configurations directly.
-
-- `RuntimeFlagsPatch.empty` -> `none`: RuntimeFlagsPatch was removed; no aggregate patch value is needed.
-
-- `RuntimeFlagsPatch.enable` -> `none`: RuntimeFlagsPatch was removed; enable the corresponding semantic behavior directly.
-
-- `RuntimeFlagsPatch.enabledSet` -> `none`: RuntimeFlagsPatch and its enabled-bit set were removed.
-
-- `RuntimeFlagsPatch.exclude` -> `none`: RuntimeFlagsPatch and aggregate patch set operations were removed.
-
-- `RuntimeFlagsPatch.includes` -> `none`: RuntimeFlagsPatch and aggregate patch queries were removed.
-
-- `RuntimeFlagsPatch.inverse` -> `none`: RuntimeFlagsPatch was removed; configure inverse semantic behavior explicitly.
-
-- `RuntimeFlagsPatch.isActive` -> `none`: RuntimeFlagsPatch was removed; inspect the corresponding semantic facility if needed.
-
-- `RuntimeFlagsPatch.isDisabled` -> `none`: RuntimeFlagsPatch was removed; inspect the corresponding semantic facility if needed.
-
-- `RuntimeFlagsPatch.isEmpty` -> `none`: RuntimeFlagsPatch was removed; no aggregate patch value remains to query.
-
-- `RuntimeFlagsPatch.make` -> `none`: RuntimeFlagsPatch was removed; configure scheduler yielding, interruptibility, or metrics directly.
-
-- `RuntimeFlagsPatch.render` -> `none`: RuntimeFlagsPatch and its renderer were removed.
 
 ### `effect/STM`
 
@@ -15334,7 +13199,9 @@ Schema.toFormatter(schema)
 
 - `Schedule.addDelayEffect` -> `Schedule.addDelay`: The v4 function is effectful by default and its callback receives full Schedule.Metadata; read metadata.output when only the prior output is needed.
 
-- `Schedule.andThenEither` -> `Schedule.andThenResult`: Sequential phase tagging now uses Result: self outputs are Result.fail and the following schedule outputs are Result.succeed.
+- `Schedule.andThen` -> `Schedule.concat`: The sequencing combinator was renamed to Schedule.concat.
+
+- `Schedule.andThenEither` -> `Schedule.concatResult`: Sequential phase tagging now uses Result: self outputs are Result.fail and the following schedule outputs are Result.succeed.
 
 - `Schedule.as` -> `Schedule.map`: Map the metadata to the constant output; Schedule.map accepts either a plain value or an Effect.
 
@@ -15386,7 +13253,7 @@ Schema.toFormatter(schema)
 
 - `Schedule.fromDelay` -> `Schedule.duration`: The duration constructor recurs once after the supplied delay.
 
-- `Schedule.fromDelays` -> `Schedule.duration + Schedule.andThen`: Build one Schedule.duration per delay and sequence them with Schedule.andThen.
+- `Schedule.fromDelays` -> `Schedule.duration + Schedule.concat`: Build one Schedule.duration per delay and sequence them with Schedule.concat.
 
 - `Schedule.fromFunction` -> `Schedule.identity + Schedule.map`: Start with Schedule.identity\<A\>() and map metadata.input through the function.
 
@@ -15505,56 +13372,6 @@ Schema.toFormatter(schema)
 - `ScheduleDecision.isContinue` -> `none`: ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output). Branch on the Pull result instead of inspecting a decision value.
 
 - `ScheduleDecision.isDone` -> `Cause.isDone`: ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output).
-
-### `effect/ScheduleInterval`
-
-- `ScheduleInterval.Interval` -> `none`: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.
-
-- `ScheduleInterval.IntervalTypeId` -> `none`: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.
-
-- `ScheduleInterval.after` -> `none`: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.
-
-- `ScheduleInterval.before` -> `none`: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.
-
-- `ScheduleInterval.empty` -> `none`: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.
-
-- `ScheduleInterval.intersect` -> `none`: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.
-
-- `ScheduleInterval.isEmpty` -> `none`: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.
-
-- `ScheduleInterval.isNonEmpty` -> `none`: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.
-
-- `ScheduleInterval.lessThan` -> `none`: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.
-
-- `ScheduleInterval.make` -> `none`: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.
-
-- `ScheduleInterval.size` -> `none`: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.
-
-- `ScheduleInterval.union` -> `none`: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.
-
-### `effect/ScheduleIntervals`
-
-- `ScheduleIntervals.Intervals` -> `none`: The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition.
-
-- `ScheduleIntervals.IntervalsTypeId` -> `none`: The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition.
-
-- `ScheduleIntervals.empty` -> `none`: The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition.
-
-- `ScheduleIntervals.end` -> `none`: The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition.
-
-- `ScheduleIntervals.fromIterable` -> `none`: The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition.
-
-- `ScheduleIntervals.intersect` -> `none`: The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition.
-
-- `ScheduleIntervals.isNonEmpty` -> `none`: The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition.
-
-- `ScheduleIntervals.lessThan` -> `none`: The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition.
-
-- `ScheduleIntervals.make` -> `none`: The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition.
-
-- `ScheduleIntervals.start` -> `none`: The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition.
-
-- `ScheduleIntervals.union` -> `none`: The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition.
 
 ### `effect/Scheduler`
 
@@ -16080,9 +13897,7 @@ Schema.toFormatter(schema)
 
 - `Schema.TaggedClass` -> `Schema.TaggedClass`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
-- `Schema.TaggedError` -> `Schema.TaggedErrorClass`: Rename the tagged error class constructor.
-
-- `Schema.TaggedErrorClass` -> `Schema.TaggedErrorClass`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+- `Schema.TaggedErrorClass` -> `Schema.TaggedError`: The exported helper interface was removed; use the class returned by Schema.TaggedError and infer its types.
 
 - `Schema.TaggedRequest` -> `effect/unstable/rpc/Rpc.make`: The Schema request/serialization protocol was removed; migrate RPC requests to the v4 Rpc APIs.
 
@@ -17010,6 +14825,8 @@ Schema.toFormatter(schema)
 
 - `SortedMap.getOrder` -> `none`: HashMap does not store an Order; retain and pass the key Order explicitly.
 
+- `SortedMap.has` -> `HashMap.has`: Use direct membership testing on the replacement HashMap; retain the key Order separately for sorted observations.
+
 - `SortedMap.headOption` -> `HashMap.entries + Array.sortWith + Array.head`: Sort entries by key with the retained Order, then take the optional first entry.
 
 - `SortedMap.isEmpty` -> `HashMap.isEmpty`: Direct emptiness check on the replacement immutable map.
@@ -17027,6 +14844,8 @@ Schema.toFormatter(schema)
 - `SortedMap.map` -> `HashMap.map`: The value-and-key callback remains, but result iteration is unordered until explicitly sorted.
 
 - `SortedMap.partition` -> `HashMap.filter`: Build [excluded, satisfying] with complementary HashMap.filter calls; adapt the callback to the old key predicate.
+
+- `SortedMap.reduce` -> `HashMap.reduce`: Reduce the replacement HashMap, but explicitly sort entries first if the old key-order traversal affected the result.
 
 - `SortedMap.remove` -> `HashMap.remove`: Direct persistent removal; explicitly sort only when observing entries.
 
@@ -17048,11 +14867,15 @@ Schema.toFormatter(schema)
 
 - `SortedSet.empty` -> `HashSet.empty`: SortedSet was removed; use an immutable HashSet and retain the element Order separately.
 
+- `SortedSet.every` -> `HashSet.every`: Run the predicate against the replacement HashSet; sort first only if traversal order has observable effects.
+
 - `SortedSet.filter` -> `HashSet.filter`: Direct persistent filtering on the replacement set; traversal is unordered until explicitly sorted.
 
 - `SortedSet.fromIterable` -> `HashSet.fromIterable`: Use HashSet.fromIterable and retain the element Order separately.
 
 - `SortedSet.getEquivalence` -> `Equal.asEquivalence`: HashSet implements Effect equality by set content; use Equal.asEquivalence\<HashSet.HashSet\<A\>\>().
+
+- `SortedSet.has` -> `HashSet.has`: Use direct membership testing on the replacement HashSet.
 
 - `SortedSet.intersection` -> `HashSet.intersection + HashSet.fromIterable`: Convert the old general iterable argument to HashSet before taking the intersection.
 
@@ -17067,6 +14890,8 @@ Schema.toFormatter(schema)
 - `SortedSet.remove` -> `HashSet.remove`: Direct persistent removal on the replacement set.
 
 - `SortedSet.size` -> `HashSet.size`: Direct size query on the replacement immutable set.
+
+- `SortedSet.some` -> `HashSet.some`: Run the predicate against the replacement HashSet; sort first only if traversal order has observable effects.
 
 - `SortedSet.union` -> `HashSet.union + HashSet.fromIterable`: Convert the old general iterable argument to HashSet before taking the union.
 
@@ -17565,6 +15390,8 @@ switch (strategy) {
 
 - `TArray.empty` -> `TxChunk.empty`: TArray was removed; TxChunk is the closest v4 transactional indexed collection.
 
+- `TArray.every` -> `Effect.map(TxChunk.get(self), Chunk.every(predicate))`: TArray was removed; read the TxChunk snapshot and test every element inside the surrounding Effect.tx transaction.
+
 - `TArray.everySTM` -> `Effect.tx + TxChunk.get + Effect traversal`: TArray was removed. Read the TxChunk snapshot and perform the effectful traversal explicitly within the same Effect.tx transaction.
 
 - `TArray.findFirstIndex` -> `TxChunk.get + Chunk/Array operation`: TArray was removed. Read the TxChunk snapshot and perform the equivalent pure collection query inside the surrounding Effect.tx transaction.
@@ -17612,6 +15439,8 @@ switch (strategy) {
 - `TArray.reduceSTM` -> `Effect.tx + TxChunk.get + Effect traversal`: TArray was removed. Read the TxChunk snapshot and perform the effectful traversal explicitly within the same Effect.tx transaction.
 
 - `TArray.size` -> `TxChunk.size`: TxChunk is the closest v4 rewrite target. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
+
+- `TArray.some` -> `Effect.map(TxChunk.get(self), Chunk.some(predicate))`: TArray was removed; read the TxChunk snapshot and test for a matching element inside the surrounding Effect.tx transaction.
 
 - `TArray.someSTM` -> `Effect.tx + TxChunk.get + Effect traversal`: TArray was removed. Read the TxChunk snapshot and perform the effectful traversal explicitly within the same Effect.tx transaction.
 
@@ -17727,6 +15556,10 @@ switch (strategy) {
 
 - `TPriorityQueue.size` -> `TxPriorityQueue.size`: Import TxPriorityQueue from "effect/TxPriorityQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
+- `TPriorityQueue.take` -> `TxPriorityQueue.take`: Import TxPriorityQueue from "effect/TxPriorityQueue"; the operation now returns an ordinary Effect, so compose multiple operations under one outer Effect.tx to keep them atomic.
+
+- `TPriorityQueue.takeAll` -> `TxPriorityQueue.takeAll`: Import TxPriorityQueue from "effect/TxPriorityQueue"; it returns an ordinary Effect containing the priority-ordered Array.
+
 - `TPriorityQueue.toArray` -> `TxPriorityQueue.toArray`: Import TxPriorityQueue from "effect/TxPriorityQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
 - `TPriorityQueue.toChunk` -> `Effect.map(TxPriorityQueue.toArray(self), Chunk.fromIterable)`: The direct Chunk conversion was removed; convert the retained Array snapshot explicitly.
@@ -17746,6 +15579,8 @@ switch (strategy) {
 - `TPubSub.isEmpty` -> `TxPubSub.isEmpty`: Import TxPubSub from "effect/TxPubSub"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
 - `TPubSub.isFull` -> `TxPubSub.isFull`: Import TxPubSub from "effect/TxPubSub"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
+
+- `TPubSub.isShutdown` -> `TxPubSub.isShutdown`: Import TxPubSub from "effect/TxPubSub"; the operation now returns an ordinary Effect.
 
 - `TPubSub.shutdown` -> `TxPubSub.shutdown`: Import TxPubSub from "effect/TxPubSub"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
@@ -17785,6 +15620,8 @@ switch (strategy) {
 
 - `TQueue.isFull` -> `TxQueue.isFull`: Import TxQueue from "effect/TxQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
+- `TQueue.isShutdown` -> `TxQueue.isShutdown`: Import TxQueue from "effect/TxQueue"; it checks the richer done lifecycle and returns an ordinary Effect.
+
 - `TQueue.isTDequeue` -> `TxQueue.isTxDequeue`: The runtime guard was renamed with the TxDequeue type.
 
 - `TQueue.isTEnqueue` -> `TxQueue.isTxEnqueue`: The runtime guard was renamed with the TxEnqueue type.
@@ -17806,6 +15643,8 @@ switch (strategy) {
 - `TQueue.sliding` -> `TxQueue.sliding`: Import TxQueue from "effect/TxQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
 - `TQueue.take` -> `TxQueue.take`: Import TxQueue from "effect/TxQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
+
+- `TQueue.takeAll` -> `TxQueue.takeAll`: The operation now blocks until at least one item is available, returns a NonEmptyArray, and propagates the queue error channel through an ordinary Effect.
 
 - `TQueue.takeBetween` -> `TxQueue.takeBetween`: Import TxQueue from "effect/TxQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
@@ -18047,56 +15886,6 @@ Exit.isExit(take)
 
 - `Take.tap` -> `Exit.isExit(take) ? Exit.asVoid(take) : Effect.asVoid(f(take))`: Peek at the value batch with f; Exit branches pass through as effects (a failed Exit re-propagates its cause, an end Exit becomes a void success), matching v3 tap semantics.
 
-### `effect/TestAnnotation`
-
-- `TestAnnotation.TestAnnotationTypeId` -> `none`: The legacy test-runner annotation key and built-in counters were removed. Use Vitest skip/repeat/retry options for runner concerns and FiberSet for explicit fiber tracking; there is no annotation-key equivalent.
-
-- `TestAnnotation.compose` -> `none`: The legacy test-runner annotation key and built-in counters were removed. Use Vitest skip/repeat/retry options for runner concerns and FiberSet for explicit fiber tracking; there is no annotation-key equivalent.
-
-- `TestAnnotation.fibers` -> `none`: The legacy test-runner annotation key and built-in counters were removed. Use Vitest skip/repeat/retry options for runner concerns and FiberSet for explicit fiber tracking; there is no annotation-key equivalent.
-
-- `TestAnnotation.ignored` -> `none`: The legacy test-runner annotation key and built-in counters were removed. Use Vitest skip/repeat/retry options for runner concerns and FiberSet for explicit fiber tracking; there is no annotation-key equivalent.
-
-- `TestAnnotation.isTestAnnotation` -> `none`: The legacy test-runner annotation key and built-in counters were removed. Use Vitest skip/repeat/retry options for runner concerns and FiberSet for explicit fiber tracking; there is no annotation-key equivalent.
-
-- `TestAnnotation.make` -> `none`: The legacy test-runner annotation key and built-in counters were removed. Use Vitest skip/repeat/retry options for runner concerns and FiberSet for explicit fiber tracking; there is no annotation-key equivalent.
-
-- `TestAnnotation.repeated` -> `none`: The legacy test-runner annotation key and built-in counters were removed. Use Vitest skip/repeat/retry options for runner concerns and FiberSet for explicit fiber tracking; there is no annotation-key equivalent.
-
-- `TestAnnotation.retried` -> `none`: The legacy test-runner annotation key and built-in counters were removed. Use Vitest skip/repeat/retry options for runner concerns and FiberSet for explicit fiber tracking; there is no annotation-key equivalent.
-
-### `effect/TestAnnotationMap`
-
-- `TestAnnotationMap.TestAnnotationMap` -> `none`: TestAnnotationMap was removed with TestAnnotation. Use an application-owned HashMap or Ref only when arbitrary typed annotations are still required; it is not part of the v4 test runner.
-
-- `TestAnnotationMap.TestAnnotationMapTypeId` -> `none`: TestAnnotationMap was removed with TestAnnotation. Use an application-owned HashMap or Ref only when arbitrary typed annotations are still required; it is not part of the v4 test runner.
-
-- `TestAnnotationMap.annotate` -> `none`: TestAnnotationMap was removed with TestAnnotation. Use an application-owned HashMap or Ref only when arbitrary typed annotations are still required; it is not part of the v4 test runner.
-
-- `TestAnnotationMap.combine` -> `none`: TestAnnotationMap was removed with TestAnnotation. Use an application-owned HashMap or Ref only when arbitrary typed annotations are still required; it is not part of the v4 test runner.
-
-- `TestAnnotationMap.empty` -> `none`: TestAnnotationMap was removed with TestAnnotation. Use an application-owned HashMap or Ref only when arbitrary typed annotations are still required; it is not part of the v4 test runner.
-
-- `TestAnnotationMap.get` -> `none`: TestAnnotationMap was removed with TestAnnotation. Use an application-owned HashMap or Ref only when arbitrary typed annotations are still required; it is not part of the v4 test runner.
-
-- `TestAnnotationMap.isTestAnnotationMap` -> `none`: TestAnnotationMap was removed with TestAnnotation. Use an application-owned HashMap or Ref only when arbitrary typed annotations are still required; it is not part of the v4 test runner.
-
-- `TestAnnotationMap.make` -> `none`: TestAnnotationMap was removed with TestAnnotation. Use an application-owned HashMap or Ref only when arbitrary typed annotations are still required; it is not part of the v4 test runner.
-
-- `TestAnnotationMap.overwrite` -> `none`: TestAnnotationMap was removed with TestAnnotation. Use an application-owned HashMap or Ref only when arbitrary typed annotations are still required; it is not part of the v4 test runner.
-
-- `TestAnnotationMap.update` -> `none`: TestAnnotationMap was removed with TestAnnotation. Use an application-owned HashMap or Ref only when arbitrary typed annotations are still required; it is not part of the v4 test runner.
-
-### `effect/TestAnnotations`
-
-- `TestAnnotations.TestAnnotations` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
-
-- `TestAnnotations.TestAnnotationsTypeId` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
-
-- `TestAnnotations.isTestAnnotations` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
-
-- `TestAnnotations.make` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
-
 ### `effect/TestClock`
 
 - `TestClock.Data` -> `TestClock.TestClock.State`: The nearest state model is State, with timestamp and a private latch-based sleep queue. V4 exposes no full state getter or setter.
@@ -18276,46 +16065,6 @@ Exit.isExit(take)
 - `Types.MergeRecord` -> `Types.MergeLeft`: MergeRecord was an alias for the retained left-biased MergeLeft helper.
 
 - `Types.NoExcessProperties` -> `Types.NoExcessProperties`: Retained with equivalent excess-key checking.
-
-### `effect/UpstreamPullRequest`
-
-- `UpstreamPullRequest.NoUpstream` -> `none`: Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull.
-
-- `UpstreamPullRequest.Pulled` -> `none`: Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull.
-
-- `UpstreamPullRequest.UpstreamPullRequest` -> `none`: Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull.
-
-- `UpstreamPullRequest.UpstreamPullRequest.Variance` -> `none`: Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull.
-
-- `UpstreamPullRequest.UpstreamPullRequestTypeId` -> `none`: Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull.
-
-- `UpstreamPullRequest.isNoUpstream` -> `none`: Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull.
-
-- `UpstreamPullRequest.isPulled` -> `none`: Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull.
-
-- `UpstreamPullRequest.isUpstreamPullRequest` -> `none`: Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull.
-
-- `UpstreamPullRequest.match` -> `none`: Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull.
-
-### `effect/UpstreamPullStrategy`
-
-- `UpstreamPullStrategy.PullAfterAllEnqueued` -> `none`: Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT.
-
-- `UpstreamPullStrategy.PullAfterNext` -> `none`: Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT.
-
-- `UpstreamPullStrategy.UpstreamPullStrategy` -> `none`: Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT.
-
-- `UpstreamPullStrategy.UpstreamPullStrategy.Variance` -> `none`: Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT.
-
-- `UpstreamPullStrategy.UpstreamPullStrategyTypeId` -> `none`: Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT.
-
-- `UpstreamPullStrategy.isPullAfterAllEnqueued` -> `none`: Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT.
-
-- `UpstreamPullStrategy.isPullAfterNext` -> `none`: Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT.
-
-- `UpstreamPullStrategy.isUpstreamPullStrategy` -> `none`: Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT.
-
-- `UpstreamPullStrategy.match` -> `none`: Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT.
 
 ### `effect/Utils`
 

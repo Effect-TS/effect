@@ -1,6 +1,6 @@
 "effect/Config#all":
   replacement: "Config.all"
-  note: "Unchanged; combine an iterable or record of Config values."
+  note: "Combine an iterable or record of Config values. A wholly absent product can use Config.withDefault or Config.option, while a partially supplied product fails."
 "effect/Config#array":
   replacement: "Config.schema(Config.Array(valueSchema), path)"
   note: "Array parsing is schema-based in v4; rebuild the element Config as a Schema and pass the optional path to Config.schema."
@@ -15,7 +15,7 @@
   note: "Collection parsing is schema-based in v4; use Schema.Chunk when a Chunk result is still required."
 "effect/Config#Config":
   replacement: "Config.Config"
-  note: "The model remains and is still a yieldable Effect; it now also exposes parse(provider, pathPrefix?)."
+  note: "The model remains a yieldable Effect and exposes parse(provider). Compose logical lookup paths with Config.schema(..., path) and Config.nested; parsing no longer accepts a public path prefix."
 "effect/Config#Config.IsPlainObject":
   replacement: "none"
   note: "This private conditional helper is no longer exposed; use Config.Wrap for the public recursive wrapping contract."
@@ -72,7 +72,7 @@
   note: "Unchanged."
 "effect/Config#primitive":
   replacement: "Config.schema(customSchema, path)"
-  note: "Custom primitive parsing moved to Schema codecs; express decoding and diagnostics in a Schema, then pass it to Config.schema."
+  note: "Custom primitive parsing moved to Schema codecs; express decoding and diagnostics in a Schema, then pass it to Config.schema. Its canonical StringTree encoding must expose a concrete shape; opaque encodings such as Schema.Any or Schema.Unknown are not supported."
 "effect/Config#redacted":
   replacement: "Config.redacted"
   note: "The string/path overload remains; replace the v3 Config argument overload with Config.map(config, Redacted.make)."

@@ -1,33 +1,3 @@
-"effect/MergeState#BothRunning":
-  replacement: "none"
-  note: "Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option."
-"effect/MergeState#isBothRunning":
-  replacement: "none"
-  note: "Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option."
-"effect/MergeState#isLeftDone":
-  replacement: "none"
-  note: "Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option."
-"effect/MergeState#isMergeState":
-  replacement: "none"
-  note: "Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option."
-"effect/MergeState#isRightDone":
-  replacement: "none"
-  note: "Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option."
-"effect/MergeState#LeftDone":
-  replacement: "none"
-  note: "Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option."
-"effect/MergeState#match":
-  replacement: "none"
-  note: "Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option."
-"effect/MergeState#MergeState":
-  replacement: "none"
-  note: "Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option."
-"effect/MergeState#MergeState.Proto":
-  replacement: "none"
-  note: "Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option."
-"effect/MergeState#MergeStateTypeId":
-  replacement: "none"
-  note: "Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option."
-"effect/MergeState#RightDone":
-  replacement: "none"
-  note: "Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option."
+effect/MergeState:
+  replacement: none
+  note: Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option.

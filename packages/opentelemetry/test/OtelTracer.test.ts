@@ -5,7 +5,9 @@ import * as OtelApi from "@opentelemetry/api"
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Cause from "effect/Cause"
+import * as EffectContext from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
 
 const TracingLive = NodeSdk.layer(Effect.sync(() => ({
@@ -40,7 +42,6 @@ describe("Tracer", () => {
         assert.instanceOf(span, OtelTracer.OtelSpan)
         assert.lengthOf(span.links, 1)
       }).pipe(
-        Effect.scoped,
         Effect.provide(TracingLive)
       ))
 
@@ -87,6 +88,33 @@ describe("Tracer", () => {
         Effect.provide(TracingLive)
       ))
 
+    it.effect.each([OtelApi.SpanStatusCode.UNSET, OtelApi.SpanStatusCode.OK])(
+      "honors non-error wrapper status %s",
+      (status) =>
+        Effect.gen(function*() {
+          const span = yield* Effect.currentSpan
+          const wrapper = yield* OtelTracer.currentOtelSpan
+          wrapper.setStatus({ code: status })
+          wrapper.end()
+          assert.strictEqual(span.status._tag, "Ended")
+          if (span.status._tag === "Ended") {
+            assert.strictEqual(span.status.exit._tag, "Success")
+          }
+        }).pipe(Effect.withSpan("repro"))
+    )
+
+    it.effect("honors an error wrapper status", () =>
+      Effect.gen(function*() {
+        const span = yield* Effect.currentSpan
+        const wrapper = yield* OtelTracer.currentOtelSpan
+        wrapper.setStatus({ code: OtelApi.SpanStatusCode.ERROR })
+        wrapper.end()
+        assert.strictEqual(span.status._tag, "Ended")
+        if (span.status._tag === "Ended") {
+          assert.strictEqual(span.status.exit._tag, "Failure")
+        }
+      }).pipe(Effect.withSpan("repro")))
+
     it.effect("preserves the sampling decision of generic external spans", () =>
       Effect.gen(function*() {
         const span = yield* Effect.currentSpan
@@ -101,6 +129,52 @@ describe("Tracer", () => {
         })),
         Effect.provide(TracingLive)
       ))
+
+    it("preserves trace state and locality on an active OpenTelemetry parent", () => {
+      const parent: OtelApi.SpanContext = {
+        traceId: "1".repeat(32),
+        spanId: "2".repeat(16),
+        traceFlags: OtelApi.TraceFlags.SAMPLED,
+        traceState: OtelApi.createTraceState("vendor=value"),
+        isRemote: false
+      }
+      const active = OtelApi.trace.setSpanContext(OtelApi.ROOT_CONTEXT, parent)
+      let receivedParent: OtelApi.SpanContext | undefined
+      const tracer = {
+        startSpan(_name: string, _options: unknown, context: OtelApi.Context) {
+          receivedParent = OtelApi.trace.getSpanContext(context)
+          return {
+            spanContext: () => ({
+              traceId: "3".repeat(32),
+              spanId: "4".repeat(16),
+              traceFlags: OtelApi.TraceFlags.SAMPLED
+            })
+          } as OtelApi.Span
+        }
+      } as OtelApi.Tracer
+
+      const child = new OtelTracer.OtelSpan(
+        { active: () => active } as OtelApi.ContextAPI,
+        OtelApi.trace,
+        tracer,
+        {
+          name: "child",
+          parent: Option.none(),
+          annotations: EffectContext.empty(),
+          links: [],
+          startTime: 0n,
+          kind: "internal",
+          root: false,
+          sampled: true
+        }
+      )
+
+      assert.instanceOf(child, OtelTracer.OtelSpan)
+      assert.deepStrictEqual(
+        [receivedParent?.traceState?.serialize(), receivedParent?.isRemote],
+        ["vendor=value", false]
+      )
+    })
 
     it.effect("records every pretty error", () =>
       Effect.gen(function*() {
@@ -195,7 +269,6 @@ describe("Tracer", () => {
           })
         })
       }).pipe(
-        Effect.scoped,
         Effect.provide(TracingLive)
       ))
   })

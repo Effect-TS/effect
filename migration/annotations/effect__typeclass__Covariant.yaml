@@ -1,21 +1,3 @@
-"@effect/typeclass/Covariant#as":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/Covariant#asVoid":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/Covariant#Covariant":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/Covariant#flap":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/Covariant#imap":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/Covariant#let":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/Covariant#mapComposition":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
+"@effect/typeclass/Covariant":
+  replacement: none
+  note: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.

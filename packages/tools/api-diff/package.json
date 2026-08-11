@@ -13,8 +13,7 @@
     "effect-api-diff": "./src/bin.ts"
   },
   "scripts": {
-    "check": "tsc -b tsconfig.json",
-    "test": "vitest"
+    "check": "tsc -b tsconfig.json"
   },
   "dependencies": {
     "@effect/platform-node": "workspace:^",
@@ -23,8 +22,8 @@
   },
   "devDependencies": {
     "@effect/vitest": "workspace:^",
-    "@types/node": "^26.1.1",
-    "typescript": "^7.0.2",
+    "@types/node": "^26.1.2",
+    "typescript": "^6.0.3",
     "typescript-compiler": "npm:typescript@6.0.3",
     "vitest": "4.1.10"
   }

@@ -1,36 +1,3 @@
-"@effect/printer/PageWidth#availablePerLine":
-  replacement: "none"
-  note: "The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout."
-"@effect/printer/PageWidth#AvailablePerLine":
-  replacement: "none"
-  note: "The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout."
-"@effect/printer/PageWidth#defaultPageWidth":
-  replacement: "none"
-  note: "The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout."
-"@effect/printer/PageWidth#isAvailablePerLine":
-  replacement: "none"
-  note: "The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout."
-"@effect/printer/PageWidth#isPageWidth":
-  replacement: "none"
-  note: "The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout."
-"@effect/printer/PageWidth#isUnbounded":
-  replacement: "none"
-  note: "The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout."
-"@effect/printer/PageWidth#PageWidth":
-  replacement: "none"
-  note: "The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout."
-"@effect/printer/PageWidth#PageWidth.Proto":
-  replacement: "none"
-  note: "The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout."
-"@effect/printer/PageWidth#PageWidthTypeId":
-  replacement: "none"
-  note: "The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout."
-"@effect/printer/PageWidth#remainingWidth":
-  replacement: "none"
-  note: "The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout."
-"@effect/printer/PageWidth#unbounded":
-  replacement: "none"
-  note: "The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout."
-"@effect/printer/PageWidth#Unbounded":
-  replacement: "none"
-  note: "The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout."
+"@effect/printer/PageWidth":
+  replacement: none
+  note: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.

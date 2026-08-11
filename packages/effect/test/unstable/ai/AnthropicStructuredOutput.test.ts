@@ -490,7 +490,7 @@ describe("toCodecAnthropic", () => {
       "required": ["name"],
       "additionalProperties": false,
       "$defs": {
-        "PersonJsonEncoding": {
+        "PersonEncoded": {
           "type": "object",
           "properties": {
             "name": { "type": "string" }
@@ -624,7 +624,7 @@ describe("toCodecAnthropic", () => {
       })
       await new TestSchema.Asserts(result.codec).decoding().fail(
         [{ 0: "a", 1: 1 }, { 0: "a", 1: 2 }],
-        `Expected a value with at least 2 entries, got {"a":2}`
+        `Expected a value with at least 2 entries`
       )
     })
 

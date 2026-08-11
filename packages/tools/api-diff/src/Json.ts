@@ -1,7 +1,7 @@
 import * as Schema from "effect/Schema"
 import { createHash } from "node:crypto"
 
-export const decodeJson = Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)
+export const decodeJson = Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Unknown))
 
 export const stableJson = (value: unknown): string => {
   const visit = (input: unknown): unknown => {

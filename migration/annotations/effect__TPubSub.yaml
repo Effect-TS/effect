@@ -34,3 +34,6 @@ effect/TPubSub#subscribeScoped:
 effect/TPubSub#unbounded:
   replacement: "TxPubSub.unbounded"
   note: "Import TxPubSub from \"effect/TxPubSub\"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic."
+effect/TPubSub#isShutdown:
+  replacement: "TxPubSub.isShutdown"
+  note: "Import TxPubSub from \"effect/TxPubSub\"; the operation now returns an ordinary Effect."

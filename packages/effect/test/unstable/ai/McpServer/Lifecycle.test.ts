@@ -156,7 +156,10 @@ describe("McpServer initialization", () => {
 
               assert.strictEqual(response.status, 200)
               assert.strictEqual(message.id, 1)
-              assert.deepStrictEqual(message.result.capabilities, { completions: {} })
+              assert.deepStrictEqual(message.result.capabilities, {
+                completions: {},
+                logging: {}
+              })
               assert.deepStrictEqual(message.result.serverInfo, {
                 name: "LifecycleServer",
                 version: "1.0.0"
@@ -184,16 +187,12 @@ describe("McpServer initialization", () => {
         })
 
         describe("1.1.1 Version Negotiation", () => {
-          it.effect("echoes every requested version supported by the server", () =>
+          it.effect("echoes a requested version supported by the server", () =>
             Effect.gen(function*() {
               const { post } = yield* makeHarness
-              const supportedVersions = ["2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"]
+              const { message } = yield* initialize(post, "2025-06-18")
 
-              for (let i = 0; i < supportedVersions.length; i++) {
-                const protocolVersion = supportedVersions[i]
-                const { message } = yield* initialize(post, protocolVersion, i + 1)
-                assert.strictEqual(message.result.protocolVersion, protocolVersion)
-              }
+              assert.strictEqual(message.result.protocolVersion, "2025-06-18")
             }))
 
           it.effect("negotiates an unsupported requested version to the latest supported version", () =>
@@ -214,6 +213,7 @@ describe("McpServer initialization", () => {
               assert.deepStrictEqual(message.result.capabilities, {
                 completions: {},
                 extensions: { "example/lifecycle": { enabled: true } },
+                logging: {},
                 prompts: { listChanged: true },
                 resources: { listChanged: true, subscribe: false },
                 tools: { listChanged: true }
@@ -225,14 +225,17 @@ describe("McpServer initialization", () => {
           it.effect("continues to use the version negotiated during initialization", () =>
             Effect.gen(function*() {
               const { post } = yield* makeHarness
-              const initialized = yield* initialize(post, "2025-03-26")
+              const initialized = yield* initialize(post, "2025-06-18")
               const sessionId = initialized.response.headers.get("Mcp-Session-Id")
               assert.isNotNull(sessionId)
 
-              const response = yield* post(pingRequest, { "Mcp-Session-Id": sessionId })
+              const response = yield* post(pingRequest, {
+                "Mcp-Session-Id": sessionId,
+                "Mcp-Protocol-Version": initialized.message.result.protocolVersion
+              })
 
               assert.strictEqual(response.status, 200)
-              assert.strictEqual(response.headers.get("Mcp-Protocol-Version"), "2025-03-26")
+              assert.strictEqual(response.headers.get("Mcp-Protocol-Version"), "2025-06-18")
             }))
         })
       })

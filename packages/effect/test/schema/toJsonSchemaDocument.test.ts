@@ -43,7 +43,7 @@ function assertJsonSchemaDocument<T, E, RD>(
   const valid = ajvDraft2020_12.validateSchema(jsonSchema)
   assertTrue(valid)
   // const validate = ajvDraft2020_12.compile(jsonSchema)
-  // const arb = Schema.toArbitrary(schema)
+  // const arb = Schema.toArbitrary(schema)(FastCheck)
   // const codec = Schema.toCodecJson(schema)
   // const encode = Schema.encodeSync(codec)
   // FastCheck.assert(FastCheck.property(arb, (t) => {
@@ -53,15 +53,15 @@ function assertJsonSchemaDocument<T, E, RD>(
 }
 
 describe("toJsonSchemaDocument", () => {
-  describe("Unsupported schemas", () => {
-    it("Tuple: unsupported post-rest elements", () => {
+  describe("unsupported schemas", () => {
+    it("rejects tuple post-rest elements", () => {
       assertUnsupportedSchema(
         Schema.TupleWithRest(Schema.Tuple([]), [Schema.Finite, Schema.String]),
         `Invalid schema representation document\n  at ["representation"]["rest"]`
       )
     })
 
-    it("Struct: unsupported property signature name", () => {
+    it("rejects symbol property names", () => {
       const a = Symbol.for("effect/Schema/test/a")
       assertUnsupportedSchema(
         Schema.Struct({ [a]: Schema.String }),
@@ -81,7 +81,7 @@ describe("toJsonSchemaDocument", () => {
     })
   })
 
-  it("emits built-in JSON Schema annotations", () => {
+  it("emits content annotations", () => {
     assertJsonSchemaDocument(
       Schema.String.annotate({
         description: "encoded payload",
@@ -99,60 +99,95 @@ describe("toJsonSchemaDocument", () => {
     )
   })
 
-  it("preserves shared non-trivial schemas with references", () => {
-    const shared = Schema.Struct({ value: Schema.String })
+  describe("reference extraction", () => {
+    it("preserves shared non-trivial schemas with references", () => {
+      const shared = Schema.Struct({ value: Schema.String })
 
-    assertJsonSchemaDocument(
-      Schema.Struct({ left: shared, right: shared }),
-      {
-        schema: {
-          type: "object",
-          properties: {
-            left: { $ref: "#/$defs/Objects_" },
-            right: { $ref: "#/$defs/Objects_" }
-          },
-          required: ["left", "right"],
-          additionalProperties: false
-        },
-        definitions: {
-          Objects_: {
+      assertJsonSchemaDocument(
+        Schema.Struct({ left: shared, right: shared }),
+        {
+          schema: {
             type: "object",
             properties: {
-              value: { type: "string" }
+              left: { $ref: "#/$defs/Objects_" },
+              right: { $ref: "#/$defs/Objects_" }
             },
-            required: ["value"],
+            required: ["left", "right"],
+            additionalProperties: false
+          },
+          definitions: {
+            Objects_: {
+              type: "object",
+              properties: {
+                value: { type: "string" }
+              },
+              required: ["value"],
+              additionalProperties: false
+            }
+          }
+        }
+      )
+    })
+
+    it("preserves repeated optional structural schemas with references", () => {
+      const shared = Schema.Struct({ value: Schema.String })
+
+      assertJsonSchemaDocument(
+        Schema.Struct({ left: Schema.optional(shared), right: Schema.optional(shared) }),
+        {
+          schema: {
+            type: "object",
+            properties: {
+              left: { $ref: "#/$defs/Union_" },
+              right: { $ref: "#/$defs/Union_" }
+            },
+            additionalProperties: false
+          },
+          definitions: {
+            Union_: {
+              anyOf: [
+                {
+                  type: "object",
+                  properties: {
+                    value: { type: "string" }
+                  },
+                  required: ["value"],
+                  additionalProperties: false
+                },
+                { type: "null" }
+              ]
+            }
+          }
+        }
+      )
+    })
+
+    it("inlines shared canonical unions of leaf schemas", () => {
+      assertJsonSchemaDocument(
+        Schema.Struct({ left: Schema.Number, right: Schema.Number }),
+        {
+          schema: {
+            type: "object",
+            properties: {
+              left: {
+                anyOf: [
+                  { type: "number" },
+                  { type: "string", enum: ["Infinity", "-Infinity", "NaN"] }
+                ]
+              },
+              right: {
+                anyOf: [
+                  { type: "number" },
+                  { type: "string", enum: ["Infinity", "-Infinity", "NaN"] }
+                ]
+              }
+            },
+            required: ["left", "right"],
             additionalProperties: false
           }
         }
-      }
-    )
-  })
-
-  it("inlines shared canonical unions of leaf schemas", () => {
-    assertJsonSchemaDocument(
-      Schema.Struct({ left: Schema.Number, right: Schema.Number }),
-      {
-        schema: {
-          type: "object",
-          properties: {
-            left: {
-              anyOf: [
-                { type: "number" },
-                { type: "string", enum: ["Infinity", "-Infinity", "NaN"] }
-              ]
-            },
-            right: {
-              anyOf: [
-                { type: "number" },
-                { type: "string", enum: ["Infinity", "-Infinity", "NaN"] }
-              ]
-            }
-          },
-          required: ["left", "right"],
-          additionalProperties: false
-        }
-      }
-    )
+      )
+    })
   })
 
   describe("options", () => {
@@ -398,7 +433,7 @@ describe("toJsonSchemaDocument", () => {
     })
   })
 
-  it("should support JSON Schema annotations", () => {
+  it("emits standard annotations", () => {
     const schema = Schema.String.annotate({
       title: "a",
       description: "b",
@@ -420,8 +455,8 @@ describe("toJsonSchemaDocument", () => {
     })
   })
 
-  describe("identifier handling", () => {
-    it(`refs should escape "~" and "/"`, () => {
+  describe("identifiers", () => {
+    it(`escapes "~" and "/" in JSON Pointer references`, () => {
       const S = Schema.String.annotate({ identifier: "id~a/b" })
       assertJsonSchemaDocument(
         S,
@@ -434,7 +469,7 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
-    it("using the same identifier annotated schema twice", () => {
+    it("reuses a definition for repeated occurrences of the same identified AST", () => {
       const S = Schema.String.annotate({ identifier: "id" })
       assertJsonSchemaDocument(
         Schema.Union([S, S]),
@@ -452,15 +487,26 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
-    it("should reject duplicate identifiers on different schemas", () => {
+    it("suffixes duplicate identifiers on different schemas", () => {
       const S = Schema.Union([
         Schema.String.annotate({ identifier: "id", description: "a" }),
         Schema.String.annotate({ identifier: "id", description: "b" })
       ])
-      throws(() => Schema.toJsonSchemaDocument(S), `Duplicate identifier: "id"`)
+      assertJsonSchemaDocument(S, {
+        schema: {
+          anyOf: [
+            { $ref: "#/$defs/id" },
+            { $ref: "#/$defs/id_1" }
+          ]
+        },
+        definitions: {
+          id: { type: "string", description: "a" },
+          id_1: { type: "string", description: "b" }
+        }
+      })
     })
 
-    it("should handle duplicate identifiers on different schemas with the same representation", () => {
+    it("reuses one definition when the same identified AST appears in different schema shapes", () => {
       const X = Schema.String.annotate({ title: "X", identifier: "X" })
       const S = Schema.Struct({
         a: X,
@@ -550,7 +596,7 @@ describe("toJsonSchemaDocument", () => {
     })
 
     it("Error", () => {
-      const schema = Schema.Error()
+      const schema = Schema.ErrorInstance()
       assertJsonSchemaDocument(schema, {
         schema: {
           "type": "object",
@@ -896,7 +942,7 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
-    it("should ignore annotateKey annotations if the schema is not contextual", () => {
+    it("ignores annotateKey annotations when the schema is not contextual", () => {
       assertJsonSchemaDocument(
         Schema.String.annotateKey({
           description: "a"
@@ -3624,10 +3670,10 @@ describe("toJsonSchemaDocument", () => {
         Schema.fromJsonString(MyEvent),
         {
           schema: {
-            "$ref": "#/$defs/MyEventJsonEncoding"
+            "$ref": "#/$defs/MyEventEncoded"
           },
           definitions: {
-            "MyEventJsonEncoding": {
+            "MyEventEncoded": {
               "type": "string",
               "contentMediaType": "application/json"
             }
@@ -3669,10 +3715,10 @@ describe("toJsonSchemaDocument", () => {
       A,
       {
         schema: {
-          "$ref": "#/$defs/AJsonEncoding"
+          "$ref": "#/$defs/AEncoded"
         },
         definitions: {
-          "AJsonEncoding": {
+          "AEncoded": {
             "type": "object",
             "properties": {
               "a": { "type": "string" }
@@ -3686,16 +3732,16 @@ describe("toJsonSchemaDocument", () => {
     )
   })
 
-  it("ErrorClass preserves its identifier as a canonical reference", () => {
-    class E extends Schema.ErrorClass<E>("E")({
+  it("Error preserves its identifier as a canonical reference", () => {
+    class E extends Schema.Error<E>("E")({
       a: Schema.String
     }) {}
     assertJsonSchemaDocument(E, {
       schema: {
-        "$ref": "#/$defs/EJsonEncoding"
+        "$ref": "#/$defs/EEncoded"
       },
       definitions: {
-        "EJsonEncoding": {
+        "EEncoded": {
           "type": "object",
           "properties": {
             "a": { "type": "string" }

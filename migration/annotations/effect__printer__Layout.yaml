@@ -1,27 +1,3 @@
-"@effect/printer/Layout#defaultOptions":
-  replacement: "none"
-  note: "The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli."
-"@effect/printer/Layout#Layout":
-  replacement: "none"
-  note: "The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli."
-"@effect/printer/Layout#Layout.FittingPredicate":
-  replacement: "none"
-  note: "The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli."
-"@effect/printer/Layout#Layout.Options":
-  replacement: "none"
-  note: "The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli."
-"@effect/printer/Layout#options":
-  replacement: "none"
-  note: "The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli."
-"@effect/printer/Layout#pretty":
-  replacement: "none"
-  note: "The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli."
-"@effect/printer/Layout#smart":
-  replacement: "none"
-  note: "The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli."
-"@effect/printer/Layout#unbounded":
-  replacement: "none"
-  note: "The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli."
-"@effect/printer/Layout#wadlerLeijen":
-  replacement: "none"
-  note: "The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli."
+"@effect/printer/Layout":
+  replacement: none
+  note: The @effect/printer layout pipeline was removed in v4 with no general replacement. Use another pretty-printing library; for Effect CLI output only, use CliOutput from effect/unstable/cli.

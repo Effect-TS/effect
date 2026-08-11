@@ -1,3 +1,6 @@
+"effect/ParseResult#Forbidden":
+  replacement: "SchemaIssue.Forbidden"
+  note: "Forbidden failures use the v4 SchemaIssue class; its constructor takes issue annotations plus optional input and parse options, retaining input only when reportInput is true."
 "effect/ParseResult#ArrayFormatter":
   replacement: "SchemaIssue.makeFormatterStandardSchemaV1"
   note: "Format error.issue with the Standard Schema formatter."

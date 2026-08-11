@@ -163,6 +163,20 @@ const isUnchangedModuleMove = (
   })
 }
 
+const isRemovalCoveredByModule = (
+  id: string,
+  removed: ReadonlySet<string>,
+  annotations: ReadonlyMap<string, MigrationAnnotation>
+): boolean => {
+  const separator = id.indexOf("#")
+  const module = id.slice(0, separator)
+  if (separator === -1 || !removed.has(module) || annotations.get(module)?.replacement !== "none") {
+    return false
+  }
+  const annotation = annotations.get(id)
+  return annotation === undefined || annotation.replacement === "none"
+}
+
 const migrationEntries = (
   diff: ApiDiff,
   annotations: ReadonlyMap<string, MigrationAnnotation>,
@@ -193,6 +207,7 @@ const migrationEntries = (
     const importMove = changes.some((change) => change.classification === "api-moved")
     if (
       isUnchangedModuleMove(id, changes, removedModuleSet, replacements, addedSignatures) ||
+      (removed && isRemovalCoveredByModule(id, removedModuleSet, annotations)) ||
       (!breaking && rename === undefined && !removed) ||
       (importMove && rename === undefined && !breaking && !annotations.has(id))
     ) {

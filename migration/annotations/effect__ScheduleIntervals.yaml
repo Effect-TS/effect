@@ -1,33 +1,3 @@
-"effect/ScheduleIntervals#empty":
-  replacement: "none"
-  note: "The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition."
-"effect/ScheduleIntervals#end":
-  replacement: "none"
-  note: "The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition."
-"effect/ScheduleIntervals#fromIterable":
-  replacement: "none"
-  note: "The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition."
-"effect/ScheduleIntervals#intersect":
-  replacement: "none"
-  note: "The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition."
-"effect/ScheduleIntervals#Intervals":
-  replacement: "none"
-  note: "The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition."
-"effect/ScheduleIntervals#IntervalsTypeId":
-  replacement: "none"
-  note: "The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition."
-"effect/ScheduleIntervals#isNonEmpty":
-  replacement: "none"
-  note: "The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition."
-"effect/ScheduleIntervals#lessThan":
-  replacement: "none"
-  note: "The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition."
-"effect/ScheduleIntervals#make":
-  replacement: "none"
-  note: "The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition."
-"effect/ScheduleIntervals#start":
-  replacement: "none"
-  note: "The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition."
-"effect/ScheduleIntervals#union":
-  replacement: "none"
-  note: "The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition."
+effect/ScheduleIntervals:
+  replacement: none
+  note: The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition.

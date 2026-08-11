@@ -211,7 +211,8 @@ function makeWithRepresentation() {
       schemas,
       definitions
     }
-    const importerOptions = {
+    const importerOptions: SchemaRepresentation.FromJsonSchemaOptions = {
+      patterns: "apply",
       onEnter(js: JsonSchema.JsonSchema) {
         const out = { ...js }
         if (out.type === "object" && out.additionalProperties === undefined) {
@@ -220,10 +221,9 @@ function makeWithRepresentation() {
         return options?.onEnter === undefined ? out : options.onEnter(out)
       }
     }
+    const rootSchemas = SchemaRepresentation.fromJsonSchemaMultiDocument(document, importerOptions)
     const codeDocument = SchemaRepresentation.toCodeDocument(
-      SchemaRepresentation.fromSchemaMultiDocument(
-        SchemaRepresentation.fromJsonSchemaMultiDocument(document, importerOptions)
-      )
+      SchemaRepresentation.toRepresentations(Arr.map(rootSchemas, (schema) => schema.ast))
     )
 
     return {

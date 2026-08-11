@@ -4,6 +4,12 @@
 "@effect/platform/FileSystem#CopyOptions":
   replacement: "NonNullable<Parameters<FileSystem.FileSystem[\"copy\"]>[2]>"
   note: "Operation option interfaces are inline in the v4 FileSystem service."
+"@effect/platform/FileSystem#File.Descriptor":
+  replacement: "none"
+  note: "Native file descriptors are no longer part of the portable File interface; use the File methods and keep any platform handle private in custom implementations."
+"@effect/platform/FileSystem#FileDescriptor":
+  replacement: "none"
+  note: "The descriptor branding constructor was removed with the public fd field; use File operations instead of exposing a native descriptor."
 "@effect/platform/FileSystem#FileTypeId":
   replacement: "typeof FileSystem.FileTypeId"
   note: "The runtime marker remains exported, but the separate type alias was removed."
@@ -56,8 +62,8 @@
   replacement: "FileSystem.WatchEvent.Update"
   note: "The constructor was removed; construct a tagged object with _tag: \"Update\" and path."
 "@effect/platform/FileSystem#WatchOptions":
-  replacement: "none"
-  note: "FileSystem.watch now accepts only a path; the recursive watch option was removed."
+  replacement: "FileSystem.WatchOptions"
+  note: "Retained after moving the module to effect/FileSystem; pass `{ recursive: true }` as the optional second argument to FileSystem.watch."
 "@effect/platform/FileSystem#WriteFileOptions":
   replacement: "NonNullable<Parameters<FileSystem.FileSystem[\"writeFile\"]>[2]>"
   note: "Operation option interfaces are inline in the v4 FileSystem service."

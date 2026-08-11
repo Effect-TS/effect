@@ -1,36 +1,3 @@
-"effect/ScheduleInterval#after":
-  replacement: "none"
-  note: "The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep."
-"effect/ScheduleInterval#before":
-  replacement: "none"
-  note: "The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep."
-"effect/ScheduleInterval#empty":
-  replacement: "none"
-  note: "The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep."
-"effect/ScheduleInterval#intersect":
-  replacement: "none"
-  note: "The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep."
-"effect/ScheduleInterval#Interval":
-  replacement: "none"
-  note: "The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep."
-"effect/ScheduleInterval#IntervalTypeId":
-  replacement: "none"
-  note: "The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep."
-"effect/ScheduleInterval#isEmpty":
-  replacement: "none"
-  note: "The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep."
-"effect/ScheduleInterval#isNonEmpty":
-  replacement: "none"
-  note: "The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep."
-"effect/ScheduleInterval#lessThan":
-  replacement: "none"
-  note: "The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep."
-"effect/ScheduleInterval#make":
-  replacement: "none"
-  note: "The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep."
-"effect/ScheduleInterval#size":
-  replacement: "none"
-  note: "The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep."
-"effect/ScheduleInterval#union":
-  replacement: "none"
-  note: "The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep."
+effect/ScheduleInterval:
+  replacement: none
+  note: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.

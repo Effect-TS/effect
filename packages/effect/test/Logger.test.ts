@@ -90,6 +90,27 @@ describe("Logger", () => {
       assert.ok(!output.includes("annotation=\"\\\"value with spaces\\\"\""))
     }))
 
+  it.effect("formats BigInt messages consistently", () =>
+    Effect.gen(function*() {
+      const simple: Array<string> = []
+      const logFmt: Array<string> = []
+      const structured: Array<unknown> = []
+      const json: Array<unknown> = []
+      const loggers = [
+        Logger.formatSimple.pipe(Logger.map((output) => void simple.push(output))),
+        Logger.formatLogFmt.pipe(Logger.map((output) => void logFmt.push(output))),
+        Logger.formatStructured.pipe(Logger.map((output) => void structured.push(output.message))),
+        Logger.formatJson.pipe(Logger.map((output) => void json.push(JSON.parse(output).message)))
+      ]
+
+      yield* Effect.logInfo(123n, { value: 123n }).pipe(Effect.provide(Logger.layer(loggers)))
+
+      assert.include(simple[0], `message=123n message="{\\"value\\":123n}"`)
+      assert.include(logFmt[0], `message=123n message="{\\"value\\":123n}"`)
+      assert.deepStrictEqual(structured, [[123n, { value: 123n }]])
+      assert.deepStrictEqual(json, [["123n", { value: "123n" }]])
+    }))
+
   it.effect("annotateLogsScoped applies annotations only while scoped", () =>
     Effect.gen(function*() {
       const annotations: Array<Record<string, unknown>> = []

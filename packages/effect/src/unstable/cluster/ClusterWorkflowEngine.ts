@@ -167,12 +167,16 @@ export const make = Effect.gen(function*() {
     readonly payload: unknown
   }) {
     const payload = (options.rpc.payloadSchema as any).make(options.payload)
+    const span = yield* Effect.orDie(Effect.currentSpan)
     const envelope = Envelope.makeRequest<any>({
       requestId: yield* sharding.getSnowflake,
       address: options.address,
       tag: options.rpc._tag as any,
       payload,
-      headers: Headers.empty
+      headers: Headers.empty,
+      traceId: span.traceId,
+      spanId: span.spanId,
+      sampled: span.sampled
     })
     yield* sharding.sendOutgoing(
       new Message.OutgoingRequest({
@@ -614,7 +618,10 @@ export const make = Effect.gen(function*() {
             payload: {
               name: options.clock.name,
               workflowName: workflow._tag,
-              wakeUp: DateTime.addDuration(now, options.clock.duration)
+              wakeUp: DateTime.mapEpochMillis(
+                DateTime.addDuration(now, options.clock.duration),
+                Math.ceil
+              )
             }
           })
         ),

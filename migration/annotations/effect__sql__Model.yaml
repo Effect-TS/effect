@@ -13,6 +13,9 @@
 "@effect/sql/Model#DateTimeFromDate":
   replacement: "effect/Schema#DateTimeUtcFromDate"
   note: "Moved to core Schema and retains Date to DateTime.Utc conversion."
+"@effect/sql/Model#extract":
+  replacement: "effect/unstable/schema/Model#extract"
+  note: "Retained after moving the model variant helpers into core Effect's unstable schema package."
 "@effect/sql/Model#fieldFromKey":
   replacement: "effect/Schema#encodeKeys"
   note: "The field helper was removed; apply encodeKeys to each concrete struct or model-variant schema that crosses the naming boundary."
@@ -25,3 +28,6 @@
 "@effect/sql/Model#Override":
   replacement: "effect/unstable/schema/Model#Override"
   note: "Moved with the same explicit-default override purpose."
+"@effect/sql/Model#fields":
+  replacement: "effect/unstable/schema/Model#fields"
+  note: "Moved with the variant-model helpers into core Effect's unstable schema package."

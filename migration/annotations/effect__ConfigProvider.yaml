@@ -1,6 +1,6 @@
 "effect/ConfigProvider#ConfigProvider":
   replacement: "ConfigProvider.ConfigProvider"
-  note: "The model remains but now exposes load(path), returning a raw Node or undefined, and has one unified provider representation."
+  note: "The model remains but now exposes `load(path)`, returning `Effect<Node | undefined, SourceError>`, and `mapInput(f)` for provider-owned path transformation. `undefined` means the path is missing; a `Node` means it exists."
 "effect/ConfigProvider#ConfigProvider.Flat":
   replacement: "ConfigProvider.ConfigProvider"
   note: "Flat providers were removed; implement the unified path-based provider with ConfigProvider.make."
@@ -33,7 +33,7 @@
   note: "The constructor remains; pass env and preserveEmptyStrings options. Paths use underscore semantics, while sequence separators belong on Config schemas."
 "effect/ConfigProvider#fromFlat":
   replacement: "ConfigProvider.make"
-  note: "Flat providers were unified with ConfigProvider; implement load by returning Value, Record, or Array nodes for each path."
+  note: "Flat providers were unified with ConfigProvider; return a `Value`, `Record`, or `Array` node for a found path, or `undefined` when missing."
 "effect/ConfigProvider#fromJson":
   replacement: "ConfigProvider.fromUnknown"
   note: "Renamed to reflect support for any in-memory JavaScript value."
@@ -48,10 +48,10 @@
   note: "Transform string path segments explicitly with mapInput."
 "effect/ConfigProvider#make":
   replacement: "ConfigProvider.make"
-  note: "The constructor now takes a path lookup returning Effect<Node | undefined, SourceError>, rather than a full Config loader and flattened provider."
+  note: "The constructor now takes a path lookup returning `Effect<Node | undefined, SourceError>`, rather than a full Config loader and flattened provider. Return `undefined` for a missing path and a `Node` for a found path."
 "effect/ConfigProvider#makeFlat":
   replacement: "ConfigProvider.make"
-  note: "The flat-provider constructor was removed; return Value, Record, or Array nodes from the unified path lookup."
+  note: "The flat-provider constructor was removed; return a `Value`, `Record`, or `Array` node for a found path, or `undefined` when missing."
 "effect/ConfigProvider#mapInputPath":
   replacement: "ConfigProvider.mapInput"
   note: "Renamed and generalized: the callback receives and returns the complete Path, including numeric array indexes."

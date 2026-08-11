@@ -2,6 +2,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
+import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import ts from "typescript-compiler"
 import { Discovery, type DiscoveryResult } from "./Discovery.ts"
@@ -701,13 +702,16 @@ export interface ExtractSnapshotOptions {
   readonly modules?: ReadonlyArray<string>
 }
 
-export class SnapshotExtractionError extends Schema.TaggedErrorClass<SnapshotExtractionError>()(
+export class SnapshotExtractionError extends Schema.TaggedError<SnapshotExtractionError>()(
   "SnapshotExtractionError",
   {
     message: Schema.String,
     diagnostics: Schema.Array(SnapshotDiagnosticSchema)
   }
 ) {}
+
+export const isSnapshotExtractionError = (u: unknown): u is SnapshotExtractionError =>
+  Predicate.isTagged(u, "SnapshotExtractionError")
 
 const snapshotExtractionError = (diagnostics: ReadonlyArray<SnapshotDiagnostic>): SnapshotExtractionError =>
   new SnapshotExtractionError({
@@ -861,7 +865,7 @@ export class Snapshotter extends Context.Service<Snapshotter, {
         return yield* Effect.try({
           try: () => extractSnapshot(options, discovered, path),
           catch: (cause) =>
-            cause instanceof SnapshotExtractionError
+            isSnapshotExtractionError(cause)
               ? cause
               : new ApiDiffError({
                 message: `Could not extract the API snapshot for ${options.ref}`,

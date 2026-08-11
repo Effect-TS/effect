@@ -98,7 +98,6 @@ import {
 } from "./references.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "./stackTraceLimit.ts"
 import { addSpanStackTrace, makeStackCleaner } from "./tracer.ts"
-import { version } from "./version.ts"
 
 // ----------------------------------------------------------------------------
 // Cause
@@ -269,7 +268,7 @@ export const causeMap: {
     const failures = self.reasons.map((failure) => {
       if (isFailReason(failure)) {
         hasFail = true
-        return new Fail(f(failure.error))
+        return new Fail(f(failure.error), failure.annotations)
       }
       return failure
     })
@@ -490,7 +489,7 @@ const renderErrorCause = (cause: Error, prefix: string) => {
 // ----------------------------------------------------------------------------
 
 /** @internal */
-export const FiberTypeId = `~effect/Fiber/${version}` as const
+export const FiberTypeId = "~effect/Fiber" as const
 
 const fiberVariance = {
   _A: identity,
@@ -556,7 +555,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
 
   getRef<X>(ref: Context.Reference<X>): X {
-    return Context.getReferenceUnsafe(this.context, ref)
+    return Context.get(this.context, ref)
   }
   addObserver(cb: (exit: Exit.Exit<A, E>) => void): () => void {
     if (this._exit) {
@@ -707,20 +706,26 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return pipeArguments(this, arguments)
   }
   setContext(context: Context.Context<never>): void {
+    const previous = this.context
     this.context = context
+    // Every key cached below opts in to Context caching, so contexts related
+    // only by non-caching adds cannot have changed any of them
+    if (previous !== undefined && Context.hasSameCache(previous, context)) return
     const scheduler = this.getRef(Scheduler.Scheduler)
     if (scheduler !== this.currentScheduler) {
       this.currentScheduler = scheduler
       this._dispatcher = undefined
     }
-    this.currentSpan = context.mapUnsafe.get(Tracer.ParentSpanKey)
+    // The string-keyed lookups keep the Tracer key values (and the native
+    // tracer behind Tracer.Tracer's default) out of every bundle
+    this.currentSpan = Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey)
     this.currentLogLevel = this.getRef(CurrentLogLevel)
     this.minimumLogLevel = this.getRef(MinimumLogLevel)
-    this.currentStackFrame = context.mapUnsafe.get(CurrentStackFrame.key)
+    this.currentStackFrame = this.getRef(CurrentStackFrame)
     this.maxOpsBeforeYield = this.getRef(Scheduler.MaxOpsBeforeYield)
     this.currentPreventYield = this.getRef(Scheduler.PreventSchedulerYield)
-    this.runtimeMetrics = context.mapUnsafe.get(InternalMetric.FiberRuntimeMetricsKey)
-    const currentTracer = context.mapUnsafe.get(Tracer.TracerKey)
+    this.runtimeMetrics = Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey)
+    const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
     this.currentTracerContext = currentTracer ? currentTracer["context"] : undefined
   }
   get currentSpanLocal(): Tracer.Span | undefined {
@@ -817,7 +822,7 @@ export const fiberJoin = <A, E>(self: Fiber.Fiber<A, E>): Effect.Effect<A, E> =>
 /** @internal */
 export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A): Effect.Effect<
   Arr.ReadonlyArray.With<A, A extends Iterable<Fiber.Fiber<infer _A, infer _E>> ? _A : never>,
-  A extends Fiber.Fiber<infer _A, infer _E> ? _E : never
+  A extends Iterable<Fiber.Fiber<infer _A, infer _E>> ? _E : never
 > =>
   callback((resume) => {
     const fibers = Array.from(self)
@@ -3748,8 +3753,8 @@ export const timed = <A, E, R>(
   self: Effect.Effect<A, E, R>
 ): Effect.Effect<[duration: Duration.Duration, result: A], E, R> =>
   clockWith((clock) => {
-    const start = clock.currentTimeNanosUnsafe()
-    return map(self, (a) => [Duration.nanos(clock.currentTimeNanosUnsafe() - start), a])
+    const start = clock.monotonicTimeNanosUnsafe()
+    return map(self, (a) => [Duration.nanos(clock.monotonicTimeNanosUnsafe() - start), a])
   })
 
 // ----------------------------------------------------------------------------
@@ -4680,7 +4685,6 @@ const forEachSequential = <A, B, E, R>(
 
 type IterateEagerOptions = {
   readonly concurrency?: number | undefined
-  readonly start?: number | undefined
   readonly end?: number | undefined
   readonly orderedStep?: boolean | undefined
 }
@@ -4696,14 +4700,37 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
   const onItem = options.onItem
   const step = options.step
 
+  const runSequential = (
+    state: S,
+    items: ReadonlyArray<A>,
+    index: number,
+    end: number
+  ): Effect.Effect<void, E | E2, R> | undefined => {
+    for (; index < end; index++) {
+      const item = items[index]
+      const effect = onItem(state, item, index)
+      if (!effectIsExit(effect)) {
+        return flatMap(
+          exit(effect),
+          (itemExit) => step(state, item, itemExit, index) ?? runSequential(state, items, index + 1, end) ?? void_
+        )
+      }
+      const terminal = step(state, item, effect, index)
+      if (terminal) return terminal._tag === "Failure" ? terminal : undefined
+    }
+  }
+
   return (
     state: S,
     items: ReadonlyArray<A>,
     opts: IterateEagerOptions | undefined
   ): Effect.Effect<void, E | E2, R> | undefined => {
-    let index = opts?.start ?? 0
+    let index = 0
     const end = opts?.end ?? items.length
     const concurrency = opts?.concurrency ?? 1
+    if (concurrency === 1) {
+      return runSequential(state, items, 0, end)
+    }
     const orderedStep = opts?.orderedStep === true && concurrency > 1
     let done = false
     let parentFiber: Fiber.Fiber<any, any> | undefined
@@ -4749,14 +4776,6 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
         if (effectIsExit(eff)) {
           terminal = runStep(item, eff, index)
           if (terminal) break
-
-          // Use flatMap for concurrency of 1
-        } else if (concurrency === 1) {
-          return flatMap(exit(eff), (exit) => {
-            terminal = runStep(item, exit, index)
-            index++
-            return terminal ?? go() ?? void_
-          })
 
           // We have an effect, so enter "async" mode
         } else if (!parentFiber) {
@@ -5204,16 +5223,17 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   daemon = false,
   uninterruptible: boolean | "inherit" = false
 ): FiberImpl<A, E> => {
-  const interruptible = uninterruptible === "inherit" ? parent.interruptible : !uninterruptible
-  const child = new FiberImpl<A, E>(parent.context, interruptible)
+  const parentRuntime = parent as FiberImpl<FA, FE>
+  const interruptible = uninterruptible === "inherit" ? parentRuntime.interruptible : !uninterruptible
+  const child = new FiberImpl<A, E>(parentRuntime.context, interruptible)
   if (immediate) {
     child.evaluate(effect as any)
   } else {
-    parent.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
+    parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
   }
   if (!daemon && !child._exit) {
-    parent.children().add(child)
-    child.addObserver(() => parent._children!.delete(child))
+    parentRuntime.children().add(child)
+    child.addObserver(() => parentRuntime._children!.delete(child))
   }
   return child
 }
@@ -5842,11 +5862,8 @@ export const useSpan: {
   return withFiber((fiber) => {
     const span = makeSpanUnsafe(fiber, name, options)
     const clock = fiber.getRef(ClockRef)
-    return onExit(internalCall(() => evaluate(span)), (exit) =>
-      sync(() => {
-        if (span.status._tag === "Ended") return
-        span.end(clock.currentTimeNanosUnsafe(), exit)
-      }))
+    const timingEnabled = fiber.getRef(TracerTimingEnabled)
+    return onExit(internalCall(() => evaluate(span)), (exit) => endSpan(span, exit, clock, timingEnabled))
   })
 }
 
@@ -5978,9 +5995,13 @@ class ClockImpl implements Clock.Clock {
   }
   readonly currentTimeMillis: Effect.Effect<number> = sync(() => this.currentTimeMillisUnsafe())
   currentTimeNanosUnsafe(): bigint {
-    return processOrPerformanceNow()
+    return wallTimeNanos()
   }
   readonly currentTimeNanos: Effect.Effect<bigint> = sync(() => this.currentTimeNanosUnsafe())
+  monotonicTimeNanosUnsafe(): bigint {
+    return monotonicNowNanos()
+  }
+  readonly monotonicTimeNanos: Effect.Effect<bigint> = sync(() => this.monotonicTimeNanosUnsafe())
   sleep(duration: Duration.Duration): Effect.Effect<void> {
     return this.sleepMillis(Duration.toMillis(duration))
   }
@@ -5997,27 +6018,45 @@ class ClockImpl implements Clock.Clock {
   }
 }
 
-const performanceNowNanos = (function() {
-  const bigint1e6 = BigInt(1_000_000)
-  if (typeof performance === "undefined" || typeof performance.now === "undefined") {
-    return () => BigInt(Date.now()) * bigint1e6
+const nanosPerMilli = BigInt(1_000_000)
+
+const monotonicNowNanos = (function() {
+  const processHrtime = (globalThis as {
+    readonly process?: { readonly hrtime?: { readonly bigint?: () => bigint } }
+  }).process?.hrtime
+  if (typeof processHrtime?.bigint === "function") {
+    return () => processHrtime.bigint!()
   }
-  let origin: bigint
+  if (typeof performance !== "undefined" && typeof performance.now === "function") {
+    return () => BigInt(Math.round(performance.now() * 1_000_000))
+  }
+  let previous = BigInt(0)
   return () => {
-    origin ??= (BigInt(Date.now()) * bigint1e6) - BigInt(Math.round(performance.now() * 1_000_000))
-    return origin + BigInt(Math.round(performance.now() * 1_000_000))
+    const current = BigInt(Date.now()) * nanosPerMilli
+    if (current > previous) {
+      previous = current
+    }
+    return previous
   }
 })()
-const processOrPerformanceNow = (function() {
-  const processHrtime =
-    typeof process === "object" && "hrtime" in process && typeof process.hrtime.bigint === "function" ?
-      process.hrtime :
-      undefined
-  if (!processHrtime) {
-    return performanceNowNanos
+
+const wallTimeNanos = (function() {
+  const reanchorThresholdNanos = BigInt(1_000_000_000)
+  let origin: bigint | undefined
+  return () => {
+    const monotonic = monotonicNowNanos()
+    const wall = BigInt(Date.now()) * nanosPerMilli
+    if (origin === undefined) {
+      origin = wall - monotonic
+    } else {
+      const projected = origin + monotonic
+      const skew = wall > projected ? wall - projected : projected - wall
+      if (skew > reanchorThresholdNanos) {
+        origin = wall - monotonic
+      }
+    }
+    return origin + monotonic
   }
-  const origin = (BigInt(Date.now()) * BigInt(1e6)) - processHrtime.bigint()
-  return () => origin + processHrtime.bigint()
 })()
 
 /** @internal */
@@ -6033,6 +6072,9 @@ export const currentTimeMillis: Effect.Effect<number> = clockWith((clock) => clo
 
 /** @internal */
 export const currentTimeNanos: Effect.Effect<bigint> = clockWith((clock) => clock.currentTimeNanos)
+
+/** @internal */
+export const monotonicTimeNanos: Effect.Effect<bigint> = clockWith((clock) => clock.monotonicTimeNanos)
 
 // ----------------------------------------------------------------------------
 // Errors
@@ -6260,7 +6302,6 @@ export const formatLogSpan = (self: [label: string, timestamp: number], now: num
 /** @internal */
 export const structuredMessage = (u: unknown): unknown => {
   switch (typeof u) {
-    case "bigint":
     case "function":
     case "symbol": {
       return String(u)
@@ -6370,10 +6411,10 @@ export const consolePretty = (options?: {
 }) => {
   // evaluated lazily so the module-level bundle stays free of `process`
   // property accesses, which bundlers must retain as possible side effects
-  const hasProcessStdout = typeof process === "object" &&
-    process !== null &&
-    typeof process.stdout === "object" &&
-    process.stdout !== null
+  const process = (globalThis as {
+    readonly process?: { readonly stdout?: { readonly isTTY?: boolean } }
+  }).process
+  const hasProcessStdout = typeof process?.stdout === "object" && process.stdout !== null
   const processStdoutIsTTY = hasProcessStdout &&
     process.stdout.isTTY === true
   const hasProcessStdoutOrDeno = hasProcessStdout || "Deno" in globalThis
@@ -6391,7 +6432,7 @@ const prettyLoggerTty = (options: {
   readonly colors: boolean
   readonly formatDate: (date: Date) => string
 }) => {
-  const processIsBun = typeof process === "object" && "isBun" in process && process.isBun === true
+  const processIsBun = (globalThis as { readonly process?: { readonly isBun?: boolean } }).process?.isBun === true
   const color = options.colors ? withColor : withColorNoop
   return loggerMake<unknown, void>(
     ({ cause, date, fiber, logLevel, message: message_ }) => {

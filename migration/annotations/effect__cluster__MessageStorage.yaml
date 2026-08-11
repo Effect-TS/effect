@@ -7,3 +7,6 @@
 "@effect/cluster/MessageStorage#make":
   replacement: "effect/unstable/cluster/MessageStorage#make"
   note: "Moved into core Effect. Context service projections now use the Service property instead of Type."
+"@effect/cluster/MessageStorage#Encoded":
+  replacement: "effect/unstable/cluster/MessageStorage#Encoded"
+  note: "Moved into core Effect; use the v4 Envelope.Encoded and Reply.Encoded aliases in custom encoded storage implementations."

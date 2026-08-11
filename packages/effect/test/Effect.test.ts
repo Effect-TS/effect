@@ -1433,6 +1433,21 @@ describe("Effect", () => {
       }))
   })
 
+  describe("timed", () => {
+    it.effect("uses monotonic time when wall time moves backward", () =>
+      Effect.gen(function*() {
+        yield* TestClock.setTime(1_000)
+        const [duration, result] = yield* Effect.gen(function*() {
+          yield* TestClock.adjust("100 millis")
+          yield* TestClock.setTime(0)
+          return "done"
+        }).pipe(Effect.timed)
+
+        assert.strictEqual(result, "done")
+        assert.strictEqual(Duration.toMillis(duration), 100)
+      }))
+  })
+
   describe("timeoutOption", () => {
     it.live("timeout a long computation", () =>
       Effect.gen(function*() {

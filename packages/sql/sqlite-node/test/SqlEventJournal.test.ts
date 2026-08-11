@@ -14,6 +14,19 @@ const makeJournal = Effect.gen(function*() {
 }).pipe(Effect.provide(Reactivity.layer))
 
 describe("SqlEventJournal", () => {
+  it.effect("commits only after the write callback succeeds", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      yield* Effect.exit(journal.write({
+        event: "Repro",
+        primaryKey: "key",
+        payload: new Uint8Array([1]),
+        effect: () => Effect.fail("callback failed")
+      }))
+      assert.deepStrictEqual(yield* journal.entries, [])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it.effect("writes and reads entries", () =>
     Effect.gen(function*() {
       const journal = yield* makeJournal

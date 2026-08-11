@@ -1,21 +1,3 @@
-"@effect/typeclass/Foldable#combineMap":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/Foldable#coproductMapKind":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/Foldable#Foldable":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/Foldable#reduceComposition":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/Foldable#reduceKind":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/Foldable#toArray":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/Foldable#toArrayMap":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
+"@effect/typeclass/Foldable":
+  replacement: none
+  note: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
