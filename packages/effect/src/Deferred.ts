@@ -176,8 +176,12 @@ const _await = <A, E>(self: Deferred<A, E>): Effect<A, E> =>
     self.resumes ??= []
     self.resumes.push(resume)
     return internalEffect.sync(() => {
-      const index = self.resumes!.indexOf(resume)
-      self.resumes!.splice(index, 1)
+      // Completion resumes all waiters and clears `resumes`, so a cleanup
+      // running after completion has nothing to unregister.
+      const resumes = self.resumes
+      if (resumes === undefined) return
+      const index = resumes.indexOf(resume)
+      if (index >= 0) resumes.splice(index, 1)
     })
   })
 
