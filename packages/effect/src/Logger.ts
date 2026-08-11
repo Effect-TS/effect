@@ -413,7 +413,7 @@ const format = (
   const append = (label: string, value: string): string => " " + format(label, value)
 
   let out = format("timestamp", date.toISOString())
-  out += append("level", logLevel)
+  out += append("level", logLevel.toUpperCase())
   out += append("fiber", formatFiberId(fiber.id))
 
   const messages = Array.ensure(message)
@@ -515,7 +515,7 @@ export const defaultLogger: Logger<unknown, void> = effect.defaultLogger
  *   return yield* TestConsole.logLines
  * }).pipe(Effect.provide(TestConsole.layer))
  *
- * await Effect.runPromise(program) // => ["level=Info message=\"Application started\""]
+ * await Effect.runPromise(program) // => ["level=INFO message=\"Application started\""]
  * ```
  *
  * @category constructors
@@ -550,7 +550,7 @@ export const formatSimple = effect.loggerMake(format(escapeDoubleQuotes))
  *   return yield* TestConsole.logLines
  * }).pipe(Effect.provide(TestConsole.layer))
  *
- * await Effect.runPromise(program) // => ["level=Info message=\"User login\""]
+ * await Effect.runPromise(program) // => ["level=INFO message=\"User login\""]
  * ```
  *
  * @category constructors

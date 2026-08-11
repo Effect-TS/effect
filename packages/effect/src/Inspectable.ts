@@ -130,19 +130,20 @@ export interface Inspectable {
 }
 
 /**
- * Converts a value to a JSON-serializable representation safely.
+ * Converts a value to its structured inspection representation.
  *
  * **When to use**
  *
- * Use when you need a safe, JSON-serializable representation of a value
+ * Use when you need the structured representation of an inspectable value
  * without risking unhandled errors.
  *
  * **Details**
  *
- * This function attempts to extract JSON data from objects that implement the
- * `toJSON` method, recursively processes arrays, and handles errors gracefully.
- * For objects that don't have a `toJSON` method, it applies redaction to
- * protect sensitive information.
+ * This function applies redaction before extracting data from objects that
+ * implement `toJSON`, recursively processes arrays, and handles errors
+ * gracefully. Plain objects are returned unchanged, so the result is not
+ * guaranteed to be accepted by `JSON.stringify`; it may still contain values
+ * such as `BigInt`, functions, or circular references.
  *
  * @see {@link toStringUnknown} for converting unknown values to strings
  *
@@ -151,6 +152,7 @@ export interface Inspectable {
  */
 export const toJson = (input: unknown): unknown => {
   try {
+    input = redact(input)
     if (
       Predicate.hasProperty(input, "toJSON") &&
       Predicate.isFunction(input["toJSON"]) &&
@@ -160,10 +162,10 @@ export const toJson = (input: unknown): unknown => {
     } else if (Array.isArray(input)) {
       return input.map(toJson)
     }
+    return input
   } catch {
     return "[toJSON threw]"
   }
-  return redact(input)
 }
 
 /**
