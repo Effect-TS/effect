@@ -1,7 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Config, ConfigProvider, Effect, FileSystem, Layer, Option, Path, Ref, Stdio } from "effect"
+import { Config, ConfigProvider, Effect, FileSystem, Layer, Option, Path, Ref, Result, Stdio } from "effect"
 import { TestConsole } from "effect/testing"
-import { Argument, CliError, Flag, Prompt } from "effect/unstable/cli"
+import { Argument, CliError, Command, Flag, Param, Primitive, Prompt } from "effect/unstable/cli"
+import * as Lexer from "effect/unstable/cli/internal/lexer"
+import * as Parser from "effect/unstable/cli/internal/parser"
 import { ChildProcessSpawner } from "effect/unstable/process"
 import * as MockTerminal from "./services/MockTerminal.ts"
 
@@ -25,6 +27,50 @@ const TestLayer = Layer.mergeAll(
 )
 
 describe("Param", () => {
+  it.effect("recognizes the alternate flag declared by orElse", () =>
+    Effect.gen(function*() {
+      const command = Command.make("app", {
+        config: Flag.string("config").pipe(
+          Flag.orElse(() => Flag.string("config-url"))
+        )
+      })
+
+      const parsed = yield* Parser.parseArgs(Lexer.lex(["--config-url", "https://example.com"]), command)
+
+      assert.isUndefined(parsed.errors)
+      assert.deepStrictEqual(parsed.flags["config-url"], ["https://example.com"])
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("registers and parses the alternate flag declared by orElseResult", () =>
+    Effect.gen(function*() {
+      const flag = Flag.string("config").pipe(
+        Flag.orElseResult(() => Flag.string("config-url"))
+      )
+
+      assert.deepStrictEqual(Param.extractSingleParams(flag).map((param) => param.name), ["config", "config-url"])
+
+      const [, result] = yield* flag.parse({
+        flags: { "config-url": ["https://example.com"] },
+        arguments: []
+      })
+
+      assert.deepStrictEqual(result, Result.fail("https://example.com"))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it("preserves __proto__ as an own makeSingle option", () => {
+    const value = { polluted: true }
+    const param = Param.makeSingle({
+      ["__proto__"]: value,
+      kind: Param.flagKind,
+      name: "name",
+      primitiveType: Primitive.string
+    } as any)
+
+    assert.isTrue(Param.isParam(param))
+    assert.isTrue(Object.hasOwn(param, "__proto__"))
+    assert.strictEqual((param as any)["__proto__"], value)
+  })
+
   describe("optional", () => {
     it.effect("returns none when an optional boolean flag is omitted", () =>
       Effect.gen(function*() {

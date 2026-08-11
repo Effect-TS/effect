@@ -124,8 +124,8 @@ const makePredicate = (pattern: unknown): Predicate.Predicate<unknown> => {
       return true
     }
   } else if (pattern !== null && typeof pattern === "object") {
-    const keysAndPredicates = Object.entries(pattern).map(
-      ([k, p]) => [k, makePredicate(p)] as const
+    const keysAndPredicates = Reflect.ownKeys(pattern).map(
+      (key) => [key, makePredicate((pattern as any)[key])] as const
     )
     const len = keysAndPredicates.length
 
@@ -396,7 +396,7 @@ export const discriminators = <D extends string>(field: D) =>
   fields: P
 ) => {
   const predicate = makeWhen(
-    (arg: any) => arg != null && arg[field] in fields,
+    (arg: any) => arg != null && Object.hasOwn(fields, arg[field]),
     (data: any) => (fields as any)[data[field]](data)
   )
 

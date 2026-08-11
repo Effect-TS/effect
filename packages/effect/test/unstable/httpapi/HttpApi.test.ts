@@ -51,6 +51,17 @@ describe("HttpApi", () => {
     assert.strictEqual(Context.getUnsafe(parent.groups.users.annotations, OpenApi.Description), "Child API")
   })
 
+  it("does not add inherited groups", () => {
+    const inherited = HttpApiGroup.make("inherited")
+    const child = HttpApi.make("Child").add(HttpApiGroup.make("own"))
+    Object.setPrototypeOf(child.groups, { inherited })
+
+    const parent = HttpApi.make("Parent").addHttpApi(child)
+
+    assert.isTrue(Object.hasOwn(parent.groups, "own"))
+    assert.isFalse(Object.hasOwn(parent.groups, "inherited"))
+  })
+
   it("keeps annotations from API variants isolated", () => {
     const group = HttpApiGroup.make("users").annotate(OpenApi.Title, "Users")
     const child = HttpApi.make("Child").add(group)

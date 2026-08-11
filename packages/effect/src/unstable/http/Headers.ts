@@ -42,7 +42,7 @@ export type TypeId = typeof TypeId
 /**
  * Returns `true` if the provided value is a `Headers` value.
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isHeaders = (u: unknown): u is Headers => Predicate.hasProperty(u, TypeId)
@@ -130,15 +130,15 @@ export interface HeadersSchema extends Schema.declare<Headers, { readonly [x: st
 export const HeadersSchema: HeadersSchema = Schema.declare(
   isHeaders,
   {
-    typeConstructor: {
-      _tag: "effect/http/Headers"
+    representation: {
+      id: "effect/http/Headers",
+      payload: null
     },
-    generation: {
-      runtime: `Headers.HeadersSchema`,
-      Type: `Headers.Headers`,
-      Encoded: `typeof Headers.HeadersSchema["Encoded"]`,
-      importDeclaration: `import * as Headers from "effect/unstable/http/Headers"`
-    },
+    toCode: () => ({
+      runtime: "Headers.HeadersSchema",
+      Type: "Headers.Headers",
+      importDeclarations: [`import * as Headers from "effect/unstable/http/Headers"`]
+    }),
     expected: "Headers",
     toEquivalence: () => Equivalence,
     toCodec: () =>
@@ -423,7 +423,7 @@ export const redact: {
  *
  * Defaults include `authorization`, `cookie`, `set-cookie`, and `x-api-key`.
  *
- * @category fiber refs
+ * @category services
  * @since 4.0.0
  */
 export const CurrentRedactedNames = Context.Reference<

@@ -1,0 +1,6 @@
+"@effect/rpc/RpcMessage#RequestIdTypeId":
+  replacement: "effect/unstable/rpc/RpcMessage#RequestId"
+  note: "The public symbol marker was removed; use the branded RequestId type and RequestId constructor rather than inspecting its brand."
+"@effect/rpc/RpcMessage#RequestId":
+  replacement: "effect/unstable/rpc/RpcMessage#RequestId"
+  note: "Request ids are now branded string or number values; convert bigint ids before calling the retained RequestId constructor."

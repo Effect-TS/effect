@@ -13,7 +13,36 @@ export function resolveAt<A>(key: string) {
 }
 
 /** @internal */
+export const STRUCTURAL_ANNOTATION_KEY = "~structural"
+
+/** @internal */
+export const IDENTIFIER_FALLBACK_KEY = "~identifier"
+
+/** @internal */
+export const SENTINELS_ANNOTATION_KEY = "~sentinels"
+
+/** @internal */
+export const CONSTRUCTOR_ANNOTATION_KEY = "~constructor"
+
+/** @internal */
+export const jsonSchemaAnnotationKeys = [
+  "title",
+  "description",
+  "default",
+  "examples",
+  "readOnly",
+  "writeOnly",
+  "format",
+  "contentEncoding",
+  "contentMediaType",
+  "contentSchema"
+] as const
+
+/** @internal */
 export const resolveIdentifier = resolveAt<string>("identifier")
+
+/** @internal */
+export const resolveIdentifierFallback = resolveAt<string>(IDENTIFIER_FALLBACK_KEY)
 
 /** @internal */
 export const resolveTitle = resolveAt<string>("title")
@@ -26,7 +55,7 @@ export const resolveBrands = resolveAt<ReadonlyArray<string>>("brands")
 
 /** @internal */
 export const getExpected = memoize((ast: SchemaAST.AST): string => {
-  const identifier = resolveIdentifier(ast)
+  const identifier = resolve(ast)?.identifier
   if (typeof identifier === "string") return identifier
   return ast.getExpected(getExpected)
 })
@@ -35,3 +64,21 @@ export const getExpected = memoize((ast: SchemaAST.AST): string => {
 export function collectBrands(annotations: Schema.Annotations.Annotations | undefined): ReadonlyArray<string> {
   return annotations !== undefined && Array.isArray(annotations.brands) ? annotations.brands : []
 }
+
+/** @internal */
+export const annotationExcludedKeys = new Set([
+  SENTINELS_ANNOTATION_KEY,
+  STRUCTURAL_ANNOTATION_KEY,
+  "representation",
+  "arbitrary",
+  "brands",
+  "toJsonSchema",
+  "toCode",
+  "toArbitrary",
+  "toEquivalence",
+  "toFormatter",
+  "toCodec",
+  "toCodecJson",
+  "toCodecStringTree",
+  "toCodecIso"
+])

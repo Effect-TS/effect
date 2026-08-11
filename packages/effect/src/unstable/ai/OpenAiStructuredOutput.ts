@@ -4,21 +4,15 @@
  * OpenAI structured output accepts only a subset of JSON Schema. This module
  * converts an Effect `Schema.Codec` into a provider-compatible JSON Schema and
  * a matching codec for decoding the model response back into the original
- * application type. When possible, unsupported schema shapes are rewritten into
- * supported ones; schema kinds that cannot be represented safely fail during
- * conversion.
+ * application type. Unsupported constraints can be omitted from the provider
+ * schema and remain enforced by the returned codec.
  *
  * @since 4.0.0
  */
-import * as Arr from "../../Array.ts"
 import * as JsonSchema from "../../JsonSchema.ts"
-import * as Option from "../../Option.ts"
-import * as Predicate from "../../Predicate.ts"
 import * as Rec from "../../Record.ts"
 import * as Schema from "../../Schema.ts"
-import * as SchemaAST from "../../SchemaAST.ts"
-import * as SchemaTransformation from "../../SchemaTransformation.ts"
-import * as Tool from "./Tool.ts"
+import * as InternalStructuredOutput from "./internal/structured-output.ts"
 
 /**
  * Converts a `Schema.Codec` to OpenAI structured-output JSON Schema and a
@@ -27,27 +21,38 @@ import * as Tool from "./Tool.ts"
  * **When to use**
  *
  * Use when you send Effect Schema-backed structured output requests to OpenAI
- * and need provider-compatible JSON Schema without losing the decoded
- * application type.
+ * standard models and need provider-compatible JSON Schema without losing the
+ * decoded application type.
  *
  * **Details**
  *
  * Returns the JSON Schema to include in the request and the codec to use when
- * decoding the model response. If the input schema already fits OpenAI's
- * supported JSON Schema subset, the original codec is returned unchanged.
+ * decoding the model response. The codec remains authoritative: the provider
+ * JSON Schema can be a lossy, less restrictive representation when OpenAI
+ * cannot express an Effect Schema constraint. Conversion throws when the
+ * resulting root is not an object or contains `anyOf`.
  *
  * **Gotchas**
  *
  * - Some schemas use a provider-safe encoded shape: tuples become objects with
- *   numeric string keys, records become arrays of `[key, value]` pairs, and
- *   optional properties become required nullable properties.
+ *   numeric string keys, objects with index signatures become arrays of
+ *   `[key, value]` pairs, and optional properties become required nullable
+ *   properties.
  * - `oneOf` unions are emitted as `anyOf` unions.
- * - Regex patterns from multiple filters are merged into one `pattern` because
- *   OpenAI structured output does not support `allOf`.
- * - Unsupported schema kinds throw during conversion instead of producing a
- *   lossy schema.
+ * - Compatible regex patterns are merged because OpenAI structured output does
+ *   not support `allOf`.
+ * - The root JSON Schema must be an object and cannot use `anyOf`.
+ * - Constraints inside `allOf` are retained only when they have an explicit,
+ *   semantics-preserving normalization rule.
+ * - Structural constraints inside `allOf`, such as `properties`, `required`,
+ *   `additionalProperties`, and `items`, are omitted instead of being merged
+ *   with a different meaning.
+ * - Unsupported constraints are removed from the provider schema and are still
+ *   checked while decoding with the returned codec.
+ * - Compatibility targets standard OpenAI models. Fine-tuned models support a
+ *   smaller JSON Schema subset.
  *
- * @category Codec Transformation
+ * @category transforming
  * @since 4.0.0
  */
 export function toCodecOpenAI<T, E, RD, RE>(
@@ -56,421 +61,251 @@ export function toCodecOpenAI<T, E, RD, RE>(
   codec: Schema.ConstraintCodec<T, unknown, RD, RE>
   jsonSchema: JsonSchema.JsonSchema
 } {
-  const to = schema.ast
-  const from = recurOpenAI(SchemaAST.toEncoded(to))
-  const codec = from === to
-    ? schema
-    : Schema.make<typeof schema>(SchemaAST.decodeTo(from, to, SchemaTransformation.passthrough()))
-  const document = JsonSchema.resolveTopLevel$ref(Schema.toJsonSchemaDocument(codec))
+  const codec = InternalStructuredOutput.toCodec(schema)
+  const document = JsonSchema.resolveTopLevel$ref(
+    Schema.toJsonSchemaDocument(codec, { generateDescriptions: true })
+  )
   const jsonSchema = rewriteOpenAI(document.schema)
+  if (jsonSchema.type !== "object" || jsonSchema.anyOf !== undefined) {
+    throw new Error(
+      `OpenAiStructuredOutput: Root JSON Schema must have type "object" and must not use "anyOf"`
+    )
+  }
   if (Object.keys(document.definitions).length > 0) {
     jsonSchema.$defs = Rec.map(document.definitions, rewriteOpenAI)
   }
   return { codec, jsonSchema }
 }
 
-/**
- * Post-processes the JSON schema produced by `Schema.toJsonSchemaDocument`,
- * recursively flattening `allOf` arrays by merging each member's keys into
- * the parent object. This is necessary because OpenAI structured output does
- * not support `allOf`.
- */
 function rewriteOpenAI(schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema {
+  return InternalStructuredOutput.walkJsonSchema(schema, (schema) => {
+    const normalized = normalizeAllOf(schema)
+    const out: JsonSchema.JsonSchema = {}
+    let unsupportedFormat: string | undefined
+    for (const [key, value] of Object.entries(normalized)) {
+      if (key === "format") {
+        if (typeof value === "string" && formats.has(value) && supportsType(key, normalized.type)) out.format = value
+        else if (typeof value === "string") unsupportedFormat = value
+      } else if (supportedKeywords.has(key) && supportsType(key, normalized.type)) {
+        if (key !== "additionalProperties" || value === false) out[key] = value
+      }
+    }
+    if (unsupportedFormat !== undefined) {
+      InternalStructuredOutput.appendDescription(out, `a value with a format of ${unsupportedFormat}`)
+    }
+    if (out.type === "object" && out.properties === undefined && out.additionalProperties === false) {
+      out.properties = {}
+    }
+    return out
+  })
+}
+
+function supportsType(key: string, type: unknown): boolean {
+  if (typeof type !== "string") return true
+  switch (key) {
+    case "pattern":
+    case "format":
+      return type === "string"
+    case "multipleOf":
+    case "minimum":
+    case "exclusiveMinimum":
+    case "maximum":
+    case "exclusiveMaximum":
+      return type === "number" || type === "integer"
+    case "items":
+    case "minItems":
+    case "maxItems":
+      return type === "array"
+    case "properties":
+    case "patternProperties":
+    case "required":
+    case "additionalProperties":
+      return type === "object"
+    default:
+      return true
+  }
+}
+
+function normalizeAllOf(schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema {
+  if (!Array.isArray(schema.allOf)) return schema
+
   const out: JsonSchema.JsonSchema = {}
-  for (const [k, v] of Object.entries(schema)) {
-    if (k === "allOf" && Array.isArray(v)) {
-      for (const member of v) {
-        Object.assign(out, rewriteOpenAI(member as JsonSchema.JsonSchema))
-      }
-    } else if (Array.isArray(v)) {
-      out[k] = v.map((item) =>
-        typeof item === "object" && item !== null && !Array.isArray(item)
-          ? rewriteOpenAI(item as JsonSchema.JsonSchema)
-          : item
-      )
-    } else if (typeof v === "object" && v !== null) {
-      out[k] = rewriteOpenAI(v as JsonSchema.JsonSchema)
-    } else {
-      out[k] = v
+  const patterns: Array<string> = []
+  const baseKeywords = new Set<string>()
+  const memberKeywords = new Set<string>()
+  const ambiguousKeywords = new Set<string>()
+  for (const [key, value] of Object.entries(schema)) {
+    if (key === "allOf") continue
+    baseKeywords.add(key)
+    if (key === "pattern" && typeof value === "string") patterns.push(value)
+    else out[key] = value
+  }
+  for (const member of schema.allOf) {
+    if (!InternalStructuredOutput.isJsonSchema(member)) continue
+    for (const [key, value] of Object.entries(member)) {
+      mergeAllOfKeyword(out, key, value, patterns, baseKeywords, memberKeywords, ambiguousKeywords)
     }
   }
-  if (out.type === "object" && out.properties === undefined && out.additionalProperties === false) {
-    out.properties = {}
-  }
-  return out
-}
-
-function recurOpenAI(ast: SchemaAST.AST): SchemaAST.AST {
-  switch (ast._tag) {
-    case "Declaration":
-    case "Void":
-    case "Never":
-    case "Unknown":
-    case "Any":
-    case "BigInt":
-    case "Symbol":
-    case "UniqueSymbol":
-    case "ObjectKeyword":
-    case "Enum":
-    case "TemplateLiteral":
-      return unsupportedAst(
-        ast,
-        "OpenAI structured output does not support this schema kind; consider transforming the schema or using a different provider"
-      )
-    case "Undefined":
-      return unsupportedAst(
-        ast,
-        "OpenAI structured output does not support undefined; consider transforming the schema or using a different provider; if using `Schema.optional`, consider using `Schema.optionalKey` instead"
-      )
-    case "Null":
-      return ast
-    case "String": {
-      const { annotations, filters } = get(ast)
-      if (annotations !== undefined || filters !== undefined) {
-        return new SchemaAST.String(annotations, filters)
-      }
-      return ast
-    }
-    case "Number": {
-      const { annotations, filters } = get(ast)
-      if (annotations !== undefined || filters !== undefined) {
-        return new SchemaAST.Number(annotations, filters)
-      }
-      return ast
-    }
-    case "Boolean":
-      return ast
-    case "Literal": {
-      const literal = ast.literal
-      if (typeof literal === "string" || typeof literal === "number" || typeof literal === "boolean") {
-        const { annotations, filters } = get(ast)
-        if (annotations !== undefined || filters !== undefined) {
-          return new SchemaAST.Literal(ast.literal, annotations, filters)
-        }
-        return ast
-      }
-      throw new Error(
-        `${errorPrefix}: Unsupported literal type ${typeof literal} (value: ${
-          String(literal)
-        }) (supported: string | number | boolean)`
-      )
-    }
-    case "Union": {
-      if (ast.mode === "oneOf") {
-        return new SchemaAST.Union(ast.types, "anyOf", ast.annotations, ast.checks)
-      }
-      const types = SchemaAST.mapOrSame(ast.types, recurOpenAI)
-      const { annotations, filters } = get(ast)
-      if (types !== ast.types || annotations !== undefined || filters !== undefined) {
-        return new SchemaAST.Union(types, "anyOf", annotations, filters)
-      }
-      return ast
-    }
-    case "Arrays": {
-      if (ast.rest.length > 1) {
-        throw new Error(
-          `${errorPrefix}: Post-rest elements are not supported for arrays (rest length: ${ast.rest.length})`
-        )
-      }
-      let { annotations, filters } = get(ast)
-      if (ast.elements.length > 0) {
-        // tuples are not supported by OpenAI, we translate them to objects with string keys
-        if (annotations !== undefined && typeof annotations.description === "string") {
-          annotations.description = `${TUPLE_DESCRIPTION}; ${annotations.description}`
-        } else {
-          annotations ??= {}
-          annotations.description = TUPLE_DESCRIPTION
-        }
-        const propertySignatures = ast.elements.map((e, i) => {
-          return new SchemaAST.PropertySignature(String(i), e)
-        })
-        if (ast.rest.length === 1) {
-          propertySignatures.push(
-            new SchemaAST.PropertySignature(REST_PROPERTY_NAME, new SchemaAST.Arrays(false, [], ast.rest))
-          )
-        }
-        return SchemaAST.decodeTo(
-          recurOpenAI(new SchemaAST.Objects(propertySignatures, [], annotations, filters)),
-          ast,
-          SchemaTransformation.transform({
-            decode: (o) => {
-              let t: Array<unknown> = []
-              for (let i = 0; i < ast.elements.length; i++) {
-                const k = String(i)
-                if (o[k] !== undefined) {
-                  t.push(o[k])
-                }
-              }
-              if (REST_PROPERTY_NAME in o) {
-                t = [...t, ...o[REST_PROPERTY_NAME]]
-              }
-              return t
-            },
-            encode: (t) => {
-              const o: Record<string, unknown> = {}
-              for (let i = 0; i < ast.elements.length; i++) {
-                if (t.length >= i) {
-                  o[String(i)] = t[i]
-                }
-              }
-              if (ast.rest.length === 1) {
-                o[REST_PROPERTY_NAME] = t.length >= ast.elements.length ? t.slice(ast.elements.length) : []
-              }
-              return o
-            }
-          })
-        )
-      } else {
-        const rest = SchemaAST.mapOrSame(ast.rest, recurOpenAI)
-        if (rest !== ast.rest || annotations !== undefined || filters !== undefined) {
-          return new SchemaAST.Arrays(false, [], rest, annotations, filters)
-        }
-        return ast
-      }
-    }
-    case "Objects": {
-      let { annotations, filters } = get(ast)
-      if (ast.indexSignatures.length === 0) {
-        const propertySignatures = SchemaAST.mapOrSame(ast.propertySignatures, (ps) => {
-          if (typeof ps.name !== "string") {
-            throw new Error(
-              `${errorPrefix}: Property names must be strings (got ${typeof ps.name})`
-            )
-          }
-          let type = recurOpenAI(ps.type)
-          // optional properties are not supported by OpenAI, so we translate them to nullable unions
-          if (SchemaAST.isOptional(ps.type)) {
-            type = SchemaAST.decodeTo(
-              new SchemaAST.Union([type, SchemaAST.null], "anyOf"),
-              SchemaAST.optionalKey(type),
-              SchemaTransformation.transformOptional({
-                decode: Option.filter(Predicate.isNotNull),
-                encode: Option.orElseSome(() => null)
-              })
-            )
-          }
-          if (type === ps.type) {
-            return ps
-          }
-          return new SchemaAST.PropertySignature(ps.name, type)
-        })
-        if (
-          propertySignatures !== ast.propertySignatures || annotations !== undefined || filters !== undefined
-        ) {
-          return new SchemaAST.Objects(propertySignatures, [], annotations, filters)
-        }
-      } else if (ast.indexSignatures.length === 1 && ast.propertySignatures.length === 0) {
-        const is = ast.indexSignatures[0]
-        if (Tool.isEmptyParamsRecord(is)) {
-          return ast
-        }
-        // records are not supported by OpenAI, so we translate them to arrays of key-value pairs
-        if (annotations !== undefined && typeof annotations.description === "string") {
-          annotations.description = `${RECORD_DESCRIPTION}; ${annotations.description}`
-        } else {
-          annotations ??= {}
-          annotations.description = RECORD_DESCRIPTION
-        }
-        return SchemaAST.decodeTo(
-          recurOpenAI(
-            new SchemaAST.Arrays(false, [], [new SchemaAST.Arrays(false, [is.parameter, is.type], [])], annotations)
-          ),
-          ast,
-          SchemaTransformation.transform({
-            decode: Object.fromEntries,
-            encode: Object.entries
-          })
-        )
-      } else {
-        throw new Error(
-          `${errorPrefix}: unsupported object schema shape (properties: ${ast.propertySignatures.length}, indexSignatures: ${ast.indexSignatures.length}). Supported: plain objects (properties only) or records (single index signature, no properties)`
-        )
-      }
-      return ast
-    }
-    case "Suspend": {
-      const cached = cache.get(ast)
-      if (cached) return cached
-      const { annotations } = get(ast)
-      const out = new SchemaAST.Suspend(() => recurOpenAI(ast.thunk()), annotations)
-      cache.set(ast, out)
-      return out
-    }
-  }
-}
-
-const cache = new Map<SchemaAST.AST, SchemaAST.AST>()
-
-const errorPrefix = "OpenAiStructuredOutput"
-
-function unsupportedAst(ast: SchemaAST.AST, details?: string): never {
-  const base = `Unsupported AST ${ast._tag}`
-  const full = `${errorPrefix}: ${base}`
-  throw new Error(details !== undefined ? `${full} (${details})` : full)
-}
-
-const REST_PROPERTY_NAME = "__rest__"
-
-const RECORD_DESCRIPTION =
-  "Object encoded as array of [key, value] pairs. Apply object constraints to the decoded object"
-
-const TUPLE_DESCRIPTION =
-  "Tuple encoded as an object with numeric string keys ('0', '1', ...). If present, '__rest__' contains remaining elements"
-
-type Annotation =
-  | { readonly _tag: "description"; readonly description: string }
-  | { readonly _tag: "format"; readonly format: string }
-
-type Filter =
-  | Annotation
-  | { readonly _tag: "filter"; readonly filter: SchemaAST.Filter<any> }
-  | { readonly _tag: "regex"; readonly source: string }
-
-const get = (ast: SchemaAST.AST): {
-  annotations: Record<string, string> | undefined
-  filters: [SchemaAST.Check<any>, ...SchemaAST.Check<any>[]] | undefined
-} => {
-  const annotations: Record<string, string> = {}
-  const filters: Array<SchemaAST.Filter<any>> = []
-  const regexSources: Array<string> = []
-  const checks = getChecks(ast, SchemaAST.isArrays(ast))
-  if (checks.length > 0) {
-    for (const check of checks) {
-      switch (check._tag) {
-        case "description": {
-          if (annotations.description !== undefined) {
-            annotations.description += ` and ${check.description}`
-          } else {
-            annotations.description = check.description
-          }
-          break
-        }
-        case "format": {
-          annotations.format = check.format
-          break
-        }
-        case "filter": {
-          filters.push(check.filter)
-          break
-        }
-        case "regex": {
-          regexSources.push(check.source)
-          break
-        }
-      }
-    }
-  }
-  // OpenAI does not support allOf, so we merge multiple regex patterns into a single isPattern filter
-  if (regexSources.length === 1) {
-    filters.push(SchemaAST.isPattern(new RegExp(regexSources[0])))
-  } else if (regexSources.length > 1) {
-    const combined = regexSources.map((s) => `(?=[\\s\\S]*?(?:${s}))`).join("")
-    filters.push(SchemaAST.isPattern(new RegExp(`^${combined}`)))
-  }
-  return {
-    annotations: Object.keys(annotations).length > 0 ? annotations : undefined,
-    filters: Arr.isArrayNonEmpty(filters) ? filters : undefined
-  }
-}
-
-const getChecks = (ast: SchemaAST.AST, isArray: boolean): Array<Filter> => [
-  ...(ast.checks !== undefined ? getFilters(ast.checks, isArray) : []),
-  ...getAnnotations(ast.annotations)
-]
-
-const getAnnotations = (annotations: Schema.Annotations.Filter | undefined): Array<Annotation> => {
-  const out: Array<Annotation> = []
-  if (annotations !== undefined) {
-    const description = annotations?.description
-      ?? (annotations.meta?._tag === "isInt" || annotations.meta?._tag === "isFinite"
-        ? undefined
-        : annotations?.expected)
-    if (typeof description === "string") {
-      out.push({ _tag: "description", description })
-    }
-    const format = annotations?.format
-    if (typeof format === "string") {
-      if (formats.includes(format)) {
-        out.push({ _tag: "format", format })
-      } else {
-        out.push({ _tag: "description", description: `a value with a format of ${format}` })
-      }
-    }
+  const uniquePatterns = Array.from(new Set(patterns))
+  if (uniquePatterns.length === 1) {
+    out.pattern = uniquePatterns[0]
+  } else if (uniquePatterns.length > 1) {
+    const combined = uniquePatterns.map((source) => `(?=[\\s\\S]*?(?:${source}))`).join("")
+    out.pattern = `^${combined}`
   }
   return out
 }
 
-function getFilter(filter: SchemaAST.Filter<any>, isArray: boolean): Array<Filter> {
-  let out: Array<Filter> = []
-  const annotations = getAnnotations(filter.annotations)
-  const meta = filter.annotations?.meta
-  if (meta !== undefined) {
-    switch (meta._tag) {
-      case "isMinLength":
-      case "isMaxLength":
-      case "isLengthBetween": {
-        out = out.concat(annotations)
-        if (isArray) {
-          out.push({ _tag: "filter", filter: resetFilter(filter) })
-        }
-        break
+function mergeAllOfKeyword(
+  out: JsonSchema.JsonSchema,
+  key: string,
+  value: unknown,
+  patterns: Array<string>,
+  baseKeywords: ReadonlySet<string>,
+  memberKeywords: Set<string>,
+  ambiguousKeywords: Set<string>
+): void {
+  switch (key) {
+    case "description":
+      if (typeof value === "string") InternalStructuredOutput.appendDescription(out, value)
+      return
+    case "pattern":
+      if (typeof value === "string") patterns.push(value)
+      return
+    case "minimum":
+    case "exclusiveMinimum":
+      mergeLowerBound(out, key, value)
+      return
+    case "maximum":
+    case "exclusiveMaximum":
+      mergeUpperBound(out, key, value)
+      return
+    case "minItems":
+      mergeMinimum(out, key, value)
+      return
+    case "maxItems":
+      mergeMaximum(out, key, value)
+      return
+    default:
+      if (!normalizableAllOfKeywords.has(key) || baseKeywords.has(key) || ambiguousKeywords.has(key)) return
+      if (!memberKeywords.has(key)) {
+        out[key] = value
+        memberKeywords.add(key)
+      } else if (out[key] !== value) {
+        delete out[key]
+        memberKeywords.delete(key)
+        ambiguousKeywords.add(key)
       }
-      case "isInt":
-      case "isFinite":
-      case "isGreaterThan":
-      case "isGreaterThanOrEqualTo":
-      case "isLessThan":
-      case "isLessThanOrEqualTo":
-      case "isBetween":
-      case "isMultipleOf": {
-        out = out.concat(annotations)
-        out.push({ _tag: "filter", filter: resetFilter(filter) })
-        break
-      }
-      default: {
-        out = out.concat(annotations)
-        break
-      }
-    }
-    if ("regExp" in meta && meta.regExp instanceof RegExp) {
-      out.push({ _tag: "regex", source: meta.regExp.source })
-    }
+      return
   }
-  return out
 }
 
-function resetFilter(filter: SchemaAST.Filter<any>): SchemaAST.Filter<any> {
-  return filter.annotate({
-    description: undefined,
-    expected: undefined,
-    title: undefined,
-    format: undefined
-  })
+function mergeMinimum(schema: JsonSchema.JsonSchema, key: string, value: unknown): void {
+  if (typeof value !== "number") return
+  const current = schema[key]
+  if (typeof current !== "number" || value > current) schema[key] = value
 }
 
-function getFilters(
-  checks: readonly [SchemaAST.Check<any>, ...SchemaAST.Check<any>[]],
-  isArray: boolean
-): Array<Filter> {
-  return checks.flatMap((check) => {
-    switch (check._tag) {
-      case "Filter":
-        return getFilter(check, isArray)
-      case "FilterGroup":
-        return getFilters(check.checks, isArray)
-    }
-  })
+function mergeMaximum(schema: JsonSchema.JsonSchema, key: string, value: unknown): void {
+  if (typeof value !== "number") return
+  const current = schema[key]
+  if (typeof current !== "number" || value < current) schema[key] = value
 }
 
-const formats = [
+function mergeLowerBound(schema: JsonSchema.JsonSchema, key: string, value: unknown): void {
+  if (typeof value !== "number") {
+    if (!Object.hasOwn(schema, key)) schema[key] = value
+    return
+  }
+  const minimum = typeof schema.minimum === "number" ? schema.minimum : undefined
+  const exclusiveMinimum = typeof schema.exclusiveMinimum === "number" ? schema.exclusiveMinimum : undefined
+  let current: { readonly value: number; readonly exclusive: boolean } | undefined
+  if (minimum !== undefined) current = { value: minimum, exclusive: false }
+  if (
+    exclusiveMinimum !== undefined &&
+    (current === undefined || exclusiveMinimum >= current.value)
+  ) {
+    current = { value: exclusiveMinimum, exclusive: true }
+  }
+  const candidate = { value, exclusive: key === "exclusiveMinimum" }
+  if (
+    current === undefined ||
+    candidate.value > current.value ||
+    (candidate.value === current.value && candidate.exclusive)
+  ) {
+    current = candidate
+  }
+  delete schema.minimum
+  delete schema.exclusiveMinimum
+  schema[current.exclusive ? "exclusiveMinimum" : "minimum"] = current.value
+}
+
+function mergeUpperBound(schema: JsonSchema.JsonSchema, key: string, value: unknown): void {
+  if (typeof value !== "number") {
+    if (!Object.hasOwn(schema, key)) schema[key] = value
+    return
+  }
+  const maximum = typeof schema.maximum === "number" ? schema.maximum : undefined
+  const exclusiveMaximum = typeof schema.exclusiveMaximum === "number" ? schema.exclusiveMaximum : undefined
+  let current: { readonly value: number; readonly exclusive: boolean } | undefined
+  if (maximum !== undefined) current = { value: maximum, exclusive: false }
+  if (
+    exclusiveMaximum !== undefined &&
+    (current === undefined || exclusiveMaximum <= current.value)
+  ) {
+    current = { value: exclusiveMaximum, exclusive: true }
+  }
+  const candidate = { value, exclusive: key === "exclusiveMaximum" }
+  if (
+    current === undefined ||
+    candidate.value < current.value ||
+    (candidate.value === current.value && candidate.exclusive)
+  ) {
+    current = candidate
+  }
+  delete schema.maximum
+  delete schema.exclusiveMaximum
+  schema[current.exclusive ? "exclusiveMaximum" : "maximum"] = current.value
+}
+
+const supportedKeywords = new Set([
+  "$ref",
+  "type",
+  "title",
+  "description",
+  "enum",
+  "anyOf",
+  "properties",
+  "required",
+  "additionalProperties",
+  "items",
+  "pattern",
+  "multipleOf",
+  "minimum",
+  "exclusiveMinimum",
+  "maximum",
+  "exclusiveMaximum",
+  "minItems",
+  "maxItems"
+])
+
+const normalizableAllOfKeywords = new Set([
+  "$ref",
+  "title",
+  "enum",
+  "anyOf",
+  "format",
+  "multipleOf"
+])
+
+const formats = new Set([
   "date-time",
   "time",
   "date",
   "duration",
   "email",
   "hostname",
-  "uri",
   "ipv4",
   "ipv6",
   "uuid"
-]
+])

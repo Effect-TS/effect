@@ -30,6 +30,7 @@ This document maps v3 Schema APIs to their v4 equivalents. Simple renames and ar
 | `Redacted`                                      | `RedactedFromValue`                                                           | rename            |
 | `EitherFromSelf`                                | `Result`                                                                      | rename            |
 | `DateFromNumber`                                | `DateFromMillis`                                                              | rename            |
+| `Date`                                          | `DateFromString`                                                              | restructure       |
 | `TaggedError`                                   | `TaggedErrorClass`                                                            | rename            |
 | `decodeUnknown`                                 | `decodeUnknownEffect`                                                         | rename            |
 | `decode`                                        | `decodeEffect`                                                                | rename            |
@@ -86,6 +87,30 @@ This document maps v3 Schema APIs to their v4 equivalents. Simple renames and ar
 The following `*FromSelf` schemas have been renamed to drop the suffix:
 
 `DateFromSelf` → `Date`, `DurationFromSelf` → `Duration`, `ChunkFromSelf` → `Chunk`, `ReadonlyMapFromSelf` → `ReadonlyMap`, `ReadonlySetFromSelf` → `ReadonlySet`, `HashMapFromSelf` → `HashMap`, `HashSetFromSelf` → `HashSet`, `BigDecimalFromSelf` → `BigDecimal`, `CauseFromSelf` → `Cause`, `ExitFromSelf` → `Exit`, `OptionFromSelf` → `Option`, `RegExpFromSelf` → `RegExp`
+
+### `Date` encoded contract
+
+**Migration: restructure**
+
+In v3, `Schema.Date` decoded an ISO date string to a `Date` and rejected invalid dates. In v4, `Schema.Date` is the renamed `Schema.DateFromSelf`, so it expects a valid `Date` as its encoded value. Existing code can still type-check after upgrading while no longer accepting the same input.
+
+v3
+
+```ts
+import { Schema } from "effect"
+
+const DateFromIsoString = Schema.Date
+```
+
+v4
+
+```ts
+import { Schema } from "effect"
+
+const DateFromIsoString = Schema.DateFromString
+```
+
+`Schema.DateFromString` preserves the string-to-`Date` transformation and rejects strings that produce invalid dates.
 
 ### Filter renames
 
@@ -243,7 +268,7 @@ v4
 ```ts
 import { Schema, SchemaRepresentation } from "effect"
 
-const doc = SchemaRepresentation.fromAST(Schema.String.ast)
+const doc = SchemaRepresentation.toRepresentation(Schema.String.ast)
 const multi = SchemaRepresentation.toMultiDocument(doc)
 const codeDoc = SchemaRepresentation.toCodeDocument(multi)
 console.log(codeDoc.codes[0].Type)
@@ -873,14 +898,14 @@ const NumberFromString = Schema.transformOrFail(Schema.String, Schema.Number, {
 v4
 
 ```ts
-import { Effect, Number, Option, Schema, SchemaGetter, SchemaIssue } from "effect"
+import { Effect, Number, Schema, SchemaGetter, SchemaIssue } from "effect"
 
 const NumberFromString = Schema.String.pipe(
   Schema.decodeTo(Schema.Number, {
     decode: SchemaGetter.transformOrFail((s) => {
       const n = Number.parse(s)
       if (n === undefined) {
-        return Effect.fail(new SchemaIssue.InvalidValue(Option.some(s)))
+        return Effect.fail(new SchemaIssue.InvalidValue())
       }
       return Effect.succeed(n)
     }),

@@ -6,7 +6,7 @@ In this guide, we'll walk you through setting up the necessary dependencies and 
 
 # Requirements
 
-First, ensure you have [`vitest`](https://vitest.dev/guide/) installed (version `1.6.0` or later).
+First, ensure you have a supported [`vitest`](https://vitest.dev/guide/) version installed (`^4.1.0`).
 
 ```sh
 pnpm add -D vitest
@@ -28,13 +28,13 @@ import { it } from "@effect/vitest"
 
 This import enhances the standard `it` function from `vitest` with several powerful features, including:
 
-| Feature         | Description                                                                                            |
-| --------------- | ------------------------------------------------------------------------------------------------------ |
-| `it.effect`     | Automatically injects a `TestContext` (e.g., `TestClock`) when running a test.                         |
-| `it.live`       | Runs the test with the live Effect environment.                                                        |
-| `it.scoped`     | Allows running an Effect program that requires a `Scope`.                                              |
-| `it.scopedLive` | Combines the features of `scoped` and `live`, using a live Effect environment that requires a `Scope`. |
-| `it.flakyTest`  | Facilitates the execution of tests that might occasionally fail.                                       |
+| Feature        | Description                                                                                         |
+| -------------- | --------------------------------------------------------------------------------------------------- |
+| `it.effect`    | Runs a scoped test with test services such as `TestClock` and `TestConsole`.                        |
+| `it.live`      | Runs a scoped test with the live Effect environment.                                                |
+| `it.layer`     | Shares a `Layer` between multiple tests.                                                            |
+| `it.prop`      | Runs property tests using Effect `Schema` values or FastCheck arbitraries.                          |
+| `it.flakyTest` | Retries an Effect that might occasionally fail until it succeeds or reaches the configured timeout. |
 
 # Writing Tests with `it.effect`
 
@@ -48,7 +48,7 @@ import { it } from "@effect/vitest"
 it.effect("test name", () => EffectContainingAssertions, timeout: number | TestOptions = 5_000)
 ```
 
-`it.effect` automatically provides a `TestContext`, allowing access to services like [`TestClock`](#using-the-testclock).
+`it.effect` automatically provides the Effect test services, including [`TestClock`](#using-the-testclock), and a fresh `Scope` for each test. The scope is closed when the test finishes.
 
 ## Testing Successful Operations
 
@@ -110,7 +110,7 @@ it.effect("test failure as Exit", () =>
 
 ## Using the TestClock
 
-When writing tests with `it.effect`, a `TestContext` is automatically provided. This context gives access to various testing services, including the [`TestClock`](https://effect.website/docs/guides/testing/testclock), which allows you to simulate the passage of time in your tests.
+When writing tests with `it.effect`, Effect test services are automatically provided. These include the [`TestClock`](https://effect.website/docs/guides/testing/testclock), which allows you to simulate the passage of time in your tests.
 
 **Note**: If you want to use the real-time clock (instead of the simulated one), you can switch to `it.live`.
 
@@ -126,7 +126,8 @@ Here are examples that demonstrate how you can work with time in your tests usin
 
 ```ts
 import { it } from "@effect/vitest"
-import { Clock, Effect, TestClock } from "effect"
+import { Clock, Effect } from "effect"
+import { TestClock } from "effect/testing"
 
 // Effect to log the current time
 const logNow = Effect.gen(function*() {
@@ -212,7 +213,7 @@ When adding new failing tests, you might not be able to fix them right away. Ins
 import { it } from "@effect/vitest"
 import { Effect, Exit } from "effect"
 
-function divide(a: number, b: number): number {
+function divide(a: number, b: number) {
   if (b === 0) return Effect.fail("Cannot divide by zero")
   return Effect.succeed(a / b)
 }
@@ -246,7 +247,7 @@ it.effect("providing a logger displays a log", () =>
   Effect.gen(function*() {
     yield* Effect.log("it.effect with custom logger") // Log will be displayed
   }).pipe(
-    Effect.provide(Logger.pretty) // Providing a pretty logger for log output
+    Effect.provide(Logger.layer([Logger.consolePretty()])) // Providing a pretty logger for log output
   ))
 
 // This test runs using `it.live`, which enables logging by default
@@ -256,11 +257,11 @@ it.live("it.live displays a log", () =>
   }))
 ```
 
-# Writing Tests with `it.scoped`
+# Resource Safety and Scope
 
-The `it.scoped` method is used for tests that involve `Effect` programs needing a `Scope`. A `Scope` ensures that any resources your test acquires are managed properly, meaning they will be released when the test completes. This helps prevent resource leaks and guarantees test isolation.
+Both `it.effect` and `it.live` provide a fresh `Scope` and close it after each test. Test bodies can therefore use scoped resources directly. Do not wrap the test body in `Effect.scoped`, because the test runner already manages its scope.
 
-**Example** (Using `it.scoped` to Manage Resource Lifecycle)
+**Example** (Managing a Resource Lifecycle)
 
 ```ts
 import { it } from "@effect/vitest"
@@ -273,14 +274,7 @@ const release = Console.log("release resource")
 // Defining a resource that requires proper management
 const resource = Effect.acquireRelease(acquire, () => release)
 
-// Incorrect usage: This will result in a type error because it lacks a scope
 it.effect("run with scope", () =>
-  Effect.gen(function*() {
-    yield* resource
-  }))
-
-// Correct usage: Using 'it.scoped' to manage the scope correctly
-it.scoped("run with scope", () =>
   Effect.gen(function*() {
     yield* resource
   }))

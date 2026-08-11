@@ -56,7 +56,9 @@ export interface EntityManager {
   }) => boolean
   readonly clearProcessed: () => void
 
-  readonly interruptShard: (shardId: ShardId) => Effect.Effect<void>
+  readonly interruptShard: (shardId: ShardId, options?: {
+    readonly force?: boolean
+  }) => Effect.Effect<void>
 
   readonly activeEntityCount: Effect.Effect<number>
 }
@@ -108,7 +110,7 @@ export const make = Effect.fnUntraced(function*<
   const clock = yield* Clock
   const context = yield* Effect.context<Rpc.Services<Rpcs> | Rpc.Middleware<Rpcs> | RX>()
   const defectRetryPolicy = options.defectRetryPolicy
-    ? Schedule.andThen(options.defectRetryPolicy, defaultRetryPolicy)
+    ? Schedule.concat(options.defectRetryPolicy, defaultRetryPolicy)
     : defaultRetryPolicy
   const retryDriver = yield* Schedule.toStepWithSleep(defectRetryPolicy)
   const entityRpcs = new Map(entity.protocol.requests)
@@ -117,7 +119,10 @@ export const make = Effect.fnUntraced(function*<
   entityRpcs.set(KeepAliveRpc._tag, KeepAliveRpc as any)
 
   const activeServers = new Map<EntityId, EntityState>()
-  const serverCloseLatches = new Map<EntityAddress, Latch.Latch>()
+  const serverCloseLatches = new Map<EntityAddress, {
+    readonly closed: Latch.Latch
+    readonly force: Latch.Latch
+  }>()
   const processedRequestIds = new Set<Snowflake.Snowflake>()
 
   const entities: ResourceMap<
@@ -132,12 +137,16 @@ export const make = Effect.fnUntraced(function*<
     const scope = yield* Effect.scope
     const endLatch = Latch.makeUnsafe()
     const keepAliveLatch = Latch.makeUnsafe()
+    const closeLatches = {
+      closed: Latch.makeUnsafe(),
+      force: Latch.makeUnsafe()
+    }
 
     // on shutdown, reset the storage for the entity
     yield* Scope.addFinalizerExit(
       scope,
       () => {
-        serverCloseLatches.get(address)?.openUnsafe()
+        serverCloseLatches.get(address)?.closed.openUnsafe()
         serverCloseLatches.delete(address)
         return Effect.void
       }
@@ -154,14 +163,13 @@ export const make = Effect.fnUntraced(function*<
       Effect.fnUntraced(function*(scope) {
         let isShuttingDown = false
 
-        const handlerContext = Context.mutate(context, (context) =>
-          context.pipe(
-            Context.add(CurrentAddress, address),
-            Context.add(CurrentRunnerAddress, options.runnerAddress),
-            Context.add(KeepAliveLatch, keepAliveLatch),
-            Context.add(Scope.Scope, scope),
-            Context.add(CurrentLogAnnotations, {})
-          ))
+        const handlerContext = context.pipe(
+          Context.add(CurrentAddress, address),
+          Context.add(CurrentRunnerAddress, options.runnerAddress),
+          Context.add(KeepAliveLatch, keepAliveLatch),
+          Context.add(Scope.Scope, scope),
+          Context.add(CurrentLogAnnotations, {})
+        )
 
         // Initiate the behavior for the entity
         const handlers = yield* (entity.protocol.toHandlers(buildHandlers as any).pipe(
@@ -373,14 +381,19 @@ export const make = Effect.fnUntraced(function*<
       scope,
       Effect.withFiber((fiber) => {
         activeServers.delete(address.entityId)
-        serverCloseLatches.set(address, Latch.makeUnsafe())
         internalInterruptors.add(fiber.id)
-        return state.write(0, { _tag: "Eof" }).pipe(
-          Effect.andThen(Effect.interruptible(endLatch.await)),
-          Effect.timeoutOption(config.entityTerminationTimeout)
+        return Effect.raceFirst(
+          state.write(0, { _tag: "Eof" }).pipe(
+            Effect.andThen(endLatch.await),
+            Effect.timeoutOption(config.entityTerminationTimeout),
+            Effect.interruptible
+          ),
+          Effect.interruptible(closeLatches.force.await)
         )
       })
     )
+    // Do not make shard interruption wait for an entity that is still building.
+    serverCloseLatches.set(address, closeLatches)
     activeServers.set(address.entityId, state)
 
     return state
@@ -532,22 +545,29 @@ export const make = Effect.fnUntraced(function*<
     )
   }
 
-  const decodeMessage = makeMessageDecode(entity, entityRpcs)
+  const decodeMessage = makeMessageDecode(entityRpcs)
 
   const runFork = Effect.runForkWith(context)
 
   return identity<EntityManager>({
-    interruptShard: (shardId: ShardId) =>
+    interruptShard: (shardId: ShardId, options) =>
       Effect.suspend(function loop(): Effect.Effect<void> {
         const fibers = Arr.empty<Fiber.Fiber<void>>()
+        if (options?.force === true) {
+          serverCloseLatches.forEach((latches, address) => {
+            if (shardId[Equal.symbol](address.shardId)) {
+              latches.force.openUnsafe()
+            }
+          })
+        }
         activeServers.forEach((state) => {
           if (shardId[Equal.symbol](state.address.shardId)) {
             fibers.push(runFork(entities.removeIgnore(state.address)))
           }
         })
-        serverCloseLatches.forEach((latch, address) => {
+        serverCloseLatches.forEach((latches, address) => {
           if (shardId[Equal.symbol](address.shardId)) {
-            fibers.push(runFork(latch.await))
+            fibers.push(runFork(latches.closed.await))
           }
         })
         if (fibers.length === 0) return Effect.void
@@ -629,10 +649,7 @@ const defaultRetryPolicy = Schedule.min([
   Schedule.spaced("10 seconds")
 ])
 
-const makeMessageDecode = <Type extends string, Rpcs extends Rpc.Any>(
-  entity: Entity<Type, Rpcs>,
-  entityRpcs: Map<string, Rpcs>
-) => {
+const makeMessageDecode = <Rpcs extends Rpc.Any>(entityRpcs: Map<string, Rpcs>) => {
   const decodeRequest = Effect.fnUntracedEager(function*(
     message: Message.IncomingRequest<Rpcs>,
     rpc: Rpc.AnyWithProps
@@ -670,8 +687,8 @@ const makeMessageDecode = <Type extends string, Rpcs extends Rpc.Any>(
     if (!rpc) {
       return Effect.fail(
         new Schema.SchemaError(
-          new SchemaIssue.InvalidValue(Option.some(message), {
-            message: `Unknown tag ${message.envelope.tag} for entity type ${entity.type}`
+          new SchemaIssue.InvalidValue({
+            message: "Expected a known entity RPC tag"
           })
         )
       )

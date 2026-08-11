@@ -518,10 +518,71 @@ export const TestClientError = <Tag extends string, E>(
         },
         [
           `import * as Sse from "effect/unstable/encoding/Sse"`,
-          `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: typeof StreamEvents200Sse.Type }, HttpClientError.HttpClientError | SchemaError | Sse.Retry, typeof StreamEvents200Sse.DecodingServices>`,
+          `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: typeof StreamEvents200Sse.Type }, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
           `"streamEventsSse": () => HttpClientRequest.get(\`/events\`).pipe(`,
           `sseRequest(StreamEvents200Sse)`,
           `schema: Schema.ConstraintDecoder<Type, DecodingServices>`
+        ]
+      ))
+
+    it.effect("annotated sse operation decodes the full event schema", () =>
+      assertRuntimeIncludes(
+        {
+          openapi: "3.1.0",
+          info: {
+            title: "Test API",
+            version: "1.0.0"
+          },
+          paths: {
+            "/events": {
+              get: {
+                operationId: "streamEvents",
+                parameters: [],
+                responses: {
+                  200: {
+                    description: "Events streamed successfully",
+                    content: {
+                      "text/event-stream": {
+                        schema: {
+                          type: "object",
+                          properties: {
+                            id: {
+                              anyOf: [{ type: "string" }, { type: "null" }]
+                            },
+                            event: { const: "message" },
+                            data: { type: "string" }
+                          },
+                          required: ["id", "event", "data"],
+                          additionalProperties: false
+                        },
+                        "x-effect-stream": {
+                          encoding: "sse",
+                          errorSchema: {},
+                          causeSchema: {},
+                          failureEvent: "effect/httpapi/stream/failure"
+                        }
+                      }
+                    }
+                  }
+                },
+                tags: ["Events"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {},
+            securitySchemes: {}
+          },
+          security: [],
+          tags: []
+        },
+        [
+          `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("message"), "data": Schema.String`,
+          `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("effect/httpapi/stream/failure"), "data": Schema.String`,
+          `readonly "streamEventsSse": () => Stream.Stream<typeof StreamEvents200Sse.Type, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
+          `sseEventRequest(StreamEvents200Sse)`,
+          `Stream.pipeThroughChannel(Sse.decodeSchema(schema))`
         ]
       ))
 
@@ -1538,6 +1599,144 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
         ],
         [
           `Schema.String.annotate({ "format": "binary" })`,
+          `export type UploadBody =`
+        ]
+      ))
+
+    it.effect("preserves multipart component reference siblings", () =>
+      assertHttpApiIncludes(
+        {
+          openapi: "3.1.0",
+          info: {
+            title: "Test API",
+            version: "1.0.0"
+          },
+          paths: {
+            "/upload": {
+              post: {
+                operationId: "upload",
+                parameters: [],
+                requestBody: {
+                  required: true,
+                  content: {
+                    "multipart/form-data": {
+                      schema: {
+                        type: "object",
+                        properties: {
+                          first: {
+                            $ref: "#/components/schemas/UploadBody",
+                            minProperties: 1,
+                            description: "First upload"
+                          },
+                          second: {
+                            $ref: "#/components/schemas/UploadBody",
+                            minProperties: 2,
+                            description: "Second upload"
+                          }
+                        },
+                        required: ["first", "second"],
+                        additionalProperties: false
+                      }
+                    }
+                  }
+                } as any,
+                responses: {
+                  200: {
+                    description: "Uploaded"
+                  }
+                },
+                tags: ["Payload"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {
+              UploadBody: {
+                type: "object",
+                properties: {
+                  file: { type: "string", format: "binary" }
+                },
+                required: ["file"],
+                additionalProperties: false
+              }
+            },
+            securitySchemes: {}
+          },
+          security: [],
+          tags: [{ name: "Payload" }]
+        },
+        [
+          `"first": Schema.Struct({ "file": __HttpApiMultipartSingleFile })`,
+          `Schema.isMinProperties(1)`,
+          `"description": "First upload"`,
+          `"second": Schema.Struct({ "file": __HttpApiMultipartSingleFile })`,
+          `Schema.isMinProperties(2)`,
+          `"description": "Second upload"`
+        ]
+      ))
+
+    it.effect("preserves multipart component alias siblings", () =>
+      assertHttpApiIncludes(
+        {
+          openapi: "3.1.0",
+          info: {
+            title: "Test API",
+            version: "1.0.0"
+          },
+          paths: {
+            "/upload": {
+              post: {
+                operationId: "upload",
+                parameters: [],
+                requestBody: {
+                  required: true,
+                  content: {
+                    "multipart/form-data": {
+                      schema: {
+                        $ref: "#/components/schemas/UploadAlias"
+                      }
+                    }
+                  }
+                } as any,
+                responses: {
+                  200: {
+                    description: "Uploaded"
+                  }
+                },
+                tags: ["Payload"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {
+              UploadAlias: {
+                $ref: "#/components/schemas/UploadBody",
+                minProperties: 1,
+                description: "Aliased upload"
+              },
+              UploadBody: {
+                type: "object",
+                properties: {
+                  file: { type: "string", format: "binary" }
+                },
+                required: ["file"],
+                additionalProperties: false
+              }
+            },
+            securitySchemes: {}
+          },
+          security: [],
+          tags: [{ name: "Payload" }]
+        },
+        [
+          `export type UploadRequestFormData = { readonly "file": __HttpApiMultipartSingleFile }`,
+          `Schema.isMinProperties(1)`,
+          `"description": "Aliased upload"`
+        ],
+        [
+          `export type UploadAlias =`,
           `export type UploadBody =`
         ]
       ))

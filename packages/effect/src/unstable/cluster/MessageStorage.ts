@@ -42,7 +42,7 @@ import * as Snowflake from "./Snowflake.ts"
  * messages; manages reply handlers; and provides transaction wrapping for storage
  * operations.
  *
- * @category context
+ * @category services
  * @since 4.0.0
  */
 export class MessageStorage extends Context.Service<MessageStorage, {
@@ -180,7 +180,7 @@ export class MessageStorage extends Context.Service<MessageStorage, {
  * A duplicate result carries the original request ID and the last reply already
  * received for the duplicated request.
  *
- * @category SaveResult
+ * @category models
  * @since 4.0.0
  */
 export type SaveResult<R extends Rpc.Any> = SaveResult.Success | SaveResult.Duplicate<R>
@@ -188,7 +188,7 @@ export type SaveResult<R extends Rpc.Any> = SaveResult.Success | SaveResult.Dupl
 /**
  * Constructors and matchers for decoded save results.
  *
- * @category SaveResult
+ * @category constructors
  * @since 4.0.0
  */
 export const SaveResult = Data.taggedEnum<SaveResult.Constructor>()
@@ -197,7 +197,7 @@ export const SaveResult = Data.taggedEnum<SaveResult.Constructor>()
  * Constructors and matchers for encoded save results returned by storage
  * drivers.
  *
- * @category SaveResult
+ * @category constructors
  * @since 4.0.0
  */
 export const SaveResultEncoded = Data.taggedEnum<SaveResult.Encoded>()
@@ -216,7 +216,7 @@ export declare namespace SaveResult {
    * Duplicate results contain an encoded last received reply instead of a decoded
    * reply.
    *
-   * @category SaveResult
+   * @category models
    * @since 4.0.0
    */
   export type Encoded = SaveResult.Success | SaveResult.DuplicateEncoded
@@ -224,7 +224,7 @@ export declare namespace SaveResult {
   /**
    * Variant indicating that the message was saved as a new storage entry.
    *
-   * @category SaveResult
+   * @category models
    * @since 4.0.0
    */
   export interface Success {
@@ -239,7 +239,7 @@ export declare namespace SaveResult {
    * It carries the original request ID and the latest decoded reply, when one is
    * available.
    *
-   * @category SaveResult
+   * @category models
    * @since 4.0.0
    */
   export interface Duplicate<R extends Rpc.Any> {
@@ -256,7 +256,7 @@ export declare namespace SaveResult {
    * It carries the original request ID and the latest encoded reply, when one is
    * available.
    *
-   * @category SaveResult
+   * @category models
    * @since 4.0.0
    */
   export interface DuplicateEncoded {
@@ -268,7 +268,7 @@ export declare namespace SaveResult {
   /**
    * Generic tagged enum constructor type for `SaveResult`.
    *
-   * @category SaveResult
+   * @category utility types
    * @since 4.0.0
    */
   export interface Constructor extends Data.TaggedEnum.WithGenerics<1> {
@@ -284,7 +284,7 @@ export declare namespace SaveResult {
  * Implementations persist encoded messages, track primary keys and delayed
  * delivery, read unprocessed messages, and provide transaction wrapping.
  *
- * @category Encoded
+ * @category services
  * @since 4.0.0
  */
 export type Encoded = {
@@ -412,7 +412,7 @@ export type Encoded = {
  * The fields distinguish existing shards from newly assigned shards and carry the
  * driver-specific pagination cursor.
  *
- * @category Encoded
+ * @category models
  * @since 4.0.0
  */
 export type EncodedUnprocessedOptions<A> = {
@@ -429,7 +429,7 @@ export type EncodedUnprocessedOptions<A> = {
  * The fields distinguish existing requests from new requests and carry the
  * driver-specific pagination cursor.
  *
- * @category Encoded
+ * @category models
  * @since 4.0.0
  */
 export type EncodedRepliesOptions<A> = {
@@ -606,11 +606,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         ),
         Effect.asVoid
       ),
-    saveReply: (reply) =>
-      Effect.flatMap(
-        Reply.serialize(reply),
-        encoded.saveReply
-      ),
+    saveReply: (reply) => Effect.flatMap(Reply.serializeOrDefect(reply), encoded.saveReply),
     clearReplies: encoded.clearReplies,
     repliesFor: Effect.fnUntraced(function*(messages) {
       const requestIds = Arr.empty<string>()
@@ -793,7 +789,7 @@ export const noop: MessageStorage["Service"] = Effect.runSync(make({
  * It stores the encoded envelope, last acknowledged chunk, accumulated replies,
  * and optional delivery time.
  *
- * @category memory
+ * @category models
  * @since 4.0.0
  */
 export type MemoryEntry = {
@@ -806,7 +802,7 @@ export type MemoryEntry = {
 /**
  * Provides a context reference used in tests to simulate a transaction.
  *
- * @category memory
+ * @category services
  * @since 4.0.0
  */
 export const MemoryTransaction = Context.Reference<boolean>("effect/cluster/MessageStorage/MemoryTransaction", {
@@ -822,7 +818,7 @@ export const MemoryTransaction = Context.Reference<boolean>("effect/cluster/Mess
  * maps used to track requests, primary keys, unprocessed envelopes, reply IDs,
  * and the journal.
  *
- * @category memory
+ * @category services
  * @since 4.0.0
  */
 export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluster/MessageStorage/MemoryDriver", {
@@ -995,6 +991,14 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
       resetAddress: () => Effect.void,
       clearAddress: (address) =>
         Effect.sync(() => {
+          for (const [primaryKey, entry] of requestsByPrimaryKey) {
+            const envelope = entry.envelope
+            const sameAddress = address.entityType === envelope.address.entityType &&
+              address.entityId === envelope.address.entityId
+            if (sameAddress) {
+              requestsByPrimaryKey.delete(primaryKey)
+            }
+          }
           for (let i = journal.length - 1; i >= 0; i--) {
             const envelope = journal[i]
             const sameAddress = address.entityType === envelope.address.entityType &&

@@ -1,55 +1,54 @@
 import { JsonSchema, Schema, SchemaRepresentation } from "effect"
 import { describe, it } from "vitest"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "../../utils/assert.ts"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual, throws } from "../../utils/assert.ts"
 
-const json = (annotations?: Schema.Annotations.Annotations) => {
-  const representation = SchemaRepresentation.fromAST(Schema.Json.ast).representation
-  return annotations === undefined
-    ? representation
-    : {
-      ...representation,
-      annotations: {
-        ...("annotations" in representation ? representation.annotations : undefined),
-        ...annotations
-      }
-    }
+function toSchemaFromJsonSchemaDocument(
+  document: JsonSchema.Document<"draft-2020-12">,
+  options?: SchemaRepresentation.FromJsonSchemaOptions
+): Schema.Top {
+  return SchemaRepresentation.fromJsonSchemaDocument(document, { patterns: "apply", ...options })
+}
+
+function fromJsonSchemaRepresentation(
+  document: JsonSchema.Document<"draft-2020-12">,
+  options?: SchemaRepresentation.FromJsonSchemaOptions
+): SchemaRepresentation.Document {
+  return SchemaRepresentation.toRepresentation(toSchemaFromJsonSchemaDocument(document, options).ast)
 }
 
 describe("fromJsonSchemaDocument", () => {
   function assertFromJsonSchema(
     input: {
       readonly schema: JsonSchema.JsonSchema
-      readonly options?: {
-        readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
-      }
+      readonly options?: SchemaRepresentation.FromJsonSchemaOptions
     },
-    expected: {
-      readonly representation: SchemaRepresentation.Representation
-      readonly references?: Record<string, SchemaRepresentation.Representation>
-    },
-    runtime?: string
+    expected: Schema.Json
   ) {
-    const expectedDocument: SchemaRepresentation.Document = {
-      representation: expected.representation,
-      references: expected.references ?? {}
-    }
     const jsonDocument = JsonSchema.fromSchemaDraft2020_12(input.schema)
-    const document = SchemaRepresentation.fromJsonSchemaDocument(jsonDocument, input.options)
-    deepStrictEqual(document, expectedDocument)
-    const multiDocument = SchemaRepresentation.toMultiDocument(document)
-    if (runtime !== undefined) {
-      strictEqual(SchemaRepresentation.toCodeDocument(multiDocument).codes[0].runtime, runtime)
-    }
-    return document
+    const schema = toSchemaFromJsonSchemaDocument(jsonDocument, input.options)
+    const document = SchemaRepresentation.toRepresentation(schema.ast)
+    deepStrictEqual(SchemaRepresentation.toJson(document), expected)
+    return schema
   }
 
-  it("{}", () => {
+  it("unconstrained schema", () => {
     assertFromJsonSchema(
       { schema: {} },
       {
-        representation: json()
-      },
-      "Schema.Json"
+        "representation": {
+          "_tag": "Declaration",
+          "representation": {
+            "id": "effect/schema/Json",
+            "payload": null
+          },
+          "annotations": {
+            "expected": "JSON value"
+          },
+          "typeParameters": [],
+          "checks": []
+        },
+        "references": {}
+      }
     )
     assertFromJsonSchema(
       {
@@ -63,34 +62,63 @@ describe("fromJsonSchemaDocument", () => {
         }
       },
       {
-        representation: json({
-          title: "a",
-          description: "b",
-          default: "c",
-          examples: ["d"],
-          readOnly: true,
-          writeOnly: true
-        })
-      },
-      `Schema.Json.annotate({ "title": "a", "description": "b", "default": "c", "examples": ["d"], "readOnly": true, "writeOnly": true })`
+        "representation": {
+          "_tag": "Declaration",
+          "representation": {
+            "id": "effect/schema/Json",
+            "payload": null
+          },
+          "annotations": {
+            "expected": "JSON value",
+            "title": "a",
+            "description": "b",
+            "default": "c",
+            "examples": [
+              "d"
+            ],
+            "readOnly": true,
+            "writeOnly": true
+          },
+          "typeParameters": [],
+          "checks": []
+        },
+        "references": {}
+      }
     )
   })
 
   describe("const", () => {
-    it("const: literal (string)", () => {
+    it("string literal", () => {
       assertFromJsonSchema(
         { schema: { const: "a" } },
         {
-          representation: { _tag: "Literal", literal: "a" }
-        },
-        `Schema.Literal("a")`
+          "representation": {
+            "_tag": "Literal",
+            "checks": [],
+            "literal": {
+              "type": "string",
+              "value": "a"
+            }
+          },
+          "references": {}
+        }
       )
       assertFromJsonSchema(
         { schema: { const: "a", description: "a" } },
         {
-          representation: { _tag: "Literal", literal: "a", annotations: { description: "a" } }
-        },
-        `Schema.Literal("a").annotate({ "description": "a" })`
+          "representation": {
+            "_tag": "Literal",
+            "annotations": {
+              "description": "a"
+            },
+            "checks": [],
+            "literal": {
+              "type": "string",
+              "value": "a"
+            }
+          },
+          "references": {}
+        }
       )
     })
 
@@ -98,9 +126,16 @@ describe("fromJsonSchemaDocument", () => {
       assertFromJsonSchema(
         { schema: { const: 1 } },
         {
-          representation: { _tag: "Literal", literal: 1 }
-        },
-        `Schema.Literal(1)`
+          "representation": {
+            "_tag": "Literal",
+            "checks": [],
+            "literal": {
+              "type": "number",
+              "value": 1
+            }
+          },
+          "references": {}
+        }
       )
     })
 
@@ -108,26 +143,42 @@ describe("fromJsonSchemaDocument", () => {
       assertFromJsonSchema(
         { schema: { const: true } },
         {
-          representation: { _tag: "Literal", literal: true }
-        },
-        `Schema.Literal(true)`
+          "representation": {
+            "_tag": "Literal",
+            "checks": [],
+            "literal": {
+              "type": "boolean",
+              "value": true
+            }
+          },
+          "references": {}
+        }
       )
     })
 
-    it("const: null", () => {
+    it("null literal", () => {
       assertFromJsonSchema(
         { schema: { const: null } },
         {
-          representation: { _tag: "Null" }
-        },
-        `Schema.Null`
+          "representation": {
+            "_tag": "Null",
+            "checks": []
+          },
+          "references": {}
+        }
       )
       assertFromJsonSchema(
         { schema: { const: null, description: "a" } },
         {
-          representation: { _tag: "Null", annotations: { description: "a" } }
-        },
-        `Schema.Null.annotate({ "description": "a" })`
+          "representation": {
+            "_tag": "Null",
+            "annotations": {
+              "description": "a"
+            },
+            "checks": []
+          },
+          "references": {}
+        }
       )
     })
 
@@ -135,28 +186,56 @@ describe("fromJsonSchemaDocument", () => {
       assertFromJsonSchema(
         { schema: { const: {} } },
         {
-          representation: json()
-        },
-        `Schema.Json`
+          "representation": {
+            "_tag": "Declaration",
+            "representation": {
+              "id": "effect/schema/Json",
+              "payload": null
+            },
+            "annotations": {
+              "expected": "JSON value"
+            },
+            "typeParameters": [],
+            "checks": []
+          },
+          "references": {}
+        }
       )
     })
   })
 
   describe("enum", () => {
-    it("single enum (string)", () => {
+    it("single string member", () => {
       assertFromJsonSchema(
         { schema: { enum: ["a"] } },
         {
-          representation: { _tag: "Literal", literal: "a" }
-        },
-        `Schema.Literal("a")`
+          "representation": {
+            "_tag": "Literal",
+            "checks": [],
+            "literal": {
+              "type": "string",
+              "value": "a"
+            }
+          },
+          "references": {}
+        }
       )
       assertFromJsonSchema(
         { schema: { enum: ["a"], description: "a" } },
         {
-          representation: { _tag: "Literal", literal: "a", annotations: { description: "a" } }
-        },
-        `Schema.Literal("a").annotate({ "description": "a" })`
+          "representation": {
+            "_tag": "Literal",
+            "annotations": {
+              "description": "a"
+            },
+            "checks": [],
+            "literal": {
+              "type": "string",
+              "value": "a"
+            }
+          },
+          "references": {}
+        }
       )
     })
 
@@ -164,9 +243,16 @@ describe("fromJsonSchemaDocument", () => {
       assertFromJsonSchema(
         { schema: { enum: [1] } },
         {
-          representation: { _tag: "Literal", literal: 1 }
-        },
-        `Schema.Literal(1)`
+          "representation": {
+            "_tag": "Literal",
+            "checks": [],
+            "literal": {
+              "type": "number",
+              "value": 1
+            }
+          },
+          "references": {}
+        }
       )
     })
 
@@ -174,41 +260,80 @@ describe("fromJsonSchemaDocument", () => {
       assertFromJsonSchema(
         { schema: { enum: [true] } },
         {
-          representation: { _tag: "Literal", literal: true }
-        },
-        `Schema.Literal(true)`
+          "representation": {
+            "_tag": "Literal",
+            "checks": [],
+            "literal": {
+              "type": "boolean",
+              "value": true
+            }
+          },
+          "references": {}
+        }
       )
     })
 
-    it("multiple enum (literals)", () => {
+    it("multiple literal members", () => {
       assertFromJsonSchema(
         { schema: { enum: ["a", 1] } },
         {
-          representation: {
-            _tag: "Union",
-            types: [
-              { _tag: "Literal", literal: "a" },
-              { _tag: "Literal", literal: 1 }
+          "representation": {
+            "_tag": "Union",
+            "checks": [],
+            "types": [
+              {
+                "_tag": "Literal",
+                "checks": [],
+                "literal": {
+                  "type": "string",
+                  "value": "a"
+                }
+              },
+              {
+                "_tag": "Literal",
+                "checks": [],
+                "literal": {
+                  "type": "number",
+                  "value": 1
+                }
+              }
             ],
-            mode: "anyOf"
-          }
-        },
-        `Schema.Literals(["a", 1])`
+            "mode": "anyOf"
+          },
+          "references": {}
+        }
       )
       assertFromJsonSchema(
         { schema: { enum: ["a", 1], description: "a" } },
         {
-          representation: {
-            _tag: "Union",
-            types: [
-              { _tag: "Literal", literal: "a" },
-              { _tag: "Literal", literal: 1 }
+          "representation": {
+            "_tag": "Union",
+            "annotations": {
+              "description": "a"
+            },
+            "checks": [],
+            "types": [
+              {
+                "_tag": "Literal",
+                "checks": [],
+                "literal": {
+                  "type": "string",
+                  "value": "a"
+                }
+              },
+              {
+                "_tag": "Literal",
+                "checks": [],
+                "literal": {
+                  "type": "number",
+                  "value": 1
+                }
+              }
             ],
-            mode: "anyOf",
-            annotations: { description: "a" }
-          }
-        },
-        `Schema.Literals(["a", 1]).annotate({ "description": "a" })`
+            "mode": "anyOf"
+          },
+          "references": {}
+        }
       )
     })
 
@@ -216,16 +341,27 @@ describe("fromJsonSchemaDocument", () => {
       assertFromJsonSchema(
         { schema: { enum: ["a", null] } },
         {
-          representation: {
-            _tag: "Union",
-            types: [
-              { _tag: "Literal", literal: "a" },
-              { _tag: "Null" }
+          "representation": {
+            "_tag": "Union",
+            "checks": [],
+            "types": [
+              {
+                "_tag": "Literal",
+                "checks": [],
+                "literal": {
+                  "type": "string",
+                  "value": "a"
+                }
+              },
+              {
+                "_tag": "Null",
+                "checks": []
+              }
             ],
-            mode: "anyOf"
-          }
-        },
-        `Schema.Union([Schema.Literal("a"), Schema.Null])`
+            "mode": "anyOf"
+          },
+          "references": {}
+        }
       )
     })
   })
@@ -234,23 +370,46 @@ describe("fromJsonSchemaDocument", () => {
     assertFromJsonSchema(
       { schema: { anyOf: [{ const: "a" }, { enum: [1, 2] }] } },
       {
-        representation: {
-          _tag: "Union",
-          types: [
-            { _tag: "Literal", literal: "a" },
+        "representation": {
+          "_tag": "Union",
+          "checks": [],
+          "types": [
             {
-              _tag: "Union",
-              types: [
-                { _tag: "Literal", literal: 1 },
-                { _tag: "Literal", literal: 2 }
+              "_tag": "Literal",
+              "checks": [],
+              "literal": {
+                "type": "string",
+                "value": "a"
+              }
+            },
+            {
+              "_tag": "Union",
+              "checks": [],
+              "types": [
+                {
+                  "_tag": "Literal",
+                  "checks": [],
+                  "literal": {
+                    "type": "number",
+                    "value": 1
+                  }
+                },
+                {
+                  "_tag": "Literal",
+                  "checks": [],
+                  "literal": {
+                    "type": "number",
+                    "value": 2
+                  }
+                }
               ],
-              mode: "anyOf"
+              "mode": "anyOf"
             }
           ],
-          mode: "anyOf"
-        }
-      },
-      `Schema.Union([Schema.Literal("a"), Schema.Literals([1, 2])])`
+          "mode": "anyOf"
+        },
+        "references": {}
+      }
     )
   })
 
@@ -268,35 +427,132 @@ describe("fromJsonSchemaDocument", () => {
         }
       },
       {
-        representation: {
-          _tag: "Union",
-          types: [
+        "representation": {
+          "_tag": "Union",
+          "checks": [],
+          "types": [
             {
-              _tag: "Objects",
-              propertySignatures: [
-                { name: "a", isOptional: false, isMutable: false, type: { _tag: "String", checks: [] } },
-                { name: "id", isOptional: false, isMutable: false, type: { _tag: "String", checks: [] } }
+              "_tag": "Objects",
+              "checks": [],
+              "propertySignatures": [
+                {
+                  "name": {
+                    "type": "string",
+                    "value": "a"
+                  },
+                  "type": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "isOptional": false,
+                  "isMutable": false
+                },
+                {
+                  "name": {
+                    "type": "string",
+                    "value": "id"
+                  },
+                  "type": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "isOptional": false,
+                  "isMutable": false
+                }
               ],
-              indexSignatures: [{ parameter: { _tag: "String", checks: [] }, type: json() }],
-              checks: []
+              "indexSignatures": [
+                {
+                  "parameter": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "type": {
+                    "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
+                    "annotations": {
+                      "expected": "JSON value"
+                    },
+                    "typeParameters": [],
+                    "checks": []
+                  }
+                }
+              ]
             },
             {
-              _tag: "Objects",
-              propertySignatures: [
+              "_tag": "Objects",
+              "checks": [],
+              "propertySignatures": [
                 {
-                  name: "b",
-                  isOptional: false,
-                  isMutable: false,
-                  type: { _tag: "Number", checks: [{ _tag: "Filter", meta: { _tag: "isFinite" } }] }
+                  "name": {
+                    "type": "string",
+                    "value": "b"
+                  },
+                  "type": {
+                    "_tag": "Number",
+                    "checks": [
+                      {
+                        "_tag": "Filter",
+                        "representation": {
+                          "id": "effect/schema/isFinite",
+                          "payload": null
+                        },
+                        "annotations": {
+                          "expected": "a finite number",
+                          "arbitrary": {
+                            "constraint": {
+                              "noInfinity": true,
+                              "noNaN": true
+                            }
+                          }
+                        },
+                        "aborted": false
+                      }
+                    ]
+                  },
+                  "isOptional": false,
+                  "isMutable": false
                 },
-                { name: "id", isOptional: false, isMutable: false, type: { _tag: "String", checks: [] } }
+                {
+                  "name": {
+                    "type": "string",
+                    "value": "id"
+                  },
+                  "type": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "isOptional": false,
+                  "isMutable": false
+                }
               ],
-              indexSignatures: [{ parameter: { _tag: "String", checks: [] }, type: json() }],
-              checks: []
+              "indexSignatures": [
+                {
+                  "parameter": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "type": {
+                    "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
+                    "annotations": {
+                      "expected": "JSON value"
+                    },
+                    "typeParameters": [],
+                    "checks": []
+                  }
+                }
+              ]
             }
           ],
-          mode: "anyOf"
-        }
+          "mode": "anyOf"
+        },
+        "references": {}
       }
     )
   })
@@ -305,23 +561,46 @@ describe("fromJsonSchemaDocument", () => {
     assertFromJsonSchema(
       { schema: { oneOf: [{ const: "a" }, { enum: [1, 2] }] } },
       {
-        representation: {
-          _tag: "Union",
-          types: [
-            { _tag: "Literal", literal: "a" },
+        "representation": {
+          "_tag": "Union",
+          "checks": [],
+          "types": [
             {
-              _tag: "Union",
-              types: [
-                { _tag: "Literal", literal: 1 },
-                { _tag: "Literal", literal: 2 }
+              "_tag": "Literal",
+              "checks": [],
+              "literal": {
+                "type": "string",
+                "value": "a"
+              }
+            },
+            {
+              "_tag": "Union",
+              "checks": [],
+              "types": [
+                {
+                  "_tag": "Literal",
+                  "checks": [],
+                  "literal": {
+                    "type": "number",
+                    "value": 1
+                  }
+                },
+                {
+                  "_tag": "Literal",
+                  "checks": [],
+                  "literal": {
+                    "type": "number",
+                    "value": 2
+                  }
+                }
               ],
-              mode: "anyOf"
+              "mode": "anyOf"
             }
           ],
-          mode: "oneOf"
-        }
-      },
-      `Schema.Union([Schema.Literal("a"), Schema.Literals([1, 2])], { mode: "oneOf" })`
+          "mode": "oneOf"
+        },
+        "references": {}
+      }
     )
   })
 
@@ -339,35 +618,132 @@ describe("fromJsonSchemaDocument", () => {
         }
       },
       {
-        representation: {
-          _tag: "Union",
-          types: [
+        "representation": {
+          "_tag": "Union",
+          "checks": [],
+          "types": [
             {
-              _tag: "Objects",
-              propertySignatures: [
-                { name: "a", isOptional: false, isMutable: false, type: { _tag: "String", checks: [] } },
-                { name: "id", isOptional: false, isMutable: false, type: { _tag: "String", checks: [] } }
+              "_tag": "Objects",
+              "checks": [],
+              "propertySignatures": [
+                {
+                  "name": {
+                    "type": "string",
+                    "value": "a"
+                  },
+                  "type": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "isOptional": false,
+                  "isMutable": false
+                },
+                {
+                  "name": {
+                    "type": "string",
+                    "value": "id"
+                  },
+                  "type": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "isOptional": false,
+                  "isMutable": false
+                }
               ],
-              indexSignatures: [{ parameter: { _tag: "String", checks: [] }, type: json() }],
-              checks: []
+              "indexSignatures": [
+                {
+                  "parameter": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "type": {
+                    "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
+                    "annotations": {
+                      "expected": "JSON value"
+                    },
+                    "typeParameters": [],
+                    "checks": []
+                  }
+                }
+              ]
             },
             {
-              _tag: "Objects",
-              propertySignatures: [
+              "_tag": "Objects",
+              "checks": [],
+              "propertySignatures": [
                 {
-                  name: "b",
-                  isOptional: false,
-                  isMutable: false,
-                  type: { _tag: "Number", checks: [{ _tag: "Filter", meta: { _tag: "isFinite" } }] }
+                  "name": {
+                    "type": "string",
+                    "value": "b"
+                  },
+                  "type": {
+                    "_tag": "Number",
+                    "checks": [
+                      {
+                        "_tag": "Filter",
+                        "representation": {
+                          "id": "effect/schema/isFinite",
+                          "payload": null
+                        },
+                        "annotations": {
+                          "expected": "a finite number",
+                          "arbitrary": {
+                            "constraint": {
+                              "noInfinity": true,
+                              "noNaN": true
+                            }
+                          }
+                        },
+                        "aborted": false
+                      }
+                    ]
+                  },
+                  "isOptional": false,
+                  "isMutable": false
                 },
-                { name: "id", isOptional: false, isMutable: false, type: { _tag: "String", checks: [] } }
+                {
+                  "name": {
+                    "type": "string",
+                    "value": "id"
+                  },
+                  "type": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "isOptional": false,
+                  "isMutable": false
+                }
               ],
-              indexSignatures: [{ parameter: { _tag: "String", checks: [] }, type: json() }],
-              checks: []
+              "indexSignatures": [
+                {
+                  "parameter": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "type": {
+                    "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
+                    "annotations": {
+                      "expected": "JSON value"
+                    },
+                    "typeParameters": [],
+                    "checks": []
+                  }
+                }
+              ]
             }
           ],
-          mode: "oneOf"
-        }
+          "mode": "oneOf"
+        },
+        "references": {}
       }
     )
   })
@@ -377,9 +753,12 @@ describe("fromJsonSchemaDocument", () => {
       assertFromJsonSchema(
         { schema: { type: "null" } },
         {
-          representation: { _tag: "Null" }
-        },
-        `Schema.Null`
+          "representation": {
+            "_tag": "Null",
+            "checks": []
+          },
+          "references": {}
+        }
       )
     })
   })
@@ -389,9 +768,12 @@ describe("fromJsonSchemaDocument", () => {
       assertFromJsonSchema(
         { schema: { type: "string" } },
         {
-          representation: { _tag: "String", checks: [] }
-        },
-        `Schema.String`
+          "representation": {
+            "_tag": "String",
+            "checks": []
+          },
+          "references": {}
+        }
       )
     })
 
@@ -400,12 +782,32 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "string", minLength: 1 } },
           {
-            representation: {
-              _tag: "String",
-              checks: [{ _tag: "Filter", meta: { _tag: "isMinLength", minLength: 1 } }]
-            }
-          },
-          `Schema.String.check(Schema.isMinLength(1))`
+            "representation": {
+              "_tag": "String",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at least 1",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
+              ]
+            },
+            "references": {}
+          }
         )
       })
 
@@ -413,39 +815,102 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "string", maxLength: 1 } },
           {
-            representation: {
-              _tag: "String",
-              checks: [{ _tag: "Filter", meta: { _tag: "isMaxLength", maxLength: 1 } }]
-            }
-          },
-          `Schema.String.check(Schema.isMaxLength(1))`
+            "representation": {
+              "_tag": "String",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxLength",
+                    "payload": {
+                      "maxLength": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at most 1",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "maxLength": 1
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
+              ]
+            },
+            "references": {}
+          }
         )
       })
 
-      it("pattern", () => {
+      it("pattern with an explicit string type", () => {
         assertFromJsonSchema(
           { schema: { type: "string", pattern: "a*" } },
           {
-            representation: {
-              _tag: "String",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isPattern", regExp: new RegExp("a*") } }
+            "representation": {
+              "_tag": "String",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isPattern",
+                    "payload": {
+                      "source": "a*",
+                      "flags": ""
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a string matching the RegExp a*",
+                    "arbitrary": {
+                      "constraint": {
+                        "patterns": [
+                          "a*"
+                        ]
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.String.check(Schema.isPattern(new RegExp("a*")))`
+            },
+            "references": {}
+          }
         )
+      })
+
+      it("pattern infers the string type", () => {
         assertFromJsonSchema(
           { schema: { pattern: "a*" } },
           {
-            representation: {
-              _tag: "String",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isPattern", regExp: new RegExp("a*") } }
+            "representation": {
+              "_tag": "String",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isPattern",
+                    "payload": {
+                      "source": "a*",
+                      "flags": ""
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a string matching the RegExp a*",
+                    "arbitrary": {
+                      "constraint": {
+                        "patterns": [
+                          "a*"
+                        ]
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.String.check(Schema.isPattern(new RegExp("a*")))`
+            },
+            "references": {}
+          }
         )
       })
     })
@@ -456,14 +921,30 @@ describe("fromJsonSchemaDocument", () => {
       assertFromJsonSchema(
         { schema: { type: "number" } },
         {
-          representation: {
-            _tag: "Number",
-            checks: [
-              { _tag: "Filter", meta: { _tag: "isFinite" } }
+          "representation": {
+            "_tag": "Number",
+            "checks": [
+              {
+                "_tag": "Filter",
+                "representation": {
+                  "id": "effect/schema/isFinite",
+                  "payload": null
+                },
+                "annotations": {
+                  "expected": "a finite number",
+                  "arbitrary": {
+                    "constraint": {
+                      "noInfinity": true,
+                      "noNaN": true
+                    }
+                  }
+                },
+                "aborted": false
+              }
             ]
-          }
-        },
-        `Schema.Number.check(Schema.isFinite())`
+          },
+          "references": {}
+        }
       )
     })
 
@@ -472,15 +953,43 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "number", minimum: 1 } },
           {
-            representation: {
-              _tag: "Number",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isFinite" } },
-                { _tag: "Filter", meta: { _tag: "isGreaterThanOrEqualTo", minimum: 1 } }
+            "representation": {
+              "_tag": "Number",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "a finite number",
+                    "arbitrary": {
+                      "constraint": {
+                        "noInfinity": true,
+                        "noNaN": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isGreaterThanOrEqualTo",
+                    "payload": {
+                      "minimum": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value greater than or equal to 1"
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.Number.check(Schema.isFinite()).check(Schema.isGreaterThanOrEqualTo(1))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -488,15 +997,43 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "number", maximum: 1 } },
           {
-            representation: {
-              _tag: "Number",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isFinite" } },
-                { _tag: "Filter", meta: { _tag: "isLessThanOrEqualTo", maximum: 1 } }
+            "representation": {
+              "_tag": "Number",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "a finite number",
+                    "arbitrary": {
+                      "constraint": {
+                        "noInfinity": true,
+                        "noNaN": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isLessThanOrEqualTo",
+                    "payload": {
+                      "maximum": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value less than or equal to 1"
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.Number.check(Schema.isFinite()).check(Schema.isLessThanOrEqualTo(1))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -504,15 +1041,43 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "number", exclusiveMinimum: 1 } },
           {
-            representation: {
-              _tag: "Number",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isFinite" } },
-                { _tag: "Filter", meta: { _tag: "isGreaterThan", exclusiveMinimum: 1 } }
+            "representation": {
+              "_tag": "Number",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "a finite number",
+                    "arbitrary": {
+                      "constraint": {
+                        "noInfinity": true,
+                        "noNaN": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isGreaterThan",
+                    "payload": {
+                      "exclusiveMinimum": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value greater than 1"
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.Number.check(Schema.isFinite()).check(Schema.isGreaterThan(1))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -520,15 +1085,43 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "number", exclusiveMaximum: 1 } },
           {
-            representation: {
-              _tag: "Number",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isFinite" } },
-                { _tag: "Filter", meta: { _tag: "isLessThan", exclusiveMaximum: 1 } }
+            "representation": {
+              "_tag": "Number",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "a finite number",
+                    "arbitrary": {
+                      "constraint": {
+                        "noInfinity": true,
+                        "noNaN": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isLessThan",
+                    "payload": {
+                      "exclusiveMaximum": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value less than 1"
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.Number.check(Schema.isFinite()).check(Schema.isLessThan(1))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -536,15 +1129,43 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "number", multipleOf: 1 } },
           {
-            representation: {
-              _tag: "Number",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isFinite" } },
-                { _tag: "Filter", meta: { _tag: "isMultipleOf", divisor: 1 } }
+            "representation": {
+              "_tag": "Number",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "a finite number",
+                    "arbitrary": {
+                      "constraint": {
+                        "noInfinity": true,
+                        "noNaN": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMultipleOf",
+                    "payload": {
+                      "divisor": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value that is a multiple of 1"
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.Number.check(Schema.isFinite()).check(Schema.isMultipleOf(1))`
+            },
+            "references": {}
+          }
         )
       })
     })
@@ -555,14 +1176,29 @@ describe("fromJsonSchemaDocument", () => {
       assertFromJsonSchema(
         { schema: { type: "integer" } },
         {
-          representation: {
-            _tag: "Number",
-            checks: [
-              { _tag: "Filter", meta: { _tag: "isInt" } }
+          "representation": {
+            "_tag": "Number",
+            "checks": [
+              {
+                "_tag": "Filter",
+                "representation": {
+                  "id": "effect/schema/isInt",
+                  "payload": null
+                },
+                "annotations": {
+                  "expected": "an integer",
+                  "arbitrary": {
+                    "constraint": {
+                      "integer": true
+                    }
+                  }
+                },
+                "aborted": false
+              }
             ]
-          }
-        },
-        `Schema.Number.check(Schema.isInt())`
+          },
+          "references": {}
+        }
       )
     })
 
@@ -571,15 +1207,42 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "integer", minimum: 1 } },
           {
-            representation: {
-              _tag: "Number",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isInt" } },
-                { _tag: "Filter", meta: { _tag: "isGreaterThanOrEqualTo", minimum: 1 } }
+            "representation": {
+              "_tag": "Number",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "an integer",
+                    "arbitrary": {
+                      "constraint": {
+                        "integer": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isGreaterThanOrEqualTo",
+                    "payload": {
+                      "minimum": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value greater than or equal to 1"
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(1))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -587,15 +1250,42 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "integer", maximum: 1 } },
           {
-            representation: {
-              _tag: "Number",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isInt" } },
-                { _tag: "Filter", meta: { _tag: "isLessThanOrEqualTo", maximum: 1 } }
+            "representation": {
+              "_tag": "Number",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "an integer",
+                    "arbitrary": {
+                      "constraint": {
+                        "integer": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isLessThanOrEqualTo",
+                    "payload": {
+                      "maximum": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value less than or equal to 1"
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.Number.check(Schema.isInt()).check(Schema.isLessThanOrEqualTo(1))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -603,15 +1293,42 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "integer", exclusiveMinimum: 1 } },
           {
-            representation: {
-              _tag: "Number",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isInt" } },
-                { _tag: "Filter", meta: { _tag: "isGreaterThan", exclusiveMinimum: 1 } }
+            "representation": {
+              "_tag": "Number",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "an integer",
+                    "arbitrary": {
+                      "constraint": {
+                        "integer": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isGreaterThan",
+                    "payload": {
+                      "exclusiveMinimum": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value greater than 1"
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThan(1))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -619,15 +1336,42 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "integer", exclusiveMaximum: 1 } },
           {
-            representation: {
-              _tag: "Number",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isInt" } },
-                { _tag: "Filter", meta: { _tag: "isLessThan", exclusiveMaximum: 1 } }
+            "representation": {
+              "_tag": "Number",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "an integer",
+                    "arbitrary": {
+                      "constraint": {
+                        "integer": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isLessThan",
+                    "payload": {
+                      "exclusiveMaximum": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value less than 1"
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.Number.check(Schema.isInt()).check(Schema.isLessThan(1))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -635,15 +1379,42 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "integer", multipleOf: 1 } },
           {
-            representation: {
-              _tag: "Number",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isInt" } },
-                { _tag: "Filter", meta: { _tag: "isMultipleOf", divisor: 1 } }
+            "representation": {
+              "_tag": "Number",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "an integer",
+                    "arbitrary": {
+                      "constraint": {
+                        "integer": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMultipleOf",
+                    "payload": {
+                      "divisor": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value that is a multiple of 1"
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.Number.check(Schema.isInt()).check(Schema.isMultipleOf(1))`
+            },
+            "references": {}
+          }
         )
       })
     })
@@ -654,9 +1425,12 @@ describe("fromJsonSchemaDocument", () => {
       assertFromJsonSchema(
         { schema: { type: "boolean" } },
         {
-          representation: { _tag: "Boolean" }
-        },
-        `Schema.Boolean`
+          "representation": {
+            "_tag": "Boolean",
+            "checks": []
+          },
+          "references": {}
+        }
       )
     })
   })
@@ -666,14 +1440,27 @@ describe("fromJsonSchemaDocument", () => {
       assertFromJsonSchema(
         { schema: { type: "array" } },
         {
-          representation: {
-            _tag: "Arrays",
-            elements: [],
-            rest: [json()],
-            checks: []
-          }
-        },
-        `Schema.Array(Schema.Json)`
+          "representation": {
+            "_tag": "Arrays",
+            "checks": [],
+            "elements": [],
+            "rest": [
+              {
+                "_tag": "Declaration",
+                "representation": {
+                  "id": "effect/schema/Json",
+                  "payload": null
+                },
+                "annotations": {
+                  "expected": "JSON value"
+                },
+                "typeParameters": [],
+                "checks": []
+              }
+            ]
+          },
+          "references": {}
+        }
       )
     })
 
@@ -686,13 +1473,202 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: { _tag: "Arrays", elements: [], rest: [{ _tag: "String", checks: [] }], checks: [] }
-        },
-        `Schema.Array(Schema.String)`
+          "representation": {
+            "_tag": "Arrays",
+            "checks": [],
+            "elements": [],
+            "rest": [
+              {
+                "_tag": "String",
+                "checks": []
+              }
+            ]
+          },
+          "references": {}
+        }
       )
     })
 
-    it("prefixItems", () => {
+    it("prefixItems preserves maxItems below the prefix length", () => {
+      assertFromJsonSchema(
+        {
+          schema: {
+            type: "array",
+            prefixItems: [{ type: "string" }, { type: "number" }],
+            maxItems: 1
+          }
+        },
+        {
+          "representation": {
+            "_tag": "Arrays",
+            "checks": [
+              {
+                "_tag": "Filter",
+                "representation": {
+                  "id": "effect/schema/isMaxLength",
+                  "payload": {
+                    "maxLength": 1
+                  }
+                },
+                "annotations": {
+                  "expected": "a value with a length of at most 1",
+                  "~structural": true,
+                  "arbitrary": {
+                    "constraint": {
+                      "maxLength": 1
+                    }
+                  }
+                },
+                "aborted": false
+              }
+            ],
+            "elements": [
+              {
+                "isOptional": true,
+                "type": {
+                  "_tag": "String",
+                  "checks": []
+                }
+              },
+              {
+                "isOptional": true,
+                "type": {
+                  "_tag": "Number",
+                  "checks": [
+                    {
+                      "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isFinite",
+                        "payload": null
+                      },
+                      "annotations": {
+                        "expected": "a finite number",
+                        "arbitrary": {
+                          "constraint": {
+                            "noInfinity": true,
+                            "noNaN": true
+                          }
+                        }
+                      },
+                      "aborted": false
+                    }
+                  ]
+                }
+              }
+            ],
+            "rest": [
+              {
+                "_tag": "Declaration",
+                "representation": {
+                  "id": "effect/schema/Json",
+                  "payload": null
+                },
+                "annotations": {
+                  "expected": "JSON value"
+                },
+                "typeParameters": [],
+                "checks": []
+              }
+            ]
+          },
+          "references": {}
+        }
+      )
+    })
+
+    it("prefixItems preserves maxItems above the prefix length", () => {
+      assertFromJsonSchema(
+        {
+          schema: {
+            type: "array",
+            prefixItems: [{ type: "string" }],
+            maxItems: 2
+          }
+        },
+        {
+          "representation": {
+            "_tag": "Arrays",
+            "checks": [
+              {
+                "_tag": "Filter",
+                "representation": {
+                  "id": "effect/schema/isMaxLength",
+                  "payload": {
+                    "maxLength": 2
+                  }
+                },
+                "annotations": {
+                  "expected": "a value with a length of at most 2",
+                  "~structural": true,
+                  "arbitrary": {
+                    "constraint": {
+                      "maxLength": 2
+                    }
+                  }
+                },
+                "aborted": false
+              }
+            ],
+            "elements": [
+              {
+                "isOptional": true,
+                "type": {
+                  "_tag": "String",
+                  "checks": []
+                }
+              }
+            ],
+            "rest": [
+              {
+                "_tag": "Declaration",
+                "representation": {
+                  "id": "effect/schema/Json",
+                  "payload": null
+                },
+                "annotations": {
+                  "expected": "JSON value"
+                },
+                "typeParameters": [],
+                "checks": []
+              }
+            ]
+          },
+          "references": {}
+        }
+      )
+    })
+
+    it("prefixItems omits maxItems redundant with items: false", () => {
+      assertFromJsonSchema(
+        {
+          schema: {
+            type: "array",
+            prefixItems: [{ type: "string" }],
+            items: false,
+            maxItems: 2
+          }
+        },
+        {
+          "representation": {
+            "_tag": "Arrays",
+            "checks": [],
+            "elements": [
+              {
+                "isOptional": true,
+                "type": {
+                  "_tag": "String",
+                  "checks": []
+                }
+              }
+            ],
+            "rest": []
+          },
+          "references": {}
+        }
+      )
+    })
+
+    it("prefixItems closes when maxItems equals the prefix length", () => {
       assertFromJsonSchema(
         {
           schema: {
@@ -702,18 +1678,26 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: {
-            _tag: "Arrays",
-            elements: [
-              { isOptional: true, type: { _tag: "String", checks: [] } }
+          "representation": {
+            "_tag": "Arrays",
+            "checks": [],
+            "elements": [
+              {
+                "isOptional": true,
+                "type": {
+                  "_tag": "String",
+                  "checks": []
+                }
+              }
             ],
-            rest: [],
-            checks: []
-          }
-        },
-        `Schema.Tuple([Schema.optionalKey(Schema.String)])`
+            "rest": []
+          },
+          "references": {}
+        }
       )
+    })
 
+    it("prefixItems marks elements required by minItems", () => {
       assertFromJsonSchema(
         {
           schema: {
@@ -724,16 +1708,22 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: {
-            _tag: "Arrays",
-            elements: [
-              { isOptional: false, type: { _tag: "String", checks: [] } }
+          "representation": {
+            "_tag": "Arrays",
+            "checks": [],
+            "elements": [
+              {
+                "isOptional": false,
+                "type": {
+                  "_tag": "String",
+                  "checks": []
+                }
+              }
             ],
-            rest: [],
-            checks: []
-          }
-        },
-        `Schema.Tuple([Schema.String])`
+            "rest": []
+          },
+          "references": {}
+        }
       )
     })
 
@@ -748,18 +1738,45 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: {
-            _tag: "Arrays",
-            elements: [
-              { isOptional: false, type: { _tag: "String", checks: [] } }
+          "representation": {
+            "_tag": "Arrays",
+            "checks": [],
+            "elements": [
+              {
+                "isOptional": false,
+                "type": {
+                  "_tag": "String",
+                  "checks": []
+                }
+              }
             ],
-            rest: [
-              { _tag: "Number", checks: [{ _tag: "Filter", meta: { _tag: "isFinite" } }] }
-            ],
-            checks: []
-          }
-        },
-        `Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number.check(Schema.isFinite())])`
+            "rest": [
+              {
+                "_tag": "Number",
+                "checks": [
+                  {
+                    "_tag": "Filter",
+                    "representation": {
+                      "id": "effect/schema/isFinite",
+                      "payload": null
+                    },
+                    "annotations": {
+                      "expected": "a finite number",
+                      "arbitrary": {
+                        "constraint": {
+                          "noInfinity": true,
+                          "noNaN": true
+                        }
+                      }
+                    },
+                    "aborted": false
+                  }
+                ]
+              }
+            ]
+          },
+          "references": {}
+        }
       )
     })
 
@@ -768,14 +1785,47 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "array", minItems: 1 } },
           {
-            representation: {
-              _tag: "Arrays",
-              elements: [],
-              rest: [json()],
-              checks: [{ _tag: "Filter", meta: { _tag: "isMinLength", minLength: 1 } }]
-            }
-          },
-          `Schema.Array(Schema.Json).check(Schema.isMinLength(1))`
+            "representation": {
+              "_tag": "Arrays",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at least 1",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
+              ],
+              "elements": [],
+              "rest": [
+                {
+                  "_tag": "Declaration",
+                  "representation": {
+                    "id": "effect/schema/Json",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "JSON value"
+                  },
+                  "typeParameters": [],
+                  "checks": []
+                }
+              ]
+            },
+            "references": {}
+          }
         )
       })
 
@@ -783,14 +1833,47 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "array", maxItems: 1 } },
           {
-            representation: {
-              _tag: "Arrays",
-              elements: [],
-              rest: [json()],
-              checks: [{ _tag: "Filter", meta: { _tag: "isMaxLength", maxLength: 1 } }]
-            }
-          },
-          `Schema.Array(Schema.Json).check(Schema.isMaxLength(1))`
+            "representation": {
+              "_tag": "Arrays",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxLength",
+                    "payload": {
+                      "maxLength": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at most 1",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "maxLength": 1
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
+              ],
+              "elements": [],
+              "rest": [
+                {
+                  "_tag": "Declaration",
+                  "representation": {
+                    "id": "effect/schema/Json",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "JSON value"
+                  },
+                  "typeParameters": [],
+                  "checks": []
+                }
+              ]
+            },
+            "references": {}
+          }
         )
       })
 
@@ -798,35 +1881,93 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "array", uniqueItems: true } },
           {
-            representation: {
-              _tag: "Arrays",
-              elements: [],
-              rest: [json()],
-              checks: [{ _tag: "Filter", meta: { _tag: "isUnique" } }]
-            }
-          },
-          `Schema.Array(Schema.Json).check(Schema.isUnique())`
+            "representation": {
+              "_tag": "Arrays",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isUnique",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "an array with unique items",
+                    "arbitrary": {
+                      "constraint": {
+                        "unique": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
+              ],
+              "elements": [],
+              "rest": [
+                {
+                  "_tag": "Declaration",
+                  "representation": {
+                    "id": "effect/schema/Json",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "JSON value"
+                  },
+                  "typeParameters": [],
+                  "checks": []
+                }
+              ]
+            },
+            "references": {}
+          }
         )
+      })
+
+      it("does not require uniqueness when uniqueItems is false", () => {
+        const schema = toSchemaFromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "array", uniqueItems: false })
+        )
+
+        assertTrue(Schema.is(schema)(["a", "a"]))
       })
     })
   })
 
   describe("type: object", () => {
-    it("type only", () => {
+    it("allows additional properties by default", () => {
       assertFromJsonSchema(
         { schema: { type: "object" } },
         {
-          representation: {
-            _tag: "Objects",
-            propertySignatures: [],
-            indexSignatures: [
-              { parameter: { _tag: "String", checks: [] }, type: json() }
-            ],
-            checks: []
-          }
-        },
-        `Schema.Record(Schema.String, Schema.Json)`
+          "representation": {
+            "_tag": "Objects",
+            "checks": [],
+            "propertySignatures": [],
+            "indexSignatures": [
+              {
+                "parameter": {
+                  "_tag": "String",
+                  "checks": []
+                },
+                "type": {
+                  "_tag": "Declaration",
+                  "representation": {
+                    "id": "effect/schema/Json",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "JSON value"
+                  },
+                  "typeParameters": [],
+                  "checks": []
+                }
+              }
+            ]
+          },
+          "references": {}
+        }
       )
+    })
+
+    it("closes an object when additionalProperties is false", () => {
       assertFromJsonSchema(
         {
           schema: {
@@ -835,14 +1976,14 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: {
-            _tag: "Objects",
-            propertySignatures: [],
-            indexSignatures: [],
-            checks: []
-          }
-        },
-        `Schema.Struct({  })`
+          "representation": {
+            "_tag": "Objects",
+            "checks": [],
+            "propertySignatures": [],
+            "indexSignatures": []
+          },
+          "references": {}
+        }
       )
     })
 
@@ -855,16 +1996,25 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: {
-            _tag: "Objects",
-            propertySignatures: [],
-            indexSignatures: [
-              { parameter: { _tag: "String", checks: [] }, type: { _tag: "Boolean" } }
-            ],
-            checks: []
-          }
-        },
-        `Schema.Record(Schema.String, Schema.Boolean)`
+          "representation": {
+            "_tag": "Objects",
+            "checks": [],
+            "propertySignatures": [],
+            "indexSignatures": [
+              {
+                "parameter": {
+                  "_tag": "String",
+                  "checks": []
+                },
+                "type": {
+                  "_tag": "Boolean",
+                  "checks": []
+                }
+              }
+            ]
+          },
+          "references": {}
+        }
       )
     })
 
@@ -879,27 +2029,39 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: {
-            _tag: "Objects",
-            propertySignatures: [
+          "representation": {
+            "_tag": "Objects",
+            "checks": [],
+            "propertySignatures": [
               {
-                name: "a",
-                type: { _tag: "String", checks: [] },
-                isOptional: false,
-                isMutable: false
+                "name": {
+                  "type": "string",
+                  "value": "a"
+                },
+                "type": {
+                  "_tag": "String",
+                  "checks": []
+                },
+                "isOptional": false,
+                "isMutable": false
               },
               {
-                name: "b",
-                type: { _tag: "String", checks: [] },
-                isOptional: true,
-                isMutable: false
+                "name": {
+                  "type": "string",
+                  "value": "b"
+                },
+                "type": {
+                  "_tag": "String",
+                  "checks": []
+                },
+                "isOptional": true,
+                "isMutable": false
               }
             ],
-            indexSignatures: [],
-            checks: []
-          }
-        },
-        `Schema.Struct({ "a": Schema.String, "b": Schema.optionalKey(Schema.String) })`
+            "indexSignatures": []
+          },
+          "references": {}
+        }
       )
     })
 
@@ -914,25 +2076,42 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: {
-            _tag: "Objects",
-            propertySignatures: [{
-              name: "a",
-              type: { _tag: "String", checks: [] },
-              isOptional: false,
-              isMutable: false
-            }],
-            indexSignatures: [
-              { parameter: { _tag: "String", checks: [] }, type: { _tag: "Boolean" } }
+          "representation": {
+            "_tag": "Objects",
+            "checks": [],
+            "propertySignatures": [
+              {
+                "name": {
+                  "type": "string",
+                  "value": "a"
+                },
+                "type": {
+                  "_tag": "String",
+                  "checks": []
+                },
+                "isOptional": false,
+                "isMutable": false
+              }
             ],
-            checks: []
-          }
-        },
-        `Schema.StructWithRest(Schema.Struct({ "a": Schema.String }), [Schema.Record(Schema.String, Schema.Boolean)])`
+            "indexSignatures": [
+              {
+                "parameter": {
+                  "_tag": "String",
+                  "checks": []
+                },
+                "type": {
+                  "_tag": "Boolean",
+                  "checks": []
+                }
+              }
+            ]
+          },
+          "references": {}
+        }
       )
     })
 
-    it("patternProperties", () => {
+    it("imports a single pattern property", () => {
       assertFromJsonSchema(
         {
           schema: {
@@ -944,23 +2123,51 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: {
-            _tag: "Objects",
-            propertySignatures: [],
-            indexSignatures: [
+          "representation": {
+            "_tag": "Objects",
+            "checks": [],
+            "propertySignatures": [],
+            "indexSignatures": [
               {
-                parameter: {
-                  _tag: "String",
-                  checks: [{ _tag: "Filter", meta: { _tag: "isPattern", regExp: new RegExp("a*") } }]
+                "parameter": {
+                  "_tag": "String",
+                  "checks": [
+                    {
+                      "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isPattern",
+                        "payload": {
+                          "source": "a*",
+                          "flags": ""
+                        }
+                      },
+                      "annotations": {
+                        "expected": "a string matching the RegExp a*",
+                        "arbitrary": {
+                          "constraint": {
+                            "patterns": [
+                              "a*"
+                            ]
+                          }
+                        }
+                      },
+                      "aborted": false
+                    }
+                  ]
                 },
-                type: { _tag: "String", checks: [] }
+                "type": {
+                  "_tag": "String",
+                  "checks": []
+                }
               }
-            ],
-            checks: []
-          }
-        },
-        `Schema.Record(Schema.String.check(Schema.isPattern(new RegExp("a*"))), Schema.String)`
+            ]
+          },
+          "references": {}
+        }
       )
+    })
+
+    it("imports multiple pattern properties", () => {
       assertFromJsonSchema(
         {
           schema: {
@@ -973,29 +2180,97 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: {
-            _tag: "Objects",
-            propertySignatures: [],
-            indexSignatures: [
+          "representation": {
+            "_tag": "Objects",
+            "checks": [],
+            "propertySignatures": [],
+            "indexSignatures": [
               {
-                parameter: {
-                  _tag: "String",
-                  checks: [{ _tag: "Filter", meta: { _tag: "isPattern", regExp: new RegExp("a*") } }]
+                "parameter": {
+                  "_tag": "String",
+                  "checks": [
+                    {
+                      "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isPattern",
+                        "payload": {
+                          "source": "a*",
+                          "flags": ""
+                        }
+                      },
+                      "annotations": {
+                        "expected": "a string matching the RegExp a*",
+                        "arbitrary": {
+                          "constraint": {
+                            "patterns": [
+                              "a*"
+                            ]
+                          }
+                        }
+                      },
+                      "aborted": false
+                    }
+                  ]
                 },
-                type: { _tag: "String", checks: [] }
+                "type": {
+                  "_tag": "String",
+                  "checks": []
+                }
               },
               {
-                parameter: {
-                  _tag: "String",
-                  checks: [{ _tag: "Filter", meta: { _tag: "isPattern", regExp: new RegExp("b*") } }]
+                "parameter": {
+                  "_tag": "String",
+                  "checks": [
+                    {
+                      "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isPattern",
+                        "payload": {
+                          "source": "b*",
+                          "flags": ""
+                        }
+                      },
+                      "annotations": {
+                        "expected": "a string matching the RegExp b*",
+                        "arbitrary": {
+                          "constraint": {
+                            "patterns": [
+                              "b*"
+                            ]
+                          }
+                        }
+                      },
+                      "aborted": false
+                    }
+                  ]
                 },
-                type: { _tag: "Number", checks: [{ _tag: "Filter", meta: { _tag: "isFinite" } }] }
+                "type": {
+                  "_tag": "Number",
+                  "checks": [
+                    {
+                      "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isFinite",
+                        "payload": null
+                      },
+                      "annotations": {
+                        "expected": "a finite number",
+                        "arbitrary": {
+                          "constraint": {
+                            "noInfinity": true,
+                            "noNaN": true
+                          }
+                        }
+                      },
+                      "aborted": false
+                    }
+                  ]
+                }
               }
-            ],
-            checks: []
-          }
-        },
-        `Schema.StructWithRest(Schema.Struct({  }), [Schema.Record(Schema.String.check(Schema.isPattern(new RegExp("a*"))), Schema.String), Schema.Record(Schema.String.check(Schema.isPattern(new RegExp("b*"))), Schema.Number.check(Schema.isFinite()))])`
+            ]
+          },
+          "references": {}
+        }
       )
     })
 
@@ -1004,16 +2279,53 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "object", minProperties: 1 } },
           {
-            representation: {
-              _tag: "Objects",
-              propertySignatures: [],
-              indexSignatures: [
-                { parameter: { _tag: "String", checks: [] }, type: json() }
+            "representation": {
+              "_tag": "Objects",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinProperties",
+                    "payload": {
+                      "minProperties": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with at least 1 entry",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
               ],
-              checks: [{ _tag: "Filter", meta: { _tag: "isMinProperties", minProperties: 1 } }]
-            }
-          },
-          `Schema.Record(Schema.String, Schema.Json).check(Schema.isMinProperties(1))`
+              "propertySignatures": [],
+              "indexSignatures": [
+                {
+                  "parameter": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "type": {
+                    "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
+                    "annotations": {
+                      "expected": "JSON value"
+                    },
+                    "typeParameters": [],
+                    "checks": []
+                  }
+                }
+              ]
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1021,16 +2333,53 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema(
           { schema: { type: "object", maxProperties: 1 } },
           {
-            representation: {
-              _tag: "Objects",
-              propertySignatures: [],
-              indexSignatures: [
-                { parameter: { _tag: "String", checks: [] }, type: json() }
+            "representation": {
+              "_tag": "Objects",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxProperties",
+                    "payload": {
+                      "maxProperties": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with at most 1 entry",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "maxLength": 1
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
               ],
-              checks: [{ _tag: "Filter", meta: { _tag: "isMaxProperties", maxProperties: 1 } }]
-            }
-          },
-          `Schema.Record(Schema.String, Schema.Json).check(Schema.isMaxProperties(1))`
+              "propertySignatures": [],
+              "indexSignatures": [
+                {
+                  "parameter": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "type": {
+                    "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
+                    "annotations": {
+                      "expected": "JSON value"
+                    },
+                    "typeParameters": [],
+                    "checks": []
+                  }
+                }
+              ]
+            },
+            "references": {}
+          }
         )
       })
     })
@@ -1045,28 +2394,74 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Objects",
-              propertySignatures: [],
-              indexSignatures: [
+            "representation": {
+              "_tag": "Objects",
+              "checks": [
                 {
-                  parameter: { _tag: "String", checks: [] },
-                  type: json()
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isPropertyNames",
+                    "payload": null,
+                    "schemas": [
+                      {
+                        "_tag": "String",
+                        "checks": [
+                          {
+                            "_tag": "Filter",
+                            "representation": {
+                              "id": "effect/schema/isPattern",
+                              "payload": {
+                                "source": "^[A-Z]",
+                                "flags": ""
+                              }
+                            },
+                            "annotations": {
+                              "expected": "a string matching the RegExp ^[A-Z]",
+                              "arbitrary": {
+                                "constraint": {
+                                  "patterns": [
+                                    "^[A-Z]"
+                                  ]
+                                }
+                              }
+                            },
+                            "aborted": false
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "annotations": {
+                    "expected": "an object with property names matching the schema",
+                    "~structural": true
+                  },
+                  "aborted": false
                 }
               ],
-              checks: [{
-                _tag: "Filter",
-                meta: {
-                  _tag: "isPropertyNames",
-                  propertyNames: {
-                    _tag: "String",
-                    checks: [{ _tag: "Filter", meta: { _tag: "isPattern", regExp: new RegExp("^[A-Z]") } }]
+              "propertySignatures": [],
+              "indexSignatures": [
+                {
+                  "parameter": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "type": {
+                    "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
+                    "annotations": {
+                      "expected": "JSON value"
+                    },
+                    "typeParameters": [],
+                    "checks": []
                   }
                 }
-              }]
-            }
-          },
-          `Schema.Record(Schema.String, Schema.Json).check(Schema.isPropertyNames(Schema.String.check(Schema.isPattern(new RegExp("^[A-Z]")))))`
+              ]
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1079,18 +2474,52 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Objects",
-              propertySignatures: [],
-              indexSignatures: [
-                { parameter: { _tag: "String", checks: [] }, type: json() }
+            "representation": {
+              "_tag": "Objects",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isPropertyNames",
+                    "payload": null,
+                    "schemas": [
+                      {
+                        "_tag": "Never",
+                        "checks": []
+                      }
+                    ]
+                  },
+                  "annotations": {
+                    "expected": "an object with property names matching the schema",
+                    "~structural": true
+                  },
+                  "aborted": false
+                }
               ],
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isPropertyNames", propertyNames: { _tag: "Never" } } }
+              "propertySignatures": [],
+              "indexSignatures": [
+                {
+                  "parameter": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "type": {
+                    "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
+                    "annotations": {
+                      "expected": "JSON value"
+                    },
+                    "typeParameters": [],
+                    "checks": []
+                  }
+                }
               ]
-            }
-          },
-          `Schema.Record(Schema.String, Schema.Json).check(Schema.isPropertyNames(Schema.Never))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1105,55 +2534,140 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Objects",
-              propertySignatures: [],
-              indexSignatures: [
-                { parameter: { _tag: "String", checks: [] }, type: json() }
-              ],
-              checks: [
+            "representation": {
+              "_tag": "Objects",
+              "checks": [
                 {
-                  _tag: "Filter",
-                  meta: {
-                    _tag: "isPropertyNames",
-                    propertyNames: {
-                      _tag: "String",
-                      checks: [{ _tag: "Filter", meta: { _tag: "isPattern", regExp: new RegExp("^[A-Z]") } }]
-                    }
-                  }
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isPropertyNames",
+                    "payload": null,
+                    "schemas": [
+                      {
+                        "_tag": "String",
+                        "checks": [
+                          {
+                            "_tag": "Filter",
+                            "representation": {
+                              "id": "effect/schema/isPattern",
+                              "payload": {
+                                "source": "^[A-Z]",
+                                "flags": ""
+                              }
+                            },
+                            "annotations": {
+                              "expected": "a string matching the RegExp ^[A-Z]",
+                              "arbitrary": {
+                                "constraint": {
+                                  "patterns": [
+                                    "^[A-Z]"
+                                  ]
+                                }
+                              }
+                            },
+                            "aborted": false
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "annotations": {
+                    "expected": "an object with property names matching the schema",
+                    "~structural": true
+                  },
+                  "aborted": false
                 },
                 {
-                  _tag: "Filter",
-                  meta: {
-                    _tag: "isPropertyNames",
-                    propertyNames: {
-                      _tag: "String",
-                      checks: [{ _tag: "Filter", meta: { _tag: "isMinLength", minLength: 2 } }]
-                    }
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isPropertyNames",
+                    "payload": null,
+                    "schemas": [
+                      {
+                        "_tag": "String",
+                        "checks": [
+                          {
+                            "_tag": "Filter",
+                            "representation": {
+                              "id": "effect/schema/isMinLength",
+                              "payload": {
+                                "minLength": 2
+                              }
+                            },
+                            "annotations": {
+                              "expected": "a value with a length of at least 2",
+                              "~structural": true,
+                              "arbitrary": {
+                                "constraint": {
+                                  "minLength": 2
+                                }
+                              }
+                            },
+                            "aborted": false
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "annotations": {
+                    "expected": "an object with property names matching the schema",
+                    "~structural": true
+                  },
+                  "aborted": false
+                }
+              ],
+              "propertySignatures": [],
+              "indexSignatures": [
+                {
+                  "parameter": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "type": {
+                    "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
+                    "annotations": {
+                      "expected": "JSON value"
+                    },
+                    "typeParameters": [],
+                    "checks": []
                   }
                 }
               ]
-            }
-          },
-          `Schema.Record(Schema.String, Schema.Json).check(Schema.isPropertyNames(Schema.String.check(Schema.isPattern(new RegExp("^[A-Z]"))))).check(Schema.isPropertyNames(Schema.String.check(Schema.isMinLength(2))))`
+            },
+            "references": {}
+          }
         )
       })
     })
   })
 
-  it("type: array of strings", () => {
+  it("array of types", () => {
     assertFromJsonSchema(
       {
         schema: { type: ["string", "null"] }
       },
       {
-        representation: {
-          _tag: "Union",
-          types: [{ _tag: "String", checks: [] }, { _tag: "Null" }],
-          mode: "anyOf"
-        }
-      },
-      `Schema.Union([Schema.String, Schema.Null])`
+        "representation": {
+          "_tag": "Union",
+          "checks": [],
+          "types": [
+            {
+              "_tag": "String",
+              "checks": []
+            },
+            {
+              "_tag": "Null",
+              "checks": []
+            }
+          ],
+          "mode": "anyOf"
+        },
+        "references": {}
+      }
     )
     assertFromJsonSchema(
       {
@@ -1163,18 +2677,131 @@ describe("fromJsonSchemaDocument", () => {
         }
       },
       {
-        representation: {
-          _tag: "Union",
-          types: [{ _tag: "String", checks: [] }, { _tag: "Null" }],
-          mode: "anyOf",
-          annotations: { description: "a" }
+        "representation": {
+          "_tag": "Union",
+          "annotations": {
+            "description": "a"
+          },
+          "checks": [],
+          "types": [
+            {
+              "_tag": "String",
+              "checks": []
+            },
+            {
+              "_tag": "Null",
+              "checks": []
+            }
+          ],
+          "mode": "anyOf"
+        },
+        "references": {}
+      }
+    )
+  })
+
+  it("ignores true schemas in allOf", () => {
+    assertFromJsonSchema(
+      { schema: { allOf: [true, { type: "string" }] } },
+      {
+        "representation": {
+          "_tag": "String",
+          "checks": []
+        },
+        "references": {}
+      }
+    )
+  })
+
+  it("imports structured enum members as JSON", () => {
+    assertFromJsonSchema(
+      { schema: { enum: [[], {}] } },
+      {
+        "representation": {
+          "_tag": "Union",
+          "checks": [],
+          "types": [
+            {
+              "_tag": "Declaration",
+              "representation": {
+                "id": "effect/schema/Json",
+                "payload": null
+              },
+              "annotations": {
+                "expected": "JSON value"
+              },
+              "typeParameters": [],
+              "checks": []
+            },
+            {
+              "_tag": "Declaration",
+              "representation": {
+                "id": "effect/schema/Json",
+                "payload": null
+              },
+              "annotations": {
+                "expected": "JSON value"
+              },
+              "typeParameters": [],
+              "checks": []
+            }
+          ],
+          "mode": "anyOf"
+        },
+        "references": {}
+      }
+    )
+  })
+
+  it("imports built-in JSON Schema annotations", () => {
+    assertFromJsonSchema(
+      {
+        schema: {
+          type: "string",
+          format: "email",
+          contentEncoding: "base64",
+          contentMediaType: "application/json",
+          contentSchema: { type: "number" }
         }
       },
-      `Schema.Union([Schema.String, Schema.Null]).annotate({ "description": "a" })`
+      {
+        "representation": {
+          "_tag": "String",
+          "annotations": {
+            "format": "email",
+            "contentEncoding": "base64",
+            "contentMediaType": "application/json",
+            "contentSchema": { "type": "number" }
+          },
+          "checks": []
+        },
+        "references": {}
+      }
     )
   })
 
   describe("$ref", () => {
+    it("treats a reference with an empty token as unconstrained", () => {
+      assertFromJsonSchema(
+        { schema: { $ref: "" } },
+        {
+          "representation": {
+            "_tag": "Declaration",
+            "representation": {
+              "id": "effect/schema/Json",
+              "payload": null
+            },
+            "annotations": {
+              "expected": "JSON value"
+            },
+            "typeParameters": [],
+            "checks": []
+          },
+          "references": {}
+        }
+      )
+    })
+
     it("should create a Reference and a definition", () => {
       assertFromJsonSchema(
         {
@@ -1188,18 +2815,24 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: { _tag: "Reference", $ref: "A" },
-          references: {
-            A: {
-              _tag: "String",
-              checks: []
+          "representation": {
+            "_tag": "Reference",
+            "$ref": "A"
+          },
+          "references": {
+            "A": {
+              "_tag": "String",
+              "annotations": {
+                "identifier": "A"
+              },
+              "checks": []
             }
           }
         }
       )
     })
 
-    it("should resolve the $ref if there are annotations", () => {
+    it("should preserve an annotated $ref as a stable suspend", () => {
       assertFromJsonSchema(
         {
           schema: {
@@ -1213,22 +2846,53 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: {
-            _tag: "String",
-            checks: [],
-            annotations: { description: "a" }
+          "representation": {
+            "_tag": "Suspend",
+            "annotations": {
+              "description": "a"
+            },
+            "checks": [],
+            "thunk": {
+              "_tag": "Reference",
+              "$ref": "A"
+            }
           },
-          references: {
-            A: {
-              _tag: "String",
-              checks: []
+          "references": {
+            "A": {
+              "_tag": "String",
+              "annotations": {
+                "identifier": "A"
+              },
+              "checks": []
             }
           }
         }
       )
     })
 
-    it("should resolve the $ref if there is an allOf", () => {
+    it("does not combine annotation siblings with a $ref", () => {
+      const schema = toSchemaFromJsonSchemaDocument(
+        JsonSchema.fromSchemaDraft2020_12({
+          $ref: "#/$defs/A",
+          format: "custom",
+          $defs: {
+            A: { type: "number" }
+          }
+        })
+      )
+      const is = Schema.is(schema)
+      assertTrue(is(1))
+      assertFalse(is("a"))
+
+      const document = SchemaRepresentation.toRepresentation(schema.ast)
+      strictEqual(document.representation._tag, "Suspend")
+      if (document.representation._tag === "Suspend") {
+        deepStrictEqual(document.representation.annotations, { format: "custom" })
+        deepStrictEqual(document.representation.thunk, { _tag: "Reference", $ref: "A" })
+      }
+    })
+
+    it("should preserve a $ref refined only by annotations as a stable suspend", () => {
       assertFromJsonSchema(
         {
           schema: {
@@ -1244,15 +2908,24 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: {
-            _tag: "String",
-            checks: [],
-            annotations: { description: "a" }
+          "representation": {
+            "_tag": "Suspend",
+            "annotations": {
+              "description": "a"
+            },
+            "checks": [],
+            "thunk": {
+              "_tag": "Reference",
+              "$ref": "A"
+            }
           },
-          references: {
-            A: {
-              _tag: "String",
-              checks: []
+          "references": {
+            "A": {
+              "_tag": "String",
+              "annotations": {
+                "identifier": "A"
+              },
+              "checks": []
             }
           }
         }
@@ -1288,81 +2961,276 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: { _tag: "Reference", $ref: "A" },
-          references: {
-            A: {
-              _tag: "Objects",
-              propertySignatures: [
+          "representation": {
+            "_tag": "Reference",
+            "$ref": "A"
+          },
+          "references": {
+            "A": {
+              "_tag": "Objects",
+              "annotations": {
+                "identifier": "A"
+              },
+              "checks": [],
+              "propertySignatures": [
                 {
-                  name: "name",
-                  type: { _tag: "String", checks: [] },
-                  isOptional: false,
-                  isMutable: false
+                  "name": {
+                    "type": "string",
+                    "value": "name"
+                  },
+                  "type": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "isOptional": false,
+                  "isMutable": false
                 },
                 {
-                  name: "children",
-                  type: {
-                    _tag: "Arrays",
-                    elements: [],
-                    rest: [{
-                      _tag: "Suspend",
-                      checks: [],
-                      thunk: {
-                        _tag: "Reference",
-                        $ref: "A"
-                      }
-                    }],
-                    checks: []
+                  "name": {
+                    "type": "string",
+                    "value": "children"
                   },
-                  isOptional: false,
-                  isMutable: false
+                  "type": {
+                    "_tag": "Arrays",
+                    "checks": [],
+                    "elements": [],
+                    "rest": [
+                      {
+                        "_tag": "Suspend",
+                        "checks": [],
+                        "thunk": {
+                          "_tag": "Reference",
+                          "$ref": "A"
+                        }
+                      }
+                    ]
+                  },
+                  "isOptional": false,
+                  "isMutable": false
                 }
               ],
-              indexSignatures: [],
-              checks: []
+              "indexSignatures": []
             }
           }
         }
       )
     })
+
+    it("preserves annotations on a recursive $ref", () => {
+      assertFromJsonSchema(
+        {
+          schema: {
+            $ref: "#/$defs/Node",
+            $defs: {
+              Node: {
+                type: "object",
+                properties: {
+                  child: {
+                    $ref: "#/$defs/Node",
+                    description: "recursive child"
+                  }
+                },
+                required: ["child"],
+                additionalProperties: false
+              }
+            }
+          }
+        },
+        {
+          representation: {
+            _tag: "Reference",
+            $ref: "Node"
+          },
+          references: {
+            Node: {
+              _tag: "Objects",
+              annotations: {
+                identifier: "Node"
+              },
+              checks: [],
+              propertySignatures: [{
+                name: { type: "string", value: "child" },
+                type: {
+                  _tag: "Suspend",
+                  annotations: {
+                    description: "recursive child"
+                  },
+                  checks: [],
+                  thunk: {
+                    _tag: "Reference",
+                    $ref: "Node"
+                  }
+                },
+                isOptional: false,
+                isMutable: false
+              }],
+              indexSignatures: []
+            }
+          }
+        }
+      )
+    })
+
+    it("combines assertion siblings with a $ref", () => {
+      const schema = toSchemaFromJsonSchemaDocument(
+        JsonSchema.fromSchemaDraft2020_12({
+          $ref: "#/$defs/Name",
+          minLength: 2,
+          description: "name",
+          $defs: {
+            Name: { type: "string" }
+          }
+        })
+      )
+      const is = Schema.is(schema)
+      assertTrue(is("ab"))
+      assertFalse(is("a"))
+
+      const document = SchemaRepresentation.toRepresentation(schema.ast)
+      strictEqual(document.representation._tag, "String")
+      if (document.representation._tag === "String") {
+        deepStrictEqual(document.representation.annotations, { description: "name" })
+      }
+      deepStrictEqual(document.references, {})
+    })
+
+    it("rejects assertion siblings on a recursive $ref", () => {
+      throws(
+        () =>
+          SchemaRepresentation.fromJsonSchemaDocument(
+            JsonSchema.fromSchemaDraft2020_12({
+              $ref: "#/$defs/Node",
+              $defs: {
+                Node: {
+                  type: "object",
+                  properties: {
+                    child: {
+                      $ref: "#/$defs/Node",
+                      minProperties: 1
+                    }
+                  }
+                }
+              }
+            })
+          ),
+        `Unsupported assertion siblings on recursive reference Node\n  at ["definitions"]["Node"]["properties"]["child"]["$ref"]`
+      )
+    })
   })
 
   describe("allOf", () => {
-    it("resolves references on either side of an intersection", () => {
+    it("resolves a root reference before intersecting allOf", () => {
       const definition: JsonSchema.JsonSchema = { type: "string", minLength: 1 }
-      const expected = {
-        representation: {
-          _tag: "String" as const,
-          checks: [
-            { _tag: "Filter" as const, meta: { _tag: "isMinLength" as const, minLength: 1 } },
-            { _tag: "Filter" as const, meta: { _tag: "isMaxLength" as const, maxLength: 2 } }
+      assertFromJsonSchema({
+        schema: {
+          $ref: "#/$defs/A",
+          allOf: [{ type: "string", maxLength: 2 }],
+          $defs: { A: definition }
+        }
+      }, {
+        "representation": {
+          "_tag": "String",
+          "checks": [
+            {
+              "_tag": "Filter",
+              "representation": {
+                "id": "effect/schema/isMinLength",
+                "payload": {
+                  "minLength": 1
+                }
+              },
+              "annotations": {
+                "expected": "a value with a length of at least 1",
+                "~structural": true,
+                "arbitrary": {
+                  "constraint": {
+                    "minLength": 1
+                  }
+                }
+              },
+              "aborted": false
+            },
+            {
+              "_tag": "Filter",
+              "representation": {
+                "id": "effect/schema/isMaxLength",
+                "payload": {
+                  "maxLength": 2
+                }
+              },
+              "annotations": {
+                "expected": "a value with a length of at most 2",
+                "~structural": true,
+                "arbitrary": {
+                  "constraint": {
+                    "maxLength": 2
+                  }
+                }
+              },
+              "aborted": false
+            }
           ]
         },
-        references: {
-          A: {
-            _tag: "String" as const,
-            checks: [{ _tag: "Filter" as const, meta: { _tag: "isMinLength" as const, minLength: 1 } }]
-          }
-        }
-      }
-      for (
-        const schema of [
-          {
-            $ref: "#/$defs/A",
-            allOf: [{ type: "string", maxLength: 2 }],
-            $defs: { A: definition }
-          },
-          {
-            allOf: [{ $ref: "#/$defs/A" }, { type: "string", maxLength: 2 }],
-            $defs: { A: definition }
-          }
-        ]
-      ) {
-        assertFromJsonSchema({ schema }, expected)
-      }
+        "references": {}
+      })
     })
 
-    it("preserves annotations on array and object intersections", () => {
+    it("resolves a reference declared inside allOf", () => {
+      const definition: JsonSchema.JsonSchema = { type: "string", minLength: 1 }
+      assertFromJsonSchema({
+        schema: {
+          allOf: [{ $ref: "#/$defs/A" }, { type: "string", maxLength: 2 }],
+          $defs: { A: definition }
+        }
+      }, {
+        "representation": {
+          "_tag": "String",
+          "checks": [
+            {
+              "_tag": "Filter",
+              "representation": {
+                "id": "effect/schema/isMinLength",
+                "payload": {
+                  "minLength": 1
+                }
+              },
+              "annotations": {
+                "expected": "a value with a length of at least 1",
+                "~structural": true,
+                "arbitrary": {
+                  "constraint": {
+                    "minLength": 1
+                  }
+                }
+              },
+              "aborted": false
+            },
+            {
+              "_tag": "Filter",
+              "representation": {
+                "id": "effect/schema/isMaxLength",
+                "payload": {
+                  "maxLength": 2
+                }
+              },
+              "annotations": {
+                "expected": "a value with a length of at most 2",
+                "~structural": true,
+                "arbitrary": {
+                  "constraint": {
+                    "maxLength": 2
+                  }
+                }
+              },
+              "aborted": false
+            }
+          ]
+        },
+        "references": {}
+      })
+    })
+
+    it("preserves annotations on array intersections", () => {
       assertFromJsonSchema(
         {
           schema: {
@@ -1371,16 +3239,34 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: {
-            _tag: "Arrays",
-            elements: [],
-            rest: [json()],
-            checks: [],
-            annotations: { description: "a" }
-          }
-        },
-        `Schema.Array(Schema.Json).annotate({ "description": "a" })`
+          "representation": {
+            "_tag": "Arrays",
+            "annotations": {
+              "description": "a"
+            },
+            "checks": [],
+            "elements": [],
+            "rest": [
+              {
+                "_tag": "Declaration",
+                "representation": {
+                  "id": "effect/schema/Json",
+                  "payload": null
+                },
+                "annotations": {
+                  "expected": "JSON value"
+                },
+                "typeParameters": [],
+                "checks": []
+              }
+            ]
+          },
+          "references": {}
+        }
       )
+    })
+
+    it("preserves annotations on object intersections", () => {
       assertFromJsonSchema(
         {
           schema: {
@@ -1390,15 +3276,17 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: {
-            _tag: "Objects",
-            propertySignatures: [],
-            indexSignatures: [],
-            checks: [],
-            annotations: { description: "a" }
-          }
-        },
-        `Schema.Struct({  }).annotate({ "description": "a" })`
+          "representation": {
+            "_tag": "Objects",
+            "annotations": {
+              "description": "a"
+            },
+            "checks": [],
+            "propertySignatures": [],
+            "indexSignatures": []
+          },
+          "references": {}
+        }
       )
     })
 
@@ -1410,8 +3298,13 @@ describe("fromJsonSchemaDocument", () => {
             allOf: [{ anyOf: [{ type: "number" }, { type: "boolean" }] }]
           }
         },
-        { representation: { _tag: "Never" } },
-        `Schema.Never`
+        {
+          "representation": {
+            "_tag": "Never",
+            "checks": []
+          },
+          "references": {}
+        }
       )
     })
 
@@ -1422,10 +3315,10 @@ describe("fromJsonSchemaDocument", () => {
     ) {
       for (const literal of [valid, invalid]) {
         for (const allOf of [[refinement, { const: literal }], [{ const: literal }, refinement]]) {
-          const document = SchemaRepresentation.fromJsonSchemaDocument(
+          const schema = toSchemaFromJsonSchemaDocument(
             JsonSchema.fromSchemaDraft2020_12({ allOf })
           )
-          const is = Schema.is(SchemaRepresentation.toSchema(document))
+          const is = Schema.is(schema)
           if (literal === valid) {
             assertTrue(is(literal))
           } else {
@@ -1436,70 +3329,108 @@ describe("fromJsonSchemaDocument", () => {
     }
 
     describe("literal refinements", () => {
-      const cases: ReadonlyArray<
-        readonly [
-          name: string,
-          refinement: JsonSchema.JsonSchema,
-          valid: string | number,
-          invalid: string | number
-        ]
-      > = [
-        ["minLength", { type: "string", minLength: 2 }, "ab", "a"],
-        ["maxLength", { type: "string", maxLength: 1 }, "a", "ab"],
-        ["pattern", { type: "string", pattern: "^a+$" }, "aa", "ab"],
-        ["integer", { type: "integer" }, 1, 1.5],
-        ["multipleOf", { type: "number", multipleOf: 0.1 }, 0.3, 0.31],
-        [
-          "multipleOf beyond the toFixed precision limit",
-          { type: "number", multipleOf: Number("1e-101") },
-          0,
-          Number("5e-102")
-        ],
-        ["multipleOf with a large scientific operand", { type: "number", multipleOf: 2 }, Number("1e21"), 1],
-        [
-          "multipleOf with a nonzero subnormal remainder",
-          { type: "number", multipleOf: Number("1e-323") },
-          0,
-          Number("1.042e-321")
-        ],
-        ["minimum", { type: "number", minimum: 1 }, 1, 0],
-        ["maximum", { type: "number", maximum: 1 }, 1, 2],
-        ["exclusiveMinimum", { type: "number", exclusiveMinimum: 1 }, 2, 1],
-        ["exclusiveMaximum", { type: "number", exclusiveMaximum: 1 }, 0, 1],
-        [
-          "filter group",
+      it("minLength", () => {
+        assertLiteralRefinement({ type: "string", minLength: 2 }, "ab", "a")
+      })
+
+      it("maxLength", () => {
+        assertLiteralRefinement({ type: "string", maxLength: 1 }, "a", "ab")
+      })
+
+      it("pattern", () => {
+        assertLiteralRefinement({ type: "string", pattern: "^a+$" }, "aa", "ab")
+      })
+
+      it("integer", () => {
+        assertLiteralRefinement({ type: "integer" }, 1, 1.5)
+      })
+
+      it("multipleOf", () => {
+        assertLiteralRefinement({ type: "number", multipleOf: 0.1 }, 0.3, 0.31)
+      })
+
+      it("multipleOf beyond the toFixed precision limit", () => {
+        assertLiteralRefinement({ type: "number", multipleOf: Number("1e-101") }, 0, Number("5e-102"))
+      })
+
+      it("multipleOf with a large scientific operand", () => {
+        assertLiteralRefinement({ type: "number", multipleOf: 2 }, Number("1e21"), 1)
+      })
+
+      it("multipleOf with a nonzero subnormal remainder", () => {
+        assertLiteralRefinement({ type: "number", multipleOf: Number("1e-323") }, 0, Number("1.042e-321"))
+      })
+
+      it("minimum", () => {
+        assertLiteralRefinement({ type: "number", minimum: 1 }, 1, 0)
+      })
+
+      it("maximum", () => {
+        assertLiteralRefinement({ type: "number", maximum: 1 }, 1, 2)
+      })
+
+      it("exclusiveMinimum", () => {
+        assertLiteralRefinement({ type: "number", exclusiveMinimum: 1 }, 2, 1)
+      })
+
+      it("exclusiveMaximum", () => {
+        assertLiteralRefinement({ type: "number", exclusiveMaximum: 1 }, 0, 1)
+      })
+
+      it("filter group", () => {
+        assertLiteralRefinement(
           { type: "number", allOf: [{ minimum: 1, maximum: 2, description: "range" }] },
           2,
           0
-        ]
-      ]
+        )
+      })
 
-      for (const [name, refinement, valid, invalid] of cases) {
-        it(name, () => {
-          assertLiteralRefinement(refinement, valid, invalid)
-        })
-      }
-
-      it("filters enum members", () => {
-        const expected = {
-          representation: {
-            _tag: "Union" as const,
-            types: [{ _tag: "Literal" as const, literal: "ab" }],
-            mode: "anyOf" as const
+      it("filters enum members when the refinement precedes the enum", () => {
+        assertFromJsonSchema(
+          { schema: { type: "string", minLength: 2, allOf: [{ enum: ["a", "ab"] }] } },
+          {
+            "representation": {
+              "_tag": "Union",
+              "checks": [],
+              "types": [
+                {
+                  "_tag": "Literal",
+                  "checks": [],
+                  "literal": {
+                    "type": "string",
+                    "value": "ab"
+                  }
+                }
+              ],
+              "mode": "anyOf"
+            },
+            "references": {}
           }
-        }
-        for (
-          const [schema, member] of [
-            [{ type: "string", minLength: 2 }, { enum: ["a", "ab"] }],
-            [{ enum: ["a", "ab"] }, { type: "string", minLength: 2 }]
-          ]
-        ) {
-          assertFromJsonSchema(
-            { schema: { ...schema, allOf: [member] } },
-            expected,
-            `Schema.Literal("ab")`
-          )
-        }
+        )
+      })
+
+      it("filters enum members when the enum precedes the refinement", () => {
+        assertFromJsonSchema(
+          { schema: { enum: ["a", "ab"], allOf: [{ type: "string", minLength: 2 }] } },
+          {
+            "representation": {
+              "_tag": "Union",
+              "checks": [],
+              "types": [
+                {
+                  "_tag": "Literal",
+                  "checks": [],
+                  "literal": {
+                    "type": "string",
+                    "value": "ab"
+                  }
+                }
+              ],
+              "mode": "anyOf"
+            },
+            "references": {}
+          }
+        )
       })
     })
 
@@ -1513,12 +3444,12 @@ describe("fromJsonSchemaDocument", () => {
           }
         },
         {
-          representation: {
-            _tag: "String",
-            checks: []
-          }
-        },
-        `Schema.String`
+          "representation": {
+            "_tag": "String",
+            "checks": []
+          },
+          "references": {}
+        }
       )
     })
 
@@ -1534,14 +3465,32 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "String",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isMinLength", minLength: 1 } }
+            "representation": {
+              "_tag": "String",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at least 1",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.String.check(Schema.isMinLength(1))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1556,14 +3505,33 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "String",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isMinLength", minLength: 1 }, annotations: { description: "b" } }
+            "representation": {
+              "_tag": "String",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at least 1",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "minLength": 1
+                      }
+                    },
+                    "description": "b"
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.String.check(Schema.isMinLength(1, { "description": "b" }))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1579,15 +3547,35 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "String",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isMinLength", minLength: 1 } }
-              ],
-              annotations: { description: "a" }
-            }
-          },
-          `Schema.String.annotate({ "description": "a" }).check(Schema.isMinLength(1))`
+            "representation": {
+              "_tag": "String",
+              "annotations": {
+                "description": "a"
+              },
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at least 1",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
+              ]
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1603,13 +3591,15 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "String",
-              checks: [],
-              annotations: { description: "b" }
-            }
-          },
-          `Schema.String.annotate({ "description": "b" })`
+            "representation": {
+              "_tag": "String",
+              "annotations": {
+                "description": "b"
+              },
+              "checks": []
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1625,15 +3615,36 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "String",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isMinLength", minLength: 1 }, annotations: { description: "b" } }
-              ],
-              annotations: { description: "a" }
-            }
-          },
-          `Schema.String.annotate({ "description": "a" }).check(Schema.isMinLength(1, { "description": "b" }))`
+            "representation": {
+              "_tag": "String",
+              "annotations": {
+                "description": "a"
+              },
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at least 1",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "minLength": 1
+                      }
+                    },
+                    "description": "b"
+                  },
+                  "aborted": false
+                }
+              ]
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1649,15 +3660,51 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "String",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isMaxLength", maxLength: 2 } },
-                { _tag: "Filter", meta: { _tag: "isMinLength", minLength: 1 } }
+            "representation": {
+              "_tag": "String",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxLength",
+                    "payload": {
+                      "maxLength": 2
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at most 2",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "maxLength": 2
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at least 1",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.String.check(Schema.isMaxLength(2)).check(Schema.isMinLength(1))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1674,16 +3721,54 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "String",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isMaxLength", maxLength: 2 } },
-                { _tag: "Filter", meta: { _tag: "isMinLength", minLength: 1 } }
-              ],
-              annotations: { description: "a" }
-            }
-          },
-          `Schema.String.annotate({ "description": "a" }).check(Schema.isMaxLength(2)).check(Schema.isMinLength(1))`
+            "representation": {
+              "_tag": "String",
+              "annotations": {
+                "description": "a"
+              },
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxLength",
+                    "payload": {
+                      "maxLength": 2
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at most 2",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "maxLength": 2
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at least 1",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
+              ]
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1700,16 +3785,55 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "String",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isMaxLength", maxLength: 2 } },
-                { _tag: "Filter", meta: { _tag: "isMinLength", minLength: 1 }, annotations: { description: "b" } }
-              ],
-              annotations: { description: "a" }
-            }
-          },
-          `Schema.String.annotate({ "description": "a" }).check(Schema.isMaxLength(2)).check(Schema.isMinLength(1, { "description": "b" }))`
+            "representation": {
+              "_tag": "String",
+              "annotations": {
+                "description": "a"
+              },
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxLength",
+                    "payload": {
+                      "maxLength": 2
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at most 2",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "maxLength": 2
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at least 1",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "minLength": 1
+                      }
+                    },
+                    "description": "b"
+                  },
+                  "aborted": false
+                }
+              ]
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1724,15 +3848,51 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "String",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isMinLength", minLength: 1 } },
-                { _tag: "Filter", meta: { _tag: "isMaxLength", maxLength: 2 } }
+            "representation": {
+              "_tag": "String",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at least 1",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxLength",
+                    "payload": {
+                      "maxLength": 2
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at most 2",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "maxLength": 2
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.String.check(Schema.isMinLength(1)).check(Schema.isMaxLength(2))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1747,21 +3907,59 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "String",
-              checks: [
+            "representation": {
+              "_tag": "String",
+              "checks": [
                 {
-                  _tag: "FilterGroup",
-                  checks: [
-                    { _tag: "Filter", meta: { _tag: "isMinLength", minLength: 1 } },
-                    { _tag: "Filter", meta: { _tag: "isMaxLength", maxLength: 2 } }
-                  ],
-                  annotations: { description: "b" }
+                  "_tag": "FilterGroup",
+                  "annotations": {
+                    "description": "b"
+                  },
+                  "checks": [
+                    {
+                      "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isMinLength",
+                        "payload": {
+                          "minLength": 1
+                        }
+                      },
+                      "annotations": {
+                        "expected": "a value with a length of at least 1",
+                        "~structural": true,
+                        "arbitrary": {
+                          "constraint": {
+                            "minLength": 1
+                          }
+                        }
+                      },
+                      "aborted": false
+                    },
+                    {
+                      "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isMaxLength",
+                        "payload": {
+                          "maxLength": 2
+                        }
+                      },
+                      "annotations": {
+                        "expected": "a value with a length of at most 2",
+                        "~structural": true,
+                        "arbitrary": {
+                          "constraint": {
+                            "maxLength": 2
+                          }
+                        }
+                      },
+                      "aborted": false
+                    }
+                  ]
                 }
               ]
-            }
-          },
-          `Schema.String.check(Schema.makeFilterGroup([Schema.isMinLength(1), Schema.isMaxLength(2)], { "description": "b" }))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1776,15 +3974,52 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "String",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isMinLength", minLength: 1 } },
-                { _tag: "Filter", meta: { _tag: "isMaxLength", maxLength: 2 }, annotations: { description: "c" } }
+            "representation": {
+              "_tag": "String",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at least 1",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxLength",
+                    "payload": {
+                      "maxLength": 2
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at most 2",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "maxLength": 2
+                      }
+                    },
+                    "description": "c"
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.String.check(Schema.isMinLength(1)).check(Schema.isMaxLength(2, { "description": "c" }))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1799,25 +4034,64 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "String",
-              checks: [
+            "representation": {
+              "_tag": "String",
+              "checks": [
                 {
-                  _tag: "FilterGroup",
-                  checks: [
-                    { _tag: "Filter", meta: { _tag: "isMinLength", minLength: 1 } },
-                    { _tag: "Filter", meta: { _tag: "isMaxLength", maxLength: 2 }, annotations: { description: "c" } }
-                  ],
-                  annotations: { description: "b" }
+                  "_tag": "FilterGroup",
+                  "annotations": {
+                    "description": "b"
+                  },
+                  "checks": [
+                    {
+                      "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isMinLength",
+                        "payload": {
+                          "minLength": 1
+                        }
+                      },
+                      "annotations": {
+                        "expected": "a value with a length of at least 1",
+                        "~structural": true,
+                        "arbitrary": {
+                          "constraint": {
+                            "minLength": 1
+                          }
+                        }
+                      },
+                      "aborted": false
+                    },
+                    {
+                      "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isMaxLength",
+                        "payload": {
+                          "maxLength": 2
+                        }
+                      },
+                      "annotations": {
+                        "expected": "a value with a length of at most 2",
+                        "~structural": true,
+                        "arbitrary": {
+                          "constraint": {
+                            "maxLength": 2
+                          }
+                        },
+                        "description": "c"
+                      },
+                      "aborted": false
+                    }
+                  ]
                 }
               ]
-            }
-          },
-          `Schema.String.check(Schema.makeFilterGroup([Schema.isMinLength(1), Schema.isMaxLength(2, { "description": "c" })], { "description": "b" }))`
+            },
+            "references": {}
+          }
         )
       })
 
-      it("& string enum", () => {
+      it("intersects with a single-member string enum", () => {
         assertFromJsonSchema(
           {
             schema: {
@@ -1828,12 +4102,16 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Literal",
-              literal: "a"
-            }
-          },
-          `Schema.Literal("a")`
+            "representation": {
+              "_tag": "Literal",
+              "checks": [],
+              "literal": {
+                "type": "string",
+                "value": "a"
+              }
+            },
+            "references": {}
+          }
         )
         assertFromJsonSchema(
           {
@@ -1846,14 +4124,23 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Literal",
-              literal: "a",
-              annotations: { description: "b" }
-            }
-          },
-          `Schema.Literal("a").annotate({ "description": "b" })`
+            "representation": {
+              "_tag": "Literal",
+              "annotations": {
+                "description": "b"
+              },
+              "checks": [],
+              "literal": {
+                "type": "string",
+                "value": "a"
+              }
+            },
+            "references": {}
+          }
         )
+      })
+
+      it("intersects with a multi-member string enum", () => {
         assertFromJsonSchema(
           {
             schema: {
@@ -1864,16 +4151,31 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Union",
-              types: [
-                { _tag: "Literal", literal: "a" },
-                { _tag: "Literal", literal: "b" }
+            "representation": {
+              "_tag": "Union",
+              "checks": [],
+              "types": [
+                {
+                  "_tag": "Literal",
+                  "checks": [],
+                  "literal": {
+                    "type": "string",
+                    "value": "a"
+                  }
+                },
+                {
+                  "_tag": "Literal",
+                  "checks": [],
+                  "literal": {
+                    "type": "string",
+                    "value": "b"
+                  }
+                }
               ],
-              mode: "anyOf"
-            }
-          },
-          `Schema.Literals(["a", "b"])`
+              "mode": "anyOf"
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1888,20 +4190,67 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Union",
-              types: [
-                { _tag: "Literal", literal: "a" }
+            "representation": {
+              "_tag": "Union",
+              "checks": [],
+              "types": [
+                {
+                  "_tag": "Literal",
+                  "checks": [],
+                  "literal": {
+                    "type": "string",
+                    "value": "a"
+                  }
+                }
               ],
-              mode: "anyOf"
-            }
-          },
-          `Schema.Literal("a")`
+              "mode": "anyOf"
+            },
+            "references": {}
+          }
         )
       })
     })
 
     describe("type: number", () => {
+      it("number & number preserves annotations after removing duplicate checks", () => {
+        assertFromJsonSchema(
+          {
+            schema: {
+              type: "number",
+              allOf: [{ type: "number", description: "b" }]
+            }
+          },
+          {
+            "representation": {
+              "_tag": "Number",
+              "annotations": {
+                "description": "b"
+              },
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "a finite number",
+                    "arbitrary": {
+                      "constraint": {
+                        "noInfinity": true,
+                        "noNaN": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
+              ]
+            },
+            "references": {}
+          }
+        )
+      })
+
       it("number & integer", () => {
         assertFromJsonSchema(
           {
@@ -1913,15 +4262,46 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Number",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isFinite" } },
-                { _tag: "Filter", meta: { _tag: "isInt" } }
+            "representation": {
+              "_tag": "Number",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "a finite number",
+                    "arbitrary": {
+                      "constraint": {
+                        "noInfinity": true,
+                        "noNaN": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "an integer",
+                    "arbitrary": {
+                      "constraint": {
+                        "integer": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.Number.check(Schema.isFinite()).check(Schema.isInt())`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1937,17 +4317,72 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Number",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isFinite" } },
-                { _tag: "Filter", meta: { _tag: "isInt" } },
-                { _tag: "Filter", meta: { _tag: "isGreaterThanOrEqualTo", minimum: 2 } },
-                { _tag: "Filter", meta: { _tag: "isLessThanOrEqualTo", maximum: 2 } }
+            "representation": {
+              "_tag": "Number",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "a finite number",
+                    "arbitrary": {
+                      "constraint": {
+                        "noInfinity": true,
+                        "noNaN": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "an integer",
+                    "arbitrary": {
+                      "constraint": {
+                        "integer": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isGreaterThanOrEqualTo",
+                    "payload": {
+                      "minimum": 2
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value greater than or equal to 2"
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isLessThanOrEqualTo",
+                    "payload": {
+                      "maximum": 2
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value less than or equal to 2"
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.Number.check(Schema.isFinite()).check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(2)).check(Schema.isLessThanOrEqualTo(2))`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1962,15 +4397,46 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Number",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isInt" } },
-                { _tag: "Filter", meta: { _tag: "isFinite" } }
+            "representation": {
+              "_tag": "Number",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "an integer",
+                    "arbitrary": {
+                      "constraint": {
+                        "integer": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "a finite number",
+                    "arbitrary": {
+                      "constraint": {
+                        "noInfinity": true,
+                        "noNaN": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
               ]
-            }
-          },
-          `Schema.Number.check(Schema.isInt()).check(Schema.isFinite())`
+            },
+            "references": {}
+          }
         )
       })
 
@@ -1985,30 +4451,158 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Number",
-              checks: [
-                { _tag: "Filter", meta: { _tag: "isFinite" } },
+            "representation": {
+              "_tag": "Number",
+              "checks": [
                 {
-                  _tag: "FilterGroup",
-                  checks: [
-                    { _tag: "Filter", meta: { _tag: "isGreaterThanOrEqualTo", minimum: 1 } },
-                    {
-                      _tag: "Filter",
-                      meta: { _tag: "isLessThanOrEqualTo", maximum: 2 },
-                      annotations: { description: "c" }
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "a finite number",
+                    "arbitrary": {
+                      "constraint": {
+                        "noInfinity": true,
+                        "noNaN": true
+                      }
                     }
-                  ],
-                  annotations: { description: "b" }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "FilterGroup",
+                  "annotations": {
+                    "description": "b"
+                  },
+                  "checks": [
+                    {
+                      "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isGreaterThanOrEqualTo",
+                        "payload": {
+                          "minimum": 1
+                        }
+                      },
+                      "annotations": {
+                        "expected": "a value greater than or equal to 1"
+                      },
+                      "aborted": false
+                    },
+                    {
+                      "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isLessThanOrEqualTo",
+                        "payload": {
+                          "maximum": 2
+                        }
+                      },
+                      "annotations": {
+                        "expected": "a value less than or equal to 2",
+                        "description": "c"
+                      },
+                      "aborted": false
+                    }
+                  ]
                 }
               ]
-            }
-          },
-          `Schema.Number.check(Schema.isFinite()).check(Schema.makeFilterGroup([Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(2, { "description": "c" })], { "description": "b" }))`
+            },
+            "references": {}
+          }
         )
       })
 
-      it("& number enum", () => {
+      it("continues intersecting after an annotated filter group", () => {
+        assertFromJsonSchema(
+          {
+            schema: {
+              type: "number",
+              allOf: [
+                { minimum: 1, maximum: 2, description: "range" },
+                { type: "integer" }
+              ]
+            }
+          },
+          {
+            "representation": {
+              "_tag": "Number",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "a finite number",
+                    "arbitrary": {
+                      "constraint": {
+                        "noInfinity": true,
+                        "noNaN": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                },
+                {
+                  "_tag": "FilterGroup",
+                  "annotations": {
+                    "description": "range"
+                  },
+                  "checks": [
+                    {
+                      "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isGreaterThanOrEqualTo",
+                        "payload": {
+                          "minimum": 1
+                        }
+                      },
+                      "annotations": {
+                        "expected": "a value greater than or equal to 1"
+                      },
+                      "aborted": false
+                    },
+                    {
+                      "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isLessThanOrEqualTo",
+                        "payload": {
+                          "maximum": 2
+                        }
+                      },
+                      "annotations": {
+                        "expected": "a value less than or equal to 2"
+                      },
+                      "aborted": false
+                    }
+                  ]
+                },
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "an integer",
+                    "arbitrary": {
+                      "constraint": {
+                        "integer": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
+              ]
+            },
+            "references": {}
+          }
+        )
+      })
+
+      it("intersects with a single-member number enum", () => {
         assertFromJsonSchema(
           {
             schema: {
@@ -2019,12 +4613,16 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Literal",
-              literal: 1
-            }
-          },
-          `Schema.Literal(1)`
+            "representation": {
+              "_tag": "Literal",
+              "checks": [],
+              "literal": {
+                "type": "number",
+                "value": 1
+              }
+            },
+            "references": {}
+          }
         )
         assertFromJsonSchema(
           {
@@ -2037,14 +4635,23 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Literal",
-              literal: 1,
-              annotations: { description: "b" }
-            }
-          },
-          `Schema.Literal(1).annotate({ "description": "b" })`
+            "representation": {
+              "_tag": "Literal",
+              "annotations": {
+                "description": "b"
+              },
+              "checks": [],
+              "literal": {
+                "type": "number",
+                "value": 1
+              }
+            },
+            "references": {}
+          }
         )
+      })
+
+      it("intersects with a multi-member number enum", () => {
         assertFromJsonSchema(
           {
             schema: {
@@ -2055,22 +4662,73 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Union",
-              types: [
-                { _tag: "Literal", literal: 1 },
-                { _tag: "Literal", literal: 2 }
+            "representation": {
+              "_tag": "Union",
+              "checks": [],
+              "types": [
+                {
+                  "_tag": "Literal",
+                  "checks": [],
+                  "literal": {
+                    "type": "number",
+                    "value": 1
+                  }
+                },
+                {
+                  "_tag": "Literal",
+                  "checks": [],
+                  "literal": {
+                    "type": "number",
+                    "value": 2
+                  }
+                }
               ],
-              mode: "anyOf"
-            }
-          },
-          `Schema.Literals([1, 2])`
+              "mode": "anyOf"
+            },
+            "references": {}
+          }
         )
       })
     })
 
     describe("type: boolean", () => {
-      it("& boolean enum", () => {
+      it("boolean & boolean", () => {
+        assertFromJsonSchema(
+          {
+            schema: {
+              type: "boolean",
+              allOf: [{ type: "boolean" }]
+            }
+          },
+          {
+            "representation": {
+              "_tag": "Boolean",
+              "checks": []
+            },
+            "references": {}
+          }
+        )
+      })
+
+      it("boolean & non-boolean literal", () => {
+        assertFromJsonSchema(
+          {
+            schema: {
+              type: "boolean",
+              allOf: [{ const: 1 }]
+            }
+          },
+          {
+            "representation": {
+              "_tag": "Never",
+              "checks": []
+            },
+            "references": {}
+          }
+        )
+      })
+
+      it("intersects with a single-member boolean enum", () => {
         assertFromJsonSchema(
           {
             schema: {
@@ -2081,12 +4739,16 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Literal",
-              literal: true
-            }
-          },
-          `Schema.Literal(true)`
+            "representation": {
+              "_tag": "Literal",
+              "checks": [],
+              "literal": {
+                "type": "boolean",
+                "value": true
+              }
+            },
+            "references": {}
+          }
         )
         assertFromJsonSchema(
           {
@@ -2099,13 +4761,19 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Literal",
-              literal: true,
-              annotations: { description: "b" }
-            }
-          },
-          `Schema.Literal(true).annotate({ "description": "b" })`
+            "representation": {
+              "_tag": "Literal",
+              "annotations": {
+                "description": "b"
+              },
+              "checks": [],
+              "literal": {
+                "type": "boolean",
+                "value": true
+              }
+            },
+            "references": {}
+          }
         )
       })
     })
@@ -2115,17 +4783,15 @@ describe("fromJsonSchemaDocument", () => {
         a: JsonSchema.JsonSchema,
         b: JsonSchema.JsonSchema,
         expected: Parameters<typeof assertFromJsonSchema>[1],
-        runtime: string,
         valid: ReadonlyArray<unknown>,
         invalid: ReadonlyArray<unknown>
       ) {
         for (const [schema, member] of [[a, b], [b, a]]) {
           const document = assertFromJsonSchema(
             { schema: { ...schema, allOf: [member] } },
-            expected,
-            runtime
+            expected
           )
-          const is = Schema.is(SchemaRepresentation.toSchema(document))
+          const is = Schema.is(document)
           for (const value of valid) {
             assertTrue(is(value))
           }
@@ -2147,14 +4813,44 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Arrays",
-              elements: [],
-              rest: [json()],
-              checks: [{ _tag: "Filter", meta: { _tag: "isUnique" } }]
-            }
-          },
-          `Schema.Array(Schema.Json).check(Schema.isUnique())`
+            "representation": {
+              "_tag": "Arrays",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isUnique",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "an array with unique items",
+                    "arbitrary": {
+                      "constraint": {
+                        "unique": true
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
+              ],
+              "elements": [],
+              "rest": [
+                {
+                  "_tag": "Declaration",
+                  "representation": {
+                    "id": "effect/schema/Json",
+                    "payload": null
+                  },
+                  "annotations": {
+                    "expected": "JSON value"
+                  },
+                  "typeParameters": [],
+                  "checks": []
+                }
+              ]
+            },
+            "references": {}
+          }
         )
       })
 
@@ -2173,17 +4869,38 @@ describe("fromJsonSchemaDocument", () => {
             items: { type: "string" }
           },
           {
-            representation: {
-              _tag: "Arrays",
-              elements: [
-                { isOptional: false, type: { _tag: "String", checks: [] } },
-                { isOptional: false, type: { _tag: "Literal", literal: "tail" } }
+            "representation": {
+              "_tag": "Arrays",
+              "checks": [],
+              "elements": [
+                {
+                  "isOptional": false,
+                  "type": {
+                    "_tag": "String",
+                    "checks": []
+                  }
+                },
+                {
+                  "isOptional": false,
+                  "type": {
+                    "_tag": "Literal",
+                    "checks": [],
+                    "literal": {
+                      "type": "string",
+                      "value": "tail"
+                    }
+                  }
+                }
               ],
-              rest: [{ _tag: "String", checks: [] }],
-              checks: []
-            }
+              "rest": [
+                {
+                  "_tag": "String",
+                  "checks": []
+                }
+              ]
+            },
+            "references": {}
           },
-          `Schema.TupleWithRest(Schema.Tuple([Schema.String, Schema.Literal("tail")]), [Schema.String])`,
           [["head", "tail"], ["head", "tail", "more"]],
           [["head"], ["head", "other"], ["head", "tail", 1]]
         )
@@ -2204,14 +4921,22 @@ describe("fromJsonSchemaDocument", () => {
             maxItems: 2
           },
           {
-            representation: {
-              _tag: "Arrays",
-              elements: [{ isOptional: false, type: { _tag: "String", checks: [] } }],
-              rest: [],
-              checks: []
-            }
+            "representation": {
+              "_tag": "Arrays",
+              "checks": [],
+              "elements": [
+                {
+                  "isOptional": false,
+                  "type": {
+                    "_tag": "String",
+                    "checks": []
+                  }
+                }
+              ],
+              "rest": []
+            },
+            "references": {}
           },
-          `Schema.Tuple([Schema.String])`,
           [["head"]],
           [[], ["head", 1]]
         )
@@ -2231,8 +4956,13 @@ describe("fromJsonSchemaDocument", () => {
             minItems: 2,
             maxItems: 2
           },
-          { representation: { _tag: "Never" } },
-          `Schema.Never`,
+          {
+            "representation": {
+              "_tag": "Never",
+              "checks": []
+            },
+            "references": {}
+          },
           [],
           [[], ["head"], ["head", 1]]
         )
@@ -2253,14 +4983,22 @@ describe("fromJsonSchemaDocument", () => {
             maxItems: 1
           },
           {
-            representation: {
-              _tag: "Arrays",
-              elements: [{ isOptional: false, type: { _tag: "String", checks: [] } }],
-              rest: [],
-              checks: []
-            }
+            "representation": {
+              "_tag": "Arrays",
+              "checks": [],
+              "elements": [
+                {
+                  "isOptional": false,
+                  "type": {
+                    "_tag": "String",
+                    "checks": []
+                  }
+                }
+              ],
+              "rest": []
+            },
+            "references": {}
           },
-          `Schema.Tuple([Schema.String])`,
           [["head"]],
           [[], ["head", 1]]
         )
@@ -2281,14 +5019,22 @@ describe("fromJsonSchemaDocument", () => {
             items: { type: "number" }
           },
           {
-            representation: {
-              _tag: "Arrays",
-              elements: [{ isOptional: false, type: { _tag: "String", checks: [] } }],
-              rest: [],
-              checks: []
-            }
+            "representation": {
+              "_tag": "Arrays",
+              "checks": [],
+              "elements": [
+                {
+                  "isOptional": false,
+                  "type": {
+                    "_tag": "String",
+                    "checks": []
+                  }
+                }
+              ],
+              "rest": []
+            },
+            "references": {}
           },
-          `Schema.Tuple([Schema.String])`,
           [["head"]],
           [[], ["head", "tail"], ["head", 1]]
         )
@@ -2307,8 +5053,13 @@ describe("fromJsonSchemaDocument", () => {
             minItems: 1,
             maxItems: 1
           },
-          { representation: { _tag: "Never" } },
-          `Schema.Never`,
+          {
+            "representation": {
+              "_tag": "Never",
+              "checks": []
+            },
+            "references": {}
+          },
           [],
           [[], [0]]
         )
@@ -2326,14 +5077,14 @@ describe("fromJsonSchemaDocument", () => {
             maxItems: 1
           },
           {
-            representation: {
-              _tag: "Arrays",
-              elements: [],
-              rest: [],
-              checks: []
-            }
+            "representation": {
+              "_tag": "Arrays",
+              "checks": [],
+              "elements": [],
+              "rest": []
+            },
+            "references": {}
           },
-          `Schema.Tuple([])`,
           [[]],
           [[0]]
         )
@@ -2353,18 +5104,346 @@ describe("fromJsonSchemaDocument", () => {
             maxItems: 1
           },
           {
-            representation: {
-              _tag: "Arrays",
-              elements: [{ isOptional: false, type: { _tag: "Literal", literal: 2 } }],
-              rest: [],
-              checks: [{ _tag: "Filter", meta: { _tag: "isMinLength", minLength: 1 } }]
-            }
+            "representation": {
+              "_tag": "Arrays",
+              "checks": [
+                {
+                  "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
+                  "annotations": {
+                    "expected": "a value with a length of at least 1",
+                    "~structural": true,
+                    "arbitrary": {
+                      "constraint": {
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "aborted": false
+                }
+              ],
+              "elements": [
+                {
+                  "isOptional": false,
+                  "type": {
+                    "_tag": "Literal",
+                    "checks": [],
+                    "literal": {
+                      "type": "number",
+                      "value": 2
+                    }
+                  }
+                }
+              ],
+              "rest": []
+            },
+            "references": {}
           },
-          `Schema.Tuple([Schema.Literal(2)]).check(Schema.isMinLength(1))`,
           [[2]],
           [[], [0]]
         )
       })
+    })
+
+    it("short-circuits false intersections to Never", () => {
+      assertFromJsonSchema(
+        { schema: { allOf: [false, { type: "string" }] } },
+        {
+          "representation": {
+            "_tag": "Never",
+            "checks": []
+          },
+          "references": {}
+        }
+      )
+    })
+
+    it("returns Never when intersecting array and string", () => {
+      assertFromJsonSchema(
+        { schema: { allOf: [{ type: "array" }, { type: "string" }] } },
+        {
+          "representation": {
+            "_tag": "Never",
+            "checks": []
+          },
+          "references": {}
+        }
+      )
+    })
+
+    it("returns Never when intersecting object and string", () => {
+      assertFromJsonSchema(
+        { schema: { allOf: [{ type: "object" }, { type: "string" }] } },
+        {
+          "representation": {
+            "_tag": "Never",
+            "checks": []
+          },
+          "references": {}
+        }
+      )
+    })
+
+    it("returns Never when intersecting null and string", () => {
+      assertFromJsonSchema(
+        { schema: { allOf: [{ type: "null" }, { type: "string" }] } },
+        {
+          "representation": {
+            "_tag": "Never",
+            "checks": []
+          },
+          "references": {}
+        }
+      )
+    })
+
+    it("returns Never when intersecting distinct literals", () => {
+      assertFromJsonSchema(
+        { schema: { allOf: [{ const: 1 }, { const: 2 }] } },
+        {
+          "representation": {
+            "_tag": "Never",
+            "checks": []
+          },
+          "references": {}
+        }
+      )
+    })
+
+    it("preserves null when intersecting null types", () => {
+      assertFromJsonSchema(
+        { schema: { allOf: [{ type: "null" }, { type: "null" }] } },
+        {
+          "representation": {
+            "_tag": "Null",
+            "checks": []
+          },
+          "references": {}
+        }
+      )
+    })
+
+    it("preserves a literal when intersecting identical literals", () => {
+      assertFromJsonSchema(
+        { schema: { allOf: [{ const: 1 }, { const: 1 }] } },
+        {
+          "representation": {
+            "_tag": "Literal",
+            "checks": [],
+            "literal": {
+              "type": "number",
+              "value": 1
+            }
+          },
+          "references": {}
+        }
+      )
+    })
+
+    it("preserves a matching literal after a boolean type", () => {
+      assertFromJsonSchema(
+        { schema: { allOf: [{ type: "boolean" }, { const: true }] } },
+        {
+          "representation": {
+            "_tag": "Literal",
+            "checks": [],
+            "literal": {
+              "type": "boolean",
+              "value": true
+            }
+          },
+          "references": {}
+        }
+      )
+    })
+
+    it("preserves a matching literal before a boolean type", () => {
+      assertFromJsonSchema(
+        { schema: { allOf: [{ const: true }, { type: "boolean" }] } },
+        {
+          "representation": {
+            "_tag": "Literal",
+            "checks": [],
+            "literal": {
+              "type": "boolean",
+              "value": true
+            }
+          },
+          "references": {}
+        }
+      )
+    })
+
+    it("combines a string with a reference", () => {
+      const definition: JsonSchema.JsonSchema = { type: "string", minLength: 1 }
+      assertFromJsonSchema(
+        {
+          schema: {
+            type: "string",
+            allOf: [{ $ref: "#/$defs/A" }],
+            $defs: { A: definition }
+          }
+        },
+        {
+          "representation": {
+            "_tag": "String",
+            "checks": [
+              {
+                "_tag": "Filter",
+                "representation": {
+                  "id": "effect/schema/isMinLength",
+                  "payload": {
+                    "minLength": 1
+                  }
+                },
+                "annotations": {
+                  "expected": "a value with a length of at least 1",
+                  "~structural": true,
+                  "arbitrary": {
+                    "constraint": {
+                      "minLength": 1
+                    }
+                  }
+                },
+                "aborted": false
+              }
+            ]
+          },
+          "references": {}
+        }
+      )
+    })
+
+    it("preserves annotations on a reference inside allOf", () => {
+      const definition: JsonSchema.JsonSchema = { type: "string", minLength: 1 }
+      const document = fromJsonSchemaRepresentation(
+        JsonSchema.fromSchemaDraft2020_12({
+          type: "string",
+          allOf: [{ $ref: "#/$defs/A", description: "annotated" }],
+          $defs: { A: definition }
+        })
+      )
+      strictEqual(document.representation._tag, "String")
+      if (document.representation._tag === "String") {
+        strictEqual(document.representation.annotations?.description, "annotated")
+      }
+    })
+
+    it("preserves annotations on a root reference intersected with allOf", () => {
+      const definition: JsonSchema.JsonSchema = { type: "string", minLength: 1 }
+      const document = fromJsonSchemaRepresentation(
+        JsonSchema.fromSchemaDraft2020_12({
+          $ref: "#/$defs/A",
+          description: "annotated",
+          allOf: [{ type: "string" }],
+          $defs: { A: definition }
+        })
+      )
+      strictEqual(document.representation._tag, "String")
+      if (document.representation._tag === "String") {
+        strictEqual(document.representation.annotations?.description, "annotated")
+      }
+    })
+
+    it("preserves annotations through reference aliases", () => {
+      const aliases = fromJsonSchemaRepresentation(
+        JsonSchema.fromSchemaDraft2020_12({
+          type: "string",
+          allOf: [{ $ref: "#/$defs/A" }],
+          $defs: {
+            A: { $ref: "#/$defs/B", description: "alias" },
+            B: { type: "string" }
+          }
+        })
+      )
+      strictEqual(aliases.representation._tag, "String")
+      if (aliases.representation._tag === "String") {
+        strictEqual(aliases.representation.annotations?.description, "alias")
+      }
+    })
+
+    it("merges annotations on string intersections", () => {
+      const string = fromJsonSchemaRepresentation(
+        JsonSchema.fromSchemaDraft2020_12({
+          allOf: [
+            { type: "string", contentMediaType: "application/json" },
+            { type: "string", contentSchema: { type: "number" } }
+          ]
+        })
+      )
+      strictEqual(string.representation._tag, "String")
+      if (string.representation._tag === "String") {
+        deepStrictEqual(string.representation.annotations, {
+          contentMediaType: "application/json",
+          contentSchema: { type: "number" }
+        })
+      }
+    })
+
+    it("merges constraints on overlapping required properties", () => {
+      const object = toSchemaFromJsonSchemaDocument(
+        JsonSchema.fromSchemaDraft2020_12({
+          type: "object",
+          additionalProperties: false,
+          properties: { a: { type: "string" } },
+          required: ["a"],
+          allOf: [{
+            type: "object",
+            additionalProperties: false,
+            properties: { a: { type: "string", minLength: 2 } },
+            required: ["a"]
+          }]
+        })
+      )
+      const isObject = Schema.is(object)
+      assertTrue(isObject({ a: "ab" }))
+      assertFalse(isObject({ a: "a" }))
+    })
+
+    it("preserves optional properties when intersecting object fields", () => {
+      const optionalObject = fromJsonSchemaRepresentation(
+        JsonSchema.fromSchemaDraft2020_12({
+          type: "object",
+          additionalProperties: false,
+          properties: { a: { type: "string" } },
+          allOf: [{
+            type: "object",
+            additionalProperties: false,
+            properties: { a: { minLength: 1 } }
+          }]
+        })
+      )
+      strictEqual(optionalObject.representation._tag, "Objects")
+      if (optionalObject.representation._tag === "Objects") {
+        strictEqual(optionalObject.representation.propertySignatures[0].isOptional, true)
+      }
+    })
+
+    it("merges object index signatures", () => {
+      const indexes = fromJsonSchemaRepresentation(
+        JsonSchema.fromSchemaDraft2020_12({
+          type: "object",
+          additionalProperties: false,
+          patternProperties: { "^a": { type: "string" } },
+          allOf: [
+            { type: "object", additionalProperties: true },
+            {
+              type: "object",
+              additionalProperties: false,
+              patternProperties: { "^b": { type: "number" } }
+            }
+          ]
+        })
+      )
+      strictEqual(indexes.representation._tag, "Objects")
+      if (indexes.representation._tag === "Objects") {
+        strictEqual(indexes.representation.indexSignatures.length, 3)
+      }
     })
 
     describe("type: object", () => {
@@ -2380,21 +5459,27 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Objects",
-              propertySignatures: [
+            "representation": {
+              "_tag": "Objects",
+              "checks": [],
+              "propertySignatures": [
                 {
-                  name: "a",
-                  type: { _tag: "String", checks: [] },
-                  isOptional: true,
-                  isMutable: false
+                  "name": {
+                    "type": "string",
+                    "value": "a"
+                  },
+                  "type": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "isOptional": true,
+                  "isMutable": false
                 }
               ],
-              indexSignatures: [],
-              checks: []
-            }
-          },
-          `Schema.Struct({ "a": Schema.optionalKey(Schema.String) })`
+              "indexSignatures": []
+            },
+            "references": {}
+          }
         )
       })
 
@@ -2409,22 +5494,118 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Objects",
-              propertySignatures: [],
-              indexSignatures: [
-                { parameter: { _tag: "String", checks: [] }, type: { _tag: "Boolean" } }
-              ],
-              checks: []
-            }
-          },
-          `Schema.Record(Schema.String, Schema.Boolean)`
+            "representation": {
+              "_tag": "Objects",
+              "checks": [],
+              "propertySignatures": [],
+              "indexSignatures": [
+                {
+                  "parameter": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "type": {
+                    "_tag": "Boolean",
+                    "checks": []
+                  }
+                }
+              ]
+            },
+            "references": {}
+          }
         )
       })
     })
   })
 
   describe("options", () => {
+    describe("patterns", () => {
+      it("rejects patterns by default", () => {
+        for (
+          const [schema, path] of [
+            [{ type: "string", pattern: "^a+$" }, `["schema"]["pattern"]`],
+            [
+              { type: "object", patternProperties: { "^a+$": { type: "string" } } },
+              `["schema"]["patternProperties"]["^a+$"]`
+            ],
+            [
+              { type: "object", propertyNames: { pattern: "^a+$" } },
+              `["schema"]["propertyNames"]["pattern"]`
+            ]
+          ] as const
+        ) {
+          throws(
+            () => SchemaRepresentation.fromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema)),
+            `Pattern encountered while patterns is set to "error"\n  at ${path}`
+          )
+        }
+      })
+
+      it("applies patterns explicitly", () => {
+        const schema = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^a+$" }),
+          { patterns: "apply" }
+        )
+        const is = Schema.is(schema)
+        assertTrue(is("aaa"))
+        assertFalse(is("bbb"))
+      })
+
+      it("ignores patterns explicitly", () => {
+        const schema = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^a+$" }),
+          { patterns: "ignore" }
+        )
+        const is = Schema.is(schema)
+        assertTrue(is("aaa"))
+        assertTrue(is("bbb"))
+        deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast).representation, {
+          _tag: "String",
+          checks: []
+        })
+
+        const invalidPattern = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "[" }),
+          { patterns: "ignore" }
+        )
+        assertTrue(Schema.is(invalidPattern)("anything"))
+      })
+
+      it("ignores pattern property value constraints explicitly", () => {
+        const schema = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({
+            type: "object",
+            patternProperties: {
+              "^a+$": { type: "string" },
+              "^b+$": { type: "number" }
+            },
+            additionalProperties: false
+          }),
+          { patterns: "ignore" }
+        )
+        const is = Schema.is(schema)
+        assertTrue(is({ aaa: 1, bbb: "b", ccc: true }))
+        const representation = SchemaRepresentation.toRepresentation(schema.ast).representation
+        strictEqual(representation._tag, "Objects")
+        if (representation._tag === "Objects") {
+          deepStrictEqual(representation.indexSignatures.map(({ parameter }) => parameter), [{
+            _tag: "String",
+            checks: []
+          }])
+        }
+
+        const withAdditionalProperties = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({
+            type: "object",
+            patternProperties: { "^a+$": { type: "string" } },
+            additionalProperties: { type: "boolean" }
+          }),
+          { patterns: "ignore" }
+        )
+        assertTrue(Schema.is(withAdditionalProperties)({ bbb: 1 }))
+      })
+    })
+
     describe("onEnter", () => {
       it("additionalProperties false via onEnter", () => {
         assertFromJsonSchema(
@@ -2446,21 +5627,27 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: {
-              _tag: "Objects",
-              propertySignatures: [
+            "representation": {
+              "_tag": "Objects",
+              "checks": [],
+              "propertySignatures": [
                 {
-                  name: "a",
-                  type: { _tag: "String", checks: [] },
-                  isOptional: false,
-                  isMutable: false
+                  "name": {
+                    "type": "string",
+                    "value": "a"
+                  },
+                  "type": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "isOptional": false,
+                  "isMutable": false
                 }
               ],
-              indexSignatures: [],
-              checks: []
-            }
-          },
-          `Schema.Struct({ "a": Schema.String })`
+              "indexSignatures": []
+            },
+            "references": {}
+          }
         )
       })
 
@@ -2481,12 +5668,22 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: json({
-              title: "a",
-              description: "b"
-            })
-          },
-          `Schema.Json.annotate({ "title": "a", "description": "b" })`
+            "representation": {
+              "_tag": "Declaration",
+              "representation": {
+                "id": "effect/schema/Json",
+                "payload": null
+              },
+              "annotations": {
+                "expected": "JSON value",
+                "title": "a",
+                "description": "b"
+              },
+              "typeParameters": [],
+              "checks": []
+            },
+            "references": {}
+          }
         )
       })
 
@@ -2510,12 +5707,22 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: json({
-              title: "a",
-              default: "c"
-            })
-          },
-          `Schema.Json.annotate({ "title": "a", "default": "c" })`
+            "representation": {
+              "_tag": "Declaration",
+              "representation": {
+                "id": "effect/schema/Json",
+                "payload": null
+              },
+              "annotations": {
+                "expected": "JSON value",
+                "title": "a",
+                "default": "c"
+              },
+              "typeParameters": [],
+              "checks": []
+            },
+            "references": {}
+          }
         )
       })
 
@@ -2530,14 +5737,26 @@ describe("fromJsonSchemaDocument", () => {
             }
           },
           {
-            representation: json({
-              title: "a",
-              description: "b",
-              default: "c",
-              examples: ["d"]
-            })
-          },
-          `Schema.Json.annotate({ "title": "a", "description": "b", "default": "c", "examples": ["d"] })`
+            "representation": {
+              "_tag": "Declaration",
+              "representation": {
+                "id": "effect/schema/Json",
+                "payload": null
+              },
+              "annotations": {
+                "expected": "JSON value",
+                "title": "a",
+                "description": "b",
+                "default": "c",
+                "examples": [
+                  "d"
+                ]
+              },
+              "typeParameters": [],
+              "checks": []
+            },
+            "references": {}
+          }
         )
       })
     })

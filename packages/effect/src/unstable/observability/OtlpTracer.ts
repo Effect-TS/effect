@@ -59,7 +59,7 @@ export const make: (
 ) => Effect.Effect<
   Tracer.Tracer,
   never,
-  OtlpSerialization | HttpClient.HttpClient | Scope.Scope
+  Exporter.Flusher | OtlpSerialization | HttpClient.HttpClient | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const otelResource = yield* OtlpResource.fromConfig(options.resource)
   const serialization = yield* OtlpSerialization
@@ -83,7 +83,7 @@ export const make: (
           }]
         }]
       }
-      return serialization.traces(data)
+      return [serialization.traces(data), Effect.void]
     },
     shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })
@@ -134,7 +134,11 @@ export const layer: (options: {
   readonly maxBatchSize?: number | undefined
   readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
-}) => Layer.Layer<never, never, OtlpSerialization | HttpClient.HttpClient> = flow(make, Layer.effect(Tracer.Tracer))
+}) => Layer.Layer<Exporter.Flusher, never, OtlpSerialization | HttpClient.HttpClient> = flow(
+  make,
+  Layer.effect(Tracer.Tracer),
+  Layer.provideMerge(Exporter.layerFlusher)
+)
 
 /**
  * Creates an OTLP traces layer from OpenTelemetry configuration.
@@ -150,7 +154,7 @@ export const layerFromConfig = (options?: {
   } | undefined
   readonly headers?: Headers.Input | undefined
   readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
-}): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerialization> =>
+}): Layer.Layer<Exporter.Flusher, never, HttpClient.HttpClient | OtlpSerialization> =>
   Effect.gen(function*() {
     const { disabled, endpoint, exporters } = yield* Config.all({
       disabled: Config.boolean("OTEL_SDK_DISABLED").pipe(Config.withDefault(false)),
@@ -159,7 +163,7 @@ export const layerFromConfig = (options?: {
     })
 
     if (disabled || !endpoint || !exporters.includes("otlp")) {
-      return Layer.empty
+      return Exporter.layerFlusher
     }
 
     const { baseTimeout, tracesTimeout, exportTimeout, scheduleDelay, maxBatchSize } = yield* Config.all({

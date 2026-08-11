@@ -1,4 +1,4 @@
-import { BigDecimal, DateTime, Duration, HashMap, Option, Redacted, Result, Schema } from "effect"
+import { BigDecimal, DateTime, Duration, HashMap, Option, Redacted, Result, Schema, SchemaGetter } from "effect"
 import { describe, it } from "vitest"
 import { strictEqual } from "../utils/assert.ts"
 
@@ -150,6 +150,63 @@ describe("toFormatter", () => {
     const format = Schema.toFormatter(Schema.Union([Schema.String, Schema.Number]))
     strictEqual(format("a"), `"a"`)
     strictEqual(format(1), "1")
+  })
+
+  it("precompiles Union members", () => {
+    let derivations = 0
+    const String = Schema.String.pipe(
+      Schema.overrideToFormatter(() => {
+        derivations++
+        return (s) => s.toUpperCase()
+      })
+    )
+    const format = Schema.toFormatter(Schema.Union([String, Schema.Number, Schema.Never]))
+
+    strictEqual(derivations, 1)
+    strictEqual(format("a"), "A")
+    strictEqual(format("b"), "B")
+    strictEqual(derivations, 1)
+  })
+
+  it("selects transformed Union members on the Type side", () => {
+    const Target = Schema.Struct({ value: Schema.String }).pipe(
+      Schema.overrideToFormatter(() => (a) => `formatted:${a.value}`)
+    )
+    const Transformed = Schema.String.pipe(
+      Schema.decodeTo(Target, {
+        decode: SchemaGetter.transform((s) => ({ value: s })),
+        encode: SchemaGetter.transform((a) => a.value)
+      })
+    )
+    const format = Schema.toFormatter(Schema.Union([Transformed, Schema.Boolean]))
+
+    strictEqual(format({ value: "a" }), "formatted:a")
+  })
+
+  it("preserves Union member formatter annotations", () => {
+    const member = Schema.String.pipe(
+      Schema.flip,
+      Schema.check(Schema.makeFilter(() => true)),
+      Schema.flip,
+      Schema.overrideToFormatter(() => (s) => s.toUpperCase())
+    )
+    const format = Schema.toFormatter(Schema.Union([member, Schema.Number]))
+
+    strictEqual(format("a"), "A")
+  })
+
+  it("preserves Union member encoding metadata for onBefore", () => {
+    const member = Schema.String.pipe(
+      Schema.decode({
+        decode: SchemaGetter.transform((s) => s),
+        encode: SchemaGetter.transform((s) => s)
+      })
+    )
+    const format = Schema.toFormatter(Schema.Union([member, Schema.Number]), {
+      onBefore: (ast) => ast.encoding ? () => "transformed" : undefined
+    })
+
+    strictEqual(format("a"), "transformed")
   })
 
   describe("Tuple", () => {

@@ -23,7 +23,7 @@ import { RunnerAddress } from "./RunnerAddress.ts"
 /**
  * Represents the configuration for the `Sharding` service on a given runner.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export class ShardingConfig extends Context.Service<ShardingConfig, {
@@ -70,7 +70,11 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    */
   readonly shardsPerGroup: number
   /**
-   * Shard lock refresh interval.
+   * The maximum interval between shard lock refreshes.
+   *
+   * The runner may shorten this interval to one third of
+   * `shardLockExpiration` to preserve enough time to stop entities safely if
+   * lock storage becomes unavailable.
    */
   readonly shardLockRefreshInterval: Duration.Input
   /**
@@ -206,7 +210,7 @@ export const layer = (options?: Partial<ShardingConfig["Service"]>): Layer.Layer
 /**
  * Layer that provides the default `ShardingConfig` values.
  *
- * @category defaults
+ * @category layers
  * @since 4.0.0
  */
 export const layerDefaults: Layer.Layer<ShardingConfig> = layer()
@@ -349,7 +353,7 @@ export const layerFromEnv = (options?: Partial<ShardingConfig["Service"]> | unde
  * Normalizes the provided `ShardingConfig` to calculate the `available` and
  * `assigned` shard groups.
  *
- * @category Shard groups
+ * @category converting
  * @since 4.0.0
  */
 export const shardGroupConfig = (config: ShardingConfig["Service"]): {

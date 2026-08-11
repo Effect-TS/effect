@@ -1,8 +1,8 @@
 import { afterEach, describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import type { Layer } from "effect"
-import { Effect, Option, Schema } from "effect"
+import { Effect, type Layer, Option, Schema } from "effect"
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
+import * as Persistence from "effect/unstable/persistence/Persistence"
 
 export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>) => {
   const run = <E, A>(effect: Effect.Effect<A, E, KeyValueStore.KeyValueStore>) =>
@@ -84,12 +84,27 @@ export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>)
       strictEqual(value, undefined)
       strictEqual(length, 0)
     })))
+
+  it("setMany stores entries without a TTL", () =>
+    run(
+      Effect.gen(function*() {
+        const backing = yield* Persistence.BackingPersistence
+        const store = yield* backing.make("store")
+
+        yield* store.setMany([["key", { value: 1 }, undefined]])
+
+        deepStrictEqual(yield* store.get("key"), { value: 1 })
+      }).pipe(
+        Effect.scoped,
+        Effect.provide(Persistence.layerBackingKvs)
+      )
+    ))
 }
 
 describe("KeyValueStore / layerMemory", () => testLayer(KeyValueStore.layerMemory))
 
 describe("KeyValueStore / prefix", () => {
-  it("prefixes the keys", () =>
+  it.effect("prefixes the keys", () =>
     Effect.gen(function*() {
       const store = yield* (KeyValueStore.KeyValueStore)
       const prefixed = KeyValueStore.prefix(store, "prefix/")
@@ -103,8 +118,7 @@ describe("KeyValueStore / prefix", () => {
       strictEqual(yield* (store.get("prefix/foo")), "barbar")
       assertTrue(yield* (store.has("prefix/foo")))
     }).pipe(
-      Effect.provide(KeyValueStore.layerMemory),
-      Effect.runPromise
+      Effect.provide(KeyValueStore.layerMemory)
     ))
 })
 
@@ -114,7 +128,7 @@ describe("toSchemaStore", () => {
     age: Schema.Number
   }) {}
 
-  it("encodes & decodes", () =>
+  it.effect("encodes & decodes", () =>
     Effect.gen(function*() {
       const store = yield* KeyValueStore.KeyValueStore
       const schemaStore = KeyValueStore.toSchemaStore(store, User)
@@ -126,11 +140,10 @@ describe("toSchemaStore", () => {
       strictEqual(value.value.name, "foo")
       strictEqual(value.value.age, 43)
     }).pipe(
-      Effect.provide(KeyValueStore.layerMemory),
-      Effect.runPromise
+      Effect.provide(KeyValueStore.layerMemory)
     ))
 
-  it("prefix", () =>
+  it.effect("prefix", () =>
     Effect.gen(function*() {
       const store = yield* KeyValueStore.KeyValueStore
       const schemaStore = KeyValueStore.toSchemaStore(store, User)
@@ -142,11 +155,10 @@ describe("toSchemaStore", () => {
         strictEqual(value.value.age, 42)
       }
     }).pipe(
-      Effect.provide(KeyValueStore.layerMemory),
-      Effect.runPromise
+      Effect.provide(KeyValueStore.layerMemory)
     ))
 
-  it("json compliant", () =>
+  it.effect("json compliant", () =>
     Effect.gen(function*() {
       const store = yield* KeyValueStore.KeyValueStore
       const schema = Schema.Struct({
@@ -158,7 +170,6 @@ describe("toSchemaStore", () => {
       assertTrue(Option.isSome(value))
       deepStrictEqual(value.value.a, new Date(0))
     }).pipe(
-      Effect.provide(KeyValueStore.layerMemory),
-      Effect.runPromise
+      Effect.provide(KeyValueStore.layerMemory)
     ))
 })

@@ -8,6 +8,7 @@ import * as Redactable from "effect/Redactable"
 import * as Schema from "effect/Schema"
 import * as AiError from "effect/unstable/ai/AiError"
 import type * as Response from "effect/unstable/ai/Response"
+import type * as Sse from "effect/unstable/encoding/Sse"
 import type * as HttpClientError from "effect/unstable/http/HttpClientError"
 import type * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
@@ -50,6 +51,17 @@ export const mapSchemaError = dual<
     module: "AnthropicClient",
     method,
     reason: AiError.InvalidOutputError.fromSchemaError(error)
+  }))
+
+/** @internal */
+export const mapSseError = dual<
+  (method: string) => (error: Sse.SseError) => AiError.AiError,
+  (error: Sse.SseError, method: string) => AiError.AiError
+>(2, (error, method) =>
+  AiError.make({
+    module: "AnthropicClient",
+    method,
+    reason: new AiError.InvalidOutputError({ description: error.message })
   }))
 
 /** @internal */

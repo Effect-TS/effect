@@ -26,9 +26,36 @@ describe("VariantSchema", () => {
     const second = Test.Struct({
       value: Test.FieldOnly(["a", "b"])(Schema.Number)
     })
+    const union = Test.Union([first, second])
 
     expect(Test.Union).type.toBeCallableWith([first, second])
     expect(Test.Union).type.not.toBeCallableWith(first, second)
+    expect<Schema.Schema.Type<typeof union>>().type.toBe<
+      { readonly value: string } | { readonly value: number }
+    >()
+  })
+
+  it("Class preserves constructor and variant schema types", () => {
+    const Test = VariantSchema.make({
+      variants: ["a", "b"],
+      defaultVariant: "a"
+    })
+    class User extends Test.Class<User>("User")({
+      id: Test.FieldOnly(["a"])(Schema.Number),
+      name: Schema.String
+    }) {}
+
+    expect(User).type.toBeConstructableWith({ id: 1, name: "Alice" })
+    expect(User).type.not.toBeConstructableWith({ name: "Alice" })
+    expect(User.make({ id: 1, name: "Alice" })).type.toBe<User>()
+    expect<Schema.Schema.Type<typeof User>>().type.toBe<User>()
+    expect<Schema.Codec.Encoded<typeof User>>().type.toBe<
+      { readonly id: number; readonly name: string }
+    >()
+    expect<Schema.Schema.Type<typeof User.a>>().type.toBe<
+      { readonly id: number; readonly name: string }
+    >()
+    expect<Schema.Schema.Type<typeof User.b>>().type.toBe<{ readonly name: string }>()
   })
 })
 

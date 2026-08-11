@@ -11,8 +11,10 @@
  */
 import * as Cache from "../../Cache.ts"
 import * as Context from "../../Context.ts"
+import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Equal from "../../Equal.ts"
+import * as Exit from "../../Exit.ts"
 import { constant, identity } from "../../Function.ts"
 import * as Hash from "../../Hash.ts"
 import * as Schema from "../../Schema.ts"
@@ -50,10 +52,13 @@ export const make = Effect.fnUntraced(function*(
     readonly send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) => Effect.Effect<A, RedisError>
   }
 ) {
-  const scriptCache = yield* Cache.make({
-    lookup: (script: Script<any>) => options.send<string>("SCRIPT", "LOAD", script.lua),
-    capacity: Number.POSITIVE_INFINITY
-  })
+  const scriptCache = yield* Cache.makeWith(
+    (script: Script<any>) => options.send<string>("SCRIPT", "LOAD", script.lua),
+    {
+      capacity: Number.POSITIVE_INFINITY,
+      timeToLive: (exit) => Exit.isSuccess(exit) ? Duration.infinity : Duration.zero
+    }
+  )
 
   const eval_ = <
     Config extends {
@@ -95,7 +100,7 @@ const ErrorTypeId: ErrorTypeId = "~effect/persistence/Redis/RedisError"
  * @category errors
  * @since 4.0.0
  */
-export class RedisError extends Schema.ErrorClass<RedisError>(ErrorTypeId)({
+export class RedisError extends Schema.Error<RedisError>(ErrorTypeId)({
   _tag: Schema.tag("RedisError"),
   cause: Schema.Defect()
 }) {
@@ -118,7 +123,7 @@ const ScriptTypeId: ScriptTypeId = "~effect/persistence/Redis/Script"
  * It defines the Lua source, parameter-to-argument mapping, Redis key count,
  * and result type used by `Redis.eval`.
  *
- * @category Scripting
+ * @category scripting
  * @since 4.0.0
  */
 export interface Script<
@@ -168,7 +173,7 @@ const ScriptProto = {
  * The result type defaults to `void` and can be refined with
  * `withReturnType`.
  *
- * @category Scripting
+ * @category scripting
  * @since 4.0.0
  */
 export const script = <Params extends ReadonlyArray<any>>(
@@ -181,8 +186,8 @@ export const script = <Params extends ReadonlyArray<any>>(
   params: Params
   result: void
 }> =>
-  Object.assign(Object.create(ScriptProto), {
+  Object.setPrototypeOf({
     ...options,
     params: f,
     numberOfKeys: typeof options.numberOfKeys === "number" ? constant(options.numberOfKeys) : options.numberOfKeys
-  })
+  }, ScriptProto)

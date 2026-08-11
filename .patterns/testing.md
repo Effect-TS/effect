@@ -4,6 +4,9 @@
 
 Use `it.effect` for tests that return Effects.
 
+`it.effect` and `it.live` each provide and close a `Scope` for every test. Return scoped effects directly; do not wrap
+the test body in `Effect.scoped`.
+
 ```typescript
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
@@ -28,7 +31,8 @@ it("should work with pure functions", () => {
 
 ## Testing Rules
 
-- Never use `Effect.runSync` in tests
+- Never use `Effect.runSync` in unit tests. Runnable documentation may use it only for the intentional synchronous-runner
+  cases described in `.patterns/jsdoc.md`.
 - Never use `expect` from Vitest; use `assert` methods instead
 - Always use `TestClock` for time-dependent operations
 - Group related tests using `describe`
@@ -42,3 +46,31 @@ Run targeted type-level tests with:
 ```sh
 pnpm test-types <filename>
 ```
+
+### Testing Displayed Types
+
+Ordinary Tstyche assertions such as `toBe` compare types structurally. They cannot
+catch regressions where a public type is semantically correct but TypeScript
+displays an internal alias or an unsimplified intersection in editor quick info.
+
+To test the displayed form, deliberately produce an assignment error and use
+Tstyche's checked `@ts-expect-error` message to match a distinctive substring of
+the rendered type:
+
+```typescript
+it("simplifies the displayed type", () => {
+  const value = null as unknown as PublicType
+
+  // @ts-expect-error Type '{ readonly value: string; }'
+  const displayed: never = value
+
+  void displayed
+})
+```
+
+Before accepting the test, temporarily restore the broken type and confirm that
+the diagnostic-message match fails. Keep the expected substring as small as
+possible while still distinguishing the desired public type from the leaked
+implementation type, because diagnostic wording can change between TypeScript
+versions. Run the targeted test against every TypeScript version configured by
+`pnpm test-types`.

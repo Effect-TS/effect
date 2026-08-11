@@ -19,6 +19,7 @@ import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
+import * as SchemaIssue from "effect/SchemaIssue"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { DeepMutable, Mutable, Simplify } from "effect/Types"
@@ -38,6 +39,8 @@ import { OpenAiClient } from "./OpenAiClient.ts"
 import type * as OpenAiSchema from "./OpenAiSchema.ts"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.ts"
 import type * as OpenAiTool from "./OpenAiTool.ts"
+
+const formatIssue = SchemaIssue.makeFormatterDefault()
 
 const ResponseModelIds = Generated.ModelIdsResponses.members[1]
 const SharedModelIds = Generated.ModelIdsShared.members[1]
@@ -127,7 +130,7 @@ declare module "effect/unstable/ai/Prompt" {
   /**
    * OpenAI-specific options for file prompt parts.
    *
-   * @category request
+   * @category models
    * @since 4.0.0
    */
   export interface FilePartOptions extends ProviderOptions {
@@ -145,7 +148,7 @@ declare module "effect/unstable/ai/Prompt" {
   /**
    * OpenAI-specific options for reasoning prompt parts.
    *
-   * @category request
+   * @category models
    * @since 4.0.0
    */
   export interface ReasoningPartOptions extends ProviderOptions {
@@ -169,7 +172,7 @@ declare module "effect/unstable/ai/Prompt" {
   /**
    * OpenAI-specific options for assistant tool-call prompt parts.
    *
-   * @category request
+   * @category models
    * @since 4.0.0
    */
   export interface ToolCallPartOptions extends ProviderOptions {
@@ -195,7 +198,7 @@ declare module "effect/unstable/ai/Prompt" {
   /**
    * OpenAI-specific options for tool-result prompt parts.
    *
-   * @category request
+   * @category models
    * @since 4.0.0
    */
   export interface ToolResultPartOptions extends ProviderOptions {
@@ -221,7 +224,7 @@ declare module "effect/unstable/ai/Prompt" {
   /**
    * OpenAI-specific options for text prompt parts.
    *
-   * @category request
+   * @category models
    * @since 4.0.0
    */
   export interface TextPartOptions extends ProviderOptions {
@@ -249,7 +252,7 @@ declare module "effect/unstable/ai/Response" {
   /**
    * OpenAI metadata attached to a complete text response part.
    *
-   * @category response
+   * @category models
    * @since 4.0.0
    */
   export interface TextPartMetadata extends ProviderMetadata {
@@ -281,7 +284,7 @@ declare module "effect/unstable/ai/Response" {
   /**
    * OpenAI metadata emitted when a streamed text part starts.
    *
-   * @category response
+   * @category models
    * @since 4.0.0
    */
   export interface TextStartPartMetadata extends ProviderMetadata {
@@ -299,7 +302,7 @@ declare module "effect/unstable/ai/Response" {
   /**
    * OpenAI metadata emitted when a streamed text part ends.
    *
-   * @category response
+   * @category models
    * @since 4.0.0
    */
   export interface TextEndPartMetadata extends ProviderMetadata {
@@ -321,7 +324,7 @@ declare module "effect/unstable/ai/Response" {
   /**
    * OpenAI metadata attached to a complete reasoning response part.
    *
-   * @category response
+   * @category models
    * @since 4.0.0
    */
   export interface ReasoningPartMetadata extends ProviderMetadata {
@@ -343,7 +346,7 @@ declare module "effect/unstable/ai/Response" {
   /**
    * OpenAI metadata emitted when a streamed reasoning part starts.
    *
-   * @category response
+   * @category models
    * @since 4.0.0
    */
   export interface ReasoningStartPartMetadata extends ProviderMetadata {
@@ -365,7 +368,7 @@ declare module "effect/unstable/ai/Response" {
   /**
    * OpenAI metadata emitted for a streamed reasoning delta.
    *
-   * @category response
+   * @category models
    * @since 4.0.0
    */
   export interface ReasoningDeltaPartMetadata extends ProviderMetadata {
@@ -383,7 +386,7 @@ declare module "effect/unstable/ai/Response" {
   /**
    * OpenAI metadata emitted when a streamed reasoning part ends.
    *
-   * @category response
+   * @category models
    * @since 4.0.0
    */
   export interface ReasoningEndPartMetadata extends ProviderMetadata {
@@ -405,7 +408,7 @@ declare module "effect/unstable/ai/Response" {
   /**
    * OpenAI metadata attached to tool-call response parts.
    *
-   * @category response
+   * @category models
    * @since 4.0.0
    */
   export interface ToolCallPartMetadata extends ProviderMetadata {
@@ -423,7 +426,7 @@ declare module "effect/unstable/ai/Response" {
   /**
    * OpenAI metadata attached to document source citations.
    *
-   * @category response
+   * @category models
    * @since 4.0.0
    */
   export interface DocumentSourcePartMetadata extends ProviderMetadata {
@@ -479,7 +482,7 @@ declare module "effect/unstable/ai/Response" {
   /**
    * OpenAI metadata attached to URL source citations.
    *
-   * @category response
+   * @category models
    * @since 4.0.0
    */
   export interface UrlSourcePartMetadata extends ProviderMetadata {
@@ -505,7 +508,7 @@ declare module "effect/unstable/ai/Response" {
   /**
    * OpenAI metadata attached to finish response parts.
    *
-   * @category response
+   * @category models
    * @since 4.0.0
    */
   export interface FinishPartMetadata extends ProviderMetadata {
@@ -782,7 +785,7 @@ const prepareMessages = Effect.fnUntraced(
       Tool.isProviderDefined(tool) && tool.name === "OpenAiCodeInterpreter"
     )
     const shellTool = options.tools.find((tool): tool is ReturnType<typeof OpenAiTool.Shell> =>
-      Tool.isProviderDefined(tool) && tool.name === "OpenAiFunctionShell"
+      Tool.isProviderDefined(tool) && tool.name === "OpenAiShell"
     )
     const localShellTool = options.tools.find((tool): tool is ReturnType<typeof OpenAiTool.LocalShell> =>
       Tool.isProviderDefined(tool) && tool.name === "OpenAiLocalShell"
@@ -816,7 +819,7 @@ const prepareMessages = Effect.fnUntraced(
         case "system": {
           messages.push({
             role: getSystemMessageMode(config.model as string),
-            content: message.content
+            content: [{ type: "input_text", text: message.content }]
           })
           break
         }
@@ -885,7 +888,8 @@ const prepareMessages = Effect.fnUntraced(
         }
 
         case "assistant": {
-          const reasoningMessages: Record<string, DeepMutable<typeof OpenAiSchema.ReasoningItem.Encoded>> = {}
+          const reasoningMessages: Record<string, DeepMutable<typeof OpenAiSchema.ReasoningItem.Encoded>> = Object
+            .create(null)
 
           for (const part of message.content) {
             switch (part.type) {
@@ -1129,6 +1133,7 @@ const prepareMessages = Effect.fnUntraced(
                 call_id: part.id,
                 ...(part.result as any)
               })
+              continue
             }
 
             if (Predicate.isNotUndefined(shellTool) && toolName === "shell") {
@@ -1139,6 +1144,7 @@ const prepareMessages = Effect.fnUntraced(
                 output: part.result as any,
                 ...(Predicate.isNotNull(status) ? { status } : {})
               })
+              continue
             }
 
             if (Predicate.isNotUndefined(localShellTool) && toolName === "local_shell") {
@@ -1149,6 +1155,7 @@ const prepareMessages = Effect.fnUntraced(
                 output: part.result as any,
                 ...(Predicate.isNotNull(status) ? { status } : {})
               })
+              continue
             }
 
             messages.push({
@@ -1614,7 +1621,9 @@ const makeResponse = Effect.fnUntraced(
             type: "tool-call",
             id: part.id,
             name: toolName,
-            params: {},
+            params: webSearchTool?.name === "OpenAiWebSearchPreview"
+              ? {}
+              : { action: part.action },
             providerExecuted: true
           })
           parts.push({
@@ -1682,7 +1691,7 @@ const makeStreamResponse = Effect.fnUntraced(
     }
 
     // Track active reasoning items with state machine for proper concluding logic
-    const activeReasoning: Record<string, ReasoningPart> = {}
+    const activeReasoning: Record<string, ReasoningPart> = Object.create(null)
 
     const getOrCreateReasoningPart = (
       itemId: string,
@@ -1753,14 +1762,27 @@ const makeStreamResponse = Effect.fnUntraced(
           }
 
           case "response.completed":
-          case "response.incomplete":
-          case "response.failed": {
+          case "response.incomplete": {
             parts.push({
               type: "finish",
               reason: InternalUtilities.resolveFinishReason(
                 event.response.incomplete_details?.reason,
                 hasToolCalls
               ),
+              usage: getUsage(event.response.usage),
+              response: buildHttpResponseDetails(response),
+              ...toServiceTier(event.response.service_tier)
+            })
+            break
+          }
+
+          case "response.failed": {
+            if (event.response.error) {
+              parts.push({ type: "error", error: event.response.error })
+            }
+            parts.push({
+              type: "finish",
+              reason: "error",
               usage: getUsage(event.response.usage),
               response: buildHttpResponseDetails(response),
               ...toServiceTier(event.response.service_tier)
@@ -1941,6 +1963,9 @@ const makeStreamResponse = Effect.fnUntraced(
                 activeToolCalls[event.output_index] = {
                   id: event.item.id,
                   name: toolName
+                }
+                if (webSearchTool?.name === "OpenAiWebSearch") {
+                  break
                 }
                 parts.push({
                   type: "tool-params-start",
@@ -2255,6 +2280,15 @@ const makeStreamResponse = Effect.fnUntraced(
                 const toolName = toolNameMapper.getCustomName(
                   webSearchTool?.name ?? "web_search"
                 )
+                if (webSearchTool?.name === "OpenAiWebSearch") {
+                  parts.push({
+                    type: "tool-call",
+                    id: event.item.id,
+                    name: toolName,
+                    params: { action: event.item.action },
+                    providerExecuted: true
+                  })
+                }
                 parts.push({
                   type: "tool-result",
                   id: event.item.id,
@@ -3053,15 +3087,16 @@ const getUsage = (usage: OpenAiSchema.ResponseUsage | null | undefined): Respons
 
   const inputTokens = usage.input_tokens
   const outputTokens = usage.output_tokens
-  const cachedTokens = getUsageTokenDetail(usage.input_tokens_details, "cached_tokens")
-  const reasoningTokens = getUsageTokenDetail(usage.output_tokens_details, "reasoning_tokens")
+  const cachedTokens = getUsageTokenDetail(usage.input_tokens_details, "cached_tokens") ?? 0
+  const cacheWriteTokens = getUsageTokenDetail(usage.input_tokens_details, "cache_write_tokens")
+  const reasoningTokens = getUsageTokenDetail(usage.output_tokens_details, "reasoning_tokens") ?? 0
 
   return {
     inputTokens: {
       uncached: inputTokens - cachedTokens,
       total: inputTokens,
       cacheRead: cachedTokens,
-      cacheWrite: undefined
+      cacheWrite: cacheWriteTokens
     },
     outputTokens: {
       total: outputTokens,
@@ -3092,8 +3127,8 @@ const toServiceTier = (value: string | undefined): {
   }
 }
 
-const getUsageTokenDetail = (details: unknown, key: string): number =>
-  Predicate.hasProperty(details, key) && typeof details[key] === "number" ? details[key] : 0
+const getUsageTokenDetail = (details: unknown, key: string): number | undefined =>
+  Predicate.hasProperty(details, key) && typeof details[key] === "number" ? details[key] : undefined
 
 const transformToolCallParams = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Tool.Any>>(
   tools: Tools,
@@ -3126,7 +3161,7 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
       reason: new AiError.ToolParameterValidationError({
         toolName,
         toolParams,
-        description: error.issue.toString()
+        description: formatIssue(error.issue)
       })
     })
   ))

@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Layer, Option, Schema } from "effect"
-import { Workflow, WorkflowEngine } from "effect/unstable/workflow"
+import { DurableDeferred, Workflow, WorkflowEngine } from "effect/unstable/workflow"
 
 describe("WorkflowEngine", () => {
   const IncrementWorkflow = Workflow.make("WorkflowEngine/IncrementWorkflow", {
@@ -57,4 +57,38 @@ describe("WorkflowEngine", () => {
         Layer.provideMerge(WorkflowEngine.layerMemory)
       ))
     ))
+
+  it.effect("layerMemory closes finalizers registered before suspension", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("WorkflowEngine/SuspendedScope/Gate")
+      const finalized: Array<number> = []
+      let runs = 0
+      const Suspends = Workflow.make("WorkflowEngine/SuspendedScope", {
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      })
+      const layer = Suspends.toLayer(() =>
+        Effect.gen(function*() {
+          const run = ++runs
+          yield* Workflow.addFinalizer(() => Effect.sync(() => finalized.push(run)))
+          yield* DurableDeferred.await(gate)
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Effect.gen(function*() {
+        const payload = { id: "one" }
+        const executionId = yield* Suspends.execute(payload, { discard: true })
+        let result = yield* Suspends.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Suspends.poll(executionId)
+        }
+
+        const token = DurableDeferred.tokenFromExecutionId(gate, { workflow: Suspends, executionId })
+        yield* DurableDeferred.succeed(gate, { token, value: void 0 })
+        yield* Suspends.execute(payload)
+
+        assert.deepStrictEqual(finalized, [2, 1])
+      }).pipe(Effect.provide(layer))
+    }))
 })

@@ -1,4 +1,6 @@
-[![pkg.pr.new](https://pkg.pr.new/badge/Effect-TS/effect)](https://pkg.pr.new/~/Effect-TS/effect)
+<!-- Use a static Shields badge because pkg.pr.new's dynamic badge times out while counting this repository's releases. -->
+
+[![pkg.pr.new](https://img.shields.io/badge/pkg.pr.new-Effect--TS%2Feffect-black)](https://pkg.pr.new/~/Effect-TS/effect)
 
 # Effect
 

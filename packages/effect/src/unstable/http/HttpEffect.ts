@@ -25,7 +25,7 @@ import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
 import type { HttpServerResponse } from "./HttpServerResponse.ts"
 import * as Response from "./HttpServerResponse.ts"
-import { appendPreResponseHandlerUnsafe, requestPreResponseHandlers } from "./internal/preResponseHandler.ts"
+import * as preResponseHandler from "./internal/preResponseHandler.ts"
 
 /**
  * Runs an HTTP server effect, sends the produced response with the supplied handler, and converts failures into HTTP responses.
@@ -46,7 +46,7 @@ export const toHandled = <E, R, EH, RH>(
       const fiber = Fiber.getCurrent()!
       reportCauseUnsafe(fiber, cause)
       const request = Context.getUnsafe(fiber.context, HttpServerRequest)
-      const handler = requestPreResponseHandlers.get(request.source)
+      const handler = preResponseHandler.requestPreResponseHandlers.get(request.source)
       const cont = cause.reasons.length === 0 ? Effect.succeed(response) : Effect.failCause(cause)
       if (handler === undefined) {
         ;(request as any)[handledSymbol] = true
@@ -69,7 +69,7 @@ export const toHandled = <E, R, EH, RH>(
     onSuccess: (response) => {
       const fiber = Fiber.getCurrent()!
       const request = Context.getUnsafe(fiber.context, HttpServerRequest)
-      const handler = requestPreResponseHandlers.get(request.source)
+      const handler = preResponseHandler.requestPreResponseHandlers.get(request.source)
       if (handler === undefined) {
         ;(request as any)[handledSymbol] = true
         return Effect.mapEager(handleResponse(request, response), () => response)
@@ -172,7 +172,7 @@ const scoped = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 /**
  * Function run with the current request and response just before the response is sent, allowing the response to be replaced or failing with `HttpServerError`.
  *
- * @category Pre-response handlers
+ * @category handlers
  * @since 4.0.0
  */
 export type PreResponseHandler = (
@@ -183,7 +183,7 @@ export type PreResponseHandler = (
 /**
  * Registers an additional pre-response handler for the current HTTP server request.
  *
- * @category fiber refs
+ * @category handlers
  * @since 4.0.0
  */
 export const appendPreResponseHandler = (handler: PreResponseHandler): Effect.Effect<void, never, HttpServerRequest> =>
@@ -192,20 +192,21 @@ export const appendPreResponseHandler = (handler: PreResponseHandler): Effect.Ef
     return Effect.void
   })
 
-export {
-  /**
-   * Registers a pre-response handler for the supplied HTTP server request.
-   *
-   * @category fiber refs
-   * @since 4.0.0
-   */
-  appendPreResponseHandlerUnsafe
-}
+/**
+ * Registers a pre-response handler for the supplied HTTP server request.
+ *
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const appendPreResponseHandlerUnsafe: (
+  request: HttpServerRequest,
+  handler: PreResponseHandler
+) => void = preResponseHandler.appendPreResponseHandlerUnsafe
 
 /**
  * Runs an effect after registering a pre-response handler for the current HTTP server request.
  *
- * @category fiber refs
+ * @category handlers
  * @since 4.0.0
  */
 export const withPreResponseHandler: {

@@ -1,6 +1,6 @@
-import { describe, test } from "@effect/vitest"
+import { describe, it, test } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Context, Effect, References, Stream } from "effect"
+import { Context, Effect, References, Scope, Stream } from "effect"
 import * as Layer from "effect/Layer"
 import { HttpEffect, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import {
@@ -8,7 +8,33 @@ import {
   requestPreResponseHandlers
 } from "effect/unstable/http/internal/preResponseHandler"
 
+const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
+
 describe("HttpEffect", () => {
+  it.effect("restores the request Scope context identity", () => {
+    const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
+    return Effect.gen(function*() {
+      const before = yield* Effect.withFiber((fiber) => Effect.succeed(fiber.context))
+      let during: Context.Context<never> | undefined
+
+      yield* HttpEffect.toHandled(
+        Effect.withFiber((fiber) => {
+          during = fiber.context
+          strictEqual(Context.getOrUndefined(fiber.context, Scope.Scope) !== undefined, true)
+          return Effect.succeed(HttpServerResponse.empty())
+        }),
+        () => Effect.void
+      )
+
+      const after = yield* Effect.withFiber((fiber) => Effect.succeed(fiber.context))
+      strictEqual(during === before, false)
+      strictEqual(after, before)
+    }).pipe(
+      Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+      Effect.provideService(References.TracerEnabled, false)
+    )
+  })
+
   describe("toWebHandler", () => {
     test("json", async () => {
       const handler = HttpEffect.toWebHandler(HttpServerResponse.json({ foo: "bar" }))
@@ -84,9 +110,9 @@ describe("HttpEffect", () => {
 
     test("stream runtime", async () => {
       const handler = Effect.succeed(HttpServerResponse.stream(
-        Stream.fromEffect(References.CurrentConcurrency).pipe(Stream.map(String), Stream.encodeText)
+        Stream.fromEffect(TestValue).pipe(Stream.map(String), Stream.encodeText)
       )).pipe(
-        HttpEffect.toWebHandlerWith(References.CurrentConcurrency.context(420))
+        HttpEffect.toWebHandlerWith(TestValue.context(420))
       )
       const response = await handler(new Request("http://localhost:3000/"))
       strictEqual(await response.text(), "420")
@@ -95,13 +121,13 @@ describe("HttpEffect", () => {
     test("stream layer", async () => {
       const { handler } = HttpEffect.toWebHandlerLayer(
         Effect.succeed(HttpServerResponse.stream(
-          References.CurrentConcurrency.pipe(
+          TestValue.pipe(
             Stream.fromEffect,
             Stream.map(String),
             Stream.encodeText
           )
         )),
-        Layer.succeed(References.CurrentConcurrency, 420)
+        Layer.succeed(TestValue, 420)
       )
       const response = await handler(new Request("http://localhost:3000/"))
       strictEqual(await response.text(), "420")

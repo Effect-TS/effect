@@ -1,7 +1,10 @@
+import { OpenAiClient, OpenAiLanguageModel } from "@effect/ai-openai"
 import * as OpenAiSchema from "@effect/ai-openai/OpenAiSchema"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Schema, Stream } from "effect"
+import { Effect, Layer, Schema, Stream } from "effect"
+import { LanguageModel } from "effect/unstable/ai"
 import * as Sse from "effect/unstable/encoding/Sse"
+import { HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
 const makeResponse = (overrides: Record<string, unknown> = {}) => ({
   id: "resp_123",
@@ -74,6 +77,25 @@ describe("OpenAiSchema", () => {
     assert.strictEqual(decoded.output[0].type, "message")
     if (decoded.output[0].type === "message") {
       assert.strictEqual(decoded.output[0].content[0].type, "output_text")
+    }
+  })
+
+  it("decodes image generation lifecycle statuses", () => {
+    for (const status of ["generating", "failed"]) {
+      const decoded = Schema.decodeUnknownSync(OpenAiSchema.Response)({
+        ...makeResponse(),
+        output: [{
+          id: "image_1",
+          type: "image_generation_call",
+          status,
+          result: null
+        }]
+      })
+
+      assert.strictEqual(decoded.output[0].type, "image_generation_call")
+      if (decoded.output[0].type === "image_generation_call") {
+        assert.strictEqual(decoded.output[0].status, status)
+      }
     }
   })
 
@@ -269,5 +291,54 @@ describe("OpenAiSchema", () => {
 
     assert.strictEqual(numeric.data[0].embedding[0], 0.1)
     assert.strictEqual(base64.data[0].embedding, "AQID")
+  })
+
+  it.effect("exposes the response.failed error payload", () => {
+    const response = HttpClientResponse.fromWeb(
+      HttpClientRequest.get("https://api.openai.com/v1/responses"),
+      new Response()
+    )
+    const failed = Schema.decodeUnknownSync(OpenAiSchema.ResponseStreamEvent)({
+      type: "response.failed",
+      sequence_number: 1,
+      response: {
+        id: "resp_1",
+        object: "response",
+        created_at: 1,
+        model: "gpt-4o-mini",
+        status: "failed",
+        output: [],
+        error: { code: "server_error", message: "provider exploded" }
+      }
+    })
+    const client = Layer.succeed(
+      OpenAiClient.OpenAiClient,
+      OpenAiClient.OpenAiClient.of({
+        client: undefined as any,
+        createResponse: () => Effect.die("unexpected"),
+        createResponseStream: () =>
+          Effect.succeed([
+            response,
+            Stream.make(failed)
+          ]),
+        createEmbedding: () => Effect.die("unexpected")
+      })
+    )
+
+    return LanguageModel.streamText({ prompt: "test" }).pipe(
+      Stream.runCollect,
+      Effect.tap((parts) =>
+        Effect.sync(() => {
+          const error = Array.from(parts).find((part) => part.type === "error")
+          const finish = Array.from(parts).find((part) => part.type === "finish")
+          assert.isDefined(error)
+          assert.deepStrictEqual(error.error, { code: "server_error", message: "provider exploded" })
+          assert.isDefined(finish)
+          assert.strictEqual(finish.reason, "error")
+        })
+      ),
+      Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+      Effect.provide(client)
+    )
   })
 })

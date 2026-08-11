@@ -34,7 +34,7 @@ import type { StoreId } from "./EventLogMessage.ts"
  * The service writes local entries, imports entries from remote journals, exposes
  * a stream of local changes, and provides per-store locking.
  *
- * @category context
+ * @category services
  * @since 4.0.0
  */
 export class EventJournal extends Context.Service<EventJournal, {
@@ -86,7 +86,7 @@ export class EventJournal extends Context.Service<EventJournal, {
   ) => Effect.Effect<A, EventJournalError | E, R>
 
   /**
-   * Retrieve the last known sequence number for a remote source.
+   * Retrieve the first unused sequence number for a remote source.
    */
   readonly nextRemoteSequence: (remoteId: RemoteId) => Effect.Effect<number, EventJournalError>
 
@@ -149,7 +149,7 @@ export const RemoteIdTypeId: RemoteIdTypeId = "effect/eventlog/EventJournal/Remo
 /**
  * Branded byte identifier for a remote event journal source.
  *
- * @category remote
+ * @category models
  * @since 4.0.0
  */
 export type RemoteId = Uint8Array & Brand<RemoteIdTypeId>
@@ -157,7 +157,7 @@ export type RemoteId = Uint8Array & Brand<RemoteIdTypeId>
 /**
  * Schema for branded remote event journal identifiers.
  *
- * @category remote
+ * @category schemas
  * @since 4.0.0
  */
 export const RemoteId = Schema.Uint8Array.pipe(Schema.brand(RemoteIdTypeId))
@@ -175,7 +175,7 @@ export const RemoteId = Schema.Uint8Array.pipe(Schema.brand(RemoteIdTypeId))
  * This is unsafe because the generated UUID bytes are cast to the brand without
  * schema validation.
  *
- * @category remote
+ * @category unsafe
  * @since 4.0.0
  */
 export const makeRemoteIdUnsafe = (): RemoteId => Uuid.v4({}, new globalThis.Uint8Array(16)) as RemoteId
@@ -199,7 +199,7 @@ export type EntryIdTypeId = "effect/eventlog/EventJournal/EntryId"
 /**
  * Branded byte identifier for an event journal entry.
  *
- * @category entry
+ * @category models
  * @since 4.0.0
  */
 export type EntryId = Uint8Array<ArrayBuffer> & Brand<EntryIdTypeId>
@@ -207,7 +207,7 @@ export type EntryId = Uint8Array<ArrayBuffer> & Brand<EntryIdTypeId>
 /**
  * Schema for branded event journal entry identifiers.
  *
- * @category entry
+ * @category schemas
  * @since 4.0.0
  */
 export const EntryId = (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
@@ -217,7 +217,7 @@ export const EntryId = (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayB
 /**
  * Provides an Ordering instance for entry identifiers based on their raw UUID bytes.
  *
- * @category entry
+ * @category ordering
  * @since 4.0.0
  */
 export const EntryIdOrder = Order.make<EntryId>((a, b) => {
@@ -243,7 +243,7 @@ export const EntryIdOrder = Order.make<EntryId>((a, b) => {
  * This is unsafe because the generated UUID bytes are cast to the brand without
  * schema validation.
  *
- * @category entry
+ * @category unsafe
  * @since 4.0.0
  */
 export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId =>
@@ -252,7 +252,7 @@ export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId =>
 /**
  * Extracts the millisecond timestamp encoded in a UUID v7 `EntryId`.
  *
- * @category entry
+ * @category getters
  * @since 4.0.0
  */
 export const entryIdMillis = (entryId: EntryId): number => {
@@ -269,7 +269,7 @@ export const entryIdMillis = (entryId: EntryId): number => {
  * An entry records its ID, event tag, primary key, and MessagePack-encoded
  * payload, with helpers for array MessagePack encoding and creation timestamps.
  *
- * @category entry
+ * @category schemas
  * @since 4.0.0
  */
 export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Entry")({
@@ -341,11 +341,11 @@ export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Ent
  *
  * It pairs the remote sequence number with the journal entry payload.
  *
- * @category entry
+ * @category schemas
  * @since 4.0.0
  */
 export class RemoteEntry extends Schema.Class<RemoteEntry>("effect/eventlog/EventJournal/RemoteEntry")({
-  remoteSequence: Schema.Number,
+  remoteSequence: Schema.Natural,
   entry: Entry
 }) {}
 
@@ -357,7 +357,7 @@ export class RemoteEntry extends Schema.Class<RemoteEntry>("effect/eventlog/Even
  * Entries, remote tracking state, and locks live only in the current process and
  * are lost when the service is discarded.
  *
- * @category memory
+ * @category constructors
  * @since 4.0.0
  */
 export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(function*() {
@@ -417,8 +417,8 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
       for (const remoteEntry of options.entries) {
         if (byId.has(remoteEntry.entry.idString)) {
           duplicateEntries.push(remoteEntry.entry)
-          if (remoteEntry.remoteSequence > remote.sequence) {
-            remote.sequence = remoteEntry.remoteSequence
+          if (remoteEntry.remoteSequence >= remote.sequence) {
+            remote.sequence = remoteEntry.remoteSequence + 1
           }
           continue
         }
@@ -438,7 +438,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
           if (entry !== undefined && entry.createdAtMillis > entryMillis) {
             continue
           }
-          for (let j = i + 2; j < journal.length; j++) {
+          for (let j = i + 1; j < journal.length; j++) {
             const scannedEntry = journal[j]!
             if (scannedEntry.event === originEntry.event && scannedEntry.primaryKey === originEntry.primaryKey) {
               conflicts.push(scannedEntry)
@@ -451,11 +451,19 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
       for (const remoteEntry of uncommittedRemotes) {
         journal.push(remoteEntry.entry)
         byId.set(remoteEntry.entry.idString, remoteEntry.entry)
-        if (remoteEntry.remoteSequence > remote.sequence) {
-          remote.sequence = remoteEntry.remoteSequence
+        remotes.forEach((target) => {
+          if (target !== remote) {
+            target.missing.push(remoteEntry.entry)
+          }
+        })
+        if (remoteEntry.remoteSequence >= remote.sequence) {
+          remote.sequence = remoteEntry.remoteSequence + 1
         }
       }
       journal.sort((a, b) => a.createdAtMillis - b.createdAtMillis)
+      remotes.forEach((remote) => {
+        remote.missing.sort((a, b) => a.createdAtMillis - b.createdAtMillis)
+      })
       return {
         duplicateEntries
       }
@@ -497,7 +505,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
  * All journal data is stored in process memory and is not persisted across layer
  * lifetimes.
  *
- * @category memory
+ * @category layers
  * @since 4.0.0
  */
 export const layerMemory: Layer.Layer<EventJournal> = Layer.effect(EventJournal, makeMemory)
@@ -511,7 +519,7 @@ export const layerMemory: Layer.Layer<EventJournal> = Layer.effect(EventJournal,
  * browser database, publishes local changes, and requires `Scope` so the database
  * connection can be closed when the scope ends.
  *
- * @category indexed db
+ * @category constructors
  * @since 4.0.0
  */
 export const makeIndexedDb = (options?: {
@@ -772,7 +780,7 @@ const decodeEntryIdbArray = Schema.decodeUnknownEffect(EntryIdbArray)
  * Provides `EventJournal` using the IndexedDB-backed implementation created by
  * `makeIndexedDb`.
  *
- * @category indexed db
+ * @category layers
  * @since 4.0.0
  */
 export const layerIndexedDb = (options?: {

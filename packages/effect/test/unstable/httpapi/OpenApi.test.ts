@@ -138,32 +138,150 @@ describe("OpenApi", () => {
     assert.property(streamExtension, "errorSchema")
   })
 
-  it("preserves the data schema identifier for SSE streams", () => {
-    const Event = Schema.Struct({
-      kind: Schema.String,
-      payload: Schema.String
-    }).annotate({ identifier: "MyEvent" })
-
+  it("emits encoded success response headers", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
-        HttpApiEndpoint.get("stream", "/stream", {
-          success: [HttpApiSchema.StreamSse({ data: Event })]
+        HttpApiEndpoint.get("success", "/success", {
+          success: HttpApiSchema.WithHeaders(Schema.String, {
+            "X-Count": Schema.FiniteFromString,
+            "X-Optional": Schema.optionalKey(Schema.FiniteFromString),
+            "Content-Type": Schema.String
+          })
         })
       )
     )
 
     const spec = OpenApi.fromApi(Api)
-    const schemas = spec.components?.schemas
 
-    // The decoded data schema keeps its identifier.
-    assert.deepStrictEqual(schemas?.MyEvent, {
-      type: "object",
-      properties: {
-        kind: { type: "string" },
-        payload: { type: "string" }
+    assert.deepStrictEqual(spec.paths["/success"]?.get?.responses[200]?.headers, {
+      "x-count": {
+        schema: { type: "string" },
+        required: true
       },
-      required: ["kind", "payload"],
-      additionalProperties: false
+      "x-optional": {
+        schema: { type: "string" },
+        required: false
+      }
+    })
+  })
+
+  it("emits encoded error response headers", () => {
+    class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {
+      id: Schema.Number
+    }) {}
+    const NotFoundWithHeaders = NotFound.pipe(
+      HttpApiSchema.encodeToWithHeaders({
+        body: HttpApiSchema.Empty(404),
+        headers: { "X-Error-Id": Schema.FiniteFromString }
+      }, {
+        decode: ({ headers }) => new NotFound({ id: headers["X-Error-Id"] }),
+        encode: (error) => ({ body: undefined, headers: { "X-Error-Id": error.id } })
+      })
+    )
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("error", "/error", {
+          error: NotFoundWithHeaders
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.paths["/error"]?.get?.responses[404]?.headers, {
+      "x-error-id": {
+        schema: { type: "string" },
+        required: true
+      }
+    })
+  })
+
+  it("emits encodeToWithHeaders wire schemas according to codec mode", () => {
+    const ErrorWithHeaders = Schema.Number.pipe(
+      HttpApiSchema.encodeToWithHeaders({
+        body: HttpApiSchema.Empty(404),
+        headers: { "X-Error-Id": Schema.Int }
+      }, {
+        decode: ({ headers }) => headers["X-Error-Id"],
+        encode: (id) => ({ body: undefined, headers: { "X-Error-Id": id } })
+      })
+    )
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test")
+        .add(
+          HttpApiEndpoint.get("encoded", "/encoded", {
+            error: ErrorWithHeaders
+          })
+        )
+        .add(
+          HttpApiEndpoint.get("unencoded", "/unencoded", {
+            disableCodecs: true,
+            error: ErrorWithHeaders
+          })
+        )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(
+      spec.paths["/encoded"]?.get?.responses[404]?.headers?.["x-error-id"]?.schema,
+      {
+        type: "string",
+        allOf: [{ pattern: "^[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$" }]
+      }
+    )
+    assert.deepStrictEqual(
+      spec.paths["/unencoded"]?.get?.responses[404]?.headers?.["x-error-id"]?.schema,
+      { type: "integer" }
+    )
+  })
+
+  it("emits headers for an error wrapped in WithHeaders", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("error", "/error", {
+          error: HttpApiSchema.WithHeaders(
+            Schema.Struct({ message: Schema.String }).pipe(HttpApiSchema.status(429)),
+            { "X-Retry-After": Schema.Int }
+          )
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.paths["/error"]?.get?.responses[429]?.headers, {
+      "x-retry-after": {
+        schema: {
+          type: "string",
+          allOf: [{ pattern: "^[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$" }]
+        },
+        required: true
+      }
+    })
+  })
+
+  it("emits stream response headers", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("stream", "/stream", {
+          success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), {
+            "X-Stream-Id": Schema.Int
+          })
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.paths["/stream"]?.get?.responses[200]?.headers, {
+      "x-stream-id": {
+        schema: {
+          type: "string",
+          allOf: [{ pattern: "^[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$" }]
+        },
+        required: true
+      }
     })
   })
 

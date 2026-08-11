@@ -1,0 +1,3 @@
+"@effect/cluster/Message#serialize":
+  replacement: "effect/unstable/cluster/Message#serialize"
+  note: "Moved into core Effect. It now returns Envelope.Partial; use serializeEnvelope for the JSON Envelope.Encoded form."

@@ -1550,7 +1550,170 @@ The following encodings are supported:
 
 ## Setting Response Headers
 
-To add custom headers to the outgoing response, call `HttpEffect.appendPreResponseHandler` inside your handler. The callback receives the request and response objects and must return the updated response.
+Response headers can be declared in the endpoint's schemas, so they are type-checked on the server, rendered in the OpenAPI documentation, and decoded by the derived client. Two mechanisms are available:
+
+- `HttpApiSchema.WithHeaders(schema, headers)` wraps a response schema together with a headers schema. Handlers return the body and headers as a pair. Recommended for success responses, including streams.
+- `HttpApiSchema.encodeToWithHeaders` folds headers into an opaque domain type such as an error class, so handlers keep working with plain domain values.
+
+Only one response schema carrying headers may be declared for each status, though plain responses with different content types may share that status.
+
+For headers that are not part of the API contract, `HttpEffect.appendPreResponseHandler` remains available as an untyped escape hatch.
+
+### Declaring Response Headers with WithHeaders
+
+Wrap the success schema with `HttpApiSchema.WithHeaders(schema, headers)`. The headers argument accepts a fields shorthand (as below) or any schema, mirroring the request-side `headers` option. The handler then returns a value built with `HttpApiSchema.withHeaders({ body, headers })`.
+
+**Example** (Declaring a Response Header on a Success Schema)
+
+```ts
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Effect, Layer, Schema } from "effect"
+import { HttpRouter } from "effect/unstable/http"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
+import { createServer } from "node:http"
+
+const User = Schema.Struct({
+  id: Schema.Int,
+  name: Schema.String
+})
+
+const Api = HttpApi.make("MyApi").add(
+  HttpApiGroup.make("Users").add(
+    HttpApiEndpoint.get("getUsers", "/users", {
+      // Wrap the success schema with a response headers schema
+      success: HttpApiSchema.WithHeaders(Schema.Array(User), {
+        "x-total-count": Schema.Int
+      })
+    })
+  )
+)
+
+const GroupLive = HttpApiBuilder.group(
+  Api,
+  "Users",
+  (handlers) =>
+    handlers.handle("getUsers", () =>
+      // Return the body together with the declared headers
+      Effect.succeed(HttpApiSchema.withHeaders({
+        body: [{ id: 1, name: "John" }],
+        headers: { "x-total-count": 1 }
+      })))
+)
+
+const ApiLive = HttpApiBuilder.layer(Api).pipe(
+  Layer.provide(GroupLive),
+  HttpRouter.serve,
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+)
+
+Layer.launch(ApiLive).pipe(NodeRuntime.runMain)
+
+// curl -v "http://localhost:3000/users" 2>&1 | grep -i "x-total-count"
+// < x-total-count: 1
+```
+
+The derived client detects the wrapper and returns the same shape, with the headers decoded through the headers schema:
+
+```ts
+const users = yield * client.Users.getUsers()
+users.body // => [{ id: 1, name: "John" }]
+users.headers // => { "x-total-count": 1 }
+```
+
+Things to know:
+
+- Header values are converted to strings at the HTTP boundary, the same way as request headers, params, and query. `Schema.Int` goes out as `"1"` and decodes back to `1` on the client. `undefined` values are omitted from the response.
+- Status and encoding annotations resolve from the wrapper first, then fall through to the inner schema, so `HttpApiSchema.WithHeaders(User.pipe(HttpApiSchema.status(201)), ...)` responds with `201`.
+- Declared headers are applied after the body is encoded and override headers set by the encoding on collision, including `content-type`.
+- Stream success schemas (`HttpApiSchema.StreamSse`, `HttpApiSchema.StreamUint8Array`) can be wrapped too. Headers are encoded before the response starts streaming, and the client resolves to a value whose `body` is the stream.
+- `WithHeaders` is also allowed on error schemas, in which case the handler fails with the wrapped value. For errors, `encodeToWithHeaders` (below) is usually more convenient because handlers can fail with the domain error directly.
+
+### Folding Headers into Domain Types with encodeToWithHeaders
+
+`HttpApiSchema.encodeToWithHeaders` encodes a schema as a `{ body, headers }` pair while its Type stays unchanged. This lets an error class carry data that travels in a response header: handlers fail with plain error instances, and the client receives the same class with the header folded back in.
+
+The body schema is authoritative for everything wire-level: status, content type, and response encoding resolve from the body schema's annotations. A status annotation on the source schema stops mattering once wrapped, so spell the status on the body — `HttpApiSchema.Empty(404)` declares an empty body with status 404.
+
+**Example** (Returning an Error With a Response Header)
+
+```ts
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Effect, Layer, Schema } from "effect"
+import { HttpRouter } from "effect/unstable/http"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
+import { createServer } from "node:http"
+
+class UserNotFound extends Schema.TaggedError<UserNotFound>()("UserNotFound", {
+  userId: Schema.Int
+}) {}
+
+const UserNotFoundWithHeaders = UserNotFound.pipe(
+  HttpApiSchema.encodeToWithHeaders({
+    // The body schema is authoritative for status and content type
+    body: HttpApiSchema.Empty(404),
+    headers: {
+      "x-user-id": Schema.Int
+    }
+  }, {
+    // Pure mappings between the domain type and the { body, headers } pair
+    decode: ({ headers }) => new UserNotFound({ userId: headers["x-user-id"] }),
+    encode: (error) => ({
+      headers: { "x-user-id": error.userId },
+      body: undefined
+    })
+  })
+)
+
+const User = Schema.Struct({
+  id: Schema.Int,
+  name: Schema.String
+})
+
+const Api = HttpApi.make("MyApi").add(
+  HttpApiGroup.make("Users").add(
+    HttpApiEndpoint.get("getUser", "/user/:id", {
+      params: {
+        id: Schema.Int
+      },
+      success: User,
+      error: UserNotFoundWithHeaders
+    })
+  )
+)
+
+const GroupLive = HttpApiBuilder.group(
+  Api,
+  "Users",
+  (handlers) =>
+    handlers.handle("getUser", (ctx) => {
+      const id = ctx.params.id
+      if (id === 1) {
+        // Fail with the plain error instance
+        return Effect.fail(new UserNotFound({ userId: id }))
+      }
+      return Effect.succeed({ id, name: `User ${id}` })
+    })
+)
+
+const ApiLive = HttpApiBuilder.layer(Api).pipe(
+  Layer.provide(GroupLive),
+  HttpRouter.serve,
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+)
+
+Layer.launch(ApiLive).pipe(NodeRuntime.runMain)
+
+// curl -v "http://localhost:3000/user/1" 2>&1 | grep -i "x-user-id"
+// < x-user-id: 1
+```
+
+The `decode`/`encode` mappings are pure total functions: validation lives in the body and headers schemas, the mappings only reshape valid data. The error channel is unchanged — a client calling this endpoint fails with a `UserNotFound` instance whose `userId` was decoded from the header.
+
+`encodeToWithHeaders` also works on custom success types, but avoid burying stream schemas in it; wrap streams with `WithHeaders` instead so the generated client keeps the stream's error channel.
+
+### Untyped Response Headers
+
+For headers that should not appear in the API contract, call `HttpEffect.appendPreResponseHandler` inside your handler. The callback receives the request and response objects and must return the updated response. These headers bypass the schemas, the OpenAPI documentation, and the derived client.
 
 **Example** (Adding a Custom Response Header)
 
@@ -2024,7 +2187,7 @@ import {
 import { createServer } from "node:http"
 
 // Define a custom error for validation failures
-class ValidationError extends Schema.TaggedErrorClass<ValidationError>()(
+class ValidationError extends Schema.TaggedError<ValidationError>()(
   "ValidationError",
   {
     message: Schema.String
@@ -2263,7 +2426,7 @@ import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSecur
 class User extends Schema.Class<User>("User")({ id: Schema.Finite }) {}
 
 // Define a schema for the "Unauthorized" error
-class Unauthorized extends Schema.TaggedErrorClass<Unauthorized>()(
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   "Unauthorized",
   {},
   // Specify the HTTP status code for unauthorized errors
@@ -2322,7 +2485,7 @@ import { HttpApiMiddleware, HttpApiSecurity } from "effect/unstable/httpapi"
 
 class User extends Schema.Class<User>("User")({ id: Schema.Finite }) {}
 
-class Unauthorized extends Schema.TaggedErrorClass<Unauthorized>()(
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   "Unauthorized",
   {},
   // Specify the HTTP status code for unauthorized errors
@@ -2378,7 +2541,7 @@ import { HttpApiMiddleware, HttpApiSecurity, OpenApi } from "effect/unstable/htt
 
 class User extends Schema.Class<User>("User")({ id: Schema.Finite }) {}
 
-class Unauthorized extends Schema.TaggedErrorClass<Unauthorized>()(
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   "Unauthorized",
   {},
   // Specify the HTTP status code for unauthorized errors

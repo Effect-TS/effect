@@ -1,8 +1,113 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
-import { Redis } from "effect/unstable/persistence"
+import { Duration, Effect, Layer } from "effect"
+import { Persistence, Redis } from "effect/unstable/persistence"
 
 describe("Redis", () => {
+  it("preserves __proto__ as an own script option", () => {
+    const value = { polluted: true }
+    const script = Redis.script(() => [], {
+      ["__proto__"]: value,
+      lua: "return nil",
+      numberOfKeys: 0
+    } as any)
+
+    assert.isTrue(Object.hasOwn(script, "__proto__"))
+    assert.strictEqual((script as any)["__proto__"], value)
+  })
+
+  it.effect("clearing an empty persistence store succeeds", () => {
+    const redis = Redis.Redis.of({
+      send: <A>(command: string, ...args: ReadonlyArray<string>) => {
+        if (command.toUpperCase() === "KEYS") return Effect.succeed([] as unknown as A)
+        if (command.toUpperCase() === "DEL" && args.length === 0) {
+          return Effect.fail(new Redis.RedisError({ cause: "ERR wrong number of arguments for 'del' command" }))
+        }
+        return Effect.succeed(undefined as unknown as A)
+      },
+      eval: () => () => Effect.die("unused")
+    })
+    return Effect.gen(function*() {
+      const backing = yield* Persistence.BackingPersistence
+      const store = yield* backing.make("empty")
+      yield* store.clear
+    }).pipe(
+      Effect.provide(Persistence.layerBackingRedis.pipe(Layer.provide(Layer.succeed(Redis.Redis, redis))))
+    )
+  })
+
+  it.effect("rounds fractional persistence TTLs up to whole milliseconds", () => {
+    const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []
+    const scripts: Array<unknown> = []
+    const redis = Redis.Redis.of({
+      send: <A>(command: string, ...args: ReadonlyArray<string>) => {
+        commands.push([command, args])
+        return Effect.succeed(undefined as unknown as A)
+      },
+      eval:
+        <Config extends { readonly params: ReadonlyArray<unknown>; readonly result: unknown }>() =>
+        (...params: Config["params"]) => {
+          scripts.push(params[0])
+          return Effect.succeed(undefined as Config["result"])
+        }
+    })
+    return Effect.gen(function*() {
+      const backing = yield* Persistence.BackingPersistence
+      const store = yield* backing.make("ttl")
+      const ttl = Duration.nanos(1_500_000n)
+
+      yield* store.set("single", {}, ttl)
+      yield* store.setMany([["batch", {}, ttl]])
+
+      assert.deepStrictEqual(
+        commands.filter(([command]) => command === "SET"),
+        [["SET", ["ttl:single", "{}", "PX", "2"]]]
+      )
+      assert.deepStrictEqual(scripts, [{
+        sets: new Map([["ttl:batch", "{}"]]),
+        expires: new Map([["ttl:batch", 2]])
+      }])
+    }).pipe(
+      Effect.provide(Persistence.layerBackingRedis.pipe(Layer.provide(Layer.succeed(Redis.Redis, redis))))
+    )
+  })
+
+  it.effect("retries script loading when SCRIPT LOAD fails", () =>
+    Effect.gen(function*() {
+      const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []
+      let scriptLoadAttempts = 0
+      const redis = yield* Redis.make({
+        send: (command, ...args) =>
+          Effect.suspend(() => {
+            commands.push([command, args])
+            if (command === "SCRIPT") {
+              scriptLoadAttempts += 1
+              if (scriptLoadAttempts === 1) {
+                return Effect.fail(new Redis.RedisError({ cause: new Error("ERR transient script load failure") }))
+              }
+              return Effect.succeed("sha" as any)
+            }
+            return Effect.succeed("ok")
+          })
+      })
+      const evalScript = redis.eval(
+        Redis.script((key: string) => [key], {
+          lua: "return KEYS[1]",
+          numberOfKeys: 1
+        }).withReturnType<string>()
+      )
+
+      const first = yield* Effect.result(evalScript("key"))
+      const second = yield* evalScript("key")
+
+      assert.strictEqual(first._tag, "Failure")
+      assert.strictEqual(second, "ok")
+      assert.deepStrictEqual(commands.map(([command]) => command), [
+        "SCRIPT",
+        "SCRIPT",
+        "EVALSHA"
+      ])
+    }))
+
   it.effect("reloads and retries scripts when EVALSHA returns NOSCRIPT", () =>
     Effect.gen(function*() {
       const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []

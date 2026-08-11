@@ -1,7 +1,8 @@
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Path, Stdio } from "effect"
 import { TestConsole } from "effect/testing"
-import { CliOutput, Command, Flag } from "effect/unstable/cli"
+import { Argument, CliOutput, Command, Flag } from "effect/unstable/cli"
+import { toImpl } from "effect/unstable/cli/internal/command"
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner"
 import * as Cli from "./fixtures/ComprehensiveCli.ts"
 import * as MockTerminal from "./services/MockTerminal.ts"
@@ -38,6 +39,38 @@ const runCommand = Effect.fnUntraced(
 )
 
 describe("Command help output", () => {
+  it("marks omittable flags as not required in structured help", () => {
+    const command = Command.make("app", {
+      required: Flag.string("required"),
+      optional: Flag.string("optional").pipe(Flag.optional),
+      defaulted: Flag.string("defaulted").pipe(Flag.withDefault("output.txt"))
+    })
+    const help = toImpl(command).buildHelpDoc(["app"])
+
+    assert.deepStrictEqual(help.flags.map((flag) => flag.required), [true, false, false])
+  })
+
+  it("marks omittable arguments as not required in structured help", () => {
+    const requiredVariadic = Command.make("app", {
+      files: Argument.string("files").pipe(Argument.variadic({ min: 1 }))
+    })
+    const optionalVariadic = Command.make("app", {
+      files: Argument.string("files").pipe(Argument.variadic())
+    })
+    const defaulted = Command.make("app", {
+      output: Argument.string("output").pipe(Argument.withDefault("output.txt"))
+    })
+
+    assert.deepStrictEqual(
+      [
+        toImpl(requiredVariadic).buildHelpDoc(["app"]).args![0].required,
+        toImpl(optionalVariadic).buildHelpDoc(["app"]).args![0].required,
+        toImpl(defaulted).buildHelpDoc(["app"]).args![0].required
+      ],
+      [true, false, false]
+    )
+  })
+
   it.effect("renders root command help", () =>
     Effect.gen(function*() {
       const helpText = yield* runCommand(["--help"])
@@ -57,6 +90,7 @@ describe("Command help output", () => {
         GLOBAL FLAGS
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
+          --wizard                                                            Start wizard mode for a command
           --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)
 
@@ -147,14 +181,14 @@ describe("Command help output", () => {
       expect(errorText + helpText).not.toContain("experimental-foo")
     }).pipe(Effect.provide(TestLayer)))
 
-  it.effect("hides subcommands marked with withHidden from help output", () =>
+  it.effect("hides unlisted subcommands from help output", () =>
     Effect.gen(function*() {
       const visible = Command.make("visible").pipe(
         Command.withDescription("A visible subcommand")
       )
       const secret = Command.make("experimental-foo").pipe(
         Command.withDescription("Should not appear"),
-        Command.withHidden
+        Command.unlisted
       )
       const root = Command.make("tool").pipe(
         Command.withSubcommands([visible, secret])
@@ -169,11 +203,11 @@ describe("Command help output", () => {
       expect(helpText).not.toContain("Should not appear")
     }).pipe(Effect.provide(TestLayer)))
 
-  it.effect("hidden subcommand still parses on the command line", () =>
+  it.effect("unlisted subcommand still parses on the command line", () =>
     Effect.gen(function*() {
       let invoked = false
       const secret = Command.make("experimental-foo").pipe(
-        Command.withHidden,
+        Command.unlisted,
         Command.withHandler(() =>
           Effect.sync(() => {
             invoked = true
@@ -190,9 +224,9 @@ describe("Command help output", () => {
       expect(invoked).toBe(true)
     }).pipe(Effect.provide(TestLayer)))
 
-  it.effect("hidden subcommand name does not leak through unknown-subcommand suggestions", () =>
+  it.effect("unlisted subcommand name does not leak through unknown-subcommand suggestions", () =>
     Effect.gen(function*() {
-      const secret = Command.make("experimental-foo").pipe(Command.withHidden)
+      const secret = Command.make("experimental-foo").pipe(Command.unlisted)
       const root = Command.make("tool").pipe(
         Command.withSubcommands([secret])
       )
@@ -207,9 +241,9 @@ describe("Command help output", () => {
       expect(errorText + helpText).not.toContain("experimental-foo")
     }).pipe(Effect.provide(TestLayer)))
 
-  it.effect("subcommand group with only hidden commands disappears entirely", () =>
+  it.effect("subcommand group with only unlisted commands disappears entirely", () =>
     Effect.gen(function*() {
-      const secret = Command.make("experimental-foo").pipe(Command.withHidden)
+      const secret = Command.make("experimental-foo").pipe(Command.unlisted)
       const root = Command.make("tool").pipe(
         Command.withSubcommands([secret])
       )
@@ -249,6 +283,7 @@ describe("Command help output", () => {
         GLOBAL FLAGS
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
+          --wizard                                                            Start wizard mode for a command
           --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)
 
@@ -293,6 +328,7 @@ describe("Command help output", () => {
         GLOBAL FLAGS
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
+          --wizard                                                            Start wizard mode for a command
           --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)"
       `)
@@ -323,6 +359,7 @@ describe("Command help output", () => {
         GLOBAL FLAGS
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
+          --wizard                                                            Start wizard mode for a command
           --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)"
       `)
@@ -351,6 +388,7 @@ describe("Command help output", () => {
         GLOBAL FLAGS
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
+          --wizard                                                            Start wizard mode for a command
           --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)"
       `)
@@ -382,6 +420,7 @@ describe("Command help output", () => {
         GLOBAL FLAGS
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
+          --wizard                                                            Start wizard mode for a command
           --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)"
       `)
@@ -408,6 +447,7 @@ describe("Command help output", () => {
         GLOBAL FLAGS
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
+          --wizard                                                            Start wizard mode for a command
           --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)
 
@@ -442,6 +482,7 @@ describe("Command help output", () => {
         GLOBAL FLAGS
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
+          --wizard                                                            Start wizard mode for a command
           --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)"
       `)
@@ -520,6 +561,7 @@ describe("Command help output", () => {
         GLOBAL FLAGS
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
+          --wizard                                                            Start wizard mode for a command
           --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)
 
@@ -562,6 +604,7 @@ describe("Command help output", () => {
         GLOBAL FLAGS
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
+          --wizard                                                            Start wizard mode for a command
           --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)
 

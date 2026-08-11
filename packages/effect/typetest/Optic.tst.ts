@@ -1,8 +1,59 @@
-import { Optic, Schema } from "effect"
-import type { Option, Result } from "effect"
+import { Optic, type Option, Result, Schema, type SchemaIssue } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("Optic", () => {
+  describe("compose", () => {
+    const iso = Optic.makeIso<number, number>((n) => n, (n) => n)
+    const lens = Optic.makeLens<number, number>((n) => n, (n) => n)
+    const prism = Optic.makePrism<number, number>(Result.succeed, (n) => n)
+    const optional = Optic.makeOptional<number, number>(Result.succeed, (n) => Result.succeed(n))
+
+    it("preserves the optic kind matrix", () => {
+      expect(iso.compose(iso)).type.toBe<Optic.Iso<number, number>>()
+      expect(iso.compose(lens)).type.toBe<Optic.Lens<number, number>>()
+      expect(iso.compose(prism)).type.toBe<Optic.Prism<number, number>>()
+      expect(iso.compose(optional)).type.toBe<Optic.Optional<number, number>>()
+
+      expect(lens.compose(iso)).type.toBe<Optic.Lens<number, number>>()
+      expect(lens.compose(lens)).type.toBe<Optic.Lens<number, number>>()
+      expect(lens.compose(prism)).type.toBe<Optic.Optional<number, number>>()
+      expect(lens.compose(optional)).type.toBe<Optic.Optional<number, number>>()
+
+      expect(prism.compose(iso)).type.toBe<Optic.Prism<number, number>>()
+      expect(prism.compose(lens)).type.toBe<Optic.Optional<number, number>>()
+      expect(prism.compose(prism)).type.toBe<Optic.Prism<number, number>>()
+      expect(prism.compose(optional)).type.toBe<Optic.Optional<number, number>>()
+
+      expect(optional.compose(iso)).type.toBe<Optic.Optional<number, number>>()
+      expect(optional.compose(lens)).type.toBe<Optic.Optional<number, number>>()
+      expect(optional.compose(prism)).type.toBe<Optic.Optional<number, number>>()
+      expect(optional.compose(optional)).type.toBe<Optic.Optional<number, number>>()
+    })
+
+    it("does not expose internal nodes", () => {
+      expect(iso).type.not.toHaveProperty("node")
+      expect(lens).type.not.toHaveProperty("node")
+      expect(prism).type.not.toHaveProperty("node")
+      expect(optional).type.not.toHaveProperty("node")
+    })
+
+    it("uses structured issues for failures", () => {
+      expect(prism.getResult).type.toBe<(source: number) => Result.Result<number, SchemaIssue.Issue>>()
+      expect(optional.getResult).type.toBe<(source: number) => Result.Result<number, SchemaIssue.Issue>>()
+      expect(optional.replaceResult)
+        .type.toBe<(value: number, source: number) => Result.Result<number, SchemaIssue.Issue>>()
+
+      expect(Optic.makePrism).type.not.toBeCallableWith(
+        (_: number) => Result.fail("failure"),
+        (n: number) => n
+      )
+      expect(Optic.makeOptional).type.not.toBeCallableWith(
+        (_: number) => Result.fail("failure"),
+        (n: number) => Result.succeed(n)
+      )
+    })
+  })
+
   describe("key", () => {
     it("should not be allowed on union types", () => {
       type S = { readonly _tag: "A"; readonly a?: string } | { readonly _tag: "B"; readonly a?: number }
@@ -94,9 +145,17 @@ describe("Optic", () => {
     })
   })
 
-  it("notUndefined", () => {
-    const optic = Optic.id<number | undefined>().notUndefined()
-    expect(optic).type.toBe<Optic.Prism<number | undefined, number>>()
+  describe("notUndefined", () => {
+    it("Prism", () => {
+      const optic = Optic.id<number | undefined>().notUndefined()
+      expect(optic).type.toBe<Optic.Prism<number | undefined, number>>()
+    })
+
+    it("Optional", () => {
+      type S = Record<string, number | undefined>
+      const optic = Optic.id<S>().at("a").notUndefined()
+      expect(optic).type.toBe<Optic.Optional<S, number>>()
+    })
   })
 
   it("fromChecks", () => {
