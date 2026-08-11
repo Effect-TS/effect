@@ -283,7 +283,7 @@ export const raceAll = <
       return yield* exit.value
     }
     return yield* into(
-      Effect.raceAll(options.effects),
+      Effect.raceAllFirst(options.effects),
       deferred
     )
   })

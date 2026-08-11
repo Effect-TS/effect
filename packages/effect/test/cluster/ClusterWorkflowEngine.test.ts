@@ -204,6 +204,26 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(result).toEqual("Activity3")
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
+  it.effect("DurableDeferred.raceAll lets a deferred win while another branch is active", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      const executionId = yield* MixedRaceWorkflow.executionId({ id: "mixed-race" })
+      const fiber = yield* MixedRaceWorkflow.execute({ id: "mixed-race" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      yield* TestClock.adjust(1)
+      const token = DurableDeferred.tokenFromExecutionId(MixedRaceGate, {
+        workflow: MixedRaceWorkflow,
+        executionId
+      })
+      yield* DurableDeferred.succeed(MixedRaceGate, { token, value: "signal" })
+      yield* sharding.pollStorage
+      yield* TestClock.adjust("1 second")
+
+      expect(yield* Fiber.join(fiber)).toEqual("signal")
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
   it.effect("nested workflows", () =>
     Effect.gen(function*() {
       const flags = yield* Flags
@@ -637,6 +657,32 @@ const DurableRaceWorkflowLayer = DurableRaceWorkflow.toLayer(Effect.fnUntraced(f
   return result
 }))
 
+const MixedRaceWorkflow = Workflow.make("MixedRaceWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const MixedRaceGate = DurableDeferred.make("MixedRaceGate", {
+  success: Schema.String
+})
+
+const MixedRaceWorkflowLayer = MixedRaceWorkflow.toLayer(() =>
+  DurableDeferred.raceAll({
+    name: "mixed-race",
+    success: Schema.String,
+    error: Schema.Never,
+    effects: [
+      DurableDeferred.await(MixedRaceGate),
+      Activity.make({
+        name: "mixed-race-activity",
+        success: Schema.String,
+        execute: Effect.sleep("1 second").pipe(Effect.as("activity"))
+      })
+    ]
+  })
+)
+
 const ParentWorkflow = Workflow.make("ParentWorkflow", {
   payload: {
     id: Schema.String
@@ -782,6 +828,7 @@ const makeBatchRequestError = () => {
 const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(RaceWorkflowLayer),
   Layer.merge(DurableRaceWorkflowLayer),
+  Layer.merge(MixedRaceWorkflowLayer),
   Layer.merge(ParentWorkflowLayer),
   Layer.merge(ChildWorkflowLayer),
   Layer.merge(ShardedClockWorkflowLayer),
