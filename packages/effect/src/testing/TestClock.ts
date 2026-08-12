@@ -340,8 +340,13 @@ export const make = Effect.fnUntraced(function*(
   })
 
   const runSemaphore = yield* Semaphore.make(1)
-  const run = Effect.fnUntraced(function*(step: (currentTimestamp: number) => number) {
+  const run = Effect.fnUntraced(function*(
+    step: (currentTimestamp: number) => number,
+    adjustmentNanos?: bigint
+  ) {
     yield* Fiber.await(yield* Effect.forkChild(Effect.yieldNow))
+    const initialWallNanos = currentWallNanos
+    const initialMonotonicNanos = currentMonotonicNanos
     const endTimestamp = step(currentTimestamp)
     const advanceTo = (timestamp: number) => {
       const deltaMillis = timestamp - currentTimestamp
@@ -361,11 +366,19 @@ export const make = Effect.fnUntraced(function*(
       yield* Effect.yieldNow
     }
     advanceTo(endTimestamp)
+    if (adjustmentNanos !== undefined && Number.isFinite(endTimestamp)) {
+      currentWallNanos = initialWallNanos + adjustmentNanos
+      if (adjustmentNanos > BigInt(0)) {
+        currentMonotonicNanos = initialMonotonicNanos + adjustmentNanos
+      }
+    }
   }, runSemaphore.withPermits(1))
 
-  function adjust(duration: Duration.Input) {
-    const millis = Duration.toMillis(Duration.fromInputUnsafe(duration))
-    return warningDone.pipe(Effect.andThen(run((timestamp) => timestamp + millis)))
+  function adjust(input: Duration.Input) {
+    const duration = Duration.fromInputUnsafe(input)
+    const millis = Duration.toMillis(duration)
+    const nanos = Number.isFinite(millis) ? Duration.toNanosUnsafe(duration) : undefined
+    return warningDone.pipe(Effect.andThen(run((timestamp) => timestamp + millis, nanos)))
   }
 
   function setTime(timestamp: number) {
