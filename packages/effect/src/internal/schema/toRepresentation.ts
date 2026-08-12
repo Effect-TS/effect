@@ -35,6 +35,50 @@ function annotationsField<A>(annotations: A | undefined): { readonly annotations
   return annotations === undefined ? undefined : { annotations }
 }
 
+/**
+ * Collects the documentation annotations that sit on the type side of an
+ * encoding chain, so that projecting an AST with `getLastEncoding` does not
+ * silently discard them.
+ *
+ * Only the keys in `jsonSchemaAnnotationKeys` travel: they describe the shape
+ * of the data and stay accurate once the value is encoded. Everything else
+ * (`representation`, `expected`, `identifier`, the `to*` hooks, ...) is bound to
+ * the node that declared it and is intentionally left behind.
+ *
+ * Annotations closer to the encoded side win: a link that rewrites the shape of
+ * the data gets to describe the result, and may already have folded the type
+ * side description into its own.
+ */
+function carriedAnnotations(
+  input: SchemaAST.AST,
+  encoded: SchemaAST.AST
+): Schema.Annotations.Annotations | undefined {
+  let out: Record<string, unknown> | undefined
+  let ast = input
+  while (ast !== encoded && ast.encoding !== undefined) {
+    const annotations = ast.annotations
+    if (annotations !== undefined) {
+      for (const key of InternalAnnotations.jsonSchemaAnnotationKeys) {
+        const value = annotations[key]
+        if (value !== undefined) {
+          out ??= {}
+          InternalRecord.assignProperty(out, key, value)
+        }
+      }
+    }
+    ast = ast.encoding[ast.encoding.length - 1].to
+  }
+  return out
+}
+
+function withCarriedAnnotations<A extends Schema.Annotations.Annotations>(
+  annotations: A | undefined,
+  carried: Schema.Annotations.Annotations | undefined
+): A | undefined {
+  if (carried === undefined) return annotations
+  return (annotations === undefined ? carried : { ...carried, ...annotations }) as A
+}
+
 function hasShareableStructure(
   ast: SchemaAST.AST,
   isAnonymousReferenceAllowed: Options["isAnonymousReferenceAllowed"]
@@ -145,10 +189,14 @@ function fromASTs(
       : SchemaAST.annotate(ast, { identifier: reference })
   }
 
-  function makeReference(reference: string, ast: SchemaAST.AST): SchemaRepresentation.Reference {
+  function makeReference(
+    reference: string,
+    ast: SchemaAST.AST,
+    carried?: Schema.Annotations.Annotations | undefined
+  ): SchemaRepresentation.Reference {
     if (!Object.hasOwn(references, reference) && !buildingReferences.has(reference)) {
       buildingReferences.add(reference)
-      const representation = on(ast)
+      const representation = on(ast, carried)
       buildingReferences.delete(reference)
       InternalRecord.assignProperty(references, reference, representation)
     }
@@ -197,10 +245,11 @@ function fromASTs(
   function recur(input: SchemaAST.AST): SchemaRepresentation.Representation {
     const ast = SchemaAST.getLastEncoding(input)
     const owner = SchemaAST.getContextOwner(ast)
+    const carried = carriedAnnotations(input, ast)
     const referenceIdentifier = resolveReferenceIdentifier(input, ast)
     if (referenceIdentifier !== undefined) {
       const reference = getReference(referenceIdentifier.identifier, owner)
-      return makeReference(reference, annotateReference(ast, referenceIdentifier, reference))
+      return makeReference(reference, annotateReference(ast, referenceIdentifier, reference), carried)
     }
 
     const found = anonymousReferences.get(owner)
@@ -213,12 +262,12 @@ function fromASTs(
       const reference = getReference(`${ast._tag}_`, owner, "")
       anonymousReferences.set(owner, reference)
       return isShared
-        ? makeReference(reference, ast)
+        ? makeReference(reference, ast, carried)
         : { _tag: "Reference", $ref: reference }
     }
 
     visiting.add(owner)
-    const representation = on(ast)
+    const representation = on(ast, carried)
     visiting.delete(owner)
 
     const reference = anonymousReferences.get(owner)
@@ -230,15 +279,19 @@ function fromASTs(
     return representation
   }
 
-  function on(ast: SchemaAST.AST): SchemaRepresentation.Representation {
+  function on(
+    ast: SchemaAST.AST,
+    carried?: Schema.Annotations.Annotations | undefined
+  ): SchemaRepresentation.Representation {
     const checks = fromChecks(ast.checks)
+    const annotations = withCarriedAnnotations(ast.annotations, carried)
     switch (ast._tag) {
       case "Declaration":
         return {
           _tag: "Declaration",
           typeParameters: ast.typeParameters.map((ast) => recur(ast)),
           checks,
-          ...fromDeclarationAnnotations(ast.annotations)
+          ...fromDeclarationAnnotations(annotations)
         }
       case "Null":
       case "Undefined":
@@ -255,35 +308,35 @@ function fromASTs(
         return {
           _tag: ast._tag,
           checks,
-          ...annotationsField(ast.annotations)
+          ...annotationsField(annotations)
         }
       case "Literal":
         return {
           _tag: "Literal",
           literal: ast.literal,
           checks,
-          ...annotationsField(ast.annotations)
+          ...annotationsField(annotations)
         }
       case "UniqueSymbol":
         return {
           _tag: "UniqueSymbol",
           symbol: ast.symbol,
           checks,
-          ...annotationsField(ast.annotations)
+          ...annotationsField(annotations)
         }
       case "Enum":
         return {
           _tag: "Enum",
           enums: ast.enums,
           checks,
-          ...annotationsField(ast.annotations)
+          ...annotationsField(annotations)
         }
       case "TemplateLiteral":
         return {
           _tag: "TemplateLiteral",
           parts: ast.parts.map((ast) => recur(ast)),
           checks,
-          ...annotationsField(ast.annotations)
+          ...annotationsField(annotations)
         }
       case "Arrays":
         return {
@@ -299,7 +352,7 @@ function fromASTs(
           }),
           rest: ast.rest.map((ast) => recur(ast)),
           checks,
-          ...annotationsField(ast.annotations)
+          ...annotationsField(annotations)
         }
       case "Objects":
         return {
@@ -320,7 +373,7 @@ function fromASTs(
             type: recur(index.type)
           })),
           checks,
-          ...annotationsField(ast.annotations)
+          ...annotationsField(annotations)
         }
       case "Union":
         return {
@@ -328,14 +381,14 @@ function fromASTs(
           types: ast.types.map((ast) => recur(ast)),
           mode: ast.mode,
           checks,
-          ...annotationsField(ast.annotations)
+          ...annotationsField(annotations)
         }
       case "Suspend":
         return {
           _tag: "Suspend",
           checks: [],
           thunk: recur(ast.thunk()),
-          ...annotationsField(ast.annotations)
+          ...annotationsField(annotations)
         }
     }
   }

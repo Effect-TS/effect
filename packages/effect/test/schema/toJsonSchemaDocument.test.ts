@@ -584,6 +584,12 @@ describe("toJsonSchemaDocument", () => {
           "type": "string"
         }
       })
+      assertJsonSchemaDocument(schema.annotate({ description: "a" }), {
+        schema: {
+          "type": "string",
+          "description": "a"
+        }
+      })
     })
 
     it("URL", () => {
@@ -786,7 +792,9 @@ describe("toJsonSchemaDocument", () => {
     assertJsonSchemaDocument(
       schema.annotate({ description: "a" }),
       {
-        schema: {}
+        schema: {
+          "description": "a"
+        }
       }
     )
   })
@@ -805,7 +813,8 @@ describe("toJsonSchemaDocument", () => {
       schema.annotate({ description: "a" }),
       {
         schema: {
-          "type": "null"
+          "type": "null",
+          "description": "a"
         }
       }
     )
@@ -825,7 +834,8 @@ describe("toJsonSchemaDocument", () => {
       schema.annotate({ description: "a" }),
       {
         schema: {
-          "type": "null"
+          "type": "null",
+          "description": "a"
         }
       }
     )
@@ -838,6 +848,18 @@ describe("toJsonSchemaDocument", () => {
       {
         schema: {
           "type": "string",
+          "allOf": [
+            { "pattern": "^-?\\d+$" }
+          ]
+        }
+      }
+    )
+    assertJsonSchemaDocument(
+      schema.annotate({ description: "a" }),
+      {
+        schema: {
+          "type": "string",
+          "description": "a",
           "allOf": [
             { "pattern": "^-?\\d+$" }
           ]
@@ -1480,7 +1502,64 @@ describe("toJsonSchemaDocument", () => {
             "anyOf": [
               { "type": "number" },
               { "type": "string", "enum": ["Infinity", "-Infinity", "NaN"] }
-            ]
+            ],
+            "description": "a"
+          }
+        }
+      )
+    })
+
+    it("Number & annotate keeps every documentation annotation", () => {
+      assertJsonSchemaDocument(
+        Schema.Number.annotate({ title: "t", description: "a", examples: [1, 2] }),
+        {
+          schema: {
+            "anyOf": [
+              { "type": "number" },
+              { "type": "string", "enum": ["Infinity", "-Infinity", "NaN"] }
+            ],
+            "title": "t",
+            "description": "a",
+            "examples": [1, 2]
+          }
+        }
+      )
+    })
+
+    it("Number & annotate inside a Struct", () => {
+      assertJsonSchemaDocument(
+        Schema.Struct({
+          value: Schema.Number.annotate({ description: "a" })
+        }),
+        {
+          schema: {
+            type: "object",
+            properties: {
+              value: {
+                anyOf: [
+                  { type: "number" },
+                  { type: "string", enum: ["Infinity", "-Infinity", "NaN"] }
+                ],
+                description: "a"
+              }
+            },
+            required: ["value"],
+            additionalProperties: false
+          }
+        }
+      )
+    })
+
+    it("Number & annotate & annotate", () => {
+      assertJsonSchemaDocument(
+        Schema.Number.annotate({ description: "a" }).annotate({ description: "b" }),
+        {
+          schema: {
+            "anyOf": [
+              { "type": "number" },
+              { "type": "string", "enum": ["Infinity", "-Infinity", "NaN"] }
+            ],
+            "description": "b"
           }
         }
       )
@@ -1763,7 +1842,8 @@ describe("toJsonSchemaDocument", () => {
           "anyOf": [
             { "type": "array" },
             { "type": "object" }
-          ]
+          ],
+          "description": "a"
         }
       }
     )
@@ -1855,7 +1935,8 @@ describe("toJsonSchemaDocument", () => {
         {
           schema: {
             "type": "string",
-            "enum": ["1"]
+            "enum": ["1"],
+            "description": "a"
           }
         }
       )
