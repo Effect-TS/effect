@@ -118,9 +118,9 @@ export const layer: {
         ? evaluate as Effect.Effect<Configuration>
         : Effect.sync(evaluate)
 
-      const ResourceLive = Resource.layerFromEnv(config.resource && Resource.configToAttributes(config.resource))
+      const ResourceLayer = Resource.layerFromEnv(config.resource && Resource.configToAttributes(config.resource))
 
-      const TracerLive = isNonEmpty(config.spanProcessor)
+      const TracerLayer = isNonEmpty(config.spanProcessor)
         ? Layer.provide(
           Tracer.layer,
           layerTracerProvider(config.spanProcessor, {
@@ -130,14 +130,14 @@ export const layer: {
         )
         : Layer.empty
 
-      const MetricsLive = isNonEmpty(config.metricReader)
+      const MetricsLayer = isNonEmpty(config.metricReader)
         ? Metrics.layer(constant(config.metricReader), {
           shutdownTimeout: config.shutdownTimeout,
           temporality: config.metricTemporality
         })
         : Layer.empty
 
-      const LoggerLive = isNonEmpty(config.logRecordProcessor)
+      const LoggerLayer = isNonEmpty(config.logRecordProcessor)
         ? Layer.provide(
           Logger.layer({ mergeWithExisting: config.loggerMergeWithExisting }),
           Logger.layerLoggerProvider(config.logRecordProcessor, {
@@ -147,8 +147,8 @@ export const layer: {
         )
         : Layer.empty
 
-      return Layer.mergeAll(TracerLive, MetricsLive, LoggerLive).pipe(
-        Layer.provideMerge(ResourceLive)
+      return Layer.mergeAll(TracerLayer, MetricsLayer, LoggerLayer).pipe(
+        Layer.provideMerge(ResourceLayer)
       )
     })
   )

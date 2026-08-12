@@ -16,7 +16,7 @@ import {
 import { Headers } from "effect/unstable/http"
 import { Rpc, RpcSchema } from "effect/unstable/rpc"
 
-const MemoryLive = MessageStorage.layerMemory.pipe(
+const MemoryLayer = MessageStorage.layerMemory.pipe(
   Layer.provideMerge(Snowflake.layerGenerator),
   Layer.provide(ShardingConfig.layerDefaults)
 )
@@ -57,7 +57,7 @@ describe("MessageStorage", () => {
         expect(result._tag).toEqual("Success")
         const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
         expect(messages).toHaveLength(1)
-      }).pipe(Effect.provide(MemoryLive)))
+      }).pipe(Effect.provide(MemoryLayer)))
 
     it.effect("detects duplicates", () =>
       Effect.gen(function*() {
@@ -75,7 +75,7 @@ describe("MessageStorage", () => {
           })
         )
         expect(result._tag).toEqual("Duplicate")
-      }).pipe(Effect.provide(MemoryLive)))
+      }).pipe(Effect.provide(MemoryLayer)))
 
     it.effect("unprocessedMessages excludes complete requests", () =>
       Effect.gen(function*() {
@@ -85,7 +85,7 @@ describe("MessageStorage", () => {
         yield* storage.saveReply(yield* makeReply(request))
         const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
         expect(messages).toHaveLength(0)
-      }).pipe(Effect.provide(MemoryLive)))
+      }).pipe(Effect.provide(MemoryLayer)))
 
     it.effect("repliesFor", () =>
       Effect.gen(function*() {
@@ -98,7 +98,7 @@ describe("MessageStorage", () => {
         replies = yield* storage.repliesFor([request])
         expect(replies).toHaveLength(1)
         expect(replies[0].requestId).toEqual(request.envelope.requestId)
-      }).pipe(Effect.provide(MemoryLive)))
+      }).pipe(Effect.provide(MemoryLayer)))
 
     it.effect("registerReplyHandler", () =>
       Effect.gen(function*() {
@@ -116,7 +116,7 @@ describe("MessageStorage", () => {
         yield* storage.saveReply(yield* makeReply(request))
         yield* latch.await
         yield* Fiber.await(fiber)
-      }).pipe(Effect.provide(MemoryLive)))
+      }).pipe(Effect.provide(MemoryLayer)))
   })
 })
 

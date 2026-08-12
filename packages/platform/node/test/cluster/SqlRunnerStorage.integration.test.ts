@@ -16,12 +16,12 @@ import { SqlClient, type SqlConnection, SqlError } from "effect/unstable/sql"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
 
-const StorageLive = SqlRunnerStorage.layer
+const StorageLayer = SqlRunnerStorage.layer
 
 describe("SqlRunnerStorage", () => {
   it.effect("bounds shard lock operations and rebuilds an unresponsive reserved connection", () => {
     const partitioned = makePartitionState()
-    const layer = StorageLive.pipe(
+    const layer = StorageLayer.pipe(
       Layer.provideMerge(blackholeReservedConnection(partitioned, true)),
       Layer.provide(ShardingConfig.layer({
         shardLockExpiration: 1000,
@@ -96,7 +96,7 @@ describe("SqlRunnerStorage", () => {
 
   it.effect("recovers when a blackholed query cannot resume after the partition clears", () => {
     const partitioned = makePartitionState()
-    const layer = StorageLive.pipe(
+    const layer = StorageLayer.pipe(
       Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
       Layer.provide(ShardingConfig.layer({
         shardLockDisableAdvisory: true,
@@ -134,7 +134,7 @@ describe("SqlRunnerStorage", () => {
 
   it.effect("rebuilds the reserved connection again when a rebuilt connection stops responding", () => {
     const partitioned = makePartitionState()
-    const layer = StorageLive.pipe(
+    const layer = StorageLayer.pipe(
       Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
       Layer.provide(ShardingConfig.layer({
         shardLockExpiration: 1000,
@@ -179,7 +179,7 @@ describe("SqlRunnerStorage", () => {
 
   it.effect("rebuilds the reserved connection when releasing the previous one hangs", () => {
     const partitioned = makePartitionState()
-    const layer = StorageLive.pipe(
+    const layer = StorageLayer.pipe(
       Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
       Layer.provide(ShardingConfig.layer({
         shardLockDisableAdvisory: true,
@@ -264,10 +264,10 @@ describe("SqlRunnerStorage", () => {
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).flatMap(([label, layer]) =>
     [
-      [label, StorageLive.pipe(Layer.provideMerge(layer), Layer.provide(ShardingConfig.layer()))],
+      [label, StorageLayer.pipe(Layer.provideMerge(layer), Layer.provide(ShardingConfig.layer()))],
       [
         label + " (no advisory)",
-        StorageLive.pipe(
+        StorageLayer.pipe(
           Layer.provideMerge(layer),
           Layer.provide(ShardingConfig.layer({
             shardLockDisableAdvisory: true

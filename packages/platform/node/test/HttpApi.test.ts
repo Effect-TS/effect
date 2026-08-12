@@ -76,13 +76,13 @@ describe("HttpApi", () => {
             })
           )
       )
-    const GroupLive = HttpApiBuilder.group(
+    const GroupLayer = HttpApiBuilder.group(
       Api,
       "group",
       (handlers) => handlers.handle("catchAll", (ctx) => Effect.succeed(ctx.request.url))
     )
-    const ApiLive = HttpRouter.serve(
-      HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive)),
+    const ApiLayer = HttpRouter.serve(
+      HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
       { disableListenLog: true, disableLogger: true }
     ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -95,7 +95,7 @@ describe("HttpApi", () => {
       // client side
       const client = yield* HttpApiClient.make(Api)
       yield* assertClientText(client.group.catchAll(), "/*")
-    }).pipe(Effect.provide(ApiLive))
+    }).pipe(Effect.provide(ApiLayer))
   })
 
   describe("middleware", () => {
@@ -117,18 +117,18 @@ describe("HttpApi", () => {
               })
             ).middleware(M)
         )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) => handlers.handle("a", () => Effect.succeed(1))
       )
-      const MLive = Layer.succeed(
+      const MLayer = Layer.succeed(
         M,
         () => Effect.fail("error")
       )
 
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive), Layer.provide(MLive)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(MLayer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -139,7 +139,7 @@ describe("HttpApi", () => {
         // client side
         const client = yield* HttpApiClient.make(Api)
         yield* assertClientError(client.group.a(), "error")
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
 
     it.effect("error array", () => {
@@ -159,7 +159,7 @@ describe("HttpApi", () => {
           )
           .middleware(M)
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) =>
@@ -167,7 +167,7 @@ describe("HttpApi", () => {
             .handle("unauthorized", () => Effect.succeed("ok"))
             .handle("forbidden", () => Effect.succeed("ok"))
       )
-      const MLive = Layer.succeed(
+      const MLayer = Layer.succeed(
         M,
         (_, { endpoint }) =>
           endpoint.identifier === "unauthorized"
@@ -175,8 +175,8 @@ describe("HttpApi", () => {
             : Effect.fail(new HttpApiError.Forbidden({}))
       )
 
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive), Layer.provide(MLive)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(MLayer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -187,7 +187,7 @@ describe("HttpApi", () => {
         const client = yield* HttpApiClient.make(Api)
         yield* assertClientError(client.group.unauthorized(), new HttpApiError.Unauthorized({}))
         yield* assertClientError(client.group.forbidden(), new HttpApiError.Forbidden({}))
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
 
     it.effect("client middleware modifies request and receives metadata", () => {
@@ -204,15 +204,15 @@ describe("HttpApi", () => {
           )
           .middleware(M)
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) => handlers.handle("a", (ctx) => Effect.succeed(ctx.request.headers["x-client"] ?? "missing"))
       )
-      const MLive = Layer.succeed(M, (effect) => effect)
+      const MLayer = Layer.succeed(M, (effect) => effect)
 
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive), Layer.provide(MLive)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(MLayer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -235,7 +235,7 @@ describe("HttpApi", () => {
           group: "group",
           endpoint: "a"
         })
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
 
     it.effect("client middleware chain order is LIFO", () => {
@@ -257,7 +257,7 @@ describe("HttpApi", () => {
               .middleware(M2)
           )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) =>
@@ -266,11 +266,11 @@ describe("HttpApi", () => {
             (ctx) => Effect.succeed(`${ctx.request.headers["x-m1"] ?? "0"}${ctx.request.headers["x-m2"] ?? "0"}`)
           )
       )
-      const M1Live = Layer.succeed(M1, (effect) => effect)
-      const M2Live = Layer.succeed(M2, (effect) => effect)
+      const M1Layer = Layer.succeed(M1, (effect) => effect)
+      const M2Layer = Layer.succeed(M2, (effect) => effect)
 
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive), Layer.provide(M1Live), Layer.provide(M2Live)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(M1Layer), Layer.provide(M2Layer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -303,7 +303,7 @@ describe("HttpApi", () => {
 
         assert.strictEqual(yield* client.group.a(), "11")
         assert.deepStrictEqual(order, ["m2-before", "m1-before", "m1-after", "m2-after"])
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
 
     it.effect("required client middleware can fail with typed clientError", () => {
@@ -327,7 +327,7 @@ describe("HttpApi", () => {
           .middleware(M)
       )
       let handled = false
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) =>
@@ -337,10 +337,10 @@ describe("HttpApi", () => {
               return "ok"
             }))
       )
-      const MLive = Layer.succeed(M, (effect) => effect)
+      const MLayer = Layer.succeed(M, (effect) => effect)
 
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive), Layer.provide(MLive)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(MLayer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -356,7 +356,7 @@ describe("HttpApi", () => {
 
         yield* assertClientError(client.group.a(), new ClientFailure({}))
         assert.isFalse(handled)
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
 
     it.effect("optional client middleware is skipped when not provided", () => {
@@ -371,22 +371,22 @@ describe("HttpApi", () => {
           )
           .middleware(M)
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) => handlers.handle("a", (ctx) => Effect.succeed(ctx.request.headers["x-optional"] ?? "missing"))
       )
-      const MLive = Layer.succeed(M, (effect) => effect)
+      const MLayer = Layer.succeed(M, (effect) => effect)
 
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive), Layer.provide(MLive)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(MLayer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
       return Effect.gen(function*() {
         const client = yield* HttpApiClient.make(Api)
         assert.strictEqual(yield* client.group.a(), "missing")
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
 
     it.effect("layerClient supports effectful construction", () => {
@@ -405,15 +405,15 @@ describe("HttpApi", () => {
           )
           .middleware(M)
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) => handlers.handle("a", (ctx) => Effect.succeed(ctx.request.headers["x-effect"] ?? "missing"))
       )
-      const MLive = Layer.succeed(M, (effect) => effect)
+      const MLayer = Layer.succeed(M, (effect) => effect)
 
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive), Layer.provide(MLive)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(MLayer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -432,7 +432,7 @@ describe("HttpApi", () => {
         )
 
         assert.strictEqual(yield* client.group.a(), "from-effect")
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
 
     it.effect("security middleware can be implemented with layerClient", () => {
@@ -456,17 +456,17 @@ describe("HttpApi", () => {
           }))
           .middleware(M)
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) => handlers.handle("a", () => CurrentToken)
       )
-      const MLive = Layer.succeed(M)({
+      const MLayer = Layer.succeed(M)({
         apiKey: (effect, options) => Effect.provideService(effect, CurrentToken, Redacted.value(options.credential))
       })
 
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive), Layer.provide(MLive)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(MLayer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -481,7 +481,7 @@ describe("HttpApi", () => {
         const authedClient = yield* HttpApiClient.make(Api).pipe(Effect.provide(MClient))
 
         assert.strictEqual(yield* authedClient.group.a(), "token")
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
 
     it("security middleware cache does not reuse the first service impl", async () => {
@@ -509,20 +509,20 @@ describe("HttpApi", () => {
       )
 
       const makeWebHandler = (marker: string) => {
-        const GroupLive = HttpApiBuilder.group(
+        const GroupLayer = HttpApiBuilder.group(
           Api,
           "group",
           (handlers) => handlers.handle("a", () => Effect.map(CurrentMarker, (marker) => ({ marker })))
         )
-        const MLive = Layer.succeed(M)({
+        const MLayer = Layer.succeed(M)({
           apiKey: (effect) => Effect.provideService(effect, CurrentMarker, marker)
         })
 
         return HttpRouter.toWebHandler(
           Layer.mergeAll(
             HttpApiBuilder.layer(Api).pipe(
-              Layer.provide(GroupLive),
-              Layer.provide(MLive),
+              Layer.provide(GroupLayer),
+              Layer.provide(MLayer),
               Layer.provide(HttpServer.layerServices)
             )
           ),
@@ -584,24 +584,24 @@ describe("HttpApi", () => {
         .middleware(M1)
         .middleware(M2)
 
-      const HealthLive = HttpApiBuilder.group(
+      const HealthLayer = HttpApiBuilder.group(
         Api,
         "health",
         (handlers) => handlers.handle("health", () => Effect.succeed("ok"))
       )
-      const UsersLive = HttpApiBuilder.group(
+      const UsersLayer = HttpApiBuilder.group(
         Api,
         "users",
         (handlers) => handlers.handle("list", () => Effect.succeed("ok"))
       )
-      const M1Live = Layer.succeed(
+      const M1Layer = Layer.succeed(
         M1,
         (effect, { endpoint, group }) =>
           Effect.sync(() => calls.push(`m1:${group.identifier}.${endpoint.identifier}`)).pipe(
             Effect.flatMap(() => effect)
           )
       )
-      const M2Live = Layer.succeed(
+      const M2Layer = Layer.succeed(
         M2,
         (effect, { endpoint, group }) =>
           Effect.sync(() => calls.push(`m2:${group.identifier}.${endpoint.identifier}`)).pipe(
@@ -609,12 +609,12 @@ describe("HttpApi", () => {
           )
       )
 
-      const ApiLive = HttpRouter.serve(
+      const ApiLayer = HttpRouter.serve(
         HttpApiBuilder.layer(Api).pipe(
-          Layer.provide(HealthLive),
-          Layer.provide(UsersLive),
-          Layer.provide(M1Live),
-          Layer.provide(M2Live)
+          Layer.provide(HealthLayer),
+          Layer.provide(UsersLayer),
+          Layer.provide(M1Layer),
+          Layer.provide(M2Layer)
         ),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
@@ -628,7 +628,7 @@ describe("HttpApi", () => {
           "m2:users.list",
           "m1:users.list"
         ])
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
 
     it.effect("missing middleware layer fails with service not found error", () => {
@@ -643,18 +643,18 @@ describe("HttpApi", () => {
           )
           .middleware(M)
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) => handlers.handle("a", () => Effect.succeed("ok"))
       )
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
       return HttpClient.get("/a").pipe(
-        Effect.provide(ApiLive),
+        Effect.provide(ApiLayer),
         Effect.sandbox,
         Effect.flip,
         Effect.flatMap((cause) =>
@@ -686,18 +686,18 @@ describe("HttpApi", () => {
       .add(HealthApi)
       .addHttpApi(V0)
 
-    const UsersLive = HttpApiBuilder.group(
+    const UsersLayer = HttpApiBuilder.group(
       Api,
       "users",
       (handlers) => handlers.handle("list", () => Effect.succeed("ok"))
     )
-    const ApiLive = HttpRouter.serve(
-      HttpApiBuilder.layer(Api).pipe(Layer.provide(UsersLive)),
+    const ApiLayer = HttpRouter.serve(
+      HttpApiBuilder.layer(Api).pipe(Layer.provide(UsersLayer)),
       { disableListenLog: true, disableLogger: true }
     ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
     return HttpClient.get("/users").pipe(
-      Effect.provide(ApiLive),
+      Effect.provide(ApiLayer),
       Effect.sandbox,
       Effect.flip,
       Effect.flatMap((cause) =>
@@ -729,13 +729,13 @@ describe("HttpApi", () => {
                 })
               )
           )
-        const GroupLive = HttpApiBuilder.group(
+        const GroupLayer = HttpApiBuilder.group(
           Api,
           "group",
           (handlers) => handlers.handle("a", (ctx) => Effect.succeed(ctx.payload))
         )
-        const ApiLive = HttpRouter.serve(
-          HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive)),
+        const ApiLayer = HttpRouter.serve(
+          HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
           { disableListenLog: true, disableLogger: true }
         ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -764,7 +764,7 @@ describe("HttpApi", () => {
             optional: 1
           })
           yield* assertClientJson(client.group.a({ payload: { required: 1, optional: undefined } }), { required: 1 })
-        }).pipe(Effect.provide(ApiLive))
+        }).pipe(Effect.provide(ApiLayer))
       })
     })
 
@@ -781,14 +781,14 @@ describe("HttpApi", () => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) => handlers.handle("a", (ctx) => Effect.succeed(ctx.payload))
       )
 
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -810,7 +810,7 @@ describe("HttpApi", () => {
         yield* assertClientJson(client.group.a({ payload: { a: "text" } }), { a: "text" })
         yield* assertClientJson(client.group.a({ payload: "text" }), "text")
         yield* assertClientJson(client.group.a({ payload: new Uint8Array([1, 2, 3]) }), { 0: 1, 1: 2, 2: 3 })
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
   })
 
@@ -826,14 +826,14 @@ describe("HttpApi", () => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) => handlers.handle("get", (ctx) => Effect.succeed(`User ${ctx.params.id}`))
       )
 
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -844,7 +844,7 @@ describe("HttpApi", () => {
         // client side
         const client = yield* HttpApiClient.make(Api)
         yield* assertClientJson(client.group.get({ params: { id: 1 } }), "User 1")
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
   })
 
@@ -860,14 +860,14 @@ describe("HttpApi", () => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) => handlers.handle("get", (ctx) => Effect.succeed(`User ${ctx.query.id}`))
       )
 
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -878,7 +878,7 @@ describe("HttpApi", () => {
         // client side
         const client = yield* HttpApiClient.make(Api)
         yield* assertClientJson(client.group.get({ query: { id: 1 } }), "User 1")
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
   })
 
@@ -899,7 +899,7 @@ describe("HttpApi", () => {
               })
             )
         )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) =>
@@ -909,8 +909,8 @@ describe("HttpApi", () => {
             .handle("c", () => Effect.succeed("-"))
       )
 
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -925,7 +925,7 @@ describe("HttpApi", () => {
         yield* assertClientJson(client.group.a(), undefined)
         yield* assertClientJson(client.group.b(), undefined)
         yield* assertClientJson(client.group.c(), "c")
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
 
     it("no content via toWebHandler", async () => {
@@ -934,17 +934,17 @@ describe("HttpApi", () => {
           HttpApiGroup.make("group")
             .add(HttpApiEndpoint.delete("remove", "/items/:id", { params: { id: Schema.String } }))
         )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) => handlers.handle("remove", () => Effect.void)
       )
-      const ApiLive = HttpApiBuilder.layer(Api).pipe(
-        Layer.provide(GroupLive),
+      const ApiLayer = HttpApiBuilder.layer(Api).pipe(
+        Layer.provide(GroupLayer),
         Layer.provide(HttpServer.layerServices)
       )
       const { handler, dispose } = HttpRouter.toWebHandler(
-        Layer.mergeAll(ApiLive),
+        Layer.mergeAll(ApiLayer),
         { disableLogger: true }
       )
       try {
@@ -966,14 +966,14 @@ describe("HttpApi", () => {
               })
             )
           )
-          const GroupLive = HttpApiBuilder.group(
+          const GroupLayer = HttpApiBuilder.group(
             Api,
             "group",
             (handlers) => handlers.handle("a", () => Effect.succeed("a"))
           )
 
-          const ApiLive = HttpRouter.serve(
-            HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive)),
+          const ApiLayer = HttpRouter.serve(
+            HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
             { disableListenLog: true, disableLogger: true }
           ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -986,7 +986,7 @@ describe("HttpApi", () => {
             // client side
             const client = yield* HttpApiClient.make(Api)
             yield* assertClientJson(client.group.a(), "a")
-          }).pipe(Effect.provide(ApiLive))
+          }).pipe(Effect.provide(ApiLayer))
         })
       })
     })
@@ -1022,7 +1022,7 @@ describe("HttpApi", () => {
               })
             )
         )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) =>
@@ -1035,8 +1035,8 @@ describe("HttpApi", () => {
             .handle("f", () => Effect.fail(new HttpApiError.BadRequest({})))
       )
 
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -1057,7 +1057,7 @@ describe("HttpApi", () => {
         yield* assertClientError(client.group.d(), undefined)
         yield* assertClientError(client.group.e(), new HttpApiError.Unauthorized({}))
         yield* assertClientError(client.group.f(), new HttpApiError.BadRequest({}))
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
   })
 
@@ -1105,7 +1105,7 @@ describe("HttpApi", () => {
             endpointClientUser,
             expected
           )
-        }).pipe(Effect.provide(HttpLive)))
+        }).pipe(Effect.provide(HttpLayer)))
 
       it.live("multipart", () =>
         Effect.gen(function*() {
@@ -1117,7 +1117,7 @@ describe("HttpApi", () => {
             contentType: "text/plain",
             length: 5
           })
-        }).pipe(Effect.provide(HttpLive)))
+        }).pipe(Effect.provide(HttpLayer)))
 
       it.live("multipart stream", () =>
         Effect.gen(function*() {
@@ -1129,7 +1129,7 @@ describe("HttpApi", () => {
             contentType: "text/plain",
             length: 5
           })
-        }).pipe(Effect.provide(HttpLive)))
+        }).pipe(Effect.provide(HttpLayer)))
     })
 
     describe("headers", () => {
@@ -1144,14 +1144,14 @@ describe("HttpApi", () => {
             })
           )
         )
-        const GroupLive = HttpApiBuilder.group(
+        const GroupLayer = HttpApiBuilder.group(
           Api,
           "group",
           (handlers) => handlers.handle("get", (ctx) => Effect.succeed(`User ${ctx.headers.id}`))
         )
 
-        const ApiLive = HttpRouter.serve(
-          HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive)),
+        const ApiLayer = HttpRouter.serve(
+          HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
           { disableListenLog: true, disableLogger: true }
         ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -1159,7 +1159,7 @@ describe("HttpApi", () => {
           const client = yield* HttpApiClient.make(Api)
           const result = yield* client.group.get({ headers: { id: 1 } })
           assert.strictEqual(result, "User 1")
-        }).pipe(Effect.provide(ApiLive))
+        }).pipe(Effect.provide(ApiLayer))
       })
 
       it.effect("is decoded / encoded", () =>
@@ -1178,7 +1178,7 @@ describe("HttpApi", () => {
               createdAt: DateTime.makeUnsafe(0)
             })
           )
-        }).pipe(Effect.provide(HttpLive)))
+        }).pipe(Effect.provide(HttpLayer)))
     })
 
     describe("errors", () => {
@@ -1188,7 +1188,7 @@ describe("HttpApi", () => {
           assert.strictEqual(response.status, 418)
           const text = yield* response.text
           assert.strictEqual(text, "")
-        }).pipe(Effect.provide(HttpLive)))
+        }).pipe(Effect.provide(HttpLayer)))
 
       it.effect("empty errors decode", () =>
         Effect.gen(function*() {
@@ -1197,7 +1197,7 @@ describe("HttpApi", () => {
             Effect.flip
           )
           assert.deepStrictEqual(error, new GroupError({}))
-        }).pipe(Effect.provide(HttpLive)))
+        }).pipe(Effect.provide(HttpLayer)))
 
       it.effect("default to 500 status code", () =>
         Effect.gen(function*() {
@@ -1210,7 +1210,7 @@ describe("HttpApi", () => {
           assert.deepStrictEqual(body, {
             _tag: "NoStatusError"
           })
-        }).pipe(Effect.provide(HttpLive)))
+        }).pipe(Effect.provide(HttpLayer)))
 
       it.effect("class level annotations", () =>
         Effect.gen(function*() {
@@ -1220,7 +1220,7 @@ describe("HttpApi", () => {
             HttpClient.execute
           )
           assert.strictEqual(response.status, 400)
-        }).pipe(Effect.provide(HttpLive)))
+        }).pipe(Effect.provide(HttpLayer)))
 
       it.effect("BadRequest", () =>
         Effect.gen(function*() {
@@ -1230,7 +1230,7 @@ describe("HttpApi", () => {
           )
           assert(error._tag === "HttpClientError" && error.reason._tag === "DecodeError")
           assert.strictEqual(error.reason.response.status, 400)
-        }).pipe(Effect.provide(HttpLive)))
+        }).pipe(Effect.provide(HttpLayer)))
     })
 
     it.effect("handler level context", () =>
@@ -1240,7 +1240,7 @@ describe("HttpApi", () => {
         const user = users[0]
         assert.strictEqual(user.name, "page 1")
         assert.deepStrictEqual(user.createdAt, DateTime.makeUnsafe(0))
-      }).pipe(Effect.provide(HttpLive)))
+      }).pipe(Effect.provide(HttpLayer)))
 
     it.effect("custom client context", () =>
       Effect.gen(function*() {
@@ -1266,7 +1266,7 @@ describe("HttpApi", () => {
         const user = users[0]
         assert.strictEqual(user.name, "page 1")
         assert.isTrue(tapped)
-      }).pipe(Effect.provide(HttpLive)))
+      }).pipe(Effect.provide(HttpLayer)))
 
     describe("security", () => {
       it.effect("security middleware sets current user", () =>
@@ -1279,7 +1279,7 @@ describe("HttpApi", () => {
           })
           const user = yield* client.users.findById({ params: { id: -1 } })
           assert.strictEqual(user.name, "foo")
-        }).pipe(Effect.provide(HttpLive)))
+        }).pipe(Effect.provide(HttpLayer)))
 
       it.effect("apiKey header security", () =>
         Effect.gen(function*() {
@@ -1298,7 +1298,7 @@ describe("HttpApi", () => {
           )
           const redacted = yield* decode
           assert.strictEqual(Redacted.value(redacted), "foo")
-        }).pipe(Effect.provide(HttpLive)))
+        }).pipe(Effect.provide(HttpLayer)))
 
       it.effect("apiKey query security", () =>
         Effect.gen(function*() {
@@ -1312,7 +1312,7 @@ describe("HttpApi", () => {
             })
           )
           assert.strictEqual(Redacted.value(redacted), "foo")
-        }).pipe(Effect.provide(HttpLive)))
+        }).pipe(Effect.provide(HttpLayer)))
     })
 
     it.effect("client responseMode decoded-and-response", () =>
@@ -1325,7 +1325,7 @@ describe("HttpApi", () => {
         })
         assert.strictEqual(users[0].name, "page 1")
         assert.strictEqual(response.status, 200)
-      }).pipe(Effect.provide(HttpLive)))
+      }).pipe(Effect.provide(HttpLayer)))
 
     it.effect("client responseMode response-only skips decoding", () => {
       const Api = HttpApi.make("api").add(
@@ -1338,14 +1338,14 @@ describe("HttpApi", () => {
         )
       )
 
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "group",
         (handlers) => handlers.handleRaw("bad", () => Effect.succeed(HttpServerResponse.text("not-json")))
       )
 
-      const ApiLive = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive)),
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
         { disableListenLog: true, disableLogger: true }
       ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -1359,7 +1359,7 @@ describe("HttpApi", () => {
         })
         assert.strictEqual(response.status, 200)
         assert.strictEqual(yield* response.text, "not-json")
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
 
     it.effect("multiple payload types", () =>
@@ -1385,7 +1385,7 @@ describe("HttpApi", () => {
           payload: { foo: "Some group" }
         })
         assert.deepStrictEqual(group, new Group({ id: 1, name: "Some group" }))
-      }).pipe(Effect.provide(HttpLive)))
+      }).pipe(Effect.provide(HttpLayer)))
 
     it.effect(".handle can return HttpServerResponse", () =>
       Effect.gen(function*() {
@@ -1398,7 +1398,7 @@ describe("HttpApi", () => {
           id: 1,
           name: "Some group"
         })
-      }).pipe(Effect.provide(HttpLive)))
+      }).pipe(Effect.provide(HttpLayer)))
 
     it.effect(".handleRaw can manually process body", () =>
       Effect.gen(function*() {
@@ -1411,7 +1411,7 @@ describe("HttpApi", () => {
           id: 1,
           name: "Some group"
         })
-      }).pipe(Effect.provide(HttpLive)))
+      }).pipe(Effect.provide(HttpLayer)))
 
     describe("OpenAPI spec", () => {
       it("fixture", () => {
@@ -1445,7 +1445,7 @@ describe("HttpApi", () => {
           })
         )
       )
-      const ApiLive = HttpApiBuilder.layer(Api).pipe(
+      const ApiLayer = HttpApiBuilder.layer(Api).pipe(
         Layer.provide(
           HttpApiBuilder.group(
             Api,
@@ -1460,7 +1460,7 @@ describe("HttpApi", () => {
         const client = yield* HttpApiClient.make(Api)
         const response = yield* client.group.error().pipe(Effect.flip)
         assert.deepStrictEqual(response, new RateLimitError({ message: "Rate limit exceeded" }))
-      }).pipe(Effect.provide(ApiLive))
+      }).pipe(Effect.provide(ApiLayer))
     })
   })
 
@@ -1473,7 +1473,7 @@ describe("HttpApi", () => {
       }).pipe(
         Effect.provide([
           NodeHttpServer.layerHttpServices,
-          AuthorizationLive,
+          AuthorizationLayer,
           HttpApiBuilder.group(Api, "groups", (handlers) =>
             handlers
               .handle("findById", () => Effect.succeed(new Group({ id: 1, name: "foo" })))
@@ -1691,12 +1691,12 @@ class Api extends HttpApi.make("api")
 class UserRepo extends Context.Service<UserRepo, {
   readonly findById: (id: number) => Effect.Effect<User>
 }>()("UserRepo") {
-  static Live = Layer.succeed(this)({
+  static layer = Layer.succeed(this)({
     findById: (id) => Effect.map(DateTime.now, (now) => ({ id, name: "foo", createdAt: now }))
   })
 }
 
-const AuthorizationLive = Layer.succeed(
+const AuthorizationLayer = Layer.succeed(
   Authorization
 )({
   cookie: (effect, opts) =>
@@ -1711,7 +1711,7 @@ const AuthorizationLive = Layer.succeed(
     )
 })
 
-const HttpUsersLive = HttpApiBuilder.group(
+const HttpUsersLayer = HttpApiBuilder.group(
   Api,
   "users",
   Effect.fnUntraced(function*(handlers) {
@@ -1768,12 +1768,12 @@ const HttpUsersLive = HttpApiBuilder.group(
   })
 ).pipe(
   Layer.provide([
-    UserRepo.Live,
-    AuthorizationLive
+    UserRepo.layer,
+    AuthorizationLayer
   ])
 )
 
-const HttpGroupsLive = HttpApiBuilder.group(
+const HttpGroupsLayer = HttpApiBuilder.group(
   Api,
   "groups",
   (handlers) =>
@@ -1810,19 +1810,19 @@ const HttpGroupsLive = HttpApiBuilder.group(
       )
 )
 
-const TopLevelLive = HttpApiBuilder.group(
+const TopLevelLayer = HttpApiBuilder.group(
   Api,
   "root",
   (handlers) => handlers.handle("healthz", (_) => Effect.void)
 )
 
-const HttpApiLive = Layer.provide(HttpApiBuilder.layer(Api), [
-  HttpGroupsLive,
-  HttpUsersLive,
-  TopLevelLive
+const HttpApiLayer = Layer.provide(HttpApiBuilder.layer(Api), [
+  HttpGroupsLayer,
+  HttpUsersLayer,
+  TopLevelLayer
 ])
 
-const HttpLive = HttpRouter.serve(HttpApiLive, {
+const HttpLayer = HttpRouter.serve(HttpApiLayer, {
   disableListenLog: true,
   disableLogger: true
 }).pipe(
