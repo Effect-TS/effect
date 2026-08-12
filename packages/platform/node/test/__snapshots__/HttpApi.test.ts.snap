@@ -63,6 +63,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
       },
       "UserEncoded": {
         "additionalProperties": false,
+        "description": "Some description for User",
         "properties": {
           "createdAt": {
             "type": "string",

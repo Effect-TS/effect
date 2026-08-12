@@ -166,7 +166,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
     })
 
     it("carries type-side documentation annotations onto the encoded representation", () => {
-      const schema = Schema.NumberFromString.annotate({ title: "t", description: "d", examples: ["1"] })
+      const schema = Schema.NumberFromString.annotate({ title: "t", description: "d", examples: [1] })
 
       assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
         representation: {
@@ -174,7 +174,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
           annotations: {
             title: "t",
             description: "d",
-            examples: ["1"],
+            examples: [1],
             expected: "a string that will be decoded as a number"
           },
           checks: []
@@ -199,7 +199,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
     it("collects documentation annotations from every link of an encoding chain", () => {
       // Unknown -> Declaration(Date) -> String, so the annotations sit two links apart
       const schema = Schema.Date.annotate({ title: "inner", description: "inner" }).pipe(
-        Schema.decodeTo(Schema.Unknown, SchemaTransformation.passthrough<unknown, unknown>())
+        Schema.decodeTo(Schema.Unknown, SchemaTransformation.passthroughSubtype<unknown, Date>())
       ).annotate({ title: "outer", examples: ["1970-01-01T00:00:00.000Z"] })
 
       assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.toCodecJson(schema).ast), {
