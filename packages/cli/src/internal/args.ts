@@ -23,6 +23,7 @@ import type * as HelpDoc from "../HelpDoc.js"
 import type * as Primitive from "../Primitive.js"
 import type * as Usage from "../Usage.js"
 import type * as ValidationError from "../ValidationError.js"
+import * as InternalCompletion from "./completion.js"
 import * as InternalFiles from "./files.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
@@ -1044,7 +1045,7 @@ export const getFishCompletions = (self: Instruction): Array<string> => {
         Arr.appendAll(
           description.length === 0
             ? Arr.empty()
-            : Arr.of(`-d '${description}'`)
+            : Arr.of(`-d '${InternalCompletion.escapeSingleQuoted(description)}'`)
         ),
         Arr.join(" "),
         Arr.of
@@ -1082,7 +1083,9 @@ export const getZshCompletions = (
       const multiple = state.multiple ? "*" : ""
       const optional = state.optional ? "::" : ":"
       const shortDescription = getShortDescription(self)
-      const description = shortDescription.length > 0 ? ` -- ${shortDescription}` : ""
+      const description = shortDescription.length > 0
+        ? ` -- ${InternalCompletion.escapeSingleQuoted(shortDescription)}`
+        : ""
       const possibleValues = InternalPrimitive.getZshCompletions(
         self.primitiveType as InternalPrimitive.Instruction
       )

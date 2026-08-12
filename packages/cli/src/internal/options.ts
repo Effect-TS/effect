@@ -28,6 +28,7 @@ import type * as Usage from "../Usage.js"
 import type * as ValidationError from "../ValidationError.js"
 import * as InternalAutoCorrect from "./autoCorrect.js"
 import * as InternalCliConfig from "./cliConfig.js"
+import * as InternalCompletion from "./completion.js"
 import * as InternalFiles from "./files.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
@@ -2040,9 +2041,7 @@ const merge = (
 // =============================================================================
 
 const escape = (string: string): string =>
-  string
-    .replaceAll("\\", "\\\\")
-    .replaceAll("'", "'\\''")
+  InternalCompletion.escapeSingleQuoted(string.replaceAll("\\", "\\\\"))
     .replaceAll("[", "\\[")
     .replaceAll("]", "\\]")
     .replaceAll(":", "\\:")
@@ -2130,7 +2129,7 @@ export const getFishCompletions = (self: Instruction): Array<string> => {
         Arr.appendAll(
           description.length === 0
             ? Arr.empty()
-            : Arr.of(`-d '${description}'`)
+            : Arr.of(`-d '${InternalCompletion.escapeSingleQuoted(description)}'`)
         ),
         Arr.join(" "),
         Arr.of
