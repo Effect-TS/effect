@@ -102,7 +102,7 @@ const ISOLATION_PORT = 50_126
 // host runner to finish handling it.
 describe("SocketRunner", () => {
   it.live(
-    "persisted and non-persisted entity calls with BigDecimal and discard should not stack overflow",
+    "discarded persisted requests serialize circular values and volatile requests do not wait for replies",
     () =>
       Effect.gen(function*() {
         const volatileStarted = yield* Deferred.make<void>()
@@ -138,7 +138,12 @@ describe("SocketRunner", () => {
           ).pipe(Effect.forkChild)
 
           yield* Deferred.await(volatileStarted)
-          yield* Fiber.join(volatileFiber).pipe(Effect.timeout("1 second"))
+          yield* Fiber.join(volatileFiber).pipe(
+            Effect.timeoutOrElse({
+              duration: "1 second",
+              orElse: () => Effect.die("volatile discard waited for the entity reply")
+            })
+          )
           yield* Deferred.succeed(releaseVolatile, void 0)
         }).pipe(
           Effect.provide(makeClientLayer(RUNNER_PORT)),

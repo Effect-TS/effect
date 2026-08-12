@@ -263,6 +263,48 @@ describe.concurrent("Runners.makeRpc", () => {
       )
     )))))
 
+  it.effect("volatile notification transport failures map to RunnerUnavailable", () =>
+    Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const snowflakeGen = yield* Snowflake.Generator
+      const message = makeOutgoingRequest(TestRpc, snowflakeGen.nextUnsafe(), () => Effect.void)
+
+      const exit = yield* Effect.exit(runners.notify({
+        address: Option.some(runnerAddress),
+        message,
+        discard: true
+      }))
+      if (!Exit.isFailure(exit)) {
+        return assert.fail("volatile notification must fail when delivery fails")
+      }
+      assert.instanceOf(Cause.squash(exit.cause), ClusterError.RunnerUnavailable)
+    }).pipe(Effect.provide(layerRunners(layerFakeProtocol(() =>
+      Effect.fail(
+        new RpcClientError({
+          reason: new Socket.SocketCloseError({ code: 1006 })
+        })
+      )
+    )))))
+
+  it.effect("persisted notification transport failures are ignored", () =>
+    Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const snowflakeGen = yield* Snowflake.Generator
+      const message = makeOutgoingRequest(TestRpcPersisted, snowflakeGen.nextUnsafe(), () => Effect.void)
+
+      yield* runners.notify({
+        address: Option.some(runnerAddress),
+        message,
+        discard: true
+      })
+    }).pipe(Effect.provide(layerRunners(layerFakeProtocol(() =>
+      Effect.fail(
+        new RpcClientError({
+          reason: new Socket.SocketCloseError({ code: 1006 })
+        })
+      )
+    )))))
+
   it.effect("a delivered defect for a persisted request maps to RunnerUnavailable for storage recovery", () =>
     Effect.gen(function*() {
       const runners = yield* Runners.Runners

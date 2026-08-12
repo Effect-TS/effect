@@ -919,6 +919,75 @@ describe.concurrent("Sharding", () => {
       expect(driver.unprocessed.size).toEqual(1)
     }).pipe(Effect.provide(TestSharding)))
 
+  it.effect("client discard returns while the volatile request keeps processing", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      const client = makeClient("1")
+
+      const result = yield* client.NeverVolatile(void 0, { discard: true })
+
+      assert.isUndefined(result)
+      yield* TestClock.adjust(1)
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+    }).pipe(Effect.provide(TestSharding)))
+
+  it.effect("client volatile discard retries a failed delivery", () =>
+    Effect.gen(function*() {
+      let attempts = 0
+      const config = ShardingConfig.layer({
+        entityMailboxCapacity: 10,
+        entityTerminationTimeout: 0,
+        entityMessagePollInterval: 5000,
+        sendRetryInterval: 100,
+        refreshAssignmentsInterval: 0
+      })
+      const runners = Layer.effect(Runners.Runners)(
+        Effect.gen(function*() {
+          const runners = yield* Runners.makeNoop
+          return {
+            ...runners,
+            notify(options) {
+              attempts++
+              return attempts === 1
+                ? Effect.fail(
+                  new ClusterError.RunnerUnavailable({
+                    address: Option.getOrThrow(options.address)
+                  })
+                )
+                : Effect.void
+            }
+          }
+        })
+      ).pipe(
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(config)
+      )
+      const layer = TestShardingWithoutRunners.pipe(
+        Layer.provide(runners),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provideMerge(config)
+      )
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const config = yield* ShardingConfig.ShardingConfig
+        ;(config as any).runnerAddress = Option.some(RunnerAddress.make("localhost", 1234))
+        const makeClient = yield* TestEntity.client
+        const client = makeClient("1")
+        const fiber = yield* client.NeverVolatile(void 0, { discard: true }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        assert.strictEqual(attempts, 1)
+        assert.isUndefined(fiber.pollUnsafe())
+        yield* TestClock.adjust(100)
+        yield* Fiber.join(fiber)
+        assert.strictEqual(attempts, 2)
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("defects when a durable request has no MessageStorage", () =>
     Effect.gen(function*() {
       const makeClient = yield* TestEntity.client

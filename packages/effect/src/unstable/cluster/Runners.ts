@@ -98,7 +98,14 @@ export class Runners extends Context.Service<Runners, {
       readonly message: Message.Outgoing<R>
       readonly discard: boolean
     }
-  ) => Effect.Effect<void, PersistenceError>
+  ) => Effect.Effect<
+    void,
+    | EntityNotAssignedToRunner
+    | RunnerUnavailable
+    | MailboxFull
+    | AlreadyProcessingMessage
+    | PersistenceError
+  >
 
   /**
    * Notify the current Runner that a message is available, then read replies from
@@ -143,11 +150,6 @@ export class Runners extends Context.Service<Runners, {
  * `MessageStorage`, duplicate requests are resumed from stored replies when
  * possible, and pending replies are polled according to
  * `ShardingConfig.entityReplyPollInterval`.
- *
- * **Gotchas**
- *
- * `notifyLocal` only supports RPCs annotated as persisted; calling it with a
- * non-persisted message dies instead of returning a typed error.
  *
  * @see {@link makeRpc} for the RPC-backed implementation built on top of this constructor
  * @see {@link makeNoop} for a no-op implementation when remote runner communication is not needed
@@ -660,20 +662,22 @@ export const makeRpc: Effect.Effect<
         return Effect.void
       }
       const rpc = message.rpc as any as Rpc.AnyWithProps
+      const isPersisted = Context.get(rpc.annotations, Persisted)
       const envelope = message.envelope
       const encode: Effect.Effect<Envelope.AckChunk | Envelope.Interrupt | Envelope.PartialRequest> =
         message._tag === "OutgoingRequest" ? Effect.orDie(Message.serializeRequest(message)) : Effect.succeed(envelope)
-      return Effect.flatMap(encode, (envelope) =>
+      const notify = Effect.flatMap(encode, (envelope) =>
         RcMap.get(clients, address.value).pipe(
           Effect.flatMap((client) =>
             client.Notify({
               envelope,
-              persisted: Context.get(rpc.annotations, Persisted)
+              persisted: isPersisted
             })
           ),
           Effect.scoped,
-          Effect.ignore
+          Effect.catchTag("RpcClientError", () => Effect.fail(new RunnerUnavailable({ address: address.value })))
         ))
+      return isPersisted ? Effect.ignore(notify) : notify
     },
     onRunnerUnavailable: (address) => RcMap.invalidate(clients, address)
   })
