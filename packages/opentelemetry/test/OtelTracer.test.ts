@@ -10,7 +10,7 @@ import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
 
-const TracingLive = NodeSdk.layer(Effect.sync(() => ({
+const TracingLayer = NodeSdk.layer(Effect.sync(() => ({
   resource: {
     serviceName: "test"
   },
@@ -29,7 +29,7 @@ describe("Tracer", () => {
         assert.instanceOf(span, OtelTracer.OtelSpan)
       }).pipe(
         Effect.withSpan("ok"),
-        Effect.provide(TracingLive)
+        Effect.provide(TracingLayer)
       ))
 
     it.effect("withSpan links", () =>
@@ -42,7 +42,7 @@ describe("Tracer", () => {
         assert.instanceOf(span, OtelTracer.OtelSpan)
         assert.lengthOf(span.links, 1)
       }).pipe(
-        Effect.provide(TracingLive)
+        Effect.provide(TracingLayer)
       ))
 
     it.effect("nested withSpan sets correct parent chain", () =>
@@ -56,7 +56,7 @@ describe("Tracer", () => {
         assert.isDefined(child.parent)
         assert.strictEqual((child.parent.valueOrUndefined! as OtelTracer.OtelSpan).name, "parent")
       }).pipe(
-        Effect.provide(TracingLive)
+        Effect.provide(TracingLayer)
       ))
 
     it.effect("supervisor sets context", () =>
@@ -65,7 +65,7 @@ describe("Tracer", () => {
         assert.isDefined(OtelApi.trace.getSpan(context))
       }).pipe(
         Effect.withSpan("ok"),
-        Effect.provide(TracingLive)
+        Effect.provide(TracingLayer)
       ))
 
     it.effect("supervisor sets context generator", () =>
@@ -75,7 +75,7 @@ describe("Tracer", () => {
         assert.isDefined(OtelApi.trace.getSpan(context))
       }).pipe(
         Effect.withSpan("ok"),
-        Effect.provide(TracingLive)
+        Effect.provide(TracingLayer)
       ))
 
     it.effect("currentOtelSpan", () =>
@@ -85,7 +85,7 @@ describe("Tracer", () => {
         assert.strictEqual((span as OtelTracer.OtelSpan).span, otelSpan)
       }).pipe(
         Effect.withSpan("ok"),
-        Effect.provide(TracingLive)
+        Effect.provide(TracingLayer)
       ))
 
     it.effect.each([OtelApi.SpanStatusCode.UNSET, OtelApi.SpanStatusCode.OK])(
@@ -127,7 +127,7 @@ describe("Tracer", () => {
           spanId: "2".repeat(16),
           sampled: false
         })),
-        Effect.provide(TracingLive)
+        Effect.provide(TracingLayer)
       ))
 
     it("preserves trace state and locality on an active OpenTelemetry parent", () => {
@@ -269,7 +269,7 @@ describe("Tracer", () => {
           })
         })
       }).pipe(
-        Effect.provide(TracingLive)
+        Effect.provide(TracingLayer)
       ))
   })
 

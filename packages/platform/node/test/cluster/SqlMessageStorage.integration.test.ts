@@ -39,7 +39,7 @@ const TestEntityLayer = TestEntity.toLayer({
   GetUser: () => Effect.void
 })
 
-const StorageLive = SqlMessageStorage.layer.pipe(
+const StorageLayer = SqlMessageStorage.layer.pipe(
   Layer.provideMerge(Snowflake.layerGenerator),
   Layer.provide([ShardingConfig.layerDefaults, NodeCrypto.layer])
 )
@@ -56,7 +56,7 @@ describe("SqlMessageStorage", () => {
     ["mysql", Layer.orDie(MysqlContainer.layerClient)],
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).forEach(([label, layer]) => {
-    it.layer(StorageLive.pipe(Layer.provideMerge(layer)), {
+    it.layer(StorageLayer.pipe(Layer.provideMerge(layer)), {
       timeout: 120000
     })(label, (it) => {
       if (label === "pg") {
@@ -460,7 +460,7 @@ describe("SqlMessageStorage", () => {
       yield* TestClock.adjust(100)
       expect(yield* storage.repliesFor([request])).toHaveLength(1)
       yield* Fiber.interrupt(fiber)
-    }).pipe(Effect.provide(StorageLive.pipe(
+    }).pipe(Effect.provide(StorageLayer.pipe(
       Layer.provideMerge(SqliteLayer)
     ))))
 })

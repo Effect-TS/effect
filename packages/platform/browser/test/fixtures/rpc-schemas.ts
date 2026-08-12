@@ -69,7 +69,7 @@ export const UserRpcs = RpcGroup.make(
   })
 ).middleware(AuthMiddleware)
 
-export const AuthLive = Layer.succeed(AuthMiddleware)(
+export const AuthLayer = Layer.succeed(AuthMiddleware)(
   AuthMiddleware.of((effect, options) =>
     Effect.provideService(
       effect,
@@ -82,7 +82,7 @@ export const AuthLive = Layer.succeed(AuthMiddleware)(
 const rpcSuccesses = Metric.counter("rpc_middleware_success")
 const rpcDefects = Metric.counter("rpc_middleware_defects")
 const rpcCount = Metric.counter("rpc_middleware_count")
-export const TimingLive = Layer.succeed(TimingMiddleware)(
+export const TimingLayer = Layer.succeed(TimingMiddleware)(
   TimingMiddleware.of((effect) =>
     effect.pipe(
       Effect.tap(Metric.update(rpcSuccesses, 1)),
@@ -92,7 +92,7 @@ export const TimingLive = Layer.succeed(TimingMiddleware)(
   )
 )
 
-export const UsersLive = UserRpcs.toLayer(Effect.gen(function*() {
+export const UsersLayer = UserRpcs.toLayer(Effect.gen(function*() {
   let interrupts = 0
   let emits = 0
   return UserRpcs.of({
@@ -140,13 +140,13 @@ export const UsersLive = UserRpcs.toLayer(Effect.gen(function*() {
   })
 }))
 
-export const RpcLive = RpcServer.layer(UserRpcs, {
+export const RpcLayer = RpcServer.layer(UserRpcs, {
   disableFatalDefects: true
 }).pipe(
   Layer.provide([
-    UsersLive,
-    AuthLive,
-    TimingLive
+    UsersLayer,
+    AuthLayer,
+    TimingLayer
   ])
 )
 

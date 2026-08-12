@@ -31,7 +31,7 @@ describe("Logger", () => {
   describe("provided", () => {
     const exporter = new InMemoryLogRecordExporter()
 
-    const TracingLive = NodeSdk.layer(Effect.sync(() => ({
+    const TracingLayer = NodeSdk.layer(Effect.sync(() => ({
       resource: {
         serviceName: "test"
       },
@@ -44,7 +44,7 @@ describe("Logger", () => {
           Effect.repeat({ times: 9 })
         )
         assert.lengthOf(exporter.getFinishedLogRecords(), 10)
-      }).pipe(Effect.provide(TracingLive)))
+      }).pipe(Effect.provide(TracingLayer)))
 
     it.effect("maps Effect LogLevel to OTel SeverityNumber spec values", () => {
       const severityExporter = new InMemoryLogRecordExporter()
@@ -94,7 +94,7 @@ describe("Logger", () => {
         sleep: () => Effect.void
       }
 
-      const TracingLive = NodeSdk.layer(Effect.sync(() => ({
+      const TracingLayer = NodeSdk.layer(Effect.sync(() => ({
         resource: {
           serviceName: "test"
         },
@@ -120,7 +120,7 @@ describe("Logger", () => {
         assert.strictEqual(log.attributes.spanId, span.spanContext().spanId)
         assert.strictEqual(log.attributes.traceId, span.spanContext().traceId)
       }).pipe(
-        Effect.provide(TracingLive),
+        Effect.provide(TracingLayer),
         Effect.provideService(Clock.Clock, skewedClock)
       )
     })
@@ -128,7 +128,7 @@ describe("Logger", () => {
     it.effect("does not let annotations overwrite active span correlation", () => {
       const logExporter = new InMemoryLogRecordExporter()
       const spanExporter = new InMemorySpanExporter()
-      const TracingLive = NodeSdk.layer(Effect.sync(() => ({
+      const TracingLayer = NodeSdk.layer(Effect.sync(() => ({
         resource: { serviceName: "test" },
         spanProcessor: [new SimpleSpanProcessor(spanExporter)],
         logRecordProcessor: [new SimpleLogRecordProcessor({ exporter: logExporter })]
@@ -144,14 +144,14 @@ describe("Logger", () => {
         const span = spanExporter.getFinishedSpans()[0]!
         assert.strictEqual(log.attributes.traceId, span.spanContext().traceId)
         assert.strictEqual(log.attributes.spanId, span.spanContext().spanId)
-      }).pipe(Effect.provide(TracingLive))
+      }).pipe(Effect.provide(TracingLayer))
     })
   })
 
   describe("not provided", () => {
     const exporter = new InMemoryLogRecordExporter()
 
-    const TracingLive = NodeSdk.layer(Effect.sync(() => ({
+    const TracingLayer = NodeSdk.layer(Effect.sync(() => ({
       resource: {
         serviceName: "test"
       }
@@ -161,6 +161,6 @@ describe("Logger", () => {
       Effect.gen(function*() {
         yield* Effect.log("test")
         assert.lengthOf(exporter.getFinishedLogRecords(), 0)
-      }).pipe(Effect.provide(TracingLive)))
+      }).pipe(Effect.provide(TracingLayer)))
   })
 })

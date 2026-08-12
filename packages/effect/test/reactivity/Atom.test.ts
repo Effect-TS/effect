@@ -2784,7 +2784,7 @@ interface BuildCounter {
   readonly inc: Effect.Effect<void>
 }
 const BuildCounter = Context.Service<BuildCounter>("BuildCounter")
-const BuildCounterLive = Layer.sync(BuildCounter, () => {
+const BuildCounterLayer = Layer.sync(BuildCounter, () => {
   let count = 0
   return BuildCounter.of({
     get: Effect.sync(() => count),
@@ -2799,7 +2799,7 @@ interface Counter {
   readonly inc: Effect.Effect<void>
 }
 const Counter = Context.Service<Counter>("Counter")
-const CounterLive = Layer.effect(
+const CounterLayer = Layer.effect(
   Counter,
   Effect.gen(function*() {
     const buildCounter = yield* BuildCounter
@@ -2813,7 +2813,7 @@ const CounterLive = Layer.effect(
     })
   })
 ).pipe(
-  Layer.provide(BuildCounterLive)
+  Layer.provide(BuildCounterLayer)
 )
 
 const CounterTest = Layer.effect(
@@ -2830,14 +2830,14 @@ const CounterTest = Layer.effect(
     })
   })
 ).pipe(
-  Layer.provide(BuildCounterLive)
+  Layer.provide(BuildCounterLayer)
 )
 
 interface Multiplier {
   readonly times: (n: number) => Effect.Effect<number>
 }
 const Multiplier = Context.Service<Multiplier>("Multiplier")
-const MultiplierLive = Layer.effect(
+const MultiplierLayer = Layer.effect(
   Multiplier,
   Effect.gen(function*() {
     const counter = yield* Counter
@@ -2847,9 +2847,9 @@ const MultiplierLive = Layer.effect(
     })
   })
 ).pipe(
-  Layer.provideMerge(CounterLive)
+  Layer.provideMerge(CounterLayer)
 )
 
-const buildCounterRuntime = Atom.runtime(BuildCounterLive)
-const counterRuntime = Atom.runtime(CounterLive)
-const multiplierRuntime = Atom.runtime(MultiplierLive)
+const buildCounterRuntime = Atom.runtime(BuildCounterLayer)
+const counterRuntime = Atom.runtime(CounterLayer)
+const multiplierRuntime = Atom.runtime(MultiplierLayer)

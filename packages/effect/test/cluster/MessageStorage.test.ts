@@ -121,7 +121,6 @@ describe("MessageStorage", () => {
         const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
         expect(messages).toHaveLength(0)
       }).pipe(Effect.provide(MemoryLayer)))
-
     it.effect("unprocessedMessages honors the limit option", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage

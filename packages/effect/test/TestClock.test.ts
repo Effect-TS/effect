@@ -78,6 +78,15 @@ describe("TestClock", () => {
       assert.strictEqual(yield* testClock.monotonicTimeNanos, 1_000_000_000n)
     }))
 
+  it.effect("adjust - preserves precision for nanosecond durations beyond Number.MAX_SAFE_INTEGER", () =>
+    Effect.gen(function*() {
+      const testClock = yield* TestClock.make()
+      const nanos = 999_999_999_999_999_000n
+      yield* testClock.adjust(Duration.nanos(nanos))
+      assert.strictEqual(testClock.monotonicTimeNanosUnsafe(), nanos)
+      assert.strictEqual(testClock.currentTimeNanosUnsafe(), nanos)
+    }))
+
   it.effect("adjust - keeps nanosecond access total after infinite durations", () =>
     Effect.gen(function*() {
       for (const duration of [Duration.infinity, Duration.negativeInfinity]) {
