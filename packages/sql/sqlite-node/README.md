@@ -1,7 +1,14 @@
-# `@effect/sql-sqlite-node`
+# @effect/sql-sqlite-node
 
-An Effect SQL implementation using Node.js' built-in `node:sqlite` module.
+An Effect SQL client for SQLite on Node.js, built on the built-in `node:sqlite` module.
+
+## Installation
+
+```sh
+npm install effect@beta @effect/sql-sqlite-node@beta
+```
 
 ## Documentation
 
-- **API Reference**: [View the full documentation](https://effect-ts.github.io/effect/docs/sql-sqlite-node).
+- [Effect website](https://effect.website)
+- [API reference](https://effect.website/docs/v4/api/sql-sqlite-node)
