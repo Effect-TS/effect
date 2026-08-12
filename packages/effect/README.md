@@ -4,6 +4,12 @@ Effect is a library for building robust, maintainable, type-safe, and production
 
 The `effect` package is the core of the framework. It provides primitives for managing side effects, errors, concurrency, resources, and structured data, alongside a rich standard library.
 
+## Installation
+
+```sh
+npm install effect@rc
+```
+
 ## Requirements
 
 - **TypeScript 5.9 or newer.** TypeScript 7 is recommended for the best performance and compatibility with [Effect's TypeScript tooling](https://github.com/Effect-TS/tsgo#installation).
@@ -17,12 +23,6 @@ The `effect` package is the core of the framework. It provides primitives for ma
     }
   }
   ```
-
-## Installation
-
-```sh
-npm install effect@rc
-```
 
 ## Documentation
 
