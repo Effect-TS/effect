@@ -25,6 +25,9 @@
  * limitations under the License.
  */
 
+/**
+ * @since 4.0.0
+ */
 export interface AWSElasticBlockStoreVolumeSource {
   fsType?: string
   partition?: number
