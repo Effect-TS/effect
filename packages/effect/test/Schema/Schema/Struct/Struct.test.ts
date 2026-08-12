@@ -46,7 +46,7 @@ describe("Struct", () => {
     it("empty", async () => {
       const schema = S.Struct({})
       await Util.assertions.decoding.succeed(schema, {})
-      await Util.assertions.decoding.succeed(schema, { a: 1 })
+      await Util.assertions.decoding.succeed(schema, { a: 1 }, {})
       await Util.assertions.decoding.succeed(schema, [])
 
       await Util.assertions.decoding.fail(
@@ -54,6 +54,17 @@ describe("Struct", () => {
         null,
         `Expected {}, actual null`
       )
+
+      await Util.assertions.decoding.fail(
+        schema,
+        { a: 1 },
+        `{}
+└─ ["a"]
+   └─ is unexpected, expected: never`,
+        { parseOptions: Util.onExcessPropertyError }
+      )
+
+      await Util.assertions.decoding.succeed(schema, { a: 1 }, { a: 1 }, { parseOptions: Util.onExcessPropertyPreserve })
     })
 
     it("required property signature", async () => {
@@ -196,7 +207,7 @@ describe("Struct", () => {
     it("empty", async () => {
       const schema = S.Struct({})
       await Util.assertions.encoding.succeed(schema, {}, {})
-      await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: 1 })
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, {})
       await Util.assertions.encoding.succeed(schema, [], [])
 
       await Util.assertions.encoding.fail(
@@ -204,6 +215,17 @@ describe("Struct", () => {
         null as any,
         `Expected {}, actual null`
       )
+
+      await Util.assertions.encoding.fail(
+        schema,
+        { a: 1 },
+        `{}
+└─ ["a"]
+   └─ is unexpected, expected: never`,
+        { parseOptions: Util.onExcessPropertyError }
+      )
+
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: 1 }, { parseOptions: Util.onExcessPropertyPreserve })
     })
 
     it("required property signature", async () => {
