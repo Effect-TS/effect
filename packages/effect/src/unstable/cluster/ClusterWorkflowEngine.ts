@@ -127,6 +127,7 @@ export const make = Effect.gen(function*() {
   }>()
   const interruptedActivities = new Set<string>()
   const activityLatches = new Map<string, Latch.Latch>()
+  const deferredState = WorkflowEngine.makeDeferredState()
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
       const entity = entities.get(workflowName)
@@ -386,7 +387,7 @@ export const make = Effect.gen(function*() {
                     )
                   }),
                   Workflow.intoResult,
-                  Effect.provideService(WorkflowEngine.WorkflowInstance, instance)
+                  (effect) => deferredState.trackRun(instance, effect)
                 ) as any
               },
 
@@ -434,13 +435,16 @@ export const make = Effect.gen(function*() {
 
               deferred: Effect.fnUntraced(function*(request: Entity.Request<any>) {
                 const payload = request.payload as any
+                yield* deferredState.deferredDone(executionId, payload.name, payload.exit)
                 yield* ensureSuccess(resume(workflow, executionId))
                 return payload.exit
               }),
 
               resume: () => ensureSuccess(resume(workflow, executionId))
             }
-          })
+          }),
+          // Reserve a slot for deferred completions to wake the active run.
+          { concurrency: 2 }
         ) as Effect.Effect<void, never, Scope.Scope>
       ),
 
@@ -549,24 +553,29 @@ export const make = Effect.gen(function*() {
 
     deferredResult: (deferred) =>
       WorkflowEngine.WorkflowInstance.pipe(
-        Effect.flatMap((instance) =>
-          requestReply({
+        Effect.flatMap((instance) => {
+          const exit = deferredState.pendingResult(instance.executionId, deferred.name)
+          if (exit) {
+            return Effect.succeedSome(exit)
+          }
+          return requestReply({
             workflow: instance.workflow,
             entityType: `Workflow/${instance.workflow._tag}`,
             executionId: instance.executionId,
             tag: "deferred",
             id: deferred.name
-          })
-        ),
-        Effect.map((reply) => {
-          if (Option.isNone(reply)) {
-            return Option.none<Exit.Exit<unknown, unknown>>()
-          }
-          const decoded = decodeDeferredWithExit(reply.value as any)
-          return Option.some(
-            decoded.exit._tag === "Success"
-              ? decoded.exit.value
-              : decoded.exit
+          }).pipe(
+            Effect.map((reply) => {
+              if (Option.isNone(reply)) {
+                return Option.none<Exit.Exit<unknown, unknown>>()
+              }
+              const decoded = decodeDeferredWithExit(reply.value as any)
+              return Option.some(
+                decoded.exit._tag === "Success"
+                  ? decoded.exit.value
+                  : decoded.exit
+              )
+            })
           )
         }),
         Effect.retry({
