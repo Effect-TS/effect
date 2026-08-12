@@ -28,14 +28,18 @@ const TestEntity = Entity
     Rpc.make("Process", {
       payload: TestPayload,
       success: Schema.Void
-    })
+    }).annotate(ClusterSchema.Persisted, true),
+    Rpc.make("ProcessVolatile", {
+      payload: TestPayload,
+      success: Schema.Void
+    }).annotate(ClusterSchema.Persisted, false)
   ])
-  .annotateRpcs(ClusterSchema.Persisted, true)
   .annotateRpcs(ClusterSchema.Uninterruptible, true)
 
 const TestEntityLayer = TestEntity.toLayer(
   Effect.succeed({
-    Process: () => Effect.void
+    Process: () => Effect.void,
+    ProcessVolatile: () => Effect.void
   })
 )
 
@@ -107,7 +111,7 @@ const ISOLATION_PORT = 50_124
 // causing RangeError: Maximum call stack size exceeded.
 describe("SocketRunner", () => {
   it.live(
-    "entity call with BigDecimal and discard should not stack overflow",
+    "persisted and non-persisted entity calls with BigDecimal and discard should not stack overflow",
     () =>
       Effect.gen(function*() {
         // Start the runner (with socket server and entity handler)
@@ -131,6 +135,10 @@ describe("SocketRunner", () => {
 
           yield* client.Process(
             TestPayload.make({ id: "req-1", amount }),
+            { discard: true }
+          )
+          yield* client.ProcessVolatile(
+            TestPayload.make({ id: "req-2", amount }),
             { discard: true }
           )
         }).pipe(
