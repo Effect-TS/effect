@@ -2,11 +2,11 @@ import * as BrowserWorkerRunner from "@effect/platform-browser/BrowserWorkerRunn
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as RpcServer from "effect/unstable/rpc/RpcServer"
-import { RpcLive } from "./rpc-schemas.ts"
+import { RpcLayer } from "./rpc-schemas.ts"
 
-const MainLive = RpcLive.pipe(
+const MainLayer = RpcLayer.pipe(
   Layer.provide(RpcServer.layerProtocolWorkerRunner),
   Layer.provide(BrowserWorkerRunner.layer)
 )
 
-Effect.runFork(Layer.launch(MainLive))
+Effect.runFork(Layer.launch(MainLayer))

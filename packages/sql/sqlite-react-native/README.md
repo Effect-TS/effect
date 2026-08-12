@@ -5,7 +5,7 @@ An Effect SQL client for SQLite in React Native applications, built on the [`@op
 ## Installation
 
 ```sh
-npm install effect@beta @effect/sql-sqlite-react-native@beta
+npm install effect@rc @effect/sql-sqlite-react-native@rc
 ```
 
 ## Documentation

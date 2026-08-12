@@ -5,7 +5,7 @@ An Effect SQL client for [PGlite](https://pglite.dev), a WASM build of PostgreSQ
 ## Installation
 
 ```sh
-npm install effect@beta @effect/sql-pglite@beta
+npm install effect@rc @effect/sql-pglite@rc
 ```
 
 ## Documentation

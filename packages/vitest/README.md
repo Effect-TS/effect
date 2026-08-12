@@ -7,7 +7,7 @@ Helpers for testing Effect-based code with [Vitest](https://vitest.dev). Provide
 Ensure a supported `vitest` version is installed (`^4.1.0`), then add the package as a dev dependency:
 
 ```sh
-npm install -D vitest @effect/vitest@beta
+npm install -D vitest @effect/vitest@rc
 ```
 
 ## Documentation

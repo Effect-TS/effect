@@ -5,8 +5,12 @@ An Effect SQL client for SQLite on Node.js, built on the built-in `node:sqlite` 
 ## Installation
 
 ```sh
-npm install effect@beta @effect/sql-sqlite-node@beta
+npm install effect@rc @effect/sql-sqlite-node@rc
 ```
+
+## Requirements
+
+- **Node.js 22.16 or newer**, which introduced the [`sqlite.backup()`](https://nodejs.org/docs/latest-v22.x/api/sqlite.html#sqlitebackupsourcedb-destination-options) API imported by this package.
 
 ## Documentation
 

@@ -151,7 +151,7 @@ const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Servi
   }
 }
 
-const RunnerHealthLive = RunnerHealth.layerPing.pipe(
+const RunnerHealthLayer = RunnerHealth.layerPing.pipe(
   Layer.provide(Runners.layerRpc),
   Layer.provide(NodeClusterSocket.layerClientProtocol)
 )
@@ -164,7 +164,7 @@ export const socketRunnerLayer = (
 ) =>
   entities.pipe(
     Layer.provideMerge(SocketRunner.layer),
-    Layer.provide(RunnerHealthLive),
+    Layer.provide(RunnerHealthLayer),
     Layer.provide(Layer.succeed(SocketServer.SocketServer, socketServer)),
     Layer.provide(NodeClusterSocket.layerClientProtocol),
     Layer.provide(ShardingConfig.layer({
