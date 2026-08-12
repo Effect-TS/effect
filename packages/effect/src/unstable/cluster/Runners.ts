@@ -146,9 +146,8 @@ export class Runners extends Context.Service<Runners, {
  *
  * **Gotchas**
  *
- * `notify` and `notifyLocal` only support RPCs annotated as persisted; calling
- * either path with a non-persisted message dies instead of returning a typed
- * error.
+ * `notifyLocal` only supports RPCs annotated as persisted; calling it with a
+ * non-persisted message dies instead of returning a typed error.
  *
  * @see {@link makeRpc} for the RPC-backed implementation built on top of this constructor
  * @see {@link makeNoop} for a no-op implementation when remote runner communication is not needed
@@ -175,7 +174,7 @@ export const make: (options: Omit<Runners["Service"], "sendLocal" | "notifyLocal
     const rpc = message.rpc as any as Rpc.AnyWithProps
     const persisted = Context.get(rpc.annotations, Persisted)
     if (!persisted) {
-      return Effect.die("Runners.notify only supports persisted messages")
+      return afterPersist(message, false)
     }
 
     if (message._tag === "OutgoingEnvelope") {
@@ -473,10 +472,11 @@ export class Rpcs extends RpcGroup.make(
   Rpc.make("Ping"),
   Rpc.make("Notify", {
     payload: {
-      envelope: Envelope.Partial
+      envelope: Envelope.Partial,
+      persisted: Schema.Boolean
     },
     success: Schema.Void,
-    error: Schema.Union([EntityNotAssignedToRunner, AlreadyProcessingMessage])
+    error: rpcErrors
   }),
   Rpc.make("Effect", {
     payload: {
@@ -659,12 +659,18 @@ export const makeRpc: Effect.Effect<
       if (Option.isNone(address)) {
         return Effect.void
       }
+      const rpc = message.rpc as any as Rpc.AnyWithProps
       const envelope = message.envelope
       const encode: Effect.Effect<Envelope.AckChunk | Envelope.Interrupt | Envelope.PartialRequest> =
         message._tag === "OutgoingRequest" ? Effect.orDie(Message.serializeRequest(message)) : Effect.succeed(envelope)
       return Effect.flatMap(encode, (envelope) =>
         RcMap.get(clients, address.value).pipe(
-          Effect.flatMap((client) => client.Notify({ envelope })),
+          Effect.flatMap((client) =>
+            client.Notify({
+              envelope,
+              persisted: Context.get(rpc.annotations, Persisted)
+            })
+          ),
           Effect.scoped,
           Effect.ignore
         ))

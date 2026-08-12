@@ -103,8 +103,8 @@ const ISOLATION_PORT = 50_124
 // passes the raw envelope (with circular BigDecimal payload) to the runner via msgpack,
 // causing RangeError: Maximum call stack size exceeded.
 //
-// Volatile discard still goes through runners.send (Effect RPC), so the client must wait
-// until the host runner replies before the discarded call completes.
+// Volatile discard should complete after the request is sent, without waiting for the
+// host runner to finish handling it.
 describe("SocketRunner", () => {
   it.live(
     "persisted and non-persisted entity calls with BigDecimal and discard should not stack overflow",
@@ -152,13 +152,8 @@ describe("SocketRunner", () => {
           ).pipe(Effect.forkChild)
 
           yield* Deferred.await(volatileStarted)
-          // While the handler is still running, the discarded volatile call must not complete.
-          assert.isUndefined(
-            volatileFiber.pollUnsafe(),
-            "volatile discard must wait for the runner reply"
-          )
+          yield* Fiber.join(volatileFiber).pipe(Effect.timeout("1 second"))
           yield* Deferred.succeed(releaseVolatile, void 0)
-          yield* Fiber.join(volatileFiber)
         }).pipe(
           Effect.provide(makeClientLayer(RUNNER_PORT)),
           Effect.scoped

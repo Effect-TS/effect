@@ -55,16 +55,16 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
 
   return {
     Ping: () => Effect.void,
-    Notify: ({ envelope }) =>
-      sharding.notify(
-        envelope._tag === "Request"
-          ? new Message.IncomingRequest({
-            envelope,
-            respond: constVoid,
-            lastSentReply: Option.none()
-          })
-          : new Message.IncomingEnvelope({ envelope })
-      ),
+    Notify: ({ envelope, persisted }) => {
+      const message = envelope._tag === "Request"
+        ? new Message.IncomingRequest({
+          envelope,
+          respond: constVoid,
+          lastSentReply: Option.none()
+        })
+        : new Message.IncomingEnvelope({ envelope })
+      return persisted ? sharding.notify(message) : sharding.send(message)
+    },
     Effect: ({ persisted, request }) => {
       let replyEncoded: Option.Option<Effect.Effect<Reply.Encoded, ClusterError.EntityNotAssignedToRunner>> = Option
         .none()

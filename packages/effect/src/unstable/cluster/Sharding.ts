@@ -1012,6 +1012,8 @@ const make = Effect.gen(function*() {
         }
         return runnerIsLocal
           ? sendLocal(message)
+          : discard
+          ? runnersService.notify({ address: maybeRunner, message, discard })
           : runnersService.send({ address: maybeRunner.value, message })
       }),
       (error) =>
