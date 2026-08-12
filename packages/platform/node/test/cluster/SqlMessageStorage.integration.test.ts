@@ -59,6 +59,20 @@ describe("SqlMessageStorage", () => {
     it.layer(StorageLive.pipe(Layer.provideMerge(layer)), {
       timeout: 120000
     })(label, (it) => {
+      if (label === "pg") {
+        it.effect("creates an index for insertion-ordered message reads", () =>
+          Effect.gen(function*() {
+            const sql = yield* SqlClient.SqlClient
+            const indexes = yield* sql<{ indexname: string }>`
+              SELECT indexname
+              FROM pg_indexes
+              WHERE tablename = 'cluster_messages'
+              AND indexname = 'cluster_messages_rowid_idx'
+            `
+            expect(indexes).toHaveLength(1)
+          }))
+      }
+
       it.effect("saveRequest", () =>
         Effect.gen(function*() {
           const storage = yield* MessageStorage.MessageStorage

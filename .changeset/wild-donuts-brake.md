@@ -17,4 +17,6 @@ Bound cluster runner entity residency and storage reads.
 
 `MessageStorage.unprocessedMessages` accepts an optional
 `{ limit, addresses }` argument, and only claims the messages it actually
-returns.
+returns. The memory implementation now applies the same ten-minute claim
+window as SQL, so bounded reads advance past in-flight requests; resetting an
+address or shard makes its claimed messages immediately eligible again.

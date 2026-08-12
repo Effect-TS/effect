@@ -744,7 +744,7 @@ const make = Effect.gen(function*() {
         }
       )
 
-      const batchSize = config.unprocessedMessageBatchSize
+      const batchSize = Math.max(1, config.unprocessedMessageBatchSize)
 
       while (true) {
         // wait for the next poll interval, or if we get notified of a change
@@ -796,10 +796,7 @@ const make = Effect.gen(function*() {
         // Then walk the remaining messages, spawning new entities while the
         // runner has entity slots left.
         if (!residencyAtCapacityUnsafe() && readCount < batchSize) {
-          const freeSlots = maxResidentEntities === "unbounded"
-            ? batchSize
-            : maxResidentEntities - residentEntityCount
-          const limit = Math.min(batchSize - readCount, freeSlots)
+          const limit = batchSize - readCount
           messages = yield* storage.unprocessedMessages(acquiredShards, { limit })
           index = 0
           yield* processMessages

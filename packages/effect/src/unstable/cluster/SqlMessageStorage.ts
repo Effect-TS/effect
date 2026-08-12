@@ -430,7 +430,7 @@ export const make: (options?: {
             AND m.processed = ${sqlFalse}
             AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
             AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
-            ORDER BY m.id ASC
+            ORDER BY m.rowid ASC
             ${filters.limit}
             FOR UPDATE
           ) AS ids
@@ -438,7 +438,7 @@ export const make: (options?: {
           WHERE m.id = ids.id
           RETURNING ids.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
         )
-        SELECT * FROM messages ORDER BY id ASC
+        SELECT * FROM messages ORDER BY rowid ASC
       `
     },
     orElse: () =>
@@ -1098,6 +1098,20 @@ const migrations = (options?: {
         orElse: () =>
           // sqlite
           Effect.void
+      })
+    }),
+    "0003_pg_messages_rowid_index": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const messagesTableSql = sql(messagesTable)
+      const rowIdIndex = `${messagesTable}_rowid_idx`
+
+      yield* sql.onDialectOrElse({
+        pg: () =>
+          sql`
+            CREATE INDEX IF NOT EXISTS ${sql(rowIdIndex)}
+            ON ${messagesTableSql} (rowid)
+          `,
+        orElse: () => Effect.void
       })
     })
   })

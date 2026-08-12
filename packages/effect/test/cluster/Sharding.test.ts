@@ -1210,6 +1210,74 @@ describe.concurrent("Sharding residency cap", () => {
       assert.deepStrictEqual(yield* Fiber.join(fiber), new User({ id: 3, name: "User 3" }))
     }).pipe(Effect.provide(CappedSharding({ unprocessedMessageBatchSize: 2 }))))
 
+  it.effect("keeps full-sized storage reads when approaching the entity cap", () =>
+    Effect.gen(function*() {
+      const limits: Array<number> = []
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const sharding = yield* Sharding.Sharding
+        const makeClient = yield* TestEntity.client
+        for (let i = 1; i <= 4; i++) {
+          yield* makeClient(String(i)).NeverVolatile().pipe(Effect.forkChild({ startImmediately: true }))
+        }
+        yield* TestClock.adjust(1)
+        assert.strictEqual(yield* sharding.activeEntityCount, 4)
+        limits.length = 0
+
+        const storage = yield* MessageStorage.MessageStorage
+        const rpc = TestEntity.protocol.requests.get("GetUser")! as any
+        for (let i = 0; i < 10; i++) {
+          const entityId = EntityId.make(String(i % 4 + 1))
+          yield* storage.saveRequest(
+            new Message.OutgoingRequest({
+              envelope: Envelope.makeRequest<any>({
+                requestId: yield* sharding.getSnowflake,
+                address: EntityAddress.make({
+                  shardId: sharding.getShardId(entityId, "default"),
+                  entityType: EntityType.make(TestEntity.type),
+                  entityId
+                }),
+                tag: "GetUser",
+                payload: { id: i },
+                headers: Headers.empty
+              }),
+              annotations: rpc.annotations,
+              context: Context.empty() as any,
+              rpc,
+              lastReceivedReply: Option.none(),
+              respond: () => Effect.void
+            })
+          )
+        }
+        yield* TestClock.adjust(5000)
+        assert.isNotEmpty(limits)
+        assert.deepStrictEqual([...new Set(limits)], [100])
+      }).pipe(Effect.provide(CappedSharding({
+        maxResidentEntities: 5,
+        unprocessedMessageBatchSize: 100
+      }, (storage) => ({
+        ...storage,
+        unprocessedMessages(shardIds, options) {
+          if (options?.limit !== undefined) limits.push(options.limit)
+          return storage.unprocessedMessages(shardIds, options)
+        }
+      }))))
+    }))
+
+  it.effect("normalizes programmatic batch sizes below one", () =>
+    Effect.forEach([0, -1], (unprocessedMessageBatchSize) =>
+      Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const makeClient = yield* TestEntity.client
+        const fiber = yield* makeClient("1").GetUser({ id: 1 }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* TestClock.adjust(5000)
+        assert.isDefined(fiber.pollUnsafe())
+        assert.deepStrictEqual(yield* Fiber.join(fiber), new User({ id: 1, name: "User 1" }))
+      }).pipe(Effect.provide(CappedSharding({ unprocessedMessageBatchSize }))), { discard: true }))
+
   it.effect("does not busy-poll storage at the cap", () =>
     Effect.gen(function*() {
       let reads = 0
