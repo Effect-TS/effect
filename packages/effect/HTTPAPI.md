@@ -1368,13 +1368,15 @@ Layer.launch(ApiLive).pipe(NodeRuntime.runMain)
 
 ## Streaming Requests
 
-To receive large or continuous data from the client, define the payload as a `Uint8Array` and pipe it through `HttpApiSchema.asUint8Array()`. The handler receives the raw bytes, which you can decode as needed.
+To receive large or continuous data from the client, register the endpoint with `.handleRaw`, which opts out of automatic payload decoding and exposes the raw `HttpServerRequest`. The request body is then available as a `Stream` of `Uint8Array` chunks through `request.stream`, so the handler can consume it incrementally instead of buffering it in memory.
+
+The payload schema still describes the endpoint in the generated documentation, but with `.handleRaw` the handler decides how the body is consumed.
 
 **Example** (Handling Streaming Requests)
 
 ```ts
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { Effect, Layer, Schema } from "effect"
+import { Effect, Layer, Schema, Stream } from "effect"
 import { HttpRouter } from "effect/unstable/http"
 import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
 import { createServer } from "node:http"
@@ -1395,13 +1397,16 @@ const GroupLive = HttpApiBuilder.group(
   Api,
   "group",
   (handlers) =>
-    handlers.handle(
-      "acceptStream",
-      (ctx) => {
-        // Decode the incoming binary data into a string
-        return Effect.succeed(new TextDecoder().decode(ctx.payload))
-      }
-    )
+    // Use `handleRaw` to opt out of payload decoding and access the raw request
+    handlers.handleRaw("acceptStream", (ctx) =>
+      // Consume the request body as a stream of Uint8Array chunks
+      ctx.request.stream.pipe(
+        // Decode the chunks into strings
+        Stream.decodeText,
+        // Collect the stream into a single string
+        Stream.mkString,
+        Effect.orDie
+      ))
 )
 
 const ApiLive = HttpApiBuilder.layer(Api).pipe(
