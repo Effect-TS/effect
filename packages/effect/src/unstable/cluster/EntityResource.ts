@@ -10,7 +10,6 @@
  *
  * @since 4.0.0
  */
-import type * as v1 from "kubernetes-types/core/v1.d.ts"
 import * as Context from "../../Context.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
@@ -18,6 +17,7 @@ import { identity } from "../../Function.ts"
 import * as RcRef from "../../RcRef.ts"
 import * as Scope from "../../Scope.ts"
 import * as Entity from "./Entity.ts"
+import type { Pod as K8sPod } from "./internal/k8sTypes.ts"
 import * as K8sHttpClient from "./K8sHttpClient.ts"
 import type { Sharding } from "./Sharding.ts"
 
@@ -160,7 +160,7 @@ export const make: <A, E, R>(options: {
  * @since 4.0.0
  */
 export const makeK8sPod: (
-  spec: v1.Pod,
+  spec: K8sPod,
   options?: {
     readonly idleTimeToLive?: Duration.Input | undefined
   } | undefined
@@ -168,7 +168,7 @@ export const makeK8sPod: (
   EntityResource<K8sHttpClient.PodStatus>,
   never,
   Scope.Scope | Sharding | Entity.CurrentAddress | K8sHttpClient.K8sHttpClient
-> = Effect.fnUntraced(function*(spec: v1.Pod, options?: {
+> = Effect.fnUntraced(function*(spec: K8sPod, options?: {
   readonly idleTimeToLive?: Duration.Input | undefined
 }) {
   const createPod = yield* K8sHttpClient.makeCreatePod
