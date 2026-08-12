@@ -20,3 +20,6 @@ Bound cluster runner entity residency and storage reads.
 returns. The memory implementation now applies the same ten-minute claim
 window as SQL, so bounded reads advance past in-flight requests; resetting an
 address or shard makes its claimed messages immediately eligible again.
+
+The encoded driver contract replaces `Encoded.resetAddress` with the batched
+`Encoded.resetAddresses` operation.

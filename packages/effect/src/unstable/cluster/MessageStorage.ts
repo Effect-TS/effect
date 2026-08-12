@@ -878,14 +878,16 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
       `${address.shardId.group}/${address.shardId.id}/${address.entityType}/${address.entityId}`
 
     const resetAddresses = (addresses: ReadonlyArray<EntityAddress>) =>
-      Effect.sync(() => {
-        const keys = new Set(addresses.map(addressKey))
-        for (const envelope of journal) {
-          if (keys.has(addressKey(envelope.address))) {
-            lastRead.delete(envelope)
+      addresses.length === 0
+        ? Effect.void
+        : Effect.sync(() => {
+          const keys = new Set(addresses.map(addressKey))
+          for (const envelope of journal) {
+            if (keys.has(addressKey(envelope.address))) {
+              lastRead.delete(envelope)
+            }
           }
-        }
-      })
+        })
 
     const cursors = new WeakMap<{}, number>()
 
@@ -1006,7 +1008,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
       repliesForUnfiltered: (requestIds) =>
         Effect.sync(() => requestIds.flatMap((id) => requests.get(String(id))?.replies ?? [])),
       unprocessedMessages: (shardIds, now, options) =>
-        Effect.sync(() => {
+        options?.addresses?.length === 0 ? Effect.succeed([]) : Effect.sync(() => {
           if (unprocessed.size === 0) return []
           const limit = options?.limit ?? Infinity
           const addressFilter = options?.addresses && new Set(options.addresses.map(addressKey))
