@@ -621,6 +621,10 @@ export const withCookiesRef: {
 /**
  * Follows HTTP redirects up to a specified number of times.
  *
+ * When used with `FetchHttpClient`, provide `FetchHttpClient.RequestInit` with
+ * `{ redirect: "manual" }` so that `fetch` exposes redirect responses to this
+ * decorator instead of following them internally.
+ *
  * @since 1.0.0
  * @category redirects
  */
