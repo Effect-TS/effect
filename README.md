@@ -16,9 +16,7 @@ npm install effect@rc
 
 ## Effect v3
 
-The Effect v3 source code is available on the [`v3`](https://github.com/Effect-TS/effect/tree/v3) branch.
-
-Issues and pull requests meant for Effect v3 should target the [`v3`](https://github.com/Effect-TS/effect/tree/v3) branch.
+The Effect v3 source code is available on the [`v3`](https://github.com/Effect-TS/effect/tree/v3) branch, which is also where issues and pull requests meant for Effect v3 should be targeted.
 
 ## Packages
 
