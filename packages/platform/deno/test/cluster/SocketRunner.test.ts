@@ -1,6 +1,6 @@
 import { DenoClusterSocket } from "@effect/platform-deno"
 import { assert, describe, it } from "@effect/vitest"
-import { BigDecimal, Cause, Effect, Exit, Fiber, Layer, Option, PrimaryKey, Schema } from "effect"
+import { BigDecimal, Cause, Deferred, Effect, Exit, Fiber, Layer, Option, PrimaryKey, Schema } from "effect"
 import type { Sharding } from "effect/unstable/cluster"
 import {
   ClusterSchema,
@@ -28,16 +28,13 @@ const TestEntity = Entity
     Rpc.make("Process", {
       payload: TestPayload,
       success: Schema.Void
-    })
+    }).annotate(ClusterSchema.Persisted, true),
+    Rpc.make("ProcessVolatile", {
+      payload: TestPayload,
+      success: Schema.Void
+    }).annotate(ClusterSchema.Persisted, false)
   ])
-  .annotateRpcs(ClusterSchema.Persisted, true)
   .annotateRpcs(ClusterSchema.Uninterruptible, true)
-
-const TestEntityLayer = TestEntity.toLayer(
-  Effect.succeed({
-    Process: () => Effect.void
-  })
-)
 
 const RUNNER_PORT = 50_125
 const SharedStorage = Layer.mergeAll(
@@ -96,11 +93,30 @@ const IsolationEntityLayer = IsolationEntity.toLayer(
 
 const ISOLATION_PORT = 50_126
 
+// BigDecimal.normalize creates a circular `normalized` self-reference.
+// When a persisted message is sent with discard: true, the notify path in Runners.makeRpc
+// passes the raw envelope (with circular BigDecimal payload) to the runner via msgpack,
+// causing RangeError: Maximum call stack size exceeded.
+//
+// Volatile discard should complete after the request is sent, without waiting for the
+// host runner to finish handling it.
 describe("SocketRunner", () => {
   it.live(
-    "entity call with BigDecimal and discard should not stack overflow",
+    "discarded persisted requests serialize circular values and volatile requests do not wait for replies",
     () =>
       Effect.gen(function*() {
+        const volatileStarted = yield* Deferred.make<void>()
+        const releaseVolatile = yield* Deferred.make<void>()
+        const TestEntityLayer = TestEntity.toLayer(
+          Effect.succeed({
+            Process: () => Effect.void,
+            ProcessVolatile: () =>
+              Deferred.succeed(volatileStarted, void 0).pipe(
+                Effect.andThen(Deferred.await(releaseVolatile))
+              )
+          })
+        )
+
         yield* Layer.launch(makeRunnerLayer(RUNNER_PORT, TestEntityLayer)).pipe(Effect.forkScoped)
 
         yield* Effect.sleep("2 seconds")
@@ -115,6 +131,20 @@ describe("SocketRunner", () => {
             TestPayload.make({ id: "req-1", amount }),
             { discard: true }
           )
+
+          const volatileFiber = yield* client.ProcessVolatile(
+            TestPayload.make({ id: "req-2", amount }),
+            { discard: true }
+          ).pipe(Effect.forkChild)
+
+          yield* Deferred.await(volatileStarted)
+          yield* Fiber.join(volatileFiber).pipe(
+            Effect.timeoutOrElse({
+              duration: "1 second",
+              orElse: () => Effect.die("volatile discard waited for the entity reply")
+            })
+          )
+          yield* Deferred.succeed(releaseVolatile, void 0)
         }).pipe(
           Effect.provide(makeClientLayer(RUNNER_PORT)),
           Effect.scoped

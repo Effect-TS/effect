@@ -220,6 +220,13 @@ describe.concurrent("Runners.makeRpc", () => {
   const respondWithDefect = (request: FromClientEncoded, write: (data: FromServerEncoded) => Effect.Effect<void>) =>
     request._tag === "Request" ? write({ _tag: "Defect", defect: "boom" }) : Effect.void
 
+  const failTransport = () =>
+    Effect.fail(
+      new RpcClientError({
+        reason: new Socket.SocketCloseError({ code: 1006 })
+      })
+    )
+
   it.effect("a server-delivered defect resolves the request instead of RunnerUnavailable", () =>
     Effect.gen(function*() {
       const runners = yield* Runners.Runners
@@ -255,13 +262,37 @@ describe.concurrent("Runners.makeRpc", () => {
         return assert.fail("send must fail for a transport failure")
       }
       assert.instanceOf(Cause.squash(exit.cause), ClusterError.RunnerUnavailable)
-    }).pipe(Effect.provide(layerRunners(layerFakeProtocol(() =>
-      Effect.fail(
-        new RpcClientError({
-          reason: new Socket.SocketCloseError({ code: 1006 })
-        })
-      )
-    )))))
+    }).pipe(Effect.provide(layerRunners(layerFakeProtocol(failTransport)))))
+
+  it.effect("volatile notification transport failures map to RunnerUnavailable", () =>
+    Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const snowflakeGen = yield* Snowflake.Generator
+      const message = makeOutgoingRequest(TestRpc, snowflakeGen.nextUnsafe(), () => Effect.void)
+
+      const exit = yield* Effect.exit(runners.notify({
+        address: Option.some(runnerAddress),
+        message,
+        discard: true
+      }))
+      if (!Exit.isFailure(exit)) {
+        return assert.fail("volatile notification must fail when delivery fails")
+      }
+      assert.instanceOf(Cause.squash(exit.cause), ClusterError.RunnerUnavailable)
+    }).pipe(Effect.provide(layerRunners(layerFakeProtocol(failTransport)))))
+
+  it.effect("persisted notification transport failures are ignored", () =>
+    Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const snowflakeGen = yield* Snowflake.Generator
+      const message = makeOutgoingRequest(TestRpcPersisted, snowflakeGen.nextUnsafe(), () => Effect.void)
+
+      yield* runners.notify({
+        address: Option.some(runnerAddress),
+        message,
+        discard: true
+      })
+    }).pipe(Effect.provide(layerRunners(layerFakeProtocol(failTransport)))))
 
   it.effect("a delivered defect for a persisted request maps to RunnerUnavailable for storage recovery", () =>
     Effect.gen(function*() {
