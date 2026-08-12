@@ -1455,7 +1455,7 @@ export class ToolAnnotations extends Schema.Opaque<ToolAnnotations>()(Schema.Str
 })) {}
 
 /**
- * Schema for the object-root JSON Schema used by MCP tool inputs and outputs.
+ * Object-root JSON Schema used by MCP tool inputs and outputs.
  *
  * **Details**
  *
@@ -1465,7 +1465,19 @@ export class ToolAnnotations extends Schema.Opaque<ToolAnnotations>()(Schema.Str
  * @category tools
  * @since 4.0.0
  */
-export const ToolJsonSchema = Schema.StructWithRest(
+export type ToolJsonSchema = Schema.JsonObject & {
+  readonly type: "object"
+  readonly properties?: Readonly<Record<string, Schema.JsonObject>> | undefined
+  readonly required?: ReadonlyArray<string> | undefined
+}
+
+/**
+ * Schema for {@link ToolJsonSchema}.
+ *
+ * @category tools
+ * @since 4.0.0
+ */
+export const ToolJsonSchema: Schema.Codec<ToolJsonSchema> = Schema.StructWithRest(
   Schema.Struct({
     type: Schema.Literal("object"),
     properties: optional(Schema.Record(Schema.String, Schema.Record(Schema.String, Schema.Json))),

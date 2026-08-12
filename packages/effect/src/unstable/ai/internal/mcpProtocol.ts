@@ -213,13 +213,23 @@ export interface HandlerInstallationTarget {
   ) => Effect.Effect<void, never, RpcGroup.HandlersServices<Rpcs, Handlers>>
 }
 
-/** @internal */
-export interface ErasedClientRpcGroup {
-  readonly requests: ReadonlyMap<string, Rpc.Any>
+/**
+ * The operations required from an RPC group after its RPC union is erased.
+ */
+export interface ErasedRpcGroup<RpcType extends Rpc.Any = Rpc.Any> {
+  readonly requests: ReadonlyMap<string, RpcType>
+}
+
+/**
+ * The additional operation required from the complete client RPC group.
+ */
+export interface ErasedClientRpcGroup extends ErasedRpcGroup {
   readonly prefix: (prefix: string) => RpcGroup.RpcGroup<any>
 }
 
-/** @internal */
+/**
+ * The erased operational shape shared by public protocol adapter declarations.
+ */
 export interface AnyProtocolAdapter<HandlerRequirements = unknown> {
   readonly protocolVersion: string
   readonly transport: {
@@ -227,9 +237,9 @@ export interface AnyProtocolAdapter<HandlerRequirements = unknown> {
     readonly requiresVersionHeader: boolean
   }
   readonly clientRpcs: ErasedClientRpcGroup
-  readonly clientNotificationRpcs: RpcGroup.Any
+  readonly clientNotificationRpcs: ErasedRpcGroup
   readonly serverRequestRpcs: RpcGroup.Any
-  readonly serverNotificationRpcs: RpcGroup.Any
+  readonly serverNotificationRpcs: ErasedRpcGroup<Rpc.AnyWithProps>
   readonly payloadCodecs: (rpc: Rpc.AnyWithProps) => PayloadCodecs
   readonly installHandlers: (
     core: McpCore.McpCore,

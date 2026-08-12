@@ -3,9 +3,30 @@
  *
  * @since 4.0.0
  */
+import type * as McpProtocolInternal from "./internal/mcpProtocol.ts"
 import { protocol as protocol2024_11_05 } from "./internal/mcpProtocol/v2024_11_05.ts"
 import { protocol as protocol2025_03_26 } from "./internal/mcpProtocol/v2025_03_26.ts"
 import { protocol as protocol2025_06_18 } from "./internal/mcpProtocol/v2025_06_18.ts"
+
+/**
+ * The MCP protocol versions implemented by this release.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type ProtocolVersion = "2024-11-05" | "2025-03-26" | "2025-06-18"
+
+/**
+ * An MCP protocol adapter that can be supplied to `McpServer`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ProtocolAdapter<out Version extends ProtocolVersion = ProtocolVersion>
+  extends McpProtocolInternal.AnyProtocolAdapter
+{
+  readonly protocolVersion: Version
+}
 
 /**
  * The MCP 2025-06-18 protocol implementation.
@@ -13,7 +34,7 @@ import { protocol as protocol2025_06_18 } from "./internal/mcpProtocol/v2025_06_
  * @category protocols
  * @since 4.0.0
  */
-export const v2025_06_18 = protocol2025_06_18
+export const v2025_06_18: ProtocolAdapter<"2025-06-18"> = protocol2025_06_18
 
 /**
  * The MCP 2025-03-26 protocol implementation.
@@ -21,7 +42,7 @@ export const v2025_06_18 = protocol2025_06_18
  * @category protocols
  * @since 4.0.0
  */
-export const v2025_03_26 = protocol2025_03_26
+export const v2025_03_26: ProtocolAdapter<"2025-03-26"> = protocol2025_03_26
 
 /**
  * The MCP 2024-11-05 protocol implementation.
@@ -36,20 +57,4 @@ export const v2025_03_26 = protocol2025_03_26
  * @category protocols
  * @since 4.0.0
  */
-export const v2024_11_05 = protocol2024_11_05
-
-/**
- * An implemented MCP protocol that can be supplied to `McpServer`.
- *
- * @category models
- * @since 4.0.0
- */
-export type ProtocolAdapter = typeof v2024_11_05 | typeof v2025_03_26 | typeof v2025_06_18
-
-/**
- * The MCP protocol versions implemented by this release.
- *
- * @category models
- * @since 4.0.0
- */
-export type ProtocolVersion = ProtocolAdapter["protocolVersion"]
+export const v2024_11_05: ProtocolAdapter<"2024-11-05"> = protocol2024_11_05

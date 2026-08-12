@@ -755,7 +755,12 @@ describe("McpServer protocol adapters", () => {
           supportsStructuredClone: false
         })
       )
-      for (const protocol of [McpProtocol.v2024_11_05, McpProtocol.v2025_03_26]) {
+      for (
+        const protocol of [
+          McpProtocol.v2024_11_05,
+          McpProtocol.v2025_03_26
+        ]
+      ) {
         const client = yield* protocol.makeReverseClient({
           protocolVersion: protocol.protocolVersion,
           clientCapabilities: { elicitation: {} },
