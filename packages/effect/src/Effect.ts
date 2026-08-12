@@ -14707,7 +14707,30 @@ function fnApply(options: {
     effect = core.fromIterator(() => options.body.apply(options.self, options.args))
   } else {
     try {
-      effect = options.body.apply(options.self, options.args)
+      const result = options.body.apply(options.self, options.args)
+      // Some compilers (e.g. `babel-preset-expo` on React Native / Hermes)
+      // lower destructured-param generators into a plain function that returns
+      // an iterator IIFE. Such a body fails `isGeneratorFunction` but its
+      // return value is an iterator, not an Effect. Detect and re-wrap.
+      if (
+        result !== null &&
+        typeof result === "object" &&
+        (result as any)[EffectTypeId] === undefined &&
+        typeof (result as any).next === "function" &&
+        typeof (result as any)[Symbol.iterator] === "function"
+      ) {
+        let firstIterator: any = result
+        effect = core.fromIterator(() => {
+          if (firstIterator !== null) {
+            const it = firstIterator
+            firstIterator = null
+            return it
+          }
+          return options.body.apply(options.self, options.args)
+        })
+      } else {
+        effect = result
+      }
     } catch (error) {
       fnError = error
       effect = die(error)
