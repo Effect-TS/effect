@@ -2,6 +2,12 @@
 
 `@effect/doctest` extracts marked TypeScript examples from JSDoc comments, Markdown, and MDX files, then runs each example as an isolated Vitest module.
 
+## Installation
+
+```sh
+npm install -D @effect/doctest@beta
+```
+
 ## Documentation
 
 - [Effect website](https://effect.website)

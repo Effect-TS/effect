@@ -1,6 +1,6 @@
 # @effect/sql-sqlite-wasm
 
-An Effect SQL client for SQLite compiled to WebAssembly, built on the `@effect/wa-sqlite` library. Works in the browser and other WASM-capable environments.
+An Effect SQL client for SQLite compiled to WebAssembly, built on the [`@effect/wa-sqlite`](https://www.npmjs.com/package/@effect/wa-sqlite) library. Works in the browser and other WASM-capable environments.
 
 ## Installation
 

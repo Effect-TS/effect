@@ -2,6 +2,12 @@
 
 An opinionated documentation generator for Effect projects.
 
+## Installation
+
+```sh
+npm install -D @effect/docgen@beta
+```
+
 ## Documentation
 
 - [Effect website](https://effect.website)
@@ -15,13 +21,7 @@ This library was inspired by the following projects:
 
 ## Setup
 
-1. Install `@effect/docgen` as a dev dependency:
-
-```shell
-pnpm add @effect/docgen -D
-```
-
-2. (Optional) Add a `docgen.json` configuration file.
+1. (Optional) Add a `docgen.json` configuration file.
 
 ```json
 {
@@ -29,7 +29,7 @@ pnpm add @effect/docgen -D
 }
 ```
 
-3. Add the following script to your `package.json` file:
+2. Add the following script to your `package.json` file:
 
 ```json
 {
