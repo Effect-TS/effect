@@ -17,8 +17,8 @@ import { identity } from "../../Function.ts"
 import * as RcRef from "../../RcRef.ts"
 import * as Scope from "../../Scope.ts"
 import * as Entity from "./Entity.ts"
-import type { Pod as K8sPod } from "./internal/k8sTypes.ts"
 import * as K8sHttpClient from "./K8sHttpClient.ts"
+import type { Pod as K8sPod } from "./K8sTypes.ts"
 import type { Sharding } from "./Sharding.ts"
 
 /**

@@ -19,7 +19,7 @@ import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import * as HttpClientResponse from "../http/HttpClientResponse.ts"
-import type { Pod as K8sPod } from "./internal/k8sTypes.ts"
+import type { Pod as K8sPod } from "./K8sTypes.ts"
 
 /**
  * Service tag for the HTTP client used to call the Kubernetes API.

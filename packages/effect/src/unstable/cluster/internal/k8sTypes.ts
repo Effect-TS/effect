@@ -3,6 +3,8 @@
  * generated from the Kubernetes OpenAPI definitions.
  *
  * Source: https://github.com/silverlyra/kubernetes-types/tree/a46eb94629404af98a6758cd843b31816237d7d0
+ * Modified: only the transitive closure of `Pod` is included, flattened from
+ * core/v1, meta/v1 and api/resource; doc comments removed.
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

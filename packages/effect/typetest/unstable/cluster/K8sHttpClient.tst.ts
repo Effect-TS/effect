@@ -1,13 +1,15 @@
 import type { Effect } from "effect"
+import type { K8sTypes as K8sTypesFromCluster } from "effect/unstable/cluster"
 import * as EntityResource from "effect/unstable/cluster/EntityResource"
 import type * as K8sHttpClient from "effect/unstable/cluster/K8sHttpClient"
+import type * as K8sTypes from "effect/unstable/cluster/K8sTypes"
 import { describe, expect, it } from "tstyche"
 
 declare const createPod: Effect.Success<typeof K8sHttpClient.makeCreatePod>
 
 describe("K8sHttpClient", () => {
-  it("accepts Kubernetes pod specifications", () => {
-    expect(createPod).type.toBeCallableWith({
+  it("exports Kubernetes pod types for consumers", () => {
+    const pod: K8sTypes.Pod = {
       apiVersion: "v1",
       kind: "Pod",
       metadata: {
@@ -31,7 +33,10 @@ describe("K8sHttpClient", () => {
           configMap: { name: "worker-config" }
         }]
       }
-    })
+    }
+
+    expect(pod).type.toBe<K8sTypesFromCluster.Pod>()
+    expect(createPod).type.toBeCallableWith(pod)
   })
 
   it("retains pod specifications on EntityResource.makeK8sPod", () => {
