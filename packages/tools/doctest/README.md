@@ -1,6 +1,13 @@
-# `@effect/doctest`
+# @effect/doctest
 
 `@effect/doctest` extracts marked TypeScript examples from JSDoc comments, Markdown, and MDX files, then runs each example as an isolated Vitest module.
+
+## Documentation
+
+- [Effect website](https://effect.website)
+- [API reference](https://effect.website/docs/v4/api/doctest)
+
+## Usage
 
 Mark runnable fences with `import.meta.vitest`:
 
