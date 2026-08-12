@@ -11,6 +11,7 @@
  */
 import * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
+import * as Uuid from "./internal/uuid.ts"
 import * as PlatformError from "./PlatformError.ts"
 
 const TypeId = "~effect/platform/Crypto"
@@ -270,9 +271,9 @@ export const make = (
         }
         return buffer
       }),
-    randomUUIDv4: Effect.sync(() => formatUUIDv4(randomBytesUnsafe(16))),
+    randomUUIDv4: Effect.sync(() => Uuid.v4String(randomBytesUnsafe(16))),
     randomUUIDv7: Effect.clockWith((clock) =>
-      Effect.succeed(formatUUIDv7(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(16)))
+      Effect.succeed(Uuid.v7String(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(16)))
     )
   })
 }
@@ -285,41 +286,3 @@ const validateSize = (method: string, size: number): Effect.Effect<number, Platf
       method,
       description: "size must be a non-negative safe integer"
     }))
-
-const hex = (byte: number): string => byte.toString(16).padStart(2, "0")
-
-const formatUUID = (bytes: Uint8Array): string => {
-  const segments = [
-    bytes.subarray(0, 4),
-    bytes.subarray(4, 6),
-    bytes.subarray(6, 8),
-    bytes.subarray(8, 10),
-    bytes.subarray(10, 16)
-  ]
-
-  return segments.map((segment) => Array.from(segment, hex).join("")).join("-")
-}
-
-const formatUUIDv4 = (bytes: Uint8Array): string => {
-  bytes[6] = (bytes[6] & 0x0f) | 0x40
-  bytes[8] = (bytes[8] & 0x3f) | 0x80
-
-  return formatUUID(bytes)
-}
-
-const maxUUIDv7Timestamp = 2 ** 48 - 1
-
-const formatUUIDv7 = (timestampMillis: number, bytes: Uint8Array): string => {
-  const timestamp = Math.min(Math.max(0, Math.trunc(timestampMillis)), maxUUIDv7Timestamp)
-
-  bytes[0] = Math.floor(timestamp / 2 ** 40)
-  bytes[1] = Math.floor(timestamp / 2 ** 32) & 0xff
-  bytes[2] = Math.floor(timestamp / 2 ** 24) & 0xff
-  bytes[3] = Math.floor(timestamp / 2 ** 16) & 0xff
-  bytes[4] = Math.floor(timestamp / 2 ** 8) & 0xff
-  bytes[5] = timestamp & 0xff
-  bytes[6] = (bytes[6] & 0x0f) | 0x70
-  bytes[8] = (bytes[8] & 0x3f) | 0x80
-
-  return formatUUID(bytes)
-}
