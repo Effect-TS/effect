@@ -614,7 +614,20 @@ export class PCGRandom {
    * @since 2.0.0
    */
   integer(max: number) {
-    return Math.round(this.number() * Number.MAX_SAFE_INTEGER) % max
+    if (max <= 0x100000000) {
+      // Lemire (2018) rejection sampling on raw 32-bit output eliminates
+      // modulo bias and Math.round boundary bias, using one _next() call
+      // instead of two. https://arxiv.org/abs/1805.10941
+      const threshold = ((-max >>> 0) % max) >>> 0
+      let result: number
+      do {
+        result = this._next() >>> 0
+      } while (result < threshold)
+      return result % max
+    }
+    // max exceeds 32-bit range — use float-based generation.
+    // Math.floor avoids the boundary bias of the previous Math.round approach.
+    return Math.floor(this.number() * max)
   }
 
   /**
