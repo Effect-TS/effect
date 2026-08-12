@@ -4,7 +4,8 @@ import * as Effect from "../../../Effect.ts"
 import type * as Rpc from "../../rpc/Rpc.ts"
 import type * as RpcGroup from "../../rpc/RpcGroup.ts"
 import type * as RpcMessage from "../../rpc/RpcMessage.ts"
-import type * as McpProtocol from "./mcpProtocol.ts"
+import type * as McpProtocol from "../McpProtocol.ts"
+import type * as McpProtocolInternal from "./mcpProtocol.ts"
 
 type AnyRpcGroup = RpcGroup.RpcGroup<any>
 
@@ -25,7 +26,7 @@ export interface ProtocolRegistry<
   ) => RpcMessage.RequestEncoded
   readonly handlerTarget: (
     contextMap: Map<string, unknown>
-  ) => McpProtocol.HandlerInstallationTarget
+  ) => McpProtocolInternal.HandlerInstallationTarget
 }
 
 // NOTE: Protocol selection and request namespacing happen before an adapter's
@@ -71,7 +72,7 @@ export const make = Effect.fnUntraced(function*<
       ...request,
       tag: `${prefix(protocol)}${request.tag}`
     }),
-    handlerTarget: (contextMap: Map<string, unknown>): McpProtocol.HandlerInstallationTarget => ({
+    handlerTarget: (contextMap: Map<string, unknown>): McpProtocolInternal.HandlerInstallationTarget => ({
       install: Effect.fnUntraced(function*<
         Rpcs extends Rpc.Any,
         Handlers extends RpcGroup.HandlersFrom<Rpcs>

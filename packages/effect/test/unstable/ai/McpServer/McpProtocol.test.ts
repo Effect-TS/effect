@@ -3,6 +3,7 @@ import { Effect, Schema } from "effect"
 import * as McpProtocol from "effect/unstable/ai/internal/mcpProtocol"
 import * as McpProtocolRegistry from "effect/unstable/ai/internal/mcpProtocolRegistry"
 import * as McpSchema2025_06_18 from "effect/unstable/ai/internal/mcpSchema/v2025_06_18"
+import type * as PublicMcpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcGroup from "effect/unstable/rpc/RpcGroup"
@@ -120,7 +121,7 @@ describe("McpProtocolRegistry", () => {
     Effect.gen(function*() {
       const first = makeTestProtocol("test-a", "a")
       const second = makeTestProtocol("test-b", "b")
-      const protocols: [McpProtocol.AnyProtocolAdapter, McpProtocol.AnyProtocolAdapter] = [
+      const protocols: [PublicMcpProtocol.AnyProtocolAdapter, PublicMcpProtocol.AnyProtocolAdapter] = [
         first,
         second
       ]

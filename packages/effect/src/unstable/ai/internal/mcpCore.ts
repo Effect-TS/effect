@@ -8,6 +8,7 @@ import * as Arr from "../../../Array.ts"
 import * as Data from "../../../Data.ts"
 import * as Effect from "../../../Effect.ts"
 import type * as Schema from "../../../Schema.ts"
+import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
 
 /** @internal */
@@ -16,9 +17,11 @@ export type CanonicalRequestMetadata = NonNullable<
 >
 
 /** @internal */
-export interface NegotiatedProtocolProfile {
+export interface NegotiatedProtocolProfile<
+  out Version extends string = McpProtocol.ProtocolVersion
+> {
   // Core decisions receive negotiated facts rather than dated wire requests.
-  readonly protocolVersion: string
+  readonly protocolVersion: Version
   readonly clientCapabilities: McpSchema.ClientCapabilities
   readonly clientInfo: McpSchema.Implementation
   readonly requestMetadata?: CanonicalRequestMetadata | undefined
@@ -95,7 +98,7 @@ export class ToolResultProjectionError extends Data.TaggedError("ToolResultProje
 /** @internal */
 /** @internal */
 export class UnsupportedByProtocol extends Data.TaggedError("UnsupportedByProtocol")<{
-  readonly protocolVersion: string
+  readonly protocolVersion: McpProtocol.ProtocolVersion
   readonly feature: string
 }> {}
 

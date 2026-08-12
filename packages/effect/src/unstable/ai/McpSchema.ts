@@ -24,6 +24,7 @@ import type * as Scope from "../../Scope.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcMiddleware from "../rpc/RpcMiddleware.ts"
+import type { ProtocolVersion } from "./McpProtocol.ts"
 
 /**
  * Schema type returned by `optionalWithDefault`.
@@ -2213,7 +2214,7 @@ export class ElicitationDeclined extends Schema.Error<ElicitationDeclined>("@eff
  */
 export class McpReverseOperationUnsupported extends Data.TaggedError("McpReverseOperationUnsupported")<{
   readonly operation: "roots/list" | "sampling/createMessage" | "elicitation/create"
-  readonly protocolVersion: "2024-11-05" | "2025-03-26" | "2025-06-18"
+  readonly protocolVersion: ProtocolVersion
   readonly reason: string
 }> {}
 
@@ -2260,7 +2261,7 @@ export interface McpReverseClient {
  */
 export class McpServerClient extends Context.Service<McpServerClient, {
   readonly clientId: number
-  readonly protocolVersion: "2024-11-05" | "2025-03-26" | "2025-06-18"
+  readonly protocolVersion: ProtocolVersion
   readonly clientCapabilities: ClientCapabilities
   readonly clientInfo: Implementation
   readonly initializePayload: typeof Initialize.payloadSchema["Type"]

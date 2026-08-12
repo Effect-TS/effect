@@ -9,6 +9,7 @@ import type * as Rpc from "../../rpc/Rpc.ts"
 import * as RpcClient from "../../rpc/RpcClient.ts"
 import type { RpcClientError } from "../../rpc/RpcClientError.ts"
 import type * as RpcGroup from "../../rpc/RpcGroup.ts"
+import type * as PublicMcpProtocol from "../McpProtocol.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
 import * as McpCore from "./mcpCore.ts"
 
@@ -31,11 +32,6 @@ export const invocationFromClient = (
   requestContext: request
 })
 
-export interface PayloadCodecs {
-  readonly decode: (input: unknown) => Effect.Effect<unknown, Schema.SchemaError>
-  readonly encode: (input: unknown) => Effect.Effect<unknown, Schema.SchemaError>
-}
-
 // NOTE: Keep the two codec assertions below as the single documented
 // existential-schema boundary. Rpc.AnyWithProps intentionally erases each
 // request's payload type, while the runtime schema still performs decoding and
@@ -44,7 +40,7 @@ export interface PayloadCodecs {
 /** @internal */
 export interface LifecycleRuntime {
   readonly initialize: (
-    protocolVersion: string,
+    protocolVersion: PublicMcpProtocol.ProtocolVersion,
     profile: McpCore.NegotiatedProtocolProfile,
     clientId: number
   ) => Effect.Effect<McpCore.CanonicalInitializeResult>
@@ -131,12 +127,6 @@ export const transcode = <
   )
 
 /** @internal */
-export interface ProjectedNotification {
-  readonly tag: string
-  readonly payload: unknown
-}
-
-/** @internal */
 export const makeNotificationProjector = Effect.fn(function*(
   options: {
     readonly supportsProgressMessage: boolean
@@ -144,7 +134,7 @@ export const makeNotificationProjector = Effect.fn(function*(
   notification: McpCore.ServerNotification
 ) {
   return McpCore.ServerNotification.$match(notification, {
-    Cancelled: (notification): ProjectedNotification => ({
+    Cancelled: (notification): PublicMcpProtocol.ProjectedNotification => ({
       tag: PublicMcpSchema.CancelledNotification._tag,
       payload: PublicMcpSchema.CancelledNotification.payloadSchema.make({
         _meta: notification.metadata,
@@ -152,7 +142,7 @@ export const makeNotificationProjector = Effect.fn(function*(
         reason: notification.reason
       })
     }),
-    Progress: (notification): ProjectedNotification => ({
+    Progress: (notification): PublicMcpProtocol.ProjectedNotification => ({
       tag: PublicMcpSchema.ProgressNotification._tag,
       payload: PublicMcpSchema.ProgressNotification.payloadSchema.make({
         _meta: notification.metadata,
@@ -162,7 +152,7 @@ export const makeNotificationProjector = Effect.fn(function*(
         message: options.supportsProgressMessage ? notification.message : undefined
       })
     }),
-    LoggingMessage: (notification): ProjectedNotification => ({
+    LoggingMessage: (notification): PublicMcpProtocol.ProjectedNotification => ({
       tag: PublicMcpSchema.LoggingMessageNotification._tag,
       payload: PublicMcpSchema.LoggingMessageNotification.payloadSchema.make({
         _meta: notification.metadata,
@@ -171,26 +161,26 @@ export const makeNotificationProjector = Effect.fn(function*(
         data: notification.data
       })
     }),
-    ResourceUpdated: (notification): ProjectedNotification => ({
+    ResourceUpdated: (notification): PublicMcpProtocol.ProjectedNotification => ({
       tag: PublicMcpSchema.ResourceUpdatedNotification._tag,
       payload: PublicMcpSchema.ResourceUpdatedNotification.payloadSchema.make({
         _meta: notification.metadata,
         uri: notification.uri
       })
     }),
-    ResourcesChanged: (notification): ProjectedNotification => ({
+    ResourcesChanged: (notification): PublicMcpProtocol.ProjectedNotification => ({
       tag: PublicMcpSchema.ResourceListChangedNotification._tag,
       payload: PublicMcpSchema.ResourceListChangedNotification.payloadSchema.make({
         _meta: notification.metadata
       })
     }),
-    ToolsChanged: (notification): ProjectedNotification => ({
+    ToolsChanged: (notification): PublicMcpProtocol.ProjectedNotification => ({
       tag: PublicMcpSchema.ToolListChangedNotification._tag,
       payload: PublicMcpSchema.ToolListChangedNotification.payloadSchema.make({
         _meta: notification.metadata
       })
     }),
-    PromptsChanged: (notification): ProjectedNotification => ({
+    PromptsChanged: (notification): PublicMcpProtocol.ProjectedNotification => ({
       tag: PublicMcpSchema.PromptListChangedNotification._tag,
       payload: PublicMcpSchema.PromptListChangedNotification.payloadSchema.make({
         _meta: notification.metadata
@@ -213,54 +203,7 @@ export interface HandlerInstallationTarget {
   ) => Effect.Effect<void, never, RpcGroup.HandlersServices<Rpcs, Handlers>>
 }
 
-/**
- * The operations required from an RPC group after its RPC union is erased.
- */
-export interface ErasedRpcGroup<RpcType extends Rpc.Any = Rpc.Any> {
-  readonly requests: ReadonlyMap<string, RpcType>
-}
-
-/**
- * The additional operation required from the complete client RPC group.
- */
-export interface ErasedClientRpcGroup extends ErasedRpcGroup {
-  readonly prefix: (prefix: string) => RpcGroup.RpcGroup<any>
-}
-
-/**
- * The erased operational shape shared by public protocol adapter declarations.
- */
-export interface AnyProtocolAdapter<HandlerRequirements = unknown> {
-  readonly protocolVersion: string
-  readonly transport: {
-    readonly acceptsJsonRpcBatches: boolean
-    readonly requiresVersionHeader: boolean
-  }
-  readonly clientRpcs: ErasedClientRpcGroup
-  readonly clientNotificationRpcs: ErasedRpcGroup
-  readonly serverRequestRpcs: RpcGroup.Any
-  readonly serverNotificationRpcs: ErasedRpcGroup<Rpc.AnyWithProps>
-  readonly payloadCodecs: (rpc: Rpc.AnyWithProps) => PayloadCodecs
-  readonly installHandlers: (
-    core: McpCore.McpCore,
-    lifecycle: LifecycleRuntime,
-    target: HandlerInstallationTarget
-  ) => Effect.Effect<void, never, HandlerRequirements>
-  readonly makeReverseClient: (
-    profile: McpCore.NegotiatedProtocolProfile
-  ) => Effect.Effect<
-    PublicMcpSchema.McpReverseClient,
-    never,
-    RpcClient.Protocol | Scope.Scope
-  >
-  readonly projectNotification: (
-    notification: McpCore.ServerNotification
-  ) => Effect.Effect<ProjectedNotification | undefined, McpCore.UnsupportedByProtocol>
-  readonly normalizeCancellation: (
-    payload: unknown
-  ) => Effect.Effect<McpCore.Cancellation, unknown>
-}
-
+/** @internal */
 export interface ProtocolAdapter<
   out Version extends string = string,
   ClientRpcs extends Rpc.Any = Rpc.Any,
@@ -281,7 +224,7 @@ export interface ProtocolAdapter<
   readonly clientNotificationRpcs: RpcGroup.RpcGroup<ClientNotificationRpcs>
   readonly serverRequestRpcs: RpcGroup.RpcGroup<ServerRequestRpcs>
   readonly serverNotificationRpcs: RpcGroup.RpcGroup<ServerNotificationRpcs>
-  readonly payloadCodecs: (rpc: Rpc.AnyWithProps) => PayloadCodecs
+  readonly payloadCodecs: (rpc: Rpc.AnyWithProps) => PublicMcpProtocol.PayloadCodecs
   readonly handlerRpcs?: RpcGroup.RpcGroup<HandlerRpcs> | undefined
   readonly installHandlers: (
     core: McpCore.McpCore,
@@ -297,7 +240,7 @@ export interface ProtocolAdapter<
   >
   readonly projectNotification: (
     notification: McpCore.ServerNotification
-  ) => Effect.Effect<ProjectedNotification | undefined, McpCore.UnsupportedByProtocol>
+  ) => Effect.Effect<PublicMcpProtocol.ProjectedNotification | undefined, McpCore.UnsupportedByProtocol>
   readonly normalizeCancellation: (
     payload: unknown
   ) => Effect.Effect<McpCore.Cancellation, unknown>
@@ -335,7 +278,7 @@ export const make = <
   ) => PublicMcpSchema.McpReverseClient
   readonly projectNotification: (
     notification: McpCore.ServerNotification
-  ) => Effect.Effect<ProjectedNotification | undefined, McpCore.UnsupportedByProtocol>
+  ) => Effect.Effect<PublicMcpProtocol.ProjectedNotification | undefined, McpCore.UnsupportedByProtocol>
   readonly normalizeCancellation: (
     payload: unknown
   ) => Effect.Effect<McpCore.Cancellation, unknown>
@@ -348,14 +291,14 @@ export const make = <
   HandlerRpcs,
   RpcGroup.HandlersServices<HandlerRpcs, Handlers>
 > => {
-  const payloadCodecsCache = new WeakMap<Rpc.AnyWithProps, PayloadCodecs>()
-  const payloadCodecs = (rpc: Rpc.AnyWithProps): PayloadCodecs => {
+  const payloadCodecsCache = new WeakMap<Rpc.AnyWithProps, PublicMcpProtocol.PayloadCodecs>()
+  const payloadCodecs = (rpc: Rpc.AnyWithProps): PublicMcpProtocol.PayloadCodecs => {
     let codecs = payloadCodecsCache.get(rpc)
     if (codecs === undefined) {
       const schema = Schema.toCodecJson(rpc.payloadSchema)
       codecs = {
-        decode: Schema.decodeUnknownEffect(schema) as PayloadCodecs["decode"],
-        encode: Schema.encodeUnknownEffect(schema) as PayloadCodecs["encode"]
+        decode: Schema.decodeUnknownEffect(schema) as PublicMcpProtocol.PayloadCodecs["decode"],
+        encode: Schema.encodeUnknownEffect(schema) as PublicMcpProtocol.PayloadCodecs["encode"]
       }
       payloadCodecsCache.set(rpc, codecs)
     }
