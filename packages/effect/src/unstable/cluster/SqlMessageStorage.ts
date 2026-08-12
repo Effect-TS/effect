@@ -430,7 +430,7 @@ export const make: (options?: {
             AND m.processed = ${sqlFalse}
             AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
             AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
-            ORDER BY m.rowid ASC
+            ORDER BY m.id ASC
             ${filters.limit}
             FOR UPDATE
           ) AS ids
@@ -438,7 +438,7 @@ export const make: (options?: {
           WHERE m.id = ids.id
           RETURNING ids.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
         )
-        SELECT * FROM messages ORDER BY rowid ASC
+        SELECT * FROM messages ORDER BY id ASC
       `
     },
     orElse: () =>
@@ -688,6 +688,28 @@ export const make: (options?: {
         PersistenceError.refail,
         withTracerDisabled
       ),
+
+    resetAddresses: (addresses) => {
+      if (addresses.length === 0) return Effect.void
+      return sql`
+        UPDATE ${messagesTableSql}
+        SET last_read = NULL
+        WHERE processed = ${sqlFalse}
+        AND (${
+        sql.or(addresses.map((address) =>
+          sql.and([
+            sql`shard_id = ${address.shardId.toString()}`,
+            sql`entity_type = ${address.entityType}`,
+            sql`entity_id = ${address.entityId}`
+          ])
+        ))
+      })
+      `.pipe(
+        Effect.asVoid,
+        PersistenceError.refail,
+        withTracerDisabled
+      )
+    },
 
     clearAddress: (address) =>
       sql`

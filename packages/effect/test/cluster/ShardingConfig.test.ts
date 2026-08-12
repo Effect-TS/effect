@@ -61,4 +61,19 @@ describe("ShardingConfig", () => {
   at ["listenPort"]`
       )
     }))
+
+  it.effect("rejects non-positive residency and batch limits", () =>
+    Effect.gen(function*() {
+      for (
+        const values of [
+          { maxResidentEntities: "0" },
+          { maxResidentEntities: "-1" },
+          { unprocessedMessageBatchSize: "0" },
+          { unprocessedMessageBatchSize: "-1" }
+        ]
+      ) {
+        const error = yield* ShardingConfig.config.parse(ConfigProvider.fromUnknown(values)).pipe(Effect.flip)
+        assert.strictEqual(error._tag, "ConfigError")
+      }
+    }))
 })

@@ -97,8 +97,8 @@ describe("MessageStorage", () => {
         const messages = yield* storage.unprocessedMessages([shardId], { limit: 3 })
         expect(messages).toHaveLength(3)
         expect(messages.map((m: any) => m.envelope.payload.id)).toEqual([1, 2, 3])
-        const all = yield* storage.unprocessedMessages([shardId])
-        expect(all).toHaveLength(5)
+        const remaining = yield* storage.unprocessedMessages([shardId])
+        expect(remaining.map((m: any) => m.envelope.payload.id)).toEqual([4, 5])
       }).pipe(Effect.provide(MemoryLive)))
 
     it.effect("unprocessedMessages filters by address", () =>
@@ -121,6 +121,26 @@ describe("MessageStorage", () => {
         // an empty address filter returns nothing
         const none = yield* storage.unprocessedMessages([shardId], { addresses: [] })
         expect(none).toHaveLength(0)
+      }).pipe(Effect.provide(MemoryLive)))
+
+    it.effect("resetAddresses makes claimed messages eligible again", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        for (let i = 1; i <= 4; i++) {
+          yield* storage.saveRequest(yield* makeRequest({ payload: { id: i }, entityId: String(i) }))
+        }
+        const shardId = ShardId.make("default", 1)
+        yield* storage.unprocessedMessages([shardId], { limit: 3 })
+        yield* storage.resetAddresses(["1", "3"].map((entityId) =>
+          EntityAddress.make({
+            shardId,
+            entityType: EntityType.make("test"),
+            entityId: EntityId.make(entityId)
+          })
+        ))
+
+        const messages = yield* storage.unprocessedMessages([shardId])
+        expect(messages.map((m: any) => m.envelope.payload.id)).toEqual([1, 3, 4])
       }).pipe(Effect.provide(MemoryLive)))
 
     it.effect("repliesFor", () =>

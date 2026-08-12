@@ -304,11 +304,17 @@ export const config: Config.Config<ShardingConfig["Service"]> = Config.all({
     Config.withDefault(defaults.entityMailboxCapacity)
     // Config.withDescription("The default capacity of the mailbox for entities.")
   ),
-  maxResidentEntities: Config.int("maxResidentEntities").pipe(
+  maxResidentEntities: Config.schema(
+    Schema.Int.check(Schema.isGreaterThan(0)),
+    "maxResidentEntities"
+  ).pipe(
     Config.withDefault(defaults.maxResidentEntities)
     // Config.withDescription("The maximum number of entities that can be resident on this runner at the same time.")
   ),
-  unprocessedMessageBatchSize: Config.int("unprocessedMessageBatchSize").pipe(
+  unprocessedMessageBatchSize: Config.schema(
+    Schema.Int.check(Schema.isGreaterThan(0)),
+    "unprocessedMessageBatchSize"
+  ).pipe(
     Config.withDefault(defaults.unprocessedMessageBatchSize)
     // Config.withDescription("The maximum number of unprocessed messages read from storage in a single poll.")
   ),

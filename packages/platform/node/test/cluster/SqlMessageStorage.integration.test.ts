@@ -330,6 +330,28 @@ describe("SqlMessageStorage", () => {
           expect(rest.map((m: any) => m.envelope.payload.id)).toEqual([1, 3])
         }))
 
+      it.effect("resetAddresses releases claims in one batch", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const shardId = ShardId.make("default", 1)
+          const address = (entityId: string) =>
+            EntityAddress.make({
+              shardId,
+              entityType: EntityType.make("test"),
+              entityId: EntityId.make(entityId)
+            })
+          for (let i = 1; i <= 4; i++) {
+            yield* storage.saveRequest(yield* makeRequest({ payload: { id: i }, entityId: String(i) }))
+          }
+          yield* storage.unprocessedMessages([shardId], { limit: 3 })
+          yield* storage.resetAddresses([address("1"), address("3")])
+
+          const messages = yield* storage.unprocessedMessages([shardId])
+          expect(messages.map((m: any) => m.envelope.payload.id)).toEqual([1, 3, 4])
+        }))
+
       it.effect("unprocessedMessages excludes complete requests", () =>
         Effect.gen(function*() {
           yield* truncate

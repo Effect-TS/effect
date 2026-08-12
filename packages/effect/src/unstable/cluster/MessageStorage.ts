@@ -164,6 +164,13 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   ) => Effect.Effect<void, PersistenceError>
 
   /**
+   * Reset the mailbox state for the provided addresses.
+   */
+  readonly resetAddresses: (
+    addresses: Iterable<EntityAddress>
+  ) => Effect.Effect<void, PersistenceError>
+
+  /**
    * Clear all messages and replies for the provided address.
    */
   readonly clearAddress: (
@@ -409,6 +416,13 @@ export type Encoded = {
    */
   readonly resetAddress: (
     address: EntityAddress
+  ) => Effect.Effect<void, PersistenceError>
+
+  /**
+   * Reset the mailbox state for the provided addresses.
+   */
+  readonly resetAddresses: (
+    addresses: ReadonlyArray<EntityAddress>
   ) => Effect.Effect<void, PersistenceError>
 
   /**
@@ -694,6 +708,10 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       )
     },
     resetAddress: encoded.resetAddress,
+    resetAddresses: (addresses) => {
+      const array = Array.from(addresses)
+      return array.length === 0 ? Effect.void : encoded.resetAddresses(array)
+    },
     clearAddress: encoded.clearAddress,
     resetShards: (shardIds) => {
       const shards = Array.from(shardIds, (id) => id.toString())
@@ -822,6 +840,7 @@ export const noop: MessageStorage["Service"] = Effect.runSync(make({
   unprocessedMessages: () => Effect.succeed([]),
   unprocessedMessagesById: () => Effect.succeed([]),
   resetAddress: () => Effect.void,
+  resetAddresses: () => Effect.void,
   clearAddress: () => Effect.void,
   resetShards: () => Effect.void,
   withTransaction: identity
@@ -874,8 +893,22 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
     const requestsByPrimaryKey = new Map<string, MemoryEntry>()
     const unprocessed = new Set<Envelope.Encoded>()
     const replyIds = new Set<string>()
+    const lastRead = new Map<Envelope.Encoded, number>()
 
     const journal: Array<Envelope.Encoded> = []
+
+    const addressKey = (address: Envelope.Encoded["address"] | EntityAddress) =>
+      `${address.shardId.group}/${address.shardId.id}/${address.entityType}/${address.entityId}`
+
+    const resetAddresses = (addresses: ReadonlyArray<EntityAddress>) =>
+      Effect.sync(() => {
+        const keys = new Set(addresses.map(addressKey))
+        for (const envelope of journal) {
+          if (keys.has(addressKey(envelope.address))) {
+            lastRead.delete(envelope)
+          }
+        }
+      })
 
     const cursors = new WeakMap<{}, number>()
 
@@ -972,6 +1005,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           if (!entry || replyIds.has(reply.id)) return
           if (reply._tag === "WithExit") {
             unprocessed.delete(entry.envelope)
+            lastRead.delete(entry.envelope)
           }
           entry.replies.push(reply)
           replyIds.add(reply.id)
@@ -984,6 +1018,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           entry.replies = []
           entry.lastReceivedChunk = undefined
           unprocessed.add(entry.envelope)
+          lastRead.delete(entry.envelope)
         }),
       requestIdForPrimaryKey: (primaryKey) =>
         Effect.sync(() => {
@@ -993,10 +1028,9 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
       repliesFor: (requestIds) => Effect.sync(() => repliesFor(requestIds)),
       repliesForUnfiltered: (requestIds) =>
         Effect.sync(() => requestIds.flatMap((id) => requests.get(String(id))?.replies ?? [])),
-      unprocessedMessages: (shardIds, _now, options) =>
+      unprocessedMessages: (shardIds, now, options) =>
         Effect.sync(() => {
           if (unprocessed.size === 0) return []
-          const now = clock.currentTimeMillisUnsafe()
           const limit = options?.limit ?? Infinity
           let addressFilter: Set<string> | undefined
           if (options?.addresses) {
@@ -1023,10 +1057,15 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
               if (entry.deliverAt && entry.deliverAt > now) {
                 continue
               }
+              const claimedAt = lastRead.get(envelope)
+              if (claimedAt !== undefined && claimedAt > now - 10 * 60 * 1000) {
+                continue
+              }
               messages.push({
                 envelope,
                 lastSentReply: Option.fromNullishOr(entry.replies[entry.replies.length - 1])
               })
+              lastRead.set(envelope, now)
             } else {
               messages.push({
                 envelope,
@@ -1045,7 +1084,8 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           }
           return unprocessedWith((envelope) => envelopeIds.has(envelope.requestId))
         }),
-      resetAddress: () => Effect.void,
+      resetAddress: (address) => resetAddresses([address]),
+      resetAddresses,
       clearAddress: (address) =>
         Effect.sync(() => {
           for (const [primaryKey, entry] of requestsByPrimaryKey) {
@@ -1064,11 +1104,21 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
               continue
             }
             unprocessed.delete(envelope)
+            lastRead.delete(envelope)
             requests.delete(envelope.requestId)
             journal.splice(i, 1)
           }
         }),
-      resetShards: () => Effect.void,
+      resetShards: (shardIds) =>
+        Effect.sync(() => {
+          const shards = new Set(shardIds)
+          for (const envelope of journal) {
+            const shardId = ShardId.make(envelope.address.shardId.group, envelope.address.shardId.id)
+            if (shards.has(shardId.toString())) {
+              lastRead.delete(envelope)
+            }
+          }
+        }),
       withTransaction: Effect.provideService(MemoryTransaction, true)
     }
 

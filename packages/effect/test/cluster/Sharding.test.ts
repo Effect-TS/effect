@@ -1196,6 +1196,20 @@ describe.concurrent("Sharding residency cap", () => {
       assert.strictEqual(driver.replyIds.size, 5)
     }).pipe(Effect.provide(CappedSharding({ unprocessedMessageBatchSize: 2 }))))
 
+  it.effect("advances past in-flight memory requests when reading bounded batches", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const makeClient = yield* TestEntity.client
+      yield* makeClient("1").Never().pipe(Effect.forkChild({ startImmediately: true }))
+      yield* makeClient("2").Never().pipe(Effect.forkChild({ startImmediately: true }))
+      const fiber = yield* makeClient("3").GetUser({ id: 3 }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      yield* TestClock.adjust(5000)
+      assert.deepStrictEqual(yield* Fiber.join(fiber), new User({ id: 3, name: "User 3" }))
+    }).pipe(Effect.provide(CappedSharding({ unprocessedMessageBatchSize: 2 }))))
+
   it.effect("does not busy-poll storage at the cap", () =>
     Effect.gen(function*() {
       let reads = 0

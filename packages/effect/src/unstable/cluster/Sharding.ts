@@ -672,8 +672,10 @@ const make = Effect.gen(function*() {
           if (message._tag === "IncomingEnvelope" && isProcessing) {
             // If the message might affect a currently processing request, we
             // send it to the entity manager to be processed.
-            deliveredThisRead = true
-            return state.manager.send(message)
+            return Effect.tap(state.manager.send(message), () =>
+              Effect.sync(() => {
+                deliveredThisRead = true
+              }))
           } else if (isProcessing || state.status === "closing") {
             // If the request is already processing, we skip it.
             // Or if the entity is closing, we skip all incoming messages.
@@ -704,8 +706,10 @@ const make = Effect.gen(function*() {
             }
             return Effect.void
           }
-          deliveredThisRead = true
-          return state.manager.send(message)
+          return Effect.tap(state.manager.send(message), () =>
+            Effect.sync(() => {
+              deliveredThisRead = true
+            }))
         }),
         (cause) => {
           const message = messages[index]
@@ -769,28 +773,33 @@ const make = Effect.gen(function*() {
         // First deliver messages for entities that are already resident, so
         // they keep making progress even when the runner is at entity
         // capacity.
-        const residentAddresses: Array<EntityAddress> = []
-        for (const state of entityManagers.values()) {
-          if (state.status === "closed") continue
-          for (const address of state.manager.residentAddressesUnsafe()) {
-            residentAddresses.push(address)
+        if (residencyAtCapacityUnsafe()) {
+          const residentAddresses: Array<EntityAddress> = []
+          for (const state of entityManagers.values()) {
+            if (state.status === "closed") continue
+            for (const address of state.manager.residentAddressesUnsafe()) {
+              residentAddresses.push(address)
+            }
           }
-        }
-        if (residentAddresses.length > 0) {
-          messages = yield* storage.unprocessedMessages(acquiredShards, {
-            limit: batchSize,
-            addresses: residentAddresses
-          })
-          index = 0
-          yield* processMessages
-          readCount = messages.length
-          fullBatch = messages.length >= batchSize
+          if (residentAddresses.length > 0) {
+            messages = yield* storage.unprocessedMessages(acquiredShards, {
+              limit: batchSize,
+              addresses: residentAddresses
+            })
+            index = 0
+            yield* processMessages
+            readCount = messages.length
+            fullBatch = messages.length >= batchSize
+          }
         }
 
         // Then walk the remaining messages, spawning new entities while the
         // runner has entity slots left.
         if (!residencyAtCapacityUnsafe() && readCount < batchSize) {
-          const limit = batchSize - readCount
+          const freeSlots = maxResidentEntities === "unbounded"
+            ? batchSize
+            : maxResidentEntities - residentEntityCount
+          const limit = Math.min(batchSize - readCount, freeSlots)
           messages = yield* storage.unprocessedMessages(acquiredShards, { limit })
           index = 0
           yield* processMessages
@@ -831,19 +840,17 @@ const make = Effect.gen(function*() {
           }
           MutableHashSet.clear(resetAddresses)
         }
-        // Release the claims of the messages that were skipped because of the
-        // entity cap, so they are re-read as soon as a slot frees up.
-        if (MutableHashSet.size(cappedAddresses) > 0) {
-          yield* Effect.forEach(
-            cappedAddresses,
-            (address) => Effect.ignore(storage.resetAddress(address)),
-            { discard: true }
-          )
-          MutableHashSet.clear(cappedAddresses)
-        }
+        // Capture claims skipped because of the entity cap. They are reset in
+        // one storage operation after releasing the read lock.
+        const cappedAddressesToReset = Arr.fromIterable(cappedAddresses)
+        MutableHashSet.clear(cappedAddresses)
 
         // let the resuming entities check if they are done
         yield* storageReadLock.release(1)
+
+        if (cappedAddressesToReset.length > 0) {
+          yield* Effect.ignore(storage.resetAddresses(cappedAddressesToReset))
+        }
 
         // A full batch means more messages could be waiting; start the next
         // read immediately, as long as this read made progress (a full batch
