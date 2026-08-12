@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Layer, Option, Schema } from "effect"
+import { Effect, Exit, Fiber, Layer, Option, Schema, Scope } from "effect"
 import { TestClock } from "effect/testing"
 import { DurableDeferred, Workflow, WorkflowEngine } from "effect/unstable/workflow"
 
@@ -119,6 +119,30 @@ describe("WorkflowEngine", () => {
         Layer.provideMerge(WorkflowEngine.layerMemory)
       ))
     ))
+
+  it.effect("layerMemory propagates interruption when the engine is shut down", () =>
+    Effect.gen(function*() {
+      const Stuck = Workflow.make("WorkflowEngine/ShutdownWorkflow", {
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      })
+      const layer = Stuck.toLayer(() => Effect.never).pipe(
+        Layer.provideMerge(WorkflowEngine.layerMemory)
+      )
+      const scope = yield* Scope.make()
+      const context = yield* Scope.provide(Layer.build(layer), scope)
+      const fiber = yield* Stuck.execute({ id: "one" }).pipe(
+        Effect.provideContext(context),
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      yield* Effect.yieldNow
+
+      // Shutting down must interrupt the caller, not report a suspension.
+      yield* Scope.close(scope, Exit.void)
+      const exit = yield* Fiber.await(fiber)
+      assert(Exit.hasInterrupts(exit))
+    }))
 
   it.effect("layerMemory closes finalizers registered before suspension", () =>
     Effect.gen(function*() {
