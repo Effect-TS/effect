@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Schema, SchemaAST, SchemaRepresentation } from "effect"
+import { Schema, SchemaAST, SchemaRepresentation, SchemaTransformation } from "effect"
 
 describe("SchemaRepresentation.toRepresentation", () => {
   describe("node conversion", () => {
@@ -162,6 +162,98 @@ describe("SchemaRepresentation.toRepresentation", () => {
           checks: []
         },
         references: {}
+      })
+    })
+
+    it("carries type-side documentation annotations onto the encoded representation", () => {
+      const schema = Schema.NumberFromString.annotate({ title: "t", description: "d", examples: ["1"] })
+
+      assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
+        representation: {
+          _tag: "String",
+          annotations: {
+            title: "t",
+            description: "d",
+            examples: ["1"],
+            expected: "a string that will be decoded as a number"
+          },
+          checks: []
+        },
+        references: {}
+      })
+    })
+
+    it("leaves non documentation annotations on the type side", () => {
+      const schema = Schema.NumberFromString.annotate({ expected: "custom expected" })
+
+      assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
+        representation: {
+          _tag: "String",
+          annotations: { expected: "a string that will be decoded as a number" },
+          checks: []
+        },
+        references: {}
+      })
+    })
+
+    it("collects documentation annotations from every link of an encoding chain", () => {
+      // Unknown -> Declaration(Date) -> String, so the annotations sit two links apart
+      const schema = Schema.Date.annotate({ title: "inner", description: "inner" }).pipe(
+        Schema.decodeTo(Schema.Unknown, SchemaTransformation.passthrough<unknown, unknown>())
+      ).annotate({ title: "outer", examples: ["1970-01-01T00:00:00.000Z"] })
+
+      assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.toCodecJson(schema).ast), {
+        representation: {
+          _tag: "String",
+          annotations: {
+            // the innermost link wins the keys it declares, the outermost still contributes the rest
+            title: "inner",
+            description: "inner",
+            examples: ["1970-01-01T00:00:00.000Z"],
+            expected: "a string that will be decoded as a Date"
+          },
+          checks: []
+        },
+        references: {}
+      })
+    })
+
+    it("prefers an encoded-side documentation annotation over a type-side one", () => {
+      const schema = Schema.NumberFromString.pipe(
+        Schema.annotateEncoded({ description: "encoded" }),
+        Schema.annotate({ description: "type", title: "t" })
+      )
+
+      assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
+        representation: {
+          _tag: "String",
+          annotations: {
+            title: "t",
+            description: "encoded",
+            expected: "a string that will be decoded as a number"
+          },
+          checks: []
+        },
+        references: {}
+      })
+    })
+
+    it("carries documentation annotations onto a referenced encoded representation", () => {
+      const schema = Schema.NumberFromString.annotate({ identifier: "Finite", description: "d" })
+
+      assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
+        representation: { _tag: "Reference", $ref: "FiniteEncoded" },
+        references: {
+          FiniteEncoded: {
+            _tag: "String",
+            annotations: {
+              description: "d",
+              expected: "a string that will be decoded as a number",
+              "~identifier": "Finite"
+            },
+            checks: []
+          }
+        }
       })
     })
 

@@ -592,6 +592,60 @@ describe("toJsonSchemaDocument", () => {
       })
     })
 
+    it("Date & annotate drops values that are not valid JSON", () => {
+      assertJsonSchemaDocument(
+        Schema.Date.annotate({ default: new Date(0), examples: [new Date(0)], description: "a" }),
+        {
+          schema: {
+            "type": "string",
+            "description": "a"
+          }
+        }
+      )
+    })
+
+    it("does not carry the type-side expected annotation to the encoded side", () => {
+      // `expected` describes the decoded value, so the encoded String keeps its own
+      // ("a string that will be decoded as a Date"), not the Declaration's ("a valid Date").
+      assertJsonSchemaDocument(
+        Schema.Date.annotate({ title: "T" }),
+        {
+          schema: {
+            "type": "string",
+            "title": "T",
+            "description": "a string that will be decoded as a Date"
+          }
+        },
+        { generateDescriptions: true }
+      )
+      // Option's Declaration is `expected: "Option"`, which must not describe the encoded union
+      assertJsonSchemaDocument(
+        Schema.Option(Schema.String),
+        {
+          schema: {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "_tag": { "type": "string", "enum": ["Some"] },
+                  "value": { "type": "string" }
+                },
+                "required": ["_tag", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": { "_tag": { "type": "string", "enum": ["None"] } },
+                "required": ["_tag"],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        { generateDescriptions: true }
+      )
+    })
+
     it("URL", () => {
       const schema = Schema.URL
       assertJsonSchemaDocument(schema, {
@@ -1560,6 +1614,24 @@ describe("toJsonSchemaDocument", () => {
               { "type": "string", "enum": ["Infinity", "-Infinity", "NaN"] }
             ],
             "description": "b"
+          }
+        }
+      )
+    })
+
+    it("Number & annotate & identifier", () => {
+      assertJsonSchemaDocument(
+        Schema.Number.annotate({ identifier: "N", description: "a" }),
+        {
+          schema: { "$ref": "#/$defs/NEncoded" },
+          definitions: {
+            NEncoded: {
+              "anyOf": [
+                { "type": "number" },
+                { "type": "string", "enum": ["Infinity", "-Infinity", "NaN"] }
+              ],
+              "description": "a"
+            }
           }
         }
       )
