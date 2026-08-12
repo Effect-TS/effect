@@ -8,6 +8,12 @@ Effect is a library for building robust, maintainable, type-safe, and production
 
 > **Effect V4 is currently a release candidate.** The `main` branch contains v4 development.
 
+## Requirements
+
+- **TypeScript 5.9 or newer.** TypeScript 7 is recommended for the best performance and compatibility with [Effect's TypeScript tooling](https://github.com/Effect-TS/tsgo#installation).
+- **Node.js 18 or newer** when running Effect on Node.js.
+- **Strict type-checking:** the `strict` flag must be enabled in your `tsconfig.json`.
+
 ## Install V4 RC
 
 ```sh
