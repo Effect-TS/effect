@@ -246,7 +246,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(yield* Fiber.join(fiber)).toEqual("activity")
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
-  it.effect("DurableDeferred.raceAll deregisters a deferred branch after it loses", () =>
+  it.effect("DurableDeferred.raceAll replays the run when a losing deferred completes late", () =>
     Effect.gen(function*() {
       const flags = yield* Flags
       const sharding = yield* Sharding.Sharding
@@ -271,10 +271,11 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       yield* TestClock.adjust("10 seconds")
 
       expect(yield* Fiber.join(fiber)).toEqual("activity:tail")
-      expect(flags.get("losing-deferred-tail-runs")).toEqual(1)
+      // The late completion preempts the tail; the replay re-executes it.
+      expect(flags.get("losing-deferred-tail-runs")).toEqual(2)
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
-  it.effect("DurableDeferred.raceAll wakes the active run in place without replaying it", () =>
+  it.effect("DurableDeferred.raceAll wakes the active run by replaying it", () =>
     Effect.gen(function*() {
       const flags = yield* Flags
       const sharding = yield* Sharding.Sharding
@@ -293,7 +294,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       yield* TestClock.adjust("1 second")
 
       expect(yield* Fiber.join(fiber)).toEqual("signal")
-      expect(flags.get("in-place-wake-runs")).toEqual(1)
+      // The completion preempts the run; the replay observes the result.
+      expect(flags.get("in-place-wake-runs")).toEqual(2)
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
   it.effect("DurableDeferred.raceAll wakes a branch wrapped in DurableDeferred.into", () =>
@@ -316,20 +318,22 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(yield* Fiber.join(fiber)).toEqual("signal")
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
-  it.effect("DurableDeferred.raceAll wakes a durable clock awaited inside an activity body", () =>
+  it.effect("DurableDeferred.raceAll does not preempt for deferreds awaited inside activity bodies", () =>
     Effect.gen(function*() {
       const sharding = yield* Sharding.Sharding
       const fiber = yield* ClockCaptureWorkflow.execute({ id: "clock-capture" }).pipe(
         Effect.forkChild({ startImmediately: true })
       )
 
-      // Complete the clock while another activity keeps the run active.
+      // Only workflow-level awaits preempt; the clock inside the activity
+      // does not, so the other branch wins.
       yield* TestClock.adjust(1)
       yield* TestClock.adjust(5000)
       yield* sharding.pollStorage
-      yield* TestClock.adjust("1 second")
+      yield* TestClock.adjust(1000)
+      yield* TestClock.adjust("24 seconds")
 
-      expect(yield* Fiber.join(fiber)).toEqual("clock")
+      expect(yield* Fiber.join(fiber)).toEqual("slow")
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
   it.effect("DurableDeferred.raceAll lets a bare durable clock branch win while another branch is active", () =>
@@ -409,7 +413,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         Effect.forkChild({ startImmediately: true })
       )
 
-      // Hold the run open while suspension commits.
+      // both branches park, the suspension commits, and the ensuring sleep
+      // keeps the run from settling
       yield* TestClock.adjust(1)
       yield* TestClock.adjust(1)
 
@@ -418,10 +423,10 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         executionId
       })
       yield* DurableDeferred.succeed(SlowUnwindGateB, { token, value: "signal-b" })
-      // Let the completer resume the settled execution.
+      // finish the unwind so the completer can resume the settled execution
       yield* TestClock.adjust("10 seconds")
       yield* sharding.pollStorage
-      // Finish the replay's delayed unwind.
+      // the replay's ensuring sleep
       yield* TestClock.adjust("10 seconds")
 
       expect(yield* Fiber.join(fiber)).toEqual("signal-b")
@@ -436,7 +441,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         Effect.forkChild({ startImmediately: true })
       )
 
-      // Suspend with both gates pending.
+      // let the race suspend with both gates pending
       yield* TestClock.adjust(1)
       yield* TestClock.adjust("1 second")
       const polled = yield* TwoGateWorkflow.poll(executionId)
@@ -1140,7 +1145,8 @@ const TwoStepWorkflowLayer = TwoStepWorkflow.toLayer(() =>
         const b = yield* DurableDeferred.await(TwoStepGateB)
         return `${a}:${b}`
       }),
-      // Keep the race active without occupying an activity slot.
+      // a live branch that holds no activity slot, so wake re-runs are
+      // processed while the race stays active
       Effect.never
     ]
   })
@@ -1173,7 +1179,7 @@ const SlowUnwindWorkflowLayer = SlowUnwindWorkflow.toLayer(Effect.fnUntraced(fun
       DurableDeferred.await(SlowUnwindGateB)
     ]
   }).pipe(
-    // Delay the unwind during suspension commit.
+    // slows the unwind so completions can land while a suspension commits
     Effect.ensuring(Effect.sleep("10 seconds"))
   )
 }))

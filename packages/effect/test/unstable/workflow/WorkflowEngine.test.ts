@@ -102,12 +102,17 @@ describe("WorkflowEngine", () => {
       })
       yield* DurableDeferred.succeed(DeferredRaceGate, { token, value: "signal" })
       // Require the wake to settle before the sleeper.
-      yield* TestClock.adjust(1)
-      const polled = yield* DeferredRaceWorkflow.poll(executionId)
-      assert(Option.isSome(polled) && polled.value._tag === "Complete")
+      let polled = yield* DeferredRaceWorkflow.poll(executionId)
+      while (Option.isNone(polled) || polled.value._tag !== "Complete") {
+        yield* Effect.yieldNow
+        polled = yield* DeferredRaceWorkflow.poll(executionId)
+      }
 
+      // let the caller's suspended-retry loop pick up the replayed result
+      yield* TestClock.adjust("1 second")
       assert.strictEqual(yield* Fiber.join(fiber), "signal")
-      assert.strictEqual(deferredRaceRuns, 1)
+      // the completion preempts the run; the replay observes the result
+      assert.strictEqual(deferredRaceRuns, 2)
     }).pipe(
       Effect.provide(DeferredRaceWorkflowLayer.pipe(
         Layer.provideMerge(WorkflowEngine.layerMemory)

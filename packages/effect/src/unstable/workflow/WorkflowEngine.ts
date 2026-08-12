@@ -9,7 +9,7 @@
  *
  * @since 4.0.0
  */
-import type * as Cause from "../../Cause.ts"
+import * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
@@ -261,8 +261,8 @@ export class WorkflowInstance extends Context.Service<
      */
     cause: Cause.Cause<never> | undefined
 
-    /** Active durable race wake latches shared with instance clones. */
-    readonly raceWake: Set<Latch.Latch>
+    /** Deferred names this run parked on; their completions preempt the run. */
+    readonly awaitedDeferreds: Set<string>
 
     readonly activityState: {
       count: number
@@ -282,7 +282,7 @@ export class WorkflowInstance extends Context.Service<
       suspended: false,
       interrupted: false,
       cause: undefined,
-      raceWake: new Set(),
+      awaitedDeferreds: new Set(),
       activityState: {
         count: 0,
         latch: Latch.makeUnsafe()
@@ -310,7 +310,7 @@ export interface DeferredState {
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, Exclude<R, WorkflowInstance>>
 
-  /** Records a completion and coordinates it with the active run. */
+  /** Records a completion, preempting a run parked on that deferred. */
   readonly deferredDone: (
     executionId: string,
     name: string,
@@ -358,13 +358,17 @@ export const makeDeferredState = (): DeferredState => {
           pending.set(executionId, entries)
         }
         entries.set(name, exit)
-        if (run.fiber === current || run.fiber.pollUnsafe()) return Effect.void
-        if (run.instance.suspended) {
-          // Wait for a committing suspension before resuming.
-          return Effect.asVoid(Fiber.await(run.fiber))
+        if (
+          run.fiber === current ||
+          run.fiber.pollUnsafe() ||
+          !run.instance.awaitedDeferreds.has(name)
+        ) {
+          return Effect.void
         }
-        for (const latch of run.instance.raceWake) latch.openUnsafe()
-        return Effect.void
+        // Suspended retains the pending result; the engine re-runs the
+        // interrupted run and the replay observes the completion.
+        run.instance.suspended = true
+        return Fiber.interrupt(run.fiber)
       })
   }
 }
@@ -758,7 +762,16 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           yield* resume(options.executionId)
         }
         if (options.discard) return
-        return (yield* Fiber.join(state.fiber!)) as any
+        const exit = yield* Fiber.await(state.fiber!)
+        if (
+          Exit.isFailure(exit) &&
+          Cause.hasInterruptsOnly(exit.cause) &&
+          !state.instance.interrupted
+        ) {
+          // A completion preempted the run; the caller retries into the replay.
+          return new Workflow.Suspended({}) as any
+        }
+        return (yield* exit) as any
       }),
       interrupt: Effect.fnUntraced(function*(_workflow, executionId) {
         const state = executions.get(executionId)

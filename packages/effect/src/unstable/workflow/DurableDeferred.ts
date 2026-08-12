@@ -17,10 +17,8 @@ import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Encoding from "../../Encoding.ts"
 import * as Exit from "../../Exit.ts"
-import * as Fiber from "../../Fiber.ts"
 import * as Filter from "../../Filter.ts"
 import { dual } from "../../Function.ts"
-import * as Latch from "../../Latch.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaGetter from "../../SchemaGetter.ts"
@@ -131,16 +129,6 @@ const CurrentAttempt = Context.Reference<number>(
   { defaultValue: () => 1 }
 )
 
-/** Tracks pending deferreds awaited by each race branch. */
-interface RaceState {
-  readonly register: (deferred: Any) => void
-}
-
-const RaceContext = Context.Reference<RaceState | undefined>(
-  "effect/workflow/DurableDeferred/RaceContext",
-  { defaultValue: () => undefined }
-)
-
 const await_: <Success extends Schema.Constraint, Error extends Schema.Constraint>(
   self: DurableDeferred<Success, Error>
 ) => Effect.Effect<
@@ -156,14 +144,9 @@ const await_: <Success extends Schema.Constraint, Error extends Schema.Constrain
 >(self: DurableDeferred<Success, Error>) {
   const engine = yield* EngineTag
   const instance = yield* InstanceTag
-  // A completed read prevents wake replays from re-registering consumed deferreds.
-  let exit = yield* engine.deferredResult(self)
-  if (Option.isSome(exit)) {
-    return yield* exit.value as Exit.Exit<any, any>
-  }
-  const race = yield* RaceContext
-  race?.register(self)
-  exit = yield* Workflow.wrapActivityResult(
+  // Register before the read so any later completion can preempt the run.
+  instance.awaitedDeferreds.add(self.name)
+  const exit = yield* Workflow.wrapActivityResult(
     engine.deferredResult(self),
     Option.isNone
   )
@@ -297,92 +280,12 @@ export const raceAll = <
   })
   return Effect.gen(function*() {
     const engine = yield* EngineTag
-    const persisted = yield* engine.deferredResult(deferred)
-    if (Option.isSome(persisted)) {
-      return yield* persisted.value
+    const exit = yield* engine.deferredResult(deferred)
+    if (Option.isSome(exit)) {
+      return yield* exit.value
     }
-    const parentInstance = yield* InstanceTag
-    const outerRace = yield* RaceContext
     return yield* into(
-      Effect.gen(function*() {
-        const raceInstance = yield* InstanceTag
-        const total = options.effects.length
-        const registered = new Map<string, { readonly deferred: Any; readonly branch: number }>()
-        const wakeLatch = Latch.makeUnsafe()
-        let settled = 0
-        let suspendedBranches = 0
-        const contexts = options.effects.map((_, index): RaceState => ({
-          register(d) {
-            registered.set(d.name, { deferred: d, branch: index })
-            outerRace?.register(d)
-          }
-        }))
-        const runBranch = (index: number, instance: typeof raceInstance) =>
-          options.effects[index].pipe(
-            Effect.provideService(InstanceTag, instance),
-            Effect.provideService(RaceContext, contexts[index])
-          )
-        // Give each branch isolated suspension state for the wake arm.
-        const branches = options.effects.map((_, index) =>
-          Effect.suspend(() => {
-            const branchInstance = { ...raceInstance }
-            return runBranch(index, branchInstance).pipe(
-              Effect.onExit((exit) =>
-                Effect.sync(() => {
-                  settled++
-                  if (
-                    Exit.isFailure(exit) &&
-                    Cause.hasInterruptsOnly(exit.cause) &&
-                    branchInstance.suspended
-                  ) {
-                    suspendedBranches++
-                  }
-                  wakeLatch.openUnsafe()
-                })
-              )
-            )
-          })
-        )
-        // Re-run branches on completion; suspend only after every branch parks.
-        const wakeArm = Effect.gen(function*() {
-          parentInstance.raceWake.add(wakeLatch)
-          while (true) {
-            wakeLatch.closeUnsafe()
-            for (const [name, entry] of registered) {
-              const exit = yield* engine.deferredResult(entry.deferred as any)
-              if (Option.isNone(exit)) continue
-              // Replays are safe: branch effects replay and completions are idempotent.
-              registered.delete(name)
-              const rerunInstance = { ...raceInstance }
-              const fiber = yield* Effect.forkChild(runBranch(entry.branch, rerunInstance))
-              const rerun = yield* Fiber.await(fiber)
-              if (Exit.isSuccess(rerun)) {
-                return rerun.value
-              }
-              const parkedAgain = Cause.hasInterruptsOnly(rerun.cause) && rerunInstance.suspended
-              if (!parkedAgain) {
-                return yield* rerun
-              }
-            }
-            // Retry if a branch settles during polling.
-            if (!wakeLatch.isOpen() && settled === total) {
-              if (suspendedBranches === total) {
-                // Publish suspension before completers choose their wake path.
-                parentInstance.suspended = true
-                return yield* Workflow.suspend(raceInstance)
-              }
-              // Let the race aggregate real failures.
-              return yield* Effect.interrupt
-            }
-            yield* wakeLatch.await
-          }
-        }).pipe(
-          Effect.ensuring(Effect.sync(() => {
-            parentInstance.raceWake.delete(wakeLatch)
-          }))
-        )
-        return yield* Effect.raceAll([...branches, wakeArm])
-      }),
+      Effect.raceAll(options.effects),
       deferred
     )
   })
