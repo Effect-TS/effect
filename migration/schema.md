@@ -31,7 +31,6 @@ This document maps v3 Schema APIs to their v4 equivalents. Simple renames and ar
 | `EitherFromSelf`                                | `Result`                                                                      | rename            |
 | `DateFromNumber`                                | `DateFromMillis`                                                              | rename            |
 | `Date`                                          | `DateFromString`                                                              | restructure       |
-| `TaggedError`                                   | `TaggedErrorClass`                                                            | rename            |
 | `decodeUnknown`                                 | `decodeUnknownEffect`                                                         | rename            |
 | `decode`                                        | `decodeEffect`                                                                | rename            |
 | `decodeUnknownEither`                           | `decodeUnknownExit`                                                           | rename            |
