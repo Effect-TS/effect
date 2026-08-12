@@ -6,27 +6,27 @@
 
 Effect is a library for building robust, maintainable, type-safe, and production grade applications in TypeScript. It helps you handle the hard problems at scale: typed errors, dependency injection, structured concurrency, scheduling, tracing, and unified schema validation.
 
-> **Effect V4 is currently in beta.** The `main` branch contains v4 development.
+> **Effect V4 is currently a release candidate.** The `main` branch contains v4 development.
 
-## Install V4 Beta
+## Install V4 RC
 
 ```sh
-npm install effect@beta
+npm install effect@rc
 ```
+
+## Requirements
+
+- **TypeScript 5.9 or newer.** TypeScript 7 is recommended for the best performance and compatibility with [Effect's TypeScript tooling](https://github.com/Effect-TS/tsgo#installation).
+- **Node.js 18 or newer** is the general minimum for running Effect on Node.js. Some integration packages require newer runtimes; for example, `@effect/sql-sqlite-node` requires Node.js 22.16 or newer.
+- **Strict type-checking:** the `strict` flag must be enabled in your `tsconfig.json`.
 
 ## Effect v3
 
-The Effect v3 source code is available on the [`v3`](https://github.com/Effect-TS/effect/tree/v3) branch.
-
-```sh
-npm install effect@latest
-```
-
-Issues and pull requests meant for Effect v3 should target the [`v3`](https://github.com/Effect-TS/effect/tree/v3) branch.
+The Effect v3 source code is available on the [`v3`](https://github.com/Effect-TS/effect/tree/v3) branch, which is also where issues and pull requests meant for Effect v3 should be targeted.
 
 ## Packages
 
-This monorepo contains the core `effect` package alongside integration packages that extend it. All v4 packages are published under the `beta` tag on npm.
+This monorepo contains the core `effect` package alongside integration packages that extend it. All v4 packages are published under the `rc` tag on npm.
 
 | Package                                                               | Description                                              | API Reference                                                      |
 | --------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------ |

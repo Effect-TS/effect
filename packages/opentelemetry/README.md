@@ -5,7 +5,7 @@ An [OpenTelemetry](https://opentelemetry.io) integration for Effect. Exports Eff
 ## Installation
 
 ```sh
-npm install effect@beta @effect/opentelemetry@beta
+npm install effect@rc @effect/opentelemetry@rc
 ```
 
 The relevant `@opentelemetry/*` SDK packages are required as peer dependencies, depending on which features you use.

@@ -5,7 +5,7 @@ An Effect SQL client for [Cloudflare D1](https://developers.cloudflare.com/d1/),
 ## Installation
 
 ```sh
-npm install effect@beta @effect/sql-d1@beta
+npm install effect@rc @effect/sql-d1@rc
 ```
 
 ## Documentation

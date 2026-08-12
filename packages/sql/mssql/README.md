@@ -5,7 +5,7 @@ An Effect SQL client for Microsoft SQL Server, built on the [`tedious`](https://
 ## Installation
 
 ```sh
-npm install effect@beta @effect/sql-mssql@beta
+npm install effect@rc @effect/sql-mssql@rc
 ```
 
 ## Documentation

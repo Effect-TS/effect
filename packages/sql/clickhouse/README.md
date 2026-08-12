@@ -5,7 +5,7 @@ An Effect SQL client for [ClickHouse](https://clickhouse.com), built on the [`@c
 ## Installation
 
 ```sh
-npm install effect@beta @effect/sql-clickhouse@beta
+npm install effect@rc @effect/sql-clickhouse@rc
 ```
 
 ## Documentation
