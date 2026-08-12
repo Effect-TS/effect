@@ -1160,34 +1160,9 @@ describe.concurrent("Sharding residency cap", () => {
     Effect.gen(function*() {
       yield* TestClock.adjust(1)
       const driver = yield* MessageStorage.MemoryDriver
-      const storage = yield* MessageStorage.MessageStorage
-      const sharding = yield* Sharding.Sharding
-      const rpc = TestEntity.protocol.requests.get("GetUser")! as any
 
-      // save requests directly to storage, so the read loop only learns
-      // about them from the next poll
       for (let i = 1; i <= 5; i++) {
-        const entityId = EntityId.make(String(i))
-        yield* storage.saveRequest(
-          new Message.OutgoingRequest({
-            envelope: Envelope.makeRequest<any>({
-              requestId: yield* sharding.getSnowflake,
-              address: EntityAddress.make({
-                shardId: sharding.getShardId(entityId, "default"),
-                entityType: EntityType.make(TestEntity.type),
-                entityId
-              }),
-              tag: "GetUser",
-              payload: { id: i },
-              headers: Headers.empty
-            }),
-            annotations: rpc.annotations,
-            context: Context.empty() as any,
-            rpc,
-            lastReceivedReply: Option.none(),
-            respond: () => Effect.void
-          })
-        )
+        yield* saveGetUserRequest(String(i), i)
       }
       assert.strictEqual(driver.replyIds.size, 0)
 
@@ -1224,30 +1199,8 @@ describe.concurrent("Sharding residency cap", () => {
         assert.strictEqual(yield* sharding.activeEntityCount, 4)
         limits.length = 0
 
-        const storage = yield* MessageStorage.MessageStorage
-        const rpc = TestEntity.protocol.requests.get("GetUser")! as any
         for (let i = 0; i < 10; i++) {
-          const entityId = EntityId.make(String(i % 4 + 1))
-          yield* storage.saveRequest(
-            new Message.OutgoingRequest({
-              envelope: Envelope.makeRequest<any>({
-                requestId: yield* sharding.getSnowflake,
-                address: EntityAddress.make({
-                  shardId: sharding.getShardId(entityId, "default"),
-                  entityType: EntityType.make(TestEntity.type),
-                  entityId
-                }),
-                tag: "GetUser",
-                payload: { id: i },
-                headers: Headers.empty
-              }),
-              annotations: rpc.annotations,
-              context: Context.empty() as any,
-              rpc,
-              lastReceivedReply: Option.none(),
-              respond: () => Effect.void
-            })
-          )
+          yield* saveGetUserRequest(String(i % 4 + 1), i)
         }
         yield* TestClock.adjust(5000)
         assert.isNotEmpty(limits)
@@ -1707,13 +1660,15 @@ const otherRunner = Runner.make({
   weight: 1
 })
 
-const TestShardingConfig = ShardingConfig.layer({
+const testConfigDefaults: Partial<ShardingConfig.ShardingConfig["Service"]> = {
   entityMailboxCapacity: 10,
   entityTerminationTimeout: 0,
   entityMessagePollInterval: 5000,
   sendRetryInterval: 100,
   refreshAssignmentsInterval: 0
-})
+}
+
+const TestShardingConfig = ShardingConfig.layer(testConfigDefaults)
 
 const TestShardingWithoutState = TestEntityNoState.pipe(
   Layer.provideMerge(Sharding.layer),
@@ -1743,14 +1698,7 @@ const CappedSharding = (
     storage: MessageStorage.MessageStorage["Service"]
   ) => MessageStorage.MessageStorage["Service"]
 ) => {
-  const configLayer = ShardingConfig.layer({
-    entityMailboxCapacity: 10,
-    entityTerminationTimeout: 0,
-    entityMessagePollInterval: 5000,
-    sendRetryInterval: 100,
-    refreshAssignmentsInterval: 0,
-    ...config
-  })
+  const configLayer = ShardingConfig.layer({ ...testConfigDefaults, ...config })
   let layer = TestShardingWithoutRunners.pipe(
     Layer.provide(Runners.layerNoop),
     Layer.provide(configLayer)
@@ -1765,3 +1713,32 @@ const CappedSharding = (
 }
 
 const ContextBleedSharding = ContextBleedLayer.pipe(Layer.provideMerge(TestSharding))
+
+// saves a persisted GetUser request directly to storage, bypassing the client,
+// so the storage read loop only learns about it from the next poll
+const saveGetUserRequest = Effect.fnUntraced(function*(entityId: string, id: number) {
+  const storage = yield* MessageStorage.MessageStorage
+  const sharding = yield* Sharding.Sharding
+  const rpc = TestEntity.protocol.requests.get("GetUser")! as any
+  const entity = EntityId.make(entityId)
+  yield* storage.saveRequest(
+    new Message.OutgoingRequest({
+      envelope: Envelope.makeRequest<any>({
+        requestId: yield* sharding.getSnowflake,
+        address: EntityAddress.make({
+          shardId: sharding.getShardId(entity, "default"),
+          entityType: EntityType.make(TestEntity.type),
+          entityId: entity
+        }),
+        tag: "GetUser",
+        payload: { id },
+        headers: Headers.empty
+      }),
+      annotations: rpc.annotations,
+      context: Context.empty() as any,
+      rpc,
+      lastReceivedReply: Option.none(),
+      respond: () => Effect.void
+    })
+  )
+})

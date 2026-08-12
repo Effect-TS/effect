@@ -61,11 +61,7 @@ export class ResourceMap<K, A, E> {
   }
 
   keysUnsafe(): Array<K> {
-    const keys: Array<K> = []
-    for (const [key] of this.entries.map) {
-      keys.push(key)
-    }
-    return keys
+    return Array.from(this.entries.map, ([key]) => key)
   }
 
   get(key: K): Effect.Effect<A, E> {

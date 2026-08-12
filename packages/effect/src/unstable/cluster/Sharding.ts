@@ -627,16 +627,26 @@ const make = Effect.gen(function*() {
 
       let index = 0
       let messages: Array<Message.Incoming<any>> = []
-      let cappedThisRead = false
       let deliveredThisRead = false
       const removableNotifications = new Set<PendingNotification>()
       const resetAddresses = MutableHashSet.empty<EntityAddress>()
       const cappedAddresses = MutableHashSet.empty<EntityAddress>()
 
+      const markDelivered = Effect.sync(() => {
+        deliveredThisRead = true
+      })
+
       const processMessages = Effect.whileLoop({
         while: () => index < messages.length,
         step: () => index++,
         body: () => send
+      })
+
+      const readAndProcess = Effect.fnUntraced(function*(options?: MessageStorage.UnprocessedOptions) {
+        messages = yield* storage.unprocessedMessages(acquiredShards, options)
+        index = 0
+        yield* processMessages
+        return messages.length
       })
 
       const send = Effect.catchCause(
@@ -672,10 +682,7 @@ const make = Effect.gen(function*() {
           if (message._tag === "IncomingEnvelope" && isProcessing) {
             // If the message might affect a currently processing request, we
             // send it to the entity manager to be processed.
-            return Effect.tap(state.manager.send(message), () =>
-              Effect.sync(() => {
-                deliveredThisRead = true
-              }))
+            return Effect.tap(state.manager.send(message), markDelivered)
           } else if (isProcessing || state.status === "closing") {
             // If the request is already processing, we skip it.
             // Or if the entity is closing, we skip all incoming messages.
@@ -691,7 +698,6 @@ const make = Effect.gen(function*() {
           // are not already resident are skipped. Their claims are released
           // after the read, so they stay eligible for once a slot frees up.
           if (residencyAtCapacityUnsafe() && !state.manager.isResidentUnsafe(address)) {
-            cappedThisRead = true
             MutableHashSet.add(cappedAddresses, address)
             return Effect.void
           }
@@ -706,10 +712,7 @@ const make = Effect.gen(function*() {
             }
             return Effect.void
           }
-          return Effect.tap(state.manager.send(message), () =>
-            Effect.sync(() => {
-              deliveredThisRead = true
-            }))
+          return Effect.tap(state.manager.send(message), markDelivered)
         }),
         (cause) => {
           const message = messages[index]
@@ -736,7 +739,6 @@ const make = Effect.gen(function*() {
             }
             // Otherwise the runner ran out of entity slots while the message
             // was in flight; leave it in storage.
-            cappedThisRead = true
             MutableHashSet.add(cappedAddresses, address)
             return Effect.void
           }
@@ -764,7 +766,6 @@ const make = Effect.gen(function*() {
           pendingNotifications.forEach((entry) => removableNotifications.add(entry))
         }
 
-        cappedThisRead = false
         deliveredThisRead = false
         let readCount = 0
         let fullBatch = false
@@ -782,14 +783,8 @@ const make = Effect.gen(function*() {
             }
           }
           if (residentAddresses.length > 0) {
-            messages = yield* storage.unprocessedMessages(acquiredShards, {
-              limit: batchSize,
-              addresses: residentAddresses
-            })
-            index = 0
-            yield* processMessages
-            readCount = messages.length
-            fullBatch = messages.length >= batchSize
+            readCount = yield* readAndProcess({ limit: batchSize, addresses: residentAddresses })
+            fullBatch = readCount >= batchSize
           }
         }
 
@@ -797,35 +792,32 @@ const make = Effect.gen(function*() {
         // runner has entity slots left.
         if (!residencyAtCapacityUnsafe() && readCount < batchSize) {
           const limit = batchSize - readCount
-          messages = yield* storage.unprocessedMessages(acquiredShards, { limit })
-          index = 0
-          yield* processMessages
-          if (messages.length >= limit) {
+          const read = yield* readAndProcess({ limit })
+          if (read >= limit) {
             fullBatch = true
-          } else if (!cappedThisRead) {
+          } else if (MutableHashSet.size(cappedAddresses) === 0) {
             exhaustive = true
           }
         }
 
         if (removableNotifications.size > 0) {
-          if (exhaustive) {
-            // The whole backlog was read, so a message that was not seen is
-            // no longer processable by this runner.
+          // On an exhaustive read, a message that was not seen is no longer
+          // processable by this runner. At the entity cap, the messages are
+          // safely persisted and delivered once a slot frees up, so persisted
+          // senders succeed instead of failing. Otherwise the read was
+          // truncated by the batch size and the notifications stay registered
+          // for the immediately following read.
+          const capped = MutableHashSet.size(cappedAddresses) > 0 || residencyAtCapacityUnsafe()
+          if (exhaustive || capped) {
             removableNotifications.forEach(({ message, resume }) => {
               pendingNotifications.delete(message.envelope.requestId)
-              resume(Effect.fail(new EntityNotAssignedToRunner({ address: message.envelope.address })))
-            })
-          } else if (cappedThisRead || residencyAtCapacityUnsafe()) {
-            // The runner is at entity capacity. The messages are safely
-            // persisted and are delivered once a slot frees up, so persisted
-            // senders succeed instead of failing at the cap.
-            removableNotifications.forEach(({ message, resume }) => {
-              pendingNotifications.delete(message.envelope.requestId)
-              resume(Effect.void)
+              resume(
+                exhaustive
+                  ? Effect.fail(new EntityNotAssignedToRunner({ address: message.envelope.address }))
+                  : Effect.void
+              )
             })
           }
-          // Otherwise the read was truncated by the batch size; the
-          // notifications stay registered for the immediately following read.
           removableNotifications.clear()
         }
         if (MutableHashSet.size(resetAddresses) > 0) {
@@ -839,13 +831,16 @@ const make = Effect.gen(function*() {
         }
         // Capture claims skipped because of the entity cap. They are reset in
         // one storage operation after releasing the read lock.
-        const cappedAddressesToReset = Arr.fromIterable(cappedAddresses)
-        MutableHashSet.clear(cappedAddresses)
+        let cappedAddressesToReset: Array<EntityAddress> | undefined
+        if (MutableHashSet.size(cappedAddresses) > 0) {
+          cappedAddressesToReset = Arr.fromIterable(cappedAddresses)
+          MutableHashSet.clear(cappedAddresses)
+        }
 
         // let the resuming entities check if they are done
         yield* storageReadLock.release(1)
 
-        if (cappedAddressesToReset.length > 0) {
+        if (cappedAddressesToReset !== undefined) {
           yield* Effect.ignore(storage.resetAddresses(cappedAddressesToReset))
         }
 

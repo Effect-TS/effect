@@ -167,7 +167,7 @@ export class MessageStorage extends Context.Service<MessageStorage, {
    * Reset the mailbox state for the provided addresses.
    */
   readonly resetAddresses: (
-    addresses: Iterable<EntityAddress>
+    addresses: ReadonlyArray<EntityAddress>
   ) => Effect.Effect<void, PersistenceError>
 
   /**
@@ -199,7 +199,7 @@ export class MessageStorage extends Context.Service<MessageStorage, {
  */
 export type UnprocessedOptions = {
   readonly limit?: number | undefined
-  readonly addresses?: Iterable<EntityAddress> | undefined
+  readonly addresses?: ReadonlyArray<EntityAddress> | undefined
 }
 
 /**
@@ -388,7 +388,7 @@ export type Encoded = {
   readonly unprocessedMessages: (
     shardIds: Arr.NonEmptyArray<string>,
     now: number,
-    options?: EncodedUnprocessedMessagesOptions | undefined
+    options?: UnprocessedOptions | undefined
   ) => Effect.Effect<
     Array<{
       readonly envelope: Envelope.Encoded
@@ -410,13 +410,6 @@ export type Encoded = {
     }>,
     PersistenceError
   >
-
-  /**
-   * Reset the mailbox state for the provided address.
-   */
-  readonly resetAddress: (
-    address: EntityAddress
-  ) => Effect.Effect<void, PersistenceError>
 
   /**
    * Reset the mailbox state for the provided addresses.
@@ -445,17 +438,6 @@ export type Encoded = {
   readonly withTransaction: <A, E, R>(
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, R>
-}
-
-/**
- * Options for reading encoded unprocessed messages from a storage driver.
- *
- * @category models
- * @since 4.0.0
- */
-export type EncodedUnprocessedMessagesOptions = {
-  readonly limit?: number | undefined
-  readonly addresses?: ReadonlyArray<EntityAddress> | undefined
 }
 
 /**
@@ -687,14 +669,9 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       const storage = this as MessageStorage["Service"]
       const shards = Array.from(shardIds, (id) => id.toString())
       if (!Arr.isArrayNonEmpty(shards)) return Effect.succeed([])
-      let encodedOptions: EncodedUnprocessedMessagesOptions | undefined
-      if (options) {
-        const addresses = options.addresses && Array.from(options.addresses)
-        if (addresses && addresses.length === 0) return Effect.succeed([])
-        encodedOptions = { limit: options.limit, addresses }
-      }
+      if (options?.addresses !== undefined && options.addresses.length === 0) return Effect.succeed([])
       return Effect.flatMap(
-        Effect.suspend(() => encoded.unprocessedMessages(shards, clock.currentTimeMillisUnsafe(), encodedOptions)),
+        Effect.suspend(() => encoded.unprocessedMessages(shards, clock.currentTimeMillisUnsafe(), options)),
         (messages) => decodeMessages(storage, messages)
       )
     },
@@ -707,11 +684,8 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         (messages) => decodeMessages(storage, messages)
       )
     },
-    resetAddress: encoded.resetAddress,
-    resetAddresses: (addresses) => {
-      const array = Array.from(addresses)
-      return array.length === 0 ? Effect.void : encoded.resetAddresses(array)
-    },
+    resetAddress: (address) => encoded.resetAddresses([address]),
+    resetAddresses: (addresses) => addresses.length === 0 ? Effect.void : encoded.resetAddresses(addresses),
     clearAddress: encoded.clearAddress,
     resetShards: (shardIds) => {
       const shards = Array.from(shardIds, (id) => id.toString())
@@ -874,6 +848,9 @@ export const MemoryTransaction = Context.Reference<boolean>("effect/cluster/Mess
   defaultValue: constFalse
 })
 
+// the same claim window the SQL driver uses (`last_read < ten minutes ago`)
+const claimExpirationMillis = 10 * 60 * 1000
+
 /**
  * Service that provides an in-memory message storage driver with inspectable backing state.
  *
@@ -1032,12 +1009,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
         Effect.sync(() => {
           if (unprocessed.size === 0) return []
           const limit = options?.limit ?? Infinity
-          let addressFilter: Set<string> | undefined
-          if (options?.addresses) {
-            addressFilter = new Set(
-              options.addresses.map((address) => `${address.entityType}/${address.entityId}`)
-            )
-          }
+          const addressFilter = options?.addresses && new Set(options.addresses.map(addressKey))
           const messages = Arr.empty<{
             envelope: Envelope.Encoded
             lastSentReply: Option.Option<Reply.Encoded>
@@ -1049,7 +1021,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             if (!unprocessed.has(envelope as any) || !shardIds.includes(shardId.toString())) {
               continue
             }
-            if (addressFilter && !addressFilter.has(`${envelope.address.entityType}/${envelope.address.entityId}`)) {
+            if (addressFilter && !addressFilter.has(addressKey(envelope.address))) {
               continue
             }
             if (envelope._tag === "Request") {
@@ -1058,7 +1030,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
                 continue
               }
               const claimedAt = lastRead.get(envelope)
-              if (claimedAt !== undefined && claimedAt > now - 10 * 60 * 1000) {
+              if (claimedAt !== undefined && claimedAt > now - claimExpirationMillis) {
                 continue
               }
               messages.push({
@@ -1084,7 +1056,6 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           }
           return unprocessedWith((envelope) => envelopeIds.has(envelope.requestId))
         }),
-      resetAddress: (address) => resetAddresses([address]),
       resetAddresses,
       clearAddress: (address) =>
         Effect.sync(() => {

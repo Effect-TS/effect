@@ -379,41 +379,27 @@ export const make: (options?: {
     mssql: () => (limit: number) => sql.literal(`OFFSET 0 ROWS FETCH NEXT ${Math.floor(limit)} ROWS ONLY`),
     orElse: () => (limit: number) => sql.literal(`LIMIT ${Math.floor(limit)}`)
   })
-  const unprocessedFilters = (options?: MessageStorage.EncodedUnprocessedMessagesOptions | undefined) => {
-    let addressFilter = emptyFragment
-    if (options?.addresses !== undefined) {
-      const idsByType = new Map<string, Array<string>>()
-      for (const address of options.addresses) {
-        let ids = idsByType.get(address.entityType)
-        if (ids === undefined) {
-          ids = []
-          idsByType.set(address.entityType, ids)
-        }
-        ids.push(address.entityId)
-      }
-      addressFilter = sql`AND (${
-        sql.or(Array.from(idsByType, ([entityType, entityIds]) =>
-          sql.and([
-            sql`m.entity_type = ${entityType}`,
-            sql.in("m.entity_id", entityIds)
-          ])))
+  const unprocessedFilters = (options?: MessageStorage.UnprocessedOptions | undefined) => ({
+    addressFilter: options?.addresses !== undefined
+      ? sql`AND (${
+        sql.or(
+          Object.entries(Arr.groupBy(options.addresses, (address) => address.entityType)).map(
+            ([entityType, group]) =>
+              sql.and([
+                sql`m.entity_type = ${entityType}`,
+                sql.in("m.entity_id", group.map((address) => address.entityId))
+              ])
+          )
+        )
       })`
-    }
-    return {
-      addressFilter,
-      limit: options?.limit !== undefined ? limitFragment(options.limit) : emptyFragment
-    }
-  }
+      : emptyFragment,
+    limit: options?.limit !== undefined ? limitFragment(options.limit) : emptyFragment
+  })
+  type UnprocessedFilters = ReturnType<typeof unprocessedFilters>
 
-  const getUnprocessedMessages = sql.onDialectOrElse({
-    pg: () =>
-    (
-      shardIds: ReadonlyArray<string>,
-      now: number,
-      options?: MessageStorage.EncodedUnprocessedMessagesOptions | undefined
-    ) => {
-      const filters = unprocessedFilters(options)
-      return sql<MessageJoinRow>`
+  const getUnprocessedMessagesForDialect = sql.onDialectOrElse({
+    pg: () => (shardIds: ReadonlyArray<string>, now: number, filters: UnprocessedFilters) =>
+      sql<MessageJoinRow>`
         WITH messages AS (
           UPDATE ${messagesTableSql} m
           SET last_read = ${sqlNow}
@@ -439,16 +425,9 @@ export const make: (options?: {
           RETURNING ids.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
         )
         SELECT * FROM messages ORDER BY rowid ASC
-      `
-    },
-    orElse: () =>
-    (
-      shardIds: ReadonlyArray<string>,
-      now: number,
-      options?: MessageStorage.EncodedUnprocessedMessagesOptions | undefined
-    ) => {
-      const filters = unprocessedFilters(options)
-      return sql<MessageJoinRow>`
+      `,
+    orElse: () => (shardIds: ReadonlyArray<string>, now: number, filters: UnprocessedFilters) =>
+      sql<MessageJoinRow>`
         SELECT m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
         FROM ${messagesTableSql} m
         LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
@@ -478,8 +457,12 @@ export const make: (options?: {
         }),
         sql.withTransaction
       )
-    }
   })
+  const getUnprocessedMessages = (
+    shardIds: ReadonlyArray<string>,
+    now: number,
+    options?: MessageStorage.UnprocessedOptions | undefined
+  ) => getUnprocessedMessagesForDialect(shardIds, now, unprocessedFilters(options))
 
   return yield* MessageStorage.makeEncoded({
     saveEnvelope: ({ deliverAt, envelope, primaryKey }) =>
@@ -675,41 +658,28 @@ export const make: (options?: {
       )
     },
 
-    resetAddress: (address) =>
+    resetAddresses: (addresses) =>
       sql`
         UPDATE ${messagesTableSql}
         SET last_read = NULL
         WHERE processed = ${sqlFalse}
-        AND shard_id = ${address.shardId.toString()}
-        AND entity_type = ${address.entityType}
-        AND entity_id = ${address.entityId}
-      `.pipe(
-        Effect.asVoid,
-        PersistenceError.refail,
-        withTracerDisabled
-      ),
-
-    resetAddresses: (addresses) => {
-      if (addresses.length === 0) return Effect.void
-      return sql`
-        UPDATE ${messagesTableSql}
-        SET last_read = NULL
-        WHERE processed = ${sqlFalse}
         AND (${
-        sql.or(addresses.map((address) =>
-          sql.and([
-            sql`shard_id = ${address.shardId.toString()}`,
-            sql`entity_type = ${address.entityType}`,
-            sql`entity_id = ${address.entityId}`
-          ])
-        ))
+        sql.or(
+          Object.values(Arr.groupBy(addresses, (address) => `${address.shardId}/${address.entityType}`)).map(
+            (group) =>
+              sql.and([
+                sql`shard_id = ${group[0].shardId.toString()}`,
+                sql`entity_type = ${group[0].entityType}`,
+                sql.in("entity_id", group.map((address) => address.entityId))
+              ])
+          )
+        )
       })
       `.pipe(
         Effect.asVoid,
         PersistenceError.refail,
         withTracerDisabled
-      )
-    },
+      ),
 
     clearAddress: (address) =>
       sql`
