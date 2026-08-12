@@ -5,7 +5,7 @@ An Effect SQL client for SQLite compiled to WebAssembly, built on the [`@effect/
 ## Installation
 
 ```sh
-npm install effect@beta @effect/sql-sqlite-wasm@beta
+npm install effect@rc @effect/sql-sqlite-wasm@rc
 ```
 
 ## Documentation

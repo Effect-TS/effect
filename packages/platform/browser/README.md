@@ -5,7 +5,7 @@ Browser implementations of the Effect platform services, including the HTTP clie
 ## Installation
 
 ```sh
-npm install effect@beta @effect/platform-browser@beta
+npm install effect@rc @effect/platform-browser@rc
 ```
 
 ## Documentation

@@ -20,7 +20,7 @@ The `effect` package is the core of the framework. It provides primitives for ma
 ## Installation
 
 ```sh
-npm install effect@beta
+npm install effect@rc
 ```
 
 ## Documentation

@@ -18,7 +18,7 @@ Run the complete registry:
 pnpm runtimeperf
 ```
 
-Run the cases extracted from the `effect@beta`, Valibot and Zod adapters in
+Run the cases extracted from the `effect@rc`, Valibot and Zod adapters in
 [`open-circle/schema-benchmarks`](https://github.com/open-circle/schema-benchmarks):
 
 ```sh

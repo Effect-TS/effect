@@ -5,7 +5,7 @@ An Effect SQL client for PostgreSQL, built on the [`pg`](https://node-postgres.c
 ## Installation
 
 ```sh
-npm install effect@beta @effect/sql-pg@beta
+npm install effect@rc @effect/sql-pg@rc
 ```
 
 ## Documentation

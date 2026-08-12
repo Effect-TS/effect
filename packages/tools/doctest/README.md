@@ -5,7 +5,7 @@
 ## Installation
 
 ```sh
-npm install -D @effect/doctest@beta
+npm install -D @effect/doctest@rc
 ```
 
 ## Documentation

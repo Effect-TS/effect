@@ -5,7 +5,7 @@ An Effect SQL client for MySQL, built on the [`mysql2`](https://sidorares.github
 ## Installation
 
 ```sh
-npm install effect@beta @effect/sql-mysql2@beta
+npm install effect@rc @effect/sql-mysql2@rc
 ```
 
 ## Documentation

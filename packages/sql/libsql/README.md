@@ -5,7 +5,7 @@ An Effect SQL client for [libSQL](https://turso.tech/libsql), built on the [`@li
 ## Installation
 
 ```sh
-npm install effect@beta @effect/sql-libsql@beta
+npm install effect@rc @effect/sql-libsql@rc
 ```
 
 ## Documentation

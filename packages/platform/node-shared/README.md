@@ -5,7 +5,7 @@ Effect platform services shared between Node.js-compatible runtimes. Used intern
 ## Installation
 
 ```sh
-npm install effect@beta @effect/platform-node-shared@beta
+npm install effect@rc @effect/platform-node-shared@rc
 ```
 
 ## Documentation

@@ -5,7 +5,7 @@ An [OpenRouter](https://openrouter.ai) provider for the Effect AI modules. Inclu
 ## Installation
 
 ```sh
-npm install effect@beta @effect/ai-openrouter@beta
+npm install effect@rc @effect/ai-openrouter@rc
 ```
 
 ## Documentation
