@@ -936,39 +936,6 @@ describe.concurrent("Sharding", () => {
   it.effect("client volatile discard retries a failed delivery", () =>
     Effect.gen(function*() {
       let attempts = 0
-      const config = ShardingConfig.layer({
-        entityMailboxCapacity: 10,
-        entityTerminationTimeout: 0,
-        entityMessagePollInterval: 5000,
-        sendRetryInterval: 100,
-        refreshAssignmentsInterval: 0
-      })
-      const runners = Layer.effect(Runners.Runners)(
-        Effect.gen(function*() {
-          const runners = yield* Runners.makeNoop
-          return {
-            ...runners,
-            notify(options) {
-              attempts++
-              return attempts === 1
-                ? Effect.fail(
-                  new ClusterError.RunnerUnavailable({
-                    address: Option.getOrThrow(options.address)
-                  })
-                )
-                : Effect.void
-            }
-          }
-        })
-      ).pipe(
-        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
-        Layer.provide(config)
-      )
-      const layer = TestShardingWithoutRunners.pipe(
-        Layer.provide(runners),
-        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
-        Layer.provideMerge(config)
-      )
 
       yield* Effect.gen(function*() {
         yield* TestClock.adjust(1)
@@ -985,7 +952,38 @@ describe.concurrent("Sharding", () => {
         yield* TestClock.adjust(100)
         yield* Fiber.join(fiber)
         assert.strictEqual(attempts, 2)
-      }).pipe(Effect.provide(layer))
+      }).pipe(
+        Effect.provide(TestShardingWithoutRunners.pipe(
+          Layer.provide(
+            Layer.effect(Runners.Runners)(
+              Effect.gen(function*() {
+                const runners = yield* Runners.makeNoop
+                return {
+                  ...runners,
+                  notify(options) {
+                    attempts++
+                    return attempts === 1
+                      ? Effect.fail(
+                        new ClusterError.RunnerUnavailable({
+                          address: Option.getOrThrow(options.address)
+                        })
+                      )
+                      : Effect.void
+                  }
+                }
+              })
+            )
+          ),
+          Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+          Layer.provideMerge(ShardingConfig.layer({
+            entityMailboxCapacity: 10,
+            entityTerminationTimeout: 0,
+            entityMessagePollInterval: 5000,
+            sendRetryInterval: 100,
+            refreshAssignmentsInterval: 0
+          }))
+        ))
+      )
     }))
 
   it.effect("defects when a durable request has no MessageStorage", () =>
