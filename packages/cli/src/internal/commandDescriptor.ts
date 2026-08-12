@@ -28,6 +28,7 @@ import * as InternalArgs from "./args.js"
 import * as InternalBuiltInOptions from "./builtInOptions.js"
 import * as InternalCliConfig from "./cliConfig.js"
 import * as InternalCommandDirective from "./commandDirective.js"
+import * as InternalCompletion from "./completion.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalOptions from "./options.js"
@@ -967,15 +968,6 @@ const wizardInternal = (
 // Completion Internals
 // =============================================================================
 
-/**
- * Escapes a description for interpolation into a single-quoted shell string.
- *
- * A single-quoted string in both zsh and fish cannot contain a quote, so the only way to include one is to
- * close the string, escape the quote, and reopen. Without this, an apostrophe in a description ends the
- * string early and the remainder of the generated script is re-parsed as data.
- */
-const escapeSingleQuoted = (description: string): string => description.replaceAll("'", "'\\''")
-
 const getShortDescription = (self: Instruction): string => {
   switch (self._tag) {
     case "Standard": {
@@ -1199,7 +1191,7 @@ const getFishCompletionsInternal = (
           Arr.appendAll(
             description.length === 0
               ? Arr.empty()
-              : Arr.make("-d", `'${escapeSingleQuoted(description)}'`)
+              : Arr.make("-d", `'${InternalCompletion.escapeSingleQuoted(description)}'`)
           ),
           Arr.join(" ")
         )
@@ -1255,7 +1247,7 @@ const getZshCompletionsInternal = (
       info.subcommands,
       Arr.map(([name, subcommand]) => {
         const desc = getShortDescription(subcommand)
-        return `'${name}:${escapeSingleQuoted(desc)}' \\`
+        return `'${name}:${InternalCompletion.escapeSingleQuoted(desc)}' \\`
       })
     )
     const commands = Arr.isEmptyReadonlyArray(subcommands)
