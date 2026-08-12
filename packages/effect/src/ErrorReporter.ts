@@ -204,7 +204,7 @@ export const CurrentErrorReporters: Context.Reference<ReadonlySet<ErrorReporter>
  * })
  *
  * // Replace all existing reporters
- * const ReporterLive = ErrorReporter.layer([
+ * const ReporterLayer = ErrorReporter.layer([
  *   firstReporter,
  *   secondReporter
  * ])
@@ -217,7 +217,7 @@ export const CurrentErrorReporters: Context.Reference<ReadonlySet<ErrorReporter>
  *
  * const program = Effect.fail("boom").pipe(
  *   Effect.withErrorReporting,
- *   Effect.provide(ReporterLive),
+ *   Effect.provide(ReporterLayer),
  *   Effect.exit
  * )
  *

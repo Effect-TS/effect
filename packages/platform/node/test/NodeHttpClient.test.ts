@@ -45,7 +45,7 @@ const makeLocalServerClient = Effect.gen(function*() {
 })
 interface LocalServerClient extends Effect.Success<typeof makeLocalServerClient> {}
 const LocalServerClient = Context.Service<LocalServerClient>("test/LocalServerClient")
-const LocalServerClientLive = Layer.effect(LocalServerClient)(makeLocalServerClient)
+const LocalServerClientLayer = Layer.effect(LocalServerClient)(makeLocalServerClient)
 const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
   HttpRouter.route(
     "GET",
@@ -90,7 +90,7 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
     Layer.provide(layer),
     Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
   )
-  const localServerTestLayer = Layer.merge(LocalServerClientLive, LocalServerRoutes).pipe(
+  const localServerTestLayer = Layer.merge(LocalServerClientLayer, LocalServerRoutes).pipe(
     Layer.provideMerge(layerTest)
   )
 

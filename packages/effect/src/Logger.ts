@@ -899,10 +899,10 @@ export const tracerLogger: Logger<unknown, void> = effect.tracerLogger
  * const customLogger = Logger.make((options) => {
  *   messages.push(options.message)
  * })
- * const CustomLoggerLive = Logger.layer([customLogger])
+ * const CustomLoggerLayer = Logger.layer([customLogger])
  *
  * const program = Effect.log("Application started").pipe(
- *   Effect.provide(CustomLoggerLive)
+ *   Effect.provide(CustomLoggerLayer)
  * )
  * Effect.runSync(program)
  * messages // => [["Application started"]]

@@ -44,13 +44,13 @@ it.layer(TestServices)("HttpApiBuilder query parameters", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) => handlers.handle("list", ({ query }) => Effect.succeed(query))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const multiple = yield* client.test.list({ query: { ids: ["a", "b"] } })
       const single = yield* client.test.list({ query: { ids: ["a"] } })
 
@@ -68,7 +68,7 @@ it.effect("reuses response schema transformations by source AST", () => {
       .add(HttpApiEndpoint.get("second", "/second", { success: SharedSuccess }))
       .add(HttpApiEndpoint.get("distinct", "/distinct", { success: DistinctSuccess }))
   )
-  const GroupLive = HttpApiBuilder.group(
+  const GroupLayer = HttpApiBuilder.group(
     Api,
     "test",
     (handlers) =>
@@ -82,7 +82,7 @@ it.effect("reuses response schema transformations by source AST", () => {
     Effect.sync(() => vi.spyOn(Schema, "decodeTo")),
     (decodeTo) =>
       Effect.gen(function*() {
-        yield* Effect.scoped(Layer.build(GroupLive))
+        yield* Effect.scoped(Layer.build(GroupLayer))
         const responseSchemaCalls = decodeTo.mock.calls.filter(
           ([schema]) => schema === SharedSuccess || schema === DistinctSuccess
         )
@@ -111,13 +111,13 @@ it.layer(TestServices)("HttpApiBuilder payload content types", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) => handlers.handle("create", ({ payload }) => Effect.succeed(payload))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const declared = yield* client.test.create({
         headers: {},
         payload: { name: "Ada" }
@@ -146,13 +146,13 @@ it.layer(TestServices)("HttpApiBuilder payload content types", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) => handlers.handle("create", ({ payload }) => Effect.succeed(payload))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const result = yield* client.test.create({ payload: { name: "Ada" } })
 
       assert.deepStrictEqual(result, { name: "Ada" })
@@ -185,7 +185,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           HttpApiEndpoint.get("result", "/test", { success: [Ok, Created] })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -196,7 +196,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
             })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.result({ responseMode: "response-only" })
 
       assert.strictEqual(response.status, 201)
@@ -218,7 +218,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -229,7 +229,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
             })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.result({ responseMode: "response-only" })
 
       assert.strictEqual(response.status, 200)
@@ -251,7 +251,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -262,7 +262,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
             }) as any))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const exit = yield* Effect.exit(client.test.result({ responseMode: "response-only" }))
 
       assert.strictEqual(exit._tag, "Failure")
@@ -286,7 +286,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -297,7 +297,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
             })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const result = yield* client.test.result({})
 
       assert.deepStrictEqual(
@@ -329,7 +329,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
             })
           )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -346,7 +346,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
               })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const [success, successResponse] = yield* client.test.success({ responseMode: "decoded-and-response" })
       const error = yield* Effect.flip(client.test.error({}))
       const errorResponse = yield* client.test.error({ responseMode: "response-only" })
@@ -372,7 +372,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -383,7 +383,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
             })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const [value, response] = yield* client.test.created({ responseMode: "decoded-and-response" })
 
       assert.strictEqual(response.headers["x-count"], "2")
@@ -405,7 +405,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -416,7 +416,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
             })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const value = yield* client.test.created({})
 
       assert.strictEqual(value.body.toISOString(), "2024-01-02T03:04:05.000Z")
@@ -435,7 +435,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           .add(HttpApiEndpoint.get("forwarded", "/forwarded", { success: Success }))
       )
       let forwarded: typeof Success.Type | undefined
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -448,7 +448,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
             .handle("forwarded", () => Effect.succeed(forwarded!))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const [value, response] = yield* client.test.created({ responseMode: "decoded-and-response" })
       forwarded = value
       const result = yield* client.test.forwarded({})
@@ -472,7 +472,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -483,7 +483,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
             })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.created({ responseMode: "response-only" })
 
       assert.strictEqual(response.status, 201)
@@ -508,13 +508,13 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) => handlers.handle("mixed", () => Effect.succeed({ body: "plain", headers: { "x-source": "body" } }))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.mixed({ responseMode: "response-only" })
 
       assert.strictEqual(response.headers["content-type"], "application/vnd.plain+json")
@@ -536,13 +536,13 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           HttpApiEndpoint.get("mixed", "/test", { success: [Wrapped, Plain] })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) => handlers.handle("mixed", () => Effect.succeed({ _tag: "Plain" as const, value: "plain" }))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const value = yield* client.test.mixed({})
 
       assert.deepStrictEqual(value, { _tag: "Plain", value: "plain" })
@@ -560,7 +560,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -571,7 +571,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
             })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.override({ responseMode: "response-only" })
 
       assert.strictEqual(response.headers["content-type"], "application/custom")
@@ -598,13 +598,13 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           HttpApiEndpoint.get("limited", "/test", { error: RateLimitedResponse })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) => handlers.handle("limited", () => Effect.fail(new RateLimited({ retryAfter: 30 })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.limited({ responseMode: "response-only" })
 
       assert.strictEqual(response.status, 429)
@@ -633,13 +633,13 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
         )
       )
       const expiresAt = DateTime.makeUnsafe("2026-08-05T02:00:00.000Z").pipe(DateTime.toDate)
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) => handlers.handle("limited", () => Effect.fail(new RateLimited({ expiresAt })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.limited({ responseMode: "response-only" })
       const error = yield* Effect.flip(client.test.limited({}))
 
@@ -662,13 +662,13 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
         body: { _tag: "RateLimited" as const, message: "slow down" },
         headers: { "retry-after": 30 }
       })
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) => handlers.handle("limited", () => Effect.fail(expected))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.limited({ responseMode: "response-only" })
 
       assert.strictEqual(response.status, 429)
@@ -699,13 +699,13 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) => handlers.handle("limited", () => Effect.fail(new RateLimited({ retryAfter: "30" })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.limited({ responseMode: "response-only" })
 
       assert.strictEqual(response.status, 429)
@@ -744,14 +744,14 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           HttpApiEndpoint.get("limited", "/test", { error: RateLimitedResponse })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
           handlers.handle("limited", () => Effect.fail(new RateLimited({ message: "slow down", retryAfter: 30 })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const error = yield* Effect.flip(client.test.limited({}))
 
       assert.deepStrictEqual(error, new RateLimited({ message: "slow down", retryAfter: 30 }))
@@ -766,7 +766,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -777,7 +777,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
             })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const exit = yield* Effect.exit(client.test.invalid({ responseMode: "response-only" }))
 
       assert.strictEqual(exit._tag, "Failure")
@@ -802,7 +802,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
         )
       )
 
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -812,7 +812,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
             ))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.download({ responseMode: "response-only" })
       const chunks = yield* response.stream.pipe(Stream.runCollect)
 
@@ -835,7 +835,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -846,7 +846,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
             })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.download({ responseMode: "response-only" })
       const chunks = yield* response.stream.pipe(Stream.runCollect)
 
@@ -876,7 +876,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -887,7 +887,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
             )))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.events({ responseMode: "response-only" })
       const chunks = yield* response.stream.pipe(Stream.runCollect)
 
@@ -921,7 +921,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -932,7 +932,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
             })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.events({ responseMode: "response-only" })
       const chunks = yield* response.stream.pipe(Stream.runCollect)
 
@@ -956,7 +956,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -967,7 +967,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
             })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const exit = yield* Effect.exit(client.test.download({ responseMode: "response-only" }))
 
       assert.strictEqual(exit._tag, "Failure")
@@ -993,7 +993,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
         )
       )
 
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -1003,7 +1003,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
             ))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.events({ responseMode: "response-only" })
       const chunks = yield* response.stream.pipe(Stream.runCollect)
       const rendered = Array.from(chunks, (chunk) => textDecoder.decode(chunk))
@@ -1040,7 +1040,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
         )
       )
 
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -1052,7 +1052,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
             ))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const bufferedResponse = yield* client.test.chat({ query: { stream: "false" }, responseMode: "response-only" })
       assert.strictEqual(bufferedResponse.status, 200)
       assert.strictEqual(bufferedResponse.headers["content-type"], "application/json")
@@ -1083,13 +1083,13 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) => handlers.handle("result", () => Effect.succeed({ message: "done" }))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.result({ responseMode: "response-only" })
 
       assert.strictEqual(response.headers["content-type"], "application/json")
@@ -1109,7 +1109,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
           })
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) =>
@@ -1120,7 +1120,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
             })))
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.result({ responseMode: "response-only" })
 
       assert.strictEqual(response.headers["content-type"], "application/json")
@@ -1153,7 +1153,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
         )
       )
 
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "users",
         (handlers) =>
@@ -1174,7 +1174,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
           })
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["users"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["users"]).pipe(Effect.provide(GroupLayer))
       const getUser = yield* client.users.getUser({ params: { id: "user-1" } })
       const createUser = yield* client.users.createUser({ payload: { name: "Grace" } })
 
@@ -1191,12 +1191,12 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
       )
 
       for (const identifier of ["missing", "toString"] as const) {
-        const GroupLive = HttpApiBuilder.group(
+        const GroupLayer = HttpApiBuilder.group(
           Api,
           "users",
           (handlers) => handlers.handle(identifier as "getUser", () => Effect.succeed("missing"))
         )
-        const exit = yield* Effect.exit(Effect.scoped(Layer.build(GroupLive)))
+        const exit = yield* Effect.exit(Effect.scoped(Layer.build(GroupLayer)))
 
         assert.strictEqual(exit._tag, "Failure")
         if (exit._tag === "Failure") {
@@ -1217,7 +1217,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
           HttpApiEndpoint.get("getUser", "/users", { success: Schema.String })
         )
       )
-      const HandleLive = HttpApiBuilder.group(
+      const HandleLayer = HttpApiBuilder.group(
         Api,
         "users",
         (handlers) => {
@@ -1225,7 +1225,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
           return handlers.handle("getUser", () => Effect.succeed("second"))
         }
       )
-      const HandleAllLive = HttpApiBuilder.group(
+      const HandleAllLayer = HttpApiBuilder.group(
         Api,
         "users",
         (handlers) => {
@@ -1234,8 +1234,8 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
         }
       )
 
-      for (const GroupLive of [HandleLive, HandleAllLive]) {
-        const exit = yield* Effect.exit(Effect.scoped(Layer.build(GroupLive)))
+      for (const GroupLayer of [HandleLayer, HandleAllLayer]) {
+        const exit = yield* Effect.exit(Effect.scoped(Layer.build(GroupLayer)))
         assert.strictEqual(exit._tag, "Failure")
         if (exit._tag === "Failure") {
           const error = Cause.squash(exit.cause)
@@ -1267,13 +1267,13 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
           getUser: () => Effect.succeed("own")
         }
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "users",
         (handlers) => handlers.handleAll(implementations)
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["users"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["users"]).pipe(Effect.provide(GroupLayer))
 
       assert.strictEqual(yield* client.users.getUser(), "own")
     }))
@@ -1296,7 +1296,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
         )
       )
 
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "users",
         (handlers) =>
@@ -1309,7 +1309,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
           )
       )
 
-      const client = yield* HttpApiTest.groups(Api, ["users"]).pipe(Effect.provide(GroupLive))
+      const client = yield* HttpApiTest.groups(Api, ["users"]).pipe(Effect.provide(GroupLayer))
       const getUser = yield* client.users.getUser({ params: { id: "user-1" } })
 
       assert.deepStrictEqual(getUser, { id: "user-1", name: "Ada" })
@@ -1350,12 +1350,12 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
           }).middleware(M)
         )
       )
-      const GroupLive = HttpApiBuilder.group(
+      const GroupLayer = HttpApiBuilder.group(
         Api,
         "test",
         (handlers) => handlers.handle("protected", () => Effect.fail(new HandlerFailure({ message: "handler failed" })))
       )
-      const MLive = Layer.succeed(M)({
+      const MLayer = Layer.succeed(M)({
         first: (effect, { credential }) =>
           Redacted.value(credential) === "ok" ? effect : Effect.fail("first unauthorized"),
         second: (effect, { credential }) =>
@@ -1363,8 +1363,8 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
       })
 
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(
-        Effect.provide(GroupLive),
-        Effect.provide(MLive)
+        Effect.provide(GroupLayer),
+        Effect.provide(MLayer)
       )
       const error = yield* Effect.flip(client.test.protected({ headers: { "x-first": "ok" } }))
 

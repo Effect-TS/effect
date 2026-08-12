@@ -184,24 +184,24 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  * import { Effect, Layer, Context } from "effect"
  *
  * class Foo extends Context.Service<Foo, "foo">()("Foo") {
- *   static Live = Layer.succeed(Foo, "foo")
+ *   static layer = Layer.succeed(Foo, "foo")
  * }
  *
  * class Bar extends Context.Service<Bar, "bar">()("Bar") {
- *   static Live = Layer.effect(
+ *   static layer = Layer.effect(
  *     Bar,
  *     Effect.map(Foo, () => "bar" as const)
  *   )
  * }
  *
- * layer(Foo.Live)("layer", (it) => {
+ * layer(Foo.layer)("layer", (it) => {
  *   it.effect("adds context", () =>
  *     Effect.gen(function*() {
  *       const foo = yield* Foo
  *       assert.strictEqual(foo, "foo")
  *     }))
  *
- *   it.layer(Bar.Live)("nested", (it) => {
+ *   it.layer(Bar.layer)("nested", (it) => {
  *     it.effect("adds context", () =>
  *       Effect.gen(function*() {
  *         const foo = yield* Foo
