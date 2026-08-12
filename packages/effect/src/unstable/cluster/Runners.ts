@@ -90,7 +90,8 @@ export class Runners extends Context.Service<Runners, {
   >
 
   /**
-   * Notify a Runner that a message is available, then read replies from storage.
+   * Notify a Runner that a message is available. Persisted messages recover
+   * replies from storage, while volatile messages complete after delivery.
    */
   readonly notify: <R extends Rpc.Any>(
     options: {
