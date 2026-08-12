@@ -235,6 +235,27 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.isTrue(flags.get("child-end"))
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
+  it.effect("parallel child workflows inside an activity", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+
+      const fiber = yield* ParallelParentWorkflow.execute({
+        id: "parallel-parent-1",
+        childCount: 3,
+        concurrency: 3
+      }).pipe(Effect.fork)
+
+      yield* TestClock.adjust(Duration.seconds(2))
+      yield* sharding.pollStorage
+      yield* TestClock.adjust(Duration.seconds(5))
+
+      const poll = yield* Fiber.poll(fiber)
+      assert.strictEqual(poll._tag, "Some")
+      if (poll._tag === "Some") {
+        assert.deepStrictEqual(poll.value, Exit.succeed(["done-0", "done-1", "done-2"]))
+      }
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
   it.effect("routes durable clock wakeups to the workflow shard group", () =>
     Effect.gen(function*() {
       const driver = yield* MessageStorage.MemoryDriver
@@ -693,6 +714,54 @@ const ChildWorkflowLayer = ChildWorkflow.toLayer(Effect.fnUntraced(function*() {
   flags.set("child-end", true)
 }))
 
+const ParallelParentWorkflow = Workflow.make({
+  name: "ParallelParentWorkflow",
+  payload: {
+    id: Schema.String,
+    childCount: Schema.Number,
+    concurrency: Schema.Number
+  },
+  success: Schema.Array(Schema.String),
+  idempotencyKey(payload) {
+    return payload.id
+  }
+})
+
+const ParallelChildWorkflow = Workflow.make({
+  name: "ParallelChildWorkflow",
+  payload: {
+    id: Schema.String,
+    index: Schema.Number
+  },
+  success: Schema.String,
+  idempotencyKey(payload) {
+    return payload.id
+  }
+})
+
+const ParallelParentWorkflowLayer = ParallelParentWorkflow.toLayer(Effect.fnUntraced(function*(payload) {
+  const indices = Array.from({ length: payload.childCount }, (_, i) => i)
+  return yield* Activity.make({
+    name: `parallel-parent-${payload.id}`,
+    success: Schema.Array(Schema.String),
+    error: Schema.Never,
+    execute: Effect.forEach(
+      indices,
+      (index) => ParallelChildWorkflow.execute({ id: `${payload.id}-child-${index}`, index }),
+      { concurrency: payload.concurrency }
+    )
+  })
+}))
+
+const ParallelChildWorkflowLayer = ParallelChildWorkflow.toLayer(Effect.fnUntraced(function*(payload) {
+  yield* DurableClock.sleep({
+    name: `parallel-child-${payload.index}`,
+    duration: "2 seconds",
+    inMemoryThreshold: Duration.zero
+  })
+  return `done-${payload.index}`
+}))
+
 const ShardedClockWorkflow = Workflow.make({
   name: "ShardedClockWorkflow",
   payload: {
@@ -835,6 +904,8 @@ const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(DurableRaceWorkflowLayer),
   Layer.merge(ParentWorkflowLayer),
   Layer.merge(ChildWorkflowLayer),
+  Layer.merge(ParallelParentWorkflowLayer),
+  Layer.merge(ParallelChildWorkflowLayer),
   Layer.merge(ShardedClockWorkflowLayer),
   Layer.merge(DiscardParentWorkflowLayer),
   Layer.merge(DiscardChildWorkflowLayer),

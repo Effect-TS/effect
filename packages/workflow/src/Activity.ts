@@ -13,6 +13,7 @@ import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import type * as Types from "effect/Types"
 import * as DurableDeferred from "./DurableDeferred.js"
+import { CurrentActivityExecution } from "./internal/activity.js"
 import { makeHashDigest } from "./internal/crypto.js"
 import * as Workflow from "./Workflow.js"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
@@ -246,7 +247,7 @@ const makeExecute = Effect.fnUntraced(function*<
   const attempt = yield* CurrentAttempt
   yield* Effect.annotateCurrentSpan({ executionId: instance.executionId })
   const result = yield* Workflow.wrapActivityResult(
-    engine.activityExecute(activity, attempt),
+    Effect.provideService(engine.activityExecute(activity, attempt), CurrentActivityExecution, true),
     (_) => _._tag === "Suspended"
   )
   if (result._tag === "Suspended") {
