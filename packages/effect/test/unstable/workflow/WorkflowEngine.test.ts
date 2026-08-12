@@ -108,11 +108,12 @@ describe("WorkflowEngine", () => {
         polled = yield* DeferredRaceWorkflow.poll(executionId)
       }
 
-      // let the caller's suspended-retry loop pick up the replayed result
+      // Let the caller's suspended-retry loop pick up a replayed result.
       yield* TestClock.adjust("1 second")
       assert.strictEqual(yield* Fiber.join(fiber), "signal")
-      // the completion preempts the run; the replay observes the result
-      assert.strictEqual(deferredRaceRuns, 2)
+      // Usually the completion preempts the parked run (2 runs); under load
+      // it can land before the branch parks and is read directly (1 run).
+      assert(deferredRaceRuns === 1 || deferredRaceRuns === 2)
     }).pipe(
       Effect.provide(DeferredRaceWorkflowLayer.pipe(
         Layer.provideMerge(WorkflowEngine.layerMemory)

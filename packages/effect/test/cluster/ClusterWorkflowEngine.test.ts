@@ -371,6 +371,27 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(yield* Fiber.join(fiber)).toEqual("signal!")
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
+  it.effect("DurableDeferred.raceAll wakes a branch that ran an activity before its await", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      const executionId = yield* PreGateWorkflow.executionId({ id: "pre-gate" })
+      const fiber = yield* PreGateWorkflow.execute({ id: "pre-gate" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      yield* TestClock.adjust(1)
+      yield* TestClock.adjust(1)
+      const token = DurableDeferred.tokenFromExecutionId(PreGate, {
+        workflow: PreGateWorkflow,
+        executionId
+      })
+      yield* DurableDeferred.succeed(PreGate, { token, value: "signal" })
+      yield* sharding.pollStorage
+      yield* TestClock.adjust("1 second")
+
+      expect(yield* Fiber.join(fiber)).toEqual("act:signal")
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
   it.effect("DurableDeferred.raceAll re-runs a multi-await branch once per completion", () =>
     Effect.gen(function*() {
       const flags = yield* Flags
@@ -441,11 +462,13 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         Effect.forkChild({ startImmediately: true })
       )
 
-      // let the race suspend with both gates pending
+      // Wait for the race to suspend with both gates pending.
       yield* TestClock.adjust(1)
-      yield* TestClock.adjust("1 second")
-      const polled = yield* TwoGateWorkflow.poll(executionId)
-      assert(Option.isSome(polled) && polled.value._tag === "Suspended")
+      let polled = yield* TwoGateWorkflow.poll(executionId)
+      while (Option.isNone(polled) || polled.value._tag !== "Suspended") {
+        yield* Effect.yieldNow
+        polled = yield* TwoGateWorkflow.poll(executionId)
+      }
 
       const token = DurableDeferred.tokenFromExecutionId(TwoGateB, {
         workflow: TwoGateWorkflow,
@@ -1117,6 +1140,40 @@ const MappedGateWorkflowLayer = MappedGateWorkflow.toLayer(() =>
   })
 )
 
+const PreGateWorkflow = Workflow.make("PreGateWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const PreGate = DurableDeferred.make("PreGate", {
+  success: Schema.String
+})
+
+const PreGateWorkflowLayer = PreGateWorkflow.toLayer(() =>
+  DurableDeferred.raceAll({
+    name: "pre-gate",
+    success: Schema.String,
+    error: Schema.Never,
+    effects: [
+      Effect.gen(function*() {
+        const a = yield* Activity.make({
+          name: "pre-gate-activity",
+          success: Schema.String,
+          execute: Effect.succeed("act")
+        })
+        const s = yield* DurableDeferred.await(PreGate)
+        return `${a}:${s}`
+      }),
+      Activity.make({
+        name: "pre-gate-slow",
+        success: Schema.String,
+        execute: Effect.sleep("30 seconds").pipe(Effect.as("slow"))
+      })
+    ]
+  })
+)
+
 const TwoStepWorkflow = Workflow.make("TwoStepWorkflow", {
   payload: { id: Schema.String },
   success: Schema.String,
@@ -1363,6 +1420,7 @@ const RaceWorkflowLayers = RaceWorkflowLayer.pipe(
   Layer.merge(BareClockWorkflowLayer),
   Layer.merge(MappedGateWorkflowLayer),
   Layer.merge(TwoStepWorkflowLayer),
+  Layer.merge(PreGateWorkflowLayer),
   Layer.merge(SlowUnwindWorkflowLayer),
   Layer.merge(TwoGateWorkflowLayer)
 )

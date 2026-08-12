@@ -227,9 +227,12 @@ export const into: {
                 exit.cause.reasons,
                 Filter.fromPredicate(Cause.isInterruptReason)
               )
-              const hasInterruptsOnly = interrupts.length === exit.cause.reasons.length
-              if (hasInterruptsOnly && instance.suspended) {
-                parentInstance.suspended = true
+              if (interrupts.length === exit.cause.reasons.length) {
+                // An interrupt-only exit is never a result: the effect was
+                // suspended, preempted or interrupted, so record nothing.
+                if (instance.suspended) {
+                  parentInstance.suspended = true
+                }
                 return
               } else if (interrupts.length > 0) {
                 exit = Exit.failCause(Cause.fromReasons(reasons))

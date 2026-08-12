@@ -762,12 +762,10 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           yield* resume(options.executionId)
         }
         if (options.discard) return
+        // Capture together so a wake that swaps in a replay cannot desync them.
+        const instance = state.instance
         const exit = yield* Fiber.await(state.fiber!)
-        if (
-          Exit.isFailure(exit) &&
-          Cause.hasInterruptsOnly(exit.cause) &&
-          !state.instance.interrupted
-        ) {
+        if (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause) && instance.suspended) {
           // A completion preempted the run; the caller retries into the replay.
           return new Workflow.Suspended({}) as any
         }
