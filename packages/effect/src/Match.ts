@@ -132,6 +132,16 @@ export interface ValueMatcher<in Input, out Filters, out Remaining, out Result, 
  */
 export type Case = When | Not
 
+type PatternKeys<A> = A extends object ? keyof A : never
+
+type PatternGuard<A, P> = P extends
+  | Predicate.Predicate<any>
+  | Predicate.Refinement<any, any>
+  | SafeRefinement<any>
+  | ReadonlyArray<any> ? unknown
+  : P extends object ? { readonly [K in Exclude<keyof P, PatternKeys<A>>]: never }
+  : unknown
+
 /**
  * @category Model
  * @since 1.0.0
@@ -371,7 +381,7 @@ export const when: <
   Ret,
   Fn extends (_: Types.WhenMatch<R, P>) => Ret
 >(
-  pattern: P,
+  pattern: P & PatternGuard<R, P>,
   f: Fn
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret>
@@ -382,7 +392,7 @@ export const when: <
   A | ReturnType<Fn>,
   Pr,
   Ret
-> = internal.when
+> = internal.when as any
 
 /**
  * Matches one of multiple patterns in a single condition.
