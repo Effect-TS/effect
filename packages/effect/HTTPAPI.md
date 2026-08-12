@@ -1855,25 +1855,32 @@ Layer.launch(ApiLive).pipe(NodeRuntime.runMain)
 
 ## Streaming Responses
 
-To stream data to the client over time, return an `HttpServerResponse.stream` from the handler. The stream emits chunks at whatever pace you choose.
+To stream data to the client over time, declare the success schema with one of the streaming constructors:
 
-**Example** (Implementing a Streaming Endpoint)
+- `HttpApiSchema.StreamUint8Array()` streams raw bytes (default content type: `application/octet-stream`)
+- `HttpApiSchema.StreamSse(options)` streams typed Server-Sent Events (default content type: `text/event-stream`)
+
+With a streaming success schema, the handler returns a `Stream` directly, and the derived client resolves to a typed `Stream` on the consuming side. The stream declaration is also rendered in the OpenAPI documentation.
+
+### Streaming Raw Bytes
+
+`HttpApiSchema.StreamUint8Array` declares a binary streaming response. The handler returns a `Stream<Uint8Array>` that emits chunks at whatever pace you choose.
+
+**Example** (Implementing a Binary Streaming Endpoint)
 
 ```ts
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { Effect, Layer, Schedule, Schema, Stream } from "effect"
-import { HttpRouter, HttpServerResponse } from "effect/unstable/http"
+import { Effect, Layer, Schedule, Stream } from "effect"
+import { HttpRouter } from "effect/unstable/http"
 import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
 import { createServer } from "node:http"
 
 const Api = HttpApi.make("myApi").add(
   HttpApiGroup.make("group").add(
     HttpApiEndpoint.get("getStream", "/stream", {
-      success: Schema.String.pipe(
-        HttpApiSchema.asText({
-          contentType: "application/octet-stream"
-        })
-      )
+      // Declare a streaming success response
+      // (default content type: application/octet-stream)
+      success: HttpApiSchema.StreamUint8Array()
     })
   )
 )
@@ -1890,7 +1897,8 @@ const GroupLive = HttpApiBuilder.group(
   (handlers) =>
     handlers.handle(
       "getStream",
-      () => Effect.succeed(HttpServerResponse.stream(stream))
+      // Return the stream directly from the handler
+      () => Effect.succeed(stream)
     )
 )
 
@@ -1910,6 +1918,103 @@ curl 'http://localhost:3000/stream' --no-buffer
 ```
 
 The response will stream data (`a`, `b`, `c`) with a 500ms interval between each item.
+
+### Streaming Server-Sent Events
+
+`HttpApiSchema.StreamSse` declares a Server-Sent Events response. Pass a `data` schema to stream plain values: each stream element is JSON-encoded into the `data` field of an SSE event on the way out, and the derived client decodes it back to the value.
+
+**Example** (Implementing an SSE Endpoint)
+
+```ts
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Effect, Layer, Schedule, Schema, Stream } from "effect"
+import { HttpRouter } from "effect/unstable/http"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
+import { createServer } from "node:http"
+
+const Message = Schema.Struct({
+  text: Schema.String
+})
+
+const Api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.get("getEvents", "/events", {
+      // Each stream element is JSON-encoded into the `data` field of an SSE
+      // event (default content type: text/event-stream)
+      success: HttpApiSchema.StreamSse({ data: Message })
+    })
+  )
+)
+
+const GroupLive = HttpApiBuilder.group(
+  Api,
+  "group",
+  (handlers) =>
+    handlers.handle("getEvents", () =>
+      Effect.succeed(
+        Stream.make({ text: "one" }, { text: "two" }, { text: "three" }).pipe(
+          Stream.schedule(Schedule.spaced("500 millis"))
+        )
+      ))
+)
+
+const ApiLive = HttpApiBuilder.layer(Api).pipe(
+  Layer.provide(GroupLive),
+  HttpRouter.serve,
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+)
+
+Layer.launch(ApiLive).pipe(NodeRuntime.runMain)
+
+// curl 'http://localhost:3000/events' --no-buffer
+// data: {"text":"one"}
+//
+// data: {"text":"two"}
+//
+// data: {"text":"three"}
+```
+
+To control the full event shape instead, pass an `events` schema whose Encoded side matches the SSE wire format: a required `data` string plus optional `id` and `event` fields. The handler then emits whole events.
+
+### Consuming Streams with the Derived Client
+
+For both constructors, calling the endpoint on the derived client resolves to a typed `Stream`:
+
+```ts
+const events = yield * client.group.getEvents()
+// events: Stream<{ readonly text: string }, ...>
+
+yield * Stream.runForEach(events, (message) => Console.log(message.text))
+```
+
+### Typed Stream Failures
+
+`HttpApiSchema.StreamSse` accepts an `error` schema describing typed stream failures. Since the HTTP status is already sent when the stream fails, the failure cannot travel as a normal error response. Instead, the server encodes the full `Cause` into a reserved `effect/httpapi/stream/failure` event, and the derived client decodes that event and fails the stream with the original cause.
+
+**Example** (Declaring a Typed Stream Failure)
+
+```ts
+class StreamError extends Schema.TaggedError<StreamError>()("StreamError", {
+  reason: Schema.String
+}) {}
+
+const Api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.get("getEvents", "/events", {
+      // The handler may return a Stream that fails with StreamError,
+      // and the client's stream fails with StreamError too
+      success: HttpApiSchema.StreamSse({ data: Message, error: StreamError })
+    })
+  )
+)
+```
+
+Things to know:
+
+- Set a custom status or content type with `HttpApiSchema.status(code)` and the `contentType` option, for example `HttpApiSchema.status(206)(HttpApiSchema.StreamUint8Array({ contentType: "application/custom-bytes" }))`.
+- Wrap a stream schema with `HttpApiSchema.WithHeaders` to declare typed response headers (see [Setting Response Headers](#setting-response-headers)). The handler returns `HttpApiSchema.withHeaders({ body, headers })` with the stream as `body`, and the client resolves to the same shape.
+- An endpoint may declare at most one streaming success schema, `HEAD` endpoints cannot declare one, and streaming schemas are not supported in error responses.
+- The `effect/httpapi/stream/failure` event name is reserved: `events` schemas may not declare it, and the client treats such an event as a stream failure only when its `data` decodes to a `Cause`.
 
 # Error Handling
 
