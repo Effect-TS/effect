@@ -1,0 +1,20 @@
+---
+"effect": patch
+---
+
+Bound cluster runner entity residency and storage reads.
+
+`ShardingConfig` gains two knobs:
+
+- `maxResidentEntities` (default `10_000`): the maximum number of entities
+  that can be resident on a runner at the same time. At the cap, the storage
+  read loop stops admitting messages for new entity addresses (they stay in
+  storage until a slot frees up) and volatile sends to new addresses fail with
+  `MailboxFull`. Persisted sends still succeed. `"unbounded"` restores the
+  previous behaviour and can only be set programmatically.
+- `unprocessedMessageBatchSize` (default `1024`): the maximum number of
+  unprocessed messages read from storage in a single poll.
+
+`MessageStorage.unprocessedMessages` accepts an optional
+`{ limit, addresses }` argument, and only claims the messages it actually
+returns.

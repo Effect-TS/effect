@@ -5,12 +5,16 @@ import { Effect, Fiber, FileSystem, Latch, Layer, Option } from "effect"
 import { TestClock } from "effect/testing"
 import {
   Entity,
+  EntityAddress,
+  EntityId,
+  EntityType,
   Envelope,
   Message,
   MessageStorage,
   RunnerHealth,
   Runners,
   RunnerStorage,
+  ShardId,
   Sharding,
   ShardingConfig,
   Snowflake,
@@ -280,6 +284,50 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveRequest(yield* makeRequest())
           messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
           expect(messages).toHaveLength(1)
+        }))
+
+      it.effect("unprocessedMessages honors the limit and claims only returned rows", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const shardId = ShardId.make("default", 1)
+          for (let i = 1; i <= 5; i++) {
+            yield* storage.saveRequest(yield* makeRequest({ payload: { id: i }, entityId: String(i) }))
+          }
+          const limited = yield* storage.unprocessedMessages([shardId], { limit: 3 })
+          expect(limited).toHaveLength(3)
+          expect(limited.map((m: any) => m.envelope.payload.id)).toEqual([1, 2, 3])
+
+          // rows beyond the limit were not claimed and are returned by the
+          // next read
+          const rest = yield* storage.unprocessedMessages([shardId])
+          expect(rest.map((m: any) => m.envelope.payload.id)).toEqual([4, 5])
+        }))
+
+      it.effect("unprocessedMessages filters by address", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const shardId = ShardId.make("default", 1)
+          const address = (entityId: string) =>
+            EntityAddress.make({
+              shardId,
+              entityType: EntityType.make("test"),
+              entityId: EntityId.make(entityId)
+            })
+          for (let i = 1; i <= 4; i++) {
+            yield* storage.saveRequest(yield* makeRequest({ payload: { id: i }, entityId: String(i) }))
+          }
+          const filtered = yield* storage.unprocessedMessages([shardId], {
+            addresses: [address("2"), address("4")]
+          })
+          expect(filtered.map((m: any) => m.envelope.payload.id)).toEqual([2, 4])
+
+          // the filtered read must not claim the other addresses
+          const rest = yield* storage.unprocessedMessages([shardId])
+          expect(rest.map((m: any) => m.envelope.payload.id)).toEqual([1, 3])
         }))
 
       it.effect("unprocessedMessages excludes complete requests", () =>

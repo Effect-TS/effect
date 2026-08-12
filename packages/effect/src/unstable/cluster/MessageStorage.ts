@@ -131,9 +131,15 @@ export class MessageStorage extends Context.Service<MessageStorage, {
    * - Requests that have no `WithExit` replies or no unacknowledged chunk replies
    * - The latest `AckChunk` envelope
    * - All `Interrupt` envelopes for unprocessed requests
+   *
+   * The `limit` option bounds the number of messages returned in a single
+   * read, and the `addresses` option restricts the read to the provided
+   * entity addresses. Only the returned messages are claimed; other messages
+   * stay eligible for later reads.
    */
   readonly unprocessedMessages: (
-    shardIds: Iterable<ShardId.ShardId>
+    shardIds: Iterable<ShardId.ShardId>,
+    options?: UnprocessedOptions | undefined
   ) => Effect.Effect<Array<Message.Incoming<any>>, PersistenceError>
 
   /**
@@ -171,6 +177,23 @@ export class MessageStorage extends Context.Service<MessageStorage, {
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, R>
 }>()("effect/cluster/MessageStorage") {}
+
+/**
+ * Options for reading unprocessed messages.
+ *
+ * **Details**
+ *
+ * `limit` bounds the number of messages returned by a single read, and
+ * `addresses` restricts the read to the provided entity addresses. Storage
+ * implementations only claim the messages they actually return.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type UnprocessedOptions = {
+  readonly limit?: number | undefined
+  readonly addresses?: Iterable<EntityAddress> | undefined
+}
 
 /**
  * Result of saving a request or envelope into message storage.
@@ -349,10 +372,16 @@ export type Encoded = {
    * - Requests that have no `WithExit` replies or no unacknowledged chunk replies
    * - The latest `AckChunk` envelope
    * - All `Interrupt` envelopes for unprocessed requests
+   *
+   * The `limit` option bounds the number of rows returned by a single read,
+   * and the `addresses` option restricts the read to the provided entity
+   * addresses. Only the returned rows are claimed; other rows stay eligible
+   * for later reads.
    */
   readonly unprocessedMessages: (
     shardIds: Arr.NonEmptyArray<string>,
-    now: number
+    now: number,
+    options?: EncodedUnprocessedMessagesOptions | undefined
   ) => Effect.Effect<
     Array<{
       readonly envelope: Envelope.Encoded
@@ -402,6 +431,17 @@ export type Encoded = {
   readonly withTransaction: <A, E, R>(
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, R>
+}
+
+/**
+ * Options for reading encoded unprocessed messages from a storage driver.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type EncodedUnprocessedMessagesOptions = {
+  readonly limit?: number | undefined
+  readonly addresses?: ReadonlyArray<EntityAddress> | undefined
 }
 
 /**
@@ -629,12 +669,18 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       const primaryKey = Envelope.primaryKeyByAddress(options)
       return encoded.requestIdForPrimaryKey(primaryKey)
     },
-    unprocessedMessages(shardIds) {
+    unprocessedMessages(shardIds, options) {
       const storage = this as MessageStorage["Service"]
       const shards = Array.from(shardIds, (id) => id.toString())
       if (!Arr.isArrayNonEmpty(shards)) return Effect.succeed([])
+      let encodedOptions: EncodedUnprocessedMessagesOptions | undefined
+      if (options) {
+        const addresses = options.addresses && Array.from(options.addresses)
+        if (addresses && addresses.length === 0) return Effect.succeed([])
+        encodedOptions = { limit: options.limit, addresses }
+      }
       return Effect.flatMap(
-        Effect.suspend(() => encoded.unprocessedMessages(shards, clock.currentTimeMillisUnsafe())),
+        Effect.suspend(() => encoded.unprocessedMessages(shards, clock.currentTimeMillisUnsafe(), encodedOptions)),
         (messages) => decodeMessages(storage, messages)
       )
     },
@@ -947,18 +993,29 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
       repliesFor: (requestIds) => Effect.sync(() => repliesFor(requestIds)),
       repliesForUnfiltered: (requestIds) =>
         Effect.sync(() => requestIds.flatMap((id) => requests.get(String(id))?.replies ?? [])),
-      unprocessedMessages: (shardIds) =>
+      unprocessedMessages: (shardIds, _now, options) =>
         Effect.sync(() => {
           if (unprocessed.size === 0) return []
           const now = clock.currentTimeMillisUnsafe()
+          const limit = options?.limit ?? Infinity
+          let addressFilter: Set<string> | undefined
+          if (options?.addresses) {
+            addressFilter = new Set(
+              options.addresses.map((address) => `${address.entityType}/${address.entityId}`)
+            )
+          }
           const messages = Arr.empty<{
             envelope: Envelope.Encoded
             lastSentReply: Option.Option<Reply.Encoded>
           }>()
           for (let index = 0; index < journal.length; index++) {
+            if (messages.length >= limit) break
             const envelope = journal[index]
             const shardId = ShardId.make(envelope.address.shardId.group, envelope.address.shardId.id)
             if (!unprocessed.has(envelope as any) || !shardIds.includes(shardId.toString())) {
+              continue
+            }
+            if (addressFilter && !addressFilter.has(`${envelope.address.entityType}/${envelope.address.entityId}`)) {
               continue
             }
             if (envelope._tag === "Request") {

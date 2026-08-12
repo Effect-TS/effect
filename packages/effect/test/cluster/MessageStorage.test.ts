@@ -87,6 +87,42 @@ describe("MessageStorage", () => {
         expect(messages).toHaveLength(0)
       }).pipe(Effect.provide(MemoryLive)))
 
+    it.effect("unprocessedMessages honors the limit option", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        for (let i = 1; i <= 5; i++) {
+          yield* storage.saveRequest(yield* makeRequest({ payload: { id: i }, entityId: String(i) }))
+        }
+        const shardId = ShardId.make("default", 1)
+        const messages = yield* storage.unprocessedMessages([shardId], { limit: 3 })
+        expect(messages).toHaveLength(3)
+        expect(messages.map((m: any) => m.envelope.payload.id)).toEqual([1, 2, 3])
+        const all = yield* storage.unprocessedMessages([shardId])
+        expect(all).toHaveLength(5)
+      }).pipe(Effect.provide(MemoryLive)))
+
+    it.effect("unprocessedMessages filters by address", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        for (let i = 1; i <= 4; i++) {
+          yield* storage.saveRequest(yield* makeRequest({ payload: { id: i }, entityId: String(i) }))
+        }
+        const shardId = ShardId.make("default", 1)
+        const address = (entityId: string) =>
+          EntityAddress.make({
+            shardId,
+            entityType: EntityType.make("test"),
+            entityId: EntityId.make(entityId)
+          })
+        const messages = yield* storage.unprocessedMessages([shardId], {
+          addresses: [address("2"), address("4")]
+        })
+        expect(messages.map((m: any) => m.envelope.payload.id)).toEqual([2, 4])
+        // an empty address filter returns nothing
+        const none = yield* storage.unprocessedMessages([shardId], { addresses: [] })
+        expect(none).toHaveLength(0)
+      }).pipe(Effect.provide(MemoryLive)))
+
     it.effect("repliesFor", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage
@@ -127,6 +163,7 @@ export const GetUserRpc = Rpc.make("GetUser", {
 export const makeRequest = Effect.fnUntraced(function*(options?: {
   readonly rpc?: Rpc.AnyWithProps
   readonly payload?: any
+  readonly entityId?: string
 }) {
   const snowflake = yield* Snowflake.Generator
   const rpc = options?.rpc ?? GetUserRpc
@@ -136,7 +173,7 @@ export const makeRequest = Effect.fnUntraced(function*(options?: {
       address: EntityAddress.make({
         shardId: ShardId.make("default", 1),
         entityType: EntityType.make("test"),
-        entityId: EntityId.make("1")
+        entityId: EntityId.make(options?.entityId ?? "1")
       }),
       tag: rpc._tag,
       payload: options?.payload ?? { id: 123 },

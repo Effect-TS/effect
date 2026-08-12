@@ -372,9 +372,48 @@ export const make: (options?: {
     orElse: () => sql.literal("FOR UPDATE")
   })
 
+  const emptyFragment = sql.literal("")
+  // mssql only limits with OFFSET/FETCH, which requires the ORDER BY that
+  // both queries already have
+  const limitFragment = sql.onDialectOrElse({
+    mssql: () => (limit: number) => sql.literal(`OFFSET 0 ROWS FETCH NEXT ${Math.floor(limit)} ROWS ONLY`),
+    orElse: () => (limit: number) => sql.literal(`LIMIT ${Math.floor(limit)}`)
+  })
+  const unprocessedFilters = (options?: MessageStorage.EncodedUnprocessedMessagesOptions | undefined) => {
+    let addressFilter = emptyFragment
+    if (options?.addresses !== undefined) {
+      const idsByType = new Map<string, Array<string>>()
+      for (const address of options.addresses) {
+        let ids = idsByType.get(address.entityType)
+        if (ids === undefined) {
+          ids = []
+          idsByType.set(address.entityType, ids)
+        }
+        ids.push(address.entityId)
+      }
+      addressFilter = sql`AND (${
+        sql.or(Array.from(idsByType, ([entityType, entityIds]) =>
+          sql.and([
+            sql`m.entity_type = ${entityType}`,
+            sql.in("m.entity_id", entityIds)
+          ])))
+      })`
+    }
+    return {
+      addressFilter,
+      limit: options?.limit !== undefined ? limitFragment(options.limit) : emptyFragment
+    }
+  }
+
   const getUnprocessedMessages = sql.onDialectOrElse({
-    pg: () => (shardIds: ReadonlyArray<string>, now: number) =>
-      sql<MessageJoinRow>`
+    pg: () =>
+    (
+      shardIds: ReadonlyArray<string>,
+      now: number,
+      options?: MessageStorage.EncodedUnprocessedMessagesOptions | undefined
+    ) => {
+      const filters = unprocessedFilters(options)
+      return sql<MessageJoinRow>`
         WITH messages AS (
           UPDATE ${messagesTableSql} m
           SET last_read = ${sqlNow}
@@ -382,6 +421,7 @@ export const make: (options?: {
             SELECT m.*
             FROM ${messagesTableSql} m
             WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
+            ${filters.addressFilter}
             AND NOT EXISTS (
               SELECT 1 FROM ${repliesTableSql}
               WHERE request_id = m.request_id
@@ -390,6 +430,8 @@ export const make: (options?: {
             AND m.processed = ${sqlFalse}
             AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
             AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
+            ORDER BY m.rowid ASC
+            ${filters.limit}
             FOR UPDATE
           ) AS ids
           LEFT JOIN ${repliesTableSql} r ON r.id = ids.last_reply_id
@@ -397,13 +439,21 @@ export const make: (options?: {
           RETURNING ids.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
         )
         SELECT * FROM messages ORDER BY rowid ASC
-      `,
-    orElse: () => (shardIds: ReadonlyArray<string>, now: number) =>
-      sql<MessageJoinRow>`
+      `
+    },
+    orElse: () =>
+    (
+      shardIds: ReadonlyArray<string>,
+      now: number,
+      options?: MessageStorage.EncodedUnprocessedMessagesOptions | undefined
+    ) => {
+      const filters = unprocessedFilters(options)
+      return sql<MessageJoinRow>`
         SELECT m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
         FROM ${messagesTableSql} m
         LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
         WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
+        ${filters.addressFilter}
         AND NOT EXISTS (
           SELECT 1 FROM ${repliesTableSql}
           WHERE request_id = m.request_id
@@ -413,6 +463,7 @@ export const make: (options?: {
         AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
         AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
         ORDER BY m.rowid ASC
+        ${filters.limit}
         ${forUpdate}
       `.unprepared.pipe(
         Effect.tap((rows) => {
@@ -427,6 +478,7 @@ export const make: (options?: {
         }),
         sql.withTransaction
       )
+    }
   })
 
   return yield* MessageStorage.makeEncoded({
@@ -579,8 +631,8 @@ export const make: (options?: {
       ),
 
     unprocessedMessages: Effect.fnUntraced(
-      function*(shardIds, now) {
-        const rows = yield* getUnprocessedMessages(shardIds, now)
+      function*(shardIds, now, options) {
+        const rows = yield* getUnprocessedMessages(shardIds, now, options)
         if (rows.length === 0) {
           return []
         }
