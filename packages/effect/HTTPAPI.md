@@ -1370,7 +1370,7 @@ Layer.launch(ApiLive).pipe(NodeRuntime.runMain)
 
 To receive large or continuous data from the client, register the endpoint with `.handleRaw`, which opts out of automatic payload decoding and exposes the raw `HttpServerRequest`. The request body is then available as a `Stream` of `Uint8Array` chunks through `request.stream`, so the handler can consume it incrementally instead of buffering it in memory.
 
-The payload schema still describes the endpoint in the generated documentation, but with `.handleRaw` the handler decides how the body is consumed.
+The payload schema still describes the endpoint in the generated documentation, but with `.handleRaw` the handler decides how the body is consumed. Note that the declared content type is no longer enforced at runtime: requests with a different `Content-Type` header are not rejected with `415`, so any such validation is up to the handler.
 
 **Example** (Handling Streaming Requests)
 
@@ -1401,10 +1401,11 @@ const GroupLive = HttpApiBuilder.group(
     handlers.handleRaw("acceptStream", (ctx) =>
       // Consume the request body as a stream of Uint8Array chunks
       ctx.request.stream.pipe(
-        // Decode the chunks into strings
-        Stream.decodeText,
-        // Collect the stream into a single string
-        Stream.mkString,
+        // Fold over the chunks as they arrive, without buffering the body
+        Stream.runFold(() => 0, (total, chunk) => total + chunk.length),
+        Effect.map((total) => `received ${total} bytes`),
+        // `request.stream` fails with `HttpServerError`, which the endpoint
+        // does not declare, so treat it as a defect
         Effect.orDie
       ))
 )
@@ -1421,8 +1422,8 @@ Layer.launch(ApiLive).pipe(NodeRuntime.runMain)
 You can test the streaming request using `curl` or any tool that supports sending binary data. For example:
 
 ```sh
-echo "abc" | curl -X POST 'http://localhost:3000/stream' --data-binary @- -H "Content-Type: application/octet-stream"
-# Output: abc
+printf 'abc' | curl -X POST 'http://localhost:3000/stream' --data-binary @- -H "Content-Type: application/octet-stream"
+# Output: "received 3 bytes"
 ```
 
 # Response
