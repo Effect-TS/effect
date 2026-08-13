@@ -85,9 +85,9 @@ const RaceReplayWorkflow = Workflow.make("ClusterIntegrationRaceReplay", {
   idempotencyKey: ({ id }) => id
 })
 
-let raceReplayEntered = Latch.makeUnsafe()
+const raceReplayEnters = new Map<string, number>()
 
-const RaceReplayWorkflowLayer = RaceReplayWorkflow.toLayer(() =>
+const RaceReplayWorkflowLayer = RaceReplayWorkflow.toLayer(({ id }) =>
   Effect.gen(function*() {
     const winner = yield* DurableDeferred.raceAll({
       name: "ClusterIntegrationRaceReplay",
@@ -95,7 +95,9 @@ const RaceReplayWorkflowLayer = RaceReplayWorkflow.toLayer(() =>
       error: Schema.Never,
       effects: [
         DurableDeferred.await(RaceReplayGate),
-        Effect.sync(() => raceReplayEntered.openUnsafe()).pipe(Effect.andThen(Effect.never))
+        Effect.sync(() => raceReplayEnters.set(id, (raceReplayEnters.get(id) ?? 0) + 1)).pipe(
+          Effect.andThen(Effect.never)
+        )
       ]
     })
     const tail = yield* DurableDeferred.await(RaceReplayTail)
@@ -485,12 +487,14 @@ describe("cluster workflow integration", () => {
     it.live(`${backend}: wakes a DurableDeferred raceAll and replays the winner after owner death`, () =>
       Effect.gen(function*() {
         const id = `${backend}-race-replay`
-        raceReplayEntered = Latch.makeUnsafe()
         const cluster = yield* make({ backend, entities })
         yield* cluster.start(3)
         yield* cluster.waitForStableAssignments()
         const executionId = yield* withWorkflow(cluster, RaceReplayWorkflow.execute({ id }, { discard: true }))
-        yield* cluster.waitUntil("The durable race did not start", Effect.as(raceReplayEntered.await, true))
+        yield* cluster.waitUntil(
+          "The durable race did not start",
+          Effect.sync(() => (raceReplayEnters.get(id) ?? 0) > 0)
+        )
 
         const raceToken = DurableDeferred.tokenFromExecutionId(RaceReplayGate, {
           workflow: RaceReplayWorkflow,
@@ -504,6 +508,7 @@ describe("cluster workflow integration", () => {
           })
         )
         yield* waitForSuspended(cluster, RaceReplayWorkflow, executionId)
+        const entriesBeforeKill = raceReplayEnters.get(id)
 
         const owner = workflowOwner(cluster, executionId)
         assert.isDefined(owner)
@@ -524,6 +529,7 @@ describe("cluster workflow integration", () => {
         const result = yield* waitForComplete(cluster, RaceReplayWorkflow, executionId)
 
         assert.deepStrictEqual(result.exit, Exit.succeed("winner:after-owner-death"))
+        assert.strictEqual(raceReplayEnters.get(id), entriesBeforeKill)
       }))
 
     it.live(`${backend}: runs compensation and SuspendOnFailure after the owner is lost`, () =>
@@ -592,10 +598,7 @@ describe("cluster workflow integration", () => {
           "SuspendOnFailure did not run after the workflow owner was lost",
           Effect.sync(() => suspendFailures.has(suspendId))
         )
-
-        const result = yield* withWorkflow(cluster, SuspendFailureWorkflow.poll(suspendExecutionId))
-        assert(Option.isSome(result))
-        assert.strictEqual(result.value._tag, "Suspended")
+        yield* waitForSuspended(cluster, SuspendFailureWorkflow, suspendExecutionId)
       }))
 
     it.live(`${backend}: accepts a late durable-race completion across the suspend commit`, () =>
@@ -630,10 +633,8 @@ describe("cluster workflow integration", () => {
         assert.strictEqual(completedBy, `${controlOwner.address.host}:${controlOwner.address.port}`)
 
         const killFiber = yield* cluster.kill(owner!).pipe(Effect.forkChild({ startImmediately: true }))
-        yield* cluster.waitUntil(
-          "The workflow owner was not killed during the suspend commit",
-          Effect.sync(() => owner!.state() === "killed")
-        )
+        // The uninterruptible ensuring finalizer holds Scope.close here until
+        // the commit latch opens, keeping the owner blocked mid-commit.
         raceBoundaryCommit.openUnsafe()
         yield* Fiber.join(killFiber)
         yield* cluster.waitForStableAssignments()
