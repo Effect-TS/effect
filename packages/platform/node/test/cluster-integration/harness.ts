@@ -22,12 +22,13 @@ import {
 import type { Rpc } from "effect/unstable/rpc"
 import { RpcSerialization } from "effect/unstable/rpc"
 import * as SocketServer from "effect/unstable/socket/SocketServer"
-import { SqlClient } from "effect/unstable/sql"
+import { SqlClient, type SqlConnection, SqlError } from "effect/unstable/sql"
 import { WorkflowEngine } from "effect/unstable/workflow"
 import { inject } from "vitest"
 
 export type Backend = "mysql" | "pg"
 export type LockMode = "advisory" | "row"
+export type LockFaultMode = "blackhole" | "stuck" | "fail" | "hangRelease" | "clear"
 
 export interface ClusterRunner {
   readonly address: RunnerAddress.RunnerAddress
@@ -82,6 +83,7 @@ interface MessageRow {
 
 interface RunnerEntry extends ClusterRunner {
   readonly controller: ReturnType<typeof makeRunnerStorageController>
+  readonly lockFault: ReturnType<typeof makeLockFaultController>
   readonly scope: Scope.Closeable
   setState(state: ReturnType<ClusterRunner["state"]>): void
 }
@@ -95,6 +97,95 @@ const clusterConfig = {
 } as const
 
 let nextCluster = 0
+
+interface LockSession {
+  fault: "blackhole" | "fail" | undefined
+}
+
+const makeLockFaultController = (sql: SqlClient.SqlClient) => {
+  const releaseGate = Latch.makeUnsafe(true)
+  let persistentFault: "stuck" | "hangRelease" | undefined
+  let currentSession: LockSession | undefined
+
+  const wrapConnection = (
+    connection: SqlConnection.Connection,
+    session: LockSession
+  ): SqlConnection.Connection => {
+    const execute = <A, E extends SqlError.SqlError, R>(sql: string, effect: Effect.Effect<A, E, R>) =>
+      Effect.suspend((): Effect.Effect<A, E | SqlError.SqlError, R> => {
+        // Let scope cleanup release advisory locks even when the simulated
+        // operational connection is stuck. `hangRelease` blocks teardown with
+        // the separate gate below, after the database lock has been dropped.
+        if (sql.includes("pg_advisory_unlock_all") || sql.includes("RELEASE_ALL_LOCKS")) return effect
+        const mode = session.fault ?? persistentFault
+        if (mode === "fail") {
+          return Effect.fail(
+            new SqlError.SqlError({
+              reason: new SqlError.ConnectionError({ cause: new Error("lock connection lost") })
+            })
+          )
+        }
+        if (mode === "blackhole") {
+          return Effect.never
+        }
+        if (mode === "stuck" || mode === "hangRelease") {
+          return Effect.never
+        }
+        return effect
+      })
+    return {
+      ...connection,
+      execute: (...args) => execute(args[0], connection.execute(...args)),
+      executeRaw: (...args) => execute(args[0], connection.executeRaw(...args)),
+      executeValues: (...args) => execute(args[0], connection.executeValues(...args)),
+      executeValuesUnprepared: (...args) => execute(args[0], connection.executeValuesUnprepared(...args)),
+      executeUnprepared: (...args) => execute(args[0], connection.executeUnprepared(...args))
+    }
+  }
+
+  const transformFreeSql = sql.withoutTransforms()
+  const client: SqlClient.SqlClient = new Proxy(transformFreeSql, {
+    get(target, property, receiver) {
+      if (property === "reserve") {
+        return Effect.gen(function*() {
+          const session: LockSession = { fault: undefined }
+          currentSession = session
+          yield* Effect.addFinalizer(() =>
+            Effect.uninterruptible(
+              Effect.suspend(() => persistentFault === "hangRelease" ? releaseGate.await : Effect.void)
+            )
+          )
+          return wrapConnection(yield* target.reserve, session)
+        })
+      }
+      if (property === "withoutTransforms") {
+        return () => client
+      }
+      return Reflect.get(target, property, receiver)
+    }
+  })
+
+  const set = (mode: LockFaultMode) =>
+    Effect.sync(() => {
+      if (mode === "clear") {
+        persistentFault = undefined
+        if (currentSession !== undefined) currentSession.fault = undefined
+        releaseGate.openUnsafe()
+      } else if (mode === "blackhole" || mode === "fail") {
+        if (currentSession === undefined) throw new Error("Runner has no reserved lock connection")
+        persistentFault = undefined
+        releaseGate.openUnsafe()
+        currentSession.fault = mode
+      } else {
+        persistentFault = mode
+        if (currentSession !== undefined) currentSession.fault = undefined
+        if (mode === "hangRelease") releaseGate.closeUnsafe()
+        else releaseGate.openUnsafe()
+      }
+    })
+
+  return { client, set }
+}
 
 const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Service"]) => {
   const gate = Latch.makeUnsafe(true)
@@ -214,13 +305,14 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
 
   const makeRunnerStorage = Effect.fnUntraced(function*(
     scope: Scope.Closeable,
-    storageConfig: HarnessConfig = config
+    storageConfig: HarnessConfig = config,
+    storageDatabase: Context.Context<SqlClient.SqlClient> = database
   ) {
     return yield* SqlRunnerStorage.layerWith({ prefix }).pipe(
       Layer.provide(ShardingConfig.layer(storageConfig)),
       Layer.orDie,
       Layer.buildWithScope(scope),
-      Effect.provide(database)
+      Effect.provide(storageDatabase)
     )
   })
 
@@ -255,7 +347,10 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
       return yield* Effect.die("Expected a TCP socket server")
     }
     const address = RunnerAddress.make("127.0.0.1", socketServer.address.port)
-    const rawStorageContext = yield* makeRunnerStorage(scope, runnerConfig)
+    const lockFault = makeLockFaultController(Context.get(database, SqlClient.SqlClient))
+    const runnerDatabase = Context.add(database, SqlClient.SqlClient, lockFault.client)
+    const rawStorageContext = yield* makeRunnerStorage(scope, runnerConfig, runnerDatabase)
+    yield* Scope.addFinalizer(scope, lockFault.set("clear"))
     const controller = makeRunnerStorageController(Context.get(rawStorageContext, RunnerStorage.RunnerStorage))
     const storage = Context.make(RunnerStorage.RunnerStorage, controller.controlled)
     const context = yield* (options.runnerLayer ?? socketRunnerLayer)(
@@ -273,6 +368,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
       address,
       controller,
       index,
+      lockFault,
       shardGroups: runnerConfig.assignedShardGroups ?? ShardingConfig.defaults.assignedShardGroups,
       scope,
       setState(next) {
@@ -316,6 +412,8 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     entry.setState("frozen")
     yield* entry.controller.freeze
   })
+
+  const faultLock = (runner: ClusterRunner, mode: LockFaultMode) => entryFor(runner).lockFault.set(mode)
 
   const assignmentMap = () => {
     const assignments: Record<string, ReadonlyArray<string>> = {}
@@ -447,6 +545,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     clientSharding,
     diagnostics,
     failedMessageCount: Effect.map(messageCounts(), (counts) => counts.failed),
+    faultLock,
     freeze,
     getClient,
     kill,
