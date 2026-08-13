@@ -45,24 +45,7 @@ const requireCapability = (
     ? Effect.void
     : Effect.fail(unsupported(operation, `Client did not advertise the ${capability} capability`))
 
-const projectCapabilities = (
-  capabilities: McpCore.CanonicalServerCapabilities
-): typeof McpSchema.ServerCapabilities.Type => ({
-  experimental: capabilities.experimental,
-  logging: capabilities.logging ? {} : undefined,
-  completions: capabilities.completions ? {} : undefined,
-  prompts: capabilities.prompts,
-  resources: capabilities.resources,
-  tools: capabilities.tools
-})
-
-const projectContent: (
-  content: typeof PublicMcpSchema.ContentBlock.Type
-) => Effect.Effect<
-  typeof McpSchema.PromptOrToolContent.Type,
-  McpCore.UnsupportedByProtocol
-> = Effect.fnUntraced(function*(content) {
-  // Projection is one-way into the shapes supported by this dated wire schema.
+const projectContent = Effect.fnUntraced(function*(content: typeof PublicMcpSchema.ContentBlock.Type) {
   const projected = Match.value(content).pipe(
     Match.when({ type: "text" }, (content) => ({
       ...content,
@@ -143,7 +126,14 @@ export const protocol = McpProtocol.make({
           Effect.map((result) =>
             McpSchema.InitializeResult.make({
               protocolVersion: McpSchema.protocolVersion,
-              capabilities: projectCapabilities(result.capabilities),
+              capabilities: ({
+                experimental: result.capabilities.experimental,
+                logging: result.capabilities.logging ? {} : undefined,
+                completions: result.capabilities.completions ? {} : undefined,
+                prompts: result.capabilities.prompts,
+                resources: result.capabilities.resources,
+                tools: result.capabilities.tools
+              }),
               serverInfo: result.serverInfo,
               instructions: result.instructions
             })
@@ -200,17 +190,16 @@ export const protocol = McpProtocol.make({
             })
           )
         ),
-      "resources/read": ({ uri }) =>
-        Effect.gen(function*() {
-          const request = yield* PublicMcpSchema.McpServerClient
-          const result = yield* core.resources.read(uri, McpProtocol.invocationFromClient(request)).pipe(
-            Effect.mapError(McpProtocol.ProtocolError.fromFeature)
-          )
-          return McpSchema.ReadResourceResult.make({
-            contents: result.contents.map(projectResourceContents),
-            _meta: result._meta
-          })
-        }),
+      "resources/read": Effect.fnUntraced(function*({ uri }) {
+        const request = yield* PublicMcpSchema.McpServerClient
+        const result = yield* core.resources.read(uri, McpProtocol.invocationFromClient(request)).pipe(
+          Effect.mapError(McpProtocol.ProtocolError.fromFeature)
+        )
+        return McpSchema.ReadResourceResult.make({
+          contents: result.contents.map(projectResourceContents),
+          _meta: result._meta
+        })
+      }),
       "resources/subscribe": ({ uri }, { client, headers }) =>
         lifecycle.subscribe(uri, client.id, headers).pipe(Effect.as({})),
       "resources/unsubscribe": ({ uri }, { client, headers }) =>
@@ -232,116 +221,114 @@ export const protocol = McpProtocol.make({
               })
             )
           ),
-      "prompts/get": ({ arguments: args, name }) =>
-        Effect.gen(function*() {
-          const request = yield* PublicMcpSchema.McpServerClient
-          const result = yield* core.prompts.get(name, args ?? {}, McpProtocol.invocationFromClient(request)).pipe(
-            Effect.mapError(McpProtocol.ProtocolError.fromFeature)
-          )
-          const messages = yield* Effect.forEach(result.messages, (message) =>
-            projectContent(message.content).pipe(
-              Effect.map((content) => ({ role: message.role, content })),
-              Effect.mapError(McpProtocol.ProtocolError.fromTool)
-            ))
-          return McpSchema.GetPromptResult.make({
-            description: result.description,
-            messages,
-            _meta: result._meta
-          })
-        }),
-      "completion/complete": (completeRequest) =>
-        Effect.gen(function*() {
-          const request = yield* PublicMcpSchema.McpServerClient
-          const result = yield* core.completions.complete({
-            reference: completeRequest.ref.type === "ref/prompt"
-              ? { type: "prompt", name: completeRequest.ref.name }
-              : { type: "resourceTemplate", uriTemplate: completeRequest.ref.uri },
-            argument: completeRequest.argument,
-            metadata: completeRequest._meta
-          }, McpProtocol.invocationFromClient(request)).pipe(Effect.mapError(McpProtocol.ProtocolError.fromFeature))
-          return McpSchema.CompleteResult.make({
-            completion: {
-              values: Array.from(result.values),
-              total: result.total,
-              hasMore: result.hasMore
-            },
-            _meta: result.metadata
-          })
-        }),
-      "tools/list": () =>
-        Effect.gen(function*() {
-          const request = yield* PublicMcpSchema.McpServerClient
-          const tools = yield* core.tools.list(McpProtocol.profileFromClient(request))
-          return McpSchema.ListToolsResult.make({
-            tools: tools.map((tool) =>
-              McpSchema.Tool.make({
-                name: tool.name,
-                description: tool.description,
-                inputSchema: tool.inputSchema,
-                annotations: tool.title === undefined && tool.annotations === undefined
-                  ? undefined
-                  : McpSchema.ToolAnnotations.make({
-                    ...tool.annotations,
-                    title: tool.title
-                  })
-              })
-            )
-          })
-        }),
-      "tools/call": (call) =>
-        Effect.gen(function*() {
-          const request = yield* PublicMcpSchema.McpServerClient
-          const result = yield* core.tools.call(
-            { ...call, arguments: call.arguments ?? {} },
-            McpProtocol.invocationFromClient(request)
-          ).pipe(
+      "prompts/get": Effect.fnUntraced(function*({ arguments: args, name }) {
+        const request = yield* PublicMcpSchema.McpServerClient
+        const result = yield* core.prompts.get(name, args ?? {}, McpProtocol.invocationFromClient(request)).pipe(
+          Effect.mapError(McpProtocol.ProtocolError.fromFeature)
+        )
+        const messages = yield* Effect.forEach(result.messages, (message) =>
+          projectContent(message.content).pipe(
+            Effect.map((content) => ({ role: message.role, content })),
             Effect.mapError(McpProtocol.ProtocolError.fromTool)
-          )
-          const content = yield* Effect.forEach(result.content, projectContent).pipe(
-            Effect.mapError(McpProtocol.ProtocolError.fromTool)
-          )
-          return McpSchema.CallToolResult.make({
-            content,
-            isError: result.isError,
-            _meta: result._meta
-          })
+          ))
+        return McpSchema.GetPromptResult.make({
+          description: result.description,
+          messages,
+          _meta: result._meta
         })
+      }),
+      "completion/complete": Effect.fnUntraced(function*(completeRequest) {
+        const request = yield* PublicMcpSchema.McpServerClient
+        const result = yield* core.completions.complete({
+          reference: completeRequest.ref.type === "ref/prompt"
+            ? { type: "prompt", name: completeRequest.ref.name }
+            : { type: "resourceTemplate", uriTemplate: completeRequest.ref.uri },
+          argument: completeRequest.argument,
+          metadata: completeRequest._meta
+        }, McpProtocol.invocationFromClient(request)).pipe(Effect.mapError(McpProtocol.ProtocolError.fromFeature))
+        return McpSchema.CompleteResult.make({
+          completion: {
+            values: Array.from(result.values),
+            total: result.total,
+            hasMore: result.hasMore
+          },
+          _meta: result.metadata
+        })
+      }),
+      "tools/list": Effect.fnUntraced(function*() {
+        const request = yield* PublicMcpSchema.McpServerClient
+        const tools = yield* core.tools.list(McpProtocol.profileFromClient(request))
+        return McpSchema.ListToolsResult.make({
+          tools: tools.map((tool) =>
+            McpSchema.Tool.make({
+              name: tool.name,
+              description: tool.description,
+              inputSchema: tool.inputSchema,
+              annotations: tool.title === undefined && tool.annotations === undefined
+                ? undefined
+                : McpSchema.ToolAnnotations.make({
+                  ...tool.annotations,
+                  title: tool.title
+                })
+            })
+          )
+        })
+      }),
+      "tools/call": Effect.fnUntraced(function*(call) {
+        const request = yield* PublicMcpSchema.McpServerClient
+        const result = yield* core.tools.call(
+          { ...call, arguments: call.arguments ?? {} },
+          McpProtocol.invocationFromClient(request)
+        ).pipe(
+          Effect.mapError(McpProtocol.ProtocolError.fromTool)
+        )
+        const content = yield* Effect.forEach(result.content, projectContent).pipe(
+          Effect.mapError(McpProtocol.ProtocolError.fromTool)
+        )
+        return McpSchema.CallToolResult.make({
+          content,
+          isError: result.isError,
+          _meta: result._meta
+        })
+      })
     }),
   toReverseClient: (profile, client) => ({
-    listRoots: (request) =>
-      Effect.gen(function*() {
-        yield* requireCapability(profile, "roots/list", "roots")
-        const wireRequest = yield* McpProtocol.transcode(
-          PublicMcpSchema.ListRoots.payloadSchema,
-          McpSchema.ListRoots.payloadSchema,
-          request
-        ).pipe(
-          Effect.mapError(() => unsupported("roots/list", "Request is not representable by this protocol"))
+    listRoots: Effect.fnUntraced(function*(request) {
+      yield* requireCapability(profile, "roots/list", "roots")
+      const wireRequest = yield* McpProtocol.transcode(
+        PublicMcpSchema.ListRoots.payloadSchema,
+        McpSchema.ListRoots.payloadSchema,
+        request
+      ).pipe(
+        Effect.mapError(() => unsupported("roots/list", "Request is not representable by this protocol"))
+      )
+      const { roots } = yield* client["roots/list"](wireRequest).pipe(
+        Effect.mapError(McpProtocol.reverseError("roots/list"))
+      )
+      return new PublicMcpSchema.ListRootsResult({ roots })
+    }),
+    createMessage: Effect.fnUntraced(function*(request) {
+      yield* requireCapability(profile, "sampling/createMessage", "sampling")
+      const wireRequest = yield* McpProtocol.transcode(
+        PublicMcpSchema.CreateMessage.payloadSchema,
+        McpSchema.CreateMessage.payloadSchema,
+        request
+      ).pipe(
+        Effect.mapError(() => unsupported("sampling/createMessage", "Request is not representable by this protocol"))
+      )
+      const result = yield* client["sampling/createMessage"](wireRequest).pipe(
+        Effect.mapError(McpProtocol.reverseError("sampling/createMessage"))
+      )
+      return yield* McpProtocol.transcode(
+        McpSchema.CreateMessage.successSchema,
+        PublicMcpSchema.CreateMessage.successSchema,
+        result
+      ).pipe(
+        Effect.mapError(() =>
+          unsupported("sampling/createMessage", "Response is not representable by the canonical model")
         )
-        const result = yield* client["roots/list"](wireRequest)
-        return new PublicMcpSchema.ListRootsResult({ roots: result.roots })
-      }).pipe(Effect.mapError(McpProtocol.reverseError("roots/list"))),
-    createMessage: (request) =>
-      Effect.gen(function*() {
-        yield* requireCapability(profile, "sampling/createMessage", "sampling")
-        const wireRequest = yield* McpProtocol.transcode(
-          PublicMcpSchema.CreateMessage.payloadSchema,
-          McpSchema.CreateMessage.payloadSchema,
-          request
-        ).pipe(
-          Effect.mapError(() => unsupported("sampling/createMessage", "Request is not representable by this protocol"))
-        )
-        const result = yield* client["sampling/createMessage"](wireRequest)
-        return yield* McpProtocol.transcode(
-          McpSchema.CreateMessage.successSchema,
-          PublicMcpSchema.CreateMessage.successSchema,
-          result
-        ).pipe(
-          Effect.mapError(() =>
-            unsupported("sampling/createMessage", "Response is not representable by the canonical model")
-          )
-        )
-      }).pipe(Effect.mapError(McpProtocol.reverseError("sampling/createMessage"))),
+      )
+    }),
     elicit: () =>
       Effect.fail(unsupported("elicitation/create", "Elicitation was introduced after this protocol revision"))
   }),

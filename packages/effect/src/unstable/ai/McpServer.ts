@@ -2224,42 +2224,39 @@ const layerHandlers = (serverInfo: {
               })
             }
           ),
-          setLogLevel: (level, clientId, headers) =>
-            Effect.sync(() => {
-              const session = getClientSession(options.sessions, clientId, headers)
-              if (session === undefined) {
-                return
-              }
-              session.logLevel = { _tag: "Mcp", level }
-            }),
-          subscribe: (uri, clientId, headers) =>
-            Effect.gen(function*() {
-              const subscriptions = getClientSession(options.sessions, clientId, headers)?.resourceSubscriptions
-              if (subscriptions === undefined) {
-                return yield* new McpProtocolInternal.ProtocolError({
-                  code: McpSchema.METHOD_NOT_FOUND_ERROR_CODE,
-                  message: "Resource subscriptions are not supported"
-                })
-              }
-              subscriptions.add(uri)
-            }),
-          unsubscribe: (uri, clientId, headers) =>
-            Effect.gen(function*() {
-              const subscriptions = getClientSession(options.sessions, clientId, headers)?.resourceSubscriptions
-              if (subscriptions === undefined) {
-                return yield* new McpProtocolInternal.ProtocolError({
-                  code: McpSchema.METHOD_NOT_FOUND_ERROR_CODE,
-                  message: "Resource subscriptions are not supported"
-                })
-              }
-              subscriptions.delete(uri)
-            }),
-          clientNotification: (notification, clientId) =>
-            notification._tag === "Initialized"
-              ? Effect.sync(() => {
-                server.initializedClients.add(clientId)
+          setLogLevel: Effect.fnUntraced(function*(level, clientId, headers) {
+            const session = getClientSession(options.sessions, clientId, headers)
+            if (session === undefined) {
+              return
+            }
+            session.logLevel = { _tag: "Mcp", level }
+          }),
+          subscribe: Effect.fnUntraced(function*(uri, clientId, headers) {
+            const subscriptions = getClientSession(options.sessions, clientId, headers)?.resourceSubscriptions
+            if (subscriptions === undefined) {
+              return yield* new McpProtocolInternal.ProtocolError({
+                code: McpSchema.METHOD_NOT_FOUND_ERROR_CODE,
+                message: "Resource subscriptions are not supported"
               })
-              : Effect.void
+            }
+            subscriptions.add(uri)
+          }),
+          unsubscribe: Effect.fnUntraced(function*(uri, clientId, headers) {
+            const subscriptions = getClientSession(options.sessions, clientId, headers)?.resourceSubscriptions
+            if (subscriptions === undefined) {
+              return yield* new McpProtocolInternal.ProtocolError({
+                code: McpSchema.METHOD_NOT_FOUND_ERROR_CODE,
+                message: "Resource subscriptions are not supported"
+              })
+            }
+            subscriptions.delete(uri)
+          }),
+          clientNotification: Effect.fnUntraced(function*(notification, clientId) {
+            if (notification._tag === "Initialized") {
+              server.initializedClients.add(clientId)
+            }
+            return
+          })
         }
         yield* protocol.installHandlers(
           internalCore,
