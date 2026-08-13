@@ -245,6 +245,9 @@ export const toString = <E = Cause.UnknownError>(
       string += chunk
       bytes += Buffer.byteLength(chunk)
       if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
+        if ("closed" in stream && !stream.closed) {
+          stream.destroy()
+        }
         resume(Effect.fail(onError(new Error("maxBytes exceeded")) as E))
       }
     })
@@ -296,6 +299,9 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
       buffers.push(chunk)
       bytes += chunk.length
       if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
+        if ("closed" in stream && !stream.closed) {
+          stream.destroy()
+        }
         resume(Effect.fail(onError(new Error("maxBytes exceeded")) as E))
       }
     })
