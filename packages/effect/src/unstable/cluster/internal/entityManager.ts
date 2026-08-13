@@ -56,11 +56,27 @@ export interface EntityManager {
   }) => boolean
   readonly clearProcessed: () => void
 
+  readonly isResidentUnsafe: (address: EntityAddress) => boolean
+  readonly residentAddressesUnsafe: () => Array<EntityAddress>
+
   readonly interruptShard: (shardId: ShardId, options?: {
     readonly force?: boolean
   }) => Effect.Effect<void>
 
   readonly activeEntityCount: Effect.Effect<number>
+}
+
+// Tracks how many entities are resident on the runner across all entity
+// managers, so the spawn of new entities can be gated by
+// `ShardingConfig.maxResidentEntities`.
+/** @internal */
+export interface Residency {
+  /**
+   * Reserve a slot for a new entity. Returns `false` when the runner is at
+   * capacity.
+   */
+  readonly admitUnsafe: () => boolean
+  readonly releaseUnsafe: () => void
 }
 
 // Represents the entities managed by this entity manager
@@ -94,6 +110,7 @@ export const make = Effect.fnUntraced(function*<
     readonly sharding: Sharding["Service"]
     readonly storage: MessageStorage.MessageStorage["Service"]
     readonly runnerAddress: RunnerAddress
+    readonly residency: Residency
     readonly maxIdleTime?: Input | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly mailboxCapacity?: number | "unbounded" | undefined
@@ -128,13 +145,22 @@ export const make = Effect.fnUntraced(function*<
   const entities: ResourceMap<
     EntityAddress,
     EntityState,
-    EntityNotAssignedToRunner
+    EntityNotAssignedToRunner | MailboxFull
   > = yield* ResourceMap.make(Effect.fnUntraced(function*(address: EntityAddress) {
     if (!options.sharding.hasShardId(address.shardId)) {
       return yield* new EntityNotAssignedToRunner({ address })
     }
 
     const scope = yield* Effect.scope
+
+    // Gate the spawn on the runner-wide entity cap. Registering the release
+    // must be atomic with taking the slot, otherwise an interrupt in between
+    // would leak it.
+    yield* Effect.uninterruptible(Effect.suspend(() =>
+      options.residency.admitUnsafe()
+        ? Scope.addFinalizer(scope, Effect.sync(options.residency.releaseUnsafe))
+        : Effect.fail(new MailboxFull({ address }))
+    ))
     const endLatch = Latch.makeUnsafe()
     const keepAliveLatch = Latch.makeUnsafe()
     const closeLatches = {
@@ -590,6 +616,8 @@ export const make = Effect.fnUntraced(function*<
     clearProcessed() {
       processedRequestIds.clear()
     },
+    isResidentUnsafe: (address) => entities.hasUnsafe(address),
+    residentAddressesUnsafe: () => entities.keysUnsafe(),
     sendLocal,
     send: (message) =>
       decodeMessage(message).pipe(

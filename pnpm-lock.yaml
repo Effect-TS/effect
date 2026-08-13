@@ -351,15 +351,9 @@ importers:
       fast-check:
         specifier: ^4.9.0
         version: 4.9.0
-      kubernetes-types:
-        specifier: ^1.30.0
-        version: 1.30.0
       msgpackr:
         specifier: ^2.0.4
         version: 2.0.4
-      uuid:
-        specifier: ^14.0.1
-        version: 14.0.1
     devDependencies:
       '@types/node':
         specifier: ^26.1.2
@@ -4862,9 +4856,6 @@ packages:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
 
-  kubernetes-types@1.30.0:
-    resolution: {integrity: sha512-Dew1okvhM/SQcIa2rcgujNndZwU8VnSapDgdxlYoB84ZlpAD43U6KLAFqYo17ykSFGHNPrg0qry0bP+GJd9v7Q==}
-
   lalph@0.3.139:
     resolution: {integrity: sha512-1Ut5QslLbAYZfrZqnEcG7InUeZgjmDPhODdWNt7DtulTRLVqQtqzSDJXylLa90L0ajZzeGZk36fjSsAB5m/sdQ==}
     hasBin: true
@@ -6512,10 +6503,6 @@ packages:
   utils-merge@1.0.1:
     resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
-
-  uuid@14.0.1:
-    resolution: {integrity: sha512-6ZxzVpzDXDa3bJWaHilVayA+BH/1zmxCJoVgvmqJnid/gPoKHxUrS/aC/T6LGQtNHT+XHG9fXPJB4d+IrU30Ew==}
-    hasBin: true
 
   uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
@@ -10685,8 +10672,6 @@ snapshots:
 
   kleur@4.1.5: {}
 
-  kubernetes-types@1.30.0: {}
-
   lalph@0.3.139:
     dependencies:
       tree-sitter: 0.21.1
@@ -12588,8 +12573,6 @@ snapshots:
   util-deprecate@1.0.2: {}
 
   utils-merge@1.0.1: {}
-
-  uuid@14.0.1: {}
 
   uuid@8.3.2: {}
 

@@ -116,6 +116,34 @@ describe("Deferred", () => {
         assert.isTrue(yield* Deferred.succeed(deferred, 42))
         assert.strictEqual(yield* Fiber.join(live), 42)
       }))
+
+    it.effect("await - interrupting a waiter after completion does not die", () =>
+      Effect.gen(function*() {
+        const deferred = yield* Deferred.make<number>()
+        const interrupted = yield* Deferred.await(deferred).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        const live = yield* Deferred.await(deferred).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        assert.strictEqual(deferred.resumes?.length, 2)
+
+        // Waiters resume by running the completion effect, so a suspension
+        // inside it leaves the await's cleanup on the waiter's stack after
+        // completion has already cleared `resumes`. Interrupting the waiter
+        // from the same tick then runs that cleanup post-completion.
+        yield* Effect.sync(() => {
+          Deferred.doneUnsafe(deferred, Effect.as(Effect.yieldNow, 42))
+          assert.isUndefined(deferred.resumes)
+          interrupted.interruptUnsafe()
+        })
+
+        const exit = yield* Fiber.await(interrupted)
+        assert.isTrue(Exit.hasInterrupts(exit))
+        assert.isFalse(Exit.hasDies(exit))
+
+        assert.strictEqual(yield* Fiber.join(live), 42)
+      }))
   })
 
   describe("polling", () => {

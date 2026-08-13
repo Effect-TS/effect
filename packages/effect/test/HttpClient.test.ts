@@ -37,7 +37,7 @@ const makeJsonPlaceholder = Effect.gen(function*() {
 })
 interface JsonPlaceholder extends Effect.Success<typeof makeJsonPlaceholder> {}
 const JsonPlaceholder = Context.Service<JsonPlaceholder>("test/JsonPlaceholder")
-const JsonPlaceholderLive = Layer.effect(JsonPlaceholder)(makeJsonPlaceholder)
+const JsonPlaceholderLayer = Layer.effect(JsonPlaceholder)(makeJsonPlaceholder)
 const TestRoutes = HttpRouter.serve(HttpRouter.use(Effect.fnUntraced(function*(router) {
   yield* router.addAll([
     HttpRouter.route("GET", "/", Effect.succeed(HttpServerResponse.text("test"))),
@@ -76,7 +76,7 @@ const TestRoutes = HttpRouter.serve(HttpRouter.use(Effect.fnUntraced(function*(r
   ])
 })))
 const DenoHttpServerUrl = new URL("../../platform/deno/src/DenoHttpServer.ts", import.meta.url).href
-const TestServerLive = Layer.unwrap(Effect.promise(() =>
+const TestServerLayer = Layer.unwrap(Effect.promise(() =>
   "Deno" in globalThis
     ? (import(DenoHttpServerUrl) as Promise<{
       readonly layerServer: (options: {
@@ -98,9 +98,9 @@ const TestServerLive = Layer.unwrap(Effect.promise(() =>
 ].forEach(({ layer, name }) => {
   const layerTest = HttpServer.layerTestClient.pipe(
     Layer.provide(layer),
-    Layer.provideMerge(TestServerLive)
+    Layer.provideMerge(TestServerLayer)
   )
-  const testLayer = Layer.merge(JsonPlaceholderLive, TestRoutes).pipe(
+  const testLayer = Layer.merge(JsonPlaceholderLayer, TestRoutes).pipe(
     Layer.provideMerge(layerTest)
   )
 

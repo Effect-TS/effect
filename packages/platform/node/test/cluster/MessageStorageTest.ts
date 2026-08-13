@@ -16,7 +16,7 @@ import {
 import { Headers } from "effect/unstable/http"
 import { Rpc, RpcSchema } from "effect/unstable/rpc"
 
-const MemoryLive = MessageStorage.layerMemory.pipe(
+const MemoryLayer = MessageStorage.layerMemory.pipe(
   Layer.provideMerge(Snowflake.layerGenerator),
   Layer.provide(ShardingConfig.layerDefaults)
 )
@@ -31,7 +31,7 @@ describe("MessageStorage", () => {
         expect(result._tag).toEqual("Success")
         const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
         expect(messages).toHaveLength(1)
-      }).pipe(Effect.provide(MemoryLive)))
+      }).pipe(Effect.provide(MemoryLayer)))
 
     it.effect("detects duplicates", () =>
       Effect.gen(function*() {
@@ -49,7 +49,7 @@ describe("MessageStorage", () => {
           })
         )
         expect(result._tag).toEqual("Duplicate")
-      }).pipe(Effect.provide(MemoryLive)))
+      }).pipe(Effect.provide(MemoryLayer)))
 
     it.effect("unprocessedMessages excludes complete requests", () =>
       Effect.gen(function*() {
@@ -59,7 +59,7 @@ describe("MessageStorage", () => {
         yield* storage.saveReply(yield* makeReply(request))
         const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
         expect(messages).toHaveLength(0)
-      }).pipe(Effect.provide(MemoryLive)))
+      }).pipe(Effect.provide(MemoryLayer)))
 
     it.effect("repliesFor", () =>
       Effect.gen(function*() {
@@ -72,7 +72,7 @@ describe("MessageStorage", () => {
         replies = yield* storage.repliesFor([request])
         expect(replies).toHaveLength(1)
         expect(replies[0].requestId).toEqual(request.envelope.requestId)
-      }).pipe(Effect.provide(MemoryLive)))
+      }).pipe(Effect.provide(MemoryLayer)))
 
     it.effect("registerReplyHandler", () =>
       Effect.gen(function*() {
@@ -90,7 +90,7 @@ describe("MessageStorage", () => {
         yield* storage.saveReply(yield* makeReply(request))
         yield* latch.await
         yield* Fiber.await(fiber)
-      }).pipe(Effect.provide(MemoryLive)))
+      }).pipe(Effect.provide(MemoryLayer)))
   })
 })
 
@@ -101,6 +101,8 @@ export const GetUserRpc = Rpc.make("GetUser", {
 export const makeRequest = Effect.fnUntraced(function*(options?: {
   readonly rpc?: Rpc.AnyWithProps
   readonly payload?: any
+  readonly entityId?: string
+  readonly shardId?: ShardId.ShardId
 }) {
   const snowflake = yield* Snowflake.Generator
   const rpc = options?.rpc ?? GetUserRpc
@@ -108,9 +110,9 @@ export const makeRequest = Effect.fnUntraced(function*(options?: {
     envelope: Envelope.makeRequest<any>({
       requestId: snowflake.nextUnsafe(),
       address: EntityAddress.make({
-        shardId: ShardId.make("default", 1),
+        shardId: options?.shardId ?? ShardId.make("default", 1),
         entityType: EntityType.make("test"),
-        entityId: EntityId.make("1")
+        entityId: EntityId.make(options?.entityId ?? "1")
       }),
       tag: rpc._tag,
       payload: options?.payload ?? { id: 123 },

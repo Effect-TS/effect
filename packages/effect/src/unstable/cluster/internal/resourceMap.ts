@@ -56,6 +56,14 @@ export class ResourceMap<K, A, E> {
     )
   })
 
+  hasUnsafe(key: K): boolean {
+    return backingGet(this.entries, key) !== undefined
+  }
+
+  keysUnsafe(): Array<K> {
+    return Array.from(this.entries.map, ([key]) => key)
+  }
+
   get(key: K): Effect.Effect<A, E> {
     return Effect.suspend(() => {
       if (MutableRef.get(this.isClosed)) {

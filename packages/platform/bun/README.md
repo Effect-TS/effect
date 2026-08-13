@@ -1,7 +1,14 @@
-# `@effect/platform-bun`
+# @effect/platform-bun
 
-Provides Bun-specific implementations for Effect's platform abstractions, allowing you to write platform-independent code that runs smoothly in Bun environments.
+[Bun](https://bun.sh) implementations of the Effect platform services, including the file system, HTTP client and server, sockets, workers, and terminal.
+
+## Installation
+
+```sh
+npm install effect@rc @effect/platform-bun@rc
+```
 
 ## Documentation
 
-- **API Reference**: [View the full documentation](https://effect-ts.github.io/effect/docs/platform-bun).
+- [Effect website](https://effect.website)
+- [API reference](https://effect.website/docs/v4/api/platform-bun)

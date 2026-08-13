@@ -274,4 +274,11 @@ describe("HttpApiSchema", () => {
     assert.isFalse(HttpApiSchema.isStreamSchema(Schema.String))
     assert.isFalse(HttpApiSchema.isStreamSchema(Schema.Uint8Array.pipe(HttpApiSchema.asUint8Array())))
   })
+
+  describe("status", () => {
+    it("accepts status literals", () => {
+      assert.strictEqual(HttpApiSchema.getStatusSuccess(Schema.String.pipe(HttpApiSchema.status("Created")).ast), 201)
+      assert.strictEqual(HttpApiSchema.getStatusError(Schema.String.pipe(HttpApiSchema.status("Conflict")).ast), 409)
+    })
+  })
 })

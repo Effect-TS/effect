@@ -127,6 +127,7 @@ export const make = Effect.gen(function*() {
   }>()
   const interruptedActivities = new Set<string>()
   const activityLatches = new Map<string, Latch.Latch>()
+  const deferredState = WorkflowEngine.makeDeferredState()
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
       const entity = entities.get(workflowName)
@@ -386,7 +387,7 @@ export const make = Effect.gen(function*() {
                     )
                   }),
                   Workflow.intoResult,
-                  Effect.provideService(WorkflowEngine.WorkflowInstance, instance)
+                  (effect) => deferredState.trackRun(instance, effect)
                 ) as any
               },
 
@@ -434,13 +435,16 @@ export const make = Effect.gen(function*() {
 
               deferred: Effect.fnUntraced(function*(request: Entity.Request<any>) {
                 const payload = request.payload as any
+                yield* deferredState.deferredDone(executionId, payload.name, payload.exit)
                 yield* ensureSuccess(resume(workflow, executionId))
                 return payload.exit
               }),
 
               resume: () => ensureSuccess(resume(workflow, executionId))
             }
-          })
+          }),
+          // Reserve a slot for deferred completions to wake the active run.
+          { concurrency: 2, maxIdleTime: entityMaxIdleTime }
         ) as Effect.Effect<void, never, Scope.Scope>
       ),
 
@@ -549,24 +553,29 @@ export const make = Effect.gen(function*() {
 
     deferredResult: (deferred) =>
       WorkflowEngine.WorkflowInstance.pipe(
-        Effect.flatMap((instance) =>
-          requestReply({
+        Effect.flatMap((instance) => {
+          const exit = deferredState.pendingResult(instance.executionId, deferred.name)
+          if (exit) {
+            return Effect.succeedSome(exit)
+          }
+          return requestReply({
             workflow: instance.workflow,
             entityType: `Workflow/${instance.workflow._tag}`,
             executionId: instance.executionId,
             tag: "deferred",
             id: deferred.name
-          })
-        ),
-        Effect.map((reply) => {
-          if (Option.isNone(reply)) {
-            return Option.none<Exit.Exit<unknown, unknown>>()
-          }
-          const decoded = decodeDeferredWithExit(reply.value as any)
-          return Option.some(
-            decoded.exit._tag === "Success"
-              ? decoded.exit.value
-              : decoded.exit
+          }).pipe(
+            Effect.map((reply) => {
+              if (Option.isNone(reply)) {
+                return Option.none<Exit.Exit<unknown, unknown>>()
+              }
+              const decoded = decodeDeferredWithExit(reply.value as any)
+              return Option.some(
+                decoded.exit._tag === "Success"
+                  ? decoded.exit.value
+                  : decoded.exit
+              )
+            })
           )
         }),
         Effect.retry({
@@ -693,6 +702,12 @@ const ResumeRpc = Rpc.make("resume", {
 
 const payloadParentKey = "~effect/cluster/ClusterWorkflowEngine/payloadParentKey"
 
+// Workflow state is durable, so an idle entity (completed or suspended) can
+// be released quickly and is rebuilt from storage when the next message
+// arrives. This keeps completed and suspended executions from holding
+// `maxResidentEntities` slots for the full `entityMaxIdleTime`.
+const entityMaxIdleTime = Duration.seconds(10)
+
 const makeWorkflowEntity = (workflow: Workflow.Any) =>
   Entity.make(`Workflow/${workflow._tag}`, [
     Rpc.make("run", {
@@ -747,22 +762,25 @@ const ClockEntity = Entity.make("Workflow/-/DurableClock", [
   ClockRpc
 ])
 
-const ClockEntityLayer = ClockEntity.toLayer(Effect.gen(function*() {
-  const engine = yield* WorkflowEngine.WorkflowEngine
-  const address = yield* Entity.CurrentAddress
-  const executionId = address.entityId
-  return {
-    run(request) {
-      const deferred = DurableClock.make({ name: request.payload.name, duration: Duration.zero }).deferred
-      return ensureSuccess(engine.deferredDone(deferred, {
-        workflowName: request.payload.workflowName,
-        executionId,
-        deferredName: deferred.name,
-        exit: Exit.void
-      }))
+const ClockEntityLayer = ClockEntity.toLayer(
+  Effect.gen(function*() {
+    const engine = yield* WorkflowEngine.WorkflowEngine
+    const address = yield* Entity.CurrentAddress
+    const executionId = address.entityId
+    return {
+      run(request) {
+        const deferred = DurableClock.make({ name: request.payload.name, duration: Duration.zero }).deferred
+        return ensureSuccess(engine.deferredDone(deferred, {
+          workflowName: request.payload.workflowName,
+          executionId,
+          deferredName: deferred.name,
+          exit: Exit.void
+        }))
+      }
     }
-  }
-}))
+  }),
+  { maxIdleTime: entityMaxIdleTime }
+)
 
 const InterruptSignal = DurableDeferred.make("Workflow/InterruptSignal")
 

@@ -6,14 +6,14 @@ import { HttpClient, HttpClientRequest, HttpRouter, HttpServer } from "effect/un
 import { Rpc, RpcClient, RpcGroup, RpcSerialization, RpcServer, RpcTest } from "effect/unstable/rpc"
 import { SocketServer } from "effect/unstable/socket"
 import { e2eSuite, UsersClient } from "./fixtures/rpc-e2e.ts"
-import { RpcLive, User } from "./fixtures/rpc-schemas.ts"
+import { RpcLayer, User } from "./fixtures/rpc-schemas.ts"
 
 describe("RpcServer", () => {
   // http ndjson
   const HttpProtocol = RpcServer.layerProtocolHttp({ path: "/rpc" }).pipe(
     Layer.provide(HttpRouter.layer)
   )
-  const HttpNdjsonServer = RpcLive.pipe(
+  const HttpNdjsonServer = RpcLayer.pipe(
     Layer.provideMerge(HttpProtocol),
     Layer.provide(HttpRouter.serve(HttpProtocol, { disableListenLog: true, disableLogger: true }))
   )
@@ -55,7 +55,7 @@ describe("RpcServer", () => {
   const WsProtocol = RpcServer.layerProtocolWebsocket({ path: "/rpc" }).pipe(
     Layer.provide(HttpRouter.layer)
   )
-  const HttpWsServer = RpcLive.pipe(
+  const HttpWsServer = RpcLayer.pipe(
     Layer.provideMerge(WsProtocol),
     Layer.provide(HttpRouter.serve(WsProtocol, { disableListenLog: true, disableLogger: true }))
   )
@@ -99,7 +99,7 @@ describe("RpcServer", () => {
   )
 
   // tcp
-  const TcpServer = RpcLive.pipe(
+  const TcpServer = RpcLayer.pipe(
     Layer.provideMerge(RpcServer.layerProtocolSocketServer),
     Layer.provideMerge(NodeSocketServer.layer({ port: 0 }))
   )

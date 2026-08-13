@@ -84,11 +84,11 @@ it.live.fails("interrupts on timeout", (ctx) =>
   }), 1)
 
 class Foo extends Context.Service<Foo, "foo">()("Foo") {
-  static Live = Layer.succeed(Foo)("foo")
+  static layer = Layer.succeed(Foo)("foo")
 }
 
 class Bar extends Context.Service<Bar, "bar">()("Bar") {
-  static Live = Layer.effect(Bar)(Effect.map(Foo, () => "bar" as const))
+  static layer = Layer.effect(Bar)(Effect.map(Foo, () => "bar" as const))
 }
 
 class Sleeper extends Context.Service<Sleeper, {
@@ -106,14 +106,14 @@ class Sleeper extends Context.Service<Sleeper, {
 }
 
 describe("layer", () => {
-  layer(Foo.Live)((it) => {
+  layer(Foo.layer)((it) => {
     it.effect("adds context", () =>
       Effect.gen(function*() {
         const foo = yield* Foo
         expect(foo).toEqual("foo")
       }))
 
-    it.layer(Bar.Live)("nested", (it) => {
+    it.layer(Bar.layer)("nested", (it) => {
       it.effect("adds context", () =>
         Effect.gen(function*() {
           const foo = yield* Foo
@@ -123,7 +123,7 @@ describe("layer", () => {
         }))
     })
 
-    it.layer(Bar.Live)((it) => {
+    it.layer(Bar.layer)((it) => {
       it.effect("without name", () =>
         Effect.gen(function*() {
           const foo = yield* Foo
@@ -140,7 +140,7 @@ describe("layer", () => {
       })
 
       class Scoped extends Context.Service<Scoped, "scoped">()("Scoped") {
-        static Live = Layer.effect(Scoped)(
+        static layer = Layer.effect(Scoped)(
           Effect.acquireRelease(
             Effect.succeed("scoped" as const),
             () => Effect.sync(() => released = true)
@@ -148,7 +148,7 @@ describe("layer", () => {
         )
       }
 
-      it.layer(Scoped.Live)((it) => {
+      it.layer(Scoped.layer)((it) => {
         it.effect("adds context", () =>
           Effect.gen(function*() {
             const foo = yield* Foo
@@ -183,7 +183,7 @@ describe("layer", () => {
       }))
   })
 
-  layer(Foo.Live)("with a name", (it) => {
+  layer(Foo.layer)("with a name", (it) => {
     describe("with a nested describe", () => {
       it.effect("adds context", () =>
         Effect.gen(function*() {

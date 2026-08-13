@@ -1,3 +1,6 @@
+"effect/Inspectable#format":
+  replacement: "Formatter.formatJson"
+  note: "Use Formatter.formatJson(input, { space: 2 }) to preserve the v3 helper's pretty-printed JSON output."
 "effect/Inspectable#redact":
   replacement: "Redactable.redact"
   note: "The redaction protocol moved to Redactable and now receives the current fiber Context."

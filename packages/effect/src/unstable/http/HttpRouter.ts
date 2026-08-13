@@ -582,7 +582,7 @@ export const toHttpEffect = <A, E, R>(
 ): Effect.Effect<
   Effect.Effect<
     HttpServerResponse.HttpServerResponse,
-    Request.Only<"Error", R> | Request.Only<"GlobalRequires", R> | HttpServerError.HttpServerError,
+    Request.Only<"Error", R> | Request.Only<"GlobalError", R> | HttpServerError.HttpServerError,
     Scope.Scope | HttpServerRequest.HttpServerRequest | Request.Only<"Requires", R> | Request.Only<"GlobalRequires", R>
   >,
   Request.Without<E>,
@@ -845,7 +845,8 @@ export interface Middleware<
   readonly [MiddlewareTypeId]: Config
 
   readonly layer: [Config["requires"]] extends [never] ? Layer.Layer<
-      Request.From<"Requires", Config["provides"]>,
+      | Request.From<"Requires", Config["provides"]>
+      | Request.From<"Error", Config["handles"]>,
       Config["layerError"],
       | Config["layerRequires"]
       | Request.From<"Requires", Config["requires"]>

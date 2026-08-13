@@ -1,7 +1,14 @@
-# `@effect/platform-node-shared`
+# @effect/platform-node-shared
 
-Provides shared Node.js-compatible implementations used by the Effect Node.js and Bun platform packages.
+Effect platform services shared between Node.js-compatible runtimes. Used internally by `@effect/platform-node`, `@effect/platform-bun`, and `@effect/platform-deno`.
+
+## Installation
+
+```sh
+npm install effect@rc @effect/platform-node-shared@rc
+```
 
 ## Documentation
 
-- **API Reference**: [View the full documentation](https://effect-ts.github.io/effect/docs/platform-node-shared).
+- [Effect website](https://effect.website)
+- [API reference](https://effect.website/docs/v4/api/platform-node-shared)

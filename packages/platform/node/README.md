@@ -1,7 +1,14 @@
-# `@effect/platform-node`
+# @effect/platform-node
 
-Provides Node.js-specific implementations for Effect's platform abstractions, allowing you to write platform-independent code that integrates smoothly with Node.js.
+[Node.js](https://nodejs.org) implementations of the Effect platform services, including the file system, HTTP client and server, sockets, workers, and terminal.
+
+## Installation
+
+```sh
+npm install effect@rc @effect/platform-node@rc
+```
 
 ## Documentation
 
-- **API Reference**: [View the full documentation](https://effect-ts.github.io/effect/docs/platform-node).
+- [Effect website](https://effect.website)
+- [API reference](https://effect.website/docs/v4/api/platform-node)

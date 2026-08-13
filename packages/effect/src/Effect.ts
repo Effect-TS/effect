@@ -5813,7 +5813,7 @@ export const contextWith: <R, A, E, R2>(
  *
  * const Database = Context.Service<Database>("Database")
  *
- * const DatabaseLive = Layer.succeed(Database)({
+ * const DatabaseLayer = Layer.succeed(Database)({
  *   query: Effect.fn("Database.query")((sql: string) => Effect.succeed(`Result for: ${sql}`))
  * })
  *
@@ -5822,7 +5822,7 @@ export const contextWith: <R, A, E, R2>(
  *   return yield* db.query("SELECT * FROM users")
  * })
  *
- * const provided = Effect.provide(program, DatabaseLive)
+ * const provided = Effect.provide(program, DatabaseLayer)
  *
  * await Effect.runPromise(provided) // => "Result for: SELECT * FROM users"
  * ```

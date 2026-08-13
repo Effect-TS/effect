@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Layer, Option, Schema } from "effect"
+import { Effect, Exit, Fiber, Layer, Option, Schema, Scope } from "effect"
+import { TestClock } from "effect/testing"
 import { DurableDeferred, Workflow, WorkflowEngine } from "effect/unstable/workflow"
 
 describe("WorkflowEngine", () => {
@@ -18,6 +19,32 @@ describe("WorkflowEngine", () => {
   }) {}
 
   const ClassWorkflowLayer = ClassWorkflow.toLayer(({ value }) => Effect.succeed(value + 1))
+
+  const DeferredRaceWorkflow = Workflow.make("WorkflowEngine/DeferredRaceWorkflow", {
+    payload: { id: Schema.String },
+    success: Schema.String,
+    idempotencyKey: ({ id }) => id
+  })
+
+  const DeferredRaceGate = DurableDeferred.make("WorkflowEngine/DeferredRaceGate", {
+    success: Schema.String
+  })
+
+  let deferredRaceRuns = 0
+  const DeferredRaceWorkflowLayer = DeferredRaceWorkflow.toLayer(() =>
+    Effect.suspend(() => {
+      deferredRaceRuns++
+      return DurableDeferred.raceAll({
+        name: "memory-deferred-race",
+        success: Schema.String,
+        error: Schema.Never,
+        effects: [
+          DurableDeferred.await(DeferredRaceGate),
+          Effect.sleep("10 seconds").pipe(Effect.as("activity"))
+        ]
+      })
+    })
+  )
 
   it.effect("layer executes and polls workflows", () =>
     Effect.gen(function*() {
@@ -57,6 +84,65 @@ describe("WorkflowEngine", () => {
         Layer.provideMerge(WorkflowEngine.layerMemory)
       ))
     ))
+
+  it.effect("layerMemory wakes an active workflow when a durable deferred completes", () =>
+    Effect.gen(function*() {
+      const payload = { id: "memory-deferred-race" }
+      const executionId = yield* DeferredRaceWorkflow.executionId(payload)
+      const fiber = yield* DeferredRaceWorkflow.execute(payload).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      // Park the deferred branch before completing it.
+      yield* TestClock.adjust(1)
+      yield* TestClock.adjust(1)
+      const token = DurableDeferred.tokenFromExecutionId(DeferredRaceGate, {
+        workflow: DeferredRaceWorkflow,
+        executionId
+      })
+      yield* DurableDeferred.succeed(DeferredRaceGate, { token, value: "signal" })
+      // Require the wake to settle before the sleeper.
+      let polled = yield* DeferredRaceWorkflow.poll(executionId)
+      while (Option.isNone(polled) || polled.value._tag !== "Complete") {
+        yield* Effect.yieldNow
+        polled = yield* DeferredRaceWorkflow.poll(executionId)
+      }
+
+      // Let the caller's suspended-retry loop pick up a replayed result.
+      yield* TestClock.adjust("1 second")
+      assert.strictEqual(yield* Fiber.join(fiber), "signal")
+      // Usually the completion preempts the parked run (2 runs); under load
+      // it can land before the branch parks and is read directly (1 run).
+      assert(deferredRaceRuns === 1 || deferredRaceRuns === 2)
+    }).pipe(
+      Effect.provide(DeferredRaceWorkflowLayer.pipe(
+        Layer.provideMerge(WorkflowEngine.layerMemory)
+      ))
+    ))
+
+  it.effect("layerMemory propagates interruption when the engine is shut down", () =>
+    Effect.gen(function*() {
+      const Stuck = Workflow.make("WorkflowEngine/ShutdownWorkflow", {
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      })
+      const layer = Stuck.toLayer(() => Effect.never).pipe(
+        Layer.provideMerge(WorkflowEngine.layerMemory)
+      )
+      const scope = yield* Scope.make()
+      const context = yield* Scope.provide(Layer.build(layer), scope)
+      const fiber = yield* Stuck.execute({ id: "one" }).pipe(
+        Effect.provideContext(context),
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      yield* Effect.yieldNow
+
+      // Shutting down must interrupt the caller, not report a suspension.
+      yield* Scope.close(scope, Exit.void)
+      const exit = yield* Fiber.await(fiber)
+      assert(Exit.hasInterrupts(exit))
+    }))
 
   it.effect("layerMemory closes finalizers registered before suspension", () =>
     Effect.gen(function*() {

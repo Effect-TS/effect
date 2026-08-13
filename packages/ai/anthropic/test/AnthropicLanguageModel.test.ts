@@ -552,9 +552,10 @@ describe("AnthropicLanguageModel", () => {
   })
 
   describe("generateObject", () => {
-    // A model that supports native structured output requests it via `output_config.format` (json_schema)
-    // rather than falling back to a forced JSON tool.
-    const assertNativeStructuredOutput = (model: string) =>
+    const getRequest = (
+      model: string,
+      config?: { readonly structuredOutputs?: boolean | undefined }
+    ) =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
         const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
@@ -589,25 +590,60 @@ describe("AnthropicLanguageModel", () => {
           prompt: "Give me a person",
           schema: Schema.Struct({ name: Schema.String, age: Schema.Number })
         }).pipe(
-          Effect.provide(AnthropicLanguageModel.model(model)),
+          Effect.provide(AnthropicLanguageModel.model(model, config)),
           Effect.provide(layer),
           Effect.ignore
         )
 
         assert.isDefined(capturedRequest)
         if (capturedRequest === undefined) {
-          return
+          return yield* Effect.die(new Error("Expected a captured request"))
         }
 
-        const body = yield* getRequestBody(capturedRequest)
-        assert.strictEqual(body.output_config?.format?.type, "json_schema")
+        return yield* getRequestBody(capturedRequest)
       })
 
-    it.effect("uses native json_schema output for claude-opus-4-6", () =>
-      assertNativeStructuredOutput("claude-opus-4-6"))
+    it.effect("uses native structured output and 128K for Claude 4.6", () =>
+      Effect.gen(function*() {
+        const body = yield* getRequest("claude-opus-4-6")
 
-    it.effect("uses native json_schema output for claude-sonnet-4-6", () =>
-      assertNativeStructuredOutput("claude-sonnet-4-6"))
+        assert.strictEqual(body.max_tokens, 128000)
+        assert.strictEqual(body.output_config?.format?.type, "json_schema")
+      }))
+
+    it.effect("uses optimistic modern defaults for an unknown future model", () =>
+      Effect.gen(function*() {
+        const body = yield* getRequest("claude-sonnet-6-0")
+
+        assert.strictEqual(body.max_tokens, 128000)
+        assert.strictEqual(body.output_config?.format?.type, "json_schema")
+      }))
+
+    it.effect("preserves frozen legacy model exceptions", () =>
+      Effect.gen(function*() {
+        const body = yield* getRequest("claude-sonnet-4-20250514")
+
+        assert.strictEqual(body.max_tokens, 64000)
+        assert.isUndefined(body.output_config)
+      }))
+
+    it.effect("can disable structured outputs for a modern model", () =>
+      Effect.gen(function*() {
+        const body = yield* getRequest("claude-sonnet-6-0", { structuredOutputs: false })
+
+        assert.strictEqual(body.max_tokens, 128000)
+        assert.isUndefined(body.output_config)
+        assert.notProperty(body, "structuredOutputs")
+      }))
+
+    it.effect("can enable structured outputs for a legacy model", () =>
+      Effect.gen(function*() {
+        const body = yield* getRequest("claude-sonnet-4-20250514", { structuredOutputs: true })
+
+        assert.strictEqual(body.max_tokens, 64000)
+        assert.strictEqual(body.output_config?.format?.type, "json_schema")
+        assert.notProperty(body, "structuredOutputs")
+      }))
   })
 
   // The packaged `Memory_20250818` tool ships `customName: "AnthropicMemory"` /
