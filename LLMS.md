@@ -327,6 +327,17 @@ if (Predicate.isObject(thing)) {
 }
 ```
 
+## Working with SQL databases
+
+Use the `effect/unstable/sql` modules together with a driver package such as
+`@effect/sql-sqlite-node` to access SQL databases. Define domain models with
+`Model.Class` to derive schemas for the database and JSON boundaries, run
+migrations, and write type-safe queries.
+
+- **[Getting started with SQL](./ai-docs/src/40_sql/10_basics.ts)**:
+  Define a schema-backed domain model, run migrations against a SQLite
+  database, and expose a derived repository through a service.
+
 ## Effect HttpClient
 
 Build http clients with the `HttpClient` module.
@@ -340,6 +351,9 @@ Build http clients with the `HttpClient` module.
 - **[Getting started with HttpApi](./ai-docs/src/51_http-server/10_basics.ts)**:
   Define a schema-first API, implement handlers, secure endpoints with
   middleware, serve it over HTTP, and call it using a generated typed client.
+- **[Testing HttpApi implementations](./ai-docs/src/51_http-server/20_testing.ts)**:
+  Test handlers through an in-memory typed client with `HttpApiTest`, without
+  starting an HTTP server or touching a real database.
 
 ## Working with child processes
 
