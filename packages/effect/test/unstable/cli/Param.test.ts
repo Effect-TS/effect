@@ -271,17 +271,67 @@ describe("Param", () => {
         assert.instanceOf(error, CliError.InvalidValue)
       }).pipe(Effect.provide(TestLayer)))
 
-    it.effect("does not prompt for missing boolean flags", () =>
+    it.effect("prompts for boolean flags that are absent", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.text({ message: "Verbose" })
+        const prompt = Prompt.confirm({ message: "Verbose" })
         const flag = Flag.boolean("verbose").pipe(Flag.withFallbackPrompt(prompt))
+
+        yield* MockTerminal.inputText("y")
+
+        const [remaining, value] = yield* flag.parse({
+          flags: {},
+          arguments: ["tail"]
+        })
+
+        assert.strictEqual(value, true)
+        assert.deepStrictEqual(remaining, ["tail"])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("does not prompt for negated boolean flags", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.confirm({ message: "Verbose" })
+        const flag = Flag.boolean("verbose").pipe(Flag.withFallbackPrompt(prompt))
+
+        // `--no-verbose` is recorded under the canonical flag name
+        const [, value] = yield* flag.parse({
+          flags: { verbose: ["false"] },
+          arguments: []
+        })
+
+        assert.strictEqual(value, false)
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("prefers defaults over fallback prompts for boolean flags", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.confirm({ message: "Verbose" })
+        const flag = Flag.boolean("verbose").pipe(
+          Flag.withDefault(true),
+          Flag.withFallbackPrompt(prompt)
+        )
 
         const [, value] = yield* flag.parse({
           flags: {},
           arguments: []
         })
 
-        assert.strictEqual(value, false)
+        assert.strictEqual(value, true)
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("returns MissingOption when a boolean flag prompt is cancelled", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.confirm({ message: "Verbose" })
+        const flag = Flag.boolean("verbose").pipe(Flag.withFallbackPrompt(prompt))
+
+        yield* MockTerminal.inputKey("c", { ctrl: true })
+
+        const error = yield* Effect.flip(
+          flag.parse({
+            flags: {},
+            arguments: []
+          })
+        )
+
+        assert.instanceOf(error, CliError.MissingOption)
       }).pipe(Effect.provide(TestLayer)))
 
     it.effect("returns MissingOption when prompt is cancelled", () =>
@@ -424,6 +474,126 @@ describe("Param", () => {
       return Effect.gen(function*() {
         const flag = Flag.integer("count").pipe(
           Flag.withFallbackConfig(Config.int("COUNT"))
+        )
+
+        const error = yield* Effect.flip(
+          flag.parse({
+            flags: {},
+            arguments: []
+          })
+        )
+
+        assert.instanceOf(error, CliError.InvalidValue)
+      }).pipe(
+        Effect.provideService(ConfigProvider.ConfigProvider, provider),
+        Effect.provide(TestLayer)
+      )
+    })
+
+    it.effect("uses ConfigProvider when a boolean flag is absent", () => {
+      const provider = ConfigProvider.fromEnv({
+        env: {
+          VERBOSE: "true"
+        }
+      })
+
+      return Effect.gen(function*() {
+        const flag = Flag.boolean("verbose").pipe(
+          Flag.withFallbackConfig(Config.boolean("VERBOSE"))
+        )
+
+        const [, value] = yield* flag.parse({
+          flags: {},
+          arguments: []
+        })
+
+        assert.strictEqual(value, true)
+      }).pipe(
+        Effect.provideService(ConfigProvider.ConfigProvider, provider),
+        Effect.provide(TestLayer)
+      )
+    })
+
+    it.effect("uses negated boolean flags before reading config fallbacks", () => {
+      const provider = ConfigProvider.fromEnv({
+        env: {
+          VERBOSE: "true"
+        }
+      })
+
+      return Effect.gen(function*() {
+        const flag = Flag.boolean("verbose").pipe(
+          Flag.withFallbackConfig(Config.boolean("VERBOSE"))
+        )
+
+        // `--no-verbose` is recorded under the canonical flag name
+        const [, value] = yield* flag.parse({
+          flags: { verbose: ["false"] },
+          arguments: []
+        })
+
+        assert.strictEqual(value, false)
+      }).pipe(
+        Effect.provideService(ConfigProvider.ConfigProvider, provider),
+        Effect.provide(TestLayer)
+      )
+    })
+
+    it.effect("returns false when a boolean flag is absent and config is missing", () => {
+      const provider = ConfigProvider.fromEnv({ env: {} })
+
+      return Effect.gen(function*() {
+        const flag = Flag.boolean("verbose").pipe(
+          Flag.withFallbackConfig(Config.boolean("VERBOSE"))
+        )
+
+        const [, value] = yield* flag.parse({
+          flags: {},
+          arguments: []
+        })
+
+        assert.strictEqual(value, false)
+      }).pipe(
+        Effect.provideService(ConfigProvider.ConfigProvider, provider),
+        Effect.provide(TestLayer)
+      )
+    })
+
+    it.effect("prefers defaults over config fallbacks for boolean flags", () => {
+      const provider = ConfigProvider.fromEnv({
+        env: {
+          VERBOSE: "false"
+        }
+      })
+
+      return Effect.gen(function*() {
+        const flag = Flag.boolean("verbose").pipe(
+          Flag.withDefault(true),
+          Flag.withFallbackConfig(Config.boolean("VERBOSE"))
+        )
+
+        const [, value] = yield* flag.parse({
+          flags: {},
+          arguments: []
+        })
+
+        assert.strictEqual(value, true)
+      }).pipe(
+        Effect.provideService(ConfigProvider.ConfigProvider, provider),
+        Effect.provide(TestLayer)
+      )
+    })
+
+    it.effect("returns InvalidValue when boolean config fails to parse", () => {
+      const provider = ConfigProvider.fromEnv({
+        env: {
+          VERBOSE: "nope"
+        }
+      })
+
+      return Effect.gen(function*() {
+        const flag = Flag.boolean("verbose").pipe(
+          Flag.withFallbackConfig(Config.boolean("VERBOSE"))
         )
 
         const error = yield* Effect.flip(

@@ -1357,6 +1357,37 @@ export const withDefault: {
 })
 
 /**
+ * Returns the name of the boolean flag a param reads, if it reads exactly one
+ * and always parses it.
+ *
+ * An absent boolean flag parses as `false` instead of failing with
+ * `MissingOption`, so fallbacks that react to that error never run for one.
+ * Fallback combinators use this to detect the absent case themselves. Params
+ * wrapped by `optional` or `withDefault` already supply their own value, and
+ * alternatives introduced by `orElse` may provide the value instead, so neither
+ * takes part in a fallback.
+ */
+const booleanFlagName = <Kind extends ParamKind, A>(self: Param<Kind, A>): string | undefined =>
+  matchParam(self, {
+    Single: (single) => single.kind === "flag" && Primitive.isBoolean(single.primitiveType) ? single.name : undefined,
+    Map: (mapped) => booleanFlagName(mapped.param),
+    Transform: (transformed) => transformed.alternatives.length === 0 ? booleanFlagName(transformed.param) : undefined,
+    Optional: () => undefined,
+    Variadic: () => undefined
+  })
+
+/**
+ * Checks whether a flag was provided on the command line.
+ *
+ * The parser records aliases and `--no-` negations under the canonical flag
+ * name, so an explicitly negated boolean flag counts as provided.
+ */
+const isFlagProvided = (args: ParsedArgs, name: string): boolean => {
+  const values = args.flags[name]
+  return values !== undefined && values.length > 0
+}
+
+/**
  * Adds a fallback config that is loaded when a required parameter is missing.
  *
  * **When to use**
@@ -1367,12 +1398,14 @@ export const withDefault: {
  * **Details**
  *
  * Provided CLI values win. Config is loaded only after a missing option or
- * missing argument error.
+ * missing argument error. A boolean flag is never missing because it parses as
+ * `false` when absent, so config is loaded whenever the flag is absent from the
+ * command line, and `--flag` or `--no-flag` still wins.
  *
  * **Gotchas**
  *
- * Missing config preserves the original missing-parameter error. Config parse
- * failure becomes `CliError.InvalidValue`.
+ * Missing config preserves the original missing-parameter error, or `false` for
+ * a boolean flag. Config parse failure becomes `CliError.InvalidValue`.
  *
  * @see {@link withDefault} for a pure default value
  * @see {@link withFallbackPrompt} for prompting interactively when input is missing
@@ -1397,20 +1430,36 @@ export const withFallbackConfig: {
       expected: configError.message,
       kind: error._tag === "MissingOption" ? "flag" : "argument"
     })
-  const runConfig = (error: CliError.MissingOption | CliError.MissingArgument, args: ParsedArgs) =>
+  const runConfig = (
+    error: CliError.MissingOption | CliError.MissingArgument,
+    args: ParsedArgs,
+    onMissing: LazyArg<
+      Effect.Effect<readonly [leftover: ReadonlyArray<string>, value: A | B], CliError.CliError, Environment>
+    >
+  ) =>
     Config.option(config).pipe(
       Effect.mapError((configError) => toInvalidValue(error, configError)),
       Effect.flatMap(Option.match({
-        onNone: () => Effect.fail(error),
+        onNone: onMissing,
         onSome: (value) => Effect.succeed([args.arguments, value as A | B] as const)
       }))
     )
+  const flagName = booleanFlagName(self)
   return transform(
     self,
-    (parse) => (args) =>
-      parse(args).pipe(
-        Effect.catchTag(["MissingOption", "MissingArgument"], (error) => runConfig(error, args))
+    (parse) => (args) => {
+      // A boolean flag parses as `false` when absent instead of failing, so the
+      // config has to be loaded before parsing rather than after it fails.
+      if (flagName !== undefined && !isFlagProvided(args, flagName)) {
+        return runConfig(new CliError.MissingOption({ option: flagName }), args, () => parse(args))
+      }
+      return parse(args).pipe(
+        Effect.catchTag(
+          ["MissingOption", "MissingArgument"],
+          (error) => runConfig(error, args, () => Effect.fail(error))
+        )
       )
+    }
   )
 })
 
@@ -1426,6 +1475,9 @@ export const withFallbackConfig: {
  *
  * `FallbackPrompt` accepts either a `Prompt` or an effect that builds one.
  * Effectful prompt creation is lazy and runs only when the fallback is needed.
+ * A boolean flag is never missing because it parses as `false` when absent, so
+ * the prompt runs whenever the flag is absent from the command line, and
+ * `--flag` or `--no-flag` still wins.
  *
  * **Gotchas**
  *
@@ -1451,12 +1503,19 @@ export const withFallbackPrompt: {
       Effect.map((value) => [args.arguments, value as A | B] as const),
       Effect.catchTag("QuitError", () => Effect.fail(error))
     )
+  const flagName = booleanFlagName(self)
   return transform(
     self,
-    (parse) => (args) =>
-      parse(args).pipe(
+    (parse) => (args) => {
+      // A boolean flag parses as `false` when absent instead of failing, so the
+      // prompt has to run before parsing rather than after it fails.
+      if (flagName !== undefined && !isFlagProvided(args, flagName)) {
+        return runPrompt(new CliError.MissingOption({ option: flagName }), args)
+      }
+      return parse(args).pipe(
         Effect.catchTag(["MissingOption", "MissingArgument"], (error) => runPrompt(error, args))
       )
+    }
   )
 })
 
