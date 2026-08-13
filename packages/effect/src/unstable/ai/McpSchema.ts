@@ -3,14 +3,17 @@
  *
  * MCP clients and servers use these schemas to describe the JSON-RPC requests,
  * notifications, results, and errors that can cross the protocol boundary. This
- * module focuses on message shapes: it defines the shared protocol data model,
- * groups related messages for the RPC layer, and provides helpers for optional
- * fields and parameter metadata. Transport and server behavior live in other
- * modules.
+ * This is the stable public compatibility and authoring surface. It is not an
+ * exact dated wire contract: MCP protocol adapters use frozen schemas under
+ * `internal/mcpSchema` for decoding and encoding. This module groups the
+ * current public message model for application authors and provides helpers
+ * for optional fields and parameter metadata. Transport and server behavior
+ * live in other modules.
  *
  * @since 4.0.0
  */
 import * as Context from "../../Context.ts"
+import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import { constFalse, constTrue } from "../../Function.ts"
 import * as Option from "../../Option.ts"
@@ -19,11 +22,9 @@ import * as Schema from "../../Schema.ts"
 import * as SchemaGetter from "../../SchemaGetter.ts"
 import type * as Scope from "../../Scope.ts"
 import * as Rpc from "../rpc/Rpc.ts"
-import type * as RpcClient from "../rpc/RpcClient.ts"
-import type { RpcClientError } from "../rpc/RpcClientError.ts"
 import * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcMiddleware from "../rpc/RpcMiddleware.ts"
-import type * as McpProtocol from "./McpProtocol.ts"
+import type { ProtocolVersion } from "./McpProtocol.ts"
 
 /**
  * Schema type returned by `optionalWithDefault`.
@@ -798,7 +799,7 @@ export class ProgressNotification extends Rpc.make("notifications/progress", {
      * The progress thus far. This should increase every time progress is made,
      * even if the total is unknown.
      */
-    progress: optional(Schema.Finite),
+    progress: Schema.Finite,
     /**
      * Total number of items to process (or total progress required), if known.
      */
@@ -959,7 +960,7 @@ export class BlobResourceContents extends Schema.Opaque<BlobResourceContents>()(
   /**
    * The binary data of the item decoded from a base64-encoded string.
    */
-  blob: Schema.Uint8Array
+  blob: Schema.Uint8ArrayFromBase64
 })) {}
 
 /**
@@ -1170,7 +1171,8 @@ export class Prompt extends Schema.Class<Prompt>(
   /**
    * A list of arguments to use for templating the prompt.
    */
-  arguments: optional(Schema.Array(PromptArgument))
+  arguments: optional(Schema.Array(PromptArgument)),
+  _meta: optional(Schema.Record(Schema.String, Schema.Json))
 }) {}
 
 /**
@@ -1188,7 +1190,8 @@ export class TextContent extends Schema.Opaque<TextContent>()(Schema.Struct({
   /**
    * Optional annotations for the client.
    */
-  annotations: optional(Annotations)
+  annotations: optional(Annotations),
+  _meta: optional(Schema.Record(Schema.String, Schema.Json))
 })) {}
 
 /**
@@ -1202,7 +1205,7 @@ export class ImageContent extends Schema.Opaque<ImageContent>()(Schema.Struct({
   /**
    * The image data.
    */
-  data: Schema.Uint8Array,
+  data: Schema.Uint8ArrayFromBase64,
   /**
    * The MIME type of the image. Different providers may support different
    * image types.
@@ -1211,7 +1214,8 @@ export class ImageContent extends Schema.Opaque<ImageContent>()(Schema.Struct({
   /**
    * Optional annotations for the client.
    */
-  annotations: optional(Annotations)
+  annotations: optional(Annotations),
+  _meta: optional(Schema.Record(Schema.String, Schema.Json))
 })) {}
 
 /**
@@ -1225,7 +1229,7 @@ export class AudioContent extends Schema.Opaque<AudioContent>()(Schema.Struct({
   /**
    * The audio data.
    */
-  data: Schema.Uint8Array,
+  data: Schema.Uint8ArrayFromBase64,
   /**
    * The MIME type of the audio. Different providers may support different
    * audio types.
@@ -1234,7 +1238,8 @@ export class AudioContent extends Schema.Opaque<AudioContent>()(Schema.Struct({
   /**
    * Optional annotations for the client.
    */
-  annotations: optional(Annotations)
+  annotations: optional(Annotations),
+  _meta: optional(Schema.Record(Schema.String, Schema.Json))
 })) {}
 
 /**
@@ -1254,7 +1259,8 @@ export class EmbeddedResource extends Schema.Opaque<EmbeddedResource>()(Schema.S
   /**
    * Optional annotations for the client.
    */
-  annotations: optional(Annotations)
+  annotations: optional(Annotations),
+  _meta: optional(Schema.Record(Schema.String, Schema.Json))
 })) {}
 
 /**
@@ -1450,6 +1456,38 @@ export class ToolAnnotations extends Schema.Opaque<ToolAnnotations>()(Schema.Str
 })) {}
 
 /**
+ * Object-root JSON Schema used by MCP tool inputs and outputs.
+ *
+ * **Details**
+ *
+ * Property definitions and additional root keywords are constrained to JSON
+ * values. The open root supports generated keywords such as `$defs`.
+ *
+ * @category tools
+ * @since 4.0.0
+ */
+export type ToolJsonSchema = Schema.JsonObject & {
+  readonly type: "object"
+  readonly properties?: Readonly<Record<string, Schema.JsonObject>> | undefined
+  readonly required?: ReadonlyArray<string> | undefined
+}
+
+/**
+ * Schema for {@link ToolJsonSchema}.
+ *
+ * @category tools
+ * @since 4.0.0
+ */
+export const ToolJsonSchema: Schema.Codec<ToolJsonSchema> = Schema.StructWithRest(
+  Schema.Struct({
+    type: Schema.Literal("object"),
+    properties: optional(Schema.Record(Schema.String, Schema.Record(Schema.String, Schema.Json))),
+    required: optional(Schema.Array(Schema.String))
+  }),
+  [Schema.Record(Schema.String, Schema.Json)]
+)
+
+/**
  * Schema for the definition of a tool the client can call.
  *
  * @category schemas
@@ -1472,11 +1510,11 @@ export class Tool extends Schema.Class<Tool>(
   /**
    * A JSON Schema object defining the expected parameters for the tool.
    */
-  inputSchema: Schema.Any,
+  inputSchema: ToolJsonSchema,
   /**
-   * An optional JSON Schema object defining the expected output of the tool.
+   * An optional JSON Schema object defining the structure of the tool output.
    */
-  outputSchema: optional(Schema.Any),
+  outputSchema: optional(ToolJsonSchema),
   /**
    * Optional additional tool information.
    */
@@ -1533,7 +1571,10 @@ export class ListTools extends Rpc.make("tools/list", {
 export class CallToolResult extends Schema.Class<CallToolResult>("@effect/ai/McpSchema/CallToolResult")({
   ...ResultMeta.fields,
   content: Schema.Array(ContentBlock),
-  structuredContent: optional(Schema.Any),
+  /**
+   * An optional JSON value containing the structured result of the tool call.
+   */
+  structuredContent: optional(Schema.Json),
   /**
    * Whether the tool call ended in an error.
    *
@@ -1796,7 +1837,8 @@ export class ModelPreferences extends Schema.Class<ModelPreferences>(
 export class CreateMessageResult extends Schema.Class<CreateMessageResult>(
   "@effect/ai/McpSchema/CreateMessageResult"
 )({
-  ...SamplingMessage.fields,
+  role: Role,
+  content: Schema.Union([TextContent, ImageContent, AudioContent]),
   /**
    * The name of the model that generated the message.
    */
@@ -1898,6 +1940,7 @@ export class PromptReference extends Schema.Opaque<PromptReference>()(Schema.Str
  * @since 4.0.0
  */
 export class CompleteResult extends Schema.Opaque<CompleteResult>()(Schema.Struct({
+  ...ResultMeta.fields,
   completion: Schema.Struct({
     /**
      * An array of completion values. Must not exceed 100 items.
@@ -2163,22 +2206,67 @@ export class ElicitationDeclined extends Schema.Error<ElicitationDeclined>("@eff
 // =============================================================================
 
 /**
+ * Raised when the negotiated MCP revision or client capabilities do not
+ * support a server-initiated operation.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class McpReverseOperationUnsupported extends Data.TaggedError("McpReverseOperationUnsupported")<{
+  readonly operation: "roots/list" | "sampling/createMessage" | "elicitation/create"
+  readonly protocolVersion: ProtocolVersion
+  readonly reason: string
+}> {}
+
+/**
+ * A reverse MCP operation failed while being sent or projected through a
+ * version adapter.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class McpReverseOperationError extends Data.TaggedError("McpReverseOperationError")<{
+  readonly operation: "roots/list" | "sampling/createMessage" | "elicitation/create"
+  readonly cause: unknown
+}> {}
+
+/**
+ * Version-neutral operations that an MCP server may request from its client.
+ *
+ * @category client
+ * @since 4.0.0
+ */
+export interface McpReverseClient {
+  readonly listRoots: (
+    request?: typeof ListRoots.payloadSchema.Type
+  ) => Effect.Effect<ListRootsResult, McpReverseOperationError | McpReverseOperationUnsupported>
+  readonly createMessage: (
+    request: typeof CreateMessage.payloadSchema.Type
+  ) => Effect.Effect<CreateMessageResult, McpReverseOperationError | McpReverseOperationUnsupported>
+  readonly elicit: (
+    request: typeof Elicit.payloadSchema.Type
+  ) => Effect.Effect<typeof ElicitResult.Type, McpReverseOperationError | McpReverseOperationUnsupported>
+}
+
+/**
  * Service available while handling an MCP client request.
  *
  * **Details**
  *
- * It exposes the current client id, the client's initialize payload, and a
- * scoped RPC client for server-initiated requests back to that client.
+ * It exposes the current client id, normalized initialization data, and a
+ * scoped version-neutral facade for server-initiated requests.
  *
  * @category services
  * @since 4.0.0
  */
 export class McpServerClient extends Context.Service<McpServerClient, {
   readonly clientId: number
-  readonly protocolVersion: McpProtocol.ProtocolVersion
+  readonly protocolVersion: ProtocolVersion
+  readonly clientCapabilities: ClientCapabilities
+  readonly clientInfo: Implementation
   readonly initializePayload: typeof Initialize.payloadSchema["Type"]
   readonly getClient: Effect.Effect<
-    RpcClient.RpcClient<RpcGroup.Rpcs<typeof ServerRequestRpcs>, RpcClientError>,
+    McpReverseClient,
     never,
     Scope.Scope
   >
