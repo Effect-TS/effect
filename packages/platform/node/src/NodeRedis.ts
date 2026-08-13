@@ -57,7 +57,7 @@ const make = Effect.fnUntraced(function*(
           : socket
       })
     ),
-    (client) => Effect.ignore(Effect.tryPromise(() => client.close()))
+    (client) => Effect.ignoreCause(Effect.promise(() => client.close()))
   )
   client.once("ready", () => {
     ready = true
