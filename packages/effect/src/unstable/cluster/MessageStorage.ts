@@ -991,21 +991,20 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
       resetAddress: () => Effect.void,
       clearAddress: (address) =>
         Effect.sync(() => {
+          const sameAddress = (envelope: Envelope.Encoded) =>
+            address.shardId.group === envelope.address.shardId.group &&
+            address.shardId.id === envelope.address.shardId.id &&
+            address.entityType === envelope.address.entityType &&
+            address.entityId === envelope.address.entityId
           for (const [primaryKey, entry] of requestsByPrimaryKey) {
             const envelope = entry.envelope
-            const sameAddress = ShardId.toString(address.shardId) === ShardId.toString(envelope.address.shardId) &&
-              address.entityType === envelope.address.entityType &&
-              address.entityId === envelope.address.entityId
-            if (sameAddress) {
+            if (sameAddress(envelope)) {
               requestsByPrimaryKey.delete(primaryKey)
             }
           }
           for (let i = journal.length - 1; i >= 0; i--) {
             const envelope = journal[i]
-            const sameAddress = ShardId.toString(address.shardId) === ShardId.toString(envelope.address.shardId) &&
-              address.entityType === envelope.address.entityType &&
-              address.entityId === envelope.address.entityId
-            if (!sameAddress || envelope._tag !== "Request") {
+            if (!sameAddress(envelope) || envelope._tag !== "Request") {
               continue
             }
             unprocessed.delete(envelope)
