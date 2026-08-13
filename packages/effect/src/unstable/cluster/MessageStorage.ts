@@ -139,7 +139,10 @@ export class MessageStorage extends Context.Service<MessageStorage, {
    */
   readonly unprocessedMessages: (
     shardIds: Iterable<ShardId.ShardId>,
-    options?: UnprocessedOptions | undefined
+    options?: {
+      readonly limit?: number | undefined
+      readonly addresses?: ReadonlyArray<EntityAddress> | undefined
+    } | undefined
   ) => Effect.Effect<Array<Message.Incoming<any>>, PersistenceError>
 
   /**
@@ -184,23 +187,6 @@ export class MessageStorage extends Context.Service<MessageStorage, {
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, R>
 }>()("effect/cluster/MessageStorage") {}
-
-/**
- * Options for reading unprocessed messages.
- *
- * **Details**
- *
- * `limit` bounds the number of messages returned by a single read, and
- * `addresses` restricts the read to the provided entity addresses. Storage
- * implementations only claim the messages they actually return.
- *
- * @category models
- * @since 4.0.0
- */
-export type UnprocessedOptions = {
-  readonly limit?: number | undefined
-  readonly addresses?: ReadonlyArray<EntityAddress> | undefined
-}
 
 /**
  * Result of saving a request or envelope into message storage.
@@ -388,7 +374,10 @@ export type Encoded = {
   readonly unprocessedMessages: (
     shardIds: Arr.NonEmptyArray<string>,
     now: number,
-    options?: UnprocessedOptions | undefined
+    options?: {
+      readonly limit?: number | undefined
+      readonly addresses?: ReadonlyArray<EntityAddress> | undefined
+    } | undefined
   ) => Effect.Effect<
     Array<{
       readonly envelope: Envelope.Encoded

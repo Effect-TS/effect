@@ -41,7 +41,6 @@ import { MessageStorage } from "./MessageStorage.ts"
 import type { WithExitEncoded } from "./Reply.ts"
 import * as Reply from "./Reply.ts"
 import * as Sharding from "./Sharding.ts"
-import { ShardingConfig } from "./ShardingConfig.ts"
 import * as Snowflake from "./Snowflake.ts"
 
 /**
@@ -59,7 +58,6 @@ import * as Snowflake from "./Snowflake.ts"
 export const make = Effect.gen(function*() {
   const sharding = yield* Sharding.Sharding
   const storage = yield* MessageStorage
-  const maxIdleTime = yield* workflowMaxIdleTime
 
   const workflows = new Map<string, Workflow.Any>()
   const entities = new Map<
@@ -446,7 +444,7 @@ export const make = Effect.gen(function*() {
             }
           }),
           // Reserve a slot for deferred completions to wake the active run.
-          { concurrency: 2, maxIdleTime }
+          { concurrency: 2, maxIdleTime: entityMaxIdleTime }
         ) as Effect.Effect<void, never, Scope.Scope>
       ),
 
@@ -706,20 +704,9 @@ const payloadParentKey = "~effect/cluster/ClusterWorkflowEngine/payloadParentKey
 
 // Workflow state is durable, so an idle entity (completed or suspended) can
 // be released quickly and is rebuilt from storage when the next message
-// arrives. Cap the idle time so completed and suspended executions do not
-// hold `maxResidentEntities` slots for the full `entityMaxIdleTime`.
-const workflowIdleTimeCap = Duration.seconds(10)
-
-// The cap only ever shortens the configured `entityMaxIdleTime`, so operators
-// tuning it below the cap keep their value. The config is read optionally to
-// keep it out of the public layer requirements; without it the cap applies.
-const workflowMaxIdleTime: Effect.Effect<Duration.Duration> = Effect.map(
-  Effect.serviceOption(ShardingConfig),
-  Option.match({
-    onNone: () => workflowIdleTimeCap,
-    onSome: (config) => Duration.min(workflowIdleTimeCap, Duration.fromInputUnsafe(config.entityMaxIdleTime))
-  })
-)
+// arrives. This keeps completed and suspended executions from holding
+// `maxResidentEntities` slots for the full `entityMaxIdleTime`.
+const entityMaxIdleTime = Duration.seconds(10)
 
 const makeWorkflowEntity = (workflow: Workflow.Any) =>
   Entity.make(`Workflow/${workflow._tag}`, [
@@ -775,26 +762,25 @@ const ClockEntity = Entity.make("Workflow/-/DurableClock", [
   ClockRpc
 ])
 
-const ClockEntityLayer = Layer.unwrap(Effect.map(workflowMaxIdleTime, (maxIdleTime) =>
-  ClockEntity.toLayer(
-    Effect.gen(function*() {
-      const engine = yield* WorkflowEngine.WorkflowEngine
-      const address = yield* Entity.CurrentAddress
-      const executionId = address.entityId
-      return {
-        run(request) {
-          const deferred = DurableClock.make({ name: request.payload.name, duration: Duration.zero }).deferred
-          return ensureSuccess(engine.deferredDone(deferred, {
-            workflowName: request.payload.workflowName,
-            executionId,
-            deferredName: deferred.name,
-            exit: Exit.void
-          }))
-        }
+const ClockEntityLayer = ClockEntity.toLayer(
+  Effect.gen(function*() {
+    const engine = yield* WorkflowEngine.WorkflowEngine
+    const address = yield* Entity.CurrentAddress
+    const executionId = address.entityId
+    return {
+      run(request) {
+        const deferred = DurableClock.make({ name: request.payload.name, duration: Duration.zero }).deferred
+        return ensureSuccess(engine.deferredDone(deferred, {
+          workflowName: request.payload.workflowName,
+          executionId,
+          deferredName: deferred.name,
+          exit: Exit.void
+        }))
       }
-    }),
-    { maxIdleTime }
-  )))
+    }
+  }),
+  { maxIdleTime: entityMaxIdleTime }
+)
 
 const InterruptSignal = DurableDeferred.make("Workflow/InterruptSignal")
 

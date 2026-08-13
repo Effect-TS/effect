@@ -25,8 +25,7 @@ The encoded driver contract replaces `Encoded.resetAddress` with the batched
 `Encoded.resetAddresses` operation. `SqlMessageStorage.makeEncoded` constructs
 the SQL encoded driver directly for custom storage composition.
 
-`ClusterWorkflowEngine` entities (workflows and the durable clock) now cap
-their idle time at ten seconds, so completed and suspended executions release
-their entity slots quickly. A configured `entityMaxIdleTime` below the cap
-still applies. Their state is durable, so an evicted execution is rebuilt
-from storage when its next message arrives.
+`ClusterWorkflowEngine` entities (workflows and the durable clock) now use a
+fixed ten-second idle time, so completed and suspended executions release their
+entity slots quickly. Their state is durable, so an evicted execution is
+rebuilt from storage when its next message arrives.

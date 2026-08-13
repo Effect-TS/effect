@@ -400,7 +400,11 @@ export const makeEncoded: (options?: {
         Array.from(byEntityType, ([entityType, addresses]) => ({ shardId, entityType, addresses }))
     ).flat()
   }
-  const unprocessedFilters = (options?: MessageStorage.UnprocessedOptions | undefined) => ({
+  type UnprocessedOptions = {
+    readonly limit?: number | undefined
+    readonly addresses?: ReadonlyArray<EntityAddress.EntityAddress> | undefined
+  }
+  const unprocessedFilters = (options?: UnprocessedOptions | undefined) => ({
     addressFilter: options?.addresses !== undefined
       ? sql`AND (${
         sql.or(
@@ -482,7 +486,7 @@ export const makeEncoded: (options?: {
   const getUnprocessedMessages = (
     shardIds: ReadonlyArray<string>,
     now: number,
-    options?: MessageStorage.UnprocessedOptions | undefined
+    options?: UnprocessedOptions | undefined
   ) =>
     options?.addresses?.length === 0
       ? Effect.succeed([])

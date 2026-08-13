@@ -642,7 +642,10 @@ const make = Effect.gen(function*() {
         body: () => send
       })
 
-      const readAndProcess = Effect.fnUntraced(function*(options?: MessageStorage.UnprocessedOptions) {
+      const readAndProcess = Effect.fnUntraced(function*(options?: {
+        readonly limit?: number | undefined
+        readonly addresses?: ReadonlyArray<EntityAddress> | undefined
+      }) {
         messages = yield* storage.unprocessedMessages(acquiredShards, options)
         index = 0
         yield* processMessages

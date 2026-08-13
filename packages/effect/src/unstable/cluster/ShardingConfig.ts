@@ -104,9 +104,6 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    * storage until a slot frees up), and volatile sends to new addresses fail
    * with `MailboxFull`.
    *
-   * Workflow clock entities (`Workflow/-/DurableClock`) count towards the same
-   * limit, so a workflow with a pending clock can use two slots.
-   *
    * `"unbounded"` can only be set programmatically; the environment
    * configuration only accepts integers.
    *
