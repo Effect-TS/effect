@@ -101,6 +101,8 @@ export const GetUserRpc = Rpc.make("GetUser", {
 export const makeRequest = Effect.fnUntraced(function*(options?: {
   readonly rpc?: Rpc.AnyWithProps
   readonly payload?: any
+  readonly entityId?: string
+  readonly shardId?: ShardId.ShardId
 }) {
   const snowflake = yield* Snowflake.Generator
   const rpc = options?.rpc ?? GetUserRpc
@@ -108,9 +110,9 @@ export const makeRequest = Effect.fnUntraced(function*(options?: {
     envelope: Envelope.makeRequest<any>({
       requestId: snowflake.nextUnsafe(),
       address: EntityAddress.make({
-        shardId: ShardId.make("default", 1),
+        shardId: options?.shardId ?? ShardId.make("default", 1),
         entityType: EntityType.make("test"),
-        entityId: EntityId.make("1")
+        entityId: EntityId.make(options?.entityId ?? "1")
       }),
       tag: rpc._tag,
       payload: options?.payload ?? { id: 123 },

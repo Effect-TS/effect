@@ -23,8 +23,12 @@ import {
   ClusterMetrics,
   ClusterSchema,
   Entity,
+  EntityAddress,
   EntityId,
+  EntityType,
+  Envelope,
   MachineId,
+  Message,
   MessageStorage,
   Runner,
   RunnerAddress,
@@ -36,6 +40,7 @@ import {
   ShardingConfig,
   Snowflake
 } from "effect/unstable/cluster"
+import { Headers } from "effect/unstable/http"
 import { Rpc } from "effect/unstable/rpc"
 import {
   CallerId,
@@ -1070,6 +1075,198 @@ describe.concurrent("Sharding", () => {
     }))
 })
 
+describe.concurrent("Sharding residency cap", () => {
+  it.effect("bounds resident entities to maxResidentEntities", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const sharding = yield* Sharding.Sharding
+      const makeClient = yield* TestEntity.client
+      const fibers: Array<Fiber.Fiber<User, any>> = []
+      for (let i = 1; i <= 6; i++) {
+        fibers.push(
+          yield* makeClient(String(i)).GetUser({ id: i }).pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+        )
+      }
+      yield* TestClock.adjust(1)
+      assert.isAtMost(yield* sharding.activeEntityCount, 2)
+
+      // idle entities are reaped over time, freeing slots for the backlog
+      for (let i = 0; i < 12; i++) {
+        yield* TestClock.adjust(5000)
+        assert.isAtMost(yield* sharding.activeEntityCount, 2)
+      }
+
+      const users = yield* Fiber.joinAll(fibers)
+      assert.deepStrictEqual(users.map((user) => user.id), [1, 2, 3, 4, 5, 6])
+    }).pipe(Effect.provide(CappedSharding({ maxResidentEntities: 2, entityMaxIdleTime: 1000 }))))
+
+  it.effect("volatile sends to new entities fail with MailboxFull at the cap", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const driver = yield* MessageStorage.MemoryDriver
+      const sharding = yield* Sharding.Sharding
+      const makeClient = yield* TestEntity.client
+      // occupy the only slot
+      yield* makeClient("1").NeverVolatile().pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1)
+      assert.strictEqual(yield* sharding.activeEntityCount, 1)
+
+      const error = yield* makeClient("2").GetUserVolatile({ id: 2 }).pipe(Effect.flip)
+      assert.strictEqual(error._tag, "MailboxFull")
+
+      // persisted sends still succeed and wait in storage
+      yield* makeClient("2").GetUser({ id: 2 }, { discard: true })
+      yield* TestClock.adjust(5000)
+      assert.strictEqual(yield* sharding.activeEntityCount, 1)
+      assert.strictEqual(driver.unprocessed.size, 1)
+      assert.strictEqual(driver.replyIds.size, 0)
+    }).pipe(Effect.provide(CappedSharding({ maxResidentEntities: 1 }))))
+
+  it.effect("keeps delivering to resident entities at the cap", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const driver = yield* MessageStorage.MemoryDriver
+      const state = yield* TestEntityState
+      const sharding = yield* Sharding.Sharding
+      const makeClient = yield* TestEntity.client
+      // make entity "1" resident and keep it busy
+      yield* makeClient("1").NeverFork().pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1)
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+
+      // a backlog of new entity ids in front of the resident's next message
+      for (let i = 2; i <= 4; i++) {
+        yield* makeClient(String(i)).GetUser({ id: i }, { discard: true })
+      }
+      const fiber = yield* makeClient("1").GetUser({ id: 1 }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* TestClock.adjust(5000)
+
+      // the resident entity received its message despite the backlog in front
+      assert.deepStrictEqual(yield* Fiber.join(fiber), new User({ id: 1, name: "User 1" }))
+      // the new ids were not admitted and their requests stay in storage
+      assert.strictEqual(yield* sharding.activeEntityCount, 1)
+      assert.strictEqual(driver.unprocessed.size, 4)
+      assert.strictEqual(driver.replyIds.size, 1)
+    }).pipe(Effect.provide(CappedSharding({
+      maxResidentEntities: 1,
+      unprocessedMessageBatchSize: 2
+    }))))
+
+  it.effect("drains a full batch without waiting for the poll interval", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const driver = yield* MessageStorage.MemoryDriver
+
+      for (let i = 1; i <= 5; i++) {
+        yield* saveGetUserRequest(String(i), i)
+      }
+      assert.strictEqual(driver.replyIds.size, 0)
+
+      // a single poll drains the whole backlog in batches of 2
+      yield* TestClock.adjust(5000)
+      assert.strictEqual(driver.replyIds.size, 5)
+    }).pipe(Effect.provide(CappedSharding({ unprocessedMessageBatchSize: 2 }))))
+
+  it.effect("advances past in-flight memory requests when reading bounded batches", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const makeClient = yield* TestEntity.client
+      yield* makeClient("1").Never().pipe(Effect.forkChild({ startImmediately: true }))
+      yield* makeClient("2").Never().pipe(Effect.forkChild({ startImmediately: true }))
+      const fiber = yield* makeClient("3").GetUser({ id: 3 }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      yield* TestClock.adjust(5000)
+      assert.deepStrictEqual(yield* Fiber.join(fiber), new User({ id: 3, name: "User 3" }))
+    }).pipe(Effect.provide(CappedSharding({ unprocessedMessageBatchSize: 2 }))))
+
+  it.effect("keeps full-sized storage reads when approaching the entity cap", () =>
+    Effect.gen(function*() {
+      const limits: Array<number> = []
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const sharding = yield* Sharding.Sharding
+        const makeClient = yield* TestEntity.client
+        for (let i = 1; i <= 4; i++) {
+          yield* makeClient(String(i)).NeverVolatile().pipe(Effect.forkChild({ startImmediately: true }))
+        }
+        yield* TestClock.adjust(1)
+        assert.strictEqual(yield* sharding.activeEntityCount, 4)
+        limits.length = 0
+
+        for (let i = 0; i < 10; i++) {
+          yield* saveGetUserRequest(String(i % 4 + 1), i)
+        }
+        yield* TestClock.adjust(5000)
+        assert.isNotEmpty(limits)
+        assert.deepStrictEqual([...new Set(limits)], [100])
+      }).pipe(Effect.provide(CappedSharding({
+        maxResidentEntities: 5,
+        unprocessedMessageBatchSize: 100
+      }, (storage) => ({
+        ...storage,
+        unprocessedMessages(shardIds, options) {
+          if (options?.limit !== undefined) limits.push(options.limit)
+          return storage.unprocessedMessages(shardIds, options)
+        }
+      }))))
+    }))
+
+  it.effect("normalizes programmatic batch sizes below one", () =>
+    Effect.forEach([0, -1], (unprocessedMessageBatchSize) =>
+      Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const makeClient = yield* TestEntity.client
+        const fiber = yield* makeClient("1").GetUser({ id: 1 }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* TestClock.adjust(5000)
+        assert.isDefined(fiber.pollUnsafe())
+        assert.deepStrictEqual(yield* Fiber.join(fiber), new User({ id: 1, name: "User 1" }))
+      }).pipe(Effect.provide(CappedSharding({ unprocessedMessageBatchSize }))), { discard: true }))
+
+  it.effect("does not busy-poll storage at the cap", () =>
+    Effect.gen(function*() {
+      let reads = 0
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const makeClient = yield* TestEntity.client
+        yield* makeClient("1").NeverVolatile().pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust(1)
+        // a backlog for a new id that cannot be admitted
+        yield* makeClient("2").GetUser({ id: 2 }, { discard: true })
+        yield* TestClock.adjust(1)
+        const before = reads
+        yield* TestClock.adjust(4000) // less than the poll interval
+        assert.isAtMost(reads - before, 1)
+      }).pipe(Effect.provide(CappedSharding({ maxResidentEntities: 1 }, (storage) => ({
+        ...storage,
+        unprocessedMessages(shardIds, options) {
+          reads++
+          return storage.unprocessedMessages(shardIds, options)
+        }
+      }))))
+    }))
+
+  it.effect("unbounded maxResidentEntities does not limit spawning", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const sharding = yield* Sharding.Sharding
+      const makeClient = yield* TestEntity.client
+      for (let i = 1; i <= 15; i++) {
+        yield* makeClient(String(i)).NeverVolatile().pipe(Effect.forkChild({ startImmediately: true }))
+      }
+      yield* TestClock.adjust(1)
+      assert.strictEqual(yield* sharding.activeEntityCount, 15)
+    }).pipe(Effect.provide(CappedSharding({ maxResidentEntities: "unbounded" }))))
+})
+
 describe("Sharding shard lock failover", () => {
   it.effect("interrupts entities and reacquires shards after lock storage recovers", () =>
     Effect.gen(function*() {
@@ -1463,13 +1660,15 @@ const otherRunner = Runner.make({
   weight: 1
 })
 
-const TestShardingConfig = ShardingConfig.layer({
+const testConfigDefaults: Partial<ShardingConfig.ShardingConfig["Service"]> = {
   entityMailboxCapacity: 10,
   entityTerminationTimeout: 0,
   entityMessagePollInterval: 5000,
   sendRetryInterval: 100,
   refreshAssignmentsInterval: 0
-})
+}
+
+const TestShardingConfig = ShardingConfig.layer(testConfigDefaults)
 
 const TestShardingWithoutState = TestEntityNoState.pipe(
   Layer.provideMerge(Sharding.layer),
@@ -1493,4 +1692,53 @@ const TestSharding = TestShardingWithoutStorage.pipe(
   Layer.provide(TestShardingConfig)
 )
 
+const CappedSharding = (
+  config: Partial<ShardingConfig.ShardingConfig["Service"]>,
+  transformStorage?: (
+    storage: MessageStorage.MessageStorage["Service"]
+  ) => MessageStorage.MessageStorage["Service"]
+) => {
+  const configLayer = ShardingConfig.layer({ ...testConfigDefaults, ...config })
+  let layer = TestShardingWithoutRunners.pipe(
+    Layer.provide(Runners.layerNoop),
+    Layer.provide(configLayer)
+  )
+  if (transformStorage) {
+    layer = layer.pipe(Layer.updateService(MessageStorage.MessageStorage, transformStorage))
+  }
+  return layer.pipe(
+    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provide(configLayer)
+  )
+}
+
 const ContextBleedSharding = ContextBleedLayer.pipe(Layer.provideMerge(TestSharding))
+
+// saves a persisted GetUser request directly to storage, bypassing the client,
+// so the storage read loop only learns about it from the next poll
+const saveGetUserRequest = Effect.fnUntraced(function*(entityId: string, id: number) {
+  const storage = yield* MessageStorage.MessageStorage
+  const sharding = yield* Sharding.Sharding
+  const rpc = TestEntity.protocol.requests.get("GetUser")! as any
+  const entity = EntityId.make(entityId)
+  yield* storage.saveRequest(
+    new Message.OutgoingRequest({
+      envelope: Envelope.makeRequest<any>({
+        requestId: yield* sharding.getSnowflake,
+        address: EntityAddress.make({
+          shardId: sharding.getShardId(entity, "default"),
+          entityType: EntityType.make(TestEntity.type),
+          entityId: entity
+        }),
+        tag: "GetUser",
+        payload: { id },
+        headers: Headers.empty
+      }),
+      annotations: rpc.annotations,
+      context: Context.empty() as any,
+      rpc,
+      lastReceivedReply: Option.none(),
+      respond: () => Effect.void
+    })
+  )
+})

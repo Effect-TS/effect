@@ -737,24 +737,26 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     }).pipe(Effect.provide(TestWorkflowLayer)))
 })
 
-const TestShardingConfig = ShardingConfig.layer({
-  shardsPerGroup: 300,
-  availableShardGroups: ["default", "workflow"],
-  assignedShardGroups: ["default", "workflow"],
-  entityMailboxCapacity: 10,
-  entityTerminationTimeout: 0,
-  entityMessagePollInterval: 5000,
-  sendRetryInterval: 100
-})
+const makeTestWorkflowEngine = (config?: Partial<ShardingConfig.ShardingConfig["Service"]>) =>
+  ClusterWorkflowEngine.layer.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(Runners.layerNoop),
+    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provide(RunnerStorage.layerMemory),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provide(ShardingConfig.layer({
+      shardsPerGroup: 300,
+      availableShardGroups: ["default", "workflow"],
+      assignedShardGroups: ["default", "workflow"],
+      entityMailboxCapacity: 10,
+      entityTerminationTimeout: 0,
+      entityMessagePollInterval: 5000,
+      sendRetryInterval: 100,
+      ...config
+    }))
+  )
 
-const TestWorkflowEngine = ClusterWorkflowEngine.layer.pipe(
-  Layer.provideMerge(Sharding.layer),
-  Layer.provide(Runners.layerNoop),
-  Layer.provideMerge(MessageStorage.layerMemory),
-  Layer.provide(RunnerStorage.layerMemory),
-  Layer.provide(RunnerHealth.layerNoop),
-  Layer.provide(TestShardingConfig)
-)
+const TestWorkflowEngine = makeTestWorkflowEngine()
 
 class SendEmailError extends Schema.Error<SendEmailError>("SendEmailError")({
   _tag: Schema.tag("SendEmailError"),

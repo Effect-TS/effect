@@ -171,7 +171,9 @@ export class RunnerUnavailable extends Schema.Error<RunnerUnavailable>(`${TypeId
  *
  * **Details**
  *
- * Carries the `address` whose bounded mailbox is at capacity.
+ * Carries the `address` whose bounded mailbox is at capacity. It is also used
+ * when the runner has reached `ShardingConfig.maxResidentEntities` and cannot
+ * spawn a new entity for the `address`.
  *
  * **Gotchas**
  *

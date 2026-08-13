@@ -444,7 +444,7 @@ export const make = Effect.gen(function*() {
             }
           }),
           // Reserve a slot for deferred completions to wake the active run.
-          { concurrency: 2 }
+          { concurrency: 2, maxIdleTime: entityMaxIdleTime }
         ) as Effect.Effect<void, never, Scope.Scope>
       ),
 
@@ -702,6 +702,12 @@ const ResumeRpc = Rpc.make("resume", {
 
 const payloadParentKey = "~effect/cluster/ClusterWorkflowEngine/payloadParentKey"
 
+// Workflow state is durable, so an idle entity (completed or suspended) can
+// be released quickly and is rebuilt from storage when the next message
+// arrives. This keeps completed and suspended executions from holding
+// `maxResidentEntities` slots for the full `entityMaxIdleTime`.
+const entityMaxIdleTime = Duration.seconds(10)
+
 const makeWorkflowEntity = (workflow: Workflow.Any) =>
   Entity.make(`Workflow/${workflow._tag}`, [
     Rpc.make("run", {
@@ -756,22 +762,25 @@ const ClockEntity = Entity.make("Workflow/-/DurableClock", [
   ClockRpc
 ])
 
-const ClockEntityLayer = ClockEntity.toLayer(Effect.gen(function*() {
-  const engine = yield* WorkflowEngine.WorkflowEngine
-  const address = yield* Entity.CurrentAddress
-  const executionId = address.entityId
-  return {
-    run(request) {
-      const deferred = DurableClock.make({ name: request.payload.name, duration: Duration.zero }).deferred
-      return ensureSuccess(engine.deferredDone(deferred, {
-        workflowName: request.payload.workflowName,
-        executionId,
-        deferredName: deferred.name,
-        exit: Exit.void
-      }))
+const ClockEntityLayer = ClockEntity.toLayer(
+  Effect.gen(function*() {
+    const engine = yield* WorkflowEngine.WorkflowEngine
+    const address = yield* Entity.CurrentAddress
+    const executionId = address.entityId
+    return {
+      run(request) {
+        const deferred = DurableClock.make({ name: request.payload.name, duration: Duration.zero }).deferred
+        return ensureSuccess(engine.deferredDone(deferred, {
+          workflowName: request.payload.workflowName,
+          executionId,
+          deferredName: deferred.name,
+          exit: Exit.void
+        }))
+      }
     }
-  }
-}))
+  }),
+  { maxIdleTime: entityMaxIdleTime }
+)
 
 const InterruptSignal = DurableDeferred.make("Workflow/InterruptSignal")
 
