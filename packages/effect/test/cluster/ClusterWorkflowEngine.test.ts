@@ -84,6 +84,29 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(yield* EmailWorkflow.poll(executionId)).toEqual(Option.some(new Workflow.Complete({ exit: Exit.void })))
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
+  it.effect("releases idle workflow entities quickly", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      yield* TestClock.adjust(1)
+
+      yield* EmailWorkflow.execute({
+        id: "test-email-reap",
+        to: "bob@example.com"
+      }).pipe(Effect.forkChild({ startImmediately: true }))
+
+      yield* TestClock.adjust("10 seconds")
+      yield* sharding.pollStorage
+      yield* TestClock.adjust(5000)
+
+      // the workflow is suspended, so its entities are idle but resident
+      assert.isAtLeast(yield* sharding.activeEntityCount, 1)
+
+      // idle workflow entities are released well before the default
+      // one-minute entityMaxIdleTime
+      yield* TestClock.adjust("30 seconds")
+      assert.strictEqual(yield* sharding.activeEntityCount, 0)
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
   it.effect("interrupts a suspended workflow and runs compensation", () =>
     Effect.gen(function*() {
       const sharding = yield* Sharding.Sharding

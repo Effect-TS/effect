@@ -24,3 +24,9 @@ address or shard makes its claimed messages immediately eligible again.
 The encoded driver contract replaces `Encoded.resetAddress` with the batched
 `Encoded.resetAddresses` operation. `SqlMessageStorage.makeEncoded` constructs
 the SQL encoded driver directly for custom storage composition.
+
+`ClusterWorkflowEngine` entities (workflows and the durable clock) now use a
+ten-second idle time instead of the one-minute `entityMaxIdleTime` default, so
+completed and suspended executions release their entity slots quickly. Their
+state is durable, so an evicted execution is rebuilt from storage when its
+next message arrives.
