@@ -61,6 +61,17 @@ const HealthyRpc = Rpc.make("Healthy", {
   success: Schema.String
 })
 
+const UnencodableRpc = Rpc.make("Unencodable", {
+  payload: KeyedPayload,
+  success: Schema.Unknown
+})
+
+const NonJsonFailureRpc = Rpc.make("NonJsonFailure", {
+  error: Schema.Unknown,
+  payload: KeyedPayload,
+  success: Schema.Never
+})
+
 const StreamedRpc = Rpc.make("Streamed", {
   payload: KeyedPayload,
   success: RpcSchema.Stream(Schema.Number, Schema.Never)
@@ -79,6 +90,8 @@ const PersistenceEntity = Entity.make("ClusterIntegrationPersistence", [
   TypedFailureRpc,
   DefectRpc,
   HealthyRpc,
+  UnencodableRpc,
+  NonJsonFailureRpc,
   StreamedRpc,
   ScheduledRpc
 ]).annotateRpcs(ClusterSchema.Persisted, true)
@@ -87,7 +100,13 @@ const freshState = () => ({
   completedUninterruptible: 0,
   completedVolatile: 0,
   counts: new Map<string, number>(),
+  healthyEntered: Latch.makeUnsafe(),
+  healthyGate: Latch.makeUnsafe(),
   scheduledDeliveries: [] as Array<number>,
+  streamClientThirdEntered: Latch.makeUnsafe(),
+  streamClientThirdGate: Latch.makeUnsafe(),
+  streamTerminalEntered: Latch.makeUnsafe(),
+  streamTerminalGate: Latch.makeUnsafe(),
   streamThirdEntered: Latch.makeUnsafe(),
   streamThirdGate: Latch.makeUnsafe(),
   uninterruptibleEntered: Latch.makeUnsafe(),
@@ -116,11 +135,18 @@ const PersistenceEntityLayer = PersistenceEntity.toLayer({
     Effect.sync(() => increment("Defect", payload.id)).pipe(
       Effect.andThen(Effect.die(`defect:${payload.id}`))
     ),
-  Healthy: ({ payload }) =>
-    Effect.sync(() => {
-      increment("Healthy", payload.id)
-      return `healthy:${payload.id}`
-    }),
+  Healthy: Effect.fnUntraced(function*({ payload }) {
+    increment("Healthy", payload.id)
+    if (payload.id.endsWith("-blocked")) {
+      state.healthyEntered.openUnsafe()
+      yield* state.healthyGate.await
+    }
+    return `healthy:${payload.id}`
+  }),
+  NonJsonFailure: ({ payload }) =>
+    Effect.sync(() => increment("NonJsonFailure", payload.id)).pipe(
+      Effect.andThen(Effect.fail(new Error(`non-json:${payload.id}`)))
+    ),
   Persisted: ({ payload }) =>
     Effect.sync(() => {
       increment("Persisted", payload.id)
@@ -143,7 +169,8 @@ const PersistenceEntityLayer = PersistenceEntity.toLayer({
       onNone: () => 0,
       onSome: (value) => value + 1
     })
-    return Stream.fromIterable([0, 1, 2, 3, 4].slice(start)).pipe(
+    const values = request.payload.id.endsWith("-terminal-race") ? [0] : [0, 1, 2, 3, 4]
+    const stream = Stream.fromIterable(values.slice(start)).pipe(
       Stream.mapEffect((value) => {
         if (request.payload.id.endsWith("-restart") && value === 2) {
           state.streamThirdEntered.openUnsafe()
@@ -152,6 +179,15 @@ const PersistenceEntityLayer = PersistenceEntity.toLayer({
         return Effect.succeed(value)
       }),
       Stream.rechunk(1)
+    )
+    if (!request.payload.id.endsWith("-terminal-race")) return stream
+    return Stream.concat(
+      stream,
+      Stream.fromEffect(
+        Effect.sync(() => state.streamTerminalEntered.openUnsafe()).pipe(
+          Effect.andThen(state.streamTerminalGate.await)
+        )
+      ).pipe(Stream.drain)
     )
   },
   TypedFailure: ({ payload }) =>
@@ -165,6 +201,11 @@ const PersistenceEntityLayer = PersistenceEntity.toLayer({
     state.completedUninterruptible++
     return `uninterruptible:${payload.id}`
   }),
+  Unencodable: ({ payload }) =>
+    Effect.sync(() => {
+      increment("Unencodable", payload.id)
+      return new Error(`unencodable:${payload.id}`)
+    }),
   Volatile: Effect.fnUntraced(function*({ payload }) {
     increment("Volatile", payload.id)
     state.volatileEntered.openUnsafe()
@@ -313,6 +354,136 @@ describe("cluster message persistence integration", () => {
         })
       }))
 
+    it.live(`${backend}: completes a discarded volatile caller while the handler is still blocked`, () =>
+      Effect.gen(function*() {
+        resetState()
+        const cluster = yield* make({ backend, entities: PersistenceEntityLayer })
+        const [owner] = yield* cluster.start(1)
+        yield* cluster.waitForStableAssignments()
+        const client = yield* cluster.getClient(PersistenceEntity)
+        const id = `${backend}-discarded-volatile`
+        const caller = yield* client("discarded-volatile").Volatile(
+          new KeyedPayload({ id }),
+          { discard: true }
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* cluster.waitUntil(
+          "The discarded volatile handler did not start",
+          Effect.as(state.volatileEntered.await, true)
+        )
+        yield* cluster.waitUntil(
+          "The discarded volatile caller waited for the blocked handler",
+          Effect.sync(() => caller.pollUnsafe() !== undefined)
+        )
+
+        yield* Fiber.join(caller)
+        assert.strictEqual(state.completedVolatile, 0)
+        assert.strictEqual(count("Volatile", id), 1)
+        yield* cluster.kill(owner)
+      }))
+
+    it.live(`${backend}: stores an unencodable persisted reply as a defect and does not hang the caller`, () =>
+      Effect.gen(function*() {
+        resetState()
+        const cluster = yield* make({ backend, entities: PersistenceEntityLayer })
+        yield* cluster.start(2)
+        yield* cluster.waitForStableAssignments()
+        const client = yield* cluster.getClient(PersistenceEntity)
+        const id = `${backend}-unencodable`
+        const payload = new KeyedPayload({ id })
+
+        const first = yield* client("unencodable").Unencodable(payload).pipe(Effect.exit)
+        assert.isTrue(Exit.isFailure(first))
+        if (Exit.isFailure(first)) {
+          assert.include(Cause.pretty(first.cause), "MalformedMessage")
+        }
+        const stored = yield* client("unencodable").Unencodable(payload).pipe(Effect.exit)
+        assert.isTrue(Exit.isFailure(stored))
+        if (Exit.isFailure(stored)) {
+          assert.include(Cause.pretty(stored.cause), "MalformedMessage")
+        }
+        assert.strictEqual(count("Unencodable", id), 1)
+        assert.deepStrictEqual(yield* cluster.messageCounts(), {
+          failed: 1,
+          replied: 0,
+          unprocessed: 0
+        })
+      }))
+
+    it.live(`${backend}: isolates a reply-encoding failure so a sibling request on the same connection succeeds`, () =>
+      Effect.gen(function*() {
+        resetState()
+        const cluster = yield* make({ backend, entities: PersistenceEntityLayer })
+        yield* cluster.start(2)
+        yield* cluster.waitForStableAssignments()
+        const client = yield* cluster.getClient(PersistenceEntity)
+        const badEntityId = `${backend}-encoding-bad`
+        const badOwner = yield* cluster.ownerOfEntity(PersistenceEntity, badEntityId)
+        assert.isDefined(badOwner)
+        let siblingEntityId = ""
+        for (let index = 0; index < 100 && siblingEntityId === ""; index++) {
+          const candidate = `${backend}-encoding-sibling-${index}`
+          const candidateOwner = yield* cluster.ownerOfEntity(PersistenceEntity, candidate)
+          if (candidateOwner === badOwner) siblingEntityId = candidate
+        }
+        assert.notStrictEqual(siblingEntityId, "", "Could not find a sibling entity on the same runner")
+
+        const healthyId = `${backend}-healthy-blocked`
+        const healthy = yield* client(siblingEntityId).Healthy(
+          new KeyedPayload({ id: healthyId })
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* cluster.waitUntil(
+          "The sibling request did not start",
+          Effect.as(state.healthyEntered.await, true)
+        )
+
+        const badId = `${backend}-encoding-failure`
+        const bad = yield* client(badEntityId).Unencodable(
+          new KeyedPayload({ id: badId })
+        ).pipe(Effect.exit)
+        assert.isTrue(Exit.isFailure(bad))
+        if (Exit.isFailure(bad)) {
+          assert.include(Cause.pretty(bad.cause), "MalformedMessage")
+        }
+
+        state.healthyGate.openUnsafe()
+        assert.strictEqual(yield* Fiber.join(healthy), `healthy:${healthyId}`)
+        assert.strictEqual(count("Unencodable", badId), 1)
+        assert.strictEqual(count("Healthy", healthyId), 1)
+        assert.deepStrictEqual(yield* cluster.messageCounts(), {
+          failed: 1,
+          replied: 1,
+          unprocessed: 0
+        })
+      }))
+
+    it.live(`${backend}: persists a non-JSON Error as a serializable defect`, () =>
+      Effect.gen(function*() {
+        resetState()
+        const cluster = yield* make({ backend, entities: PersistenceEntityLayer })
+        yield* cluster.start(2)
+        yield* cluster.waitForStableAssignments()
+        const client = yield* cluster.getClient(PersistenceEntity)
+        const id = `${backend}-non-json-failure`
+        const payload = new KeyedPayload({ id })
+
+        const first = yield* client("non-json-failure").NonJsonFailure(payload).pipe(Effect.exit)
+        assert.isTrue(Exit.isFailure(first))
+        if (Exit.isFailure(first)) {
+          assert.include(Cause.pretty(first.cause), "MalformedMessage")
+        }
+        const stored = yield* client("non-json-failure").NonJsonFailure(payload).pipe(Effect.exit)
+        assert.isTrue(Exit.isFailure(stored))
+        if (Exit.isFailure(stored)) {
+          assert.include(Cause.pretty(stored.cause), "MalformedMessage")
+        }
+        assert.strictEqual(count("NonJsonFailure", id), 1)
+        assert.deepStrictEqual(yield* cluster.messageCounts(), {
+          failed: 1,
+          replied: 0,
+          unprocessed: 0
+        })
+      }))
+
     it.live(`${backend}: persists typed failures and defects without wedging the mailbox`, () =>
       Effect.gen(function*() {
         resetState()
@@ -362,6 +533,56 @@ describe("cluster message persistence integration", () => {
           replied: 1,
           unprocessed: 0
         })
+      }))
+
+    it.live(`${backend}: abandons a stream chunk acknowledgement during shutdown without stranding either runner`, () =>
+      Effect.gen(function*() {
+        resetState()
+        const cluster = yield* make({ backend, entities: PersistenceEntityLayer })
+        const runners = yield* cluster.start(2)
+        yield* cluster.waitForStableAssignments()
+        const client = yield* cluster.getClient(PersistenceEntity)
+        const entityId = `${backend}-shutdown-stream`
+        const id = `${entityId}-restart`
+        const owner = yield* cluster.ownerOfEntity(PersistenceEntity, entityId)
+        assert.isDefined(owner)
+        const peer = runners.find((runner) => runner !== owner)
+        assert.isDefined(peer)
+        const values = yield* client(entityId).Streamed(new KeyedPayload({ id })).pipe(
+          Stream.tap((value) => {
+            if (value !== 2) return Effect.void
+            state.streamClientThirdEntered.openUnsafe()
+            return state.streamClientThirdGate.await
+          }),
+          Stream.runCollect,
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* cluster.waitUntil(
+          "The stream handler did not reach its third chunk",
+          Effect.as(state.streamThirdEntered.await, true)
+        )
+        state.streamThirdGate.openUnsafe()
+        yield* cluster.waitUntil(
+          "The client did not hold the third chunk acknowledgement",
+          Effect.as(state.streamClientThirdEntered.await, true)
+        )
+
+        const stopping = yield* cluster.stop(owner).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* cluster.waitUntil(
+          "The runner did not begin stopping while the acknowledgement was held",
+          Effect.sync(() => owner.state() === "stopped")
+        )
+        state.streamClientThirdGate.openUnsafe()
+        yield* Fiber.join(stopping)
+        yield* cluster.waitForStableAssignments()
+
+        const healthyId = `${backend}-shutdown-stream-healthy`
+        assert.strictEqual(
+          yield* client(entityId).Healthy(new KeyedPayload({ id: healthyId })),
+          `healthy:${healthyId}`
+        )
+        assert.deepStrictEqual(Array.from(yield* Fiber.join(values)), [0, 1, 2, 3, 4])
+        assert.strictEqual(yield* cluster.ownerOfEntity(PersistenceEntity, entityId), peer)
       }))
 
     it.live(`${backend}: round-trips a chunked reply through storage`, () =>
@@ -426,6 +647,53 @@ describe("cluster message persistence integration", () => {
           replied: 1,
           unprocessed: 0
         })
+      }))
+
+    it.live(`${backend}: rejects a duplicate terminal stream reply when the owner dies at persist`, () =>
+      Effect.gen(function*() {
+        resetState()
+        yield* Effect.addFinalizer(() => Effect.sync(() => state.streamTerminalGate.openUnsafe()))
+        const cluster = yield* make({ backend, entities: PersistenceEntityLayer })
+        const runners = yield* cluster.start(2)
+        yield* cluster.waitForStableAssignments()
+        const client = yield* cluster.getClient(PersistenceEntity)
+        const entityId = `${backend}-terminal-race`
+        const id = `${entityId}-terminal-race`
+        const owner = yield* cluster.ownerOfEntity(PersistenceEntity, entityId)
+        assert.isDefined(owner)
+        const peer = runners.find((runner) => runner !== owner)
+        assert.isDefined(peer)
+        const received: Array<number> = []
+        const payload = new KeyedPayload({ id })
+        const values = yield* client(entityId).Streamed(payload).pipe(
+          Stream.tap((value) => Effect.sync(() => received.push(value))),
+          Stream.runCollect,
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* cluster.waitUntil(
+          "The first owner did not reach terminal stream persistence",
+          Effect.as(state.streamTerminalEntered.await, true)
+        )
+        assert.deepStrictEqual(received, [0])
+
+        yield* cluster.kill(owner)
+        yield* cluster.waitForEntityOwner(PersistenceEntity, entityId, peer)
+        yield* cluster.waitUntil(
+          "The replacement owner did not resume the terminal stream",
+          Effect.sync(() => count("Streamed", id) === 2)
+        )
+        state.streamTerminalGate.openUnsafe()
+
+        assert.deepStrictEqual(Array.from(yield* Fiber.join(values)), [0])
+        yield* cluster.waitUntil(
+          "The surviving terminal stream reply was not persisted",
+          Effect.map(
+            cluster.messageCounts(),
+            (counts) => counts.replied === 1 && counts.unprocessed === 0
+          )
+        )
+        assert.strictEqual(count("Streamed", id), 2)
+        assert.strictEqual(yield* cluster.ownerOfEntity(PersistenceEntity, entityId), peer)
       }))
 
     it.live(`${backend}: delivers scheduled messages only after their deadline`, () =>
