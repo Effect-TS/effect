@@ -254,41 +254,48 @@ export const makeWithTransaction = <I, S>(options: {
               conn,
               (
                 [scope, conn]
-              ) =>
-                (id === 0 ? options.begin(conn) : options.savepoint(conn, id)).pipe(
-                  Effect.flatMap(() =>
-                    Effect.provideContext(
-                      restore(effect),
-                      services.pipe(
-                        Context.add(options.transactionService, [conn, id]),
-                        Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
-                        Context.add(Tracer.ParentSpan, span)
-                      )
+              ) => {
+                // A failed begin/savepoint never opened a transaction, so it must
+                // propagate as its original typed error without any rollback.
+                const begin = id === 0 ? options.begin(conn) : options.savepoint(conn, id)
+                const beginWithScope = scope !== undefined
+                  ? Effect.onError(begin, (cause) => Scope.close(scope, Exit.failCause(cause)))
+                  : begin
+                return Effect.flatMap(beginWithScope, () =>
+                  Effect.provideContext(
+                    restore(effect),
+                    services.pipe(
+                      Context.add(options.transactionService, [conn, id]),
+                      Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
+                      Context.add(Tracer.ParentSpan, span)
                     )
-                  ),
-                  Effect.exit,
-                  Effect.flatMap((exit) => {
-                    let effect: Effect.Effect<void>
-                    if (Exit.isSuccess(exit)) {
-                      if (id === 0) {
-                        span.event("db.transaction.commit", clock.currentTimeNanosUnsafe())
-                        effect = Effect.orDie(options.commit(conn))
+                  ).pipe(
+                    Effect.exit,
+                    Effect.flatMap((exit) => {
+                      let effect: Effect.Effect<void>
+                      if (Exit.isSuccess(exit)) {
+                        if (id === 0) {
+                          span.event("db.transaction.commit", clock.currentTimeNanosUnsafe())
+                          effect = Effect.orDie(options.commit(conn))
+                        } else {
+                          span.event("db.transaction.savepoint", clock.currentTimeNanosUnsafe())
+                          effect = Effect.void
+                        }
                       } else {
-                        span.event("db.transaction.savepoint", clock.currentTimeNanosUnsafe())
-                        effect = Effect.void
+                        span.event("db.transaction.rollback", clock.currentTimeNanosUnsafe())
+                        effect = Effect.orDie(
+                          id > 0
+                            ? options.rollbackSavepoint(conn, id)
+                            : options.rollback(conn)
+                        )
                       }
-                    } else {
-                      span.event("db.transaction.rollback", clock.currentTimeNanosUnsafe())
-                      effect = Effect.orDie(
-                        id > 0
-                          ? options.rollbackSavepoint(conn, id)
-                          : options.rollback(conn)
-                      )
-                    }
-                    const withScope = scope !== undefined ? Effect.ensuring(effect, Scope.close(scope, exit)) : effect
-                    return Effect.flatMap(withScope, () => exit)
-                  })
-                )
+                      const withScope = scope !== undefined
+                        ? Effect.ensuring(effect, Scope.close(scope, exit))
+                        : effect
+                      return Effect.flatMap(withScope, () => exit)
+                    })
+                  ))
+              }
             )
             return id === 0
               ? transaction
