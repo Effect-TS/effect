@@ -42,9 +42,9 @@ export class UsersApiGroup extends HttpApiGroup.make("users")
     }),
     HttpApiEndpoint.get("getById", "/:id", {
       params: {
-        // Path parameters arrive as strings. `UserId` is a branded string, so
-        // it can decode the UUID directly. For non-string params you can use
-        // Schema.decodeTo to "bridge" from a string schema.
+        // Path parameter values are automatically coerced from their string
+        // form using `Schema.toCodecStringTree`, so schemas that decode from
+        // other types (like numbers) work here as well.
         id: UserId
       },
       success: User.json,

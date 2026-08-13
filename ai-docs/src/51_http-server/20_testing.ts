@@ -24,15 +24,15 @@ const HandlersLayer = UsersApiHandlersNoDeps.pipe(
   Layer.provideMerge(AuthorizationLayer)
 )
 
-// The client-side Authorization middleware supplies the bearer token. Building
-// clients with different middleware lets the tests cover both authorized and
-// unauthorized requests.
-const AuthorizedClient = HttpApiMiddleware.layerClient(
+// The client-side Authorization middleware supplies the bearer token.
+// Providing different middleware implementations lets the tests cover both
+// authorized and unauthorized requests.
+const AuthorizationMiddlewareGood = HttpApiMiddleware.layerClient(
   Authorization,
   ({ next, request }) => next(HttpClientRequest.bearerToken(request, "dev-token"))
 )
 
-const UnauthorizedClient = HttpApiMiddleware.layerClient(
+const AuthorizationMiddlewareBad = HttpApiMiddleware.layerClient(
   Authorization,
   // Forward the request without attaching a token
   ({ next, request }) => next(request)
@@ -62,7 +62,7 @@ layer(Layer.mergeAll(HandlersLayer, HttpServer.layerServices))("UsersApi", (it) 
 
       const all = yield* client.users.list({ query: {} })
       assert.isTrue(all.some((user) => user.id === created.id))
-    }).pipe(Effect.provide(AuthorizedClient)))
+    }).pipe(Effect.provide(AuthorizationMiddlewareGood)))
 
   it.effect("returns a 404 for a missing user", () =>
     Effect.gen(function*() {
@@ -73,7 +73,7 @@ layer(Layer.mergeAll(HandlersLayer, HttpServer.layerServices))("UsersApi", (it) 
         params: { id: UserId.make("019845e1-682f-4b02-a706-3b2422d13aec") }
       }).pipe(Effect.flip)
       assert.strictEqual(error._tag, "UserNotFound")
-    }).pipe(Effect.provide(AuthorizedClient)))
+    }).pipe(Effect.provide(AuthorizationMiddlewareGood)))
 
   it.effect("rejects requests without a valid bearer token", () =>
     Effect.gen(function*() {
@@ -81,7 +81,7 @@ layer(Layer.mergeAll(HandlersLayer, HttpServer.layerServices))("UsersApi", (it) 
 
       const error = yield* client.users.list({ query: {} }).pipe(Effect.flip)
       assert.strictEqual(error._tag, "Unauthorized")
-    }).pipe(Effect.provide(UnauthorizedClient)))
+    }).pipe(Effect.provide(AuthorizationMiddlewareBad)))
 
   it.effect("rejects requests with an invalid bearer token", () =>
     Effect.gen(function*() {

@@ -1,5 +1,6 @@
 ## Working with SQL databases
 
 Use the `effect/unstable/sql` modules together with a driver package such as
-`@effect/sql-sqlite-node` to access SQL databases with schema-backed models,
-migrations, and type-safe queries.
+`@effect/sql-sqlite-node` to access SQL databases. Define domain models with
+`Model.Class` to derive schemas for the database and JSON boundaries, run
+migrations, and write type-safe queries.
