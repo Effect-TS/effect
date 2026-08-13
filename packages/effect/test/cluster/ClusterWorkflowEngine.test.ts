@@ -266,7 +266,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         yield* TestClock.adjust(1)
         yield* TestClock.adjust("1 second")
         while (flags.get("losing-deferred-tail-runs") !== 1) {
-          yield* Effect.yieldNow
+          yield* TestClock.adjust("1 second")
         }
 
         const token = DurableDeferred.tokenFromExecutionId(LosingDeferredGate, {
