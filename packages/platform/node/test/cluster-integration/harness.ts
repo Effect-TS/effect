@@ -119,7 +119,6 @@ const makeLockFaultController = (sql: SqlClient.SqlClient) => {
         if (sql.includes("pg_advisory_unlock_all") || sql.includes("RELEASE_ALL_LOCKS")) return effect
         const mode = session.fault ?? persistentFault
         if (mode === "fail") {
-          session.fault = undefined
           return Effect.fail(
             new SqlError.SqlError({
               reason: new SqlError.ConnectionError({ cause: new Error("lock connection lost") })
@@ -127,7 +126,7 @@ const makeLockFaultController = (sql: SqlClient.SqlClient) => {
           )
         }
         if (mode === "blackhole") {
-          return Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => session.fault = undefined)))
+          return Effect.never
         }
         if (mode === "stuck" || mode === "hangRelease") {
           return Effect.never
@@ -144,8 +143,8 @@ const makeLockFaultController = (sql: SqlClient.SqlClient) => {
     }
   }
 
-  let client: SqlClient.SqlClient
-  client = new Proxy(sql, {
+  const transformFreeSql = sql.withoutTransforms()
+  const client: SqlClient.SqlClient = new Proxy(transformFreeSql, {
     get(target, property, receiver) {
       if (property === "reserve") {
         return Effect.gen(function*() {

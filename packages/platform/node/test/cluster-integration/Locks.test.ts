@@ -18,32 +18,31 @@ describe("cluster lock-storage integration", () => {
           const peerAddress = `${peer.address.host}:${peer.address.port}`
           yield* cluster.waitUntil(
             "The peer did not take over shards after the lock connection was blackholed",
-            Effect.sync(() => {
+            Effect.gen(function*() {
+              yield* cluster.faultLock(faulted, "blackhole")
               const assignments = Object.values(cluster.assignmentMap())
               assert(assignments.every((owners) => owners.length <= 1), "A shard had multiple owners")
-              return assignments.some((owners) => owners.includes(faultedAddress)) &&
+              return assignments.every((owners) => !owners.includes(faultedAddress)) &&
                 assignments.some((owners) => owners.includes(peerAddress))
             })
           )
 
+          yield* cluster.faultLock(faulted, "clear")
           const recovered = yield* cluster.waitForStableAssignments()
           assert(
             Object.values(recovered).some((owners) => owners.includes(faultedAddress)),
             "The recovered runner did not rejoin the assignment ring"
           )
-        }),
-      { timeout: 60_000, retry: 0 }
+        })
     )
 
-    it.live(`${backend}: does not reacquire a shard before forced release completes`, () => {
-      let clearFault: Effect.Effect<void> = Effect.void
-      return Effect.gen(function*() {
+    it.live(`${backend}: does not reacquire a shard before forced release completes`, () =>
+      Effect.gen(function*() {
         const cluster = yield* make({ backend, entities: Layer.empty, config: { shardsPerGroup: 4 } })
         const [faulted] = yield* cluster.start(1)
         yield* cluster.waitForStableAssignments()
         const faultedAddress = `${faulted.address.host}:${faulted.address.port}`
 
-        clearFault = cluster.faultLock(faulted, "clear")
         yield* cluster.faultLock(faulted, "hangRelease")
         yield* cluster.waitUntil(
           "The faulted runner did not drop its shards",
@@ -83,18 +82,15 @@ describe("cluster lock-storage integration", () => {
             return stablePolls >= 3
           })
         )
-      }).pipe(Effect.ensuring(Effect.suspend(() => clearFault)))
-    }, { timeout: 60_000, retry: 0 })
+      }))
 
-    it.live(`${backend}: keeps peers progressing when a lock query is permanently stuck`, () => {
-      let clearFault: Effect.Effect<void> = Effect.void
-      return Effect.gen(function*() {
+    it.live(`${backend}: keeps peers progressing when a lock query is permanently stuck`, () =>
+      Effect.gen(function*() {
         const cluster = yield* make({ backend, entities: Layer.empty, config: { shardsPerGroup: 4 } })
         const [faulted] = yield* cluster.start(1)
         yield* cluster.waitForStableAssignments()
         const faultedAddress = `${faulted.address.host}:${faulted.address.port}`
 
-        clearFault = cluster.faultLock(faulted, "clear")
         yield* cluster.faultLock(faulted, "stuck")
         yield* cluster.waitUntil(
           "The permanently stuck runner did not drop its shards",
@@ -114,27 +110,27 @@ describe("cluster lock-storage integration", () => {
 
         yield* cluster.faultLock(faulted, "clear")
         yield* cluster.waitForStableAssignments()
-      }).pipe(Effect.ensuring(Effect.suspend(() => clearFault)))
-    }, { timeout: 60_000, retry: 0 })
+      }))
 
-    it.live(`${backend}: converges after repeated lock-connection rebuilds and a hung release`, () => {
-      let clearFault: Effect.Effect<void> = Effect.void
-      return Effect.gen(function*() {
+    it.live(`${backend}: converges after repeated lock-connection rebuilds and a hung release`, () =>
+      Effect.gen(function*() {
         const cluster = yield* make({ backend, entities: Layer.empty, config: { shardsPerGroup: 4 } })
         const [faulted] = yield* cluster.start(1)
         yield* cluster.waitForStableAssignments()
         const faultedAddress = `${faulted.address.host}:${faulted.address.port}`
 
-        clearFault = cluster.faultLock(faulted, "clear")
         yield* cluster.faultLock(faulted, "fail")
         let healthyPolls = 0
         yield* cluster.waitUntil(
-          "The runner did not remain available after rebuilding its failed lock connection",
-          Effect.sync(() => {
+          "The runner lost shards while rebuilding failed lock connections",
+          Effect.gen(function*() {
+            yield* cluster.faultLock(faulted, "fail")
             const assignments = Object.values(cluster.assignmentMap())
-            healthyPolls = assignments.every((owners) => owners.length === 1 && owners.includes(faultedAddress))
-              ? healthyPolls + 1
-              : 0
+            assert(
+              assignments.every((owners) => owners.length === 1 && owners.includes(faultedAddress)),
+              "The runner lost a shard during lock-connection rebuild"
+            )
+            healthyPolls++
             return healthyPolls >= 10
           })
         )
@@ -154,7 +150,6 @@ describe("cluster lock-storage integration", () => {
 
         yield* cluster.faultLock(faulted, "clear")
         yield* cluster.waitForStableAssignments()
-      }).pipe(Effect.ensuring(Effect.suspend(() => clearFault)))
-    }, { timeout: 60_000, retry: 0 })
+      }))
   }
 })
