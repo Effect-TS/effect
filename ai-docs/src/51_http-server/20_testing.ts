@@ -48,9 +48,7 @@ const makeClient = HttpApiTest.groups(Api, ["users"])
 layer(Layer.mergeAll(HandlersLayer, HttpServer.layerServices))("UsersApi", (it) => {
   it.effect("lists, fetches, and creates users", () =>
     Effect.gen(function*() {
-      const client = yield* makeClient.pipe(
-        Effect.provide(AuthorizedClient)
-      )
+      const client = yield* makeClient
 
       const created = yield* client.users.create({
         payload: { name: "Alice", email: "alice@acme.dev" }
@@ -64,43 +62,39 @@ layer(Layer.mergeAll(HandlersLayer, HttpServer.layerServices))("UsersApi", (it) 
 
       const all = yield* client.users.list({ query: {} })
       assert.isTrue(all.some((user) => user.id === created.id))
-    }))
+    }).pipe(Effect.provide(AuthorizedClient)))
 
   it.effect("returns a 404 for a missing user", () =>
     Effect.gen(function*() {
-      const client = yield* makeClient.pipe(
-        Effect.provide(AuthorizedClient)
-      )
+      const client = yield* makeClient
 
       // Use Effect.flip to assert on the error channel
       const error = yield* client.users.getById({
         params: { id: UserId.make("019845e1-682f-4b02-a706-3b2422d13aec") }
       }).pipe(Effect.flip)
       assert.strictEqual(error._tag, "UserNotFound")
-    }))
+    }).pipe(Effect.provide(AuthorizedClient)))
 
   it.effect("rejects requests without a valid bearer token", () =>
     Effect.gen(function*() {
-      const client = yield* makeClient.pipe(
-        Effect.provide(UnauthorizedClient)
-      )
+      const client = yield* makeClient
 
       const error = yield* client.users.list({ query: {} }).pipe(Effect.flip)
       assert.strictEqual(error._tag, "Unauthorized")
-    }))
+    }).pipe(Effect.provide(UnauthorizedClient)))
 
   it.effect("rejects requests with an invalid bearer token", () =>
     Effect.gen(function*() {
-      const client = yield* makeClient.pipe(
-        Effect.provide(HttpApiMiddleware.layerClient(
-          Authorization,
-          ({ next, request }) => next(HttpClientRequest.bearerToken(request, "wrong-token"))
-        ))
-      )
+      const client = yield* makeClient
 
       const error = yield* client.users.getById({
         params: { id: UserId.make("019845e1-682f-4b02-a706-3b2422d13aec") }
       }).pipe(Effect.flip)
       assert.strictEqual(error._tag, "Unauthorized")
-    }))
+    }).pipe(
+      Effect.provide(HttpApiMiddleware.layerClient(
+        Authorization,
+        ({ next, request }) => next(HttpClientRequest.bearerToken(request, "wrong-token"))
+      ))
+    ))
 })

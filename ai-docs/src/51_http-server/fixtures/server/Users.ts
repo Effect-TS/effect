@@ -1,7 +1,8 @@
 import { SqliteClient, SqliteMigrator } from "@effect/sql-sqlite-node"
-import { Context, DateTime, Effect, Layer, Schema } from "effect"
+import { Context, Effect, Layer, Schema } from "effect"
 import { SqlClient, SqlModel, SqlSchema } from "effect/unstable/sql"
-import { User, UserId } from "../domain/User.ts"
+import { User } from "../domain/User.ts"
+import type { UserId } from "../domain/User.ts"
 import { SearchQueryTooShort, UserNotFound, UsersError } from "../domain/UserErrors.ts"
 
 // The SqlClient layer determines which database the SQL implementation talks
@@ -92,16 +93,20 @@ export class Users extends Context.Service<Users, {
       )
 
       const create = Effect.fn("Users.create")((input: typeof User.jsonCreate.Type) =>
-        // `User.insert.make` fills in the generated id and the timestamps
-        // using the model's constructor defaults.
-        repo.insert(User.insert.make(input)).pipe(Effect.orDie)
+        // `User.insert.makeEffect` fills in the generated id and timestamps
+        // using the Effect clock, so tests can control them with `TestClock`.
+        User.insert.makeEffect(input).pipe(
+          Effect.flatMap(repo.insert),
+          Effect.orDie
+        )
       )
 
       const update = Effect.fn("Users.update")(function*(id: UserId, input: typeof User.jsonUpdate.Type) {
         // Ensure the user exists first, so a missing id fails with the domain
         // error instead of a defect.
         yield* getById(id)
-        return yield* repo.update(User.update.make({ id, ...input })).pipe(Effect.orDie)
+        const update = yield* User.update.makeEffect({ id, ...input }).pipe(Effect.orDie)
+        return yield* repo.update(update).pipe(Effect.orDie)
       })
 
       return Users.of({ list, getById, create, update })
@@ -123,13 +128,10 @@ export class Users extends Context.Service<Users, {
       const users = new Map<UserId, User>()
 
       const makeUser = (input: typeof User.jsonCreate.Type) =>
-        Effect.map(DateTime.now, (now) =>
-          new User({
-            id: UserId.make(crypto.randomUUID()),
-            ...input,
-            createdAt: now,
-            updatedAt: now
-          }))
+        User.insert.makeEffect(input).pipe(
+          Effect.map((user) => new User(user)),
+          Effect.orDie
+        )
 
       const admin = yield* makeUser({ name: "Admin", email: "admin@acme.dev" })
       users.set(admin.id, admin)
@@ -169,8 +171,8 @@ export class Users extends Context.Service<Users, {
 
       const update = Effect.fn("Users.update")(function*(id: UserId, input: typeof User.jsonUpdate.Type) {
         const existing = yield* getById(id)
-        const now = yield* DateTime.now
-        const updated = new User({ ...existing, ...input, updatedAt: now })
+        const update = yield* User.update.makeEffect({ id, ...input }).pipe(Effect.orDie)
+        const updated = new User({ ...existing, ...update })
         users.set(id, updated)
         return updated
       })

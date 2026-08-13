@@ -94,16 +94,21 @@ export class Groups extends Context.Service<Groups, {
       })
 
       return Groups.of({
-        // `Group.insert.make` fills in the generated id and the timestamps
-        // using the model's constructor defaults.
+        // `Group.insert.makeEffect` fills in the generated id and timestamps
+        // using the Effect clock, so tests can control them with `TestClock`.
         create: (name) =>
-          repo.insert(Group.insert.make({ name })).pipe(
+          Group.insert.makeEffect({ name }).pipe(
+            Effect.flatMap(repo.insert),
             // Database and encoding failures are unexpected here, so treat
             // them as defects to keep the service interface focused on domain
             // errors.
             Effect.orDie
           ),
-        rename: (id, name) => repo.update(Group.update.make({ id, name })).pipe(Effect.orDie),
+        rename: (id, name) =>
+          Group.update.makeEffect({ id, name }).pipe(
+            Effect.flatMap(repo.update),
+            Effect.orDie
+          ),
         findById: (id) =>
           repo.findById(id).pipe(
             Effect.catchTags({
@@ -112,7 +117,10 @@ export class Groups extends Context.Service<Groups, {
               SqlError: Effect.die
             })
           ),
-        list: listAll().pipe(Effect.orDie)
+        list: listAll().pipe(
+          Effect.orDie,
+          Effect.withSpan("Groups.list")
+        )
       })
     })
   ).pipe(
