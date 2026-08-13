@@ -16,10 +16,10 @@ import * as Effect from "effect/Effect"
 import * as Fn from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Redis from "effect/unstable/persistence/Redis"
-import { createClient, type RedisClientOptions, type RedisClientType, SocketTimeoutError } from "redis"
+import { createClient, SocketTimeoutError } from "redis"
 
-type NodeRedisClientOptions = RedisClientOptions<{}, {}, {}, 2>
-type NodeRedisClient = RedisClientType<{}, {}, {}, 2>
+type NodeRedisClient = ReturnType<typeof createClient>
+type NodeRedisClientOptions = NonNullable<Parameters<typeof createClient>[0]>
 
 /**
  * Service tag for the Node Redis integration, exposing the underlying
@@ -42,7 +42,6 @@ const make = Effect.fnUntraced(function*(
   const client = yield* Effect.acquireRelease(
     Effect.sync((): NodeRedisClient =>
       createClient({
-        RESP: 2,
         ...options,
         socket: socket?.reconnectStrategy === undefined
           ? {

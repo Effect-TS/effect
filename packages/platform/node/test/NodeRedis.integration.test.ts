@@ -64,6 +64,12 @@ it.effect("fails the initial connection by default", () =>
 it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
   "PersistedQueue (NodeRedis)",
   (it) => {
+    it.effect("uses the node-redis protocol default", () =>
+      Effect.gen(function*() {
+        const redis = yield* NodeRedis.NodeRedis
+        assert.strictEqual(redis.client.options.RESP, undefined)
+      }))
+
     // The shared PersistedQueue suite can only assert that exhausted elements
     // are no longer delivered, which is also true if they are silently
     // dropped. There is no public API for reading failed elements, so
