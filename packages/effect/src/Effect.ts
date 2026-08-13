@@ -1815,11 +1815,17 @@ export const fromResult: <A, E>(result: Result.Result<A, E>) => Effect<A, E> = i
  */
 export const fromOption: <
   Arg extends Option<unknown> | LazyArg<unknown>,
-  Rest extends [] | [onNone: LazyArg<unknown>] = []
+  Rest extends [] | [onNone: LazyArg<unknown> | undefined] = []
 >(
   arg: Arg & (Rest extends [] ? unknown : Option<unknown>),
   ...rest: Rest
-) => [Arg] extends [Option<infer A>] ? Effect<A, Rest extends [LazyArg<infer E>] ? E : Cause.NoSuchElementError>
+) => [Arg] extends [Option<infer A>] ? Effect<
+    A,
+    Rest extends [LazyArg<infer E>] ? E
+      : Rest extends [undefined] ? Cause.NoSuchElementError
+      : Rest extends [LazyArg<infer E> | undefined] ? E | Cause.NoSuchElementError
+      : Cause.NoSuchElementError
+  >
   : [Arg] extends [LazyArg<infer E>] ? <A>(option: Option<A>) => Effect<A, E>
   : never = internal.fromOption
 
