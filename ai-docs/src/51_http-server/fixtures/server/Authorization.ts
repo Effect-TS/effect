@@ -1,4 +1,4 @@
-import { Effect, Layer, Redacted } from "effect"
+import { DateTime, Effect, Layer, Redacted } from "effect"
 import { Authorization, CurrentUser, Unauthorized } from "../api/Authorization.ts"
 import { User, UserId } from "../domain/User.ts"
 
@@ -11,6 +11,15 @@ export const AuthorizationLayer = Layer.effect(
     // database or an external auth provider.
     yield* Effect.logInfo("Starting Authorization middleware")
 
+    const now = yield* DateTime.now
+    const devUser = new User({
+      id: UserId.make("bf3dbe33-0ad2-4c9c-9c9e-733e57bdcbee"),
+      name: "Dev User",
+      email: "dev@acme.com",
+      createdAt: now,
+      updatedAt: now
+    })
+
     return Authorization.of({
       bearer: Effect.fn(function*(httpEffect, { credential }) {
         // Validate the token and return an Unauthorized error if it's invalid.
@@ -21,15 +30,7 @@ export const AuthorizationLayer = Layer.effect(
 
         // Provide the current user to the rest of the stack. This will be
         // available in any endpoint or middleware that runs after this one.
-        return yield* Effect.provideService(
-          httpEffect,
-          CurrentUser,
-          new User({
-            id: UserId.make(1),
-            name: "Dev User",
-            email: "dev@acme.com"
-          })
-        )
+        return yield* Effect.provideService(httpEffect, CurrentUser, devUser)
       })
     })
   })

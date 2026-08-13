@@ -5,7 +5,9 @@ import { CurrentUser } from "../../api/Authorization.ts"
 import { AuthorizationLayer } from "../Authorization.ts"
 import { Users } from "../Users.ts"
 
-export const UsersApiHandlers = HttpApiBuilder.group(
+// The handlers without their dependencies provided, so tests can supply an
+// alternative `Users` implementation.
+export const UsersApiHandlersNoDeps = HttpApiBuilder.group(
   Api,
   "users",
   Effect.fn(function*(handlers) {
@@ -60,12 +62,21 @@ export const UsersApiHandlers = HttpApiBuilder.group(
           //   SearchQueryTooShort: Effect.die
           // })
         ))
+      .handle("update", ({ params, payload }) =>
+        users.update(params.id, payload).pipe(
+          Effect.catchReasons("UsersError", {
+            UserNotFound: (e) => Effect.fail(e)
+          }, Effect.die)
+        ))
       .handle("me", () =>
         // The Authorization middleware provides the CurrentUser service, so we
         // can access it here.
         CurrentUser)
   })
-).pipe(
-  // Provide the dependencies for the handlers.
+)
+
+// The handlers with all dependencies provided, ready to serve. The SQL-backed
+// `Users.layer` keeps the database wiring out of the server entrypoint.
+export const UsersApiHandlers = UsersApiHandlersNoDeps.pipe(
   Layer.provide([Users.layer, AuthorizationLayer])
 )
