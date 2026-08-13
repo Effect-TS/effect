@@ -49,6 +49,54 @@ describe("MessageStorage", () => {
         expect(result._tag).toEqual("Success")
       }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
 
+    it.effect("clears messages and replies only from the matching shard", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const entityType = EntityType.make("Repro")
+        const entityId = EntityId.make("one")
+        const targetAddress = EntityAddress.make({
+          shardId: ShardId.make("default", 1),
+          entityType,
+          entityId
+        })
+        const preservedAddress = EntityAddress.make({
+          shardId: ShardId.make("default", 2),
+          entityType,
+          entityId
+        })
+        const target = yield* makeRequest({
+          rpc: PrimaryKeyTest,
+          payload: PrimaryKeyTest.payloadSchema.make({ id: 1 }),
+          address: targetAddress
+        })
+        const preserved = yield* makeRequest({
+          rpc: PrimaryKeyTest,
+          payload: PrimaryKeyTest.payloadSchema.make({ id: 2 }),
+          address: preservedAddress
+        })
+        yield* storage.saveRequest(target)
+        yield* storage.saveRequest(preserved)
+        yield* storage.saveReply(yield* makeReply(target))
+        yield* storage.saveReply(yield* makeReply(preserved))
+
+        yield* storage.clearAddress(targetAddress)
+
+        const targetId = yield* storage.requestIdForPrimaryKey({
+          address: targetAddress,
+          tag: target.envelope.tag,
+          id: "1"
+        })
+        const preservedId = yield* storage.requestIdForPrimaryKey({
+          address: preservedAddress,
+          tag: preserved.envelope.tag,
+          id: "2"
+        })
+        expect(targetId).toEqual(Option.none())
+        expect(preservedId).toEqual(Option.some(preserved.envelope.requestId))
+        expect(yield* storage.repliesForUnfiltered([target.envelope.requestId])).toHaveLength(0)
+        expect(yield* storage.repliesForUnfiltered([preserved.envelope.requestId])).toHaveLength(1)
+      }).pipe(Effect.provide(MemoryLayer)))
+
     it.effect("saves a request", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage
@@ -127,17 +175,19 @@ export const GetUserRpc = Rpc.make("GetUser", {
 export const makeRequest = Effect.fnUntraced(function*(options?: {
   readonly rpc?: Rpc.AnyWithProps
   readonly payload?: any
+  readonly address?: EntityAddress.EntityAddress
 }) {
   const snowflake = yield* Snowflake.Generator
   const rpc = options?.rpc ?? GetUserRpc
   return new Message.OutgoingRequest({
     envelope: Envelope.makeRequest<any>({
       requestId: snowflake.nextUnsafe(),
-      address: EntityAddress.make({
-        shardId: ShardId.make("default", 1),
-        entityType: EntityType.make("test"),
-        entityId: EntityId.make("1")
-      }),
+      address: options?.address ??
+        EntityAddress.make({
+          shardId: ShardId.make("default", 1),
+          entityType: EntityType.make("test"),
+          entityId: EntityId.make("1")
+        }),
       tag: rpc._tag,
       payload: options?.payload ?? { id: 123 },
       traceId: "noop",

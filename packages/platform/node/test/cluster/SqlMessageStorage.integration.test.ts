@@ -5,12 +5,16 @@ import { Effect, Fiber, FileSystem, Latch, Layer, Option } from "effect"
 import { TestClock } from "effect/testing"
 import {
   Entity,
+  EntityAddress,
+  EntityId,
+  EntityType,
   Envelope,
   Message,
   MessageStorage,
   RunnerHealth,
   Runners,
   RunnerStorage,
+  ShardId,
   Sharding,
   ShardingConfig,
   Snowflake,
@@ -78,6 +82,56 @@ describe("SqlMessageStorage", () => {
           messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
           expect(messages).toHaveLength(5)
           expect(messages.map((m: any) => m.envelope.payload.id)).toEqual([6, 7, 8, 9, 10])
+        }))
+
+      it.effect("clearAddress scopes messages and replies to the matching shard", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const entityType = EntityType.make("Repro")
+          const entityId = EntityId.make("one")
+          const targetAddress = EntityAddress.make({
+            shardId: ShardId.make("default", 1),
+            entityType,
+            entityId
+          })
+          const preservedAddress = EntityAddress.make({
+            shardId: ShardId.make("default", 2),
+            entityType,
+            entityId
+          })
+          const target = yield* makeRequest({
+            rpc: PrimaryKeyTest,
+            payload: PrimaryKeyTest.payloadSchema.make({ id: 1 }),
+            address: targetAddress
+          })
+          const preserved = yield* makeRequest({
+            rpc: PrimaryKeyTest,
+            payload: PrimaryKeyTest.payloadSchema.make({ id: 2 }),
+            address: preservedAddress
+          })
+          yield* storage.saveRequest(target)
+          yield* storage.saveRequest(preserved)
+          yield* storage.saveReply(yield* makeReply(target))
+          yield* storage.saveReply(yield* makeReply(preserved))
+
+          yield* storage.clearAddress(targetAddress)
+
+          const targetId = yield* storage.requestIdForPrimaryKey({
+            address: targetAddress,
+            tag: target.envelope.tag,
+            id: "1"
+          })
+          const preservedId = yield* storage.requestIdForPrimaryKey({
+            address: preservedAddress,
+            tag: preserved.envelope.tag,
+            id: "2"
+          })
+          expect(targetId).toEqual(Option.none())
+          expect(preservedId).toEqual(Option.some(preserved.envelope.requestId))
+          expect(yield* storage.repliesForUnfiltered([target.envelope.requestId])).toHaveLength(0)
+          expect(yield* storage.repliesForUnfiltered([preserved.envelope.requestId])).toHaveLength(1)
         }))
 
       it.effect("saveReply + saveRequest duplicate", () =>

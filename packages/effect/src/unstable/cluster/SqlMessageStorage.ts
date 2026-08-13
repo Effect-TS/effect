@@ -642,14 +642,16 @@ export const make: (options?: {
         DELETE FROM ${repliesTableSql}
         WHERE request_id IN (
           SELECT id FROM ${messagesTableSql}
-          WHERE entity_type = ${address.entityType}
+          WHERE shard_id = ${address.shardId.toString()}
+          AND entity_type = ${address.entityType}
           AND entity_id = ${address.entityId}
         )
       `.pipe(
         Effect.andThen(
           sql`
             DELETE FROM ${messagesTableSql}
-            WHERE entity_type = ${address.entityType}
+            WHERE shard_id = ${address.shardId.toString()}
+            AND entity_type = ${address.entityType}
             AND entity_id = ${address.entityId}
           `
         ),

@@ -993,7 +993,8 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
         Effect.sync(() => {
           for (const [primaryKey, entry] of requestsByPrimaryKey) {
             const envelope = entry.envelope
-            const sameAddress = address.entityType === envelope.address.entityType &&
+            const sameAddress = ShardId.toString(address.shardId) === ShardId.toString(envelope.address.shardId) &&
+              address.entityType === envelope.address.entityType &&
               address.entityId === envelope.address.entityId
             if (sameAddress) {
               requestsByPrimaryKey.delete(primaryKey)
@@ -1001,7 +1002,8 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           }
           for (let i = journal.length - 1; i >= 0; i--) {
             const envelope = journal[i]
-            const sameAddress = address.entityType === envelope.address.entityType &&
+            const sameAddress = ShardId.toString(address.shardId) === ShardId.toString(envelope.address.shardId) &&
+              address.entityType === envelope.address.entityType &&
               address.entityId === envelope.address.entityId
             if (!sameAddress || envelope._tag !== "Request") {
               continue
