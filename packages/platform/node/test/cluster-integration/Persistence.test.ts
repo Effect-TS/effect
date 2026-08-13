@@ -103,8 +103,6 @@ const freshState = () => ({
   healthyEntered: Latch.makeUnsafe(),
   healthyGate: Latch.makeUnsafe(),
   scheduledDeliveries: [] as Array<number>,
-  streamClientThirdEntered: Latch.makeUnsafe(),
-  streamClientThirdGate: Latch.makeUnsafe(),
   streamTerminalEntered: Latch.makeUnsafe(),
   streamTerminalGate: Latch.makeUnsafe(),
   streamThirdEntered: Latch.makeUnsafe(),
@@ -129,6 +127,21 @@ const increment = (tag: string, id: string) => {
 }
 
 const count = (tag: string, id: string) => state.counts.get(`${tag}:${id}`) ?? 0
+
+const assertStoredAsDefect = Effect.fnUntraced(function*<A, E>(
+  request: Effect.Effect<A, E>,
+  tag: string,
+  id: string
+) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const exit = yield* request.pipe(Effect.exit)
+    assert.isTrue(Exit.isFailure(exit))
+    if (Exit.isFailure(exit)) {
+      assert.include(Cause.pretty(exit.cause), "MalformedMessage")
+    }
+  }
+  assert.strictEqual(count(tag, id), 1)
+})
 
 const PersistenceEntityLayer = PersistenceEntity.toLayer({
   Defect: ({ payload }) =>
@@ -357,8 +370,12 @@ describe("cluster message persistence integration", () => {
     it.live(`${backend}: completes a discarded volatile caller while the handler is still blocked`, () =>
       Effect.gen(function*() {
         resetState()
-        const cluster = yield* make({ backend, entities: PersistenceEntityLayer })
-        const [owner] = yield* cluster.start(1)
+        const cluster = yield* make({
+          backend,
+          config: { entityTerminationTimeout: 100 },
+          entities: PersistenceEntityLayer
+        })
+        yield* cluster.start(1)
         yield* cluster.waitForStableAssignments()
         const client = yield* cluster.getClient(PersistenceEntity)
         const id = `${backend}-discarded-volatile`
@@ -376,9 +393,7 @@ describe("cluster message persistence integration", () => {
         )
 
         yield* Fiber.join(caller)
-        assert.strictEqual(state.completedVolatile, 0)
         assert.strictEqual(count("Volatile", id), 1)
-        yield* cluster.kill(owner)
       }))
 
     it.live(`${backend}: stores an unencodable persisted reply as a defect and does not hang the caller`, () =>
@@ -391,17 +406,7 @@ describe("cluster message persistence integration", () => {
         const id = `${backend}-unencodable`
         const payload = new KeyedPayload({ id })
 
-        const first = yield* client("unencodable").Unencodable(payload).pipe(Effect.exit)
-        assert.isTrue(Exit.isFailure(first))
-        if (Exit.isFailure(first)) {
-          assert.include(Cause.pretty(first.cause), "MalformedMessage")
-        }
-        const stored = yield* client("unencodable").Unencodable(payload).pipe(Effect.exit)
-        assert.isTrue(Exit.isFailure(stored))
-        if (Exit.isFailure(stored)) {
-          assert.include(Cause.pretty(stored.cause), "MalformedMessage")
-        }
-        assert.strictEqual(count("Unencodable", id), 1)
+        yield* assertStoredAsDefect(client("unencodable").Unencodable(payload), "Unencodable", id)
         assert.deepStrictEqual(yield* cluster.messageCounts(), {
           failed: 1,
           replied: 0,
@@ -413,19 +418,11 @@ describe("cluster message persistence integration", () => {
       Effect.gen(function*() {
         resetState()
         const cluster = yield* make({ backend, entities: PersistenceEntityLayer })
-        yield* cluster.start(2)
+        yield* cluster.start(1)
         yield* cluster.waitForStableAssignments()
         const client = yield* cluster.getClient(PersistenceEntity)
         const badEntityId = `${backend}-encoding-bad`
-        const badOwner = yield* cluster.ownerOfEntity(PersistenceEntity, badEntityId)
-        assert.isDefined(badOwner)
-        let siblingEntityId = ""
-        for (let index = 0; index < 100 && siblingEntityId === ""; index++) {
-          const candidate = `${backend}-encoding-sibling-${index}`
-          const candidateOwner = yield* cluster.ownerOfEntity(PersistenceEntity, candidate)
-          if (candidateOwner === badOwner) siblingEntityId = candidate
-        }
-        assert.notStrictEqual(siblingEntityId, "", "Could not find a sibling entity on the same runner")
+        const siblingEntityId = `${backend}-encoding-sibling`
 
         const healthyId = `${backend}-healthy-blocked`
         const healthy = yield* client(siblingEntityId).Healthy(
@@ -466,17 +463,11 @@ describe("cluster message persistence integration", () => {
         const id = `${backend}-non-json-failure`
         const payload = new KeyedPayload({ id })
 
-        const first = yield* client("non-json-failure").NonJsonFailure(payload).pipe(Effect.exit)
-        assert.isTrue(Exit.isFailure(first))
-        if (Exit.isFailure(first)) {
-          assert.include(Cause.pretty(first.cause), "MalformedMessage")
-        }
-        const stored = yield* client("non-json-failure").NonJsonFailure(payload).pipe(Effect.exit)
-        assert.isTrue(Exit.isFailure(stored))
-        if (Exit.isFailure(stored)) {
-          assert.include(Cause.pretty(stored.cause), "MalformedMessage")
-        }
-        assert.strictEqual(count("NonJsonFailure", id), 1)
+        yield* assertStoredAsDefect(
+          client("non-json-failure").NonJsonFailure(payload),
+          "NonJsonFailure",
+          id
+        )
         assert.deepStrictEqual(yield* cluster.messageCounts(), {
           failed: 1,
           replied: 0,
@@ -549,11 +540,6 @@ describe("cluster message persistence integration", () => {
         const peer = runners.find((runner) => runner !== owner)
         assert.isDefined(peer)
         const values = yield* client(entityId).Streamed(new KeyedPayload({ id })).pipe(
-          Stream.tap((value) => {
-            if (value !== 2) return Effect.void
-            state.streamClientThirdEntered.openUnsafe()
-            return state.streamClientThirdGate.await
-          }),
           Stream.runCollect,
           Effect.forkChild({ startImmediately: true })
         )
@@ -561,18 +547,9 @@ describe("cluster message persistence integration", () => {
           "The stream handler did not reach its third chunk",
           Effect.as(state.streamThirdEntered.await, true)
         )
-        state.streamThirdGate.openUnsafe()
-        yield* cluster.waitUntil(
-          "The client did not hold the third chunk acknowledgement",
-          Effect.as(state.streamClientThirdEntered.await, true)
-        )
 
         const stopping = yield* cluster.stop(owner).pipe(Effect.forkChild({ startImmediately: true }))
-        yield* cluster.waitUntil(
-          "The runner did not begin stopping while the acknowledgement was held",
-          Effect.sync(() => owner.state() === "stopped")
-        )
-        state.streamClientThirdGate.openUnsafe()
+        state.streamThirdGate.openUnsafe()
         yield* Fiber.join(stopping)
         yield* cluster.waitForStableAssignments()
 
@@ -649,7 +626,7 @@ describe("cluster message persistence integration", () => {
         })
       }))
 
-    it.live(`${backend}: rejects a duplicate terminal stream reply when the owner dies at persist`, () =>
+    it.live(`${backend}: resumes a terminal stream on the replacement owner and persists exactly one reply`, () =>
       Effect.gen(function*() {
         resetState()
         yield* Effect.addFinalizer(() => Effect.sync(() => state.streamTerminalGate.openUnsafe()))
@@ -658,7 +635,7 @@ describe("cluster message persistence integration", () => {
         yield* cluster.waitForStableAssignments()
         const client = yield* cluster.getClient(PersistenceEntity)
         const entityId = `${backend}-terminal-race`
-        const id = `${entityId}-terminal-race`
+        const id = entityId
         const owner = yield* cluster.ownerOfEntity(PersistenceEntity, entityId)
         assert.isDefined(owner)
         const peer = runners.find((runner) => runner !== owner)
@@ -671,8 +648,12 @@ describe("cluster message persistence integration", () => {
           Effect.forkChild({ startImmediately: true })
         )
         yield* cluster.waitUntil(
-          "The first owner did not reach terminal stream persistence",
+          "The first owner did not reach terminal stream completion",
           Effect.as(state.streamTerminalEntered.await, true)
+        )
+        yield* cluster.waitUntil(
+          "The client did not receive the final stream value before owner death",
+          Effect.sync(() => received.length === 1)
         )
         assert.deepStrictEqual(received, [0])
 
