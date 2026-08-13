@@ -13,8 +13,10 @@ const RedisLayer = Layer.unwrap(
       (container) => Effect.promise(() => container.stop())
     )
     return NodeRedis.layer({
-      host: container.getHost(),
-      port: container.getMappedPort(6379)
+      socket: {
+        host: container.getHost(),
+        port: container.getMappedPort(6379)
+      }
     })
   }).pipe(
     Effect.catchCause(() => Effect.fail(new PersistedCacheTest.TransientError()))
@@ -66,14 +68,14 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
         const error = yield* queue.take(() => Effect.fail("boom"), { maxAttempts: 1 }).pipe(Effect.flip)
         assert.strictEqual(error, "boom")
 
-        const failed = yield* redis.use((client) => client.lrange(`effectq:${queueName}:failed`, 0, -1))
+        const failed = yield* redis.use((client) => client.lRange(`effectq:${queueName}:failed`, 0, -1))
         assert.strictEqual(failed.length, 1)
         const failedItem = JSON.parse(failed[0])
         assert.strictEqual(failedItem.id, id)
         assert.deepStrictEqual(failedItem.element, { n: 42 })
         assert.strictEqual(failedItem.attempts, 1)
 
-        const pending = yield* redis.use((client) => client.hlen(`effectq:${queueName}:pending`))
+        const pending = yield* redis.use((client) => client.hLen(`effectq:${queueName}:pending`))
         assert.strictEqual(pending, 0)
       }))
   }
