@@ -180,4 +180,24 @@ describe("Stream", () => {
       yield* Effect.yieldNow
       assert.strictEqual(stream.listenerCount("error"), 1)
     }))
+
+  it.effect("toString enforces a zero maxBytes limit", () =>
+    Effect.gen(function*() {
+      const error = yield* NodeStream.toString(() => Readable.from(["a"]), {
+        maxBytes: 0,
+        onError: () => "maxBytes exceeded" as const
+      }).pipe(Effect.flip)
+
+      assert.strictEqual(error, "maxBytes exceeded")
+    }))
+
+  it.effect("toArrayBuffer enforces a zero maxBytes limit", () =>
+    Effect.gen(function*() {
+      const error = yield* NodeStream.toArrayBuffer(() => Readable.from([Buffer.from("a")]), {
+        maxBytes: 0,
+        onError: () => "maxBytes exceeded" as const
+      }).pipe(Effect.flip)
+
+      assert.strictEqual(error, "maxBytes exceeded")
+    }))
 })
