@@ -22,4 +22,5 @@ window as SQL, so bounded reads advance past in-flight requests; resetting an
 address or shard makes its claimed messages immediately eligible again.
 
 The encoded driver contract replaces `Encoded.resetAddress` with the batched
-`Encoded.resetAddresses` operation.
+`Encoded.resetAddresses` operation. `SqlMessageStorage.makeEncoded` constructs
+the SQL encoded driver directly for custom storage composition.

@@ -344,6 +344,62 @@ describe("SqlMessageStorage", () => {
           expect(rest.map((m: any) => m.envelope.payload.id)).toEqual([1, 3])
         }))
 
+      it.effect("unprocessedMessages filters addresses by shard", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const shardOne = ShardId.make("default", 1)
+          const shardTwo = ShardId.make("default", 2)
+          yield* storage.saveRequest(yield* makeRequest({ payload: { id: 1 }, shardId: shardOne }))
+          yield* storage.saveRequest(yield* makeRequest({ payload: { id: 2 }, shardId: shardTwo }))
+
+          const messages = yield* storage.unprocessedMessages([shardOne, shardTwo], {
+            addresses: [EntityAddress.make({
+              shardId: shardOne,
+              entityType: EntityType.make("test"),
+              entityId: EntityId.make("1")
+            })]
+          })
+          expect(messages.map((message: any) => message.envelope.payload.id)).toEqual([1])
+
+          const rest = yield* storage.unprocessedMessages([shardOne, shardTwo])
+          expect(rest.map((message: any) => message.envelope.payload.id)).toEqual([2])
+        }))
+
+      it.effect("encoded unprocessedMessages fails closed for empty addresses", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const request = yield* makeRequest()
+          yield* storage.saveRequest(request)
+          const encoded = yield* SqlMessageStorage.makeEncoded().pipe(Effect.provide(NodeCrypto.layer))
+          const shardId = request.envelope.address.shardId.toString()
+          const messages = yield* encoded.unprocessedMessages([shardId], Date.now(), { addresses: [] })
+          expect(messages).toHaveLength(0)
+
+          const unfiltered = yield* encoded.unprocessedMessages([shardId], Date.now())
+          expect(unfiltered).toHaveLength(1)
+        }))
+
+      it.effect("encoded resetAddresses fails closed for an empty address list", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const request = yield* makeRequest()
+          yield* storage.saveRequest(request)
+          const encoded = yield* SqlMessageStorage.makeEncoded().pipe(Effect.provide(NodeCrypto.layer))
+          const shardId = request.envelope.address.shardId.toString()
+          const claimed = yield* encoded.unprocessedMessages([shardId], Date.now())
+          expect(claimed).toHaveLength(1)
+
+          yield* encoded.resetAddresses([])
+          const messages = yield* encoded.unprocessedMessages([shardId], Date.now())
+          expect(messages).toHaveLength(0)
+        }))
+
       it.effect("resetAddresses releases claims in one batch", () =>
         Effect.gen(function*() {
           yield* truncate

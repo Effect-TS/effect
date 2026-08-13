@@ -29,6 +29,7 @@ import * as SqlClient from "../sql/SqlClient.ts"
 import type { Row } from "../sql/SqlConnection.ts"
 import { isSqlError, type SqlError } from "../sql/SqlError.ts"
 import { PersistenceError } from "./ClusterError.ts"
+import type * as EntityAddress from "./EntityAddress.ts"
 import type * as Envelope from "./Envelope.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import { SaveResultEncoded } from "./MessageStorage.ts"
@@ -40,13 +41,13 @@ import * as Snowflake from "./Snowflake.ts"
 const withTracerDisabled = Effect.withTracerEnabled(false)
 
 /**
- * Creates a SQL-backed `MessageStorage` implementation, running its migrations
+ * Creates a SQL-backed encoded message storage driver, running its migrations
  * and using the optional table prefix.
  *
  * **When to use**
  *
- * Use when you need the SQL-backed `MessageStorage` service directly, such as
- * when composing a custom layer or providing your own `Snowflake.Generator`.
+ * Use when you need the SQL-backed encoded driver directly, such as when
+ * composing a custom message storage adapter.
  *
  * **Details**
  *
@@ -58,18 +59,17 @@ const withTracerDisabled = Effect.withTracerEnabled(false)
  * Changing `prefix` after deployment points the runtime at a different set of
  * tables, including the migration history table.
  *
- * @see {@link layer} for a ready-made layer using the default prefix and generator
- * @see {@link layerWith} for a ready-made layer with a custom table prefix
+ * @see {@link make} for the decoded `MessageStorage` constructor
  *
  * @category constructors
  * @since 4.0.0
  */
-export const make: (options?: {
+export const makeEncoded: (options?: {
   readonly prefix?: string | undefined
 }) => Effect.Effect<
-  MessageStorage.MessageStorage["Service"],
+  MessageStorage.Encoded,
   never,
-  SqlClient.SqlClient | Snowflake.Generator | Crypto.Crypto
+  SqlClient.SqlClient | Crypto.Crypto
 > = Effect.fnUntraced(function*(options) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
   const crypto = yield* Crypto.Crypto
@@ -379,16 +379,37 @@ export const make: (options?: {
     mssql: () => (limit: number) => sql.literal(`OFFSET 0 ROWS FETCH NEXT ${Math.floor(limit)} ROWS ONLY`),
     orElse: () => (limit: number) => sql.literal(`LIMIT ${Math.floor(limit)}`)
   })
+  const groupAddresses = (addresses: ReadonlyArray<EntityAddress.EntityAddress>) => {
+    const byShard = new Map<string, Map<string, Array<EntityAddress.EntityAddress>>>()
+    for (const address of addresses) {
+      const shardId = address.shardId.toString()
+      let byEntityType = byShard.get(shardId)
+      if (byEntityType === undefined) {
+        byShard.set(shardId, byEntityType = new Map())
+      }
+      const group = byEntityType.get(address.entityType)
+      if (group === undefined) {
+        byEntityType.set(address.entityType, [address])
+      } else {
+        group.push(address)
+      }
+    }
+    return Array.from(
+      byShard,
+      ([shardId, byEntityType]) =>
+        Array.from(byEntityType, ([entityType, addresses]) => ({ shardId, entityType, addresses }))
+    ).flat()
+  }
   const unprocessedFilters = (options?: MessageStorage.UnprocessedOptions | undefined) => ({
     addressFilter: options?.addresses !== undefined
       ? sql`AND (${
         sql.or(
-          Object.entries(Arr.groupBy(options.addresses, (address) => address.entityType)).map(
-            ([entityType, group]) =>
-              sql.and([
-                sql`m.entity_type = ${entityType}`,
-                sql.in("m.entity_id", group.map((address) => address.entityId))
-              ])
+          groupAddresses(options.addresses).map((group) =>
+            sql.and([
+              sql`m.shard_id = ${group.shardId}`,
+              sql`m.entity_type = ${group.entityType}`,
+              sql.in("m.entity_id", group.addresses.map((address) => address.entityId))
+            ])
           )
         )
       })`
@@ -467,7 +488,7 @@ export const make: (options?: {
       ? Effect.succeed([])
       : getUnprocessedMessagesForDialect(shardIds, now, unprocessedFilters(options))
 
-  return yield* MessageStorage.makeEncoded({
+  const encoded: MessageStorage.Encoded = {
     saveEnvelope: ({ deliverAt, envelope, primaryKey }) =>
       Effect.suspend(() => {
         let insert: Effect.Effect<ReadonlyArray<Row>, SqlError | PlatformError.PlatformError>
@@ -670,12 +691,12 @@ export const make: (options?: {
         WHERE processed = ${sqlFalse}
         AND (${
           sql.or(
-            Object.values(Arr.groupBy(addresses, (address) => `${address.shardId}/${address.entityType}`)).map(
+            groupAddresses(addresses).map(
               (group) =>
                 sql.and([
-                  sql`shard_id = ${group[0].shardId.toString()}`,
-                  sql`entity_type = ${group[0].entityType}`,
-                  sql.in("entity_id", group.map((address) => address.entityId))
+                  sql`shard_id = ${group.shardId}`,
+                  sql`entity_type = ${group.entityType}`,
+                  sql.in("entity_id", group.addresses.map((address) => address.entityId))
                 ])
             )
           )
@@ -724,8 +745,24 @@ export const make: (options?: {
       sql.withTransaction(effect).pipe(
         Effect.catchIf(isSqlError, Effect.die)
       )
-  })
+  }
+  return encoded
 }, withTracerDisabled)
+
+/**
+ * Creates a SQL-backed `MessageStorage` implementation, running its migrations
+ * and using the optional table prefix.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make: (options?: {
+  readonly prefix?: string | undefined
+}) => Effect.Effect<
+  MessageStorage.MessageStorage["Service"],
+  never,
+  SqlClient.SqlClient | Snowflake.Generator | Crypto.Crypto
+> = (options) => Effect.flatMap(makeEncoded(options), MessageStorage.makeEncoded)
 
 /**
  * Layer that provides SQL-backed `MessageStorage` using the default table prefix
