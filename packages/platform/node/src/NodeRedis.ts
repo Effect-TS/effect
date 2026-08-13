@@ -16,7 +16,10 @@ import * as Effect from "effect/Effect"
 import * as Fn from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Redis from "effect/unstable/persistence/Redis"
-import { createClient, type RedisClientOptions, type RedisClientType } from "redis"
+import { createClient, type RedisClientOptions, type RedisClientType, SocketTimeoutError } from "redis"
+
+type NodeRedisClientOptions = RedisClientOptions<{}, {}, {}, 2>
+type NodeRedisClient = RedisClientType<{}, {}, {}, 2>
 
 /**
  * Service tag for the Node Redis integration, exposing the underlying
@@ -27,24 +30,46 @@ import { createClient, type RedisClientOptions, type RedisClientType } from "red
  * @since 4.0.0
  */
 export class NodeRedis extends Context.Service<NodeRedis, {
-  readonly client: RedisClientType
-  readonly use: <A>(f: (client: RedisClientType) => Promise<A>) => Effect.Effect<A, Redis.RedisError>
+  readonly client: NodeRedisClient
+  readonly use: <A>(f: (client: NodeRedisClient) => Promise<A>) => Effect.Effect<A, Redis.RedisError>
 }>()("@effect/platform-node/NodeRedis") {}
 
 const make = Effect.fnUntraced(function*(
-  options?: RedisClientOptions
+  options?: NodeRedisClientOptions
 ) {
+  let ready = false
+  const socket = options?.socket
   const client = yield* Effect.acquireRelease(
-    Effect.sync((): RedisClientType => createClient(options)),
+    Effect.sync((): NodeRedisClient =>
+      createClient({
+        RESP: 2,
+        ...options,
+        socket: socket?.reconnectStrategy === undefined
+          ? {
+            ...socket,
+            reconnectStrategy: (retries, cause) => {
+              if (!ready) return cause
+              if (cause instanceof SocketTimeoutError) return false
+              const jitter = Math.floor(Math.random() * 200)
+              const delay = Math.min(2 ** retries * 50, 2000)
+              return delay + jitter
+            }
+          }
+          : socket
+      })
+    ),
     (client) => Effect.ignore(Effect.tryPromise(() => client.close()))
   )
+  client.once("ready", () => {
+    ready = true
+  })
 
   // node-redis rethrows `error` events that have no listener, which would crash
   // the process on a transient socket failure. Command failures are still
-  // reported as `RedisError`, so these are only logged at debug level.
-  const runFork = Effect.runForkWith(yield* Effect.context<never>())
+  // reported as `RedisError`.
+  const runSync = Effect.runSyncWith(yield* Effect.context<never>())
   client.on("error", (cause) => {
-    runFork(Effect.logDebug("NodeRedis client error", cause))
+    runSync(Effect.logWarning("NodeRedis client error", cause))
   })
 
   yield* Effect.tryPromise({
@@ -52,7 +77,7 @@ const make = Effect.fnUntraced(function*(
     catch: (cause) => new Redis.RedisError({ cause })
   })
 
-  const use = <A>(f: (client: RedisClientType) => Promise<A>) =>
+  const use = <A>(f: (client: NodeRedisClient) => Promise<A>) =>
     Effect.tryPromise({
       try: () => f(client),
       catch: (cause) => new Redis.RedisError({ cause })
@@ -83,16 +108,19 @@ const make = Effect.fnUntraced(function*(
  *
  * **Details**
  *
- * `node-redis` retries the initial connection using `socket.reconnectStrategy`,
- * which by default backs off and retries indefinitely. Pass
- * `socket: { reconnectStrategy: false }` to fail the layer on the first
- * connection error instead.
+ * By default, the initial connection fails on its first connection error. A
+ * caller-supplied `socket.reconnectStrategy` is used instead when present. Once
+ * the client has emitted `ready`, the default reconnect strategy uses
+ * node-redis' exponential backoff and stops on socket timeouts.
+ *
+ * Scope finalization calls `close()`, which waits for in-flight commands,
+ * including blocking commands, and can therefore delay scope closure.
  *
  * @category layers
  * @since 4.0.0
  */
 export const layer = (
-  options?: RedisClientOptions | undefined
+  options?: NodeRedisClientOptions | undefined
 ): Layer.Layer<Redis.Redis | NodeRedis, Redis.RedisError> => Layer.effectContext(make(options))
 
 /**
@@ -100,13 +128,23 @@ export const layer = (
  * client options, connecting the client when the layer is built and closing it
  * when the layer scope ends.
  *
+ * **Details**
+ *
+ * By default, the initial connection fails on its first connection error. A
+ * caller-supplied `socket.reconnectStrategy` is used instead when present. Once
+ * the client has emitted `ready`, the default reconnect strategy uses
+ * node-redis' exponential backoff and stops on socket timeouts.
+ *
+ * Scope finalization calls `close()`, which waits for in-flight commands,
+ * including blocking commands, and can therefore delay scope closure.
+ *
  * @category layers
  * @since 4.0.0
  */
 export const layerConfig: (
-  options: Config.Wrap<RedisClientOptions>
+  options: Config.Wrap<NodeRedisClientOptions>
 ) => Layer.Layer<Redis.Redis | NodeRedis, Redis.RedisError | Config.ConfigError> = (
-  options: Config.Wrap<RedisClientOptions>
+  options: Config.Wrap<NodeRedisClientOptions>
 ): Layer.Layer<Redis.Redis | NodeRedis, Redis.RedisError | Config.ConfigError> =>
   Layer.effectContext(
     Config.unwrap(options).pipe(

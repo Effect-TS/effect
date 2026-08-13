@@ -26,8 +26,10 @@ A `url` can be used instead: `NodeRedis.layer({ url: "redis://localhost:6379/1" 
 
 **Layer construction can now fail**
 
-`node-redis` connects explicitly, so both layers connect while being built and now carry `RedisError` in their error channel. By default `node-redis` retries the initial connection indefinitely; pass `socket: { reconnectStrategy: false }` to fail on the first connection error instead.
+`node-redis` connects explicitly, so both layers connect while being built and now carry `RedisError` in their error channel. By default the initial connection fails on its first connection error. A caller-supplied `socket.reconnectStrategy` overrides this behavior; after the client is ready, the default reconnect strategy uses node-redis' exponential backoff and stops on socket timeouts.
+
+Scope finalization calls `close()`, which waits for in-flight commands, including blocking commands, and can therefore delay scope closure.
 
 **Direct client access**
 
-`NodeRedis.NodeRedis` exposes a `RedisClientType` rather than an `ioredis` client. Command methods are camelCase (`client.lRange` instead of `client.lrange`), arbitrary commands use `client.sendCommand([...])` instead of `client.call(...)`, and node-redis 6 speaks RESP3 by default — pass `RESP: 2` to keep RESP2 reply shapes. See the [migration guide](https://redis.io/docs/latest/develop/clients/nodejs/migration/) for the full API comparison.
+`NodeRedis.NodeRedis` exposes a RESP2 `RedisClientType` rather than an `ioredis` client. Command methods are camelCase (`client.lRange` instead of `client.lrange`), and arbitrary commands use `client.sendCommand([...])` instead of `client.call(...)`. RESP2 is pinned for stable reply shapes; opting into RESP3 requires an untyped options escape hatch. See the [migration guide](https://redis.io/docs/latest/develop/clients/nodejs/migration/) for the full API comparison.

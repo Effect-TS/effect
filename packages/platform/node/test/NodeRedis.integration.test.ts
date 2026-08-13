@@ -4,7 +4,8 @@ import { RedisContainer } from "@testcontainers/redis"
 import { Effect, Layer, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/unstable/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
-import { PersistedQueue, Persistence } from "effect/unstable/persistence"
+import { PersistedQueue, Persistence, Redis } from "effect/unstable/persistence"
+import { createServer } from "node:net"
 
 const RedisLayer = Layer.unwrap(
   Effect.gen(function*() {
@@ -47,6 +48,19 @@ const PersistedQueueRedisLayer = Layer.mergeAll(
   )
 )
 
+it.effect("fails the initial connection by default", () =>
+  Effect.gen(function*() {
+    const port = yield* closedPort
+    const error = yield* Layer.build(NodeRedis.layer({
+      socket: {
+        host: "127.0.0.1",
+        port
+      }
+    })).pipe(Effect.flip)
+
+    assert.instanceOf(error, Redis.RedisError)
+  }))
+
 it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
   "PersistedQueue (NodeRedis)",
   (it) => {
@@ -84,3 +98,26 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
 const RedisItem = Schema.Struct({
   n: Schema.Number
 })
+
+const closedPort = Effect.promise(
+  () =>
+    new Promise<number>((resolve, reject) => {
+      const server = createServer()
+      server.once("error", reject)
+      server.listen(0, "127.0.0.1", () => {
+        const address = server.address()
+        if (address === null || typeof address === "string") {
+          server.close()
+          reject(new Error("Could not allocate a TCP port"))
+          return
+        }
+        server.close((error) => {
+          if (error) {
+            reject(error)
+          } else {
+            resolve(address.port)
+          }
+        })
+      })
+    })
+)
