@@ -4,7 +4,7 @@
 
 Base: `3d390f232bdbc3f0d3d6a2ae3c775084f494b547` (`3d390f232bdbc3f0d3d6a2ae3c775084f494b547`)
 
-Head: `main` (`b938c8ad2823bd88493187922f7d9090eff037b6`)
+Head: `origin/main` (`03031395d3ddee197217f826e7d9ef68b0674823`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -10774,6 +10774,8 @@ stream.pipe(
 - `HashSet.values` -> `none`: The HashSet itself is iterable; iterate it directly or call self[Symbol.iterator]() when an iterator object is required.
 
 ### `effect/Inspectable`
+
+- `Inspectable.format` -> `Formatter.formatJson`: Use Formatter.formatJson(input, { space: 2 }) to preserve the v3 helper's pretty-printed JSON output.
 
 - `Inspectable.redact` -> `Redactable.redact`: The redaction protocol moved to Redactable and now receives the current fiber Context.
 
