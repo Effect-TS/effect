@@ -7,6 +7,7 @@ import {
   Effect,
   type ExecutionPlan,
   Fiber,
+  HashMap,
   type Layer,
   type Option,
   pipe,
@@ -238,12 +239,23 @@ describe("Effect.fromOption", () => {
     expect(result).type.toBe<Effect.Effect<string, SimpleError>>()
   })
 
+  it("supports an inline HashMap lookup in data-first form", () => {
+    const values = HashMap.make(["key", 1] as const)
+    const result = Effect.fromOption(HashMap.get(values, "key"), () => new SimpleError({ code: 1 }))
+    expect(result).type.toBeAssignableTo<Effect.Effect<number, SimpleError>>()
+  })
+
   it("supports a custom error in data-last form", () => {
     const result = pipe(
       optionString,
       Effect.fromOption(() => new SimpleError({ code: 1 }))
     )
     expect(result).type.toBe<Effect.Effect<string, SimpleError>>()
+  })
+
+  it("rejects an error callback as the data-first value", () => {
+    // @ts-expect-error is not assignable to parameter
+    Effect.fromOption(() => new SimpleError({ code: 1 }), () => new OtherError({ message: "missing" }))
   })
 
   it("supports callback usage with the default error", () => {

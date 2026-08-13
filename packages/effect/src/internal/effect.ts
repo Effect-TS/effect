@@ -945,10 +945,14 @@ export const suspend: <A, E, R>(
 })
 
 /** @internal */
-export const fromOption: <Arg extends Option.Option<unknown> | LazyArg<unknown>, E = Cause.NoSuchElementError>(
-  arg: Arg,
-  ...rest: [Arg] extends [Option.Option<unknown>] ? [onNone?: LazyArg<E>] : []
-) => [Arg] extends [Option.Option<infer A>] ? Effect.Effect<A, E>
+export const fromOption: <
+  Arg extends Option.Option<unknown> | LazyArg<unknown>,
+  Rest extends [] | [onNone: LazyArg<unknown>] = []
+>(
+  arg: Arg & (Rest extends [] ? unknown : Option.Option<unknown>),
+  ...rest: Rest
+) => [Arg] extends [Option.Option<infer A>]
+  ? Effect.Effect<A, Rest extends [LazyArg<infer E>] ? E : Cause.NoSuchElementError>
   : [Arg] extends [LazyArg<infer E>] ? <A>(option: Option.Option<A>) => Effect.Effect<A, E>
   : never = dual(
     (args) => args.length >= 2 || Option.isOption(args[0]),
