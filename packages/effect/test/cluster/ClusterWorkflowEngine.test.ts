@@ -87,9 +87,10 @@ describe.concurrent("ClusterWorkflowEngine", () => {
   it.effect("releases idle workflow entities quickly", () =>
     Effect.gen(function*() {
       const sharding = yield* Sharding.Sharding
+      const driver = yield* MessageStorage.MemoryDriver
       yield* TestClock.adjust(1)
 
-      yield* EmailWorkflow.execute({
+      const fiber = yield* EmailWorkflow.execute({
         id: "test-email-reap",
         to: "bob@example.com"
       }).pipe(Effect.forkChild({ startImmediately: true }))
@@ -105,7 +106,48 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       // one-minute entityMaxIdleTime
       yield* TestClock.adjust("30 seconds")
       assert.strictEqual(yield* sharding.activeEntityCount, 0)
+
+      // eviction is safe: the evicted execution is rebuilt from storage and
+      // runs to completion when it is resumed
+      const executionId = driver.journal[0].address.entityId
+      const token = yield* DurableDeferred.token(EmailTrigger).pipe(
+        Effect.provideService(WorkflowInstance, WorkflowInstance.initial(EmailWorkflow, executionId))
+      )
+      yield* DurableDeferred.done(EmailTrigger, {
+        token,
+        exit: Exit.succeed("done")
+      })
+      yield* sharding.pollStorage
+      yield* TestClock.adjust(10000)
+      expect(yield* Fiber.join(fiber)).toBeUndefined()
+      expect(yield* EmailWorkflow.poll(executionId)).toEqual(Option.some(new Workflow.Complete({ exit: Exit.void })))
     }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  it.effect("never lengthens a configured idle time below the workflow cap", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      yield* TestClock.adjust(1)
+
+      yield* EmailWorkflow.execute({
+        id: "test-email-short-idle",
+        to: "bob@example.com"
+      }).pipe(Effect.forkChild({ startImmediately: true }))
+
+      yield* TestClock.adjust("10 seconds")
+      yield* sharding.pollStorage
+      yield* TestClock.adjust(5000)
+
+      // the workflow is suspended, so its entities are idle but resident
+      assert.isAtLeast(yield* sharding.activeEntityCount, 1)
+
+      // with entityMaxIdleTime below the ten-second workflow cap, entities
+      // are released at the configured five seconds
+      yield* TestClock.adjust(8000)
+      assert.strictEqual(yield* sharding.activeEntityCount, 0)
+    }).pipe(Effect.provide(EmailWorkflowLayer.pipe(
+      Layer.provideMerge(Flags.layer),
+      Layer.provideMerge(makeTestWorkflowEngine({ entityMaxIdleTime: 5000 }))
+    ))))
 
   it.effect("interrupts a suspended workflow and runs compensation", () =>
     Effect.gen(function*() {
@@ -759,24 +801,26 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     }).pipe(Effect.provide(TestWorkflowLayer)))
 })
 
-const TestShardingConfig = ShardingConfig.layer({
-  shardsPerGroup: 300,
-  availableShardGroups: ["default", "workflow"],
-  assignedShardGroups: ["default", "workflow"],
-  entityMailboxCapacity: 10,
-  entityTerminationTimeout: 0,
-  entityMessagePollInterval: 5000,
-  sendRetryInterval: 100
-})
+const makeTestWorkflowEngine = (config?: Partial<ShardingConfig.ShardingConfig["Service"]>) =>
+  ClusterWorkflowEngine.layer.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(Runners.layerNoop),
+    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provide(RunnerStorage.layerMemory),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provide(ShardingConfig.layer({
+      shardsPerGroup: 300,
+      availableShardGroups: ["default", "workflow"],
+      assignedShardGroups: ["default", "workflow"],
+      entityMailboxCapacity: 10,
+      entityTerminationTimeout: 0,
+      entityMessagePollInterval: 5000,
+      sendRetryInterval: 100,
+      ...config
+    }))
+  )
 
-const TestWorkflowEngine = ClusterWorkflowEngine.layer.pipe(
-  Layer.provideMerge(Sharding.layer),
-  Layer.provide(Runners.layerNoop),
-  Layer.provideMerge(MessageStorage.layerMemory),
-  Layer.provide(RunnerStorage.layerMemory),
-  Layer.provide(RunnerHealth.layerNoop),
-  Layer.provide(TestShardingConfig)
-)
+const TestWorkflowEngine = makeTestWorkflowEngine()
 
 class SendEmailError extends Schema.Error<SendEmailError>("SendEmailError")({
   _tag: Schema.tag("SendEmailError"),
