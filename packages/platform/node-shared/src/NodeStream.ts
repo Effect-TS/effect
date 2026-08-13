@@ -222,7 +222,7 @@ export const toString = <E = Cause.UnknownError>(
     readonly maxBytes?: SizeInput | undefined
   }
 ): Effect.Effect<string, E> => {
-  const maxBytesNumber = options?.maxBytes ? Number(options.maxBytes) : undefined
+  const maxBytesNumber = options?.maxBytes !== undefined ? Number(options.maxBytes) : undefined
   const onError = options?.onError ?? defaultOnError
   const encoding = options?.encoding ?? "utf8"
   return Effect.callback((resume) => {
@@ -244,7 +244,10 @@ export const toString = <E = Cause.UnknownError>(
     stream.on("data", (chunk) => {
       string += chunk
       bytes += Buffer.byteLength(chunk)
-      if (maxBytesNumber && bytes > maxBytesNumber) {
+      if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
+        if ("closed" in stream && !stream.closed) {
+          stream.destroy()
+        }
         resume(Effect.fail(onError(new Error("maxBytes exceeded")) as E))
       }
     })
@@ -271,7 +274,7 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
     readonly maxBytes?: SizeInput | undefined
   }
 ): Effect.Effect<ArrayBuffer, E> => {
-  const maxBytesNumber = options?.maxBytes ? Number(options.maxBytes) : undefined
+  const maxBytesNumber = options?.maxBytes !== undefined ? Number(options.maxBytes) : undefined
   const onError = options?.onError ?? defaultOnError
   return Effect.callback((resume) => {
     const stream = readable() as Readable
@@ -295,7 +298,10 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
     stream.on("data", (chunk) => {
       buffers.push(chunk)
       bytes += chunk.length
-      if (maxBytesNumber && bytes > maxBytesNumber) {
+      if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
+        if ("closed" in stream && !stream.closed) {
+          stream.destroy()
+        }
         resume(Effect.fail(onError(new Error("maxBytes exceeded")) as E))
       }
     })
