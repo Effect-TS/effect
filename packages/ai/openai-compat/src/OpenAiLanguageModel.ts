@@ -578,7 +578,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
 }): Effect.fn.Return<LanguageModel.Service, never, OpenAiClient> {
   const client = yield* OpenAiClient
 
-  const makeConfig = Effect.contextWith((services) =>
+  const makeConfig = Effect.contextWith((services: Context.Context<never>) =>
     Effect.succeed({ model, ...providerConfig, ...Context.getOrUndefined(services, Config) })
   )
 
