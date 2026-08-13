@@ -1,4 +1,4 @@
-import { NodeClusterSocket, NodeCrypto, NodeSocketServer } from "@effect/platform-node"
+import { NodeClusterSocket, NodeCrypto, NodeSocket, NodeSocketServer } from "@effect/platform-node"
 import { MysqlClient } from "@effect/sql-mysql2"
 import { PgClient } from "@effect/sql-pg"
 import { Clock, Context, Duration, Effect, Exit, Latch, Layer, Option, Redacted, Scope } from "effect"
@@ -20,15 +20,18 @@ import {
   SqlRunnerStorage
 } from "effect/unstable/cluster"
 import type { Rpc } from "effect/unstable/rpc"
-import { RpcSerialization } from "effect/unstable/rpc"
+import { RpcClient, RpcSerialization } from "effect/unstable/rpc"
+import * as Socket from "effect/unstable/socket/Socket"
 import * as SocketServer from "effect/unstable/socket/SocketServer"
 import { SqlClient, type SqlConnection, SqlError } from "effect/unstable/sql"
 import { WorkflowEngine } from "effect/unstable/workflow"
+import * as Net from "node:net"
 import { inject } from "vitest"
 
 export type Backend = "mysql" | "pg"
 export type LockMode = "advisory" | "row"
 export type LockFaultMode = "blackhole" | "stuck" | "fail" | "hangRelease" | "clear"
+export type SocketDirection = "inbound" | "outbound"
 
 export interface ClusterRunner {
   readonly address: RunnerAddress.RunnerAddress
@@ -57,6 +60,11 @@ export interface MakeOptions {
 export interface StartOptions {
   readonly assignedShardGroups?: ReadonlyArray<string> | undefined
   readonly runnerShardWeight?: number | undefined
+}
+
+export interface CutSocketOptions {
+  readonly direction: SocketDirection
+  readonly peer: ClusterRunner | "client"
 }
 
 type HarnessConfig = Partial<ShardingConfig.ShardingConfig["Service"]> & {
@@ -242,22 +250,110 @@ const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Servi
   }
 }
 
-const RunnerHealthLayer = RunnerHealth.layerPing.pipe(
-  Layer.provide(Runners.layerRpc),
-  Layer.provide(NodeClusterSocket.layerClientProtocol)
-)
+const clientPeer = "client"
+const addressKey = (address: RunnerAddress.RunnerAddress) => `${address.host}:${address.port}`
+
+const makeSocketController = () => {
+  const connections = new Map<string, Set<Net.Socket>>()
+  const linkKey = (source: string, target: string) => `${source}->${target}`
+
+  const add = (source: string, target: RunnerAddress.RunnerAddress, socket: Net.Socket) => {
+    const key = linkKey(source, addressKey(target))
+    let active = connections.get(key)
+    if (active === undefined) {
+      active = new Set()
+      connections.set(key, active)
+    }
+    active.add(socket)
+  }
+
+  const remove = (source: string, target: RunnerAddress.RunnerAddress, socket: Net.Socket) => {
+    const key = linkKey(source, addressKey(target))
+    const active = connections.get(key)
+    if (active === undefined) return
+    active.delete(socket)
+    if (active.size === 0) connections.delete(key)
+  }
+
+  const cut = (source: string, target: string) =>
+    Effect.sync(() => {
+      const active = connections.get(linkKey(source, target))
+      const socket = active?.values().next().value as Net.Socket | undefined
+      if (socket === undefined) {
+        throw new Error(`No active socket from ${source} to ${target}`)
+      }
+      socket.destroy(new Error(`Socket cut from ${source} to ${target}`))
+    })
+
+  return { add, cut, remove }
+}
+
+type SocketController = ReturnType<typeof makeSocketController>
+
+const trackedClientProtocolLayer = (
+  controller: SocketController,
+  source: string
+): Layer.Layer<Runners.RpcClientProtocol, never, RpcSerialization.RpcSerialization> =>
+  Layer.effect(Runners.RpcClientProtocol)(
+    Effect.gen(function*() {
+      const serialization = yield* RpcSerialization.RpcSerialization
+      return Effect.fnUntraced(function*(address) {
+        const socket = yield* NodeSocket.fromDuplex(
+          Effect.acquireRelease(
+            Effect.callback<Net.Socket, Socket.SocketError>((resume) => {
+              const connection = Net.createConnection({
+                host: address.host,
+                port: address.port
+              })
+              connection.once("connect", () => {
+                controller.add(source, address, connection)
+                resume(Effect.succeed(connection))
+              })
+              connection.on("error", (cause) => {
+                resume(Effect.fail(
+                  new Socket.SocketError({
+                    reason: new Socket.SocketOpenError({ kind: "Unknown", cause })
+                  })
+                ))
+              })
+              return Effect.sync(() => connection.destroy())
+            }),
+            (connection) =>
+              Effect.sync(() => {
+                controller.remove(source, address, connection)
+                if (!connection.closed) connection.destroySoon()
+              })
+          ),
+          { openTimeout: 1_000 }
+        )
+        return yield* RpcClient.makeProtocolSocket().pipe(
+          Effect.provideService(Socket.Socket, socket),
+          Effect.provideService(RpcSerialization.RpcSerialization, serialization)
+        )
+      }, Effect.orDie)
+    })
+  )
+
+const runnerHealthLayer = (
+  clientProtocol: Layer.Layer<Runners.RpcClientProtocol, never, RpcSerialization.RpcSerialization>
+) =>
+  RunnerHealth.layerPing.pipe(
+    Layer.provide(Runners.layerRpc),
+    Layer.provide(clientProtocol)
+  )
 
 export const socketRunnerLayer = (
   address: RunnerAddress.RunnerAddress,
   entities: RunnerEntities,
   socketServer: SocketServer.SocketServer["Service"],
-  config: HarnessConfig
+  config: HarnessConfig,
+  clientProtocol = NodeClusterSocket.layerClientProtocol
 ) =>
   entities.pipe(
     Layer.provideMerge(SocketRunner.layer),
-    Layer.provide(RunnerHealthLayer),
+    Layer.provide(runnerHealthLayer(clientProtocol)),
     Layer.provide(Layer.succeed(SocketServer.SocketServer, socketServer)),
-    Layer.provide(NodeClusterSocket.layerClientProtocol),
+    Layer.provide(clientProtocol),
     Layer.provide(ShardingConfig.layer({
       ...config,
       runnerAddress: Option.some(address)
@@ -267,9 +363,12 @@ export const socketRunnerLayer = (
 
 export type RunnerLayer = typeof socketRunnerLayer
 
-const clientLayer = (config: HarnessConfig) =>
+const clientLayer = (
+  config: HarnessConfig,
+  clientProtocol: Layer.Layer<Runners.RpcClientProtocol, never, RpcSerialization.RpcSerialization>
+) =>
   SocketRunner.layerClientOnly.pipe(
-    Layer.provide(NodeClusterSocket.layerClientProtocol),
+    Layer.provide(clientProtocol),
     Layer.provide(ShardingConfig.layer(config)),
     Layer.provide(RpcSerialization.layerMsgPack)
   )
@@ -302,6 +401,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
   const shared = Context.merge(database, messageStorage)
   const entities = typeof options.entities === "function" ? options.entities({ prefix }) : options.entities
   const runners: Array<RunnerEntry> = []
+  const socketController = makeSocketController()
 
   const makeRunnerStorage = Effect.fnUntraced(function*(
     scope: Scope.Closeable,
@@ -318,7 +418,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
 
   const clientScope = yield* Scope.fork(parentScope)
   const clientStorage = yield* makeRunnerStorage(clientScope)
-  const clientBase = yield* clientLayer(config).pipe(
+  const clientBase = yield* clientLayer(config, trackedClientProtocolLayer(socketController, clientPeer)).pipe(
     Layer.buildWithScope(clientScope),
     Effect.provide(Context.merge(shared, clientStorage))
   )
@@ -357,7 +457,8 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
       address,
       entities,
       socketServer,
-      runnerConfig
+      runnerConfig,
+      trackedClientProtocolLayer(socketController, addressKey(address))
     ).pipe(
       Layer.buildWithScope(scope),
       Effect.provide(Context.mergeAll(shared, storage))
@@ -414,6 +515,15 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
   })
 
   const faultLock = (runner: ClusterRunner, mode: LockFaultMode) => entryFor(runner).lockFault.set(mode)
+
+  const cutSocket = (runner: ClusterRunner, options: CutSocketOptions) => {
+    const runnerAddress = addressKey(runner.address)
+    const peerAddress = options.peer === "client" ? clientPeer : addressKey(options.peer.address)
+    const [source, target] = options.direction === "inbound"
+      ? [peerAddress, runnerAddress]
+      : [runnerAddress, peerAddress]
+    return socketController.cut(source, target)
+  }
 
   const assignmentMap = () => {
     const assignments: Record<string, ReadonlyArray<string>> = {}
@@ -543,6 +653,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     assignmentMap,
     backend: options.backend,
     clientSharding,
+    cutSocket,
     diagnostics,
     failedMessageCount: Effect.map(messageCounts(), (counts) => counts.failed),
     faultLock,

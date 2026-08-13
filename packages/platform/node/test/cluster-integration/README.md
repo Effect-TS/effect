@@ -22,6 +22,7 @@ prefix, and every runner listens on an operating-system-assigned port.
 - `kill(runner)` for abrupt teardown without deregistration or explicit lock cleanup.
 - `freeze(runner)` to suspend SQL heartbeats and lock refresh while leaving the runner's sockets and reserved SQL connection open.
 - `faultLock(runner, mode)` to blackhole, stick, fail, stick while blocking release of, or clear faults on a runner's reserved lock connection.
+- `cutSocket(runner, { peer, direction })` to close one inbound or outbound client/runner connection without stopping either endpoint.
 - `waitUntil`, `waitForStableAssignments`, and `waitForEntityOwner` for deadline-based polling with cluster diagnostics on failure.
 - `clientSharding` and `ownersOfShard` for direct shard ownership assertions.
 - `messageCounts`, `unprocessedMessageCount`, `repliedMessageCount`, and `failedMessageCount` for storage assertions scoped to the cluster prefix.
