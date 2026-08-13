@@ -115,6 +115,15 @@ const ResourceEntityLayer = ResourceEntity.toLayer(Effect.gen(function*() {
   }
 }))
 
+const RegistrationEntity = Entity.make("ClusterIntegrationRegistration", [
+  Rpc.make("Runner", { success: Schema.String }).annotate(ClusterSchema.Persisted, true)
+])
+
+const RegistrationEntityLayer = RegistrationEntity.toLayer(Effect.gen(function*() {
+  const runner = yield* Entity.CurrentRunnerAddress
+  return { Runner: () => Effect.succeed(addressString(runner)) }
+}))
+
 const StandardEntities = Layer.mergeAll(StateEntityLayer, MailboxEntityLayer, ResourceEntityLayer)
 
 const resetOrder = () => {
@@ -354,6 +363,95 @@ describe("cluster entity integration", () => {
 
         assert.strictEqual(yield* Fiber.join(request), 2)
         assert.strictEqual(attempts, 2)
+      }))
+
+    it.live(`${backend}: holds persisted messages until a slow entity layer registers`, () =>
+      Effect.gen(function*() {
+        const registrationGate = Latch.makeUnsafe()
+        const delayedEntities = RegistrationEntityLayer.pipe(
+          Layer.provide(Layer.effectDiscard(registrationGate.await))
+        )
+        const cluster = yield* make({
+          backend,
+          config: {
+            entityMessagePollInterval: 100,
+            entityRegistrationTimeout: 1_000,
+            sendRetryInterval: 100,
+            shardsPerGroup: 4
+          },
+          entities: RegistrationEntityLayer
+        })
+        yield* cluster.start(1, { assignedShardGroups: [] })
+        const starting = yield* cluster.start(1, { entities: delayedEntities }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        const client = yield* cluster.getClient(RegistrationEntity)
+        const request = yield* client(`${backend}-slow-registration`).Runner().pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* cluster.waitUntil(
+          "The slow-registration request was not persisted",
+          Effect.map(cluster.unprocessedMessageCount, (count) => count === 1)
+        )
+        const deadline = (yield* Clock.currentTimeMillis) + 1_500
+        yield* cluster.waitUntil(
+          "The slow-registration hold window did not elapse",
+          Effect.map(Clock.currentTimeMillis, (now) => now >= deadline),
+          "2 seconds"
+        )
+        assert.deepStrictEqual(yield* cluster.messageCounts(), {
+          failed: 0,
+          replied: 0,
+          unprocessed: 1
+        })
+
+        registrationGate.openUnsafe()
+        const [runner] = yield* Fiber.join(starting)
+        yield* cluster.waitForEntityOwner(RegistrationEntity, `${backend}-slow-registration`, runner)
+        assert.strictEqual(yield* Fiber.join(request), addressString(runner.address))
+        assert.deepStrictEqual(yield* cluster.messageCounts(), {
+          failed: 0,
+          replied: 1,
+          unprocessed: 0
+        })
+      }))
+
+    it.live(`${backend}: defects a durable request whose owner never registers the entity`, () =>
+      Effect.gen(function*() {
+        const cluster = yield* make({
+          backend,
+          config: {
+            entityMessagePollInterval: 100,
+            entityRegistrationTimeout: 500,
+            sendRetryInterval: 100,
+            shardsPerGroup: 4
+          },
+          entities: RegistrationEntityLayer
+        })
+        yield* cluster.start(1, { assignedShardGroups: [] })
+        const [runner] = yield* cluster.start(1, { entities: Layer.empty })
+        const entityId = `${backend}-missing-registration`
+        yield* cluster.waitForEntityOwner(RegistrationEntity, entityId, runner)
+        const client = yield* cluster.getClient(RegistrationEntity)
+        const request = yield* client(entityId).Runner().pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* cluster.waitUntil(
+          "The missing entity registration did not produce a stored defect",
+          Effect.map(cluster.failedMessageCount, (count) => count === 1)
+        )
+        const exit = yield* Fiber.await(request)
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          assert.include(Cause.pretty(exit.cause), `Entity type '${RegistrationEntity.type}' not registered`)
+        }
+        assert.deepStrictEqual(yield* cluster.messageCounts(), {
+          failed: 1,
+          replied: 0,
+          unprocessed: 0
+        })
       }))
 
     it.live(`${backend}: routes by entity id, isolates state, and preserves mailbox order`, () =>

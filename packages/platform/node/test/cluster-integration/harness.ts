@@ -59,6 +59,7 @@ export interface MakeOptions {
 
 export interface StartOptions {
   readonly assignedShardGroups?: ReadonlyArray<string> | undefined
+  readonly entities?: RunnerEntities | undefined
   readonly runnerShardWeight?: number | undefined
 }
 
@@ -89,7 +90,7 @@ type HarnessConfig = Partial<ShardingConfig.ShardingConfig["Service"]> & {
   readonly shardLockDisableAdvisory: boolean
 }
 
-type RunnerEntities = Layer.Layer<
+export type RunnerEntities = Layer.Layer<
   never,
   never,
   Sharding.Sharding | MessageStorage.MessageStorage | SqlClient.SqlClient
@@ -473,7 +474,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     const storage = Context.make(RunnerStorage.RunnerStorage, controller.controlled)
     const context = yield* (options.runnerLayer ?? socketRunnerLayer)(
       address,
-      entities,
+      startOptions?.entities ?? entities,
       socketServer,
       runnerConfig,
       trackedClientProtocolLayer(socketController, addressKey(address))
