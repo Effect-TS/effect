@@ -2,34 +2,8 @@
 "@effect/platform-node": patch
 ---
 
-Migrate `NodeRedis` from `ioredis` to the `redis` (node-redis) client.
+Migrate `NodeRedis` from `ioredis` to `redis` (node-redis), replacing the peer dependency with `redis: >=5.0.0 <7.0.0`.
 
-`ioredis` is deprecated in favour of [`node-redis`](https://redis.io/docs/latest/develop/clients/nodejs/), so `NodeRedis` now builds on it. Replace the `ioredis` peer dependency with `redis`:
+`layer` and `layerConfig` now accept `RedisClientOptions`: socket settings move under `socket`, `db` becomes `database`, command methods are camelCase, and arbitrary commands use `sendCommand`. Clients use RESP2 by default.
 
-```sh
-npm uninstall ioredis && npm install redis
-```
-
-**Connection options**
-
-`NodeRedis.layer` and `NodeRedis.layerConfig` now take node-redis' `RedisClientOptions` instead of ioredis' `RedisOptions`. Socket settings move under `socket`, and `db` is renamed to `database`:
-
-```ts
-// before
-NodeRedis.layer({ host: "localhost", port: 6379, db: 1 })
-
-// after
-NodeRedis.layer({ socket: { host: "localhost", port: 6379 }, database: 1 })
-```
-
-A `url` can be used instead: `NodeRedis.layer({ url: "redis://localhost:6379/1" })`.
-
-**Layer construction can now fail**
-
-`node-redis` connects explicitly, so both layers connect while being built and now carry `RedisError` in their error channel. By default the initial connection fails on its first connection error. A caller-supplied `socket.reconnectStrategy` overrides this behavior; after the client is ready, the default reconnect strategy uses node-redis' exponential backoff and stops on socket timeouts.
-
-Scope finalization calls `close()`, which waits for in-flight commands, including blocking commands, and can therefore delay scope closure.
-
-**Direct client access**
-
-`NodeRedis.NodeRedis` exposes a RESP2 `RedisClientType` rather than an `ioredis` client. Command methods are camelCase (`client.lRange` instead of `client.lrange`), and arbitrary commands use `client.sendCommand([...])` instead of `client.call(...)`. RESP2 is pinned for stable reply shapes; opting into RESP3 requires an untyped options escape hatch. See the [migration guide](https://redis.io/docs/latest/develop/clients/nodejs/migration/) for the full API comparison.
+Layers connect while being built and can fail with `RedisError`. Initial connections fail fast unless a `socket.reconnectStrategy` is provided; after `ready`, the default reconnect behavior applies. Scope finalization uses `close()`, so in-flight or blocking commands can delay closure.
