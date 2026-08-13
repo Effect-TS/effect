@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Clock, DateTime, Effect, Exit, Fiber, Latch, Option, PrimaryKey, Schema, Stream } from "effect"
-import { ClusterSchema, DeliverAt, Entity } from "effect/unstable/cluster"
+import { ClusterSchema, DeliverAt, Entity, EntityId, ShardId } from "effect/unstable/cluster"
 import { Rpc, RpcSchema } from "effect/unstable/rpc"
 import { type Backend, make } from "./harness.ts"
 
@@ -521,6 +521,53 @@ describe("cluster message persistence integration", () => {
         )
         assert.deepStrictEqual(yield* cluster.messageCounts(), {
           failed: 2,
+          replied: 1,
+          unprocessed: 0
+        })
+      }))
+
+    it.live(`${backend}: defects a malformed persisted envelope without wedging the mailbox`, () =>
+      Effect.gen(function*() {
+        resetState()
+        const cluster = yield* make({ backend, entities: PersistenceEntityLayer })
+        const malformedId = `${backend}-malformed-stored`
+        const entityId = EntityId.make(malformedId)
+        const shardId = cluster.clientSharding.getShardId(entityId, PersistenceEntity.getShardGroup(entityId))
+        yield* cluster.insertMessage({
+          deliver_at: null,
+          entity_id: malformedId,
+          entity_type: PersistenceEntity.type,
+          headers: JSON.stringify({ invalid: 1 }),
+          id: "1",
+          kind: 0,
+          message_id: null,
+          payload: JSON.stringify({ id: malformedId }),
+          reply_id: null,
+          request_id: "1",
+          sampled: null,
+          shard_id: ShardId.toString(shardId),
+          span_id: null,
+          tag: "Healthy",
+          trace_id: null
+        })
+
+        yield* cluster.start(1)
+        yield* cluster.waitForStableAssignments()
+        yield* cluster.waitUntil(
+          "The malformed persisted envelope was not stored as a defect",
+          Effect.map(cluster.failedMessageCount, (value) => value === 1)
+        )
+        assert.strictEqual(count("Healthy", malformedId), 0)
+
+        const client = yield* cluster.getClient(PersistenceEntity)
+        const healthyId = `${backend}-malformed-stored-healthy`
+        assert.strictEqual(
+          yield* client("malformed-stored-healthy").Healthy(new KeyedPayload({ id: healthyId })),
+          `healthy:${healthyId}`
+        )
+        assert.strictEqual(count("Healthy", healthyId), 1)
+        assert.deepStrictEqual(yield* cluster.messageCounts(), {
+          failed: 1,
           replied: 1,
           unprocessed: 0
         })

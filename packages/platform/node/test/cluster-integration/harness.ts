@@ -67,6 +67,24 @@ export interface CutSocketOptions {
   readonly peer: ClusterRunner | "client"
 }
 
+export interface InsertMessageRow {
+  readonly deliver_at: number | bigint | null
+  readonly entity_id: string
+  readonly entity_type: string
+  readonly headers: string | null
+  readonly id: string | bigint
+  readonly kind: 0 | 1 | 2
+  readonly message_id: string | null
+  readonly payload: string | null
+  readonly reply_id: string | bigint | null
+  readonly request_id: string | bigint
+  readonly sampled: boolean | number | null
+  readonly shard_id: string
+  readonly span_id: string | null
+  readonly tag: string | null
+  readonly trace_id: string | null
+}
+
 type HarnessConfig = Partial<ShardingConfig.ShardingConfig["Service"]> & {
   readonly shardLockDisableAdvisory: boolean
 }
@@ -525,6 +543,11 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     return socketController.cut(source, target)
   }
 
+  const insertMessage = (row: InsertMessageRow) => {
+    const messages = sql(`${prefix}_messages`)
+    return sql`INSERT INTO ${messages} ${sql.insert({ ...row })}`.unprepared.pipe(Effect.asVoid)
+  }
+
   const assignmentMap = () => {
     const assignments: Record<string, ReadonlyArray<string>> = {}
     const groups = config.availableShardGroups ?? ShardingConfig.defaults.availableShardGroups
@@ -659,6 +682,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     faultLock,
     freeze,
     getClient,
+    insertMessage,
     kill,
     lockMode: options.lockMode ?? "advisory",
     messageCounts,
