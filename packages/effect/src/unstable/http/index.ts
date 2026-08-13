@@ -117,6 +117,11 @@ export * as HttpStaticServer from "./HttpStaticServer.ts"
 /**
  * @since 4.0.0
  */
+export * as HttpStatus from "./HttpStatus.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as HttpTraceContext from "./HttpTraceContext.ts"
 
 /**
