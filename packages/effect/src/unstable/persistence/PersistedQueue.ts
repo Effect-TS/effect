@@ -27,6 +27,7 @@ import * as RcMap from "../../RcMap.ts"
 import * as Schedule from "../../Schedule.ts"
 import * as Schema from "../../Schema.ts"
 import * as Scope from "../../Scope.ts"
+import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { SqlError } from "../sql/SqlError.ts"
 import * as Redis from "./Redis.ts"
@@ -779,6 +780,13 @@ export const makeStoreSql: (
   const lockExpirationSql = sql.literal(Math.ceil(Duration.toSeconds(lockExpiration)).toString())
   const workerId = crypto.randomUUID()
 
+  yield* Effect.orDie(
+    Migrator.make({})({
+      loader: sqlMigrations(tableName),
+      table: `${tableName}_migrations`
+    })
+  )
+
   const sqlNow = sql.onDialectOrElse({
     mssql: () => sql.literal("GETDATE()"),
     mysql: () => sql.literal("NOW()"),
@@ -792,104 +800,6 @@ export const makeStoreSql: (
     mysql: () => sql`DATE_SUB(${sqlNow}, INTERVAL ${lockExpirationSql} SECOND)`,
     mssql: () => sql`DATEADD(SECOND, -${lockExpirationSql}, ${sqlNow})`,
     orElse: () => sql`datetime(${sqlNow}, '-${lockExpirationSql} seconds')`
-  })
-
-  yield* sql.onDialectOrElse({
-    mysql: () =>
-      sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
-        sequence BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        id VARCHAR(36) NOT NULL,
-        queue_name VARCHAR(100) NOT NULL,
-        element TEXT NOT NULL,
-        completed BOOLEAN NOT NULL,
-        attempts INT NOT NULL DEFAULT 0,
-        last_failure TEXT NULL,
-        acquired_at DATETIME NULL,
-        acquired_by VARCHAR(36) NULL,
-        created_at DATETIME NOT NULL,
-        updated_at DATETIME NOT NULL
-      )`,
-    pg: () =>
-      sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
-        sequence SERIAL PRIMARY KEY,
-        id VARCHAR(36) NOT NULL,
-        queue_name VARCHAR(100) NOT NULL,
-        element TEXT NOT NULL,
-        completed BOOLEAN NOT NULL,
-        attempts INTEGER NOT NULL DEFAULT 0,
-        last_failure TEXT NULL,
-        acquired_at TIMESTAMP NULL,
-        acquired_by UUID NULL,
-        created_at TIMESTAMP NOT NULL,
-        updated_at TIMESTAMP NOT NULL
-      )`,
-    mssql: () =>
-      sql`IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${tableNameSql} AND xtype='U')
-      CREATE TABLE ${tableNameSql} (
-        sequence INT IDENTITY(1,1) PRIMARY KEY,
-        id NVARCHAR(36) NOT NULL,
-        queue_name NVARCHAR(100) NOT NULL,
-        element NVARCHAR(MAX) NOT NULL,
-        completed BIT NOT NULL,
-        attempts INT NOT NULL DEFAULT 0,
-        last_failure NVARCHAR(MAX) NULL,
-        acquired_at DATETIME2 NULL,
-        acquired_by UNIQUEIDENTIFIER NULL,
-        created_at DATETIME2 NOT NULL,
-        updated_at DATETIME2 NOT NULL
-      )`,
-    // sqlite
-    orElse: () =>
-      sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
-        sequence INTEGER PRIMARY KEY AUTOINCREMENT,
-        id TEXT NOT NULL,
-        queue_name TEXT NOT NULL,
-        element TEXT NOT NULL,
-        completed BOOLEAN NOT NULL,
-        attempts INTEGER NOT NULL DEFAULT 0,
-        last_failure TEXT NULL,
-        acquired_at DATETIME NULL,
-        acquired_by TEXT NULL,
-        created_at DATETIME NOT NULL,
-        updated_at DATETIME NOT NULL
-      )`
-  })
-
-  yield* sql.onDialectOrElse({
-    mssql: () =>
-      sql`IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_${tableName}_id')
-        CREATE UNIQUE INDEX idx_${tableNameSql}_id ON ${tableNameSql} (id, queue_name)`,
-    mysql: () =>
-      sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`.pipe(Effect.ignore),
-    orElse: () =>
-      sql`CREATE UNIQUE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
-  })
-
-  yield* sql.onDialectOrElse({
-    mssql: () =>
-      sql`IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_${tableName}_take')
-        CREATE INDEX idx_${tableNameSql}_take ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`,
-    mysql: () =>
-      sql`CREATE INDEX ${
-        sql(`idx_${tableName}_take`)
-      } ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`
-        .pipe(Effect.ignore),
-    orElse: () =>
-      sql`CREATE INDEX IF NOT EXISTS ${
-        sql(`idx_${tableName}_take`)
-      } ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`
-  })
-
-  yield* sql.onDialectOrElse({
-    mssql: () =>
-      sql`IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_${tableName}_update')
-        CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`,
-    mysql: () =>
-      sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`.pipe(
-        Effect.ignore
-      ),
-    orElse: () =>
-      sql`CREATE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
   })
 
   const offer = sql.onDialectOrElse({
@@ -1175,6 +1085,114 @@ export const makeStoreSql: (
       )
   })
 })
+
+const sqlMigrations = (tableName: string) =>
+  Migrator.fromRecord({
+    "0001_create_table": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const tableNameSql = sql(tableName)
+
+      yield* sql.onDialectOrElse({
+        mysql: () =>
+          sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
+            sequence BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id VARCHAR(36) NOT NULL,
+            queue_name VARCHAR(100) NOT NULL,
+            element TEXT NOT NULL,
+            completed BOOLEAN NOT NULL,
+            attempts INT NOT NULL DEFAULT 0,
+            last_failure TEXT NULL,
+            acquired_at DATETIME NULL,
+            acquired_by VARCHAR(36) NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL
+          )`,
+        pg: () =>
+          sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
+            sequence SERIAL PRIMARY KEY,
+            id VARCHAR(36) NOT NULL,
+            queue_name VARCHAR(100) NOT NULL,
+            element TEXT NOT NULL,
+            completed BOOLEAN NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            last_failure TEXT NULL,
+            acquired_at TIMESTAMP NULL,
+            acquired_by UUID NULL,
+            created_at TIMESTAMP NOT NULL,
+            updated_at TIMESTAMP NOT NULL
+          )`,
+        mssql: () =>
+          sql`IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${tableNameSql} AND xtype='U')
+          CREATE TABLE ${tableNameSql} (
+            sequence INT IDENTITY(1,1) PRIMARY KEY,
+            id NVARCHAR(36) NOT NULL,
+            queue_name NVARCHAR(100) NOT NULL,
+            element NVARCHAR(MAX) NOT NULL,
+            completed BIT NOT NULL,
+            attempts INT NOT NULL DEFAULT 0,
+            last_failure NVARCHAR(MAX) NULL,
+            acquired_at DATETIME2 NULL,
+            acquired_by UNIQUEIDENTIFIER NULL,
+            created_at DATETIME2 NOT NULL,
+            updated_at DATETIME2 NOT NULL
+          )`,
+        // sqlite
+        orElse: () =>
+          sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            id TEXT NOT NULL,
+            queue_name TEXT NOT NULL,
+            element TEXT NOT NULL,
+            completed BOOLEAN NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            last_failure TEXT NULL,
+            acquired_at DATETIME NULL,
+            acquired_by TEXT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL
+          )`
+      })
+
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_${tableName}_id')
+            CREATE UNIQUE INDEX idx_${tableNameSql}_id ON ${tableNameSql} (id, queue_name)`,
+        mysql: () =>
+          sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`.pipe(
+            Effect.ignore
+          ),
+        orElse: () =>
+          sql`CREATE UNIQUE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
+      })
+
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_${tableName}_take')
+            CREATE INDEX idx_${tableNameSql}_take ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`,
+        mysql: () =>
+          sql`CREATE INDEX ${
+            sql(`idx_${tableName}_take`)
+          } ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`
+            .pipe(Effect.ignore),
+        orElse: () =>
+          sql`CREATE INDEX IF NOT EXISTS ${
+            sql(`idx_${tableName}_take`)
+          } ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`
+      })
+
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_${tableName}_update')
+            CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`,
+        mysql: () =>
+          sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`.pipe(
+            Effect.ignore
+          ),
+        orElse: () =>
+          sql`CREATE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
+      })
+    })
+  })
 
 class QueueKey extends Data.Class<{
   readonly name: string
