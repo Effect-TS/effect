@@ -938,7 +938,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
                     }) as any as Effect.Effect<void>
                     : Effect.void
                 }),
-                Effect.catchCause(() => Effect.void)
+                Effect.ignoreCause
               )
             }
             if (!rpc) {

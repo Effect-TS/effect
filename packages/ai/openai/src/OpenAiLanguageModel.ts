@@ -590,7 +590,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
 
   const makeConfig = Effect.gen(function*() {
     const services = yield* Effect.context<never>()
-    return { model, ...providerConfig, ...services.mapUnsafe.get(Config.key) }
+    return { model, ...providerConfig, ...Context.getOrUndefined(services, Config) }
   })
 
   const makeRequest = Effect.fnUntraced(

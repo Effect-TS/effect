@@ -35,7 +35,7 @@ export class OpenAiConfig extends Context.Service<
    */
   static readonly getOrUndefined: Effect.Effect<typeof OpenAiConfig.Service | undefined> = Effect.map(
     Effect.context<never>(),
-    (context) => context.mapUnsafe.get(OpenAiConfig.key)
+    Context.getOrUndefined(OpenAiConfig)
   )
 }
 

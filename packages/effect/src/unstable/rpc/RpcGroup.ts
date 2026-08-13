@@ -346,7 +346,7 @@ const RpcGroupProto = {
   accessHandler(this: RpcGroup<any>, service: string) {
     return Effect.contextWith((parentContext: Context.Context<any>) => {
       const rpc = this.requests.get(service)!
-      const { handler, context } = parentContext.mapUnsafe.get(rpc.key) as Rpc.Handler<any>
+      const { handler, context } = Context.getOrUndefinedUnsafe(parentContext, rpc.key) as Rpc.Handler<any>
       return Effect.succeed((payload: Rpc.Payload<any>, options: any) => {
         options.rpc = rpc
         const result = handler(payload, options)

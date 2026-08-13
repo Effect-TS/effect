@@ -12,6 +12,7 @@
  */
 import * as Arr from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
+import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
@@ -395,9 +396,9 @@ const partitionRequestsById = function*<In, A, E, R, InE>(
 }
 
 function transactionKey<A>(entry: Request.Entry<A>): SqlClient.TransactionConnection.Service | undefined {
-  const client = entry.context.mapUnsafe.get(SqlClient.SqlClient.key)
+  const client = Context.getOrUndefined(entry.context, SqlClient.SqlClient)
   if (!client) return undefined
-  const conn = entry.context.mapUnsafe.get(client.transactionService.key)
+  const conn = Context.getOrUndefined(entry.context, client.transactionService)
   if (!conn) return undefined
   return Equal.byReferenceUnsafe(conn)
 }

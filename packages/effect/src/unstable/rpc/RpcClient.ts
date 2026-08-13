@@ -510,7 +510,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
   ) => Effect.Effect<any, E> => {
     const middlewares: Array<RpcMiddleware.RpcMiddlewareClient<any, any, any>> = []
     for (const tag of rpc.middlewares.values()) {
-      const middleware = services.mapUnsafe.get(`${tag.key}/Client`)
+      const middleware = Context.getOrUndefinedUnsafe(services, `${tag.key}/Client`) as any
       if (!middleware) continue
       middlewares.push(middleware)
     }

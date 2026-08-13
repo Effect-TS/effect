@@ -247,18 +247,18 @@ export const toWebHandlerWith = <Provided, R = never, ReqR = Exclude<R, Provided
     )
     return Effect.void
   }, middleware)
-  return (request: Request, reqContext?: Context.Context<never> | undefined): Promise<globalThis.Response> =>
+  return (request: Request, _context?: Context.Context<never> | undefined): Promise<globalThis.Response> =>
     new Promise((resolve) => {
-      const contextMap = new Map<string, any>(context.mapUnsafe)
-      if (Context.isContext(reqContext)) {
-        for (const [key, value] of reqContext.mapUnsafe) {
-          contextMap.set(key, value)
+      let reqContext = context
+      if (Context.isContext(_context)) {
+        for (const [key, value] of _context.mapUnsafe) {
+          reqContext = Context.addUnsafe(reqContext, key, value)
         }
       }
       const httpServerRequest = Request.fromWeb(request)
-      contextMap.set(HttpServerRequest.key, httpServerRequest)
+      reqContext = Context.add(reqContext, HttpServerRequest, httpServerRequest)
       ;(httpServerRequest as any)[resolveSymbol] = resolve
-      const fiber = Effect.runForkWith(Context.makeUnsafe(contextMap))(httpApp as any)
+      const fiber = Effect.runForkWith(reqContext)(httpApp as any)
       request.signal?.addEventListener("abort", () => {
         fiber.interruptUnsafe(undefined, ClientAbort.annotation)
       }, { once: true })
