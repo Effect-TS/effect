@@ -406,10 +406,20 @@ export const encodeHex: (input: Uint8Array | string) => string = (input) =>
   typeof input === "string" ? hexEncodeUint8Array(encoder.encode(input)) : hexEncodeUint8Array(input)
 
 /**
- * Generates a random lowercase hexadecimal string. The length must be a
- * multiple of 8.
+ * Generates a random lowercase hexadecimal string, optimized for lengths that
+ * are multiples of 8.
  *
- * @internal
+ * `length` is not validated. The function generates `length >>> 3` random
+ * 8-character words, so non-negative lengths below `2 ** 32` are rounded down
+ * to a multiple of 8 and other values follow JavaScript's unsigned 32-bit
+ * coercion rules.
+ *
+ * This function uses `Math.random()` and is not cryptographically secure. For
+ * security-sensitive values, use the `Crypto.Crypto` service's `randomBytes`
+ * method and encode the result with {@link encodeHex}.
+ *
+ * @category encoding
+ * @since 4.0.0
  */
 export const randomHex = (length: number): string => {
   let result = ""

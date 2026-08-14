@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reduce tracer ID generation overhead with a shared internal hexadecimal generator.
+Add `Encoding.randomHex`, a lightweight non-cryptographic generator that coerces lengths to unsigned 32-bit multiples of 8.
