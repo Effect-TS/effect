@@ -47,6 +47,14 @@ describe("Tracer", () => {
         assertSpanIdentifiers(root, child)
       }))
 
+    it.effect("generates native span identifiers across refills", () =>
+      Effect.gen(function*() {
+        for (let i = 0; i < 20; i++) {
+          const [root, child] = yield* makeRootAndChildSpans
+          assertSpanIdentifiers(root, child)
+        }
+      }))
+
     it.effect("generates OTLP span identifiers", () =>
       Effect.gen(function*() {
         const [root, child] = yield* makeRootAndChildSpans

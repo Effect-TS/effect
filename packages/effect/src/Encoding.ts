@@ -405,39 +405,18 @@ export const decodeBase64UrlString = (str: string) => Result.map(decodeBase64Url
 export const encodeHex: (input: Uint8Array | string) => string = (input) =>
   typeof input === "string" ? hexEncodeUint8Array(encoder.encode(input)) : hexEncodeUint8Array(input)
 
-/**
- * Generates a random lowercase hexadecimal string with the specified length.
- *
- * The length must be a non-negative safe integer.
- *
- * This function uses `Math.random()` and is not cryptographically secure. For
- * security-sensitive values, use the `Crypto.Crypto` service's `randomBytes`
- * method and encode the result with {@link encodeHex}.
- *
- * @category encoding
- * @since 4.0.0
- */
+/** @internal */
 export const randomHex = (length: number): string => {
-  if (!Number.isSafeInteger(length) || length < 0) {
-    throw new RangeError("length must be a non-negative safe integer")
+  const bytes = length >>> 1
+  if (randomBytesOffset + bytes > randomBytes.length) {
+    refillRandomBytes()
   }
   let result = ""
-  let remaining = length
-  while (remaining >= 2) {
-    if (randomBytesOffset === randomBytes.length) {
-      refillRandomBytes()
-    }
-    const bytes = Math.min(Math.floor(remaining / 2), randomBytes.length - randomBytesOffset)
-    result += hexEncodeUint8Array(randomBytes, randomBytesOffset, randomBytesOffset + bytes)
-    randomBytesOffset += bytes
-    remaining -= bytes * 2
+  const end = randomBytesOffset + bytes
+  for (let i = randomBytesOffset; i < end; i++) {
+    result += byteToHex[randomBytes[i]]
   }
-  if (remaining === 1) {
-    if (randomBytesOffset === randomBytes.length) {
-      refillRandomBytes()
-    }
-    result += byteToHex[randomBytes[randomBytesOffset++]][0]
-  }
+  randomBytesOffset = end
   return result
 }
 
@@ -784,9 +763,9 @@ for (let i = 0; i < 256; i++) {
   byteToHex.push(i.toString(16).padStart(2, "0"))
 }
 
-const hexEncodeUint8Array = (bytes: Uint8Array, start = 0, end = bytes.length): string => {
+const hexEncodeUint8Array = (bytes: Uint8Array): string => {
   let result = ""
-  for (let i = start; i < end; i++) {
+  for (let i = 0; i < bytes.length; i++) {
     result += byteToHex[bytes[i]]
   }
   return result
