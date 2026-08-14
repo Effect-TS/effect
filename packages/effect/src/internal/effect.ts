@@ -2066,11 +2066,7 @@ export const serviceOption = <I, S>(
 export const serviceOptional = <I, S>(
   service: Context.Key<I, S>
 ): Effect.Effect<S, Cause.NoSuchElementError> =>
-  withFiber((fiber) =>
-    fiber.context.mapUnsafe.has(service.key)
-      ? succeed(Context.getUnsafe(fiber.context, service))
-      : fail(new NoSuchElementError())
-  )
+  withFiber((fiber) => fromOption(Context.getOption(fiber.context, service)))
 
 /** @internal */
 export const updateContext: {
@@ -2232,12 +2228,7 @@ const provideServiceImpl = <A, E, R, I, S>(
   self: Effect.Effect<A, E, R>,
   service: Context.Key<I, S>,
   implementation: S
-): Effect.Effect<A, E, Exclude<R, I>> =>
-  updateContext(self, (s) => {
-    const prev = s.mapUnsafe.get(service.key)
-    if (prev === implementation) return s
-    return Context.add(s, service, implementation)
-  }) as any
+): Effect.Effect<A, E, Exclude<R, I>> => updateContext(self, Context.add(service, implementation)) as any
 
 /** @internal */
 export const provideServiceEffect: {

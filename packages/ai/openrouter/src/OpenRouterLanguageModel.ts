@@ -545,10 +545,9 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
   const client = yield* OpenRouterClient
   const codecTransformer = getCodecTransformer(model)
 
-  const makeConfig = Effect.gen(function*() {
-    const services = yield* Effect.context<never>()
-    return { model, ...providerConfig, ...services.mapUnsafe.get(Config.key) }
-  })
+  const makeConfig = Effect.contextWith((services: Context.Context<never>) =>
+    Effect.succeed({ model, ...providerConfig, ...Context.getOrUndefined(services, Config) })
+  )
 
   const makeRequest = Effect.fnUntraced(
     function*({ config, options }: {

@@ -52,7 +52,10 @@ const findFrame = (frames: ReadonlyArray<string>, text: string) => frames.find((
 describe("Prompt.date", () => {
   it.effect("renders two-digit years, teen ordinals, and noon meridiem correctly", () =>
     Effect.gen(function*() {
-      const initial = DateTime.toDateUtc(DateTime.makeUnsafe({ year: 2024, month: 1, day: 11, hour: 12 }))
+      const initial = DateTime.toDateUtc(DateTime.makeZonedUnsafe(
+        { year: 2024, month: 1, day: 11, hour: 12 },
+        { timeZone: DateTime.zoneMakeLocal(), adjustForTimeZone: true }
+      ))
       yield* MockTerminal.inputKey("enter")
 
       yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "YY Do A" }))

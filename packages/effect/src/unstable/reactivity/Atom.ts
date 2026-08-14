@@ -545,14 +545,14 @@ function makeEffect<A, E>(
   ctx.addFinalizer(() => {
     Effect.runForkWith(services)(Scope.close(scope, Exit.void))
   })
-  const servicesMap = new Map(services.mapUnsafe)
-  servicesMap.set(Scope.Scope.key, scope)
-  servicesMap.set(AtomRegistry.key, ctx.registry)
-  servicesMap.set(Scheduler.Scheduler.key, ctx.registry.scheduler)
   let syncResult: AsyncResult.AsyncResult<A, E> | undefined
   let isAsync = false
   const cancel = runCallbackSync(
-    Context.makeUnsafe<Scope.Scope | AtomRegistry>(servicesMap),
+    services.pipe(
+      Context.add(Scope.Scope, scope),
+      Context.add(AtomRegistry, ctx.registry),
+      Context.add(Scheduler.Scheduler, ctx.registry.scheduler)
+    ),
     effect,
     function(exit) {
       syncResult = AsyncResult.fromExitWithPrevious(exit, previous)
@@ -891,12 +891,12 @@ function makeStream<A, E>(
       return Effect.void
     })
   )
-  const servicesMap = new Map(services.mapUnsafe)
-  servicesMap.set(AtomRegistry.key, ctx.registry)
-  servicesMap.set(Scheduler.Scheduler.key, ctx.registry.scheduler)
 
   const cancel = runCallbackSync(
-    Context.makeUnsafe<AtomRegistry>(servicesMap),
+    services.pipe(
+      Context.add(AtomRegistry, ctx.registry),
+      Context.add(Scheduler.Scheduler, ctx.registry.scheduler)
+    ),
     run,
     constVoid,
     false

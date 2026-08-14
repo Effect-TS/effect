@@ -404,11 +404,12 @@ export const make = Effect.gen(function*() {
                     yield* latch.await
                     entry = activities.get(activityId)
                   }
-                  const contextMap = new Map(entry.context.mapUnsafe)
-                  contextMap.set(Activity.CurrentAttempt.key, payload.attempt)
-                  contextMap.set(WorkflowEngine.WorkflowInstance.key, instance)
+                  const context = entry.context.pipe(
+                    Context.add(WorkflowEngine.WorkflowInstance, instance),
+                    Context.add(Activity.CurrentAttempt, payload.attempt)
+                  )
                   return yield* entry.activity.executeEncoded.pipe(
-                    Effect.provideContext(Context.makeUnsafe(contextMap))
+                    Effect.provideContext(context)
                   )
                 }).pipe(
                   Workflow.intoResult,

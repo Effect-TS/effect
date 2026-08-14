@@ -776,24 +776,36 @@ export const add: {
   self: Context<Services>,
   key: Key<I, S>,
   service: Types.NoInfer<S>
+): Context<Services | I> => addUnsafe(self, key.key, service))
+
+/**
+ * Adds a service by key to a given `Context` using a string key.
+ *
+ * @category combining
+ * @since 4.0.0
+ */
+export const addUnsafe = <Services, I, S>(
+  self: Context<Services>,
+  key: string,
+  service: Types.NoInfer<S>
 ): Context<Services | I> => {
   const impl = self as ContextImpl<Services>
-  const cacheRoot = cacheKeys.has(key.key) ? undefined : impl.cacheRoot
+  const cacheRoot = cacheKeys.has(key) ? undefined : impl.cacheRoot
   if (impl.depth >= MaxDepth) {
     // Rebase the overlay chain into a flat map, keeping the cacheRoot so a
     // rebase on an ordinary key does not invalidate fiber caches
     const map = new Map(impl.mapUnsafe)
-    map.set(key.key, service)
+    map.set(key, service)
     return makeImpl(cacheRoot, map, undefined, 0)
   }
 
   return makeImpl(
     cacheRoot,
     impl.base,
-    { key: key.key, value: service, parent: impl.overlay },
+    { key, value: service, parent: impl.overlay },
     impl.depth + 1
   )
-})
+}
 
 /**
  * Adds or removes a service depending on an `Option`.

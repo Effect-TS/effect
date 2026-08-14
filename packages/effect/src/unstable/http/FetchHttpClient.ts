@@ -52,7 +52,7 @@ export class RequestInit extends Context.Service<RequestInit, globalThis.Request
 
 const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fiber) => {
   const fetch = fiber.getRef(Fetch)
-  const options: globalThis.RequestInit = fiber.context.mapUnsafe.get(RequestInit.key) ?? {}
+  const options: globalThis.RequestInit = Context.getOrUndefined(fiber.context, RequestInit) ?? {}
   let headers = options.headers
     ? Headers.merge(Headers.fromInput(options.headers as Headers.Input), request.headers)
     : request.headers

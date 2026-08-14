@@ -241,7 +241,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       return Effect.interrupt
     }
     const rpc = group.requests.get(request.tag) as any as Rpc.AnyWithProps
-    const entry = services.mapUnsafe.get(rpc?.key) as Rpc.Handler<Rpcs["_tag"]>
+    const entry = Context.getOrUndefinedUnsafe(services, rpc?.key) as Rpc.Handler<Rpcs["_tag"]>
     if (!rpc || !entry) {
       const write = Effect.catchDefect(
         options.onFromServer({
@@ -320,9 +320,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       effect = opts.onRequest(effect)
     }
     if (enableTracing) {
-      const parentSpan = requestFiber.context.mapUnsafe.get(
-        Tracer.ParentSpan.key
-      ) as Tracer.AnySpan | undefined
+      const parentSpan = Context.getOrUndefined(
+        requestFiber.context,
+        Tracer.ParentSpan
+      )
       effect = Effect.withSpan(effect, `${spanPrefix}.${request.tag}`, {
         captureStackTrace: false,
         attributes: options.spanAttributes,
@@ -600,7 +601,7 @@ export const make: <Rpcs extends Rpc.Any>(
   const getSchemas = (rpc: Rpc.AnyWithProps) => {
     let schemas = schemasCache.get(rpc)
     if (!schemas) {
-      const entry = services.mapUnsafe.get(rpc.key) as Rpc.Handler<Rpcs["_tag"]>
+      const entry = Context.getOrUndefinedUnsafe(services, rpc.key) as Rpc.Handler<Rpcs["_tag"]>
       const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
       schemas = {
         decode: Schema.decodeUnknownEffect(Schema.toCodecJson(rpc.payloadSchema)) as any,
