@@ -281,6 +281,7 @@ export const protocol = McpProtocol.make({
           { ...call, arguments: call.arguments ?? {} },
           McpProtocol.invocationFromClient(request)
         ).pipe(
+          Effect.flatMap((outcome) => McpProtocol.requireCompleteOperation(McpSchema.protocolVersion, outcome)),
           Effect.mapError(McpProtocol.ProtocolError.fromTool)
         )
         const content = yield* Effect.forEach(result.content, projectContent).pipe(

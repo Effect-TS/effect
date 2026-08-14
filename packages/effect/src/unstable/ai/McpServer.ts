@@ -197,7 +197,11 @@ export class McpServer extends Context.Service<McpServer, {
     readonly annotations: Context.Context<never>
     readonly handle: (
       payload: any
-    ) => Effect.Effect<CallToolResult, InternalError | InvalidParams, McpRequestContext | McpServerClient>
+    ) => Effect.Effect<
+      CallToolResult | McpSchema.InputRequired,
+      InternalError | InvalidParams,
+      McpRequestContext | McpServerClient
+    >
   }) => Effect.Effect<void>
   readonly callTool: (
     requests: typeof CallTool.payloadSchema.Type
@@ -383,13 +387,16 @@ export class McpServer extends Context.Service<McpServer, {
                       })
                     )
                 }),
-                Effect.flatMap((result) =>
-                  result.structuredContent === undefined
+                Effect.flatMap((result) => {
+                  if (Predicate.isTagged(result, "InputRequired")) {
+                    return Effect.succeed(McpCore.OperationOutcome.InputRequired(result))
+                  }
+                  return (result.structuredContent === undefined
                     ? Effect.succeed(result)
                     : validateStructuredContent(options.tool.name, result.structuredContent).pipe(
                       Effect.as(result)
-                    )
-                )
+                    )).pipe(Effect.map(McpCore.OperationOutcome.Complete))
+                })
               )
           })
           yield* notifications.client["notifications/tools/list_changed"]({})
@@ -409,7 +416,10 @@ export class McpServer extends Context.Service<McpServer, {
               })
             )
           )
-          return result
+          if (result._tag === "InputRequired") {
+            return yield* new InvalidParams({ message: "Client input is not supported by this MCP protocol" })
+          }
+          return result.value
         }),
       get resources() {
         return resources

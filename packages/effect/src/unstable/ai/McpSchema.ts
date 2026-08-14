@@ -2553,6 +2553,46 @@ export const ElicitResult = Schema.Union([
 ])
 
 /**
+ * Version-neutral request for additional MCP client input.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type McpInputRequest =
+  | { readonly method: "roots/list"; readonly params?: Schema.JsonObject | undefined }
+  | { readonly method: "sampling/createMessage"; readonly params: Schema.JsonObject }
+  | { readonly method: "elicitation/create"; readonly params: Schema.JsonObject }
+
+/**
+ * Version-neutral response supplied by an MCP client for a prior input request.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type McpInputResponse = Schema.JsonObject
+
+/**
+ * Indicates that an MCP operation requires additional keyed input from the client.
+ *
+ * **When to use**
+ *
+ * Use when a handler cannot complete until the client supplies roots, sampling,
+ * or elicitation input in a later request.
+ *
+ * **Details**
+ *
+ * `requestState` is opaque to the client and is returned unchanged with the
+ * keyed input responses.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export class InputRequired extends Data.TaggedClass("InputRequired")<{
+  readonly inputRequests: Readonly<Record<string, McpInputRequest>>
+  readonly requestState?: string | undefined
+}> {}
+
+/**
  * Sent from the server asking the client to collect structured input from the
  * user.
  *
@@ -2667,6 +2707,8 @@ export class McpRequestContext extends Context.Service<McpRequestContext, {
     | NonNullable<typeof Initialize.payloadSchema.Type["_meta"]>
     | Schema.JsonObject
     | undefined
+  readonly inputResponses?: Readonly<Record<string, McpInputResponse>> | undefined
+  readonly requestState?: string | undefined
 }>()("effect/ai/McpSchema/McpRequestContext") {}
 
 /**
