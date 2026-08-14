@@ -47,7 +47,7 @@ const ValidatedTool = Tool.make("validated", {
 const CapabilityTool = Tool.make("capability", {
   parameters: Tool.EmptyParams,
   success: Schema.String,
-  dependencies: [McpSchema.McpServerClient]
+  dependencies: [McpSchema.McpRequestContext]
 })
 
 const InitializeMetadataTool = Tool.make("initialize-metadata", {
@@ -68,7 +68,7 @@ const CapabilityGatedTool = Tool.make("capability-gated", {
 }).annotate(
   McpSchema.EnabledWhen,
   (client) =>
-    client.clientInfo.name === "allowed-client" &&
+    client.clientInfo?.name === "allowed-client" &&
     client.capabilities.roots !== undefined
 )
 

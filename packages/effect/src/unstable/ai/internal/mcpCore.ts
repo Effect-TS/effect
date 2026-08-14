@@ -23,8 +23,12 @@ export interface NegotiatedProtocolProfile<
   // Core decisions receive negotiated facts rather than dated wire requests.
   readonly protocolVersion: Version
   readonly clientCapabilities: McpSchema.ClientCapabilities
-  readonly clientInfo: McpSchema.Implementation
-  readonly requestMetadata?: CanonicalRequestMetadata | undefined
+  readonly clientInfo: Version extends McpProtocol.ProtocolVersion ? McpSchema.Implementation
+    : McpSchema.Implementation | undefined
+  readonly requestMetadata?:
+    | (Version extends McpProtocol.ProtocolVersion ? CanonicalRequestMetadata
+      : CanonicalRequestMetadata | Schema.JsonObject)
+    | undefined
 }
 
 // NOTE: Capabilities remain a normalized core model because dated revisions
@@ -55,8 +59,9 @@ export interface CanonicalInitializeResult {
 /** @internal */
 export interface McpInvocation {
   readonly clientId: number
-  readonly protocol: NegotiatedProtocolProfile
-  readonly requestContext: McpSchema.McpServerClient["Service"]
+  readonly protocol: NegotiatedProtocolProfile<string>
+  readonly requestContext: McpSchema.McpRequestContext["Service"]
+  readonly serverClient?: McpSchema.McpServerClient["Service"] | undefined
 }
 
 // NOTE: McpInvocation is runtime context, not a wire DTO. It combines the
@@ -111,7 +116,7 @@ export interface ToolRegistration {
   // The canonical Tool copy normalizes its top-level title from
   // `tool.title ?? tool.annotations?.title` at the public boundary.
   readonly descriptor: McpSchema.Tool
-  readonly isVisible: (profile: NegotiatedProtocolProfile) => boolean
+  readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
   readonly handle: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
     invocation: McpInvocation
@@ -128,7 +133,7 @@ export interface Tools {
     registration: ToolRegistration
   ) => Effect.Effect<void>
   readonly list: (
-    profile: NegotiatedProtocolProfile
+    profile: NegotiatedProtocolProfile<string>
   ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>>
   readonly call: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
@@ -139,7 +144,7 @@ export interface Tools {
 /** @internal */
 export interface ResourceRegistration {
   readonly descriptor: McpSchema.Resource
-  readonly isVisible: (profile: NegotiatedProtocolProfile) => boolean
+  readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
   readonly read: (
     invocation: McpInvocation
   ) => Effect.Effect<McpSchema.ReadResourceResult, McpSchema.InternalError>
@@ -148,7 +153,7 @@ export interface ResourceRegistration {
 /** @internal */
 export interface ResourceTemplateRegistration {
   readonly descriptor: McpSchema.ResourceTemplate
-  readonly isVisible: (profile: NegotiatedProtocolProfile) => boolean
+  readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
   readonly match: (uri: string) => ReadonlyArray<string> | undefined
   readonly read: (
     uri: string,
@@ -162,10 +167,10 @@ export interface Resources {
   readonly register: (registration: ResourceRegistration) => Effect.Effect<void>
   readonly registerTemplate: (registration: ResourceTemplateRegistration) => Effect.Effect<void>
   readonly list: (
-    profile: NegotiatedProtocolProfile
+    profile: NegotiatedProtocolProfile<string>
   ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>>
   readonly listTemplates: (
-    profile: NegotiatedProtocolProfile
+    profile: NegotiatedProtocolProfile<string>
   ) => Effect.Effect<ReadonlyArray<McpSchema.ResourceTemplate>>
   readonly read: (
     uri: string,
@@ -184,7 +189,7 @@ export class PromptNotFound extends Data.TaggedError("PromptNotFound")<{
 /** @internal */
 export interface PromptRegistration {
   readonly descriptor: McpSchema.Prompt
-  readonly isVisible: (profile: NegotiatedProtocolProfile) => boolean
+  readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
   readonly get: (
     args: Readonly<Record<string, string>>,
     invocation: McpInvocation
@@ -195,7 +200,7 @@ export interface PromptRegistration {
 export interface Prompts {
   readonly register: (registration: PromptRegistration) => Effect.Effect<void>
   readonly list: (
-    profile: NegotiatedProtocolProfile
+    profile: NegotiatedProtocolProfile<string>
   ) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>>
   readonly get: (
     name: string,

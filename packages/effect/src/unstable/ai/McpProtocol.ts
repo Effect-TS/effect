@@ -66,17 +66,79 @@ export interface ErasedClientRpcGroup extends ErasedRpcGroup {
 }
 
 /**
+ * Transport behavior declared by an MCP runtime descriptor.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface TransportPolicy {
+  readonly jsonRpc: {
+    readonly acceptsBatches: boolean
+  }
+  readonly http: {
+    readonly requiresVersionHeader?: boolean | undefined
+  }
+}
+
+/**
+ * Request information decoded by a stateless MCP runtime.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface StatelessRuntimeProfile {
+  readonly protocolVersion: string
+  readonly clientCapabilities: Schema.JsonObject
+  readonly clientInfo?: McpSchema.Implementation | undefined
+  readonly requestMetadata: Schema.JsonObject
+}
+
+/**
+ * Stateful lifecycle runtime declaration carried by a protocol adapter.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface StatefulRuntimeDescriptor {
+  readonly _tag: "Stateful"
+  readonly transport: TransportPolicy
+}
+
+/**
+ * Stateless lifecycle runtime declaration carried by a protocol adapter.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface StatelessRuntimeDescriptor {
+  readonly _tag: "Stateless"
+  readonly transport: TransportPolicy
+  readonly profileFromRequestMetadata: (
+    metadata: unknown
+  ) => Effect.Effect<StatelessRuntimeProfile, unknown>
+}
+
+/**
+ * Lifecycle runtime declaration carried by a protocol adapter.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type RuntimeDescriptor = StatefulRuntimeDescriptor | StatelessRuntimeDescriptor
+
+/**
  * The operational shape shared by protocol adapters.
  *
  * @category models
  * @since 4.0.0
  */
-export interface AnyProtocolAdapter<out Version extends string = string, HandlerRequirements = unknown> {
+export interface AnyProtocolAdapter<
+  out Version extends string = string,
+  HandlerRequirements = unknown,
+  out Runtime extends RuntimeDescriptor = RuntimeDescriptor
+> {
   readonly protocolVersion: Version
-  readonly transport: {
-    readonly acceptsJsonRpcBatches: boolean
-    readonly requiresVersionHeader: boolean
-  }
+  readonly runtime: Runtime
   readonly clientRpcs: ErasedClientRpcGroup
   readonly clientNotificationRpcs: ErasedRpcGroup
   readonly serverRequestRpcs: RpcGroup.Any

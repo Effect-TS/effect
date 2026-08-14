@@ -2,8 +2,8 @@
  * Builds Model Context Protocol (MCP) servers with Effect.
  *
  * The `McpServer` service stores the tools, resources, resource templates,
- * prompts, completions, initialized clients, and outgoing notifications exposed
- * by a server. This module also includes the server runner, custom protocol,
+ * prompts, completions, and outgoing notifications exposed by a server. This
+ * module also includes the server runner, custom protocol,
  * stdio, and HTTP layers, registration helpers, and APIs that let handlers ask
  * the connected client for structured input or read its advertised
  * capabilities.
@@ -18,7 +18,6 @@ import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import * as Layer from "../../Layer.ts"
-import * as LogLevel from "../../LogLevel.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Queue from "../../Queue.ts"
@@ -38,14 +37,14 @@ import * as HttpServerRequest from "../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import * as RpcClient from "../rpc/RpcClient.ts"
-import * as RpcGroup from "../rpc/RpcGroup.ts"
+import type * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcMessage from "../rpc/RpcMessage.ts"
 import * as RpcSerialization from "../rpc/RpcSerialization.ts"
 import * as RpcServer from "../rpc/RpcServer.ts"
 import * as AiError from "./AiError.ts"
 import * as McpCore from "./internal/mcpCore.ts"
 import * as McpProtocolInternal from "./internal/mcpProtocol.ts"
-import * as McpProtocolRegistry from "./internal/mcpProtocolRegistry.ts"
+import * as McpRuntime from "./internal/mcpRuntime.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
 import {
@@ -53,15 +52,14 @@ import {
   ElicitationDeclined,
   EnabledWhen,
   GetPromptResult,
-  Initialize,
   InternalError,
   InvalidParams,
   InvalidRequest,
   isParam,
+  McpRequestContext,
   McpServerClient,
   McpServerClientMiddleware,
   MethodNotFound,
-  Ping,
   Prompt,
   Resource,
   ResourceTemplate,
@@ -167,6 +165,20 @@ const toInternalServerNotification = (
   }
 }
 
+const provideInvocationContext = <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  invocation: McpCore.McpInvocation
+): Effect.Effect<A, E, Exclude<R, McpRequestContext | McpServerClient>> => {
+  const provided = Effect.provideService(effect, McpRequestContext, invocation.requestContext)
+  return (invocation.serverClient === undefined
+    ? provided
+    : Effect.provideService(provided, McpServerClient, invocation.serverClient)) as Effect.Effect<
+      A,
+      E,
+      Exclude<R, McpRequestContext | McpServerClient>
+    >
+}
+
 /**
  * Service that stores and serves an MCP server's registered tools, resources,
  * prompts, completions, and outgoing notifications.
@@ -185,7 +197,6 @@ export class McpServer extends Context.Service<McpServer, {
     readonly clientId: number
     readonly elicitationId: string
   }) => Effect.Effect<void>
-  readonly initializedClients: Set<number>
   readonly tools: ReadonlyArray<{
     readonly tool: McpTool
     readonly annotations: Context.Context<never>
@@ -193,7 +204,9 @@ export class McpServer extends Context.Service<McpServer, {
   readonly addTool: (options: {
     readonly tool: McpTool
     readonly annotations: Context.Context<never>
-    readonly handle: (payload: any) => Effect.Effect<CallToolResult, InternalError | InvalidParams, McpServerClient>
+    readonly handle: (
+      payload: any
+    ) => Effect.Effect<CallToolResult, InternalError | InvalidParams, McpRequestContext | McpServerClient>
   }) => Effect.Effect<void>
   readonly callTool: (
     requests: typeof CallTool.payloadSchema.Type
@@ -206,7 +219,11 @@ export class McpServer extends Context.Service<McpServer, {
   readonly addResource: (options: {
     readonly resource: Resource
     readonly annotations: Context.Context<never>
-    readonly handle: Effect.Effect<typeof ReadResourceResult.Type, InternalError, McpServerClient>
+    readonly handle: Effect.Effect<
+      typeof ReadResourceResult.Type,
+      InternalError,
+      McpRequestContext | McpServerClient
+    >
   }) => Effect.Effect<void>
 
   readonly resourceTemplates: ReadonlyArray<{
@@ -231,7 +248,7 @@ export class McpServer extends Context.Service<McpServer, {
       ) => Effect.Effect<
         typeof ReadResourceResult.Type,
         InvalidParams | InternalError,
-        McpServerClient
+        McpRequestContext | McpServerClient
       >
     }
   ) => Effect.Effect<void>
@@ -252,11 +269,11 @@ export class McpServer extends Context.Service<McpServer, {
       (
         input: string,
         context: CompletionContext
-      ) => Effect.Effect<CompleteResult, InternalError, McpServerClient>
+      ) => Effect.Effect<CompleteResult, InternalError, McpRequestContext | McpServerClient>
     >
     readonly handle: (
       params: Record<string, string>
-    ) => Effect.Effect<GetPromptResult, InternalError | InvalidParams, McpServerClient>
+    ) => Effect.Effect<GetPromptResult, InternalError | InvalidParams, McpRequestContext | McpServerClient>
   }) => Effect.Effect<void>
   readonly getPromptResult: (
     request: typeof GetPrompt.payloadSchema.Type
@@ -332,7 +349,6 @@ export class McpServer extends Context.Service<McpServer, {
           notification: McpCore.ServerNotification.ElicitationComplete({ elicitationId }),
           targetClientId: clientId
         }),
-      initializedClients: new Set(),
       get tools() {
         return tools
       },
@@ -359,11 +375,7 @@ export class McpServer extends Context.Service<McpServer, {
                 }
               ),
             handle: (call, invocation) =>
-              options.handle(call.arguments).pipe(
-                Effect.provideService(
-                  McpServerClient,
-                  invocation.requestContext
-                ),
+              provideInvocationContext(options.handle(call.arguments), invocation).pipe(
                 Effect.catchTags({
                   InternalError: (error) =>
                     Effect.fail(
@@ -394,15 +406,10 @@ export class McpServer extends Context.Service<McpServer, {
       callTool: (request) =>
         Effect.gen(function*() {
           const client = yield* McpServerClient
-          const result = yield* internalCore.tools.call(request, {
-            clientId: client.clientId,
-            protocol: {
-              protocolVersion: client.protocolVersion,
-              clientCapabilities: client.initializePayload.capabilities,
-              clientInfo: client.initializePayload.clientInfo
-            },
-            requestContext: client
-          }).pipe(
+          const result = yield* internalCore.tools.call(
+            request,
+            McpProtocolInternal.invocationFromClient(client)
+          ).pipe(
             Effect.mapError((error) =>
               new InvalidParams({
                 message: error._tag === "ToolNotFound"
@@ -437,10 +444,7 @@ export class McpServer extends Context.Service<McpServer, {
                 clientInfo: profile.clientInfo
               })
             },
-            read: (invocation) =>
-              options.handle.pipe(
-                Effect.provideService(McpServerClient, invocation.requestContext)
-              )
+            read: (invocation) => provideInvocationContext(options.handle, invocation)
           })
           yield* notifications.client["notifications/resources/list_changed"]({})
         }),
@@ -477,10 +481,7 @@ export class McpServer extends Context.Service<McpServer, {
               }
               return params
             },
-            read: (uri, params, invocation) =>
-              handle(uri, Array.from(params)).pipe(
-                Effect.provideService(McpServerClient, invocation.requestContext)
-              )
+            read: (uri, params, invocation) => provideInvocationContext(handle(uri, Array.from(params)), invocation)
           })
           for (const [param, handle] of Object.entries(completions)) {
             yield* internalCore.completions.register(
@@ -501,16 +502,10 @@ export class McpServer extends Context.Service<McpServer, {
       findResource: (uri) =>
         Effect.gen(function*() {
           const client = yield* McpServerClient
-          return yield* internalCore.resources.read(uri, {
-            clientId: client.clientId,
-            protocol: {
-              protocolVersion: client.protocolVersion,
-              clientCapabilities: client.clientCapabilities,
-              clientInfo: client.clientInfo,
-              requestMetadata: client.initializePayload._meta
-            },
-            requestContext: client
-          }).pipe(
+          return yield* internalCore.resources.read(
+            uri,
+            McpProtocolInternal.invocationFromClient(client)
+          ).pipe(
             Effect.catchTag("ResourceNotFound", (error) =>
               Effect.fail(new InvalidParams({ message: `Resource '${error.uri}' not found` })))
           )
@@ -536,20 +531,13 @@ export class McpServer extends Context.Service<McpServer, {
                 clientInfo: profile.clientInfo
               })
             },
-            get: (params, invocation) =>
-              options.handle(params).pipe(
-                Effect.provideService(McpServerClient, invocation.requestContext)
-              )
+            get: (params, invocation) => provideInvocationContext(options.handle(params), invocation)
           })
           for (const [param, handle] of Object.entries(options.completions)) {
             yield* internalCore.completions.register(
               `prompt/${options.prompt.name}/${param}`,
               (request, invocation) =>
-                handle(request.argument.value, request.context).pipe(
-                  Effect.provideService(
-                    McpServerClient,
-                    invocation.requestContext
-                  ),
+                provideInvocationContext(handle(request.argument.value, request.context), invocation).pipe(
                   Effect.map((result) => ({
                     values: result.completion.values,
                     total: result.completion.total,
@@ -608,61 +596,24 @@ const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 const MCP_INVALID_BATCH_METHOD = "invalid/json-rpc-batch"
 const requestKey = (requestId: string | number): string => `${typeof requestId}:${requestId}`
 
-type SessionLogLevel =
-  | { readonly _tag: "Effect"; readonly level: LogLevel.LogLevel }
-  | { readonly _tag: "Mcp"; readonly level: McpSchema.LoggingLevel }
-
-interface Session {
-  readonly initializePayload: typeof Initialize.payloadSchema.Type
-  readonly negotiatedProfile: McpCore.NegotiatedProtocolProfile
-  readonly protocol: McpProtocol.ProtocolAdapter
-  readonly resourceSubscriptions: Set<string> | undefined
-  logLevel: SessionLogLevel
-}
-
-interface Sessions {
-  readonly bySessionId: Map<string, Session>
-  readonly byClientId: Map<number, Session>
+interface ActiveRequest {
+  readonly prepared: McpRuntime.PreparedRequest
+  readonly cancelled: boolean
 }
 
 class McpClientKey extends Data.Class<{
   readonly clientId: number
-  readonly profile: McpCore.NegotiatedProtocolProfile
+  readonly profile: McpCore.NegotiatedProtocolProfile<string>
 }> {}
-
-class McpProtocolState extends Context.Service<McpProtocolState, {
-  readonly sessions: Sessions
-  readonly protocolRegistry: McpProtocolRegistry.ProtocolRegistry<McpProtocol.ProtocolAdapter>
-}>()("effect/ai/McpServer/McpProtocolState") {}
-
-const makeMcpProtocolState = Effect.fnUntraced(function*(
-  protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
-) {
-  // TODO: Replace the shared session map with an adapter-owned lifecycle strategy
-  // before v2026-07-28. The strategy must let sessionful revisions pin a profile
-  // after initialize while stateless revisions select and derive it per request.
-  return McpProtocolState.of({
-    sessions: {
-      bySessionId: new Map(),
-      byClientId: new Map()
-    },
-    protocolRegistry: yield* McpProtocolRegistry.make(protocols)
-  })
-})
-
-const layerMcpProtocolState = (
-  protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
-): Layer.Layer<McpProtocolState, Cause.IllegalArgumentError> =>
-  Layer.effect(McpProtocolState)(makeMcpProtocolState(protocols))
 
 /**
  * Runs an MCP server over the current `RpcServer.Protocol`.
  *
  * **Details**
  *
- * The server performs initialization and session handling, serves registered
- * tools, resources, and prompts, and forwards queued server notifications to
- * initialized clients.
+ * The server serves registered tools, resources, and prompts. The selected MCP
+ * runtime handles protocol lifecycle state and determines which clients receive
+ * queued server notifications.
  *
  * @category running
  * @since 4.0.0
@@ -688,39 +639,38 @@ export const run: (options: {
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
 }) {
-  const protocolStateOption = yield* Effect.serviceOption(McpProtocolState)
-  const protocolState = Option.isSome(protocolStateOption)
-    ? protocolStateOption.value
-    : yield* makeMcpProtocolState(options.protocols)
-  return yield* runWithProtocolState(options, protocolState)
+  const runtimeOption = yield* Effect.serviceOption(McpRuntime.ServerRuntime)
+  const runtime = Option.isSome(runtimeOption)
+    ? runtimeOption.value
+    : yield* McpRuntime.make(options.protocols)
+  return yield* runWithRuntime(options, runtime)
 })
 
-const runWithProtocolState = Effect.fnUntraced(function*(options: {
+const runWithRuntime = Effect.fnUntraced(function*(options: {
   readonly name: string
   readonly version: string
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
-}, protocolState: McpProtocolState["Service"]) {
-  const protocolRegistry = protocolState.protocolRegistry
+}, runtime: McpRuntime.ServerRuntimeShape) {
   const serverScope = yield* Effect.scope
   const protocol = yield* RpcServer.Protocol
   const server = yield* McpServer
   const defaultLogLevel = yield* CurrentLogLevel
   const isHttp = Option.isSome(yield* Effect.serviceOption(HttpRouter.HttpRouter))
-  const sessions = protocolState.sessions
-  const clientProtocols = new Map<number, McpProtocol.ProtocolAdapter>()
-  const activeRequests = new Map<number, Map<string, boolean>>()
-  const clientProfiles = new Map<number, McpCore.NegotiatedProtocolProfile>()
-  const handlers = yield* Layer.build(layerHandlers(options, {
-    sessions,
-    protocolRegistry
-  }))
+  const clientProtocols = new Map<number, McpProtocol.AnyProtocolAdapter>()
+  const activeRequests = new Map<number, Map<string, ActiveRequest>>()
+  const clientProfiles = new Map<number, McpCore.NegotiatedProtocolProfile<string>>()
+  const handlers = yield* runtime.installHandlers({
+    core: internalState.get(server)!.core,
+    defaultLogLevel,
+    serverInfo: options
+  })
 
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(key: McpClientKey) {
-      const selectedProtocol = protocolRegistry.select(key.profile.protocolVersion)
+      const selectedProtocol = runtime.selectProtocol(key.profile.protocolVersion)
       let write!: (message: RpcMessage.FromServerEncoded) => Effect.Effect<void>
       const reverseProtocol = yield* RpcClient.Protocol.make(Effect.fnUntraced(function*(writeResponse) {
         let cid = 0
@@ -757,7 +707,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
   })
 
   const clientMiddleware = McpServerClientMiddleware.of((effect, { client, headers, payload, rpc }) => {
-    const session = getClientSession(sessions, client.id, headers)
+    const session = runtime.resolveRequest(client.id, headers)
     const isInitialize = rpc._tag.endsWith("/initialize")
     if (!isInitialize && !session) {
       const fiber = Fiber.getCurrent()!
@@ -775,40 +725,56 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
       }
       return Effect.die(new Error(`Mcp-Session-Id does not exist`))
     }
-    const selectedProtocol = session?.protocol ?? protocolForInternalTag(protocolRegistry, rpc._tag)
-    // NOTE: RPC middleware erases the correlation between the initialize tag
+    // RPC middleware erases the correlation between the initialize tag
     // and its decoded payload. Restore it once after non-initialize requests
     // without a session have been rejected above.
-    const initializePayload = session?.initializePayload ?? payload as typeof Initialize.payloadSchema.Type
-    const profile = session?.negotiatedProfile ?? {
+    const initializePayload = session?.initializePayload ?? payload as typeof McpSchema.Initialize.payloadSchema.Type
+    const selectedProtocol = session?.protocol ??
+      clientProtocols.get(client.id) ??
+      runtime.protocolForInternalTag(rpc._tag)
+    if (!isProtocolVersion(selectedProtocol.protocolVersion)) {
+      return Effect.die(`Unsupported selected MCP protocol version: ${selectedProtocol.protocolVersion}`)
+    }
+    const profile: McpCore.NegotiatedProtocolProfile = session?.negotiatedProfile ?? {
       protocolVersion: selectedProtocol.protocolVersion,
       clientCapabilities: initializePayload.capabilities,
       clientInfo: initializePayload.clientInfo
     }
     clientProfiles.set(client.id, profile)
+    const requestContext = McpRequestContext.of({
+      clientId: client.id,
+      protocolVersion: profile.protocolVersion,
+      clientCapabilities: profile.clientCapabilities,
+      clientInfo: profile.clientInfo,
+      requestMetadata: initializePayload._meta
+    })
     return Effect.provideService(
       Effect.provideService(
-        effect,
-        McpServerClient,
-        McpServerClient.of({
-          clientId: client.id,
-          protocolVersion: session?.negotiatedProfile.protocolVersion ?? selectedProtocol.protocolVersion,
-          clientCapabilities: profile.clientCapabilities,
-          clientInfo: profile.clientInfo,
-          initializePayload,
-          getClient: RcMap.get(
-            clients,
-            new McpClientKey({
-              clientId: client.id,
-              profile
-            })
-          ).pipe(
-            Effect.map(({ client }) => client)
-          )
-        })
+        Effect.provideService(
+          effect,
+          McpServerClient,
+          McpServerClient.of({
+            clientId: client.id,
+            protocolVersion: profile.protocolVersion,
+            clientCapabilities: profile.clientCapabilities,
+            clientInfo: profile.clientInfo,
+            initializePayload,
+            getClient: RcMap.get(
+              clients,
+              new McpClientKey({
+                clientId: client.id,
+                profile
+              })
+            ).pipe(
+              Effect.map(({ client }) => client)
+            )
+          })
+        ),
+        McpRequestContext,
+        requestContext
       ),
       CurrentLogLevel,
-      effectLogLevel(session?.logLevel, defaultLogLevel)
+      runtime.effectLogLevel(client.id, headers, defaultLogLevel)
     )
   })
 
@@ -818,7 +784,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
       if (response._tag === "Exit") {
         const requests = activeRequests.get(clientId)
         const key = requestKey(response.requestId)
-        const cancelled = requests?.get(key)
+        const cancelled = requests?.get(key)?.cancelled
         if (requests !== undefined && requests.delete(key) && requests.size === 0) {
           activeRequests.delete(clientId)
         }
@@ -874,147 +840,188 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
                 HttpServerRequest.HttpServerRequest
               ).headers
               : Headers.fromInput(request.headers)
-            const session = getClientSession(sessions, clientId, headers)
-            const selectedProtocol = session?.protocol ??
-              (request.tag === "initialize"
-                ? protocolRegistry.select(getOfferedProtocolVersion(request.payload))
-                : protocolRegistry.protocols[0])
-            // Selection happens before dated payload decoding. Once a
-            // session exists, all later messages reuse its pinned adapter.
-            clientProtocols.set(clientId, selectedProtocol)
-            if (request.tag === MCP_INVALID_BATCH_METHOD) {
-              return protocol.send(clientId, {
-                _tag: "Exit",
-                requestId: request.id,
-                exit: {
-                  _tag: "Failure",
-                  cause: [{
-                    _tag: "Fail",
-                    error: new InvalidRequest({ message: "JSON-RPC batches are not supported" })
-                  }]
+            const cancellationRequest = request.tag === "notifications/cancelled" &&
+                typeof request.payload === "object" && request.payload !== null && "requestId" in request.payload &&
+                (typeof request.payload.requestId === "string" || typeof request.payload.requestId === "number")
+              ? activeRequests.get(clientId)?.get(requestKey(request.payload.requestId))
+              : undefined
+            const prepare = cancellationRequest === undefined
+              ? runtime.prepareRequest(clientId, headers, request)
+              : Effect.succeed(cancellationRequest.prepared)
+            return prepare.pipe(
+              Effect.flatMap((prepared) => {
+                const session = prepared.binding
+                const selectedProtocol = prepared.protocol
+                // Selection happens before dated payload decoding. Once a
+                // session exists, all later messages reuse its pinned adapter.
+                clientProtocols.set(clientId, selectedProtocol)
+                if (prepared.profile !== undefined) {
+                  clientProfiles.set(clientId, prepared.profile)
                 }
-              })
-            }
-            if (isHttp) {
-              const fiber = Fiber.getCurrent()!
-              const httpRequest = Context.getUnsafe(fiber.context, HttpServerRequest.HttpServerRequest)
-              if (session) {
-                appendPreResponseHandlerUnsafe(httpRequest, (_, res) =>
-                  Effect.succeed(
-                    HttpServerResponse.setHeader(
-                      res,
-                      MCP_PROTOCOL_VERSION_HEADER,
-                      session.protocol.protocolVersion
-                    )
-                  ))
-              }
-            }
-            const routedRequest = protocolRegistry.routeClientRequest(selectedProtocol, request)
-            const rpc = protocolRegistry.clientRpcs.requests.get(routedRequest.tag)
-            if (
-              rpc &&
-              selectedProtocol.clientNotificationRpcs.requests.has(request.tag)
-            ) {
-              if (!session) {
-                if (httpRequest) {
-                  appendPreResponseHandlerUnsafe(
-                    httpRequest,
-                    () =>
+                if (request.tag === MCP_INVALID_BATCH_METHOD) {
+                  return protocol.send(clientId, {
+                    _tag: "Exit",
+                    requestId: request.id,
+                    exit: {
+                      _tag: "Failure",
+                      cause: [{
+                        _tag: "Fail",
+                        error: new InvalidRequest({ message: "JSON-RPC batches are not supported" })
+                      }]
+                    }
+                  })
+                }
+                if (isHttp) {
+                  const fiber = Fiber.getCurrent()!
+                  const httpRequest = Context.getUnsafe(fiber.context, HttpServerRequest.HttpServerRequest)
+                  if (session) {
+                    appendPreResponseHandlerUnsafe(httpRequest, (_, res) =>
                       Effect.succeed(
-                        HttpServerResponse.empty({
-                          status: headers[MCP_SESSION_ID_HEADER] === undefined ? 400 : 404
-                        })
+                        HttpServerResponse.setHeader(
+                          res,
+                          MCP_PROTOCOL_VERSION_HEADER,
+                          session.protocol.protocolVersion
+                        )
+                      ))
+                  }
+                }
+                const routedRequest = runtime.routeClientRequest(selectedProtocol, request)
+                const rpc = runtime.clientRpcs.requests.get(routedRequest.tag)
+                if (
+                  rpc &&
+                  selectedProtocol.clientNotificationRpcs.requests.has(request.tag)
+                ) {
+                  if (!session && selectedProtocol.runtime._tag === "Stateful") {
+                    if (httpRequest) {
+                      appendPreResponseHandlerUnsafe(
+                        httpRequest,
+                        () =>
+                          Effect.succeed(
+                            HttpServerResponse.empty({
+                              status: headers[MCP_SESSION_ID_HEADER] === undefined ? 400 : 404
+                            })
+                          )
                       )
+                    }
+                    return Effect.void
+                  }
+                  const decode = selectedProtocol.payloadCodecs(rpc).decode(request.payload)
+                  return decode.pipe(
+                    Effect.flatMap((payload) => {
+                      if (
+                        request.tag === "notifications/roots/list_changed" &&
+                        session?.initializePayload.capabilities.roots?.listChanged === true &&
+                        httpRequest === undefined
+                      ) {
+                        return RcMap.get(
+                          clients,
+                          new McpClientKey({
+                            clientId,
+                            profile: session.negotiatedProfile
+                          })
+                        ).pipe(
+                          Effect.flatMap(({ client }) => client.listRoots()),
+                          Effect.scoped,
+                          Effect.ignoreCause,
+                          Effect.forkIn(serverScope),
+                          Effect.asVoid
+                        )
+                      }
+                      if (request.tag === "notifications/cancelled") {
+                        return selectedProtocol.normalizeCancellation(payload).pipe(
+                          Effect.flatMap((cancellation) => {
+                            const key = requestKey(cancellation.requestId)
+                            const requests = activeRequests.get(clientId)
+                            if (requests?.has(key) !== true) {
+                              return Effect.void
+                            }
+                            requests.set(key, { ...requests.get(key)!, cancelled: true })
+                            return f(clientId, {
+                              _tag: "Interrupt",
+                              requestId: cancellation.requestId
+                            })
+                          })
+                        )
+                      }
+                      const handler = handlers.mapUnsafe.get(rpc.key) as Rpc.Handler<string> | undefined
+                      const handled = handler
+                        ? handler.handler(payload, {
+                          rpc,
+                          requestId: RpcMessage.RequestId(request.id),
+                          client: new Rpc.ServerClient(clientId),
+                          headers
+                        }) as any as Effect.Effect<void>
+                        : Effect.void
+                      return prepared.requestContext === undefined
+                        ? handled
+                        : Effect.provideService(handled, McpRequestContext, prepared.requestContext)
+                    }),
+                    Effect.catchCause(() => Effect.void)
                   )
                 }
-                return Effect.void
-              }
-              const decode = selectedProtocol.payloadCodecs(rpc).decode(request.payload)
-              return decode.pipe(
-                Effect.flatMap((payload) => {
-                  if (
-                    request.tag === "notifications/roots/list_changed" &&
-                    session.initializePayload.capabilities.roots?.listChanged === true &&
-                    httpRequest === undefined
-                  ) {
-                    return RcMap.get(
-                      clients,
-                      new McpClientKey({
-                        clientId,
-                        profile: session.negotiatedProfile
-                      })
-                    ).pipe(
-                      Effect.flatMap(({ client }) => client.listRoots()),
-                      Effect.scoped,
-                      Effect.ignoreCause,
-                      Effect.forkIn(serverScope),
-                      Effect.asVoid
-                    )
+                if (!rpc) {
+                  if (request.isNotification) {
+                    return Effect.void
                   }
-                  if (request.tag === "notifications/cancelled") {
-                    return selectedProtocol.normalizeCancellation(payload).pipe(
-                      Effect.flatMap((cancellation) => {
-                        const key = requestKey(cancellation.requestId)
-                        const requests = activeRequests.get(clientId)
-                        if (requests?.has(key) !== true) {
-                          return Effect.void
-                        }
-                        requests.set(key, true)
-                        return f(clientId, {
-                          _tag: "Interrupt",
-                          requestId: String(cancellation.requestId)
-                        })
-                      })
-                    )
-                  }
-                  const handler = handlers.mapUnsafe.get(rpc.key) as Rpc.Handler<string> | undefined
-                  return handler
-                    ? handler.handler(payload, {
-                      rpc,
-                      requestId: RpcMessage.RequestId(request.id),
-                      client: new Rpc.ServerClient(clientId),
-                      headers
-                    }) as any as Effect.Effect<void>
-                    : Effect.void
-                }),
-                Effect.ignoreCause
-              )
-            }
-            if (!rpc) {
-              if (request.isNotification) {
-                return Effect.void
-              }
-              return protocol.send(clientId, {
-                _tag: "Exit",
-                requestId: request.id,
-                exit: {
-                  _tag: "Failure",
-                  cause: [{ _tag: "Fail", error: new MethodNotFound({ message: `Method not found: ${request.tag}` }) }]
+                  return protocol.send(clientId, {
+                    _tag: "Exit",
+                    requestId: request.id,
+                    exit: {
+                      _tag: "Failure",
+                      cause: [{
+                        _tag: "Fail",
+                        error: new MethodNotFound({ message: `Method not found: ${request.tag}` })
+                      }]
+                    }
+                  })
                 }
-              })
-            }
-            return selectedProtocol.payloadCodecs(rpc).decode(request.payload).pipe(
-              Effect.matchEffect({
-                onSuccess: () => {
-                  if (request.isNotification !== true) {
-                    const requests = activeRequests.get(clientId) ?? new Map<string, boolean>()
-                    requests.set(requestKey(request.id), false)
-                    activeRequests.set(clientId, requests)
-                  }
-                  return f(clientId, routedRequest)
-                },
-                onFailure: () =>
-                  request.isNotification
-                    ? Effect.void
-                    : protocol.send(clientId, {
-                      _tag: "Exit",
-                      requestId: request.id,
-                      exit: {
-                        _tag: "Failure",
-                        cause: [{ _tag: "Fail", error: new InvalidParams({ message: "Invalid method parameters" }) }]
+                return selectedProtocol.payloadCodecs(rpc).decode(request.payload).pipe(
+                  Effect.matchEffect({
+                    onSuccess: () => {
+                      if (request.isNotification !== true) {
+                        const requests = activeRequests.get(clientId) ?? new Map<string, ActiveRequest>()
+                        requests.set(requestKey(request.id), { prepared, cancelled: false })
+                        activeRequests.set(clientId, requests)
                       }
-                    })
-              })
+                      const handled = f(clientId, routedRequest)
+                      return prepared.requestContext === undefined
+                        ? handled
+                        : Effect.provideService(handled, McpRequestContext, prepared.requestContext)
+                    },
+                    onFailure: () =>
+                      request.isNotification
+                        ? Effect.void
+                        : protocol.send(clientId, {
+                          _tag: "Exit",
+                          requestId: request.id,
+                          exit: {
+                            _tag: "Failure",
+                            cause: [{
+                              _tag: "Fail",
+                              error: new InvalidParams({ message: "Invalid method parameters" })
+                            }]
+                          }
+                        })
+                  })
+                )
+              }),
+              Effect.catch((error) =>
+                request.isNotification
+                  ? Effect.void
+                  : protocol.send(clientId, {
+                    _tag: "Exit",
+                    requestId: request.id,
+                    exit: {
+                      _tag: "Failure",
+                      cause: [{
+                        _tag: "Fail",
+                        error: error instanceof McpProtocolInternal.ProtocolError
+                          ? error
+                          : new InvalidParams({ message: "Invalid request metadata" })
+                      }]
+                    }
+                  })
+              )
             )
           }
           case "Ping":
@@ -1025,16 +1032,14 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
             activeRequests.delete(clientId)
             clientProtocols.delete(clientId)
             clientProfiles.delete(clientId)
-            if (!isHttp) {
-              sessions.byClientId.delete(clientId)
-            }
+            runtime.disconnect(clientId)
             return f(clientId, request)
           case "Pong":
           case "Exit":
           case "Chunk":
           case "ClientProtocolError":
           case "Defect": {
-            const selectedProtocol = getProtocolForClient(clientProtocols, clientId, protocolRegistry)
+            const selectedProtocol = getProtocolForClient(clientProtocols, clientId, runtime.protocols[0])
             const profile = clientProfiles.get(clientId) ?? {
               protocolVersion: selectedProtocol.protocolVersion,
               clientCapabilities: {},
@@ -1062,18 +1067,16 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
         if (!clientIds.has(clientId)) {
           clientProtocols.delete(clientId)
           clientProfiles.delete(clientId)
-          // HTTP client IDs are request-scoped; their UUID sessions outlive them.
-          if (!isHttp) {
-            sessions.byClientId.delete(clientId)
-          }
+          // HTTP UUID sessions are stored separately and outlive request-scoped client IDs.
+          runtime.disconnect(clientId)
         }
       }
-      for (const clientId of server.initializedClients.keys()) {
+      for (const clientId of runtime.deliveryClientIds()) {
         if (targetClientId !== undefined && clientId !== targetClientId) {
           continue
         }
         if (!clientIds.has(clientId)) {
-          server.initializedClients.delete(clientId)
+          runtime.disconnect(clientId)
           continue
         }
         // This must stay below stale-client cleanup so transports without
@@ -1090,17 +1093,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
           if (projected === undefined) {
             return
           }
-          const session = sessions.byClientId.get(clientId)
-          if (
-            notification._tag === "LoggingMessage" &&
-            !isMcpLogLevelEnabled(notification.level, session?.logLevel, defaultLogLevel)
-          ) {
-            return
-          }
-          if (
-            notification._tag === "ResourceUpdated" &&
-            session?.resourceSubscriptions?.has(notification.uri) !== true
-          ) {
+          if (!runtime.canDeliver(clientId, Headers.empty, notification, defaultLogLevel)) {
             return
           }
           const rpc = selectedProtocol.serverNotificationRpcs.requests.get(projected.tag)
@@ -1124,7 +1117,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
     Effect.forkScoped
   )
 
-  return yield* RpcServer.make(protocolRegistry.clientRpcs, {
+  return yield* RpcServer.make(runtime.clientRpcs, {
     spanPrefix: "McpServer",
     disableFatalDefects: true
   }).pipe(
@@ -1136,8 +1129,9 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
 
 /**
  * Creates a layer that starts an MCP server over an existing
- * `RpcServer.Protocol` and provides the `McpServer` and `McpServerClient`
- * services.
+ * `RpcServer.Protocol` and provides `McpServer`. Request handlers receive
+ * `McpRequestContext`; initialized legacy requests additionally receive
+ * `McpServerClient`.
  *
  * **When to use**
  *
@@ -1172,22 +1166,22 @@ export const layer = (options: {
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, RpcServer.Protocol> =>
-  layerWithProtocolState(options).pipe(
-    Layer.provide(layerMcpProtocolState(options.protocols))
+  layerWithRuntime(options).pipe(
+    Layer.provide(McpRuntime.layer(options.protocols))
   )
 
-const layerWithProtocolState = (options: {
+const layerWithRuntime = (options: {
   readonly name: string
   readonly version: string
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
-}): Layer.Layer<McpServer | McpServerClient, never, RpcServer.Protocol | McpProtocolState> =>
+}): Layer.Layer<McpServer | McpServerClient, never, RpcServer.Protocol | McpRuntime.ServerRuntime> =>
   Layer.effectDiscard(
     Effect.gen(function*() {
-      const protocolState = yield* McpProtocolState
-      yield* Effect.forkScoped(runWithProtocolState(options, protocolState))
+      const runtime = yield* McpRuntime.ServerRuntime
+      yield* Effect.forkScoped(runWithRuntime(options, runtime))
     })
   ).pipe(
     Layer.provideMerge(McpServer.layer)
@@ -1204,7 +1198,8 @@ const layerWithProtocolState = (options: {
  * **Details**
  *
  * The selected protocol adapter controls the dated RPC schemas and JSON-RPC
- * batch policy. The layer provides `McpServer` and `McpServerClient` and
+ * batch policy. The layer provides `McpServer`, supplies request-scoped
+ * `McpRequestContext` and legacy `McpServerClient` services to handlers, and
  * requires `Stdio`.
  *
  * @see {@link layer} for running over an existing `RpcServer.Protocol`
@@ -1249,7 +1244,7 @@ const mcpStdioSerialization = (
           const decoded: Array<unknown> = []
           for (const frame of frames.decode(data)) {
             if (Array.isArray(frame)) {
-              const acceptsBatch = selectedProtocol?.transport.acceptsJsonRpcBatches === true
+              const acceptsBatch = selectedProtocol?.runtime.transport.jsonRpc.acceptsBatches === true
               if (
                 !acceptsBatch ||
                 frame.length === 0 ||
@@ -1305,7 +1300,9 @@ const mcpStdioSerialization = (
  * **Details**
  *
  * POST serves JSON-RPC and accepted notification-only requests return `202`.
- * Unsupported protocol versions return `400`; methods without MCP handlers
+ * Modern routing-header mismatches and unsupported protocol versions return
+ * JSON-RPC errors with status `400`; unknown modern RPC methods return a
+ * JSON-RPC method-not-found error with status `404`. Unsupported HTTP methods
  * return `405`. Requests carrying an `Origin` header are rejected unless the
  * exact origin appears in `allowedOrigins`; Origin-less non-browser clients
  * remain valid. The surrounding HTTP server remains responsible for binding
@@ -1334,7 +1331,7 @@ export const layerHttp = (options: {
   readonly extensions?: ServerExtensions | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, HttpRouter.HttpRouter> => {
-  const protocolState = layerMcpProtocolState(options.protocols)
+  const runtime = McpRuntime.layer(options.protocols)
   const methodNotAllowedResponse = HttpServerResponse.empty({
     status: 405,
     headers: { allow: "POST" }
@@ -1350,9 +1347,9 @@ export const layerHttp = (options: {
     HttpRouter.add("DELETE", options.path, methodNotAllowed),
     HttpRouter.add("OPTIONS", options.path, methodNotAllowed)
   )
-  return Layer.merge(layerWithProtocolState(options), routes).pipe(
+  return Layer.merge(layerWithRuntime(options), routes).pipe(
     Layer.provide(layerMcpProtocolHttp(options)),
-    Layer.provide(protocolState),
+    Layer.provide(runtime),
     Layer.provide(RpcSerialization.layerJsonRpc())
   )
 }
@@ -1363,10 +1360,10 @@ const layerMcpProtocolHttp = (options: {
 }): Layer.Layer<
   RpcServer.Protocol,
   never,
-  McpProtocolState | RpcSerialization.RpcSerialization | HttpRouter.HttpRouter
+  McpRuntime.ServerRuntime | RpcSerialization.RpcSerialization | HttpRouter.HttpRouter
 > =>
   Layer.effect(RpcServer.Protocol)(Effect.gen(function*() {
-    const state = yield* McpProtocolState
+    const runtime = yield* McpRuntime.ServerRuntime
     const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect()
     const router = yield* HttpRouter.HttpRouter
     yield* router.add("POST", options.path, (request) => {
@@ -1380,84 +1377,119 @@ const layerMcpProtocolHttp = (options: {
       if (!accepted.includes("application/json") || !accepted.includes("text/event-stream")) {
         return Effect.succeed(HttpServerResponse.empty({ status: 406 }))
       }
-      const protocolVersion = request.headers[MCP_PROTOCOL_VERSION_HEADER]
       const sessionId = request.headers[MCP_SESSION_ID_HEADER]
-      const session = sessionId === undefined
-        ? undefined
-        : state.sessions.bySessionId.get(sessionId)
-      if (sessionId !== undefined && session === undefined) {
-        return Effect.succeed(HttpServerResponse.empty({ status: 404 }))
-      }
-      const protocolVersionHeaderRejected = (protocolVersion !== undefined &&
-        !state.protocolRegistry.protocols.some((protocol) => protocol.protocolVersion === protocolVersion)) ||
-        (session?.protocol.transport.requiresVersionHeader === true &&
-          protocolVersion !== session.protocol.protocolVersion)
-      const parseErrorResponse = protocolVersionHeaderRejected
-        ? HttpServerResponse.empty({ status: 400 })
-        : HttpServerResponse.jsonUnsafe({
-          jsonrpc: "2.0",
-          id: null,
-          error: new McpSchema.ParseError({ message: "Parse error" })
-        })
       return request.text.pipe(
-        Effect.flatMap(Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)),
         Effect.matchEffect({
-          onFailure: () => Effect.succeed(parseErrorResponse),
-          onSuccess: (input) => {
-            if (!Array.isArray(input)) {
-              const hasId = Predicate.hasProperty(input, "id")
-              const id = hasId && (typeof input.id === "string" || typeof input.id === "number")
-                ? input.id
-                : null
-              const isJsonRpc = Predicate.hasProperty(input, "jsonrpc") && input.jsonrpc === "2.0"
-              const hasValidRequestId = !hasId || typeof input.id === "string" || typeof input.id === "number"
-              const isRequest = isJsonRpc && hasValidRequestId &&
-                Predicate.hasProperty(input, "method") && typeof input.method === "string"
-              const hasValidResponseId = hasId &&
-                (typeof input.id === "string" || typeof input.id === "number" || input.id === null)
-              const hasResult = Predicate.hasProperty(input, "result")
-              const hasError = Predicate.hasProperty(input, "error")
-              const isResponse = isJsonRpc && hasValidResponseId && hasResult !== hasError
-              const isInitialize = isRequest && isInitializeJsonRpcMessage(input)
-              // Initialize requests are exempt from the version header check:
-              // rejecting them with a 400 makes clients treat the endpoint as a
-              // legacy HTTP+SSE server and retry initialization with a GET.
-              if (!isInitialize && protocolVersionHeaderRejected) {
-                return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-              }
-              if (!isRequest && !isResponse) {
-                return Effect.succeed(HttpServerResponse.jsonUnsafe({
+          onFailure: () => {
+            const admission = runtime.admitHttp(request.headers, undefined)
+            return Effect.succeed(
+              admission._tag === "Rejected"
+                ? HttpServerResponse.empty({ status: admission.status })
+                : HttpServerResponse.jsonUnsafe({
                   jsonrpc: "2.0",
-                  id,
-                  error: new InvalidRequest({ message: "Invalid Request" })
-                }))
+                  id: null,
+                  error: new McpSchema.ParseError({ message: "Parse error" })
+                })
+            )
+          },
+          onSuccess: (body) =>
+            Effect.matchEffect(Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)(body), {
+              onFailure: () => {
+                const admission = runtime.admitHttp(request.headers, undefined)
+                return Effect.succeed(
+                  admission._tag === "Rejected"
+                    ? HttpServerResponse.empty({ status: admission.status })
+                    : HttpServerResponse.jsonUnsafe({
+                      jsonrpc: "2.0",
+                      id: null,
+                      error: new McpSchema.ParseError({ message: "Parse error" })
+                    })
+                )
+              },
+              onSuccess: (input) => {
+                if (!Array.isArray(input)) {
+                  const hasId = Predicate.hasProperty(input, "id")
+                  const id = hasId && (typeof input.id === "string" || typeof input.id === "number")
+                    ? input.id
+                    : null
+                  const isJsonRpc = Predicate.hasProperty(input, "jsonrpc") && input.jsonrpc === "2.0"
+                  const hasValidRequestId = !hasId || typeof input.id === "string" || typeof input.id === "number"
+                  const isRequest = isJsonRpc && hasValidRequestId &&
+                    Predicate.hasProperty(input, "method") && typeof input.method === "string"
+                  const hasValidResponseId = hasId &&
+                    (typeof input.id === "string" || typeof input.id === "number" || input.id === null)
+                  const hasResult = Predicate.hasProperty(input, "result")
+                  const hasError = Predicate.hasProperty(input, "error")
+                  const isResponse = isJsonRpc && hasValidResponseId && hasResult !== hasError
+                  if (!isRequest && !isResponse) {
+                    return Effect.succeed(HttpServerResponse.jsonUnsafe({
+                      jsonrpc: "2.0",
+                      id,
+                      error: new InvalidRequest({ message: "Invalid Request" })
+                    }))
+                  }
+                  const admission = runtime.admitHttp(request.headers, input)
+                  if (admission._tag === "Rejected") {
+                    return Effect.succeed(
+                      admission.error === undefined
+                        ? HttpServerResponse.empty({ status: admission.status })
+                        : HttpServerResponse.jsonUnsafe({
+                          jsonrpc: "2.0",
+                          id,
+                          error: admission.error
+                        }, { status: admission.status })
+                    )
+                  }
+                  const isInitialize = isInitializeJsonRpcMessage(input)
+                  if (isInitialize && sessionId !== undefined) {
+                    return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+                  }
+                  if (
+                    !isInitialize &&
+                    isRequest &&
+                    admission.protocol?.runtime._tag !== "Stateless" &&
+                    sessionId === undefined
+                  ) {
+                    return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+                  }
+                  if (
+                    isRequest &&
+                    admission.protocol?.runtime._tag === "Stateless" &&
+                    !(
+                      (admission.protocol as unknown as McpProtocolInternal.ProtocolAdapter).handlerRpcs?.requests.has(
+                        input.method as string
+                      ) ?? admission.protocol.clientRpcs.requests.has(input.method as string)
+                    )
+                  ) {
+                    return Effect.succeed(HttpServerResponse.jsonUnsafe({
+                      jsonrpc: "2.0",
+                      id,
+                      error: new MethodNotFound({ message: `Method not found: ${input.method}` })
+                    }, { status: 404 }))
+                  }
+                  return httpEffect
+                }
+                if (input.length === 0) {
+                  return Effect.succeed(HttpServerResponse.jsonUnsafe({
+                    jsonrpc: "2.0",
+                    id: null,
+                    error: new InvalidRequest({ message: "Invalid Request" })
+                  }, { status: 400 }))
+                }
+                const admission = runtime.admitHttp(request.headers, input)
+                if (
+                  admission._tag === "Rejected" ||
+                  input.some(isInitializeJsonRpcMessage) ||
+                  admission.binding === undefined
+                ) {
+                  return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+                }
+                const selectedProtocol = admission.binding.protocol
+                return selectedProtocol.runtime.transport.jsonRpc.acceptsBatches
+                  ? httpEffect
+                  : Effect.succeed(HttpServerResponse.empty({ status: 400 }))
               }
-              if (isInitialize && sessionId !== undefined) {
-                return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-              }
-              if (!isInitialize && isRequest && sessionId === undefined) {
-                return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-              }
-              return httpEffect
-            }
-            if (protocolVersionHeaderRejected) {
-              return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-            }
-            if (input.length === 0) {
-              return Effect.succeed(HttpServerResponse.jsonUnsafe({
-                jsonrpc: "2.0",
-                id: null,
-                error: new InvalidRequest({ message: "Invalid Request" })
-              }, { status: 400 }))
-            }
-            if (input.some(isInitializeJsonRpcMessage) || session === undefined) {
-              return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-            }
-            const selectedProtocol = session.protocol
-            return selectedProtocol.transport.acceptsJsonRpcBatches
-              ? httpEffect
-              : Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-          }
+            })
         })
       )
     })
@@ -1526,7 +1558,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
 ) => Effect.Effect<
   void,
   never,
-  McpServer | Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools>, McpServerClient>
+  McpServer | Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools>, McpRequestContext | McpServerClient>
 > = Effect.fnUntraced(function*<Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.Toolkit<Tools>
 ) {
@@ -1534,7 +1566,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
   const built = yield* (toolkit as any as Effect.Effect<
     Toolkit.WithHandler<Tools>,
     never,
-    Exclude<Tool.HandlersFor<Tools>, McpServerClient>
+    Exclude<Tool.HandlersFor<Tools>, McpRequestContext | McpServerClient>
   >)
   const services = yield* Effect.context<never>()
   for (const tool of Object.values(built.tools)) {
@@ -1620,7 +1652,7 @@ export const toolkit = <Tools extends Record<string, Tool.Any>>(
 ): Layer.Layer<
   never,
   never,
-  Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools>, McpServerClient>
+  Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools>, McpRequestContext | McpServerClient>
 > =>
   Layer.effectDiscard(registerToolkit(toolkit)).pipe(
     Layer.provide(McpServer.layer)
@@ -1693,7 +1725,7 @@ export const registerResource: {
       R
     >
     readonly annotations?: Context.Context<never> | undefined
-  }): Effect.Effect<void, never, Exclude<R, McpServerClient> | McpServer>
+  }): Effect.Effect<void, never, Exclude<R, McpRequestContext | McpServerClient> | McpServer>
   <const Schemas extends ReadonlyArray<Schema.Constraint>>(segments: TemplateStringsArray, ...schemas: Schemas): <
     E,
     R,
@@ -1721,7 +1753,7 @@ export const registerResource: {
       | (Completions[keyof Completions] extends (input: string) => infer Ret ?
         Ret extends Effect.Effect<infer _A, infer _E, infer _R> ? _R : never
         : never),
-      McpServerClient
+      McpRequestContext | McpServerClient
     >
     | McpServer
   >
@@ -1871,7 +1903,7 @@ export const resource: {
       E,
       R
     >
-  }): Layer.Layer<never, never, Exclude<R, McpServerClient>>
+  }): Layer.Layer<never, never, Exclude<R, McpRequestContext | McpServerClient>>
   <const Schemas extends ReadonlyArray<Schema.Constraint>>(segments: TemplateStringsArray, ...schemas: Schemas): <
     E,
     R,
@@ -1896,7 +1928,7 @@ export const resource: {
       | (Completions[keyof Completions] extends (input: string) => infer Ret ?
         Ret extends Effect.Effect<infer _A, infer _E, infer _R> ? _R : never
         : never),
-      McpServerClient
+      McpRequestContext | McpServerClient
     >
   >
 } = function() {
@@ -1952,7 +1984,11 @@ export const registerPrompt = <
     ) => Effect.Effect<Array<typeof PromptMessage.Type> | string, E, R>
     readonly annotations?: Context.Context<never> | undefined
   }
-): Effect.Effect<void, never, Exclude<Schema.Struct.DecodingServices<Params> | R, McpServerClient> | McpServer> => {
+): Effect.Effect<
+  void,
+  never,
+  Exclude<Schema.Struct.DecodingServices<Params> | R, McpRequestContext | McpServerClient> | McpServer
+> => {
   const args = Arr.empty<typeof PromptArgument.Type>()
   const props: Record<string, Schema.Constraint> = options.parameters ?? {}
   for (const [name, prop] of Object.entries(props)) {
@@ -1979,13 +2015,15 @@ export const registerPrompt = <
   > = options.completion ?? {}
   return Effect.gen(function*() {
     const registry = yield* McpServer
-    const services = yield* Effect.context<Exclude<R | Schema.Struct.DecodingServices<Params>, McpServerClient>>()
+    const services = yield* Effect.context<
+      Exclude<R | Schema.Struct.DecodingServices<Params>, McpRequestContext | McpServerClient>
+    >()
     const completions: Record<
       string,
       (
         input: string,
         context: CompletionContext
-      ) => Effect.Effect<CompleteResult, InternalError, McpServerClient>
+      ) => Effect.Effect<CompleteResult, InternalError, McpRequestContext | McpServerClient>
     > = Object.create(null)
     for (const [param, handle] of Object.entries(completion)) {
       const encodeArray = Schema.encodeEffect(Schema.Array(props[param]))
@@ -2079,7 +2117,11 @@ export const prompt = <
     ) => Effect.Effect<Array<typeof PromptMessage.Type> | string, E, R>
     readonly annotations?: Context.Context<never> | undefined
   }
-): Layer.Layer<never, never, Exclude<Schema.Struct.DecodingServices<Params> | R, McpServerClient>> =>
+): Layer.Layer<
+  never,
+  never,
+  Exclude<Schema.Struct.DecodingServices<Params> | R, McpRequestContext | McpServerClient>
+> =>
   Layer.effectDiscard(registerPrompt(options)).pipe(
     Layer.provide(McpServer.layer)
   )
@@ -2137,8 +2179,8 @@ export const elicit: <S extends Schema.ConstraintEncoder<Record<string, unknown>
 export const clientCapabilities: Effect.Effect<
   ClientCapabilities,
   never,
-  McpServerClient
-> = McpServerClient.useSync((_) => _.clientCapabilities)
+  McpRequestContext
+> = McpRequestContext.useSync((_) => _.clientCapabilities)
 
 // -----------------------------------------------------------------------------
 // Internal
@@ -2186,152 +2228,6 @@ const compileUriTemplate = (segments: TemplateStringsArray, ...schemas: Readonly
   } as const
 }
 
-const PingRpcs = RpcGroup.make(Ping).middleware(McpServerClientMiddleware)
-const layerHandlers = (serverInfo: {
-  readonly name: string
-  readonly version: string
-  readonly description?: string | undefined
-  readonly websiteUrl?: string | undefined
-  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
-  readonly extensions?: ServerExtensions | undefined
-}, options: {
-  readonly sessions: Sessions
-  readonly protocolRegistry: McpProtocolRegistry.ProtocolRegistry<McpProtocol.ProtocolAdapter>
-}) =>
-  Layer.effectContext(
-    Effect.gen(function*() {
-      const server = yield* McpServer
-      const defaultLogLevel = yield* CurrentLogLevel
-      const contextMap = new Map<string, unknown>()
-      const internalCore = internalState.get(server)!.core
-      const handlerTarget = options.protocolRegistry.handlerTarget(contextMap)
-
-      for (const protocol of options.protocolRegistry.protocols) {
-        const wireHandlers = PingRpcs.of({
-          // Requests
-          ping: () => Effect.succeed({})
-        })
-        yield* handlerTarget.install(protocol, PingRpcs, wireHandlers)
-        const lifecycle: McpProtocolInternal.LifecycleRuntime = {
-          initialize: Effect.fnUntraced(
-            function*(protocolVersion, profile, clientId) {
-              const presence = yield* internalCore.registrationPresence
-              let capabilities: McpCore.CanonicalServerCapabilities = {
-                completions: true,
-                logging: true
-              }
-              if (presence.tools) {
-                capabilities = { ...capabilities, tools: { listChanged: true } }
-              }
-              if (presence.resources) {
-                capabilities = {
-                  ...capabilities,
-                  resources: {
-                    listChanged: true,
-                    subscribe: true
-                  }
-                }
-              }
-              if (presence.prompts) {
-                capabilities = { ...capabilities, prompts: { listChanged: true } }
-              }
-              if (serverInfo.extensions) {
-                capabilities = {
-                  ...capabilities,
-                  extensions: serverInfo.extensions
-                }
-              }
-              return yield* Effect.withFiber((fiber) => {
-                const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
-                if (httpRequest !== undefined && capabilities.resources !== undefined) {
-                  capabilities = {
-                    ...capabilities,
-                    resources: { ...capabilities.resources, subscribe: false }
-                  }
-                }
-                const initializePayload = Initialize.payloadSchema.make({
-                  protocolVersion,
-                  capabilities: profile.clientCapabilities,
-                  clientInfo: profile.clientInfo,
-                  _meta: profile.requestMetadata
-                })
-                const session: Session = {
-                  initializePayload,
-                  negotiatedProfile: profile,
-                  protocol,
-                  resourceSubscriptions: httpRequest === undefined && capabilities.resources?.subscribe === true
-                    ? new Set()
-                    : undefined,
-                  logLevel: { _tag: "Effect", level: defaultLogLevel }
-                }
-                if (httpRequest) {
-                  const sessionId = crypto.randomUUID()
-                  options.sessions.bySessionId.set(sessionId, session)
-                  appendPreResponseHandlerUnsafe(httpRequest, (_req, res) =>
-                    Effect.succeed(HttpServerResponse.setHeaders(res, {
-                      [MCP_SESSION_ID_HEADER]: sessionId,
-                      [MCP_PROTOCOL_VERSION_HEADER]: protocol.protocolVersion
-                    })))
-                } else {
-                  options.sessions.byClientId.set(clientId, session)
-                }
-                return Effect.succeed({
-                  capabilities,
-                  serverInfo: McpSchema.Implementation.make({
-                    name: serverInfo.name,
-                    version: serverInfo.version,
-                    description: serverInfo.description,
-                    websiteUrl: serverInfo.websiteUrl,
-                    icons: serverInfo.icons
-                  })
-                })
-              })
-            }
-          ),
-          setLogLevel: Effect.fnUntraced(function*(level, clientId, headers) {
-            const session = getClientSession(options.sessions, clientId, headers)
-            if (session === undefined) {
-              return
-            }
-            session.logLevel = { _tag: "Mcp", level }
-          }),
-          subscribe: Effect.fnUntraced(function*(uri, clientId, headers) {
-            const subscriptions = getClientSession(options.sessions, clientId, headers)?.resourceSubscriptions
-            if (subscriptions === undefined) {
-              return yield* new McpProtocolInternal.ProtocolError({
-                code: McpSchema.METHOD_NOT_FOUND_ERROR_CODE,
-                message: "Resource subscriptions are not supported"
-              })
-            }
-            subscriptions.add(uri)
-          }),
-          unsubscribe: Effect.fnUntraced(function*(uri, clientId, headers) {
-            const subscriptions = getClientSession(options.sessions, clientId, headers)?.resourceSubscriptions
-            if (subscriptions === undefined) {
-              return yield* new McpProtocolInternal.ProtocolError({
-                code: McpSchema.METHOD_NOT_FOUND_ERROR_CODE,
-                message: "Resource subscriptions are not supported"
-              })
-            }
-            subscriptions.delete(uri)
-          }),
-          clientNotification: Effect.fnUntraced(function*(notification, clientId) {
-            if (notification._tag === "Initialized") {
-              server.initializedClients.add(clientId)
-            }
-            return
-          })
-        }
-        yield* protocol.installHandlers(
-          internalCore,
-          lifecycle,
-          handlerTarget
-        )
-      }
-      return Context.makeUnsafe(contextMap)
-    })
-  )
-
 const resolveResourceContent = (
   uri: string,
   content: typeof ReadResourceResult.Type | string | Uint8Array
@@ -2354,18 +2250,6 @@ const resolveResourceContent = (
   return content
 }
 
-const getClientSession = (
-  sessions: Sessions,
-  clientId: number,
-  headers: Headers.Headers
-) => {
-  const sessionId = headers[MCP_SESSION_ID_HEADER]
-  if (sessionId === undefined) {
-    return sessions.byClientId.get(clientId)
-  }
-  return sessions.bySessionId.get(sessionId)
-}
-
 const InvalidBatchExit = Schema.Struct({
   _tag: Schema.Literal("Exit"),
   requestId: Schema.Null,
@@ -2377,61 +2261,17 @@ const InvalidBatchExit = Schema.Struct({
 
 const decodeInvalidBatchExit = Schema.decodeUnknownResult(InvalidBatchExit)
 
-const mcpLogLevels: Record<McpSchema.LoggingLevel, { readonly effect: LogLevel.LogLevel; readonly order: number }> = {
-  debug: { effect: "Debug", order: 0 },
-  info: { effect: "Info", order: 1 },
-  notice: { effect: "Info", order: 2 },
-  warning: { effect: "Warn", order: 3 },
-  error: { effect: "Error", order: 4 },
-  critical: { effect: "Fatal", order: 5 },
-  alert: { effect: "Fatal", order: 6 },
-  emergency: { effect: "Fatal", order: 7 }
-}
-
-const effectLogLevel = (logLevel: SessionLogLevel | undefined, fallback: LogLevel.LogLevel): LogLevel.LogLevel =>
-  logLevel?._tag === "Mcp" ? mcpLogLevels[logLevel.level].effect : logLevel?.level ?? fallback
-
-const isMcpLogLevelEnabled = (
-  level: McpSchema.LoggingLevel,
-  minimum: SessionLogLevel | undefined,
-  fallback: LogLevel.LogLevel
-): boolean =>
-  minimum?._tag === "Mcp"
-    ? mcpLogLevels[level].order >= mcpLogLevels[minimum.level].order
-    : LogLevel.isGreaterThanOrEqualTo(mcpLogLevels[level].effect, minimum?.level ?? fallback)
-
-const OfferedProtocolVersion = Schema.Struct({
-  protocolVersion: Schema.String
-})
-
-const getOfferedProtocolVersion = (payload: unknown): string => {
-  const decoded = Schema.decodeUnknownResult(OfferedProtocolVersion)(payload)
-  return Result.isSuccess(decoded) ? decoded.success.protocolVersion : ""
-}
-
-const protocolForInternalTag = (
-  registry: McpProtocolRegistry.ProtocolRegistry<McpProtocol.ProtocolAdapter>,
-  tag: string
-): McpProtocol.ProtocolAdapter => {
-  for (const protocol of registry.protocols) {
-    const routed = registry.routeClientRequest(protocol, {
-      _tag: "Request",
-      id: 0,
-      tag: "",
-      payload: undefined,
-      headers: []
-    })
-    if (tag.startsWith(routed.tag)) {
-      return protocol
-    }
-  }
-  return registry.protocols[0]
-}
-
 const getProtocolForClient = (
-  clientProtocols: Map<number, McpProtocol.ProtocolAdapter>,
+  clientProtocols: Map<number, McpProtocol.AnyProtocolAdapter>,
   clientId: number,
-  registry: McpProtocolRegistry.ProtocolRegistry<McpProtocol.ProtocolAdapter>
-): McpProtocol.ProtocolAdapter =>
+  fallback: McpProtocol.AnyProtocolAdapter
+): McpProtocol.AnyProtocolAdapter =>
   clientProtocols.get(clientId) ??
-    registry.protocols[0]
+    fallback
+
+const isProtocolVersion = (version: string): version is McpProtocol.ProtocolVersion =>
+  version === "2024-11-05" ||
+  version === "2025-03-26" ||
+  version === "2025-06-18" ||
+  version === "2025-11-25" ||
+  version === "2026-07-28"

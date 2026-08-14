@@ -6,6 +6,7 @@ import * as Schema from "../../../../Schema.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
+import * as McpRuntime from "../mcpRuntime.ts"
 import * as McpSchema from "../mcpSchema/v2025_03_26.ts"
 
 const ClientRequestRpcs = McpSchema.ClientRequestRpcs.middleware(
@@ -110,10 +111,10 @@ const projectResourceContents = (
 /** @internal */
 export const protocol = McpProtocol.make({
   protocolVersion: McpSchema.protocolVersion,
-  transport: {
-    acceptsJsonRpcBatches: true,
-    requiresVersionHeader: false
-  },
+  runtime: McpRuntime.stateful({
+    jsonRpc: { acceptsBatches: true },
+    http: { requiresVersionHeader: false }
+  }),
   clientRpcs: ClientRpcs,
   clientNotificationRpcs: McpSchema.ClientNotificationRpcs,
   serverRequestRpcs: McpSchema.ServerRequestRpcs,
