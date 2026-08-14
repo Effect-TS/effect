@@ -8,7 +8,6 @@
  * @since 4.0.0
  */
 import * as Data from "./Data.ts"
-import * as internalEncoding from "./internal/encoding.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Result from "./Result.ts"
 
@@ -404,7 +403,28 @@ export const decodeBase64UrlString = (str: string) => Result.map(decodeBase64Url
  * @since 2.0.0
  */
 export const encodeHex: (input: Uint8Array | string) => string = (input) =>
-  typeof input === "string" ? internalEncoding.encodeHex(encoder.encode(input)) : internalEncoding.encodeHex(input)
+  typeof input === "string" ? hexEncodeUint8Array(encoder.encode(input)) : hexEncodeUint8Array(input)
+
+/**
+ * Generates a random lowercase hexadecimal string with the specified length.
+ *
+ * The length must be an even number.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const randomHex = (length: number): string => {
+  const bytes = length >>> 1
+  if (randomBytesOffset + bytes > randomBytes.length) {
+    for (let i = 0; i < randomWords.length; i++) {
+      randomWords[i] = (Math.random() * 0x100000000) >>> 0
+    }
+    randomBytesOffset = 0
+  }
+  const result = hexEncodeUint8Array(randomBytes.subarray(randomBytesOffset, randomBytesOffset + bytes))
+  randomBytesOffset += bytes
+  return result
+}
 
 /**
  * Decodes a hexadecimal string into bytes safely.
@@ -743,6 +763,23 @@ const base64UrlEncodeUint8Array = (data: Uint8Array) =>
   base64EncodeUint8Array(data).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_")
 
 // Hex internals
+
+const byteToHex: Array<string> = []
+for (let i = 0; i < 256; i++) {
+  byteToHex.push(i.toString(16).padStart(2, "0"))
+}
+
+const hexEncodeUint8Array = (bytes: Uint8Array): string => {
+  let result = ""
+  for (let i = 0; i < bytes.length; i++) {
+    result += byteToHex[bytes[i]]
+  }
+  return result
+}
+
+const randomWords = new Uint32Array(96)
+const randomBytes = new Uint8Array(randomWords.buffer)
+let randomBytesOffset = randomBytes.length
 
 const fromHexChar = (byte: number) => {
   if (48 <= byte && byte <= 57) {

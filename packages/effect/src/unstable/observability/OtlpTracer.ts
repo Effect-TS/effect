@@ -15,9 +15,9 @@ import * as Config from "../../Config.ts"
 import type * as Context from "../../Context.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
+import * as Encoding from "../../Encoding.ts"
 import type * as Exit from "../../Exit.ts"
 import { flow } from "../../Function.ts"
-import * as internalEncoding from "../../internal/encoding.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import type * as Scope from "../../Scope.ts"
@@ -245,9 +245,9 @@ const makeSpan = (options: {
   if (Option.isSome(self.parent)) {
     self.traceId = self.parent.value.traceId
   } else {
-    self.traceId = internalEncoding.randomHexString(32)
+    self.traceId = Encoding.randomHex(32)
   }
-  self.spanId = internalEncoding.randomHexString(16)
+  self.spanId = Encoding.randomHex(16)
   self.events = []
   return self
 }

@@ -10,11 +10,11 @@
  * @since 2.0.0
  */
 import * as Context from "./Context.ts"
+import * as Encoding from "./Encoding.ts"
 import type * as Exit from "./Exit.ts"
 import type { Fiber } from "./Fiber.ts"
 import { constFalse, type LazyArg } from "./Function.ts"
 import type * as core from "./internal/core.ts"
-import * as internalEncoding from "./internal/encoding.ts"
 import type { LogLevel } from "./LogLevel.ts"
 import * as Option from "./Option.ts"
 
@@ -691,8 +691,8 @@ export class NativeSpan implements Span {
       startTime: options.startTime
     }
     this.attributes = new Map()
-    this.traceId = Option.getOrUndefined(options.parent)?.traceId ?? internalEncoding.randomHexString(32)
-    this.spanId = internalEncoding.randomHexString(16)
+    this.traceId = Option.getOrUndefined(options.parent)?.traceId ?? Encoding.randomHex(32)
+    this.spanId = Encoding.randomHex(16)
   }
 
   end(endTime: bigint, exit: Exit.Exit<unknown, unknown>): void {
