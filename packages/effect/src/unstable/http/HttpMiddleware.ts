@@ -206,37 +206,21 @@ export const tracer: <E, R>(
           response = exit.value
         }
         if (span.sampled) {
+          const url = Request.toURL(request)
+          if (Option.isSome(url) && (url.value.username !== "" || url.value.password !== "")) {
+            url.value.username = "REDACTED"
+            url.value.password = "REDACTED"
+          }
           const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
           span.attribute("http.request.method", request.method)
-          if (request.url.startsWith("/")) {
-            const host = request.headers.host ?? "localhost"
-            const protocol = request.headers["x-forwarded-proto"] === "https" ? "https" : "http"
-            span.attribute("url.full", `${protocol}://${host}${request.url}`)
-            const queryIndex = request.url.indexOf("?")
-            if (queryIndex === -1) {
-              span.attribute("url.path", request.url)
-            } else {
-              span.attribute("url.path", request.url.slice(0, queryIndex))
-              if (queryIndex < request.url.length - 1) {
-                span.attribute("url.query", request.url.slice(queryIndex + 1))
-              }
+          if (Option.isSome(url)) {
+            span.attribute("url.full", url.value.toString())
+            span.attribute("url.path", url.value.pathname)
+            const query = url.value.search.slice(1)
+            if (query !== "") {
+              span.attribute("url.query", url.value.search.slice(1))
             }
-            span.attribute("url.scheme", protocol)
-          } else {
-            const url = Request.toURL(request)
-            if (Option.isSome(url)) {
-              if (url.value.username !== "" || url.value.password !== "") {
-                url.value.username = "REDACTED"
-                url.value.password = "REDACTED"
-              }
-              span.attribute("url.full", url.value.toString())
-              span.attribute("url.path", url.value.pathname)
-              const query = url.value.search.slice(1)
-              if (query !== "") {
-                span.attribute("url.query", query)
-              }
-              span.attribute("url.scheme", url.value.protocol.slice(0, -1))
-            }
+            span.attribute("url.scheme", url.value.protocol.slice(0, -1))
           }
           if (request.headers["user-agent"] !== undefined) {
             span.attribute("user_agent.original", request.headers["user-agent"])
