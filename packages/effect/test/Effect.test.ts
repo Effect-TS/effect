@@ -620,6 +620,16 @@ describe("Effect", () => {
         assert.strictEqual(result, 1)
       }))
 
+    it.effect("reads only the first element of a lazy iterable", () =>
+      Effect.gen(function*() {
+        function* naturals() {
+          let n = 0
+          while (true) yield n++
+        }
+        const result = yield* Effect.head(Effect.succeed(naturals()))
+        assert.strictEqual(result, 0)
+      }))
+
     it.effect("fails with NoSuchElementError for an empty iterable", () =>
       Effect.gen(function*() {
         const error = yield* Effect.head(Effect.succeed([] as Array<number>)).pipe(Effect.flip)

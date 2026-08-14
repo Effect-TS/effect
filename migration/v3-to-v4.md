@@ -5860,6 +5860,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `EventLogRemote.Hello` -> `effect/unstable/eventlog/EventLogMessage#HelloResponse`: HelloResponse replaces Hello and includes the v4 authentication challenge; HelloRpc defines the endpoint.
 
+- `EventLogRemote.Ping`: TODO: needs guidance
+
 - `EventLogRemote.Pong` -> `none`: The event-log Pong model was removed; heartbeats belong to the generic RPC socket protocol.
 
 - `EventLogRemote.ProtocolRequest` -> `effect/unstable/eventlog/EventLogMessage#EventLogRemoteRpcs`: EventLogRemoteRpcs and generic RPC serialization replace the old protocol request union.
@@ -8466,6 +8468,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Workflow.CaptureDefects` -> `effect/unstable/workflow/Workflow#CaptureDefects`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same true default.
 
+- `Workflow.Complete`: TODO: needs guidance
+
 - `Workflow.Execution` -> `effect/unstable/workflow/Workflow#Execution`: Moved into core Effect; its workflow discriminator changed from name to \_tag.
 
 - `Workflow.Requirements` -> `Workflow.RequirementsClient / Workflow.RequirementsHandler`: The schema Context union split by direction: client payload encoding and result decoding versus handler payload decoding and result encoding.
@@ -9702,7 +9706,7 @@ Schema.toArbitrary(schema)
 
 - `Effect.getRuntimeFlags` -> `none`: RuntimeFlags are no longer a public Effect service; use supported high-level runtime options. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
-- `Effect.head` -> `Effect.flatMap + Array.head + Effect.fromOption`: Inspect the produced iterable explicitly and fail when it is empty. Adapt arguments and imports to the v4 API.
+- `Effect.head` -> `Effect.head`: Still exported in v4 with the same signature; the empty-iterable failure is now Cause.NoSuchElementError instead of Cause.NoSuchElementException.
 
 - `Effect.if` -> `Effect.suspend`: Select the branch lazily with a JavaScript conditional inside `Effect.suspend`. Adapt arguments and imports to the v4 API.
 
