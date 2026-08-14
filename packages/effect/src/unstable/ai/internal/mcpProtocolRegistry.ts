@@ -1,16 +1,17 @@
 import type { NonEmptyReadonlyArray } from "../../../Array.ts"
 import * as Cause from "../../../Cause.ts"
 import * as Effect from "../../../Effect.ts"
+import type * as Rpc from "../../rpc/Rpc.ts"
 import type * as RpcGroup from "../../rpc/RpcGroup.ts"
 import type * as RpcMessage from "../../rpc/RpcMessage.ts"
-import type * as McpProtocol from "./mcpProtocol.ts"
+import type * as McpProtocol from "../McpProtocol.ts"
+import type * as McpProtocolInternal from "./mcpProtocol.ts"
 
 type AnyRpcGroup = RpcGroup.RpcGroup<any>
 
-const prefix = (protocol: McpProtocol.AnyProtocolAdapter): string =>
-  `@effect/mcp/${encodeURIComponent(protocol.protocolVersion)}/`
-
-const asRpcGroup = (group: RpcGroup.Any): AnyRpcGroup => group as unknown as AnyRpcGroup
+const prefix = (protocol: {
+  readonly protocolVersion: string
+}): string => `@effect/mcp/${encodeURIComponent(protocol.protocolVersion)}/`
 
 /** @internal */
 export interface ProtocolRegistry<
@@ -23,8 +24,14 @@ export interface ProtocolRegistry<
     protocol: Protocol,
     request: RpcMessage.RequestEncoded
   ) => RpcMessage.RequestEncoded
+  readonly handlerTarget: (
+    contextMap: Map<string, unknown>
+  ) => McpProtocolInternal.HandlerInstallationTarget
 }
 
+// NOTE: Protocol selection and request namespacing happen before an adapter's
+// payload codec decodes the request. Canonical McpSchema value reuse must not
+// introduce a shared permissive decode-first path.
 /** @internal */
 export const make = Effect.fnUntraced(function*<
   const Protocols extends NonEmptyReadonlyArray<McpProtocol.AnyProtocolAdapter>
@@ -49,10 +56,9 @@ export const make = Effect.fnUntraced(function*<
     }
     byVersion.set(protocol.protocolVersion, protocol)
   }
-
-  let clientRpcs = asRpcGroup(snapshot[0].clientRpcs).prefix(prefix(snapshot[0]))
+  let clientRpcs = snapshot[0].clientRpcs.prefix(prefix(snapshot[0]))
   for (let i = 1; i < snapshot.length; i++) {
-    clientRpcs = clientRpcs.merge(asRpcGroup(snapshot[i].clientRpcs).prefix(prefix(snapshot[i])))
+    clientRpcs = clientRpcs.merge(snapshot[i].clientRpcs.prefix(prefix(snapshot[i])))
   }
 
   return {
@@ -65,6 +71,32 @@ export const make = Effect.fnUntraced(function*<
     ) => ({
       ...request,
       tag: `${prefix(protocol)}${request.tag}`
+    }),
+    handlerTarget: (contextMap: Map<string, unknown>): McpProtocolInternal.HandlerInstallationTarget => ({
+      install: Effect.fnUntraced(function*<
+        Rpcs extends Rpc.Any,
+        Handlers extends RpcGroup.HandlersFrom<Rpcs>
+      >(
+        protocol: {
+          readonly protocolVersion: string
+        },
+        rpcs: RpcGroup.RpcGroup<Rpcs>,
+        handlers: Handlers
+      ) {
+        const handlerContext = yield* rpcs.toHandlers(handlers)
+        for (const rpcDefinition of rpcs.requests.values()) {
+          const namespacedRpc = clientRpcs.requests.get(
+            `${prefix(protocol)}${rpcDefinition._tag}`
+          )
+          const handler = handlerContext.mapUnsafe.get(rpcDefinition.key)
+          if (namespacedRpc === undefined || handler === undefined) {
+            return yield* Effect.die(
+              `MCP handler registration invariant failed for ${protocol.protocolVersion}/${rpcDefinition._tag}`
+            )
+          }
+          contextMap.set(namespacedRpc.key, handler)
+        }
+      })
     })
   } satisfies ProtocolRegistry<Protocol>
 })

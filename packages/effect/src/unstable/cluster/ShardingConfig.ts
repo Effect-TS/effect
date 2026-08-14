@@ -96,6 +96,28 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    */
   readonly entityMailboxCapacity: number | "unbounded"
   /**
+   * The maximum number of entities that can be resident on this runner at the
+   * same time.
+   *
+   * When the limit is reached, no new entities are spawned: the storage read
+   * loop stops admitting messages for new entity addresses (they stay in
+   * storage until a slot frees up), and volatile sends to new addresses fail
+   * with `MailboxFull`.
+   *
+   * `"unbounded"` can only be set programmatically; the environment
+   * configuration only accepts integers.
+   *
+   * Defaults to `10_000`.
+   */
+  readonly maxResidentEntities: number | "unbounded"
+  /**
+   * The maximum number of unprocessed messages read from storage in a single
+   * poll.
+   *
+   * Defaults to `1024`.
+   */
+  readonly unprocessedMessageBatchSize: number
+  /**
    * The maximum duration of inactivity (i.e. without receiving a message)
    * after which an entity will be interrupted.
    */
@@ -163,6 +185,8 @@ export const defaults: ShardingConfig["Service"] = {
   shardLockExpiration: Duration.seconds(35),
   shardLockDisableAdvisory: false,
   entityMailboxCapacity: 4096,
+  maxResidentEntities: 10_000,
+  unprocessedMessageBatchSize: 1024,
   entityMaxIdleTime: Duration.minutes(1),
   entityRegistrationTimeout: Duration.minutes(1),
   entityTerminationTimeout: Duration.seconds(15),
@@ -276,6 +300,20 @@ export const config: Config.Config<ShardingConfig["Service"]> = Config.all({
   entityMailboxCapacity: Config.int("entityMailboxCapacity").pipe(
     Config.withDefault(defaults.entityMailboxCapacity)
     // Config.withDescription("The default capacity of the mailbox for entities.")
+  ),
+  maxResidentEntities: Config.schema(
+    Schema.Int.check(Schema.isGreaterThan(0)),
+    "maxResidentEntities"
+  ).pipe(
+    Config.withDefault(defaults.maxResidentEntities)
+    // Config.withDescription("The maximum number of entities that can be resident on this runner at the same time.")
+  ),
+  unprocessedMessageBatchSize: Config.schema(
+    Schema.Int.check(Schema.isGreaterThan(0)),
+    "unprocessedMessageBatchSize"
+  ).pipe(
+    Config.withDefault(defaults.unprocessedMessageBatchSize)
+    // Config.withDescription("The maximum number of unprocessed messages read from storage in a single poll.")
   ),
   entityMaxIdleTime: Config.duration("entityMaxIdleTime").pipe(
     Config.withDefault(defaults.entityMaxIdleTime)

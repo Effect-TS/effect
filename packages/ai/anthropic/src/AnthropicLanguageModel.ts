@@ -89,6 +89,12 @@ export class Config extends Context.Service<
        */
       readonly disableParallelToolCalls?: boolean | undefined
       /**
+       * Whether the model supports native structured outputs.
+       *
+       * Overrides automatic capability detection based on the model identifier.
+       */
+      readonly structuredOutputs?: boolean | undefined
+      /**
        * Whether to use strict JSON schema validation for tool calls.
        *
        * **Details**
@@ -678,10 +684,13 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
 }): Effect.fn.Return<LanguageModel.Service, never, AnthropicClient> {
   const client = yield* AnthropicClient
 
-  const makeConfig: Effect.Effect<typeof Config.Service & { readonly model: string }> = Effect.gen(function*() {
-    const services = yield* Effect.context<never>()
-    return { model, ...providerConfig, ...services.mapUnsafe.get(Config.key) }
-  })
+  const makeConfig: Effect.Effect<typeof Config.Service & { readonly model: string }> = Effect.contextWith((services) =>
+    Effect.succeed({
+      model,
+      ...providerConfig,
+      ...Context.getOrUndefined(services, Config)
+    })
+  )
 
   const makeRequest = Effect.fnUntraced(
     function*<Tools extends ReadonlyArray<Tool.Any>>({ config, options, toolNameMapper }: {
@@ -693,7 +702,10 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       readonly payload: typeof Generated.BetaCreateMessageParams.Encoded
     }, AiError.AiError> {
       const betas = new Set<string>()
-      const capabilities = getModelCapabilities(config.model!)
+      const modelCapabilities = getModelCapabilities(config.model!)
+      const capabilities = Predicate.isNotUndefined(config.structuredOutputs)
+        ? { ...modelCapabilities, supportsStructuredOutput: config.structuredOutputs }
+        : modelCapabilities
       const { messages, system } = yield* prepareMessages({ betas, options, toolNameMapper })
       const outputFormat = yield* getOutputFormat({ capabilities, options })
       const { tools, toolChoice } = yield* prepareTools({ betas, capabilities, config, options })
@@ -701,7 +713,8 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       if (betas.size > 0) {
         params["anthropic-beta"] = Array.from(betas).join(",")
       }
-      const { disableParallelToolCalls: _, output_config, ...requestConfig } = config
+      const { disableParallelToolCalls: _, output_config, structuredOutputs: _structuredOutputs, ...requestConfig } =
+        config
       const payload: Mutable<typeof Generated.BetaCreateMessageParams.Encoded> = {
         ...requestConfig,
         max_tokens: requestConfig.max_tokens ?? capabilities.maxOutputTokens,
@@ -2973,75 +2986,61 @@ const processCitation = Effect.fnUntraced(
 interface ModelCapabilities {
   readonly maxOutputTokens: number
   readonly supportsStructuredOutput: boolean
-  readonly isKnownModel: boolean
 }
 
 /**
  * Returns the capabilities of a Claude model that are used for defaults and feature selection.
+ * Legacy models are listed as exceptions so newly released models inherit modern defaults.
  *
  * @see https://docs.claude.com/en/docs/about-claude/models/overview#model-comparison-table
  * @see https://platform.claude.com/docs/en/build-with-claude/structured-outputs
  */
 const getModelCapabilities = (modelId: string): ModelCapabilities => {
   if (
-    modelId.includes("claude-opus-4-6") ||
-    modelId.includes("claude-sonnet-4-6") ||
-    modelId.includes("claude-opus-4-7") ||
-    modelId.includes("claude-opus-4-8")
-  ) {
-    return {
-      maxOutputTokens: 128000,
-      supportsStructuredOutput: true,
-      isKnownModel: true
-    }
-  } else if (
     modelId.includes("claude-sonnet-4-5") ||
     modelId.includes("claude-opus-4-5") ||
     modelId.includes("claude-haiku-4-5")
   ) {
     return {
       maxOutputTokens: 64000,
-      supportsStructuredOutput: true,
-      isKnownModel: true
+      supportsStructuredOutput: true
     }
   } else if (modelId.includes("claude-opus-4-1")) {
     return {
       maxOutputTokens: 32000,
-      supportsStructuredOutput: true,
-      isKnownModel: true
+      supportsStructuredOutput: true
     }
   } else if (
-    modelId.includes("claude-sonnet-4-") ||
+    modelId.includes("claude-sonnet-4-0") ||
+    modelId.includes("claude-sonnet-4-20250514") ||
     modelId.includes("claude-3-7-sonnet")
   ) {
     return {
       maxOutputTokens: 64000,
-      supportsStructuredOutput: false,
-      isKnownModel: true
+      supportsStructuredOutput: false
     }
-  } else if (modelId.includes("claude-opus-4-")) {
+  } else if (
+    modelId.includes("claude-opus-4-0") ||
+    modelId.includes("claude-opus-4-20250514")
+  ) {
     return {
       maxOutputTokens: 32000,
-      supportsStructuredOutput: false,
-      isKnownModel: true
+      supportsStructuredOutput: false
     }
   } else if (modelId.includes("claude-3-5-haiku")) {
     return {
       maxOutputTokens: 8192,
-      supportsStructuredOutput: false,
-      isKnownModel: true
+      supportsStructuredOutput: false
     }
-  } else if (modelId.includes("claude-3-haiku")) {
+  } else if (modelId.includes("claude-3-")) {
     return {
       maxOutputTokens: 4096,
-      supportsStructuredOutput: false,
-      isKnownModel: true
+      supportsStructuredOutput: false
     }
   } else {
     return {
-      maxOutputTokens: 4096,
-      supportsStructuredOutput: false,
-      isKnownModel: false
+      maxOutputTokens: 128000,
+      supportsStructuredOutput: true
     }
   }
 }

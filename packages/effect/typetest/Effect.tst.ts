@@ -7,6 +7,7 @@ import {
   Effect,
   type ExecutionPlan,
   Fiber,
+  HashMap,
   type Layer,
   type Option,
   pipe,
@@ -71,6 +72,7 @@ declare const fiberStringOrNumber: Fiber.Fiber<string, "err-1"> | Fiber.Fiber<nu
 declare const stringArray: Array<Effect.Effect<string, "err-3", "dep-3">>
 declare const numberRecord: Record<string, Effect.Effect<number, "err-4", "dep-4">>
 declare const optionalEffect: Option.Option<Effect.Effect<string, "err-1", "dep-1">>
+declare const iterableString: Effect.Effect<Iterable<string>, "err-1", "dep-1">
 
 class AcquireReleaseDependency extends Context.Service<AcquireReleaseDependency, string>()(
   "AcquireReleaseDependency"
@@ -238,12 +240,43 @@ describe("Effect.fromOption", () => {
     expect(result).type.toBe<Effect.Effect<string, SimpleError>>()
   })
 
+  it("supports an inline HashMap lookup in data-first form", () => {
+    const values = HashMap.make(["key", 1])
+    const result = Effect.fromOption(HashMap.get(values, "key"), () => new SimpleError({ code: 1 }))
+    expect(result).type.toBe<Effect.Effect<number, SimpleError>>()
+  })
+
   it("supports a custom error in data-last form", () => {
     const result = pipe(
       optionString,
       Effect.fromOption(() => new SimpleError({ code: 1 }))
     )
     expect(result).type.toBe<Effect.Effect<string, SimpleError>>()
+  })
+
+  it("supports an inline HashMap lookup in data-last form", () => {
+    const values = HashMap.make(["key", 1])
+    const result = pipe(
+      HashMap.get(values, "key"),
+      Effect.fromOption(() => new SimpleError({ code: 1 }))
+    )
+    expect(result).type.toBe<Effect.Effect<number, SimpleError>>()
+  })
+
+  it("uses NoSuchElementError for an explicitly undefined onNone", () => {
+    const result = Effect.fromOption(optionString, undefined)
+    expect(result).type.toBe<Effect.Effect<string, Cause.NoSuchElementError>>()
+  })
+
+  it("includes NoSuchElementError for an optional onNone", () => {
+    const forward = <A, E>(option: Option.Option<A>, onNone?: () => E) => Effect.fromOption(option, onNone)
+    const result = forward(optionString, () => new SimpleError({ code: 1 }))
+    expect(result).type.toBe<Effect.Effect<string, SimpleError | Cause.NoSuchElementError>>()
+  })
+
+  it("rejects an error callback as the data-first value", () => {
+    // @ts-expect-error is not assignable to parameter
+    Effect.fromOption(() => new SimpleError({ code: 1 }), () => new OtherError({ message: "missing" }))
   })
 
   it("supports callback usage with the default error", () => {
@@ -260,6 +293,13 @@ describe("Effect.firstSuccessOf", () => {
     ])
 
     expect(result).type.toBe<Effect.Effect<string | number, "err-1" | "err-2", "dep-1" | "dep-2">>()
+  })
+})
+
+describe("Effect.head", () => {
+  it("infers the element and preserves the source error and requirements", () => {
+    const result = Effect.head(iterableString)
+    expect(result).type.toBe<Effect.Effect<string, "err-1" | Cause.NoSuchElementError, "dep-1">>()
   })
 })
 

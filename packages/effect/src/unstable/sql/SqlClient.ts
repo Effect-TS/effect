@@ -12,6 +12,7 @@ import { Clock } from "../../Clock.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
+import { identity } from "../../Function.ts"
 import * as Option from "../../Option.ts"
 import type * as Queue from "../../Queue.ts"
 import type { ReadonlyRecord } from "../../Record.ts"
@@ -257,37 +258,39 @@ export const makeWithTransaction = <I, S>(options: {
               ) =>
                 (id === 0 ? options.begin(conn) : options.savepoint(conn, id)).pipe(
                   Effect.flatMap(() =>
-                    Effect.provideContext(
-                      restore(effect),
-                      services.pipe(
-                        Context.add(options.transactionService, [conn, id]),
-                        Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
-                        Context.add(Tracer.ParentSpan, span)
-                      )
+                    Effect.onExitPrimitive(
+                      Effect.provideContext(
+                        restore(effect),
+                        services.pipe(
+                          Context.add(options.transactionService, [conn, id]),
+                          Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
+                          Context.add(Tracer.ParentSpan, span)
+                        )
+                      ),
+                      (exit) => {
+                        let effect: Effect.Effect<void>
+                        if (Exit.isSuccess(exit)) {
+                          if (id === 0) {
+                            span.event("db.transaction.commit", clock.currentTimeNanosUnsafe())
+                            effect = Effect.orDie(options.commit(conn))
+                          } else {
+                            span.event("db.transaction.savepoint", clock.currentTimeNanosUnsafe())
+                            effect = Effect.void
+                          }
+                        } else {
+                          span.event("db.transaction.rollback", clock.currentTimeNanosUnsafe())
+                          effect = Effect.orDie(
+                            id > 0
+                              ? options.rollbackSavepoint(conn, id)
+                              : options.rollback(conn)
+                          )
+                        }
+                        return Effect.flatMap(effect, () => exit)
+                      },
+                      true
                     )
                   ),
-                  Effect.exit,
-                  Effect.flatMap((exit) => {
-                    let effect: Effect.Effect<void>
-                    if (Exit.isSuccess(exit)) {
-                      if (id === 0) {
-                        span.event("db.transaction.commit", clock.currentTimeNanosUnsafe())
-                        effect = Effect.orDie(options.commit(conn))
-                      } else {
-                        span.event("db.transaction.savepoint", clock.currentTimeNanosUnsafe())
-                        effect = Effect.void
-                      }
-                    } else {
-                      span.event("db.transaction.rollback", clock.currentTimeNanosUnsafe())
-                      effect = Effect.orDie(
-                        id > 0
-                          ? options.rollbackSavepoint(conn, id)
-                          : options.rollback(conn)
-                      )
-                    }
-                    const withScope = scope !== undefined ? Effect.ensuring(effect, Scope.close(scope, exit)) : effect
-                    return Effect.flatMap(withScope, () => exit)
-                  })
+                  scope ? (eff) => Effect.onExitPrimitive(eff, (exit) => Scope.close(scope, exit), true) : identity
                 )
             )
             return id === 0

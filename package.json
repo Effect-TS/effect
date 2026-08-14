@@ -1,7 +1,7 @@
 {
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.17.1",
+  "packageManager": "pnpm@11.20.0",
   "scripts": {
     "prepare": "node scripts/setup-agents.mjs && effect-tsgo patch",
     "clean": "node scripts/clean.mjs",

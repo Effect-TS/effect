@@ -10,25 +10,19 @@ packages:
   - packages/tools/*
   - examples/*
 
-ignoredBuiltDependencies:
-  - core-js
-  - cpu-features
-  - dprint
-  - esbuild
-  - lmdb
-  - msgpackr-extract
-  - msw
-  - protobufjs
-  - sharp
-  - ssh2
-  - unrs-resolver
-  - workerd
-
-onlyBuiltDependencies:
-  - better-sqlite3
-  - tree-sitter
-  - tree-sitter-javascript
-  - tree-sitter-typescript
+allowBuilds:
+  core-js: false
+  cpu-features: false
+  dprint: false
+  esbuild: false
+  msgpackr-extract: false
+  protobufjs: false
+  sharp: false
+  ssh2: false
+  tree-sitter: false
+  tree-sitter-javascript: false
+  tree-sitter-typescript: false
+  workerd: false
 
 patchedDependencies:
   '@changesets/get-github-info@1.0.0-next.4': patches/@changesets__get-github-info@1.0.0-next.4.patch

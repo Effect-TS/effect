@@ -1,4 +1,4 @@
-import { NodeClusterSocket, NodeCrypto, NodeSocketServer } from "@effect/platform-node"
+import { NodeClusterSocket, NodeCrypto, NodeSocket, NodeSocketServer } from "@effect/platform-node"
 import { MysqlClient } from "@effect/sql-mysql2"
 import { PgClient } from "@effect/sql-pg"
 import { Clock, Context, Duration, Effect, Exit, Latch, Layer, Option, Redacted, Scope } from "effect"
@@ -20,14 +20,18 @@ import {
   SqlRunnerStorage
 } from "effect/unstable/cluster"
 import type { Rpc } from "effect/unstable/rpc"
-import { RpcSerialization } from "effect/unstable/rpc"
+import { RpcClient, RpcSerialization } from "effect/unstable/rpc"
+import * as Socket from "effect/unstable/socket/Socket"
 import * as SocketServer from "effect/unstable/socket/SocketServer"
-import { SqlClient } from "effect/unstable/sql"
+import { SqlClient, type SqlConnection, SqlError } from "effect/unstable/sql"
 import { WorkflowEngine } from "effect/unstable/workflow"
+import * as Net from "node:net"
 import { inject } from "vitest"
 
 export type Backend = "mysql" | "pg"
 export type LockMode = "advisory" | "row"
+export type LockFaultMode = "blackhole" | "stuck" | "fail" | "hangRelease" | "clear"
+export type SocketDirection = "inbound" | "outbound"
 
 export interface ClusterRunner {
   readonly address: RunnerAddress.RunnerAddress
@@ -55,14 +59,38 @@ export interface MakeOptions {
 
 export interface StartOptions {
   readonly assignedShardGroups?: ReadonlyArray<string> | undefined
+  readonly entities?: RunnerEntities | undefined
   readonly runnerShardWeight?: number | undefined
+}
+
+export interface CutSocketOptions {
+  readonly direction: SocketDirection
+  readonly peer: ClusterRunner | "client"
+}
+
+export interface InsertMessageRow {
+  readonly deliver_at: number | bigint | null
+  readonly entity_id: string
+  readonly entity_type: string
+  readonly headers: string | null
+  readonly id: string | bigint
+  readonly kind: 0 | 1 | 2
+  readonly message_id: string | null
+  readonly payload: string | null
+  readonly reply_id: string | bigint | null
+  readonly request_id: string | bigint
+  readonly sampled: boolean | number | null
+  readonly shard_id: string
+  readonly span_id: string | null
+  readonly tag: string | null
+  readonly trace_id: string | null
 }
 
 type HarnessConfig = Partial<ShardingConfig.ShardingConfig["Service"]> & {
   readonly shardLockDisableAdvisory: boolean
 }
 
-type RunnerEntities = Layer.Layer<
+export type RunnerEntities = Layer.Layer<
   never,
   never,
   Sharding.Sharding | MessageStorage.MessageStorage | SqlClient.SqlClient
@@ -82,6 +110,7 @@ interface MessageRow {
 
 interface RunnerEntry extends ClusterRunner {
   readonly controller: ReturnType<typeof makeRunnerStorageController>
+  readonly lockFault: ReturnType<typeof makeLockFaultController>
   readonly scope: Scope.Closeable
   setState(state: ReturnType<ClusterRunner["state"]>): void
 }
@@ -95,6 +124,95 @@ const clusterConfig = {
 } as const
 
 let nextCluster = 0
+
+interface LockSession {
+  fault: "blackhole" | "fail" | undefined
+}
+
+const makeLockFaultController = (sql: SqlClient.SqlClient) => {
+  const releaseGate = Latch.makeUnsafe(true)
+  let persistentFault: "stuck" | "hangRelease" | undefined
+  let currentSession: LockSession | undefined
+
+  const wrapConnection = (
+    connection: SqlConnection.Connection,
+    session: LockSession
+  ): SqlConnection.Connection => {
+    const execute = <A, E extends SqlError.SqlError, R>(sql: string, effect: Effect.Effect<A, E, R>) =>
+      Effect.suspend((): Effect.Effect<A, E | SqlError.SqlError, R> => {
+        // Let scope cleanup release advisory locks even when the simulated
+        // operational connection is stuck. `hangRelease` blocks teardown with
+        // the separate gate below, after the database lock has been dropped.
+        if (sql.includes("pg_advisory_unlock_all") || sql.includes("RELEASE_ALL_LOCKS")) return effect
+        const mode = session.fault ?? persistentFault
+        if (mode === "fail") {
+          return Effect.fail(
+            new SqlError.SqlError({
+              reason: new SqlError.ConnectionError({ cause: new Error("lock connection lost") })
+            })
+          )
+        }
+        if (mode === "blackhole") {
+          return Effect.never
+        }
+        if (mode === "stuck" || mode === "hangRelease") {
+          return Effect.never
+        }
+        return effect
+      })
+    return {
+      ...connection,
+      execute: (...args) => execute(args[0], connection.execute(...args)),
+      executeRaw: (...args) => execute(args[0], connection.executeRaw(...args)),
+      executeValues: (...args) => execute(args[0], connection.executeValues(...args)),
+      executeValuesUnprepared: (...args) => execute(args[0], connection.executeValuesUnprepared(...args)),
+      executeUnprepared: (...args) => execute(args[0], connection.executeUnprepared(...args))
+    }
+  }
+
+  const transformFreeSql = sql.withoutTransforms()
+  const client: SqlClient.SqlClient = new Proxy(transformFreeSql, {
+    get(target, property, receiver) {
+      if (property === "reserve") {
+        return Effect.gen(function*() {
+          const session: LockSession = { fault: undefined }
+          currentSession = session
+          yield* Effect.addFinalizer(() =>
+            Effect.uninterruptible(
+              Effect.suspend(() => persistentFault === "hangRelease" ? releaseGate.await : Effect.void)
+            )
+          )
+          return wrapConnection(yield* target.reserve, session)
+        })
+      }
+      if (property === "withoutTransforms") {
+        return () => client
+      }
+      return Reflect.get(target, property, receiver)
+    }
+  })
+
+  const set = (mode: LockFaultMode) =>
+    Effect.sync(() => {
+      if (mode === "clear") {
+        persistentFault = undefined
+        if (currentSession !== undefined) currentSession.fault = undefined
+        releaseGate.openUnsafe()
+      } else if (mode === "blackhole" || mode === "fail") {
+        if (currentSession === undefined) throw new Error("Runner has no reserved lock connection")
+        persistentFault = undefined
+        releaseGate.openUnsafe()
+        currentSession.fault = mode
+      } else {
+        persistentFault = mode
+        if (currentSession !== undefined) currentSession.fault = undefined
+        if (mode === "hangRelease") releaseGate.closeUnsafe()
+        else releaseGate.openUnsafe()
+      }
+    })
+
+  return { client, set }
+}
 
 const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Service"]) => {
   const gate = Latch.makeUnsafe(true)
@@ -151,22 +269,110 @@ const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Servi
   }
 }
 
-const RunnerHealthLayer = RunnerHealth.layerPing.pipe(
-  Layer.provide(Runners.layerRpc),
-  Layer.provide(NodeClusterSocket.layerClientProtocol)
-)
+const clientPeer = "client"
+const addressKey = (address: RunnerAddress.RunnerAddress) => `${address.host}:${address.port}`
+
+const makeSocketController = () => {
+  const connections = new Map<string, Set<Net.Socket>>()
+  const linkKey = (source: string, target: string) => `${source}->${target}`
+
+  const add = (source: string, target: RunnerAddress.RunnerAddress, socket: Net.Socket) => {
+    const key = linkKey(source, addressKey(target))
+    let active = connections.get(key)
+    if (active === undefined) {
+      active = new Set()
+      connections.set(key, active)
+    }
+    active.add(socket)
+  }
+
+  const remove = (source: string, target: RunnerAddress.RunnerAddress, socket: Net.Socket) => {
+    const key = linkKey(source, addressKey(target))
+    const active = connections.get(key)
+    if (active === undefined) return
+    active.delete(socket)
+    if (active.size === 0) connections.delete(key)
+  }
+
+  const cut = (source: string, target: string) =>
+    Effect.sync(() => {
+      const active = connections.get(linkKey(source, target))
+      const socket = active?.values().next().value as Net.Socket | undefined
+      if (socket === undefined) {
+        throw new Error(`No active socket from ${source} to ${target}`)
+      }
+      socket.destroy(new Error(`Socket cut from ${source} to ${target}`))
+    })
+
+  return { add, cut, remove }
+}
+
+type SocketController = ReturnType<typeof makeSocketController>
+
+const trackedClientProtocolLayer = (
+  controller: SocketController,
+  source: string
+): Layer.Layer<Runners.RpcClientProtocol, never, RpcSerialization.RpcSerialization> =>
+  Layer.effect(Runners.RpcClientProtocol)(
+    Effect.gen(function*() {
+      const serialization = yield* RpcSerialization.RpcSerialization
+      return Effect.fnUntraced(function*(address) {
+        const socket = yield* NodeSocket.fromDuplex(
+          Effect.acquireRelease(
+            Effect.callback<Net.Socket, Socket.SocketError>((resume) => {
+              const connection = Net.createConnection({
+                host: address.host,
+                port: address.port
+              })
+              connection.once("connect", () => {
+                controller.add(source, address, connection)
+                resume(Effect.succeed(connection))
+              })
+              connection.on("error", (cause) => {
+                resume(Effect.fail(
+                  new Socket.SocketError({
+                    reason: new Socket.SocketOpenError({ kind: "Unknown", cause })
+                  })
+                ))
+              })
+              return Effect.sync(() => connection.destroy())
+            }),
+            (connection) =>
+              Effect.sync(() => {
+                controller.remove(source, address, connection)
+                if (!connection.closed) connection.destroySoon()
+              })
+          ),
+          { openTimeout: 1_000 }
+        )
+        return yield* RpcClient.makeProtocolSocket().pipe(
+          Effect.provideService(Socket.Socket, socket),
+          Effect.provideService(RpcSerialization.RpcSerialization, serialization)
+        )
+      }, Effect.orDie)
+    })
+  )
+
+const runnerHealthLayer = (
+  clientProtocol: Layer.Layer<Runners.RpcClientProtocol, never, RpcSerialization.RpcSerialization>
+) =>
+  RunnerHealth.layerPing.pipe(
+    Layer.provide(Runners.layerRpc),
+    Layer.provide(clientProtocol)
+  )
 
 export const socketRunnerLayer = (
   address: RunnerAddress.RunnerAddress,
   entities: RunnerEntities,
   socketServer: SocketServer.SocketServer["Service"],
-  config: HarnessConfig
+  config: HarnessConfig,
+  clientProtocol = NodeClusterSocket.layerClientProtocol
 ) =>
   entities.pipe(
     Layer.provideMerge(SocketRunner.layer),
-    Layer.provide(RunnerHealthLayer),
+    Layer.provide(runnerHealthLayer(clientProtocol)),
     Layer.provide(Layer.succeed(SocketServer.SocketServer, socketServer)),
-    Layer.provide(NodeClusterSocket.layerClientProtocol),
+    Layer.provide(clientProtocol),
     Layer.provide(ShardingConfig.layer({
       ...config,
       runnerAddress: Option.some(address)
@@ -176,9 +382,12 @@ export const socketRunnerLayer = (
 
 export type RunnerLayer = typeof socketRunnerLayer
 
-const clientLayer = (config: HarnessConfig) =>
+const clientLayer = (
+  config: HarnessConfig,
+  clientProtocol: Layer.Layer<Runners.RpcClientProtocol, never, RpcSerialization.RpcSerialization>
+) =>
   SocketRunner.layerClientOnly.pipe(
-    Layer.provide(NodeClusterSocket.layerClientProtocol),
+    Layer.provide(clientProtocol),
     Layer.provide(ShardingConfig.layer(config)),
     Layer.provide(RpcSerialization.layerMsgPack)
   )
@@ -211,22 +420,24 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
   const shared = Context.merge(database, messageStorage)
   const entities = typeof options.entities === "function" ? options.entities({ prefix }) : options.entities
   const runners: Array<RunnerEntry> = []
+  const socketController = makeSocketController()
 
   const makeRunnerStorage = Effect.fnUntraced(function*(
     scope: Scope.Closeable,
-    storageConfig: HarnessConfig = config
+    storageConfig: HarnessConfig = config,
+    storageDatabase: Context.Context<SqlClient.SqlClient> = database
   ) {
     return yield* SqlRunnerStorage.layerWith({ prefix }).pipe(
       Layer.provide(ShardingConfig.layer(storageConfig)),
       Layer.orDie,
       Layer.buildWithScope(scope),
-      Effect.provide(database)
+      Effect.provide(storageDatabase)
     )
   })
 
   const clientScope = yield* Scope.fork(parentScope)
   const clientStorage = yield* makeRunnerStorage(clientScope)
-  const clientBase = yield* clientLayer(config).pipe(
+  const clientBase = yield* clientLayer(config, trackedClientProtocolLayer(socketController, clientPeer)).pipe(
     Layer.buildWithScope(clientScope),
     Effect.provide(Context.merge(shared, clientStorage))
   )
@@ -255,14 +466,18 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
       return yield* Effect.die("Expected a TCP socket server")
     }
     const address = RunnerAddress.make("127.0.0.1", socketServer.address.port)
-    const rawStorageContext = yield* makeRunnerStorage(scope, runnerConfig)
+    const lockFault = makeLockFaultController(Context.get(database, SqlClient.SqlClient))
+    const runnerDatabase = Context.add(database, SqlClient.SqlClient, lockFault.client)
+    const rawStorageContext = yield* makeRunnerStorage(scope, runnerConfig, runnerDatabase)
+    yield* Scope.addFinalizer(scope, lockFault.set("clear"))
     const controller = makeRunnerStorageController(Context.get(rawStorageContext, RunnerStorage.RunnerStorage))
     const storage = Context.make(RunnerStorage.RunnerStorage, controller.controlled)
     const context = yield* (options.runnerLayer ?? socketRunnerLayer)(
       address,
-      entities,
+      startOptions?.entities ?? entities,
       socketServer,
-      runnerConfig
+      runnerConfig,
+      trackedClientProtocolLayer(socketController, addressKey(address))
     ).pipe(
       Layer.buildWithScope(scope),
       Effect.provide(Context.mergeAll(shared, storage))
@@ -273,6 +488,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
       address,
       controller,
       index,
+      lockFault,
       shardGroups: runnerConfig.assignedShardGroups ?? ShardingConfig.defaults.assignedShardGroups,
       scope,
       setState(next) {
@@ -316,6 +532,22 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     entry.setState("frozen")
     yield* entry.controller.freeze
   })
+
+  const faultLock = (runner: ClusterRunner, mode: LockFaultMode) => entryFor(runner).lockFault.set(mode)
+
+  const cutSocket = (runner: ClusterRunner, options: CutSocketOptions) => {
+    const runnerAddress = addressKey(runner.address)
+    const peerAddress = options.peer === "client" ? clientPeer : addressKey(options.peer.address)
+    const [source, target] = options.direction === "inbound"
+      ? [peerAddress, runnerAddress]
+      : [runnerAddress, peerAddress]
+    return socketController.cut(source, target)
+  }
+
+  const insertMessage = (row: InsertMessageRow) => {
+    const messages = sql(`${prefix}_messages`)
+    return sql`INSERT INTO ${messages} ${sql.insert({ ...row })}`.unprepared.pipe(Effect.asVoid)
+  }
 
   const assignmentMap = () => {
     const assignments: Record<string, ReadonlyArray<string>> = {}
@@ -445,10 +677,13 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     assignmentMap,
     backend: options.backend,
     clientSharding,
+    cutSocket,
     diagnostics,
     failedMessageCount: Effect.map(messageCounts(), (counts) => counts.failed),
+    faultLock,
     freeze,
     getClient,
+    insertMessage,
     kill,
     lockMode: options.lockMode ?? "advisory",
     messageCounts,

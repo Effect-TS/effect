@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Clock, Effect, Fiber, Latch, Layer, PrimaryKey, Schema, Scope } from "effect"
-import { ClusterSchema, Entity, EntityResource, Singleton } from "effect/unstable/cluster"
+import { Cause, Clock, Effect, Exit, Fiber, Latch, Layer, Option, PrimaryKey, Schema, Scope } from "effect"
+import { ClusterError, ClusterSchema, Entity, EntityResource, Singleton } from "effect/unstable/cluster"
 import { Rpc } from "effect/unstable/rpc"
 import { type Backend, type ClusterRunner, make } from "./harness.ts"
 
@@ -115,6 +115,15 @@ const ResourceEntityLayer = ResourceEntity.toLayer(Effect.gen(function*() {
   }
 }))
 
+const RegistrationEntity = Entity.make("ClusterIntegrationRegistration", [
+  Rpc.make("Runner", { success: Schema.String }).annotate(ClusterSchema.Persisted, true)
+])
+
+const RegistrationEntityLayer = RegistrationEntity.toLayer(Effect.gen(function*() {
+  const runner = yield* Entity.CurrentRunnerAddress
+  return { Runner: () => Effect.succeed(addressString(runner)) }
+}))
+
 const StandardEntities = Layer.mergeAll(StateEntityLayer, MailboxEntityLayer, ResourceEntityLayer)
 
 const resetOrder = () => {
@@ -144,6 +153,307 @@ const findIdsByRunner = Effect.fnUntraced(function*(
 
 describe("cluster entity integration", () => {
   for (const backend of ["pg", "mysql"] satisfies ReadonlyArray<Backend>) {
+    it.live(`${backend}: fails an unroutable reply during runner shutdown without hanging teardown`, () =>
+      Effect.gen(function*() {
+        const finalizerEntered = Latch.makeUnsafe()
+        const sendReply = Latch.makeUnsafe()
+        let requestExit: Exit.Exit<void, unknown> | undefined
+
+        const Receiver = Entity.make("ClusterIntegrationShutdownReplyReceiver", [
+          Rpc.make("Ping").annotate(ClusterSchema.Persisted, true)
+        ])
+        const Sender = Entity.make("ClusterIntegrationShutdownReplySender", [
+          Rpc.make("Arm").annotate(ClusterSchema.Persisted, false)
+        ])
+        const entities = Layer.merge(
+          Receiver.toLayer({ Ping: () => Effect.void }),
+          Sender.toLayer(Effect.gen(function*() {
+            const receiver = yield* Receiver.client
+            yield* Effect.addFinalizer(() =>
+              Effect.uninterruptible(Effect.gen(function*() {
+                finalizerEntered.openUnsafe()
+                yield* sendReply.await
+                requestExit = yield* receiver("unroutable").Ping().pipe(Effect.exit)
+              }))
+            )
+            return { Arm: () => Effect.void }
+          }))
+        )
+        const cluster = yield* make({ backend, entities })
+        const [runner] = yield* cluster.start(1, { assignedShardGroups: ["default"] })
+        yield* cluster.waitForStableAssignments()
+        const sender = yield* cluster.getClient(Sender)
+        yield* sender("sender").Arm()
+
+        const stopping = yield* cluster.stop(runner).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* cluster.waitUntil(
+          "The shutdown reply finalizer did not start",
+          Effect.as(finalizerEntered.await, true)
+        )
+        sendReply.openUnsafe()
+        yield* Fiber.join(stopping)
+
+        assert.isDefined(requestExit)
+        assert(Exit.isFailure(requestExit!))
+        const failure = Cause.findErrorOption(requestExit!.cause)
+        assert(Option.isSome(failure))
+        assert(failure.value instanceof ClusterError.EntityNotAssignedToRunner)
+      }))
+
+    for (const persisted of [false, true] as const) {
+      for (const preemptiveShutdown of [false, true] as const) {
+        it.live(
+          `${backend}: sends an outgoing discard from a shutdown finalizer without deadlocking (persisted=${persisted}, preemptive=${preemptiveShutdown})`,
+          () =>
+            Effect.gen(function*() {
+              const finalizerEntered = Latch.makeUnsafe()
+              const sendDiscard = Latch.makeUnsafe()
+              let discardExit: Exit.Exit<void, unknown> | undefined
+
+              const Receiver = Entity.make("ClusterIntegrationShutdownDiscardReceiver", [
+                Rpc.make("Ping").annotate(ClusterSchema.Persisted, persisted)
+              ])
+              const Sender = Entity.make("ClusterIntegrationShutdownDiscardSender", [
+                Rpc.make("Arm").annotate(ClusterSchema.Persisted, false)
+              ])
+              const entities = Layer.merge(
+                Receiver.toLayer({ Ping: () => Effect.void }),
+                Sender.toLayer(Effect.gen(function*() {
+                  const receiver = yield* Receiver.client
+                  yield* Effect.addFinalizer(() =>
+                    Effect.uninterruptible(Effect.gen(function*() {
+                      finalizerEntered.openUnsafe()
+                      yield* sendDiscard.await
+                      discardExit = yield* receiver("unroutable").Ping(void 0, { discard: true }).pipe(Effect.exit)
+                    }))
+                  )
+                  return { Arm: () => Effect.void }
+                }))
+              )
+              const cluster = yield* make({
+                backend,
+                config: { preemptiveShutdown },
+                entities
+              })
+              const [runner] = yield* cluster.start(1, { assignedShardGroups: ["default"] })
+              yield* cluster.waitForStableAssignments()
+              const sender = yield* cluster.getClient(Sender)
+              yield* sender("sender").Arm()
+
+              const stopping = yield* cluster.stop(runner).pipe(Effect.forkChild({ startImmediately: true }))
+              yield* cluster.waitUntil(
+                "The shutdown discard finalizer did not start",
+                Effect.as(finalizerEntered.await, true)
+              )
+              sendDiscard.openUnsafe()
+              yield* Fiber.join(stopping)
+
+              assert.isDefined(discardExit)
+              assert(Exit.isSuccess(discardExit!))
+            })
+        )
+      }
+    }
+
+    it.live(`${backend}: rebuilds an entity after a fatal defect and replays in-flight requests`, () =>
+      Effect.gen(function*() {
+        const firstAttemptEntered = Latch.makeUnsafe()
+        const replayEntered = Latch.makeUnsafe()
+        const replayGate = Latch.makeUnsafe()
+        const replayCompleted = Latch.makeUnsafe()
+        let builds = 0
+        let replayAttempts = 0
+
+        const ReplayEntity = Entity.make("ClusterIntegrationFatalReplay", [
+          Rpc.make("Hold").annotate(ClusterSchema.Persisted, true),
+          Rpc.make("Crash", { success: Schema.Number }).annotate(ClusterSchema.Persisted, true)
+        ])
+        const ReplayEntityLayer = ReplayEntity.toLayer(Effect.sync(() => {
+          const generation = ++builds
+          return ReplayEntity.of({
+            Crash: () => generation === 1 ? Effect.die("fatal replay defect") : Effect.succeed(generation),
+            Hold: () =>
+              Rpc.fork(Effect.gen(function*() {
+                replayAttempts++
+                if (replayAttempts === 1) {
+                  firstAttemptEntered.openUnsafe()
+                } else {
+                  replayEntered.openUnsafe()
+                }
+                yield* replayGate.await
+                replayCompleted.openUnsafe()
+              }))
+          })
+        }))
+        const cluster = yield* make({ backend, entities: ReplayEntityLayer })
+        yield* cluster.start(1)
+        yield* cluster.waitForStableAssignments()
+        const client = yield* cluster.getClient(ReplayEntity)
+
+        const held = yield* client("replay").Hold().pipe(Effect.forkChild({ startImmediately: true }))
+        yield* cluster.waitUntil(
+          "The in-flight request did not start before the defect",
+          Effect.as(firstAttemptEntered.await, true)
+        )
+        const generation = yield* client("replay").Crash()
+        yield* cluster.waitUntil(
+          "The in-flight request was not replayed after the defect",
+          Effect.as(replayEntered.await, true)
+        )
+        replayGate.openUnsafe()
+        yield* cluster.waitUntil(
+          "The replayed request did not complete",
+          Effect.as(replayCompleted.await, true)
+        )
+        yield* Fiber.join(held)
+
+        assert.strictEqual(generation, 2)
+        assert.strictEqual(builds, 2)
+        assert.strictEqual(replayAttempts, 2)
+      }))
+
+    it.live(`${backend}: force-interrupts a stuck handler after the graceful termination timeout`, () =>
+      Effect.gen(function*() {
+        const handlerEntered = Latch.makeUnsafe()
+        const handlerInterrupted = Latch.makeUnsafe()
+        let attempts = 0
+        let block = true
+
+        const StuckEntity = Entity.make("ClusterIntegrationStuckReassignment", [
+          Rpc.make("Run", { success: Schema.Number }).annotate(ClusterSchema.Persisted, false)
+        ])
+        const StuckEntityLayer = StuckEntity.toLayer({
+          Run: () =>
+            Effect.suspend(() => {
+              const attempt = ++attempts
+              if (!block) return Effect.succeed(attempt)
+              handlerEntered.openUnsafe()
+              return Effect.never.pipe(Effect.onInterrupt(() => handlerInterrupted.open))
+            })
+        })
+        const cluster = yield* make({
+          backend,
+          config: {
+            entityTerminationTimeout: 100,
+            preemptiveShutdown: false
+          },
+          entities: StuckEntityLayer
+        })
+        yield* cluster.start(2)
+        yield* cluster.waitForStableAssignments()
+        const owner = yield* cluster.ownerOfEntity(StuckEntity, "stuck")
+        const client = yield* cluster.getClient(StuckEntity)
+        const request = yield* client("stuck").Run().pipe(Effect.forkChild({ startImmediately: true }))
+        yield* cluster.waitUntil(
+          "The stuck handler did not start",
+          Effect.as(handlerEntered.await, true)
+        )
+        block = false
+
+        const stopping = yield* cluster.stop(owner!).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* cluster.waitUntil(
+          "The stuck handler was not force-interrupted after the graceful timeout",
+          Effect.as(handlerInterrupted.await, true)
+        )
+        yield* Fiber.join(stopping)
+        yield* cluster.waitUntil(
+          "The stopped runner did not reassign the stuck entity",
+          Effect.map(cluster.ownerOfEntity(StuckEntity, "stuck"), (next) => next !== undefined && next !== owner)
+        )
+
+        assert.strictEqual(yield* Fiber.join(request), 2)
+        assert.strictEqual(attempts, 2)
+      }))
+
+    it.live(`${backend}: holds persisted messages until a slow entity layer registers`, () =>
+      Effect.gen(function*() {
+        const registrationGate = Latch.makeUnsafe()
+        const delayedEntities = RegistrationEntityLayer.pipe(
+          Layer.provide(Layer.effectDiscard(registrationGate.await))
+        )
+        const cluster = yield* make({
+          backend,
+          config: {
+            entityMessagePollInterval: 100,
+            entityRegistrationTimeout: 1_000,
+            sendRetryInterval: 100,
+            shardsPerGroup: 4
+          },
+          entities: RegistrationEntityLayer
+        })
+        yield* cluster.start(1, { assignedShardGroups: [] })
+        const starting = yield* cluster.start(1, { entities: delayedEntities }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        const client = yield* cluster.getClient(RegistrationEntity)
+        const request = yield* client(`${backend}-slow-registration`).Runner().pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* cluster.waitUntil(
+          "The slow-registration request was not persisted",
+          Effect.map(cluster.unprocessedMessageCount, (count) => count === 1)
+        )
+        const deadline = (yield* Clock.currentTimeMillis) + 1_500
+        yield* cluster.waitUntil(
+          "The slow-registration hold window did not elapse",
+          Effect.map(Clock.currentTimeMillis, (now) => now >= deadline),
+          "2 seconds"
+        )
+        assert.deepStrictEqual(yield* cluster.messageCounts(), {
+          failed: 0,
+          replied: 0,
+          unprocessed: 1
+        })
+
+        registrationGate.openUnsafe()
+        const [runner] = yield* Fiber.join(starting)
+        yield* cluster.waitForEntityOwner(RegistrationEntity, `${backend}-slow-registration`, runner)
+        assert.strictEqual(yield* Fiber.join(request), addressString(runner.address))
+        assert.deepStrictEqual(yield* cluster.messageCounts(), {
+          failed: 0,
+          replied: 1,
+          unprocessed: 0
+        })
+      }))
+
+    it.live(`${backend}: defects a durable request whose owner never registers the entity`, () =>
+      Effect.gen(function*() {
+        const cluster = yield* make({
+          backend,
+          config: {
+            entityMessagePollInterval: 100,
+            entityRegistrationTimeout: 500,
+            sendRetryInterval: 100,
+            shardsPerGroup: 4
+          },
+          entities: RegistrationEntityLayer
+        })
+        yield* cluster.start(1, { assignedShardGroups: [] })
+        const [runner] = yield* cluster.start(1, { entities: Layer.empty })
+        const entityId = `${backend}-missing-registration`
+        yield* cluster.waitForEntityOwner(RegistrationEntity, entityId, runner)
+        const client = yield* cluster.getClient(RegistrationEntity)
+        const request = yield* client(entityId).Runner().pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* cluster.waitUntil(
+          "The missing entity registration did not produce a stored defect",
+          Effect.map(cluster.failedMessageCount, (count) => count === 1)
+        )
+        const exit = yield* Fiber.await(request)
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          assert.include(Cause.pretty(exit.cause), `Entity type '${RegistrationEntity.type}' not registered`)
+        }
+        assert.deepStrictEqual(yield* cluster.messageCounts(), {
+          failed: 1,
+          replied: 0,
+          unprocessed: 0
+        })
+      }))
+
     it.live(`${backend}: routes by entity id, isolates state, and preserves mailbox order`, () =>
       Effect.gen(function*() {
         generations.clear()

@@ -1,5 +1,66 @@
 # effect
 
+## 4.0.0-rc.109
+
+### Patch Changes
+
+- [#7219](https://github.com/Effect-TS/effect/pull/7219) [`a0743f2`](https://github.com/Effect-TS/effect/commit/a0743f2b9f20fb5d150f35510e68819f01630bac) Thanks @tim-smart! - Add SQL, HttpApi testing, and CLI schema examples to the published AI documentation.
+
+- [#7241](https://github.com/Effect-TS/effect/pull/7241) [`17892e7`](https://github.com/Effect-TS/effect/commit/17892e75a8d584f79127805506c42b19320990a7) Thanks @tim-smart! - Use Context mapUnsafe in less call sites
+
+- [#7240](https://github.com/Effect-TS/effect/pull/7240) [`4d8a230`](https://github.com/Effect-TS/effect/commit/4d8a2306dfff8fd5406ab75d0c8d22e5300d1faa) Thanks @tim-smart! - Fix `Effect.fromOption` data-first inference for inline `Option` expressions.
+
+- [#7216](https://github.com/Effect-TS/effect/pull/7216) [`f21f9c9`](https://github.com/Effect-TS/effect/commit/f21f9c9f73dc59db922bda411b6d5245dae37cdb) Thanks @tim-smart! - Add a `HttpStatus` module to `effect/unstable/http` that centralizes the mapping from HTTP status literal names to numeric codes and exports `HttpStatus.fromLiteral`. `HttpApiSchema.status` now consumes the new module.
+
+- [#6829](https://github.com/Effect-TS/effect/pull/6829) [`18270dd`](https://github.com/Effect-TS/effect/commit/18270ddeaf4ad28723ca8a40aff04a5d4707b575) Thanks @lloydrichards! - MCP servers now support the 2024-11-05 and 2025-03-26 RPC revisions through version-specific protocol adapters.
+
+- [#7218](https://github.com/Effect-TS/effect/pull/7218) [`26db404`](https://github.com/Effect-TS/effect/commit/26db404a3284cfdbf4a3f351ccd05afc0de743b8) Thanks @tim-smart! - Run SQL `PersistedQueue` table creation through versioned migrations so future schema changes can be applied safely.
+
+- [#7210](https://github.com/Effect-TS/effect/pull/7210) [`2670398`](https://github.com/Effect-TS/effect/commit/26703982612e12954360382e4b1d177002699d1c) Thanks @tim-smart! - Preserve nanosecond precision when adjusting `TestClock` with large durations.
+
+- [#7205](https://github.com/Effect-TS/effect/pull/7205) [`3702bed`](https://github.com/Effect-TS/effect/commit/3702bedd8f6bcb3f603b87c640c521878d824eb3) Thanks @tim-smart! - Remove the `kubernetes-types` dependency by vendoring the Kubernetes Pod declarations used by the cluster helpers and exporting them from `effect/unstable/cluster/K8sTypes`.
+
+- [#7236](https://github.com/Effect-TS/effect/pull/7236) [`ccae60e`](https://github.com/Effect-TS/effect/commit/ccae60e5edb2bef553f4af52afb509dfd443cd03) Thanks @roninjin10! - Propagate a failed `BEGIN` or `SAVEPOINT` from `SqlClient.withTransaction` as a typed `SqlError`.
+  
+  `makeWithTransaction` wrapped the `begin` step together with the transaction body, so a
+  failed `BEGIN` took the rollback branch. No transaction was active at that point, the
+  `ROLLBACK` failed, and its `Effect.orDie` wrapper replaced the original typed error with a
+  defect (`cannot rollback - no transaction is active`). Callers could no longer classify the
+  failure as retryable. The path became reachable when the sqlite client started using
+  `BEGIN IMMEDIATE`, which acquires a write lock and can fail with `SQLITE_BUSY`.
+  
+  Commit and rollback now run only after `begin` or `savepoint` succeeds. A failed `begin` or
+  `savepoint` fails with its original `SqlError`, leaves the wrapped effect unexecuted, and
+  still closes the acquired connection scope.
+
+- [#7206](https://github.com/Effect-TS/effect/pull/7206) [`6ff5396`](https://github.com/Effect-TS/effect/commit/6ff53968138bbd7d4728ce8014e35eae8d6ca5d0) Thanks @tim-smart! - Bound cluster runner entity residency and storage reads.
+  
+  `ShardingConfig` gains two knobs:
+  
+  - `maxResidentEntities` (default `10_000`): the maximum number of entities
+    that can be resident on a runner at the same time. At the cap, the storage
+    read loop stops admitting messages for new entity addresses (they stay in
+    storage until a slot frees up) and volatile sends to new addresses fail with
+    `MailboxFull`. Persisted sends still succeed. `"unbounded"` restores the
+    previous behaviour and can only be set programmatically.
+  - `unprocessedMessageBatchSize` (default `1024`): the maximum number of
+    unprocessed messages read from storage in a single poll.
+  
+  `MessageStorage.unprocessedMessages` accepts an optional
+  `{ limit, addresses }` argument, and only claims the messages it actually
+  returns. The memory implementation now applies the same ten-minute claim
+  window as SQL, so bounded reads advance past in-flight requests; resetting an
+  address or shard makes its claimed messages immediately eligible again.
+  
+  The encoded driver contract replaces `Encoded.resetAddress` with the batched
+  `Encoded.resetAddresses` operation. `SqlMessageStorage.makeEncoded` constructs
+  the SQL encoded driver directly for custom storage composition.
+  
+  `ClusterWorkflowEngine` entities (workflows and the durable clock) now use a
+  fixed ten-second idle time, so completed and suspended executions release their
+  entity slots quickly. Their state is durable, so an evicted execution is
+  rebuilt from storage when its next message arrives.
+
 ## 4.0.0-rc.108
 
 ### Patch Changes

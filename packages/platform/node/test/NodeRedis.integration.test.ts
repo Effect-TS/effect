@@ -4,7 +4,8 @@ import { RedisContainer } from "@testcontainers/redis"
 import { Effect, Layer, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/unstable/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
-import { PersistedQueue, Persistence } from "effect/unstable/persistence"
+import { PersistedQueue, Persistence, Redis } from "effect/unstable/persistence"
+import { createServer } from "node:net"
 
 const RedisLayer = Layer.unwrap(
   Effect.gen(function*() {
@@ -13,8 +14,10 @@ const RedisLayer = Layer.unwrap(
       (container) => Effect.promise(() => container.stop())
     )
     return NodeRedis.layer({
-      host: container.getHost(),
-      port: container.getMappedPort(6379)
+      socket: {
+        host: container.getHost(),
+        port: container.getMappedPort(6379)
+      }
     })
   }).pipe(
     Effect.catchCause(() => Effect.fail(new PersistedCacheTest.TransientError()))
@@ -45,9 +48,28 @@ const PersistedQueueRedisLayer = Layer.mergeAll(
   )
 )
 
+it.effect("fails the initial connection by default", () =>
+  Effect.gen(function*() {
+    const port = yield* closedPort
+    const error = yield* Layer.build(NodeRedis.layer({
+      socket: {
+        host: "127.0.0.1",
+        port
+      }
+    })).pipe(Effect.flip)
+
+    assert.instanceOf(error, Redis.RedisError)
+  }))
+
 it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
   "PersistedQueue (NodeRedis)",
   (it) => {
+    it.effect("uses the node-redis protocol default", () =>
+      Effect.gen(function*() {
+        const redis = yield* NodeRedis.NodeRedis
+        assert.strictEqual(redis.client.options.RESP, undefined)
+      }))
+
     // The shared PersistedQueue suite can only assert that exhausted elements
     // are no longer delivered, which is also true if they are silently
     // dropped. There is no public API for reading failed elements, so
@@ -66,14 +88,14 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
         const error = yield* queue.take(() => Effect.fail("boom"), { maxAttempts: 1 }).pipe(Effect.flip)
         assert.strictEqual(error, "boom")
 
-        const failed = yield* redis.use((client) => client.lrange(`effectq:${queueName}:failed`, 0, -1))
+        const failed = yield* redis.use((client) => client.lRange(`effectq:${queueName}:failed`, 0, -1))
         assert.strictEqual(failed.length, 1)
         const failedItem = JSON.parse(failed[0])
         assert.strictEqual(failedItem.id, id)
         assert.deepStrictEqual(failedItem.element, { n: 42 })
         assert.strictEqual(failedItem.attempts, 1)
 
-        const pending = yield* redis.use((client) => client.hlen(`effectq:${queueName}:pending`))
+        const pending = yield* redis.use((client) => client.hLen(`effectq:${queueName}:pending`))
         assert.strictEqual(pending, 0)
       }))
   }
@@ -82,3 +104,26 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
 const RedisItem = Schema.Struct({
   n: Schema.Number
 })
+
+const closedPort = Effect.promise(
+  () =>
+    new Promise<number>((resolve, reject) => {
+      const server = createServer()
+      server.once("error", reject)
+      server.listen(0, "127.0.0.1", () => {
+        const address = server.address()
+        if (address === null || typeof address === "string") {
+          server.close()
+          reject(new Error("Could not allocate a TCP port"))
+          return
+        }
+        server.close((error) => {
+          if (error) {
+            reject(error)
+          } else {
+            resolve(address.port)
+          }
+        })
+      })
+    })
+)

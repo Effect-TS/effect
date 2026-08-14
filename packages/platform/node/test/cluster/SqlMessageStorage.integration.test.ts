@@ -5,12 +5,16 @@ import { Effect, Fiber, FileSystem, Latch, Layer, Option } from "effect"
 import { TestClock } from "effect/testing"
 import {
   Entity,
+  EntityAddress,
+  EntityId,
+  EntityType,
   Envelope,
   Message,
   MessageStorage,
   RunnerHealth,
   Runners,
   RunnerStorage,
+  ShardId,
   Sharding,
   ShardingConfig,
   Snowflake,
@@ -55,6 +59,20 @@ describe("SqlMessageStorage", () => {
     it.layer(StorageLayer.pipe(Layer.provideMerge(layer)), {
       timeout: 120000
     })(label, (it) => {
+      if (label === "pg") {
+        it.effect("creates an index for insertion-ordered message reads", () =>
+          Effect.gen(function*() {
+            const sql = yield* SqlClient.SqlClient
+            const indexes = yield* sql<{ indexname: string }>`
+              SELECT indexname
+              FROM pg_indexes
+              WHERE tablename = 'cluster_messages'
+              AND indexname = 'cluster_messages_rowid_idx'
+            `
+            expect(indexes).toHaveLength(1)
+          }))
+      }
+
       it.effect("saveRequest", () =>
         Effect.gen(function*() {
           const storage = yield* MessageStorage.MessageStorage
@@ -282,6 +300,128 @@ describe("SqlMessageStorage", () => {
           expect(messages).toHaveLength(1)
         }))
 
+      it.effect("unprocessedMessages honors the limit and claims only returned rows", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const shardId = ShardId.make("default", 1)
+          for (let i = 1; i <= 5; i++) {
+            yield* storage.saveRequest(yield* makeRequest({ payload: { id: i }, entityId: String(i) }))
+          }
+          const limited = yield* storage.unprocessedMessages([shardId], { limit: 3 })
+          expect(limited).toHaveLength(3)
+          expect(limited.map((m: any) => m.envelope.payload.id)).toEqual([1, 2, 3])
+
+          // rows beyond the limit were not claimed and are returned by the
+          // next read
+          const rest = yield* storage.unprocessedMessages([shardId])
+          expect(rest.map((m: any) => m.envelope.payload.id)).toEqual([4, 5])
+        }))
+
+      it.effect("unprocessedMessages filters by address", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const shardId = ShardId.make("default", 1)
+          const address = (entityId: string) =>
+            EntityAddress.make({
+              shardId,
+              entityType: EntityType.make("test"),
+              entityId: EntityId.make(entityId)
+            })
+          for (let i = 1; i <= 4; i++) {
+            yield* storage.saveRequest(yield* makeRequest({ payload: { id: i }, entityId: String(i) }))
+          }
+          const filtered = yield* storage.unprocessedMessages([shardId], {
+            addresses: [address("2"), address("4")]
+          })
+          expect(filtered.map((m: any) => m.envelope.payload.id)).toEqual([2, 4])
+
+          // the filtered read must not claim the other addresses
+          const rest = yield* storage.unprocessedMessages([shardId])
+          expect(rest.map((m: any) => m.envelope.payload.id)).toEqual([1, 3])
+        }))
+
+      it.effect("unprocessedMessages filters addresses by shard", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const shardOne = ShardId.make("default", 1)
+          const shardTwo = ShardId.make("default", 2)
+          yield* storage.saveRequest(yield* makeRequest({ payload: { id: 1 }, shardId: shardOne }))
+          yield* storage.saveRequest(yield* makeRequest({ payload: { id: 2 }, shardId: shardTwo }))
+
+          const messages = yield* storage.unprocessedMessages([shardOne, shardTwo], {
+            addresses: [EntityAddress.make({
+              shardId: shardOne,
+              entityType: EntityType.make("test"),
+              entityId: EntityId.make("1")
+            })]
+          })
+          expect(messages.map((message: any) => message.envelope.payload.id)).toEqual([1])
+
+          const rest = yield* storage.unprocessedMessages([shardOne, shardTwo])
+          expect(rest.map((message: any) => message.envelope.payload.id)).toEqual([2])
+        }))
+
+      it.effect("encoded unprocessedMessages fails closed for empty addresses", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const request = yield* makeRequest()
+          yield* storage.saveRequest(request)
+          const encoded = yield* SqlMessageStorage.makeEncoded().pipe(Effect.provide(NodeCrypto.layer))
+          const shardId = request.envelope.address.shardId.toString()
+          const messages = yield* encoded.unprocessedMessages([shardId], Date.now(), { addresses: [] })
+          expect(messages).toHaveLength(0)
+
+          const unfiltered = yield* encoded.unprocessedMessages([shardId], Date.now())
+          expect(unfiltered).toHaveLength(1)
+        }))
+
+      it.effect("encoded resetAddresses fails closed for an empty address list", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const request = yield* makeRequest()
+          yield* storage.saveRequest(request)
+          const encoded = yield* SqlMessageStorage.makeEncoded().pipe(Effect.provide(NodeCrypto.layer))
+          const shardId = request.envelope.address.shardId.toString()
+          const claimed = yield* encoded.unprocessedMessages([shardId], Date.now())
+          expect(claimed).toHaveLength(1)
+
+          yield* encoded.resetAddresses([])
+          const messages = yield* encoded.unprocessedMessages([shardId], Date.now())
+          expect(messages).toHaveLength(0)
+        }))
+
+      it.effect("resetAddresses releases claims in one batch", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const shardId = ShardId.make("default", 1)
+          const address = (entityId: string) =>
+            EntityAddress.make({
+              shardId,
+              entityType: EntityType.make("test"),
+              entityId: EntityId.make(entityId)
+            })
+          for (let i = 1; i <= 4; i++) {
+            yield* storage.saveRequest(yield* makeRequest({ payload: { id: i }, entityId: String(i) }))
+          }
+          yield* storage.unprocessedMessages([shardId], { limit: 3 })
+          yield* storage.resetAddresses([address("1"), address("3")])
+
+          const messages = yield* storage.unprocessedMessages([shardId])
+          expect(messages.map((m: any) => m.envelope.payload.id)).toEqual([1, 3, 4])
+        }))
+
       it.effect("unprocessedMessages excludes complete requests", () =>
         Effect.gen(function*() {
           yield* truncate
@@ -378,7 +518,7 @@ describe("SqlMessageStorage", () => {
       yield* Fiber.interrupt(fiber)
     }).pipe(Effect.provide(StorageLayer.pipe(
       Layer.provideMerge(SqliteLayer)
-    ))))
+    ))), { timeout: 15_000 })
 })
 
 const SqliteLayer = Effect.gen(function*() {

@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, FileSystem } from "effect"
+import { Cause, Duration, Effect, Exit, FileSystem, Option } from "effect"
 import { Reactivity } from "effect/unstable/reactivity"
 
 const makeClient = Effect.gen(function*() {
@@ -114,6 +114,32 @@ describe("Client", () => {
           assert.match(error.reason.cause.message, /database is locked/i)
         })
       )
+    }))
+
+  it.effect("fails a contended transaction with a typed error", () =>
+    Effect.gen(function*() {
+      const { client, contender } = yield* makeClients
+      yield* contender`PRAGMA busy_timeout = 1`
+
+      const exit = yield* client.withTransaction(
+        Effect.exit(contender.withTransaction(Effect.void))
+      )
+
+      assert.isTrue(Exit.isFailure(exit))
+      if (!Exit.isFailure(exit)) {
+        return
+      }
+      // `BEGIN IMMEDIATE` cannot take the write lock, so it fails before a
+      // transaction exists. The failure has to stay a typed, retryable
+      // `SqlError` instead of being replaced by a rollback defect.
+      assert.isFalse(
+        Cause.hasDies(exit.cause),
+        `expected a typed failure but the cause contains a defect:\n${Cause.pretty(exit.cause)}`
+      )
+      const error = Option.getOrThrow(Cause.findErrorOption(exit.cause))
+      assert.strictEqual(error._tag, "SqlError")
+      assert(error.reason.cause instanceof Error)
+      assert.match(error.reason.cause.message, /database is locked/i)
     }))
 
   it.effect("supports transactions on readonly clients", () =>

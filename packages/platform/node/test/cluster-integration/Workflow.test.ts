@@ -71,6 +71,125 @@ const RestartWorkflow = Workflow.make("ClusterIntegrationRestart", {
 
 const RestartWorkflowLayer = RestartWorkflow.toLayer(() => DurableDeferred.await(RestartGate))
 
+const RaceReplayGate = DurableDeferred.make("ClusterIntegrationRaceReplayGate", {
+  success: Schema.String
+})
+
+const RaceReplayTail = DurableDeferred.make("ClusterIntegrationRaceReplayTail", {
+  success: Schema.String
+})
+
+const RaceReplayWorkflow = Workflow.make("ClusterIntegrationRaceReplay", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const raceReplayEnters = new Map<string, number>()
+
+const RaceReplayWorkflowLayer = RaceReplayWorkflow.toLayer(({ id }) =>
+  Effect.gen(function*() {
+    const winner = yield* DurableDeferred.raceAll({
+      name: "ClusterIntegrationRaceReplay",
+      success: Schema.String,
+      error: Schema.Never,
+      effects: [
+        DurableDeferred.await(RaceReplayGate),
+        Effect.sync(() => raceReplayEnters.set(id, (raceReplayEnters.get(id) ?? 0) + 1)).pipe(
+          Effect.andThen(Effect.never)
+        )
+      ]
+    })
+    const tail = yield* DurableDeferred.await(RaceReplayTail)
+    return `${winner}:${tail}`
+  })
+)
+
+const CompensationGate = DurableDeferred.make("ClusterIntegrationCompensationGate")
+
+class CompensationError extends Schema.Error<CompensationError>("ClusterIntegrationCompensationError")({
+  _tag: Schema.tag("ClusterIntegrationCompensationError"),
+  id: Schema.String
+}) {}
+
+const CompensationWorkflow = Workflow.make("ClusterIntegrationCompensation", {
+  payload: { id: Schema.String },
+  error: CompensationError,
+  idempotencyKey: ({ id }) => id
+})
+
+const compensationRuns = new Map<string, number>()
+
+const CompensationWorkflowLayer = CompensationWorkflow.toLayer(Effect.fnUntraced(function*({ id }) {
+  yield* Activity.make({
+    name: "ClusterIntegrationCompensationRegistered",
+    success: Schema.String,
+    execute: Effect.succeed(id)
+  }).pipe(
+    CompensationWorkflow.withCompensation(() =>
+      Effect.sync(() => compensationRuns.set(id, (compensationRuns.get(id) ?? 0) + 1))
+    )
+  )
+  yield* DurableDeferred.await(CompensationGate)
+  return yield* new CompensationError({ id })
+}))
+
+const SuspendFailureGate = DurableDeferred.make("ClusterIntegrationSuspendFailureGate")
+
+const SuspendFailureWorkflow = Workflow.make("ClusterIntegrationSuspendFailure", {
+  payload: { id: Schema.String },
+  idempotencyKey: ({ id }) => id
+}).annotate(Workflow.SuspendOnFailure, true)
+
+const suspendFailures = new Set<string>()
+
+const SuspendFailureWorkflowLayer = SuspendFailureWorkflow.toLayer(Effect.fnUntraced(function*({ id }) {
+  yield* DurableDeferred.await(SuspendFailureGate)
+  return yield* Activity.make({
+    name: "ClusterIntegrationSuspendFailure",
+    execute: Effect.sync(() => suspendFailures.add(id)).pipe(
+      Effect.andThen(Effect.die("suspend after owner loss"))
+    )
+  })
+}))
+
+const RaceBoundaryGateA = DurableDeferred.make("ClusterIntegrationRaceBoundaryGateA", {
+  success: Schema.String
+})
+
+const RaceBoundaryGateB = DurableDeferred.make("ClusterIntegrationRaceBoundaryGateB", {
+  success: Schema.String
+})
+
+const RaceBoundaryWorkflow = Workflow.make("ClusterIntegrationRaceBoundary", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+let raceBoundaryCommitStarted = Latch.makeUnsafe()
+let raceBoundaryCommit = Latch.makeUnsafe()
+const raceBoundaryRuns = new Map<string, number>()
+
+const RaceBoundaryWorkflowLayer = RaceBoundaryWorkflow.toLayer(Effect.fnUntraced(function*({ id }) {
+  raceBoundaryRuns.set(id, (raceBoundaryRuns.get(id) ?? 0) + 1)
+  return yield* DurableDeferred.raceAll({
+    name: "ClusterIntegrationRaceBoundary",
+    success: Schema.String,
+    error: Schema.Never,
+    effects: [
+      DurableDeferred.await(RaceBoundaryGateA),
+      DurableDeferred.await(RaceBoundaryGateB)
+    ]
+  }).pipe(
+    Effect.ensuring(
+      Effect.sync(() => raceBoundaryCommitStarted.openUnsafe()).pipe(
+        Effect.andThen(raceBoundaryCommit.await)
+      )
+    )
+  )
+}))
+
 class RetryError extends Schema.Error<RetryError>("ClusterIntegrationRetryError")({
   _tag: Schema.tag("ClusterIntegrationRetryError"),
   attempt: Schema.Number
@@ -167,13 +286,28 @@ const CompleteDeferred = Rpc.make("CompleteDeferred", {
   success: Schema.String
 })
 
-const DeferredControl = Entity.make("ClusterIntegrationDeferredControl", [CompleteDeferred])
+const CompleteRaceBoundaryDeferred = Rpc.make("CompleteRaceBoundaryDeferred", {
+  payload: {
+    token: DurableDeferred.Token,
+    value: Schema.String
+  },
+  success: Schema.String
+})
+
+const DeferredControl = Entity.make("ClusterIntegrationDeferredControl", [
+  CompleteDeferred,
+  CompleteRaceBoundaryDeferred
+])
 
 const DeferredControlLayer = DeferredControl.toLayer(Effect.gen(function*() {
   const runner = yield* Entity.CurrentRunnerAddress
   return {
     CompleteDeferred: ({ payload }) =>
       DurableDeferred.succeed(RestartGate, payload).pipe(
+        Effect.as(`${runner.host}:${runner.port}`)
+      ),
+    CompleteRaceBoundaryDeferred: ({ payload }) =>
+      DurableDeferred.succeed(RaceBoundaryGateB, payload).pipe(
         Effect.as(`${runner.host}:${runner.port}`)
       )
   }
@@ -183,6 +317,10 @@ const Workflows = Layer.mergeAll(
   EndToEndWorkflowLayer,
   ReplayWorkflowLayer,
   RestartWorkflowLayer,
+  RaceReplayWorkflowLayer,
+  CompensationWorkflowLayer,
+  SuspendFailureWorkflowLayer,
+  RaceBoundaryWorkflowLayer,
   RetryWorkflowLayer,
   ClockWorkflowLayer,
   QueueWorkflowLayer,
@@ -344,6 +482,166 @@ describe("cluster workflow integration", () => {
 
         const result = yield* waitForComplete(cluster, RestartWorkflow, executionId)
         assert.deepStrictEqual(result.exit, Exit.succeed("after-restart"))
+      }))
+
+    it.live(`${backend}: wakes a DurableDeferred raceAll and replays the winner after owner death`, () =>
+      Effect.gen(function*() {
+        const id = `${backend}-race-replay`
+        const cluster = yield* make({ backend, entities })
+        yield* cluster.start(3)
+        yield* cluster.waitForStableAssignments()
+        const executionId = yield* withWorkflow(cluster, RaceReplayWorkflow.execute({ id }, { discard: true }))
+        yield* cluster.waitUntil(
+          "The durable race did not start",
+          Effect.sync(() => (raceReplayEnters.get(id) ?? 0) > 0)
+        )
+
+        const raceToken = DurableDeferred.tokenFromExecutionId(RaceReplayGate, {
+          workflow: RaceReplayWorkflow,
+          executionId
+        })
+        yield* withWorkflow(
+          cluster,
+          DurableDeferred.succeed(RaceReplayGate, {
+            token: raceToken,
+            value: "winner"
+          })
+        )
+        yield* waitForSuspended(cluster, RaceReplayWorkflow, executionId)
+        const entriesBeforeKill = raceReplayEnters.get(id)
+
+        const owner = workflowOwner(cluster, executionId)
+        assert.isDefined(owner)
+        yield* cluster.kill(owner!)
+        yield* cluster.waitForStableAssignments()
+
+        const tailToken = DurableDeferred.tokenFromExecutionId(RaceReplayTail, {
+          workflow: RaceReplayWorkflow,
+          executionId
+        })
+        yield* withWorkflow(
+          cluster,
+          DurableDeferred.succeed(RaceReplayTail, {
+            token: tailToken,
+            value: "after-owner-death"
+          })
+        )
+        const result = yield* waitForComplete(cluster, RaceReplayWorkflow, executionId)
+
+        assert.deepStrictEqual(result.exit, Exit.succeed("winner:after-owner-death"))
+        assert.strictEqual(raceReplayEnters.get(id), entriesBeforeKill)
+      }))
+
+    it.live(`${backend}: runs compensation and SuspendOnFailure after the owner is lost`, () =>
+      Effect.gen(function*() {
+        const compensationId = `${backend}-compensation-owner-loss`
+        const suspendId = `${backend}-suspend-owner-loss`
+        const cluster = yield* make({ backend, entities })
+        yield* cluster.start(3)
+        yield* cluster.waitForStableAssignments()
+        const compensationExecutionId = yield* withWorkflow(
+          cluster,
+          CompensationWorkflow.execute({ id: compensationId }, { discard: true })
+        )
+        const suspendExecutionId = yield* withWorkflow(
+          cluster,
+          SuspendFailureWorkflow.execute({ id: suspendId }, { discard: true })
+        )
+        yield* waitForSuspended(cluster, CompensationWorkflow, compensationExecutionId)
+        yield* waitForSuspended(cluster, SuspendFailureWorkflow, suspendExecutionId)
+
+        const compensationOwner = workflowOwner(cluster, compensationExecutionId)
+        const suspendOwner = workflowOwner(cluster, suspendExecutionId)
+        assert.isDefined(compensationOwner)
+        assert.isDefined(suspendOwner)
+        yield* Effect.forEach(
+          new Set([compensationOwner!, suspendOwner!]),
+          cluster.kill,
+          { discard: true }
+        )
+        yield* cluster.waitForStableAssignments()
+
+        const compensationToken = DurableDeferred.tokenFromExecutionId(CompensationGate, {
+          workflow: CompensationWorkflow,
+          executionId: compensationExecutionId
+        })
+        yield* withWorkflow(
+          cluster,
+          DurableDeferred.succeed(CompensationGate, {
+            token: compensationToken,
+            value: undefined
+          })
+        )
+        const compensationResult = yield* waitForComplete(
+          cluster,
+          CompensationWorkflow,
+          compensationExecutionId
+        )
+        assert(Exit.isFailure(compensationResult.exit))
+        const failure = Cause.findErrorOption(compensationResult.exit.cause)
+        assert(Option.isSome(failure))
+        assert.strictEqual(failure.value._tag, "ClusterIntegrationCompensationError")
+        assert.strictEqual(compensationRuns.get(compensationId), 1)
+
+        const suspendToken = DurableDeferred.tokenFromExecutionId(SuspendFailureGate, {
+          workflow: SuspendFailureWorkflow,
+          executionId: suspendExecutionId
+        })
+        yield* withWorkflow(
+          cluster,
+          DurableDeferred.succeed(SuspendFailureGate, {
+            token: suspendToken,
+            value: undefined
+          })
+        )
+        yield* cluster.waitUntil(
+          "SuspendOnFailure did not run after the workflow owner was lost",
+          Effect.sync(() => suspendFailures.has(suspendId))
+        )
+        yield* waitForSuspended(cluster, SuspendFailureWorkflow, suspendExecutionId)
+      }))
+
+    it.live(`${backend}: accepts a late durable-race completion across the suspend commit`, () =>
+      Effect.gen(function*() {
+        const id = `${backend}-race-suspend-commit`
+        raceBoundaryCommitStarted = Latch.makeUnsafe()
+        raceBoundaryCommit = Latch.makeUnsafe()
+        const cluster = yield* make({ backend, entities })
+        yield* cluster.start(3)
+        yield* cluster.waitForStableAssignments()
+        const executionId = yield* withWorkflow(
+          cluster,
+          RaceBoundaryWorkflow.execute({ id }, { discard: true })
+        )
+        yield* cluster.waitUntil(
+          "The durable race did not reach its suspend commit",
+          Effect.as(raceBoundaryCommitStarted.await, true)
+        )
+
+        const owner = workflowOwner(cluster, executionId)
+        assert.isDefined(owner)
+        const [controlId, controlOwner] = yield* findControlOnAnotherRunner(cluster, owner!)
+        const control = yield* cluster.getClient(DeferredControl)
+        const token = DurableDeferred.tokenFromExecutionId(RaceBoundaryGateB, {
+          workflow: RaceBoundaryWorkflow,
+          executionId
+        })
+        const completedBy = yield* control(controlId).CompleteRaceBoundaryDeferred({
+          token,
+          value: "late-winner"
+        })
+        assert.strictEqual(completedBy, `${controlOwner.address.host}:${controlOwner.address.port}`)
+
+        const killFiber = yield* cluster.kill(owner!).pipe(Effect.forkChild({ startImmediately: true }))
+        // The uninterruptible ensuring finalizer holds Scope.close here until
+        // the commit latch opens, keeping the owner blocked mid-commit.
+        raceBoundaryCommit.openUnsafe()
+        yield* Fiber.join(killFiber)
+        yield* cluster.waitForStableAssignments()
+
+        const result = yield* waitForComplete(cluster, RaceBoundaryWorkflow, executionId)
+        assert.deepStrictEqual(result.exit, Exit.succeed("late-winner"))
+        assert.isAtLeast(raceBoundaryRuns.get(id) ?? 0, 2)
       }))
 
     it.live(`${backend}: applies activity retry policy and preserves the exhausted error`, () =>

@@ -266,7 +266,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         yield* TestClock.adjust(1)
         yield* TestClock.adjust("1 second")
         while (flags.get("losing-deferred-tail-runs") !== 1) {
-          yield* Effect.yieldNow
+          yield* TestClock.adjust("1 second")
         }
 
         const token = DurableDeferred.tokenFromExecutionId(LosingDeferredGate, {
@@ -462,10 +462,11 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           Effect.forkChild({ startImmediately: true })
         )
 
-        // both branches park, the suspension commits, and the ensuring sleep
-        // keeps the run from settling
-        yield* TestClock.adjust(1)
-        yield* TestClock.adjust(1)
+        // Wait until both branches have parked and the ensuring sleep has
+        // started, so the completion deterministically lands during unwind.
+        while (flags.get("slow-unwind-started") !== true) {
+          yield* Effect.yieldNow
+        }
 
         const token = DurableDeferred.tokenFromExecutionId(SlowUnwindGateB, {
           workflow: SlowUnwindWorkflow,
@@ -736,24 +737,26 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     }).pipe(Effect.provide(TestWorkflowLayer)))
 })
 
-const TestShardingConfig = ShardingConfig.layer({
-  shardsPerGroup: 300,
-  availableShardGroups: ["default", "workflow"],
-  assignedShardGroups: ["default", "workflow"],
-  entityMailboxCapacity: 10,
-  entityTerminationTimeout: 0,
-  entityMessagePollInterval: 5000,
-  sendRetryInterval: 100
-})
+const makeTestWorkflowEngine = (config?: Partial<ShardingConfig.ShardingConfig["Service"]>) =>
+  ClusterWorkflowEngine.layer.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(Runners.layerNoop),
+    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provide(RunnerStorage.layerMemory),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provide(ShardingConfig.layer({
+      shardsPerGroup: 300,
+      availableShardGroups: ["default", "workflow"],
+      assignedShardGroups: ["default", "workflow"],
+      entityMailboxCapacity: 10,
+      entityTerminationTimeout: 0,
+      entityMessagePollInterval: 5000,
+      sendRetryInterval: 100,
+      ...config
+    }))
+  )
 
-const TestWorkflowEngine = ClusterWorkflowEngine.layer.pipe(
-  Layer.provideMerge(Sharding.layer),
-  Layer.provide(Runners.layerNoop),
-  Layer.provideMerge(MessageStorage.layerMemory),
-  Layer.provide(RunnerStorage.layerMemory),
-  Layer.provide(RunnerHealth.layerNoop),
-  Layer.provide(TestShardingConfig)
-)
+const TestWorkflowEngine = makeTestWorkflowEngine()
 
 class SendEmailError extends Schema.Error<SendEmailError>("SendEmailError")({
   _tag: Schema.tag("SendEmailError"),
@@ -1274,7 +1277,11 @@ const SlowUnwindWorkflowLayer = SlowUnwindWorkflow.toLayer(Effect.fnUntraced(fun
     ]
   }).pipe(
     // slows the unwind so completions can land while a suspension commits
-    Effect.ensuring(Effect.sleep("10 seconds"))
+    Effect.ensuring(
+      Effect.sync(() => flags.set("slow-unwind-started", true)).pipe(
+        Effect.andThen(Effect.sleep("10 seconds"))
+      )
+    )
   )
 }))
 

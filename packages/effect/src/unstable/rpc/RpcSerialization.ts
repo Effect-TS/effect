@@ -260,7 +260,7 @@ function decodeJsonRpcRaw(
     for (let i = 0; i < decoded.length; i++) {
       const message = decodeJsonRpcMessage(decoded[i])
       messages.push(message)
-      if (message._tag === "Request") {
+      if (message._tag === "Request" && !message.isNotification) {
         batch.size++
         batches.set(message.id, batch)
       }

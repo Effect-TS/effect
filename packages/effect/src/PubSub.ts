@@ -540,7 +540,12 @@ export const makeAtomicBounded = <A>(
  */
 export const makeAtomicUnbounded = <A>(options?: {
   readonly replay?: number | undefined
-}): PubSub.Atomic<A> => new UnboundedPubSub(options?.replay ? new ReplayBuffer(options.replay) : undefined)
+}): PubSub.Atomic<A> => {
+  const replay = options?.replay
+  return new UnboundedPubSub(
+    replay && replay > 0 ? new ReplayBuffer<A>(Math.ceil(replay)) : undefined
+  )
+}
 
 /**
  *  Returns the number of elements the queue can hold.

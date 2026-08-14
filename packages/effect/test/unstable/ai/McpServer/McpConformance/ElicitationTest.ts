@@ -39,7 +39,7 @@ const request = {
 } as const
 
 const runElicitation = <S extends Schema.ConstraintEncoder<Record<string, unknown>, unknown>>(
-  client: McpTestPeer["client"],
+  client: McpTestPeer["reverseClient"],
   protocolVersion: McpProtocol.ProtocolVersion,
   schema: S
 ) =>
@@ -52,6 +52,11 @@ const runElicitation = <S extends Schema.ConstraintEncoder<Record<string, unknow
       McpSchema.McpServerClient.of({
         clientId: 1,
         protocolVersion,
+        clientCapabilities: { elicitation: {} },
+        clientInfo: {
+          name: "McpConformancePeer",
+          version: "1.0.0"
+        },
         initializePayload: {
           protocolVersion,
           capabilities: { elicitation: {} },
@@ -70,6 +75,24 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
     describe("Elicitation", () => {
       // https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation
       describe("Capabilities", () => {
+        it.effect.skipIf(protocol.protocolVersion !== "2025-11-25")(
+          "MUST treat an empty elicitation capability as form support",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const peer = yield* test.makePeer({
+                capabilities: { elicitation: {} },
+                handlers: {
+                  "elicitation/create": () => Effect.succeed({ action: "accept", content: { name: "Ada" } })
+                }
+              })
+
+              yield* peer.reverseClient.elicit(Schema.decodeUnknownSync(McpSchema.Elicit.payloadSchema)(request))
+
+              assert.deepStrictEqual((yield* peer.takeRequest).payload, request)
+            }).pipe(Effect.scoped)
+        )
+
         it.effect("MUST send elicitation requests when the client advertises elicitation", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
@@ -84,10 +107,33 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            yield* peer.client["elicitation/create"](request)
+            yield* peer.wireClient["elicitation/create"](request)
 
             assert.strictEqual((yield* peer.takeRequest).method, "elicitation/create")
           }))
+
+        it.effect.skipIf(protocol.protocolVersion !== "2025-11-25")(
+          "MUST gate form and URL modes on their independent nested capabilities",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const formOnly = yield* test.makePeer({ capabilities: { elicitation: { form: {} } } })
+              const urlOnly = yield* test.makePeer({ capabilities: { elicitation: { url: {} } } })
+
+              const formOnUrlOnly = yield* Effect.exit(urlOnly.reverseClient.elicit(request))
+              const urlOnFormOnly = yield* Effect.exit(formOnly.reverseClient.elicit({
+                mode: "url",
+                message: "Authorize access",
+                url: "https://example.com/authorize",
+                elicitationId: "authorization-1"
+              }))
+
+              assert.strictEqual(formOnUrlOnly._tag, "Failure")
+              assert.strictEqual(urlOnFormOnly._tag, "Failure")
+              assert.deepStrictEqual(yield* formOnly.requests, [])
+              assert.deepStrictEqual(yield* urlOnly.requests, [])
+            })
+        )
       })
 
       describe("Form Mode", () => {
@@ -105,7 +151,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            const result = yield* peer.client["elicitation/create"](request)
+            const result = yield* peer.wireClient["elicitation/create"](request)
             const recorded = yield* peer.takeRequest
             const payload = yield* decodeElicitationRequest(recorded.payload)
 
@@ -120,6 +166,28 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               })
             }
           }))
+
+        it.effect.skipIf(protocol.protocolVersion !== "2025-11-25")(
+          "MUST preserve omitted and explicit form modes",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const peer = yield* test.makePeer({
+                capabilities: { elicitation: { form: {} } },
+                handlers: {
+                  "elicitation/create": () => Effect.succeed({ action: "accept", content: { name: "Ada" } })
+                }
+              })
+
+              yield* peer.reverseClient.elicit(Schema.decodeUnknownSync(McpSchema.Elicit.payloadSchema)(request))
+              yield* peer.reverseClient.elicit(
+                Schema.decodeUnknownSync(McpSchema.Elicit.payloadSchema)({ ...request, mode: "form" })
+              )
+
+              const requests = yield* peer.requests
+              assert.deepStrictEqual(requests.map((_) => _.payload), [request, { ...request, mode: "form" }])
+            }).pipe(Effect.scoped)
+        )
 
         it.effect("MUST decode accepted content against the requested schema", () =>
           Effect.gen(function*() {
@@ -136,7 +204,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             })
 
             const result = yield* runElicitation(
-              peer.client,
+              peer.reverseClient,
               protocol.protocolVersion,
               Schema.Struct({
                 name: Schema.String,
@@ -146,6 +214,24 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             assert.deepStrictEqual(result, { name: "Ada", age: 37 })
           }))
+
+        it.effect("MUST reject schemas outside the elicitation subset before sending", () =>
+          Effect.gen(function*() {
+            const test = yield* McpConformance
+            const peer = yield* test.makePeer({ capabilities: { elicitation: {} } })
+
+            const exit = yield* Effect.exit(runElicitation(
+              peer.reverseClient,
+              protocol.protocolVersion,
+              Schema.Struct({ nested: Schema.Struct({ value: Schema.String }) })
+            ))
+
+            assert.isTrue(Exit.isFailure(exit))
+            if (Exit.isFailure(exit)) {
+              assert.isTrue(Cause.hasDies(exit.cause))
+            }
+            assert.deepStrictEqual(yield* peer.requests, [])
+          }).pipe(Effect.scoped))
 
         it.effect("SCENARIO returns a typed failure when the user declines", () =>
           Effect.gen(function*() {
@@ -158,7 +244,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             })
 
             const error = yield* runElicitation(
-              peer.client,
+              peer.reverseClient,
               protocol.protocolVersion,
               Schema.Struct({ name: Schema.String })
             ).pipe(Effect.flip)
@@ -177,7 +263,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             })
 
             const exit = yield* Effect.exit(runElicitation(
-              peer.client,
+              peer.reverseClient,
               protocol.protocolVersion,
               Schema.Struct({ name: Schema.String })
             ))
@@ -203,7 +289,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             })
 
             const exit = yield* Effect.exit(runElicitation(
-              peer.client,
+              peer.reverseClient,
               protocol.protocolVersion,
               Schema.Struct({ name: Schema.String })
             ))
@@ -213,6 +299,33 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               assert.isTrue(Cause.hasDies(exit.cause))
             }
           }))
+      })
+
+      describe("URL Mode", () => {
+        it.effect.skipIf(protocol.protocolVersion !== "2025-11-25")(
+          "MUST round-trip URL elicitation",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const request = {
+                mode: "url" as const,
+                message: "Authorize access",
+                url: "https://example.com/authorize",
+                elicitationId: "authorization-1"
+              }
+              const peer = yield* test.makePeer({
+                capabilities: { elicitation: { url: {} } },
+                handlers: { "elicitation/create": () => Effect.succeed({ action: "accept" }) }
+              })
+
+              const result = yield* peer.reverseClient.elicit(
+                Schema.decodeUnknownSync(McpSchema.Elicit.payloadSchema)(request)
+              )
+
+              assert.deepStrictEqual((yield* peer.takeRequest).payload, request)
+              assert.strictEqual(result.action, "accept")
+            }).pipe(Effect.scoped)
+        )
       })
     })
   })

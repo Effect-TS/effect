@@ -318,18 +318,21 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             }])
           }))
-        it.effect("MUST return audio message content", () =>
-          Effect.gen(function*() {
-            const result = yield* getPromptWire("AudioPrompt")
-            assert.deepStrictEqual(result.result.messages, [{
-              role: "user",
-              content: {
-                type: "audio",
-                data: "BAUG",
-                mimeType: "audio/wav"
-              }
-            }])
-          }))
+        it.effect.skipIf(["2024-11-05"].includes(protocol.protocolVersion))(
+          "MUST return audio message content",
+          () =>
+            Effect.gen(function*() {
+              const result = yield* getPromptWire("AudioPrompt")
+              assert.deepStrictEqual(result.result.messages, [{
+                role: "user",
+                content: {
+                  type: "audio",
+                  data: "BAUG",
+                  mimeType: "audio/wav"
+                }
+              }])
+            })
+        )
         it.effect("MUST return embedded resource message content", () =>
           Effect.gen(function*() {
             const result = yield* getPrompt("EmbeddedResourcePrompt")
