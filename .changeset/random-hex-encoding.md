@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `Encoding.randomHex` for generating random lowercase hexadecimal strings.
+Add `Encoding.randomHex`, a lightweight non-cryptographic generator that coerces lengths to unsigned 32-bit multiples of 8.

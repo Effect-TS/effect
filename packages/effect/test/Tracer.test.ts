@@ -50,6 +50,8 @@ describe("Tracer", () => {
     it.effect("generates OTLP span identifiers", () =>
       Effect.gen(function*() {
         const [root, child] = yield* makeRootAndChildSpans
+        assert.notInstanceOf(root, Tracer.NativeSpan)
+        assert.notInstanceOf(child, Tracer.NativeSpan)
         assertSpanIdentifiers(root, child)
       }).pipe(Effect.provide(otlpTracerLayer)))
   })
@@ -57,7 +59,10 @@ describe("Tracer", () => {
   describe("Effect.withSpan", () => {
     it.effect("should capture the stack trace", () =>
       Effect.gen(function*() {
-        const cause = yield* Effect.die(new Error("boom")).pipe(
+        const error = new Error("boom")
+        const errorSite = error.stack?.split("\n")[1]?.trim()
+        assert.isDefined(errorSite)
+        const cause = yield* Effect.die(error).pipe(
           Effect.withSpan("C", {
             annotations: Tracer.DisablePropagation.context(true)
           }),
@@ -65,7 +70,7 @@ describe("Tracer", () => {
           Effect.flip
         )
 
-        assert.match(Cause.pretty(cause), /Tracer\.test\.ts:\d+:\d+/)
+        assert.include(Cause.pretty(cause), errorSite)
       }))
 
     it.effect("should set the parent span", () =>

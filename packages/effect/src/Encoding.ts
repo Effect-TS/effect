@@ -406,23 +406,28 @@ export const encodeHex: (input: Uint8Array | string) => string = (input) =>
   typeof input === "string" ? hexEncodeUint8Array(encoder.encode(input)) : hexEncodeUint8Array(input)
 
 /**
- * Generates a random lowercase hexadecimal string with the specified length.
+ * Generates a random lowercase hexadecimal string, optimized for lengths that
+ * are multiples of 8.
  *
- * The length must be an even number.
+ * `length` is not validated. The function generates `length >>> 3` random
+ * 8-character words, so non-negative lengths below `2 ** 32` are rounded down
+ * to a multiple of 8 and other values follow JavaScript's unsigned 32-bit
+ * coercion rules.
+ *
+ * This function uses `Math.random()` and is not cryptographically secure. For
+ * security-sensitive values, use the `Crypto.Crypto` service's `randomBytes`
+ * method and encode the result with {@link encodeHex}.
  *
  * @category encoding
  * @since 4.0.0
  */
 export const randomHex = (length: number): string => {
-  const bytes = length >>> 1
-  if (randomBytesOffset + bytes > randomBytes.length) {
-    for (let i = 0; i < randomWords.length; i++) {
-      randomWords[i] = (Math.random() * 0x100000000) >>> 0
-    }
-    randomBytesOffset = 0
+  let result = ""
+  for (let i = length >>> 3; i > 0; i--) {
+    const word = (Math.random() * 0x100000000) >>> 0
+    result += byteToHex[word >>> 24] + byteToHex[(word >>> 16) & 0xff] + byteToHex[(word >>> 8) & 0xff] +
+      byteToHex[word & 0xff]
   }
-  const result = hexEncodeUint8Array(randomBytes.subarray(randomBytesOffset, randomBytesOffset + bytes))
-  randomBytesOffset += bytes
   return result
 }
 
@@ -776,10 +781,6 @@ const hexEncodeUint8Array = (bytes: Uint8Array): string => {
   }
   return result
 }
-
-const randomWords = new Uint32Array(96)
-const randomBytes = new Uint8Array(randomWords.buffer)
-let randomBytesOffset = randomBytes.length
 
 const fromHexChar = (byte: number) => {
   if (48 <= byte && byte <= 57) {
