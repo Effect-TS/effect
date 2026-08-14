@@ -10,6 +10,7 @@
  * @since 2.0.0
  */
 import * as Context from "./Context.ts"
+import * as Encoding from "./Encoding.ts"
 import type * as Exit from "./Exit.ts"
 import type { Fiber } from "./Fiber.ts"
 import { constFalse, type LazyArg } from "./Function.ts"
@@ -690,8 +691,8 @@ export class NativeSpan implements Span {
       startTime: options.startTime
     }
     this.attributes = new Map()
-    this.traceId = Option.getOrUndefined(options.parent)?.traceId ?? randomHexString(32)
-    this.spanId = randomHexString(16)
+    this.traceId = Option.getOrUndefined(options.parent)?.traceId ?? Encoding.randomHex(32)
+    this.spanId = Encoding.randomHex(16)
   }
 
   end(endTime: bigint, exit: Exit.Exit<unknown, unknown>): void {
@@ -715,27 +716,4 @@ export class NativeSpan implements Span {
     // oxlint-disable-next-line no-restricted-syntax
     this.links.push(...links)
   }
-}
-
-const byteToHex: Array<string> = []
-for (let i = 0; i < 256; i++) {
-  byteToHex.push(i.toString(16).padStart(2, "0"))
-}
-const randomWords = new Uint32Array(96)
-const randomBytes = new Uint8Array(randomWords.buffer)
-let randomBytesOffset = randomBytes.length
-const randomHexString = (length: number): string => {
-  const bytes = length >>> 1
-  if (randomBytesOffset + bytes > randomBytes.length) {
-    for (let i = 0; i < randomWords.length; i++) {
-      randomWords[i] = (Math.random() * 0x100000000) >>> 0
-    }
-    randomBytesOffset = 0
-  }
-  let result = ""
-  for (let i = 0; i < bytes; i++) {
-    result += byteToHex[randomBytes[randomBytesOffset + i]]
-  }
-  randomBytesOffset += bytes
-  return result
 }
