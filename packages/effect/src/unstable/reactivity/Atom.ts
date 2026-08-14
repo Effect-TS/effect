@@ -28,6 +28,7 @@ import * as Option from "../../Option.ts"
 import type { Pipeable } from "../../Pipeable.ts"
 import { hasProperty } from "../../Predicate.ts"
 import * as Pull from "../../Pull.ts"
+import * as Queue from "../../Queue.ts"
 import type { ReadonlyRecord } from "../../Record.ts"
 import * as Scheduler from "../../Scheduler.ts"
 import * as Schema from "../../Schema.ts"
@@ -177,17 +178,10 @@ export interface AtomContext {
   setResult<A, E, W>(this: AtomContext, atom: Writable<AsyncResult.AsyncResult<A, E>, W>, value: W): Effect.Effect<A, E>
   some<A>(this: AtomContext, atom: Atom<Option.Option<A>>): Effect.Effect<A>
   someOnce<A>(this: AtomContext, atom: Atom<Option.Option<A>>): Effect.Effect<A>
-  stream<A>(this: AtomContext, atom: Atom<A>, options?: {
-    readonly withoutInitialValue?: boolean
-    readonly bufferSize?: number
-  }): Stream.Stream<A>
-  streamResult<A, E>(this: AtomContext, atom: Atom<AsyncResult.AsyncResult<A, E>>, options?: {
-    readonly withoutInitialValue?: boolean
-    readonly bufferSize?: number
-  }): Stream.Stream<A, E>
   subscribe<A>(this: AtomContext, atom: Atom<A>, f: (_: A) => void, options?: {
     readonly immediate?: boolean
   }): void
+  readonly disposed: boolean
   readonly registry: Registry.AtomRegistry
 }
 
@@ -487,7 +481,7 @@ const makeRead: {
           else if (EffectTypeId in value) {
             return effect(get, value as any, options, providedServices)
           } else if (StreamTypeId in value) {
-            return stream(get, value as any, options, providedServices)
+            return streamRead(get, value as any, options, providedServices)
           }
           return value
         }
@@ -501,7 +495,7 @@ const makeRead: {
     }
   } else if (Stream.isStream(arg)) {
     return function(get: AtomContext, providedServices?: Context.Context<any>) {
-      return stream(get, arg as any, options, providedServices)
+      return streamRead(get, arg as any, options, providedServices)
     }
   }
 
@@ -833,7 +827,7 @@ export const withReactivity: (
 // constructors - stream
 // -----------------------------------------------------------------------------
 
-const stream = <A, E>(
+const streamRead = <A, E>(
   get: AtomContext,
   stream: Stream.Stream<A, E, AtomRegistry>,
   options?: {
@@ -1022,17 +1016,10 @@ export interface FnContext {
   set<R, W>(this: FnContext, atom: Writable<R, W>, value: W): void
   setResult<A, E, W>(this: FnContext, atom: Writable<AsyncResult.AsyncResult<A, E>, W>, value: W): Effect.Effect<A, E>
   some<A>(this: FnContext, atom: Atom<Option.Option<A>>): Effect.Effect<A>
-  stream<A>(this: FnContext, atom: Atom<A>, options?: {
-    readonly withoutInitialValue?: boolean
-    readonly bufferSize?: number
-  }): Stream.Stream<A>
-  streamResult<A, E>(this: FnContext, atom: Atom<AsyncResult.AsyncResult<A, E>>, options?: {
-    readonly withoutInitialValue?: boolean
-    readonly bufferSize?: number
-  }): Stream.Stream<A, E>
   subscribe<A>(this: FnContext, atom: Atom<A>, f: (_: A) => void, options?: {
     readonly immediate?: boolean
   }): void
+  readonly disposed: boolean
   readonly registry: Registry.AtomRegistry
 }
 
@@ -2309,6 +2296,62 @@ function updateSearchParams() {
 // -----------------------------------------------------------------------------
 // conversions
 // -----------------------------------------------------------------------------
+
+/**
+ * Converts an atom into a stream of its values using an atom context.
+ *
+ * **Details**
+ *
+ * The stream emits the atom's current value immediately unless
+ * `withoutInitialValue` is set, and then emits subsequent changes. The
+ * subscription is released when the context is disposed.
+ *
+ * @category converting
+ * @since 4.0.0
+ */
+export const stream = <A>(
+  get: AtomContext | FnContext,
+  atom: Atom<A>,
+  options?: {
+    readonly withoutInitialValue?: boolean
+  }
+): Stream.Stream<A> => {
+  const ctx = get as AtomContext
+  if (ctx.disposed) return Stream.empty
+  return Stream.callback<A>((queue) =>
+    Effect.sync(() => {
+      ctx.subscribe(atom, (value) => Queue.offerUnsafe(queue, value), {
+        immediate: !options?.withoutInitialValue
+      })
+    })
+  )
+}
+
+/**
+ * Converts an `AsyncResult` atom into a stream of its success values using an
+ * atom context.
+ *
+ * **Details**
+ *
+ * Initial results are skipped, successes are emitted as stream values, and
+ * failures fail the stream with the result cause.
+ *
+ * @category converting
+ * @since 4.0.0
+ */
+export const streamResult = <A, E>(
+  get: AtomContext | FnContext,
+  atom: Atom<AsyncResult.AsyncResult<A, E>>,
+  options?: {
+    readonly withoutInitialValue?: boolean
+  }
+): Stream.Stream<A, E> =>
+  stream(get, atom, options).pipe(
+    Stream.filter(AsyncResult.isNotInitial),
+    Stream.mapEffect((result) =>
+      result._tag === "Success" ? Effect.succeed(result.value) : Effect.failCause(result.cause)
+    )
+  )
 
 /**
  * Converts an atom into a stream using the `AtomRegistry` service.

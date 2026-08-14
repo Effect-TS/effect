@@ -986,31 +986,6 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
     this.node.registry.set(atom, value)
   },
 
-  stream<A>(this: Lifetime<any>, atom: Atom.Atom<A>, options?: {
-    readonly withoutInitialValue?: boolean
-  }) {
-    if (this.disposed) return Stream.empty
-    return Stream.callback<A>((queue) =>
-      Effect.sync(() => {
-        this.subscribe(atom, (value) => Queue.offerUnsafe(queue, value), {
-          immediate: !options?.withoutInitialValue
-        })
-      })
-    )
-  },
-
-  streamResult<A, E>(this: Lifetime<any>, atom: Atom.Atom<Result.AsyncResult<A, E>>, options?: {
-    readonly withoutInitialValue?: boolean
-    readonly bufferSize?: number
-  }): Stream.Stream<A, E> {
-    return this.stream(atom, options).pipe(
-      Stream.filter(Result.isNotInitial),
-      Stream.mapEffect((result) =>
-        result._tag === "Success" ? Effect.succeed(result.value) : Effect.failCause(result.cause)
-      )
-    )
-  },
-
   dispose(this: Lifetime<any>): void {
     this.disposed = true
     if (this.finalizers === undefined) {

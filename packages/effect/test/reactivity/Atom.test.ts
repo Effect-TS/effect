@@ -623,8 +623,8 @@ describe.sequential("Atom", () => {
     expect(() => disposed.setSelf(1)).not.toThrow()
     expect(() => disposed.set(state, 1)).not.toThrow()
     expect(registry.get(state)).toEqual(0)
-    expect(() => disposed.stream(state)).not.toThrow()
-    expect(() => disposed.streamResult(result)).not.toThrow()
+    expect(() => Atom.stream(disposed, state)).not.toThrow()
+    expect(() => Atom.streamResult(disposed, result)).not.toThrow()
   })
 
   it("disposed lifetime ignores async updates", async () => {
@@ -1251,9 +1251,9 @@ describe.sequential("Atom", () => {
     assert.strictEqual(r.get(bool), true)
   })
 
-  it("get.stream", async () => {
+  it("Atom.stream", async () => {
     const count = Atom.make(0)
-    const multiplied = Atom.make((get) => get.stream(count).pipe(Stream.map((_) => _ * 2)))
+    const multiplied = Atom.make((get) => Atom.stream(get, count).pipe(Stream.map((_) => _ * 2)))
 
     const r = AtomRegistry.make()
     const cancel = r.mount(multiplied)
@@ -1268,10 +1268,10 @@ describe.sequential("Atom", () => {
     cancel()
   })
 
-  it("get.streamResult", async () => {
+  it("Atom.streamResult", async () => {
     const count = Atom.make(0)
-    const multiplied = Atom.make((get) => get.stream(count).pipe(Stream.map((_) => _ * 2)))
-    const plusOne = Atom.make((get) => get.streamResult(multiplied).pipe(Stream.map((_) => _ + 1)))
+    const multiplied = Atom.make((get) => Atom.stream(get, count).pipe(Stream.map((_) => _ * 2)))
+    const plusOne = Atom.make((get) => Atom.streamResult(get, multiplied).pipe(Stream.map((_) => _ + 1)))
 
     const r = AtomRegistry.make()
     const cancel = r.mount(plusOne)
