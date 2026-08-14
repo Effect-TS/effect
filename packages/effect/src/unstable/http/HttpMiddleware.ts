@@ -206,36 +206,56 @@ export const tracer: <E, R>(
           response = exit.value
         }
         if (span.sampled) {
-          const url = Request.toURL(request)
-          if (Option.isSome(url) && (url.value.username !== "" || url.value.password !== "")) {
-            url.value.username = "REDACTED"
-            url.value.password = "REDACTED"
-          }
           const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
-          const requestHeaders = Headers.redact(request.headers, redactedHeaderNames)
           span.attribute("http.request.method", request.method)
-          if (Option.isSome(url)) {
-            span.attribute("url.full", url.value.toString())
-            span.attribute("url.path", url.value.pathname)
-            const query = url.value.search.slice(1)
-            if (query !== "") {
-              span.attribute("url.query", url.value.search.slice(1))
+          if (request.url.startsWith("/")) {
+            const host = request.headers.host ?? "localhost"
+            const protocol = request.headers["x-forwarded-proto"] === "https" ? "https" : "http"
+            span.attribute("url.full", `${protocol}://${host}${request.url}`)
+            const queryIndex = request.url.indexOf("?")
+            if (queryIndex === -1) {
+              span.attribute("url.path", request.url)
+            } else {
+              span.attribute("url.path", request.url.slice(0, queryIndex))
+              if (queryIndex < request.url.length - 1) {
+                span.attribute("url.query", request.url.slice(queryIndex + 1))
+              }
             }
-            span.attribute("url.scheme", url.value.protocol.slice(0, -1))
+            span.attribute("url.scheme", protocol)
+          } else {
+            const url = Request.toURL(request)
+            if (Option.isSome(url)) {
+              if (url.value.username !== "" || url.value.password !== "") {
+                url.value.username = "REDACTED"
+                url.value.password = "REDACTED"
+              }
+              span.attribute("url.full", url.value.toString())
+              span.attribute("url.path", url.value.pathname)
+              const query = url.value.search.slice(1)
+              if (query !== "") {
+                span.attribute("url.query", query)
+              }
+              span.attribute("url.scheme", url.value.protocol.slice(0, -1))
+            }
           }
           if (request.headers["user-agent"] !== undefined) {
             span.attribute("user_agent.original", request.headers["user-agent"])
           }
-          for (const name in requestHeaders) {
-            span.attribute(`http.request.header.${name}`, String(requestHeaders[name]))
+          for (const name in request.headers) {
+            span.attribute(
+              `http.request.header.${name}`,
+              Headers.isRedactedName(name, redactedHeaderNames) ? "<redacted>" : request.headers[name]
+            )
           }
           if (Option.isSome(request.remoteAddress)) {
             span.attribute("client.address", request.remoteAddress.value)
           }
           span.attribute("http.response.status_code", response.status)
-          const responseHeaders = Headers.redact(response.headers, redactedHeaderNames)
-          for (const name in responseHeaders) {
-            span.attribute(`http.response.header.${name}`, String(responseHeaders[name]))
+          for (const name in response.headers) {
+            span.attribute(
+              `http.response.header.${name}`,
+              Headers.isRedactedName(name, redactedHeaderNames) ? "<redacted>" : response.headers[name]
+            )
           }
         }
         span.end(endTime, spanExit)
