@@ -79,6 +79,19 @@ describe("Socket", () => {
       assert.strictEqual(output, "HelloWorld")
     }))
 
+  it.live("respects a zero open timeout", () =>
+    Effect.gen(function*() {
+      const socket = yield* NodeSocket.fromDuplex(Effect.never, { openTimeout: 0 })
+      const error = yield* socket.runRaw(() => {}).pipe(
+        Effect.flip,
+        Effect.timeout("1 second")
+      )
+      assert.strictEqual(error.reason._tag, "SocketOpenError")
+      if (error.reason._tag === "SocketOpenError") {
+        assert.strictEqual(error.reason.kind, "Timeout")
+      }
+    }))
+
   describe("WebSocket", () => {
     const url = `ws://localhost:1234`
 
