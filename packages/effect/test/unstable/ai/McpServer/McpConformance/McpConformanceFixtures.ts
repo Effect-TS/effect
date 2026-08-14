@@ -17,6 +17,9 @@ export interface Observations {
   readonly resourceTemplateInvocations: number
 }
 
+export const MrtrToolName = "MrtrTool"
+export const mrtrRequestState = "opaque:+/=\u0000é"
+
 const TestTool = Tool.make("TestTool", {
   description: "A test tool",
   parameters: Schema.Struct({
@@ -145,6 +148,66 @@ const makeContentToolsLayer = Layer.effectDiscard(
   })
 )
 
+const mrtrToolLayer = Layer.effectDiscard(
+  Effect.gen(function*() {
+    const server = yield* McpServer.McpServer
+    yield* server.addTool({
+      tool: new McpSchema.Tool({
+        name: MrtrToolName,
+        description: "Requests confirmation before completing",
+        inputSchema: { type: "object" }
+      }),
+      annotations: Context.make(
+        McpSchema.EnabledWhen,
+        (client) => client.protocolVersion === "2026-07-28"
+      ),
+      handle: () =>
+        McpSchema.McpRequestContext.useSync((context) => {
+          const approval = context.inputResponses?.approval
+          const sample = context.inputResponses?.sample
+          const roots = context.inputResponses?.roots
+          if (
+            context.requestState === mrtrRequestState && approval?.action === "accept" &&
+            sample !== undefined && roots !== undefined
+          ) {
+            return new McpSchema.CallToolResult({
+              content: [{
+                type: "text",
+                text: JSON.stringify({ approval: approval.content, sample, roots })
+              }]
+            })
+          }
+          return new McpSchema.InputRequired({
+            inputRequests: {
+              approval: {
+                method: "elicitation/create",
+                params: {
+                  message: "Approve the operation",
+                  requestedSchema: {
+                    type: "object",
+                    properties: { approved: { type: "boolean" } },
+                    required: ["approved"]
+                  }
+                }
+              },
+              sample: {
+                method: "sampling/createMessage",
+                params: {
+                  messages: [{ role: "user", content: { type: "text", text: "Suggest a title" } }],
+                  maxTokens: 20
+                }
+              },
+              roots: {
+                method: "roots/list"
+              }
+            },
+            requestState: mrtrRequestState
+          })
+        })
+    })
+  })
+)
+
 const templatePath = McpSchema.param("path", Schema.String)
 const TestResourceTemplate = McpServer.resource`file:///template/${templatePath}`({
   name: "TestResourceTemplate",
@@ -225,6 +288,7 @@ export const makeFeaturesServerLayer = (
   Layer.mergeAll(
     makeTestToolkitLayer(observations, protocol.protocolVersion),
     makeContentToolsLayer,
+    mrtrToolLayer,
     McpServer.resource({
       uri: "file:///test",
       name: "TestResource",

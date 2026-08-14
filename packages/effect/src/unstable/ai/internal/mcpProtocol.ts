@@ -53,6 +53,15 @@ export const invocationFromRequestContext = (
   requestContext: request
 })
 
+/** @internal */
+export const requireCompleteOperation = <A>(
+  protocolVersion: PublicMcpProtocol.ProtocolVersion,
+  outcome: McpCore.OperationOutcome<A>
+): Effect.Effect<A, McpCore.UnsupportedByProtocol> =>
+  outcome._tag === "Complete"
+    ? Effect.succeed(outcome.value)
+    : Effect.fail(new McpCore.UnsupportedByProtocol({ protocolVersion, feature: "Client input" }))
+
 // NOTE: Keep the two codec assertions below as the single documented
 // existential-schema boundary. Rpc.AnyWithProps intentionally erases each
 // request's payload type, while the runtime schema still performs decoding and

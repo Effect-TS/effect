@@ -12,6 +12,27 @@ import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
 
 /** @internal */
+export interface InputRequiredFields {
+  readonly inputRequests: Readonly<Record<string, McpSchema.McpInputRequest>>
+  readonly requestState?: string | undefined
+}
+
+/** @internal */
+export type OperationOutcome<A> = Data.TaggedEnum<{
+  Complete: { readonly value: A }
+  InputRequired: InputRequiredFields
+}>
+
+/** @internal */
+export const OperationOutcome = {
+  Complete: <A>(value: A): OperationOutcome<A> => ({ _tag: "Complete", value }),
+  InputRequired: (fields: InputRequiredFields): OperationOutcome<never> => ({
+    _tag: "InputRequired",
+    ...fields
+  })
+}
+
+/** @internal */
 export type CanonicalRequestMetadata = NonNullable<
   typeof McpSchema.Initialize.payloadSchema.Type["_meta"]
 >
@@ -119,7 +140,7 @@ export interface ToolRegistration {
     call: typeof McpSchema.CallTool.payloadSchema.Type,
     invocation: McpInvocation
   ) => Effect.Effect<
-    McpSchema.CallToolResult,
+    OperationOutcome<McpSchema.CallToolResult>,
     InvalidToolInput | ToolExecutionError | ToolResultProjectionError,
     never
   >
@@ -136,7 +157,7 @@ export interface Tools {
   readonly call: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
     invocation: McpInvocation
-  ) => Effect.Effect<McpSchema.CallToolResult, ToolError>
+  ) => Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError>
 }
 
 /** @internal */
@@ -345,7 +366,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
         return descriptors
       }),
     call: (call, invocation) =>
-      Effect.suspend((): Effect.Effect<McpSchema.CallToolResult, ToolError> => {
+      Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
         const registration = registrations.get(call.name)
         if (registration === undefined) {
           return new ToolNotFound({ name: call.name })
