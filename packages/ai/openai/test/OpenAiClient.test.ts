@@ -348,6 +348,34 @@ describe("OpenAiClient", () => {
         }
       }))))
 
+    it.effect("maps OpenAI-compatible 402 errors to QuotaExhaustedError", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+        const result = yield* client.createResponse({ model: "grok-4", input: "test" }).pipe(Effect.flip)
+
+        assert.strictEqual(result._tag, "AiError")
+        assert.strictEqual(result.reason._tag, "QuotaExhaustedError")
+        assert.isFalse(result.isRetryable)
+      }).pipe(Effect.provide(makeTestLayer(undefined, {
+        _tag: "Json",
+        status: 402,
+        body: { error: "Your balance is too low", code: "billing_insufficient_balance" }
+      }))))
+
+    it.effect("maps OpenAI-compatible insufficient balance errors to QuotaExhaustedError", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+        const result = yield* client.createResponse({ model: "grok-4", input: "test" }).pipe(Effect.flip)
+
+        assert.strictEqual(result._tag, "AiError")
+        assert.strictEqual(result.reason._tag, "QuotaExhaustedError")
+        assert.isFalse(result.isRetryable)
+      }).pipe(Effect.provide(makeTestLayer(undefined, {
+        _tag: "Json",
+        status: 429,
+        body: { error: "Your balance is too low", code: "billing_insufficient_balance" }
+      }))))
+
     it("mapStatusCodeToReason detects insufficient_quota as QuotaExhaustedError", () => {
       const http = {
         request: {
@@ -585,6 +613,9 @@ type MockResponse =
         readonly type?: string
         readonly code?: string | null
       }
+    } | {
+      readonly error: string
+      readonly code?: string
     }
     readonly status?: number | undefined
     readonly headers?: Record<string, string> | undefined

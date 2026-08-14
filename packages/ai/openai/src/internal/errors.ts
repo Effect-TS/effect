@@ -28,6 +28,11 @@ export const OpenAiErrorBody = Schema.Struct({
   })
 })
 
+const OpenAiCompatibleErrorBody = Schema.Struct({
+  error: Schema.String,
+  code: Schema.optional(Schema.String)
+})
+
 // =============================================================================
 // Error Mappers
 // =============================================================================
@@ -147,14 +152,25 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
     json = undefined
   }
   const decoded = Schema.decodeUnknownOption(OpenAiErrorBody)(json)
+  const compatibleDecoded = Schema.decodeUnknownOption(OpenAiCompatibleErrorBody)(json)
+  const message = Option.isSome(decoded)
+    ? decoded.value.error.message
+    : Option.isSome(compatibleDecoded)
+    ? compatibleDecoded.value.error
+    : undefined
+  const errorCode = Option.isSome(decoded)
+    ? decoded.value.error.code ?? null
+    : Option.isSome(compatibleDecoded)
+    ? compatibleDecoded.value.code ?? null
+    : null
 
   const reason = mapStatusCodeToReason({
     status,
     headers,
-    message: Option.isSome(decoded) ? decoded.value.error.message : undefined,
+    message,
     http: buildHttpContext({ request, response, body }),
     metadata: {
-      errorCode: Option.isSome(decoded) ? decoded.value.error.code ?? null : null,
+      errorCode,
       errorType: Option.isSome(decoded) ? decoded.value.error.type ?? null : null,
       requestId: requestId ?? null
     }
@@ -321,11 +337,18 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
         metadata: { openai: metadata },
         http
       })
+    case 402:
+      return new AiError.QuotaExhaustedError({
+        metadata: { openai: metadata },
+        http
+      })
     case 429: {
       // Best-effort detection: OpenAI returns insufficient_quota for billing/quota issues
       if (
         metadata.errorCode === "insufficient_quota" ||
-        metadata.errorType === "insufficient_quota"
+        metadata.errorType === "insufficient_quota" ||
+        metadata.errorCode === "billing_insufficient_balance" ||
+        metadata.errorType === "billing_insufficient_balance"
       ) {
         return new AiError.QuotaExhaustedError({
           metadata: { openai: metadata },
