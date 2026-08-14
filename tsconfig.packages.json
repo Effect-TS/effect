@@ -9,6 +9,7 @@
     { "path": "packages/ai/openai-compat" },
     { "path": "packages/ai/openai" },
     { "path": "packages/ai/openrouter" },
+    { "path": "packages/atom/livestore" },
     { "path": "packages/atom/react" },
     { "path": "packages/atom/vue" },
     { "path": "packages/atom/solid" },

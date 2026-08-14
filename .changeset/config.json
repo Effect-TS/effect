@@ -19,6 +19,7 @@
       "@effect/ai-openai",
       "@effect/ai-openai-compat",
       "@effect/ai-openrouter",
+      "@effect/atom-livestore",
       "@effect/atom-react",
       "@effect/atom-solid",
       "@effect/atom-vue",

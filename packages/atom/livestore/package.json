@@ -1,0 +1,72 @@
+{
+  "name": "@effect/atom-livestore",
+  "version": "4.0.0-rc.109",
+  "type": "module",
+  "license": "MIT",
+  "description": "LiveStore bindings for the Effect Atom modules",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/atom/livestore"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "tags": [
+    "typescript",
+    "livestore",
+    "database"
+  ],
+  "keywords": [
+    "typescript",
+    "livestore",
+    "database"
+  ],
+  "sideEffects": [],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null,
+    "./index": null,
+    "./*/index": null
+  },
+  "files": [
+    "src/**/*.ts",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ai-docs/**/*"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./dist/index.js",
+      "./*": "./dist/*.js",
+      "./internal/*": null,
+      "./index": null,
+      "./*/index": null
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json && pnpm babel",
+    "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
+    "check": "tsc -b tsconfig.json"
+  },
+  "peerDependencies": {
+    "@livestore/livestore": "*",
+    "effect": "workspace:^"
+  },
+  "devDependencies": {
+    "@effect/opentelemetry": "workspace:^",
+    "@livestore/livestore": "0.0.0-snapshot-31e8d71134c5f4d89c21f6b1e3b6b5b39eeacd4e",
+    "@opentelemetry/api": "^1.9.0",
+    "effect": "workspace:^"
+  }
+}
