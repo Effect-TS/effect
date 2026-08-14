@@ -12,7 +12,7 @@ import { describe, expect, it } from "tstyche"
 const serverOptions = {
   name: "TestServer",
   version: "1.0.0",
-  protocols: [McpProtocol.v2025_06_18]
+  protocols: [McpProtocol.v2025_11_25]
 } as const
 
 describe("McpServer", () => {
@@ -72,20 +72,24 @@ describe("McpServer", () => {
 
     it("should expose every historical protocol adapter", () => {
       expect<keyof typeof McpProtocol>().type.toBe<
-        "v2024_11_05" | "v2025_03_26" | "v2025_06_18"
+        "v2024_11_05" | "v2025_03_26" | "v2025_06_18" | "v2025_11_25"
       >()
-      expect<McpProtocol.ProtocolVersion>().type.toBe<"2024-11-05" | "2025-03-26" | "2025-06-18">()
+      expect<McpProtocol.ProtocolVersion>().type.toBe<
+        "2024-11-05" | "2025-03-26" | "2025-06-18" | "2025-11-25"
+      >()
     })
 
     it("should expose each historical protocol through the structural adapter interface", () => {
       expect(McpProtocol.v2024_11_05).type.toBeAssignableTo<McpProtocol.ProtocolAdapter<"2024-11-05">>()
       expect(McpProtocol.v2025_03_26).type.toBeAssignableTo<McpProtocol.ProtocolAdapter<"2025-03-26">>()
       expect(McpProtocol.v2025_06_18).type.toBeAssignableTo<McpProtocol.ProtocolAdapter<"2025-06-18">>()
+      expect(McpProtocol.v2025_11_25).type.toBeAssignableTo<McpProtocol.ProtocolAdapter<"2025-11-25">>()
 
       const protocols: readonly [McpProtocol.ProtocolAdapter, ...Array<McpProtocol.ProtocolAdapter>] = [
         McpProtocol.v2024_11_05,
         McpProtocol.v2025_03_26,
-        McpProtocol.v2025_06_18
+        McpProtocol.v2025_06_18,
+        McpProtocol.v2025_11_25
       ]
 
       expect(protocols[0].protocolVersion).type.toBe<McpProtocol.ProtocolVersion>()

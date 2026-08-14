@@ -127,6 +127,19 @@ export const transcode = <
   )
 
 /** @internal */
+export const transcodeStrict = <
+  From extends Schema.Constraint,
+  To extends Schema.Constraint
+>(
+  from: From,
+  to: To,
+  input: Schema.Schema.Type<From>
+) =>
+  Schema.encodeEffect(from)(input).pipe(
+    Effect.flatMap(Schema.decodeUnknownEffect(to, { onExcessProperty: "error" }))
+  )
+
+/** @internal */
 export const makeNotificationProjector = Effect.fn(function*(
   options: {
     readonly supportsProgressMessage: boolean
@@ -185,7 +198,8 @@ export const makeNotificationProjector = Effect.fn(function*(
       payload: PublicMcpSchema.PromptListChangedNotification.payloadSchema.make({
         _meta: notification.metadata
       })
-    })
+    }),
+    ElicitationComplete: () => undefined
   })
 })
 

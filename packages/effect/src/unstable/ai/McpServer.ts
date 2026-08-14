@@ -50,7 +50,6 @@ import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
 import {
   CallToolResult,
-  Elicit,
   ElicitationDeclined,
   EnabledWhen,
   GetPromptResult,
@@ -89,14 +88,21 @@ import type * as Toolkit from "./Toolkit.ts"
 
 type CompletionContext = typeof Complete.payloadSchema.Type["context"]
 
+interface QueuedServerNotification {
+  readonly notification: McpCore.ServerNotification
+  readonly targetClientId?: number | undefined
+}
+
 const internalState = new WeakMap<object, {
   readonly core: McpCore.McpCore
-  readonly notifications: Queue.Dequeue<McpCore.ServerNotification>
+  readonly notifications: Queue.Dequeue<QueuedServerNotification>
 }>()
 type ServerExtensions = NonNullable<typeof ServerCapabilities.Type["extensions"]>
 type ServerNotificationRequest<
-  R extends Rpc.Any = RpcGroup.Rpcs<typeof ServerNotificationRpcs>
+  R extends Rpc.Any = RpcGroup.Rpcs<typeof BroadcastServerNotificationRpcs>
 > = R extends Rpc.Any ? RpcMessage.Request<R> : never
+
+const BroadcastServerNotificationRpcs = ServerNotificationRpcs.omit("notifications/elicitation/complete")
 
 const validateStructuredContent = (
   toolName: string,
@@ -165,7 +171,11 @@ const toInternalServerNotification = (
  * @since 4.0.0
  */
 export class McpServer extends Context.Service<McpServer, {
-  readonly notifications: RpcClient.RpcClient<RpcGroup.Rpcs<typeof ServerNotificationRpcs>>
+  readonly notifications: RpcClient.RpcClient<RpcGroup.Rpcs<typeof BroadcastServerNotificationRpcs>>
+  readonly notifyElicitationComplete: (options: {
+    readonly clientId: number
+    readonly elicitationId: string
+  }) => Effect.Effect<void>
   readonly initializedClients: Set<number>
   readonly tools: ReadonlyArray<{
     readonly tool: McpTool
@@ -270,9 +280,9 @@ export class McpServer extends Context.Service<McpServer, {
       readonly prompt: Prompt
       readonly annotations: Context.Context<never>
     }> = []
-    const notificationsQueue = yield* Queue.make<McpCore.ServerNotification>()
+    const notificationsQueue = yield* Queue.make<QueuedServerNotification>()
     const listChangedHandles = new Map<string, any>()
-    const notifications = yield* RpcClient.makeNoSerialization(ServerNotificationRpcs, {
+    const notifications = yield* RpcClient.makeNoSerialization(BroadcastServerNotificationRpcs, {
       spanPrefix: "McpServer/Notifications",
       onFromClient: (options) =>
         Effect.suspend((): Effect.Effect<void> => {
@@ -289,13 +299,13 @@ export class McpServer extends Context.Service<McpServer, {
               listChangedHandles.set(
                 message.tag,
                 setTimeout(() => {
-                  Queue.offerUnsafe(notificationsQueue, notification)
+                  Queue.offerUnsafe(notificationsQueue, { notification })
                   listChangedHandles.delete(message.tag)
                 }, 0)
               )
             }
           } else {
-            Queue.offerUnsafe(notificationsQueue, notification)
+            Queue.offerUnsafe(notificationsQueue, { notification })
           }
           return notifications.write({
             clientId: 0,
@@ -308,6 +318,11 @@ export class McpServer extends Context.Service<McpServer, {
 
     const service = McpServer.of({
       notifications: notifications.client,
+      notifyElicitationComplete: ({ clientId, elicitationId }) =>
+        Queue.offer(notificationsQueue, {
+          notification: McpCore.ServerNotification.ElicitationComplete({ elicitationId }),
+          targetClientId: clientId
+        }),
       initializedClients: new Set(),
       get tools() {
         return tools
@@ -646,6 +661,9 @@ const layerMcpProtocolState = (
 export const run: (options: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
 }) => Effect.Effect<
@@ -655,6 +673,9 @@ export const run: (options: {
 > = Effect.fnUntraced(function*(options: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
 }) {
@@ -668,6 +689,9 @@ export const run: (options: {
 const runWithProtocolState = Effect.fnUntraced(function*(options: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
 }, protocolState: McpProtocolState["Service"]) {
   const protocolRegistry = protocolState.protocolRegistry
@@ -1017,7 +1041,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
   })
 
   yield* Queue.take(internalState.get(server)!.notifications).pipe(
-    Effect.flatMap(Effect.fnUntraced(function*(notification) {
+    Effect.flatMap(Effect.fnUntraced(function*({ notification, targetClientId }) {
       const clientIds = yield* patchedProtocol.clientIds
       for (const clientId of clientProtocols.keys()) {
         if (!clientIds.has(clientId)) {
@@ -1030,6 +1054,9 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
         }
       }
       for (const clientId of server.initializedClients.keys()) {
+        if (targetClientId !== undefined && clientId !== targetClientId) {
+          continue
+        }
         if (!clientIds.has(clientId)) {
           server.initializedClients.delete(clientId)
           continue
@@ -1119,6 +1146,9 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
 export const layer = (options: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, RpcServer.Protocol> =>
@@ -1129,6 +1159,9 @@ export const layer = (options: {
 const layerWithProtocolState = (options: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
 }): Layer.Layer<McpServer | McpServerClient, never, RpcServer.Protocol | McpProtocolState> =>
   Layer.effectDiscard(
@@ -1163,6 +1196,9 @@ const layerWithProtocolState = (options: {
 export const layerStdio = (options: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, Stdio> =>
@@ -1269,6 +1305,9 @@ const mcpStdioSerialization = (
 export const layerHttp = (options: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly path: HttpRouter.PathInput
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
@@ -2053,10 +2092,11 @@ export const elicit: <S extends Schema.ConstraintEncoder<Record<string, unknown>
   const { getClient } = yield* McpServerClient
   const client = yield* getClient
   const schema = options.schema
-  const request = Elicit.payloadSchema.make({
+  const request = yield* Schema.decodeUnknownEffect(McpSchema.ElicitRequestFormParams)({
+    mode: "form",
     message: options.message,
     requestedSchema: Tool.getJsonSchemaFromSchema(schema)
-  })
+  }).pipe(Effect.orDie)
   const res = yield* client.elicit(request).pipe(
     Effect.catchCause((cause) => Effect.fail(new ElicitationDeclined({ cause: Cause.squash(cause), request })))
   )
@@ -2132,6 +2172,9 @@ const PingRpcs = RpcGroup.make(Ping).middleware(McpServerClientMiddleware)
 const layerHandlers = (serverInfo: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
 }, options: {
   readonly sessions: Sessions
@@ -2216,10 +2259,13 @@ const layerHandlers = (serverInfo: {
                 }
                 return Effect.succeed({
                   capabilities,
-                  serverInfo: {
+                  serverInfo: McpSchema.Implementation.make({
                     name: serverInfo.name,
-                    version: serverInfo.version
-                  }
+                    version: serverInfo.version,
+                    description: serverInfo.description,
+                    websiteUrl: serverInfo.websiteUrl,
+                    icons: serverInfo.icons
+                  })
                 })
               })
             }

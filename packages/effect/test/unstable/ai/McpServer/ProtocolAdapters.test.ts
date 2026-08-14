@@ -13,6 +13,16 @@ import * as Toolkit from "effect/unstable/ai/Toolkit"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
 import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 
+const ServerIcon = McpSchema.Icon.make({
+  src: "https://example.com/server.svg",
+  mimeType: "image/svg+xml",
+  sizes: ["48x48", "any"],
+  theme: "dark"
+})
+const ResourceIcon = McpSchema.Icon.make({ src: "https://example.com/resource.svg" })
+const PromptIcon = McpSchema.Icon.make({ src: "https://example.com/prompt.svg" })
+const ToolIcon = McpSchema.Icon.make({ src: "https://example.com/tool.svg" })
+
 const SharedTool = Tool.make("shared", {
   parameters: Tool.EmptyParams,
   success: Schema.String
@@ -163,8 +173,16 @@ const makeFixture = Effect.fnUntraced(function*() {
     Layer.provide(McpServer.layerHttp({
       name: "ProtocolAdapterServer",
       version: "1.0.0",
+      description: "Protocol adapter fixture",
+      websiteUrl: "https://example.com/mcp",
+      icons: [McpSchema.Icon.make({
+        src: "https://example.com/server.svg",
+        mimeType: "image/svg+xml",
+        sizes: ["any"]
+      })],
       path: "/mcp",
       protocols: [
+        McpProtocol.v2025_11_25,
         McpProtocol.v2025_06_18,
         McpProtocol.v2025_03_26,
         McpProtocol.v2024_11_05
@@ -210,6 +228,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
         resource: new McpSchema.Resource({
           uri: "file:///metadata.txt",
           name: "metadata-resource",
+          icons: [ResourceIcon],
           _meta: { descriptor: "fixture" }
         }),
         annotations: Context.empty(),
@@ -223,6 +242,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
       yield* server.addPrompt({
         prompt: new McpSchema.Prompt({
           name: "metadata-prompt",
+          icons: [PromptIcon],
           _meta: { descriptor: "fixture" }
         }),
         annotations: Context.empty(),
@@ -251,6 +271,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
         tool: new McpSchema.Tool({
           name: "title-precedence",
           title: "Canonical title",
+          icons: [ToolIcon],
           inputSchema: {
             type: "object",
             properties: {}
@@ -341,7 +362,8 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
                 },
                 annotations: {
                   audience: ["assistant"],
-                  priority: 0.75
+                  priority: 0.75,
+                  lastModified: "2026-08-13T00:00:00Z"
                 },
                 _meta: { content: "fixture" }
               }],
@@ -463,8 +485,12 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
     Layer.provide(McpServer.layerHttp({
       name: "LowLevelProtocolAdapterServer",
       version: "1.0.0",
+      description: "Low-level protocol adapter fixture",
+      websiteUrl: "https://example.com/low-level-mcp",
+      icons: [ServerIcon],
       path: "/mcp",
       protocols: [
+        McpProtocol.v2025_11_25,
         McpProtocol.v2025_06_18,
         McpProtocol.v2025_03_26,
         McpProtocol.v2024_11_05
@@ -496,7 +522,7 @@ const decodeJsonRpcResponse = Schema.decodeUnknownEffect(JsonRpcResponse)
 
 const initialize = Effect.fnUntraced(function*(
   post: Effect.Success<ReturnType<typeof makeFixture>>["post"],
-  protocolVersion: "2025-06-18" | "2025-03-26" | "2024-11-05",
+  protocolVersion: "2025-11-25" | "2025-06-18" | "2025-03-26" | "2024-11-05",
   options?: {
     readonly capabilities?: Record<string, unknown>
     readonly clientInfo?: {
@@ -691,6 +717,21 @@ describe("McpServer protocol adapters", () => {
         ) {
           assert.deepStrictEqual(yield* protocol.projectNotification(notification), expected)
         }
+      }
+
+      const elicitationComplete = McpCore.ServerNotification.ElicitationComplete({ elicitationId: "elicitation-1" })
+      assert.deepStrictEqual(yield* McpProtocol.v2025_11_25.projectNotification(elicitationComplete), {
+        tag: "notifications/elicitation/complete",
+        payload: { elicitationId: "elicitation-1" }
+      })
+      for (
+        const protocol of [
+          McpProtocol.v2024_11_05,
+          McpProtocol.v2025_03_26,
+          McpProtocol.v2025_06_18
+        ]
+      ) {
+        assert.isUndefined(yield* protocol.projectNotification(elicitationComplete))
       }
     }))
   it.effect("should omit elicitation when the negotiated protocol predates v2025-06-18", () =>
@@ -997,7 +1038,7 @@ describe("McpServer protocol adapters", () => {
     Effect.gen(function*() {
       const fixture = yield* makeLowLevelFixture()
 
-      for (const protocolVersion of ["2025-06-18", "2025-03-26", "2024-11-05"] as const) {
+      for (const protocolVersion of ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion)
         const result = resultOf(
           yield* client.request("tools/call", { name: "annotated-resource" })
@@ -1009,14 +1050,23 @@ describe("McpServer protocol adapters", () => {
         const resource = Schema.decodeUnknownSync(
           Schema.Record(Schema.String, Schema.Unknown)
         )(content.resource)
-        assert.deepStrictEqual(content.annotations, {
-          audience: ["assistant"],
-          priority: 0.75
-        })
+        assert.deepStrictEqual(
+          content.annotations,
+          protocolVersion === "2025-11-25"
+            ? {
+              audience: ["assistant"],
+              priority: 0.75,
+              lastModified: "2026-08-13T00:00:00Z"
+            }
+            : {
+              audience: ["assistant"],
+              priority: 0.75
+            }
+        )
         assert.strictEqual(resource.uri, "file:///annotated.txt")
         assert.strictEqual(resource.mimeType, "text/plain")
         assert.strictEqual(resource.text, "annotated")
-        if (protocolVersion === "2025-06-18") {
+        if (protocolVersion === "2025-11-25" || protocolVersion === "2025-06-18") {
           assert.deepStrictEqual(resource._meta, { source: "fixture" })
           assert.deepStrictEqual(content._meta, { content: "fixture" })
         } else {
@@ -1066,6 +1116,46 @@ describe("McpServer protocol adapters", () => {
           assert.notProperty(content, "_meta")
         }
       }
+    }))
+
+  it.effect("should expose implementation metadata and descriptor icons when supported by the protocol", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeLowLevelFixture()
+      const november = yield* initialize(fixture.post, "2025-11-25")
+      const june = yield* initialize(fixture.post, "2025-06-18")
+
+      assert.deepStrictEqual(november.initializeResult.serverInfo, {
+        name: "LowLevelProtocolAdapterServer",
+        version: "1.0.0",
+        description: "Low-level protocol adapter fixture",
+        websiteUrl: "https://example.com/low-level-mcp",
+        icons: [{
+          src: "https://example.com/server.svg",
+          mimeType: "image/svg+xml",
+          sizes: ["48x48", "any"],
+          theme: "dark"
+        }]
+      })
+      assert.deepStrictEqual(june.initializeResult.serverInfo, {
+        name: "LowLevelProtocolAdapterServer",
+        version: "1.0.0"
+      })
+
+      const resources = resultOf(yield* november.request("resources/list"))
+      const resource = (resources.resources as Array<Record<string, unknown>>).find(
+        (_) => _.uri === "file:///metadata.txt"
+      )
+      assert.isDefined(resource)
+      assert.deepStrictEqual(resource.icons, [{ src: "https://example.com/resource.svg" }])
+
+      const prompts = resultOf(yield* november.request("prompts/list"))
+      const prompt = (prompts.prompts as Array<Record<string, unknown>>).find((_) => _.name === "metadata-prompt")
+      assert.isDefined(prompt)
+      assert.deepStrictEqual(prompt.icons, [{ src: "https://example.com/prompt.svg" }])
+
+      const tool = listedTools(yield* november.request("tools/list")).find((_) => _.name === "title-precedence")
+      assert.isDefined(tool)
+      assert.deepStrictEqual(tool.icons, [{ src: "https://example.com/tool.svg" }])
     }))
 
   it.effect("should hide and reject a tool when its declaration is incompatible with the revision", () =>

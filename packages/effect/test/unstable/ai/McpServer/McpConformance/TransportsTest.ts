@@ -155,6 +155,17 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
       describe(httpTransportSuiteName(protocol), () => {
         describe("Sending Messages to the Server", () => {
+          it.effect.skipIf(["2024-11-05", "2025-03-26"].includes(protocol.protocolVersion))(
+            "MUST reject JSON-RPC batches",
+            () =>
+              Effect.gen(function*() {
+                const test = yield* McpConformance
+                const response = yield* test.post([test.initializeRequest()])
+
+                assert.isAtLeast(response.status, 400)
+              })
+          )
+
           it.effect("MUST accept JSON-RPC requests through POST on the MCP endpoint", () =>
             Effect.gen(function*() {
               const test = yield* McpConformance
@@ -186,6 +197,25 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               assert.strictEqual(response.status, 202)
               assert.strictEqual(yield* Effect.promise(() => response.text()), "")
             }))
+
+          it.effect.skipIf(["2024-11-05", "2025-03-26"].includes(protocol.protocolVersion))(
+            "MUST require the negotiated protocol-version header after initialization",
+            () =>
+              Effect.gen(function*() {
+                const test = yield* McpConformance
+                const initialized = yield* test.initialize()
+                assert.isNotNull(initialized.sessionId)
+
+                const missing = yield* test.ping(initialized, { includeProtocolVersion: false })
+                const mismatched = yield* test.ping(initialized, {
+                  id: 3,
+                  protocolVersion: protocol.protocolVersion === "2025-11-25" ? "2025-06-18" : "2025-03-26"
+                })
+
+                assert.isAtLeast(missing.status, 400)
+                assert.isAtLeast(mismatched.status, 400)
+              })
+          )
 
           it.effect("MUST require the application/json content type for POST requests", () =>
             Effect.gen(function*() {

@@ -48,10 +48,7 @@ export interface CanonicalServerCapabilities {
 /** @internal */
 export interface CanonicalInitializeResult {
   readonly capabilities: CanonicalServerCapabilities
-  readonly serverInfo: Readonly<{
-    readonly name: string
-    readonly version: string
-  }>
+  readonly serverInfo: McpSchema.Implementation
   readonly instructions?: string | undefined
 }
 
@@ -296,6 +293,7 @@ export type ServerNotification = Data.TaggedEnum<{
   ResourcesChanged: { readonly metadata?: Schema.JsonObject | undefined }
   ToolsChanged: { readonly metadata?: Schema.JsonObject | undefined }
   PromptsChanged: { readonly metadata?: Schema.JsonObject | undefined }
+  ElicitationComplete: { readonly elicitationId: string }
 }>
 
 /** @internal */

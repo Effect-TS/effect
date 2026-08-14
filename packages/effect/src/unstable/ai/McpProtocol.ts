@@ -12,6 +12,7 @@ import type * as RpcGroup from "../rpc/RpcGroup.ts"
 import { protocol as protocol2024_11_05 } from "./internal/mcpProtocol/v2024_11_05.ts"
 import { protocol as protocol2025_03_26 } from "./internal/mcpProtocol/v2025_03_26.ts"
 import { protocol as protocol2025_06_18 } from "./internal/mcpProtocol/v2025_06_18.ts"
+import { protocol as protocol2025_11_25 } from "./internal/mcpProtocol/v2025_11_25.ts"
 import type * as McpSchema from "./McpSchema.ts"
 
 /**
@@ -20,7 +21,7 @@ import type * as McpSchema from "./McpSchema.ts"
  * @category models
  * @since 4.0.0
  */
-export type ProtocolVersion = "2024-11-05" | "2025-03-26" | "2025-06-18"
+export type ProtocolVersion = "2024-11-05" | "2025-03-26" | "2025-06-18" | "2025-11-25"
 
 /**
  * Payload codecs used by a protocol adapter.
@@ -104,6 +105,14 @@ export interface AnyProtocolAdapter<out Version extends string = string, Handler
 export interface ProtocolAdapter<out Version extends ProtocolVersion = ProtocolVersion>
   extends AnyProtocolAdapter<Version>
 {}
+
+/**
+ * The MCP 2025-11-25 protocol implementation.
+ *
+ * @category protocols
+ * @since 4.0.0
+ */
+export const v2025_11_25: ProtocolAdapter<"2025-11-25"> = protocol2025_11_25
 
 /**
  * The MCP 2025-06-18 protocol implementation.
