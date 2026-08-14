@@ -408,21 +408,36 @@ export const encodeHex: (input: Uint8Array | string) => string = (input) =>
 /**
  * Generates a random lowercase hexadecimal string with the specified length.
  *
- * The length must be an even number.
+ * The length must be a non-negative safe integer.
+ *
+ * This function uses `Math.random()` and is not cryptographically secure. For
+ * security-sensitive values, use the `Crypto.Crypto` service's `randomBytes`
+ * method and encode the result with {@link encodeHex}.
  *
  * @category encoding
  * @since 4.0.0
  */
 export const randomHex = (length: number): string => {
-  const bytes = length >>> 1
-  if (randomBytesOffset + bytes > randomBytes.length) {
-    for (let i = 0; i < randomWords.length; i++) {
-      randomWords[i] = (Math.random() * 0x100000000) >>> 0
-    }
-    randomBytesOffset = 0
+  if (!Number.isSafeInteger(length) || length < 0) {
+    throw new RangeError("length must be a non-negative safe integer")
   }
-  const result = hexEncodeUint8Array(randomBytes.subarray(randomBytesOffset, randomBytesOffset + bytes))
-  randomBytesOffset += bytes
+  let result = ""
+  let remaining = length
+  while (remaining >= 2) {
+    if (randomBytesOffset === randomBytes.length) {
+      refillRandomBytes()
+    }
+    const bytes = Math.min(Math.floor(remaining / 2), randomBytes.length - randomBytesOffset)
+    result += hexEncodeUint8Array(randomBytes, randomBytesOffset, randomBytesOffset + bytes)
+    randomBytesOffset += bytes
+    remaining -= bytes * 2
+  }
+  if (remaining === 1) {
+    if (randomBytesOffset === randomBytes.length) {
+      refillRandomBytes()
+    }
+    result += byteToHex[randomBytes[randomBytesOffset++]][0]
+  }
   return result
 }
 
@@ -769,9 +784,9 @@ for (let i = 0; i < 256; i++) {
   byteToHex.push(i.toString(16).padStart(2, "0"))
 }
 
-const hexEncodeUint8Array = (bytes: Uint8Array): string => {
+const hexEncodeUint8Array = (bytes: Uint8Array, start = 0, end = bytes.length): string => {
   let result = ""
-  for (let i = 0; i < bytes.length; i++) {
+  for (let i = start; i < end; i++) {
     result += byteToHex[bytes[i]]
   }
   return result
@@ -780,6 +795,12 @@ const hexEncodeUint8Array = (bytes: Uint8Array): string => {
 const randomWords = new Uint32Array(96)
 const randomBytes = new Uint8Array(randomWords.buffer)
 let randomBytesOffset = randomBytes.length
+const refillRandomBytes = (): void => {
+  for (let i = 0; i < randomWords.length; i++) {
+    randomWords[i] = (Math.random() * 0x100000000) >>> 0
+  }
+  randomBytesOffset = 0
+}
 
 const fromHexChar = (byte: number) => {
   if (48 <= byte && byte <= 57) {
