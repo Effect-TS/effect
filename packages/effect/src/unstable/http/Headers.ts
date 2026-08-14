@@ -417,7 +417,13 @@ export const redact: {
 )
 
 /**
- * Checks whether a header name matches a redaction pattern.
+ * Checks whether a header name matches one of the redaction patterns.
+ *
+ * **Details**
+ *
+ * String patterns are compared case-insensitively against the header name;
+ * regular expressions are tested against it. Use to avoid the record copy of
+ * `redact` when only a membership check is needed.
  *
  * @category combinators
  * @since 4.0.0
@@ -428,7 +434,11 @@ export const isRedactedName = (
 ): boolean => {
   for (let i = 0; i < patterns.length; i++) {
     const pattern = patterns[i]
-    if (typeof pattern === "string" ? pattern.toLowerCase() === name : pattern.test(name)) {
+    if (typeof pattern === "string") {
+      if (pattern.toLowerCase() === name) {
+        return true
+      }
+    } else if (pattern.test(name)) {
       return true
     }
   }

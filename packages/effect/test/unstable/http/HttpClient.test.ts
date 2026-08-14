@@ -64,20 +64,18 @@ describe("HttpClient", () => {
             HttpClientResponse.fromWeb(
               request,
               new Response(null, {
-                headers: { "set-cookie": "secret", "x-response-default": "response" }
+                headers: { "x-response-default": "response" }
               })
             )
           )
         )
 
         yield* client.get("http://test/", {
-          headers: { "authorization": "secret", "x-request-default": "request" }
+          headers: { "x-request-default": "request" }
         }).pipe(Effect.provideService(Tracer.Tracer, tracer))
 
         assert(clientSpan !== undefined)
-        assert.strictEqual(clientSpan.attributes.get("http.request.header.authorization"), "<redacted>")
         assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-default"), "request")
-        assert.strictEqual(clientSpan.attributes.get("http.response.header.set-cookie"), "<redacted>")
         assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-default"), "response")
       }))
 

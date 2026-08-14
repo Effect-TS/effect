@@ -2,5 +2,4 @@
 "effect": patch
 ---
 
-Reduce temporary allocations when creating spans and recording HTTP header
-attributes.
+Improve tracing performance in span creation and HTTP middleware.

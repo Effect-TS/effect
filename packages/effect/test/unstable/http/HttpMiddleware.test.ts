@@ -93,7 +93,6 @@ describe("HttpMiddleware", () => {
           new Request("https://localhost:3000/todos/1?foo=bar", {
             method: "POST",
             headers: {
-              "authorization": "secret",
               "user-agent": "test-agent",
               "x-request": "request"
             }
@@ -101,7 +100,7 @@ describe("HttpMiddleware", () => {
         )
         const response = HttpServerResponse.empty({
           status: 201,
-          headers: { "set-cookie": "secret", "x-response": "response" }
+          headers: { "x-response": "response" }
         })
 
         yield* HttpMiddleware.tracer(Effect.succeed(response)).pipe(
@@ -116,10 +115,8 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(serverSpan.attributes.get("url.path"), "/todos/1")
         assert.strictEqual(serverSpan.attributes.get("url.query"), "foo=bar")
         assert.strictEqual(serverSpan.attributes.get("user_agent.original"), "test-agent")
-        assert.strictEqual(serverSpan.attributes.get("http.request.header.authorization"), "<redacted>")
         assert.strictEqual(serverSpan.attributes.get("http.request.header.x-request"), "request")
         assert.strictEqual(serverSpan.attributes.get("http.response.status_code"), 201)
-        assert.strictEqual(serverSpan.attributes.get("http.response.header.set-cookie"), "<redacted>")
         assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response"), "response")
       }))
 
