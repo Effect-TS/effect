@@ -25,7 +25,8 @@ export interface ProtocolRegistry<
     request: RpcMessage.RequestEncoded
   ) => RpcMessage.RequestEncoded
   readonly handlerTarget: (
-    contextMap: Map<string, unknown>
+    contextMap: Map<string, unknown>,
+    context: McpProtocolInternal.HandlerInstallationContext
   ) => McpProtocolInternal.HandlerInstallationTarget
 }
 
@@ -72,7 +73,8 @@ export const make = Effect.fnUntraced(function*<
       ...request,
       tag: `${prefix(protocol)}${request.tag}`
     }),
-    handlerTarget: (contextMap: Map<string, unknown>): McpProtocolInternal.HandlerInstallationTarget => ({
+    handlerTarget: (contextMap, context): McpProtocolInternal.HandlerInstallationTarget => ({
+      context,
       install: Effect.fnUntraced(function*<
         Rpcs extends Rpc.Any,
         Handlers extends RpcGroup.HandlersFrom<Rpcs>

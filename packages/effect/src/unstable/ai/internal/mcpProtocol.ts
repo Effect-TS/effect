@@ -29,6 +29,27 @@ export const invocationFromClient = (
 ): McpCore.McpInvocation => ({
   clientId: request.clientId,
   protocol: profileFromClient(request),
+  requestContext: PublicMcpSchema.McpRequestContext.of({
+    clientId: request.clientId,
+    protocolVersion: request.protocolVersion,
+    clientCapabilities: request.clientCapabilities,
+    clientInfo: request.clientInfo,
+    requestMetadata: request.initializePayload._meta
+  }),
+  serverClient: request
+})
+
+/** @internal */
+export const invocationFromRequestContext = (
+  request: PublicMcpSchema.McpRequestContext["Service"]
+): McpCore.McpInvocation => ({
+  clientId: request.clientId,
+  protocol: {
+    protocolVersion: request.protocolVersion,
+    clientCapabilities: request.clientCapabilities,
+    clientInfo: request.clientInfo,
+    requestMetadata: request.requestMetadata
+  },
   requestContext: request
 })
 
@@ -205,6 +226,7 @@ export const makeNotificationProjector = Effect.fn(function*(
 
 /** @internal */
 export interface HandlerInstallationTarget {
+  readonly context: HandlerInstallationContext
   readonly install: <
     Rpcs extends Rpc.Any,
     Handlers extends RpcGroup.HandlersFrom<Rpcs>
@@ -218,8 +240,26 @@ export interface HandlerInstallationTarget {
 }
 
 /** @internal */
+export interface HandlerInstallationContext {
+  readonly supportedVersions: ReadonlyArray<string>
+  readonly serverInfo: {
+    readonly name: string
+    readonly version: string
+    readonly description?: string | undefined
+    readonly websiteUrl?: string | undefined
+    readonly icons?: ReadonlyArray<PublicMcpSchema.Icon> | undefined
+  }
+  readonly registrationPresence: {
+    readonly tools: boolean
+    readonly resources: boolean
+    readonly prompts: boolean
+  }
+}
+
+/** @internal */
 export interface ProtocolAdapter<
   out Version extends string = string,
+  out Runtime extends PublicMcpProtocol.RuntimeDescriptor = PublicMcpProtocol.RuntimeDescriptor,
   ClientRpcs extends Rpc.Any = Rpc.Any,
   ClientNotificationRpcs extends ClientRpcs = ClientRpcs,
   ServerRequestRpcs extends Rpc.Any = Rpc.Any,
@@ -230,10 +270,7 @@ export interface ProtocolAdapter<
   // Each adapter owns its dated RPC vocabulary, transport policy, handler
   // projection, and wire behavior.
   readonly protocolVersion: Version
-  readonly transport: {
-    readonly acceptsJsonRpcBatches: boolean
-    readonly requiresVersionHeader: boolean
-  }
+  readonly runtime: Runtime
   readonly clientRpcs: RpcGroup.RpcGroup<ClientRpcs>
   readonly clientNotificationRpcs: RpcGroup.RpcGroup<ClientNotificationRpcs>
   readonly serverRequestRpcs: RpcGroup.RpcGroup<ServerRequestRpcs>
@@ -242,7 +279,7 @@ export interface ProtocolAdapter<
   readonly handlerRpcs?: RpcGroup.RpcGroup<HandlerRpcs> | undefined
   readonly installHandlers: (
     core: McpCore.McpCore,
-    lifecycle: LifecycleRuntime,
+    lifecycle: LifecycleRuntime | undefined,
     target: HandlerInstallationTarget
   ) => Effect.Effect<void, never, HandlerRequirements>
   readonly makeReverseClient: (
@@ -263,6 +300,7 @@ export interface ProtocolAdapter<
 /** @internal */
 export const make = <
   const Version extends string,
+  const Runtime extends PublicMcpProtocol.RuntimeDescriptor,
   ClientRpcs extends Rpc.Any,
   ClientNotificationRpcs extends ClientRpcs,
   ServerRequestRpcs extends Rpc.Any,
@@ -271,10 +309,7 @@ export const make = <
   Handlers extends RpcGroup.HandlersFrom<HandlerRpcs> = RpcGroup.HandlersFrom<HandlerRpcs>
 >(options: {
   readonly protocolVersion: Version
-  readonly transport: {
-    readonly acceptsJsonRpcBatches: boolean
-    readonly requiresVersionHeader: boolean
-  }
+  readonly runtime: Runtime
   readonly clientRpcs: RpcGroup.RpcGroup<ClientRpcs>
   readonly clientNotificationRpcs: RpcGroup.RpcGroup<ClientNotificationRpcs>
   readonly serverRequestRpcs: RpcGroup.RpcGroup<ServerRequestRpcs>
@@ -283,7 +318,8 @@ export const make = <
   readonly makeHandlers?:
     | ((
       core: McpCore.McpCore,
-      lifecycle: LifecycleRuntime
+      lifecycle: LifecycleRuntime,
+      context: HandlerInstallationContext
     ) => Handlers)
     | undefined
   readonly toReverseClient: (
@@ -298,6 +334,7 @@ export const make = <
   ) => Effect.Effect<McpCore.Cancellation, unknown>
 }): ProtocolAdapter<
   Version,
+  Runtime,
   ClientRpcs,
   ClientNotificationRpcs,
   ServerRequestRpcs,
@@ -321,12 +358,18 @@ export const make = <
 
   const installHandlers = (
     core: McpCore.McpCore,
-    lifecycle: LifecycleRuntime,
+    lifecycle: LifecycleRuntime | undefined,
     target: HandlerInstallationTarget
   ): Effect.Effect<void, never, RpcGroup.HandlersServices<HandlerRpcs, Handlers>> =>
     options.handlerRpcs === undefined || options.makeHandlers === undefined
       ? Effect.void
-      : target.install(options, options.handlerRpcs, options.makeHandlers(core, lifecycle))
+      : lifecycle === undefined && options.runtime._tag === "Stateful"
+      ? Effect.die("MCP sessionful handler installation requires a lifecycle runtime")
+      : target.install(
+        options,
+        options.handlerRpcs,
+        options.makeHandlers(core, lifecycle!, target.context)
+      )
 
   const makeReverseClient = (
     profile: McpCore.NegotiatedProtocolProfile
