@@ -98,7 +98,7 @@ describe("OpenApi", () => {
   })
 
   it("preserves JSON.rawJSON values when cloning cached specs", () => {
-    const rawJson = (JSON as { rawJSON: (value: string) => unknown }).rawJSON("9223372036854775807")
+    const rawJson = (JSON as unknown as { rawJSON: (value: string) => unknown }).rawJSON("9223372036854775807")
     const Api = HttpApi.make("Api").annotate(OpenApi.Transform, (spec) => ({
       ...spec,
       info: {
