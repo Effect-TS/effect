@@ -2648,6 +2648,28 @@ export interface McpReverseClient {
 }
 
 /**
+ * Protocol-neutral context available while handling an MCP request.
+ *
+ * **Details**
+ *
+ * Unlike `McpServerClient`, this service does not imply an initialized session
+ * or support for server-initiated requests.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export class McpRequestContext extends Context.Service<McpRequestContext, {
+  readonly clientId: number
+  readonly protocolVersion: string
+  readonly clientCapabilities: ClientCapabilities
+  readonly clientInfo?: Implementation | undefined
+  readonly requestMetadata?:
+    | NonNullable<typeof Initialize.payloadSchema.Type["_meta"]>
+    | Schema.JsonObject
+    | undefined
+}>()("effect/ai/McpSchema/McpRequestContext") {}
+
+/**
  * Service available while handling an MCP client request.
  *
  * **Details**
@@ -3021,8 +3043,13 @@ export function param<const Name extends string, S extends Schema.Constraint>(
  * @category services
  * @since 4.0.0
  */
-export class EnabledWhen
-  extends Context.Service<EnabledWhen, Predicate.Predicate<typeof Initialize.payloadSchema.Type>>()(
-    "effect/unstable/ai/McpSchema/EnabledWhen"
-  )
-{}
+export class EnabledWhen extends Context.Service<
+  EnabledWhen,
+  Predicate.Predicate<{
+    readonly protocolVersion: string
+    readonly capabilities: ClientCapabilities
+    readonly clientInfo?: Implementation | undefined
+  }>
+>()(
+  "effect/unstable/ai/McpSchema/EnabledWhen"
+) {}

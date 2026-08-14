@@ -223,6 +223,32 @@ describe("McpServer", () => {
 
         assert.isUndefined(received)
       }))
+
+    it.effect("should provide neutral and legacy request services to legacy handlers", () =>
+      Effect.gen(function*() {
+        const server = yield* McpServer.McpServer.make
+        let received: string | undefined
+        yield* server.addTool({
+          tool: new McpSchema.Tool({
+            name: "request-services",
+            inputSchema: { type: "object" }
+          }),
+          annotations: Context.empty(),
+          handle: () =>
+            Effect.gen(function*() {
+              const request = yield* McpSchema.McpRequestContext
+              const client = yield* McpSchema.McpServerClient
+              received = `${request.protocolVersion}:${client.initializePayload.clientInfo.name}`
+              return new McpSchema.CallToolResult({ content: [] })
+            })
+        })
+
+        yield* server.callTool({ name: "request-services" }).pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient)
+        )
+
+        assert.strictEqual(received, "2025-06-18:TestClient")
+      }))
   })
 
   it.effect("should reject browser Origins by default while accepting Origin-less clients", () =>
@@ -606,7 +632,7 @@ describe("McpServer", () => {
   })
 
   describe("resource subscriptions", () => {
-    it.effect("should isolate resource update subscriptions between sessions", () =>
+    it.effect("should isolate resource subscriptions and clear disconnected sessions", () =>
       Effect.gen(function*() {
         const clientIds = new Set([1, 2])
         const client1Outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
@@ -707,6 +733,32 @@ describe("McpServer", () => {
         assert.strictEqual((yield* nextResourceUpdate(2)).uri, "file:///sentinel")
         assert.isTrue(Option.isNone(yield* Queue.poll(client1Outbound)))
         assert.isTrue(Option.isNone(yield* Queue.poll(client2Outbound)))
+
+        clientIds.delete(1)
+        yield* server.notifications["notifications/resources/updated"]({ uri: "file:///sentinel" })
+        assert.strictEqual((yield* nextResourceUpdate(2)).uri, "file:///sentinel")
+        clientIds.add(1)
+        yield* send(1, {
+          _tag: "Request",
+          id: 30,
+          tag: "ping",
+          payload: {},
+          headers: []
+        })
+        const afterSweep = yield* nextResponse(1, 30)
+        assert.strictEqual(afterSweep.exit._tag, "Failure")
+
+        yield* initialize(1)
+        yield* send(1, { _tag: "Eof" })
+        yield* send(1, {
+          _tag: "Request",
+          id: 31,
+          tag: "ping",
+          payload: {},
+          headers: []
+        })
+        const afterReconnect = yield* nextResponse(1, 31)
+        assert.strictEqual(afterReconnect.exit._tag, "Failure")
       }))
   })
 
