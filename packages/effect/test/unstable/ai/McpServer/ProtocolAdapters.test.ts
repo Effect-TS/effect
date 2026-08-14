@@ -126,6 +126,12 @@ const ResourceLinkPrompt = McpServer.prompt({
     }])
 })
 
+const MrtrTool = new McpSchema.Tool({
+  name: "mrtr-elicitation",
+  description: "Requires client input before completing",
+  inputSchema: { type: "object" }
+})
+
 interface TestState {
   sharedInvocations: number
   structuredInvocations: number
@@ -164,8 +170,24 @@ const makeFixture = Effect.fnUntraced(function*() {
       "capability-gated": () => Effect.succeed("visible")
     })))
   )
+  const mrtrToolLayer = Layer.effectDiscard(
+    Effect.gen(function*() {
+      const server = yield* McpServer.McpServer
+      yield* server.addTool({
+        tool: MrtrTool,
+        annotations: Context.empty(),
+        handle: () =>
+          Effect.succeed(
+            new McpSchema.InputRequired({
+              inputRequests: { roots: { method: "roots/list" } }
+            })
+          )
+      })
+    })
+  )
   const serverLayer = Layer.mergeAll(
     toolkitLayer,
+    mrtrToolLayer,
     FamilyResource,
     FamilyPrompt,
     AudioPrompt,
@@ -805,6 +827,15 @@ describe("McpServer protocol adapters", () => {
           )
         }
       }
+    }))
+
+  it.effect("should reject client input when the selected protocol cannot encode it", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+      const legacy = yield* initialize(fixture.post, "2025-11-25")
+      const legacyError = errorOf(yield* legacy.request("tools/call", { name: MrtrTool.name, arguments: {} }))
+      assert.strictEqual(legacyError.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+      assert.match(legacyError.message, /Client input is not supported/)
     }))
 
   it.effect("should reject prompt content when the negotiated schema cannot represent it", () =>

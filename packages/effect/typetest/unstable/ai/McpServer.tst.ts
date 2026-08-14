@@ -113,6 +113,26 @@ describe("McpServer", () => {
   })
 
   describe("request context", () => {
+    it("should expose multi-round-trip input through the request context", () => {
+      expect(McpSchema.McpRequestContext.useSync((context) => context.inputResponses)).type.toBe<
+        Effect.Effect<
+          Readonly<Record<string, McpSchema.McpInputResponse>> | undefined,
+          never,
+          McpSchema.McpRequestContext
+        >
+      >()
+      expect(McpSchema.McpRequestContext.useSync((context) => context.requestState)).type.toBe<
+        Effect.Effect<string | undefined, never, McpSchema.McpRequestContext>
+      >()
+      expect(
+        new McpSchema.InputRequired({
+          inputRequests: {
+            approval: { method: "elicitation/create", params: { message: "Approve" } }
+          }
+        })
+      ).type.toBe<McpSchema.InputRequired>()
+    })
+
     it("should expose the selected protocol version when a handler reads its client", () => {
       expect(McpSchema.McpServerClient.useSync((client) => client.protocolVersion)).type.toBe<
         Effect.Effect<McpProtocol.StatefulProtocolVersion, never, McpSchema.McpServerClient>

@@ -13,9 +13,12 @@ import * as McpProtocol from "../mcpProtocol.ts"
 import * as McpSchema from "../mcpSchema/v2026_07_28.ts"
 
 const JsonObject = Schema.Record(Schema.String, Schema.Json)
+const InputResponses = Schema.Record(Schema.String, JsonObject)
 const decodeRequestMetadata = Schema.decodeUnknownEffect(McpSchema.RequestMetaObject)
 
-const omitUndefined = (value: Readonly<Record<string, unknown>>): Record<string, unknown> => {
+type ObjectWithUndefined = Readonly<Record<string, unknown>>
+
+const omitUndefined = (value: ObjectWithUndefined): Record<string, unknown> => {
   const result: Record<string, unknown> = {}
   for (const key in value) {
     if (value[key] !== undefined) {
@@ -44,15 +47,40 @@ export const profileFromRequestMetadata = Effect.fnUntraced(function*(metadata: 
 })
 
 const resultMetadata = (
-  value: Readonly<Record<string, unknown>>,
+  value: ObjectWithUndefined,
   serverInfo: Schema.JsonObject
 ): Schema.JsonObject => {
-  const metadata = value._meta
+  const metadata: unknown = value._meta
   return {
     ...(Schema.is(JsonObject)(metadata) ? metadata : {}),
     "io.modelcontextprotocol/serverInfo": serverInfo
   }
 }
+
+const decodeCallToolOutcome = Schema.decodeUnknownEffect(Schema.Union([
+  McpSchema.CallToolResult,
+  McpSchema.InputRequiredResult
+]))
+
+export const projectCallToolOutcome = Effect.fnUntraced(function*(
+  outcome: McpCore.OperationOutcome<ObjectWithUndefined>,
+  serverInfo: typeof McpSchema.Implementation.Type
+) {
+  const encodedServerInfo = yield* Schema.encodeEffect(McpSchema.Implementation)(serverInfo)
+  if (outcome._tag === "Complete") {
+    return yield* decodeCallToolOutcome({
+      ...omitUndefined(outcome.value),
+      _meta: resultMetadata(outcome.value, encodedServerInfo),
+      resultType: "complete"
+    })
+  }
+  return yield* decodeCallToolOutcome({
+    _meta: { "io.modelcontextprotocol/serverInfo": encodedServerInfo },
+    resultType: "input_required",
+    ...(outcome.inputRequests === undefined ? {} : { inputRequests: outcome.inputRequests }),
+    ...(outcome.requestState === undefined ? {} : { requestState: outcome.requestState })
+  })
+})
 
 const projectContent = Effect.fnUntraced(function*(content: typeof PublicMcpSchema.ContentBlock.Type) {
   return Match.value(content).pipe(
@@ -111,7 +139,7 @@ const privateStaleCache = {
 } satisfies { readonly ttlMs: number; readonly cacheScope: "private" }
 
 const projectCompleteResult = Effect.fnUntraced(function*(
-  value: Readonly<Record<string, unknown>>,
+  value: ObjectWithUndefined,
   serverInfo: typeof McpSchema.Implementation.Type
 ) {
   const encodedServerInfo = yield* Schema.encodeEffect(McpSchema.Implementation)(serverInfo)
@@ -199,6 +227,20 @@ export const makeHandlers = (
   const getInvocation = PublicMcpSchema.McpRequestContext.useSync(
     McpProtocol.invocationFromRequestContext
   )
+  const getInputInvocation = Effect.fnUntraced(function*(
+    request: Pick<typeof McpSchema.CallTool.payloadSchema.Type, "inputResponses" | "requestState">
+  ) {
+    const context = yield* PublicMcpSchema.McpRequestContext
+    const inputResponses = request.inputResponses === undefined
+      ? undefined
+      // The RPC payload already validated the dated response union; this decode only erases it into canonical JSON.
+      : yield* Schema.decodeUnknownEffect(InputResponses)(request.inputResponses).pipe(Effect.orDie)
+    return McpProtocol.invocationFromRequestContext(PublicMcpSchema.McpRequestContext.of({
+      ...context,
+      inputResponses,
+      requestState: request.requestState
+    }))
+  })
   return ({
     "server/discover": Effect.fnUntraced(function*(
       _request: typeof McpSchema.Discover.payloadSchema.Type
@@ -323,32 +365,37 @@ export const makeHandlers = (
       }, discovery.serverInfo)
       return yield* Schema.decodeUnknownEffect(McpSchema.ListToolsResult)(result)
     }, Effect.mapError(projectError)),
-    "tools/call": Effect.fnUntraced(function*(
-      { arguments: args, name }: typeof McpSchema.CallTool.payloadSchema.Type
-    ) {
-      const invocation = yield* getInvocation
-      const toolResult = yield* core.tools.call({ name, arguments: args ?? {} }, invocation).pipe(
-        Effect.catchTags({
-          InvalidToolInput: (error) =>
-            Effect.succeed(PublicMcpSchema.CallToolResult.make({
-              content: [PublicMcpSchema.TextContent.make({ type: "text", text: error.message })],
-              isError: true
-            })),
-          ToolExecutionError: (error) =>
-            Effect.succeed(PublicMcpSchema.CallToolResult.make({
-              content: [PublicMcpSchema.TextContent.make({ type: "text", text: error.message })],
-              isError: true
-            }))
-        })
-      )
+    "tools/call": Effect.fnUntraced(function*(request: typeof McpSchema.CallTool.payloadSchema.Type) {
+      const invocation = yield* getInputInvocation(request)
+      const outcome = yield* core.tools.call({ name: request.name, arguments: request.arguments ?? {} }, invocation)
+        .pipe(
+          Effect.catchTags({
+            InvalidToolInput: (error) =>
+              Effect.succeed(McpCore.OperationOutcome.Complete(PublicMcpSchema.CallToolResult.make({
+                content: [PublicMcpSchema.TextContent.make({ type: "text", text: error.message })],
+                isError: true
+              }))),
+            ToolExecutionError: (error) =>
+              Effect.succeed(McpCore.OperationOutcome.Complete(PublicMcpSchema.CallToolResult.make({
+                content: [PublicMcpSchema.TextContent.make({ type: "text", text: error.message })],
+                isError: true
+              })))
+          })
+        )
+      if (outcome._tag === "InputRequired") {
+        return yield* projectCallToolOutcome(outcome, discovery.serverInfo)
+      }
+      const toolResult = outcome.value
       const content = yield* Effect.forEach(toolResult.content, projectContent)
-      const result = yield* projectCompleteResult({
-        content,
-        structuredContent: toolResult.structuredContent,
-        isError: toolResult.isError,
-        _meta: toolResult._meta
-      }, discovery.serverInfo)
-      return yield* Schema.decodeUnknownEffect(McpSchema.CallToolResult)(result)
+      return yield* projectCallToolOutcome(
+        McpCore.OperationOutcome.Complete({
+          content,
+          structuredContent: toolResult.structuredContent,
+          isError: toolResult.isError,
+          _meta: toolResult._meta
+        }),
+        discovery.serverInfo
+      )
     }, Effect.mapError(projectError)),
     "notifications/cancelled": Effect.fnUntraced(function*(
       _request: typeof McpSchema.CancelledNotification.payloadSchema.Type
