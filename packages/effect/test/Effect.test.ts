@@ -613,6 +613,27 @@ describe("Effect", () => {
       }))
   })
 
+  describe("head", () => {
+    it.effect("returns the first element", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.head(Effect.succeed([1, 2, 3]))
+        assert.strictEqual(result, 1)
+      }))
+
+    it.effect("fails with NoSuchElementError for an empty iterable", () =>
+      Effect.gen(function*() {
+        const error = yield* Effect.head(Effect.succeed([] as Array<number>)).pipe(Effect.flip)
+        assert.isTrue(Cause.isNoSuchElementError(error))
+      }))
+
+    it.effect("preserves the source failure", () =>
+      Effect.gen(function*() {
+        const source: Effect.Effect<Iterable<number>, "failure"> = Effect.fail("failure")
+        const error = yield* Effect.head(source).pipe(Effect.flip)
+        assert.strictEqual(error, "failure")
+      }))
+  })
+
   describe("all", () => {
     it.effect("tuple", () =>
       Effect.gen(function*() {
