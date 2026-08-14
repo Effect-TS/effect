@@ -17,6 +17,7 @@ import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import type * as Exit from "../../Exit.ts"
 import { flow } from "../../Function.ts"
+import * as internalEncoding from "../../internal/encoding.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import type * as Scope from "../../Scope.ts"
@@ -244,20 +245,11 @@ const makeSpan = (options: {
   if (Option.isSome(self.parent)) {
     self.traceId = self.parent.value.traceId
   } else {
-    self.traceId = generateId(32)
+    self.traceId = internalEncoding.randomHexString(32)
   }
-  self.spanId = generateId(16)
+  self.spanId = internalEncoding.randomHexString(16)
   self.events = []
   return self
-}
-
-const generateId = (len: number): string => {
-  const chars = "0123456789abcdef"
-  let result = ""
-  for (let i = 0; i < len; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)]
-  }
-  return result
 }
 
 const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
