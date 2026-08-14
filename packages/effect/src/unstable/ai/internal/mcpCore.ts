@@ -17,16 +17,14 @@ export type CanonicalRequestMetadata = NonNullable<
 >
 
 /** @internal */
-export interface NegotiatedProtocolProfile<
-  out Version extends string = McpProtocol.ProtocolVersion
-> {
+export interface NegotiatedProtocolProfile<out Version extends string = McpProtocol.StatefulProtocolVersion> {
   // Core decisions receive negotiated facts rather than dated wire requests.
   readonly protocolVersion: Version
   readonly clientCapabilities: McpSchema.ClientCapabilities
-  readonly clientInfo: Version extends McpProtocol.ProtocolVersion ? McpSchema.Implementation
+  readonly clientInfo: Version extends McpProtocol.StatefulProtocolVersion ? McpSchema.Implementation
     : McpSchema.Implementation | undefined
   readonly requestMetadata?:
-    | (Version extends McpProtocol.ProtocolVersion ? CanonicalRequestMetadata
+    | (Version extends McpProtocol.StatefulProtocolVersion ? CanonicalRequestMetadata
       : CanonicalRequestMetadata | Schema.JsonObject)
     | undefined
 }

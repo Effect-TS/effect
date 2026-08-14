@@ -20,7 +20,7 @@ import type * as RpcMessage from "../../rpc/RpcMessage.ts"
 import type * as PublicMcpProtocol from "../McpProtocol.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
 import type * as McpCore from "./mcpCore.ts"
-import type * as McpProtocol from "./mcpProtocol.ts"
+import * as McpProtocol from "./mcpProtocol.ts"
 import * as McpProtocolRegistry from "./mcpProtocolRegistry.ts"
 import * as McpStatefulRuntime from "./mcpStatefulRuntime.ts"
 
@@ -250,6 +250,18 @@ export const make = Effect.fnUntraced(function*(
       const metadata = typeof request.payload === "object" && request.payload !== null && "_meta" in request.payload
         ? request.payload._meta
         : undefined
+      const requestedVersion = typeof metadata === "object" && metadata !== null &&
+          "io.modelcontextprotocol/protocolVersion" in metadata &&
+          typeof metadata["io.modelcontextprotocol/protocolVersion"] === "string"
+        ? metadata["io.modelcontextprotocol/protocolVersion"]
+        : undefined
+      if (requestedVersion !== undefined && requestedVersion !== protocol.protocolVersion) {
+        return yield* new McpProtocol.ProtocolError({
+          code: -32022,
+          message: `Unsupported protocol version '${requestedVersion}'`,
+          data: { supported: protocolVersions, requested: requestedVersion }
+        })
+      }
       const decodedProfile = yield* statelessDescriptor.profileFromRequestMetadata(metadata)
       const profile: McpCore.NegotiatedProtocolProfile<string> = {
         protocolVersion: decodedProfile.protocolVersion,
