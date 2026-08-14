@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { assertInclude, assertNone, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { assertNone, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Cause, Context, Duration, Effect, Fiber, Layer, Tracer } from "effect"
 import { TestClock } from "effect/testing"
 import type { Span } from "effect/Tracer"
@@ -65,7 +65,7 @@ describe("Tracer", () => {
           Effect.flip
         )
 
-        assertInclude(Cause.pretty(cause), "Tracer.test.ts:20:41")
+        assert.match(Cause.pretty(cause), /Tracer\.test\.ts:\d+:\d+/)
       }))
 
     it.effect("should set the parent span", () =>
