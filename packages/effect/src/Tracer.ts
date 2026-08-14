@@ -717,14 +717,22 @@ export class NativeSpan implements Span {
   }
 }
 
-const randomHexString = (function() {
-  const characters = "abcdef0123456789"
-  const charactersLength = characters.length
-  return function(length: number) {
-    let result = ""
-    for (let i = 0; i < length; i++) {
-      result += characters.charAt(Math.floor(Math.random() * charactersLength))
-    }
-    return result
+const byteToHex: Array<string> = []
+for (let i = 0; i < 256; i++) {
+  byteToHex.push(i.toString(16).padStart(2, "0"))
+}
+const randomBytes = new Uint8Array(384)
+let randomBytesOffset = randomBytes.length
+const randomHexString = (length: number): string => {
+  const bytes = length >>> 1
+  if (randomBytesOffset + bytes > randomBytes.length) {
+    crypto.getRandomValues(randomBytes)
+    randomBytesOffset = 0
   }
-})()
+  let result = ""
+  for (let i = 0; i < bytes; i++) {
+    result += byteToHex[randomBytes[randomBytesOffset + i]]
+  }
+  randomBytesOffset += bytes
+  return result
+}
