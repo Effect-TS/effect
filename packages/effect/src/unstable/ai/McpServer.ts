@@ -732,7 +732,7 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
     const selectedProtocol = session?.protocol ??
       clientProtocols.get(client.id) ??
       runtime.protocolForInternalTag(rpc._tag)
-    if (!isProtocolVersion(selectedProtocol.protocolVersion)) {
+    if (!isProtocolVersion(selectedProtocol.protocolVersion) || selectedProtocol.protocolVersion === "2026-07-28") {
       return Effect.die(`Unsupported selected MCP protocol version: ${selectedProtocol.protocolVersion}`)
     }
     const profile: McpCore.NegotiatedProtocolProfile = session?.negotiatedProfile ?? {

@@ -24,7 +24,7 @@ import type * as Scope from "../../Scope.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcMiddleware from "../rpc/RpcMiddleware.ts"
-import type { ProtocolVersion } from "./McpProtocol.ts"
+import type { ProtocolVersion, StatefulProtocolVersion } from "./McpProtocol.ts"
 
 /**
  * Schema type returned by `optionalWithDefault`.
@@ -2682,7 +2682,7 @@ export class McpRequestContext extends Context.Service<McpRequestContext, {
  */
 export class McpServerClient extends Context.Service<McpServerClient, {
   readonly clientId: number
-  readonly protocolVersion: ProtocolVersion
+  readonly protocolVersion: StatefulProtocolVersion
   readonly clientCapabilities: ClientCapabilities
   readonly clientInfo: Implementation
   readonly initializePayload: typeof Initialize.payloadSchema["Type"]

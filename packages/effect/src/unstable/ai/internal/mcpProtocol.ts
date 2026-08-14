@@ -297,6 +297,9 @@ export interface ProtocolAdapter<
   ) => Effect.Effect<McpCore.Cancellation, unknown>
 }
 
+type HandlerLifecycle<Runtime extends PublicMcpProtocol.RuntimeDescriptor> = Runtime extends
+  PublicMcpProtocol.StatefulRuntimeDescriptor ? LifecycleRuntime : undefined
+
 /** @internal */
 export const make = <
   const Version extends string,
@@ -318,7 +321,7 @@ export const make = <
   readonly makeHandlers?:
     | ((
       core: McpCore.McpCore,
-      lifecycle: LifecycleRuntime,
+      lifecycle: HandlerLifecycle<Runtime>,
       context: HandlerInstallationContext
     ) => Handlers)
     | undefined
@@ -368,7 +371,13 @@ export const make = <
       : target.install(
         options,
         options.handlerRpcs,
-        options.makeHandlers(core, lifecycle!, target.context)
+        options.makeHandlers(
+          core,
+          // TypeScript cannot narrow HandlerLifecycle<Runtime> from the generic runtime tag; the preceding guard
+          // enforces the stateful lifecycle invariant.
+          (options.runtime._tag === "Stateful" ? lifecycle : undefined) as HandlerLifecycle<Runtime>,
+          target.context
+        )
       )
 
   const makeReverseClient = (
