@@ -4,9 +4,9 @@
 
 Improve tracing performance in span creation and the HTTP tracer middleware.
 
-- `NativeSpan` id generation now uses batched `crypto.getRandomValues` with a
-  byte-to-hex table instead of one `Math.random()` call per character (~5x
-  faster, and no longer `Math.random()` based).
+- `NativeSpan` id generation now fills a batched random byte buffer (4 bytes
+  per `Math.random()` call) and maps bytes through a byte-to-hex table instead
+  of one `Math.random()` call per character (~4x faster).
 - `makeSpanUnsafe` avoids `Object.entries` allocations when applying span
   annotations and attributes.
 - The HTTP server tracer middleware computes `url.*` span attributes with

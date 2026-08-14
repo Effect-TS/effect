@@ -721,12 +721,15 @@ const byteToHex: Array<string> = []
 for (let i = 0; i < 256; i++) {
   byteToHex.push(i.toString(16).padStart(2, "0"))
 }
-const randomBytes = new Uint8Array(384)
+const randomWords = new Uint32Array(96)
+const randomBytes = new Uint8Array(randomWords.buffer)
 let randomBytesOffset = randomBytes.length
 const randomHexString = (length: number): string => {
   const bytes = length >>> 1
   if (randomBytesOffset + bytes > randomBytes.length) {
-    crypto.getRandomValues(randomBytes)
+    for (let i = 0; i < randomWords.length; i++) {
+      randomWords[i] = (Math.random() * 0x100000000) >>> 0
+    }
     randomBytesOffset = 0
   }
   let result = ""
