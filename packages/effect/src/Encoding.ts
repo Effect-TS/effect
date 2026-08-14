@@ -405,18 +405,19 @@ export const decodeBase64UrlString = (str: string) => Result.map(decodeBase64Url
 export const encodeHex: (input: Uint8Array | string) => string = (input) =>
   typeof input === "string" ? hexEncodeUint8Array(encoder.encode(input)) : hexEncodeUint8Array(input)
 
-/** @internal */
+/**
+ * Generates a random lowercase hexadecimal string. The length must be a
+ * multiple of 8.
+ *
+ * @internal
+ */
 export const randomHex = (length: number): string => {
-  const bytes = length >>> 1
-  if (randomBytesOffset + bytes > randomBytes.length) {
-    refillRandomBytes()
-  }
   let result = ""
-  const end = randomBytesOffset + bytes
-  for (let i = randomBytesOffset; i < end; i++) {
-    result += byteToHex[randomBytes[i]]
+  for (let i = length >>> 3; i > 0; i--) {
+    const word = (Math.random() * 0x100000000) >>> 0
+    result += byteToHex[word >>> 24] + byteToHex[(word >>> 16) & 0xff] + byteToHex[(word >>> 8) & 0xff] +
+      byteToHex[word & 0xff]
   }
-  randomBytesOffset = end
   return result
 }
 
@@ -769,16 +770,6 @@ const hexEncodeUint8Array = (bytes: Uint8Array): string => {
     result += byteToHex[bytes[i]]
   }
   return result
-}
-
-const randomWords = new Uint32Array(96)
-const randomBytes = new Uint8Array(randomWords.buffer)
-let randomBytesOffset = randomBytes.length
-const refillRandomBytes = (): void => {
-  for (let i = 0; i < randomWords.length; i++) {
-    randomWords[i] = (Math.random() * 0x100000000) >>> 0
-  }
-  randomBytesOffset = 0
 }
 
 const fromHexChar = (byte: number) => {
