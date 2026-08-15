@@ -846,6 +846,15 @@ describe("SchemaRepresentation built-in declaration revivers", () => {
     })
   })
 
+  it("revives Graph", () => {
+    assertDeclarationReviver({
+      schema: Schema.Graph("directed", Schema.String, Schema.Number),
+      id: "effect/schema/Graph",
+      payload: "directed",
+      reviver: Schema.GraphReviver
+    })
+  })
+
   it("revives ReadonlySet", () => {
     assertDeclarationReviver({
       schema: Schema.ReadonlySet(Schema.String),
