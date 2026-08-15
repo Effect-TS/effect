@@ -1519,7 +1519,7 @@ export class ToolAnnotations extends Schema.Opaque<ToolAnnotations>()(Schema.Str
 })) {}
 
 /**
- * Object-root JSON Schema used by MCP tool inputs and outputs.
+ * Object-root JSON Schema used by MCP tool inputs.
  *
  * **Details**
  *
@@ -1551,6 +1551,24 @@ export const ToolJsonSchema: Schema.Codec<ToolJsonSchema> = Schema.StructWithRes
 )
 
 /**
+ * JSON Schema used by MCP tool outputs.
+ *
+ * Unlike tool inputs, tool outputs may use any JSON Schema root type.
+ *
+ * @category tools
+ * @since 4.0.0
+ */
+export type ToolOutputJsonSchema = Schema.JsonObject
+
+/**
+ * Schema for {@link ToolOutputJsonSchema}.
+ *
+ * @category tools
+ * @since 4.0.0
+ */
+export const ToolOutputJsonSchema: Schema.Codec<ToolOutputJsonSchema> = Schema.Record(Schema.String, Schema.Json)
+
+/**
  * Schema for the definition of a tool the client can call.
  *
  * @category schemas
@@ -1577,7 +1595,7 @@ export class Tool extends Schema.Class<Tool>(
   /**
    * An optional JSON Schema object defining the structure of the tool output.
    */
-  outputSchema: optional(ToolJsonSchema),
+  outputSchema: optional(ToolOutputJsonSchema),
   /**
    * Optional additional tool information.
    */
@@ -1836,7 +1854,7 @@ export class ToolResultContent extends Schema.Class<ToolResultContent>("@effect/
   /**
    * Optional structured result returned by the tool.
    */
-  structuredContent: optional(Schema.Record(Schema.String, Schema.Unknown)),
+  structuredContent: optional(Schema.Json),
   /**
    * Whether tool execution ended in an error.
    */

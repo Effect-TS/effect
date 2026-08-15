@@ -104,15 +104,10 @@ const projectContent = Effect.fnUntraced(function*(content: typeof PublicMcpSche
   )
 })
 
-const projectStructuredContent = Effect.fnUntraced(function*(content: Schema.Json | undefined) {
-  if (content === undefined || Schema.is(Schema.JsonObject)(content)) {
-    return content
-  }
-  return yield* new McpCore.UnsupportedByProtocol({
-    protocolVersion: McpSchema.protocolVersion,
-    feature: "non-object structured tool content"
-  })
-})
+const projectStructuredContent = (
+  content: Schema.Json | undefined
+): Schema.JsonObject | undefined =>
+  content === undefined || Schema.is(Schema.JsonObject)(content) ? content : undefined
 
 /** @internal */
 export const protocol = McpProtocol.make({
@@ -279,7 +274,9 @@ export const protocol = McpProtocol.make({
               title: tool.title,
               description: tool.description,
               inputSchema: tool.inputSchema,
-              outputSchema: tool.outputSchema,
+              outputSchema: Schema.is(McpSchema.Tool.fields.outputSchema)(tool.outputSchema)
+                ? tool.outputSchema
+                : undefined,
               icons: tool.icons,
               annotations: tool.annotations === undefined
                 ? undefined
@@ -314,9 +311,7 @@ export const protocol = McpProtocol.make({
         const content = yield* Effect.forEach(result.content, projectContent).pipe(
           Effect.mapError(McpProtocol.ProtocolError.fromTool)
         )
-        const structuredContent = yield* projectStructuredContent(result.structuredContent).pipe(
-          Effect.mapError(McpProtocol.ProtocolError.fromTool)
-        )
+        const structuredContent = projectStructuredContent(result.structuredContent)
         return McpSchema.CallToolResult.make({
           content,
           structuredContent,
