@@ -117,6 +117,8 @@ export type HttpAdmission =
 /** @internal */
 export interface HandlerInstallationOptions {
   readonly core: McpCore.McpCore
+  readonly subscribeServerNotifications: McpProtocol.HandlerInstallationContext["subscribeServerNotifications"]
+  readonly sendNotification?: NonNullable<McpProtocol.HandlerInstallationContext["sendNotification"]>
   readonly defaultLogLevel: LogLevel.LogLevel
   readonly serverInfo: {
     readonly name: string
@@ -350,6 +352,8 @@ export const make = Effect.fnUntraced(function*(
       const contextMap = new Map<string, unknown>()
       const registrationPresence = yield* options.core.registrationPresence
       const installationContext: McpProtocol.HandlerInstallationContext = {
+        subscribeServerNotifications: options.subscribeServerNotifications,
+        ...(options.sendNotification === undefined ? {} : { sendNotification: options.sendNotification }),
         supportedVersions: protocolVersions,
         serverInfo: options.serverInfo,
         registrationPresence

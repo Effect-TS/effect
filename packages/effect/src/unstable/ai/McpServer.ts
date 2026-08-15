@@ -20,6 +20,7 @@ import * as Fiber from "../../Fiber.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
+import * as PubSub from "../../PubSub.ts"
 import * as Queue from "../../Queue.ts"
 import * as RcMap from "../../RcMap.ts"
 import { CurrentLogLevel } from "../../References.ts"
@@ -663,8 +664,34 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
   const clientProtocols = new Map<number, McpProtocol.AnyProtocolAdapter>()
   const activeRequests = new Map<number, Map<string, ActiveRequest>>()
   const clientProfiles = new Map<number, McpCore.NegotiatedProtocolProfile<string>>()
+  // A bounded PubSub would let one slow listener block the shared worker and
+  // legacy delivery. Each request scope releases its subscription on exit.
+  const serverNotifications = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
+  const sendNotification = protocol.sendNotification
   const handlers = yield* runtime.installHandlers({
     core: internalState.get(server)!.core,
+    subscribeServerNotifications: PubSub.subscribe(serverNotifications),
+    ...(sendNotification === undefined ? {} : {
+      sendNotification: (
+        protocolVersion: string,
+        clientId: number,
+        notification: McpProtocol.ProjectedNotification
+      ) =>
+        Effect.gen(function*() {
+          const selectedProtocol = runtime.selectProtocol(protocolVersion)
+          const rpc = selectedProtocol.serverNotificationRpcs.requests.get(notification.tag)
+          if (rpc === undefined) {
+            return yield* Effect.die(
+              `MCP protocol ${protocolVersion} does not define server notification ${notification.tag}`
+            )
+          }
+          const payload = yield* selectedProtocol.payloadCodecs(rpc).encode(notification.payload)
+          yield* sendNotification(clientId, {
+            tag: notification.tag,
+            payload
+          })
+        }).pipe(Effect.orDie)
+    }),
     defaultLogLevel,
     serverInfo: options
   })
@@ -1062,6 +1089,9 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
 
   yield* Queue.take(internalState.get(server)!.notifications).pipe(
     Effect.flatMap(Effect.fnUntraced(function*({ notification, targetClientId }) {
+      if (McpProtocolInternal.isSubscriptionServerNotification(notification)) {
+        yield* PubSub.publish(serverNotifications, { notification, targetClientId })
+      }
       const clientIds = yield* patchedProtocol.clientIds
       for (const clientId of clientProtocols.keys()) {
         if (!clientIds.has(clientId)) {
@@ -1231,9 +1261,14 @@ const mcpStdioSerialization = (
   const serialization = RpcSerialization.jsonRpc({
     contentType: "application/json-rpc"
   })
+  const encodeNotification = serialization.encodeNotification
   return RpcSerialization.RpcSerialization.of({
     contentType: serialization.contentType,
     includesFraming: true,
+    ...(encodeNotification === undefined ? {} : {
+      encodeNotification: (notification: RpcMessage.ServerNotificationEncoded) =>
+        `${encodeNotification(notification)}\n`
+    }),
     makeUnsafe: () => {
       const frames = RpcSerialization.ndjson.makeUnsafe()
       const parser = serialization.makeUnsafe()
@@ -1359,11 +1394,13 @@ const layerMcpProtocolHttp = (options: {
 }): Layer.Layer<
   RpcServer.Protocol,
   never,
-  McpRuntime.ServerRuntime | RpcSerialization.RpcSerialization | HttpRouter.HttpRouter
+  McpRuntime.ServerRuntime | HttpRouter.HttpRouter
 > =>
   Layer.effect(RpcServer.Protocol)(Effect.gen(function*() {
     const runtime = yield* McpRuntime.ServerRuntime
-    const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect()
+    const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect().pipe(
+      Effect.provideService(RpcSerialization.RpcSerialization, mcpHttpSerialization)
+    )
     const router = yield* HttpRouter.HttpRouter
     yield* router.add("POST", options.path, (request) => {
       if (!isAllowedMcpOrigin(request, options.allowedOrigins)) {
@@ -1454,7 +1491,12 @@ const layerMcpProtocolHttp = (options: {
                       error: new MethodNotFound({ message: `Method not found: ${input.method}` })
                     }, { status: 404 }))
                   }
-                  return httpEffect
+                  const response = Predicate.hasProperty(input, "method") && input.method === "subscriptions/listen"
+                    ? Effect.map(httpEffect, toServerSentEvents)
+                    : httpEffect
+                  return !isRequest || !hasId
+                    ? Effect.catchCause(response, () => Effect.succeed(HttpServerResponse.empty({ status: 202 })))
+                    : response
                 }
                 if (input.length === 0) {
                   return Effect.succeed(HttpServerResponse.jsonUnsafe({
@@ -1472,9 +1514,15 @@ const layerMcpProtocolHttp = (options: {
                   return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
                 }
                 const selectedProtocol = admission.binding.protocol
-                return selectedProtocol.runtime.transport.jsonRpc.acceptsBatches
+                if (!selectedProtocol.runtime.transport.jsonRpc.acceptsBatches) {
+                  return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+                }
+                const expectsResponse = input.some((message) =>
+                  Predicate.hasProperty(message, "method") && Predicate.hasProperty(message, "id")
+                )
+                return expectsResponse
                   ? httpEffect
-                  : Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+                  : Effect.catchCause(httpEffect, () => Effect.succeed(HttpServerResponse.empty({ status: 202 })))
               }
             })
         })
@@ -1482,6 +1530,35 @@ const layerMcpProtocolHttp = (options: {
     })
     return protocol
   }))
+
+const mcpHttpSerialization: RpcSerialization.RpcSerialization["Service"] = (() => {
+  const serialization = RpcSerialization.jsonRpc()
+  return RpcSerialization.RpcSerialization.of({
+    contentType: serialization.contentType,
+    includesFraming: true,
+    makeUnsafe: serialization.makeUnsafe
+  })
+})()
+
+const toServerSentEvents = (response: HttpServerResponse.HttpServerResponse) => {
+  const encoder = new TextEncoder()
+  const decoder = new TextDecoder()
+  const frame = (data: Uint8Array) => encoder.encode(`data: ${decoder.decode(data)}\n\n`)
+  const options = {
+    status: response.status,
+    statusText: response.statusText,
+    headers: Headers.remove(response.headers, "content-type"),
+    cookies: response.cookies,
+    contentType: "text/event-stream"
+  }
+  if (response.body._tag === "Stream") {
+    return HttpServerResponse.stream(response.body.stream.pipe(Stream.map(frame)), options)
+  }
+  if (response.body._tag === "Uint8Array") {
+    return HttpServerResponse.uint8Array(frame(response.body.body), options)
+  }
+  return HttpServerResponse.setHeader(response, "content-type", "text/event-stream")
+}
 
 const isAllowedMcpOrigin = (
   request: HttpServerRequest.HttpServerRequest,
