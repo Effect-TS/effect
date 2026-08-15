@@ -1,6 +1,7 @@
 import * as Data from "../../../Data.ts"
 import * as Effect from "../../../Effect.ts"
 import * as Match from "../../../Match.ts"
+import type * as PubSub from "../../../PubSub.ts"
 import * as Result from "../../../Result.ts"
 import * as Schema from "../../../Schema.ts"
 import type * as Scope from "../../../Scope.ts"
@@ -250,6 +251,16 @@ export interface HandlerInstallationTarget {
 
 /** @internal */
 export interface HandlerInstallationContext {
+  readonly subscribeServerNotifications: Effect.Effect<
+    PubSub.Subscription<CanonicalServerNotification>,
+    never,
+    Scope.Scope
+  >
+  readonly sendNotification?: (
+    protocolVersion: string,
+    clientId: number,
+    notification: PublicMcpProtocol.ProjectedNotification
+  ) => Effect.Effect<void>
   readonly supportedVersions: ReadonlyArray<string>
   readonly serverInfo: {
     readonly name: string
@@ -262,6 +273,33 @@ export interface HandlerInstallationContext {
     readonly tools: boolean
     readonly resources: boolean
     readonly prompts: boolean
+  }
+}
+
+/** @internal */
+export interface CanonicalServerNotification {
+  readonly notification: SubscriptionServerNotification
+  readonly targetClientId?: number | undefined
+}
+
+/** @internal */
+export type SubscriptionServerNotification = Extract<
+  McpCore.ServerNotification,
+  { readonly _tag: "ToolsChanged" | "PromptsChanged" | "ResourcesChanged" | "ResourceUpdated" }
+>
+
+/** @internal */
+export const isSubscriptionServerNotification = (
+  notification: McpCore.ServerNotification
+): notification is SubscriptionServerNotification => {
+  switch (notification._tag) {
+    case "ToolsChanged":
+    case "PromptsChanged":
+    case "ResourcesChanged":
+    case "ResourceUpdated":
+      return true
+    default:
+      return false
   }
 }
 

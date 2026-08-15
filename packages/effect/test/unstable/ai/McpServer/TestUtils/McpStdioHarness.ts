@@ -1,3 +1,4 @@
+import type * as Arr from "effect/Array"
 import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
@@ -8,6 +9,7 @@ import * as Queue from "effect/Queue"
 import * as Sink from "effect/Sink"
 import * as Stdio from "effect/Stdio"
 import * as Stream from "effect/Stream"
+import * as TestClock from "effect/testing/TestClock"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import type * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
@@ -21,6 +23,12 @@ export interface JsonRpcMessage {
   readonly error?: unknown
 }
 
+export interface McpStdioRequestHandle {
+  readonly id: string | number
+  readonly response: Effect.Effect<JsonRpcMessage>
+  readonly cancel: (reason?: string) => Effect.Effect<void>
+}
+
 export interface McpStdioHarness {
   readonly server: McpServer.McpServer["Service"]
   readonly serverFiber: Fiber.Fiber<never, Cause.IllegalArgumentError>
@@ -32,6 +40,11 @@ export interface McpStdioHarness {
     params?: unknown,
     id?: string | number
   ) => Effect.Effect<JsonRpcMessage>
+  readonly startRequest: (
+    method: string,
+    params?: unknown,
+    id?: string | number
+  ) => Effect.Effect<McpStdioRequestHandle>
   readonly sendNotification: (method: string, params?: unknown) => Effect.Effect<void>
   readonly initialize: (
     capabilities?: typeof McpSchema.ClientCapabilities.Type
@@ -41,6 +54,7 @@ export interface McpStdioHarness {
   readonly takeRawStdout: Effect.Effect<string>
   readonly takeStderr: Effect.Effect<string>
   readonly awaitOutboundMethod: (method: string) => Effect.Effect<JsonRpcMessage>
+  readonly flushListChanged: Effect.Effect<void>
   readonly respond: (id: string | number, result: unknown) => Effect.Effect<void>
 }
 
@@ -55,9 +69,10 @@ const isResponse = (
 
 const requestKey = (id: string | number) => `${typeof id}:${id}`
 
-export const makeMcpStdioHarness = Effect.fnUntraced(function*(
+export const makeMcpStdioHarness = Effect.fnUntraced(function*<A>(
   protocol: McpProtocol.ProtocolAdapter,
-  protocols: ReadonlyArray<McpProtocol.ProtocolAdapter> = [protocol]
+  protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter> = [protocol],
+  registrations?: Layer.Layer<A, never, McpServer.McpServer>
 ) {
   const stdin = yield* Queue.unbounded<Uint8Array, Cause.Done>()
   const stdout = yield* Queue.unbounded<string | Uint8Array>()
@@ -80,15 +95,15 @@ export const makeMcpStdioHarness = Effect.fnUntraced(function*(
   })
   const ready = yield* Deferred.make<McpServer.McpServer["Service"]>()
   const serverFiber = yield* Effect.gen(function*() {
+    const serverLayer = McpServer.layerStdio({
+      name: "McpConformance",
+      version: "1.0.0",
+      protocols
+    }).pipe(Layer.provide(stdioLayer))
     const context = yield* Layer.build(
-      McpServer.layerStdio({
-        name: "McpConformance",
-        version: "1.0.0",
-        protocols: protocols as [
-          McpProtocol.ProtocolAdapter,
-          ...Array<McpProtocol.ProtocolAdapter>
-        ]
-      }).pipe(Layer.provide(stdioLayer))
+      registrations === undefined
+        ? serverLayer
+        : registrations.pipe(Layer.provideMerge(serverLayer))
     )
     yield* Deferred.succeed(ready, Context.get(context, McpServer.McpServer))
     return yield* Effect.never
@@ -144,13 +159,33 @@ export const makeMcpStdioHarness = Effect.fnUntraced(function*(
   const sendChunk = (chunk: string | Uint8Array) =>
     Queue.offer(stdin, typeof chunk === "string" ? encoder.encode(chunk) : chunk)
   const sendRaw = (message: unknown) => sendChunk(`${JSON.stringify(message)}\n`)
+  const requestMetadata = {
+    "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion,
+    "io.modelcontextprotocol/clientCapabilities": {},
+    "io.modelcontextprotocol/clientInfo": { name: "stdio-client", version: "1.0.0" }
+  }
+  const withRequestMetadata = (params: unknown) =>
+    protocol.runtime._tag === "Stateless"
+      ? {
+        ...(typeof params === "object" && params !== null ? params : {}),
+        _meta: {
+          ...requestMetadata,
+          ...(typeof params === "object" && params !== null && "_meta" in params &&
+              typeof params._meta === "object" && params._meta !== null
+            ? params._meta
+            : {})
+        }
+      }
+      : params
   const sendNotification = (method: string, params?: unknown) =>
     sendRaw({
       jsonrpc: "2.0",
       method,
-      ...(params === undefined ? {} : { params })
+      ...(params === undefined && protocol.runtime._tag !== "Stateless"
+        ? {}
+        : { params: withRequestMetadata(params) })
     })
-  const sendRequest = Effect.fnUntraced(function*(
+  const startRequest = Effect.fnUntraced(function*(
     method: string,
     params?: unknown,
     id: string | number = nextRequestId++
@@ -162,11 +197,29 @@ export const makeMcpStdioHarness = Effect.fnUntraced(function*(
       jsonrpc: "2.0",
       id,
       method,
-      ...(params === undefined ? {} : { params })
+      ...(params === undefined && protocol.runtime._tag !== "Stateless"
+        ? {}
+        : { params: withRequestMetadata(params) })
     })
-    return yield* Queue.take(responseQueue).pipe(
-      Effect.ensuring(Effect.sync(() => responseQueues.delete(key)))
-    )
+    return {
+      id,
+      response: Queue.take(responseQueue).pipe(
+        Effect.ensuring(Effect.sync(() => responseQueues.delete(key)))
+      ),
+      cancel: (reason?: string) =>
+        sendNotification("notifications/cancelled", {
+          requestId: id,
+          ...(reason === undefined ? {} : { reason })
+        })
+    }
+  })
+  const sendRequest = Effect.fnUntraced(function*(
+    method: string,
+    params?: unknown,
+    id?: string | number
+  ) {
+    const request = yield* startRequest(method, params, id)
+    return yield* request.response
   })
   const takeMessage = Effect.suspend(() => {
     const retained = retainedMessages.shift()
@@ -193,8 +246,17 @@ export const makeMcpStdioHarness = Effect.fnUntraced(function*(
     sendRaw,
     sendChunk,
     sendRequest,
+    startRequest,
     sendNotification,
     initialize: Effect.fnUntraced(function*(capabilities = {}) {
+      if (protocol.runtime._tag === "Stateless") {
+        return yield* sendRequest("server/discover", {
+          _meta: {
+            ...requestMetadata,
+            "io.modelcontextprotocol/clientCapabilities": capabilities
+          }
+        })
+      }
       const response = yield* sendRequest("initialize", {
         protocolVersion: protocol.protocolVersion,
         capabilities,
@@ -208,6 +270,7 @@ export const makeMcpStdioHarness = Effect.fnUntraced(function*(
     takeRawStdout: Queue.take(rawStdout),
     takeStderr: Queue.take(rawStderr),
     awaitOutboundMethod,
+    flushListChanged: TestClock.adjust(0),
     respond: (id, result) => sendRaw({ jsonrpc: "2.0", id, result })
   } satisfies McpStdioHarness
 })
