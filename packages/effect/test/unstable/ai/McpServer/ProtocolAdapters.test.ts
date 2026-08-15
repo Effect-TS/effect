@@ -28,6 +28,11 @@ const SharedTool = Tool.make("shared", {
   success: Schema.String
 }).annotate(Tool.Title, "Shared tool title")
 
+const JsonArrayTool = Tool.make("json-array", {
+  parameters: Tool.EmptyParams,
+  success: Schema.Tuple([Schema.String, Schema.Null])
+})
+
 const StructuredOnlyTool = Tool.make("structured-only", {
   parameters: Tool.EmptyParams,
   success: Schema.Struct({ value: Schema.String })
@@ -73,6 +78,7 @@ const CapabilityGatedTool = Tool.make("capability-gated", {
 
 const TestToolkit = Toolkit.make(
   SharedTool,
+  JsonArrayTool,
   StructuredOnlyTool,
   ValidatedTool,
   CapabilityTool,
@@ -150,6 +156,7 @@ const makeFixture = Effect.fnUntraced(function*() {
           state.sharedInvocations++
           return "shared-result"
         }),
+      "json-array": () => Effect.succeed(["array", null] as const),
       "structured-only": () =>
         Effect.sync(() => {
           state.structuredInvocations++
@@ -1240,6 +1247,65 @@ describe("McpServer protocol adapters", () => {
       assert.notProperty(oldSchemaOutput, "_meta")
     }))
 
+  it.effect("should project non-object JSON Toolkit outputs only for the July protocol", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+
+      for (const protocolVersion of ["2025-06-18", "2025-11-25"] as const) {
+        const client = yield* initialize(fixture.post, protocolVersion)
+        const tools = listedTools(yield* client.request("tools/list"))
+        for (const name of ["shared", "json-array"]) {
+          const tool = tools.find((tool) => tool.name === name)
+          assert.isDefined(tool)
+          assert.notProperty(tool, "outputSchema")
+        }
+
+        for (const name of ["shared", "json-array"]) {
+          const result = resultOf(yield* client.request("tools/call", { name }))
+          assert.notProperty(result, "structuredContent")
+        }
+      }
+
+      const listResponse = yield* fixture.post(
+        modernRequest(42, "tools/list"),
+        { ...modernHeaders("tools/list"), "Mcp-Name": "toolkit-output" }
+      )
+      const listResult = listedTools(
+        yield* Effect.promise<unknown>(() => listResponse.json()).pipe(
+          Effect.flatMap(decodeJsonRpcResponse)
+        )
+      )
+      assert.deepStrictEqual(listResult.find((tool) => tool.name === "shared")?.outputSchema, { type: "string" })
+      assert.deepStrictEqual(listResult.find((tool) => tool.name === "json-array")?.outputSchema, {
+        type: "array",
+        prefixItems: [{ type: "string" }, { type: "null" }],
+        minItems: 2,
+        maxItems: 2
+      })
+
+      const callResponse = yield* fixture.post(
+        modernRequest(43, "tools/call", { name: "shared", arguments: {} }),
+        { ...modernHeaders("tools/call"), "Mcp-Name": "shared" }
+      )
+      const callResult = resultOf(
+        yield* Effect.promise<unknown>(() => callResponse.json()).pipe(
+          Effect.flatMap(decodeJsonRpcResponse)
+        )
+      )
+      assert.strictEqual(callResult.structuredContent, "shared-result")
+
+      const arrayCallResponse = yield* fixture.post(
+        modernRequest(44, "tools/call", { name: "json-array", arguments: {} }),
+        { ...modernHeaders("tools/call"), "Mcp-Name": "json-array" }
+      )
+      const arrayCallResult = resultOf(
+        yield* Effect.promise<unknown>(() => arrayCallResponse.json()).pipe(
+          Effect.flatMap(decodeJsonRpcResponse)
+        )
+      )
+      assert.deepStrictEqual(arrayCallResult.structuredContent, ["array", null])
+    }))
+
   it.effect("should encode binary content for every revision that can represent it", () =>
     Effect.gen(function*() {
       const fixture = yield* makeLowLevelFixture()
@@ -1291,17 +1357,28 @@ describe("McpServer protocol adapters", () => {
         assert.notProperty(scalarResult, "structuredContent")
       }
 
-      const currentClient = yield* initialize(fixture.post, "2025-06-18")
-      const objectResult = resultOf(
-        yield* currentClient.request("tools/call", { name: "structured-object" })
-      )
-      assert.deepStrictEqual(objectResult.structuredContent, { value: "fixture" })
+      for (const protocolVersion of ["2025-06-18", "2025-11-25"] as const) {
+        const client = yield* initialize(fixture.post, protocolVersion)
+        const objectResult = resultOf(
+          yield* client.request("tools/call", { name: "structured-object" })
+        )
+        const scalarResult = resultOf(
+          yield* client.request("tools/call", { name: "structured-scalar" })
+        )
+        assert.deepStrictEqual(objectResult.structuredContent, { value: "fixture" })
+        assert.notProperty(scalarResult, "structuredContent")
+      }
 
-      const scalarError = errorOf(
-        yield* currentClient.request("tools/call", { name: "structured-scalar" })
+      const modernResponse = yield* fixture.post(
+        modernRequest(41, "tools/call", { name: "structured-scalar", arguments: {} }),
+        { ...modernHeaders("tools/call"), "Mcp-Name": "structured-scalar" }
       )
-      assert.strictEqual(scalarError.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
-      assert.match(scalarError.message, /non-object structured tool content is not supported by MCP 2025-06-18/)
+      const modernResult = resultOf(
+        yield* Effect.promise<unknown>(() => modernResponse.json()).pipe(
+          Effect.flatMap(decodeJsonRpcResponse)
+        )
+      )
+      assert.strictEqual(modernResult.structuredContent, "fixture")
     }))
 
   it.effect("should preserve only supported metadata when projecting embedded resource content", () =>

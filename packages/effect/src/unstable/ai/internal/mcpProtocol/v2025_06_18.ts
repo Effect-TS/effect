@@ -104,20 +104,9 @@ const projectResourceContents = (
       blob: Encoding.encodeBase64(content.blob)
     }
 
-const projectStructuredContent: (
+const projectStructuredContent = (
   content: Schema.Json | undefined
-) => Effect.Effect<
-  Schema.JsonObject | undefined,
-  McpCore.UnsupportedByProtocol
-> = Effect.fnUntraced(function*(content) {
-  if (content === undefined || isJsonObject(content)) {
-    return content
-  }
-  return yield* new McpCore.UnsupportedByProtocol({
-    protocolVersion: McpSchema.protocolVersion,
-    feature: "non-object structured tool content"
-  })
-})
+): Schema.JsonObject | undefined => content === undefined || isJsonObject(content) ? content : undefined
 
 const isJsonObject = (value: Schema.Json): value is Schema.JsonObject =>
   typeof value === "object" && value !== null && !Array.isArray(value)
@@ -254,7 +243,9 @@ export const protocol = McpProtocol.make({
               title: tool.title,
               description: tool.description,
               inputSchema: tool.inputSchema,
-              outputSchema: tool.outputSchema,
+              outputSchema: Schema.is(McpSchema.Tool.fields.outputSchema)(tool.outputSchema)
+                ? tool.outputSchema
+                : undefined,
               annotations: tool.annotations === undefined
                 ? undefined
                 : McpSchema.ToolAnnotations.make({
@@ -280,9 +271,7 @@ export const protocol = McpProtocol.make({
         const content = yield* Effect.forEach(result.content, projectContent).pipe(
           Effect.mapError(McpProtocol.ProtocolError.fromTool)
         )
-        const structuredContent = yield* projectStructuredContent(result.structuredContent).pipe(
-          Effect.mapError(McpProtocol.ProtocolError.fromTool)
-        )
+        const structuredContent = projectStructuredContent(result.structuredContent)
         return McpSchema.CallToolResult.make({
           content,
           structuredContent,

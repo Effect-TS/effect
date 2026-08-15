@@ -1637,10 +1637,9 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
-    const outputJsonSchema = Tool.getJsonSchemaFromSchema(tool.successSchema)
-    const outputSchema = outputJsonSchema.type === "object"
-      ? yield* Schema.decodeUnknownEffect(ToolJsonSchema)(outputJsonSchema).pipe(Effect.orDie)
-      : undefined
+    const outputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJsonSchema)(
+      Tool.getJsonSchemaFromSchema(tool.successSchema)
+    ).pipe(Effect.orDie)
     const inputSchema = yield* Schema.decodeUnknownEffect(ToolJsonSchema)(
       Tool.getJsonSchema(tool)
     ).pipe(Effect.orDie)
@@ -1648,7 +1647,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       name: tool.name,
       description: Tool.getDescription(tool),
       inputSchema,
-      ...(outputSchema === undefined ? {} : { outputSchema }),
+      outputSchema,
       annotations: {
         ...(Context.getOption(tool.annotations, Tool.Title).pipe(
           Option.map((title) => ({ title })),
@@ -1675,7 +1674,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           Effect.map((result) =>
             new CallToolResult({
               isError: false,
-              structuredContent: typeof result.encodedResult === "object" ? result.encodedResult : undefined,
+              structuredContent: result.encodedResult,
               content: result.encodedResult === undefined ? [] : [{
                 type: "text",
                 text: JSON.stringify(result.encodedResult)
