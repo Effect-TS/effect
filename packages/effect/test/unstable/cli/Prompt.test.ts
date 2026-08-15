@@ -158,6 +158,26 @@ describe("Prompt.float", () => {
 })
 
 describe("Prompt.text", () => {
+  it.effect("renders the default prompt symbol", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.text({ message: "Name" }))
+
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.include(frames[0] ?? "", "? Name")
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("renders a custom prompt symbol", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.text({ message: "Name", symbol: "!" }))
+
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.include(frames[0] ?? "", "! Name")
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("starts from the default value so it can be edited", () =>
     Effect.gen(function*() {
       const prompt = Prompt.text({
