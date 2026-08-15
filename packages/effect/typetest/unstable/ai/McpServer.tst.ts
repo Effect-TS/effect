@@ -16,6 +16,35 @@ const serverOptions = {
 } as const
 
 describe("McpServer", () => {
+  it("should expose protocol-neutral request facts without a session service", () => {
+    expect(McpSchema.McpRequestContext.useSync((context) => context.protocolVersion)).type.toBe<
+      Effect.Effect<string, never, McpSchema.McpRequestContext>
+    >()
+    expect(McpSchema.McpRequestContext.useSync((context) => context.clientInfo)).type.toBe<
+      Effect.Effect<McpSchema.Implementation | undefined, never, McpSchema.McpRequestContext>
+    >()
+    expect(McpServer.clientCapabilities).type.toBe<
+      Effect.Effect<McpSchema.ClientCapabilities, never, McpSchema.McpRequestContext>
+    >()
+  })
+
+  it("should accept scalar tool output schemas while keeping inputs object-rooted", () => {
+    expect(McpSchema.Tool.make).type.toBeCallableWith({
+      name: "scalar-output",
+      inputSchema: { type: "object" },
+      outputSchema: { type: "string" }
+    })
+    expect({ type: "string" } as const).type.not.toBeAssignableTo<McpSchema.ToolJsonSchema>()
+  })
+
+  it("should accept JSON-valued structured sampling results", () => {
+    expect(McpSchema.ToolResultContent.make).type.toBeCallableWith({
+      toolUseId: "call-1",
+      content: [],
+      structuredContent: ["sunny", null, 24]
+    })
+  })
+
   describe("protocol configuration", () => {
     it("should accept a non-empty protocol declaration when constructing any server", () => {
       expect(McpServer.run).type.toBeCallableWith(serverOptions)
