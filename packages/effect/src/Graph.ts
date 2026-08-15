@@ -237,6 +237,14 @@ const cloneAdjacency = (adjacency: Map<NodeIndex, Array<EdgeIndex>>): Map<NodeIn
   return cloned
 }
 
+/** @internal */
+const copyEdge = <E>(edge: Edge<E>): Edge<E> =>
+  new Edge({
+    source: edge.source,
+    target: edge.target,
+    data: edge.data
+  })
+
 /**
  * Immutable graph type for source-to-target relationships.
  *
@@ -2531,7 +2539,10 @@ export const getEdge: {
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   edgeIndex: EdgeIndex
-): Option.Option<Edge<E>> => Option.fromUndefinedOr(graphImpl(graph).edges.get(edgeIndex)))
+): Option.Option<Edge<E>> => {
+  const edge = graphImpl(graph).edges.get(edgeIndex)
+  return edge === undefined ? Option.none() : Option.some(copyEdge(edge))
+})
 
 /**
  * Checks whether an edge exists between two nodes in the graph.
@@ -4444,7 +4455,7 @@ export const floydWarshall: {
  *
  * Specifies the source and target node indices, an edge-cost function that maps
  * edge data to non-negative weights, and a heuristic that estimates the
- * remaining cost from a node to the target.
+ * remaining cost from a node to the target. Heuristic values must be finite.
  *
  * @see {@link astar} for the algorithm that consumes this configuration
  * @see {@link DijkstraConfig} for shortest paths without a heuristic
@@ -4468,9 +4479,10 @@ export interface AstarConfig<E, N> {
  *
  * The edge-cost function must return non-negative weights and not `NaN`.
  * `Infinity` is allowed and behaves like an impassable edge. The heuristic
- * should be consistent to preserve shortest-path guarantees. Returns
+ * must return finite values and should be consistent to preserve shortest-path guarantees. Returns
  * `Option.none()` when the target is not reachable, and throws a `GraphError`
- * when either endpoint is missing or an edge cost is negative or `NaN`.
+ * when either endpoint is missing, an edge cost is negative or `NaN`, or a
+ * heuristic value is not finite.
  *
  * **Example** (Finding shortest paths with A-star)
  *
@@ -4548,6 +4560,13 @@ export const astar: {
   if (Option.isNone(targetNodeData)) {
     throw new GraphError({ message: `Missing node data for target node ${config.target}` })
   }
+  const getHeuristic = (nodeData: N): number => {
+    const value = config.heuristic(nodeData, targetNodeData.value)
+    if (!Number.isFinite(value)) {
+      throw new GraphError({ message: "A* algorithm requires finite heuristic values" })
+    }
+    return value
+  }
 
   // Distance tracking (g-score) and f-score (g + h)
   const gScore = new Map<NodeIndex, number>()
@@ -4566,7 +4585,7 @@ export const astar: {
   // Calculate initial f-score for source
   const sourceNodeData = getNode(graph, config.source)
   if (Option.isSome(sourceNodeData)) {
-    const h = config.heuristic(sourceNodeData.value, targetNodeData.value)
+    const h = getHeuristic(sourceNodeData.value)
     fScore.set(config.source, h)
   }
 
@@ -4618,7 +4637,7 @@ export const astar: {
             // Calculate f-score using heuristic
             const neighborNodeData = getNode(graph, neighbor)
             if (Option.isSome(neighborNodeData)) {
-              const h = config.heuristic(neighborNodeData.value, targetNodeData.value)
+              const h = getHeuristic(neighborNodeData.value)
               const f = tentativeGScore + h
               fScore.set(neighbor, f)
 
@@ -5722,7 +5741,7 @@ export const edges = <N, E, T extends Kind = "directed">(
             return { done: true, value: undefined }
           }
           const [edgeIndex, edgeData] = result.value
-          return { done: false, value: f(edgeIndex, edgeData) }
+          return { done: false, value: f(edgeIndex, copyEdge(edgeData)) }
         }
       }
     }
