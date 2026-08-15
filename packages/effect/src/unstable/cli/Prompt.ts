@@ -160,7 +160,7 @@ export interface ConfirmOptions {
    */
   readonly message: string
   /**
-   * The symbol to display at the start of the prompt (defaults to `"?"`).
+   * The single-column symbol to display at the start of the prompt (defaults to `"?"`).
    */
   readonly symbol?: string
   /**
@@ -210,7 +210,7 @@ export interface DateOptions {
    */
   readonly message: string
   /**
-   * The symbol to display at the start of the prompt (defaults to `"?"`).
+   * The single-column symbol to display at the start of the prompt (defaults to `"?"`).
    */
   readonly symbol?: string
   /**
@@ -289,7 +289,7 @@ export interface IntegerOptions {
    */
   readonly message: string
   /**
-   * The symbol to display at the start of the prompt (defaults to `"?"`).
+   * The single-column symbol to display at the start of the prompt (defaults to `"?"`).
    */
   readonly symbol?: string
   /**
@@ -374,7 +374,8 @@ export interface FileOptions {
    */
   readonly message?: string
   /**
-   * The symbol to display at the start of the prompt (defaults to `"?"`).
+   * The single-column symbol to display at the start of the directory traversal
+   * confirmation prompt (defaults to `"?"`).
    */
   readonly symbol?: string
   /**
@@ -410,7 +411,7 @@ export interface SelectOptions<A> {
    */
   readonly message: string
   /**
-   * The symbol to display at the start of the prompt (defaults to `"?"`).
+   * The single-column symbol to display at the start of the prompt (defaults to `"?"`).
    */
   readonly symbol?: string
   /**
@@ -519,7 +520,7 @@ export interface TextOptions {
    */
   readonly message: string
   /**
-   * The symbol to display at the start of the prompt (defaults to `"?"`).
+   * The single-column symbol to display at the start of the prompt (defaults to `"?"`).
    */
   readonly symbol?: string
   /**
@@ -546,7 +547,7 @@ export interface ToggleOptions {
    */
   readonly message: string
   /**
-   * The symbol to display at the start of the prompt (defaults to `"?"`).
+   * The single-column symbol to display at the start of the prompt (defaults to `"?"`).
    */
   readonly symbol?: string
   /**
@@ -581,6 +582,8 @@ const defaultFigures = {
   line: "─",
   pointer: "❯"
 }
+
+const DEFAULT_SYMBOL = "?"
 
 const windowsFigures = {
   arrowUp: defaultFigures.arrowUp,
@@ -773,8 +776,8 @@ const annotateErrorLine = (line: string): string => Ansi.annotate(line, Ansi.com
 export const confirm = (options: ConfirmOptions): Prompt<boolean> => {
   const opts: Required<ConfirmOptions> = {
     initial: false,
-    symbol: "?",
     ...options,
+    symbol: options.symbol ?? DEFAULT_SYMBOL,
     label: {
       confirm: "yes",
       deny: "no",
@@ -870,9 +873,9 @@ export const date = (options: DateOptions): Prompt<Date> => {
   const opts: Required<DateOptions> = {
     initial: new Date(),
     dateMask: "YYYY-MM-DD HH:mm:ss",
-    symbol: "?",
     validate: Effect.succeed,
     ...options,
+    symbol: options.symbol ?? DEFAULT_SYMBOL,
     locales: {
       ...defaultLocales,
       ...options.locales
@@ -909,7 +912,7 @@ export const file = (options: FileOptions = {}): Prompt<string> => {
   const opts: FileOptionsReq = {
     type: options.type ?? "file",
     message: options.message ?? `Choose a file`,
-    symbol: options.symbol ?? "?",
+    symbol: options.symbol ?? DEFAULT_SYMBOL,
     startingPath: Option.fromUndefinedOr(options.startingPath),
     default: Option.fromUndefinedOr(options.default),
     maxPerPage: options.maxPerPage ?? 10,
@@ -984,7 +987,6 @@ export const flatMap: {
 export const float = (options: FloatOptions): Prompt<number> => {
   const opts: FloatOptionsReq = {
     default: 0,
-    symbol: "?",
     min: Number.NEGATIVE_INFINITY,
     max: Number.POSITIVE_INFINITY,
     incrementBy: 1,
@@ -999,7 +1001,8 @@ export const float = (options: FloatOptions): Prompt<number> => {
       }
       return Effect.succeed(n)
     },
-    ...options
+    ...options,
+    symbol: options.symbol ?? DEFAULT_SYMBOL
   }
   const initialValue = options.default === undefined ? "" : `${opts.default}`
   const initialState: NumberState = {
@@ -1038,7 +1041,6 @@ export const hidden = (
 export const integer = (options: IntegerOptions): Prompt<number> => {
   const opts: IntegerOptionsReq = {
     default: 0,
-    symbol: "?",
     min: Number.NEGATIVE_INFINITY,
     max: Number.POSITIVE_INFINITY,
     incrementBy: 1,
@@ -1052,7 +1054,8 @@ export const integer = (options: IntegerOptions): Prompt<number> => {
       }
       return Effect.succeed(n)
     },
-    ...options
+    ...options,
+    symbol: options.symbol ?? DEFAULT_SYMBOL
   }
   const initialValue = options.default === undefined ? "" : `${opts.default}`
   const initialState: NumberState = {
@@ -1169,8 +1172,8 @@ const getSelectInitialIndex = <A>(choices: ReadonlyArray<SelectChoice<A>>): numb
 export const select = <const A>(options: SelectOptions<A>): Prompt<A> => {
   const opts: SelectOptionsReq<A> = {
     maxPerPage: 10,
-    symbol: "?",
-    ...options
+    ...options,
+    symbol: options.symbol ?? DEFAULT_SYMBOL
   }
   const initialIndex = getSelectInitialIndex(opts.choices)
   return custom(initialIndex, {
@@ -1206,11 +1209,11 @@ export const select = <const A>(options: SelectOptions<A>): Prompt<A> => {
 export const autoComplete = <const A>(options: AutoCompleteOptions<A>): Prompt<A> => {
   const opts: AutoCompleteOptionsReq<A> = {
     maxPerPage: 10,
-    symbol: "?",
     filterLabel: "filter",
     filterPlaceholder: "type to filter",
     emptyMessage: "No matches",
-    ...options
+    ...options,
+    symbol: options.symbol ?? DEFAULT_SYMBOL
   }
   const initialIndex = getSelectInitialIndex(opts.choices)
   const filtered = filterAutoCompleteChoices(opts.choices, "")
@@ -1248,8 +1251,8 @@ export const multiSelect = <const A>(
 ): Prompt<Array<A>> => {
   const opts: SelectOptionsReq<A> & MultiSelectOptionsReq = {
     maxPerPage: 10,
-    symbol: "?",
-    ...options
+    ...options,
+    symbol: options.symbol ?? DEFAULT_SYMBOL
   }
   // Seed initial selection from choices marked as selected: true
   const initialSelected = new Set<number>()
@@ -1306,10 +1309,10 @@ export const text = (
 export const toggle = (options: ToggleOptions): Prompt<boolean> => {
   const opts: ToggleOptionsReq = {
     initial: false,
-    symbol: "?",
     active: "on",
     inactive: "off",
-    ...options
+    ...options,
+    symbol: options.symbol ?? DEFAULT_SYMBOL
   }
   return custom(opts.initial, {
     render: handleToggleRender(opts),
@@ -3779,10 +3782,10 @@ const basePrompt = (
 ): Prompt<string> => {
   const opts: TextOptionsReq = {
     default: "",
-    symbol: "?",
     type,
     validate: Effect.succeed,
-    ...options
+    ...options,
+    symbol: options.symbol ?? DEFAULT_SYMBOL
   }
 
   const initialState: TextState = {
