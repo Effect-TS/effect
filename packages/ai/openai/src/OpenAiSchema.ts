@@ -662,7 +662,7 @@ export const CreateResponse = Schema.Struct({
   previous_response_id: Schema.optional(Schema.String),
   model: Schema.optional(Schema.String),
   reasoning: Schema.optional(Schema.Struct({
-    effort: Schema.optional(Schema.Literals(["none", "minimal", "low", "medium", "high", "xhigh"])),
+    effort: Schema.optional(Schema.Literals(["none", "minimal", "low", "medium", "high", "xhigh", "max"])),
 
     summary: Schema.optional(Schema.Literals(["auto", "concise", "detailed"])),
     generate_summary: Schema.optional(Schema.Literals(["auto", "concise", "detailed"]))
