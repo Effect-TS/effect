@@ -40,7 +40,7 @@ const request = {
 
 const runElicitation = <S extends Schema.ConstraintEncoder<Record<string, unknown>, unknown>>(
   client: McpTestPeer["reverseClient"],
-  protocolVersion: McpProtocol.ProtocolVersion,
+  protocolVersion: McpProtocol.StatefulProtocolVersion,
   schema: S
 ) =>
   McpServer.elicit({
@@ -70,7 +70,10 @@ const runElicitation = <S extends Schema.ConstraintEncoder<Record<string, unknow
     )
   )
 
-export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
+export const suite = (
+  protocol: McpProtocol.ProtocolAdapter<McpProtocol.StatefulProtocolVersion>,
+  layer: McpConformanceLayer
+) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Elicitation", () => {
       // https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation

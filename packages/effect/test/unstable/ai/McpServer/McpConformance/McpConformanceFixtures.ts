@@ -45,8 +45,14 @@ const LogLevelTool = Tool.make("LogLevelTool", {
   dependencies: [CurrentLogLevel]
 })
 
+const RequestMetadataTool = Tool.make("RequestMetadataTool", {
+  parameters: Tool.EmptyParams,
+  success: Schema.String,
+  dependencies: [McpSchema.McpRequestContext]
+})
+
 const makeTestToolkitLayer = (observations: Ref.Ref<Observations>, protocolVersion: string) => {
-  const TestToolkit = Toolkit.make(TestTool, makeStructuredTool(protocolVersion), LogLevelTool)
+  const TestToolkit = Toolkit.make(TestTool, makeStructuredTool(protocolVersion), LogLevelTool, RequestMetadataTool)
   return McpServer.toolkit(TestToolkit).pipe(
     Layer.provide(TestToolkit.toLayer({
       TestTool: ({ value }) =>
@@ -55,7 +61,9 @@ const makeTestToolkitLayer = (observations: Ref.Ref<Observations>, protocolVersi
           toolInvocations: current.toolInvocations + 1
         })).pipe(Effect.as(value)),
       StructuredTool: () => Effect.succeed({ value: "structured" }),
-      LogLevelTool: () => CurrentLogLevel
+      LogLevelTool: () => CurrentLogLevel,
+      RequestMetadataTool: () =>
+        McpSchema.McpRequestContext.useSync((context) => JSON.stringify(context.requestMetadata))
     }))
   )
 }
@@ -122,6 +130,25 @@ const makeContentToolsLayer = Layer.effectDiscard(
       }),
       annotations: Context.empty(),
       handle: () => Effect.die("private defect details")
+    })
+
+    yield* server.addTool({
+      tool: new McpSchema.Tool({
+        name: "JsonSchema2020Tool",
+        inputSchema: {
+          $schema: "https://json-schema.org/draft/2020-12/schema",
+          type: "object",
+          $defs: { identifier: { type: "string" } },
+          properties: { value: { $ref: "#/$defs/identifier" } },
+          allOf: [{ required: ["value"] }],
+          unevaluatedProperties: false
+        }
+      }),
+      annotations: Context.make(
+        McpSchema.EnabledWhen,
+        (client) => client.protocolVersion === "2026-07-28"
+      ),
+      handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
     })
 
     yield* add(
