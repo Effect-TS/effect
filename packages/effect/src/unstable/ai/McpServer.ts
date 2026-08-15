@@ -303,33 +303,32 @@ export class McpServer extends Context.Service<McpServer, {
       readonly annotations: Context.Context<never>
     }> = []
     const notificationsQueue = yield* Queue.make<QueuedServerNotification>()
-    const listChangedHandles = new Map<string, any>()
+    const pendingListChanged = new Set<string>()
     const notifications = yield* RpcClient.makeNoSerialization(BroadcastServerNotificationRpcs, {
       spanPrefix: "McpServer/Notifications",
-      onFromClient: (options) =>
-        Effect.suspend((): Effect.Effect<void> => {
+      onFromClient: (options): Effect.Effect<void> =>
+        Effect.gen(function*() {
           const message = options.message
           if (message._tag !== "Request") {
-            return Effect.void
+            return
           }
           const notification = toInternalServerNotification(message)
           if (notification === undefined) {
-            return Effect.void
+            return
           }
           if (message.tag.includes("list_changed")) {
-            if (!listChangedHandles.has(message.tag)) {
-              listChangedHandles.set(
-                message.tag,
-                setTimeout(() => {
-                  Queue.offerUnsafe(notificationsQueue, { notification })
-                  listChangedHandles.delete(message.tag)
-                }, 0)
+            if (!pendingListChanged.has(message.tag)) {
+              pendingListChanged.add(message.tag)
+              yield* Effect.sleep(0).pipe(
+                Effect.andThen(Queue.offer(notificationsQueue, { notification })),
+                Effect.ensuring(Effect.sync(() => pendingListChanged.delete(message.tag))),
+                Effect.forkDetach
               )
             }
           } else {
-            Queue.offerUnsafe(notificationsQueue, { notification })
+            yield* Queue.offer(notificationsQueue, { notification })
           }
-          return notifications.write({
+          yield* notifications.write({
             clientId: 0,
             requestId: message.id,
             _tag: "Exit",
