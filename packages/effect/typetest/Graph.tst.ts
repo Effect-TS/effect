@@ -45,6 +45,20 @@ describe("Graph", () => {
     expect(Graph.make("undirected")<string, number>).type.not.toBeCallableWith(() => Promise.resolve())
   })
 
+  it("fromSnapshot", () => {
+    expect(Graph.fromSnapshot({
+      type: "directed",
+      nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }],
+      edges: [{ index: 3, source: 2, target: 5, data: 1 }]
+    })).type.toBe<Graph.DirectedGraph<string, number>>()
+
+    expect(Graph.fromSnapshot({
+      type: "undirected",
+      nodes: [{ index: 0, data: "A" }],
+      edges: [] as ReadonlyArray<Graph.IndexedEdge<number>>
+    })).type.toBe<Graph.UndirectedGraph<string, number>>()
+  })
+
   it("mutation callbacks must be synchronous", () => {
     expect(Graph.directed<string, number>).type.not.toBeCallableWith(async () => {})
     expect(Graph.undirected<string, number>).type.not.toBeCallableWith(() => Promise.resolve())

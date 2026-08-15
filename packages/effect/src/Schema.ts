@@ -31,9 +31,11 @@ import * as Exit_ from "./Exit.ts"
 import type { Formatter } from "./Formatter.ts"
 import { format, formatPropertyKey } from "./Formatter.ts"
 import { identity, memoize } from "./Function.ts"
+import * as Graph_ from "./Graph.ts"
 import * as HashMap_ from "./HashMap.ts"
 import * as HashSet_ from "./HashSet.ts"
 import * as core from "./internal/core.ts"
+import * as InternalGraph from "./internal/graph.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
 import * as InternalSchema from "./internal/schema/schema.ts"
@@ -11157,6 +11159,284 @@ export const ReadonlyMapReviver = InternalSchema.makeDeclarationReviver(
   Null,
   ({ annotations, typeParameters }) => {
     const schema = ReadonlyMap(typeParameters[0], typeParameters[1])
+    return annotations === undefined ? schema : schema.annotate(annotations)
+  }
+)
+
+/**
+ * Encoded representation of an immutable Effect graph.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type EncodedGraph<N, E, T extends Graph_.Kind> = Graph_.Snapshot<N, E, T>
+
+/**
+ * Iso representation used for {@link Graph} schemas.
+ *
+ * @category utility types
+ * @since 4.0.0
+ */
+export type GraphIso<T extends Graph_.Kind, Node extends Constraint, Edge extends Constraint> = EncodedGraph<
+  Node["Iso"],
+  Edge["Iso"],
+  T
+>
+
+/**
+ * Type-level representation returned by {@link Graph}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Graph<T extends Graph_.Kind, Node extends Constraint, Edge extends Constraint>
+  extends
+    declareConstructor<
+      Graph_.Graph<Node["Type"], Edge["Type"], T>,
+      Graph_.Graph<Node["Encoded"], Edge["Encoded"], T>,
+      readonly [Node, Edge],
+      GraphIso<T, Node, Edge>
+    >
+{
+  readonly "Rebuild": Graph<T, Node, Edge>
+  readonly type: T
+  readonly node: Node
+  readonly edge: Edge
+}
+
+function graphEncodedSchema<T extends Graph_.Kind, Node extends Constraint, Edge extends Constraint>(
+  type: T,
+  node: Node,
+  edge: Edge
+) {
+  return Struct({
+    type: Literal(type),
+    nodes: ArraySchema(Struct({ index: Natural, data: node })),
+    edges: ArraySchema(Struct({ index: Natural, source: Natural, target: Natural, data: edge }))
+  })
+}
+
+function graphDecode<N, E, T extends Graph_.Kind>(
+  input: EncodedGraph<N, E, T>,
+  options: SchemaAST.ParseOptions
+): Effect.Effect<Graph_.Graph<N, E, T>, SchemaIssue.Issue> {
+  let previous = -1
+  const indexes = new Set<Graph_.NodeIndex>()
+  for (let i = 0; i < input.nodes.length; i++) {
+    const index = input.nodes[i].index
+    if (index <= previous) {
+      return Effect.fail(
+        new SchemaIssue.Pointer(
+          ["nodes", i, "index"],
+          new SchemaIssue.InvalidValue({ expected: "a strictly increasing node index" }, index, options)
+        )
+      )
+    }
+    previous = index
+    indexes.add(index)
+  }
+
+  previous = -1
+  for (let i = 0; i < input.edges.length; i++) {
+    const edge = input.edges[i]
+    if (edge.index <= previous) {
+      return Effect.fail(
+        new SchemaIssue.Pointer(
+          ["edges", i, "index"],
+          new SchemaIssue.InvalidValue({ expected: "a strictly increasing edge index" }, edge.index, options)
+        )
+      )
+    }
+    previous = edge.index
+    if (!indexes.has(edge.source)) {
+      return Effect.fail(
+        new SchemaIssue.Pointer(
+          ["edges", i, "source"],
+          new SchemaIssue.InvalidValue({ expected: "an encoded node index" }, edge.source, options)
+        )
+      )
+    }
+    if (!indexes.has(edge.target)) {
+      return Effect.fail(
+        new SchemaIssue.Pointer(
+          ["edges", i, "target"],
+          new SchemaIssue.InvalidValue({ expected: "an encoded node index" }, edge.target, options)
+        )
+      )
+    }
+  }
+
+  return Effect.succeed(InternalGraph.hydrate(input))
+}
+
+function graphEncode<N, E, T extends Graph_.Kind>(
+  input: Graph_.Graph<N, E, T>,
+  type: T,
+  options: SchemaAST.ParseOptions
+): Effect.Effect<EncodedGraph<N, E, T>, SchemaIssue.Issue> {
+  if (!Graph_.isGraph(input) || input.mutable || input.type !== type) {
+    return Effect.fail(new SchemaIssue.InvalidValue({ expected: `an immutable ${type} Graph` }, input, options))
+  }
+  return Effect.succeed(InternalGraph.snapshot(input))
+}
+
+function graphToEquivalence<N, E, T extends Graph_.Kind>(
+  node: Equivalence.Equivalence<N>,
+  edge: Equivalence.Equivalence<E>
+) {
+  return (self: Graph_.Graph<N, E, T>, that: Graph_.Graph<N, E, T>): boolean => {
+    const a = InternalGraph.snapshot(self)
+    const b = InternalGraph.snapshot(that)
+    if (a.type !== b.type || a.nodes.length !== b.nodes.length || a.edges.length !== b.edges.length) return false
+    for (let i = 0; i < a.nodes.length; i++) {
+      if (a.nodes[i].index !== b.nodes[i].index || !node(a.nodes[i].data, b.nodes[i].data)) return false
+    }
+    for (let i = 0; i < a.edges.length; i++) {
+      const ae = a.edges[i]
+      const be = b.edges[i]
+      const sameEndpoints = a.type === "directed"
+        ? ae.source === be.source && ae.target === be.target
+        : (ae.source === be.source && ae.target === be.target) ||
+          (ae.source === be.target && ae.target === be.source)
+      if (
+        ae.index !== be.index || !sameEndpoints || !edge(ae.data, be.data)
+      ) return false
+    }
+    return true
+  }
+}
+
+function graphToArbitrary<N, E, T extends Graph_.Kind>(
+  type: T,
+  node: Annotations.ToArbitrary.TypeParameter<N>,
+  edge: Annotations.ToArbitrary.TypeParameter<E>
+) {
+  return (fc: typeof FastCheck, ctx: Annotations.ToArbitrary.Context) => {
+    const empty = InternalGraph.hydrate<N, E, T>({ type, nodes: [], edges: [] })
+    const terminal = fc.constant(empty)
+    const arbitrary = fc.array(node.arbitrary).chain((values) => {
+      const nodes = values.map((data, index) => ({ index, data }))
+      if (nodes.length === 0) return terminal
+      const endpoint = fc.integer({ min: 0, max: nodes.length - 1 })
+      return fc.array(fc.tuple(endpoint, endpoint, edge.arbitrary)).map((values) =>
+        InternalGraph.hydrate({
+          type,
+          nodes,
+          edges: values.map(([source, target, data], index) => ({ index, source, target, data }))
+        })
+      )
+    })
+    return withRecursion(fc, ctx, terminal, arbitrary)
+  }
+}
+
+/**
+ * Creates a schema for immutable directed or undirected Effect graphs.
+ *
+ * Encoding preserves active node and edge indexes, payloads, endpoints,
+ * isolated nodes, self-loops, parallel edges, and stored edge orientation. It
+ * does not encode removed-ID allocator history; after decoding, future allocation starts
+ * after the highest active decoded index. Encoding rejects mutable graphs.
+ * `Graph.toJSON()` remains an inspection summary and is not this wire format.
+ *
+ * **Example** (Encoding a directed graph as JSON)
+ *
+ * ```ts import.meta.vitest
+ * import { Graph, Schema } from "effect"
+ *
+ * const codec = Schema.toCodecJson(Schema.Graph("directed", Schema.String, Schema.Number))
+ * const graph = Graph.directed<string, number>((mutable) => {
+ *   const source = Graph.addNode(mutable, "A")
+ *   const target = Graph.addNode(mutable, "B")
+ *   Graph.addEdge(mutable, source, target, 1)
+ * })
+ *
+ * const encoded = Schema.encodeSync(codec)(graph)
+ *
+ * encoded.type // => "directed"
+ * encoded.nodes // => [{ index: 0, data: "A" }, { index: 1, data: "B" }]
+ * encoded.edges // => [{ index: 0, source: 0, target: 1, data: 1 }]
+ * ```
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export function Graph<Node extends Constraint, Edge extends Constraint>(
+  type: "directed",
+  node: Node,
+  edge: Edge
+): Graph<"directed", Node, Edge>
+export function Graph<Node extends Constraint, Edge extends Constraint>(
+  type: "undirected",
+  node: Node,
+  edge: Edge
+): Graph<"undirected", Node, Edge>
+export function Graph<T extends Graph_.Kind, Node extends Constraint, Edge extends Constraint>(
+  type: T,
+  node: Node,
+  edge: Edge
+): Graph<T, Node, Edge>
+export function Graph<T extends Graph_.Kind, Node extends Constraint, Edge extends Constraint>(
+  type: T,
+  node: Node,
+  edge: Edge
+): Graph<T, Node, Edge> {
+  const schema = declareConstructor<
+    Graph_.Graph<Node["Type"], Edge["Type"], T>,
+    Graph_.Graph<Node["Encoded"], Edge["Encoded"], T>,
+    GraphIso<T, Node, Edge>
+  >()(
+    [node, edge],
+    ([node, edge]) => {
+      const encoded = graphEncodedSchema(type, node, edge)
+      return (input, ast, options) => {
+        if (!Graph_.isGraph(input) || input.mutable || input.type !== type) {
+          return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
+        }
+        return Effect.flatMap(
+          SchemaParser.decodeUnknownEffect(encoded)(InternalGraph.snapshot(input), options),
+          (snapshot) => graphDecode(snapshot, options)
+        )
+      }
+    },
+    {
+      representation: {
+        id: "effect/schema/Graph",
+        payload: type
+      },
+      toCode: ({ typeParameters }) => ({
+        runtime: `Schema.Graph(${format(type)}, ${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
+        Type: `Graph.Graph<${typeParameters[0].Type}, ${typeParameters[1].Type}, ${format(type)}>`,
+        importDeclarations: [`import * as Graph from "effect/Graph"`]
+      }),
+      expected: `an immutable ${type} Graph`,
+      toCodec: ([node, edge]) =>
+        link<Graph_.Graph<Node["Encoded"], Edge["Encoded"], T>>()(
+          graphEncodedSchema(type, node, edge),
+          SchemaTransformation.transformOrFail({
+            decode: graphDecode,
+            encode: (graph, options) => graphEncode(graph, type, options)
+          })
+        ),
+      toArbitrary: ([node, edge]) => graphToArbitrary(type, node, edge),
+      toEquivalence: ([node, edge]) => graphToEquivalence(node, edge),
+      toFormatter: () => globalThis.String
+    }
+  )
+  return make(schema.ast, { type, node, edge })
+}
+
+/**
+ * Reviver for persisted {@link Graph} declarations.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const GraphReviver = InternalSchema.makeDeclarationReviver(
+  "effect/schema/Graph",
+  Literals(["directed", "undirected"]),
+  ({ annotations, payload, typeParameters }) => {
+    const schema = Graph(payload, typeParameters[0], typeParameters[1])
     return annotations === undefined ? schema : schema.annotate(annotations)
   }
 )
