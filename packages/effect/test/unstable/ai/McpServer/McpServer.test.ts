@@ -26,6 +26,7 @@ import type * as RpcMessage from "effect/unstable/rpc/RpcMessage"
 import * as RpcServer from "effect/unstable/rpc/RpcServer"
 import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
+import { makeMcpStdioHarness } from "./TestUtils/McpStdioHarness.ts"
 
 const OptionalStringTool = Tool.make("OptionalStringTool", {
   parameters: Schema.Struct({ signature: Schema.optional(Schema.String) }),
@@ -628,6 +629,47 @@ describe("McpServer", () => {
 
         strictEqual(result.protocolVersion, "2025-06-18")
         strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-06-18")
+      }))
+  })
+
+  describe("list-change notification scheduling", () => {
+    it.effect("should coalesce notifications when one registration kind changes repeatedly in a scheduling window", () =>
+      Effect.gen(function*() {
+        const fixture = yield* makeMcpStdioHarness(McpProtocol.v2026_07_28)
+        const makeTool = (name: string) => ({
+          tool: new McpSchema.Tool({ name, inputSchema: { type: "object", properties: {} } }),
+          annotations: Context.empty(),
+          handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
+        })
+        const makePrompt = (name: string) => ({
+          prompt: new McpSchema.Prompt({ name }),
+          annotations: Context.empty(),
+          completions: {},
+          handle: () =>
+            Effect.succeed(
+              new McpSchema.GetPromptResult({
+                messages: [{ role: "user", content: { type: "text", text: name } }]
+              })
+            )
+        })
+
+        yield* fixture.server.addTool(makeTool("baseline-tool"))
+        yield* fixture.server.addPrompt(makePrompt("baseline-prompt"))
+        yield* fixture.flushListChanged
+        yield* fixture.initialize()
+        const subscription = yield* fixture.startRequest("subscriptions/listen", {
+          notifications: { toolsListChanged: true, promptsListChanged: true }
+        }, "coalesced-list-change")
+        assert.strictEqual((yield* fixture.takeMessage).method, "notifications/subscriptions/acknowledged")
+
+        yield* fixture.server.addTool(makeTool("coalesced-tool-first"))
+        yield* fixture.server.addTool(makeTool("coalesced-tool-second"))
+        yield* fixture.server.addPrompt(makePrompt("coalescing-sentinel"))
+        yield* fixture.flushListChanged
+
+        assert.strictEqual((yield* fixture.takeMessage).method, "notifications/tools/list_changed")
+        assert.strictEqual((yield* fixture.takeMessage).method, "notifications/prompts/list_changed")
+        yield* subscription.cancel()
       }))
   })
 
