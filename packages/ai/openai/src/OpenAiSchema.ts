@@ -9,6 +9,7 @@
 import * as Effect from "effect/Effect"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import * as SchemaTransformation from "effect/SchemaTransformation"
 
 const UnknownRecord = Schema.Record(Schema.String, Schema.Unknown)
 
@@ -1032,7 +1033,7 @@ const ResponseImageGenerationCallPartialImageEvent = Schema.Struct({
   partial_image_b64: Schema.String
 })
 
-const ResponseErrorEvent = Schema.Struct({
+const ResponseErrorEventDecoded = Schema.Struct({
   type: Schema.Literal("error"),
   code: Schema.NullOr(Schema.String),
   message: Schema.String,
@@ -1040,6 +1041,43 @@ const ResponseErrorEvent = Schema.Struct({
   sequence_number: Schema.Int,
   status: Schema.optionalKey(Schema.Int)
 })
+
+// The Responses API documents the `error` stream event with `code`, `message`,
+// and `param` at the top level, but mid-stream errors (for example quota
+// exhaustion) instead emit the standard error envelope nested under `error`
+// (`{ type: "error", error: { code, message, param, ... }, sequence_number }`).
+// Accept both wire shapes and normalize them to the documented shape, so an
+// error event — the one event that most needs to surface — never fails to
+// decode and abort the whole stream with an opaque schema error.
+const ResponseErrorEvent = Schema.Struct({
+  type: Schema.Literal("error"),
+  code: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  message: Schema.optionalKey(Schema.String),
+  param: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  sequence_number: Schema.optionalKey(Schema.Int),
+  status: Schema.optionalKey(Schema.Int),
+  error: Schema.optionalKey(Schema.Struct({
+    type: Schema.optionalKey(Schema.NullOr(Schema.String)),
+    code: Schema.optionalKey(Schema.NullOr(Schema.String)),
+    message: Schema.optionalKey(Schema.String),
+    param: Schema.optionalKey(Schema.NullOr(Schema.String))
+  }))
+}).pipe(
+  Schema.decodeTo(
+    ResponseErrorEventDecoded,
+    SchemaTransformation.transform({
+      decode: (input) => ({
+        type: "error" as const,
+        code: input.code ?? input.error?.code ?? null,
+        message: input.message ?? input.error?.message ?? "An unknown error occurred",
+        param: input.param ?? input.error?.param ?? null,
+        sequence_number: input.sequence_number ?? 0,
+        ...(input.status !== undefined ? { status: input.status } : {})
+      }),
+      encode: (value) => value
+    })
+  )
+)
 
 const knownResponseStreamEventTypes = new Set([
   "response.created",

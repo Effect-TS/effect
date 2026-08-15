@@ -283,6 +283,45 @@ describe("OpenAiSchema", () => {
       assert.isDefined(malformed)
     }))
 
+  it("decodes the error event whether the payload is flat or nested under `error`", () => {
+    // The documented shape carries `code`/`message`/`param` at the top level.
+    const flat = Schema.decodeUnknownSync(OpenAiSchema.ResponseStreamEvent)({
+      type: "error",
+      code: "ERR",
+      message: "boom",
+      param: null,
+      sequence_number: 1
+    })
+    assert.deepStrictEqual(flat, {
+      type: "error",
+      code: "ERR",
+      message: "boom",
+      param: null,
+      sequence_number: 1
+    })
+
+    // Mid-stream errors (e.g. quota exhaustion) instead nest the standard error
+    // envelope under `error`. This must decode too — not abort the stream — and
+    // normalize to the documented shape so the message and code still surface.
+    const nested = Schema.decodeUnknownSync(OpenAiSchema.ResponseStreamEvent)({
+      type: "error",
+      error: {
+        type: "insufficient_quota",
+        code: "credit_balance_exhausted",
+        message: "You have no credits remaining.",
+        param: null
+      },
+      sequence_number: 2
+    })
+    assert.deepStrictEqual(nested, {
+      type: "error",
+      code: "credit_balance_exhausted",
+      message: "You have no credits remaining.",
+      param: null,
+      sequence_number: 2
+    })
+  })
+
   it("decodes embedding response variants (numeric + string/base64)", () => {
     const numeric = Schema.decodeUnknownSync(OpenAiSchema.CreateEmbeddingResponse)({
       object: "list",
