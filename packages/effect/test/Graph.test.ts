@@ -2037,6 +2037,21 @@ describe("Graph", () => {
       expect(edge).toEqual(Option.none())
     })
 
+    it("does not expose internally stored edges", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const source = Graph.addNode(mutable, "source")
+        const target = Graph.addNode(mutable, "target")
+        Graph.addEdge(mutable, source, target, 1)
+      })
+      const fromGetter = Option.getOrThrow(Graph.getEdge(graph, 0))
+      const fromWalker = Array.from(Graph.values(Graph.edges(graph)))[0]
+      ;(fromGetter as any).source = 1
+      ;(fromWalker as any).target = 0
+
+      assertSome(Graph.getEdge(graph, 0), new Graph.Edge({ source: 0, target: 1, data: 1 }))
+      assert.deepStrictEqual(Graph.neighbors(graph, 0), [1])
+    })
+
     describe("hasEdge", () => {
       it("should return true for existing edge", () => {
         const graph = Graph.directed<string, number>((mutable) => {
@@ -3444,6 +3459,30 @@ describe("Graph", () => {
               heuristic: () => 0
             }),
           "A* algorithm requires non-negative edge weights"
+        )
+      }
+    })
+
+    it("should throw for non-finite heuristic values", () => {
+      for (const heuristicValue of [NaN, Infinity, -Infinity]) {
+        const graph = Graph.directed<string, number>((mutable) => {
+          const source = Graph.addNode(mutable, "source")
+          const target = Graph.addNode(mutable, "target")
+          const via = Graph.addNode(mutable, "via")
+          Graph.addEdge(mutable, source, target, 10)
+          Graph.addEdge(mutable, source, via, 1)
+          Graph.addEdge(mutable, via, target, 1)
+        })
+
+        assertGraphError(
+          () =>
+            Graph.astar(graph, {
+              source: 0,
+              target: 1,
+              cost: (edge) => edge,
+              heuristic: (node) => node === "via" ? heuristicValue : 0
+            }),
+          "A* algorithm requires finite heuristic values"
         )
       }
     })
