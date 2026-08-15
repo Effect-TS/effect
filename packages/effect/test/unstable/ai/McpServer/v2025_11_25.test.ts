@@ -10,6 +10,7 @@ import * as LoggingTest from "./McpConformance/LoggingTest.ts"
 import { layer as makeMcpConformanceLayer, McpConformance } from "./McpConformance/McpConformance.ts"
 import * as PromptsTest from "./McpConformance/PromptsTest.ts"
 import * as ResourcesTest from "./McpConformance/ResourcesTest.ts"
+import * as RootsTest from "./McpConformance/RootsTest.ts"
 import * as SamplingTest from "./McpConformance/SamplingTest.ts"
 import * as ToolsTest from "./McpConformance/ToolsTest.ts"
 import * as TransportsTest from "./McpConformance/TransportsTest.ts"
@@ -23,10 +24,14 @@ BaseProtocolTest.suite(protocol, testLayer)
 TransportsTest.suite(protocol, testLayer)
 UtilitiesTest.suite(protocol, testLayer)
 ToolsTest.suite(protocol, testLayer)
+ToolsTest.statefulLegacySuite(protocol, testLayer)
 ResourcesTest.suite(protocol, testLayer)
+ResourcesTest.statefulLegacySuite(protocol, testLayer)
 PromptsTest.suite(protocol, testLayer)
+PromptsTest.statefulLegacySuite(protocol, testLayer)
 CompletionTest.suite(protocol, testLayer)
 LoggingTest.suite(protocol, testLayer)
+RootsTest.suite(protocol, testLayer)
 SamplingTest.suite(protocol, testLayer)
 ElicitationTest.suite(protocol, testLayer)
 
