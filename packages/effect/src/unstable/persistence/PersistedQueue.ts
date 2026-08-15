@@ -1031,6 +1031,7 @@ export const makeStoreSql: (
           yield* Effect.yieldNow
         }
       }).pipe(
+        Effect.tapCause(Effect.logWarning),
         Effect.sandbox,
         Effect.retry(Schedule.spaced(500)),
         Effect.forkScoped
