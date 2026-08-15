@@ -11169,19 +11169,7 @@ export const ReadonlyMapReviver = InternalSchema.makeDeclarationReviver(
  * @category models
  * @since 4.0.0
  */
-export interface EncodedGraph<N, E, T extends Graph_.Kind> {
-  readonly type: T
-  readonly nodes: ReadonlyArray<{
-    readonly index: Graph_.NodeIndex
-    readonly data: N
-  }>
-  readonly edges: ReadonlyArray<{
-    readonly index: Graph_.EdgeIndex
-    readonly source: Graph_.NodeIndex
-    readonly target: Graph_.NodeIndex
-    readonly data: E
-  }>
-}
+export type EncodedGraph<N, E, T extends Graph_.Kind> = Graph_.Snapshot<N, E, T>
 
 /**
  * Iso representation used for {@link Graph} schemas.

@@ -1,4 +1,3 @@
-import * as Data from "../Data.ts"
 import * as Equal from "../Equal.ts"
 import type * as Graph from "../Graph.ts"
 import * as Hash from "../Hash.ts"
@@ -10,12 +9,6 @@ import { hasProperty } from "../Predicate.ts"
 /** @internal */
 export const TypeId = "~effect/collections/Graph"
 
-export class Edge<E> extends Data.Class<{
-  readonly source: number
-  readonly target: number
-  readonly data: E
-}> {}
-
 /** @internal */
 export interface GraphImpl<in out N, in out E, T extends Graph.Kind = "directed">
   extends Iterable<readonly [Graph.NodeIndex, N]>, Equal.Equal
@@ -24,7 +17,7 @@ export interface GraphImpl<in out N, in out E, T extends Graph.Kind = "directed"
   type: T
   mutable: boolean
   nodes: Map<Graph.NodeIndex, N>
-  edges: Map<Graph.EdgeIndex, Edge<E>>
+  edges: Map<Graph.EdgeIndex, Graph.Edge<E>>
   adjacency: Map<Graph.NodeIndex, Array<Graph.EdgeIndex>>
   reverseAdjacency: Map<Graph.NodeIndex, Array<Graph.EdgeIndex>>
   nextNodeIndex: Graph.NodeIndex
@@ -38,14 +31,14 @@ export const toImpl = <N, E, T extends Graph.Kind = "directed">(
   graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
 ): GraphImpl<N, E, T> => graph as unknown as GraphImpl<N, E, T>
 
-const edgeEquals = (type: Graph.Kind, self: Edge<any>, that: Edge<any>): boolean =>
+const edgeEquals = (type: Graph.Kind, self: Graph.Edge<any>, that: Graph.Edge<any>): boolean =>
   (type === "directed"
     ? self.source === that.source && self.target === that.target
     : (self.source === that.source && self.target === that.target) ||
       (self.source === that.target && self.target === that.source)) &&
   Equal.equals(self.data, that.data)
 
-const edgeHash = (type: Graph.Kind, edge: Edge<any>): number =>
+const edgeHash = (type: Graph.Kind, edge: Graph.Edge<any>): number =>
   type === "directed"
     ? Hash.hash(edge)
     : Hash.optimize(Hash.hash(edge.data) ^ (Hash.hash(edge.source) + Hash.hash(edge.target)))
@@ -161,28 +154,7 @@ export const clone = <N, E, T extends Graph.Kind>(
 }
 
 /** @internal */
-export interface IndexedNode<N> {
-  readonly index: Graph.NodeIndex
-  readonly data: N
-}
-
-/** @internal */
-export interface IndexedEdge<E> {
-  readonly index: Graph.EdgeIndex
-  readonly source: Graph.NodeIndex
-  readonly target: Graph.NodeIndex
-  readonly data: E
-}
-
-/** @internal */
-export interface Snapshot<N, E, T extends Graph.Kind> {
-  readonly type: T
-  readonly nodes: ReadonlyArray<IndexedNode<N>>
-  readonly edges: ReadonlyArray<IndexedEdge<E>>
-}
-
-/** @internal */
-export const snapshot = <N, E, T extends Graph.Kind>(graph: Graph.Graph<N, E, T>): Snapshot<N, E, T> => {
+export const snapshot = <N, E, T extends Graph.Kind>(graph: Graph.Graph<N, E, T>): Graph.Snapshot<N, E, T> => {
   const impl = toImpl(graph)
   return {
     type: graph.type,
@@ -198,7 +170,7 @@ export const snapshot = <N, E, T extends Graph.Kind>(graph: Graph.Graph<N, E, T>
 
 /** @internal */
 export const hydrate = <N, E, T extends Graph.Kind>(
-  snapshot: Snapshot<N, E, T>
+  snapshot: Graph.Snapshot<N, E, T>
 ): Graph.Graph<N, E, T> => {
   const graph = make<N, E, T>(snapshot.type, false)
   for (const node of snapshot.nodes) {
@@ -207,7 +179,11 @@ export const hydrate = <N, E, T extends Graph.Kind>(
     graph.reverseAdjacency.set(node.index, [])
   }
   for (const edge of snapshot.edges) {
-    graph.edges.set(edge.index, new Edge(edge))
+    graph.edges.set(edge.index, {
+      source: edge.source,
+      target: edge.target,
+      data: edge.data
+    })
     graph.adjacency.get(edge.source)!.push(edge.index)
     graph.reverseAdjacency.get(edge.target)!.push(edge.index)
     if (snapshot.type === "undirected") {

@@ -88,11 +88,11 @@ describe("Schema.Graph", () => {
         { index: 2, source: 1, target: 2, data: 2 },
         { index: 3, source: 1, target: 2, data: 3 }
       ]
-    } as const
+    } satisfies Graph.Snapshot<string, number, "directed">
 
     assert.deepStrictEqual(encodeDirected(graph), encoded)
     const decoded = decodeDirected(encoded)
-    assert.deepStrictEqual(Array.from(decoded), encoded.nodes.map(({ index, data }) => [index, data]))
+    assert.deepStrictEqual(Array.from(decoded), encoded.nodes.map(({ index, data }) => [index, data] as const))
     assert.deepStrictEqual(
       Array.from(Graph.edges(decoded), ([index, edge]) => ({ index, ...edge })),
       encoded.edges

@@ -86,8 +86,11 @@ export type EdgeIndex = number
  * @category models
  * @since 3.18.0
  */
-export const Edge = internal.Edge
-export type Edge<E> = internal.Edge<E>
+export interface Edge<out E> {
+  readonly source: NodeIndex
+  readonly target: NodeIndex
+  readonly data: E
+}
 
 /**
  * Graph type for distinguishing directed and undirected graphs.
@@ -104,6 +107,43 @@ export type Edge<E> = internal.Edge<E>
  * @since 3.18.0
  */
 export type Kind = "directed" | "undirected"
+
+/**
+ * A node and its stable index in a graph snapshot.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface IndexedNode<out N> {
+  readonly index: NodeIndex
+  readonly data: N
+}
+
+/**
+ * An edge and its stable index in a graph snapshot.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface IndexedEdge<out E> extends Edge<E> {
+  readonly index: EdgeIndex
+}
+
+/**
+ * Active indexed structure used to reconstruct an immutable graph.
+ *
+ * Node and edge indexes must be non-negative safe integers in strictly
+ * increasing order. Every edge endpoint must reference an indexed node.
+ *
+ * @see {@link fromSnapshot} for reconstructing a graph
+ * @category models
+ * @since 4.0.0
+ */
+export interface Snapshot<out N, out E, out T extends Kind> {
+  readonly type: T
+  readonly nodes: ReadonlyArray<IndexedNode<N>>
+  readonly edges: ReadonlyArray<IndexedEdge<E>>
+}
 
 /**
  * Common public protocol for graph values.
@@ -204,12 +244,11 @@ export declare namespace MutableGraph {
 }
 
 /** @internal */
-const copyEdge = <E>(edge: Edge<E>): Edge<E> =>
-  new Edge({
-    source: edge.source,
-    target: edge.target,
-    data: edge.data
-  })
+const copyEdge = <E>(edge: Edge<E>): Edge<E> => ({
+  source: edge.source,
+  target: edge.target,
+  data: edge.data
+})
 
 /**
  * Immutable graph type for source-to-target relationships.
@@ -348,6 +387,76 @@ function assertMutable<N, E, T extends Kind = "directed">(
 export const isGraph = <N = unknown, E = unknown, T extends Kind = Kind, U = never>(
   u: U | Graph<N, E, T> | MutableGraph<N, E, T>
 ): u is Graph<N, E, T> | MutableGraph<N, E, T> => hasProperty(u, TypeId)
+
+/**
+ * Reconstructs an immutable graph from its indexed active structure.
+ *
+ * The node and edge arrays must be ordered by strictly increasing,
+ * non-negative safe integer indexes, and every edge endpoint must reference a
+ * node in the snapshot. Invalid snapshots throw a {@link GraphError}.
+ *
+ * **Example** (Preserving graph indexes)
+ *
+ * ```ts import.meta.vitest
+ * import { Graph } from "effect"
+ *
+ * const graph = Graph.fromSnapshot({
+ *   type: "directed",
+ *   nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }],
+ *   edges: [{ index: 3, source: 2, target: 5, data: 1 }]
+ * })
+ *
+ * Array.from(graph) // => [[2, "A"], [5, "B"]]
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromSnapshot = <N, E, T extends Kind>(snapshot: Snapshot<N, E, T>): Graph<N, E, T> => {
+  if (snapshot.type !== "directed" && snapshot.type !== "undirected") {
+    throw new GraphError({ message: "Snapshot type must be directed or undirected" })
+  }
+
+  let previous = -1
+  const nodeIndexes = new Set<NodeIndex>()
+  for (let i = 0; i < snapshot.nodes.length; i++) {
+    const index = snapshot.nodes[i].index
+    if (!Number.isSafeInteger(index) || index < 0) {
+      throw new GraphError({ message: `Node index at position ${i} must be a non-negative safe integer` })
+    }
+    if (index <= previous) {
+      throw new GraphError({ message: "Node indexes must be strictly increasing" })
+    }
+    previous = index
+    nodeIndexes.add(index)
+  }
+
+  previous = -1
+  for (let i = 0; i < snapshot.edges.length; i++) {
+    const edge = snapshot.edges[i]
+    if (!Number.isSafeInteger(edge.index) || edge.index < 0) {
+      throw new GraphError({ message: `Edge index at position ${i} must be a non-negative safe integer` })
+    }
+    if (edge.index <= previous) {
+      throw new GraphError({ message: "Edge indexes must be strictly increasing" })
+    }
+    previous = edge.index
+    if (!Number.isSafeInteger(edge.source) || edge.source < 0) {
+      throw new GraphError({ message: `Edge source at position ${i} must be a non-negative safe integer` })
+    }
+    if (!nodeIndexes.has(edge.source)) {
+      throw new GraphError({ message: `Edge source ${edge.source} does not reference a node` })
+    }
+    if (!Number.isSafeInteger(edge.target) || edge.target < 0) {
+      throw new GraphError({ message: `Edge target at position ${i} must be a non-negative safe integer` })
+    }
+    if (!nodeIndexes.has(edge.target)) {
+      throw new GraphError({ message: `Edge target ${edge.target} does not reference a node` })
+    }
+  }
+
+  return internal.hydrate(snapshot)
+}
 
 /**
  * Creates a graph constructor for the specified graph kind.
@@ -1675,7 +1784,11 @@ export const updateEdge = <N, E, T extends Kind = "directed">(
 
   const currentEdge = impl.edges.get(edgeIndex)!
   const newData = f(currentEdge.data)
-  impl.edges.set(edgeIndex, new Edge({ ...currentEdge, data: newData }))
+  impl.edges.set(edgeIndex, {
+    source: currentEdge.source,
+    target: currentEdge.target,
+    data: newData
+  })
 }
 
 /**
@@ -1753,10 +1866,11 @@ export const mapEdges = <N, E, T extends Kind = "directed">(
     const newData = f(edgeData.data)
     impl.edges.set(
       index,
-      new Edge({
-        ...edgeData,
+      {
+        source: edgeData.source,
+        target: edgeData.target,
         data: newData
-      })
+      }
     )
   }
 }
@@ -1823,11 +1937,11 @@ export const reverse = <N, E, T extends Kind = "directed">(
   for (const [index, edgeData] of impl.edges) {
     impl.edges.set(
       index,
-      new Edge({
+      {
         source: edgeData.target,
         target: edgeData.source,
         data: edgeData.data
-      })
+      }
     )
   }
 
@@ -1940,10 +2054,11 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
       // Transform edge data
       impl.edges.set(
         index,
-        new Edge({
-          ...edgeData,
+        {
+          source: edgeData.source,
+          target: edgeData.target,
           data: result.value
-        })
+        }
       )
     } else {
       // Mark for removal
@@ -2141,7 +2256,7 @@ export const addEdge = <N, E, T extends Kind = "directed">(
   const edgeIndex = impl.nextEdgeIndex
 
   // Create edge data
-  const edgeData = new Edge({ source, target, data })
+  const edgeData: Edge<E> = { source, target, data }
   impl.edges.set(edgeIndex, edgeData)
 
   // Update adjacency lists
@@ -2357,7 +2472,7 @@ const removeEdgeInternal = <N, E, T extends Kind = "directed">(
  *   Graph.addEdge(mutable, nodeA, nodeB, 42)
  * })
  *
- * Graph.getEdge(graph, 0) // => Option.some(new Graph.Edge({ source: 0, target: 1, data: 42 }))
+ * Graph.getEdge(graph, 0) // => Option.some({ source: 0, target: 1, data: 42 })
  * ```
  *
  * @category getters
