@@ -17,6 +17,25 @@ const makeResponse = (overrides: Record<string, unknown> = {}) => ({
 })
 
 describe("OpenAiSchema", () => {
+  it("validates Responses safety and prompt-cache request options", () => {
+    const decoded = Schema.decodeUnknownSync(OpenAiSchema.CreateResponse)({
+      safety_identifier: "user-hash-123",
+      prompt_cache_key: "reviewer:v1",
+      prompt_cache_retention: "24h",
+      prompt_cache_options: {
+        mode: "explicit",
+        ttl: "30m"
+      }
+    })
+
+    assert.strictEqual(decoded.safety_identifier, "user-hash-123")
+    assert.throws(() =>
+      Schema.decodeUnknownSync(OpenAiSchema.CreateResponse)({
+        safety_identifier: "x".repeat(65)
+      })
+    )
+  })
+
   it("decodes a representative response payload", () => {
     const decoded = Schema.decodeUnknownSync(OpenAiSchema.Response)({
       ...makeResponse(),
