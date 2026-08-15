@@ -6,7 +6,10 @@
 import * as Effect from "../../../../Effect.ts"
 import * as Encoding from "../../../../Encoding.ts"
 import * as Match from "../../../../Match.ts"
+import * as PubSub from "../../../../PubSub.ts"
 import * as Schema from "../../../../Schema.ts"
+import type * as Rpc from "../../../rpc/Rpc.ts"
+import type * as RpcMessage from "../../../rpc/RpcMessage.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
@@ -213,14 +216,27 @@ export const makeHandlers = (
   _lifecycle: McpProtocol.LifecycleRuntime | undefined,
   context: McpProtocol.HandlerInstallationContext
 ) => {
+  const sendNotification = context.sendNotification
+  const supportsSubscriptions = sendNotification !== undefined
   const discovery: ServerDiscoveryContext = {
     supportedVersions: context.supportedVersions,
     capabilities: {
       completions: {},
       logging: {},
-      ...(context.registrationPresence.tools ? { tools: { listChanged: false } } : {}),
-      ...(context.registrationPresence.resources ? { resources: { listChanged: false, subscribe: false } } : {}),
-      ...(context.registrationPresence.prompts ? { prompts: { listChanged: false } } : {})
+      ...(context.registrationPresence.tools
+        ? { tools: { listChanged: supportsSubscriptions } }
+        : {}),
+      ...(context.registrationPresence.resources
+        ? {
+          resources: {
+            listChanged: supportsSubscriptions,
+            subscribe: supportsSubscriptions
+          }
+        }
+        : {}),
+      ...(context.registrationPresence.prompts
+        ? { prompts: { listChanged: supportsSubscriptions } }
+        : {})
     },
     serverInfo: context.serverInfo
   }
@@ -242,6 +258,92 @@ export const makeHandlers = (
     }))
   })
   return ({
+    "subscriptions/listen": Effect.fnUntraced(function*(
+      request: typeof McpSchema.SubscriptionsListen.payloadSchema.Type,
+      { client, requestId }: { readonly client: Rpc.ServerClient; readonly requestId: RpcMessage.RequestId }
+    ) {
+      if (sendNotification === undefined) {
+        return yield* Effect.fail(McpSchema.McpError.make({
+          code: McpSchema.METHOD_NOT_FOUND,
+          message: "Method not found: subscriptions/listen"
+        }))
+      }
+      const events = yield* context.subscribeServerNotifications
+      const honored = {
+        ...(context.registrationPresence.tools && request.notifications.toolsListChanged === true
+          ? { toolsListChanged: true }
+          : {}),
+        ...(context.registrationPresence.prompts && request.notifications.promptsListChanged === true
+          ? { promptsListChanged: true }
+          : {}),
+        ...(context.registrationPresence.resources && request.notifications.resourcesListChanged === true
+          ? { resourcesListChanged: true }
+          : {}),
+        ...(context.registrationPresence.resources && request.notifications.resourceSubscriptions !== undefined
+          ? { resourceSubscriptions: request.notifications.resourceSubscriptions }
+          : {})
+      }
+      const subscriptionMetadata = { "io.modelcontextprotocol/subscriptionId": requestId }
+      yield* sendNotification(McpSchema.protocolVersion, client.id, {
+        tag: McpSchema.SubscriptionsAcknowledgedNotification._tag,
+        payload: McpSchema.SubscriptionsAcknowledgedNotification.payloadSchema.make({
+          _meta: subscriptionMetadata,
+          notifications: honored
+        })
+      })
+      return yield* Effect.forever(Effect.gen(function*() {
+        const event = yield* PubSub.take(events)
+        if (event.targetClientId !== undefined && event.targetClientId !== client.id) {
+          return
+        }
+        const notification = event.notification
+        const projected = Match.value(notification).pipe(
+          Match.tags({
+            ToolsChanged: (notification) =>
+              honored.toolsListChanged === true ?
+                {
+                  tag: McpSchema.ToolListChangedNotification._tag,
+                  payload: McpSchema.ToolListChangedNotification.payloadSchema.make({
+                    _meta: { ...notification.metadata, ...subscriptionMetadata }
+                  })
+                } :
+                undefined,
+            PromptsChanged: (notification) =>
+              honored.promptsListChanged === true ?
+                {
+                  tag: McpSchema.PromptListChangedNotification._tag,
+                  payload: McpSchema.PromptListChangedNotification.payloadSchema.make({
+                    _meta: { ...notification.metadata, ...subscriptionMetadata }
+                  })
+                } :
+                undefined,
+            ResourcesChanged: (notification) =>
+              honored.resourcesListChanged === true ?
+                {
+                  tag: McpSchema.ResourceListChangedNotification._tag,
+                  payload: McpSchema.ResourceListChangedNotification.payloadSchema.make({
+                    _meta: { ...notification.metadata, ...subscriptionMetadata }
+                  })
+                } :
+                undefined,
+            ResourceUpdated: (notification) =>
+              honored.resourceSubscriptions?.includes(notification.uri) === true ?
+                {
+                  tag: McpSchema.ResourceUpdatedNotification._tag,
+                  payload: McpSchema.ResourceUpdatedNotification.payloadSchema.make({
+                    _meta: { ...notification.metadata, ...subscriptionMetadata },
+                    uri: notification.uri
+                  })
+                } :
+                undefined
+          }),
+          Match.exhaustive
+        )
+        if (projected !== undefined) {
+          yield* sendNotification(McpSchema.protocolVersion, client.id, projected)
+        }
+      }))
+    }),
     "server/discover": Effect.fnUntraced(function*(
       _request: typeof McpSchema.Discover.payloadSchema.Type
     ) {
@@ -428,12 +530,11 @@ export const protocol = McpProtocol.make({
     createMessage: () => Effect.fail(unsupported("sampling/createMessage")),
     elicit: () => Effect.fail(unsupported("elicitation/create"))
   }),
-  // TODO: Route change notifications through subscriptions/listen before
-  // advertising them. The runtime must filter each subscription and add its
-  // subscription ID to notification _meta before transport delivery.
   projectNotification: (notification) =>
-    McpProtocol.makeNotificationProjector({
-      supportsProgressMessage: true
-    }, notification),
+    McpProtocol.isSubscriptionServerNotification(notification)
+      ? Effect.succeed(undefined)
+      : McpProtocol.makeNotificationProjector({
+        supportsProgressMessage: true
+      }, notification),
   normalizeCancellation
 })

@@ -565,6 +565,7 @@ export class ClientRequestRpcs extends RpcGroup.make(
   ListResources,
   ListResourceTemplates,
   ReadResource,
+  SubscriptionsListen,
   CallTool,
   ListTools
 ) {}

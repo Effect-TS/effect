@@ -186,9 +186,9 @@ export interface ProtocolAdapter<
  * This revision uses request-scoped metadata instead of initialization and
  * protocol-level sessions.
  *
- * **Gotchas**
- *
- * Change-notification subscriptions are not currently advertised or served.
+ * When the selected transport supports server notifications, discovery
+ * advertises change-notification capabilities and `subscriptions/listen`
+ * delivers the requested notifications over the long-lived response.
  *
  * @category protocols
  * @since 4.0.0
