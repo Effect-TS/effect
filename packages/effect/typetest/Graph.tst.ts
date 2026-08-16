@@ -307,6 +307,49 @@ describe("Graph", () => {
     Graph.isTree(directed)
   })
 
+  it("findCycle", () => {
+    expect(Graph.findCycle(directed)).type.toBe<Option.Option<Graph.CycleResult>>()
+    expect(Graph.findCycle(mutableUndirected)).type.toBe<Option.Option<Graph.CycleResult>>()
+  })
+
+  it("minimumSpanningForest", () => {
+    expect(Graph.minimumSpanningForest(undirected, (edge) => edge)).type.toBe<
+      Graph.UndirectedGraph<string, number>
+    >()
+    expect(pipe(mutableUndirected, Graph.minimumSpanningForest((edge) => edge))).type.toBe<
+      Graph.UndirectedGraph<string, number>
+    >()
+
+    // @ts-expect-error! Minimum spanning forests require an undirected graph
+    Graph.minimumSpanningForest(directed, (edge) => edge)
+  })
+
+  it("transitiveReduction", () => {
+    expect(Graph.transitiveReduction(directed)).type.toBe<Graph.DirectedGraph<string, number>>()
+    expect(Graph.transitiveReduction(mutableDirected)).type.toBe<Graph.DirectedGraph<string, number>>()
+
+    // @ts-expect-error! Transitive reduction requires a directed graph
+    Graph.transitiveReduction(undirected)
+  })
+
+  it("lazy path enumeration", () => {
+    expect(Graph.simplePaths(directed, { source: 0, target: 1 })).type.toBe<Graph.PathWalker<number>>()
+    expect(pipe(undirected, Graph.simplePaths({ source: 0, target: 1, limit: 10 }))).type.toBe<
+      Graph.PathWalker<number>
+    >()
+    expect(Graph.allShortestPaths(directed, { source: 0, target: 1, cost: (edge) => edge })).type.toBe<
+      Graph.PathWalker<number>
+    >()
+    expect(pipe(
+      mutableDirected,
+      Graph.allShortestPaths({
+        source: 0,
+        target: 1,
+        cost: (edge) => edge
+      })
+    )).type.toBe<Graph.PathWalker<number>>()
+  })
+
   it("topo", () => {
     expect(Graph.topo(directed)).type.toBe<Graph.NodeWalker<string>>()
     expect(Graph.topo(directed, { initials: [0] })).type.toBe<Graph.NodeWalker<string>>()
