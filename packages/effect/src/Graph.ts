@@ -1458,8 +1458,13 @@ export const addNode = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   data: N
 ): NodeIndex => {
-  const impl = getMutableImplForMutation(mutable)
+  assertMutable(mutable)
+  const impl = internal.toImpl(mutable)
   const nodeIndex = impl.nextNodeIndex
+  if (nodeIndex === internal.exhausted) {
+    throw new GraphError({ message: "Node index allocation exhausted" })
+  }
+  csr.invalidate(mutable)
 
   // Add node data
   impl.nodes.set(nodeIndex, data)
@@ -1469,7 +1474,7 @@ export const addNode = <N, E, T extends Kind = "directed">(
   impl.reverseAdjacency.set(nodeIndex, [])
 
   // Update graph allocators
-  impl.nextNodeIndex = impl.nextNodeIndex + 1
+  impl.nextNodeIndex = nodeIndex === Number.MAX_SAFE_INTEGER ? internal.exhausted : nodeIndex + 1
 
   return nodeIndex
 }
@@ -2242,7 +2247,8 @@ export const addEdge = <N, E, T extends Kind = "directed">(
   target: NodeIndex,
   data: E
 ): EdgeIndex => {
-  const impl = getMutableImplForMutation(mutable)
+  assertMutable(mutable)
+  const impl = internal.toImpl(mutable)
 
   // Validate that both nodes exist
   if (!impl.nodes.has(source)) {
@@ -2253,6 +2259,10 @@ export const addEdge = <N, E, T extends Kind = "directed">(
   }
 
   const edgeIndex = impl.nextEdgeIndex
+  if (edgeIndex === internal.exhausted) {
+    throw new GraphError({ message: "Edge index allocation exhausted" })
+  }
+  csr.invalidate(mutable)
 
   // Create edge data
   const edgeData: Edge<E> = { source, target, data }
@@ -2283,7 +2293,7 @@ export const addEdge = <N, E, T extends Kind = "directed">(
   }
 
   // Update allocators
-  impl.nextEdgeIndex = impl.nextEdgeIndex + 1
+  impl.nextEdgeIndex = edgeIndex === Number.MAX_SAFE_INTEGER ? internal.exhausted : edgeIndex + 1
 
   // Only invalidate cycle flag if the graph was acyclic
   // Adding edges cannot remove cycles from cyclic graphs
