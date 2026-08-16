@@ -2623,6 +2623,12 @@ const getDirectedNeighbors = <N, E>(
   return result
 }
 
+const getUniqueDirectedNeighbors = <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+  nodeIndex: NodeIndex,
+  direction: Direction
+): Array<NodeIndex> => Array.from(new Set(getDirectedNeighbors(graph, nodeIndex, direction)))
+
 /**
  * Returns the neighboring node indices for a node.
  *
@@ -2630,6 +2636,8 @@ const getDirectedNeighbors = <N, E>(
  *
  * For directed graphs, neighbors are the targets of outgoing edges. For
  * undirected graphs, neighbors are the other endpoints of incident edges.
+ * Each neighbor appears once in first edge occurrence order, including the
+ * queried node when it has a self-loop.
  *
  * **Example** (Getting outgoing neighbors)
  *
@@ -2668,7 +2676,11 @@ export const neighbors: {
     return getUndirectedNeighbors(graph as any, nodeIndex)
   }
 
-  return getDirectedNeighbors(graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex, "outgoing")
+  return getUniqueDirectedNeighbors(
+    graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+    nodeIndex,
+    "outgoing"
+  )
 })
 
 /**
@@ -2678,6 +2690,9 @@ export const neighbors: {
  *
  * Use when you need the nodes reached by following outgoing edges from a node in
  * a directed graph.
+ *
+ * Each node appears once in first outgoing edge occurrence order. A self-loop
+ * contributes the queried node once.
  *
  * **Gotchas**
  *
@@ -2704,7 +2719,11 @@ export const successors: {
   if (graph.type === "undirected") {
     throw new GraphError({ message: "Cannot get successors of undirected graph" })
   }
-  return getDirectedNeighbors(graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex, "outgoing")
+  return getUniqueDirectedNeighbors(
+    graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+    nodeIndex,
+    "outgoing"
+  )
 })
 
 /**
@@ -2714,6 +2733,9 @@ export const successors: {
  *
  * Use when you need the nodes that reach a node by following incoming edges in a
  * directed graph.
+ *
+ * Each node appears once in first incoming edge occurrence order. A self-loop
+ * contributes the queried node once.
  *
  * **Gotchas**
  *
@@ -2740,7 +2762,11 @@ export const predecessors: {
   if (graph.type === "undirected") {
     throw new GraphError({ message: "Cannot get predecessors of undirected graph" })
   }
-  return getDirectedNeighbors(graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex, "incoming")
+  return getUniqueDirectedNeighbors(
+    graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+    nodeIndex,
+    "incoming"
+  )
 })
 
 /**
@@ -2750,6 +2776,8 @@ export const predecessors: {
  *
  * Use when maintaining existing code that already passes an explicit traversal
  * direction. New code should prefer `successors` or `predecessors`.
+ * Results contain each node once in first edge occurrence order, and a self-loop
+ * contributes the queried node once.
  *
  * **Gotchas**
  *
@@ -2801,7 +2829,11 @@ export const neighborsDirected: {
   if (graph.type === "undirected") {
     throw new GraphError({ message: "Cannot get directed neighbors of undirected graph" })
   }
-  return getDirectedNeighbors(graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex, direction)
+  return getUniqueDirectedNeighbors(
+    graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+    nodeIndex,
+    direction
+  )
 })
 
 // =============================================================================

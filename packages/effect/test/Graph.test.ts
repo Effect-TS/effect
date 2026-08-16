@@ -2480,6 +2480,59 @@ describe("Graph", () => {
         expect(Graph.predecessors(graph, 1).sort()).toEqual([0, 2])
       })
 
+      it("should return unique directed neighbors in first edge order", () => {
+        const graph = Graph.directed<string, number>((mutable) => {
+          for (let i = 0; i < 3; i++) {
+            Graph.addNode(mutable, String(i))
+          }
+          Graph.addEdge(mutable, 0, 1, 5)
+          Graph.addEdge(mutable, 2, 0, 8)
+          Graph.addEdge(mutable, 0, 1, 1)
+          Graph.addEdge(mutable, 0, 0, 3)
+          Graph.addEdge(mutable, 1, 0, 4)
+          Graph.addEdge(mutable, 0, 2, 2)
+          Graph.addEdge(mutable, 2, 0, 7)
+        })
+        const mutable = Graph.beginMutation(graph)
+
+        const assertNeighbors = (input: typeof graph | typeof mutable) => {
+          assert.deepStrictEqual(Graph.neighbors(input, 0), [1, 0, 2])
+          assert.deepStrictEqual(Graph.successors(input, 0), [1, 0, 2])
+          assert.deepStrictEqual(Graph.predecessors(input, 0), [2, 0, 1])
+          assert.deepStrictEqual(Graph.neighborsDirected(input, 0, "outgoing"), [1, 0, 2])
+          assert.deepStrictEqual(Graph.neighborsDirected(input, 0, "incoming"), [2, 0, 1])
+        }
+
+        assertNeighbors(graph)
+        Array.from(Graph.bfs(graph, { start: [0] }))
+        assertNeighbors(graph)
+        assertNeighbors(mutable)
+        Array.from(Graph.bfs(mutable, { start: [0] }))
+        assertNeighbors(mutable)
+      })
+
+      it("should preserve parallel edges for topological and weighted algorithms", () => {
+        const graph = Graph.directed<string, number>((mutable) => {
+          for (let i = 0; i < 3; i++) {
+            Graph.addNode(mutable, String(i))
+          }
+          Graph.addEdge(mutable, 0, 1, 10)
+          Graph.addEdge(mutable, 0, 1, 1)
+          Graph.addEdge(mutable, 1, 2, 2)
+        })
+        const mutable = Graph.beginMutation(graph)
+        const config = { source: 0, target: 2, cost: (weight: number) => weight }
+
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.topo(graph))), [0, 1, 2])
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.topo(mutable))), [0, 1, 2])
+        assertSome(Graph.dijkstra(graph, config), {
+          path: [0, 1, 2],
+          distance: 3,
+          costs: [1, 2]
+        })
+        assert.deepStrictEqual(Graph.dijkstra(mutable, config), Graph.dijkstra(graph, config))
+      })
+
       it("should reject non-integer indexes consistently after caching traversal", () => {
         const graph = Graph.directed<string, number>((mutable) => {
           const source = Graph.addNode(mutable, "source")
