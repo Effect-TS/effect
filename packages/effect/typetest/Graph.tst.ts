@@ -307,6 +307,11 @@ describe("Graph", () => {
     Graph.isTree(directed)
   })
 
+  it("findCycle", () => {
+    expect(Graph.findCycle(directed)).type.toBe<Option.Option<Graph.CycleResult>>()
+    expect(Graph.findCycle(mutableUndirected)).type.toBe<Option.Option<Graph.CycleResult>>()
+  })
+
   it("topo", () => {
     expect(Graph.topo(directed)).type.toBe<Graph.NodeWalker<string>>()
     expect(Graph.topo(directed, { initials: [0] })).type.toBe<Graph.NodeWalker<string>>()

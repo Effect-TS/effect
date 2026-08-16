@@ -3729,6 +3729,89 @@ export type TraversalDirection = Direction | "undirected"
 // =============================================================================
 
 /**
+ * A cycle witness containing a closed node path and its traversed edges.
+ *
+ * `path` repeats its first node at the end, so `edges.length` is always
+ * `path.length - 1`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface CycleResult {
+  readonly path: Array<NodeIndex>
+  readonly edges: Array<EdgeIndex>
+}
+
+/**
+ * Returns one cycle in a graph, if present.
+ *
+ * Directed cycles respect edge orientation. A self-loop is represented as a
+ * one-edge cycle, and two parallel undirected edges form a two-edge cycle.
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const findCycle = <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>
+): Option.Option<CycleResult> => {
+  const impl = internal.toImpl(graph)
+  const colors = new Map<NodeIndex, 0 | 1 | 2>()
+  const parentNodes = new Map<NodeIndex, NodeIndex>()
+  const parentEdges = new Map<NodeIndex, EdgeIndex>()
+
+  const makeCycle = (ancestor: NodeIndex, current: NodeIndex, closingEdge: EdgeIndex): CycleResult => {
+    const path = [current]
+    const edges: Array<EdgeIndex> = []
+    let cursor = current
+    while (cursor !== ancestor) {
+      edges.push(parentEdges.get(cursor)!)
+      cursor = parentNodes.get(cursor)!
+      path.push(cursor)
+    }
+    path.reverse()
+    edges.reverse()
+    path.push(ancestor)
+    edges.push(closingEdge)
+    return { path, edges }
+  }
+
+  for (const start of impl.nodes.keys()) {
+    if ((colors.get(start) ?? 0) !== 0) {
+      continue
+    }
+    colors.set(start, 1)
+    const stack: Array<{ readonly node: NodeIndex; position: number }> = [{ node: start, position: 0 }]
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1]
+      const adjacency = impl.adjacency.get(frame.node)!
+      if (frame.position >= adjacency.length) {
+        colors.set(frame.node, 2)
+        stack.pop()
+        continue
+      }
+
+      const edgeIndex = adjacency[frame.position++]
+      if (graph.type === "undirected" && parentEdges.get(frame.node) === edgeIndex) {
+        continue
+      }
+      const edge = impl.edges.get(edgeIndex)!
+      const neighbor = getTraversableNeighbor(graph, frame.node, edge)
+      const color = colors.get(neighbor) ?? 0
+      if (color === 1) {
+        return Option.some(makeCycle(neighbor, frame.node, edgeIndex))
+      }
+      if (color === 0) {
+        colors.set(neighbor, 1)
+        parentNodes.set(neighbor, frame.node)
+        parentEdges.set(neighbor, edgeIndex)
+        stack.push({ node: neighbor, position: 0 })
+      }
+    }
+  }
+  return Option.none()
+}
+
+/**
  * Checks whether the graph is acyclic (contains no cycles).
  *
  * **Details**

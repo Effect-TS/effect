@@ -3233,6 +3233,44 @@ describe("Graph", () => {
     })
   })
 
+  describe("findCycle", () => {
+    it("should return directed node and edge witnesses", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 9, data: "C" }],
+        edges: [
+          { index: 3, source: 2, target: 5, data: 1 },
+          { index: 7, source: 5, target: 9, data: 1 },
+          { index: 11, source: 9, target: 2, data: 1 }
+        ]
+      })
+
+      assertSome(Graph.findCycle(graph), { path: [2, 5, 9, 2], edges: [3, 7, 11] })
+      assertSome(Graph.findCycle(Graph.beginMutation(graph)), { path: [2, 5, 9, 2], edges: [3, 7, 11] })
+    })
+
+    it("should return self-loop and parallel-edge witnesses", () => {
+      const selfLoop = Graph.undirected<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addEdge(mutable, 0, 0, 1)
+      })
+      const parallel = Graph.undirected<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 0, 1, 2)
+      })
+
+      assertSome(Graph.findCycle(selfLoop), { path: [0, 0], edges: [0] })
+      assertSome(Graph.findCycle(parallel), { path: [0, 1, 0], edges: [0, 1] })
+    })
+
+    it("should return None for acyclic graphs", () => {
+      assertNone(Graph.findCycle(makeReversedUndirectedPath()))
+      assertNone(Graph.findCycle(Graph.directed()))
+    })
+  })
+
   describe("isAcyclic", () => {
     it("should detect acyclic directed graphs (DAGs)", () => {
       const dag = Graph.directed<string, string>((mutable) => {
