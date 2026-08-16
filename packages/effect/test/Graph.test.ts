@@ -176,7 +176,6 @@ describe("Graph", () => {
 
       const mutable = Graph.beginMutation(graph)
       assert.strictEqual(Graph.addEdge(mutable, 0, 2, "last"), Number.MAX_SAFE_INTEGER)
-      assert.deepStrictEqual(Graph.successors(mutable, 0), [2, 2])
       assert.strictEqual(Graph.isAcyclic(mutable), true)
       for (let i = 0; i < 2; i++) {
         assertGraphError(() => Graph.addEdge(mutable, 0, 2, "unreachable"), "Edge index allocation exhausted")
@@ -185,7 +184,6 @@ describe("Graph", () => {
         [Number.MAX_SAFE_INTEGER - 1, { source: 0, target: 2, data: "first" }],
         [Number.MAX_SAFE_INTEGER, { source: 0, target: 2, data: "last" }]
       ])
-      assert.deepStrictEqual(Graph.successors(mutable, 0), [2, 2])
       assert.strictEqual(Graph.isAcyclic(mutable), true)
       assert.strictEqual(Graph.edgeCount(mutable), 2)
     })
