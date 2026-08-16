@@ -10,6 +10,7 @@
     "packages/effect/typeperf/**/*",
     "packages/**/CHANGELOG.md",
     "!scratchpad/**/*",
+    ".changeset/**/*",
     ".agents/**/*",
     ".context/**/*",
     ".specs/**/*"
