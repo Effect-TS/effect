@@ -60,8 +60,6 @@ const ProtoGraph = {
       if (
         this.nodes.size !== thatImpl.nodes.size ||
         this.edges.size !== thatImpl.edges.size ||
-        this.nextNodeIndex !== thatImpl.nextNodeIndex ||
-        this.nextEdgeIndex !== thatImpl.nextEdgeIndex ||
         this.type !== thatImpl.type
       ) {
         return false
@@ -86,8 +84,6 @@ const ProtoGraph = {
     hash = hash ^ Hash.string(this.type)
     hash = hash ^ Hash.number(this.nodes.size)
     hash = hash ^ Hash.number(this.edges.size)
-    hash = hash ^ Hash.number(this.nextNodeIndex)
-    hash = hash ^ Hash.number(this.nextEdgeIndex)
     for (const [nodeIndex, nodeData] of this.nodes) {
       hash = hash ^ (Hash.hash(nodeIndex) + Hash.hash(nodeData))
     }
