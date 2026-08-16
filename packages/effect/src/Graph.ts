@@ -2579,6 +2579,211 @@ export const edgeCount = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>
 ): number => internal.toImpl(graph).edges.size
 
+/**
+ * Returns the indices of all edges incident to a node.
+ *
+ * Each edge is returned once in graph edge order, including self-loops.
+ * Throws a `GraphError` when the node does not exist.
+ *
+ * @category getters
+ * @since 4.0.0
+ */
+export const incidentEdges: {
+  (
+    nodeIndex: NodeIndex
+  ): <N, E, T extends Kind = "directed">(graph: Graph<N, E, T> | MutableGraph<N, E, T>) => Array<EdgeIndex>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    nodeIndex: NodeIndex
+  ): Array<EdgeIndex>
+} = dual(2, <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  nodeIndex: NodeIndex
+): Array<EdgeIndex> => {
+  const impl = internal.toImpl(graph)
+  if (!impl.nodes.has(nodeIndex)) {
+    throw missingNode(nodeIndex)
+  }
+  const result: Array<EdgeIndex> = []
+  for (const [edgeIndex, edge] of impl.edges) {
+    if (edge.source === nodeIndex || edge.target === nodeIndex) {
+      result.push(edgeIndex)
+    }
+  }
+  return result
+})
+
+/**
+ * Returns the indices of outgoing edges for a node in a directed graph.
+ *
+ * Parallel edges and self-loops are returned separately in adjacency order.
+ * Throws a `GraphError` for an undirected graph or missing node.
+ *
+ * @category getters
+ * @since 4.0.0
+ */
+export const outgoingEdges: {
+  (nodeIndex: NodeIndex): <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  ) => Array<EdgeIndex>
+  <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+    nodeIndex: NodeIndex
+  ): Array<EdgeIndex>
+} = dual(2, <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  nodeIndex: NodeIndex
+): Array<EdgeIndex> => {
+  if (graph.type === "undirected") {
+    throw new GraphError({ message: "Cannot get outgoing edges of undirected graph" })
+  }
+  const impl = internal.toImpl(graph)
+  if (!impl.nodes.has(nodeIndex)) {
+    throw missingNode(nodeIndex)
+  }
+  return Array.from(impl.adjacency.get(nodeIndex)!)
+})
+
+/**
+ * Returns the indices of incoming edges for a node in a directed graph.
+ *
+ * Parallel edges and self-loops are returned separately in reverse-adjacency
+ * order. Throws a `GraphError` for an undirected graph or missing node.
+ *
+ * @category getters
+ * @since 4.0.0
+ */
+export const incomingEdges: {
+  (nodeIndex: NodeIndex): <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  ) => Array<EdgeIndex>
+  <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+    nodeIndex: NodeIndex
+  ): Array<EdgeIndex>
+} = dual(2, <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  nodeIndex: NodeIndex
+): Array<EdgeIndex> => {
+  if (graph.type === "undirected") {
+    throw new GraphError({ message: "Cannot get incoming edges of undirected graph" })
+  }
+  const impl = internal.toImpl(graph)
+  if (!impl.nodes.has(nodeIndex)) {
+    throw missingNode(nodeIndex)
+  }
+  return Array.from(impl.reverseAdjacency.get(nodeIndex)!)
+})
+
+/**
+ * Returns all edge indices connecting the supplied nodes.
+ *
+ * Directed graphs only include edges from `source` to `target`; undirected
+ * graphs include either stored orientation. Parallel edges are retained.
+ * Throws a `GraphError` when either node does not exist.
+ *
+ * @category getters
+ * @since 4.0.0
+ */
+export const edgesBetween: {
+  (source: NodeIndex, target: NodeIndex): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Array<EdgeIndex>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    source: NodeIndex,
+    target: NodeIndex
+  ): Array<EdgeIndex>
+} = dual(3, <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  source: NodeIndex,
+  target: NodeIndex
+): Array<EdgeIndex> => {
+  const impl = internal.toImpl(graph)
+  if (!impl.nodes.has(source)) {
+    throw missingNode(source)
+  }
+  if (!impl.nodes.has(target)) {
+    throw missingNode(target)
+  }
+  const result: Array<EdgeIndex> = []
+  for (const [edgeIndex, edge] of impl.edges) {
+    if (
+      (edge.source === source && edge.target === target) ||
+      (graph.type === "undirected" && edge.source === target && edge.target === source)
+    ) {
+      result.push(edgeIndex)
+    }
+  }
+  return result
+})
+
+/**
+ * Returns the degree of a node in an undirected graph.
+ *
+ * Parallel edges count separately and a self-loop contributes two. Throws a
+ * `GraphError` for a directed graph or missing node.
+ *
+ * @category getters
+ * @since 4.0.0
+ */
+export const degree: {
+  (nodeIndex: NodeIndex): <N, E>(
+    graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
+  ) => number
+  <N, E>(graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">, nodeIndex: NodeIndex): number
+} = dual(2, <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  nodeIndex: NodeIndex
+): number => {
+  if (graph.type === "directed") {
+    throw new GraphError({ message: "Cannot get degree of directed graph" })
+  }
+  const impl = internal.toImpl(graph)
+  if (!impl.nodes.has(nodeIndex)) {
+    throw missingNode(nodeIndex)
+  }
+  return impl.adjacency.get(nodeIndex)!.length
+})
+
+/**
+ * Returns the out-degree of a node in a directed graph.
+ *
+ * Parallel edges count separately and a self-loop contributes one. Throws a
+ * `GraphError` for an undirected graph or missing node.
+ *
+ * @category getters
+ * @since 4.0.0
+ */
+export const outDegree: {
+  (nodeIndex: NodeIndex): <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  ) => number
+  <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex: NodeIndex): number
+} = dual(2, <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  nodeIndex: NodeIndex
+): number => outgoingEdges(graph as any, nodeIndex).length)
+
+/**
+ * Returns the in-degree of a node in a directed graph.
+ *
+ * Parallel edges count separately and a self-loop contributes one. Throws a
+ * `GraphError` for an undirected graph or missing node.
+ *
+ * @category getters
+ * @since 4.0.0
+ */
+export const inDegree: {
+  (nodeIndex: NodeIndex): <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  ) => number
+  <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex: NodeIndex): number
+} = dual(2, <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  nodeIndex: NodeIndex
+): number => incomingEdges(graph as any, nodeIndex).length)
+
 const getDirectedNeighbors = <N, E>(
   graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
   nodeIndex: NodeIndex,

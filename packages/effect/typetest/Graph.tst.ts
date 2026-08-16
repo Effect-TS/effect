@@ -260,6 +260,25 @@ describe("Graph", () => {
     expect(allPairs.edges).type.toBe<Map<Graph.NodeIndex, Map<Graph.NodeIndex, Array<Graph.EdgeIndex>>>>()
   })
 
+  it("edge and degree queries", () => {
+    expect(Graph.incidentEdges(directed, 0)).type.toBe<Array<Graph.EdgeIndex>>()
+    expect(pipe(undirected, Graph.incidentEdges(0))).type.toBe<Array<Graph.EdgeIndex>>()
+    expect(Graph.edgesBetween(directed, 0, 1)).type.toBe<Array<Graph.EdgeIndex>>()
+    expect(pipe(undirected, Graph.edgesBetween(0, 1))).type.toBe<Array<Graph.EdgeIndex>>()
+    expect(Graph.outgoingEdges(directed, 0)).type.toBe<Array<Graph.EdgeIndex>>()
+    expect(Graph.incomingEdges(mutableDirected, 0)).type.toBe<Array<Graph.EdgeIndex>>()
+    expect(Graph.degree(undirected, 0)).type.toBe<number>()
+    expect(Graph.outDegree(directed, 0)).type.toBe<number>()
+    expect(Graph.inDegree(mutableDirected, 0)).type.toBe<number>()
+
+    // @ts-expect-error! Directed edge queries require a directed graph
+    Graph.outgoingEdges(undirected, 0)
+    // @ts-expect-error! Directed edge queries require a directed graph
+    Graph.incomingEdges(mutableUndirected, 0)
+    // @ts-expect-error! Degree requires an undirected graph
+    Graph.degree(directed, 0)
+  })
+
   it("topo", () => {
     expect(Graph.topo(directed)).type.toBe<Graph.NodeWalker<string>>()
     expect(Graph.topo(directed, { initials: [0] })).type.toBe<Graph.NodeWalker<string>>()

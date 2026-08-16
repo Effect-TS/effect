@@ -2383,6 +2383,76 @@ describe("Graph", () => {
       })
     })
 
+    describe("edge and degree queries", () => {
+      it("should preserve directed parallel edges and self-loops", () => {
+        const graph = Graph.directed<string, number>((mutable) => {
+          Graph.addNode(mutable, "A")
+          Graph.addNode(mutable, "B")
+          Graph.addEdge(mutable, 0, 1, 1)
+          Graph.addEdge(mutable, 0, 1, 2)
+          Graph.addEdge(mutable, 1, 0, 3)
+          Graph.addEdge(mutable, 0, 0, 4)
+        })
+
+        assert.deepStrictEqual(Graph.incidentEdges(graph, 0), [0, 1, 2, 3])
+        assert.deepStrictEqual(Graph.outgoingEdges(graph, 0), [0, 1, 3])
+        assert.deepStrictEqual(Graph.incomingEdges(graph, 0), [2, 3])
+        assert.deepStrictEqual(Graph.edgesBetween(graph, 0, 1), [0, 1])
+        assert.deepStrictEqual(Graph.edgesBetween(graph, 1, 0), [2])
+        assert.strictEqual(Graph.outDegree(graph, 0), 3)
+        assert.strictEqual(Graph.inDegree(graph, 0), 2)
+      })
+
+      it("should count undirected self-loops twice only for degree", () => {
+        const graph = Graph.undirected<string, number>((mutable) => {
+          Graph.addNode(mutable, "A")
+          Graph.addNode(mutable, "B")
+          Graph.addEdge(mutable, 0, 1, 1)
+          Graph.addEdge(mutable, 1, 0, 2)
+          Graph.addEdge(mutable, 0, 0, 3)
+        })
+
+        assert.deepStrictEqual(Graph.incidentEdges(graph, 0), [0, 1, 2])
+        assert.deepStrictEqual(Graph.edgesBetween(graph, 0, 1), [0, 1])
+        assert.deepStrictEqual(Graph.edgesBetween(graph, 0, 0), [2])
+        assert.strictEqual(Graph.degree(graph, 0), 4)
+      })
+
+      it("should support data-last calls and mutable graphs", () => {
+        const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+          Graph.addNode(graph, "A")
+          Graph.addNode(graph, "B")
+          Graph.addEdge(graph, 0, 1, 1)
+        }))
+
+        assert.deepStrictEqual(Graph.incidentEdges(0)(mutable), [0])
+        assert.deepStrictEqual(Graph.outgoingEdges(0)(mutable), [0])
+        assert.deepStrictEqual(Graph.incomingEdges(1)(mutable), [0])
+        assert.deepStrictEqual(Graph.edgesBetween(0, 1)(mutable), [0])
+        assert.strictEqual(Graph.outDegree(0)(mutable), 1)
+        assert.strictEqual(Graph.inDegree(1)(mutable), 1)
+      })
+
+      it("should reject invalid kinds and missing nodes", () => {
+        const directed = Graph.directed<string, number>((mutable) => {
+          Graph.addNode(mutable, "A")
+        })
+        const undirected = Graph.undirected<string, number>((mutable) => {
+          Graph.addNode(mutable, "A")
+        })
+
+        expect(() => Graph.degree(directed as any, 0)).toThrow("Cannot get degree of directed graph")
+        expect(() => Graph.outgoingEdges(undirected as any, 0)).toThrow(
+          "Cannot get outgoing edges of undirected graph"
+        )
+        expect(() => Graph.incomingEdges(undirected as any, 0)).toThrow(
+          "Cannot get incoming edges of undirected graph"
+        )
+        expect(() => Graph.incidentEdges(directed, 1)).toThrow("Node 1 does not exist")
+        expect(() => Graph.edgesBetween(directed, 0, 1)).toThrow("Node 1 does not exist")
+      })
+    })
+
     describe("neighbors", () => {
       it("should return correct neighbors for directed graph", () => {
         const graph = Graph.directed<string, number>((mutable) => {
