@@ -1,6 +1,8 @@
 import { assert } from "@effect/vitest"
 import { assertNone, assertSome, strictEqual, throws } from "@effect/vitest/utils"
 import { Equal, Graph, Hash, Option } from "effect"
+import * as internal from "effect/internal/graph"
+import * as graphCsr from "effect/internal/graphCsr"
 import { describe, expect, it } from "vitest"
 
 const assertSomeEdge = <E>(edge: Option.Option<Graph.Edge<E>>): Graph.Edge<E> => {
@@ -35,6 +37,99 @@ const assertGraphError = (thunk: () => void, message: string) => {
       strictEqual(error.message, message)
     }
   })
+}
+
+const assertAdjacencyInvariants = <N, E, T extends Graph.Kind>(
+  graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
+) => {
+  const impl = internal.toImpl(graph)
+  const nodeIds = Array.from(graph, ([index]) => index)
+  const edges = Array.from(Graph.edges(graph))
+  const edgePositions = new Map(edges.map(([index], position) => [index, position]))
+  const expectedOutgoingEdges = new Map(nodeIds.map((index) => [index, [] as Array<number>]))
+  const expectedIncomingEdges = new Map(nodeIds.map((index) => [index, [] as Array<number>]))
+  const expectedOutgoingNodes = new Map(nodeIds.map((index) => [index, [] as Array<number>]))
+  const expectedIncomingNodes = new Map(nodeIds.map((index) => [index, [] as Array<number>]))
+
+  const addIncidence = (
+    expectedEdges: Map<number, Array<number>>,
+    expectedNodes: Map<number, Array<number>>,
+    node: Graph.NodeIndex,
+    edge: Graph.EdgeIndex,
+    neighbor: Graph.NodeIndex
+  ) => {
+    expectedEdges.get(node)!.push(edge)
+    expectedNodes.get(node)!.push(neighbor)
+  }
+
+  for (const [edgeIndex, edge] of edges) {
+    addIncidence(expectedOutgoingEdges, expectedOutgoingNodes, edge.source, edgeIndex, edge.target)
+    addIncidence(expectedIncomingEdges, expectedIncomingNodes, edge.target, edgeIndex, edge.source)
+    if (graph.type === "undirected") {
+      addIncidence(expectedOutgoingEdges, expectedOutgoingNodes, edge.target, edgeIndex, edge.source)
+      addIncidence(expectedIncomingEdges, expectedIncomingNodes, edge.source, edgeIndex, edge.target)
+    }
+  }
+
+  const sorted = (values: Iterable<number>) => Array.from(values).sort((a, b) => a - b)
+  const counts = (values: Iterable<number>) => {
+    const result = new Map<number, number>()
+    for (const value of values) {
+      result.set(value, (result.get(value) ?? 0) + 1)
+    }
+    return result
+  }
+  const assertProjection = (actual: Iterable<number>, expected: Iterable<number>, loopKeys: ReadonlySet<number>) => {
+    const actualCounts = counts(actual)
+    const expectedCounts = counts(expected)
+    assert.deepStrictEqual(sorted(actualCounts.keys()), sorted(expectedCounts.keys()))
+    for (const [key, expectedCount] of expectedCounts) {
+      const actualCount = actualCounts.get(key)!
+      if (loopKeys.has(key)) {
+        assert.ok(actualCount >= expectedCount / 2 && actualCount <= expectedCount)
+      } else {
+        assert.strictEqual(actualCount, expectedCount)
+      }
+    }
+  }
+  assert.deepStrictEqual(sorted(impl.adjacency.keys()), sorted(nodeIds))
+  assert.deepStrictEqual(sorted(impl.reverseAdjacency.keys()), sorted(nodeIds))
+  for (const node of nodeIds) {
+    const loopEdges = new Set(
+      edges.filter(([, edge]) => edge.source === node && edge.target === node).map(([index]) => index)
+    )
+    assertProjection(impl.adjacency.get(node) ?? [], expectedOutgoingEdges.get(node)!, loopEdges)
+    assertProjection(impl.reverseAdjacency.get(node) ?? [], expectedIncomingEdges.get(node)!, loopEdges)
+  }
+
+  const cache = graphCsr.get(graph)
+  const outgoing = graphCsr.getOutgoingWithEdges(cache)
+  const incoming = graphCsr.getIncoming(cache)
+  const row = (adjacency: graphCsr.Adjacency, node: Graph.NodeIndex) => {
+    const position = graphCsr.getNodeIndex(cache, node)!
+    return Array.from(
+      adjacency.columnIndices.slice(adjacency.rowOffsets[position], adjacency.rowOffsets[position + 1]),
+      (neighbor) => cache.nodeIds[neighbor]
+    )
+  }
+  const edgeRow = (node: Graph.NodeIndex) => {
+    const position = graphCsr.getNodeIndex(cache, node)!
+    return outgoing.edgeIndices.slice(outgoing.rowOffsets[position], outgoing.rowOffsets[position + 1])
+  }
+  for (const node of nodeIds) {
+    assertProjection(row(outgoing, node), expectedOutgoingNodes.get(node)!, new Set([node]))
+    assertProjection(row(incoming, node), expectedIncomingNodes.get(node)!, new Set([node]))
+    const loopPositions = new Set(
+      edges
+        .filter(([, edge]) => edge.source === node && edge.target === node)
+        .map(([index]) => edgePositions.get(index)!)
+    )
+    assertProjection(
+      edgeRow(node),
+      expectedOutgoingEdges.get(node)!.map((edge) => edgePositions.get(edge)!),
+      loopPositions
+    )
+  }
 }
 
 type SetNode = { readonly id: string; readonly label: string }
@@ -2275,6 +2370,95 @@ describe("Graph", () => {
       })
 
       expect(Graph.edgeCount(result)).toBe(1)
+    })
+  })
+
+  describe("undirected self-loop invariants", () => {
+    it("preserves logical behavior for parallel loops", () => {
+      const graph = Graph.undirected<string, number>((mutable) => {
+        const loop = Graph.addNode(mutable, "loop")
+        const target = Graph.addNode(mutable, "target")
+        Graph.addEdge(mutable, loop, loop, 5)
+        Graph.addEdge(mutable, loop, loop, 6)
+        Graph.addEdge(mutable, loop, target, 1)
+      })
+
+      assertAdjacencyInvariants(graph)
+      assert.strictEqual(Graph.edgeCount(graph), 3)
+      assert.deepStrictEqual(Array.from(Graph.values(Graph.edges(graph))), [
+        { source: 0, target: 0, data: 5 },
+        { source: 0, target: 0, data: 6 },
+        { source: 0, target: 1, data: 1 }
+      ])
+      assert.deepStrictEqual(Graph.neighbors(graph, 0), [0, 1])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfs(graph, { start: [0] }))), [0, 1])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.bfs(graph, { start: [0] }))), [0, 1])
+      assert.strictEqual(Graph.isAcyclic(graph), false)
+      assert.strictEqual(Graph.isBipartite(graph), false)
+
+      const evaluated: Array<number> = []
+      const path = Graph.dijkstra(graph, {
+        source: 0,
+        target: 1,
+        cost: (weight) => {
+          evaluated.push(weight)
+          return weight
+        }
+      })
+      assert.deepStrictEqual(evaluated, [5, 6, 1])
+      assertSome(path, { path: [0, 1], distance: 1, costs: [1] })
+    })
+
+    it("removes and re-adds loops without stale incidences", () => {
+      const mutable = Graph.beginMutation(Graph.undirected<string, string>((graph) => {
+        Graph.addNode(graph, "removed")
+        Graph.addNode(graph, "kept-a")
+        Graph.addNode(graph, "kept-b")
+      }))
+      const firstLoop = Graph.addEdge(mutable, 0, 0, "loop-a")
+      Graph.addEdge(mutable, 0, 0, "loop-b")
+      Graph.addEdge(mutable, 0, 1, "parallel-a")
+      Graph.addEdge(mutable, 1, 0, "parallel-b")
+      Graph.addEdge(mutable, 1, 2, "unrelated")
+      assertAdjacencyInvariants(mutable)
+
+      Graph.removeEdge(mutable, firstLoop)
+      assertAdjacencyInvariants(mutable)
+      assert.deepStrictEqual(Array.from(Graph.values(Graph.edges(mutable)), (edge) => edge.data), [
+        "loop-b",
+        "parallel-a",
+        "parallel-b",
+        "unrelated"
+      ])
+
+      Graph.addEdge(mutable, 0, 0, "loop-c")
+      assertAdjacencyInvariants(mutable)
+      Graph.removeNode(mutable, 0)
+      assertAdjacencyInvariants(mutable)
+      assert.deepStrictEqual(Array.from(Graph.values(Graph.edges(mutable))), [
+        { source: 1, target: 2, data: "unrelated" }
+      ])
+      assert.deepStrictEqual(Graph.neighbors(mutable, 1), [2])
+      assert.deepStrictEqual(Graph.neighbors(mutable, 2), [1])
+
+      assertAdjacencyInvariants(Graph.endMutation(mutable))
+    })
+
+    it("rebuilds loop incidences when hydrating a snapshot", () => {
+      const graph = Graph.fromSnapshot({
+        type: "undirected",
+        nodes: [{ index: 2, data: "isolated" }, { index: 5, data: "loop" }, { index: 9, data: "target" }],
+        edges: [
+          { index: 3, source: 5, target: 5, data: "first" },
+          { index: 8, source: 5, target: 5, data: "second" },
+          { index: 13, source: 9, target: 5, data: "connection" }
+        ]
+      })
+
+      assertAdjacencyInvariants(graph)
+      assert.strictEqual(Graph.edgeCount(graph), 3)
+      assert.deepStrictEqual(Graph.neighbors(graph, 5), [5, 9])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfs(graph, { start: [5] }))), [5, 9])
     })
   })
 
