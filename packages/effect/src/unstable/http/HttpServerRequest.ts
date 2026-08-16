@@ -574,13 +574,9 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
 
   get json(): Effect.Effect<Schema.Json, HttpServerError> {
-    return this.jsonWith()
-  }
-
-  jsonWith(options?: HttpIncomingMessage.JsonOptions | undefined): Effect.Effect<Schema.Json, HttpServerError> {
     return Effect.flatMap(this.text, (text) =>
       Effect.try({
-        try: () => JSON.parse(text, options?.reviver) as Schema.Json,
+        try: () => JSON.parse(text) as Schema.Json,
         catch: (cause) =>
           new HttpServerError({
             reason: new RequestParseError({
@@ -798,13 +794,9 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
 
   get json(): Effect.Effect<Schema.Json, HttpServerError> {
-    return this.jsonWith()
-  }
-
-  jsonWith(options?: HttpIncomingMessage.JsonOptions | undefined): Effect.Effect<Schema.Json, HttpServerError> {
     return Effect.flatMap(this.text, (text) =>
       Effect.try({
-        try: () => text === "" ? null : JSON.parse(text, options?.reviver),
+        try: () => text === "" ? null : JSON.parse(text),
         catch: (cause) => requestParseError(this, undefined, cause)
       }))
   }

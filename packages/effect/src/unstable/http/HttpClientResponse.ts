@@ -99,14 +99,15 @@ export const schemaJson = <
   options?: (ParseOptions & HttpIncomingMessage.JsonOptions) | undefined
 ) => {
   const decode = Schema.decodeEffect(Schema.toCodecJson(schema).annotate({ options }))
+  const decodeBody = HttpIncomingMessage.schemaBodyJson(Schema.Unknown, options)
   return (
     self: HttpClientResponse
   ): Effect.Effect<A, Schema.SchemaError | Error.HttpClientError, RD> =>
-    Effect.flatMap(self.jsonWith(options), (body) =>
+    Effect.flatMap(decodeBody(self), (body) =>
       decode({
         status: self.status,
         headers: self.headers,
-        body
+        body: body as Schema.Json
       }))
 }
 
@@ -317,13 +318,9 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
   }
 
   get json(): Effect.Effect<Schema.Json, Error.HttpClientError> {
-    return this.jsonWith()
-  }
-
-  jsonWith(options?: HttpIncomingMessage.JsonOptions | undefined): Effect.Effect<Schema.Json, Error.HttpClientError> {
     return Effect.flatMap(this.text, (text) =>
       Effect.try({
-        try: () => text === "" ? null : JSON.parse(text, options?.reviver),
+        try: () => text === "" ? null : JSON.parse(text),
         catch: (cause) =>
           new Error.HttpClientError({
             reason: new Error.DecodeError({

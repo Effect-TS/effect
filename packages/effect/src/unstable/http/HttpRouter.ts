@@ -23,7 +23,7 @@ import * as Tracer from "../../Tracer.ts"
 import type * as Types from "../../Types.ts"
 import * as FindMyWay from "./FindMyWay.ts"
 import * as HttpEffect from "./HttpEffect.ts"
-import type * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
+import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import type * as HttpMethod from "./HttpMethod.ts"
 import * as HttpMiddleware from "./HttpMiddleware.ts"
 import * as HttpServer from "./HttpServer.ts"
@@ -328,6 +328,7 @@ export const schemaJson = <
   HttpServerRequest.HttpServerRequest | HttpServerRequest.ParsedSearchParams | RouteContext | RD
 > => {
   const parse = Schema.decodeUnknownEffect(schema)
+  const parseBody = HttpIncomingMessage.schemaBodyJson(Schema.Unknown, options)
   return Effect.contextWith(
     (
       context: Context.Context<
@@ -337,7 +338,7 @@ export const schemaJson = <
       const request = Context.get(context, HttpServerRequest.HttpServerRequest)
       const searchParams = Context.get(context, HttpServerRequest.ParsedSearchParams)
       const routeContext = Context.get(context, RouteContext)
-      return Effect.flatMap(request.jsonWith(options), (body) =>
+      return Effect.flatMap(parseBody(request), (body) =>
         parse({
           method: request.method,
           url: request.url,

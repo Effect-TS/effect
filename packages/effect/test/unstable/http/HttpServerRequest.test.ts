@@ -101,12 +101,6 @@ describe("HttpServerRequest", () => {
       assert.strictEqual(request.headers["content-type"], "application/json")
       assert.strictEqual(request.cookies.session, "123")
       assert.deepStrictEqual(yield* request.json, { foo: "bar" })
-      assert.deepStrictEqual(
-        yield* request.jsonWith({
-          reviver: (key, value) => key === "foo" ? "revived" : value
-        }),
-        { foo: "revived" }
-      )
       assert.strictEqual(yield* request.text, "{\"foo\":\"bar\"}")
       assert.strictEqual(new TextDecoder().decode(new Uint8Array(arrayBuffer)), "{\"foo\":\"bar\"}")
     }))

@@ -38,7 +38,7 @@ const makeRedirectClient = Effect.fnUntraced(function*(status: number, location:
 const RateLimiterTestLayer = RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory))
 
 describe("HttpClient", () => {
-  it.effect("applies JSON revivers to response decoders", () =>
+  it.effect("applies JSON revivers to response schema decoders", () =>
     Effect.gen(function*() {
       const makeResponse = () =>
         HttpClientResponse.fromWeb(
@@ -49,7 +49,6 @@ describe("HttpClient", () => {
         reviver: (key: string, value: unknown) => key === "value" ? "revived" : value
       }
 
-      assert.deepStrictEqual(yield* makeResponse().jsonWith(options), { value: "revived" })
       assert.deepStrictEqual(
         yield* HttpClientResponse.schemaBodyJson(Schema.Struct({ value: Schema.String }), options)(makeResponse()),
         { value: "revived" }

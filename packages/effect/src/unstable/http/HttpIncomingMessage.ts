@@ -59,7 +59,6 @@ export interface HttpIncomingMessage<E = unknown> extends Inspectable.Inspectabl
   readonly headers: Headers.Headers
   readonly remoteAddress: Option.Option<string>
   readonly json: Effect.Effect<Schema.Json, E>
-  readonly jsonWith: (options?: JsonOptions | undefined) => Effect.Effect<Schema.Json, E>
   readonly text: Effect.Effect<string, E>
   readonly urlParamsBody: Effect.Effect<UrlParams.UrlParams, E>
   readonly arrayBuffer: Effect.Effect<ArrayBuffer, E>
@@ -77,10 +76,16 @@ export const schemaBodyJson = <S extends Schema.Constraint>(
   options?: (ParseOptions & JsonOptions) | undefined
 ) => {
   const decode = Schema.decodeEffect(Schema.toCodecJson(schema))
+  const decodeJson = options?.reviver === undefined
+    ? undefined
+    : Schema.decodeEffect(Schema.fromJsonString(Schema.toCodecJson(schema), options))
   return <E>(
     self: HttpIncomingMessage<E>
   ): Effect.Effect<S["Type"], E | Schema.SchemaError, S["DecodingServices"]> =>
-    Effect.flatMap(self.jsonWith(options), (u) => decode(u, options))
+    decodeJson === undefined
+      ? Effect.flatMap(self.json, (u) => decode(u, options))
+      : Effect.flatMap(self.text, (body) =>
+        body === "" ? Effect.flatMap(self.json, (u) => decode(u, options)) : decodeJson(body, options))
 }
 
 /**

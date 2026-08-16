@@ -463,13 +463,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   }
 
   get json(): Effect.Effect<Schema.Json, Error.HttpServerError> {
-    return this.jsonWith()
-  }
-
-  jsonWith(options?: IncomingMessage.JsonOptions | undefined): Effect.Effect<Schema.Json, Error.HttpServerError> {
     return Effect.flatMap(this.text, (_) =>
       Effect.try({
-        try: () => JSON.parse(_, options?.reviver) as Schema.Json,
+        try: () => JSON.parse(_) as Schema.Json,
         catch: (cause) =>
           new Error.HttpServerError({
             reason: new Error.RequestParseError({
