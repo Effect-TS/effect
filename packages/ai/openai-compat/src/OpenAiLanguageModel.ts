@@ -1287,7 +1287,7 @@ const makeStreamResponse = Effect.fnUntraced(
           parts.push({ type: "text-delta", id: textId, delta: choice.delta.content })
         }
 
-        if (choice.delta?.tool_calls !== undefined) {
+        if (Predicate.isNotNullish(choice.delta?.tool_calls)) {
           hasToolCalls = hasToolCalls || choice.delta.tool_calls.length > 0
           choice.delta.tool_calls.forEach((deltaTool, indexInChunk) => {
             const toolIndex = deltaTool.index ?? indexInChunk
