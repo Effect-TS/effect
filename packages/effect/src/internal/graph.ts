@@ -154,6 +154,21 @@ export const clone = <N, E, T extends Graph.Kind>(
 }
 
 /** @internal */
+export const finalize = <N, E, T extends Graph.Kind>(source: GraphImpl<N, E, T>): GraphImpl<N, E, T> => {
+  const graph: GraphImpl<N, E, T> = Object.create(ProtoGraph)
+  graph.type = source.type
+  graph.mutable = false
+  graph.nodes = source.nodes
+  graph.edges = source.edges
+  graph.adjacency = source.adjacency
+  graph.reverseAdjacency = source.reverseAdjacency
+  graph.nextNodeIndex = source.nextNodeIndex
+  graph.nextEdgeIndex = source.nextEdgeIndex
+  graph.acyclic = source.acyclic
+  return graph
+}
+
+/** @internal */
 export const snapshot = <N, E, T extends Graph.Kind>(graph: Graph.Graph<N, E, T>): Graph.Snapshot<N, E, T> => {
   const impl = toImpl(graph)
   return {
