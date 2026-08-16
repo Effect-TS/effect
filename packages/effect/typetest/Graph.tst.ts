@@ -246,6 +246,13 @@ describe("Graph", () => {
     >()
   })
 
+  it("inducedSubgraph", () => {
+    expect(Graph.inducedSubgraph(directed, [0, 1])).type.toBe<Graph.DirectedGraph<string, number>>()
+    expect(pipe(undirected, Graph.inducedSubgraph(new Set([0, 1])))).type.toBe<
+      Graph.UndirectedGraph<string, number>
+    >()
+  })
+
   it("undirected traversal", () => {
     expect(Graph.dfs(directed, { direction: "undirected", radius: 1 })).type.toBe<Graph.NodeWalker<string>>()
     expect(Graph.bfs(directed, { direction: "undirected", radius: 1 })).type.toBe<Graph.NodeWalker<string>>()
@@ -258,6 +265,46 @@ describe("Graph", () => {
 
     expect(path.edges).type.toBe<Array<Graph.EdgeIndex>>()
     expect(allPairs.edges).type.toBe<Map<Graph.NodeIndex, Map<Graph.NodeIndex, Array<Graph.EdgeIndex>>>>()
+  })
+
+  it("edge and degree queries", () => {
+    expect(Graph.incidentEdges(directed, 0)).type.toBe<Array<Graph.EdgeIndex>>()
+    expect(pipe(undirected, Graph.incidentEdges(0))).type.toBe<Array<Graph.EdgeIndex>>()
+    expect(Graph.edgesBetween(directed, 0, 1)).type.toBe<Array<Graph.EdgeIndex>>()
+    expect(pipe(undirected, Graph.edgesBetween(0, 1))).type.toBe<Array<Graph.EdgeIndex>>()
+    expect(Graph.outgoingEdges(directed, 0)).type.toBe<Array<Graph.EdgeIndex>>()
+    expect(Graph.incomingEdges(mutableDirected, 0)).type.toBe<Array<Graph.EdgeIndex>>()
+    expect(Graph.degree(undirected, 0)).type.toBe<number>()
+    expect(Graph.outDegree(directed, 0)).type.toBe<number>()
+    expect(Graph.inDegree(mutableDirected, 0)).type.toBe<number>()
+
+    // @ts-expect-error! Directed edge queries require a directed graph
+    Graph.outgoingEdges(undirected, 0)
+    // @ts-expect-error! Directed edge queries require a directed graph
+    Graph.incomingEdges(mutableUndirected, 0)
+    // @ts-expect-error! Degree requires an undirected graph
+    Graph.degree(directed, 0)
+  })
+
+  it("reachability and connectivity", () => {
+    expect(Graph.unweightedDistances(directed, 0)).type.toBe<Map<Graph.NodeIndex, number>>()
+    expect(pipe(directed, Graph.unweightedDistances(0, { direction: "incoming" }))).type.toBe<
+      Map<Graph.NodeIndex, number>
+    >()
+    expect(Graph.hasPath(directed, 0, 1)).type.toBe<boolean>()
+    expect(pipe(undirected, Graph.hasPath(0, 1))).type.toBe<boolean>()
+    expect(Graph.weaklyConnectedComponents(directed)).type.toBe<Array<Array<Graph.NodeIndex>>>()
+    expect(Graph.isConnected(undirected)).type.toBe<boolean>()
+    expect(Graph.isWeaklyConnected(directed)).type.toBe<boolean>()
+    expect(Graph.isStronglyConnected(mutableDirected)).type.toBe<boolean>()
+    expect(Graph.isTree(mutableUndirected)).type.toBe<boolean>()
+
+    // @ts-expect-error! Weak connectivity requires a directed graph
+    Graph.weaklyConnectedComponents(undirected)
+    // @ts-expect-error! Undirected connectivity requires an undirected graph
+    Graph.isConnected(directed)
+    // @ts-expect-error! Trees require an undirected graph
+    Graph.isTree(directed)
   })
 
   it("topo", () => {
