@@ -160,6 +160,10 @@ export interface ConfirmOptions {
    */
   readonly message: string
   /**
+   * The single-column prefix to display at the start of the prompt (defaults to `"?"`).
+   */
+  readonly prefix?: string
+  /**
    * The initial value of the confirm prompt (defaults to `false`).
    */
   readonly initial?: boolean
@@ -205,6 +209,10 @@ export interface DateOptions {
    * The message to display in the prompt.
    */
   readonly message: string
+  /**
+   * The single-column prefix to display at the start of the prompt (defaults to `"?"`).
+   */
+  readonly prefix?: string
   /**
    * The initial date value to display in the prompt (defaults to the current
    * date).
@@ -280,6 +288,10 @@ export interface IntegerOptions {
    * The message to display in the prompt.
    */
   readonly message: string
+  /**
+   * The single-column prefix to display at the start of the prompt (defaults to `"?"`).
+   */
+  readonly prefix?: string
   /**
    * The default value of the integer prompt.
    */
@@ -362,6 +374,11 @@ export interface FileOptions {
    */
   readonly message?: string
   /**
+   * The single-column prefix to display at the start of the directory traversal
+   * confirmation prompt (defaults to `"?"`).
+   */
+  readonly prefix?: string
+  /**
    * Where the user will initially be prompted to select files from, defaulting
    * to the current working directory.
    */
@@ -393,6 +410,10 @@ export interface SelectOptions<A> {
    * The message to display in the prompt.
    */
   readonly message: string
+  /**
+   * The single-column prefix to display at the start of the prompt (defaults to `"?"`).
+   */
+  readonly prefix?: string
   /**
    * The choices to display to the user.
    */
@@ -499,6 +520,10 @@ export interface TextOptions {
    */
   readonly message: string
   /**
+   * The single-column prefix to display at the start of the prompt (defaults to `"?"`).
+   */
+  readonly prefix?: string
+  /**
    * The default value of the text option.
    */
   readonly default?: string
@@ -521,6 +546,10 @@ export interface ToggleOptions {
    * The message to display in the prompt.
    */
   readonly message: string
+  /**
+   * The single-column prefix to display at the start of the prompt (defaults to `"?"`).
+   */
+  readonly prefix?: string
   /**
    * The intitial value of the toggle prompt (defaults to `false`).
    */
@@ -553,6 +582,8 @@ const defaultFigures = {
   line: "─",
   pointer: "❯"
 }
+
+const DEFAULT_PREFIX = "?"
 
 const windowsFigures = {
   arrowUp: defaultFigures.arrowUp,
@@ -746,6 +777,7 @@ export const confirm = (options: ConfirmOptions): Prompt<boolean> => {
   const opts: Required<ConfirmOptions> = {
     initial: false,
     ...options,
+    prefix: options.prefix ?? DEFAULT_PREFIX,
     label: {
       confirm: "yes",
       deny: "no",
@@ -843,6 +875,7 @@ export const date = (options: DateOptions): Prompt<Date> => {
     dateMask: "YYYY-MM-DD HH:mm:ss",
     validate: Effect.succeed,
     ...options,
+    prefix: options.prefix ?? DEFAULT_PREFIX,
     locales: {
       ...defaultLocales,
       ...options.locales
@@ -879,6 +912,7 @@ export const file = (options: FileOptions = {}): Prompt<string> => {
   const opts: FileOptionsReq = {
     type: options.type ?? "file",
     message: options.message ?? `Choose a file`,
+    prefix: options.prefix ?? DEFAULT_PREFIX,
     startingPath: Option.fromUndefinedOr(options.startingPath),
     default: Option.fromUndefinedOr(options.default),
     maxPerPage: options.maxPerPage ?? 10,
@@ -967,7 +1001,8 @@ export const float = (options: FloatOptions): Prompt<number> => {
       }
       return Effect.succeed(n)
     },
-    ...options
+    ...options,
+    prefix: options.prefix ?? DEFAULT_PREFIX
   }
   const initialValue = options.default === undefined ? "" : `${opts.default}`
   const initialState: NumberState = {
@@ -1019,7 +1054,8 @@ export const integer = (options: IntegerOptions): Prompt<number> => {
       }
       return Effect.succeed(n)
     },
-    ...options
+    ...options,
+    prefix: options.prefix ?? DEFAULT_PREFIX
   }
   const initialValue = options.default === undefined ? "" : `${opts.default}`
   const initialState: NumberState = {
@@ -1136,7 +1172,8 @@ const getSelectInitialIndex = <A>(choices: ReadonlyArray<SelectChoice<A>>): numb
 export const select = <const A>(options: SelectOptions<A>): Prompt<A> => {
   const opts: SelectOptionsReq<A> = {
     maxPerPage: 10,
-    ...options
+    ...options,
+    prefix: options.prefix ?? DEFAULT_PREFIX
   }
   const initialIndex = getSelectInitialIndex(opts.choices)
   return custom(initialIndex, {
@@ -1175,7 +1212,8 @@ export const autoComplete = <const A>(options: AutoCompleteOptions<A>): Prompt<A
     filterLabel: "filter",
     filterPlaceholder: "type to filter",
     emptyMessage: "No matches",
-    ...options
+    ...options,
+    prefix: options.prefix ?? DEFAULT_PREFIX
   }
   const initialIndex = getSelectInitialIndex(opts.choices)
   const filtered = filterAutoCompleteChoices(opts.choices, "")
@@ -1213,7 +1251,8 @@ export const multiSelect = <const A>(
 ): Prompt<Array<A>> => {
   const opts: SelectOptionsReq<A> & MultiSelectOptionsReq = {
     maxPerPage: 10,
-    ...options
+    ...options,
+    prefix: options.prefix ?? DEFAULT_PREFIX
   }
   // Seed initial selection from choices marked as selected: true
   const initialSelected = new Set<number>()
@@ -1272,7 +1311,8 @@ export const toggle = (options: ToggleOptions): Prompt<boolean> => {
     initial: false,
     active: "on",
     inactive: "off",
-    ...options
+    ...options,
+    prefix: options.prefix ?? DEFAULT_PREFIX
   }
   return custom(opts.initial, {
     render: handleToggleRender(opts),
@@ -1468,7 +1508,7 @@ const handleConfirmClear = (options: ConfirmOptionsReq) => {
       : options.placeholder.defaultDeny!
     const promptText = renderConfirmOutput(
       confirmMessage,
-      "?",
+      options.prefix,
       figures.pointerSmall,
       options,
       { plain: true }
@@ -1489,7 +1529,7 @@ const renderConfirmOutput = (
 
 const renderConfirmNextFrame = Effect.fnUntraced(function*(state: ConfirmState, options: ConfirmOptionsReq) {
   const figures = yield* platformFigures
-  const leadingSymbol = Ansi.annotate("?", Ansi.cyanBright)
+  const leadingSymbol = Ansi.annotate(options.prefix, Ansi.cyanBright)
   const trailingSymbol = Ansi.annotate(figures.pointerSmall, Ansi.blackBright)
   // Marking these explicitly as present with `!` because they always will be
   // and there is really no value in adding a `DeepRequired` type helper just
@@ -1555,7 +1595,7 @@ const handleDateClear = (options: DateOptionsReq) => {
     const figures = yield* platformFigures
     const resetCurrentLine = Ansi.eraseLine + Ansi.cursorLeft
     const parts = Arr.reduce(state.dateParts, "", (doc, part) => doc + part.toString())
-    const promptText = renderDateOutput("?", figures.pointerSmall, parts, options, { plain: true })
+    const promptText = renderDateOutput(options.prefix, figures.pointerSmall, parts, options, { plain: true })
     const errorText = Option.isSome(state.error)
       ? Arr.match(state.error.value.split(NEWLINE_REGEXP), {
         onEmpty: () => "",
@@ -1604,7 +1644,7 @@ const renderDateOutput = (
 
 const renderDateNextFrame = Effect.fnUntraced(function*(state: DateState, options: DateOptionsReq) {
   const figures = yield* platformFigures
-  const leadingSymbol = Ansi.annotate("?", Ansi.cyanBright)
+  const leadingSymbol = Ansi.annotate(options.prefix, Ansi.cyanBright)
   const trailingSymbol = Ansi.annotate(figures.pointerSmall, Ansi.blackBright)
   const parts = renderParts(state)
   const promptMsg = renderDateOutput(leadingSymbol, trailingSymbol, parts, options)
@@ -2205,7 +2245,7 @@ const handleFileClear = (options: FileOptionsReq) => {
     const resolvedPathText = `${figures.pointerSmall} ${resolvedPath}`
     const isConfirming = showConfirmation(state.confirm)
     const promptText = isConfirming
-      ? renderPrompt("(Y/n)", CONFIRM_MESSAGE, "?", figures.pointerSmall, { plain: true })
+      ? renderPrompt("(Y/n)", CONFIRM_MESSAGE, options.prefix, figures.pointerSmall, { plain: true })
       : renderPrompt(renderFileFilter(state, { plain: true }), options.message, figures.tick, figures.ellipsis, {
         plain: true
       })
@@ -2320,7 +2360,7 @@ const renderFileNextFrame = Effect.fnUntraced(function*(state: FileState, option
   const resolvedPathMsg = Ansi.annotate(figures.pointerSmall + " " + resolvedPath, Ansi.blackBright)
 
   if (showConfirmation(state.confirm)) {
-    const leadingSymbol = Ansi.annotate("?", Ansi.cyanBright)
+    const leadingSymbol = Ansi.annotate(options.prefix, Ansi.cyanBright)
     const trailingSymbol = Ansi.annotate(figures.pointerSmall, Ansi.blackBright)
     const confirm = Ansi.annotate("(Y/n)", Ansi.blackBright)
     const promptMsg = renderPrompt(confirm, CONFIRM_MESSAGE, leadingSymbol, trailingSymbol)
@@ -2618,7 +2658,7 @@ const renderMultiSelectNextFrame = Effect.fnUntraced(
   function*<A>(state: MultiSelectState, options: SelectOptionsReq<A>) {
     const figures = yield* platformFigures
     const choices = renderMultiSelectChoices(state, options, figures)
-    const leadingSymbol = Ansi.annotate("?", Ansi.cyanBright)
+    const leadingSymbol = Ansi.annotate(options.prefix, Ansi.cyanBright)
     const trailingSymbol = Ansi.annotate(figures.pointerSmall, Ansi.blackBright)
     const promptMsg = renderSelectOutput(leadingSymbol, trailingSymbol, options)
     const error = renderMultiSelectError(state, figures.pointer)
@@ -2694,7 +2734,7 @@ const handleMultiSelectClear = <A>(options: SelectOptionsReq<A>) =>
     const columns = yield* terminal.columns
     const figures = yield* platformFigures
     const clearPrompt = Ansi.eraseLine + Ansi.cursorLeft
-    const promptText = renderSelectOutput("?", figures.pointerSmall, options, { plain: true })
+    const promptText = renderSelectOutput(options.prefix, figures.pointerSmall, options, { plain: true })
     const choicesText = renderMultiSelectChoices(state, options, figures, { plain: true })
     const errorText = renderMultiSelectError(state, figures.pointer, { plain: true })
     const clearOutput = clearOutputWithError(`${promptText}\n${choicesText}`, columns, errorText)
@@ -2767,7 +2807,7 @@ const handleNumberClear = (options: IntegerOptionsReq) => {
     const figures = yield* platformFigures
     const resetCurrentLine = Ansi.eraseLine + Ansi.cursorLeft
     const errorText = renderNumberError(state, figures.pointerSmall, { plain: true })
-    const promptText = renderNumberOutput(state, "?", figures.pointerSmall, options, { plain: true })
+    const promptText = renderNumberOutput(state, options.prefix, figures.pointerSmall, options, { plain: true })
     const clearOutput = clearOutputWithError(promptText, columns, errorText)
     return clearOutput + resetCurrentLine
   })
@@ -2823,7 +2863,7 @@ const renderNumberOutput = (
 
 const renderNumberNextFrame = Effect.fnUntraced(function*(state: NumberState, options: IntegerOptionsReq) {
   const figures = yield* platformFigures
-  const leadingSymbol = Ansi.annotate("?", Ansi.cyanBright)
+  const leadingSymbol = Ansi.annotate(options.prefix, Ansi.cyanBright)
   const trailingSymbol = Ansi.annotate(figures.pointerSmall, Ansi.blackBright)
   const errorMsg = renderNumberError(state, figures.pointerSmall)
   const promptMsg = renderNumberOutput(state, leadingSymbol, trailingSymbol, options)
@@ -3251,7 +3291,7 @@ const renderAutoCompleteChoices = <A>(
 const renderSelectNextFrame = Effect.fnUntraced(function*<A>(state: SelectState, options: SelectOptionsReq<A>) {
   const figures = yield* platformFigures
   const choices = renderSelectChoices(state, options, figures)
-  const leadingSymbol = Ansi.annotate("?", Ansi.cyanBright)
+  const leadingSymbol = Ansi.annotate(options.prefix, Ansi.cyanBright)
   const trailingSymbol = Ansi.annotate(figures.pointerSmall, Ansi.blackBright)
   const promptMsg = renderSelectOutput(leadingSymbol, trailingSymbol, options)
   return Ansi.cursorHide + promptMsg + "\n" + choices
@@ -3263,7 +3303,7 @@ const renderAutoCompleteNextFrame = Effect.fnUntraced(function*<A>(
 ) {
   const figures = yield* platformFigures
   const choices = renderAutoCompleteChoices(state, options, figures)
-  const leadingSymbol = Ansi.annotate("?", Ansi.cyanBright)
+  const leadingSymbol = Ansi.annotate(options.prefix, Ansi.cyanBright)
   const trailingSymbol = Ansi.annotate(figures.pointerSmall, Ansi.blackBright)
   const promptMsg = renderAutoCompleteOutput(state, leadingSymbol, trailingSymbol, options)
   return Ansi.cursorHide + promptMsg + "\n" + choices
@@ -3373,7 +3413,7 @@ const handleSelectClear = <A>(options: SelectOptionsReq<A>) =>
     const columns = yield* terminal.columns
     const figures = yield* platformFigures
     const clearPrompt = Ansi.eraseLine + Ansi.cursorLeft
-    const promptText = renderSelectOutput("?", figures.pointerSmall, options, { plain: true })
+    const promptText = renderSelectOutput(options.prefix, figures.pointerSmall, options, { plain: true })
     const choicesText = renderSelectChoices(state, options, figures, { plain: true })
     const clearOutput = eraseText(`${promptText}\n${choicesText}`, columns)
     return clearOutput + clearPrompt
@@ -3385,7 +3425,7 @@ const handleAutoCompleteClear = <A>(options: AutoCompleteOptionsReq<A>) =>
     const columns = yield* terminal.columns
     const figures = yield* platformFigures
     const clearPrompt = Ansi.eraseLine + Ansi.cursorLeft
-    const promptText = renderAutoCompleteOutput(state, "?", figures.pointerSmall, options, { plain: true })
+    const promptText = renderAutoCompleteOutput(state, options.prefix, figures.pointerSmall, options, { plain: true })
     const choicesText = renderAutoCompleteChoices(state, options, figures, { plain: true })
     const clearOutput = eraseText(`${promptText}\n${choicesText}`, columns)
     return clearOutput + clearPrompt
@@ -3481,7 +3521,7 @@ const renderClearScreen = Effect.fnUntraced(function*(state: TextState, options:
   const resetCurrentLine = Ansi.eraseLine + Ansi.cursorLeft
   const errorText = renderTextError(state, figures.pointerSmall, { plain: true })
   const clearOutput = clearOutputWithError(
-    renderTextOutput(state, "?", figures.pointerSmall, options, { plain: true }),
+    renderTextOutput(state, options.prefix, figures.pointerSmall, options, { plain: true }),
     columns,
     errorText
   )
@@ -3565,7 +3605,7 @@ const renderTextOutput = (
 
 const renderTextNextFrame = Effect.fnUntraced(function*(state: TextState, options: TextOptionsReq) {
   const figures = yield* platformFigures
-  const leadingSymbol = Ansi.annotate("?", Ansi.cyanBright)
+  const leadingSymbol = Ansi.annotate(options.prefix, Ansi.cyanBright)
   const trailingSymbol = Ansi.annotate(figures.pointerSmall, Ansi.blackBright)
   const promptMsg = renderTextOutput(state, leadingSymbol, trailingSymbol, options)
   const errorMsg = renderTextError(state, figures.pointerSmall)
@@ -3744,7 +3784,8 @@ const basePrompt = (
     default: "",
     type,
     validate: Effect.succeed,
-    ...options
+    ...options,
+    prefix: options.prefix ?? DEFAULT_PREFIX
   }
 
   const initialState: TextState = {
@@ -3769,7 +3810,7 @@ const handleToggleClear = Effect.fnUntraced(function*(options: ToggleOptionsReq)
   const figures = yield* platformFigures
   const clearPrompt = Ansi.eraseLine + Ansi.cursorLeft
   const toggleText = `${options.active} / ${options.inactive}`
-  const promptText = renderPrompt(toggleText, options.message, "?", figures.pointerSmall, { plain: true })
+  const promptText = renderPrompt(toggleText, options.message, options.prefix, figures.pointerSmall, { plain: true })
   const clearOutput = eraseText(promptText, columns)
   return clearOutput + clearPrompt
 })
@@ -3807,7 +3848,7 @@ const renderToggleOutput = (
 
 const renderToggleNextFrame = Effect.fnUntraced(function*(state: ToggleState, options: ToggleOptionsReq) {
   const figures = yield* platformFigures
-  const leadingSymbol = Ansi.annotate("?", Ansi.cyanBright)
+  const leadingSymbol = Ansi.annotate(options.prefix, Ansi.cyanBright)
   const trailingSymbol = Ansi.annotate(figures.pointerSmall, Ansi.blackBright)
   const toggle = renderToggle(state, options)
   const promptMsg = renderToggleOutput(toggle, leadingSymbol, trailingSymbol, options)
