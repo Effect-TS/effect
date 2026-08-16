@@ -148,6 +148,73 @@ describe("Graph", () => {
       })
     })
 
+    it("allocates the maximum safe node index once and then fails atomically", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: Number.MAX_SAFE_INTEGER - 1, data: "A" }],
+        edges: []
+      })
+
+      const mutable = Graph.beginMutation(graph)
+      assert.strictEqual(Graph.addNode(mutable, "B"), Number.MAX_SAFE_INTEGER)
+      for (let i = 0; i < 2; i++) {
+        assertGraphError(() => Graph.addNode(mutable, "unreachable"), "Node index allocation exhausted")
+      }
+      assert.deepStrictEqual(Array.from(mutable), [
+        [Number.MAX_SAFE_INTEGER - 1, "A"],
+        [Number.MAX_SAFE_INTEGER, "B"]
+      ])
+      assert.strictEqual(Graph.nodeCount(mutable), 2)
+    })
+
+    it("allocates the maximum safe edge index once and then fails atomically", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 0, data: "A" }, { index: 2, data: "B" }],
+        edges: [{ index: Number.MAX_SAFE_INTEGER - 1, source: 0, target: 2, data: "first" }]
+      })
+
+      const mutable = Graph.beginMutation(graph)
+      assert.strictEqual(Graph.addEdge(mutable, 0, 2, "last"), Number.MAX_SAFE_INTEGER)
+      assert.deepStrictEqual(Graph.successors(mutable, 0), [2, 2])
+      assert.strictEqual(Graph.isAcyclic(mutable), true)
+      for (let i = 0; i < 2; i++) {
+        assertGraphError(() => Graph.addEdge(mutable, 0, 2, "unreachable"), "Edge index allocation exhausted")
+      }
+      assert.deepStrictEqual(Array.from(Graph.edges(mutable)), [
+        [Number.MAX_SAFE_INTEGER - 1, { source: 0, target: 2, data: "first" }],
+        [Number.MAX_SAFE_INTEGER, { source: 0, target: 2, data: "last" }]
+      ])
+      assert.deepStrictEqual(Graph.successors(mutable, 0), [2, 2])
+      assert.strictEqual(Graph.isAcyclic(mutable), true)
+      assert.strictEqual(Graph.edgeCount(mutable), 2)
+    })
+
+    it("hydrates maximum safe indexes as exhausted and validates edge endpoints first", () => {
+      const mutable = Graph.beginMutation(Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 0, data: "A" }, { index: Number.MAX_SAFE_INTEGER, data: "B" }],
+        edges: [{ index: Number.MAX_SAFE_INTEGER, source: 0, target: Number.MAX_SAFE_INTEGER, data: "edge" }]
+      }))
+
+      assertGraphError(() => Graph.addNode(mutable, "unreachable"), "Node index allocation exhausted")
+      assertGraphError(
+        () => Graph.addEdge(mutable, 1, Number.MAX_SAFE_INTEGER, "unreachable"),
+        "Node 1 does not exist"
+      )
+      assertGraphError(
+        () => Graph.addEdge(mutable, 0, 1, "unreachable"),
+        "Node 1 does not exist"
+      )
+      assertGraphError(
+        () => Graph.addEdge(mutable, 0, Number.MAX_SAFE_INTEGER, "unreachable"),
+        "Edge index allocation exhausted"
+      )
+      assert.deepStrictEqual(Graph.successors(mutable, 0), [Number.MAX_SAFE_INTEGER])
+      assert.strictEqual(Graph.nodeCount(mutable), 2)
+      assert.strictEqual(Graph.edgeCount(mutable), 1)
+    })
+
     it("rejects invalid snapshot indexes", () => {
       assertGraphError(
         () =>

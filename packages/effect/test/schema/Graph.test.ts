@@ -136,6 +136,33 @@ describe("Schema.Graph", () => {
     assert.strictEqual(edgeIndex, 5)
   })
 
+  it("decodes maximum safe indexes into exhausted allocators", () => {
+    const decoded = decodeDirected({
+      type: "directed",
+      nodes: [{ index: 0, data: "A" }, { index: Number.MAX_SAFE_INTEGER, data: "B" }],
+      edges: [{ index: Number.MAX_SAFE_INTEGER, source: 0, target: Number.MAX_SAFE_INTEGER, data: 1 }]
+    })
+
+    const mutable = Graph.beginMutation(decoded)
+    throws(() => Graph.addNode(mutable, "unreachable"), (error) => {
+      assert.strictEqual(error instanceof Graph.GraphError, true)
+      if (error instanceof Graph.GraphError) {
+        assert.strictEqual(error.message, "Node index allocation exhausted")
+      }
+    })
+    throws(() => Graph.addEdge(mutable, 0, Number.MAX_SAFE_INTEGER, 2), (error) => {
+      assert.strictEqual(error instanceof Graph.GraphError, true)
+      if (error instanceof Graph.GraphError) {
+        assert.strictEqual(error.message, "Edge index allocation exhausted")
+      }
+    })
+    assert.deepStrictEqual(encodeDirected(Graph.endMutation(mutable)), {
+      type: "directed",
+      nodes: [{ index: 0, data: "A" }, { index: Number.MAX_SAFE_INTEGER, data: "B" }],
+      edges: [{ index: Number.MAX_SAFE_INTEGER, source: 0, target: Number.MAX_SAFE_INTEGER, data: 1 }]
+    })
+  })
+
   it("does not serialize removed trailing allocation history", () => {
     const graph = Graph.directed<string, number>((mutable) => {
       const a = Graph.addNode(mutable, "A")

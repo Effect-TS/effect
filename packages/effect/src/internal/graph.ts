@@ -10,6 +10,12 @@ import { hasProperty } from "../Predicate.ts"
 export const TypeId = "~effect/collections/Graph"
 
 /** @internal */
+export const exhausted = Symbol("effect/Graph/exhausted")
+
+/** @internal */
+export type Allocator = Graph.NodeIndex | typeof exhausted
+
+/** @internal */
 export interface GraphImpl<in out N, in out E, T extends Graph.Kind = "directed">
   extends Iterable<readonly [Graph.NodeIndex, N]>, Equal.Equal
 {
@@ -20,8 +26,8 @@ export interface GraphImpl<in out N, in out E, T extends Graph.Kind = "directed"
   edges: Map<Graph.EdgeIndex, Graph.Edge<E>>
   adjacency: Map<Graph.NodeIndex, Array<Graph.EdgeIndex>>
   reverseAdjacency: Map<Graph.NodeIndex, Array<Graph.EdgeIndex>>
-  nextNodeIndex: Graph.NodeIndex
-  nextEdgeIndex: Graph.EdgeIndex
+  nextNodeIndex: Allocator
+  nextEdgeIndex: Allocator
   acyclic: Option.Option<boolean>
   toJSON(): unknown
 }
@@ -202,8 +208,18 @@ export const hydrate = <N, E, T extends Graph.Kind>(
       graph.reverseAdjacency.get(edge.source)!.push(edge.index)
     }
   }
-  graph.nextNodeIndex = snapshot.nodes.length === 0 ? 0 : snapshot.nodes[snapshot.nodes.length - 1].index + 1
-  graph.nextEdgeIndex = snapshot.edges.length === 0 ? 0 : snapshot.edges[snapshot.edges.length - 1].index + 1
+  const lastNodeIndex = snapshot.nodes.length === 0 ? undefined : snapshot.nodes[snapshot.nodes.length - 1].index
+  graph.nextNodeIndex = lastNodeIndex === undefined
+    ? 0
+    : lastNodeIndex === Number.MAX_SAFE_INTEGER
+    ? exhausted
+    : lastNodeIndex + 1
+  const lastEdgeIndex = snapshot.edges.length === 0 ? undefined : snapshot.edges[snapshot.edges.length - 1].index
+  graph.nextEdgeIndex = lastEdgeIndex === undefined
+    ? 0
+    : lastEdgeIndex === Number.MAX_SAFE_INTEGER
+    ? exhausted
+    : lastEdgeIndex + 1
   graph.acyclic = Option.none()
   return graph as unknown as Graph.Graph<N, E, T>
 }
