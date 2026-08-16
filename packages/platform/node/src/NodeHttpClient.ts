@@ -256,9 +256,13 @@ class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pi
   }
 
   get json(): Effect.Effect<Schema.Json, Error.HttpClientError> {
+    return this.jsonWith()
+  }
+
+  jsonWith(options?: IncomingMessage.JsonOptions | undefined): Effect.Effect<Schema.Json, Error.HttpClientError> {
     return Effect.flatMap(this.text, (text) =>
       Effect.try({
-        try: () => text === "" ? null : JSON.parse(text),
+        try: () => text === "" ? null : JSON.parse(text, options?.reviver),
         catch: (cause) =>
           new Error.HttpClientError({
             reason: new Error.DecodeError({

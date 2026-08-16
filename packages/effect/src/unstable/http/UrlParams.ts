@@ -25,6 +25,7 @@ import * as Schema from "../../Schema.ts"
 import * as SchemaIssue from "../../SchemaIssue.ts"
 import * as SchemaTransformation from "../../SchemaTransformation.ts"
 import * as Tuple from "../../Tuple.ts"
+import type { JsonOptions } from "./HttpIncomingMessage.ts"
 
 const TypeId = "~effect/http/UrlParams"
 
@@ -545,10 +546,10 @@ export interface schemaJsonField extends Schema.decodeTo<Schema.fromJsonString<S
  * @category schemas
  * @since 4.0.0
  */
-export const schemaJsonField = (field: string): schemaJsonField =>
+export const schemaJsonField = (field: string, options?: JsonOptions | undefined): schemaJsonField =>
   UrlParamsSchema.pipe(
     Schema.decodeTo(
-      Schema.UnknownFromJsonString,
+      Schema.fromJsonString(Schema.Unknown, options),
       SchemaTransformation.transformOrFail({
         decode: (params) =>
           Option.match(getFirst(params, field), {

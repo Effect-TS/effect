@@ -1163,9 +1163,15 @@ class ServerHttpClientResponse extends Inspectable.Class implements HttpClientRe
   }
 
   get json(): Effect.Effect<Schema.Json, HttpClientError.HttpClientError> {
+    return this.jsonWith()
+  }
+
+  jsonWith(
+    options?: HttpIncomingMessage.JsonOptions | undefined
+  ): Effect.Effect<Schema.Json, HttpClientError.HttpClientError> {
     return Effect.flatMap(this.text, (text) =>
       Effect.try({
-        try: () => text === "" ? null : JSON.parse(text),
+        try: () => text === "" ? null : JSON.parse(text, options?.reviver),
         catch: (cause) =>
           new HttpClientError.HttpClientError({
             reason: new HttpClientError.DecodeError({

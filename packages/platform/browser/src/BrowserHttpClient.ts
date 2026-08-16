@@ -287,9 +287,13 @@ abstract class IncomingMessageImpl<E> extends Inspectable.Class implements HttpI
   }
 
   get json(): Effect.Effect<Schema.Json, E> {
+    return this.jsonWith()
+  }
+
+  jsonWith(options?: HttpIncomingMessage.JsonOptions | undefined): Effect.Effect<Schema.Json, E> {
     return Effect.flatMap(this.text, (text) =>
       Effect.try({
-        try: () => text === "" ? null : JSON.parse(text),
+        try: () => text === "" ? null : JSON.parse(text, options?.reviver),
         catch: this.onError
       }))
   }

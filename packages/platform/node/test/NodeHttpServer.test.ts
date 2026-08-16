@@ -62,6 +62,27 @@ describe("HttpServer", () => {
       expect(todo).toEqual({ id: 1, title: "test" })
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
+  it.effect("schemaJson applies a JSON reviver", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "POST",
+        "/json",
+        Effect.gen(function*() {
+          const decoded = yield* HttpRouter.schemaJson(
+            Schema.Struct({ body: Schema.Struct({ value: Schema.String }) }),
+            { reviver: (key, value) => key === "value" ? "revived" : value }
+          )
+          assert.deepStrictEqual(decoded, { body: { value: "revived" } })
+          return HttpServerResponse.empty()
+        })
+      ).pipe(HttpRouter.serve, Layer.build)
+
+      const response = yield* HttpClient.post("/json", {
+        body: HttpBody.jsonUnsafe({ value: "original" })
+      })
+      assert.strictEqual(response.status, 204)
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
   it.effect("formData", () =>
     Effect.gen(function*() {
       yield* HttpRouter.add(
@@ -312,10 +333,13 @@ describe("HttpServer", () => {
         "POST",
         "/upload",
         Effect.gen(function*() {
-          const result = yield* HttpServerRequest.schemaBodyFormJson(Schema.Struct({
-            test: Schema.String
-          }))("json")
-          expect(result.test).toEqual("content")
+          const result = yield* HttpServerRequest.schemaBodyFormJson(
+            Schema.Struct({
+              test: Schema.String
+            }),
+            { reviver: (key, value) => key === "test" ? "revived" : value }
+          )("json")
+          expect(result.test).toEqual("revived")
           return HttpServerResponse.empty()
         })
       ).pipe(

@@ -1742,6 +1742,11 @@ class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pi
     return this.applyInterrupt(this.original.json)
   }
 
+  get jsonWith() {
+    return (options?: HttpIncomingMessage.JsonOptions | undefined) =>
+      this.applyInterrupt(this.original.jsonWith(options))
+  }
+
   get urlParamsBody() {
     return this.applyInterrupt(this.original.urlParamsBody)
   }

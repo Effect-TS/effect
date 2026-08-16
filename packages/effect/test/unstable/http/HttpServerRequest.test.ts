@@ -101,6 +101,12 @@ describe("HttpServerRequest", () => {
       assert.strictEqual(request.headers["content-type"], "application/json")
       assert.strictEqual(request.cookies.session, "123")
       assert.deepStrictEqual(yield* request.json, { foo: "bar" })
+      assert.deepStrictEqual(
+        yield* request.jsonWith({
+          reviver: (key, value) => key === "foo" ? "revived" : value
+        }),
+        { foo: "revived" }
+      )
       assert.strictEqual(yield* request.text, "{\"foo\":\"bar\"}")
       assert.strictEqual(new TextDecoder().decode(new Uint8Array(arrayBuffer)), "{\"foo\":\"bar\"}")
     }))
@@ -178,12 +184,15 @@ describe("HttpServerRequest", () => {
         name: Schema.String
       })
 
-      const decoded = yield* HttpServerRequest.schemaBodyJson(schema, { onExcessProperty: "preserve" }).pipe(
+      const decoded = yield* HttpServerRequest.schemaBodyJson(schema, {
+        onExcessProperty: "preserve",
+        reviver: (key, value) => key === "status" ? "revived" : value
+      }).pipe(
         Effect.provideService(HttpServerRequest.HttpServerRequest, request)
       )
       const decodedRecord = decoded as Record<string, unknown>
 
-      assert.strictEqual(decoded.status, "ok")
+      assert.strictEqual(decoded.status, "revived")
       assert.strictEqual(decoded.name, "svc")
       assert.strictEqual(decodedRecord.sha, "abc")
       assert.strictEqual(decodedRecord.version, "1.0.0")
