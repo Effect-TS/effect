@@ -810,6 +810,50 @@ describe("Graph", () => {
       }
     })
 
+    it("inducedSubgraph preserves sparse node and edge indexes", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [
+          { index: 2, data: "A" },
+          { index: 5, data: "B" },
+          { index: 9, data: "C" }
+        ],
+        edges: [
+          { index: 3, source: 2, target: 5, data: "A-B" },
+          { index: 7, source: 5, target: 9, data: "B-C" },
+          { index: 11, source: 5, target: 5, data: "B-B" }
+        ]
+      })
+
+      const result = Graph.inducedSubgraph(graph, [9, 5, 5])
+
+      assert.deepStrictEqual(Array.from(Graph.nodes(result)), [[5, "B"], [9, "C"]])
+      assert.deepStrictEqual(Array.from(Graph.edges(result)), [
+        [7, { source: 5, target: 9, data: "B-C" }],
+        [11, { source: 5, target: 5, data: "B-B" }]
+      ])
+    })
+
+    it("inducedSubgraph preserves graph kind and handles empty selections", () => {
+      const graph = Graph.undirected<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+      })
+
+      const result = Graph.inducedSubgraph([])(graph)
+
+      assert.strictEqual(result.type, "undirected")
+      assert.strictEqual(Graph.nodeCount(result), 0)
+      assert.strictEqual(Graph.edgeCount(result), 0)
+    })
+
+    it("inducedSubgraph rejects missing nodes", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+      })
+
+      expect(() => Graph.inducedSubgraph(graph, [0, 1])).toThrow("Node 1 does not exist")
+    })
+
     it("sum keeps equal nodes disjoint", () => {
       const left = Graph.directed<string, string>((mutable) => {
         const a = Graph.addNode(mutable, "A")

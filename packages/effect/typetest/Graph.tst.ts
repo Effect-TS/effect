@@ -246,6 +246,13 @@ describe("Graph", () => {
     >()
   })
 
+  it("inducedSubgraph", () => {
+    expect(Graph.inducedSubgraph(directed, [0, 1])).type.toBe<Graph.DirectedGraph<string, number>>()
+    expect(pipe(undirected, Graph.inducedSubgraph(new Set([0, 1])))).type.toBe<
+      Graph.UndirectedGraph<string, number>
+    >()
+  })
+
   it("undirected traversal", () => {
     expect(Graph.dfs(directed, { direction: "undirected", radius: 1 })).type.toBe<Graph.NodeWalker<string>>()
     expect(Graph.bfs(directed, { direction: "undirected", radius: 1 })).type.toBe<Graph.NodeWalker<string>>()
