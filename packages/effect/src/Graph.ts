@@ -3729,6 +3729,89 @@ export type TraversalDirection = Direction | "undirected"
 // =============================================================================
 
 /**
+ * A cycle witness containing a closed node path and its traversed edges.
+ *
+ * `path` repeats its first node at the end, so `edges.length` is always
+ * `path.length - 1`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface CycleResult {
+  readonly path: Array<NodeIndex>
+  readonly edges: Array<EdgeIndex>
+}
+
+/**
+ * Returns one cycle in a graph, if present.
+ *
+ * Directed cycles respect edge orientation. A self-loop is represented as a
+ * one-edge cycle, and two parallel undirected edges form a two-edge cycle.
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const findCycle = <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>
+): Option.Option<CycleResult> => {
+  const impl = internal.toImpl(graph)
+  const colors = new Map<NodeIndex, 0 | 1 | 2>()
+  const parentNodes = new Map<NodeIndex, NodeIndex>()
+  const parentEdges = new Map<NodeIndex, EdgeIndex>()
+
+  const makeCycle = (ancestor: NodeIndex, current: NodeIndex, closingEdge: EdgeIndex): CycleResult => {
+    const path = [current]
+    const edges: Array<EdgeIndex> = []
+    let cursor = current
+    while (cursor !== ancestor) {
+      edges.push(parentEdges.get(cursor)!)
+      cursor = parentNodes.get(cursor)!
+      path.push(cursor)
+    }
+    path.reverse()
+    edges.reverse()
+    path.push(ancestor)
+    edges.push(closingEdge)
+    return { path, edges }
+  }
+
+  for (const start of impl.nodes.keys()) {
+    if ((colors.get(start) ?? 0) !== 0) {
+      continue
+    }
+    colors.set(start, 1)
+    const stack: Array<{ readonly node: NodeIndex; position: number }> = [{ node: start, position: 0 }]
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1]
+      const adjacency = impl.adjacency.get(frame.node)!
+      if (frame.position >= adjacency.length) {
+        colors.set(frame.node, 2)
+        stack.pop()
+        continue
+      }
+
+      const edgeIndex = adjacency[frame.position++]
+      if (graph.type === "undirected" && parentEdges.get(frame.node) === edgeIndex) {
+        continue
+      }
+      const edge = impl.edges.get(edgeIndex)!
+      const neighbor = getTraversableNeighbor(graph, frame.node, edge)
+      const color = colors.get(neighbor) ?? 0
+      if (color === 1) {
+        return Option.some(makeCycle(neighbor, frame.node, edgeIndex))
+      }
+      if (color === 0) {
+        colors.set(neighbor, 1)
+        parentNodes.set(neighbor, frame.node)
+        parentEdges.set(neighbor, edgeIndex)
+        stack.push({ node: neighbor, position: 0 })
+      }
+    }
+  }
+  return Option.none()
+}
+
+/**
  * Checks whether the graph is acyclic (contains no cycles).
  *
  * **Details**
@@ -4672,6 +4755,176 @@ export const isTree = <N, E>(
   }
   const nodes = nodeCount(graph)
   return nodes > 0 && edgeCount(graph) === nodes - 1 && isConnected(graph)
+}
+
+/**
+ * Returns a minimum spanning forest of an undirected graph using Kruskal's
+ * algorithm.
+ *
+ * All node indices and selected edge indices are preserved. Negative finite
+ * weights are allowed, `Infinity` marks an unavailable edge, and equal weights
+ * are resolved by original edge order. Throws a `GraphError` for a directed
+ * graph or when a weight is `NaN` or `-Infinity`.
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const minimumSpanningForest: {
+  <E>(cost: (edgeData: E) => number): <N>(
+    graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
+  ) => Graph<N, E, "undirected">
+  <N, E>(
+    graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">,
+    cost: (edgeData: E) => number
+  ): Graph<N, E, "undirected">
+} = dual(2, <N, E>(
+  graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">,
+  cost: (edgeData: E) => number
+): Graph<N, E, "undirected"> => {
+  if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "directed") {
+    throw new GraphError({ message: "Cannot find minimum spanning forest of directed graph" })
+  }
+  const impl = internal.toImpl(graph)
+  const nodes: Array<IndexedNode<N>> = []
+  const compactByNode = new Map<NodeIndex, number>()
+  for (const [index, data] of impl.nodes) {
+    compactByNode.set(index, nodes.length)
+    nodes.push({ index, data })
+  }
+  const weightedEdges: Array<{ readonly index: EdgeIndex; readonly weight: number; readonly order: number }> = []
+  let order = 0
+  for (const [index, edge] of impl.edges) {
+    const weight = cost(edge.data)
+    if (Number.isNaN(weight) || weight === -Infinity) {
+      throw new GraphError({ message: "Minimum spanning forest does not support NaN or -Infinity edge weights" })
+    }
+    if (weight !== Infinity) {
+      weightedEdges.push({ index, weight, order })
+    }
+    order++
+  }
+  weightedEdges.sort((self, that) => self.weight - that.weight || self.order - that.order)
+
+  const parents = new Uint32Array(nodes.length)
+  const ranks = new Uint8Array(nodes.length)
+  for (let i = 0; i < parents.length; i++) {
+    parents[i] = i
+  }
+  const find = (node: number): number => {
+    let root = node
+    while (parents[root] !== root) {
+      root = parents[root]
+    }
+    while (parents[node] !== node) {
+      const parent = parents[node]
+      parents[node] = root
+      node = parent
+    }
+    return root
+  }
+  const selected = new Set<EdgeIndex>()
+  for (const weighted of weightedEdges) {
+    const edge = impl.edges.get(weighted.index)!
+    let sourceRoot = find(compactByNode.get(edge.source)!)
+    let targetRoot = find(compactByNode.get(edge.target)!)
+    if (sourceRoot === targetRoot) {
+      continue
+    }
+    selected.add(weighted.index)
+    if (ranks[sourceRoot] < ranks[targetRoot]) {
+      const swap = sourceRoot
+      sourceRoot = targetRoot
+      targetRoot = swap
+    }
+    parents[targetRoot] = sourceRoot
+    if (ranks[sourceRoot] === ranks[targetRoot]) {
+      ranks[sourceRoot]++
+    }
+  }
+
+  const edges: Array<IndexedEdge<E>> = []
+  for (const [index, edge] of impl.edges) {
+    if (selected.has(index)) {
+      edges.push({ index, source: edge.source, target: edge.target, data: edge.data })
+    }
+  }
+  return fromSnapshot({ type: "undirected", nodes, edges })
+})
+
+/**
+ * Returns the transitive reduction of a directed acyclic graph.
+ *
+ * The result preserves reachability with the fewest structural source-target
+ * pairs. Node and retained edge indices are preserved; parallel edges are
+ * coalesced by retaining the first edge for each required pair. Throws a
+ * `GraphError` for an undirected graph or cyclic input.
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const transitiveReduction = <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+): Graph<N, E, "directed"> => {
+  if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "undirected") {
+    throw new GraphError({ message: "Cannot transitively reduce undirected graph" })
+  }
+  if (!isAcyclic(graph)) {
+    throw new GraphError({ message: "Cannot transitively reduce cyclic graph" })
+  }
+
+  const impl = internal.toImpl(graph)
+  const nodes: Array<IndexedNode<N>> = []
+  for (const [index, data] of impl.nodes) {
+    nodes.push({ index, data })
+  }
+  const firstEdges = new Map<NodeIndex, Map<NodeIndex, EdgeIndex>>()
+  for (const [edgeIndex, edge] of impl.edges) {
+    let targets = firstEdges.get(edge.source)
+    if (targets === undefined) {
+      targets = new Map()
+      firstEdges.set(edge.source, targets)
+    }
+    if (!targets.has(edge.target)) {
+      targets.set(edge.target, edgeIndex)
+    }
+  }
+
+  const retained = new Set<EdgeIndex>()
+  for (const [source, targets] of firstEdges) {
+    for (const [target, edgeIndex] of targets) {
+      const visited = new Set<NodeIndex>([source])
+      const queue = [source]
+      let reachable = false
+      for (let head = 0; head < queue.length && !reachable; head++) {
+        const current = queue[head]
+        for (const candidateIndex of impl.adjacency.get(current)!) {
+          const candidate = impl.edges.get(candidateIndex)!
+          if (current === source && candidate.target === target) {
+            continue
+          }
+          if (candidate.target === target) {
+            reachable = true
+            break
+          }
+          if (!visited.has(candidate.target)) {
+            visited.add(candidate.target)
+            queue.push(candidate.target)
+          }
+        }
+      }
+      if (!reachable) {
+        retained.add(edgeIndex)
+      }
+    }
+  }
+
+  const edges: Array<IndexedEdge<E>> = []
+  for (const [index, edge] of impl.edges) {
+    if (retained.has(index)) {
+      edges.push({ index, source: edge.source, target: edge.target, data: edge.data })
+    }
+  }
+  return fromSnapshot({ type: "directed", nodes, edges })
 }
 
 // =============================================================================
@@ -6102,6 +6355,300 @@ export const bellmanFord: {
     edges: pathEdges,
     distance,
     costs
+  })
+})
+
+/**
+ * A repeatable lazy iterable of edge-aware graph paths.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface PathWalker<E> extends Iterable<PathResult<E>> {}
+
+/**
+ * Configuration for lazy simple-path enumeration.
+ *
+ * `limit` bounds the number of yielded paths and defaults to `Infinity`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface SimplePathsConfig {
+  readonly source: NodeIndex
+  readonly target: NodeIndex
+  readonly limit?: number
+}
+
+/**
+ * Configuration for enumerating all tied shortest paths.
+ *
+ * Edge costs must be non-negative. `limit` bounds the number of yielded paths
+ * and defaults to `Infinity`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface AllShortestPathsConfig<E> extends DijkstraConfig<E> {
+  readonly limit?: number
+}
+
+const pathEnumerationLimit = (limit: number | undefined): number => {
+  const value = limit ?? Infinity
+  if (value !== Infinity && (!Number.isInteger(value) || value < 0)) {
+    throw new GraphError({ message: "Path enumeration limit must be a non-negative integer or Infinity" })
+  }
+  return value
+}
+
+const pathWalker = <E>(iterator: () => Iterator<PathResult<E>>): PathWalker<E> => ({
+  [Symbol.iterator]: iterator
+})
+
+/**
+ * Lazily enumerates simple source-to-target paths in depth-first edge order.
+ *
+ * Nodes are never repeated within a path, so enumeration is finite even for
+ * cyclic graphs. Path distance is the number of traversed edges. Throws a
+ * `GraphError` for missing endpoints or an invalid `limit`.
+ * Mutable graphs are snapshotted when iteration begins.
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const simplePaths: {
+  <E>(config: SimplePathsConfig): <N, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => PathWalker<E>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    config: SimplePathsConfig
+  ): PathWalker<E>
+} = dual(2, <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  config: SimplePathsConfig
+): PathWalker<E> => {
+  const impl = internal.toImpl(graph)
+  if (!impl.nodes.has(config.source)) {
+    throw missingNode(config.source)
+  }
+  if (!impl.nodes.has(config.target)) {
+    throw missingNode(config.target)
+  }
+  const limit = pathEnumerationLimit(config.limit)
+
+  return pathWalker(function*() {
+    const cache = csr.get(graph)
+    const source = csr.getNodeIndex(cache, config.source)
+    if (source === undefined) {
+      throw missingNode(config.source)
+    }
+    const target = csr.getNodeIndex(cache, config.target)
+    if (target === undefined) {
+      throw missingNode(config.target)
+    }
+    if (limit === 0) {
+      return
+    }
+    const outgoing = csr.getOutgoingWithEdges(cache)
+    const edgeIds = csr.getEdgeIds(cache)
+    const graphEdges = csr.getEdges(cache)
+    const path = [config.source]
+    const pathEdges: Array<EdgeIndex> = []
+    const costs: Array<E> = []
+    const visited = new Uint8Array(cache.nodeIds.length)
+    visited[source] = 1
+    const stack: Array<{ readonly node: number; position: number }> = [{
+      node: source,
+      position: outgoing.rowOffsets[source]
+    }]
+    let emitted = 0
+
+    const backtrack = () => {
+      const frame = stack.pop()!
+      if (stack.length > 0) {
+        visited[frame.node] = 0
+        path.pop()
+        pathEdges.pop()
+        costs.pop()
+      }
+    }
+
+    while (stack.length > 0 && emitted < limit) {
+      const frame = stack[stack.length - 1]
+      if (frame.node === target) {
+        emitted++
+        yield {
+          path: Array.from(path),
+          edges: Array.from(pathEdges),
+          distance: pathEdges.length,
+          costs: Array.from(costs)
+        }
+        backtrack()
+        continue
+      }
+      if (frame.position >= outgoing.rowOffsets[frame.node + 1]) {
+        backtrack()
+        continue
+      }
+      const position = frame.position++
+      const neighbor = outgoing.columnIndices[position]
+      if (visited[neighbor] !== 0) {
+        continue
+      }
+      const edge = outgoing.edgeIndices[position]
+      visited[neighbor] = 1
+      path.push(cache.nodeIds[neighbor])
+      pathEdges.push(edgeIds[edge])
+      costs.push(graphEdges[edge].data)
+      stack.push({ node: neighbor, position: outgoing.rowOffsets[neighbor] })
+    }
+  })
+})
+
+/**
+ * Lazily enumerates all simple paths tied for minimum total cost.
+ *
+ * Parallel edges produce distinct paths. Edge costs must be non-negative;
+ * `Infinity` behaves as unavailable. Throws a `GraphError` for missing
+ * endpoints, invalid costs, or an invalid `limit`.
+ * Mutable graphs are snapshotted when iteration begins.
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const allShortestPaths: {
+  <E>(config: AllShortestPathsConfig<E>): <N, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => PathWalker<E>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    config: AllShortestPathsConfig<E>
+  ): PathWalker<E>
+} = dual(2, <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  config: AllShortestPathsConfig<E>
+): PathWalker<E> => {
+  const impl = internal.toImpl(graph)
+  if (!impl.nodes.has(config.source)) {
+    throw missingNode(config.source)
+  }
+  if (!impl.nodes.has(config.target)) {
+    throw missingNode(config.target)
+  }
+  const limit = pathEnumerationLimit(config.limit)
+
+  return pathWalker(function*() {
+    const cache = csr.get(graph)
+    const source = csr.getNodeIndex(cache, config.source)
+    if (source === undefined) {
+      throw missingNode(config.source)
+    }
+    const target = csr.getNodeIndex(cache, config.target)
+    if (target === undefined) {
+      throw missingNode(config.target)
+    }
+    const graphEdges = csr.getEdges(cache)
+    const edgeIds = csr.getEdgeIds(cache)
+    const outgoing = csr.getOutgoingWithEdges(cache)
+    const weights = new Float64Array(graphEdges.length)
+    for (let edge = 0; edge < graphEdges.length; edge++) {
+      const weight = config.cost(graphEdges[edge].data)
+      if (Number.isNaN(weight) || weight < 0) {
+        throw new GraphError({ message: "All shortest paths requires non-negative edge weights" })
+      }
+      weights[edge] = weight
+    }
+    if (limit === 0) {
+      return
+    }
+
+    const distances = new Float64Array(cache.nodeIds.length)
+    distances.fill(Infinity)
+    distances[source] = 0
+    const previous: Array<Array<{ readonly node: number; readonly edge: number }> | undefined> = new Array(
+      cache.nodeIds.length
+    )
+    const queue: Array<MinHeapEntry> = []
+    let sequence = 0
+    minHeapPush(queue, { node: source, priority: 0, sequence: sequence++ })
+    while (queue.length > 0) {
+      const current = minHeapPop(queue)!
+      if (current.priority !== distances[current.node]) {
+        continue
+      }
+      for (let i = outgoing.rowOffsets[current.node]; i < outgoing.rowOffsets[current.node + 1]; i++) {
+        const edge = outgoing.edgeIndices[i]
+        const neighbor = outgoing.columnIndices[i]
+        const nextDistance = current.priority + weights[edge]
+        const known = distances[neighbor]
+        const predecessor = { node: current.node, edge }
+        if (nextDistance < known) {
+          distances[neighbor] = nextDistance
+          previous[neighbor] = [predecessor]
+          minHeapPush(queue, { node: neighbor, priority: nextDistance, sequence: sequence++ })
+        } else if (nextDistance === known && nextDistance !== Infinity) {
+          const predecessors = previous[neighbor]
+          if (predecessors === undefined) {
+            previous[neighbor] = [predecessor]
+          } else {
+            predecessors.push(predecessor)
+          }
+        }
+      }
+    }
+
+    const distance = distances[target]
+    if (distance === Infinity) {
+      return
+    }
+    if (source === target) {
+      yield { path: [config.source], edges: [], distance: 0, costs: [] }
+      return
+    }
+    const reversePath = [target]
+    const reverseEdges: Array<number> = []
+    const visited = new Uint8Array(cache.nodeIds.length)
+    visited[target] = 1
+    const stack: Array<{ readonly node: number; position: number }> = [{ node: target, position: 0 }]
+    let emitted = 0
+
+    const backtrack = () => {
+      const frame = stack.pop()!
+      if (stack.length > 0) {
+        visited[frame.node] = 0
+        reversePath.pop()
+        reverseEdges.pop()
+      }
+    }
+
+    while (stack.length > 0 && emitted < limit) {
+      const frame = stack[stack.length - 1]
+      if (frame.node === source) {
+        emitted++
+        yield {
+          path: reversePath.map((node) => cache.nodeIds[node]).reverse(),
+          edges: reverseEdges.map((edge) => edgeIds[edge]).reverse(),
+          distance,
+          costs: reverseEdges.map((edge) => graphEdges[edge].data as E).reverse()
+        }
+        backtrack()
+        continue
+      }
+      const predecessors = previous[frame.node] ?? []
+      if (frame.position >= predecessors.length) {
+        backtrack()
+        continue
+      }
+      const predecessor = predecessors[frame.position++]
+      if (visited[predecessor.node] !== 0) {
+        continue
+      }
+      visited[predecessor.node] = 1
+      reversePath.push(predecessor.node)
+      reverseEdges.push(predecessor.edge)
+      stack.push({ node: predecessor.node, position: 0 })
+    }
   })
 })
 
