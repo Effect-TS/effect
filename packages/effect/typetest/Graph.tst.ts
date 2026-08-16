@@ -279,6 +279,27 @@ describe("Graph", () => {
     Graph.degree(directed, 0)
   })
 
+  it("reachability and connectivity", () => {
+    expect(Graph.unweightedDistances(directed, 0)).type.toBe<Map<Graph.NodeIndex, number>>()
+    expect(pipe(directed, Graph.unweightedDistances(0, { direction: "incoming" }))).type.toBe<
+      Map<Graph.NodeIndex, number>
+    >()
+    expect(Graph.hasPath(directed, 0, 1)).type.toBe<boolean>()
+    expect(pipe(undirected, Graph.hasPath(0, 1))).type.toBe<boolean>()
+    expect(Graph.weaklyConnectedComponents(directed)).type.toBe<Array<Array<Graph.NodeIndex>>>()
+    expect(Graph.isConnected(undirected)).type.toBe<boolean>()
+    expect(Graph.isWeaklyConnected(directed)).type.toBe<boolean>()
+    expect(Graph.isStronglyConnected(mutableDirected)).type.toBe<boolean>()
+    expect(Graph.isTree(mutableUndirected)).type.toBe<boolean>()
+
+    // @ts-expect-error! Weak connectivity requires a directed graph
+    Graph.weaklyConnectedComponents(undirected)
+    // @ts-expect-error! Undirected connectivity requires an undirected graph
+    Graph.isConnected(directed)
+    // @ts-expect-error! Trees require an undirected graph
+    Graph.isTree(directed)
+  })
+
   it("topo", () => {
     expect(Graph.topo(directed)).type.toBe<Graph.NodeWalker<string>>()
     expect(Graph.topo(directed, { initials: [0] })).type.toBe<Graph.NodeWalker<string>>()
