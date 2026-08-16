@@ -5340,9 +5340,9 @@ export interface BellmanFordConfig<E> {
  * **Details**
  *
  * Negative edge weights are allowed, and `Infinity` behaves like an impassable
- * edge. Returns `Option.none()` when the target is unreachable or when a
- * negative cycle affects the path to the target. Throws a `GraphError` when
- * either endpoint is missing or an edge weight is `NaN` or `-Infinity`.
+ * edge. Returns `Option.none()` when the target is unreachable. Throws a
+ * `GraphError` when a reachable negative cycle can affect the target, either
+ * endpoint is missing, or an edge weight is `NaN` or `-Infinity`.
  *
  * **Example** (Finding shortest paths with Bellman-Ford)
  *
@@ -5480,7 +5480,7 @@ export const bellmanFord: {
       }
     }
     if (affected[target] !== 0) {
-      return Option.none()
+      throw new GraphError({ message: `Negative cycle affects path to node ${config.target}` })
     }
     if (distances[target] === Infinity) {
       return Option.none()
@@ -5592,7 +5592,7 @@ export const bellmanFord: {
 
       // If target is affected by a negative cycle, no shortest path exists.
       if (affectedNodes.has(config.target)) {
-        return Option.none()
+        throw new GraphError({ message: `Negative cycle affects path to node ${config.target}` })
       }
     }
   }

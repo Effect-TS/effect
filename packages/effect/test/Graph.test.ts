@@ -4028,13 +4028,9 @@ describe("Graph", () => {
         Graph.addEdge(mutable, node, node, -1)
       })
 
-      const result = Graph.bellmanFord(graph, {
-        source: 0,
-        target: 0,
-        cost: (edge) => edge
-      })
-
-      assertNone(result)
+      expect(() => Graph.bellmanFord(graph, { source: 0, target: 0, cost: (edge) => edge })).toThrow(
+        "Negative cycle affects path to node 0"
+      )
     })
 
     it("should detect an undirected negative self-loop when source equals target", () => {
@@ -4043,13 +4039,9 @@ describe("Graph", () => {
         Graph.addEdge(mutable, node, node, -1)
       })
 
-      const result = Graph.bellmanFord(graph, {
-        source: 0,
-        target: 0,
-        cost: (edge) => edge
-      })
-
-      assertNone(result)
+      expect(() => Graph.bellmanFord(graph, { source: 0, target: 0, cost: (edge) => edge })).toThrow(
+        "Negative cycle affects path to node 0"
+      )
     })
 
     it("should detect negative cycles", () => {
@@ -4062,13 +4054,9 @@ describe("Graph", () => {
         Graph.addEdge(mutable, c, a, 1)
       })
 
-      const result = Graph.bellmanFord(graph, {
-        source: 0,
-        target: 2,
-        cost: (edge) => edge
-      })
-
-      expect(result).toEqual(Option.none())
+      expect(() => Graph.bellmanFord(graph, { source: 0, target: 2, cost: (edge) => edge })).toThrow(
+        "Negative cycle affects path to node 2"
+      )
     })
 
     it("should traverse undirected edges in reverse storage direction", () => {
@@ -4090,13 +4078,28 @@ describe("Graph", () => {
         Graph.addEdge(mutable, a, b, -1)
       })
 
-      const result = Graph.bellmanFord(graph, {
-        source: 0,
-        target: 1,
-        cost: (edge) => edge
-      })
+      expect(() => Graph.bellmanFord(graph, { source: 0, target: 1, cost: (edge) => edge })).toThrow(
+        "Negative cycle affects path to node 1"
+      )
+    })
 
-      assertNone(result)
+    it("should ignore negative cycles that cannot affect the target", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 2, -2)
+        Graph.addEdge(mutable, 2, 1, 1)
+        Graph.addEdge(mutable, 0, 3, 5)
+      })
+      const expected = { path: [0, 3], edges: [3], distance: 5, costs: [5] }
+
+      assertSome(Graph.bellmanFord(graph, { source: 0, target: 3, cost: (edge) => edge }), expected)
+      assertSome(
+        Graph.bellmanFord(Graph.beginMutation(graph), { source: 0, target: 3, cost: (edge) => edge }),
+        expected
+      )
     })
   })
 
