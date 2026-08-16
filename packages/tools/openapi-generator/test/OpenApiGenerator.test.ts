@@ -2327,4 +2327,105 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
         }
       ]))
   })
+
+  describe("HEAD void-collapse fix", () => {
+    const headSpec: OpenAPISpec = {
+      openapi: "3.1.0",
+      info: {
+        title: "Test API",
+        version: "1.0.0"
+      },
+      paths: {
+        "/resources/{id}": {
+          head: {
+            operationId: "checkResource",
+            tags: ["Test"],
+            security: [],
+            parameters: [
+              {
+                name: "id",
+                in: "path",
+                schema: { type: "string" },
+                required: true
+              }
+            ],
+            responses: {
+              200: { description: "Resource exists" },
+              400: { description: "Bad request" },
+              404: { description: "Resource not found" },
+              500: { description: "Internal server error" }
+            }
+          }
+        }
+      },
+      components: { schemas: {}, securitySchemes: {} },
+      security: [],
+      tags: []
+    }
+
+    it.effect("routes 4xx/5xx void schemas to error channel in schema mode", () =>
+      assertRuntimeIncludes(headSpec, [
+        // 200 should remain void (success channel)
+        `"200": () => Effect.void`,
+        // 4xx/5xx should route to error channel via decodeVoidError
+        `"400": decodeVoidError("400")`,
+        `"404": decodeVoidError("404")`,
+        `"500": decodeVoidError("500")`,
+        // The decodeVoidError helper should be generated
+        `const decodeVoidError`,
+        // Type signature should include void error types
+        `TestClientError<"400", undefined>`,
+        `TestClientError<"404", undefined>`,
+        `TestClientError<"500", undefined>`
+      ]))
+
+    it.effect("routes 4xx/5xx void schemas to error channel in type-only mode", () =>
+      Effect.gen(function*() {
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+
+        const result = yield* generator.generate(headSpec, {
+          name: "TestClient",
+          format: "httpclient-type-only"
+        })
+
+        // Type signature should include void error types
+        assert.include(result, `TestClientError<"400", undefined>`)
+        assert.include(result, `TestClientError<"404", undefined>`)
+        assert.include(result, `TestClientError<"500", undefined>`)
+        // decodeVoidError helper should be generated in the implementation
+        assert.include(result, `const decodeVoidError`)
+      }).pipe(
+        Effect.provide(OpenApiGenerator.layerTransformerTs)
+      ))
+
+    it.effect("preserves 2xx void schemas as success", () =>
+      assertRuntimeIncludes(
+        {
+          openapi: "3.1.0",
+          info: { title: "Test API", version: "1.0.0" },
+          paths: {
+            "/health": {
+              head: {
+                operationId: "healthCheck",
+                tags: ["Test"],
+                security: [],
+                parameters: [],
+                responses: {
+                  200: { description: "Healthy" },
+                  204: { description: "Healthy, no content" }
+                }
+              }
+            }
+          },
+          components: { schemas: {}, securitySchemes: {} },
+          security: [],
+          tags: []
+        },
+        [
+          // Both 2xx codes should remain void success
+          `"200": () => Effect.void`,
+          `"204": () => Effect.void`
+        ]
+      ))
+  })
 })

@@ -109,3 +109,8 @@ export const spreadElementsInto = <A>(source: Array<A>, destination: Array<A>): 
     destination.push(source[i])
   }
 }
+
+export const isErrorStatus = (status: string): boolean => {
+  const major = Number(status[0])
+  return !Number.isNaN(major) && major >= 4
+}

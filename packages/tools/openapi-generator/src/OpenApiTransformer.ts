@@ -69,6 +69,9 @@ const computeImportRequirements = (operations: ReadonlyArray<ParsedOperation>): 
 const requiresStreaming = (requirements: ImportRequirements): boolean =>
   requirements.eventStream || requirements.octetStream
 
+const hasVoidErrors = (operations: ReadonlyArray<ParsedOperation>): boolean =>
+  operations.some((op) => Array.from(op.voidSchemas).some(Utils.isErrorStatus))
+
 /**
  * Create the transformer used for schema-backed HttpClient output.
  *
@@ -146,6 +149,11 @@ ${clientErrorSource(name)}`
         ),
         errors
       )
+    }
+    for (const status of operation.voidSchemas) {
+      if (Utils.isErrorStatus(status)) {
+        errors.push(`${name}Error<"${status}", undefined>`)
+      }
     }
 
     const jsdoc = Utils.toComment(operation.description)
@@ -248,6 +256,8 @@ ${clientErrorSource(name)}`
       helpers.push(binaryRequestSource)
     }
 
+    const needsVoidError = hasVoidErrors(operations)
+
     return `export interface OperationConfig {
   /**
    * Whether or not the response should be included in the value returned from
@@ -288,7 +298,15 @@ export const make = (
         HttpClientResponse.schemaBodyJson(schema)(response),
         (cause) => Effect.fail(${name}Error(tag, cause, response)),
       )
-  return {
+  ${
+      needsVoidError ?
+        `const decodeVoidError =
+    <const Tag extends string>(tag: Tag) =>
+    (response: HttpClientResponse.HttpClientResponse) =>
+      Effect.fail(${name}Error(tag, undefined, response))
+  ` :
+        ""
+    }return {
     httpClient,
     ${implMethods.join(",\n    ")}
   }
@@ -337,7 +355,11 @@ export const make = (
       decodes.push(`"${status}": decodeError("${schema}", ${schema})`)
     })
     operation.voidSchemas.forEach((status) => {
-      decodes.push(`"${status}": () => Effect.void`)
+      if (Utils.isErrorStatus(status)) {
+        decodes.push(`"${status}": decodeVoidError("${status}")`)
+      } else {
+        decodes.push(`"${status}": () => Effect.void`)
+      }
     })
     decodes.push(`orElse: unexpectedStatus`)
 
@@ -558,6 +580,11 @@ ${clientErrorSource(name)}`
         errors.push(`${name}Error<"${schema}", ${schema}>`)
       }
     }
+    for (const status of operation.voidSchemas) {
+      if (Utils.isErrorStatus(status)) {
+        errors.push(`${name}Error<"${status}", undefined>`)
+      }
+    }
 
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}"`
@@ -652,6 +679,8 @@ ${clientErrorSource(name)}`
       helpers.push(binaryRequestSourceTs)
     }
 
+    const needsVoidError = hasVoidErrors(operations)
+
     return `export interface OperationConfig {
   /**
    * Whether or not the response should be included in the value returned from
@@ -697,9 +726,24 @@ export const make = (
         response.json as Effect.Effect<E, HttpClientError.HttpClientError>,
         (cause) => Effect.fail(${name}Error(tag, cause, response)),
       )
-  const onRequest = <Config extends OperationConfig>(config: Config | undefined) => (
+  ${
+      needsVoidError ?
+        `const decodeVoidError =
+    <Tag extends string>(tag: Tag) =>
+    (
+      response: HttpClientResponse.HttpClientResponse,
+    ): Effect.Effect<never, ${name}Error<Tag, undefined>> =>
+      Effect.fail(${name}Error(tag, undefined, response))
+  ` :
+        ""
+    }const onRequest = <Config extends OperationConfig>(config: Config | undefined) => (
     successCodes: ReadonlyArray<string>,
-    errorCodes?: Record<string, string>,
+    errorCodes?: Record<string, string>,${
+      needsVoidError ?
+        `
+    voidErrorCodes?: ReadonlyArray<string>,` :
+        ""
+    }
   ) => {
     const cases: any = { orElse: unexpectedStatus }
     for (const code of successCodes) {
@@ -709,6 +753,15 @@ export const make = (
       for (const [code, tag] of Object.entries(errorCodes)) {
         cases[code] = decodeError(tag)
       }
+    }${
+      needsVoidError ?
+        `
+    if (voidErrorCodes) {
+      for (const code of voidErrorCodes) {
+        cases[code] = decodeVoidError(code)
+      }
+    }` :
+        ""
     }
     if (successCodes.length === 0) {
       cases["2xx"] = decodeVoid
@@ -759,11 +812,20 @@ export const make = (
     const singleSuccessCode = successCodesRaw.length === 1 && successCodesRaw[0].startsWith("2")
     const errorCodes = operation.errorSchemas.size > 0 &&
       Object.fromEntries(operation.errorSchemas.entries())
+    const voidErrorStatuses = Array.from(operation.voidSchemas).filter(Utils.isErrorStatus)
     const configAccessor = resolveConfigAccessor(operation, "options", "config")
+    const onRequestArgs = [
+      `[${singleSuccessCode ? `"2xx"` : successCodes}]`,
+      ...(errorCodes ? [JSON.stringify(errorCodes)] : []),
+      ...(voidErrorStatuses.length > 0
+        ? [
+          ...(errorCodes ? [] : ["undefined"]),
+          JSON.stringify(voidErrorStatuses)
+        ]
+        : [])
+    ]
     pipeline.push(
-      `onRequest(${configAccessor})([${singleSuccessCode ? `"2xx"` : successCodes}]${
-        errorCodes ? `, ${JSON.stringify(errorCodes)}` : ""
-      })`
+      `onRequest(${configAccessor})(${onRequestArgs.join(", ")})`
     )
 
     return (
