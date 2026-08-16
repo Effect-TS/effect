@@ -244,7 +244,7 @@ export const schemaSearchParams = <
  */
 export const schemaBodyJson = <A, RD>(
   schema: Schema.ConstraintDecoder<A, RD>,
-  options?: ParseOptions | undefined
+  options?: (ParseOptions & HttpIncomingMessage.JsonOptions) | undefined
 ): Effect.Effect<A, HttpServerError | Schema.SchemaError, HttpServerRequest | RD> => {
   const parse = HttpIncomingMessage.schemaBodyJson(schema, options)
   return Effect.flatMap(HttpServerRequest, parse)
@@ -346,11 +346,11 @@ export const schemaBodyMultipart = <A, I extends Partial<Multipart.Persisted>, R
  */
 export const schemaBodyFormJson = <A, RD>(
   schema: Schema.ConstraintDecoder<A, RD>,
-  options?: ParseOptions | undefined
+  options?: (ParseOptions & HttpIncomingMessage.JsonOptions) | undefined
 ) => {
   const parseMultipart = Multipart.schemaJson(schema, options)
   return (field: string) => {
-    const parseUrlParams = UrlParams.schemaJsonField(field).pipe(
+    const parseUrlParams = UrlParams.schemaJsonField(field, options).pipe(
       Schema.decodeTo(schema),
       Schema.decodeEffect
     )

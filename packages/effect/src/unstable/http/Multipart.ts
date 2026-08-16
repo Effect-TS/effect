@@ -382,7 +382,10 @@ export const schemaPersisted = <A, I extends Partial<Persisted>, RD>(
  * @category schemas
  * @since 4.0.0
  */
-export const schemaJson = <A, RD>(schema: Schema.ConstraintDecoder<A, RD>, options?: ParseOptions | undefined): {
+export const schemaJson = <A, RD>(
+  schema: Schema.ConstraintDecoder<A, RD>,
+  options?: (ParseOptions & IncomingMessage.JsonOptions) | undefined
+): {
   (
     field: string
   ): (persisted: Persisted) => Effect.Effect<A, Schema.SchemaError, RD>
@@ -391,7 +394,7 @@ export const schemaJson = <A, RD>(schema: Schema.ConstraintDecoder<A, RD>, optio
     field: string
   ): Effect.Effect<A, Schema.SchemaError, RD>
 } => {
-  const fromJson = Schema.fromJsonString(schema)
+  const fromJson = Schema.fromJsonString(schema, options)
   return dual(2, (persisted: Persisted, field: string): Effect.Effect<A, Schema.SchemaError, RD> =>
     Effect.map(
       Schema.decodeUnknownEffect(Schema.Struct({ [field]: fromJson }))(persisted, options),

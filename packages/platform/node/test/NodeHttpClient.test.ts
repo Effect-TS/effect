@@ -130,9 +130,12 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
       Effect.gen(function*() {
         const local = yield* LocalServerClient
         const response = yield* local.client.get("/todos/1").pipe(
-          Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
+          Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo, {
+            reviver: (key, value) => key === "title" ? "revived" : value
+          }))
         )
         expect(response.id).toBe(1)
+        expect(response.title).toBe("revived")
       }).pipe(
         Effect.provide(localServerTestLayer)
       ))
