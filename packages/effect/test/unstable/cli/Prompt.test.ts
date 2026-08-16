@@ -52,7 +52,10 @@ const findFrame = (frames: ReadonlyArray<string>, text: string) => frames.find((
 describe("Prompt.date", () => {
   it.effect("renders two-digit years, teen ordinals, and noon meridiem correctly", () =>
     Effect.gen(function*() {
-      const initial = DateTime.toDateUtc(DateTime.makeUnsafe({ year: 2024, month: 1, day: 11, hour: 12 }))
+      const initial = DateTime.toDateUtc(DateTime.makeZonedUnsafe(
+        { year: 2024, month: 1, day: 11, hour: 12 },
+        { timeZone: DateTime.zoneMakeLocal(), adjustForTimeZone: true }
+      ))
       yield* MockTerminal.inputKey("enter")
 
       yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "YY Do A" }))
@@ -155,6 +158,28 @@ describe("Prompt.float", () => {
 })
 
 describe("Prompt.text", () => {
+  it.effect("uses the default prompt prefix when prefix is explicitly undefined", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+
+      const options = { message: "Name", prefix: undefined } as unknown as Prompt.TextOptions
+      yield* Prompt.run(Prompt.text(options))
+
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.include(frames[0] ?? "", "? Name")
+      assert.notInclude(frames[0] ?? "", "undefined")
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("renders a custom prompt prefix", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.text({ message: "Name", prefix: "!" }))
+
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.include(frames[0] ?? "", "! Name")
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("starts from the default value so it can be edited", () =>
     Effect.gen(function*() {
       const prompt = Prompt.text({
@@ -252,6 +277,27 @@ describe("Prompt.text", () => {
 
       assert.isTrue(lastFrame !== undefined)
       assert.isFalse(lastFrame?.includes("Jane"))
+    }).pipe(Effect.provide(TestLayer)))
+})
+
+describe("Prompt.select", () => {
+  it.effect("preserves a custom prompt prefix across redraws", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.select({
+        message: "Pick item",
+        prefix: "!",
+        choices: [
+          { title: "First", value: "first" },
+          { title: "Second", value: "second" }
+        ]
+      }))
+
+      assert.strictEqual(result, "second")
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.strictEqual(frames.filter((frame) => frame.includes("! Pick item")).length, 2)
     }).pipe(Effect.provide(TestLayer)))
 })
 

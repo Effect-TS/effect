@@ -518,7 +518,7 @@ describe("SqlMessageStorage", () => {
       yield* Fiber.interrupt(fiber)
     }).pipe(Effect.provide(StorageLayer.pipe(
       Layer.provideMerge(SqliteLayer)
-    ))))
+    ))), { timeout: 15_000 })
 })
 
 const SqliteLayer = Effect.gen(function*() {

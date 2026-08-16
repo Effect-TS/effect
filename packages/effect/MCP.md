@@ -80,9 +80,13 @@ The server exposes three main parts:
 The part layers are merged into one layer that has a MCP server implementation as dependency.
 `McpServer.layerStdio` is used to create a standard I/O–based MCP server identified by its name and
 version. Its ordered, non-empty `protocols` declaration names implemented protocol adapters rather
-than arbitrary version strings. This release supports `McpProtocol.v2025_06_18`. Because of the
-layer architecture the server implementation can be easily exchanged with an HTTP-based implementation
-with `McpServer.layerHttp`. Finally, a logging layer is added with
+than arbitrary version strings. This release supports `McpProtocol.v2024_11_05`,
+`McpProtocol.v2025_03_26`, and `McpProtocol.v2025_06_18`. The `v2024_11_05` adapter implements that
+revision's RPC schemas and stdio framing, including its batch policy. It does not implement the
+historical two-endpoint HTTP+SSE transport. `McpServer.layerHttp` instead offers the 2024 RPC schema
+through the same single-endpoint HTTP compatibility transport used by the 2025 adapters. Because of
+the layer architecture the server implementation can be easily exchanged with this HTTP-based
+implementation. Finally, a logging layer is added with
 `Logger.layer([Logger.consolePretty({ stderr: true })])`, ensuring logs are written to `stderr`.
 This is essential when using stdio, as any output to `stdout` would interfere with the protocol
 communication.

@@ -380,6 +380,8 @@ Layer.launch(ApiLayer).pipe(NodeRuntime.runMain)
 
 Use `HttpApiEndpoint.post` to create an endpoint that accepts data. The `payload` option describes the shape of the request body, and `success` describes what the endpoint returns.
 
+When a group has more than one endpoint, use `.handleAll` to register all the handlers in a single call, keyed by endpoint name. Single endpoints can still be registered one at a time with `.handle`.
+
 **Example** (Defining a POST Endpoint with Payload and Success Schemas)
 
 ```ts
@@ -421,21 +423,22 @@ const GroupLayer = HttpApiBuilder.group(
   Api,
   "Users",
   (handlers) =>
-    handlers
-      .handle("getUsers", () =>
+    handlers.handleAll({
+      getUsers: () =>
         Effect.succeed(
           [{ id: 1, name: "User 1" }, { id: 2, name: "User 2" }]
-        ))
-      .handle("getUser", (ctx) => {
+        ),
+      getUser: (ctx) => {
         const id = ctx.params.id
         return Effect.succeed({ id, name: `User ${id}` })
-      })
-      .handle("createUser", (ctx) => {
+      },
+      createUser: (ctx) => {
         //    ┌─── User
         //    ▼
         const user = ctx.payload
         return Effect.succeed(user)
-      })
+      }
+    })
 )
 
 const ApiLayer = HttpApiBuilder.layer(Api).pipe(
@@ -497,23 +500,24 @@ const GroupLayer = HttpApiBuilder.group(
   Api,
   "Users",
   (handlers) =>
-    handlers
-      .handle("getUsers", () =>
+    handlers.handleAll({
+      getUsers: () =>
         Effect.succeed(
           [{ id: 1, name: "User 1" }, { id: 2, name: "User 2" }]
-        ))
-      .handle("getUser", (ctx) => {
+        ),
+      getUser: (ctx) => {
         const id = ctx.params.id
         return Effect.succeed({ id, name: `User ${id}` })
-      })
-      .handle("createUser", (ctx) => {
+      },
+      createUser: (ctx) => {
         const user = ctx.payload
         return Effect.succeed(user)
-      })
-      .handle("deleteUser", (ctx) => {
+      },
+      deleteUser: (ctx) => {
         const id = ctx.params.id
         return Effect.log(`Deleting user ${id}`)
-      })
+      }
+    })
 )
 
 const ApiLayer = HttpApiBuilder.layer(Api).pipe(
@@ -586,27 +590,28 @@ const GroupLayer = HttpApiBuilder.group(
   Api,
   "Users",
   (handlers) =>
-    handlers
-      .handle("getUsers", () =>
+    handlers.handleAll({
+      getUsers: () =>
         Effect.succeed(
           [{ id: 1, name: "User 1" }, { id: 2, name: "User 2" }]
-        ))
-      .handle("getUser", (ctx) => {
+        ),
+      getUser: (ctx) => {
         const id = ctx.params.id
         return Effect.succeed({ id, name: `User ${id}` })
-      })
-      .handle("createUser", (ctx) => {
+      },
+      createUser: (ctx) => {
         const user = ctx.payload
         return Effect.succeed(user)
-      })
-      .handle("deleteUser", (ctx) => {
+      },
+      deleteUser: (ctx) => {
         const id = ctx.params.id
         return Effect.log(`Deleting user ${id}`)
-      })
-      .handle("updateUser", (ctx) => {
+      },
+      updateUser: (ctx) => {
         const id = ctx.params.id
         return Effect.succeed({ id, name: `User ${id}` })
-      })
+      }
+    })
 )
 
 const ApiLayer = HttpApiBuilder.layer(Api).pipe(
@@ -660,17 +665,18 @@ const GroupLayer = HttpApiBuilder.group(
   Api,
   "Users",
   (handlers) =>
-    handlers
-      .handle("getUsers", () =>
+    handlers.handleAll({
+      getUsers: () =>
         Effect.succeed(
           [{ id: 1, name: "User 1" }, { id: 2, name: "User 2" }]
-        ))
-      .handle("getUser", (ctx) => {
+        ),
+      getUser: (ctx) => {
         //    ┌─── number
         //    ▼
         const id = ctx.params.id
         return Effect.succeed({ id, name: `User ${id}` })
-      })
+      }
+    })
 )
 
 const ApiLayer = HttpApiBuilder.layer(Api).pipe(
@@ -745,30 +751,31 @@ const GroupLayer = HttpApiBuilder.group(
   Api,
   "Users",
   (handlers) =>
-    handlers
-      .handle("getUsers", () =>
+    handlers.handleAll({
+      getUsers: () =>
         Effect.succeed(
           [{ id: 1, name: "User 1" }, { id: 2, name: "User 2" }]
-        ))
-      .handle("getUser", (ctx) => {
+        ),
+      getUser: (ctx) => {
         const id = ctx.params.id
         return Effect.succeed({ id, name: `User ${id}` })
-      })
-      .handle("createUser", (ctx) => {
+      },
+      createUser: (ctx) => {
         const user = ctx.payload
         return Effect.succeed(user)
-      })
-      .handle("deleteUser", (ctx) => {
+      },
+      deleteUser: (ctx) => {
         const id = ctx.params.id
         return Effect.log(`Deleting user ${id}`)
-      })
-      .handle("updateUser", (ctx) => {
+      },
+      updateUser: (ctx) => {
         const id = ctx.params.id
         return Effect.succeed({ id, name: `User ${id}` })
-      })
-      .handle("catchAll", () => {
+      },
+      catchAll: () => {
         return Effect.succeed("Not found")
-      })
+      }
+    })
 )
 
 const ApiLayer = HttpApiBuilder.layer(Api).pipe(
@@ -823,9 +830,10 @@ const GroupLayer = HttpApiBuilder.group(
   Api,
   "group",
   (handlers) =>
-    handlers
-      .handle("endpointA", () => Effect.succeed("Endpoint A"))
-      .handle("endpointB", () => Effect.succeed("Endpoint B"))
+    handlers.handleAll({
+      endpointA: () => Effect.succeed("Endpoint A"),
+      endpointB: () => Effect.succeed("Endpoint B")
+    })
 )
 
 const ApiLayer = HttpApiBuilder.layer(Api).pipe(
@@ -1839,12 +1847,13 @@ const GroupLayer = HttpApiBuilder.group(
   Api,
   "group",
   (handlers) =>
-    handlers
-      .handle("newPage", () => Effect.succeed("You are on /new"))
-      .handle("oldPage", () =>
+    handlers.handleAll({
+      newPage: () => Effect.succeed("You are on /new"),
+      oldPage: () =>
         Effect.succeed(
           HttpServerResponse.redirect("/new", { status: 302 })
-        ))
+        )
+    })
 )
 
 const ApiLayer = HttpApiBuilder.layer(Api).pipe(
@@ -2084,21 +2093,22 @@ const GroupLayer = HttpApiBuilder.group(
   Api,
   "Users",
   (handlers) =>
-    handlers
-      .handle("getUser", (ctx) => {
+    handlers.handleAll({
+      getUser: (ctx) => {
         const id = ctx.params.id
         if (id === 1) {
           return Effect.fail(UserNotFound.make({ message: "User not found" }))
         }
         return Effect.succeed({ id, name: `User ${id}` })
-      })
-      .handle("deleteUser", (ctx) => {
+      },
+      deleteUser: (ctx) => {
         const id = ctx.params.id
         if (id === 1) {
           return Effect.fail(UserNotFound.make({ message: "User not found" }))
         }
         return Effect.succeed(void 0)
-      })
+      }
+    })
 )
 
 const ApiLayer = HttpApiBuilder.layer(Api).pipe(
@@ -2839,27 +2849,28 @@ const GroupLayer = HttpApiBuilder.group(
   Api,
   "Users",
   (handlers) =>
-    handlers
-      .handle("getUsers", () =>
+    handlers.handleAll({
+      getUsers: () =>
         Effect.succeed(
           [{ id: 1, name: "User 1" }, { id: 2, name: "User 2" }]
-        ))
-      .handle("getUser", (ctx) => {
+        ),
+      getUser: (ctx) => {
         const id = ctx.params.id
         return Effect.succeed({ id, name: `User ${id}` })
-      })
-      .handle("createUser", (ctx) => {
+      },
+      createUser: (ctx) => {
         const user = ctx.payload
         return Effect.succeed(user)
-      })
-      .handle("deleteUser", (ctx) => {
+      },
+      deleteUser: (ctx) => {
         const id = ctx.params.id
         return Effect.log(`Deleting user ${id}`)
-      })
-      .handle("updateUser", (ctx) => {
+      },
+      updateUser: (ctx) => {
         const id = ctx.params.id
         return Effect.succeed({ id, name: `User ${id}` })
-      })
+      }
+    })
 )
 
 const ApiLayer = HttpApiBuilder.layer(Api).pipe(

@@ -789,6 +789,34 @@ export const forEach: {
 } = internal.forEach
 
 /**
+ * Returns the first element of the iterable produced by an effect, or fails
+ * with `NoSuchElementError` if the iterable is empty.
+ *
+ * **When to use**
+ *
+ * Use when an effect produces a collection that must contain at least one
+ * element and absence should be represented in the typed error channel.
+ *
+ * **Example** (Getting the first element)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Option } from "effect"
+ *
+ * const first = await Effect.runPromise(Effect.head(Effect.succeed([1, 2, 3])))
+ * first // => 1
+ *
+ * const empty = Effect.head(Effect.succeed([] as Array<number>)).pipe(Effect.catchNoSuchElement)
+ * await Effect.runPromise(empty) // => Option.none()
+ * ```
+ *
+ * @category getters
+ * @since 2.0.0
+ */
+export const head: <A, E, R>(
+  self: Effect<Iterable<A>, E, R>
+) => Effect<A, E | Cause.NoSuchElementError, R> = internal.head
+
+/**
  * Executes a body effect repeatedly while a condition holds true.
  *
  * **Example** (Repeating an effectful loop)
@@ -1813,10 +1841,19 @@ export const fromResult: <A, E>(result: Result.Result<A, E>) => Effect<A, E> = i
  * @category converting
  * @since 4.0.0
  */
-export const fromOption: <Arg extends Option<unknown> | LazyArg<unknown>, E = Cause.NoSuchElementError>(
-  arg: Arg,
-  ...rest: [Arg] extends [Option<unknown>] ? [onNone?: LazyArg<E>] : []
-) => [Arg] extends [Option<infer A>] ? Effect<A, E>
+export const fromOption: <
+  Arg extends Option<unknown> | LazyArg<unknown>,
+  Rest extends [] | [onNone: LazyArg<unknown> | undefined] = []
+>(
+  arg: Arg & (Rest extends [] ? unknown : Option<unknown>),
+  ...rest: Rest
+) => [Arg] extends [Option<infer A>] ? Effect<
+    A,
+    Rest extends [LazyArg<infer E>] ? E
+      : Rest extends [undefined] ? Cause.NoSuchElementError
+      : Rest extends [LazyArg<infer E> | undefined] ? E | Cause.NoSuchElementError
+      : Cause.NoSuchElementError
+  >
   : [Arg] extends [LazyArg<infer E>] ? <A>(option: Option<A>) => Effect<A, E>
   : never = internal.fromOption
 
@@ -14520,11 +14557,12 @@ export const tx = <A, E, R>(
   effect: Effect<A, E, R>
 ): Effect<A, E, Exclude<R, Transaction>> =>
   withFiber((fiber) => {
-    if (fiber.context.mapUnsafe.has(Transaction.key)) {
+    let state = Context.getOrUndefined(fiber.context, Transaction)
+    if (state) {
       return effect as Effect<A, E, Exclude<R, Transaction>>
     }
     // Create transaction state only at the outermost boundary
-    const state: Transaction["Service"] = { journal: new Map(), retry: false }
+    state = { journal: new Map(), retry: false }
     let result: Exit.Exit<A, E> | undefined
     return uninterruptibleMask((restore) =>
       flatMap(

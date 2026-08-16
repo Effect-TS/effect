@@ -978,7 +978,7 @@ class MiddlewareImpl<
     const contextKey = `effect/http/HttpRouter/Middleware-${++middlewareId}` as const
     this.layer = Layer.effectContext(Effect.gen({ self: this }, function*() {
       const context = yield* Effect.context<Scope.Scope>()
-      const stack = [context.mapUnsafe.get(fnContextKey)]
+      const stack = [Context.getOrUndefinedUnsafe(context, fnContextKey)]
       if (this.dependencies) {
         const memoMap = yield* Layer.CurrentMemoMap
         const scope = Context.get(context, Scope.Scope)

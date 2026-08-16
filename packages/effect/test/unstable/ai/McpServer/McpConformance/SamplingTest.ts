@@ -84,10 +84,147 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            yield* peer.client["sampling/createMessage"](samplingRequest)
+            yield* peer.wireClient["sampling/createMessage"](samplingRequest)
 
             assert.strictEqual((yield* peer.takeRequest).method, "sampling/createMessage")
           }))
+
+        it.effect.skipIf(protocol.protocolVersion !== "2025-11-25")(
+          "SHOULD reject context-enabled requests before sending without sampling.context",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const peer = yield* test.makePeer({ capabilities: { sampling: {} } })
+              const request = McpSchema.CreateMessage.payloadSchema.make({
+                ...samplingRequest,
+                includeContext: "thisServer"
+              })
+
+              const exit = yield* Effect.exit(peer.reverseClient.createMessage(request))
+
+              assert.strictEqual(exit._tag, "Failure")
+              assert.deepStrictEqual(yield* peer.requests, [])
+            })
+        )
+
+        it.effect.skipIf(protocol.protocolVersion !== "2025-11-25")(
+          "MUST reject every tool-enabled request shape before sending without sampling.tools",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const requests = [
+                {
+                  name: "tools",
+                  request: {
+                    messages: [{ role: "user", content: { type: "text", text: "Weather?" } }],
+                    tools: [{ name: "weather", inputSchema: { type: "object" } }],
+                    maxTokens: 64
+                  }
+                },
+                {
+                  name: "toolChoice",
+                  request: {
+                    messages: [{ role: "user", content: { type: "text", text: "Weather?" } }],
+                    toolChoice: { mode: "required" },
+                    maxTokens: 64
+                  }
+                },
+                {
+                  name: "tool_use content",
+                  request: {
+                    messages: [{
+                      role: "assistant",
+                      content: { type: "tool_use", id: "call-1", name: "weather", input: { city: "Zurich" } }
+                    }],
+                    maxTokens: 64
+                  }
+                },
+                {
+                  name: "tool_result content",
+                  request: {
+                    messages: [{
+                      role: "user",
+                      content: {
+                        type: "tool_result",
+                        toolUseId: "call-1",
+                        content: [{ type: "text", text: "Sunny" }]
+                      }
+                    }],
+                    maxTokens: 64
+                  }
+                }
+              ] as const
+
+              for (const testCase of requests) {
+                const peer = yield* test.makePeer({ capabilities: { sampling: {} } })
+                const request = Schema.decodeUnknownSync(McpSchema.CreateMessage.payloadSchema)(testCase.request)
+                const exit = yield* Effect.exit(peer.reverseClient.createMessage(request))
+
+                assert.strictEqual(exit._tag, "Failure", testCase.name)
+                assert.deepStrictEqual(yield* peer.requests, [], testCase.name)
+              }
+            }).pipe(Effect.scoped)
+        )
+
+        it.effect.skipIf(protocol.protocolVersion !== "2025-11-25")(
+          "MUST allow text-only content arrays without sampling.tools",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const peer = yield* test.makePeer({
+                capabilities: { sampling: {} },
+                handlers: {
+                  "sampling/createMessage": () =>
+                    Effect.succeed({
+                      role: "assistant",
+                      content: [{ type: "text", text: "First" }, { type: "text", text: "Second" }],
+                      model: "text-model"
+                    })
+                }
+              })
+
+              const result = yield* peer.reverseClient.createMessage(
+                Schema.decodeUnknownSync(McpSchema.CreateMessage.payloadSchema)({
+                  messages: [{
+                    role: "user",
+                    content: [{ type: "text", text: "First" }, { type: "text", text: "Second" }]
+                  }],
+                  maxTokens: 64
+                })
+              )
+
+              assert.strictEqual((yield* peer.requests).length, 1)
+              assert.deepStrictEqual(JSON.parse(JSON.stringify(result.content)), [
+                { type: "text", text: "First" },
+                { type: "text", text: "Second" }
+              ])
+            })
+        )
+
+        it.effect.skipIf(protocol.protocolVersion !== "2025-11-25")(
+          "SCENARIO rejects unexpected tool-enabled responses when sampling.tools was not advertised",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const peer = yield* test.makePeer({
+                capabilities: { sampling: {} },
+                handlers: {
+                  "sampling/createMessage": () =>
+                    Effect.succeed({
+                      role: "assistant",
+                      content: { type: "tool_use", id: "call-1", name: "weather", input: {} },
+                      model: "tool-model",
+                      stopReason: "toolUse"
+                    })
+                }
+              })
+
+              const exit = yield* Effect.exit(peer.reverseClient.createMessage(samplingRequest))
+
+              assert.strictEqual(exit._tag, "Failure")
+              assert.strictEqual((yield* peer.requests).length, 1)
+            })
+        )
       })
 
       describe("Creating Messages", () => {
@@ -95,13 +232,15 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
           Effect.gen(function*() {
             const test = yield* McpConformance
             const peer = yield* test.makePeer({
-              capabilities: { sampling: {} },
+              capabilities: {
+                sampling: protocol.protocolVersion === "2025-11-25" ? { context: {} } : {}
+              },
               handlers: {
                 "sampling/createMessage": () => Effect.succeed(textResponse)
               }
             })
 
-            yield* peer.client["sampling/createMessage"](samplingRequestWithOptions)
+            yield* peer.wireClient["sampling/createMessage"](samplingRequestWithOptions)
             const recorded = yield* peer.takeRequest
             const payload = yield* decodeSamplingRequest(recorded.payload)
 
@@ -138,7 +277,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            const result = yield* peer.client["sampling/createMessage"](samplingRequest).pipe(
+            const result = yield* peer.wireClient["sampling/createMessage"](samplingRequest).pipe(
               Effect.flatMap(decodeSamplingResult)
             )
 
@@ -170,46 +309,49 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            const result = yield* peer.client["sampling/createMessage"](samplingRequest).pipe(
+            const result = yield* peer.wireClient["sampling/createMessage"](samplingRequest).pipe(
               Effect.flatMap(decodeSamplingResult)
             )
 
             assert.deepStrictEqual(result.content, {
               type: "image",
-              data: new Uint8Array([1, 2, 3]),
+              data: "AQID",
               mimeType: "image/png"
             })
           }))
 
-        it.effect("MUST accept audio sampling content", () =>
-          Effect.gen(function*() {
-            const test = yield* McpConformance
-            const peer = yield* test.makePeer({
-              capabilities: { sampling: {} },
-              handlers: {
-                "sampling/createMessage": () =>
-                  Effect.succeed({
-                    role: "assistant",
-                    content: {
-                      type: "audio",
-                      data: "BAUG",
-                      mimeType: "audio/wav"
-                    },
-                    model: "audio-model"
-                  })
-              }
-            })
+        it.effect.skipIf(["2024-11-05"].includes(protocol.protocolVersion))(
+          "MUST accept audio sampling content",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const peer = yield* test.makePeer({
+                capabilities: { sampling: {} },
+                handlers: {
+                  "sampling/createMessage": () =>
+                    Effect.succeed({
+                      role: "assistant",
+                      content: {
+                        type: "audio",
+                        data: "BAUG",
+                        mimeType: "audio/wav"
+                      },
+                      model: "audio-model"
+                    })
+                }
+              })
 
-            const result = yield* peer.client["sampling/createMessage"](samplingRequest).pipe(
-              Effect.flatMap(decodeSamplingResult)
-            )
+              const result = yield* peer.wireClient["sampling/createMessage"](samplingRequest).pipe(
+                Effect.flatMap(decodeSamplingResult)
+              )
 
-            assert.deepStrictEqual(result.content, {
-              type: "audio",
-              data: new Uint8Array([4, 5, 6]),
-              mimeType: "audio/wav"
+              assert.deepStrictEqual(result.content, {
+                type: "audio",
+                data: "BAUG",
+                mimeType: "audio/wav"
+              })
             })
-          }))
+        )
 
         it.effect("MUST surface sampling errors returned by the client", () =>
           Effect.gen(function*() {
@@ -226,11 +368,100 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            const error = yield* peer.client["sampling/createMessage"](samplingRequest).pipe(Effect.flip)
+            const error = yield* peer.wireClient["sampling/createMessage"](samplingRequest).pipe(Effect.flip)
 
-            assert.instanceOf(error, McpSchema.InternalError)
+            assert.isTrue("code" in error)
+            if ("code" in error) assert.strictEqual(error.code, McpSchema.INTERNAL_ERROR_CODE)
             assert.strictEqual(error.message, "Sampling failed")
           }))
+
+        it.effect.skipIf(protocol.protocolVersion !== "2025-11-25")(
+          "MUST round-trip tool-enabled sampling requests and results",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const response = {
+                role: "assistant",
+                content: [{
+                  type: "tool_use",
+                  id: "call-2",
+                  name: "weather",
+                  input: { city: "Geneva" }
+                }],
+                model: "tool-model",
+                stopReason: "toolUse"
+              } as const
+              const peer = yield* test.makePeer({
+                capabilities: { sampling: { tools: {} } },
+                handlers: { "sampling/createMessage": () => Effect.succeed(response) }
+              })
+              const request = McpSchema.CreateMessage.payloadSchema.make({
+                messages: [
+                  McpSchema.SamplingMessage.make({
+                    role: "assistant",
+                    content: McpSchema.ToolUseContent.make({
+                      id: "call-1",
+                      name: "weather",
+                      input: { city: "Zurich" }
+                    })
+                  }),
+                  McpSchema.SamplingMessage.make({
+                    role: "user",
+                    content: McpSchema.ToolResultContent.make({
+                      toolUseId: "call-1",
+                      content: [McpSchema.TextContent.make({ text: "Sunny" })],
+                      structuredContent: { temperature: 24 }
+                    })
+                  })
+                ],
+                tools: [{
+                  name: "weather",
+                  description: "Get weather",
+                  inputSchema: {
+                    type: "object",
+                    properties: { city: { type: "string" } },
+                    required: ["city"]
+                  }
+                }],
+                toolChoice: new McpSchema.ToolChoice({ mode: "required" }),
+                maxTokens: 64
+              })
+
+              const result = yield* peer.reverseClient.createMessage(request)
+              const recorded = yield* peer.takeRequest
+
+              assert.strictEqual(recorded.method, "sampling/createMessage")
+              assert.deepStrictEqual(recorded.payload, {
+                messages: [
+                  {
+                    role: "assistant",
+                    content: { type: "tool_use", id: "call-1", name: "weather", input: { city: "Zurich" } }
+                  },
+                  {
+                    role: "user",
+                    content: {
+                      type: "tool_result",
+                      toolUseId: "call-1",
+                      content: [{ type: "text", text: "Sunny" }],
+                      structuredContent: { temperature: 24 }
+                    }
+                  }
+                ],
+                tools: [{
+                  name: "weather",
+                  description: "Get weather",
+                  inputSchema: {
+                    type: "object",
+                    properties: { city: { type: "string" } },
+                    required: ["city"]
+                  }
+                }],
+                toolChoice: { mode: "required" },
+                maxTokens: 64
+              })
+              assert.deepStrictEqual(JSON.parse(JSON.stringify(result)), response)
+            })
+        )
       })
     })
   })

@@ -684,10 +684,13 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
 }): Effect.fn.Return<LanguageModel.Service, never, AnthropicClient> {
   const client = yield* AnthropicClient
 
-  const makeConfig: Effect.Effect<typeof Config.Service & { readonly model: string }> = Effect.gen(function*() {
-    const services = yield* Effect.context<never>()
-    return { model, ...providerConfig, ...services.mapUnsafe.get(Config.key) }
-  })
+  const makeConfig: Effect.Effect<typeof Config.Service & { readonly model: string }> = Effect.contextWith((services) =>
+    Effect.succeed({
+      model,
+      ...providerConfig,
+      ...Context.getOrUndefined(services, Config)
+    })
+  )
 
   const makeRequest = Effect.fnUntraced(
     function*<Tools extends ReadonlyArray<Tool.Any>>({ config, options, toolNameMapper }: {

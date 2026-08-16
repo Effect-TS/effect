@@ -450,6 +450,22 @@ describe("PubSub", () => {
         assert.deepStrictEqual(yield* PubSub.takeAll(sub), [3, 4, 5])
       }))
 
+    it.effect("unbounded rounds up fractional replay", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>({ replay: 1.5 })
+        yield* PubSub.publishAll(pubsub, [1, 2, 3, 4])
+        const sub = yield* PubSub.subscribe(pubsub)
+        assert.deepStrictEqual(yield* PubSub.takeAll(sub), [3, 4])
+      }))
+
+    it.effect("unbounded disables non-positive replay", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>({ replay: -1 })
+        yield* PubSub.publishAll(pubsub, [1, 2])
+        const sub = yield* PubSub.subscribe(pubsub)
+        assert.deepStrictEqual(yield* PubSub.takeUpTo(sub, 2), [])
+      }))
+
     it.effect("unbounded takeUpTo", () => {
       const messages = [1, 2, 3, 4, 5]
       return PubSub.unbounded<number>({ replay: 3 }).pipe(

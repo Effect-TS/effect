@@ -23,7 +23,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            yield* peer.client["roots/list"](undefined)
+            yield* peer.wireClient["roots/list"](undefined)
 
             assert.strictEqual((yield* peer.takeRequest).method, "roots/list")
           }))
@@ -38,7 +38,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            yield* peer.client["roots/list"](undefined)
+            yield* peer.wireClient["roots/list"](undefined)
 
             assert.strictEqual((yield* peer.takeRequest).method, "roots/list")
           }))
@@ -58,7 +58,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            const result = yield* peer.client["roots/list"](undefined)
+            const result = yield* peer.wireClient["roots/list"](undefined)
 
             assert.deepStrictEqual(
               result.roots.map((root) => ({
@@ -82,7 +82,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            const result = yield* peer.client["roots/list"](undefined)
+            const result = yield* peer.wireClient["roots/list"](undefined)
 
             assert.deepStrictEqual(result.roots, [])
           }))
@@ -102,9 +102,10 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            const error = yield* peer.client["roots/list"](undefined).pipe(Effect.flip)
+            const error = yield* peer.wireClient["roots/list"](undefined).pipe(Effect.flip)
 
-            assert.instanceOf(error, McpSchema.InternalError)
+            assert.isTrue("code" in error)
+            if ("code" in error) assert.strictEqual(error.code, McpSchema.INTERNAL_ERROR_CODE)
             assert.strictEqual(error.message, "Roots unavailable")
           }))
       })

@@ -578,10 +578,9 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
 }): Effect.fn.Return<LanguageModel.Service, never, OpenAiClient> {
   const client = yield* OpenAiClient
 
-  const makeConfig = Effect.gen(function*() {
-    const services = yield* Effect.context<never>()
-    return { model, ...providerConfig, ...services.mapUnsafe.get(Config.key) }
-  })
+  const makeConfig = Effect.contextWith((services: Context.Context<never>) =>
+    Effect.succeed({ model, ...providerConfig, ...Context.getOrUndefined(services, Config) })
+  )
 
   const makeRequest = Effect.fnUntraced(
     function*<Tools extends ReadonlyArray<Tool.Any>>({ config, options, toolNameMapper }: {
@@ -1288,7 +1287,7 @@ const makeStreamResponse = Effect.fnUntraced(
           parts.push({ type: "text-delta", id: textId, delta: choice.delta.content })
         }
 
-        if (choice.delta?.tool_calls !== undefined) {
+        if (Predicate.isNotNullish(choice.delta?.tool_calls)) {
           hasToolCalls = hasToolCalls || choice.delta.tool_calls.length > 0
           choice.delta.tool_calls.forEach((deltaTool, indexInChunk) => {
             const toolIndex = deltaTool.index ?? indexInChunk

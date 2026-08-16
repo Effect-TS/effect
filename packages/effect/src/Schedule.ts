@@ -1321,6 +1321,13 @@ export const upTo: {
 })
 
 const while_: {
+  <Input, Output, Meta extends Metadata<Output, Input>>(
+    predicate: (
+      metadata: Metadata<Output, Input>
+    ) => metadata is Meta
+  ): <Error, Env>(
+    self: Schedule<Output, Input, Error, Env>
+  ) => Schedule<Meta["output"], Meta["input"], Error, Env>
   <Input, Output, Error2 = never, Env2 = never>(
     predicate: (
       metadata: Metadata<Output, Input>
@@ -1328,6 +1335,12 @@ const while_: {
   ): <Error, Env>(
     self: Schedule<Output, Input, Error, Env>
   ) => Schedule<Output, Input, Error | Error2, Env | Env2>
+  <Output, Input, Error, Env, Meta extends Metadata<Output, Input>>(
+    self: Schedule<Output, Input, Error, Env>,
+    predicate: (
+      metadata: Metadata<Output, Input>
+    ) => metadata is Meta
+  ): Schedule<Meta["output"], Meta["input"], Error, Env>
   <Output, Input, Error, Env, Error2 = never, Env2 = never>(
     self: Schedule<Output, Input, Error, Env>,
     predicate: (

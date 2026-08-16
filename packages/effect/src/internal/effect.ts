@@ -945,10 +945,19 @@ export const suspend: <A, E, R>(
 })
 
 /** @internal */
-export const fromOption: <Arg extends Option.Option<unknown> | LazyArg<unknown>, E = Cause.NoSuchElementError>(
-  arg: Arg,
-  ...rest: [Arg] extends [Option.Option<unknown>] ? [onNone?: LazyArg<E>] : []
-) => [Arg] extends [Option.Option<infer A>] ? Effect.Effect<A, E>
+export const fromOption: <
+  Arg extends Option.Option<unknown> | LazyArg<unknown>,
+  Rest extends [] | [onNone: LazyArg<unknown> | undefined] = []
+>(
+  arg: Arg & (Rest extends [] ? unknown : Option.Option<unknown>),
+  ...rest: Rest
+) => [Arg] extends [Option.Option<infer A>] ? Effect.Effect<
+    A,
+    Rest extends [LazyArg<infer E>] ? E
+      : Rest extends [undefined] ? Cause.NoSuchElementError
+      : Rest extends [LazyArg<infer E> | undefined] ? E | Cause.NoSuchElementError
+      : Cause.NoSuchElementError
+  >
   : [Arg] extends [LazyArg<infer E>] ? <A>(option: Option.Option<A>) => Effect.Effect<A, E>
   : never = dual(
     (args) => args.length >= 2 || Option.isOption(args[0]),
@@ -2057,11 +2066,7 @@ export const serviceOption = <I, S>(
 export const serviceOptional = <I, S>(
   service: Context.Key<I, S>
 ): Effect.Effect<S, Cause.NoSuchElementError> =>
-  withFiber((fiber) =>
-    fiber.context.mapUnsafe.has(service.key)
-      ? succeed(Context.getUnsafe(fiber.context, service))
-      : fail(new NoSuchElementError())
-  )
+  withFiber((fiber) => fromOption(Context.getOption(fiber.context, service)))
 
 /** @internal */
 export const updateContext: {
@@ -2223,12 +2228,7 @@ const provideServiceImpl = <A, E, R, I, S>(
   self: Effect.Effect<A, E, R>,
   service: Context.Key<I, S>,
   implementation: S
-): Effect.Effect<A, E, Exclude<R, I>> =>
-  updateContext(self, (s) => {
-    const prev = s.mapUnsafe.get(service.key)
-    if (prev === implementation) return s
-    return Context.add(s, service, implementation)
-  }) as any
+): Effect.Effect<A, E, Exclude<R, I>> => updateContext(self, Context.add(service, implementation)) as any
 
 /** @internal */
 export const provideServiceEffect: {
@@ -4658,6 +4658,15 @@ export const forEach: {
     return eff ? as(eff, out as any) : succeed(out as any)
   }))
 
+/** @internal */
+export const head = <A, E, R>(
+  self: Effect.Effect<Iterable<A>, E, R>
+): Effect.Effect<A, E | Cause.NoSuchElementError, R> =>
+  flatMap(self, (elements) => {
+    const result = elements[Symbol.iterator]().next()
+    return result.done ? fail(new NoSuchElementError()) : succeed(result.value)
+  })
+
 const forEachSequential = <A, B, E, R>(
   iterable: Iterable<A>,
   f: (a: A, index: number) => Effect.Effect<B, E, R>,
@@ -5712,7 +5721,9 @@ export const makeSpanUnsafe = <XA, XE>(
 
     const links = options?.links !== undefined ?
       [...linksFromEnv, ...options.links] :
-      linksFromEnv.slice()
+      linksFromEnv.length === 0
+      ? []
+      : linksFromEnv.slice()
 
     span = tracer.span({
       name,
@@ -5728,12 +5739,12 @@ export const makeSpanUnsafe = <XA, XE>(
           : !isLogLevelGreaterThan(fiber.getRef(Tracer.MinimumTraceLevel), level))
     })
 
-    for (const [key, value] of Object.entries(annotationsFromEnv)) {
-      span.attribute(key, value)
+    for (const key in annotationsFromEnv) {
+      span.attribute(key, annotationsFromEnv[key])
     }
     if (options?.attributes !== undefined) {
-      for (const [key, value] of Object.entries(options.attributes)) {
-        span.attribute(key, value)
+      for (const key in options.attributes) {
+        span.attribute(key, options.attributes[key])
       }
     }
   }

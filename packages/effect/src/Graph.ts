@@ -14,15 +14,14 @@ import * as Equal from "./Equal.ts"
 import { dual } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
-import { NodeInspectSymbol } from "./Inspectable.ts"
+import * as internal from "./internal/graph.ts"
 import * as MutableHashMap from "./MutableHashMap.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
-import { pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
-import type { Covariant, Invariant, Mutable } from "./Types.ts"
+import type { Covariant, Invariant } from "./Types.ts"
 
-const TypeId = "~effect/collections/Graph"
+const TypeId = internal.TypeId
 
 /**
  * Node index for node identification using plain numbers.
@@ -87,11 +86,11 @@ export type EdgeIndex = number
  * @category models
  * @since 3.18.0
  */
-export class Edge<E> extends Data.Class<{
+export interface Edge<out E> {
   readonly source: NodeIndex
   readonly target: NodeIndex
   readonly data: E
-}> {}
+}
 
 /**
  * Graph type for distinguishing directed and undirected graphs.
@@ -108,6 +107,43 @@ export class Edge<E> extends Data.Class<{
  * @since 3.18.0
  */
 export type Kind = "directed" | "undirected"
+
+/**
+ * A node and its stable index in a graph snapshot.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface IndexedNode<out N> {
+  readonly index: NodeIndex
+  readonly data: N
+}
+
+/**
+ * An edge and its stable index in a graph snapshot.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface IndexedEdge<out E> extends Edge<E> {
+  readonly index: EdgeIndex
+}
+
+/**
+ * Active indexed structure used to reconstruct an immutable graph.
+ *
+ * Node and edge indexes must be non-negative safe integers in strictly
+ * increasing order. Every edge endpoint must reference an indexed node.
+ *
+ * @see {@link fromSnapshot} for reconstructing a graph
+ * @category models
+ * @since 4.0.0
+ */
+export interface Snapshot<out N, out E, out T extends Kind> {
+  readonly type: T
+  readonly nodes: ReadonlyArray<IndexedNode<N>>
+  readonly edges: ReadonlyArray<IndexedEdge<E>>
+}
 
 /**
  * Common public protocol for graph values.
@@ -208,34 +244,11 @@ export declare namespace MutableGraph {
 }
 
 /** @internal */
-interface GraphImpl<in out N, in out E, T extends Kind = "directed">
-  extends Iterable<readonly [NodeIndex, N]>, Equal.Equal, Pipeable, Inspectable
-{
-  readonly [TypeId]: unknown
-  readonly type: T
-  mutable: boolean
-  nodes: Map<NodeIndex, N>
-  edges: Map<EdgeIndex, Edge<E>>
-  adjacency: Map<NodeIndex, Array<EdgeIndex>>
-  reverseAdjacency: Map<NodeIndex, Array<EdgeIndex>>
-  nextNodeIndex: NodeIndex
-  nextEdgeIndex: EdgeIndex
-  acyclic: Option.Option<boolean>
-}
-
-/** @internal */
-const graphImpl = <N, E, T extends Kind = "directed">(
-  graph: Graph<N, E, T> | MutableGraph<N, E, T>
-): GraphImpl<N, E, T> => graph as unknown as GraphImpl<N, E, T>
-
-/** @internal */
-const cloneAdjacency = (adjacency: Map<NodeIndex, Array<EdgeIndex>>): Map<NodeIndex, Array<EdgeIndex>> => {
-  const cloned = new Map<NodeIndex, Array<EdgeIndex>>()
-  for (const [nodeIndex, edges] of adjacency) {
-    cloned.set(nodeIndex, [...edges])
-  }
-  return cloned
-}
+const copyEdge = <E>(edge: Edge<E>): Edge<E> => ({
+  source: edge.source,
+  target: edge.target,
+  data: edge.data
+})
 
 /**
  * Immutable graph type for source-to-target relationships.
@@ -316,103 +329,6 @@ export type MutableDirectedGraph<N, E> = MutableGraph<N, E, "directed">
 export type MutableUndirectedGraph<N, E> = MutableGraph<N, E, "undirected">
 
 // =============================================================================
-// Proto Objects
-// =============================================================================
-
-/** @internal */
-const edgeEquals = (type: Kind, self: Edge<any>, that: Edge<any>): boolean =>
-  (type === "directed"
-    ? self.source === that.source && self.target === that.target
-    : (self.source === that.source && self.target === that.target) ||
-      (self.source === that.target && self.target === that.source)) &&
-  Equal.equals(self.data, that.data)
-
-/** @internal */
-const edgeHash = (type: Kind, edge: Edge<any>): number =>
-  type === "directed"
-    ? Hash.hash(edge)
-    : Hash.optimize(Hash.hash(edge.data) ^ (Hash.hash(edge.source) + Hash.hash(edge.target)))
-
-/** @internal */
-const ProtoGraph = {
-  [TypeId]: {
-    _N: (_: never) => _,
-    _E: (_: never) => _
-  },
-  [Symbol.iterator](this: GraphImpl<any, any>) {
-    return this.nodes[Symbol.iterator]()
-  },
-  [NodeInspectSymbol](this: GraphImpl<any, any>) {
-    return this.toJSON()
-  },
-  [Equal.symbol](this: GraphImpl<any, any>, that: Equal.Equal): boolean {
-    if (isGraph(that)) {
-      const thatImpl = graphImpl(that)
-      if (
-        this.nodes.size !== thatImpl.nodes.size ||
-        this.edges.size !== thatImpl.edges.size ||
-        this.nextNodeIndex !== thatImpl.nextNodeIndex ||
-        this.nextEdgeIndex !== thatImpl.nextEdgeIndex ||
-        this.type !== thatImpl.type
-      ) {
-        return false
-      }
-      // Compare nodes
-      for (const [nodeIndex, nodeData] of this.nodes) {
-        if (!thatImpl.nodes.has(nodeIndex)) {
-          return false
-        }
-        const otherNodeData = thatImpl.nodes.get(nodeIndex)!
-        if (!Equal.equals(nodeData, otherNodeData)) {
-          return false
-        }
-      }
-      // Compare edges
-      for (const [edgeIndex, edgeData] of this.edges) {
-        if (!thatImpl.edges.has(edgeIndex)) {
-          return false
-        }
-        const otherEdge = thatImpl.edges.get(edgeIndex)!
-        if (!edgeEquals(this.type, edgeData, otherEdge)) {
-          return false
-        }
-      }
-      return true
-    }
-    return false
-  },
-  [Hash.symbol](this: GraphImpl<any, any>): number {
-    let hash = Hash.string("Graph")
-    hash = hash ^ Hash.string(this.type)
-    hash = hash ^ Hash.number(this.nodes.size)
-    hash = hash ^ Hash.number(this.edges.size)
-    hash = hash ^ Hash.number(this.nextNodeIndex)
-    hash = hash ^ Hash.number(this.nextEdgeIndex)
-    for (const [nodeIndex, nodeData] of this.nodes) {
-      hash = hash ^ (Hash.hash(nodeIndex) + Hash.hash(nodeData))
-    }
-    for (const [edgeIndex, edgeData] of this.edges) {
-      hash = hash ^ (Hash.hash(edgeIndex) + edgeHash(this.type, edgeData))
-    }
-    return hash
-  },
-  toJSON(this: GraphImpl<any, any>) {
-    return {
-      _id: "Graph",
-      nodeCount: this.nodes.size,
-      edgeCount: this.edges.size,
-      type: this.type
-    }
-  },
-  toString(this: GraphImpl<any, any>) {
-    return `Graph(${this.type}, ${this.nodes.size}, ${this.edges.size})`
-  },
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-// =============================================================================
 // Errors
 // =============================================================================
 
@@ -473,6 +389,76 @@ export const isGraph = <N = unknown, E = unknown, T extends Kind = Kind, U = nev
 ): u is Graph<N, E, T> | MutableGraph<N, E, T> => hasProperty(u, TypeId)
 
 /**
+ * Reconstructs an immutable graph from its indexed active structure.
+ *
+ * The node and edge arrays must be ordered by strictly increasing,
+ * non-negative safe integer indexes, and every edge endpoint must reference a
+ * node in the snapshot. Invalid snapshots throw a {@link GraphError}.
+ *
+ * **Example** (Preserving graph indexes)
+ *
+ * ```ts import.meta.vitest
+ * import { Graph } from "effect"
+ *
+ * const graph = Graph.fromSnapshot({
+ *   type: "directed",
+ *   nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }],
+ *   edges: [{ index: 3, source: 2, target: 5, data: 1 }]
+ * })
+ *
+ * Array.from(graph) // => [[2, "A"], [5, "B"]]
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromSnapshot = <N, E, T extends Kind>(snapshot: Snapshot<N, E, T>): Graph<N, E, T> => {
+  if (snapshot.type !== "directed" && snapshot.type !== "undirected") {
+    throw new GraphError({ message: "Snapshot type must be directed or undirected" })
+  }
+
+  let previous = -1
+  const nodeIndexes = new Set<NodeIndex>()
+  for (let i = 0; i < snapshot.nodes.length; i++) {
+    const index = snapshot.nodes[i].index
+    if (!Number.isSafeInteger(index) || index < 0) {
+      throw new GraphError({ message: `Node index at position ${i} must be a non-negative safe integer` })
+    }
+    if (index <= previous) {
+      throw new GraphError({ message: "Node indexes must be strictly increasing" })
+    }
+    previous = index
+    nodeIndexes.add(index)
+  }
+
+  previous = -1
+  for (let i = 0; i < snapshot.edges.length; i++) {
+    const edge = snapshot.edges[i]
+    if (!Number.isSafeInteger(edge.index) || edge.index < 0) {
+      throw new GraphError({ message: `Edge index at position ${i} must be a non-negative safe integer` })
+    }
+    if (edge.index <= previous) {
+      throw new GraphError({ message: "Edge indexes must be strictly increasing" })
+    }
+    previous = edge.index
+    if (!Number.isSafeInteger(edge.source) || edge.source < 0) {
+      throw new GraphError({ message: `Edge source at position ${i} must be a non-negative safe integer` })
+    }
+    if (!nodeIndexes.has(edge.source)) {
+      throw new GraphError({ message: `Edge source ${edge.source} does not reference a node` })
+    }
+    if (!Number.isSafeInteger(edge.target) || edge.target < 0) {
+      throw new GraphError({ message: `Edge target at position ${i} must be a non-negative safe integer` })
+    }
+    if (!nodeIndexes.has(edge.target)) {
+      throw new GraphError({ message: `Edge target ${edge.target} does not reference a node` })
+    }
+  }
+
+  return internal.hydrate(snapshot)
+}
+
+/**
  * Creates a graph constructor for the specified graph kind.
  *
  * **When to use**
@@ -500,22 +486,11 @@ export const isGraph = <N = unknown, E = unknown, T extends Kind = Kind, U = nev
  */
 export const make =
   <T extends Kind>(type: T) => <N, E>(mutate?: (mutable: MutableGraph<N, E, T>) => undefined): Graph<N, E, T> => {
-    const graph: Mutable<GraphImpl<N, E, T>> = Object.create(ProtoGraph)
-    graph.type = type
-    graph.nodes = new Map()
-    graph.edges = new Map()
-    graph.adjacency = new Map()
-    graph.reverseAdjacency = new Map()
-    graph.nextNodeIndex = 0
-    graph.nextEdgeIndex = 0
-    graph.acyclic = Option.some(true)
-
     if (mutate === undefined) {
-      graph.mutable = false
-      return graph as unknown as Graph<N, E, T>
+      return internal.make<N, E, T>(type, false) as unknown as Graph<N, E, T>
     }
 
-    graph.mutable = true
+    const graph = internal.make<N, E, T>(type, true)
     const mutable = Equal.byReferenceUnsafe(graph as unknown as MutableGraph<N, E, T>)
     return mutateScoped(mutable, mutate)
   }
@@ -596,21 +571,8 @@ export const undirected: <N, E>(
 export const beginMutation = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T>
 ): MutableGraph<N, E, T> => {
-  const source = graphImpl(graph)
-  const adjacency = cloneAdjacency(source.adjacency)
-  const reverseAdjacency = cloneAdjacency(source.reverseAdjacency)
-
-  const mutable: Mutable<GraphImpl<N, E, T>> = Object.create(ProtoGraph)
-  mutable.type = source.type
-  mutable.nodes = new Map(source.nodes)
-  mutable.edges = new Map(source.edges)
-  mutable.adjacency = adjacency
-  mutable.reverseAdjacency = reverseAdjacency
-  mutable.nextNodeIndex = source.nextNodeIndex
-  mutable.nextEdgeIndex = source.nextEdgeIndex
-  mutable.acyclic = source.acyclic
-  mutable.mutable = true
-
+  const source = internal.toImpl(graph)
+  const mutable = internal.clone(source, true)
   return Equal.byReferenceUnsafe(mutable as unknown as MutableGraph<N, E, T>)
 }
 
@@ -640,18 +602,8 @@ export const endMutation = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>
 ): Graph<N, E, T> => {
   assertMutable(mutable)
-  const source = graphImpl(mutable)
-
-  const graph: Mutable<GraphImpl<N, E, T>> = Object.create(ProtoGraph)
-  graph.type = source.type
-  graph.nodes = new Map(source.nodes)
-  graph.edges = new Map(source.edges)
-  graph.adjacency = cloneAdjacency(source.adjacency)
-  graph.reverseAdjacency = cloneAdjacency(source.reverseAdjacency)
-  graph.nextNodeIndex = source.nextNodeIndex
-  graph.nextEdgeIndex = source.nextEdgeIndex
-  graph.acyclic = source.acyclic
-  graph.mutable = false
+  const source = internal.toImpl(mutable)
+  const graph = internal.clone(source, false)
   source.mutable = false
 
   return graph as unknown as Graph<N, E, T>
@@ -788,7 +740,7 @@ const buildNodeMaps = <N, E, T extends Kind, I>(
   graph: Graph<N, E, T>,
   identity: (node: N) => I
 ): NodeMaps<N, I> => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   const byIdentity = MutableHashMap.empty<I, N>()
   const byIndex = new Map<NodeIndex, I>()
 
@@ -810,7 +762,7 @@ const buildEdgeMap = <N, E, T extends Kind, NI, EI>(
   nodeMaps: NodeMaps<N, NI>,
   identity: (edge: E) => EI
 ): MutableHashMap.MutableHashMap<EdgeIdentity<NI, EI>, E> => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   const edges = MutableHashMap.empty<EdgeIdentity<NI, EI>, E>()
   for (const edge of impl.edges.values()) {
     const sourceIdentity = nodeIdentityAt(nodeMaps, edge.source)
@@ -1010,7 +962,7 @@ export const intersection: {
   options?: IdentityOptions<N, E, NI, EI>
 ): Graph<N, E, T> => {
   assertSameKind(self, that)
-  const thatImpl = graphImpl(that)
+  const thatImpl = internal.toImpl(that)
   const getNodeIdentity = options?.nodeIdentity ?? ((node: N) => node as unknown as NI)
   const getEdgeIdentity = options?.edgeIdentity ?? ((edge: E) => edge as unknown as EI)
   const selfMaps = buildNodeMaps(self, getNodeIdentity)
@@ -1108,7 +1060,7 @@ export const difference: {
   options?: IdentityOptions<N, E, NI, EI>
 ): Graph<N, E, T> => {
   assertSameKind(self, that)
-  const selfImpl = graphImpl(self)
+  const selfImpl = internal.toImpl(self)
   const getNodeIdentity = options?.nodeIdentity ?? ((node: N) => node as unknown as NI)
   const getEdgeIdentity = options?.edgeIdentity ?? ((edge: E) => edge as unknown as EI)
   const selfMaps = buildNodeMaps(self, getNodeIdentity)
@@ -1271,7 +1223,7 @@ export const complement: {
   self: Graph<N, E, T>,
   createEdge: (source: N, target: N) => E
 ): Graph<N, E, T> => {
-  const selfImpl = graphImpl(self)
+  const selfImpl = internal.toImpl(self)
   const nodeEntries = Array.from(selfImpl.nodes)
 
   return make(self.type)<N, E>((mutable) => {
@@ -1365,7 +1317,7 @@ export const neighborhood: {
   nodeIndex: NodeIndex,
   options?: NeighborhoodConfig
 ): Graph<N, E, T> => {
-  const selfImpl = graphImpl(self)
+  const selfImpl = internal.toImpl(self)
   const radius = options?.radius ?? 1
   const direction = options?.direction ?? "outgoing"
   const reached = new Set<NodeIndex>()
@@ -1414,7 +1366,7 @@ export const sum: {
   assertSameKind(self, that)
   return make(self.type)<N, E>((mutable) => {
     const copyInto = (graph: Graph<N, E, T>) => {
-      const impl = graphImpl(graph)
+      const impl = internal.toImpl(graph)
       const indexMap = new Map<NodeIndex, NodeIndex>()
 
       for (const [oldIndex, data] of impl.nodes) {
@@ -1480,7 +1432,7 @@ export const addNode = <N, E, T extends Kind = "directed">(
   data: N
 ): NodeIndex => {
   assertMutable(mutable)
-  const impl = graphImpl(mutable)
+  const impl = internal.toImpl(mutable)
 
   const nodeIndex = impl.nextNodeIndex
 
@@ -1527,7 +1479,7 @@ export const getNode: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
 ): Option.Option<N> => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   return impl.nodes.has(nodeIndex) ? Option.some(impl.nodes.get(nodeIndex)!) : Option.none()
 })
 
@@ -1556,7 +1508,7 @@ export const hasNode: {
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
-): boolean => graphImpl(graph).nodes.has(nodeIndex))
+): boolean => internal.toImpl(graph).nodes.has(nodeIndex))
 
 /**
  * Returns the number of nodes in the graph.
@@ -1583,7 +1535,7 @@ export const hasNode: {
  */
 export const nodeCount = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>
-): number => graphImpl(graph).nodes.size
+): number => internal.toImpl(graph).nodes.size
 
 /**
  * Finds the first node that matches the given predicate.
@@ -1618,7 +1570,7 @@ export const findNode: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   predicate: (data: N) => boolean
 ): Option.Option<NodeIndex> => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   for (const [index, data] of impl.nodes) {
     if (predicate(data)) {
       return Option.some(index)
@@ -1660,7 +1612,7 @@ export const findNodes: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   predicate: (data: N) => boolean
 ): Array<NodeIndex> => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   const results: Array<NodeIndex> = []
   for (const [index, data] of impl.nodes) {
     if (predicate(data)) {
@@ -1705,7 +1657,7 @@ export const findEdge: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   predicate: (data: E, source: NodeIndex, target: NodeIndex) => boolean
 ): Option.Option<EdgeIndex> => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   for (const [edgeIndex, edgeData] of impl.edges) {
     if (predicate(edgeData.data, edgeData.source, edgeData.target)) {
       return Option.some(edgeIndex)
@@ -1750,7 +1702,7 @@ export const findEdges: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   predicate: (data: E, source: NodeIndex, target: NodeIndex) => boolean
 ): Array<EdgeIndex> => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   const results: Array<EdgeIndex> = []
   for (const [edgeIndex, edgeData] of impl.edges) {
     if (predicate(edgeData.data, edgeData.source, edgeData.target)) {
@@ -1786,7 +1738,7 @@ export const updateNode = <N, E, T extends Kind = "directed">(
   f: (data: N) => N
 ): void => {
   assertMutable(mutable)
-  const impl = graphImpl(mutable)
+  const impl = internal.toImpl(mutable)
 
   if (!impl.nodes.has(index)) {
     return
@@ -1824,7 +1776,7 @@ export const updateEdge = <N, E, T extends Kind = "directed">(
   f: (data: E) => E
 ): void => {
   assertMutable(mutable)
-  const impl = graphImpl(mutable)
+  const impl = internal.toImpl(mutable)
 
   if (!impl.edges.has(edgeIndex)) {
     return
@@ -1832,7 +1784,11 @@ export const updateEdge = <N, E, T extends Kind = "directed">(
 
   const currentEdge = impl.edges.get(edgeIndex)!
   const newData = f(currentEdge.data)
-  impl.edges.set(edgeIndex, new Edge({ ...currentEdge, data: newData }))
+  impl.edges.set(edgeIndex, {
+    source: currentEdge.source,
+    target: currentEdge.target,
+    data: newData
+  })
 }
 
 /**
@@ -1866,7 +1822,7 @@ export const mapNodes = <N, E, T extends Kind = "directed">(
   f: (data: N) => N
 ): void => {
   assertMutable(mutable)
-  const impl = graphImpl(mutable)
+  const impl = internal.toImpl(mutable)
 
   // Transform existing node data in place
   for (const [index, data] of impl.nodes) {
@@ -1903,17 +1859,18 @@ export const mapEdges = <N, E, T extends Kind = "directed">(
   f: (data: E) => E
 ): void => {
   assertMutable(mutable)
-  const impl = graphImpl(mutable)
+  const impl = internal.toImpl(mutable)
 
   // Transform existing edge data in place
   for (const [index, edgeData] of impl.edges) {
     const newData = f(edgeData.data)
     impl.edges.set(
       index,
-      new Edge({
-        ...edgeData,
+      {
+        source: edgeData.source,
+        target: edgeData.target,
         data: newData
-      })
+      }
     )
   }
 }
@@ -1922,7 +1879,7 @@ export const mapEdges = <N, E, T extends Kind = "directed">(
  * @internal
  */
 const rebuildAdjacency = <N, E, T extends Kind = "directed">(
-  mutable: GraphImpl<N, E, T>
+  mutable: internal.GraphImpl<N, E, T>
 ): void => {
   mutable.adjacency.clear()
   mutable.reverseAdjacency.clear()
@@ -1970,7 +1927,7 @@ export const reverse = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>
 ): void => {
   assertMutable(mutable)
-  const impl = graphImpl(mutable)
+  const impl = internal.toImpl(mutable)
 
   if (impl.type === "undirected") {
     return
@@ -1980,11 +1937,11 @@ export const reverse = <N, E, T extends Kind = "directed">(
   for (const [index, edgeData] of impl.edges) {
     impl.edges.set(
       index,
-      new Edge({
+      {
         source: edgeData.target,
         target: edgeData.source,
         data: edgeData.data
-      })
+      }
     )
   }
 
@@ -2029,7 +1986,7 @@ export const filterMapNodes = <N, E, T extends Kind = "directed">(
   f: (data: N) => Option.Option<N>
 ): void => {
   assertMutable(mutable)
-  const impl = graphImpl(mutable)
+  const impl = internal.toImpl(mutable)
 
   const nodesToRemove: Array<NodeIndex> = []
 
@@ -2086,7 +2043,7 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
   f: (data: E) => Option.Option<E>
 ): void => {
   assertMutable(mutable)
-  const impl = graphImpl(mutable)
+  const impl = internal.toImpl(mutable)
 
   const edgesToRemove: Array<EdgeIndex> = []
 
@@ -2097,10 +2054,11 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
       // Transform edge data
       impl.edges.set(
         index,
-        new Edge({
-          ...edgeData,
+        {
+          source: edgeData.source,
+          target: edgeData.target,
           data: result.value
-        })
+        }
       )
     } else {
       // Mark for removal
@@ -2144,7 +2102,7 @@ export const filterNodes = <N, E, T extends Kind = "directed">(
   predicate: (data: N) => boolean
 ): void => {
   assertMutable(mutable)
-  const impl = graphImpl(mutable)
+  const impl = internal.toImpl(mutable)
 
   const nodesToRemove: Array<NodeIndex> = []
 
@@ -2194,7 +2152,7 @@ export const filterEdges = <N, E, T extends Kind = "directed">(
   predicate: (data: E) => boolean
 ): void => {
   assertMutable(mutable)
-  const impl = graphImpl(mutable)
+  const impl = internal.toImpl(mutable)
 
   const edgesToRemove: Array<EdgeIndex> = []
 
@@ -2217,7 +2175,7 @@ export const filterEdges = <N, E, T extends Kind = "directed">(
 
 /** @internal */
 const invalidateCycleFlagOnRemoval = <N, E, T extends Kind = "directed">(
-  mutable: GraphImpl<N, E, T>
+  mutable: internal.GraphImpl<N, E, T>
 ): void => {
   // Only invalidate if the graph had cycles (removing edges/nodes cannot introduce cycles in acyclic graphs).
   if (mutable.acyclic._tag === "Some" && mutable.acyclic.value === false) {
@@ -2227,7 +2185,7 @@ const invalidateCycleFlagOnRemoval = <N, E, T extends Kind = "directed">(
 
 /** @internal */
 const invalidateCycleFlagOnAddition = <N, E, T extends Kind = "directed">(
-  mutable: GraphImpl<N, E, T>
+  mutable: internal.GraphImpl<N, E, T>
 ): void => {
   // Only invalidate if the graph was acyclic (adding edges cannot remove cycles from cyclic graphs).
   if (mutable.acyclic._tag === "Some" && mutable.acyclic.value === true) {
@@ -2285,7 +2243,7 @@ export const addEdge = <N, E, T extends Kind = "directed">(
   data: E
 ): EdgeIndex => {
   assertMutable(mutable)
-  const impl = graphImpl(mutable)
+  const impl = internal.toImpl(mutable)
 
   // Validate that both nodes exist
   if (!impl.nodes.has(source)) {
@@ -2298,7 +2256,7 @@ export const addEdge = <N, E, T extends Kind = "directed">(
   const edgeIndex = impl.nextEdgeIndex
 
   // Create edge data
-  const edgeData = new Edge({ source, target, data })
+  const edgeData: Edge<E> = { source, target, data }
   impl.edges.set(edgeIndex, edgeData)
 
   // Update adjacency lists
@@ -2362,7 +2320,7 @@ export const removeNode = <N, E, T extends Kind = "directed">(
   nodeIndex: NodeIndex
 ): void => {
   assertMutable(mutable)
-  const impl = graphImpl(mutable)
+  const impl = internal.toImpl(mutable)
 
   // Check if node exists
   if (!impl.nodes.has(nodeIndex)) {
@@ -2430,7 +2388,7 @@ export const removeEdge = <N, E, T extends Kind = "directed">(
   edgeIndex: EdgeIndex
 ): void => {
   assertMutable(mutable)
-  const impl = graphImpl(mutable)
+  const impl = internal.toImpl(mutable)
 
   const wasRemoved = removeEdgeInternal(impl, edgeIndex)
 
@@ -2443,7 +2401,7 @@ export const removeEdge = <N, E, T extends Kind = "directed">(
 
 /** @internal */
 const removeEdgeInternal = <N, E, T extends Kind = "directed">(
-  mutable: GraphImpl<N, E, T>,
+  mutable: internal.GraphImpl<N, E, T>,
   edgeIndex: EdgeIndex
 ): boolean => {
   // Get edge data
@@ -2514,7 +2472,7 @@ const removeEdgeInternal = <N, E, T extends Kind = "directed">(
  *   Graph.addEdge(mutable, nodeA, nodeB, 42)
  * })
  *
- * Graph.getEdge(graph, 0) // => Option.some(new Graph.Edge({ source: 0, target: 1, data: 42 }))
+ * Graph.getEdge(graph, 0) // => Option.some({ source: 0, target: 1, data: 42 })
  * ```
  *
  * @category getters
@@ -2531,7 +2489,10 @@ export const getEdge: {
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   edgeIndex: EdgeIndex
-): Option.Option<Edge<E>> => Option.fromUndefinedOr(graphImpl(graph).edges.get(edgeIndex)))
+): Option.Option<Edge<E>> => {
+  const edge = internal.toImpl(graph).edges.get(edgeIndex)
+  return edge === undefined ? Option.none() : Option.some(copyEdge(edge))
+})
 
 /**
  * Checks whether an edge exists between two nodes in the graph.
@@ -2570,7 +2531,7 @@ export const hasEdge: {
   source: NodeIndex,
   target: NodeIndex
 ): boolean => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   const adjacencyList = impl.adjacency.get(source)
   if (adjacencyList === undefined) {
     return false
@@ -2618,14 +2579,14 @@ export const hasEdge: {
  */
 export const edgeCount = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>
-): number => graphImpl(graph).edges.size
+): number => internal.toImpl(graph).edges.size
 
 const getDirectedNeighbors = <N, E>(
   graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
   nodeIndex: NodeIndex,
   direction: Direction
 ): Array<NodeIndex> => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   const adjacencyMap = direction === "incoming"
     ? impl.reverseAdjacency
     : impl.adjacency
@@ -2920,7 +2881,7 @@ export const toGraphViz: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   options?: GraphVizOptions<N, E>
 ): string => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   const {
     edgeLabel = (data: E) => String(data),
     graphName = "G",
@@ -3372,7 +3333,7 @@ export const toMermaid: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   options?: MermaidOptions<N, E>
 ): string => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   // Extract and validate options with defaults
   const {
     diagramType,
@@ -3510,7 +3471,7 @@ export type TraversalDirection = Direction | "undirected"
 export const isAcyclic = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>
 ): boolean => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   // Use existing cycle flag if available
   if (Option.isSome(impl.acyclic)) {
     return impl.acyclic.value
@@ -3674,7 +3635,7 @@ export const isAcyclic = <N, E, T extends Kind = "directed">(
 export const isBipartite = <N, E>(
   graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
 ): boolean => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   const coloring = new Map<NodeIndex, 0 | 1>()
   const discovered = new Set<NodeIndex>()
   let isBipartiteGraph = true
@@ -3728,7 +3689,7 @@ const getUndirectedNeighbors = <N, E>(
   graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">,
   nodeIndex: NodeIndex
 ): Array<NodeIndex> => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   const neighbors = new Set<NodeIndex>()
 
   // Check edges where this node is the source
@@ -3799,7 +3760,7 @@ const getTraversableNeighbor = <N, E, T extends Kind>(
 export const connectedComponents = <N, E>(
   graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
 ): Array<Array<NodeIndex>> => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   const visited = new Set<NodeIndex>()
   const components: Array<Array<NodeIndex>> = []
   for (const startNode of impl.nodes.keys()) {
@@ -3866,7 +3827,7 @@ export const stronglyConnectedComponents = <N, E>(
     throw new GraphError({ message: "Cannot find strongly connected components of undirected graph" })
   }
 
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   const visited = new Set<NodeIndex>()
   const finishOrder: Array<NodeIndex> = []
   // Iterate directly over node keys
@@ -4122,7 +4083,7 @@ export const dijkstra: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: DijkstraConfig<E>
 ): Option.Option<PathResult<E>> => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   // Validate that source and target nodes exist
   if (!impl.nodes.has(config.source)) {
     throw missingNode(config.source)
@@ -4311,7 +4272,7 @@ export const floydWarshall: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   cost: (edgeData: E) => number
 ): AllPairsResult<E> => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   // Get all nodes for Floyd-Warshall algorithm (needs array for nested iteration)
   const allNodes = Array.from(impl.nodes.keys())
 
@@ -4444,7 +4405,7 @@ export const floydWarshall: {
  *
  * Specifies the source and target node indices, an edge-cost function that maps
  * edge data to non-negative weights, and a heuristic that estimates the
- * remaining cost from a node to the target.
+ * remaining cost from a node to the target. Heuristic values must be finite.
  *
  * @see {@link astar} for the algorithm that consumes this configuration
  * @see {@link DijkstraConfig} for shortest paths without a heuristic
@@ -4468,9 +4429,10 @@ export interface AstarConfig<E, N> {
  *
  * The edge-cost function must return non-negative weights and not `NaN`.
  * `Infinity` is allowed and behaves like an impassable edge. The heuristic
- * should be consistent to preserve shortest-path guarantees. Returns
+ * must return finite values and should be consistent to preserve shortest-path guarantees. Returns
  * `Option.none()` when the target is not reachable, and throws a `GraphError`
- * when either endpoint is missing or an edge cost is negative or `NaN`.
+ * when either endpoint is missing, an edge cost is negative or `NaN`, or a
+ * heuristic value is not finite.
  *
  * **Example** (Finding shortest paths with A-star)
  *
@@ -4516,7 +4478,7 @@ export const astar: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: AstarConfig<E, N>
 ): Option.Option<PathResult<E>> => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   // Validate that source and target nodes exist
   if (!impl.nodes.has(config.source)) {
     throw missingNode(config.source)
@@ -4548,6 +4510,13 @@ export const astar: {
   if (Option.isNone(targetNodeData)) {
     throw new GraphError({ message: `Missing node data for target node ${config.target}` })
   }
+  const getHeuristic = (nodeData: N): number => {
+    const value = config.heuristic(nodeData, targetNodeData.value)
+    if (!Number.isFinite(value)) {
+      throw new GraphError({ message: "A* algorithm requires finite heuristic values" })
+    }
+    return value
+  }
 
   // Distance tracking (g-score) and f-score (g + h)
   const gScore = new Map<NodeIndex, number>()
@@ -4566,7 +4535,7 @@ export const astar: {
   // Calculate initial f-score for source
   const sourceNodeData = getNode(graph, config.source)
   if (Option.isSome(sourceNodeData)) {
-    const h = config.heuristic(sourceNodeData.value, targetNodeData.value)
+    const h = getHeuristic(sourceNodeData.value)
     fScore.set(config.source, h)
   }
 
@@ -4618,7 +4587,7 @@ export const astar: {
             // Calculate f-score using heuristic
             const neighborNodeData = getNode(graph, neighbor)
             if (Option.isSome(neighborNodeData)) {
-              const h = config.heuristic(neighborNodeData.value, targetNodeData.value)
+              const h = getHeuristic(neighborNodeData.value)
               const f = tentativeGScore + h
               fScore.set(neighbor, f)
 
@@ -4737,7 +4706,7 @@ export const bellmanFord: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: BellmanFordConfig<E>
 ): Option.Option<PathResult<E>> => {
-  const impl = graphImpl(graph)
+  const impl = internal.toImpl(graph)
   // Validate that source and target nodes exist
   if (!impl.nodes.has(config.source)) {
     throw missingNode(config.source)
@@ -5436,7 +5405,7 @@ export const topo: {
 
   return new Walker((f) => ({
     [Symbol.iterator]: () => {
-      const impl = graphImpl(graph)
+      const impl = internal.toImpl(graph)
       const inDegree = new Map<NodeIndex, number>()
       const remaining = new Set<NodeIndex>()
       const initialSet = new Set(initials)
@@ -5664,7 +5633,7 @@ export const nodes = <N, E, T extends Kind = "directed">(
 ): NodeWalker<N> =>
   new Walker((f) => ({
     [Symbol.iterator]() {
-      const nodeMap = graphImpl(graph).nodes
+      const nodeMap = internal.toImpl(graph).nodes
       const iterator = nodeMap.entries()
 
       return {
@@ -5712,7 +5681,7 @@ export const edges = <N, E, T extends Kind = "directed">(
 ): EdgeWalker<E> =>
   new Walker((f) => ({
     [Symbol.iterator]() {
-      const edgeMap = graphImpl(graph).edges
+      const edgeMap = internal.toImpl(graph).edges
       const iterator = edgeMap.entries()
 
       return {
@@ -5722,7 +5691,7 @@ export const edges = <N, E, T extends Kind = "directed">(
             return { done: true, value: undefined }
           }
           const [edgeIndex, edgeData] = result.value
-          return { done: false, value: f(edgeIndex, edgeData) }
+          return { done: false, value: f(edgeIndex, copyEdge(edgeData)) }
         }
       }
     }
@@ -5802,7 +5771,7 @@ export const externals: {
 
   return new Walker((f) => ({
     [Symbol.iterator]: () => {
-      const impl = graphImpl(graph)
+      const impl = internal.toImpl(graph)
       const nodeMap = impl.nodes
       const adjacencyMap = direction === "incoming"
         ? impl.reverseAdjacency

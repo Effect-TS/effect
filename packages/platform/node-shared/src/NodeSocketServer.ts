@@ -242,9 +242,9 @@ export const makeWebSocket: (
     const trackFiber = Fiber.runIn(scope)
     const prevOnConnection = onConnection
     onConnection = function(conn: globalThis.WebSocket, req: Http.IncomingMessage) {
-      const map = new Map(services.mapUnsafe)
-      map.set(IncomingMessage.key, req)
-      map.set(Socket.WebSocket.key, conn as any)
+      let context = services
+      context = Context.add(context, IncomingMessage, req)
+      context = Context.add(context, Socket.WebSocket, conn as any)
       pipe(
         Socket.fromWebSocket(
           Effect.acquireRelease(
@@ -257,7 +257,7 @@ export const makeWebSocket: (
         ),
         Effect.flatMap(handler),
         Effect.catchCause(reportUnhandledError),
-        Effect.runForkWith(Context.makeUnsafe(map)),
+        Effect.runForkWith(context),
         trackFiber
       )
     }

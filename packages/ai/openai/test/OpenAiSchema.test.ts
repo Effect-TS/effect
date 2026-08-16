@@ -17,6 +17,14 @@ const makeResponse = (overrides: Record<string, unknown> = {}) => ({
 })
 
 describe("OpenAiSchema", () => {
+  it("accepts max reasoning effort", () => {
+    const decoded = Schema.decodeUnknownSync(OpenAiSchema.CreateResponse)({
+      reasoning: { effort: "max" }
+    })
+
+    assert.strictEqual(decoded.reasoning?.effort, "max")
+  })
+
   it("decodes a representative response payload", () => {
     const decoded = Schema.decodeUnknownSync(OpenAiSchema.Response)({
       ...makeResponse(),
