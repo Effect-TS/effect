@@ -2808,7 +2808,16 @@ export const outDegree: {
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
-): number => outgoingEdges(graph as any, nodeIndex).length)
+): number => {
+  if (graph.type === "undirected") {
+    throw new GraphError({ message: "Cannot get outgoing edges of undirected graph" })
+  }
+  const impl = internal.toImpl(graph)
+  if (!impl.nodes.has(nodeIndex)) {
+    throw missingNode(nodeIndex)
+  }
+  return impl.adjacency.get(nodeIndex)!.length
+})
 
 /**
  * Returns the in-degree of a node in a directed graph.
@@ -2827,7 +2836,16 @@ export const inDegree: {
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
-): number => incomingEdges(graph as any, nodeIndex).length)
+): number => {
+  if (graph.type === "undirected") {
+    throw new GraphError({ message: "Cannot get incoming edges of undirected graph" })
+  }
+  const impl = internal.toImpl(graph)
+  if (!impl.nodes.has(nodeIndex)) {
+    throw missingNode(nodeIndex)
+  }
+  return impl.reverseAdjacency.get(nodeIndex)!.length
+})
 
 const getDirectedNeighbors = <N, E>(
   graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
@@ -4343,7 +4361,61 @@ export const hasPath: {
   source: NodeIndex,
   target: NodeIndex,
   options?: ReachabilityConfig
-): boolean => getUnweightedDistances(graph, source, options?.direction ?? "outgoing", target).has(target))
+): boolean => {
+  const impl = internal.toImpl(graph)
+  if (!impl.nodes.has(source)) {
+    throw missingNode(source)
+  }
+  if (!impl.nodes.has(target)) {
+    throw missingNode(target)
+  }
+  if (source === target) {
+    return true
+  }
+
+  const cache = csr.get(graph)
+  const sourceNode = csr.getNodeIndex(cache, source)!
+  const targetNode = csr.getNodeIndex(cache, target)!
+  const adjacencies = csr.getAdjacencies(
+    cache,
+    graph.type === "undirected" ? "outgoing" : options?.direction ?? "outgoing"
+  )
+  const visited = new Uint8Array(cache.nodeIds.length)
+  const queue = new Uint32Array(cache.nodeIds.length)
+  let head = 0
+  let tail = 1
+  visited[sourceNode] = 1
+  queue[0] = sourceNode
+
+  while (head < tail) {
+    const current = queue[head++]
+    const primary = adjacencies.primary
+    for (let i = primary.rowOffsets[current]; i < primary.rowOffsets[current + 1]; i++) {
+      const neighbor = primary.columnIndices[i]
+      if (neighbor === targetNode) {
+        return true
+      }
+      if (visited[neighbor] === 0) {
+        visited[neighbor] = 1
+        queue[tail++] = neighbor
+      }
+    }
+    const secondary = adjacencies.secondary
+    if (secondary !== undefined) {
+      for (let i = secondary.rowOffsets[current]; i < secondary.rowOffsets[current + 1]; i++) {
+        const neighbor = secondary.columnIndices[i]
+        if (neighbor === targetNode) {
+          return true
+        }
+        if (visited[neighbor] === 0) {
+          visited[neighbor] = 1
+          queue[tail++] = neighbor
+        }
+      }
+    }
+  }
+  return false
+})
 
 /**
  * Finds connected components in an undirected graph.
@@ -4381,7 +4453,6 @@ export const connectedComponents = <N, E>(
     const outgoing = csr.getOutgoing(cache)
     const visited = new Uint8Array(cache.nodeIds.length)
     const neighborMarks = new Uint32Array(cache.nodeIds.length)
-    const neighbors: Array<number> = []
     const components: Array<Array<NodeIndex>> = []
     let neighborGeneration = 0
 
@@ -4401,18 +4472,14 @@ export const connectedComponents = <N, E>(
         component.push(cache.nodeIds[current])
 
         // Generation marks deduplicate parallel-edge neighbors without clearing a full-sized array per node.
-        neighbors.length = 0
         neighborGeneration++
         for (let i = outgoing.rowOffsets[current]; i < outgoing.rowOffsets[current + 1]; i++) {
           const neighbor = outgoing.columnIndices[i]
           if (neighborMarks[neighbor] !== neighborGeneration) {
             neighborMarks[neighbor] = neighborGeneration
-            neighbors.push(neighbor)
-          }
-        }
-        for (const neighbor of neighbors) {
-          if (visited[neighbor] === 0) {
-            stack.push(neighbor)
+            if (visited[neighbor] === 0) {
+              stack.push(neighbor)
+            }
           }
         }
       }
@@ -4424,6 +4491,7 @@ export const connectedComponents = <N, E>(
   }
 
   const visited = new Set<NodeIndex>()
+  const neighbors = new Set<NodeIndex>()
   const components: Array<Array<NodeIndex>> = []
   for (const startNode of impl.nodes.keys()) {
     if (!visited.has(startNode)) {
@@ -4437,11 +4505,16 @@ export const connectedComponents = <N, E>(
           visited.add(current)
           component.push(current)
 
-          // Add all unvisited neighbors to stack
-          const nodeNeighbors = getUndirectedNeighbors(graph, current)
-          for (const neighbor of nodeNeighbors) {
-            if (!visited.has(neighbor)) {
-              stack.push(neighbor)
+          neighbors.clear()
+          const adjacency = impl.adjacency.get(current)!
+          for (const edgeIndex of adjacency) {
+            const edge = impl.edges.get(edgeIndex)!
+            const neighbor = edge.source === current ? edge.target : edge.source
+            if (!neighbors.has(neighbor)) {
+              neighbors.add(neighbor)
+              if (!visited.has(neighbor)) {
+                stack.push(neighbor)
+              }
             }
           }
         }
@@ -4471,31 +4544,37 @@ export const weaklyConnectedComponents = <N, E>(
   }
   const cache = csr.get(graph)
   const { primary, secondary } = csr.getAdjacencies(cache, "undirected")
-  const visited = new Uint8Array(cache.nodeIds.length)
+  const nodeCount = cache.nodeIds.length
+  const visited = new Uint8Array(nodeCount)
+  const stack = new Uint32Array(primary.columnIndices.length + secondary!.columnIndices.length + 1)
   const components: Array<Array<NodeIndex>> = []
-  for (let start = 0; start < cache.nodeIds.length; start++) {
+  for (let start = 0; start < nodeCount; start++) {
     if (visited[start] !== 0) {
       continue
     }
     const component: Array<NodeIndex> = []
-    const stack = [start]
-    while (stack.length > 0) {
-      const current = stack.pop()!
+    let stackSize = 1
+    stack[0] = start
+    while (stackSize > 0) {
+      const current = stack[--stackSize]
       if (visited[current] !== 0) {
         continue
       }
       visited[current] = 1
       component.push(cache.nodeIds[current])
-      const push = (adjacency: csr.Adjacency) => {
-        for (let i = adjacency.rowOffsets[current]; i < adjacency.rowOffsets[current + 1]; i++) {
-          const neighbor = adjacency.columnIndices[i]
-          if (visited[neighbor] === 0) {
-            stack.push(neighbor)
-          }
+
+      for (let i = primary.rowOffsets[current]; i < primary.rowOffsets[current + 1]; i++) {
+        const neighbor = primary.columnIndices[i]
+        if (visited[neighbor] === 0) {
+          stack[stackSize++] = neighbor
         }
       }
-      push(primary)
-      push(secondary!)
+      for (let i = secondary!.rowOffsets[current]; i < secondary!.rowOffsets[current + 1]; i++) {
+        const neighbor = secondary!.columnIndices[i]
+        if (visited[neighbor] === 0) {
+          stack[stackSize++] = neighbor
+        }
+      }
     }
     components.push(component)
   }
@@ -4699,6 +4778,44 @@ export const stronglyConnectedComponents = <N, E>(
   return sccs
 }
 
+/** @internal */
+const csrReachesAll = (
+  nodeCount: number,
+  primary: csr.Adjacency,
+  secondary?: csr.Adjacency
+): boolean => {
+  if (nodeCount === 0) {
+    return true
+  }
+  const visited = new Uint8Array(nodeCount)
+  const queue = new Uint32Array(nodeCount)
+  let head = 0
+  let tail = 1
+  visited[0] = 1
+  queue[0] = 0
+
+  while (head < tail) {
+    const current = queue[head++]
+    for (let i = primary.rowOffsets[current]; i < primary.rowOffsets[current + 1]; i++) {
+      const neighbor = primary.columnIndices[i]
+      if (visited[neighbor] === 0) {
+        visited[neighbor] = 1
+        queue[tail++] = neighbor
+      }
+    }
+    if (secondary !== undefined) {
+      for (let i = secondary.rowOffsets[current]; i < secondary.rowOffsets[current + 1]; i++) {
+        const neighbor = secondary.columnIndices[i]
+        if (visited[neighbor] === 0) {
+          visited[neighbor] = 1
+          queue[tail++] = neighbor
+        }
+      }
+    }
+  }
+  return tail === nodeCount
+}
+
 /**
  * Tests whether an undirected graph has at most one connected component.
  *
@@ -4710,7 +4827,13 @@ export const stronglyConnectedComponents = <N, E>(
  */
 export const isConnected = <N, E>(
   graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
-): boolean => connectedComponents(graph).length <= 1
+): boolean => {
+  if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "directed") {
+    throw new GraphError({ message: "Cannot find connected components of directed graph" })
+  }
+  const cache = csr.get(graph)
+  return csrReachesAll(cache.nodeIds.length, csr.getOutgoing(cache))
+}
 
 /**
  * Tests whether a directed graph has at most one weakly connected component.
@@ -4723,7 +4846,14 @@ export const isConnected = <N, E>(
  */
 export const isWeaklyConnected = <N, E>(
   graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
-): boolean => weaklyConnectedComponents(graph).length <= 1
+): boolean => {
+  if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "undirected") {
+    throw new GraphError({ message: "Cannot find weakly connected components of undirected graph" })
+  }
+  const cache = csr.get(graph)
+  const { primary, secondary } = csr.getAdjacencies(cache, "undirected")
+  return csrReachesAll(cache.nodeIds.length, primary, secondary)
+}
 
 /**
  * Tests whether a directed graph has at most one strongly connected component.
@@ -4736,7 +4866,14 @@ export const isWeaklyConnected = <N, E>(
  */
 export const isStronglyConnected = <N, E>(
   graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
-): boolean => stronglyConnectedComponents(graph).length <= 1
+): boolean => {
+  if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "undirected") {
+    throw new GraphError({ message: "Cannot find strongly connected components of undirected graph" })
+  }
+  const cache = csr.get(graph)
+  return csrReachesAll(cache.nodeIds.length, csr.getOutgoing(cache)) &&
+    csrReachesAll(cache.nodeIds.length, csr.getIncoming(cache))
+}
 
 /**
  * Tests whether a non-empty undirected graph is a tree.
@@ -5016,19 +5153,25 @@ interface DenseMinHeap {
   nodes: Uint32Array
   priorities: Float64Array
   sequences: Float64Array
+  positions: Int32Array | undefined
   size: number
   poppedNode: number
   poppedPriority: number
 }
 
-const denseMinHeapMake = (capacity: number): DenseMinHeap => ({
-  nodes: new Uint32Array(Math.max(4, capacity)),
-  priorities: new Float64Array(Math.max(4, capacity)),
-  sequences: new Float64Array(Math.max(4, capacity)),
-  size: 0,
-  poppedNode: 0,
-  poppedPriority: 0
-})
+const denseMinHeapMake = (capacity: number, indexed = false): DenseMinHeap => {
+  const positions = indexed ? new Int32Array(capacity) : undefined
+  positions?.fill(-1)
+  return {
+    nodes: new Uint32Array(Math.max(4, capacity)),
+    priorities: new Float64Array(Math.max(4, capacity)),
+    sequences: new Float64Array(Math.max(4, capacity)),
+    positions,
+    size: 0,
+    poppedNode: 0,
+    poppedPriority: 0
+  }
+}
 
 const denseMinHeapPush = (
   heap: DenseMinHeap,
@@ -5036,20 +5179,23 @@ const denseMinHeapPush = (
   priority: number,
   sequence: number
 ): void => {
-  if (heap.size === heap.nodes.length) {
-    const capacity = heap.size * 2
-    const nodes = new Uint32Array(capacity)
-    const priorities = new Float64Array(capacity)
-    const sequences = new Float64Array(capacity)
-    nodes.set(heap.nodes)
-    priorities.set(heap.priorities)
-    sequences.set(heap.sequences)
-    heap.nodes = nodes
-    heap.priorities = priorities
-    heap.sequences = sequences
+  let index = heap.positions?.[node] ?? -1
+  if (index === -1) {
+    if (heap.size === heap.nodes.length) {
+      const capacity = heap.size * 2
+      const nodes = new Uint32Array(capacity)
+      const priorities = new Float64Array(capacity)
+      const sequences = new Float64Array(capacity)
+      nodes.set(heap.nodes)
+      priorities.set(heap.priorities)
+      sequences.set(heap.sequences)
+      heap.nodes = nodes
+      heap.priorities = priorities
+      heap.sequences = sequences
+    }
+    index = heap.size++
   }
 
-  let index = heap.size++
   while (index > 0) {
     const parent = (index - 1) >>> 1
     if (
@@ -5061,11 +5207,17 @@ const denseMinHeapPush = (
     heap.nodes[index] = heap.nodes[parent]
     heap.priorities[index] = heap.priorities[parent]
     heap.sequences[index] = heap.sequences[parent]
+    if (heap.positions !== undefined) {
+      heap.positions[heap.nodes[index]] = index
+    }
     index = parent
   }
   heap.nodes[index] = node
   heap.priorities[index] = priority
   heap.sequences[index] = sequence
+  if (heap.positions !== undefined) {
+    heap.positions[node] = index
+  }
 }
 
 const denseMinHeapPop = (heap: DenseMinHeap): boolean => {
@@ -5075,6 +5227,9 @@ const denseMinHeapPop = (heap: DenseMinHeap): boolean => {
 
   heap.poppedNode = heap.nodes[0]
   heap.poppedPriority = heap.priorities[0]
+  if (heap.positions !== undefined) {
+    heap.positions[heap.poppedNode] = -1
+  }
   const last = --heap.size
   if (last === 0) {
     return true
@@ -5107,11 +5262,17 @@ const denseMinHeapPop = (heap: DenseMinHeap): boolean => {
     heap.nodes[index] = heap.nodes[child]
     heap.priorities[index] = heap.priorities[child]
     heap.sequences[index] = heap.sequences[child]
+    if (heap.positions !== undefined) {
+      heap.positions[heap.nodes[index]] = index
+    }
     index = child
   }
   heap.nodes[index] = node
   heap.priorities[index] = priority
   heap.sequences[index] = sequence
+  if (heap.positions !== undefined) {
+    heap.positions[node] = index
+  }
   return true
 }
 
@@ -5252,7 +5413,7 @@ export const dijkstra: {
     previousNode.fill(-1)
     previousEdge.fill(-1)
     const visited = new Uint8Array(cache.nodeIds.length)
-    const priorityQueue = denseMinHeapMake(cache.nodeIds.length)
+    const priorityQueue = denseMinHeapMake(cache.nodeIds.length, true)
     let sequence = 0
     denseMinHeapPush(priorityQueue, source, 0, sequence++)
 
