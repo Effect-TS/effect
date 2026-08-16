@@ -741,6 +741,27 @@ describe("Graph", () => {
       assert.deepStrictEqual(graphEdgeKeys(result), new Set(["A->B", "A->C"]))
     })
 
+    it("neighborhood validates radius in data-first and data-last forms", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+      })
+
+      for (const radius of [NaN, -Infinity, -1, -0.5, 0.5, 1.5]) {
+        assertGraphError(
+          () => Graph.neighborhood(graph, 0, { radius }),
+          "Traversal radius must be a non-negative integer or Infinity"
+        )
+        assertGraphError(
+          () => Graph.neighborhood(0, { radius })(graph),
+          "Traversal radius must be a non-negative integer or Infinity"
+        )
+      }
+
+      for (const [radius, count] of [[Infinity, 1], [-0, 1], [0, 1], [1, 1]] as const) {
+        strictEqual(Graph.nodeCount(Graph.neighborhood(graph, 0, { radius })), count)
+      }
+    })
+
     it("sum keeps equal nodes disjoint", () => {
       const left = Graph.directed<string, string>((mutable) => {
         const a = Graph.addNode(mutable, "A")
@@ -4114,6 +4135,126 @@ describe("Graph", () => {
       })
       return Graph.beginMutation(graph)
     }
+
+    const traversalRadiusError = "Traversal radius must be a non-negative integer or Infinity"
+
+    it("validates traversal radius eagerly in data-first and data-last forms", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+      })
+      const traversals = [
+        {
+          dataFirst: (radius: number) => Graph.dfs(graph, { start: [], radius }),
+          dataLast: (radius: number) => Graph.dfs({ start: [], radius })(graph)
+        },
+        {
+          dataFirst: (radius: number) => Graph.bfs(graph, { start: [], radius }),
+          dataLast: (radius: number) => Graph.bfs({ start: [], radius })(graph)
+        },
+        {
+          dataFirst: (radius: number) => Graph.dfsPostOrder(graph, { start: [], radius }),
+          dataLast: (radius: number) => Graph.dfsPostOrder({ start: [], radius })(graph)
+        }
+      ]
+
+      for (const radius of [NaN, -Infinity, -1, -0.5, 0.5, 1.5]) {
+        for (const traversal of traversals) {
+          assertGraphError(() => traversal.dataFirst(radius), traversalRadiusError)
+          assertGraphError(() => traversal.dataLast(radius), traversalRadiusError)
+        }
+      }
+    })
+
+    it("accepts omitted, infinite, negative zero, and non-negative integer radii", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        Graph.addNode(mutable, "C")
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 2, 2)
+      })
+
+      const cases = [
+        { radius: undefined, preorder: [0, 1, 2], postorder: [2, 1, 0] },
+        { radius: Infinity, preorder: [0, 1, 2], postorder: [2, 1, 0] },
+        { radius: -0, preorder: [0], postorder: [0] },
+        { radius: 0, preorder: [0], postorder: [0] },
+        { radius: 1, preorder: [0, 1], postorder: [1, 0] },
+        { radius: 2, preorder: [0, 1, 2], postorder: [2, 1, 0] }
+      ]
+
+      for (const { postorder, preorder, radius } of cases) {
+        const config = radius === undefined ? { start: [0] } : { start: [0], radius }
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfs(graph, config))), preorder)
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.bfs(graph, config))), preorder)
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfsPostOrder(graph, config))), postorder)
+      }
+    })
+
+    it("copies configured starts for every traversal", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+      })
+      const start = [0]
+      const dfs = Graph.dfs(graph, { start })
+      const bfs = Graph.bfs(graph, { start })
+      const postorder = Graph.dfsPostOrder(graph, { start })
+
+      start[0] = 1
+
+      assert.deepStrictEqual(Array.from(Graph.indices(dfs)), [0])
+      assert.deepStrictEqual(Array.from(Graph.indices(bfs)), [0])
+      assert.deepStrictEqual(Array.from(Graph.indices(postorder)), [0])
+    })
+
+    it("revalidates copied starts for every fresh iterator snapshot", () => {
+      const mutable = makeMutableTraversalGraph()
+      const dfs = Graph.indices(Graph.dfs(mutable, { start: [0] }))
+      const bfs = Graph.indices(Graph.bfs(mutable, { start: [0] }))
+      const postorder = Graph.indices(Graph.dfsPostOrder(mutable, { start: [0] }))
+
+      Graph.removeNode(mutable, 0)
+
+      for (const traversal of [dfs, bfs, postorder]) {
+        assertGraphError(() => traversal[Symbol.iterator](), "Node 0 does not exist")
+      }
+    })
+
+    it("keeps active traversal snapshots isolated while fresh iterators see mutations", () => {
+      const mutable = makeMutableTraversalGraph()
+      const dfs = Graph.indices(Graph.dfs(mutable, { start: [0] }))
+      const bfs = Graph.indices(Graph.bfs(mutable, { start: [0] }))
+      const postorder = Graph.indices(Graph.dfsPostOrder(mutable, { start: [0], radius: 2 }))
+      const activeDfs = dfs[Symbol.iterator]()
+      const activeBfs = bfs[Symbol.iterator]()
+      const activePostorder = postorder[Symbol.iterator]()
+
+      Graph.removeNode(mutable, 1)
+
+      assert.deepStrictEqual(Array.from({ [Symbol.iterator]: () => activeDfs }), [0, 1, 2])
+      assert.deepStrictEqual(Array.from({ [Symbol.iterator]: () => activeBfs }), [0, 1, 2])
+      assert.deepStrictEqual(Array.from({ [Symbol.iterator]: () => activePostorder }), [2, 1, 0])
+      assert.deepStrictEqual(Array.from(dfs), [0])
+      assert.deepStrictEqual(Array.from(bfs), [0])
+      assert.deepStrictEqual(Array.from(postorder), [0])
+    })
+
+    it("prioritizes distinct roots in supplied order without duplicate output", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 2, 3, 2)
+      })
+      const config = { start: [0, 0, 2, 2] }
+
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfs(graph, config))), [0, 1, 2, 3])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfs(graph, { ...config, radius: 1 }))), [0, 1, 2, 3])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.bfs(graph, config))), [0, 2, 1, 3])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfsPostOrder(graph, config))), [1, 0, 3, 2])
+    })
 
     it("should provide values() method for DFS iterator", () => {
       const graph = Graph.directed<string, number>((mutable) => {
