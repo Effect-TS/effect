@@ -103,6 +103,126 @@ describe("Graph", () => {
       expect(Graph.nodeCount(graph)).toBe(0)
       expect(Graph.edgeCount(graph)).toBe(0)
     })
+
+    it("reconstructs a graph from a snapshot", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }],
+        edges: [{ index: 3, source: 2, target: 5, data: 1 }]
+      })
+
+      assert.strictEqual(graph.mutable, false)
+      assert.deepStrictEqual(Array.from(graph), [[2, "A"], [5, "B"]])
+      assert.deepStrictEqual(
+        Array.from(Graph.edges(graph), ([index, edge]) => ({ index, ...edge })),
+        [{ index: 3, source: 2, target: 5, data: 1 }]
+      )
+      assert.deepStrictEqual(Graph.successors(graph, 2), [5])
+    })
+
+    it("rebuilds undirected adjacency and preserves edge orientation", () => {
+      const graph = Graph.fromSnapshot({
+        type: "undirected",
+        nodes: [{ index: 1, data: "A" }, { index: 4, data: "B" }],
+        edges: [{ index: 2, source: 4, target: 1, data: 1 }]
+      })
+
+      assert.deepStrictEqual(Graph.neighbors(graph, 1), [4])
+      assert.deepStrictEqual(Graph.neighbors(graph, 4), [1])
+      assert.deepStrictEqual(
+        Option.getOrThrow(Graph.getEdge(graph, 2)),
+        { source: 4, target: 1, data: 1 }
+      )
+    })
+
+    it("allocates after the highest snapshot indexes", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }],
+        edges: [{ index: 4, source: 2, target: 5, data: 1 }]
+      })
+
+      Graph.mutate(graph, (mutable) => {
+        assert.strictEqual(Graph.addNode(mutable, "C"), 6)
+        assert.strictEqual(Graph.addEdge(mutable, 2, 5, 2), 5)
+      })
+    })
+
+    it("rejects invalid snapshot indexes", () => {
+      assertGraphError(
+        () =>
+          Graph.fromSnapshot({ type: "invalid", nodes: [], edges: [] } as unknown as Graph.Snapshot<
+            never,
+            never,
+            Graph.Kind
+          >),
+        "Snapshot type must be directed or undirected"
+      )
+      assertGraphError(
+        () => Graph.fromSnapshot({ type: "directed", nodes: [{ index: -1, data: "A" }], edges: [] }),
+        "Node index at position 0 must be a non-negative safe integer"
+      )
+      assertGraphError(
+        () =>
+          Graph.fromSnapshot({
+            type: "directed",
+            nodes: [{ index: 1, data: "A" }, { index: 1, data: "B" }],
+            edges: []
+          }),
+        "Node indexes must be strictly increasing"
+      )
+      assertGraphError(
+        () =>
+          Graph.fromSnapshot({
+            type: "directed",
+            nodes: [{ index: 0, data: "A" }],
+            edges: [{ index: 0.5, source: 0, target: 0, data: 1 }]
+          }),
+        "Edge index at position 0 must be a non-negative safe integer"
+      )
+      assertGraphError(
+        () =>
+          Graph.fromSnapshot({
+            type: "directed",
+            nodes: [{ index: 0, data: "A" }],
+            edges: [
+              { index: 1, source: 0, target: 0, data: 1 },
+              { index: 1, source: 0, target: 0, data: 2 }
+            ]
+          }),
+        "Edge indexes must be strictly increasing"
+      )
+      assertGraphError(
+        () =>
+          Graph.fromSnapshot({
+            type: "directed",
+            nodes: [{ index: 0, data: "A" }],
+            edges: [{ index: 0, source: -1, target: 0, data: 1 }]
+          }),
+        "Edge source at position 0 must be a non-negative safe integer"
+      )
+    })
+
+    it("rejects dangling snapshot endpoints", () => {
+      assertGraphError(
+        () =>
+          Graph.fromSnapshot({
+            type: "directed",
+            nodes: [{ index: 1, data: "A" }],
+            edges: [{ index: 0, source: 0, target: 1, data: 1 }]
+          }),
+        "Edge source 0 does not reference a node"
+      )
+      assertGraphError(
+        () =>
+          Graph.fromSnapshot({
+            type: "directed",
+            nodes: [{ index: 1, data: "A" }],
+            edges: [{ index: 0, source: 1, target: 2, data: 1 }]
+          }),
+        "Edge target 2 does not reference a node"
+      )
+    })
   })
 
   describe("equality and hashing", () => {
@@ -161,8 +281,8 @@ describe("Graph", () => {
     })
 
     it("keeps Graph.Edge endpoint equality ordered", () => {
-      const left = new Graph.Edge({ source: 0, target: 1, data: "edge" })
-      const right = new Graph.Edge({ source: 1, target: 0, data: "edge" })
+      const left: Graph.Edge<string> = { source: 0, target: 1, data: "edge" }
+      const right: Graph.Edge<string> = { source: 1, target: 0, data: "edge" }
 
       strictEqual(Equal.equals(left, right), false)
     })
@@ -800,7 +920,7 @@ describe("Graph", () => {
         })
 
         expect(Graph.edgeCount(graph)).toBe(1)
-        expect(Graph.getEdge(graph, 0)).toEqual(Option.some(new Graph.Edge({ source: 0, target: 1, data: undefined })))
+        expect(Graph.getEdge(graph, 0)).toEqual(Option.some({ source: 0, target: 1, data: undefined }))
       })
 
       it("should correctly update edges with undefined data", () => {
@@ -819,8 +939,8 @@ describe("Graph", () => {
         const edge0 = Graph.getEdge(updated, 0)
         const edge1 = Graph.getEdge(updated, 1)
 
-        expect(edge0).toEqual(Option.some(new Graph.Edge({ source: 0, target: 1, data: 100 })))
-        expect(edge1).toEqual(Option.some(new Graph.Edge({ source: 1, target: 0, data: undefined })))
+        expect(edge0).toEqual(Option.some({ source: 0, target: 1, data: 100 }))
+        expect(edge1).toEqual(Option.some({ source: 1, target: 0, data: undefined }))
       })
 
       it("should correctly compare graphs with undefined edge data", () => {
@@ -926,7 +1046,7 @@ describe("Graph", () => {
         expect(Graph.nodeCount(graph)).toBe(2)
         expect(Graph.edgeCount(graph)).toBe(1)
         expect(Graph.getNode(graph, 0)).toEqual(Option.some(undefined))
-        expect(Graph.getEdge(graph, 0)).toEqual(Option.some(new Graph.Edge({ source: 0, target: 1, data: undefined })))
+        expect(Graph.getEdge(graph, 0)).toEqual(Option.some({ source: 0, target: 1, data: undefined }))
       })
 
       it("should correctly handle graph operations with mixed undefined data", () => {
@@ -1271,7 +1391,7 @@ describe("Graph", () => {
       })
 
       const edge = Graph.getEdge(result, 0)
-      assertSome(edge, new Graph.Edge({ source: 0, target: 1, data: 20 }))
+      assertSome(edge, { source: 0, target: 1, data: 20 })
     })
 
     it("should do nothing if edge doesn't exist", () => {
@@ -1285,7 +1405,7 @@ describe("Graph", () => {
 
         // Original edge should be unchanged
         const edge = Graph.getEdge(mutable, edgeIndex)
-        assertSome(edge, new Graph.Edge({ source: 0, target: 1, data: 10 }))
+        assertSome(edge, { source: 0, target: 1, data: 10 })
       })
     })
   })
@@ -1368,12 +1488,9 @@ describe("Graph", () => {
       const edge1 = Graph.getEdge(graph, edgeBC!)
       const edge2 = Graph.getEdge(graph, edgeCA!)
 
-      assertSome(edge0, new Graph.Edge({ source: 0, target: 1, data: 20 }))
-      assertSome(edge1, new Graph.Edge({ source: 1, target: 2, data: 40 }))
-      assertSome(edge2, new Graph.Edge({ source: 2, target: 0, data: 60 }))
-      strictEqual(edge0.value instanceof Graph.Edge, true)
-      strictEqual(edge1.value instanceof Graph.Edge, true)
-      strictEqual(edge2.value instanceof Graph.Edge, true)
+      assertSome(edge0, { source: 0, target: 1, data: 20 })
+      assertSome(edge1, { source: 1, target: 2, data: 40 })
+      assertSome(edge2, { source: 2, target: 0, data: 60 })
 
       const expected = Graph.directed<string, number>((mutable) => {
         const a = Graph.addNode(mutable, "A")
@@ -1397,7 +1514,7 @@ describe("Graph", () => {
 
         // Before transformation
         const beforeData = Graph.getEdge(mutable, edgeAB!)
-        assertSome(beforeData, new Graph.Edge({ source: 0, target: 1, data: 10 }))
+        assertSome(beforeData, { source: 0, target: 1, data: 10 })
 
         // Apply transformation
         Graph.mapEdges(mutable, (data) => data * 5)
@@ -1432,9 +1549,9 @@ describe("Graph", () => {
       const edge1 = Graph.getEdge(graph, edgeBC!)
       const edge2 = Graph.getEdge(graph, edgeCA!)
 
-      assertSome(edge0, new Graph.Edge({ source: nodeB!, target: nodeA!, data: 1 }))
-      assertSome(edge1, new Graph.Edge({ source: nodeC!, target: nodeB!, data: 2 }))
-      assertSome(edge2, new Graph.Edge({ source: nodeA!, target: nodeC!, data: 3 }))
+      assertSome(edge0, { source: nodeB!, target: nodeA!, data: 1 })
+      assertSome(edge1, { source: nodeC!, target: nodeB!, data: 2 })
+      assertSome(edge2, { source: nodeA!, target: nodeC!, data: 3 })
     })
 
     it("should update adjacency lists correctly", () => {
@@ -1545,7 +1662,7 @@ describe("Graph", () => {
 
       // Only the keep -> keep edge should remain
       const remainingEdge = Graph.getEdge(graph, 2)
-      assertSome(remainingEdge, new Graph.Edge({ source: 0, target: 2, data: 3 }))
+      assertSome(remainingEdge, { source: 0, target: 2, data: 3 })
 
       // Edges involving removed node should be gone
       expect(Graph.getEdge(graph, 0)).toEqual(Option.none())
@@ -1620,10 +1737,8 @@ describe("Graph", () => {
       const edge1 = Graph.getEdge(graph, 1)
       const edge2 = Graph.getEdge(graph, 2)
 
-      assertSome(edge1, new Graph.Edge({ source: 1, target: 2, data: 30 })) // 15 * 2
-      assertSome(edge2, new Graph.Edge({ source: 2, target: 0, data: 50 })) // 25 * 2
-      strictEqual(edge1.value instanceof Graph.Edge, true)
-      strictEqual(edge2.value instanceof Graph.Edge, true)
+      assertSome(edge1, { source: 1, target: 2, data: 30 }) // 15 * 2
+      assertSome(edge2, { source: 2, target: 0, data: 50 }) // 25 * 2
 
       // Filtered out edge should not exist
       expect(Graph.getEdge(graph, 0)).toEqual(Option.none())
@@ -1774,7 +1889,7 @@ describe("Graph", () => {
 
       // Check remaining edge
       const edge2 = Graph.getEdge(graph, edgeAC!)
-      assertSome(edge2, new Graph.Edge({ source: 0, target: 2, data: "A-C" }))
+      assertSome(edge2, { source: 0, target: 2, data: "A-C" })
 
       // Check removed edges
       expect(Graph.getEdge(graph, edgeAB!)).toEqual(Option.none()) // A-B removed
@@ -1807,8 +1922,8 @@ describe("Graph", () => {
       const edge1 = Graph.getEdge(graph, edgeBC!)
       const edge2 = Graph.getEdge(graph, edgeCA!)
 
-      assertSome(edge1, new Graph.Edge({ source: 1, target: 2, data: 15 }))
-      assertSome(edge2, new Graph.Edge({ source: 2, target: 0, data: 25 }))
+      assertSome(edge1, { source: 1, target: 2, data: 15 })
+      assertSome(edge2, { source: 2, target: 0, data: 25 })
 
       // Edge with weight 5 should be removed
       expect(Graph.getEdge(graph, edgeAB!)).toEqual(Option.none())
@@ -2008,7 +2123,7 @@ describe("Graph", () => {
         expect(Graph.edgeCount(mutable)).toBe(1)
 
         // Verify second edge still exists
-        assertSome(Graph.getEdge(mutable, edge2), new Graph.Edge({ source: nodeA, target: nodeB, data: 20 }))
+        assertSome(Graph.getEdge(mutable, edge2), { source: nodeA, target: nodeB, data: 20 })
       })
 
       expect(Graph.edgeCount(result)).toBe(1)
@@ -2026,7 +2141,7 @@ describe("Graph", () => {
       const edgeIndex = 0
       const edge = Graph.getEdge(graph, edgeIndex)
 
-      assertSome(edge, new Graph.Edge({ source: 0, target: 1, data: 42 }))
+      assertSome(edge, { source: 0, target: 1, data: 42 })
     })
 
     it("should return None for non-existent edge", () => {
@@ -2035,6 +2150,21 @@ describe("Graph", () => {
       const edge = Graph.getEdge(graph, edgeIndex)
 
       expect(edge).toEqual(Option.none())
+    })
+
+    it("does not expose internally stored edges", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const source = Graph.addNode(mutable, "source")
+        const target = Graph.addNode(mutable, "target")
+        Graph.addEdge(mutable, source, target, 1)
+      })
+      const fromGetter = Option.getOrThrow(Graph.getEdge(graph, 0))
+      const fromWalker = Array.from(Graph.values(Graph.edges(graph)))[0]
+      ;(fromGetter as any).source = 1
+      ;(fromWalker as any).target = 0
+
+      assertSome(Graph.getEdge(graph, 0), { source: 0, target: 1, data: 1 })
+      assert.deepStrictEqual(Graph.neighbors(graph, 0), [1])
     })
 
     describe("hasEdge", () => {
@@ -3444,6 +3574,30 @@ describe("Graph", () => {
               heuristic: () => 0
             }),
           "A* algorithm requires non-negative edge weights"
+        )
+      }
+    })
+
+    it("should throw for non-finite heuristic values", () => {
+      for (const heuristicValue of [NaN, Infinity, -Infinity]) {
+        const graph = Graph.directed<string, number>((mutable) => {
+          const source = Graph.addNode(mutable, "source")
+          const target = Graph.addNode(mutable, "target")
+          const via = Graph.addNode(mutable, "via")
+          Graph.addEdge(mutable, source, target, 10)
+          Graph.addEdge(mutable, source, via, 1)
+          Graph.addEdge(mutable, via, target, 1)
+        })
+
+        assertGraphError(
+          () =>
+            Graph.astar(graph, {
+              source: 0,
+              target: 1,
+              cost: (edge) => edge,
+              heuristic: (node) => node === "via" ? heuristicValue : 0
+            }),
+          "A* algorithm requires finite heuristic values"
         )
       }
     })
