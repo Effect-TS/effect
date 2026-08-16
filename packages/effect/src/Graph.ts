@@ -1375,6 +1375,51 @@ export const neighborhood: {
 })
 
 /**
+ * Returns the subgraph induced by a collection of node indices.
+ *
+ * Node and edge indices are preserved. Duplicate input indices are ignored,
+ * output ordering follows the original graph, and every edge whose endpoints
+ * are both selected is retained. Throws a `GraphError` when a selected node
+ * does not exist.
+ *
+ * @category set operations
+ * @since 4.0.0
+ */
+export const inducedSubgraph: {
+  (nodeIndices: Iterable<NodeIndex>): <N, E, T extends Kind = "directed">(self: Graph<N, E, T>) => Graph<N, E, T>
+  <N, E, T extends Kind = "directed">(
+    self: Graph<N, E, T>,
+    nodeIndices: Iterable<NodeIndex>
+  ): Graph<N, E, T>
+} = dual(2, <N, E, T extends Kind>(
+  self: Graph<N, E, T>,
+  nodeIndices: Iterable<NodeIndex>
+): Graph<N, E, T> => {
+  const impl = internal.toImpl(self)
+  const selected = new Set<NodeIndex>()
+  for (const nodeIndex of nodeIndices) {
+    if (!impl.nodes.has(nodeIndex)) {
+      throw missingNode(nodeIndex)
+    }
+    selected.add(nodeIndex)
+  }
+
+  const nodes: Array<IndexedNode<N>> = []
+  for (const [index, data] of impl.nodes) {
+    if (selected.has(index)) {
+      nodes.push({ index, data })
+    }
+  }
+  const edges: Array<IndexedEdge<E>> = []
+  for (const [index, edge] of impl.edges) {
+    if (selected.has(edge.source) && selected.has(edge.target)) {
+      edges.push({ index, source: edge.source, target: edge.target, data: edge.data })
+    }
+  }
+  return fromSnapshot({ type: self.type, nodes, edges })
+})
+
+/**
  * Returns the disjoint union of two graphs.
  *
  * **Details**
