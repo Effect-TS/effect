@@ -9,6 +9,7 @@
     "./packages/*/test/**/*.json",
     "./packages/*/typetest/**/*.ts",
     "./packages/*/benchmark/**/*.ts",
+    "./packages/effect/runtimeperf/suites/graph/fixtures/**/*.ts",
     "./packages/**/test/**/*.ts",
     "./packages/**/test/**/*.json",
     "./packages/**/typetest/**/*.ts",
