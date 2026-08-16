@@ -331,16 +331,20 @@ describe("Graph", () => {
       strictEqual(Equal.equals(left, right), false)
     })
 
-    it("compares future node allocation", () => {
-      const left = Graph.directed<string, string>()
+    it("ignores removed trailing node allocation history", () => {
+      const left = makeGraph("directed", [[0, 1, "edge"]])
       const right = Graph.directed<string, string>((mutable) => {
+        const source = Graph.addNode(mutable, "A")
+        const target = Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, source, target, "edge")
         const node = Graph.addNode(mutable, "removed")
         Graph.removeNode(mutable, node)
       })
 
-      strictEqual(Graph.nodeCount(left), Graph.nodeCount(right))
-      strictEqual(Graph.edgeCount(left), Graph.edgeCount(right))
-      strictEqual(Equal.equals(left, right), false)
+      assert.deepStrictEqual(Array.from(left), Array.from(right))
+      assert.deepStrictEqual(Array.from(Graph.edges(left)), Array.from(Graph.edges(right)))
+      strictEqual(Equal.equals(left, right), true)
+      strictEqual(Hash.hash(left), Hash.hash(right))
 
       let leftNode: Graph.NodeIndex | undefined
       let rightNode: Graph.NodeIndex | undefined
@@ -351,22 +355,24 @@ describe("Graph", () => {
         rightNode = Graph.addNode(mutable, "next")
       })
 
-      strictEqual(leftNode, 0)
-      strictEqual(rightNode, 1)
+      strictEqual(leftNode, 2)
+      strictEqual(rightNode, 3)
     })
 
-    it("compares future edge allocation", () => {
-      const left = makeGraph("directed", [])
+    it("ignores removed trailing edge allocation history", () => {
+      const left = makeGraph("directed", [[0, 1, "edge"]])
       const right = Graph.directed<string, string>((mutable) => {
         const source = Graph.addNode(mutable, "A")
         const target = Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, source, target, "edge")
         const edge = Graph.addEdge(mutable, source, target, "removed")
         Graph.removeEdge(mutable, edge)
       })
 
       assert.deepStrictEqual(Array.from(left), Array.from(right))
       assert.deepStrictEqual(Array.from(Graph.edges(left)), Array.from(Graph.edges(right)))
-      strictEqual(Equal.equals(left, right), false)
+      strictEqual(Equal.equals(left, right), true)
+      strictEqual(Hash.hash(left), Hash.hash(right))
 
       let leftEdge: Graph.EdgeIndex | undefined
       let rightEdge: Graph.EdgeIndex | undefined
@@ -377,8 +383,8 @@ describe("Graph", () => {
         rightEdge = Graph.addEdge(mutable, 0, 1, "next")
       })
 
-      strictEqual(leftEdge, 0)
-      strictEqual(rightEdge, 1)
+      strictEqual(leftEdge, 1)
+      strictEqual(rightEdge, 2)
     })
 
     it("preserves allocator equality and hashing through an empty mutation", () => {

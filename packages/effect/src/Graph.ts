@@ -170,6 +170,11 @@ export interface Proto<out N, out E> extends Iterable<readonly [NodeIndex, N]>, 
  * Use as the immutable graph model for code that queries, traverses,
  * transforms, or analyzes graph structure without mutating it.
  *
+ * **Gotchas**
+ *
+ * After a graph is hashed, its transitively contained node and edge payloads
+ * used by hashing must remain immutable, as with other Effect values.
+ *
  * @see {@link MutableGraph} for the mutable counterpart used inside mutation scopes
  * @see {@link DirectedGraph} for a `Graph` fixed to directed edges
  * @see {@link UndirectedGraph} for a `Graph` fixed to undirected edges
