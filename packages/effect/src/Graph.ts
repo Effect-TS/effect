@@ -3775,11 +3775,12 @@ export const isBipartite = <N, E>(
     if (!discovered.has(startNode)) {
       // Start BFS coloring from this component
       const queue: Array<NodeIndex> = [startNode]
+      let head = 0
       coloring.set(startNode, 0) // Color start node with 0
       discovered.add(startNode)
 
-      while (queue.length > 0 && isBipartiteGraph) {
-        const current = queue.shift()!
+      while (head < queue.length && isBipartiteGraph) {
+        const current = queue[head++]
         const currentColor = coloring.get(current)!
         const neighborColor: 0 | 1 = currentColor === 0 ? 1 : 0
 
@@ -5496,9 +5497,10 @@ export const bellmanFord: {
       // Negative cycle detected - check if it affects the path to target
       const affectedNodes = new Set<NodeIndex>()
       const queue = [edge.target]
+      let head = 0
 
-      while (queue.length > 0) {
-        const node = queue.shift()!
+      while (head < queue.length) {
+        const node = queue[head++]
         if (affectedNodes.has(node)) continue
         affectedNodes.add(node)
 
@@ -5527,15 +5529,17 @@ export const bellmanFord: {
   let currentNode: NodeIndex | null = config.target
 
   while (currentNode !== null) {
-    path.unshift(currentNode)
+    path.push(currentNode)
     const prev: { node: NodeIndex; edgeData: E } | null = previous.get(currentNode)!
     if (prev !== null) {
-      costs.unshift(prev.edgeData)
+      costs.push(prev.edgeData)
       currentNode = prev.node
     } else {
       currentNode = null
     }
   }
+  path.reverse()
+  costs.reverse()
 
   return Option.some({
     path,
