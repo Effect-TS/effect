@@ -3704,6 +3704,64 @@ describe("Graph", () => {
     })
   })
 
+  describe("minimumSpanningForest", () => {
+    it("should preserve sparse indexes and include isolated nodes", () => {
+      const graph = Graph.fromSnapshot({
+        type: "undirected",
+        nodes: [
+          { index: 2, data: "A" },
+          { index: 5, data: "B" },
+          { index: 9, data: "C" },
+          { index: 20, data: "isolated" }
+        ],
+        edges: [
+          { index: 3, source: 2, target: 5, data: 4 },
+          { index: 7, source: 2, target: 5, data: 1 },
+          { index: 11, source: 5, target: 9, data: -2 },
+          { index: 13, source: 2, target: 9, data: 2 },
+          { index: 17, source: 9, target: 20, data: Infinity }
+        ]
+      })
+
+      for (const candidate of [graph, Graph.beginMutation(graph)]) {
+        const result = Graph.minimumSpanningForest(candidate, (edge) => edge)
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.nodes(result))), [2, 5, 9, 20])
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.edges(result))), [7, 11])
+      }
+    })
+
+    it("should break equal-weight ties by edge order", () => {
+      const graph = Graph.undirected<string, number>((mutable) => {
+        for (let i = 0; i < 3; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 2, 1)
+        Graph.addEdge(mutable, 0, 2, 1)
+      })
+
+      const result = Graph.minimumSpanningForest(graph, (edge) => edge)
+
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.edges(result))), [0, 1])
+    })
+
+    it("should reject directed graphs and unsupported weights", () => {
+      expect(() => Graph.minimumSpanningForest(Graph.directed() as any, () => 1)).toThrow(
+        "Cannot find minimum spanning forest of directed graph"
+      )
+      for (const weight of [NaN, -Infinity]) {
+        const graph = Graph.undirected<string, number>((mutable) => {
+          Graph.addNode(mutable, "A")
+          Graph.addNode(mutable, "B")
+          Graph.addEdge(mutable, 0, 1, weight)
+        })
+        expect(() => Graph.minimumSpanningForest(graph, (edge) => edge)).toThrow(
+          "Minimum spanning forest does not support NaN or -Infinity edge weights"
+        )
+      }
+    })
+  })
+
   describe("dijkstra", () => {
     it("should find shortest path in simple graph", () => {
       let nodeA: Graph.NodeIndex

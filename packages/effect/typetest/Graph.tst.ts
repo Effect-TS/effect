@@ -312,6 +312,18 @@ describe("Graph", () => {
     expect(Graph.findCycle(mutableUndirected)).type.toBe<Option.Option<Graph.CycleResult>>()
   })
 
+  it("minimumSpanningForest", () => {
+    expect(Graph.minimumSpanningForest(undirected, (edge) => edge)).type.toBe<
+      Graph.UndirectedGraph<string, number>
+    >()
+    expect(pipe(mutableUndirected, Graph.minimumSpanningForest((edge) => edge))).type.toBe<
+      Graph.UndirectedGraph<string, number>
+    >()
+
+    // @ts-expect-error! Minimum spanning forests require an undirected graph
+    Graph.minimumSpanningForest(directed, (edge) => edge)
+  })
+
   it("topo", () => {
     expect(Graph.topo(directed)).type.toBe<Graph.NodeWalker<string>>()
     expect(Graph.topo(directed, { initials: [0] })).type.toBe<Graph.NodeWalker<string>>()

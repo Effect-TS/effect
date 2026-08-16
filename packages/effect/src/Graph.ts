@@ -4757,6 +4757,100 @@ export const isTree = <N, E>(
   return nodes > 0 && edgeCount(graph) === nodes - 1 && isConnected(graph)
 }
 
+/**
+ * Returns a minimum spanning forest of an undirected graph using Kruskal's
+ * algorithm.
+ *
+ * All node indices and selected edge indices are preserved. Negative finite
+ * weights are allowed, `Infinity` marks an unavailable edge, and equal weights
+ * are resolved by original edge order. Throws a `GraphError` for a directed
+ * graph or when a weight is `NaN` or `-Infinity`.
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const minimumSpanningForest: {
+  <E>(cost: (edgeData: E) => number): <N>(
+    graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
+  ) => Graph<N, E, "undirected">
+  <N, E>(
+    graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">,
+    cost: (edgeData: E) => number
+  ): Graph<N, E, "undirected">
+} = dual(2, <N, E>(
+  graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">,
+  cost: (edgeData: E) => number
+): Graph<N, E, "undirected"> => {
+  if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "directed") {
+    throw new GraphError({ message: "Cannot find minimum spanning forest of directed graph" })
+  }
+  const impl = internal.toImpl(graph)
+  const nodes: Array<IndexedNode<N>> = []
+  const compactByNode = new Map<NodeIndex, number>()
+  for (const [index, data] of impl.nodes) {
+    compactByNode.set(index, nodes.length)
+    nodes.push({ index, data })
+  }
+  const weightedEdges: Array<{ readonly index: EdgeIndex; readonly weight: number; readonly order: number }> = []
+  let order = 0
+  for (const [index, edge] of impl.edges) {
+    const weight = cost(edge.data)
+    if (Number.isNaN(weight) || weight === -Infinity) {
+      throw new GraphError({ message: "Minimum spanning forest does not support NaN or -Infinity edge weights" })
+    }
+    if (weight !== Infinity) {
+      weightedEdges.push({ index, weight, order })
+    }
+    order++
+  }
+  weightedEdges.sort((self, that) => self.weight - that.weight || self.order - that.order)
+
+  const parents = new Uint32Array(nodes.length)
+  const ranks = new Uint8Array(nodes.length)
+  for (let i = 0; i < parents.length; i++) {
+    parents[i] = i
+  }
+  const find = (node: number): number => {
+    let root = node
+    while (parents[root] !== root) {
+      root = parents[root]
+    }
+    while (parents[node] !== node) {
+      const parent = parents[node]
+      parents[node] = root
+      node = parent
+    }
+    return root
+  }
+  const selected = new Set<EdgeIndex>()
+  for (const weighted of weightedEdges) {
+    const edge = impl.edges.get(weighted.index)!
+    let sourceRoot = find(compactByNode.get(edge.source)!)
+    let targetRoot = find(compactByNode.get(edge.target)!)
+    if (sourceRoot === targetRoot) {
+      continue
+    }
+    selected.add(weighted.index)
+    if (ranks[sourceRoot] < ranks[targetRoot]) {
+      const swap = sourceRoot
+      sourceRoot = targetRoot
+      targetRoot = swap
+    }
+    parents[targetRoot] = sourceRoot
+    if (ranks[sourceRoot] === ranks[targetRoot]) {
+      ranks[sourceRoot]++
+    }
+  }
+
+  const edges: Array<IndexedEdge<E>> = []
+  for (const [index, edge] of impl.edges) {
+    if (selected.has(index)) {
+      edges.push({ index, source: edge.source, target: edge.target, data: edge.data })
+    }
+  }
+  return fromSnapshot({ type: "undirected", nodes, edges })
+})
+
 // =============================================================================
 // Path Finding Algorithms
 // =============================================================================
