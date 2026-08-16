@@ -324,6 +324,14 @@ describe("Graph", () => {
     Graph.minimumSpanningForest(directed, (edge) => edge)
   })
 
+  it("transitiveReduction", () => {
+    expect(Graph.transitiveReduction(directed)).type.toBe<Graph.DirectedGraph<string, number>>()
+    expect(Graph.transitiveReduction(mutableDirected)).type.toBe<Graph.DirectedGraph<string, number>>()
+
+    // @ts-expect-error! Transitive reduction requires a directed graph
+    Graph.transitiveReduction(undirected)
+  })
+
   it("topo", () => {
     expect(Graph.topo(directed)).type.toBe<Graph.NodeWalker<string>>()
     expect(Graph.topo(directed, { initials: [0] })).type.toBe<Graph.NodeWalker<string>>()

@@ -4851,6 +4851,82 @@ export const minimumSpanningForest: {
   return fromSnapshot({ type: "undirected", nodes, edges })
 })
 
+/**
+ * Returns the transitive reduction of a directed acyclic graph.
+ *
+ * The result preserves reachability with the fewest structural source-target
+ * pairs. Node and retained edge indices are preserved; parallel edges are
+ * coalesced by retaining the first edge for each required pair. Throws a
+ * `GraphError` for an undirected graph or cyclic input.
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const transitiveReduction = <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+): Graph<N, E, "directed"> => {
+  if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "undirected") {
+    throw new GraphError({ message: "Cannot transitively reduce undirected graph" })
+  }
+  if (!isAcyclic(graph)) {
+    throw new GraphError({ message: "Cannot transitively reduce cyclic graph" })
+  }
+
+  const impl = internal.toImpl(graph)
+  const nodes: Array<IndexedNode<N>> = []
+  for (const [index, data] of impl.nodes) {
+    nodes.push({ index, data })
+  }
+  const firstEdges = new Map<NodeIndex, Map<NodeIndex, EdgeIndex>>()
+  for (const [edgeIndex, edge] of impl.edges) {
+    let targets = firstEdges.get(edge.source)
+    if (targets === undefined) {
+      targets = new Map()
+      firstEdges.set(edge.source, targets)
+    }
+    if (!targets.has(edge.target)) {
+      targets.set(edge.target, edgeIndex)
+    }
+  }
+
+  const retained = new Set<EdgeIndex>()
+  for (const [source, targets] of firstEdges) {
+    for (const [target, edgeIndex] of targets) {
+      const visited = new Set<NodeIndex>([source])
+      const queue = [source]
+      let reachable = false
+      for (let head = 0; head < queue.length && !reachable; head++) {
+        const current = queue[head]
+        for (const candidateIndex of impl.adjacency.get(current)!) {
+          const candidate = impl.edges.get(candidateIndex)!
+          if (current === source && candidate.target === target) {
+            continue
+          }
+          if (candidate.target === target) {
+            reachable = true
+            break
+          }
+          if (!visited.has(candidate.target)) {
+            visited.add(candidate.target)
+            queue.push(candidate.target)
+          }
+        }
+      }
+      if (!reachable) {
+        retained.add(edgeIndex)
+      }
+    }
+  }
+
+  const edges: Array<IndexedEdge<E>> = []
+  for (const [index, edge] of impl.edges) {
+    if (retained.has(index)) {
+      edges.push({ index, source: edge.source, target: edge.target, data: edge.data })
+    }
+  }
+  return fromSnapshot({ type: "directed", nodes, edges })
+}
+
 // =============================================================================
 // Path Finding Algorithms
 // =============================================================================

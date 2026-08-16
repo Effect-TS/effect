@@ -3762,6 +3762,58 @@ describe("Graph", () => {
     })
   })
 
+  describe("transitiveReduction", () => {
+    it("should preserve sparse indexes and coalesce parallel edges", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 9, data: "C" }],
+        edges: [
+          { index: 3, source: 2, target: 5, data: "first" },
+          { index: 4, source: 2, target: 5, data: "parallel" },
+          { index: 7, source: 5, target: 9, data: "next" },
+          { index: 11, source: 2, target: 9, data: "redundant" }
+        ]
+      })
+
+      for (const candidate of [graph, Graph.beginMutation(graph)]) {
+        const result = Graph.transitiveReduction(candidate)
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.nodes(result))), [2, 5, 9])
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.edges(result))), [3, 7])
+        assert.strictEqual(Graph.hasPath(result, 2, 9), true)
+      }
+    })
+
+    it("should retain both branches of a diamond", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 0, 2, 1)
+        Graph.addEdge(mutable, 1, 3, 1)
+        Graph.addEdge(mutable, 2, 3, 1)
+      })
+
+      assert.deepStrictEqual(
+        Array.from(Graph.indices(Graph.edges(Graph.transitiveReduction(graph)))),
+        [0, 1, 2, 3]
+      )
+    })
+
+    it("should reject undirected and cyclic graphs", () => {
+      expect(() => Graph.transitiveReduction(Graph.undirected() as any)).toThrow(
+        "Cannot transitively reduce undirected graph"
+      )
+      const cyclic = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 0, 1)
+      })
+      expect(() => Graph.transitiveReduction(cyclic)).toThrow("Cannot transitively reduce cyclic graph")
+    })
+  })
+
   describe("dijkstra", () => {
     it("should find shortest path in simple graph", () => {
       let nodeA: Graph.NodeIndex
