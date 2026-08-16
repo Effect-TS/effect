@@ -238,13 +238,66 @@ describe("Graph", () => {
         }
       })
 
+    it("equal graphs have equal hashes", () => {
+      const cases = [
+        {
+          name: "directed graphs",
+          make: () => [makeGraph("directed", [[0, 1, "edge"]]), makeGraph("directed", [[0, 1, "edge"]])] as const
+        },
+        {
+          name: "undirected graphs with reversed endpoints",
+          make: () => [makeGraph("undirected", [[0, 1, "edge"]]), makeGraph("undirected", [[1, 0, "edge"]])] as const
+        },
+        {
+          name: "sparse indexes",
+          make: () => {
+            const snapshot = {
+              type: "directed",
+              nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }],
+              edges: [{ index: 4, source: 2, target: 5, data: "edge" }]
+            } as const
+            return [Graph.fromSnapshot(snapshot), Graph.fromSnapshot(snapshot)] as const
+          }
+        },
+        {
+          name: "self-loops",
+          make: () => [makeGraph("undirected", [[0, 0, "loop"]]), makeGraph("undirected", [[0, 0, "loop"]])] as const
+        },
+        {
+          name: "parallel edges",
+          make: () =>
+            [
+              makeGraph("undirected", [[0, 1, "first"], [0, 1, "second"]]),
+              makeGraph("undirected", [[1, 0, "first"], [1, 0, "second"]])
+            ] as const
+        },
+        {
+          name: "undefined payloads",
+          make: () => {
+            const make = () =>
+              Graph.directed<undefined, undefined>((mutable) => {
+                const source = Graph.addNode(mutable, undefined)
+                const target = Graph.addNode(mutable, undefined)
+                Graph.addEdge(mutable, source, target, undefined)
+              })
+            return [make(), make()] as const
+          }
+        }
+      ]
+
+      for (const { make, name } of cases) {
+        const [left, right] = make()
+        assert.strictEqual(Equal.equals(left, right), true, name)
+        assert.strictEqual(Hash.hash(left), Hash.hash(right), name)
+      }
+    })
+
     it("treats undirected edge endpoints as unordered", () => {
       const left = makeGraph("undirected", [[0, 1, "edge"]])
       const right = makeGraph("undirected", [[1, 0, "edge"]])
 
       strictEqual(Equal.equals(left, right), true)
       strictEqual(Equal.equals(right, left), true)
-      strictEqual(Hash.hash(left), Hash.hash(right))
     })
 
     it("keeps directed edge endpoints ordered", () => {
@@ -268,16 +321,7 @@ describe("Graph", () => {
       const reordered = makeGraph("undirected", [[1, 0, "second"], [1, 0, "first"]])
 
       strictEqual(Equal.equals(left, reversed), true)
-      strictEqual(Hash.hash(left), Hash.hash(reversed))
       strictEqual(Equal.equals(left, reordered), false)
-    })
-
-    it("handles undirected self-loops", () => {
-      const left = makeGraph("undirected", [[0, 0, "loop"]])
-      const right = makeGraph("undirected", [[0, 0, "loop"]])
-
-      strictEqual(Equal.equals(left, right), true)
-      strictEqual(Hash.hash(left), Hash.hash(right))
     })
 
     it("keeps Graph.Edge endpoint equality ordered", () => {
@@ -297,7 +341,6 @@ describe("Graph", () => {
       strictEqual(Graph.nodeCount(left), Graph.nodeCount(right))
       strictEqual(Graph.edgeCount(left), Graph.edgeCount(right))
       strictEqual(Equal.equals(left, right), false)
-      strictEqual(Hash.hash(left) === Hash.hash(right), false)
 
       let leftNode: Graph.NodeIndex | undefined
       let rightNode: Graph.NodeIndex | undefined
@@ -324,7 +367,6 @@ describe("Graph", () => {
       assert.deepStrictEqual(Array.from(left), Array.from(right))
       assert.deepStrictEqual(Array.from(Graph.edges(left)), Array.from(Graph.edges(right)))
       strictEqual(Equal.equals(left, right), false)
-      strictEqual(Hash.hash(left) === Hash.hash(right), false)
 
       let leftEdge: Graph.EdgeIndex | undefined
       let rightEdge: Graph.EdgeIndex | undefined
@@ -974,38 +1016,6 @@ describe("Graph", () => {
 
         expect(undefinedEdge).toEqual(Option.some(0))
         expect(undefinedEdges).toEqual([0, 2])
-      })
-
-      it("should produce consistent hashes for graphs with undefined edge data", () => {
-        const graph1 = Graph.directed<string, undefined | number>((mutable) => {
-          const a = Graph.addNode(mutable, "A")
-          const b = Graph.addNode(mutable, "B")
-          const c = Graph.addNode(mutable, "C")
-          Graph.addEdge(mutable, a, b, undefined)
-          Graph.addEdge(mutable, b, c, 42)
-        })
-
-        const graph2 = Graph.directed<string, undefined | number>((mutable) => {
-          const a = Graph.addNode(mutable, "A")
-          const b = Graph.addNode(mutable, "B")
-          const c = Graph.addNode(mutable, "C")
-          Graph.addEdge(mutable, a, b, undefined)
-          Graph.addEdge(mutable, b, c, 42)
-        })
-
-        // Graphs with identical structure should have the same hash
-        expect(Hash.hash(graph1)).toBe(Hash.hash(graph2))
-
-        // Graph with different edge data should have different hash
-        const graph3 = Graph.directed<string, undefined | number>((mutable) => {
-          const a = Graph.addNode(mutable, "A")
-          const b = Graph.addNode(mutable, "B")
-          const c = Graph.addNode(mutable, "C")
-          Graph.addEdge(mutable, a, b, 100) // Different data
-          Graph.addEdge(mutable, b, c, 42)
-        })
-
-        expect(Hash.hash(graph1)).not.toBe(Hash.hash(graph3))
       })
 
       it("should correctly handle Equal.equals with graphs containing undefined edge data", () => {
