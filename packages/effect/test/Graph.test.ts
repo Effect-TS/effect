@@ -810,6 +810,50 @@ describe("Graph", () => {
       }
     })
 
+    it("inducedSubgraph preserves sparse node and edge indexes", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [
+          { index: 2, data: "A" },
+          { index: 5, data: "B" },
+          { index: 9, data: "C" }
+        ],
+        edges: [
+          { index: 3, source: 2, target: 5, data: "A-B" },
+          { index: 7, source: 5, target: 9, data: "B-C" },
+          { index: 11, source: 5, target: 5, data: "B-B" }
+        ]
+      })
+
+      const result = Graph.inducedSubgraph(graph, [9, 5, 5])
+
+      assert.deepStrictEqual(Array.from(Graph.nodes(result)), [[5, "B"], [9, "C"]])
+      assert.deepStrictEqual(Array.from(Graph.edges(result)), [
+        [7, { source: 5, target: 9, data: "B-C" }],
+        [11, { source: 5, target: 5, data: "B-B" }]
+      ])
+    })
+
+    it("inducedSubgraph preserves graph kind and handles empty selections", () => {
+      const graph = Graph.undirected<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+      })
+
+      const result = Graph.inducedSubgraph([])(graph)
+
+      assert.strictEqual(result.type, "undirected")
+      assert.strictEqual(Graph.nodeCount(result), 0)
+      assert.strictEqual(Graph.edgeCount(result), 0)
+    })
+
+    it("inducedSubgraph rejects missing nodes", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+      })
+
+      expect(() => Graph.inducedSubgraph(graph, [0, 1])).toThrow("Node 1 does not exist")
+    })
+
     it("sum keeps equal nodes disjoint", () => {
       const left = Graph.directed<string, string>((mutable) => {
         const a = Graph.addNode(mutable, "A")
@@ -3509,6 +3553,116 @@ describe("Graph", () => {
 
       expect(() => Graph.stronglyConnectedComponents(graph as any))
         .toThrow("Cannot find strongly connected components of undirected graph")
+    })
+  })
+
+  describe("reachability and connectivity", () => {
+    it("should compute unweighted distances in each directed traversal mode", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 2, 1)
+        Graph.addEdge(mutable, 3, 1, 1)
+      })
+
+      assert.deepStrictEqual(Array.from(Graph.unweightedDistances(graph, 0)), [[0, 0], [1, 1], [2, 2]])
+      assert.deepStrictEqual(Array.from(Graph.unweightedDistances(graph, 2, { direction: "incoming" })), [
+        [0, 2],
+        [1, 1],
+        [2, 0],
+        [3, 2]
+      ])
+      assert.deepStrictEqual(Array.from(Graph.unweightedDistances(graph, 0, { direction: "undirected" })), [
+        [0, 0],
+        [1, 1],
+        [2, 2],
+        [3, 2]
+      ])
+      assert.strictEqual(Graph.hasPath(graph, 0, 2), true)
+      assert.strictEqual(Graph.hasPath(graph, 2, 0), false)
+      assert.strictEqual(Graph.hasPath(graph, 2, 0, { direction: "incoming" }), true)
+      assert.strictEqual(Graph.hasPath(3, 2, { direction: "undirected" })(Graph.beginMutation(graph)), true)
+    })
+
+    it("should find weak components and connectivity for immutable and mutable graphs", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 2, 1, 1)
+      })
+
+      for (const candidate of [graph, Graph.beginMutation(graph)]) {
+        const components = Graph.weaklyConnectedComponents(candidate).map((component) => component.sort())
+        components.sort((a, b) => a[0] - b[0])
+        assert.deepStrictEqual(components, [[0, 1, 2], [3]])
+        assert.strictEqual(Graph.isWeaklyConnected(candidate), false)
+        assert.strictEqual(Graph.isStronglyConnected(candidate), false)
+      }
+    })
+
+    it("should rebuild CSR after graph mutation", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+        Graph.addNode(graph, "A")
+        Graph.addNode(graph, "B")
+        Graph.addNode(graph, "C")
+        Graph.addEdge(graph, 0, 1, 1)
+      }))
+
+      assert.strictEqual(Graph.weaklyConnectedComponents(mutable).length, 2)
+      assert.deepStrictEqual(Array.from(Graph.unweightedDistances(mutable, 0)), [[0, 0], [1, 1]])
+
+      Graph.addEdge(mutable, 1, 2, 1)
+
+      assert.strictEqual(Graph.weaklyConnectedComponents(mutable).length, 1)
+      assert.deepStrictEqual(Array.from(Graph.unweightedDistances(mutable, 0)), [[0, 0], [1, 1], [2, 2]])
+    })
+
+    it("should identify undirected trees and connected graphs", () => {
+      const tree = Graph.undirected<string, number>((mutable) => {
+        for (let i = 0; i < 3; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 2, 1)
+      })
+      const cycle = Graph.mutate(tree, (mutable) => {
+        Graph.addEdge(mutable, 2, 0, 1)
+      })
+
+      assert.strictEqual(Graph.isConnected(tree), true)
+      assert.strictEqual(Graph.isTree(tree), true)
+      assert.strictEqual(Graph.isTree(cycle), false)
+      assert.strictEqual(Graph.isConnected(Graph.undirected()), true)
+      assert.strictEqual(Graph.isTree(Graph.undirected()), false)
+      assert.strictEqual(Graph.isWeaklyConnected(Graph.directed()), true)
+      assert.strictEqual(Graph.isStronglyConnected(Graph.directed()), true)
+    })
+
+    it("should reject directed graphs when testing trees before short-circuiting", () => {
+      assertGraphError(() => Graph.isTree(Graph.directed() as any), "Cannot determine tree status of directed graph")
+      const directed = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+      })
+      assertGraphError(() => Graph.isTree(directed as any), "Cannot determine tree status of directed graph")
+    })
+
+    it("should reject missing nodes and mismatched connectivity kinds", () => {
+      const directed = Graph.directed<string, number>()
+      const undirected = Graph.undirected<string, number>()
+
+      expect(() => Graph.unweightedDistances(directed, 0)).toThrow("Node 0 does not exist")
+      expect(() => Graph.hasPath(directed, 0, 1)).toThrow("Node 0 does not exist")
+      expect(() => Graph.connectedComponents(directed as any)).toThrow(
+        "Cannot find connected components of directed graph"
+      )
+      expect(() => Graph.weaklyConnectedComponents(undirected as any)).toThrow(
+        "Cannot find weakly connected components of undirected graph"
+      )
     })
   })
 

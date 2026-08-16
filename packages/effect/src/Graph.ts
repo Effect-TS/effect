@@ -1375,6 +1375,51 @@ export const neighborhood: {
 })
 
 /**
+ * Returns the subgraph induced by a collection of node indices.
+ *
+ * Node and edge indices are preserved. Duplicate input indices are ignored,
+ * output ordering follows the original graph, and every edge whose endpoints
+ * are both selected is retained. Throws a `GraphError` when a selected node
+ * does not exist.
+ *
+ * @category set operations
+ * @since 4.0.0
+ */
+export const inducedSubgraph: {
+  (nodeIndices: Iterable<NodeIndex>): <N, E, T extends Kind = "directed">(self: Graph<N, E, T>) => Graph<N, E, T>
+  <N, E, T extends Kind = "directed">(
+    self: Graph<N, E, T>,
+    nodeIndices: Iterable<NodeIndex>
+  ): Graph<N, E, T>
+} = dual(2, <N, E, T extends Kind>(
+  self: Graph<N, E, T>,
+  nodeIndices: Iterable<NodeIndex>
+): Graph<N, E, T> => {
+  const impl = internal.toImpl(self)
+  const selected = new Set<NodeIndex>()
+  for (const nodeIndex of nodeIndices) {
+    if (!impl.nodes.has(nodeIndex)) {
+      throw missingNode(nodeIndex)
+    }
+    selected.add(nodeIndex)
+  }
+
+  const nodes: Array<IndexedNode<N>> = []
+  for (const [index, data] of impl.nodes) {
+    if (selected.has(index)) {
+      nodes.push({ index, data })
+    }
+  }
+  const edges: Array<IndexedEdge<E>> = []
+  for (const [index, edge] of impl.edges) {
+    if (selected.has(edge.source) && selected.has(edge.target)) {
+      edges.push({ index, source: edge.source, target: edge.target, data: edge.data })
+    }
+  }
+  return fromSnapshot({ type: self.type, nodes, edges })
+})
+
+/**
  * Returns the disjoint union of two graphs.
  *
  * **Details**
@@ -4101,6 +4146,123 @@ const getTraversableNeighbor = <N, E, T extends Kind>(
 ): NodeIndex => graph.type === "undirected" && edge.target === current ? edge.source : edge.target
 
 /**
+ * Configuration for unweighted reachability queries.
+ *
+ * `direction` defaults to `"outgoing"` and is ignored for undirected graphs.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ReachabilityConfig {
+  readonly direction?: TraversalDirection
+}
+
+const getUnweightedDistances = <N, E, T extends Kind>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  source: NodeIndex,
+  direction: TraversalDirection,
+  target?: NodeIndex
+): Map<NodeIndex, number> => {
+  const impl = internal.toImpl(graph)
+  if (!impl.nodes.has(source)) {
+    throw missingNode(source)
+  }
+  if (target !== undefined && !impl.nodes.has(target)) {
+    throw missingNode(target)
+  }
+
+  const cache = csr.get(graph)
+  const sourceNode = csr.getNodeIndex(cache, source)!
+  const targetNode = target === undefined ? undefined : csr.getNodeIndex(cache, target)!
+  const adjacencies = csr.getAdjacencies(cache, graph.type === "undirected" ? "outgoing" : direction)
+  const compactDistances = new Int32Array(cache.nodeIds.length)
+  compactDistances.fill(-1)
+  compactDistances[sourceNode] = 0
+  const queue = new Uint32Array(cache.nodeIds.length)
+  let head = 0
+  let tail = 0
+  queue[tail++] = sourceNode
+
+  while (head < tail) {
+    const current = queue[head++]
+    if (current === targetNode) {
+      break
+    }
+    const visit = (adjacency: csr.Adjacency) => {
+      for (let i = adjacency.rowOffsets[current]; i < adjacency.rowOffsets[current + 1]; i++) {
+        const neighbor = adjacency.columnIndices[i]
+        if (compactDistances[neighbor] === -1) {
+          compactDistances[neighbor] = compactDistances[current] + 1
+          queue[tail++] = neighbor
+        }
+      }
+    }
+    visit(adjacencies.primary)
+    if (adjacencies.secondary !== undefined) {
+      visit(adjacencies.secondary)
+    }
+  }
+
+  const result = new Map<NodeIndex, number>()
+  for (let i = 0; i < cache.nodeIds.length; i++) {
+    if (compactDistances[i] !== -1) {
+      result.set(cache.nodeIds[i], compactDistances[i])
+    }
+  }
+  return result
+}
+
+/**
+ * Returns minimum unweighted distances from a source to every reachable node.
+ *
+ * Throws a `GraphError` when the source does not exist. Directed traversal is
+ * outgoing by default and can be changed with `direction`.
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const unweightedDistances: {
+  (source: NodeIndex, options?: ReachabilityConfig): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Map<NodeIndex, number>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    source: NodeIndex,
+    options?: ReachabilityConfig
+  ): Map<NodeIndex, number>
+} = dual((args) => isGraph(args[0]), <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  source: NodeIndex,
+  options?: ReachabilityConfig
+): Map<NodeIndex, number> => getUnweightedDistances(graph, source, options?.direction ?? "outgoing"))
+
+/**
+ * Tests whether a target is reachable from a source.
+ *
+ * Throws a `GraphError` when either endpoint does not exist. Directed traversal
+ * is outgoing by default and can be changed with `direction`.
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const hasPath: {
+  (source: NodeIndex, target: NodeIndex, options?: ReachabilityConfig): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => boolean
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    source: NodeIndex,
+    target: NodeIndex,
+    options?: ReachabilityConfig
+  ): boolean
+} = dual((args) => isGraph(args[0]), <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  source: NodeIndex,
+  target: NodeIndex,
+  options?: ReachabilityConfig
+): boolean => getUnweightedDistances(graph, source, options?.direction ?? "outgoing", target).has(target))
+
+/**
  * Finds connected components in an undirected graph.
  * Each component is represented as an array of node indices.
  *
@@ -4127,6 +4289,9 @@ const getTraversableNeighbor = <N, E, T extends Kind>(
 export const connectedComponents = <N, E>(
   graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
 ): Array<Array<NodeIndex>> => {
+  if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "directed") {
+    throw new GraphError({ message: "Cannot find connected components of directed graph" })
+  }
   const impl = internal.toImpl(graph)
   if (!graph.mutable) {
     const cache = csr.get(graph)
@@ -4203,6 +4368,54 @@ export const connectedComponents = <N, E>(
     }
   }
 
+  return components
+}
+
+/**
+ * Finds weakly connected components in a directed graph.
+ *
+ * Edge direction is ignored while partitioning nodes. Throws a `GraphError`
+ * when used with an undirected graph.
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const weaklyConnectedComponents = <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+): Array<Array<NodeIndex>> => {
+  if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "undirected") {
+    throw new GraphError({ message: "Cannot find weakly connected components of undirected graph" })
+  }
+  const cache = csr.get(graph)
+  const { primary, secondary } = csr.getAdjacencies(cache, "undirected")
+  const visited = new Uint8Array(cache.nodeIds.length)
+  const components: Array<Array<NodeIndex>> = []
+  for (let start = 0; start < cache.nodeIds.length; start++) {
+    if (visited[start] !== 0) {
+      continue
+    }
+    const component: Array<NodeIndex> = []
+    const stack = [start]
+    while (stack.length > 0) {
+      const current = stack.pop()!
+      if (visited[current] !== 0) {
+        continue
+      }
+      visited[current] = 1
+      component.push(cache.nodeIds[current])
+      const push = (adjacency: csr.Adjacency) => {
+        for (let i = adjacency.rowOffsets[current]; i < adjacency.rowOffsets[current + 1]; i++) {
+          const neighbor = adjacency.columnIndices[i]
+          if (visited[neighbor] === 0) {
+            stack.push(neighbor)
+          }
+        }
+      }
+      push(primary)
+      push(secondary!)
+    }
+    components.push(component)
+  }
   return components
 }
 
@@ -4401,6 +4614,64 @@ export const stronglyConnectedComponents = <N, E>(
   }
 
   return sccs
+}
+
+/**
+ * Tests whether an undirected graph has at most one connected component.
+ *
+ * The empty graph is considered connected. Throws a `GraphError` when used
+ * with a directed graph.
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isConnected = <N, E>(
+  graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
+): boolean => connectedComponents(graph).length <= 1
+
+/**
+ * Tests whether a directed graph has at most one weakly connected component.
+ *
+ * The empty graph is considered weakly connected. Throws a `GraphError` when
+ * used with an undirected graph.
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isWeaklyConnected = <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+): boolean => weaklyConnectedComponents(graph).length <= 1
+
+/**
+ * Tests whether a directed graph has at most one strongly connected component.
+ *
+ * The empty graph is considered strongly connected. Throws a `GraphError` when
+ * used with an undirected graph.
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isStronglyConnected = <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+): boolean => stronglyConnectedComponents(graph).length <= 1
+
+/**
+ * Tests whether a non-empty undirected graph is a tree.
+ *
+ * Parallel edges and self-loops prevent a graph from being a tree. Throws a
+ * `GraphError` when used with a directed graph.
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isTree = <N, E>(
+  graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
+): boolean => {
+  if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "directed") {
+    throw new GraphError({ message: "Cannot determine tree status of directed graph" })
+  }
+  const nodes = nodeCount(graph)
+  return nodes > 0 && edgeCount(graph) === nodes - 1 && isConnected(graph)
 }
 
 // =============================================================================
