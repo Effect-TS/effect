@@ -2494,8 +2494,12 @@ describe("Graph", () => {
           () => Graph.incomingEdges(undirected as any, 0),
           "Cannot get incoming edges of undirected graph"
         )
+        assertGraphError(() => Graph.outDegree(undirected as any, 0), "Cannot get outgoing edges of undirected graph")
+        assertGraphError(() => Graph.inDegree(undirected as any, 0), "Cannot get incoming edges of undirected graph")
         assertGraphError(() => Graph.incidentEdges(directed, 1), "Node 1 does not exist")
         assertGraphError(() => Graph.edgesBetween(directed, 0, 1), "Node 1 does not exist")
+        assertGraphError(() => Graph.outDegree(directed, 1), "Node 1 does not exist")
+        assertGraphError(() => Graph.inDegree(directed, 1), "Node 1 does not exist")
       })
     })
 
@@ -3504,6 +3508,7 @@ describe("Graph", () => {
       })
 
       assert.deepStrictEqual(Graph.connectedComponents(graph), [[0, 2, 1]])
+      assert.deepStrictEqual(Graph.connectedComponents(Graph.beginMutation(graph)), [[0, 2, 1]])
     })
   })
 
@@ -3624,6 +3629,8 @@ describe("Graph", () => {
       assert.strictEqual(Graph.hasPath(graph, 2, 0), false)
       assert.strictEqual(Graph.hasPath(graph, 2, 0, { direction: "incoming" }), true)
       assert.strictEqual(Graph.hasPath(3, 2, { direction: "undirected" })(Graph.beginMutation(graph)), true)
+      assert.strictEqual(Graph.hasPath(graph, 0, 0), true)
+      assertGraphError(() => Graph.hasPath(graph, 0, 4), "Node 4 does not exist")
     })
 
     it("should find weak components and connectivity for immutable and mutable graphs", () => {
@@ -3644,6 +3651,19 @@ describe("Graph", () => {
       }
     })
 
+    it("should preserve weak component traversal order", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "root")
+        Graph.addNode(mutable, "first")
+        Graph.addNode(mutable, "second")
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 0, 2, 2)
+      })
+
+      assert.deepStrictEqual(Graph.weaklyConnectedComponents(graph), [[0, 2, 1]])
+      assert.deepStrictEqual(Graph.weaklyConnectedComponents(Graph.beginMutation(graph)), [[0, 2, 1]])
+    })
+
     it("should rebuild CSR after graph mutation", () => {
       const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
         Graph.addNode(graph, "A")
@@ -3659,6 +3679,12 @@ describe("Graph", () => {
 
       assert.strictEqual(Graph.weaklyConnectedComponents(mutable).length, 1)
       assert.deepStrictEqual(Array.from(Graph.unweightedDistances(mutable, 0)), [[0, 0], [1, 1], [2, 2]])
+
+      Graph.addNode(mutable, "D")
+      assert.strictEqual(Graph.hasPath(mutable, 0, 3), false)
+
+      Graph.addEdge(mutable, 2, 3, 1)
+      assert.strictEqual(Graph.hasPath(mutable, 0, 3), true)
     })
 
     it("should identify undirected trees and connected graphs", () => {
@@ -3680,6 +3706,42 @@ describe("Graph", () => {
       assert.strictEqual(Graph.isTree(Graph.undirected()), false)
       assert.strictEqual(Graph.isWeaklyConnected(Graph.directed()), true)
       assert.strictEqual(Graph.isStronglyConnected(Graph.directed()), true)
+    })
+
+    it("should test connectivity without constructing components", () => {
+      const connected = Graph.undirected<void, void>((mutable) => {
+        Graph.addNode(mutable, undefined)
+        Graph.addNode(mutable, undefined)
+        Graph.addEdge(mutable, 0, 1, undefined)
+      })
+      const disconnected = Graph.mutate(connected, (mutable) => {
+        Graph.addNode(mutable, undefined)
+      })
+      const weak = Graph.directed<void, void>((mutable) => {
+        Graph.addNode(mutable, undefined)
+        Graph.addNode(mutable, undefined)
+        Graph.addNode(mutable, undefined)
+        Graph.addEdge(mutable, 0, 1, undefined)
+        Graph.addEdge(mutable, 1, 2, undefined)
+      })
+      const strong = Graph.mutate(weak, (mutable) => {
+        Graph.addEdge(mutable, 2, 0, undefined)
+      })
+
+      for (const candidate of [connected, Graph.beginMutation(connected)]) {
+        assert.strictEqual(Graph.isConnected(candidate), true)
+      }
+      for (const candidate of [disconnected, Graph.beginMutation(disconnected)]) {
+        assert.strictEqual(Graph.isConnected(candidate), false)
+      }
+      for (const candidate of [weak, Graph.beginMutation(weak)]) {
+        assert.strictEqual(Graph.isWeaklyConnected(candidate), true)
+        assert.strictEqual(Graph.isStronglyConnected(candidate), false)
+      }
+      for (const candidate of [strong, Graph.beginMutation(strong)]) {
+        assert.strictEqual(Graph.isWeaklyConnected(candidate), true)
+        assert.strictEqual(Graph.isStronglyConnected(candidate), true)
+      }
     })
 
     it("should reject directed graphs when testing trees before short-circuiting", () => {
@@ -3704,6 +3766,18 @@ describe("Graph", () => {
       assertGraphError(
         () => Graph.weaklyConnectedComponents(undirected as any),
         "Cannot find weakly connected components of undirected graph"
+      )
+      assertGraphError(
+        () => Graph.isConnected(directed as any),
+        "Cannot find connected components of directed graph"
+      )
+      assertGraphError(
+        () => Graph.isWeaklyConnected(undirected as any),
+        "Cannot find weakly connected components of undirected graph"
+      )
+      assertGraphError(
+        () => Graph.isStronglyConnected(undirected as any),
+        "Cannot find strongly connected components of undirected graph"
       )
     })
   })
@@ -3913,6 +3987,27 @@ describe("Graph", () => {
         distance: 42,
         costs: [1, 1, 20, 20]
       })
+    })
+
+    it("should assign a fresh insertion order when decreasing a priority", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const source = Graph.addNode(mutable, "source")
+        const improved = Graph.addNode(mutable, "improved")
+        const shortcut = Graph.addNode(mutable, "shortcut")
+        const direct = Graph.addNode(mutable, "direct")
+        const target = Graph.addNode(mutable, "target")
+        Graph.addEdge(mutable, source, improved, 10)
+        Graph.addEdge(mutable, source, shortcut, 1)
+        Graph.addEdge(mutable, source, direct, 2)
+        Graph.addEdge(mutable, shortcut, improved, 1)
+        Graph.addEdge(mutable, improved, target, 1)
+        Graph.addEdge(mutable, direct, target, 1)
+      })
+      const config = { source: 0, target: 4, cost: (edge: number) => edge }
+      const expected = Option.some({ path: [0, 3, 4], edges: [2, 5], distance: 3, costs: [2, 1] })
+
+      assert.deepStrictEqual(Graph.dijkstra(graph, config), expected)
+      assert.deepStrictEqual(Graph.dijkstra(Graph.beginMutation(graph), config), expected)
     })
 
     it("should return None for unreachable nodes", () => {
