@@ -851,7 +851,7 @@ describe("Graph", () => {
         Graph.addNode(mutable, "A")
       })
 
-      expect(() => Graph.inducedSubgraph(graph, [0, 1])).toThrow("Node 1 does not exist")
+      assertGraphError(() => Graph.inducedSubgraph(graph, [0, 1]), "Node 1 does not exist")
     })
 
     it("sum keeps equal nodes disjoint", () => {
@@ -2485,15 +2485,17 @@ describe("Graph", () => {
           Graph.addNode(mutable, "A")
         })
 
-        expect(() => Graph.degree(directed as any, 0)).toThrow("Cannot get degree of directed graph")
-        expect(() => Graph.outgoingEdges(undirected as any, 0)).toThrow(
+        assertGraphError(() => Graph.degree(directed as any, 0), "Cannot get degree of directed graph")
+        assertGraphError(
+          () => Graph.outgoingEdges(undirected as any, 0),
           "Cannot get outgoing edges of undirected graph"
         )
-        expect(() => Graph.incomingEdges(undirected as any, 0)).toThrow(
+        assertGraphError(
+          () => Graph.incomingEdges(undirected as any, 0),
           "Cannot get incoming edges of undirected graph"
         )
-        expect(() => Graph.incidentEdges(directed, 1)).toThrow("Node 1 does not exist")
-        expect(() => Graph.edgesBetween(directed, 0, 1)).toThrow("Node 1 does not exist")
+        assertGraphError(() => Graph.incidentEdges(directed, 1), "Node 1 does not exist")
+        assertGraphError(() => Graph.edgesBetween(directed, 0, 1), "Node 1 does not exist")
       })
     })
 
@@ -3693,12 +3695,14 @@ describe("Graph", () => {
       const directed = Graph.directed<string, number>()
       const undirected = Graph.undirected<string, number>()
 
-      expect(() => Graph.unweightedDistances(directed, 0)).toThrow("Node 0 does not exist")
-      expect(() => Graph.hasPath(directed, 0, 1)).toThrow("Node 0 does not exist")
-      expect(() => Graph.connectedComponents(directed as any)).toThrow(
+      assertGraphError(() => Graph.unweightedDistances(directed, 0), "Node 0 does not exist")
+      assertGraphError(() => Graph.hasPath(directed, 0, 1), "Node 0 does not exist")
+      assertGraphError(
+        () => Graph.connectedComponents(directed as any),
         "Cannot find connected components of directed graph"
       )
-      expect(() => Graph.weaklyConnectedComponents(undirected as any)).toThrow(
+      assertGraphError(
+        () => Graph.weaklyConnectedComponents(undirected as any),
         "Cannot find weakly connected components of undirected graph"
       )
     })
@@ -3746,7 +3750,8 @@ describe("Graph", () => {
     })
 
     it("should reject directed graphs and unsupported weights", () => {
-      expect(() => Graph.minimumSpanningForest(Graph.directed() as any, () => 1)).toThrow(
+      assertGraphError(
+        () => Graph.minimumSpanningForest(Graph.directed() as any, () => 1),
         "Cannot find minimum spanning forest of directed graph"
       )
       for (const weight of [NaN, -Infinity]) {
@@ -3755,10 +3760,64 @@ describe("Graph", () => {
           Graph.addNode(mutable, "B")
           Graph.addEdge(mutable, 0, 1, weight)
         })
-        expect(() => Graph.minimumSpanningForest(graph, (edge) => edge)).toThrow(
+        assertGraphError(
+          () => Graph.minimumSpanningForest(graph, (edge) => edge),
           "Minimum spanning forest does not support NaN or -Infinity edge weights"
         )
       }
+    })
+  })
+
+  describe("transitiveReduction", () => {
+    it("should preserve sparse indexes and coalesce parallel edges", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 9, data: "C" }],
+        edges: [
+          { index: 3, source: 2, target: 5, data: "first" },
+          { index: 4, source: 2, target: 5, data: "parallel" },
+          { index: 7, source: 5, target: 9, data: "next" },
+          { index: 11, source: 2, target: 9, data: "redundant" }
+        ]
+      })
+
+      for (const candidate of [graph, Graph.beginMutation(graph)]) {
+        const result = Graph.transitiveReduction(candidate)
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.nodes(result))), [2, 5, 9])
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.edges(result))), [3, 7])
+        assert.strictEqual(Graph.hasPath(result, 2, 9), true)
+      }
+    })
+
+    it("should retain both branches of a diamond", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 0, 2, 1)
+        Graph.addEdge(mutable, 1, 3, 1)
+        Graph.addEdge(mutable, 2, 3, 1)
+      })
+
+      assert.deepStrictEqual(
+        Array.from(Graph.indices(Graph.edges(Graph.transitiveReduction(graph)))),
+        [0, 1, 2, 3]
+      )
+    })
+
+    it("should reject undirected and cyclic graphs", () => {
+      assertGraphError(
+        () => Graph.transitiveReduction(Graph.undirected() as any),
+        "Cannot transitively reduce undirected graph"
+      )
+      const cyclic = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 0, 1)
+      })
+      assertGraphError(() => Graph.transitiveReduction(cyclic), "Cannot transitively reduce cyclic graph")
     })
   })
 
@@ -4348,7 +4407,8 @@ describe("Graph", () => {
         Graph.addEdge(mutable, node, node, -1)
       })
 
-      expect(() => Graph.bellmanFord(graph, { source: 0, target: 0, cost: (edge) => edge })).toThrow(
+      assertGraphError(
+        () => Graph.bellmanFord(graph, { source: 0, target: 0, cost: (edge) => edge }),
         "Negative cycle affects path to node 0"
       )
     })
@@ -4359,7 +4419,8 @@ describe("Graph", () => {
         Graph.addEdge(mutable, node, node, -1)
       })
 
-      expect(() => Graph.bellmanFord(graph, { source: 0, target: 0, cost: (edge) => edge })).toThrow(
+      assertGraphError(
+        () => Graph.bellmanFord(graph, { source: 0, target: 0, cost: (edge) => edge }),
         "Negative cycle affects path to node 0"
       )
     })
@@ -4374,7 +4435,8 @@ describe("Graph", () => {
         Graph.addEdge(mutable, c, a, 1)
       })
 
-      expect(() => Graph.bellmanFord(graph, { source: 0, target: 2, cost: (edge) => edge })).toThrow(
+      assertGraphError(
+        () => Graph.bellmanFord(graph, { source: 0, target: 2, cost: (edge) => edge }),
         "Negative cycle affects path to node 2"
       )
     })
@@ -4398,7 +4460,8 @@ describe("Graph", () => {
         Graph.addEdge(mutable, a, b, -1)
       })
 
-      expect(() => Graph.bellmanFord(graph, { source: 0, target: 1, cost: (edge) => edge })).toThrow(
+      assertGraphError(
+        () => Graph.bellmanFord(graph, { source: 0, target: 1, cost: (edge) => edge }),
         "Negative cycle affects path to node 1"
       )
     })
@@ -4439,7 +4502,7 @@ describe("Graph", () => {
       // Check distance A to C (should be 5 via B, not 7 direct)
       expect(result.distances.get(0)?.get(2)).toBe(5)
       expect(result.paths.get(0)?.get(2)).toEqual([0, 1, 2])
-      expect(result.edges.get(0)?.get(2)).toEqual([0, 1])
+      assert.deepStrictEqual(result.edges.get(0)?.get(2), [0, 1])
       expect(result.costs.get(0)?.get(2)).toEqual([3, 2])
 
       // Check distance A to B
@@ -4464,7 +4527,7 @@ describe("Graph", () => {
 
       expect(result.distances.get(0)?.get(2)).toBe(Infinity)
       expect(result.paths.get(0)?.get(2)).toBeNull()
-      expect(result.edges.get(0)?.get(2)).toEqual([])
+      assert.deepStrictEqual(result.edges.get(0)?.get(2), [])
     })
 
     it("should handle same source and target", () => {
@@ -4476,7 +4539,7 @@ describe("Graph", () => {
 
       expect(result.distances.get(0)?.get(0)).toBe(0)
       expect(result.paths.get(0)?.get(0)).toEqual([0])
-      expect(result.edges.get(0)?.get(0)).toEqual([])
+      assert.deepStrictEqual(result.edges.get(0)?.get(0), [])
       expect(result.costs.get(0)?.get(0)).toEqual([])
     })
 
@@ -4498,7 +4561,7 @@ describe("Graph", () => {
 
       expect(result.distances.get(0)?.get(1)).toBe(Infinity)
       expect(result.paths.get(0)?.get(1)).toBeNull()
-      expect(result.edges.get(0)?.get(1)).toEqual([])
+      assert.deepStrictEqual(result.edges.get(0)?.get(1), [])
       expect(result.costs.get(0)?.get(1)).toEqual([])
     })
 
@@ -4557,7 +4620,7 @@ describe("Graph", () => {
 
       expect(result.distances.get(0)?.get(2)).toBe(2)
       expect(result.paths.get(0)?.get(2)).toEqual([0, 1, 2])
-      expect(result.edges.get(0)?.get(2)).toEqual([0, 1])
+      assert.deepStrictEqual(result.edges.get(0)?.get(2), [0, 1])
       expect(result.costs.get(0)?.get(2)).toEqual([1, 1])
     })
 
@@ -4569,6 +4632,185 @@ describe("Graph", () => {
       })
 
       expect(() => Graph.floydWarshall(graph, (edge) => edge)).toThrow("Negative cycle detected")
+    })
+  })
+
+  describe("lazy path enumeration", () => {
+    it("should lazily enumerate repeatable simple paths with exact edges", () => {
+      const graph = Graph.directed<string, string>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, "0-1")
+        Graph.addEdge(mutable, 0, 2, "0-2")
+        Graph.addEdge(mutable, 1, 2, "1-2")
+        Graph.addEdge(mutable, 1, 3, "1-3")
+        Graph.addEdge(mutable, 2, 3, "2-3")
+        Graph.addEdge(mutable, 2, 1, "2-1")
+      })
+      const paths = Graph.simplePaths(graph, { source: 0, target: 3, limit: 3 })
+      const expected = [
+        { path: [0, 1, 2, 3], edges: [0, 2, 4], distance: 3, costs: ["0-1", "1-2", "2-3"] },
+        { path: [0, 1, 3], edges: [0, 3], distance: 2, costs: ["0-1", "1-3"] },
+        { path: [0, 2, 3], edges: [1, 4], distance: 2, costs: ["0-2", "2-3"] }
+      ]
+
+      assert.deepStrictEqual(Array.from(paths), expected)
+      assert.deepStrictEqual(Array.from(paths), expected)
+    })
+
+    it("should enumerate parallel and structurally tied shortest paths", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 0, 2, 1)
+        Graph.addEdge(mutable, 1, 3, 1)
+        Graph.addEdge(mutable, 2, 3, 1)
+        Graph.addEdge(mutable, 0, 1, 1)
+      })
+
+      const result = Array.from(Graph.allShortestPaths(graph, { source: 0, target: 3, cost: (edge) => edge }))
+
+      assert.deepStrictEqual(result, [
+        { path: [0, 1, 3], edges: [0, 2], distance: 2, costs: [1, 1] },
+        { path: [0, 1, 3], edges: [4, 2], distance: 2, costs: [1, 1] },
+        { path: [0, 2, 3], edges: [1, 3], distance: 2, costs: [1, 1] }
+      ])
+      assert.deepStrictEqual(
+        Array.from(Graph.allShortestPaths(Graph.beginMutation(graph), {
+          source: 0,
+          target: 3,
+          cost: (edge) => edge,
+          limit: 2
+        })),
+        result.slice(0, 2)
+      )
+    })
+
+    it("should handle empty path enumerations", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+      })
+
+      assert.deepStrictEqual(Array.from(Graph.simplePaths(graph, { source: 0, target: 0 })), [
+        { path: [0], edges: [], distance: 0, costs: [] }
+      ])
+      assert.deepStrictEqual(
+        Array.from(Graph.allShortestPaths(graph, { source: 0, target: 1, cost: (edge) => edge })),
+        []
+      )
+      assert.deepStrictEqual(Array.from(Graph.simplePaths(graph, { source: 0, target: 1, limit: 0 })), [])
+    })
+
+    it("should defer shortest-path computation until iteration", () => {
+      const graph = makeSingleEdgeGraph(1)
+      let costCalls = 0
+      const paths = Graph.allShortestPaths(graph, {
+        source: 0,
+        target: 1,
+        cost: (edge) => {
+          costCalls++
+          return edge
+        }
+      })
+
+      assert.strictEqual(costCalls, 0)
+      assert.deepStrictEqual(Array.from(paths), [{ path: [0, 1], edges: [0], distance: 1, costs: [1] }])
+      assert.strictEqual(costCalls, 1)
+    })
+
+    it("should revalidate mutable path endpoints when iteration starts", () => {
+      const makeMutable = () =>
+        Graph.beginMutation(Graph.directed<string, number>((graph) => {
+          Graph.addNode(graph, "A")
+          Graph.addNode(graph, "B")
+          Graph.addEdge(graph, 0, 1, 1)
+        }))
+      const simpleGraph = makeMutable()
+      const simple = Graph.simplePaths(simpleGraph, { source: 0, target: 1 })
+      Graph.removeNode(simpleGraph, 0)
+      assertGraphError(() => Array.from(simple), "Node 0 does not exist")
+
+      const shortestGraph = makeMutable()
+      const shortest = Graph.allShortestPaths(shortestGraph, { source: 0, target: 1, cost: (edge) => edge })
+      Graph.removeNode(shortestGraph, 1)
+      assertGraphError(() => Array.from(shortest), "Node 1 does not exist")
+    })
+
+    it("should isolate active mutable path iterations from later mutations", () => {
+      const makeMutable = () =>
+        Graph.beginMutation(Graph.directed<string, number>((graph) => {
+          for (let i = 0; i < 4; i++) {
+            Graph.addNode(graph, String(i))
+          }
+          Graph.addEdge(graph, 0, 1, 1)
+          Graph.addEdge(graph, 0, 2, 1)
+          Graph.addEdge(graph, 1, 3, 1)
+          Graph.addEdge(graph, 2, 3, 1)
+        }))
+      const assertSnapshot = (paths: Graph.PathWalker<number>, mutable: Graph.MutableDirectedGraph<string, number>) => {
+        const iterator = paths[Symbol.iterator]()
+        assert.deepStrictEqual(iterator.next().value?.edges, [0, 2])
+        Graph.removeEdge(mutable, 1)
+        assert.deepStrictEqual(iterator.next().value?.edges, [1, 3])
+      }
+
+      const simpleGraph = makeMutable()
+      assertSnapshot(Graph.simplePaths(simpleGraph, { source: 0, target: 3 }), simpleGraph)
+
+      const shortestGraph = makeMutable()
+      assertSnapshot(
+        Graph.allShortestPaths(shortestGraph, { source: 0, target: 3, cost: (edge) => edge }),
+        shortestGraph
+      )
+    })
+
+    it("should snapshot mutable adjacency before evaluating shortest-path costs", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+        Graph.addNode(graph, "A")
+        Graph.addNode(graph, "B")
+        Graph.addNode(graph, "C")
+        Graph.addEdge(graph, 0, 1, 1)
+        Graph.addEdge(graph, 1, 2, 1)
+        Graph.addEdge(graph, 0, 2, 3)
+      }))
+      let mutated = false
+      const paths = Graph.allShortestPaths(mutable, {
+        source: 0,
+        target: 2,
+        cost: (edge) => {
+          if (!mutated) {
+            mutated = true
+            Graph.removeEdge(mutable, 1)
+          }
+          return edge
+        }
+      })
+
+      assert.deepStrictEqual(Array.from(paths), [
+        { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [1, 1] }
+      ])
+    })
+
+    it("should validate path enumeration options", () => {
+      const graph = makeSingleEdgeGraph(-1)
+
+      assertGraphError(
+        () => Array.from(Graph.allShortestPaths(graph, { source: 0, target: 1, cost: (edge) => edge })),
+        "All shortest paths requires non-negative edge weights"
+      )
+      assertGraphError(
+        () => Array.from(Graph.allShortestPaths(graph, { source: 0, target: 1, cost: (edge) => edge, limit: 0 })),
+        "All shortest paths requires non-negative edge weights"
+      )
+      assertGraphError(
+        () => Graph.simplePaths(graph, { source: 0, target: 1, limit: -1 }),
+        "Path enumeration limit must be a non-negative integer or Infinity"
+      )
+      assertGraphError(() => Graph.simplePaths(graph, { source: 0, target: 2 }), "Node 2 does not exist")
     })
   })
 
