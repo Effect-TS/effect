@@ -158,11 +158,11 @@ describe("Prompt.float", () => {
 })
 
 describe("Prompt.text", () => {
-  it.effect("uses the default prompt symbol when symbol is explicitly undefined", () =>
+  it.effect("uses the default prompt prefix when prefix is explicitly undefined", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
 
-      const options = { message: "Name", symbol: undefined } as unknown as Prompt.TextOptions
+      const options = { message: "Name", prefix: undefined } as unknown as Prompt.TextOptions
       yield* Prompt.run(Prompt.text(options))
 
       const frames = toFrames(yield* MockTerminal.displayLines)
@@ -170,11 +170,11 @@ describe("Prompt.text", () => {
       assert.notInclude(frames[0] ?? "", "undefined")
     }).pipe(Effect.provide(TestLayer)))
 
-  it.effect("renders a custom prompt symbol", () =>
+  it.effect("renders a custom prompt prefix", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.text({ message: "Name", symbol: "!" }))
+      yield* Prompt.run(Prompt.text({ message: "Name", prefix: "!" }))
 
       const frames = toFrames(yield* MockTerminal.displayLines)
       assert.include(frames[0] ?? "", "! Name")
@@ -281,14 +281,14 @@ describe("Prompt.text", () => {
 })
 
 describe("Prompt.select", () => {
-  it.effect("preserves a custom prompt symbol across redraws", () =>
+  it.effect("preserves a custom prompt prefix across redraws", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("down")
       yield* MockTerminal.inputKey("enter")
 
       const result = yield* Prompt.run(Prompt.select({
         message: "Pick item",
-        symbol: "!",
+        prefix: "!",
         choices: [
           { title: "First", value: "first" },
           { title: "Second", value: "second" }
