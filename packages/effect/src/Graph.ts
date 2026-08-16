@@ -6359,6 +6359,300 @@ export const bellmanFord: {
 })
 
 /**
+ * A repeatable lazy iterable of edge-aware graph paths.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface PathWalker<E> extends Iterable<PathResult<E>> {}
+
+/**
+ * Configuration for lazy simple-path enumeration.
+ *
+ * `limit` bounds the number of yielded paths and defaults to `Infinity`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface SimplePathsConfig {
+  readonly source: NodeIndex
+  readonly target: NodeIndex
+  readonly limit?: number
+}
+
+/**
+ * Configuration for enumerating all tied shortest paths.
+ *
+ * Edge costs must be non-negative. `limit` bounds the number of yielded paths
+ * and defaults to `Infinity`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface AllShortestPathsConfig<E> extends DijkstraConfig<E> {
+  readonly limit?: number
+}
+
+const pathEnumerationLimit = (limit: number | undefined): number => {
+  const value = limit ?? Infinity
+  if (value !== Infinity && (!Number.isInteger(value) || value < 0)) {
+    throw new GraphError({ message: "Path enumeration limit must be a non-negative integer or Infinity" })
+  }
+  return value
+}
+
+const pathWalker = <E>(iterator: () => Iterator<PathResult<E>>): PathWalker<E> => ({
+  [Symbol.iterator]: iterator
+})
+
+/**
+ * Lazily enumerates simple source-to-target paths in depth-first edge order.
+ *
+ * Nodes are never repeated within a path, so enumeration is finite even for
+ * cyclic graphs. Path distance is the number of traversed edges. Throws a
+ * `GraphError` for missing endpoints or an invalid `limit`.
+ * Mutable graphs are snapshotted when iteration begins.
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const simplePaths: {
+  <E>(config: SimplePathsConfig): <N, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => PathWalker<E>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    config: SimplePathsConfig
+  ): PathWalker<E>
+} = dual(2, <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  config: SimplePathsConfig
+): PathWalker<E> => {
+  const impl = internal.toImpl(graph)
+  if (!impl.nodes.has(config.source)) {
+    throw missingNode(config.source)
+  }
+  if (!impl.nodes.has(config.target)) {
+    throw missingNode(config.target)
+  }
+  const limit = pathEnumerationLimit(config.limit)
+
+  return pathWalker(function*() {
+    const cache = csr.get(graph)
+    const source = csr.getNodeIndex(cache, config.source)
+    if (source === undefined) {
+      throw missingNode(config.source)
+    }
+    const target = csr.getNodeIndex(cache, config.target)
+    if (target === undefined) {
+      throw missingNode(config.target)
+    }
+    if (limit === 0) {
+      return
+    }
+    const outgoing = csr.getOutgoingWithEdges(cache)
+    const edgeIds = csr.getEdgeIds(cache)
+    const graphEdges = csr.getEdges(cache)
+    const path = [config.source]
+    const pathEdges: Array<EdgeIndex> = []
+    const costs: Array<E> = []
+    const visited = new Uint8Array(cache.nodeIds.length)
+    visited[source] = 1
+    const stack: Array<{ readonly node: number; position: number }> = [{
+      node: source,
+      position: outgoing.rowOffsets[source]
+    }]
+    let emitted = 0
+
+    const backtrack = () => {
+      const frame = stack.pop()!
+      if (stack.length > 0) {
+        visited[frame.node] = 0
+        path.pop()
+        pathEdges.pop()
+        costs.pop()
+      }
+    }
+
+    while (stack.length > 0 && emitted < limit) {
+      const frame = stack[stack.length - 1]
+      if (frame.node === target) {
+        emitted++
+        yield {
+          path: Array.from(path),
+          edges: Array.from(pathEdges),
+          distance: pathEdges.length,
+          costs: Array.from(costs)
+        }
+        backtrack()
+        continue
+      }
+      if (frame.position >= outgoing.rowOffsets[frame.node + 1]) {
+        backtrack()
+        continue
+      }
+      const position = frame.position++
+      const neighbor = outgoing.columnIndices[position]
+      if (visited[neighbor] !== 0) {
+        continue
+      }
+      const edge = outgoing.edgeIndices[position]
+      visited[neighbor] = 1
+      path.push(cache.nodeIds[neighbor])
+      pathEdges.push(edgeIds[edge])
+      costs.push(graphEdges[edge].data)
+      stack.push({ node: neighbor, position: outgoing.rowOffsets[neighbor] })
+    }
+  })
+})
+
+/**
+ * Lazily enumerates all simple paths tied for minimum total cost.
+ *
+ * Parallel edges produce distinct paths. Edge costs must be non-negative;
+ * `Infinity` behaves as unavailable. Throws a `GraphError` for missing
+ * endpoints, invalid costs, or an invalid `limit`.
+ * Mutable graphs are snapshotted when iteration begins.
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const allShortestPaths: {
+  <E>(config: AllShortestPathsConfig<E>): <N, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => PathWalker<E>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    config: AllShortestPathsConfig<E>
+  ): PathWalker<E>
+} = dual(2, <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  config: AllShortestPathsConfig<E>
+): PathWalker<E> => {
+  const impl = internal.toImpl(graph)
+  if (!impl.nodes.has(config.source)) {
+    throw missingNode(config.source)
+  }
+  if (!impl.nodes.has(config.target)) {
+    throw missingNode(config.target)
+  }
+  const limit = pathEnumerationLimit(config.limit)
+
+  return pathWalker(function*() {
+    const cache = csr.get(graph)
+    const source = csr.getNodeIndex(cache, config.source)
+    if (source === undefined) {
+      throw missingNode(config.source)
+    }
+    const target = csr.getNodeIndex(cache, config.target)
+    if (target === undefined) {
+      throw missingNode(config.target)
+    }
+    const graphEdges = csr.getEdges(cache)
+    const edgeIds = csr.getEdgeIds(cache)
+    const outgoing = csr.getOutgoingWithEdges(cache)
+    const weights = new Float64Array(graphEdges.length)
+    for (let edge = 0; edge < graphEdges.length; edge++) {
+      const weight = config.cost(graphEdges[edge].data)
+      if (Number.isNaN(weight) || weight < 0) {
+        throw new GraphError({ message: "All shortest paths requires non-negative edge weights" })
+      }
+      weights[edge] = weight
+    }
+    if (limit === 0) {
+      return
+    }
+
+    const distances = new Float64Array(cache.nodeIds.length)
+    distances.fill(Infinity)
+    distances[source] = 0
+    const previous: Array<Array<{ readonly node: number; readonly edge: number }> | undefined> = new Array(
+      cache.nodeIds.length
+    )
+    const queue: Array<MinHeapEntry> = []
+    let sequence = 0
+    minHeapPush(queue, { node: source, priority: 0, sequence: sequence++ })
+    while (queue.length > 0) {
+      const current = minHeapPop(queue)!
+      if (current.priority !== distances[current.node]) {
+        continue
+      }
+      for (let i = outgoing.rowOffsets[current.node]; i < outgoing.rowOffsets[current.node + 1]; i++) {
+        const edge = outgoing.edgeIndices[i]
+        const neighbor = outgoing.columnIndices[i]
+        const nextDistance = current.priority + weights[edge]
+        const known = distances[neighbor]
+        const predecessor = { node: current.node, edge }
+        if (nextDistance < known) {
+          distances[neighbor] = nextDistance
+          previous[neighbor] = [predecessor]
+          minHeapPush(queue, { node: neighbor, priority: nextDistance, sequence: sequence++ })
+        } else if (nextDistance === known && nextDistance !== Infinity) {
+          const predecessors = previous[neighbor]
+          if (predecessors === undefined) {
+            previous[neighbor] = [predecessor]
+          } else {
+            predecessors.push(predecessor)
+          }
+        }
+      }
+    }
+
+    const distance = distances[target]
+    if (distance === Infinity) {
+      return
+    }
+    if (source === target) {
+      yield { path: [config.source], edges: [], distance: 0, costs: [] }
+      return
+    }
+    const reversePath = [target]
+    const reverseEdges: Array<number> = []
+    const visited = new Uint8Array(cache.nodeIds.length)
+    visited[target] = 1
+    const stack: Array<{ readonly node: number; position: number }> = [{ node: target, position: 0 }]
+    let emitted = 0
+
+    const backtrack = () => {
+      const frame = stack.pop()!
+      if (stack.length > 0) {
+        visited[frame.node] = 0
+        reversePath.pop()
+        reverseEdges.pop()
+      }
+    }
+
+    while (stack.length > 0 && emitted < limit) {
+      const frame = stack[stack.length - 1]
+      if (frame.node === source) {
+        emitted++
+        yield {
+          path: reversePath.map((node) => cache.nodeIds[node]).reverse(),
+          edges: reverseEdges.map((edge) => edgeIds[edge]).reverse(),
+          distance,
+          costs: reverseEdges.map((edge) => graphEdges[edge].data as E).reverse()
+        }
+        backtrack()
+        continue
+      }
+      const predecessors = previous[frame.node] ?? []
+      if (frame.position >= predecessors.length) {
+        backtrack()
+        continue
+      }
+      const predecessor = predecessors[frame.position++]
+      if (visited[predecessor.node] !== 0) {
+        continue
+      }
+      visited[predecessor.node] = 1
+      reversePath.push(predecessor.node)
+      reverseEdges.push(predecessor.edge)
+      stack.push({ node: predecessor.node, position: 0 })
+    }
+  })
+})
+
+/**
  * Represents an iterable wrapper used by graph traversal and listing APIs.
  *
  * **Details**
