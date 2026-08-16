@@ -1155,6 +1155,13 @@ describe("Graph", () => {
       assert.deepStrictEqual(Graph.neighbors(result, nodeA!), [nodeB!])
       assert.deepStrictEqual(Graph.predecessors(result, nodeB!), [nodeA!])
     })
+
+    it("should reject a second finalization", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, number>())
+      Graph.endMutation(mutable)
+
+      assertGraphError(() => Graph.endMutation(mutable), "Graph is not mutable")
+    })
   })
 
   describe("mutate", () => {
@@ -1195,6 +1202,110 @@ describe("Graph", () => {
         }
       )
       assertGraphError(() => Graph.addNode(mutable!, "late"), "Graph is not mutable")
+    })
+
+    it("should reject manual finalization followed by a normal callback return", () => {
+      const graph = Graph.directed<string, number>()
+
+      assertGraphError(() => {
+        Graph.directed<string, number>((mutable) => {
+          Graph.endMutation(mutable)
+        })
+      }, "Graph is not mutable")
+      assertGraphError(() => {
+        Graph.undirected<string, number>((mutable) => {
+          Graph.endMutation(mutable)
+        })
+      }, "Graph is not mutable")
+      assertGraphError(() => {
+        Graph.make("directed")<string, number>((mutable) => {
+          Graph.endMutation(mutable)
+        })
+      }, "Graph is not mutable")
+      assertGraphError(() => {
+        Graph.make("undirected")<string, number>((mutable) => {
+          Graph.endMutation(mutable)
+        })
+      }, "Graph is not mutable")
+      assertGraphError(() => {
+        Graph.mutate(graph, (mutable) => {
+          Graph.endMutation(mutable)
+        })
+      }, "Graph is not mutable")
+      assertGraphError(() => {
+        Graph.mutate((mutable: Graph.MutableDirectedGraph<string, number>) => {
+          Graph.endMutation(mutable)
+        })(graph)
+      }, "Graph is not mutable")
+    })
+
+    it("should preserve a callback error after manual finalization", () => {
+      const error = new Error("callback failure")
+
+      for (
+        const run of [
+          (f: (mutable: Graph.MutableDirectedGraph<string, number>) => undefined) => Graph.directed(f),
+          (f: (mutable: Graph.MutableUndirectedGraph<string, number>) => undefined) => Graph.undirected(f),
+          (f: (mutable: Graph.MutableDirectedGraph<string, number>) => undefined) => Graph.make("directed")(f),
+          (f: (mutable: Graph.MutableUndirectedGraph<string, number>) => undefined) => Graph.make("undirected")(f),
+          (f: (mutable: Graph.MutableDirectedGraph<string, number>) => undefined) =>
+            Graph.mutate(Graph.directed<string, number>(), f),
+          (f: (mutable: Graph.MutableDirectedGraph<string, number>) => undefined) =>
+            Graph.mutate(f)(Graph.directed<string, number>())
+        ]
+      ) {
+        throws(
+          () =>
+            run((mutable) => {
+              Graph.endMutation(mutable)
+              throw error
+            }),
+          (cause) => {
+            strictEqual(cause, error)
+          }
+        )
+      }
+    })
+
+    it("should reject every mutation entry point on a retained finalized handle", () => {
+      let retained: Graph.MutableDirectedGraph<string, number> | undefined
+      let nodeA: Graph.NodeIndex
+      let nodeB: Graph.NodeIndex
+      let edge: Graph.EdgeIndex
+      const result = Graph.directed<string, number>((mutable) => {
+        retained = mutable
+        nodeA = Graph.addNode(mutable, "A")
+        nodeB = Graph.addNode(mutable, "B")
+        edge = Graph.addEdge(mutable, nodeA, nodeB, 1)
+      })
+
+      strictEqual(Graph.nodeCount(retained!), 2)
+      strictEqual(Graph.edgeCount(retained!), 1)
+      assert.deepStrictEqual(Graph.getNode(retained!, nodeA!), Option.some("A"))
+
+      const mutations: ReadonlyArray<() => unknown> = [
+        () => Graph.addNode(retained!, "C"),
+        () => Graph.updateNode(retained!, nodeA!, () => "updated"),
+        () => Graph.updateEdge(retained!, edge!, () => 2),
+        () => Graph.mapNodes(retained!, () => "mapped"),
+        () => Graph.mapEdges(retained!, () => 3),
+        () => Graph.reverse(retained!),
+        () => Graph.filterMapNodes(retained!, () => Option.none()),
+        () => Graph.filterMapEdges(retained!, () => Option.none()),
+        () => Graph.filterNodes(retained!, () => false),
+        () => Graph.filterEdges(retained!, () => false),
+        () => Graph.addEdge(retained!, nodeB!, nodeA!, 4),
+        () => Graph.removeNode(retained!, nodeA!),
+        () => Graph.removeEdge(retained!, edge!)
+      ]
+      for (const mutation of mutations) {
+        assertGraphError(mutation, "Graph is not mutable")
+      }
+
+      strictEqual(Graph.nodeCount(result), 2)
+      strictEqual(Graph.edgeCount(result), 1)
+      assert.deepStrictEqual(Graph.getNode(result, nodeA!), Option.some("A"))
+      assert.deepStrictEqual(Graph.getEdge(result, edge!), Option.some({ source: nodeA!, target: nodeB!, data: 1 }))
     })
   })
 

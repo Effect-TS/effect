@@ -634,13 +634,15 @@ const mutateScoped = <N, E, T extends Kind>(
   mutable: MutableGraph<N, E, T>,
   f: (mutable: MutableGraph<N, E, T>) => undefined
 ): Graph<N, E, T> => {
-  let graph: Graph<N, E, T>
   try {
     f(mutable)
-  } finally {
-    graph = endMutation(mutable)
+  } catch (error) {
+    if (mutable.mutable) {
+      endMutation(mutable)
+    }
+    throw error
   }
-  return graph
+  return endMutation(mutable)
 }
 
 /**
