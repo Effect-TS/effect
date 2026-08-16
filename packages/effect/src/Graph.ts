@@ -356,6 +356,15 @@ export class GraphError extends Data.TaggedError("GraphError")<{
 const missingNode = (node: number) => new GraphError({ message: `Node ${node} does not exist` })
 
 /** @internal */
+const traversalRadius = (radius: number | undefined, defaultRadius: number): number => {
+  const value = radius ?? defaultRadius
+  if (value !== Infinity && (!Number.isInteger(value) || value < 0)) {
+    throw new GraphError({ message: "Traversal radius must be a non-negative integer or Infinity" })
+  }
+  return value
+}
+
+/** @internal */
 function assertMutable<N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>
 ): asserts graph is MutableGraph<N, E, T> {
@@ -1270,6 +1279,7 @@ export const complement: {
  * **Details**
  *
  * `radius` limits the edge distance from the center node and defaults to `1`.
+ * It accepts non-negative integers and `Infinity`.
  * `direction` controls how directed edges are traversed and defaults to
  * `"outgoing"`.
  *
@@ -1286,11 +1296,12 @@ export interface NeighborhoodConfig {
  *
  * **Details**
  *
- * The `radius` option is the maximum edge distance from `nodeIndex` and
- * defaults to `1`. The `direction` option controls directed graph traversal and
- * defaults to `"outgoing"`. The result has the same graph kind as `self` and
- * keeps all original edges whose endpoints are both reached. `"undirected"`
- * ignores edge direction while finding reachable nodes.
+ * The `radius` option is the maximum edge distance from `nodeIndex`, accepts
+ * non-negative integers and `Infinity`, and defaults to `1`. Invalid radii
+ * throw a `GraphError`. The `direction` option controls directed graph
+ * traversal and defaults to `"outgoing"`. The result has the same graph kind
+ * as `self` and keeps all original edges whose endpoints are both reached.
+ * `"undirected"` ignores edge direction while finding reachable nodes.
  *
  * **Example** (Getting a local neighborhood)
  *
@@ -1329,7 +1340,7 @@ export const neighborhood: {
   options?: NeighborhoodConfig
 ): Graph<N, E, T> => {
   const selfImpl = internal.toImpl(self)
-  const radius = options?.radius ?? 1
+  const radius = traversalRadius(options?.radius, 1)
   const direction = options?.direction ?? "outgoing"
   const reached = new Set<NodeIndex>()
 
@@ -5648,6 +5659,33 @@ const makeCsrNodeWalker = <N, E, T extends Kind>(
   }))
 }
 
+const traversalStarts = <N, E, T extends Kind>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  start: ReadonlyArray<NodeIndex> | undefined
+): Array<NodeIndex> => {
+  if (start === undefined) {
+    return []
+  }
+  for (const nodeIndex of start) {
+    if (!hasNode(graph, nodeIndex)) {
+      throw missingNode(nodeIndex)
+    }
+  }
+  return Array.from(start)
+}
+
+const traversalStartPositions = (cache: csr.Csr, start: ReadonlyArray<NodeIndex>): Array<number> => {
+  const positions = new Array<number>(start.length)
+  for (let i = 0; i < start.length; i++) {
+    const position = csr.getNodeIndex(cache, start[i])
+    if (position === undefined) {
+      throw missingNode(start[i])
+    }
+    positions[i] = position
+  }
+  return positions
+}
+
 /**
  * Type alias for node iteration using Walker.
  * NodeWalker is represented as Walker<NodeIndex, N>.
@@ -5765,15 +5803,18 @@ export const entries = <T, N>(walker: Walker<T, N>): Iterable<[T, N]> =>
  * **Details**
  *
  * `start` supplies the node indices where traversal begins. If it is omitted,
- * the iterator is empty. `direction` chooses whether traversal follows
- * outgoing edges, incoming edges, or ignores edge direction. `radius` limits
- * traversal by edge distance from the nearest start node.
+ * the iterator is empty. Distinct starts are prioritized in supplied order and
+ * duplicates are ignored. `direction` chooses whether traversal follows outgoing
+ * edges, incoming edges, or ignores edge direction. `radius` limits traversal
+ * by edge distance from the nearest start node and accepts non-negative integers
+ * or `Infinity`; omitting it means unbounded traversal.
  *
  * **Gotchas**
  *
- * Traversal creation throws a `GraphError` when any configured `start` node
- * does not exist. Traversing a mutable graph takes a snapshot when iteration
- * begins; later mutations are not observed by that iterator.
+ * Traversal creation validates and copies `start`, and throws a `GraphError`
+ * when a start node does not exist or `radius` is invalid. Each fresh iterator
+ * revalidates those starts against the graph snapshot it captures. Later
+ * mutations are not observed by an active iterator.
  *
  * @see {@link dfs} for depth-first traversal
  * @see {@link bfs} for breadth-first traversal
@@ -5796,8 +5837,9 @@ export interface SearchConfig {
  *
  * If no start nodes are supplied, the iterator is empty. The `direction` option
  * chooses whether to follow outgoing or incoming edges. The `radius` option
- * limits traversal by edge distance from the start nodes. Throws a `GraphError`
- * if any configured start node does not exist.
+ * limits traversal by edge distance from the start nodes. It accepts
+ * non-negative integers and `Infinity`; omitting it means unbounded traversal.
+ * Throws a `GraphError` for an invalid radius or missing start node.
  *
  * **Gotchas**
  *
@@ -5839,26 +5881,20 @@ export const dfs: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: SearchConfig = {}
 ): NodeWalker<N> => {
-  const start = config.start ?? []
+  const radius = traversalRadius(config.radius, Infinity)
+  const start = traversalStarts(graph, config.start)
   const direction = config.direction ?? "outgoing"
-  const radius = config.radius ?? Infinity
-
-  // Validate that all start nodes exist
-  for (const nodeIndex of start) {
-    if (!hasNode(graph, nodeIndex)) {
-      throw missingNode(nodeIndex)
-    }
-  }
 
   return makeCsrNodeWalker(graph, (cache, f) => {
+    const startPositions = traversalStartPositions(cache, start)
     const view = csr.getAdjacencies(cache, direction)
     const yielded = new Uint8Array(cache.nodeIds.length)
     const stack: Array<number> = []
 
     if (radius === Infinity) {
       // Reverse row order before pushing so LIFO traversal observes canonical adjacency order.
-      for (const node of start) {
-        stack.push(csr.getNodeIndex(cache, node)!)
+      for (let i = startPositions.length - 1; i >= 0; i--) {
+        stack.push(startPositions[i])
       }
 
       const pushNeighbors = (targets: Uint32Array, offsets: Uint32Array, current: number) => {
@@ -5900,17 +5936,18 @@ export const dfs: {
     const neighbors: Array<number> = []
     let neighborGeneration = 0
     bestDepths.fill(-1)
-    for (let i = start.length - 1; i >= 0; i--) {
-      const node = csr.getNodeIndex(cache, start[i])!
+    const distinctStarts: Array<number> = []
+    for (const node of startPositions) {
       if (starts[node] === 0) {
         starts[node] = 1
-        stack.push(node)
-        stackDepths.push(0)
         bestDepths[node] = 0
+        distinctStarts.push(node)
       }
     }
-    stack.reverse()
-    stackDepths.reverse()
+    for (let i = distinctStarts.length - 1; i >= 0; i--) {
+      stack.push(distinctStarts[i])
+      stackDepths.push(0)
+    }
 
     const collectNeighbors = (targets: Uint32Array, offsets: Uint32Array, current: number) => {
       for (let i = offsets[current]; i < offsets[current + 1]; i++) {
@@ -5976,8 +6013,9 @@ export const dfs: {
  *
  * If no start nodes are supplied, the iterator is empty. The `direction` option
  * chooses whether to follow outgoing or incoming edges. The `radius` option
- * limits traversal by edge distance from the start nodes. Throws a `GraphError`
- * if any configured start node does not exist.
+ * limits traversal by edge distance from the start nodes. It accepts
+ * non-negative integers and `Infinity`; omitting it means unbounded traversal.
+ * Throws a `GraphError` for an invalid radius or missing start node.
  *
  * **Gotchas**
  *
@@ -6019,18 +6057,12 @@ export const bfs: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: SearchConfig = {}
 ): NodeWalker<N> => {
-  const start = config.start ?? []
+  const radius = traversalRadius(config.radius, Infinity)
+  const start = traversalStarts(graph, config.start)
   const direction = config.direction ?? "outgoing"
-  const radius = config.radius ?? Infinity
-
-  // Validate that all start nodes exist
-  for (const nodeIndex of start) {
-    if (!hasNode(graph, nodeIndex)) {
-      throw missingNode(nodeIndex)
-    }
-  }
 
   return makeCsrNodeWalker(graph, (cache, f) => {
+    const startPositions = traversalStartPositions(cache, start)
     const view = csr.getAdjacencies(cache, direction)
     const discovered = new Uint8Array(cache.nodeIds.length)
     // Each compact node enters the queue once, so a fixed-size typed array is sufficient.
@@ -6038,8 +6070,7 @@ export const bfs: {
     let head = 0
     let tail = 0
 
-    for (const node of start) {
-      const position = csr.getNodeIndex(cache, node)!
+    for (const position of startPositions) {
       if (discovered[position] === 0) {
         discovered[position] = 1
         queue[tail++] = position
@@ -6297,7 +6328,9 @@ export const topo: {
  * Nodes are emitted after their reachable descendants have been processed. If
  * no start nodes are supplied, the iterator is empty. The `direction` option
  * chooses whether to follow outgoing or incoming edges. The `radius` option
- * limits traversal by edge distance from the start nodes.
+ * limits traversal by edge distance from the start nodes. It accepts
+ * non-negative integers and `Infinity`; omitting it means unbounded traversal.
+ * Invalid radii and missing start nodes throw a `GraphError`.
  *
  * **Gotchas**
  *
@@ -6340,18 +6373,12 @@ export const dfsPostOrder: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: SearchConfig = {}
 ): NodeWalker<N> => {
-  const start = config.start ?? []
+  const radius = traversalRadius(config.radius, Infinity)
+  const start = traversalStarts(graph, config.start)
   const direction = config.direction ?? "outgoing"
-  const radius = config.radius ?? Infinity
-
-  // Validate that all start nodes exist
-  for (const nodeIndex of start) {
-    if (!hasNode(graph, nodeIndex)) {
-      throw missingNode(nodeIndex)
-    }
-  }
 
   return makeCsrNodeWalker(graph, (cache, f) => {
+    const startPositions = traversalStartPositions(cache, start)
     const view = csr.getAdjacencies(cache, direction)
     let reached: Uint8Array | undefined
     if (radius !== Infinity) {
@@ -6362,8 +6389,7 @@ export const dfsPostOrder: {
       let head = 0
       let tail = 0
 
-      for (const node of start) {
-        const position = csr.getNodeIndex(cache, node)!
+      for (const position of startPositions) {
         if (boundedReached[position] === 0) {
           boundedReached[position] = 1
           queue[tail++] = position
@@ -6400,8 +6426,8 @@ export const dfsPostOrder: {
     const discovered = new Uint8Array(cache.nodeIds.length)
     const finished = new Uint8Array(cache.nodeIds.length)
 
-    for (let i = start.length - 1; i >= 0; i--) {
-      stack.push(csr.getNodeIndex(cache, start[i])!)
+    for (let i = startPositions.length - 1; i >= 0; i--) {
+      stack.push(startPositions[i])
       expanded.push(false)
     }
 
