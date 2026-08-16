@@ -4208,13 +4208,13 @@ export const stronglyConnectedComponents = <N, E>(
  * **When to use**
  *
  * Use to read the successful source-to-target shortest path returned by
- * path-finding algorithms, including the ordered node indices, total distance,
- * and traversed edge data.
+ * path-finding algorithms, including the ordered node and edge indices, total
+ * distance, and traversed edge data.
  *
  * **Details**
  *
- * Contains the node-index path, the total numeric distance, and the edge data
- * encountered along the path.
+ * Contains the node-index path, the traversed edge indices, the total numeric
+ * distance, and the edge data encountered along the path.
  *
  * **Gotchas**
  *
@@ -4231,6 +4231,7 @@ export const stronglyConnectedComponents = <N, E>(
  */
 export interface PathResult<E> {
   readonly path: Array<NodeIndex>
+  readonly edges: Array<EdgeIndex>
   readonly distance: number
   readonly costs: Array<E>
 }
@@ -4477,6 +4478,7 @@ export const dijkstra: {
 
   const cache = graph.mutable ? undefined : csr.get(graph)
   const cachedEdges = cache === undefined ? undefined : csr.getEdges(cache)
+  const cachedEdgeIds = cache === undefined ? undefined : csr.getEdgeIds(cache)
   let edgeWeights: Map<EdgeIndex, number> | Float64Array
   if (cache === undefined) {
     edgeWeights = new Map<EdgeIndex, number>()
@@ -4502,6 +4504,7 @@ export const dijkstra: {
   if (config.source === config.target) {
     return Option.some({
       path: [config.source],
+      edges: [],
       distance: 0,
       costs: []
     })
@@ -4556,25 +4559,28 @@ export const dijkstra: {
     }
 
     const path: Array<NodeIndex> = []
+    const edges: Array<EdgeIndex> = []
     const costs: Array<E> = []
     let current = target
     while (current !== -1) {
       path.push(cache.nodeIds[current])
       const edge = previousEdge[current]
       if (edge !== -1) {
+        edges.push(cachedEdgeIds![edge])
         costs.push(cachedEdges![edge].data)
       }
       current = previousNode[current]
     }
     path.reverse()
+    edges.reverse()
     costs.reverse()
 
-    return Option.some({ path, distance: distances[target], costs })
+    return Option.some({ path, edges, distance: distances[target], costs })
   }
 
   // Distance tracking and priority queue simulation
   const distances = new Map<NodeIndex, number>()
-  const previous = new Map<NodeIndex, { node: NodeIndex; edgeData: E } | null>()
+  const previous = new Map<NodeIndex, { node: NodeIndex; edge: EdgeIndex; edgeData: E } | null>()
   const visited = new Set<NodeIndex>()
 
   distances.set(config.source, 0)
@@ -4617,7 +4623,7 @@ export const dijkstra: {
           // Relaxation step
           if (newDistance < neighborDistance) {
             distances.set(neighbor, newDistance)
-            previous.set(neighbor, { node: currentNode, edgeData: edge.data })
+            previous.set(neighbor, { node: currentNode, edge: edgeIndex, edgeData: edge.data })
 
             // Add to priority queue if not visited
             if (!visited.has(neighbor)) {
@@ -4637,13 +4643,15 @@ export const dijkstra: {
 
   // Reconstruct path
   const path: Array<NodeIndex> = []
+  const edges: Array<EdgeIndex> = []
   const costs: Array<E> = []
   let currentNode: NodeIndex | null = config.target
 
   while (currentNode !== null) {
     path.push(currentNode)
-    const prev: { node: NodeIndex; edgeData: E } | null = previous.get(currentNode) ?? null
+    const prev: { node: NodeIndex; edge: EdgeIndex; edgeData: E } | null = previous.get(currentNode) ?? null
     if (prev !== null) {
+      edges.push(prev.edge)
       costs.push(prev.edgeData)
       currentNode = prev.node
     } else {
@@ -4652,10 +4660,12 @@ export const dijkstra: {
   }
 
   path.reverse()
+  edges.reverse()
   costs.reverse()
 
   return Option.some({
     path,
+    edges,
     distance,
     costs
   })
@@ -4667,13 +4677,13 @@ export const dijkstra: {
  * **When to use**
  *
  * Use when storing or passing around the complete output of `floydWarshall` so
- * callers can look up shortest distances, node paths, and edge data for any
- * source and target node pair.
+ * callers can look up shortest distances, node and edge paths, and edge data
+ * for any source and target node pair.
  *
  * **Details**
  *
- * Contains distance, node-path, and edge-data maps keyed by source and target
- * node indices.
+ * Contains distance, node-path, edge-index-path, and edge-data maps keyed by
+ * source and target node indices.
  *
  * @see {@link floydWarshall} for computing an all-pairs shortest path result
  * @see {@link PathResult} for the single source-to-target result shape used by path-finding algorithms
@@ -4684,6 +4694,7 @@ export const dijkstra: {
 export interface AllPairsResult<E> {
   readonly distances: Map<NodeIndex, Map<NodeIndex, number>>
   readonly paths: Map<NodeIndex, Map<NodeIndex, Array<NodeIndex> | null>>
+  readonly edges: Map<NodeIndex, Map<NodeIndex, Array<EdgeIndex>>>
   readonly costs: Map<NodeIndex, Map<NodeIndex, Array<E>>>
 }
 
@@ -4737,6 +4748,7 @@ export const floydWarshall: {
   if (!graph.mutable) {
     const cache = csr.get(graph)
     const edges = csr.getEdges(cache)
+    const edgeIds = csr.getEdgeIds(cache)
     const edgeCache = csr.getEdgeEndpoints(cache)
     const size = cache.nodeIds.length
     // Flat matrices keep the O(N^2) working set contiguous and avoid nested map lookups in the O(N^3) loop.
@@ -4801,14 +4813,17 @@ export const floydWarshall: {
 
     const distances = new Map<NodeIndex, Map<NodeIndex, number>>()
     const paths = new Map<NodeIndex, Map<NodeIndex, Array<NodeIndex> | null>>()
+    const edgePaths = new Map<NodeIndex, Map<NodeIndex, Array<EdgeIndex>>>()
     const costs = new Map<NodeIndex, Map<NodeIndex, Array<E>>>()
     for (let i = 0; i < size; i++) {
       const source = cache.nodeIds[i]
       const distanceRow = new Map<NodeIndex, number>()
       const pathRow = new Map<NodeIndex, Array<NodeIndex> | null>()
+      const edgePathRow = new Map<NodeIndex, Array<EdgeIndex>>()
       const costRow = new Map<NodeIndex, Array<E>>()
       distances.set(source, distanceRow)
       paths.set(source, pathRow)
+      edgePaths.set(source, edgePathRow)
       costs.set(source, costRow)
 
       for (let j = 0; j < size; j++) {
@@ -4817,12 +4832,15 @@ export const floydWarshall: {
         distanceRow.set(target, distance)
         if (i === j) {
           pathRow.set(target, [source])
+          edgePathRow.set(target, [])
           costRow.set(target, [])
         } else if (distance === Infinity) {
           pathRow.set(target, null)
+          edgePathRow.set(target, [])
           costRow.set(target, [])
         } else {
           const path = [source]
+          const pathEdges: Array<EdgeIndex> = []
           const pathCosts: Array<E> = []
           let current = i
           while (current !== j) {
@@ -4832,18 +4850,20 @@ export const floydWarshall: {
             }
             const edge = edgeMatrix[current * size + next]
             if (edge !== -1) {
+              pathEdges.push(edgeIds[edge])
               pathCosts.push(edges[edge].data)
             }
             current = next
             path.push(cache.nodeIds[current])
           }
           pathRow.set(target, path)
+          edgePathRow.set(target, pathEdges)
           costRow.set(target, pathCosts)
         }
       }
     }
 
-    return { distances, paths, costs }
+    return { distances, paths, edges: edgePaths, costs }
   }
 
   // Get all nodes for Floyd-Warshall algorithm (needs array for nested iteration)
@@ -4852,7 +4872,7 @@ export const floydWarshall: {
   // Initialize distance matrix
   const distances = new Map<NodeIndex, Map<NodeIndex, number>>()
   const next = new Map<NodeIndex, Map<NodeIndex, NodeIndex>>()
-  const edgeMatrix = new Map<NodeIndex, Map<NodeIndex, E>>()
+  const edgeMatrix = new Map<NodeIndex, Map<NodeIndex, { readonly index: EdgeIndex; readonly data: E }>>()
 
   // Initialize with infinity for all pairs
   for (const i of allNodes) {
@@ -4866,7 +4886,7 @@ export const floydWarshall: {
   }
 
   // Set edge weights
-  for (const [, edgeData] of impl.edges) {
+  for (const [edgeIndex, edgeData] of impl.edges) {
     const weight = cost(edgeData.data)
     if (Number.isNaN(weight) || weight === -Infinity) {
       throw new GraphError({ message: "Floyd-Warshall algorithm does not support NaN or -Infinity edge weights" })
@@ -4879,7 +4899,7 @@ export const floydWarshall: {
     if (weight < currentWeight) {
       distances.get(i)!.set(j, weight)
       next.get(i)!.set(j, j)
-      edgeMatrix.get(i)!.set(j, edgeData.data)
+      edgeMatrix.get(i)!.set(j, { index: edgeIndex, data: edgeData.data })
     }
 
     if (graph.type === "undirected") {
@@ -4887,7 +4907,7 @@ export const floydWarshall: {
       if (weight < reverseWeight) {
         distances.get(j)!.set(i, weight)
         next.get(j)!.set(i, i)
-        edgeMatrix.get(j)!.set(i, edgeData.data)
+        edgeMatrix.get(j)!.set(i, { index: edgeIndex, data: edgeData.data })
       }
     }
   }
@@ -4920,22 +4940,27 @@ export const floydWarshall: {
 
   // Build result paths and edge weights
   const paths = new Map<NodeIndex, Map<NodeIndex, Array<NodeIndex> | null>>()
+  const edgePaths = new Map<NodeIndex, Map<NodeIndex, Array<EdgeIndex>>>()
   const costs = new Map<NodeIndex, Map<NodeIndex, Array<E>>>()
 
   for (const i of allNodes) {
     paths.set(i, new Map())
+    edgePaths.set(i, new Map())
     costs.set(i, new Map())
 
     for (const j of allNodes) {
       if (i === j) {
         paths.get(i)!.set(j, [i])
+        edgePaths.get(i)!.set(j, [])
         costs.get(i)!.set(j, [])
       } else if (distances.get(i)!.get(j)! === Infinity) {
         paths.get(i)!.set(j, null)
+        edgePaths.get(i)!.set(j, [])
         costs.get(i)!.set(j, [])
       } else {
         // Reconstruct path iteratively
         const path: Array<NodeIndex> = []
+        const pathEdges: Array<EdgeIndex> = []
         const weights: Array<E> = []
         let current = i
 
@@ -4946,7 +4971,9 @@ export const floydWarshall: {
 
           const edgeRow = edgeMatrix.get(current)!
           if (edgeRow.has(nextNode)) {
-            weights.push(edgeRow.get(nextNode) as E)
+            const edge = edgeRow.get(nextNode)!
+            pathEdges.push(edge.index)
+            weights.push(edge.data)
           }
 
           current = nextNode
@@ -4954,6 +4981,7 @@ export const floydWarshall: {
         }
 
         paths.get(i)!.set(j, path)
+        edgePaths.get(i)!.set(j, pathEdges)
         costs.get(i)!.set(j, weights)
       }
     }
@@ -4962,6 +4990,7 @@ export const floydWarshall: {
   return {
     distances,
     paths,
+    edges: edgePaths,
     costs
   }
 })
@@ -5062,6 +5091,7 @@ export const astar: {
 
   const cache = graph.mutable ? undefined : csr.get(graph)
   const cachedEdges = cache === undefined ? undefined : csr.getEdges(cache)
+  const cachedEdgeIds = cache === undefined ? undefined : csr.getEdgeIds(cache)
   let edgeWeights: Map<EdgeIndex, number> | Float64Array
   if (cache === undefined) {
     edgeWeights = new Map<EdgeIndex, number>()
@@ -5087,6 +5117,7 @@ export const astar: {
   if (config.source === config.target) {
     return Option.some({
       path: [config.source],
+      edges: [],
       distance: 0,
       costs: []
     })
@@ -5152,24 +5183,27 @@ export const astar: {
     }
 
     const path: Array<NodeIndex> = []
+    const edges: Array<EdgeIndex> = []
     const costs: Array<E> = []
     let current = target
     while (current !== -1) {
       path.push(cache.nodeIds[current])
       const edge = previousEdge[current]
       if (edge !== -1) {
+        edges.push(cachedEdgeIds![edge])
         costs.push(cachedEdges![edge].data)
       }
       current = previousNode[current]
     }
     path.reverse()
+    edges.reverse()
     costs.reverse()
-    return Option.some({ path, distance: scores[target], costs })
+    return Option.some({ path, edges, distance: scores[target], costs })
   }
 
   // Distance tracking (g-score) and f-score (g + h)
   const gScore = new Map<NodeIndex, number>()
-  const previous = new Map<NodeIndex, { node: NodeIndex; edgeData: E } | null>()
+  const previous = new Map<NodeIndex, { node: NodeIndex; edge: EdgeIndex; edgeData: E } | null>()
   const visited = new Set<NodeIndex>()
 
   gScore.set(config.source, 0)
@@ -5218,7 +5252,7 @@ export const astar: {
           if (tentativeGScore < neighborGScore) {
             // Update g-score and previous
             gScore.set(neighbor, tentativeGScore)
-            previous.set(neighbor, { node: currentNode, edgeData: edge.data })
+            previous.set(neighbor, { node: currentNode, edge: edgeIndex, edgeData: edge.data })
 
             // Calculate f-score using heuristic
             const neighborNodeData = impl.nodes.get(neighbor)
@@ -5245,13 +5279,15 @@ export const astar: {
 
   // Reconstruct path
   const path: Array<NodeIndex> = []
+  const edges: Array<EdgeIndex> = []
   const costs: Array<E> = []
   let currentNode: NodeIndex | null = config.target
 
   while (currentNode !== null) {
     path.push(currentNode)
-    const prev: { node: NodeIndex; edgeData: E } | null = previous.get(currentNode) ?? null
+    const prev: { node: NodeIndex; edge: EdgeIndex; edgeData: E } | null = previous.get(currentNode) ?? null
     if (prev !== null) {
+      edges.push(prev.edge)
       costs.push(prev.edgeData)
       currentNode = prev.node
     } else {
@@ -5260,10 +5296,12 @@ export const astar: {
   }
 
   path.reverse()
+  edges.reverse()
   costs.reverse()
 
   return Option.some({
     path,
+    edges,
     distance,
     costs
   })
@@ -5356,6 +5394,7 @@ export const bellmanFord: {
   if (!graph.mutable) {
     const cache = csr.get(graph)
     const edges = csr.getEdges(cache)
+    const edgeIds = csr.getEdgeIds(cache)
     const edgeCache = csr.getEdgeEndpoints(cache)
     const source = csr.getNodeIndex(cache, config.source)!
     const target = csr.getNodeIndex(cache, config.target)!
@@ -5448,24 +5487,27 @@ export const bellmanFord: {
     }
 
     const path: Array<NodeIndex> = []
+    const pathEdges: Array<EdgeIndex> = []
     const costs: Array<E> = []
     let current = target
     while (current !== -1) {
       path.push(cache.nodeIds[current])
       const edge = previousEdge[current]
       if (edge !== -1) {
+        pathEdges.push(edgeIds[edge])
         costs.push(edges[edge].data)
       }
       current = previousNode[current]
     }
     path.reverse()
+    pathEdges.reverse()
     costs.reverse()
-    return Option.some({ path, distance: distances[target], costs })
+    return Option.some({ path, edges: pathEdges, distance: distances[target], costs })
   }
 
   // Initialize distances and predecessors
   const distances = new Map<NodeIndex, number>()
-  const previous = new Map<NodeIndex, { node: NodeIndex; edgeData: E } | null>()
+  const previous = new Map<NodeIndex, { node: NodeIndex; edge: EdgeIndex; edgeData: E } | null>()
 
   // Iterate directly over node keys
   for (const node of impl.nodes.keys()) {
@@ -5474,8 +5516,14 @@ export const bellmanFord: {
   }
 
   // Collect all edges for relaxation
-  const edges: Array<{ source: NodeIndex; target: NodeIndex; weight: number; edgeData: E }> = []
-  for (const [, edgeData] of impl.edges) {
+  const edges: Array<{
+    source: NodeIndex
+    target: NodeIndex
+    index: EdgeIndex
+    weight: number
+    edgeData: E
+  }> = []
+  for (const [edgeIndex, edgeData] of impl.edges) {
     const weight = config.cost(edgeData.data)
     if (Number.isNaN(weight) || weight === -Infinity) {
       throw new GraphError({ message: "Bellman-Ford algorithm does not support NaN or -Infinity edge weights" })
@@ -5483,6 +5531,7 @@ export const bellmanFord: {
     edges.push({
       source: edgeData.source,
       target: edgeData.target,
+      index: edgeIndex,
       weight,
       edgeData: edgeData.data
     })
@@ -5490,6 +5539,7 @@ export const bellmanFord: {
       edges.push({
         source: edgeData.target,
         target: edgeData.source,
+        index: edgeIndex,
         weight,
         edgeData: edgeData.data
       })
@@ -5508,7 +5558,7 @@ export const bellmanFord: {
       // Relaxation step
       if (sourceDistance !== Infinity && sourceDistance + edge.weight < targetDistance) {
         distances.set(edge.target, sourceDistance + edge.weight)
-        previous.set(edge.target, { node: edge.source, edgeData: edge.edgeData })
+        previous.set(edge.target, { node: edge.source, edge: edge.index, edgeData: edge.edgeData })
         hasUpdate = true
       }
     }
@@ -5555,13 +5605,15 @@ export const bellmanFord: {
 
   // Reconstruct path
   const path: Array<NodeIndex> = []
+  const pathEdges: Array<EdgeIndex> = []
   const costs: Array<E> = []
   let currentNode: NodeIndex | null = config.target
 
   while (currentNode !== null) {
     path.unshift(currentNode)
-    const prev: { node: NodeIndex; edgeData: E } | null = previous.get(currentNode)!
+    const prev: { node: NodeIndex; edge: EdgeIndex; edgeData: E } | null = previous.get(currentNode)!
     if (prev !== null) {
+      pathEdges.unshift(prev.edge)
       costs.unshift(prev.edgeData)
       currentNode = prev.node
     } else {
@@ -5571,6 +5623,7 @@ export const bellmanFord: {
 
   return Option.some({
     path,
+    edges: pathEdges,
     distance,
     costs
   })

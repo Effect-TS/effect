@@ -45,6 +45,7 @@ export interface Csr {
   outgoingEdgeCsr: AdjacencyWithEdges | undefined
   // Edge data and endpoints share this insertion-order compact edge domain.
   edgesByIndex: Array<Graph.Edge<any>> | undefined
+  edgeIdsByIndex: Array<Graph.EdgeIndex> | undefined
   compactEdgeEndpoints: EdgeEndpoints | undefined
   // Null marks the dense id fast path; undefined means the edge domain has not been inspected yet.
   indexByEdgeId: Map<Graph.EdgeIndex, number> | null | undefined
@@ -59,8 +60,31 @@ export const getNodeIndex = (csr: Csr, nodeId: Graph.NodeIndex): number | undefi
     : csr.indexByNodeId.get(nodeId)
 
 /** @internal */
+const materializeEdges = (csr: Csr): void => {
+  if (csr.edgesByIndex !== undefined) {
+    return
+  }
+  const entries = Array.from(toImpl(csr.graph).edges)
+  const edgeIds = new Array<Graph.EdgeIndex>(entries.length)
+  const edges = new Array<Graph.Edge<any>>(entries.length)
+  for (let i = 0; i < entries.length; i++) {
+    edgeIds[i] = entries[i][0]
+    edges[i] = entries[i][1]
+  }
+  csr.edgeIdsByIndex = edgeIds
+  csr.edgesByIndex = edges
+}
+
+/** @internal */
 export const getEdges = (csr: Csr): Array<Graph.Edge<any>> => {
-  return csr.edgesByIndex ?? (csr.edgesByIndex = Array.from(toImpl(csr.graph).edges.values()))
+  materializeEdges(csr)
+  return csr.edgesByIndex!
+}
+
+/** @internal */
+export const getEdgeIds = (csr: Csr): Array<Graph.EdgeIndex> => {
+  materializeEdges(csr)
+  return csr.edgeIdsByIndex!
 }
 
 const makeAdjacency = (csr: Csr, incoming: boolean): Adjacency => {
@@ -234,6 +258,7 @@ export const get = <N, E, T extends Graph.Kind>(
     incomingCsr: undefined,
     outgoingEdgeCsr: undefined,
     edgesByIndex: undefined,
+    edgeIdsByIndex: undefined,
     compactEdgeEndpoints: undefined,
     indexByEdgeId: undefined
   }

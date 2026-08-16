@@ -252,6 +252,14 @@ describe("Graph", () => {
     expect(Graph.dfsPostOrder(directed, { direction: "undirected", radius: 1 })).type.toBe<Graph.NodeWalker<string>>()
   })
 
+  it("path edge indexes", () => {
+    const path = hole<Graph.PathResult<number>>()
+    const allPairs = hole<Graph.AllPairsResult<number>>()
+
+    expect(path.edges).type.toBe<Array<Graph.EdgeIndex>>()
+    expect(allPairs.edges).type.toBe<Map<Graph.NodeIndex, Map<Graph.NodeIndex, Array<Graph.EdgeIndex>>>>()
+  })
+
   it("topo", () => {
     expect(Graph.topo(directed)).type.toBe<Graph.NodeWalker<string>>()
     expect(Graph.topo(directed, { initials: [0] })).type.toBe<Graph.NodeWalker<string>>()

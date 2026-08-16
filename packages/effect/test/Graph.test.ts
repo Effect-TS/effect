@@ -2527,6 +2527,7 @@ describe("Graph", () => {
         assert.deepStrictEqual(Array.from(Graph.indices(Graph.topo(mutable))), [0, 1, 2])
         assertSome(Graph.dijkstra(graph, config), {
           path: [0, 1, 2],
+          edges: [1, 2],
           distance: 3,
           costs: [1, 2]
         })
@@ -3462,7 +3463,7 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [nodeA!, nodeB!, nodeC!], distance: 7, costs: [5, 2] })
+      assertSome(result, { path: [nodeA!, nodeB!, nodeC!], edges: [0, 2], distance: 7, costs: [5, 2] })
     })
 
     it("should preserve insertion order for equal priorities", () => {
@@ -3483,7 +3484,7 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [0, 1, 3], distance: 2, costs: [1, 1] })
+      assertSome(result, { path: [0, 1, 3], edges: [0, 2], distance: 2, costs: [1, 1] })
     })
 
     it("should preserve insertion order when target edges have the opposite order", () => {
@@ -3503,7 +3504,7 @@ describe("Graph", () => {
       const immutableResult = Graph.dijkstra(graph, config)
       const mutableResult = Graph.dijkstra(mutable, config)
 
-      assertSome(immutableResult, { path: [0, 1, 3], distance: 2, costs: [1, 1] })
+      assertSome(immutableResult, { path: [0, 1, 3], edges: [0, 3], distance: 2, costs: [1, 1] })
       assert.deepStrictEqual(immutableResult, mutableResult)
     })
 
@@ -3527,7 +3528,12 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [0, 2, 1, 3, 4], distance: 42, costs: [1, 1, 20, 20] })
+      assertSome(result, {
+        path: [0, 2, 1, 3, 4],
+        edges: [1, 2, 3, 4],
+        distance: 42,
+        costs: [1, 1, 20, 20]
+      })
     })
 
     it("should return None for unreachable nodes", () => {
@@ -3565,7 +3571,7 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [nodeA!], distance: 0, costs: [] })
+      assertSome(result, { path: [nodeA!], edges: [], distance: 0, costs: [] })
     })
 
     it("should throw for negative weights", () => {
@@ -3672,7 +3678,7 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [0, 1, 2], distance: 2, costs: [1, 1] })
+      assertSome(result, { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [1, 1] })
     })
 
     it("should support sparse snapshot indexes", () => {
@@ -3691,7 +3697,7 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [2, 5, 1_000_000], distance: 5, costs: [2, 3] })
+      assertSome(result, { path: [2, 5, 1_000_000], edges: [3, 1_000_000], distance: 5, costs: [2, 3] })
     })
   })
 
@@ -3719,7 +3725,7 @@ describe("Graph", () => {
         heuristic
       })
 
-      assertSome(result, { path: [nodeA!, nodeB!, nodeC!], distance: 2, costs: [1, 1] })
+      assertSome(result, { path: [nodeA!, nodeB!, nodeC!], edges: [0, 1], distance: 2, costs: [1, 1] })
     })
 
     it("should preserve insertion order for equal priorities", () => {
@@ -3741,7 +3747,7 @@ describe("Graph", () => {
         heuristic: () => 0
       })
 
-      assertSome(result, { path: [0, 1, 3], distance: 2, costs: [1, 1] })
+      assertSome(result, { path: [0, 1, 3], edges: [0, 2], distance: 2, costs: [1, 1] })
     })
 
     it("should skip stale open set entries", () => {
@@ -3765,7 +3771,12 @@ describe("Graph", () => {
         heuristic: () => 0
       })
 
-      assertSome(result, { path: [0, 2, 1, 3, 4], distance: 42, costs: [1, 1, 20, 20] })
+      assertSome(result, {
+        path: [0, 2, 1, 3, 4],
+        edges: [1, 2, 3, 4],
+        distance: 42,
+        costs: [1, 1, 20, 20]
+      })
     })
 
     it("should return None for unreachable nodes", () => {
@@ -3804,7 +3815,7 @@ describe("Graph", () => {
         heuristic
       })
 
-      assertSome(result, { path: [0], distance: 0, costs: [] })
+      assertSome(result, { path: [0], edges: [], distance: 0, costs: [] })
     })
 
     it("should throw for negative weights", () => {
@@ -3927,7 +3938,7 @@ describe("Graph", () => {
         heuristic: () => 0
       })
 
-      assertSome(result, { path: [0, 1, 2], distance: 2, costs: [1, 1] })
+      assertSome(result, { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [1, 1] })
     })
   })
 
@@ -3948,7 +3959,7 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [0, 1, 2], distance: 2, costs: [-1, 3] })
+      assertSome(result, { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [-1, 3] })
     })
 
     it("should return None for unreachable nodes", () => {
@@ -3980,7 +3991,7 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [0], distance: 0, costs: [] })
+      assertSome(result, { path: [0], edges: [], distance: 0, costs: [] })
     })
 
     it("should throw for NaN and negative infinity weights", () => {
@@ -4069,7 +4080,7 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [0, 1, 2], distance: 2, costs: [1, 1] })
+      assertSome(result, { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [1, 1] })
     })
 
     it("should treat a reachable negative undirected edge as a negative cycle", () => {
@@ -4105,6 +4116,7 @@ describe("Graph", () => {
       // Check distance A to C (should be 5 via B, not 7 direct)
       expect(result.distances.get(0)?.get(2)).toBe(5)
       expect(result.paths.get(0)?.get(2)).toEqual([0, 1, 2])
+      expect(result.edges.get(0)?.get(2)).toEqual([0, 1])
       expect(result.costs.get(0)?.get(2)).toEqual([3, 2])
 
       // Check distance A to B
@@ -4129,6 +4141,7 @@ describe("Graph", () => {
 
       expect(result.distances.get(0)?.get(2)).toBe(Infinity)
       expect(result.paths.get(0)?.get(2)).toBeNull()
+      expect(result.edges.get(0)?.get(2)).toEqual([])
     })
 
     it("should handle same source and target", () => {
@@ -4140,6 +4153,7 @@ describe("Graph", () => {
 
       expect(result.distances.get(0)?.get(0)).toBe(0)
       expect(result.paths.get(0)?.get(0)).toEqual([0])
+      expect(result.edges.get(0)?.get(0)).toEqual([])
       expect(result.costs.get(0)?.get(0)).toEqual([])
     })
 
@@ -4161,6 +4175,7 @@ describe("Graph", () => {
 
       expect(result.distances.get(0)?.get(1)).toBe(Infinity)
       expect(result.paths.get(0)?.get(1)).toBeNull()
+      expect(result.edges.get(0)?.get(1)).toEqual([])
       expect(result.costs.get(0)?.get(1)).toEqual([])
     })
 
@@ -4175,6 +4190,7 @@ describe("Graph", () => {
 
       assert.strictEqual(result.distances.get(0)?.get(1), 1)
       assert.deepStrictEqual(result.paths.get(0)?.get(1), [0, 1])
+      assert.deepStrictEqual(result.edges.get(0)?.get(1), [0])
       assert.deepStrictEqual(result.costs.get(0)?.get(1), [null])
     })
 
@@ -4194,6 +4210,7 @@ describe("Graph", () => {
 
       assert.strictEqual(result.distances.get(0)?.get(2), 2)
       assert.deepStrictEqual(result.paths.get(0)?.get(2), [0, 1, 2])
+      assert.deepStrictEqual(result.edges.get(0)?.get(2), [0, 1])
       assert.deepStrictEqual(result.costs.get(0)?.get(2), [null, null])
     })
 
@@ -4217,6 +4234,7 @@ describe("Graph", () => {
 
       expect(result.distances.get(0)?.get(2)).toBe(2)
       expect(result.paths.get(0)?.get(2)).toEqual([0, 1, 2])
+      expect(result.edges.get(0)?.get(2)).toEqual([0, 1])
       expect(result.costs.get(0)?.get(2)).toEqual([1, 1])
     })
 
@@ -4228,6 +4246,34 @@ describe("Graph", () => {
       })
 
       expect(() => Graph.floydWarshall(graph, (edge) => edge)).toThrow("Negative cycle detected")
+    })
+  })
+
+  describe("path edge indexes", () => {
+    it("should preserve sparse parallel edge identity across algorithms and mutability", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 2, data: "source" }, { index: 5, data: "target" }],
+        edges: [
+          { index: 3, source: 2, target: 5, data: 1 },
+          { index: 1_000_000, source: 2, target: 5, data: 1 }
+        ]
+      })
+      const mutable = Graph.beginMutation(graph)
+      const expected = { path: [2, 5], edges: [3], distance: 1, costs: [1] }
+
+      for (const candidate of [graph, mutable]) {
+        assertSome(Graph.dijkstra(candidate, { source: 2, target: 5, cost: (edge) => edge }), expected)
+        assertSome(
+          Graph.astar(candidate, { source: 2, target: 5, cost: (edge) => edge, heuristic: () => 0 }),
+          expected
+        )
+        assertSome(Graph.bellmanFord(candidate, { source: 2, target: 5, cost: (edge) => edge }), expected)
+
+        const allPairs = Graph.floydWarshall(candidate, (edge) => edge)
+        assert.deepStrictEqual(allPairs.paths.get(2)?.get(5), [2, 5])
+        assert.deepStrictEqual(allPairs.edges.get(2)?.get(5), [3])
+      }
     })
   })
 
