@@ -875,6 +875,35 @@ describe("Effect.partition", () => {
   })
 })
 
+describe("Effect.forEach", () => {
+  it("data-first", () => {
+    const result = Effect.forEach(
+      [1, 2, 3],
+      (n, i) => string.pipe(Effect.as(`${n}${i}`))
+    )
+    expect(result).type.toBe<Effect.Effect<Array<string>, "err-1", "dep-1">>()
+  })
+
+  it("data-last with an explicitly typed callback", () => {
+    const result = Effect.forEach((n: number, i) => string.pipe(Effect.as(`${n}${i}`)))([1, 2, 3])
+    expect(result).type.toBe<Effect.Effect<Array<string>, "err-1", "dep-1">>()
+  })
+
+  it("data-last with discard", () => {
+    const result = pipe(
+      new Set([1, 2, 3]),
+      Effect.forEach((n: number) => Effect.succeed(`${n}`), { discard: true })
+    )
+    expect(result).type.toBe<Effect.Effect<void>>()
+  })
+
+  it("data-last rejects an incompatible iterable", () => {
+    const forEachNumber = Effect.forEach((n: number) => Effect.succeed(`${n}`))
+    // @ts-expect-error Type 'string' is not assignable to type 'number'
+    forEachNumber(["a", "b"])
+  })
+})
+
 describe("Effect.reduce", () => {
   it("data-first", () => {
     const result = Effect.reduce(

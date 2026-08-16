@@ -20,6 +20,7 @@
     "**/coverage",
     "packages/**/CHANGELOG.md",
     "!scratchpad/**/*",
+    ".changeset",
     ".agents",
     ".context",
     ".specs"
