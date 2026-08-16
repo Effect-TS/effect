@@ -332,6 +332,24 @@ describe("Graph", () => {
     Graph.transitiveReduction(undirected)
   })
 
+  it("lazy path enumeration", () => {
+    expect(Graph.simplePaths(directed, { source: 0, target: 1 })).type.toBe<Graph.PathWalker<number>>()
+    expect(pipe(undirected, Graph.simplePaths({ source: 0, target: 1, limit: 10 }))).type.toBe<
+      Graph.PathWalker<number>
+    >()
+    expect(Graph.allShortestPaths(directed, { source: 0, target: 1, cost: (edge) => edge })).type.toBe<
+      Graph.PathWalker<number>
+    >()
+    expect(pipe(
+      mutableDirected,
+      Graph.allShortestPaths({
+        source: 0,
+        target: 1,
+        cost: (edge) => edge
+      })
+    )).type.toBe<Graph.PathWalker<number>>()
+  })
+
   it("topo", () => {
     expect(Graph.topo(directed)).type.toBe<Graph.NodeWalker<string>>()
     expect(Graph.topo(directed, { initials: [0] })).type.toBe<Graph.NodeWalker<string>>()
