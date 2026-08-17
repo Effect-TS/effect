@@ -284,7 +284,6 @@ describe("OpenAiSchema", () => {
     }))
 
   it("decodes the error event whether the payload is flat or nested under `error`", () => {
-    // The documented shape carries `code`/`message`/`param` at the top level.
     const flat = Schema.decodeUnknownSync(OpenAiSchema.ResponseStreamEvent)({
       type: "error",
       code: "ERR",
@@ -300,9 +299,6 @@ describe("OpenAiSchema", () => {
       sequence_number: 1
     })
 
-    // Mid-stream errors (e.g. quota exhaustion) instead nest the standard error
-    // envelope under `error`. This must decode too — not abort the stream — and
-    // normalize to the documented shape so the message and code still surface.
     const nested = Schema.decodeUnknownSync(OpenAiSchema.ResponseStreamEvent)({
       type: "error",
       error: {
@@ -320,7 +316,76 @@ describe("OpenAiSchema", () => {
       param: null,
       sequence_number: 2
     })
+
+    const nestedWithStatus = Schema.decodeUnknownSync(OpenAiSchema.ResponseStreamEvent)({
+      type: "error",
+      error: {
+        code: "rate_limited",
+        message: "Too many requests.",
+        param: null
+      },
+      sequence_number: 3,
+      status: 429
+    })
+    assert.deepStrictEqual(nestedWithStatus, {
+      type: "error",
+      code: "rate_limited",
+      message: "Too many requests.",
+      param: null,
+      sequence_number: 3,
+      status: 429
+    })
   })
+
+  it.effect("rejects error events missing spec-required fields", () =>
+    Effect.gen(function*() {
+      const malformed = [
+        { type: "error" },
+        { type: "error", error: {}, sequence_number: 3 },
+        { type: "error", error: { code: "x" }, sequence_number: 3 }
+      ]
+      for (const event of malformed) {
+        const failure = yield* Schema.decodeUnknownEffect(OpenAiSchema.ResponseStreamEvent)(event).pipe(Effect.flip)
+        assert.isDefined(failure)
+      }
+    }))
+
+  it.effect("surfaces nested error events in SSE decoding instead of aborting the stream", () =>
+    Effect.gen(function*() {
+      const sseBody = [
+        {
+          type: "response.created",
+          sequence_number: 1,
+          response: makeResponse({ status: "in_progress" })
+        },
+        {
+          type: "error",
+          error: {
+            type: "insufficient_quota",
+            code: "credit_balance_exhausted",
+            message: "You have no credits remaining.",
+            param: null
+          },
+          sequence_number: 2
+        }
+      ].map((event) => `data: ${JSON.stringify(event)}\n\n`).join("")
+
+      const events = yield* Stream.fromIterable([sseBody]).pipe(
+        Stream.pipeThroughChannel(Sse.decodeDataSchema(OpenAiSchema.ResponseStreamEvent)),
+        Stream.map((event) => event.data),
+        Stream.runCollect
+      )
+
+      const decoded = globalThis.Array.from(events)
+      assert.strictEqual(decoded.length, 2)
+      assert.deepStrictEqual(decoded[1], {
+        type: "error",
+        code: "credit_balance_exhausted",
+        message: "You have no credits remaining.",
+        param: null,
+        sequence_number: 2
+      })
+    }))
 
   it("decodes embedding response variants (numeric + string/base64)", () => {
     const numeric = Schema.decodeUnknownSync(OpenAiSchema.CreateEmbeddingResponse)({

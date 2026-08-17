@@ -1033,7 +1033,7 @@ const ResponseImageGenerationCallPartialImageEvent = Schema.Struct({
   partial_image_b64: Schema.String
 })
 
-const ResponseErrorEventDecoded = Schema.Struct({
+const ResponseErrorEvent = Schema.Struct({
   type: Schema.Literal("error"),
   code: Schema.NullOr(Schema.String),
   message: Schema.String,
@@ -1042,39 +1042,22 @@ const ResponseErrorEventDecoded = Schema.Struct({
   status: Schema.optionalKey(Schema.Int)
 })
 
-// The Responses API documents the `error` stream event with `code`, `message`,
-// and `param` at the top level, but mid-stream errors (for example quota
-// exhaustion) instead emit the standard error envelope nested under `error`
-// (`{ type: "error", error: { code, message, param, ... }, sequence_number }`).
-// Accept both wire shapes and normalize them to the documented shape, so an
-// error event — the one event that most needs to surface — never fails to
-// decode and abort the whole stream with an opaque schema error.
-const ResponseErrorEvent = Schema.Struct({
+// OpenAI can nest stream error details under `error`.
+const NestedResponseErrorEvent = Schema.Struct({
   type: Schema.Literal("error"),
-  code: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  message: Schema.optionalKey(Schema.String),
-  param: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  sequence_number: Schema.optionalKey(Schema.Int),
-  status: Schema.optionalKey(Schema.Int),
-  error: Schema.optionalKey(Schema.Struct({
-    type: Schema.optionalKey(Schema.NullOr(Schema.String)),
-    code: Schema.optionalKey(Schema.NullOr(Schema.String)),
-    message: Schema.optionalKey(Schema.String),
-    param: Schema.optionalKey(Schema.NullOr(Schema.String))
-  }))
+  error: Schema.Struct({
+    code: Schema.NullOr(Schema.String),
+    message: Schema.String,
+    param: Schema.NullOr(Schema.String)
+  }),
+  sequence_number: Schema.Int,
+  status: Schema.optionalKey(Schema.Int)
 }).pipe(
   Schema.decodeTo(
-    ResponseErrorEventDecoded,
+    ResponseErrorEvent,
     SchemaTransformation.transform({
-      decode: (input) => ({
-        type: "error" as const,
-        code: input.code ?? input.error?.code ?? null,
-        message: input.message ?? input.error?.message ?? "An unknown error occurred",
-        param: input.param ?? input.error?.param ?? null,
-        sequence_number: input.sequence_number ?? 0,
-        ...(input.status !== undefined ? { status: input.status } : {})
-      }),
-      encode: (value) => value
+      decode: ({ error, ...rest }) => ({ ...rest, ...error }),
+      encode: ({ code, message, param, ...rest }) => ({ ...rest, error: { code, message, param } })
     })
   )
 )
@@ -1167,6 +1150,7 @@ export const ResponseStreamEvent = Schema.Union([
   ResponseApplyPatchCallOperationDiffDoneEvent,
   ResponseImageGenerationCallPartialImageEvent,
   ResponseErrorEvent,
+  NestedResponseErrorEvent,
   UnknownResponseStreamEvent
 ])
 
