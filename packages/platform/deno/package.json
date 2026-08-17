@@ -69,14 +69,14 @@
     "@std/fs": "jsr:^1.0.24",
     "@std/media-types": "jsr:^1.1.0",
     "@std/path": "jsr:^1.1.6",
-    "@std/streams": "jsr:^1.1.1"
+    "@std/streams": "jsr:^1.1.2"
   },
   "peerDependencies": {
     "effect": "workspace:^"
   },
   "devDependencies": {
     "@std/assert": "jsr:^1.0.16",
-    "@testcontainers/redis": "^12.0.4",
+    "@testcontainers/redis": "^12.1.0",
     "@types/deno": "^2.7.0",
     "effect": "workspace:^"
   }
