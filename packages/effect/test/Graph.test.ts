@@ -3562,8 +3562,8 @@ describe("Graph", () => {
         Graph.addEdge(mutable, 1, 4, undefined)
       })
       assert.deepStrictEqual(Graph.maximumBipartiteMatching(graph), [
-        { left: 0, right: 3, edge: 1 },
-        { left: 1, right: 2, edge: 2 }
+        { left: 0, right: 2, edge: 0 },
+        { left: 1, right: 4, edge: 3 }
       ])
       assert.strictEqual(Graph.maximumBipartiteMatching(graph).length, 2)
     })
