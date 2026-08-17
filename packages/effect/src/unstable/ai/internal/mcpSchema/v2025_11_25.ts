@@ -13,12 +13,14 @@ import * as Previous from "./v2025_06_18.ts"
 
 export * from "./v2025_06_18.ts"
 
+/** @internal */
 export const protocolVersion = "2025-11-25"
 
 const optional = Previous.optional
 const JsonObject = Schema.JsonObject
 const Meta = optional(JsonObject)
 
+/** @internal */
 export const Icon = Schema.Struct({
   src: Schema.String,
   mimeType: optional(Schema.String),
@@ -26,6 +28,7 @@ export const Icon = Schema.Struct({
   theme: optional(Schema.Literals(["light", "dark"]))
 })
 
+/** @internal */
 export const Implementation = Schema.Struct({
   ...Previous.Implementation.fields,
   description: optional(Schema.String),
@@ -33,6 +36,7 @@ export const Implementation = Schema.Struct({
   icons: optional(Schema.Array(Icon))
 })
 
+/** @internal */
 export const ClientCapabilities = Schema.Struct({
   ...Previous.ClientCapabilities.fields,
   sampling: optional(Schema.Struct({
@@ -45,53 +49,63 @@ export const ClientCapabilities = Schema.Struct({
   }))
 })
 
+/** @internal */
 export const Annotations = Schema.Struct({
   ...Previous.Annotations.fields,
   lastModified: optional(Schema.String)
 })
 
+/** @internal */
 export const Resource = Schema.Struct({
   ...Previous.Resource.fields,
   annotations: optional(Annotations),
   icons: optional(Schema.Array(Icon))
 })
 
+/** @internal */
 export const ResourceTemplate = Schema.Struct({
   ...Previous.ResourceTemplate.fields,
   annotations: optional(Annotations),
   icons: optional(Schema.Array(Icon))
 })
 
+/** @internal */
 export const Prompt = Schema.Struct({
   ...Previous.Prompt.fields,
   icons: optional(Schema.Array(Icon))
 })
 
+/** @internal */
 export const TextContent = Schema.Struct({
   ...Previous.TextContent.fields,
   annotations: optional(Annotations)
 })
 
+/** @internal */
 export const ImageContent = Schema.Struct({
   ...Previous.ImageContent.fields,
   annotations: optional(Annotations)
 })
 
+/** @internal */
 export const AudioContent = Schema.Struct({
   ...Previous.AudioContent.fields,
   annotations: optional(Annotations)
 })
 
+/** @internal */
 export const EmbeddedResource = Schema.Struct({
   ...Previous.EmbeddedResource.fields,
   annotations: optional(Annotations)
 })
 
+/** @internal */
 export const ResourceLink = Schema.Struct({
   ...Resource.fields,
   type: Schema.Literal("resource_link")
 })
 
+/** @internal */
 export const ContentBlock = Schema.Union([
   TextContent,
   ImageContent,
@@ -100,27 +114,32 @@ export const ContentBlock = Schema.Union([
   EmbeddedResource
 ])
 
+/** @internal */
 export const PromptMessage = Schema.Struct({
   role: Previous.Role,
   content: ContentBlock
 })
 
+/** @internal */
 export const Tool = Schema.Struct({
   ...Previous.Tool.fields,
   icons: optional(Schema.Array(Icon))
 })
 
+/** @internal */
 export const CallToolResult = Schema.Struct({
   ...Previous.CallToolResult.fields,
   content: Schema.Array(ContentBlock)
 })
 
+/** @internal */
 export class CallTool extends Rpc.make("tools/call", {
   success: CallToolResult,
   error: Previous.McpError,
   payload: Previous.CallTool.payloadSchema
 }) {}
 
+/** @internal */
 export const ToolUseContent = Schema.Struct({
   type: Schema.Literal("tool_use"),
   id: Schema.String,
@@ -129,6 +148,7 @@ export const ToolUseContent = Schema.Struct({
   _meta: Meta
 })
 
+/** @internal */
 export const ToolResultContent = Schema.Struct({
   type: Schema.Literal("tool_result"),
   toolUseId: Schema.String,
@@ -138,6 +158,7 @@ export const ToolResultContent = Schema.Struct({
   _meta: Meta
 })
 
+/** @internal */
 export const SamplingMessageContentBlock = Schema.Union([
   TextContent,
   ImageContent,
@@ -146,6 +167,7 @@ export const SamplingMessageContentBlock = Schema.Union([
   ToolResultContent
 ])
 
+/** @internal */
 export const SamplingMessage = Schema.Struct({
   role: Previous.Role,
   content: Schema.Union([
@@ -155,10 +177,12 @@ export const SamplingMessage = Schema.Struct({
   _meta: Meta
 })
 
+/** @internal */
 export const ToolChoice = Schema.Struct({
   mode: optional(Schema.Literals(["auto", "required", "none"]))
 })
 
+/** @internal */
 export const CreateMessageResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
   ...SamplingMessage.fields,
@@ -166,6 +190,7 @@ export const CreateMessageResult = Schema.Struct({
   stopReason: optional(Schema.String)
 })
 
+/** @internal */
 export class CreateMessage extends Rpc.make("sampling/createMessage", {
   success: CreateMessageResult,
   error: Previous.McpError,
@@ -178,22 +203,26 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
   }
 }) {}
 
+/** @internal */
 export const Root = Schema.Struct({
   ...Previous.Root.fields,
   _meta: Meta
 })
 
+/** @internal */
 export const ListRootsResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
   roots: Schema.Array(Root)
 })
 
+/** @internal */
 export class ListRoots extends Rpc.make("roots/list", {
   success: ListRootsResult,
   error: Previous.McpError,
   payload: Schema.UndefinedOr(Previous.RequestMeta)
 }) {}
 
+/** @internal */
 export const StringSchema = Schema.Struct({
   type: Schema.Literal("string"),
   title: optional(Schema.String),
@@ -204,6 +233,7 @@ export const StringSchema = Schema.Struct({
   default: optional(Schema.String)
 })
 
+/** @internal */
 export const NumberSchema = Schema.Struct({
   type: Schema.Literals(["number", "integer"]),
   title: optional(Schema.String),
@@ -213,6 +243,7 @@ export const NumberSchema = Schema.Struct({
   default: optional(Schema.Finite)
 })
 
+/** @internal */
 export const BooleanSchema = Schema.Struct({
   type: Schema.Literal("boolean"),
   title: optional(Schema.String),
@@ -225,6 +256,7 @@ const EnumOption = Schema.Struct({
   title: Schema.String
 })
 
+/** @internal */
 export const UntitledSingleSelectEnumSchema = Schema.Struct({
   type: Schema.Literal("string"),
   title: optional(Schema.String),
@@ -233,6 +265,7 @@ export const UntitledSingleSelectEnumSchema = Schema.Struct({
   default: optional(Schema.String)
 })
 
+/** @internal */
 export const TitledSingleSelectEnumSchema = Schema.Struct({
   type: Schema.Literal("string"),
   title: optional(Schema.String),
@@ -241,11 +274,13 @@ export const TitledSingleSelectEnumSchema = Schema.Struct({
   default: optional(Schema.String)
 })
 
+/** @internal */
 export const SingleSelectEnumSchema = Schema.Union([
   UntitledSingleSelectEnumSchema,
   TitledSingleSelectEnumSchema
 ])
 
+/** @internal */
 export const UntitledMultiSelectEnumSchema = Schema.Struct({
   type: Schema.Literal("array"),
   title: optional(Schema.String),
@@ -259,6 +294,7 @@ export const UntitledMultiSelectEnumSchema = Schema.Struct({
   default: optional(Schema.Array(Schema.String))
 })
 
+/** @internal */
 export const TitledMultiSelectEnumSchema = Schema.Struct({
   type: Schema.Literal("array"),
   title: optional(Schema.String),
@@ -271,11 +307,13 @@ export const TitledMultiSelectEnumSchema = Schema.Struct({
   default: optional(Schema.Array(Schema.String))
 })
 
+/** @internal */
 export const MultiSelectEnumSchema = Schema.Union([
   UntitledMultiSelectEnumSchema,
   TitledMultiSelectEnumSchema
 ])
 
+/** @internal */
 export const LegacyTitledEnumSchema = Schema.Struct({
   type: Schema.Literal("string"),
   title: optional(Schema.String),
@@ -285,12 +323,14 @@ export const LegacyTitledEnumSchema = Schema.Struct({
   default: optional(Schema.String)
 })
 
+/** @internal */
 export const EnumSchema = Schema.Union([
   SingleSelectEnumSchema,
   MultiSelectEnumSchema,
   LegacyTitledEnumSchema
 ])
 
+/** @internal */
 export const PrimitiveSchemaDefinition = Schema.Union([
   StringSchema,
   NumberSchema,
@@ -298,6 +338,7 @@ export const PrimitiveSchemaDefinition = Schema.Union([
   EnumSchema
 ])
 
+/** @internal */
 export const RequestedSchema = Schema.Struct({
   $schema: optional(Schema.String),
   type: Schema.Literal("object"),
@@ -305,6 +346,7 @@ export const RequestedSchema = Schema.Struct({
   required: optional(Schema.Array(Schema.String))
 })
 
+/** @internal */
 export const ElicitRequestFormParams = Schema.Struct({
   ...Previous.RequestMeta.fields,
   mode: optional(Schema.Literal("form")),
@@ -312,6 +354,7 @@ export const ElicitRequestFormParams = Schema.Struct({
   requestedSchema: RequestedSchema
 })
 
+/** @internal */
 export const ElicitRequestURLParams = Schema.Struct({
   ...Previous.RequestMeta.fields,
   mode: Schema.Literal("url"),
@@ -320,28 +363,13 @@ export const ElicitRequestURLParams = Schema.Struct({
   url: Schema.String
 })
 
+/** @internal */
 export const ElicitRequestParams = Schema.Union([
   ElicitRequestFormParams,
   ElicitRequestURLParams
 ])
 
-export const URL_ELICITATION_REQUIRED = -32042
-
-export const URLElicitationRequiredError = Schema.Struct({
-  jsonrpc: Schema.Literal("2.0"),
-  id: optional(Previous.RequestId),
-  error: Schema.Struct({
-    code: Schema.Literal(URL_ELICITATION_REQUIRED),
-    message: Schema.String,
-    data: Schema.StructWithRest(
-      Schema.Struct({
-        elicitations: Schema.Array(ElicitRequestURLParams)
-      }),
-      [Schema.JsonObject]
-    )
-  })
-})
-
+/** @internal */
 export const ElicitResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
   action: Schema.Literals(["accept", "decline", "cancel"]),
@@ -351,23 +379,27 @@ export const ElicitResult = Schema.Struct({
   ))
 })
 
+/** @internal */
 export class Elicit extends Rpc.make("elicitation/create", {
   success: ElicitResult,
   error: Previous.McpError,
   payload: ElicitRequestParams
 }) {}
 
+/** @internal */
 export class ElicitationCompleteNotification extends Rpc.make("notifications/elicitation/complete", {
   payload: {
     elicitationId: Schema.String
   }
 }) {}
 
+/** @internal */
 export const InitializeResult = Schema.Struct({
   ...Previous.InitializeResult.fields,
   serverInfo: Implementation
 })
 
+/** @internal */
 export class Initialize extends Rpc.make("initialize", {
   success: InitializeResult,
   error: Previous.McpError,
@@ -378,49 +410,58 @@ export class Initialize extends Rpc.make("initialize", {
   }
 }) {}
 
+/** @internal */
 export const ListResourcesResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
   resources: Schema.Array(Resource)
 })
 
+/** @internal */
 export const ListResourceTemplatesResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
   resourceTemplates: Schema.Array(ResourceTemplate)
 })
 
+/** @internal */
 export const ListPromptsResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
   prompts: Schema.Array(Prompt)
 })
 
+/** @internal */
 export const GetPromptResult = Schema.Struct({
   ...Previous.GetPromptResult.fields,
   messages: Schema.Array(PromptMessage)
 })
 
+/** @internal */
 export const ListToolsResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
   tools: Schema.Array(Tool)
 })
 
+/** @internal */
 export class ListResources extends Rpc.make("resources/list", {
   success: ListResourcesResult,
   error: Previous.McpError,
   payload: Schema.UndefinedOr(Previous.PaginatedRequest)
 }) {}
 
+/** @internal */
 export class ListResourceTemplates extends Rpc.make("resources/templates/list", {
   success: ListResourceTemplatesResult,
   error: Previous.McpError,
   payload: Schema.UndefinedOr(Previous.PaginatedRequest)
 }) {}
 
+/** @internal */
 export class ListPrompts extends Rpc.make("prompts/list", {
   success: ListPromptsResult,
   error: Previous.McpError,
   payload: Schema.UndefinedOr(Previous.PaginatedRequest)
 }) {}
 
+/** @internal */
 export class GetPrompt extends Rpc.make("prompts/get", {
   success: GetPromptResult,
   error: Previous.McpError,
@@ -431,12 +472,14 @@ export class GetPrompt extends Rpc.make("prompts/get", {
   }
 }) {}
 
+/** @internal */
 export class ListTools extends Rpc.make("tools/list", {
   success: ListToolsResult,
   error: Previous.McpError,
   payload: Schema.UndefinedOr(Previous.PaginatedRequest)
 }) {}
 
+/** @internal */
 export class ClientRequestRpcs extends RpcGroup.make(
   Previous.Ping,
   Initialize,
@@ -453,6 +496,7 @@ export class ClientRequestRpcs extends RpcGroup.make(
   ListTools
 ) {}
 
+/** @internal */
 export class ClientNotificationRpcs extends RpcGroup.make(
   Previous.CancelledNotification,
   Previous.ProgressNotification,
@@ -460,8 +504,7 @@ export class ClientNotificationRpcs extends RpcGroup.make(
   Previous.RootsListChangedNotification
 ) {}
 
-export class ClientRpcs extends ClientRequestRpcs.merge(ClientNotificationRpcs) {}
-
+/** @internal */
 export class ServerRequestRpcs extends RpcGroup.make(
   Previous.Ping,
   CreateMessage,
@@ -469,6 +512,7 @@ export class ServerRequestRpcs extends RpcGroup.make(
   Elicit
 ) {}
 
+/** @internal */
 export class ServerNotificationRpcs extends RpcGroup.make(
   Previous.CancelledNotification,
   Previous.ProgressNotification,

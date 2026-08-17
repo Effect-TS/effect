@@ -68,7 +68,7 @@ import {
   ServerNotificationRpcs,
   TextContent,
   Tool as McpTool,
-  ToolJsonSchema
+  ToolJson
 } from "./McpSchema.ts"
 import type {
   CallTool,
@@ -103,12 +103,14 @@ type ServerNotificationRequest<
 > = R extends Rpc.Any ? RpcMessage.Request<R> : never
 
 const BroadcastServerNotificationRpcs = ServerNotificationRpcs.omit("notifications/elicitation/complete")
+const isJson = Schema.is(Schema.Json)
+const isLoggingLevel = Schema.is(McpSchema.LoggingLevel)
 
 const validateStructuredContent = (
   toolName: string,
   value: unknown
 ): Effect.Effect<Schema.Json, McpCore.ToolResultProjectionError> =>
-  Schema.is(Schema.Json)(value)
+  isJson(value)
     ? Effect.succeed(value)
     : Effect.fail(
       new McpCore.ToolResultProjectionError({
@@ -162,7 +164,27 @@ const provideInvocationContext = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
   invocation: McpCore.McpInvocation
 ): Effect.Effect<A, E, Exclude<R, McpRequestContext | McpServerClient>> => {
-  const provided = Effect.provideService(effect, McpRequestContext, invocation.requestContext)
+  let provided = Effect.provideService(effect, McpRequestContext, invocation.requestContext)
+  const requestMetadata = invocation.requestContext.requestMetadata
+  const logLevel = Predicate.hasProperty(requestMetadata, "io.modelcontextprotocol/logLevel")
+    ? requestMetadata["io.modelcontextprotocol/logLevel"]
+    : undefined
+  if (isLoggingLevel(logLevel)) {
+    provided = Effect.provideService(
+      provided,
+      CurrentLogLevel,
+      {
+        debug: "Debug",
+        info: "Info",
+        notice: "Info",
+        warning: "Warn",
+        error: "Error",
+        critical: "Fatal",
+        alert: "Fatal",
+        emergency: "Fatal"
+      }[logLevel]
+    )
+  }
   return (invocation.serverClient === undefined
     ? provided
     : Effect.provideService(provided, McpServerClient, invocation.serverClient)) as Effect.Effect<
@@ -667,11 +689,10 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
   // A bounded PubSub would let one slow listener block the shared worker and
   // legacy delivery. Each request scope releases its subscription on exit.
   const serverNotifications = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
-  const sendNotification = protocol.sendNotification
   const handlers = yield* runtime.installHandlers({
     core: internalState.get(server)!.core,
     subscribeServerNotifications: PubSub.subscribe(serverNotifications),
-    ...(sendNotification === undefined ? {} : {
+    ...(!protocol.supportsNotifications ? {} : {
       sendNotification: (
         protocolVersion: string,
         clientId: number,
@@ -686,9 +707,13 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
             )
           }
           const payload = yield* selectedProtocol.payloadCodecs(rpc).encode(notification.payload)
-          yield* sendNotification(clientId, {
+          yield* protocol.send(clientId, {
+            _tag: "Request",
+            id: "",
             tag: notification.tag,
-            payload
+            payload,
+            headers: [],
+            isNotification: true
           })
         }).pipe(Effect.orDie)
     }),
@@ -1262,7 +1287,6 @@ const mcpStdioSerialization = (
   const serialization = RpcSerialization.jsonRpc({
     contentType: "application/json-rpc"
   })
-  const encodeNotification = serialization.encodeNotification
   return RpcSerialization.RpcSerialization.of({
     contentType: serialization.contentType,
     includesFraming: true,
@@ -1412,34 +1436,29 @@ const layerMcpProtocolHttp = (options: {
         return Effect.succeed(HttpServerResponse.empty({ status: 406 }))
       }
       const sessionId = request.headers[MCP_SESSION_ID_HEADER]
+      const protocolVersion = request.headers[MCP_PROTOCOL_VERSION_HEADER]
+      const parseErrorResponse = () => {
+        if (
+          protocolVersion !== undefined &&
+          !runtime.protocols.some((protocol) => protocol.protocolVersion === protocolVersion)
+        ) {
+          return HttpServerResponse.empty({ status: 400 })
+        }
+        const admission = runtime.admitHttp(request.headers, undefined)
+        return admission._tag === "Rejected" && admission.error === undefined
+          ? HttpServerResponse.empty({ status: admission.status })
+          : HttpServerResponse.jsonUnsafe({
+            jsonrpc: "2.0",
+            id: null,
+            error: new McpSchema.ParseError({ message: "Parse error" })
+          })
+      }
       return request.text.pipe(
         Effect.matchEffect({
-          onFailure: () => {
-            const admission = runtime.admitHttp(request.headers, undefined)
-            return Effect.succeed(
-              admission._tag === "Rejected"
-                ? HttpServerResponse.empty({ status: admission.status })
-                : HttpServerResponse.jsonUnsafe({
-                  jsonrpc: "2.0",
-                  id: null,
-                  error: new McpSchema.ParseError({ message: "Parse error" })
-                })
-            )
-          },
+          onFailure: () => Effect.succeed(parseErrorResponse()),
           onSuccess: (body) =>
             Effect.matchEffect(Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)(body), {
-              onFailure: () => {
-                const admission = runtime.admitHttp(request.headers, undefined)
-                return Effect.succeed(
-                  admission._tag === "Rejected"
-                    ? HttpServerResponse.empty({ status: admission.status })
-                    : HttpServerResponse.jsonUnsafe({
-                      jsonrpc: "2.0",
-                      id: null,
-                      error: new McpSchema.ParseError({ message: "Parse error" })
-                    })
-                )
-              },
+              onFailure: () => Effect.succeed(parseErrorResponse()),
               onSuccess: (input) => {
                 if (!Array.isArray(input)) {
                   const hasId = Predicate.hasProperty(input, "id")
@@ -1455,13 +1474,6 @@ const layerMcpProtocolHttp = (options: {
                   const hasResult = Predicate.hasProperty(input, "result")
                   const hasError = Predicate.hasProperty(input, "error")
                   const isResponse = isJsonRpc && hasValidResponseId && hasResult !== hasError
-                  if (!isRequest && !isResponse) {
-                    return Effect.succeed(HttpServerResponse.jsonUnsafe({
-                      jsonrpc: "2.0",
-                      id,
-                      error: new InvalidRequest({ message: "Invalid Request" })
-                    }))
-                  }
                   const admission = runtime.admitHttp(request.headers, input)
                   if (admission._tag === "Rejected") {
                     return Effect.succeed(
@@ -1473,6 +1485,13 @@ const layerMcpProtocolHttp = (options: {
                           error: admission.error
                         }, { status: admission.status })
                     )
+                  }
+                  if (!isRequest && !isResponse) {
+                    return Effect.succeed(HttpServerResponse.jsonUnsafe({
+                      jsonrpc: "2.0",
+                      id,
+                      error: new InvalidRequest({ message: "Invalid Request" })
+                    }))
                   }
                   const isInitialize = isInitializeJsonRpcMessage(input)
                   if (isInitialize && sessionId !== undefined) {
@@ -1546,6 +1565,7 @@ const mcpHttpSerialization: RpcSerialization.RpcSerialization["Service"] = (() =
   return RpcSerialization.RpcSerialization.of({
     contentType: serialization.contentType,
     includesFraming: true,
+    codecFor: serialization.codecFor,
     makeUnsafe: serialization.makeUnsafe
   })
 })()
@@ -1648,10 +1668,10 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
-    const outputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJsonSchema)(
+    const outputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
       Tool.getJsonSchemaFromSchema(tool.successSchema)
     ).pipe(Effect.orDie)
-    const inputSchema = yield* Schema.decodeUnknownEffect(ToolJsonSchema)(
+    const inputSchema = yield* Schema.decodeUnknownEffect(ToolJson)(
       Tool.getJsonSchema(tool)
     ).pipe(Effect.orDie)
     const mcpTool = new McpTool({

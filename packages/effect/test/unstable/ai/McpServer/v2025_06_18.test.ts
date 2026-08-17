@@ -18,6 +18,7 @@ const testLayer = makeMcpConformanceLayer(protocol)
 
 LifecycleTest.suite(protocol, testLayer)
 BaseProtocolTest.suite(protocol, testLayer)
+BaseProtocolTest.statefulLegacySuite(protocol, testLayer)
 TransportsTest.suite(protocol, testLayer)
 UtilitiesTest.suite(protocol, testLayer)
 ToolsTest.suite(protocol, testLayer)

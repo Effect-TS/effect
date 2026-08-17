@@ -1,6 +1,7 @@
 import * as Data from "../../../Data.ts"
 import * as Effect from "../../../Effect.ts"
 import * as Match from "../../../Match.ts"
+import * as Predicate from "../../../Predicate.ts"
 import type * as PubSub from "../../../PubSub.ts"
 import * as Result from "../../../Result.ts"
 import * as Schema from "../../../Schema.ts"
@@ -13,6 +14,8 @@ import type * as RpcGroup from "../../rpc/RpcGroup.ts"
 import type * as PublicMcpProtocol from "../McpProtocol.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
 import * as McpCore from "./mcpCore.ts"
+
+const LEGACY_RESOURCE_NOT_FOUND_ERROR_CODE = -32002
 
 /** @internal */
 export const profileFromClient = (
@@ -111,21 +114,31 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
       }),
       Match.exhaustive
     )
-    return new ProtocolError({ code: -32602, message })
+    return new ProtocolError({ code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE, message })
   }
 
   static fromFeature(error: unknown): ProtocolError {
-    if (error instanceof McpCore.PromptNotFound) {
-      return new ProtocolError({ code: -32602, message: `Prompt '${error.name}' not found` })
-    }
-    if (error instanceof McpCore.ResourceNotFound) {
-      return new ProtocolError({ code: -32002, message: `Resource '${error.uri}' not found` })
+    if (Predicate.hasProperty(error, "_tag")) {
+      if (error._tag === "PromptNotFound" && Predicate.hasProperty(error, "name") && Predicate.isString(error.name)) {
+        return new ProtocolError({
+          code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
+          message: `Prompt '${error.name}' not found`
+        })
+      }
+      if (error._tag === "ResourceNotFound" && Predicate.hasProperty(error, "uri") && Predicate.isString(error.uri)) {
+        return new ProtocolError({
+          code: LEGACY_RESOURCE_NOT_FOUND_ERROR_CODE,
+          message: `Resource '${error.uri}' not found`
+        })
+      }
     }
     const decoded = Schema.decodeUnknownResult(ProtocolErrorFields)(error)
-    if (Result.isSuccess(decoded)) {
-      return new ProtocolError(decoded.success)
-    }
-    return new ProtocolError({ code: -32603, message: "MCP feature handler failed" })
+    return Result.isSuccess(decoded)
+      ? new ProtocolError(decoded.success)
+      : new ProtocolError({
+        code: PublicMcpSchema.INTERNAL_ERROR_CODE,
+        message: "MCP feature handler failed"
+      })
   }
 }
 

@@ -449,3 +449,134 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
       })
     })
   })
+
+export const statelessModernSuite = (
+  protocol: McpProtocol.ProtocolAdapter,
+  layer: McpConformanceLayer
+) =>
+  it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
+    const metadata = {
+      "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion,
+      "io.modelcontextprotocol/clientCapabilities": {},
+      "io.modelcontextprotocol/clientInfo": { name: "transport-client", version: "1.0.0" }
+    }
+    const request = (id: string | number, method = "server/discover") => ({
+      jsonrpc: "2.0",
+      id,
+      method,
+      params: { _meta: metadata }
+    })
+    const headers = (method = "server/discover"): HeadersInit => ({
+      "MCP-Protocol-Version": protocol.protocolVersion,
+      "Mcp-Method": method
+    })
+
+    describe("Transports > Stateless modern", () => {
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/stdio
+      it.effect("should exchange one compact newline-delimited JSON-RPC message per stdio line", () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol)
+          const response = yield* fixture.sendRequest("server/discover", {}, 1).pipe(Effect.forkChild)
+          const frame = yield* fixture.takeRawStdout
+
+          assert.strictEqual(frame.endsWith("\n"), true)
+          assert.strictEqual(frame.slice(0, -1).includes("\n"), false)
+          assert.deepInclude(JSON.parse(frame), { jsonrpc: "2.0", id: 1 })
+          yield* Fiber.join(response)
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/stdio
+      it.effect("should reconstruct a UTF-8 stdio message when its bytes arrive in separate chunks", () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol)
+          const bytes = new TextEncoder().encode(`${JSON.stringify(request("stdio-🧪"))}\n`)
+          const splitAt = bytes.indexOf(0xf0) + 2
+
+          yield* fixture.sendChunk(bytes.slice(0, splitAt))
+          yield* fixture.sendChunk(bytes.slice(splitAt))
+
+          assert.deepInclude(yield* fixture.takeFrame, { jsonrpc: "2.0", id: "stdio-🧪" })
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/stdio
+      it.effect("should process consecutive stateless stdio requests independently", () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol)
+          yield* fixture.sendRaw(request(2))
+          yield* fixture.sendRaw(request(3))
+
+          assert.deepInclude(yield* fixture.takeFrame, { jsonrpc: "2.0", id: 2 })
+          assert.deepInclude(yield* fixture.takeFrame, { jsonrpc: "2.0", id: 3 })
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/stdio
+      it.effect("should shut down the stdio server when the client closes stdin", () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol)
+          yield* fixture.close
+          const exit = yield* Fiber.await(fixture.serverFiber)
+
+          assert.isTrue(Exit.isSuccess(exit) || (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)))
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#sending-messages-to-the-server
+      it.effect("should require application/json content and both supported response media types for HTTP POST", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const body = request(4)
+          const accepted = yield* test.request(jsonRequest("POST", body, {
+            ...headers(),
+            "content-type": "Application/JSON; charset=utf-8",
+            accept: "Text/Event-Stream, Application/JSON"
+          }))
+          assert.strictEqual(accepted.status, 200)
+
+          for (const contentType of ["text/plain", "application/json-malicious", ""]) {
+            const response = yield* test.request(jsonRequest("POST", body, {
+              ...headers(),
+              "content-type": contentType
+            }))
+            assert.strictEqual(response.status, 415)
+          }
+          for (const accept of ["application/json", "text/event-stream", "*/*", ""]) {
+            const response = yield* test.request(jsonRequest("POST", body, { ...headers(), accept }))
+            assert.strictEqual(response.status, 406)
+          }
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#sending-messages-to-the-server
+      it.effect("should return application/json when an HTTP request has one JSON-RPC response", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const response = yield* test.request(jsonRequest("POST", request(5), headers()))
+
+          assert.strictEqual(response.status, 200)
+          assert.match(response.headers.get("content-type") ?? "", /^application\/json\b/)
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#listening-for-messages-from-the-server
+      it.effect("should reject GET and unsupported HTTP methods when only POST is available", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          for (const method of ["GET", "PUT", "PATCH", "HEAD"] as const) {
+            const response = yield* test.request(jsonRequest(method))
+            assert.strictEqual(response.status, 405)
+            assert.strictEqual(response.headers.get("allow"), "POST")
+          }
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#security-warning
+      it.effect("should reject every MCP HTTP route when its Origin is not explicitly allowed", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          for (const method of ["POST", "GET", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] as const) {
+            const response = yield* test.request(jsonRequest(
+              method,
+              method === "POST" ? request(6) : undefined,
+              { ...headers(), origin: "https://attacker.example" }
+            ))
+            assert.strictEqual(response.status, 403)
+          }
+        }))
+    })
+  })

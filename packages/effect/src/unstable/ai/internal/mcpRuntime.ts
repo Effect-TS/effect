@@ -29,6 +29,7 @@ const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 const MCP_METHOD_HEADER = "mcp-method"
 const MCP_NAME_HEADER = "mcp-name"
 const PROTOCOL_VERSION_METADATA_KEY = "io.modelcontextprotocol/protocolVersion"
+const CLIENT_CAPABILITIES_METADATA_KEY = "io.modelcontextprotocol/clientCapabilities"
 const BASE64_SENTINEL_PREFIX = "=?base64?"
 const BASE64_SENTINEL_SUFFIX = "?="
 
@@ -285,15 +286,29 @@ export const make = Effect.fnUntraced(function*(
       const protocolVersion = headers[MCP_PROTOCOL_VERSION_HEADER]
       const sessionId = headers[MCP_SESSION_ID_HEADER]
       const claim = modernVersionClaim(input)
-      const isInitialize = asRecord(input)?.method === "initialize"
-      const isStatelessRequest = !isInitialize && (claim.present ||
-        (statelessProtocol !== undefined && protocolVersion === statelessProtocol.protocolVersion))
+      const inputRecord = asRecord(input)
+      const id = inputRecord?.id
+      const isInitialize = inputRecord?.jsonrpc === "2.0" && inputRecord.method === "initialize" &&
+        (typeof id === "string" || typeof id === "number")
+      const isStatelessRequest = claim.present || (!isInitialize &&
+        statelessProtocol !== undefined && protocolVersion === statelessProtocol.protocolVersion)
       if (isStatelessRequest) {
         if (protocolVersion === undefined) {
           return headerMismatch("MCP-Protocol-Version header is required")
         }
         if (typeof claim.value !== "string" || claim.value !== protocolVersion) {
           return headerMismatch("MCP-Protocol-Version header does not match request metadata")
+        }
+        const metadata = asRecord(asRecord(asRecord(input)?.params)?._meta)
+        if (asRecord(metadata?.[CLIENT_CAPABILITIES_METADATA_KEY]) === undefined) {
+          return {
+            _tag: "Rejected",
+            status: 400,
+            error: {
+              code: -32602,
+              message: `${CLIENT_CAPABILITIES_METADATA_KEY} request metadata is required`
+            }
+          }
         }
         if (statelessProtocol === undefined || protocolVersion !== statelessProtocol.protocolVersion) {
           return {

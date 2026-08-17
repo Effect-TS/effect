@@ -47,13 +47,11 @@ const decodeErrorResponse = Schema.decodeUnknownEffect(ErrorResponse)
 const decodeResultResponse = Schema.decodeUnknownEffect(ResultResponse)
 const decodeBatchResponse = Schema.decodeUnknownEffect(BatchResponse)
 
-const requestMetadata = (protocol: McpProtocol.ProtocolAdapter) => ({
-  "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion,
-  "io.modelcontextprotocol/clientCapabilities": {},
-  "io.modelcontextprotocol/clientInfo": { name: "McpConformanceClient", version: "1.0.0" }
-})
-
-const statelessBody = (protocol: McpProtocol.ProtocolAdapter, body: unknown): unknown => {
+const statelessBody = (
+  protocol: McpProtocol.ProtocolAdapter,
+  body: unknown,
+  clientCapabilities?: Record<string, unknown>
+): unknown => {
   if (
     protocol.runtime._tag !== "Stateless" ||
     typeof body !== "object" ||
@@ -75,7 +73,13 @@ const statelessBody = (protocol: McpProtocol.ProtocolAdapter, body: unknown): un
       ...params,
       _meta: {
         ...metadata,
-        ...requestMetadata(protocol)
+        "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion,
+        "io.modelcontextprotocol/clientCapabilities": clientCapabilities ?? {
+          elicitation: { form: {} },
+          roots: {},
+          sampling: {}
+        },
+        "io.modelcontextprotocol/clientInfo": { name: "McpConformanceClient", version: "1.0.0" }
       }
     }
   }
@@ -122,6 +126,7 @@ export interface InitializeOptions {
 export interface SendOptions {
   readonly includeProtocolVersion?: boolean | undefined
   readonly protocolVersion?: string | undefined
+  readonly clientCapabilities?: Record<string, unknown> | undefined
 }
 
 export interface McpConformanceShape {
@@ -305,7 +310,7 @@ export const layer = (protocol: McpProtocol.ProtocolAdapter) =>
         if (protocol.runtime._tag !== "Stateless") {
           return post(harnessFor(session), body, sessionHeaders(session, options))
         }
-        const request = statelessBody(protocol, body)
+        const request = statelessBody(protocol, body, options?.clientCapabilities)
         return post(harnessFor(session), request, statelessHeaders(protocol, request))
       }
 

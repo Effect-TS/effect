@@ -34,7 +34,7 @@ describe("McpServer", () => {
       inputSchema: { type: "object" },
       outputSchema: { type: "string" }
     })
-    expect({ type: "string" } as const).type.not.toBeAssignableTo<McpSchema.ToolJsonSchema>()
+    expect({ type: "string" } as const).type.not.toBeAssignableTo<McpSchema.ToolJson>()
   })
 
   it("should accept JSON-valued structured sampling results", () => {
@@ -129,7 +129,7 @@ describe("McpServer", () => {
     })
 
     it("should preserve the decoded tool JSON Schema shape", () => {
-      expect<Schema.Schema.Type<typeof McpSchema.ToolJsonSchema>>().type.toBe<McpSchema.ToolJsonSchema>()
+      expect<Schema.Schema.Type<typeof McpSchema.ToolJson>>().type.toBe<McpSchema.ToolJson>()
     })
 
     it("should expose invalid protocol declarations as typed constructor failures", () => {
