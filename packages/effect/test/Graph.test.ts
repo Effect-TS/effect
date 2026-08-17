@@ -1429,7 +1429,9 @@ describe("Graph", () => {
         () => Graph.filterEdges(retained!, () => false),
         () => Graph.addEdge(retained!, nodeB!, nodeA!, 4),
         () => Graph.removeNode(retained!, nodeA!),
-        () => Graph.removeEdge(retained!, edge!)
+        () => Graph.removeNodes(retained!, [nodeA!]),
+        () => Graph.removeEdge(retained!, edge!),
+        () => Graph.removeEdges(retained!, [edge!])
       ]
       for (const mutation of mutations) {
         assertGraphError(mutation, "Graph is not mutable")
@@ -1801,7 +1803,7 @@ describe("Graph", () => {
     })
   })
 
-  describe("callback-driven transform caching", () => {
+  describe("callback-driven transformations", () => {
     it("should reject finalization from a transform callback", () => {
       const mutable = Graph.beginMutation(Graph.directed<string, never>((graph) => {
         Graph.addNode(graph, "old")
@@ -1815,10 +1817,78 @@ describe("Graph", () => {
             Array.from(Graph.bfs(finalized, { start: [0] }))
             return "new"
           }),
-        "Cannot finalize graph during a transformation"
+        "Cannot mutate graph during a transformation"
       )
       assert.strictEqual(finalized, undefined)
       assertSome(Graph.getNode(mutable, 0), "old")
+    })
+
+    it("should reject every mutation from a transform callback", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+        Graph.addNode(graph, "source")
+        Graph.addNode(graph, "target")
+        Graph.addEdge(graph, 0, 1, 1)
+      }))
+      const mutations: ReadonlyArray<() => unknown> = [
+        () => Graph.addNode(mutable, "new"),
+        () => Graph.updateNode(mutable, 0, () => "updated"),
+        () => Graph.updateEdge(mutable, 0, () => 2),
+        () => Graph.mapNodes(mutable, () => "mapped"),
+        () => Graph.mapEdges(mutable, () => 3),
+        () => Graph.reverse(mutable),
+        () => Graph.filterMapNodes(mutable, () => Option.none()),
+        () => Graph.filterMapEdges(mutable, () => Option.none()),
+        () => Graph.filterNodes(mutable, () => false),
+        () => Graph.filterEdges(mutable, () => false),
+        () => Graph.addEdge(mutable, 1, 0, 4),
+        () => Graph.removeNode(mutable, 0),
+        () => Graph.removeNodes(mutable, [0]),
+        () => Graph.removeEdge(mutable, 0),
+        () => Graph.removeEdges(mutable, [0]),
+        () => Graph.endMutation(mutable)
+      ]
+
+      for (const mutation of mutations) {
+        assertGraphError(
+          () =>
+            Graph.updateNode(mutable, 0, (data) => {
+              mutation()
+              return data
+            }),
+          "Cannot mutate graph during a transformation"
+        )
+      }
+
+      assert.deepStrictEqual(Graph.toSnapshot(mutable), {
+        type: "directed",
+        nodes: [{ index: 0, data: "source" }, { index: 1, data: "target" }],
+        edges: [{ index: 0, source: 0, target: 1, data: 1 }]
+      })
+    })
+
+    it("should guard filter predicate callbacks", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+        Graph.addNode(graph, "source")
+        Graph.addNode(graph, "target")
+        Graph.addEdge(graph, 0, 1, 1)
+      }))
+
+      assertGraphError(
+        () =>
+          Graph.filterNodes(mutable, () => {
+            Graph.removeNode(mutable, 0)
+            return true
+          }),
+        "Cannot mutate graph during a transformation"
+      )
+      assertGraphError(
+        () =>
+          Graph.filterEdges(mutable, () => {
+            Graph.removeEdge(mutable, 0)
+            return true
+          }),
+        "Cannot mutate graph during a transformation"
+      )
     })
 
     it("should not retain node data cached by updateNode callbacks", () => {
@@ -2478,6 +2548,38 @@ describe("Graph", () => {
     })
   })
 
+  describe("removeNodes", () => {
+    it("should remove nodes, incident edges, and ignore duplicate or missing indices", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (const node of ["A", "B", "C"]) {
+          Graph.addNode(mutable, node)
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 2, 2)
+        Graph.addEdge(mutable, 2, 0, 3)
+
+        Graph.removeNodes(mutable, [1, 1, 999])
+      })
+
+      assert.deepStrictEqual(Graph.toSnapshot(graph), {
+        type: "directed",
+        nodes: [{ index: 0, data: "A" }, { index: 2, data: "C" }],
+        edges: [{ index: 2, source: 2, target: 0, data: 3 }]
+      })
+    })
+
+    it("should collect graph-backed iterables before removing nodes", () => {
+      const graph = Graph.directed<string, never>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+
+        Graph.removeNodes(mutable, Graph.indices(Graph.nodes(mutable)))
+      })
+
+      strictEqual(Graph.nodeCount(graph), 0)
+    })
+  })
+
   describe("removeEdge", () => {
     it("should remove an edge between two nodes", () => {
       let edgeIndex: Graph.EdgeIndex
@@ -2532,6 +2634,34 @@ describe("Graph", () => {
       })
 
       expect(Graph.edgeCount(result)).toBe(1)
+    })
+  })
+
+  describe("removeEdges", () => {
+    it("should remove edges and ignore duplicate or missing indices", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 0, 2)
+
+        Graph.removeEdges(mutable, [0, 0, 999])
+      })
+
+      assert.deepStrictEqual(Graph.toSnapshot(graph).edges, [{ index: 1, source: 1, target: 0, data: 2 }])
+    })
+
+    it("should collect graph-backed iterables before removing edges", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 0, 2)
+
+        Graph.removeEdges(mutable, Graph.indices(Graph.edges(mutable)))
+      })
+
+      strictEqual(Graph.edgeCount(graph), 0)
     })
   })
 

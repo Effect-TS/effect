@@ -383,9 +383,10 @@ const getMutableImplForMutation = <N, E, T extends Kind>(
   graph: MutableGraph<N, E, T>
 ): internal.GraphImpl<N, E, T> => {
   assertMutable(graph)
-  if (!internal.isTransforming(graph)) {
-    csr.invalidate(graph)
+  if (internal.isTransforming(graph)) {
+    throw new GraphError({ message: "Cannot mutate graph during a transformation" })
   }
+  csr.invalidate(graph)
   return internal.toImpl(graph)
 }
 
@@ -677,7 +678,7 @@ export const endMutation = <N, E, T extends Kind = "directed">(
 ): Graph<N, E, T> => {
   assertMutable(mutable)
   if (internal.isTransforming(mutable)) {
-    throw new GraphError({ message: "Cannot finalize graph during a transformation" })
+    throw new GraphError({ message: "Cannot mutate graph during a transformation" })
   }
   const source = internal.toImpl(mutable)
   csr.invalidate(mutable)
@@ -1842,6 +1843,8 @@ export const findEdges: {
 
 /**
  * Updates a single node's data by applying a transformation function.
+ * The transformation may query the graph, but cannot mutate or finalize the
+ * same graph while it runs.
  *
  * **Example** (Updating node data)
  *
@@ -1879,6 +1882,8 @@ export const updateNode = <N, E, T extends Kind = "directed">(
 
 /**
  * Updates a single edge's data by applying a transformation function.
+ * The transformation may query the graph, but cannot mutate or finalize the
+ * same graph while it runs.
  *
  * **Example** (Updating edge data)
  *
@@ -1926,6 +1931,8 @@ export const updateEdge = <N, E, T extends Kind = "directed">(
  * **Details**
  *
  * Node indices and edges are preserved; only the stored node data is replaced.
+ * The mapping function may query the graph, but cannot mutate or finalize the
+ * same graph while it runs.
  *
  * **Example** (Mapping node data)
  *
@@ -1961,6 +1968,8 @@ export const mapNodes = <N, E, T extends Kind = "directed">(
 
 /**
  * Transforms all edge data in a mutable graph using the provided mapping function.
+ * The mapping function may query the graph, but cannot mutate or finalize the
+ * same graph while it runs.
  *
  * **Example** (Mapping edge data)
  *
@@ -2074,6 +2083,8 @@ export const reverse = <N, E, T extends Kind = "directed">(
 /**
  * Filters and optionally transforms nodes in a mutable graph using a predicate function.
  * Nodes that return Option.none are removed along with all their connected edges.
+ * The function may query the graph, but cannot mutate or finalize the same
+ * graph while it runs.
  *
  * **Example** (Filtering and mapping nodes)
  *
@@ -2106,9 +2117,8 @@ export const filterMapNodes = <N, E, T extends Kind = "directed">(
   f: (data: N) => Option.Option<N>
 ): void => {
   const impl = getMutableImplForMutation(mutable)
+  const remove: Array<NodeIndex> = []
   internal.withTransformation(mutable, () => {
-    const nodesToRemove: Array<NodeIndex> = []
-
     // First pass: identify nodes to remove and transform data for nodes to keep
     for (const [index, data] of impl.nodes) {
       const result = f(data)
@@ -2117,20 +2127,20 @@ export const filterMapNodes = <N, E, T extends Kind = "directed">(
         impl.nodes.set(index, result.value)
       } else {
         // Mark for removal
-        nodesToRemove.push(index)
+        remove.push(index)
       }
     }
-
-    // Second pass: remove filtered out nodes and their edges
-    for (const nodeIndex of nodesToRemove) {
-      removeNode(mutable, nodeIndex)
-    }
   })
+
+  // Second pass: remove filtered out nodes and their edges
+  removeNodes(mutable, remove)
 }
 
 /**
  * Filters and optionally transforms edges in a mutable graph using a predicate function.
  * Edges that return Option.none are removed from the graph.
+ * The function may query the graph, but cannot mutate or finalize the same
+ * graph while it runs.
  *
  * **Example** (Filtering and mapping edges)
  *
@@ -2163,9 +2173,8 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
   f: (data: E) => Option.Option<E>
 ): void => {
   const impl = getMutableImplForMutation(mutable)
+  const remove: Array<EdgeIndex> = []
   internal.withTransformation(mutable, () => {
-    const edgesToRemove: Array<EdgeIndex> = []
-
     // First pass: identify edges to remove and transform data for edges to keep
     for (const [index, edgeData] of impl.edges) {
       const result = f(edgeData.data)
@@ -2178,20 +2187,20 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
         })
       } else {
         // Mark for removal
-        edgesToRemove.push(index)
+        remove.push(index)
       }
     }
-
-    // Second pass: remove filtered out edges
-    for (const edgeIndex of edgesToRemove) {
-      removeEdge(mutable, edgeIndex)
-    }
   })
+
+  // Second pass: remove filtered out edges
+  removeEdges(mutable, remove)
 }
 
 /**
  * Filters nodes by removing those that don't match the predicate.
  * This function modifies the mutable graph in place.
+ * The predicate may query the graph, but cannot mutate or finalize the same
+ * graph while it runs.
  *
  * **Example** (Filtering nodes)
  *
@@ -2219,24 +2228,26 @@ export const filterNodes = <N, E, T extends Kind = "directed">(
   predicate: (data: N) => boolean
 ): void => {
   const impl = getMutableImplForMutation(mutable)
-  const nodesToRemove: Array<NodeIndex> = []
+  const remove: Array<NodeIndex> = []
 
-  // Identify nodes to remove
-  for (const [index, data] of impl.nodes) {
-    if (!predicate(data)) {
-      nodesToRemove.push(index)
+  internal.withTransformation(mutable, () => {
+    // Identify nodes to remove
+    for (const [index, data] of impl.nodes) {
+      if (!predicate(data)) {
+        remove.push(index)
+      }
     }
-  }
+  })
 
   // Remove filtered out nodes (this also removes connected edges)
-  for (const nodeIndex of nodesToRemove) {
-    removeNode(mutable, nodeIndex)
-  }
+  removeNodes(mutable, remove)
 }
 
 /**
  * Filters edges by removing those that don't match the predicate.
  * This function modifies the mutable graph in place.
+ * The predicate may query the graph, but cannot mutate or finalize the same
+ * graph while it runs.
  *
  * **Example** (Filtering edges)
  *
@@ -2267,19 +2278,19 @@ export const filterEdges = <N, E, T extends Kind = "directed">(
   predicate: (data: E) => boolean
 ): void => {
   const impl = getMutableImplForMutation(mutable)
-  const edgesToRemove: Array<EdgeIndex> = []
+  const remove: Array<EdgeIndex> = []
 
-  // Identify edges to remove
-  for (const [index, edgeData] of impl.edges) {
-    if (!predicate(edgeData.data)) {
-      edgesToRemove.push(index)
+  internal.withTransformation(mutable, () => {
+    // Identify edges to remove
+    for (const [index, edgeData] of impl.edges) {
+      if (!predicate(edgeData.data)) {
+        remove.push(index)
+      }
     }
-  }
+  })
 
   // Remove filtered out edges
-  for (const edgeIndex of edgesToRemove) {
-    removeEdge(mutable, edgeIndex)
-  }
+  removeEdges(mutable, remove)
 }
 
 // =============================================================================
@@ -2435,10 +2446,47 @@ export const removeNode = <N, E, T extends Kind = "directed">(
   nodeIndex: NodeIndex
 ): void => {
   const impl = getMutableImplForMutation(mutable)
+  if (removeNodeInternal(impl, nodeIndex)) {
+    invalidateCycleFlagOnRemoval(impl)
+  }
+}
 
+/**
+ * Removes multiple nodes and all their incident edges from a mutable graph.
+ *
+ * The input is collected before mutation, so it may be backed by an iterator
+ * over the same graph. Missing and duplicate node indices are ignored.
+ *
+ * @category mutations
+ * @since 4.0.0
+ */
+export const removeNodes = <N, E, T extends Kind = "directed">(
+  mutable: MutableGraph<N, E, T>,
+  nodeIndices: Iterable<NodeIndex>
+): void => {
+  const impl = getMutableImplForMutation(mutable)
+  const indices = Array.from(nodeIndices)
+
+  let removed = false
+  for (const nodeIndex of indices) {
+    if (removeNodeInternal(impl, nodeIndex)) {
+      removed = true
+    }
+  }
+
+  if (removed) {
+    invalidateCycleFlagOnRemoval(impl)
+  }
+}
+
+/** @internal */
+const removeNodeInternal = <N, E, T extends Kind = "directed">(
+  impl: internal.GraphImpl<N, E, T>,
+  nodeIndex: NodeIndex
+): boolean => {
   // Check if node exists
   if (!impl.nodes.has(nodeIndex)) {
-    return // Node doesn't exist, nothing to remove
+    return false // Node doesn't exist, nothing to remove
   }
 
   // Collect all incident edges for removal
@@ -2470,9 +2518,7 @@ export const removeNode = <N, E, T extends Kind = "directed">(
   impl.adjacency.delete(nodeIndex)
   impl.reverseAdjacency.delete(nodeIndex)
 
-  // Only invalidate cycle flag if the graph wasn't already known to be acyclic
-  // Removing nodes cannot introduce cycles in an acyclic graph
-  invalidateCycleFlagOnRemoval(impl)
+  return true
 }
 
 /**
@@ -2502,11 +2548,37 @@ export const removeEdge = <N, E, T extends Kind = "directed">(
   edgeIndex: EdgeIndex
 ): void => {
   const impl = getMutableImplForMutation(mutable)
-  const wasRemoved = removeEdgeInternal(impl, edgeIndex)
-
   // Only invalidate cycle flag if an edge was actually removed
   // and only if the graph wasn't already known to be acyclic
-  if (wasRemoved) {
+  if (removeEdgeInternal(impl, edgeIndex)) {
+    invalidateCycleFlagOnRemoval(impl)
+  }
+}
+
+/**
+ * Removes multiple edges from a mutable graph.
+ *
+ * The input is collected before mutation, so it may be backed by an iterator
+ * over the same graph. Missing and duplicate edge indices are ignored.
+ *
+ * @category mutations
+ * @since 4.0.0
+ */
+export const removeEdges = <N, E, T extends Kind = "directed">(
+  mutable: MutableGraph<N, E, T>,
+  edgeIndices: Iterable<EdgeIndex>
+): void => {
+  const impl = getMutableImplForMutation(mutable)
+  const indices = Array.from(edgeIndices)
+
+  let removed = false
+  for (const edgeIndex of indices) {
+    if (removeEdgeInternal(impl, edgeIndex)) {
+      removed = true
+    }
+  }
+
+  if (removed) {
     invalidateCycleFlagOnRemoval(impl)
   }
 }
