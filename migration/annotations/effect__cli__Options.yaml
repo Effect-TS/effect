@@ -17,8 +17,8 @@
   replacement: "Flag.between"
   note: "Use the moved combinator; v4 validates bounds when constructing the parameter."
 "@effect/cli/Options#boolean":
-  replacement: "Flag.boolean"
-  note: "Use the moved constructor; --no-name is automatic and aliases are added with Flag.withAlias."
+  replacement: "Flag.boolean + Flag.withDefault"
+  note: "Use Flag.boolean(name).pipe(Flag.withDefault(false)) to preserve v3's omitted-flag default; bare Flag.boolean is now required. --no-name is automatic and aliases are added with Flag.withAlias."
 "@effect/cli/Options#choice":
   replacement: "Flag.choice"
   note: "Use the moved constructor."

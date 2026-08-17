@@ -1,3 +1,6 @@
+"effect/Graph#Edge":
+  replacement: "Graph.Edge"
+  note: "The type remains as a structural interface, but its Data.Class constructor/value export was removed. Replace new Graph.Edge({ source, target, data }) with an object literal."
 "effect/Graph#Graph":
   replacement: "Graph.Graph"
   note: "The immutable type remains, but storage is opaque; replace field access with Graph nodes, edges, count, lookup, neighbor, and acyclicity APIs."
