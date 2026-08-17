@@ -444,7 +444,11 @@ export const fromSnapshot = <N, E, T extends Kind>(snapshot: Snapshot<N, E, T>):
   let previous = -1
   const nodeIndexes = new Set<NodeIndex>()
   for (let i = 0; i < snapshot.nodes.length; i++) {
-    const index = snapshot.nodes[i].index
+    const node = snapshot.nodes[i]
+    if (node === undefined || node === null) {
+      throw new GraphError({ message: `Node at position ${i} must be defined` })
+    }
+    const index = node.index
     if (!Number.isSafeInteger(index) || index < 0) {
       throw new GraphError({ message: `Node index at position ${i} must be a non-negative safe integer` })
     }
@@ -458,6 +462,9 @@ export const fromSnapshot = <N, E, T extends Kind>(snapshot: Snapshot<N, E, T>):
   previous = -1
   for (let i = 0; i < snapshot.edges.length; i++) {
     const edge = snapshot.edges[i]
+    if (edge === undefined || edge === null) {
+      throw new GraphError({ message: `Edge at position ${i} must be defined` })
+    }
     if (!Number.isSafeInteger(edge.index) || edge.index < 0) {
       throw new GraphError({ message: `Edge index at position ${i} must be a non-negative safe integer` })
     }
@@ -1507,6 +1514,9 @@ export const addNode = <N, E, T extends Kind = "directed">(
 ): NodeIndex => {
   const impl = getMutableImplForMutation(mutable)
   const nodeIndex = impl.nextNodeIndex
+  if (!Number.isSafeInteger(nodeIndex)) {
+    throw new GraphError({ message: "Graph has exhausted safe node indexes" })
+  }
 
   // Add node data
   impl.nodes.set(nodeIndex, data)
@@ -2300,6 +2310,9 @@ export const addEdge = <N, E, T extends Kind = "directed">(
   }
 
   const edgeIndex = impl.nextEdgeIndex
+  if (!Number.isSafeInteger(edgeIndex)) {
+    throw new GraphError({ message: "Graph has exhausted safe edge indexes" })
+  }
 
   // Create edge data
   const edgeData: Edge<E> = { source, target, data }
@@ -3454,7 +3467,7 @@ const escapeMermaidLabel = (label: string): string => {
     .replace(/\)/g, "#41;")
     .replace(/\|/g, "#124;")
     .replace(/\\/g, "#92;")
-    .replace(/\n/g, "<br/>")
+    .replace(/\r\n|\r|\n/g, "<br/>")
 }
 
 /**
@@ -6054,6 +6067,9 @@ export const astar: {
       const currentScore = scores[current]
       for (let i: number = outgoing.rowOffsets[current]; i < outgoing.rowOffsets[current + 1]; i++) {
         const neighbor = outgoing.columnIndices[i]
+        if (visited[neighbor] !== 0) {
+          continue
+        }
         const edge = outgoing.edgeIndices[i]
         const tentativeScore = currentScore + edgeWeights[edge]
         if (tentativeScore < scores[neighbor]) {
@@ -6061,9 +6077,7 @@ export const astar: {
           previousNode[neighbor] = current
           previousEdge[neighbor] = edge
           const priority = tentativeScore + getHeuristic(cache.nodeData[neighbor] as N)
-          if (visited[neighbor] === 0) {
-            denseMinHeapPush(openSet, neighbor, priority, sequence++)
-          }
+          denseMinHeapPush(openSet, neighbor, priority, sequence++)
         }
       }
     }
@@ -6133,6 +6147,9 @@ export const astar: {
         const edge = impl.edges.get(edgeIndex)
         if (edge !== undefined) {
           const neighbor = getTraversableNeighbor(graph, currentNode, edge)
+          if (visited.has(neighbor)) {
+            continue
+          }
           const weight = (edgeWeights as Map<EdgeIndex, number>).get(edgeIndex)!
 
           const tentativeGScore = currentGScore + weight
@@ -6150,10 +6167,7 @@ export const astar: {
               const h = getHeuristic(neighborNodeData as N)
               const f = tentativeGScore + h
 
-              // Add to open set if not visited
-              if (!visited.has(neighbor)) {
-                minHeapPush(openSet, { node: neighbor, priority: f, sequence: sequence++ })
-              }
+              minHeapPush(openSet, { node: neighbor, priority: f, sequence: sequence++ })
             }
           }
         }
@@ -7522,7 +7536,7 @@ export const topo: {
     throw new GraphError({ message: "Cannot perform topological sort on cyclic graph" })
   }
 
-  const initials = config.initials ?? []
+  const initials = Array.from(config.initials ?? [])
 
   // Validate that all initial nodes exist
   for (const nodeIndex of initials) {
@@ -7549,7 +7563,10 @@ export const topo: {
         inDegree[node] = incoming.rowOffsets[node + 1] - incoming.rowOffsets[node]
       }
       for (const initial of initials) {
-        const node = csr.getNodeIndex(cache, initial)!
+        const node = csr.getNodeIndex(cache, initial)
+        if (node === undefined) {
+          throw missingNode(initial)
+        }
         if (inDegree[node] !== 0) {
           throw new GraphError({ message: `Initial node ${initial} has incoming edges` })
         }

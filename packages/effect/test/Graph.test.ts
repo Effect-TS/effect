@@ -148,6 +148,24 @@ describe("Graph", () => {
       })
     })
 
+    it("rejects allocations after the safe index range is exhausted", () => {
+      const nodesExhausted = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: Number.MAX_SAFE_INTEGER, data: "A" }],
+        edges: []
+      })
+      const mutableNodes = Graph.beginMutation(nodesExhausted)
+      assertGraphError(() => Graph.addNode(mutableNodes, "B"), "Graph has exhausted safe node indexes")
+
+      const edgesExhausted = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 0, data: "A" }],
+        edges: [{ index: Number.MAX_SAFE_INTEGER, source: 0, target: 0, data: 1 }]
+      })
+      const mutableEdges = Graph.beginMutation(edgesExhausted)
+      assertGraphError(() => Graph.addEdge(mutableEdges, 0, 0, 2), "Graph has exhausted safe edge indexes")
+    })
+
     it("rejects invalid snapshot indexes", () => {
       assertGraphError(
         () =>
@@ -200,6 +218,14 @@ describe("Graph", () => {
             edges: [{ index: 0, source: -1, target: 0, data: 1 }]
           }),
         "Edge source at position 0 must be a non-negative safe integer"
+      )
+      assertGraphError(
+        () => Graph.fromSnapshot({ type: "directed", nodes: new Array(1), edges: [] }),
+        "Node at position 0 must be defined"
+      )
+      assertGraphError(
+        () => Graph.fromSnapshot({ type: "directed", nodes: [], edges: new Array(1) }),
+        "Edge at position 0 must be defined"
       )
     })
 
@@ -3016,6 +3042,8 @@ describe("Graph", () => {
         Graph.addNode(mutable, "Node with | pipe")
         Graph.addNode(mutable, "Node with \\ backslash")
         Graph.addNode(mutable, "Node with \n newline")
+        Graph.addNode(mutable, "Node with \r\n CRLF")
+        Graph.addNode(mutable, "Node with \r carriage return")
       })
 
       const mermaid = Graph.toMermaid(graph)
@@ -3025,6 +3053,9 @@ describe("Graph", () => {
       expect(mermaid).toContain("2[\"Node with #124; pipe\"]")
       expect(mermaid).toContain("3[\"Node with #92; backslash\"]")
       expect(mermaid).toContain("4[\"Node with <br/> newline\"]")
+      expect(mermaid).toContain("5[\"Node with <br/> CRLF\"]")
+      expect(mermaid).toContain("6[\"Node with <br/> carriage return\"]")
+      expect(mermaid).not.toContain("\r")
     })
 
     it("should export directed graph with edges", () => {
@@ -4253,6 +4284,28 @@ describe("Graph", () => {
       })
     })
 
+    it("should not update paths through closed nodes", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (const node of ["source", "closed", "later", "target"]) {
+          Graph.addNode(mutable, node)
+        }
+        Graph.addEdge(mutable, 0, 1, 10)
+        Graph.addEdge(mutable, 1, 3, 1)
+        Graph.addEdge(mutable, 0, 2, 1)
+        Graph.addEdge(mutable, 2, 1, 1)
+      })
+      const config = {
+        source: 0,
+        target: 3,
+        cost: (edge: number) => edge,
+        heuristic: (node: string) => node === "closed" ? -100 : 0
+      }
+      const expected = Option.some({ path: [0, 1, 3], edges: [0, 1], distance: 11, costs: [10, 1] })
+
+      assert.deepStrictEqual(Graph.astar(graph, config), expected)
+      assert.deepStrictEqual(Graph.astar(Graph.beginMutation(graph), config), expected)
+    })
+
     it("should return None for unreachable nodes", () => {
       const graph = Graph.directed<{ x: number; y: number }, number>((mutable) => {
         const a = Graph.addNode(mutable, { x: 0, y: 0 })
@@ -5453,6 +5506,31 @@ describe("Graph", () => {
 
       const order = Array.from(Graph.indices(Graph.topo(graph, { initials: [2] })))
       expect(order).toEqual([2, 0, 3, 1])
+    })
+
+    it("should copy initials when creating a topological walker", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+      })
+      const initials = [0]
+      const walker = Graph.topo(graph, { initials })
+
+      initials[0] = 1
+
+      assert.deepStrictEqual(Array.from(Graph.indices(walker)), [0, 1])
+    })
+
+    it("should revalidate initials when topological iteration begins", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+        Graph.addNode(graph, "A")
+        Graph.addNode(graph, "B")
+      }))
+      const walker = Graph.topo(mutable, { initials: [0] })
+
+      Graph.removeNode(mutable, 0)
+
+      assertGraphError(() => Array.from(Graph.indices(walker)), "Node 0 does not exist")
     })
 
     it("should reject initials with incoming edges", () => {
