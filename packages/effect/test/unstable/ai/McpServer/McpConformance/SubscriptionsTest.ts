@@ -3,13 +3,21 @@ import type * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
+import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
+import * as McpCore from "effect/unstable/ai/internal/mcpCore"
+import type * as McpProtocolInternal from "effect/unstable/ai/internal/mcpProtocol"
+import * as McpProtocol2026 from "effect/unstable/ai/internal/mcpProtocol/v2026_07_28"
+import * as McpSchema2026 from "effect/unstable/ai/internal/mcpSchema/v2026_07_28"
 import * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
+import * as Rpc from "effect/unstable/rpc/Rpc"
 import type * as RpcMessage from "effect/unstable/rpc/RpcMessage"
+import { RequestId } from "effect/unstable/rpc/RpcMessage"
 import * as RpcServer from "effect/unstable/rpc/RpcServer"
 import { makeHttpHarness } from "../TestUtils/McpHttpHarness.ts"
 import { makeServerLayer } from "../TestUtils/McpServerLayer.ts"
@@ -203,7 +211,8 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                 initialMessage: Effect.succeedNone,
                 supportsAck: false,
                 supportsTransferables: false,
-                supportsSpanPropagation: false
+                supportsSpanPropagation: false,
+                supportsNotifications: false
               })
             )
           )
@@ -259,6 +268,98 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
           assert(failure !== undefined && failure._tag === "Fail")
           assert(Predicate.isObject(failure.error))
           assert.strictEqual(failure.error.code, McpSchema.METHOD_NOT_FOUND_ERROR_CODE)
+        }))
+
+      it.effect("should buffer matching events while the subscription acknowledgment is blocked", () =>
+        Effect.gen(function*() {
+          const core = yield* McpCore.make
+          const events = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
+          const released = yield* Deferred.make<void>()
+          const acknowledgmentStarted = yield* Deferred.make<void>()
+          const releaseAcknowledgment = yield* Deferred.make<void>()
+          const sent = yield* Queue.unbounded<McpProtocol.ProjectedNotification>()
+          const handlers = McpProtocol2026.makeHandlers(core, undefined, {
+            subscribeServerNotifications: Effect.acquireRelease(
+              PubSub.subscribe(events),
+              () => Deferred.succeed(released, undefined)
+            ),
+            sendNotification: (_protocolVersion, _clientId, notification) =>
+              Effect.gen(function*() {
+                if (notification.tag === McpSchema2026.SubscriptionsAcknowledgedNotification._tag) {
+                  yield* Deferred.succeed(acknowledgmentStarted, undefined)
+                  yield* Deferred.await(releaseAcknowledgment)
+                }
+                yield* Queue.offer(sent, notification)
+              }),
+            supportedVersions: [McpSchema2026.protocolVersion],
+            serverInfo: { name: "SubscriptionConformance", version: "1.0.0" },
+            registrationPresence: { tools: true, resources: false, prompts: false }
+          })
+          const listener = yield* handlers["subscriptions/listen"](
+            { notifications: { toolsListChanged: true }, _meta: httpMetadata(protocol) },
+            { client: new Rpc.ServerClient(1), requestId: RequestId("blocked-acknowledgment") }
+          ).pipe(Effect.scoped, Effect.forkScoped)
+
+          yield* Deferred.await(acknowledgmentStarted)
+          yield* PubSub.publish(events, {
+            notification: McpCore.ServerNotification.ToolsChanged({})
+          })
+          yield* Deferred.succeed(releaseAcknowledgment, undefined)
+
+          const acknowledgment = yield* Queue.take(sent)
+          const notification = yield* Queue.take(sent)
+          assert.strictEqual(acknowledgment.tag, McpSchema2026.SubscriptionsAcknowledgedNotification._tag)
+          assert.strictEqual(notification.tag, McpSchema2026.ToolListChangedNotification._tag)
+
+          yield* Fiber.interrupt(listener)
+          yield* Deferred.await(released)
+        }))
+
+      it.effect("should release the scoped subscription when a blocked listener is interrupted", () =>
+        Effect.gen(function*() {
+          const core = yield* McpCore.make
+          const events = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
+          const released = yield* Deferred.make<void>()
+          const waitingForEvent = yield* Deferred.make<void>()
+          const handlers = McpProtocol2026.makeHandlers(core, undefined, {
+            subscribeServerNotifications: Effect.acquireRelease(
+              PubSub.subscribe(events).pipe(
+                Effect.map((subscription) =>
+                  new Proxy(subscription, {
+                    get(target, property, receiver) {
+                      if (property !== "subscription") {
+                        return Reflect.get(target, property, receiver)
+                      }
+                      return new Proxy(target.subscription, {
+                        get(backing, backingProperty, backingReceiver) {
+                          if (backingProperty !== "poll") {
+                            return Reflect.get(backing, backingProperty, backingReceiver)
+                          }
+                          return () => {
+                            Deferred.doneUnsafe(waitingForEvent, Effect.void)
+                            return backing.poll()
+                          }
+                        }
+                      })
+                    }
+                  })
+                )
+              ),
+              () => Deferred.succeed(released, undefined)
+            ),
+            sendNotification: () => Effect.void,
+            supportedVersions: [McpSchema2026.protocolVersion],
+            serverInfo: { name: "SubscriptionConformance", version: "1.0.0" },
+            registrationPresence: { tools: true, resources: false, prompts: false }
+          })
+          const listener = yield* handlers["subscriptions/listen"](
+            { notifications: { toolsListChanged: true }, _meta: httpMetadata(protocol) },
+            { client: new Rpc.ServerClient(1), requestId: RequestId("blocked-listener") }
+          ).pipe(Effect.scoped, Effect.forkScoped)
+
+          yield* Deferred.await(waitingForEvent)
+          yield* Fiber.interrupt(listener)
+          yield* Deferred.await(released)
         }))
 
       it.effect("should acknowledge with the exact identifier when it is numeric or string-valued", () =>

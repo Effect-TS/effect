@@ -14,15 +14,18 @@ import * as Previous from "./v2024_11_05.ts"
 
 export * from "./v2024_11_05.ts"
 
+/** @internal */
 export const protocolVersion = "2025-03-26"
 
 const optional = Previous.optional
 
+/** @internal */
 export const ServerCapabilities = Schema.Struct({
   ...Previous.ServerCapabilities.fields,
   completions: optional(Schema.Struct({}))
 })
 
+/** @internal */
 export const AudioContent = Schema.Struct({
   type: Schema.Literal("audio"),
   data: Schema.String,
@@ -30,6 +33,7 @@ export const AudioContent = Schema.Struct({
   annotations: optional(Previous.Annotation)
 })
 
+/** @internal */
 export const PromptOrToolContent = Schema.Union([
   Previous.TextContent,
   Previous.ImageContent,
@@ -37,22 +41,26 @@ export const PromptOrToolContent = Schema.Union([
   Previous.EmbeddedResource
 ])
 
+/** @internal */
 export const SamplingContent = Schema.Union([
   Previous.TextContent,
   Previous.ImageContent,
   AudioContent
 ])
 
+/** @internal */
 export const PromptMessage = Schema.Struct({
   role: Previous.Role,
   content: PromptOrToolContent
 })
 
+/** @internal */
 export const SamplingMessage = Schema.Struct({
   role: Previous.Role,
   content: SamplingContent
 })
 
+/** @internal */
 export const ToolAnnotations = Schema.Struct({
   title: optional(Schema.String),
   readOnlyHint: optional(Schema.Boolean),
@@ -61,11 +69,13 @@ export const ToolAnnotations = Schema.Struct({
   openWorldHint: optional(Schema.Boolean)
 })
 
+/** @internal */
 export const Tool = Schema.Struct({
   ...Previous.Tool.fields,
   annotations: optional(ToolAnnotations)
 })
 
+/** @internal */
 export const InitializeResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
   protocolVersion: Schema.String,
@@ -74,23 +84,27 @@ export const InitializeResult = Schema.Struct({
   instructions: optional(Schema.String)
 })
 
+/** @internal */
 export const GetPromptResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
   description: optional(Schema.String),
   messages: Schema.Array(PromptMessage)
 })
 
+/** @internal */
 export const ListToolsResult = Schema.Struct({
   ...Previous.PaginatedResult.fields,
   tools: Schema.Array(Tool)
 })
 
+/** @internal */
 export const CallToolResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
   content: Schema.Array(PromptOrToolContent),
   isError: optional(Schema.Boolean)
 })
 
+/** @internal */
 export const CreateMessageResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
   role: Previous.Role,
@@ -99,6 +113,7 @@ export const CreateMessageResult = Schema.Struct({
   stopReason: optional(Schema.String)
 })
 
+/** @internal */
 export class Initialize extends Rpc.make("initialize", {
   success: InitializeResult,
   error: Previous.McpError,
@@ -110,6 +125,7 @@ export class Initialize extends Rpc.make("initialize", {
   }
 }) {}
 
+/** @internal */
 export class GetPrompt extends Rpc.make("prompts/get", {
   success: GetPromptResult,
   error: Previous.McpError,
@@ -120,12 +136,14 @@ export class GetPrompt extends Rpc.make("prompts/get", {
   }
 }) {}
 
+/** @internal */
 export class ListTools extends Rpc.make("tools/list", {
   success: ListToolsResult,
   error: Previous.McpError,
   payload: Schema.UndefinedOr(Previous.PaginatedRequest)
 }) {}
 
+/** @internal */
 export class CallTool extends Rpc.make("tools/call", {
   success: CallToolResult,
   error: Previous.McpError,
@@ -136,6 +154,7 @@ export class CallTool extends Rpc.make("tools/call", {
   }
 }) {}
 
+/** @internal */
 export class CreateMessage extends Rpc.make("sampling/createMessage", {
   success: CreateMessageResult,
   error: Previous.McpError,
@@ -152,6 +171,7 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
   }
 }) {}
 
+/** @internal */
 export class ProgressNotification extends Rpc.make("notifications/progress", {
   payload: {
     ...Previous.NotificationMeta.fields,
@@ -162,6 +182,7 @@ export class ProgressNotification extends Rpc.make("notifications/progress", {
   }
 }) {}
 
+/** @internal */
 export class ClientRequestRpcs extends RpcGroup.make(
   Previous.Ping,
   Initialize,
@@ -178,6 +199,7 @@ export class ClientRequestRpcs extends RpcGroup.make(
   ListTools
 ) {}
 
+/** @internal */
 export class ClientNotificationRpcs extends RpcGroup.make(
   Previous.CancelledNotification,
   ProgressNotification,
@@ -185,14 +207,14 @@ export class ClientNotificationRpcs extends RpcGroup.make(
   Previous.RootsListChangedNotification
 ) {}
 
-export class ClientRpcs extends ClientRequestRpcs.merge(ClientNotificationRpcs) {}
-
+/** @internal */
 export class ServerRequestRpcs extends RpcGroup.make(
   Previous.Ping,
   CreateMessage,
   Previous.ListRoots
 ) {}
 
+/** @internal */
 export class ServerNotificationRpcs extends RpcGroup.make(
   Previous.CancelledNotification,
   ProgressNotification,

@@ -3,6 +3,7 @@
  *
  * @internal
  */
+import * as Arr from "../../../../Array.ts"
 import * as Effect from "../../../../Effect.ts"
 import * as Encoding from "../../../../Encoding.ts"
 import * as Match from "../../../../Match.ts"
@@ -15,9 +16,10 @@ import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
 import * as McpSchema from "../mcpSchema/v2026_07_28.ts"
 
-const JsonObject = Schema.Record(Schema.String, Schema.Json)
-const InputResponses = Schema.Record(Schema.String, JsonObject)
+const InputResponses = Schema.Record(Schema.String, Schema.JsonObject)
 const decodeRequestMetadata = Schema.decodeUnknownEffect(McpSchema.RequestMetaObject)
+const decodeCancellation = Schema.decodeUnknownEffect(McpSchema.CancelledNotification.payloadSchema)
+const isJson = Schema.is(Schema.Json)
 
 type ObjectWithUndefined = Readonly<Record<string, unknown>>
 
@@ -39,6 +41,7 @@ export interface StatelessRequestProfile {
   readonly requestMetadata: typeof McpSchema.RequestMetaObject.Type
 }
 
+/** @internal */
 export const profileFromRequestMetadata = Effect.fnUntraced(function*(metadata: unknown) {
   const requestMetadata = yield* decodeRequestMetadata(metadata)
   return {
@@ -55,7 +58,7 @@ const resultMetadata = (
 ): Schema.JsonObject => {
   const metadata: unknown = value._meta
   return {
-    ...(Schema.is(JsonObject)(metadata) ? metadata : {}),
+    ...(Schema.is(Schema.JsonObject)(metadata) ? metadata : {}),
     "io.modelcontextprotocol/serverInfo": serverInfo
   }
 }
@@ -65,6 +68,7 @@ const decodeCallToolOutcome = Schema.decodeUnknownEffect(Schema.Union([
   McpSchema.InputRequiredResult
 ]))
 
+/** @internal */
 export const projectCallToolOutcome = Effect.fnUntraced(function*(
   outcome: McpCore.OperationOutcome<ObjectWithUndefined>,
   serverInfo: typeof McpSchema.Implementation.Type
@@ -85,47 +89,45 @@ export const projectCallToolOutcome = Effect.fnUntraced(function*(
   })
 })
 
-const projectContent = Effect.fnUntraced(function*(content: typeof PublicMcpSchema.ContentBlock.Type) {
-  return Match.value(content).pipe(
-    Match.when({ type: Match.is("text", "resource_link") }, (content) => content),
-    Match.when({ type: Match.is("image", "audio") }, (content) =>
-      omitUndefined({
-        type: content.type,
-        mimeType: content.mimeType,
-        data: Encoding.encodeBase64(content.data),
-        annotations: content.annotations,
-        _meta: content._meta
-      })),
-    Match.when({ type: "resource" }, (content) => {
-      const resource = content.resource
-      if ("text" in resource) {
-        return omitUndefined({
-          type: "resource",
-          resource: omitUndefined({
-            uri: resource.uri,
-            mimeType: resource.mimeType,
-            _meta: resource._meta,
-            text: resource.text
-          }),
-          annotations: content.annotations,
-          _meta: content._meta
-        })
-      }
+const projectContent = Match.type<PublicMcpSchema.ContentBlock>().pipe(
+  Match.when({ type: Match.is("text", "resource_link") }, (content) => content),
+  Match.when({ type: Match.is("image", "audio") }, (content) =>
+    omitUndefined({
+      type: content.type,
+      mimeType: content.mimeType,
+      data: Encoding.encodeBase64(content.data),
+      annotations: content.annotations,
+      _meta: content._meta
+    })),
+  Match.when({ type: "resource" }, (content) => {
+    const resource = content.resource
+    if ("text" in resource) {
       return omitUndefined({
         type: "resource",
         resource: omitUndefined({
           uri: resource.uri,
           mimeType: resource.mimeType,
           _meta: resource._meta,
-          blob: Encoding.encodeBase64(resource.blob)
+          text: resource.text
         }),
         annotations: content.annotations,
         _meta: content._meta
       })
-    }),
-    Match.exhaustive
-  )
-})
+    }
+    return omitUndefined({
+      type: "resource",
+      resource: omitUndefined({
+        uri: resource.uri,
+        mimeType: resource.mimeType,
+        _meta: resource._meta,
+        blob: Encoding.encodeBase64(resource.blob)
+      }),
+      annotations: content.annotations,
+      _meta: content._meta
+    })
+  }),
+  Match.exhaustive
+)
 
 const projectResource = (resource: PublicMcpSchema.Resource) => McpSchema.Resource.make(resource)
 const projectResourceTemplate = (resourceTemplate: PublicMcpSchema.ResourceTemplate) =>
@@ -153,38 +155,63 @@ const projectCompleteResult = Effect.fnUntraced(function*(
   }
 })
 
-/** @internal */
-export const projectError = (error: unknown): typeof McpSchema.McpError.Type => {
-  let protocolError: McpProtocol.ProtocolError
-  if (error instanceof McpCore.ResourceNotFound) {
-    protocolError = new McpProtocol.ProtocolError({
-      code: McpSchema.INVALID_PARAMS,
-      message: `Resource '${error.uri}' not found`
-    })
-  } else if (error instanceof McpCore.ToolResultProjectionError) {
-    protocolError = new McpProtocol.ProtocolError({
-      code: McpSchema.INTERNAL_ERROR,
-      message: error.message
-    })
-  } else if (
-    error instanceof McpCore.ToolNotFound ||
-    error instanceof McpCore.InvalidToolInput ||
-    error instanceof McpCore.ToolExecutionError ||
-    error instanceof McpCore.UnsupportedByProtocol
-  ) {
-    protocolError = McpProtocol.ProtocolError.fromTool(error)
-  } else {
-    protocolError = McpProtocol.ProtocolError.fromFeature(error)
-  }
+type ProtocolError =
+  | McpCore.ResourceNotFound
+  | McpCore.PromptNotFound
+  | McpCore.ToolError
+  | McpCore.UnsupportedByProtocol
+  | McpProtocol.ProtocolError
+  | PublicMcpSchema.McpError
+  | Schema.SchemaError
+
+const matchedProtocolError = Match.type<ProtocolError>().pipe(
+  Match.tags({
+    ResourceNotFound: (error) =>
+      new McpProtocol.ProtocolError({
+        code: McpSchema.INVALID_PARAMS,
+        message: `Resource '${error.uri}' not found`
+      }),
+    ToolResultProjectionError: (error) =>
+      new McpProtocol.ProtocolError({
+        code: McpSchema.INTERNAL_ERROR,
+        message: error.message
+      }),
+    ToolNotFound: (error) =>
+      new McpProtocol.ProtocolError({
+        code: McpSchema.INVALID_PARAMS,
+        message: `Tool '${error.name}' not found`
+      }),
+    InvalidToolInput: (error) =>
+      new McpProtocol.ProtocolError({
+        code: McpSchema.INVALID_PARAMS,
+        message: error.message
+      }),
+    ToolExecutionError: (error) =>
+      new McpProtocol.ProtocolError({
+        code: McpSchema.INVALID_PARAMS,
+        message: error.message
+      }),
+    UnsupportedByProtocol: (error) =>
+      new McpProtocol.ProtocolError({
+        code: McpSchema.INVALID_PARAMS,
+        message: `${error.feature} is not supported by MCP ${error.protocolVersion}`
+      })
+  }),
+  Match.orElse(McpProtocol.ProtocolError.fromFeature)
+)
+
+const projectError = (error: ProtocolError): McpSchema.McpError => {
+  const protocolError = matchedProtocolError(error)
   return McpSchema.McpError.make({
     code: protocolError.code,
     message: protocolError.message,
-    ...(Schema.is(Schema.Json)(protocolError.data) ? { data: protocolError.data } : {})
+    ...(isJson(protocolError.data) ? { data: protocolError.data } : {})
   })
 }
 
+/** @internal */
 export const normalizeCancellation = (payload: unknown) =>
-  Schema.decodeUnknownEffect(McpSchema.CancelledNotification.payloadSchema)(payload).pipe(
+  decodeCancellation(payload).pipe(
     Effect.map((request) => ({
       requestId: request.requestId,
       reason: request.reason,
@@ -211,11 +238,21 @@ export interface ServerDiscoveryContext {
 /** @internal */
 export const handlerRpcs = McpSchema.ClientRequestRpcs.merge(McpSchema.ClientNotificationRpcs)
 
+/** @internal */
 export const makeHandlers = (
   core: McpCore.McpCore,
   _lifecycle: McpProtocol.LifecycleRuntime | undefined,
   context: McpProtocol.HandlerInstallationContext
 ) => {
+  const decodeInputResponses = Schema.decodeUnknownEffect(InputResponses)
+  const decodeDiscoverResult = Schema.decodeUnknownEffect(McpSchema.DiscoverResult)
+  const decodeListResourcesResult = Schema.decodeUnknownEffect(McpSchema.ListResourcesResult)
+  const decodeListResourceTemplatesResult = Schema.decodeUnknownEffect(McpSchema.ListResourceTemplatesResult)
+  const decodeReadResourceResult = Schema.decodeUnknownEffect(McpSchema.ReadResourceResult)
+  const decodeListPromptsResult = Schema.decodeUnknownEffect(McpSchema.ListPromptsResult)
+  const decodeGetPromptResult = Schema.decodeUnknownEffect(McpSchema.GetPromptResult)
+  const decodeCompleteResult = Schema.decodeUnknownEffect(McpSchema.CompleteResult)
+  const decodeListToolsResult = Schema.decodeUnknownEffect(McpSchema.ListToolsResult)
   const sendNotification = context.sendNotification
   const supportsSubscriptions = sendNotification !== undefined
   const discovery: ServerDiscoveryContext = {
@@ -250,7 +287,7 @@ export const makeHandlers = (
     const inputResponses = request.inputResponses === undefined
       ? undefined
       // The RPC payload already validated the dated response union; this decode only erases it into canonical JSON.
-      : yield* Schema.decodeUnknownEffect(InputResponses)(request.inputResponses).pipe(Effect.orDie)
+      : yield* decodeInputResponses(request.inputResponses).pipe(Effect.orDie)
     return McpProtocol.invocationFromRequestContext(PublicMcpSchema.McpRequestContext.of({
       ...context,
       inputResponses,
@@ -263,10 +300,10 @@ export const makeHandlers = (
       { client, requestId }: { readonly client: Rpc.ServerClient; readonly requestId: RpcMessage.RequestId }
     ) {
       if (sendNotification === undefined) {
-        return yield* Effect.fail(McpSchema.McpError.make({
+        return yield* new McpProtocol.ProtocolError({
           code: McpSchema.METHOD_NOT_FOUND,
           message: "Method not found: subscriptions/listen"
-        }))
+        })
       }
       const events = yield* context.subscribeServerNotifications
       const honored = {
@@ -343,7 +380,7 @@ export const makeHandlers = (
           yield* sendNotification(McpSchema.protocolVersion, client.id, projected)
         }
       }))
-    }),
+    }, Effect.mapError(projectError)),
     "server/discover": Effect.fnUntraced(function*(
       _request: typeof McpSchema.Discover.payloadSchema.Type
     ) {
@@ -352,7 +389,7 @@ export const makeHandlers = (
         supportedVersions: Array.from(discovery.supportedVersions),
         capabilities: discovery.capabilities
       }, discovery.serverInfo)
-      return yield* Schema.decodeUnknownEffect(McpSchema.DiscoverResult)(result)
+      return yield* decodeDiscoverResult(result)
     }, Effect.mapError(projectError)),
     "resources/list": Effect.fnUntraced(function*(
       _request: typeof McpSchema.ListResources.payloadSchema.Type
@@ -363,7 +400,7 @@ export const makeHandlers = (
         ...privateStaleCache,
         resources: resources.map(projectResource)
       }, discovery.serverInfo)
-      return yield* Schema.decodeUnknownEffect(McpSchema.ListResourcesResult)(result)
+      return yield* decodeListResourcesResult(result)
     }, Effect.mapError(projectError)),
     "resources/templates/list": Effect.fnUntraced(function*(
       _request: typeof McpSchema.ListResourceTemplates.payloadSchema.Type
@@ -374,7 +411,7 @@ export const makeHandlers = (
         ...privateStaleCache,
         resourceTemplates: resourceTemplates.map(projectResourceTemplate)
       }, discovery.serverInfo)
-      return yield* Schema.decodeUnknownEffect(McpSchema.ListResourceTemplatesResult)(result)
+      return yield* decodeListResourceTemplatesResult(result)
     }, Effect.mapError(projectError)),
     "resources/read": Effect.fnUntraced(function*(
       { uri }: typeof McpSchema.ReadResource.payloadSchema.Type
@@ -401,7 +438,7 @@ export const makeHandlers = (
         contents,
         _meta: read._meta
       }, discovery.serverInfo)
-      return yield* Schema.decodeUnknownEffect(McpSchema.ReadResourceResult)(result)
+      return yield* decodeReadResourceResult(result)
     }, Effect.mapError(projectError)),
     "prompts/list": Effect.fnUntraced(function*(
       _request: typeof McpSchema.ListPrompts.payloadSchema.Type
@@ -413,23 +450,23 @@ export const makeHandlers = (
         ...privateStaleCache,
         prompts: projectedPrompts
       }, discovery.serverInfo)
-      return yield* Schema.decodeUnknownEffect(McpSchema.ListPromptsResult)(result)
+      return yield* decodeListPromptsResult(result)
     }, Effect.mapError(projectError)),
     "prompts/get": Effect.fnUntraced(function*(
       { arguments: args, name }: typeof McpSchema.GetPrompt.payloadSchema.Type
     ) {
       const invocation = yield* getInvocation
       const prompt = yield* core.prompts.get(name, args ?? {}, invocation)
-      const messages = yield* Effect.forEach(prompt.messages, (message) =>
-        projectContent(message.content).pipe(
-          Effect.map((content) => ({ role: message.role, content }))
-        ))
+      const messages = prompt.messages.map((message) => ({
+        role: message.role,
+        content: projectContent(message.content)
+      }))
       const result = yield* projectCompleteResult({
         description: prompt.description,
         messages,
         _meta: prompt._meta
       }, discovery.serverInfo)
-      return yield* Schema.decodeUnknownEffect(McpSchema.GetPromptResult)(result)
+      return yield* decodeGetPromptResult(result)
     }, Effect.mapError(projectError)),
     "completion/complete": Effect.fnUntraced(function*(
       request: typeof McpSchema.Complete.payloadSchema.Type
@@ -453,7 +490,7 @@ export const makeHandlers = (
         }),
         _meta: completion.metadata
       }, discovery.serverInfo)
-      return yield* Schema.decodeUnknownEffect(McpSchema.CompleteResult)(result)
+      return yield* decodeCompleteResult(result)
     }, Effect.mapError(projectError)),
     "tools/list": Effect.fnUntraced(function*(
       _request: typeof McpSchema.ListTools.payloadSchema.Type
@@ -465,7 +502,7 @@ export const makeHandlers = (
         ...privateStaleCache,
         tools: projectedTools
       }, discovery.serverInfo)
-      return yield* Schema.decodeUnknownEffect(McpSchema.ListToolsResult)(result)
+      return yield* decodeListToolsResult(result)
     }, Effect.mapError(projectError)),
     "tools/call": Effect.fnUntraced(function*(request: typeof McpSchema.CallTool.payloadSchema.Type) {
       const invocation = yield* getInputInvocation(request)
@@ -485,10 +522,37 @@ export const makeHandlers = (
           })
         )
       if (outcome._tag === "InputRequired") {
+        const capabilities = invocation.protocol.clientCapabilities
+        const noneRequired: Record<string, Schema.JsonObject> = {}
+        const requiredCapabilities = Arr.reduce(
+          Object.values(outcome.inputRequests),
+          noneRequired,
+          (required, request) =>
+            Match.value(request).pipe(
+              Match.when({ method: "roots/list" }, () =>
+                capabilities.roots === undefined ? { ...required, roots: {} } : required),
+              Match.when({ method: "sampling/createMessage" }, () =>
+                capabilities.sampling === undefined ? { ...required, sampling: {} } : required),
+              Match.when({ method: "elicitation/create" }, (request) => {
+                const mode = request.params.mode === "url" ? "url" : "form"
+                return capabilities.elicitation?.[mode] === undefined
+                  ? { ...required, elicitation: { ...required.elicitation, [mode]: {} } }
+                  : required
+              }),
+              Match.exhaustive
+            )
+        )
+        if (Object.keys(requiredCapabilities).length > 0) {
+          return yield* new McpProtocol.ProtocolError({
+            code: McpSchema.MISSING_REQUIRED_CLIENT_CAPABILITY,
+            message: "The request requires client capabilities that were not declared",
+            data: { requiredCapabilities }
+          })
+        }
         return yield* projectCallToolOutcome(outcome, discovery.serverInfo)
       }
       const toolResult = outcome.value
-      const content = yield* Effect.forEach(toolResult.content, projectContent)
+      const content = toolResult.content.map(projectContent)
       return yield* projectCallToolOutcome(
         McpCore.OperationOutcome.Complete({
           content,
@@ -516,6 +580,7 @@ const runtime = {
   profileFromRequestMetadata
 } as const
 
+/** @internal */
 export const protocol = McpProtocol.make({
   protocolVersion: McpSchema.protocolVersion,
   runtime,

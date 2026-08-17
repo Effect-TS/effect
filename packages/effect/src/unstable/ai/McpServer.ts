@@ -67,7 +67,7 @@ import {
   ServerNotificationRpcs,
   TextContent,
   Tool as McpTool,
-  ToolJsonSchema
+  ToolJson
 } from "./McpSchema.ts"
 import type {
   CallTool,
@@ -102,12 +102,14 @@ type ServerNotificationRequest<
 > = R extends Rpc.Any ? RpcMessage.Request<R> : never
 
 const BroadcastServerNotificationRpcs = ServerNotificationRpcs.omit("notifications/elicitation/complete")
+const isJson = Schema.is(Schema.Json)
+const isLoggingLevel = Schema.is(McpSchema.LoggingLevel)
 
 const validateStructuredContent = (
   toolName: string,
   value: unknown
 ): Effect.Effect<Schema.Json, McpCore.ToolResultProjectionError> =>
-  Schema.is(Schema.Json)(value)
+  isJson(value)
     ? Effect.succeed(value)
     : Effect.fail(
       new McpCore.ToolResultProjectionError({
@@ -161,7 +163,27 @@ const provideInvocationContext = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
   invocation: McpCore.McpInvocation
 ): Effect.Effect<A, E, Exclude<R, McpRequestContext | McpServerClient>> => {
-  const provided = Effect.provideService(effect, McpRequestContext, invocation.requestContext)
+  let provided = Effect.provideService(effect, McpRequestContext, invocation.requestContext)
+  const requestMetadata = invocation.requestContext.requestMetadata
+  const logLevel = Predicate.hasProperty(requestMetadata, "io.modelcontextprotocol/logLevel")
+    ? requestMetadata["io.modelcontextprotocol/logLevel"]
+    : undefined
+  if (isLoggingLevel(logLevel)) {
+    provided = Effect.provideService(
+      provided,
+      CurrentLogLevel,
+      {
+        debug: "Debug",
+        info: "Info",
+        notice: "Info",
+        warning: "Warn",
+        error: "Error",
+        critical: "Fatal",
+        alert: "Fatal",
+        emergency: "Fatal"
+      }[logLevel]
+    )
+  }
   return (invocation.serverClient === undefined
     ? provided
     : Effect.provideService(provided, McpServerClient, invocation.serverClient)) as Effect.Effect<
@@ -666,11 +688,10 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
   // A bounded PubSub would let one slow listener block the shared worker and
   // legacy delivery. Each request scope releases its subscription on exit.
   const serverNotifications = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
-  const sendNotification = protocol.sendNotification
   const handlers = yield* runtime.installHandlers({
     core: internalState.get(server)!.core,
     subscribeServerNotifications: PubSub.subscribe(serverNotifications),
-    ...(sendNotification === undefined ? {} : {
+    ...(!protocol.supportsNotifications ? {} : {
       sendNotification: (
         protocolVersion: string,
         clientId: number,
@@ -685,9 +706,13 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
             )
           }
           const payload = yield* selectedProtocol.payloadCodecs(rpc).encode(notification.payload)
-          yield* sendNotification(clientId, {
+          yield* protocol.send(clientId, {
+            _tag: "Request",
+            id: "",
             tag: notification.tag,
-            payload
+            payload,
+            headers: [],
+            isNotification: true
           })
         }).pipe(Effect.orDie)
     }),
@@ -1260,14 +1285,9 @@ const mcpStdioSerialization = (
   const serialization = RpcSerialization.jsonRpc({
     contentType: "application/json-rpc"
   })
-  const encodeNotification = serialization.encodeNotification
   return RpcSerialization.RpcSerialization.of({
     contentType: serialization.contentType,
     includesFraming: true,
-    ...(encodeNotification === undefined ? {} : {
-      encodeNotification: (notification: RpcMessage.ServerNotificationEncoded) =>
-        `${encodeNotification(notification)}\n`
-    }),
     makeUnsafe: () => {
       const frames = RpcSerialization.ndjson.makeUnsafe()
       const parser = serialization.makeUnsafe()
@@ -1636,10 +1656,10 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
-    const outputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJsonSchema)(
+    const outputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
       Tool.getJsonSchemaFromSchema(tool.successSchema)
     ).pipe(Effect.orDie)
-    const inputSchema = yield* Schema.decodeUnknownEffect(ToolJsonSchema)(
+    const inputSchema = yield* Schema.decodeUnknownEffect(ToolJson)(
       Tool.getJsonSchema(tool)
     ).pipe(Effect.orDie)
     const mcpTool = new McpTool({

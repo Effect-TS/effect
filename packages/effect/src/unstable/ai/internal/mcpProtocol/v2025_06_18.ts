@@ -16,6 +16,7 @@ const ClientRequestRpcs = McpSchema.ClientRequestRpcs.middleware(
 const ClientRpcs = ClientRequestRpcs.merge(McpSchema.ClientNotificationRpcs)
 
 const AdapterRpcs = ClientRpcs.omit("ping")
+const isToolOutputSchema = Schema.is(McpSchema.Tool.fields.outputSchema)
 
 const profileFromInitialize = (
   initialize: typeof McpSchema.Initialize.payloadSchema.Type
@@ -106,10 +107,7 @@ const projectResourceContents = (
 
 const projectStructuredContent = (
   content: Schema.Json | undefined
-): Schema.JsonObject | undefined => content === undefined || isJsonObject(content) ? content : undefined
-
-const isJsonObject = (value: Schema.Json): value is Schema.JsonObject =>
-  typeof value === "object" && value !== null && !Array.isArray(value)
+): Schema.JsonObject | undefined => content === undefined || Schema.is(Schema.JsonObject)(content) ? content : undefined
 
 /** @internal */
 export const protocol = McpProtocol.make({
@@ -243,7 +241,7 @@ export const protocol = McpProtocol.make({
               title: tool.title,
               description: tool.description,
               inputSchema: tool.inputSchema,
-              outputSchema: Schema.is(McpSchema.Tool.fields.outputSchema)(tool.outputSchema)
+              outputSchema: isToolOutputSchema(tool.outputSchema)
                 ? tool.outputSchema
                 : undefined,
               annotations: tool.annotations === undefined

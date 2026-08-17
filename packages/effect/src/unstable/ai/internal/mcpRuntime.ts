@@ -29,6 +29,7 @@ const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 const MCP_METHOD_HEADER = "mcp-method"
 const MCP_NAME_HEADER = "mcp-name"
 const PROTOCOL_VERSION_METADATA_KEY = "io.modelcontextprotocol/protocolVersion"
+const CLIENT_CAPABILITIES_METADATA_KEY = "io.modelcontextprotocol/clientCapabilities"
 const BASE64_SENTINEL_PREFIX = "=?base64?"
 const BASE64_SENTINEL_SUFFIX = "?="
 
@@ -293,6 +294,17 @@ export const make = Effect.fnUntraced(function*(
         }
         if (typeof claim.value !== "string" || claim.value !== protocolVersion) {
           return headerMismatch("MCP-Protocol-Version header does not match request metadata")
+        }
+        const metadata = asRecord(asRecord(asRecord(input)?.params)?._meta)
+        if (asRecord(metadata?.[CLIENT_CAPABILITIES_METADATA_KEY]) === undefined) {
+          return {
+            _tag: "Rejected",
+            status: 400,
+            error: {
+              code: -32602,
+              message: `${CLIENT_CAPABILITIES_METADATA_KEY} request metadata is required`
+            }
+          }
         }
         if (statelessProtocol === undefined || protocolVersion !== statelessProtocol.protocolVersion) {
           return {

@@ -35,6 +35,7 @@ export interface Registration extends Binding {
   readonly logLevel: LogLevel.LogLevel
 }
 
+/** @internal */
 export interface StatefulRuntime {
   readonly registerHttp: (sessionId: string, registration: Registration) => Binding
   readonly registerConnection: (clientId: number, registration: Registration) => Binding

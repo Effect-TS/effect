@@ -221,3 +221,80 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
       })
     })
   })
+
+export const statelessModernSuite = (
+  protocol: McpProtocol.ProtocolAdapter,
+  layer: McpConformanceLayer
+) =>
+  it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
+    describe("Utilities > Stateless modern", () => {
+      describe("Cancellation", () => {
+        // https://modelcontextprotocol.io/specification/2026-07-28/basic/utilities/cancellation
+        it.effect("should send no response when a cancellation notification is received", () =>
+          Effect.gen(function*() {
+            const test = yield* McpConformance
+            const discovered = yield* test.initialize()
+            const response = yield* test.send(discovered, {
+              jsonrpc: "2.0",
+              method: "notifications/cancelled",
+              params: { requestId: "unknown-request", reason: "No longer needed" }
+            })
+
+            assert.strictEqual(response.status, 202)
+            assert.strictEqual(yield* Effect.promise(() => response.text()), "")
+          }))
+
+        // https://modelcontextprotocol.io/specification/2026-07-28/basic/utilities/cancellation
+        it.effect("should interrupt work and suppress its response when an active request is cancelled", () =>
+          Effect.gen(function*() {
+            const entered = yield* Deferred.make<void>()
+            const release = yield* Deferred.make<void>()
+            const interrupted = yield* Deferred.make<void>()
+            yield* Effect.addFinalizer(() => Deferred.succeed(release, void 0))
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            const cancelledRequestId = "cancelled-tool-call"
+
+            yield* fixture.server.addTool({
+              tool: new McpSchema.Tool({
+                name: "ModernGatedTool",
+                inputSchema: { type: "object", properties: {} }
+              }),
+              annotations: Context.empty(),
+              handle: () =>
+                Deferred.succeed(entered, void 0).pipe(
+                  Effect.andThen(Deferred.await(release)),
+                  Effect.onInterrupt(() => Deferred.succeed(interrupted, void 0)),
+                  Effect.as(new McpSchema.CallToolResult({ content: [{ type: "text", text: "released" }] }))
+                )
+            })
+
+            yield* fixture.initialize()
+            yield* fixture.startRequest("tools/call", {
+              name: "ModernGatedTool",
+              arguments: {}
+            }, cancelledRequestId)
+            yield* Deferred.await(entered)
+            yield* fixture.sendNotification("notifications/cancelled", {
+              requestId: cancelledRequestId,
+              reason: "No longer needed"
+            })
+            yield* Deferred.await(interrupted)
+
+            const control = yield* fixture.sendRequest("server/discover", {}, "post-cancellation-discover")
+            assert.strictEqual(control.id, "post-cancellation-discover")
+          }))
+
+        // https://modelcontextprotocol.io/specification/2026-07-28/basic/utilities/cancellation
+        it.effect("should allow a later request to reuse an identifier cancelled before it was active", () =>
+          Effect.gen(function*() {
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            yield* fixture.initialize()
+            yield* fixture.sendNotification("notifications/cancelled", { requestId: "reused-id" })
+
+            const reused = yield* fixture.sendRequest("server/discover", {}, "reused-id")
+            assert.strictEqual(reused.id, "reused-id")
+            assert.property(reused, "result")
+          }))
+      })
+    })
+  })

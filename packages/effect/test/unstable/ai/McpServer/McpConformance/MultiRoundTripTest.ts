@@ -135,5 +135,31 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(result.requestState, mrtrRequestState)
           }
         }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr#server-requirements-validation-and-security
+      it.effect("should reject a continuation when its input responses or request state are malformed", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const initialized = yield* test.initialize({ server: "features" })
+          const cases = [
+            { inputResponses: { approval: "accepted" }, requestState: mrtrRequestState },
+            { inputResponses, requestState: 42 }
+          ] as const
+
+          for (const [index, continuation] of cases.entries()) {
+            const response = yield* test.send(initialized, {
+              jsonrpc: "2.0",
+              id: index + 20,
+              method: "tools/call",
+              params: {
+                name: MrtrToolName,
+                arguments: {},
+                ...continuation
+              }
+            })
+            const error = yield* test.decodeError(response)
+            assert.strictEqual(error.error.code, -32602)
+          }
+        }))
     })
   })
