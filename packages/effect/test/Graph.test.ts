@@ -26,6 +26,16 @@ const makeSingleEdgeGraph = (weight: number) =>
     Graph.addEdge(mutable, source, target, weight)
   })
 
+const makeMutableWeightedPath = () =>
+  Graph.beginMutation(Graph.directed<string, number>((mutable) => {
+    Graph.addNode(mutable, "source")
+    Graph.addNode(mutable, "middle")
+    Graph.addNode(mutable, "target")
+    Graph.addEdge(mutable, 0, 1, 1)
+    Graph.addEdge(mutable, 1, 2, 1)
+    Graph.addEdge(mutable, 0, 2, 3)
+  }))
+
 const unsupportedEdgeWeights = [NaN, -Infinity] as const
 
 const assertGraphError = (thunk: () => void, message: string) => {
@@ -1788,6 +1798,136 @@ describe("Graph", () => {
       // After transformation
       const afterData = Graph.getEdge(graph, edgeAB!)
       expect(assertSomeEdge(afterData).data).toBe(50)
+    })
+  })
+
+  describe("callback-driven transform caching", () => {
+    it("should reject writes after a transform callback finalizes the graph", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, never>((graph) => {
+        Graph.addNode(graph, "old")
+      }))
+      let finalized: Graph.DirectedGraph<string, never> | undefined
+
+      assertGraphError(
+        () =>
+          Graph.updateNode(mutable, 0, () => {
+            finalized = Graph.endMutation(mutable)
+            Array.from(Graph.bfs(finalized, { start: [0] }))
+            return "new"
+          }),
+        "Graph is not mutable"
+      )
+      assertSome(Graph.getNode(finalized!, 0), "old")
+      assert.deepStrictEqual(Array.from(Graph.values(Graph.bfs(finalized!, { start: [0] }))), ["old"])
+    })
+
+    it("should not retain node data cached by updateNode callbacks", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, never>((graph) => {
+        Graph.addNode(graph, "old")
+      }))
+
+      Graph.updateNode(mutable, 0, () => {
+        assert.deepStrictEqual(Array.from(Graph.values(Graph.bfs(mutable, { start: [0] }))), ["old"])
+        return "new"
+      })
+
+      assert.deepStrictEqual(Array.from(Graph.values(Graph.bfs(mutable, { start: [0] }))), ["new"])
+    })
+
+    it("should not retain edge data cached by updateEdge callbacks", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+        Graph.addNode(graph, "source")
+        Graph.addNode(graph, "target")
+        Graph.addEdge(graph, 0, 1, 1)
+      }))
+
+      Graph.updateEdge(mutable, 0, () => {
+        assert.deepStrictEqual(Array.from(Graph.simplePaths(mutable, { source: 0, target: 1 }))[0].costs, [1])
+        return 2
+      })
+
+      assert.deepStrictEqual(Array.from(Graph.simplePaths(mutable, { source: 0, target: 1 }))[0].costs, [2])
+    })
+
+    it("should expose earlier node writes to later bulk transform callbacks", () => {
+      const run = (transform: (mutable: Graph.MutableDirectedGraph<string, never>) => void) => {
+        const mutable = Graph.beginMutation(Graph.directed<string, never>((graph) => {
+          Graph.addNode(graph, "a")
+          Graph.addNode(graph, "b")
+        }))
+        transform(mutable)
+        return Array.from(Graph.values(Graph.bfs(mutable, { start: [0, 1] })))
+      }
+
+      assert.deepStrictEqual(
+        run((mutable) => {
+          const seen: Array<Array<string>> = []
+          Graph.mapNodes(mutable, (data) => {
+            seen.push(Array.from(Graph.values(Graph.bfs(mutable, { start: [0, 1] }))))
+            return data.toUpperCase()
+          })
+          assert.deepStrictEqual(seen, [["a", "b"], ["A", "b"]])
+        }),
+        ["A", "B"]
+      )
+
+      assert.deepStrictEqual(
+        run((mutable) => {
+          const seen: Array<Array<string>> = []
+          Graph.filterMapNodes(mutable, (data) => {
+            seen.push(Array.from(Graph.values(Graph.bfs(mutable, { start: [0, 1] }))))
+            return Option.some(data.toUpperCase())
+          })
+          assert.deepStrictEqual(seen, [["a", "b"], ["A", "b"]])
+        }),
+        ["A", "B"]
+      )
+    })
+
+    it("should expose earlier edge writes to later bulk transform callbacks", () => {
+      const run = (transform: (mutable: Graph.MutableDirectedGraph<string, number>) => void) => {
+        const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+          Graph.addNode(graph, "source")
+          Graph.addNode(graph, "middle")
+          Graph.addNode(graph, "target")
+          Graph.addEdge(graph, 0, 1, 1)
+          Graph.addEdge(graph, 1, 2, 2)
+        }))
+        transform(mutable)
+        return Option.getOrThrow(Graph.dijkstra(mutable, { source: 0, target: 2, cost: (edge) => edge })).distance
+      }
+      const assertTransform = (
+        transform: (
+          mutable: Graph.MutableDirectedGraph<string, number>,
+          inspect: () => number
+        ) => void
+      ) => {
+        const seen: Array<number> = []
+        const distance = run((mutable) =>
+          transform(mutable, () => {
+            const current = Option.getOrThrow(
+              Graph.dijkstra(mutable, { source: 0, target: 2, cost: (edge) => edge })
+            ).distance
+            seen.push(current)
+            return current
+          })
+        )
+        assert.deepStrictEqual(seen, [3, 4])
+        assert.strictEqual(distance, 6)
+      }
+
+      assertTransform((mutable, inspect) =>
+        Graph.mapEdges(mutable, (data) => {
+          inspect()
+          return data * 2
+        })
+      )
+      assertTransform((mutable, inspect) =>
+        Graph.filterMapEdges(mutable, (data) => {
+          inspect()
+          return Option.some(data * 2)
+        })
+      )
     })
   })
 
@@ -4437,6 +4577,25 @@ describe("Graph", () => {
       assert.deepStrictEqual(Graph.dijkstra(Graph.beginMutation(graph), config), expected)
     })
 
+    it("should snapshot mutable adjacency before evaluating costs", () => {
+      const mutable = makeMutableWeightedPath()
+      let mutated = false
+      const result = Graph.dijkstra(mutable, {
+        source: 0,
+        target: 2,
+        cost: (edge) => {
+          if (!mutated) {
+            mutated = true
+            Graph.removeEdge(mutable, 1)
+          }
+          return edge
+        }
+      })
+
+      assertSome(result, { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [1, 1] })
+      assert.strictEqual(Graph.edgeCount(mutable), 2)
+    })
+
     it("should return None for unreachable nodes", () => {
       let nodeA: Graph.NodeIndex
       let nodeB: Graph.NodeIndex
@@ -4702,6 +4861,26 @@ describe("Graph", () => {
       assert.deepStrictEqual(Graph.astar(Graph.beginMutation(graph), config), expected)
     })
 
+    it("should snapshot mutable adjacency before evaluating costs", () => {
+      const mutable = makeMutableWeightedPath()
+      let mutated = false
+      const result = Graph.astar(mutable, {
+        source: 0,
+        target: 2,
+        cost: (edge) => {
+          if (!mutated) {
+            mutated = true
+            Graph.removeEdge(mutable, 1)
+          }
+          return edge
+        },
+        heuristic: () => 0
+      })
+
+      assertSome(result, { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [1, 1] })
+      assert.strictEqual(Graph.edgeCount(mutable), 2)
+    })
+
     it("should return None for unreachable nodes", () => {
       const graph = Graph.directed<{ x: number; y: number }, number>((mutable) => {
         const a = Graph.addNode(mutable, { x: 0, y: 0 })
@@ -4962,6 +5141,30 @@ describe("Graph", () => {
       })
 
       assertNone(result)
+    })
+
+    it("should reject finite distance arithmetic outside the number range", () => {
+      const underflow = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, 0, 1, -Number.MAX_VALUE)
+        Graph.addEdge(mutable, 1, 0, -Number.MAX_VALUE)
+      })
+      const overflow = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        Graph.addNode(mutable, "C")
+        Graph.addEdge(mutable, 0, 1, Number.MAX_VALUE)
+        Graph.addEdge(mutable, 1, 2, Number.MAX_VALUE)
+      })
+      const error = "Bellman-Ford distance calculation exceeded the finite number range"
+
+      for (const graph of [underflow, Graph.beginMutation(underflow)]) {
+        assertGraphError(() => Graph.bellmanFord(graph, { source: 0, target: 0, cost: (edge) => edge }), error)
+      }
+      for (const graph of [overflow, Graph.beginMutation(overflow)]) {
+        assertGraphError(() => Graph.bellmanFord(graph, { source: 0, target: 2, cost: (edge) => edge }), error)
+      }
     })
 
     it("should detect a directed negative self-loop when source equals target", () => {

@@ -387,6 +387,15 @@ const getMutableImplForMutation = <N, E, T extends Kind>(
   return internal.toImpl(graph)
 }
 
+/** @internal */
+const withoutMutableCache = <N, E, T extends Kind, A>(
+  graph: MutableGraph<N, E, T>,
+  evaluate: (impl: internal.GraphImpl<N, E, T>) => A
+): A => {
+  assertMutable(graph)
+  return csr.withoutCache(graph, () => evaluate(internal.toImpl(graph)))
+}
+
 // =============================================================================
 // Constructors
 // =============================================================================
@@ -1860,14 +1869,16 @@ export const updateNode = <N, E, T extends Kind = "directed">(
   index: NodeIndex,
   f: (data: N) => N
 ): void => {
-  const impl = getMutableImplForMutation(mutable)
-  if (!impl.nodes.has(index)) {
-    return
-  }
+  withoutMutableCache(mutable, (impl) => {
+    if (!impl.nodes.has(index)) {
+      return
+    }
 
-  const currentData = impl.nodes.get(index)!
-  const newData = f(currentData)
-  impl.nodes.set(index, newData)
+    const currentData = impl.nodes.get(index)!
+    const newData = f(currentData)
+    assertMutable(mutable)
+    impl.nodes.set(index, newData)
+  })
 }
 
 /**
@@ -1896,17 +1907,19 @@ export const updateEdge = <N, E, T extends Kind = "directed">(
   edgeIndex: EdgeIndex,
   f: (data: E) => E
 ): void => {
-  const impl = getMutableImplForMutation(mutable)
-  if (!impl.edges.has(edgeIndex)) {
-    return
-  }
+  withoutMutableCache(mutable, (impl) => {
+    if (!impl.edges.has(edgeIndex)) {
+      return
+    }
 
-  const currentEdge = impl.edges.get(edgeIndex)!
-  const newData = f(currentEdge.data)
-  impl.edges.set(edgeIndex, {
-    source: currentEdge.source,
-    target: currentEdge.target,
-    data: newData
+    const currentEdge = impl.edges.get(edgeIndex)!
+    const newData = f(currentEdge.data)
+    assertMutable(mutable)
+    impl.edges.set(edgeIndex, {
+      source: currentEdge.source,
+      target: currentEdge.target,
+      data: newData
+    })
   })
 }
 
@@ -1940,13 +1953,14 @@ export const mapNodes = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   f: (data: N) => N
 ): void => {
-  const impl = getMutableImplForMutation(mutable)
-
-  // Transform existing node data in place
-  for (const [index, data] of impl.nodes) {
-    const newData = f(data)
-    impl.nodes.set(index, newData)
-  }
+  withoutMutableCache(mutable, (impl) => {
+    // Transform existing node data in place
+    for (const [index, data] of impl.nodes) {
+      const newData = f(data)
+      assertMutable(mutable)
+      impl.nodes.set(index, newData)
+    }
+  })
 }
 
 /**
@@ -1976,17 +1990,18 @@ export const mapEdges = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   f: (data: E) => E
 ): void => {
-  const impl = getMutableImplForMutation(mutable)
-
-  // Transform existing edge data in place
-  for (const [index, edgeData] of impl.edges) {
-    const newData = f(edgeData.data)
-    impl.edges.set(index, {
-      source: edgeData.source,
-      target: edgeData.target,
-      data: newData
-    })
-  }
+  withoutMutableCache(mutable, (impl) => {
+    // Transform existing edge data in place
+    for (const [index, edgeData] of impl.edges) {
+      const newData = f(edgeData.data)
+      assertMutable(mutable)
+      impl.edges.set(index, {
+        source: edgeData.source,
+        target: edgeData.target,
+        data: newData
+      })
+    }
+  })
 }
 
 /**
@@ -2094,25 +2109,27 @@ export const filterMapNodes = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   f: (data: N) => Option.Option<N>
 ): void => {
-  const impl = getMutableImplForMutation(mutable)
-  const nodesToRemove: Array<NodeIndex> = []
+  withoutMutableCache(mutable, (impl) => {
+    const nodesToRemove: Array<NodeIndex> = []
 
-  // First pass: identify nodes to remove and transform data for nodes to keep
-  for (const [index, data] of impl.nodes) {
-    const result = f(data)
-    if (Option.isSome(result)) {
-      // Transform node data
-      impl.nodes.set(index, result.value)
-    } else {
-      // Mark for removal
-      nodesToRemove.push(index)
+    // First pass: identify nodes to remove and transform data for nodes to keep
+    for (const [index, data] of impl.nodes) {
+      const result = f(data)
+      assertMutable(mutable)
+      if (Option.isSome(result)) {
+        // Transform node data
+        impl.nodes.set(index, result.value)
+      } else {
+        // Mark for removal
+        nodesToRemove.push(index)
+      }
     }
-  }
 
-  // Second pass: remove filtered out nodes and their edges
-  for (const nodeIndex of nodesToRemove) {
-    removeNode(mutable, nodeIndex)
-  }
+    // Second pass: remove filtered out nodes and their edges
+    for (const nodeIndex of nodesToRemove) {
+      removeNode(mutable, nodeIndex)
+    }
+  })
 }
 
 /**
@@ -2149,29 +2166,31 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   f: (data: E) => Option.Option<E>
 ): void => {
-  const impl = getMutableImplForMutation(mutable)
-  const edgesToRemove: Array<EdgeIndex> = []
+  withoutMutableCache(mutable, (impl) => {
+    const edgesToRemove: Array<EdgeIndex> = []
 
-  // First pass: identify edges to remove and transform data for edges to keep
-  for (const [index, edgeData] of impl.edges) {
-    const result = f(edgeData.data)
-    if (Option.isSome(result)) {
-      // Transform edge data
-      impl.edges.set(index, {
-        source: edgeData.source,
-        target: edgeData.target,
-        data: result.value
-      })
-    } else {
-      // Mark for removal
-      edgesToRemove.push(index)
+    // First pass: identify edges to remove and transform data for edges to keep
+    for (const [index, edgeData] of impl.edges) {
+      const result = f(edgeData.data)
+      assertMutable(mutable)
+      if (Option.isSome(result)) {
+        // Transform edge data
+        impl.edges.set(index, {
+          source: edgeData.source,
+          target: edgeData.target,
+          data: result.value
+        })
+      } else {
+        // Mark for removal
+        edgesToRemove.push(index)
+      }
     }
-  }
 
-  // Second pass: remove filtered out edges
-  for (const edgeIndex of edgesToRemove) {
-    removeEdge(mutable, edgeIndex)
-  }
+    // Second pass: remove filtered out edges
+    for (const edgeIndex of edgesToRemove) {
+      removeEdge(mutable, edgeIndex)
+    }
+  })
 }
 
 /**
@@ -5990,6 +6009,9 @@ export const dijkstra: {
   const cache = csr.get(graph)
   const cachedEdges = csr.getEdges(cache)
   const cachedEdgeIds = csr.getEdgeIds(cache)
+  const outgoing = csr.getOutgoingWithEdges(cache)
+  const source = csr.getNodeIndex(cache, config.source)!
+  const target = csr.getNodeIndex(cache, config.target)!
   const edgeWeights = new Float64Array(cachedEdges.length)
   for (let i = 0; i < cachedEdges.length; i++) {
     const weight = config.cost(cachedEdges[i].data)
@@ -6009,9 +6031,6 @@ export const dijkstra: {
     })
   }
 
-  const outgoing = csr.getOutgoingWithEdges(cache)
-  const source = csr.getNodeIndex(cache, config.source)!
-  const target = csr.getNodeIndex(cache, config.target)!
   const distances = new Float64Array(cache.nodeIds.length)
   distances.fill(Infinity)
   distances[source] = 0
@@ -6365,6 +6384,11 @@ export const astar: {
   const cache = csr.get(graph)
   const cachedEdges = csr.getEdges(cache)
   const cachedEdgeIds = csr.getEdgeIds(cache)
+  const outgoing = csr.getOutgoingWithEdges(cache)
+  const source = csr.getNodeIndex(cache, config.source)!
+  const target = csr.getNodeIndex(cache, config.target)!
+  const sourceNodeData = cache.nodeData[source] as N
+  const targetNodeData = cache.nodeData[target] as N
   const edgeWeights = new Float64Array(cachedEdges.length)
   for (let i = 0; i < cachedEdges.length; i++) {
     const weight = config.cost(cachedEdges[i].data)
@@ -6376,7 +6400,7 @@ export const astar: {
 
   // Early return if source equals target
   if (config.source === config.target) {
-    if (!Number.isFinite(config.heuristic(impl.nodes.get(config.source)!, impl.nodes.get(config.target)!))) {
+    if (!Number.isFinite(config.heuristic(sourceNodeData, targetNodeData))) {
       throw new GraphError({ message: "A* algorithm requires finite heuristic values" })
     }
     return Option.some({
@@ -6387,8 +6411,6 @@ export const astar: {
     })
   }
 
-  // Get target node data for heuristic calculations
-  const targetNodeData = impl.nodes.get(config.target)!
   const getHeuristic = (nodeData: N): number => {
     const value = config.heuristic(nodeData, targetNodeData)
     if (!Number.isFinite(value)) {
@@ -6397,9 +6419,6 @@ export const astar: {
     return value
   }
 
-  const outgoing = csr.getOutgoingWithEdges(cache)
-  const source = csr.getNodeIndex(cache, config.source)!
-  const target = csr.getNodeIndex(cache, config.target)!
   const scores = new Float64Array(cache.nodeIds.length)
   scores.fill(Infinity)
   scores[source] = 0
@@ -6411,7 +6430,7 @@ export const astar: {
   const visited = new Uint8Array(cache.nodeIds.length)
   const openSet = denseMinHeapMake(cache.nodeIds.length)
   let sequence = 0
-  denseMinHeapPush(openSet, source, getHeuristic(cache.nodeData[source] as N), sequence++)
+  denseMinHeapPush(openSet, source, getHeuristic(sourceNodeData), sequence++)
 
   while (openSet.size > 0) {
     denseMinHeapPop(openSet)
@@ -6500,7 +6519,8 @@ export interface BellmanFordConfig<E> {
  * Negative edge weights are allowed, and `Infinity` behaves like an impassable
  * edge. Returns `Option.none()` when the target is unreachable. Throws a
  * `GraphError` when a reachable negative cycle can affect the target, either
- * endpoint is missing, or an edge weight is `NaN` or `-Infinity`.
+ * endpoint is missing, an edge weight is `NaN` or `-Infinity`, or finite
+ * distance arithmetic exceeds the finite number range.
  *
  * **Example** (Finding shortest paths with Bellman-Ford)
  *
@@ -6553,6 +6573,7 @@ export const bellmanFord: {
   const edges = csr.getEdges(cache)
   const edgeIds = csr.getEdgeIds(cache)
   const edgeCache = csr.getEdgeEndpoints(cache)
+  const outgoing = csr.getOutgoing(cache)
   const source = csr.getNodeIndex(cache, config.source)!
   const target = csr.getNodeIndex(cache, config.target)!
   const weights = new Float64Array(edges.length)
@@ -6562,6 +6583,17 @@ export const bellmanFord: {
       throw new GraphError({ message: "Bellman-Ford algorithm does not support NaN or -Infinity edge weights" })
     }
     weights[i] = weight
+  }
+
+  const addWeight = (distance: number, weight: number): number => {
+    if (distance === Infinity || weight === Infinity) {
+      return Infinity
+    }
+    const candidate = distance + weight
+    if (!Number.isFinite(candidate)) {
+      throw new GraphError({ message: "Bellman-Ford distance calculation exceeded the finite number range" })
+    }
+    return candidate
   }
 
   const distances = new Float64Array(cache.nodeIds.length)
@@ -6579,16 +6611,18 @@ export const bellmanFord: {
       const edgeTarget = edgeCache.targets[edge]
       const weight = weights[edge]
       const sourceDistance = distances[edgeSource]
-      if (sourceDistance !== Infinity && sourceDistance + weight < distances[edgeTarget]) {
-        distances[edgeTarget] = sourceDistance + weight
+      const candidate = addWeight(sourceDistance, weight)
+      if (candidate < distances[edgeTarget]) {
+        distances[edgeTarget] = candidate
         previousNode[edgeTarget] = edgeSource
         previousEdge[edgeTarget] = edge
         hasUpdate = true
       }
       if (graph.type === "undirected" && edgeSource !== edgeTarget) {
         const targetDistance = distances[edgeTarget]
-        if (targetDistance !== Infinity && targetDistance + weight < distances[edgeSource]) {
-          distances[edgeSource] = targetDistance + weight
+        const reverseCandidate = addWeight(targetDistance, weight)
+        if (reverseCandidate < distances[edgeSource]) {
+          distances[edgeSource] = reverseCandidate
           previousNode[edgeSource] = edgeTarget
           previousEdge[edgeSource] = edge
           hasUpdate = true
@@ -6615,20 +6649,18 @@ export const bellmanFord: {
     const edgeSource = edgeCache.sources[edge]
     const edgeTarget = edgeCache.targets[edge]
     const weight = weights[edge]
-    if (distances[edgeSource] !== Infinity && distances[edgeSource] + weight < distances[edgeTarget]) {
+    if (addWeight(distances[edgeSource], weight) < distances[edgeTarget]) {
       markAffected(edgeTarget)
     }
     if (
       graph.type === "undirected" &&
       edgeSource !== edgeTarget &&
-      distances[edgeTarget] !== Infinity &&
-      distances[edgeTarget] + weight < distances[edgeSource]
+      addWeight(distances[edgeTarget], weight) < distances[edgeSource]
     ) {
       markAffected(edgeSource)
     }
   }
   if (tail > 0) {
-    const outgoing = csr.getOutgoing(cache)
     while (head < tail) {
       const node = queue[head++]
       for (let i = outgoing.rowOffsets[node]; i < outgoing.rowOffsets[node + 1]; i++) {
@@ -6647,7 +6679,11 @@ export const bellmanFord: {
   const pathEdges: Array<EdgeIndex> = []
   const costs: Array<E> = []
   let current = target
+  let remaining = cache.nodeIds.length
   while (current !== -1) {
+    if (remaining-- === 0) {
+      throw new GraphError({ message: `Negative cycle affects path to node ${config.target}` })
+    }
     path.push(cache.nodeIds[current])
     const edge = previousEdge[current]
     if (edge !== -1) {

@@ -52,6 +52,7 @@ export interface Csr {
 }
 
 const cache = new WeakMap<GraphImpl<any, any, any>, Csr>()
+const cacheSuspensions = new WeakMap<GraphImpl<any, any, any>, number>()
 
 /** @internal */
 export const getNodeIndex = (csr: Csr, nodeId: Graph.NodeIndex): number | undefined =>
@@ -223,13 +224,36 @@ export const invalidate = <N, E, T extends Graph.Kind>(
 }
 
 /** @internal */
+export const withoutCache = <N, E, T extends Graph.Kind, A>(
+  graph: Graph.MutableGraph<N, E, T>,
+  evaluate: () => A
+): A => {
+  const impl = toImpl(graph)
+  const depth = cacheSuspensions.get(impl) ?? 0
+  cache.delete(impl)
+  cacheSuspensions.set(impl, depth + 1)
+  try {
+    return evaluate()
+  } finally {
+    if (depth === 0) {
+      cacheSuspensions.delete(impl)
+    } else {
+      cacheSuspensions.set(impl, depth)
+    }
+  }
+}
+
+/** @internal */
 export const get = <N, E, T extends Graph.Kind>(
   graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
 ): Csr => {
   const impl = toImpl(graph)
-  const cached = cache.get(impl)
-  if (cached !== undefined) {
-    return cached
+  const cacheEnabled = !cacheSuspensions.has(impl)
+  if (cacheEnabled) {
+    const cached = cache.get(impl)
+    if (cached !== undefined) {
+      return cached
+    }
   }
 
   // Node ids and data are captured together so an iterator never consults mutable maps after it starts.
@@ -268,6 +292,8 @@ export const get = <N, E, T extends Graph.Kind>(
     indexByEdgeId: undefined
   }
 
-  cache.set(impl, result)
+  if (cacheEnabled) {
+    cache.set(impl, result)
+  }
   return result
 }
