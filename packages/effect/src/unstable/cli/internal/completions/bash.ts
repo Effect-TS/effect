@@ -60,12 +60,22 @@ const buildFlagGroupDeclarations = (
   lines.push(``)
 }
 
+/**
+ * `compgen -W` re-expands every word of its list, which mangles values holding
+ * quotes, spaces or glob characters. Filter an explicitly quoted list instead.
+ */
+const choiceCompletion = (values: ReadonlyArray<string>): string => {
+  const words = values.map((value) => `'${escapeForBash(value)}'`).join(" ")
+  return `COMPREPLY=(); local _choice; for _choice in ${words}; do` +
+    ` if [[ $_choice == "$cur"* ]]; then COMPREPLY+=("$_choice"); fi; done`
+}
+
 const flagValueCompletion = (type: Completions.FlagType): string | undefined => {
   switch (type._tag) {
     case "Boolean":
       return undefined
     case "Choice":
-      return `COMPREPLY=( $(compgen -W '${type.values.join(" ")}' -- "$cur") )`
+      return choiceCompletion(type.values)
     case "Path":
       if (type.pathType === "directory") return `COMPREPLY=( $(compgen -d -- "$cur") )`
       return `COMPREPLY=( $(compgen -f -- "$cur") )`
@@ -77,7 +87,7 @@ const flagValueCompletion = (type: Completions.FlagType): string | undefined => 
 const argCompletion = (type: Completions.ArgumentType): string | undefined => {
   switch (type._tag) {
     case "Choice":
-      return `COMPREPLY=( $(compgen -W '${type.values.join(" ")}' -- "$cur") )`
+      return choiceCompletion(type.values)
     case "Path":
       if (type.pathType === "directory") return `COMPREPLY=( $(compgen -d -- "$cur") )`
       return `COMPREPLY=( $(compgen -f -- "$cur") )`

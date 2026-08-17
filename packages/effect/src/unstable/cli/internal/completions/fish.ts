@@ -12,7 +12,13 @@ import type * as Completions from "../../Completions.ts"
 // Helpers
 // ---------------------------------------------------------------------------
 
-const escapeFishString = (s: string): string => s.replace(/'/g, "\\'")
+const escapeFishString = (s: string): string => s.replace(/\\/g, "\\\\").replace(/'/g, "\\'")
+
+/**
+ * Fish re-parses the space-separated list given to `complete -a`, so a value
+ * has to survive two rounds: an inner backslash escape, then string quoting.
+ */
+const escapeFishChoice = (s: string): string => escapeFishString(s.replace(/[\\'\s]/g, "\\$&"))
 
 /**
  * Build a Fish condition that checks the current subcommand context.
@@ -88,7 +94,7 @@ const flagValueArgs = (type: Completions.FlagType): string | undefined => {
     case "Boolean":
       return undefined
     case "Choice":
-      return `-r -f -a '${type.values.join(" ")}'`
+      return `-r -f -a '${type.values.map(escapeFishChoice).join(" ")}'`
     case "Path":
       if (type.pathType === "directory") return `-r -F`
       return `-r -F`
@@ -101,7 +107,7 @@ const flagValueArgs = (type: Completions.FlagType): string | undefined => {
 const argValueArgs = (type: Completions.ArgumentType): string | undefined => {
   switch (type._tag) {
     case "Choice":
-      return `-r -f -a '${type.values.join(" ")}'`
+      return `-r -f -a '${type.values.map(escapeFishChoice).join(" ")}'`
     case "Path":
       return `-r -F`
     default:

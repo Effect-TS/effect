@@ -61,6 +61,15 @@ const withChoices = Command.make("deploy", {
   )
 }).pipe(Command.withDescription("Deploy application"))
 
+const withTrickyChoices = Command.make("deploy", {
+  mode: Flag.choice("mode", ["it's-fine", "node:20", "with space"]).pipe(
+    Flag.withDescription("Deploy mode")
+  ),
+  target: Argument.choice("target", ["o'clock", "a:b"]).pipe(
+    Argument.withDescription("Deployment target")
+  )
+}).pipe(Command.withDescription("Deploy application"))
+
 const withPaths = Command.make("process", {
   input: Flag.file("input").pipe(Flag.withDescription("Input file")),
   outDir: Flag.directory("output-dir").pipe(Flag.withDescription("Output directory")),
@@ -145,8 +154,8 @@ describe("Bash completions", () => {
     assert.include(script, `--verbose|-v|--no-verbose) ;;`)
     assert.include(script, `--format|-f) _skip_next=1 ;;`)
     assert.include(script, `--format=*|-f=*) ;;`)
-    assert.include(script, `0)\n      COMPREPLY=( $(compgen -W 'one' -- "$cur") )`)
-    assert.include(script, `1)\n      COMPREPLY=( $(compgen -W 'two' -- "$cur") )`)
+    assert.include(script, `0)\n      COMPREPLY=(); local _choice; for _choice in 'one';`)
+    assert.include(script, `1)\n      COMPREPLY=(); local _choice; for _choice in 'two';`)
   })
 
   it("generates completion function for root command", () => {
@@ -215,7 +224,15 @@ describe("Bash completions", () => {
   it("inlines choice values for choice flags", () => {
     const desc = fromCommand(withChoices)
     const script = Bash.generate("deploy", desc)
-    assert.include(script, "dev staging prod")
+    assert.include(script, `for _choice in 'dev' 'staging' 'prod'`)
+  })
+
+  it("quotes choice values instead of exposing them to compgen -W re-expansion", () => {
+    const desc = fromCommand(withTrickyChoices)
+    const script = Bash.generate("deploy", desc)
+    assert.include(script, `for _choice in 'it'\\''s-fine' 'node:20' 'with space'`)
+    assert.include(script, `for _choice in 'o'\\''clock' 'a:b'`)
+    assert.notInclude(script, `compgen -W 'it`)
   })
 
   it("generates separate functions for nested subcommands", () => {
@@ -350,6 +367,13 @@ describe("Zsh completions", () => {
     const desc = fromCommand(withChoices)
     const script = Zsh.generate("deploy", desc)
     assert.include(script, "(us-east eu-west ap-south)")
+  })
+
+  it("escapes quotes, colons and spaces in choice values", () => {
+    const desc = fromCommand(withTrickyChoices)
+    const script = Zsh.generate("deploy", desc)
+    assert.include(script, `(it\\'\\''s-fine node\\:20 with\\ space)`)
+    assert.include(script, `(o\\'\\''clock a\\:b)`)
   })
 
   it("uses alternative argument sets for positional arguments and subcommands", () => {
@@ -500,6 +524,13 @@ describe("Fish completions", () => {
     const desc = fromCommand(withChoices)
     const script = Fish.generate("deploy", desc)
     assert.include(script, "-r -f -a 'dev staging prod'")
+  })
+
+  it("escapes quotes and spaces in choice values for re-parsing", () => {
+    const desc = fromCommand(withTrickyChoices)
+    const script = Fish.generate("deploy", desc)
+    assert.include(script, "-r -f -a 'it\\\\\\'s-fine node:20 with\\\\ space'")
+    assert.include(script, "-r -f -a 'o\\\\\\'clock a:b'")
   })
 
   it("uses -n conditions for nested subcommand flags", () => {

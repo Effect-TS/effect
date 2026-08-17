@@ -14,6 +14,13 @@ import type * as Completions from "../../Completions.ts"
 
 const escapeZsh = (s: string): string => s.replace(/\\/g, "\\\\").replace(/'/g, "'\\''").replace(/:/g, "\\:")
 
+/**
+ * Values in an `_arguments` action list are backslash-tokenized after the spec
+ * itself is unquoted, so a value has to survive two rounds: an inner backslash
+ * escape, then the surrounding single quotes.
+ */
+const escapeZshChoice = (s: string): string => s.replace(/[^A-Za-z0-9_.,/@%+-]/g, "\\$&").replace(/'/g, "'\\''")
+
 const sanitize = (s: string): string => s.replace(/[^a-zA-Z0-9_]/g, "_")
 
 /**
@@ -35,7 +42,7 @@ const valueAction = (type: Completions.FlagType): string => {
     case "Boolean":
       return ""
     case "Choice":
-      return `:value:(${type.values.join(" ")})`
+      return `:value:(${type.values.map(escapeZshChoice).join(" ")})`
     case "Path":
       return type.pathType === "directory" ? `:directory:_directories` : `:file:_files`
     case "Integer":
@@ -52,7 +59,7 @@ const valueAction = (type: Completions.FlagType): string => {
 const argAction = (type: Completions.ArgumentType): string => {
   switch (type._tag) {
     case "Choice":
-      return `(${type.values.join(" ")})`
+      return `(${type.values.map(escapeZshChoice).join(" ")})`
     case "Path":
       return type.pathType === "directory" ? `_directories` : `_files`
     default:
