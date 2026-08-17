@@ -4234,25 +4234,6 @@ const getUndirectedNeighbors = <N, E>(
   return Array.from(neighbors)
 }
 
-const getTraversalNeighbors = <N, E, T extends Kind>(
-  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
-  nodeIndex: NodeIndex,
-  direction: TraversalDirection
-): Array<NodeIndex> => {
-  if (graph.type === "undirected") {
-    return getUndirectedNeighbors(graph as any, nodeIndex)
-  }
-  const directed = graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
-  if (direction !== "undirected") {
-    return getDirectedNeighbors(directed, nodeIndex, direction)
-  }
-  const neighbors = new Set(getDirectedNeighbors(directed, nodeIndex, "outgoing"))
-  for (const neighbor of getDirectedNeighbors(directed, nodeIndex, "incoming")) {
-    neighbors.add(neighbor)
-  }
-  return Array.from(neighbors)
-}
-
 const getTraversableNeighbor = <N, E, T extends Kind>(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   current: NodeIndex,
@@ -4460,81 +4441,42 @@ export const connectedComponents = <N, E>(
   if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "directed") {
     throw new GraphError({ message: "Cannot find connected components of directed graph" })
   }
-  const impl = internal.toImpl(graph)
-  if (!graph.mutable) {
-    const cache = csr.get(graph)
-    const outgoing = csr.getOutgoing(cache)
-    const visited = new Uint8Array(cache.nodeIds.length)
-    const neighborMarks = new Uint32Array(cache.nodeIds.length)
-    const components: Array<Array<NodeIndex>> = []
-    let neighborGeneration = 0
+  const cache = csr.get(graph)
+  const outgoing = csr.getOutgoing(cache)
+  const visited = new Uint8Array(cache.nodeIds.length)
+  const neighborMarks = new Uint32Array(cache.nodeIds.length)
+  const components: Array<Array<NodeIndex>> = []
+  let neighborGeneration = 0
 
-    for (let start = 0; start < cache.nodeIds.length; start++) {
-      if (visited[start] !== 0) {
+  for (let start = 0; start < cache.nodeIds.length; start++) {
+    if (visited[start] !== 0) {
+      continue
+    }
+    const component: Array<NodeIndex> = []
+    const stack: Array<number> = [start]
+
+    while (stack.length > 0) {
+      const current = stack.pop()!
+      if (visited[current] !== 0) {
         continue
       }
-      const component: Array<NodeIndex> = []
-      const stack: Array<number> = [start]
+      visited[current] = 1
+      component.push(cache.nodeIds[current])
 
-      while (stack.length > 0) {
-        const current = stack.pop()!
-        if (visited[current] !== 0) {
-          continue
-        }
-        visited[current] = 1
-        component.push(cache.nodeIds[current])
-
-        // Generation marks deduplicate parallel-edge neighbors without clearing a full-sized array per node.
-        neighborGeneration++
-        for (let i = outgoing.rowOffsets[current]; i < outgoing.rowOffsets[current + 1]; i++) {
-          const neighbor = outgoing.columnIndices[i]
-          if (neighborMarks[neighbor] !== neighborGeneration) {
-            neighborMarks[neighbor] = neighborGeneration
-            if (visited[neighbor] === 0) {
-              stack.push(neighbor)
-            }
+      // Generation marks deduplicate parallel-edge neighbors without clearing a full-sized array per node.
+      neighborGeneration++
+      for (let i = outgoing.rowOffsets[current]; i < outgoing.rowOffsets[current + 1]; i++) {
+        const neighbor = outgoing.columnIndices[i]
+        if (neighborMarks[neighbor] !== neighborGeneration) {
+          neighborMarks[neighbor] = neighborGeneration
+          if (visited[neighbor] === 0) {
+            stack.push(neighbor)
           }
         }
       }
-
-      components.push(component)
     }
 
-    return components
-  }
-
-  const visited = new Set<NodeIndex>()
-  const neighbors = new Set<NodeIndex>()
-  const components: Array<Array<NodeIndex>> = []
-  for (const startNode of impl.nodes.keys()) {
-    if (!visited.has(startNode)) {
-      // DFS to find all nodes in this component
-      const component: Array<NodeIndex> = []
-      const stack: Array<NodeIndex> = [startNode]
-
-      while (stack.length > 0) {
-        const current = stack.pop()!
-        if (!visited.has(current)) {
-          visited.add(current)
-          component.push(current)
-
-          neighbors.clear()
-          const adjacency = impl.adjacency.get(current)!
-          for (const edgeIndex of adjacency) {
-            const edge = impl.edges.get(edgeIndex)!
-            const neighbor = edge.source === current ? edge.target : edge.source
-            if (!neighbors.has(neighbor)) {
-              neighbors.add(neighbor)
-              if (!visited.has(neighbor)) {
-                stack.push(neighbor)
-              }
-            }
-          }
-        }
-      }
-
-      components.push(component)
-    }
+    components.push(component)
   }
 
   return components
@@ -4629,166 +4571,74 @@ export const stronglyConnectedComponents = <N, E>(
     throw new GraphError({ message: "Cannot find strongly connected components of undirected graph" })
   }
 
-  const impl = internal.toImpl(graph)
-  if (!graph.mutable) {
-    const cache = csr.get(graph)
-    const outgoing = csr.getOutgoing(cache)
-    const incoming = csr.getIncoming(cache)
-    const visited = new Uint8Array(cache.nodeIds.length)
-    const finishOrder: Array<number> = []
-    const stack: Array<number> = []
-    const positions: Array<number> = []
+  const cache = csr.get(graph)
+  const outgoing = csr.getOutgoing(cache)
+  const incoming = csr.getIncoming(cache)
+  const visited = new Uint8Array(cache.nodeIds.length)
+  const finishOrder: Array<number> = []
+  const stack: Array<number> = []
+  const positions: Array<number> = []
 
-    // First pass records finish order on the original graph using an explicit stack.
-    for (let start = 0; start < cache.nodeIds.length; start++) {
-      if (visited[start] !== 0) {
-        continue
-      }
-      visited[start] = 1
-      stack.push(start)
-      positions.push(outgoing.rowOffsets[start])
-
-      while (stack.length > 0) {
-        const frame = stack.length - 1
-        const node = stack[frame]
-        const position = positions[frame]
-        if (position < outgoing.rowOffsets[node + 1]) {
-          positions[frame] = position + 1
-          const neighbor = outgoing.columnIndices[position]
-          if (visited[neighbor] === 0) {
-            visited[neighbor] = 1
-            stack.push(neighbor)
-            positions.push(outgoing.rowOffsets[neighbor])
-          }
-        } else {
-          finishOrder.push(node)
-          stack.pop()
-          positions.pop()
-        }
-      }
-    }
-
-    visited.fill(0)
-    const components: Array<Array<NodeIndex>> = []
-    // Reversing finish order and traversing the transpose yields one SCC per search.
-    for (let i = finishOrder.length - 1; i >= 0; i--) {
-      const start = finishOrder[i]
-      if (visited[start] !== 0) {
-        continue
-      }
-      const component: Array<NodeIndex> = []
-      stack.push(start)
-
-      while (stack.length > 0) {
-        const node = stack.pop()!
-        if (visited[node] !== 0) {
-          continue
-        }
-        visited[node] = 1
-        component.push(cache.nodeIds[node])
-
-        for (let j = incoming.rowOffsets[node]; j < incoming.rowOffsets[node + 1]; j++) {
-          const predecessor = incoming.columnIndices[j]
-          if (visited[predecessor] === 0) {
-            stack.push(predecessor)
-          }
-        }
-      }
-
-      components.push(component)
-    }
-
-    return components
-  }
-
-  const visited = new Set<NodeIndex>()
-  const finishOrder: Array<NodeIndex> = []
-  // Iterate directly over node keys
-
-  // Step 1: Stack-safe DFS on original graph to get finish times
-  // Stack entry: [node, neighbors, neighborIndex, isFirstVisit]
-  type DfsStackEntry = [NodeIndex, Array<NodeIndex>, number, boolean]
-
-  for (const startNode of impl.nodes.keys()) {
-    if (visited.has(startNode)) {
+  // First pass records finish order on the original graph using an explicit stack.
+  for (let start = 0; start < cache.nodeIds.length; start++) {
+    if (visited[start] !== 0) {
       continue
     }
-
-    const stack: Array<DfsStackEntry> = [[startNode, [], 0, true]]
+    visited[start] = 1
+    stack.push(start)
+    positions.push(outgoing.rowOffsets[start])
 
     while (stack.length > 0) {
-      const [node, nodeNeighbors, neighborIndex, isFirstVisit] = stack[stack.length - 1]
-
-      if (isFirstVisit) {
-        if (visited.has(node)) {
-          stack.pop()
-          continue
-        }
-
-        visited.add(node)
-        const nodeNeighborsList = getDirectedNeighbors(graph, node, "outgoing")
-        stack[stack.length - 1] = [node, nodeNeighborsList, 0, false]
-        continue
-      }
-
-      // Process next neighbor
-      if (neighborIndex < nodeNeighbors.length) {
-        const neighbor = nodeNeighbors[neighborIndex]
-        stack[stack.length - 1] = [node, nodeNeighbors, neighborIndex + 1, false]
-
-        if (!visited.has(neighbor)) {
-          stack.push([neighbor, [], 0, true])
+      const frame = stack.length - 1
+      const node = stack[frame]
+      const position = positions[frame]
+      if (position < outgoing.rowOffsets[node + 1]) {
+        positions[frame] = position + 1
+        const neighbor = outgoing.columnIndices[position]
+        if (visited[neighbor] === 0) {
+          visited[neighbor] = 1
+          stack.push(neighbor)
+          positions.push(outgoing.rowOffsets[neighbor])
         }
       } else {
-        // Done with this node - add to finish order (post-order)
         finishOrder.push(node)
         stack.pop()
+        positions.pop()
       }
     }
   }
 
-  // Step 2: Stack-safe DFS on transpose graph in reverse finish order
-  visited.clear()
-  const sccs: Array<Array<NodeIndex>> = []
-
+  visited.fill(0)
+  const components: Array<Array<NodeIndex>> = []
+  // Reversing finish order and traversing the transpose yields one SCC per search.
   for (let i = finishOrder.length - 1; i >= 0; i--) {
-    const startNode = finishOrder[i]
-    if (visited.has(startNode)) {
+    const start = finishOrder[i]
+    if (visited[start] !== 0) {
       continue
     }
-
-    const scc: Array<NodeIndex> = []
-    const stack: Array<NodeIndex> = [startNode]
+    const component: Array<NodeIndex> = []
+    stack.push(start)
 
     while (stack.length > 0) {
       const node = stack.pop()!
-
-      if (visited.has(node)) {
+      if (visited[node] !== 0) {
         continue
       }
+      visited[node] = 1
+      component.push(cache.nodeIds[node])
 
-      visited.add(node)
-      scc.push(node)
-
-      // Use reverse adjacency (transpose graph)
-      const reverseAdjacency = impl.reverseAdjacency.get(node)
-      if (reverseAdjacency !== undefined) {
-        for (const edgeIndex of reverseAdjacency) {
-          const edge = impl.edges.get(edgeIndex)
-          if (edge !== undefined) {
-            const predecessor = edge.source
-            if (!visited.has(predecessor)) {
-              stack.push(predecessor)
-            }
-          }
+      for (let j = incoming.rowOffsets[node]; j < incoming.rowOffsets[node + 1]; j++) {
+        const predecessor = incoming.columnIndices[j]
+        if (visited[predecessor] === 0) {
+          stack.push(predecessor)
         }
       }
     }
 
-    sccs.push(scc)
+    components.push(component)
   }
 
-  return sccs
+  return components
 }
 
 /** @internal */
@@ -5379,28 +5229,16 @@ export const dijkstra: {
     throw missingNode(config.target)
   }
 
-  const cache = graph.mutable ? undefined : csr.get(graph)
-  const cachedEdges = cache === undefined ? undefined : csr.getEdges(cache)
-  const cachedEdgeIds = cache === undefined ? undefined : csr.getEdgeIds(cache)
-  let edgeWeights: Map<EdgeIndex, number> | Float64Array
-  if (cache === undefined) {
-    edgeWeights = new Map<EdgeIndex, number>()
-    for (const [edgeIndex, edgeData] of impl.edges) {
-      const weight = config.cost(edgeData.data)
-      if (Number.isNaN(weight) || weight < 0) {
-        throw new GraphError({ message: "Dijkstra's algorithm requires non-negative edge weights" })
-      }
-      edgeWeights.set(edgeIndex, weight)
+  const cache = csr.get(graph)
+  const cachedEdges = csr.getEdges(cache)
+  const cachedEdgeIds = csr.getEdgeIds(cache)
+  const edgeWeights = new Float64Array(cachedEdges.length)
+  for (let i = 0; i < cachedEdges.length; i++) {
+    const weight = config.cost(cachedEdges[i].data)
+    if (Number.isNaN(weight) || weight < 0) {
+      throw new GraphError({ message: "Dijkstra's algorithm requires non-negative edge weights" })
     }
-  } else {
-    edgeWeights = new Float64Array(cachedEdges!.length)
-    for (let i = 0; i < cachedEdges!.length; i++) {
-      const weight = config.cost(cachedEdges![i].data)
-      if (Number.isNaN(weight) || weight < 0) {
-        throw new GraphError({ message: "Dijkstra's algorithm requires non-negative edge weights" })
-      }
-      edgeWeights[i] = weight
-    }
+    edgeWeights[i] = weight
   }
 
   // Early return if source equals target
@@ -5413,165 +5251,71 @@ export const dijkstra: {
     })
   }
 
-  if (cache !== undefined && edgeWeights instanceof Float64Array) {
-    const outgoing = csr.getOutgoingWithEdges(cache)
-    const source = csr.getNodeIndex(cache, config.source)!
-    const target = csr.getNodeIndex(cache, config.target)!
-    const distances = new Float64Array(cache.nodeIds.length)
-    distances.fill(Infinity)
-    distances[source] = 0
-    // Predecessor node and edge arrays reconstruct both the public node path and its edge data.
-    const previousNode = new Int32Array(cache.nodeIds.length)
-    const previousEdge = new Int32Array(cache.nodeIds.length)
-    previousNode.fill(-1)
-    previousEdge.fill(-1)
-    const visited = new Uint8Array(cache.nodeIds.length)
-    const priorityQueue = denseMinHeapMake(cache.nodeIds.length, true)
-    let sequence = 0
-    denseMinHeapPush(priorityQueue, source, 0, sequence++)
-
-    while (priorityQueue.size > 0) {
-      denseMinHeapPop(priorityQueue)
-      const currentNode = priorityQueue.poppedNode
-      const currentDistance = priorityQueue.poppedPriority
-      if (visited[currentNode] !== 0) {
-        continue
-      }
-      visited[currentNode] = 1
-      if (currentNode === target) {
-        break
-      }
-
-      for (let i: number = outgoing.rowOffsets[currentNode]; i < outgoing.rowOffsets[currentNode + 1]; i++) {
-        const neighbor = outgoing.columnIndices[i]
-        const edge = outgoing.edgeIndices[i]
-        const nextDistance = currentDistance + edgeWeights[edge]
-        if (nextDistance < distances[neighbor]) {
-          distances[neighbor] = nextDistance
-          previousNode[neighbor] = currentNode
-          previousEdge[neighbor] = edge
-          if (visited[neighbor] === 0) {
-            denseMinHeapPush(priorityQueue, neighbor, nextDistance, sequence++)
-          }
-        }
-      }
-    }
-
-    if (distances[target] === Infinity) {
-      return Option.none()
-    }
-
-    const path: Array<NodeIndex> = []
-    const edges: Array<EdgeIndex> = []
-    const costs: Array<E> = []
-    let current = target
-    while (current !== -1) {
-      path.push(cache.nodeIds[current])
-      const edge = previousEdge[current]
-      if (edge !== -1) {
-        edges.push(cachedEdgeIds![edge])
-        costs.push(cachedEdges![edge].data)
-      }
-      current = previousNode[current]
-    }
-    path.reverse()
-    edges.reverse()
-    costs.reverse()
-
-    return Option.some({ path, edges, distance: distances[target], costs })
-  }
-
-  // Distance tracking and priority queue simulation
-  const distances = new Map<NodeIndex, number>()
-  const previous = new Map<NodeIndex, { node: NodeIndex; edge: EdgeIndex; edgeData: E } | null>()
-  const visited = new Set<NodeIndex>()
-
-  distances.set(config.source, 0)
-
-  const priorityQueue: Array<MinHeapEntry> = []
+  const outgoing = csr.getOutgoingWithEdges(cache)
+  const source = csr.getNodeIndex(cache, config.source)!
+  const target = csr.getNodeIndex(cache, config.target)!
+  const distances = new Float64Array(cache.nodeIds.length)
+  distances.fill(Infinity)
+  distances[source] = 0
+  // Predecessor node and edge arrays reconstruct both the public node path and its edge data.
+  const previousNode = new Int32Array(cache.nodeIds.length)
+  const previousEdge = new Int32Array(cache.nodeIds.length)
+  previousNode.fill(-1)
+  previousEdge.fill(-1)
+  const visited = new Uint8Array(cache.nodeIds.length)
+  const priorityQueue = denseMinHeapMake(cache.nodeIds.length, true)
   let sequence = 0
-  minHeapPush(priorityQueue, { node: config.source, priority: 0, sequence: sequence++ })
+  denseMinHeapPush(priorityQueue, source, 0, sequence++)
 
-  while (priorityQueue.length > 0) {
-    const current = minHeapPop(priorityQueue)!
-    const currentNode = current.node
-
-    // Skip if already visited (can happen with duplicate entries)
-    if (visited.has(currentNode)) {
+  while (priorityQueue.size > 0) {
+    denseMinHeapPop(priorityQueue)
+    const currentNode = priorityQueue.poppedNode
+    const currentDistance = priorityQueue.poppedPriority
+    if (visited[currentNode] !== 0) {
       continue
     }
-
-    visited.add(currentNode)
-
-    // Early termination if we reached the target
-    if (currentNode === config.target) {
+    visited[currentNode] = 1
+    if (currentNode === target) {
       break
     }
 
-    // Get current distance
-    const currentDistance = current.priority
-
-    // Examine all outgoing edges
-    const adjacencyList = impl.adjacency.get(currentNode)
-    if (adjacencyList !== undefined) {
-      for (const edgeIndex of adjacencyList) {
-        const edge = impl.edges.get(edgeIndex)
-        if (edge !== undefined) {
-          const neighbor = getTraversableNeighbor(graph, currentNode, edge)
-          const cost = (edgeWeights as Map<EdgeIndex, number>).get(edgeIndex)!
-
-          const newDistance = currentDistance + cost
-          const neighborDistance = distances.get(neighbor) ?? Infinity
-
-          // Relaxation step
-          if (newDistance < neighborDistance) {
-            distances.set(neighbor, newDistance)
-            previous.set(neighbor, { node: currentNode, edge: edgeIndex, edgeData: edge.data })
-
-            // Add to priority queue if not visited
-            if (!visited.has(neighbor)) {
-              minHeapPush(priorityQueue, { node: neighbor, priority: newDistance, sequence: sequence++ })
-            }
-          }
+    for (let i: number = outgoing.rowOffsets[currentNode]; i < outgoing.rowOffsets[currentNode + 1]; i++) {
+      const neighbor = outgoing.columnIndices[i]
+      const edge = outgoing.edgeIndices[i]
+      const nextDistance = currentDistance + edgeWeights[edge]
+      if (nextDistance < distances[neighbor]) {
+        distances[neighbor] = nextDistance
+        previousNode[neighbor] = currentNode
+        previousEdge[neighbor] = edge
+        if (visited[neighbor] === 0) {
+          denseMinHeapPush(priorityQueue, neighbor, nextDistance, sequence++)
         }
       }
     }
   }
 
-  // Check if target is reachable
-  const distance = distances.get(config.target) ?? Infinity
-  if (distance === Infinity) {
-    return Option.none() // No path exists
+  if (distances[target] === Infinity) {
+    return Option.none()
   }
 
-  // Reconstruct path
   const path: Array<NodeIndex> = []
   const edges: Array<EdgeIndex> = []
   const costs: Array<E> = []
-  let currentNode: NodeIndex | null = config.target
-
-  while (currentNode !== null) {
-    path.push(currentNode)
-    const prev: { node: NodeIndex; edge: EdgeIndex; edgeData: E } | null = previous.get(currentNode) ?? null
-    if (prev !== null) {
-      edges.push(prev.edge)
-      costs.push(prev.edgeData)
-      currentNode = prev.node
-    } else {
-      currentNode = null
+  let current = target
+  while (current !== -1) {
+    path.push(cache.nodeIds[current])
+    const edge = previousEdge[current]
+    if (edge !== -1) {
+      edges.push(cachedEdgeIds[edge])
+      costs.push(cachedEdges[edge].data)
     }
+    current = previousNode[current]
   }
-
   path.reverse()
   edges.reverse()
   costs.reverse()
 
-  return Option.some({
-    path,
-    edges,
-    distance,
-    costs
-  })
+  return Option.some({ path, edges, distance: distances[target], costs })
 })
 
 /**
@@ -5646,256 +5390,124 @@ export const floydWarshall: {
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   cost: (edgeData: E) => number
 ): AllPairsResult<E> => {
-  const impl = internal.toImpl(graph)
-
-  if (!graph.mutable) {
-    const cache = csr.get(graph)
-    const edges = csr.getEdges(cache)
-    const edgeIds = csr.getEdgeIds(cache)
-    const edgeCache = csr.getEdgeEndpoints(cache)
-    const size = cache.nodeIds.length
-    // Flat matrices keep the O(N^2) working set contiguous and avoid nested map lookups in the O(N^3) loop.
-    const distancesMatrix = new Float64Array(size * size)
-    const nextMatrix = new Int32Array(size * size)
-    const edgeMatrix = new Int32Array(size * size)
-    distancesMatrix.fill(Infinity)
-    nextMatrix.fill(-1)
-    edgeMatrix.fill(-1)
-    for (let i = 0; i < size; i++) {
-      distancesMatrix[i * size + i] = 0
-    }
-
-    for (let edge = 0; edge < edges.length; edge++) {
-      const weight = cost(edges[edge].data)
-      if (Number.isNaN(weight) || weight === -Infinity) {
-        throw new GraphError({ message: "Floyd-Warshall algorithm does not support NaN or -Infinity edge weights" })
-      }
-      const source = edgeCache.sources[edge]
-      const target = edgeCache.targets[edge]
-      const position = source * size + target
-      if (weight < distancesMatrix[position]) {
-        distancesMatrix[position] = weight
-        nextMatrix[position] = target
-        edgeMatrix[position] = edge
-      }
-      if (graph.type === "undirected") {
-        const reverse = target * size + source
-        if (weight < distancesMatrix[reverse]) {
-          distancesMatrix[reverse] = weight
-          nextMatrix[reverse] = source
-          edgeMatrix[reverse] = edge
-        }
-      }
-    }
-
-    for (let k = 0; k < size; k++) {
-      const kRow = k * size
-      for (let i = 0; i < size; i++) {
-        const iRow = i * size
-        const distanceIK = distancesMatrix[iRow + k]
-        if (distanceIK === Infinity) {
-          continue
-        }
-        const nextIK = nextMatrix[iRow + k]
-        for (let j = 0; j < size; j++) {
-          const distanceKJ = distancesMatrix[kRow + j]
-          const candidate = distanceIK + distanceKJ
-          if (distanceKJ !== Infinity && candidate < distancesMatrix[iRow + j] && nextIK !== -1) {
-            distancesMatrix[iRow + j] = candidate
-            nextMatrix[iRow + j] = nextIK
-          }
-        }
-      }
-    }
-
-    for (let i = 0; i < size; i++) {
-      if (distancesMatrix[i * size + i] < 0) {
-        throw new GraphError({ message: `Negative cycle detected involving node ${cache.nodeIds[i]}` })
-      }
-    }
-
-    const distances = new Map<NodeIndex, Map<NodeIndex, number>>()
-    const paths = new Map<NodeIndex, Map<NodeIndex, Array<NodeIndex> | null>>()
-    const edgePaths = new Map<NodeIndex, Map<NodeIndex, Array<EdgeIndex>>>()
-    const costs = new Map<NodeIndex, Map<NodeIndex, Array<E>>>()
-    for (let i = 0; i < size; i++) {
-      const source = cache.nodeIds[i]
-      const distanceRow = new Map<NodeIndex, number>()
-      const pathRow = new Map<NodeIndex, Array<NodeIndex> | null>()
-      const edgePathRow = new Map<NodeIndex, Array<EdgeIndex>>()
-      const costRow = new Map<NodeIndex, Array<E>>()
-      distances.set(source, distanceRow)
-      paths.set(source, pathRow)
-      edgePaths.set(source, edgePathRow)
-      costs.set(source, costRow)
-
-      for (let j = 0; j < size; j++) {
-        const target = cache.nodeIds[j]
-        const distance = distancesMatrix[i * size + j]
-        distanceRow.set(target, distance)
-        if (i === j) {
-          pathRow.set(target, [source])
-          edgePathRow.set(target, [])
-          costRow.set(target, [])
-        } else if (distance === Infinity) {
-          pathRow.set(target, null)
-          edgePathRow.set(target, [])
-          costRow.set(target, [])
-        } else {
-          const path = [source]
-          const pathEdges: Array<EdgeIndex> = []
-          const pathCosts: Array<E> = []
-          let current = i
-          while (current !== j) {
-            const next = nextMatrix[current * size + j]
-            if (next === -1) {
-              break
-            }
-            const edge = edgeMatrix[current * size + next]
-            if (edge !== -1) {
-              pathEdges.push(edgeIds[edge])
-              pathCosts.push(edges[edge].data)
-            }
-            current = next
-            path.push(cache.nodeIds[current])
-          }
-          pathRow.set(target, path)
-          edgePathRow.set(target, pathEdges)
-          costRow.set(target, pathCosts)
-        }
-      }
-    }
-
-    return { distances, paths, edges: edgePaths, costs }
+  const cache = csr.get(graph)
+  const edges = csr.getEdges(cache)
+  const edgeIds = csr.getEdgeIds(cache)
+  const edgeCache = csr.getEdgeEndpoints(cache)
+  const size = cache.nodeIds.length
+  // Flat matrices keep the O(N^2) working set contiguous and avoid nested map lookups in the O(N^3) loop.
+  const distancesMatrix = new Float64Array(size * size)
+  const nextMatrix = new Int32Array(size * size)
+  const edgeMatrix = new Int32Array(size * size)
+  distancesMatrix.fill(Infinity)
+  nextMatrix.fill(-1)
+  edgeMatrix.fill(-1)
+  for (let i = 0; i < size; i++) {
+    distancesMatrix[i * size + i] = 0
   }
 
-  // Get all nodes for Floyd-Warshall algorithm (needs array for nested iteration)
-  const allNodes = Array.from(impl.nodes.keys())
-
-  // Initialize distance matrix
-  const distances = new Map<NodeIndex, Map<NodeIndex, number>>()
-  const next = new Map<NodeIndex, Map<NodeIndex, NodeIndex>>()
-  const edgeMatrix = new Map<NodeIndex, Map<NodeIndex, { readonly index: EdgeIndex; readonly data: E }>>()
-
-  // Initialize with infinity for all pairs
-  for (const i of allNodes) {
-    distances.set(i, new Map())
-    next.set(i, new Map())
-    edgeMatrix.set(i, new Map())
-
-    for (const j of allNodes) {
-      distances.get(i)!.set(j, i === j ? 0 : Infinity)
-    }
-  }
-
-  // Set edge weights
-  for (const [edgeIndex, edgeData] of impl.edges) {
-    const weight = cost(edgeData.data)
+  for (let edge = 0; edge < edges.length; edge++) {
+    const weight = cost(edges[edge].data)
     if (Number.isNaN(weight) || weight === -Infinity) {
       throw new GraphError({ message: "Floyd-Warshall algorithm does not support NaN or -Infinity edge weights" })
     }
-    const i = edgeData.source
-    const j = edgeData.target
-
-    // Use minimum weight if multiple edges exist
-    const currentWeight = distances.get(i)!.get(j)!
-    if (weight < currentWeight) {
-      distances.get(i)!.set(j, weight)
-      next.get(i)!.set(j, j)
-      edgeMatrix.get(i)!.set(j, { index: edgeIndex, data: edgeData.data })
+    const source = edgeCache.sources[edge]
+    const target = edgeCache.targets[edge]
+    const position = source * size + target
+    if (weight < distancesMatrix[position]) {
+      distancesMatrix[position] = weight
+      nextMatrix[position] = target
+      edgeMatrix[position] = edge
     }
-
     if (graph.type === "undirected") {
-      const reverseWeight = distances.get(j)!.get(i)!
-      if (weight < reverseWeight) {
-        distances.get(j)!.set(i, weight)
-        next.get(j)!.set(i, i)
-        edgeMatrix.get(j)!.set(i, { index: edgeIndex, data: edgeData.data })
+      const reverse = target * size + source
+      if (weight < distancesMatrix[reverse]) {
+        distancesMatrix[reverse] = weight
+        nextMatrix[reverse] = source
+        edgeMatrix[reverse] = edge
       }
     }
   }
 
-  // Floyd-Warshall main loop
-  for (const k of allNodes) {
-    for (const i of allNodes) {
-      for (const j of allNodes) {
-        const distIK = distances.get(i)!.get(k)!
-        const distKJ = distances.get(k)!.get(j)!
-        const distIJ = distances.get(i)!.get(j)!
-
-        if (distIK !== Infinity && distKJ !== Infinity && distIK + distKJ < distIJ) {
-          const nextIK = next.get(i)!.get(k)
-          if (nextIK !== undefined) {
-            distances.get(i)!.set(j, distIK + distKJ)
-            next.get(i)!.set(j, nextIK)
-          }
+  for (let k = 0; k < size; k++) {
+    const kRow = k * size
+    for (let i = 0; i < size; i++) {
+      const iRow = i * size
+      const distanceIK = distancesMatrix[iRow + k]
+      if (distanceIK === Infinity) {
+        continue
+      }
+      const nextIK = nextMatrix[iRow + k]
+      for (let j = 0; j < size; j++) {
+        const distanceKJ = distancesMatrix[kRow + j]
+        const candidate = distanceIK + distanceKJ
+        if (distanceKJ !== Infinity && candidate < distancesMatrix[iRow + j] && nextIK !== -1) {
+          distancesMatrix[iRow + j] = candidate
+          nextMatrix[iRow + j] = nextIK
         }
       }
     }
   }
 
-  // Check for negative cycles
-  for (const i of allNodes) {
-    if (distances.get(i)!.get(i)! < 0) {
-      throw new GraphError({ message: `Negative cycle detected involving node ${i}` })
+  for (let i = 0; i < size; i++) {
+    if (distancesMatrix[i * size + i] < 0) {
+      throw new GraphError({ message: `Negative cycle detected involving node ${cache.nodeIds[i]}` })
     }
   }
 
-  // Build result paths and edge weights
+  const distances = new Map<NodeIndex, Map<NodeIndex, number>>()
   const paths = new Map<NodeIndex, Map<NodeIndex, Array<NodeIndex> | null>>()
   const edgePaths = new Map<NodeIndex, Map<NodeIndex, Array<EdgeIndex>>>()
   const costs = new Map<NodeIndex, Map<NodeIndex, Array<E>>>()
+  for (let i = 0; i < size; i++) {
+    const source = cache.nodeIds[i]
+    const distanceRow = new Map<NodeIndex, number>()
+    const pathRow = new Map<NodeIndex, Array<NodeIndex> | null>()
+    const edgePathRow = new Map<NodeIndex, Array<EdgeIndex>>()
+    const costRow = new Map<NodeIndex, Array<E>>()
+    distances.set(source, distanceRow)
+    paths.set(source, pathRow)
+    edgePaths.set(source, edgePathRow)
+    costs.set(source, costRow)
 
-  for (const i of allNodes) {
-    paths.set(i, new Map())
-    edgePaths.set(i, new Map())
-    costs.set(i, new Map())
-
-    for (const j of allNodes) {
+    for (let j = 0; j < size; j++) {
+      const target = cache.nodeIds[j]
+      const distance = distancesMatrix[i * size + j]
+      distanceRow.set(target, distance)
       if (i === j) {
-        paths.get(i)!.set(j, [i])
-        edgePaths.get(i)!.set(j, [])
-        costs.get(i)!.set(j, [])
-      } else if (distances.get(i)!.get(j)! === Infinity) {
-        paths.get(i)!.set(j, null)
-        edgePaths.get(i)!.set(j, [])
-        costs.get(i)!.set(j, [])
+        pathRow.set(target, [source])
+        edgePathRow.set(target, [])
+        costRow.set(target, [])
+      } else if (distance === Infinity) {
+        pathRow.set(target, null)
+        edgePathRow.set(target, [])
+        costRow.set(target, [])
       } else {
-        // Reconstruct path iteratively
-        const path: Array<NodeIndex> = []
+        const path = [source]
         const pathEdges: Array<EdgeIndex> = []
-        const weights: Array<E> = []
+        const pathCosts: Array<E> = []
         let current = i
-
-        path.push(current)
         while (current !== j) {
-          const nextNode = next.get(current)!.get(j)
-          if (nextNode === undefined) break
-
-          const edgeRow = edgeMatrix.get(current)!
-          if (edgeRow.has(nextNode)) {
-            const edge = edgeRow.get(nextNode)!
-            pathEdges.push(edge.index)
-            weights.push(edge.data)
+          const next = nextMatrix[current * size + j]
+          if (next === -1) {
+            break
           }
-
-          current = nextNode
-          path.push(current)
+          const edge = edgeMatrix[current * size + next]
+          if (edge !== -1) {
+            pathEdges.push(edgeIds[edge])
+            pathCosts.push(edges[edge].data)
+          }
+          current = next
+          path.push(cache.nodeIds[current])
         }
-
-        paths.get(i)!.set(j, path)
-        edgePaths.get(i)!.set(j, pathEdges)
-        costs.get(i)!.set(j, weights)
+        pathRow.set(target, path)
+        edgePathRow.set(target, pathEdges)
+        costRow.set(target, pathCosts)
       }
     }
   }
 
-  return {
-    distances,
-    paths,
-    edges: edgePaths,
-    costs
-  }
+  return { distances, paths, edges: edgePaths, costs }
 })
 
 /**
@@ -5992,28 +5604,16 @@ export const astar: {
     throw missingNode(config.target)
   }
 
-  const cache = graph.mutable ? undefined : csr.get(graph)
-  const cachedEdges = cache === undefined ? undefined : csr.getEdges(cache)
-  const cachedEdgeIds = cache === undefined ? undefined : csr.getEdgeIds(cache)
-  let edgeWeights: Map<EdgeIndex, number> | Float64Array
-  if (cache === undefined) {
-    edgeWeights = new Map<EdgeIndex, number>()
-    for (const [edgeIndex, edgeData] of impl.edges) {
-      const weight = config.cost(edgeData.data)
-      if (Number.isNaN(weight) || weight < 0) {
-        throw new GraphError({ message: "A* algorithm requires non-negative edge weights" })
-      }
-      edgeWeights.set(edgeIndex, weight)
+  const cache = csr.get(graph)
+  const cachedEdges = csr.getEdges(cache)
+  const cachedEdgeIds = csr.getEdgeIds(cache)
+  const edgeWeights = new Float64Array(cachedEdges.length)
+  for (let i = 0; i < cachedEdges.length; i++) {
+    const weight = config.cost(cachedEdges[i].data)
+    if (Number.isNaN(weight) || weight < 0) {
+      throw new GraphError({ message: "A* algorithm requires non-negative edge weights" })
     }
-  } else {
-    edgeWeights = new Float64Array(cachedEdges!.length)
-    for (let i = 0; i < cachedEdges!.length; i++) {
-      const weight = config.cost(cachedEdges![i].data)
-      if (Number.isNaN(weight) || weight < 0) {
-        throw new GraphError({ message: "A* algorithm requires non-negative edge weights" })
-      }
-      edgeWeights[i] = weight
-    }
+    edgeWeights[i] = weight
   }
 
   // Early return if source equals target
@@ -6036,179 +5636,72 @@ export const astar: {
     return value
   }
 
-  if (cache !== undefined && edgeWeights instanceof Float64Array) {
-    const outgoing = csr.getOutgoingWithEdges(cache)
-    const source = csr.getNodeIndex(cache, config.source)!
-    const target = csr.getNodeIndex(cache, config.target)!
-    const scores = new Float64Array(cache.nodeIds.length)
-    scores.fill(Infinity)
-    scores[source] = 0
-    // Predecessor node and edge arrays preserve path reconstruction while the hot loop uses compact indices.
-    const previousNode = new Int32Array(cache.nodeIds.length)
-    const previousEdge = new Int32Array(cache.nodeIds.length)
-    previousNode.fill(-1)
-    previousEdge.fill(-1)
-    const visited = new Uint8Array(cache.nodeIds.length)
-    const openSet = denseMinHeapMake(cache.nodeIds.length)
-    let sequence = 0
-    denseMinHeapPush(openSet, source, getHeuristic(cache.nodeData[source] as N), sequence++)
-
-    while (openSet.size > 0) {
-      denseMinHeapPop(openSet)
-      const current = openSet.poppedNode
-      if (visited[current] !== 0) {
-        continue
-      }
-      visited[current] = 1
-      if (current === target) {
-        break
-      }
-
-      const currentScore = scores[current]
-      for (let i: number = outgoing.rowOffsets[current]; i < outgoing.rowOffsets[current + 1]; i++) {
-        const neighbor = outgoing.columnIndices[i]
-        if (visited[neighbor] !== 0) {
-          continue
-        }
-        const edge = outgoing.edgeIndices[i]
-        const tentativeScore = currentScore + edgeWeights[edge]
-        if (tentativeScore < scores[neighbor]) {
-          scores[neighbor] = tentativeScore
-          previousNode[neighbor] = current
-          previousEdge[neighbor] = edge
-          const priority = tentativeScore + getHeuristic(cache.nodeData[neighbor] as N)
-          denseMinHeapPush(openSet, neighbor, priority, sequence++)
-        }
-      }
-    }
-
-    if (scores[target] === Infinity) {
-      return Option.none()
-    }
-
-    const path: Array<NodeIndex> = []
-    const edges: Array<EdgeIndex> = []
-    const costs: Array<E> = []
-    let current = target
-    while (current !== -1) {
-      path.push(cache.nodeIds[current])
-      const edge = previousEdge[current]
-      if (edge !== -1) {
-        edges.push(cachedEdgeIds![edge])
-        costs.push(cachedEdges![edge].data)
-      }
-      current = previousNode[current]
-    }
-    path.reverse()
-    edges.reverse()
-    costs.reverse()
-    return Option.some({ path, edges, distance: scores[target], costs })
-  }
-
-  // Distance tracking (g-score) and f-score (g + h)
-  const gScore = new Map<NodeIndex, number>()
-  const previous = new Map<NodeIndex, { node: NodeIndex; edge: EdgeIndex; edgeData: E } | null>()
-  const visited = new Set<NodeIndex>()
-
-  gScore.set(config.source, 0)
-  const sourceScore = getHeuristic(impl.nodes.get(config.source)!)
-
-  const openSet: Array<MinHeapEntry> = []
+  const outgoing = csr.getOutgoingWithEdges(cache)
+  const source = csr.getNodeIndex(cache, config.source)!
+  const target = csr.getNodeIndex(cache, config.target)!
+  const scores = new Float64Array(cache.nodeIds.length)
+  scores.fill(Infinity)
+  scores[source] = 0
+  // Predecessor node and edge arrays preserve path reconstruction while the hot loop uses compact indices.
+  const previousNode = new Int32Array(cache.nodeIds.length)
+  const previousEdge = new Int32Array(cache.nodeIds.length)
+  previousNode.fill(-1)
+  previousEdge.fill(-1)
+  const visited = new Uint8Array(cache.nodeIds.length)
+  const openSet = denseMinHeapMake(cache.nodeIds.length)
   let sequence = 0
-  minHeapPush(openSet, {
-    node: config.source,
-    priority: sourceScore,
-    sequence: sequence++
-  })
+  denseMinHeapPush(openSet, source, getHeuristic(cache.nodeData[source] as N), sequence++)
 
-  while (openSet.length > 0) {
-    const current = minHeapPop(openSet)!
-    const currentNode = current.node
-
-    // Skip if already visited
-    if (visited.has(currentNode)) {
+  while (openSet.size > 0) {
+    denseMinHeapPop(openSet)
+    const current = openSet.poppedNode
+    if (visited[current] !== 0) {
       continue
     }
-
-    visited.add(currentNode)
-
-    // Early termination if we reached the target
-    if (currentNode === config.target) {
+    visited[current] = 1
+    if (current === target) {
       break
     }
 
-    // Get current g-score
-    const currentGScore = gScore.get(currentNode)!
-
-    // Examine all outgoing edges
-    const adjacencyList = impl.adjacency.get(currentNode)
-    if (adjacencyList !== undefined) {
-      for (const edgeIndex of adjacencyList) {
-        const edge = impl.edges.get(edgeIndex)
-        if (edge !== undefined) {
-          const neighbor = getTraversableNeighbor(graph, currentNode, edge)
-          if (visited.has(neighbor)) {
-            continue
-          }
-          const weight = (edgeWeights as Map<EdgeIndex, number>).get(edgeIndex)!
-
-          const tentativeGScore = currentGScore + weight
-          const neighborGScore = gScore.get(neighbor) ?? Infinity
-
-          // If this path to neighbor is better than any previous one
-          if (tentativeGScore < neighborGScore) {
-            // Update g-score and previous
-            gScore.set(neighbor, tentativeGScore)
-            previous.set(neighbor, { node: currentNode, edge: edgeIndex, edgeData: edge.data })
-
-            // Calculate f-score using heuristic
-            const neighborNodeData = impl.nodes.get(neighbor)
-            if (neighborNodeData !== undefined || impl.nodes.has(neighbor)) {
-              const h = getHeuristic(neighborNodeData as N)
-              const f = tentativeGScore + h
-
-              minHeapPush(openSet, { node: neighbor, priority: f, sequence: sequence++ })
-            }
-          }
-        }
+    const currentScore = scores[current]
+    for (let i: number = outgoing.rowOffsets[current]; i < outgoing.rowOffsets[current + 1]; i++) {
+      const neighbor = outgoing.columnIndices[i]
+      if (visited[neighbor] !== 0) {
+        continue
+      }
+      const edge = outgoing.edgeIndices[i]
+      const tentativeScore = currentScore + edgeWeights[edge]
+      if (tentativeScore < scores[neighbor]) {
+        scores[neighbor] = tentativeScore
+        previousNode[neighbor] = current
+        previousEdge[neighbor] = edge
+        const priority = tentativeScore + getHeuristic(cache.nodeData[neighbor] as N)
+        denseMinHeapPush(openSet, neighbor, priority, sequence++)
       }
     }
   }
 
-  // Check if target is reachable
-  const distance = gScore.get(config.target) ?? Infinity
-  if (distance === Infinity) {
-    return Option.none() // No path exists
+  if (scores[target] === Infinity) {
+    return Option.none()
   }
 
-  // Reconstruct path
   const path: Array<NodeIndex> = []
   const edges: Array<EdgeIndex> = []
   const costs: Array<E> = []
-  let currentNode: NodeIndex | null = config.target
-
-  while (currentNode !== null) {
-    path.push(currentNode)
-    const prev: { node: NodeIndex; edge: EdgeIndex; edgeData: E } | null = previous.get(currentNode) ?? null
-    if (prev !== null) {
-      edges.push(prev.edge)
-      costs.push(prev.edgeData)
-      currentNode = prev.node
-    } else {
-      currentNode = null
+  let current = target
+  while (current !== -1) {
+    path.push(cache.nodeIds[current])
+    const edge = previousEdge[current]
+    if (edge !== -1) {
+      edges.push(cachedEdgeIds[edge])
+      costs.push(cachedEdges[edge].data)
     }
+    current = previousNode[current]
   }
-
   path.reverse()
   edges.reverse()
   costs.reverse()
-
-  return Option.some({
-    path,
-    edges,
-    distance,
-    costs
-  })
+  return Option.some({ path, edges, distance: scores[target], costs })
 })
 
 /**
@@ -6295,242 +5788,117 @@ export const bellmanFord: {
     throw missingNode(config.target)
   }
 
-  if (!graph.mutable) {
-    const cache = csr.get(graph)
-    const edges = csr.getEdges(cache)
-    const edgeIds = csr.getEdgeIds(cache)
-    const edgeCache = csr.getEdgeEndpoints(cache)
-    const source = csr.getNodeIndex(cache, config.source)!
-    const target = csr.getNodeIndex(cache, config.target)!
-    const weights = new Float64Array(edges.length)
-    for (let i = 0; i < edges.length; i++) {
-      const weight = config.cost(edges[i].data)
-      if (Number.isNaN(weight) || weight === -Infinity) {
-        throw new GraphError({ message: "Bellman-Ford algorithm does not support NaN or -Infinity edge weights" })
-      }
-      weights[i] = weight
+  const cache = csr.get(graph)
+  const edges = csr.getEdges(cache)
+  const edgeIds = csr.getEdgeIds(cache)
+  const edgeCache = csr.getEdgeEndpoints(cache)
+  const source = csr.getNodeIndex(cache, config.source)!
+  const target = csr.getNodeIndex(cache, config.target)!
+  const weights = new Float64Array(edges.length)
+  for (let i = 0; i < edges.length; i++) {
+    const weight = config.cost(edges[i].data)
+    if (Number.isNaN(weight) || weight === -Infinity) {
+      throw new GraphError({ message: "Bellman-Ford algorithm does not support NaN or -Infinity edge weights" })
     }
+    weights[i] = weight
+  }
 
-    const distances = new Float64Array(cache.nodeIds.length)
-    const previousNode = new Int32Array(cache.nodeIds.length)
-    const previousEdge = new Int32Array(cache.nodeIds.length)
-    distances.fill(Infinity)
-    previousNode.fill(-1)
-    previousEdge.fill(-1)
-    distances[source] = 0
+  const distances = new Float64Array(cache.nodeIds.length)
+  const previousNode = new Int32Array(cache.nodeIds.length)
+  const previousEdge = new Int32Array(cache.nodeIds.length)
+  distances.fill(Infinity)
+  previousNode.fill(-1)
+  previousEdge.fill(-1)
+  distances[source] = 0
 
-    for (let iteration = 0; iteration < cache.nodeIds.length - 1; iteration++) {
-      let hasUpdate = false
-      for (let edge = 0; edge < edges.length; edge++) {
-        const edgeSource = edgeCache.sources[edge]
-        const edgeTarget = edgeCache.targets[edge]
-        const weight = weights[edge]
-        const sourceDistance = distances[edgeSource]
-        if (sourceDistance !== Infinity && sourceDistance + weight < distances[edgeTarget]) {
-          distances[edgeTarget] = sourceDistance + weight
-          previousNode[edgeTarget] = edgeSource
-          previousEdge[edgeTarget] = edge
-          hasUpdate = true
-        }
-        if (graph.type === "undirected" && edgeSource !== edgeTarget) {
-          const targetDistance = distances[edgeTarget]
-          if (targetDistance !== Infinity && targetDistance + weight < distances[edgeSource]) {
-            distances[edgeSource] = targetDistance + weight
-            previousNode[edgeSource] = edgeTarget
-            previousEdge[edgeSource] = edge
-            hasUpdate = true
-          }
-        }
-      }
-      if (!hasUpdate) {
-        break
-      }
-    }
-
-    // A relaxable edge after N-1 passes marks a reachable negative cycle; propagate to see if it reaches the target.
-    const affected = new Uint8Array(cache.nodeIds.length)
-    const queue = new Uint32Array(cache.nodeIds.length)
-    let head = 0
-    let tail = 0
-    const markAffected = (node: number) => {
-      if (affected[node] === 0) {
-        affected[node] = 1
-        queue[tail++] = node
-      }
-    }
+  for (let iteration = 0; iteration < cache.nodeIds.length - 1; iteration++) {
+    let hasUpdate = false
     for (let edge = 0; edge < edges.length; edge++) {
       const edgeSource = edgeCache.sources[edge]
       const edgeTarget = edgeCache.targets[edge]
       const weight = weights[edge]
-      if (distances[edgeSource] !== Infinity && distances[edgeSource] + weight < distances[edgeTarget]) {
-        markAffected(edgeTarget)
+      const sourceDistance = distances[edgeSource]
+      if (sourceDistance !== Infinity && sourceDistance + weight < distances[edgeTarget]) {
+        distances[edgeTarget] = sourceDistance + weight
+        previousNode[edgeTarget] = edgeSource
+        previousEdge[edgeTarget] = edge
+        hasUpdate = true
       }
-      if (
-        graph.type === "undirected" &&
-        edgeSource !== edgeTarget &&
-        distances[edgeTarget] !== Infinity &&
-        distances[edgeTarget] + weight < distances[edgeSource]
-      ) {
-        markAffected(edgeSource)
-      }
-    }
-    if (tail > 0) {
-      const outgoing = csr.getOutgoing(cache)
-      while (head < tail) {
-        const node = queue[head++]
-        for (let i = outgoing.rowOffsets[node]; i < outgoing.rowOffsets[node + 1]; i++) {
-          markAffected(outgoing.columnIndices[i])
+      if (graph.type === "undirected" && edgeSource !== edgeTarget) {
+        const targetDistance = distances[edgeTarget]
+        if (targetDistance !== Infinity && targetDistance + weight < distances[edgeSource]) {
+          distances[edgeSource] = targetDistance + weight
+          previousNode[edgeSource] = edgeTarget
+          previousEdge[edgeSource] = edge
+          hasUpdate = true
         }
       }
     }
-    if (affected[target] !== 0) {
-      throw new GraphError({ message: `Negative cycle affects path to node ${config.target}` })
-    }
-    if (distances[target] === Infinity) {
-      return Option.none()
-    }
-
-    const path: Array<NodeIndex> = []
-    const pathEdges: Array<EdgeIndex> = []
-    const costs: Array<E> = []
-    let current = target
-    while (current !== -1) {
-      path.push(cache.nodeIds[current])
-      const edge = previousEdge[current]
-      if (edge !== -1) {
-        pathEdges.push(edgeIds[edge])
-        costs.push(edges[edge].data)
-      }
-      current = previousNode[current]
-    }
-    path.reverse()
-    pathEdges.reverse()
-    costs.reverse()
-    return Option.some({ path, edges: pathEdges, distance: distances[target], costs })
-  }
-
-  // Initialize distances and predecessors
-  const distances = new Map<NodeIndex, number>()
-  const previous = new Map<NodeIndex, { node: NodeIndex; edge: EdgeIndex; edgeData: E } | null>()
-
-  // Iterate directly over node keys
-  for (const node of impl.nodes.keys()) {
-    distances.set(node, node === config.source ? 0 : Infinity)
-    previous.set(node, null)
-  }
-
-  // Collect all edges for relaxation
-  const edges: Array<{
-    source: NodeIndex
-    target: NodeIndex
-    index: EdgeIndex
-    weight: number
-    edgeData: E
-  }> = []
-  for (const [edgeIndex, edgeData] of impl.edges) {
-    const weight = config.cost(edgeData.data)
-    if (Number.isNaN(weight) || weight === -Infinity) {
-      throw new GraphError({ message: "Bellman-Ford algorithm does not support NaN or -Infinity edge weights" })
-    }
-    edges.push({
-      source: edgeData.source,
-      target: edgeData.target,
-      index: edgeIndex,
-      weight,
-      edgeData: edgeData.data
-    })
-    if (graph.type === "undirected" && edgeData.source !== edgeData.target) {
-      edges.push({
-        source: edgeData.target,
-        target: edgeData.source,
-        index: edgeIndex,
-        weight,
-        edgeData: edgeData.data
-      })
-    }
-  }
-
-  // Relax edges up to V-1 times
-  const nodeCount = impl.nodes.size
-  for (let i = 0; i < nodeCount - 1; i++) {
-    let hasUpdate = false
-
-    for (const edge of edges) {
-      const sourceDistance = distances.get(edge.source)!
-      const targetDistance = distances.get(edge.target)!
-
-      // Relaxation step
-      if (sourceDistance !== Infinity && sourceDistance + edge.weight < targetDistance) {
-        distances.set(edge.target, sourceDistance + edge.weight)
-        previous.set(edge.target, { node: edge.source, edge: edge.index, edgeData: edge.edgeData })
-        hasUpdate = true
-      }
-    }
-
-    // Early termination if no updates
     if (!hasUpdate) {
       break
     }
   }
 
-  // Check for negative cycles
-  for (const edge of edges) {
-    const sourceDistance = distances.get(edge.source)!
-    const targetDistance = distances.get(edge.target)!
-
-    if (sourceDistance !== Infinity && sourceDistance + edge.weight < targetDistance) {
-      // Negative cycle detected - check if it affects the path to target
-      const affectedNodes = new Set<NodeIndex>()
-      const queue = [edge.target]
-
-      while (queue.length > 0) {
-        const node = queue.shift()!
-        if (affectedNodes.has(node)) continue
-        affectedNodes.add(node)
-
-        // Add all nodes reachable from this node
-        for (const neighbor of getTraversalNeighbors(graph, node, "outgoing")) {
-          queue.push(neighbor)
-        }
-      }
-
-      // If target is affected by a negative cycle, no shortest path exists.
-      if (affectedNodes.has(config.target)) {
-        throw new GraphError({ message: `Negative cycle affects path to node ${config.target}` })
+  // A relaxable edge after N-1 passes marks a reachable negative cycle; propagate to see if it reaches the target.
+  const affected = new Uint8Array(cache.nodeIds.length)
+  const queue = new Uint32Array(cache.nodeIds.length)
+  let head = 0
+  let tail = 0
+  const markAffected = (node: number) => {
+    if (affected[node] === 0) {
+      affected[node] = 1
+      queue[tail++] = node
+    }
+  }
+  for (let edge = 0; edge < edges.length; edge++) {
+    const edgeSource = edgeCache.sources[edge]
+    const edgeTarget = edgeCache.targets[edge]
+    const weight = weights[edge]
+    if (distances[edgeSource] !== Infinity && distances[edgeSource] + weight < distances[edgeTarget]) {
+      markAffected(edgeTarget)
+    }
+    if (
+      graph.type === "undirected" &&
+      edgeSource !== edgeTarget &&
+      distances[edgeTarget] !== Infinity &&
+      distances[edgeTarget] + weight < distances[edgeSource]
+    ) {
+      markAffected(edgeSource)
+    }
+  }
+  if (tail > 0) {
+    const outgoing = csr.getOutgoing(cache)
+    while (head < tail) {
+      const node = queue[head++]
+      for (let i = outgoing.rowOffsets[node]; i < outgoing.rowOffsets[node + 1]; i++) {
+        markAffected(outgoing.columnIndices[i])
       }
     }
   }
-
-  // Check if target is reachable
-  const distance = distances.get(config.target)!
-  if (distance === Infinity) {
-    return Option.none() // No path exists
+  if (affected[target] !== 0) {
+    throw new GraphError({ message: `Negative cycle affects path to node ${config.target}` })
+  }
+  if (distances[target] === Infinity) {
+    return Option.none()
   }
 
-  // Reconstruct path
   const path: Array<NodeIndex> = []
   const pathEdges: Array<EdgeIndex> = []
   const costs: Array<E> = []
-  let currentNode: NodeIndex | null = config.target
-
-  while (currentNode !== null) {
-    path.unshift(currentNode)
-    const prev: { node: NodeIndex; edge: EdgeIndex; edgeData: E } | null = previous.get(currentNode)!
-    if (prev !== null) {
-      pathEdges.unshift(prev.edge)
-      costs.unshift(prev.edgeData)
-      currentNode = prev.node
-    } else {
-      currentNode = null
+  let current = target
+  while (current !== -1) {
+    path.push(cache.nodeIds[current])
+    const edge = previousEdge[current]
+    if (edge !== -1) {
+      pathEdges.push(edgeIds[edge])
+      costs.push(edges[edge].data)
     }
+    current = previousNode[current]
   }
-
-  return Option.some({
-    path,
-    edges: pathEdges,
-    distance,
-    costs
-  })
+  path.reverse()
+  pathEdges.reverse()
+  costs.reverse()
+  return Option.some({ path, edges: pathEdges, distance: distances[target], costs })
 })
 
 /**
