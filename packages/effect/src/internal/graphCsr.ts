@@ -1,5 +1,5 @@
 import type * as Graph from "../Graph.ts"
-import { type GraphImpl, toImpl } from "./graph.ts"
+import { type GraphImpl, isTransforming, toImpl } from "./graph.ts"
 
 /** @internal */
 export interface Adjacency {
@@ -227,9 +227,12 @@ export const get = <N, E, T extends Graph.Kind>(
   graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
 ): Csr => {
   const impl = toImpl(graph)
-  const cached = cache.get(impl)
-  if (cached !== undefined) {
-    return cached
+  const cacheEnabled = !isTransforming(graph)
+  if (cacheEnabled) {
+    const cached = cache.get(impl)
+    if (cached !== undefined) {
+      return cached
+    }
   }
 
   // Node ids and data are captured together so an iterator never consults mutable maps after it starts.
@@ -268,6 +271,8 @@ export const get = <N, E, T extends Graph.Kind>(
     indexByEdgeId: undefined
   }
 
-  cache.set(impl, result)
+  if (cacheEnabled) {
+    cache.set(impl, result)
+  }
   return result
 }

@@ -16,6 +16,7 @@ export interface GraphImpl<in out N, in out E, T extends Graph.Kind = "directed"
   readonly [TypeId]: unknown
   type: T
   mutable: boolean
+  transformations: number
   nodes: Map<Graph.NodeIndex, N>
   edges: Map<Graph.EdgeIndex, Graph.Edge<E>>
   adjacency: Map<Graph.NodeIndex, Array<Graph.EdgeIndex>>
@@ -30,6 +31,25 @@ export interface GraphImpl<in out N, in out E, T extends Graph.Kind = "directed"
 export const toImpl = <N, E, T extends Graph.Kind = "directed">(
   graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
 ): GraphImpl<N, E, T> => graph as unknown as GraphImpl<N, E, T>
+
+/** @internal */
+export const isTransforming = <N, E, T extends Graph.Kind>(
+  graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
+): boolean => toImpl(graph).transformations > 0
+
+/** @internal */
+export const withTransformation = <N, E, T extends Graph.Kind, A>(
+  graph: Graph.MutableGraph<N, E, T>,
+  evaluate: () => A
+): A => {
+  const impl = toImpl(graph)
+  impl.transformations++
+  try {
+    return evaluate()
+  } finally {
+    impl.transformations--
+  }
+}
 
 const edgeEquals = (type: Graph.Kind, self: Graph.Edge<any>, that: Graph.Edge<any>): boolean =>
   (type === "directed"
@@ -113,6 +133,7 @@ export const make = <N, E, T extends Graph.Kind>(type: T, mutable: boolean): Gra
   const graph: GraphImpl<N, E, T> = Object.create(ProtoGraph)
   graph.type = type
   graph.mutable = mutable
+  graph.transformations = 0
   graph.nodes = new Map()
   graph.edges = new Map()
   graph.adjacency = new Map()
@@ -154,6 +175,7 @@ export const finalize = <N, E, T extends Graph.Kind>(source: GraphImpl<N, E, T>)
   const graph: GraphImpl<N, E, T> = Object.create(ProtoGraph)
   graph.type = source.type
   graph.mutable = false
+  graph.transformations = 0
   graph.nodes = source.nodes
   graph.edges = source.edges
   graph.adjacency = source.adjacency
