@@ -27,7 +27,8 @@ const writeDoc = Flag.string("write-doc").pipe(
 )
 
 const check = Flag.boolean("check").pipe(
-  Flag.withDescription("List APIs without migration annotations and fail if any remain")
+  Flag.withDescription("List APIs without migration annotations and fail if any remain"),
+  Flag.withDefault(false)
 )
 
 const runApiDiff = Effect.fnUntraced(function*(options: {
