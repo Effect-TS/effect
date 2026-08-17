@@ -6456,7 +6456,7 @@ export interface DijkstraConfig<E> {
  * **Gotchas**
  *
  * Throws a `GraphError` when either endpoint is missing or an edge cost is
- * negative or `NaN`.
+ * negative or `NaN`, or when a path distance exceeds the finite number range.
  *
  * **Example** (Finding shortest paths with Dijkstra)
  *
@@ -6564,6 +6564,9 @@ export const dijkstra: {
       const neighbor = outgoing.columnIndices[i]
       const edge = outgoing.edgeIndices[i]
       const nextDistance = currentDistance + edgeWeights[edge]
+      if (edgeWeights[edge] !== Infinity && !Number.isFinite(nextDistance)) {
+        throw new GraphError({ message: "Dijkstra distance calculation exceeded the finite number range" })
+      }
       if (nextDistance < distances[neighbor]) {
         distances[neighbor] = nextDistance
         previousNode[neighbor] = currentNode
@@ -6642,7 +6645,8 @@ export interface AllPairsResult<E> {
  * **Gotchas**
  *
  * A `GraphError` is thrown if any edge weight is `NaN` or `-Infinity`, or if
- * any negative cycle is detected.
+ * finite arithmetic overflows or underflows, or if any negative cycle is
+ * detected.
  *
  * **Example** (Finding all-pairs shortest paths)
  *
@@ -6732,8 +6736,14 @@ export const floydWarshall: {
       const nextIK = nextMatrix[iRow + k]
       for (let j = 0; j < size; j++) {
         const distanceKJ = distancesMatrix[kRow + j]
+        if (distanceKJ === Infinity) {
+          continue
+        }
         const candidate = distanceIK + distanceKJ
-        if (distanceKJ !== Infinity && candidate < distancesMatrix[iRow + j] && nextIK !== -1) {
+        if (!Number.isFinite(candidate)) {
+          throw new GraphError({ message: "Floyd-Warshall distance calculation exceeded the finite number range" })
+        }
+        if (candidate < distancesMatrix[iRow + j] && nextIK !== -1) {
           distancesMatrix[iRow + j] = candidate
           nextMatrix[iRow + j] = nextIK
         }
@@ -6850,7 +6860,7 @@ export interface AstarConfig<E, N> {
  *
  * The heuristic must be consistent for the shortest-path guarantee and must
  * return finite values. Missing endpoints, invalid edge costs, or non-finite
- * heuristic values throw a `GraphError`.
+ * heuristic values or arithmetic results throw a `GraphError`.
  *
  * **Example** (Finding shortest paths with A*)
  *
@@ -6979,11 +6989,17 @@ export const astar: {
       }
       const edge = outgoing.edgeIndices[i]
       const tentativeScore = currentScore + edgeWeights[edge]
+      if (edgeWeights[edge] !== Infinity && !Number.isFinite(tentativeScore)) {
+        throw new GraphError({ message: "A* distance calculation exceeded the finite number range" })
+      }
       if (tentativeScore < scores[neighbor]) {
         scores[neighbor] = tentativeScore
         previousNode[neighbor] = current
         previousEdge[neighbor] = edge
         const priority = tentativeScore + getHeuristic(cache.nodeData[neighbor] as N)
+        if (!Number.isFinite(priority)) {
+          throw new GraphError({ message: "A* priority calculation exceeded the finite number range" })
+        }
         denseMinHeapPush(openSet, neighbor, priority, sequence++)
       }
     }
@@ -7438,8 +7454,8 @@ export const simplePaths: {
  * **Gotchas**
  *
  * The number of tied paths can still be large. Missing endpoints, invalid
- * costs, or an invalid `limit` throw a `GraphError`. Mutable graphs are
- * snapshotted when iteration begins.
+ * costs, arithmetic overflow, or an invalid `limit` throw a `GraphError`.
+ * Mutable graphs are snapshotted when iteration begins.
  *
  * @see {@link dijkstra} when one shortest path is sufficient
  * @see {@link simplePaths} for routes regardless of cost
@@ -7513,6 +7529,9 @@ export const allShortestPaths: {
         const edge = outgoing.edgeIndices[i]
         const neighbor = outgoing.columnIndices[i]
         const nextDistance = current.priority + weights[edge]
+        if (weights[edge] !== Infinity && !Number.isFinite(nextDistance)) {
+          throw new GraphError({ message: "All shortest paths distance calculation exceeded the finite number range" })
+        }
         const known = distances[neighbor]
         const predecessor = { node: current.node, edge }
         if (nextDistance < known) {

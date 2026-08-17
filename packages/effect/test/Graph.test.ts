@@ -1981,13 +1981,39 @@ describe("Graph", () => {
       }
       const overflow = directed([0, 1, 2], [[0, 1, Number.MAX_VALUE], [1, 2, Number.MAX_VALUE]])
       assertGraphError(
+        () => Graph.dijkstra(overflow, { source: 0, target: 2, cost: (edge) => edge }),
+        "Dijkstra distance calculation exceeded the finite number range"
+      )
+      assertGraphError(
+        () => Graph.astar(overflow, { source: 0, target: 2, cost: (edge) => edge, heuristic: () => 0 }),
+        "A* distance calculation exceeded the finite number range"
+      )
+      assertGraphError(
+        () =>
+          Graph.astar(directed([0, 1], [[0, 1, Number.MAX_VALUE]]), {
+            source: 0,
+            target: 1,
+            cost: (edge) => edge,
+            heuristic: (node) => node === 1 ? Number.MAX_VALUE : 0
+          }),
+        "A* priority calculation exceeded the finite number range"
+      )
+      assertGraphError(
         () => Graph.bellmanFord(overflow, { source: 0, target: 2, cost: (edge) => edge }),
         "Bellman-Ford distance calculation exceeded the finite number range"
       )
-      const underflow = directed([0, 1], [[0, 1, -Number.MAX_VALUE], [1, 0, -Number.MAX_VALUE]])
       assertGraphError(
-        () => Graph.bellmanFord(underflow, { source: 0, target: 0, cost: (edge) => edge }),
+        () => Graph.floydWarshall(overflow, (edge) => edge),
+        "Floyd-Warshall distance calculation exceeded the finite number range"
+      )
+      const underflow = directed([0, 1, 2], [[0, 1, -Number.MAX_VALUE], [1, 2, -Number.MAX_VALUE]])
+      assertGraphError(
+        () => Graph.bellmanFord(underflow, { source: 0, target: 2, cost: (edge) => edge }),
         "Bellman-Ford distance calculation exceeded the finite number range"
+      )
+      assertGraphError(
+        () => Graph.floydWarshall(underflow, (edge) => edge),
+        "Floyd-Warshall distance calculation exceeded the finite number range"
       )
     })
 
@@ -2176,6 +2202,11 @@ describe("Graph", () => {
       assertGraphError(
         () => Array.from(Graph.allShortestPaths(graph, { source: 0, target: 1, cost: (edge) => edge, limit: 0 })),
         "All shortest paths requires non-negative edge weights"
+      )
+      const overflow = directed([0, 1, 2], [[0, 1, Number.MAX_VALUE], [1, 2, Number.MAX_VALUE]])
+      assertGraphError(
+        () => Array.from(Graph.allShortestPaths(overflow, { source: 0, target: 2, cost: (edge) => edge })),
+        "All shortest paths distance calculation exceeded the finite number range"
       )
       assertGraphError(
         () => Graph.simplePaths(graph, { source: 0, target: 1, limit: -1 }),
