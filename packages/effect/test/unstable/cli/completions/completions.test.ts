@@ -69,6 +69,17 @@ const withPaths = Command.make("process", {
   )
 }).pipe(Command.withDescription("Process files"))
 
+const withOptionalDirectoryAndSubcommands = Command.make("example", {
+  directory: Argument.directory("directory").pipe(
+    Argument.withDescription("Directory to start in"),
+    Argument.optional
+  )
+}).pipe(
+  Command.withSubcommands([
+    Command.make("serve").pipe(Command.withDescription("Start the server"))
+  ])
+)
+
 const nested3Levels = (() => {
   const leaf = Command.make("action", {
     dryRun: Flag.boolean("dry-run").pipe(Flag.withDescription("Dry run mode"))
@@ -339,6 +350,27 @@ describe("Zsh completions", () => {
     const desc = fromCommand(withChoices)
     const script = Zsh.generate("deploy", desc)
     assert.include(script, "(us-east eu-west ap-south)")
+  })
+
+  it("uses alternative argument sets for positional arguments and subcommands", () => {
+    const desc = fromCommand(withOptionalDirectoryAndSubcommands)
+    const script = Zsh.generate("example", desc)
+
+    assert.include(
+      script,
+      `    -
+    parent-arguments
+    ':Directory to start in:_directories'
+    -
+    subcommands
+    '1:command:->command'
+    '*::arg:->args'`
+    )
+    assert.notInclude(
+      script,
+      `    ':Directory to start in:_directories'
+    '1:command:->command'`
+    )
   })
 
   it("starts with #compdef directive", () => {

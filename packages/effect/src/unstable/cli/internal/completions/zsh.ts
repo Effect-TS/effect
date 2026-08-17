@@ -133,8 +133,14 @@ const generateFunction = (
         lines.push(`    ${spec}`)
       }
     }
-    for (const arg of descriptor.arguments) {
-      lines.push(`    ${argSpec(arg)}`)
+    if (descriptor.arguments.length > 0) {
+      lines.push(`    -`)
+      lines.push(`    parent-arguments`)
+      for (const arg of descriptor.arguments) {
+        lines.push(`    ${argSpec(arg)}`)
+      }
+      lines.push(`    -`)
+      lines.push(`    subcommands`)
     }
     lines.push(`    '1:command:->command'`)
     lines.push(`    '*::arg:->args'`)
