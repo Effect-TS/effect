@@ -1429,7 +1429,9 @@ describe("Graph", () => {
         () => Graph.filterEdges(retained!, () => false),
         () => Graph.addEdge(retained!, nodeB!, nodeA!, 4),
         () => Graph.removeNode(retained!, nodeA!),
-        () => Graph.removeEdge(retained!, edge!)
+        () => Graph.removeNodes(retained!, [nodeA!]),
+        () => Graph.removeEdge(retained!, edge!),
+        () => Graph.removeEdges(retained!, [edge!])
       ]
       for (const mutation of mutations) {
         assertGraphError(mutation, "Graph is not mutable")
@@ -1840,7 +1842,9 @@ describe("Graph", () => {
         () => Graph.filterEdges(mutable, () => false),
         () => Graph.addEdge(mutable, 1, 0, 4),
         () => Graph.removeNode(mutable, 0),
+        () => Graph.removeNodes(mutable, [0]),
         () => Graph.removeEdge(mutable, 0),
+        () => Graph.removeEdges(mutable, [0]),
         () => Graph.endMutation(mutable)
       ]
 
@@ -2544,6 +2548,38 @@ describe("Graph", () => {
     })
   })
 
+  describe("removeNodes", () => {
+    it("should remove nodes, incident edges, and ignore duplicate or missing indices", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (const node of ["A", "B", "C"]) {
+          Graph.addNode(mutable, node)
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 2, 2)
+        Graph.addEdge(mutable, 2, 0, 3)
+
+        Graph.removeNodes(mutable, [1, 1, 999])
+      })
+
+      assert.deepStrictEqual(Graph.toSnapshot(graph), {
+        type: "directed",
+        nodes: [{ index: 0, data: "A" }, { index: 2, data: "C" }],
+        edges: [{ index: 2, source: 2, target: 0, data: 3 }]
+      })
+    })
+
+    it("should collect graph-backed iterables before removing nodes", () => {
+      const graph = Graph.directed<string, never>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+
+        Graph.removeNodes(mutable, Graph.indices(Graph.nodes(mutable)))
+      })
+
+      strictEqual(Graph.nodeCount(graph), 0)
+    })
+  })
+
   describe("removeEdge", () => {
     it("should remove an edge between two nodes", () => {
       let edgeIndex: Graph.EdgeIndex
@@ -2598,6 +2634,34 @@ describe("Graph", () => {
       })
 
       expect(Graph.edgeCount(result)).toBe(1)
+    })
+  })
+
+  describe("removeEdges", () => {
+    it("should remove edges and ignore duplicate or missing indices", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 0, 2)
+
+        Graph.removeEdges(mutable, [0, 0, 999])
+      })
+
+      assert.deepStrictEqual(Graph.toSnapshot(graph).edges, [{ index: 1, source: 1, target: 0, data: 2 }])
+    })
+
+    it("should collect graph-backed iterables before removing edges", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 0, 2)
+
+        Graph.removeEdges(mutable, Graph.indices(Graph.edges(mutable)))
+      })
+
+      strictEqual(Graph.edgeCount(graph), 0)
     })
   })
 

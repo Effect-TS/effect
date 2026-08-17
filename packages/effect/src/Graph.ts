@@ -2117,7 +2117,7 @@ export const filterMapNodes = <N, E, T extends Kind = "directed">(
   f: (data: N) => Option.Option<N>
 ): void => {
   const impl = getMutableImplForMutation(mutable)
-  const nodesToRemove: Array<NodeIndex> = []
+  const remove: Array<NodeIndex> = []
   internal.withTransformation(mutable, () => {
     // First pass: identify nodes to remove and transform data for nodes to keep
     for (const [index, data] of impl.nodes) {
@@ -2127,15 +2127,13 @@ export const filterMapNodes = <N, E, T extends Kind = "directed">(
         impl.nodes.set(index, result.value)
       } else {
         // Mark for removal
-        nodesToRemove.push(index)
+        remove.push(index)
       }
     }
   })
 
   // Second pass: remove filtered out nodes and their edges
-  for (const nodeIndex of nodesToRemove) {
-    removeNode(mutable, nodeIndex)
-  }
+  removeNodes(mutable, remove)
 }
 
 /**
@@ -2175,7 +2173,7 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
   f: (data: E) => Option.Option<E>
 ): void => {
   const impl = getMutableImplForMutation(mutable)
-  const edgesToRemove: Array<EdgeIndex> = []
+  const remove: Array<EdgeIndex> = []
   internal.withTransformation(mutable, () => {
     // First pass: identify edges to remove and transform data for edges to keep
     for (const [index, edgeData] of impl.edges) {
@@ -2189,15 +2187,13 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
         })
       } else {
         // Mark for removal
-        edgesToRemove.push(index)
+        remove.push(index)
       }
     }
   })
 
   // Second pass: remove filtered out edges
-  for (const edgeIndex of edgesToRemove) {
-    removeEdge(mutable, edgeIndex)
-  }
+  removeEdges(mutable, remove)
 }
 
 /**
@@ -2232,21 +2228,19 @@ export const filterNodes = <N, E, T extends Kind = "directed">(
   predicate: (data: N) => boolean
 ): void => {
   const impl = getMutableImplForMutation(mutable)
-  const nodesToRemove: Array<NodeIndex> = []
+  const remove: Array<NodeIndex> = []
 
   internal.withTransformation(mutable, () => {
     // Identify nodes to remove
     for (const [index, data] of impl.nodes) {
       if (!predicate(data)) {
-        nodesToRemove.push(index)
+        remove.push(index)
       }
     }
   })
 
   // Remove filtered out nodes (this also removes connected edges)
-  for (const nodeIndex of nodesToRemove) {
-    removeNode(mutable, nodeIndex)
-  }
+  removeNodes(mutable, remove)
 }
 
 /**
@@ -2284,21 +2278,19 @@ export const filterEdges = <N, E, T extends Kind = "directed">(
   predicate: (data: E) => boolean
 ): void => {
   const impl = getMutableImplForMutation(mutable)
-  const edgesToRemove: Array<EdgeIndex> = []
+  const remove: Array<EdgeIndex> = []
 
   internal.withTransformation(mutable, () => {
     // Identify edges to remove
     for (const [index, edgeData] of impl.edges) {
       if (!predicate(edgeData.data)) {
-        edgesToRemove.push(index)
+        remove.push(index)
       }
     }
   })
 
   // Remove filtered out edges
-  for (const edgeIndex of edgesToRemove) {
-    removeEdge(mutable, edgeIndex)
-  }
+  removeEdges(mutable, remove)
 }
 
 // =============================================================================
@@ -2454,10 +2446,47 @@ export const removeNode = <N, E, T extends Kind = "directed">(
   nodeIndex: NodeIndex
 ): void => {
   const impl = getMutableImplForMutation(mutable)
+  if (removeNodeInternal(impl, nodeIndex)) {
+    invalidateCycleFlagOnRemoval(impl)
+  }
+}
 
+/**
+ * Removes multiple nodes and all their incident edges from a mutable graph.
+ *
+ * The input is collected before mutation, so it may be backed by an iterator
+ * over the same graph. Missing and duplicate node indices are ignored.
+ *
+ * @category mutations
+ * @since 4.0.0
+ */
+export const removeNodes = <N, E, T extends Kind = "directed">(
+  mutable: MutableGraph<N, E, T>,
+  nodeIndices: Iterable<NodeIndex>
+): void => {
+  const impl = getMutableImplForMutation(mutable)
+  const indices = Array.from(nodeIndices)
+
+  let removed = false
+  for (const nodeIndex of indices) {
+    if (removeNodeInternal(impl, nodeIndex)) {
+      removed = true
+    }
+  }
+
+  if (removed) {
+    invalidateCycleFlagOnRemoval(impl)
+  }
+}
+
+/** @internal */
+const removeNodeInternal = <N, E, T extends Kind = "directed">(
+  impl: internal.GraphImpl<N, E, T>,
+  nodeIndex: NodeIndex
+): boolean => {
   // Check if node exists
   if (!impl.nodes.has(nodeIndex)) {
-    return // Node doesn't exist, nothing to remove
+    return false // Node doesn't exist, nothing to remove
   }
 
   // Collect all incident edges for removal
@@ -2489,9 +2518,7 @@ export const removeNode = <N, E, T extends Kind = "directed">(
   impl.adjacency.delete(nodeIndex)
   impl.reverseAdjacency.delete(nodeIndex)
 
-  // Only invalidate cycle flag if the graph wasn't already known to be acyclic
-  // Removing nodes cannot introduce cycles in an acyclic graph
-  invalidateCycleFlagOnRemoval(impl)
+  return true
 }
 
 /**
@@ -2521,11 +2548,37 @@ export const removeEdge = <N, E, T extends Kind = "directed">(
   edgeIndex: EdgeIndex
 ): void => {
   const impl = getMutableImplForMutation(mutable)
-  const wasRemoved = removeEdgeInternal(impl, edgeIndex)
-
   // Only invalidate cycle flag if an edge was actually removed
   // and only if the graph wasn't already known to be acyclic
-  if (wasRemoved) {
+  if (removeEdgeInternal(impl, edgeIndex)) {
+    invalidateCycleFlagOnRemoval(impl)
+  }
+}
+
+/**
+ * Removes multiple edges from a mutable graph.
+ *
+ * The input is collected before mutation, so it may be backed by an iterator
+ * over the same graph. Missing and duplicate edge indices are ignored.
+ *
+ * @category mutations
+ * @since 4.0.0
+ */
+export const removeEdges = <N, E, T extends Kind = "directed">(
+  mutable: MutableGraph<N, E, T>,
+  edgeIndices: Iterable<EdgeIndex>
+): void => {
+  const impl = getMutableImplForMutation(mutable)
+  const indices = Array.from(edgeIndices)
+
+  let removed = false
+  for (const edgeIndex of indices) {
+    if (removeEdgeInternal(impl, edgeIndex)) {
+      removed = true
+    }
+  }
+
+  if (removed) {
     invalidateCycleFlagOnRemoval(impl)
   }
 }
