@@ -96,17 +96,18 @@ export const schemaJson = <
   RD
 >(
   schema: Schema.ConstraintCodec<A, I, RD, unknown>,
-  options?: ParseOptions | undefined
+  options?: (ParseOptions & HttpIncomingMessage.JsonOptions) | undefined
 ) => {
   const decode = Schema.decodeEffect(Schema.toCodecJson(schema).annotate({ options }))
+  const decodeBody = HttpIncomingMessage.schemaBodyJson(Schema.Unknown, options)
   return (
     self: HttpClientResponse
   ): Effect.Effect<A, Schema.SchemaError | Error.HttpClientError, RD> =>
-    Effect.flatMap(self.json, (body) =>
+    Effect.flatMap(decodeBody(self), (body) =>
       decode({
         status: self.status,
         headers: self.headers,
-        body
+        body: body as Schema.Json
       }))
 }
 

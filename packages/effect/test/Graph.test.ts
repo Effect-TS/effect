@@ -238,13 +238,66 @@ describe("Graph", () => {
         }
       })
 
+    it("equal graphs have equal hashes", () => {
+      const cases = [
+        {
+          name: "directed graphs",
+          make: () => [makeGraph("directed", [[0, 1, "edge"]]), makeGraph("directed", [[0, 1, "edge"]])] as const
+        },
+        {
+          name: "undirected graphs with reversed endpoints",
+          make: () => [makeGraph("undirected", [[0, 1, "edge"]]), makeGraph("undirected", [[1, 0, "edge"]])] as const
+        },
+        {
+          name: "sparse indexes",
+          make: () => {
+            const snapshot = {
+              type: "directed",
+              nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }],
+              edges: [{ index: 4, source: 2, target: 5, data: "edge" }]
+            } as const
+            return [Graph.fromSnapshot(snapshot), Graph.fromSnapshot(snapshot)] as const
+          }
+        },
+        {
+          name: "self-loops",
+          make: () => [makeGraph("undirected", [[0, 0, "loop"]]), makeGraph("undirected", [[0, 0, "loop"]])] as const
+        },
+        {
+          name: "parallel edges",
+          make: () =>
+            [
+              makeGraph("undirected", [[0, 1, "first"], [0, 1, "second"]]),
+              makeGraph("undirected", [[1, 0, "first"], [1, 0, "second"]])
+            ] as const
+        },
+        {
+          name: "undefined payloads",
+          make: () => {
+            const make = () =>
+              Graph.directed<undefined, undefined>((mutable) => {
+                const source = Graph.addNode(mutable, undefined)
+                const target = Graph.addNode(mutable, undefined)
+                Graph.addEdge(mutable, source, target, undefined)
+              })
+            return [make(), make()] as const
+          }
+        }
+      ]
+
+      for (const { make, name } of cases) {
+        const [left, right] = make()
+        assert.strictEqual(Equal.equals(left, right), true, name)
+        assert.strictEqual(Hash.hash(left), Hash.hash(right), name)
+      }
+    })
+
     it("treats undirected edge endpoints as unordered", () => {
       const left = makeGraph("undirected", [[0, 1, "edge"]])
       const right = makeGraph("undirected", [[1, 0, "edge"]])
 
       strictEqual(Equal.equals(left, right), true)
       strictEqual(Equal.equals(right, left), true)
-      strictEqual(Hash.hash(left), Hash.hash(right))
     })
 
     it("keeps directed edge endpoints ordered", () => {
@@ -268,16 +321,7 @@ describe("Graph", () => {
       const reordered = makeGraph("undirected", [[1, 0, "second"], [1, 0, "first"]])
 
       strictEqual(Equal.equals(left, reversed), true)
-      strictEqual(Hash.hash(left), Hash.hash(reversed))
       strictEqual(Equal.equals(left, reordered), false)
-    })
-
-    it("handles undirected self-loops", () => {
-      const left = makeGraph("undirected", [[0, 0, "loop"]])
-      const right = makeGraph("undirected", [[0, 0, "loop"]])
-
-      strictEqual(Equal.equals(left, right), true)
-      strictEqual(Hash.hash(left), Hash.hash(right))
     })
 
     it("keeps Graph.Edge endpoint equality ordered", () => {
@@ -287,17 +331,20 @@ describe("Graph", () => {
       strictEqual(Equal.equals(left, right), false)
     })
 
-    it("compares future node allocation", () => {
-      const left = Graph.directed<string, string>()
+    it("ignores removed trailing node allocation history", () => {
+      const left = makeGraph("directed", [[0, 1, "edge"]])
       const right = Graph.directed<string, string>((mutable) => {
+        const source = Graph.addNode(mutable, "A")
+        const target = Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, source, target, "edge")
         const node = Graph.addNode(mutable, "removed")
         Graph.removeNode(mutable, node)
       })
 
-      strictEqual(Graph.nodeCount(left), Graph.nodeCount(right))
-      strictEqual(Graph.edgeCount(left), Graph.edgeCount(right))
-      strictEqual(Equal.equals(left, right), false)
-      strictEqual(Hash.hash(left) === Hash.hash(right), false)
+      assert.deepStrictEqual(Array.from(left), Array.from(right))
+      assert.deepStrictEqual(Array.from(Graph.edges(left)), Array.from(Graph.edges(right)))
+      strictEqual(Equal.equals(left, right), true)
+      strictEqual(Hash.hash(left), Hash.hash(right))
 
       let leftNode: Graph.NodeIndex | undefined
       let rightNode: Graph.NodeIndex | undefined
@@ -308,23 +355,24 @@ describe("Graph", () => {
         rightNode = Graph.addNode(mutable, "next")
       })
 
-      strictEqual(leftNode, 0)
-      strictEqual(rightNode, 1)
+      strictEqual(leftNode, 2)
+      strictEqual(rightNode, 3)
     })
 
-    it("compares future edge allocation", () => {
-      const left = makeGraph("directed", [])
+    it("ignores removed trailing edge allocation history", () => {
+      const left = makeGraph("directed", [[0, 1, "edge"]])
       const right = Graph.directed<string, string>((mutable) => {
         const source = Graph.addNode(mutable, "A")
         const target = Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, source, target, "edge")
         const edge = Graph.addEdge(mutable, source, target, "removed")
         Graph.removeEdge(mutable, edge)
       })
 
       assert.deepStrictEqual(Array.from(left), Array.from(right))
       assert.deepStrictEqual(Array.from(Graph.edges(left)), Array.from(Graph.edges(right)))
-      strictEqual(Equal.equals(left, right), false)
-      strictEqual(Hash.hash(left) === Hash.hash(right), false)
+      strictEqual(Equal.equals(left, right), true)
+      strictEqual(Hash.hash(left), Hash.hash(right))
 
       let leftEdge: Graph.EdgeIndex | undefined
       let rightEdge: Graph.EdgeIndex | undefined
@@ -335,8 +383,8 @@ describe("Graph", () => {
         rightEdge = Graph.addEdge(mutable, 0, 1, "next")
       })
 
-      strictEqual(leftEdge, 0)
-      strictEqual(rightEdge, 1)
+      strictEqual(leftEdge, 1)
+      strictEqual(rightEdge, 2)
     })
 
     it("preserves allocator equality and hashing through an empty mutation", () => {
@@ -741,6 +789,71 @@ describe("Graph", () => {
       assert.deepStrictEqual(graphEdgeKeys(result), new Set(["A->B", "A->C"]))
     })
 
+    it("neighborhood validates radius in data-first and data-last forms", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+      })
+
+      for (const radius of [NaN, -Infinity, -1, -0.5, 0.5, 1.5]) {
+        assertGraphError(
+          () => Graph.neighborhood(graph, 0, { radius }),
+          "Traversal radius must be a non-negative integer or Infinity"
+        )
+        assertGraphError(
+          () => Graph.neighborhood(0, { radius })(graph),
+          "Traversal radius must be a non-negative integer or Infinity"
+        )
+      }
+
+      for (const [radius, count] of [[Infinity, 1], [-0, 1], [0, 1], [1, 1]] as const) {
+        strictEqual(Graph.nodeCount(Graph.neighborhood(graph, 0, { radius })), count)
+      }
+    })
+
+    it("inducedSubgraph preserves sparse node and edge indexes", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [
+          { index: 2, data: "A" },
+          { index: 5, data: "B" },
+          { index: 9, data: "C" }
+        ],
+        edges: [
+          { index: 3, source: 2, target: 5, data: "A-B" },
+          { index: 7, source: 5, target: 9, data: "B-C" },
+          { index: 11, source: 5, target: 5, data: "B-B" }
+        ]
+      })
+
+      const result = Graph.inducedSubgraph(graph, [9, 5, 5])
+
+      assert.deepStrictEqual(Array.from(Graph.nodes(result)), [[5, "B"], [9, "C"]])
+      assert.deepStrictEqual(Array.from(Graph.edges(result)), [
+        [7, { source: 5, target: 9, data: "B-C" }],
+        [11, { source: 5, target: 5, data: "B-B" }]
+      ])
+    })
+
+    it("inducedSubgraph preserves graph kind and handles empty selections", () => {
+      const graph = Graph.undirected<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+      })
+
+      const result = Graph.inducedSubgraph([])(graph)
+
+      assert.strictEqual(result.type, "undirected")
+      assert.strictEqual(Graph.nodeCount(result), 0)
+      assert.strictEqual(Graph.edgeCount(result), 0)
+    })
+
+    it("inducedSubgraph rejects missing nodes", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+      })
+
+      assertGraphError(() => Graph.inducedSubgraph(graph, [0, 1]), "Node 1 does not exist")
+    })
+
     it("sum keeps equal nodes disjoint", () => {
       const left = Graph.directed<string, string>((mutable) => {
         const a = Graph.addNode(mutable, "A")
@@ -976,38 +1089,6 @@ describe("Graph", () => {
         expect(undefinedEdges).toEqual([0, 2])
       })
 
-      it("should produce consistent hashes for graphs with undefined edge data", () => {
-        const graph1 = Graph.directed<string, undefined | number>((mutable) => {
-          const a = Graph.addNode(mutable, "A")
-          const b = Graph.addNode(mutable, "B")
-          const c = Graph.addNode(mutable, "C")
-          Graph.addEdge(mutable, a, b, undefined)
-          Graph.addEdge(mutable, b, c, 42)
-        })
-
-        const graph2 = Graph.directed<string, undefined | number>((mutable) => {
-          const a = Graph.addNode(mutable, "A")
-          const b = Graph.addNode(mutable, "B")
-          const c = Graph.addNode(mutable, "C")
-          Graph.addEdge(mutable, a, b, undefined)
-          Graph.addEdge(mutable, b, c, 42)
-        })
-
-        // Graphs with identical structure should have the same hash
-        expect(Hash.hash(graph1)).toBe(Hash.hash(graph2))
-
-        // Graph with different edge data should have different hash
-        const graph3 = Graph.directed<string, undefined | number>((mutable) => {
-          const a = Graph.addNode(mutable, "A")
-          const b = Graph.addNode(mutable, "B")
-          const c = Graph.addNode(mutable, "C")
-          Graph.addEdge(mutable, a, b, 100) // Different data
-          Graph.addEdge(mutable, b, c, 42)
-        })
-
-        expect(Hash.hash(graph1)).not.toBe(Hash.hash(graph3))
-      })
-
       it("should correctly handle Equal.equals with graphs containing undefined edge data", () => {
         const graph1 = Graph.directed<string, undefined | number>((mutable) => {
           const a = Graph.addNode(mutable, "A")
@@ -1124,6 +1205,13 @@ describe("Graph", () => {
       assert.deepStrictEqual(Graph.neighbors(result, nodeA!), [nodeB!])
       assert.deepStrictEqual(Graph.predecessors(result, nodeB!), [nodeA!])
     })
+
+    it("should reject a second finalization", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, number>())
+      Graph.endMutation(mutable)
+
+      assertGraphError(() => Graph.endMutation(mutable), "Graph is not mutable")
+    })
   })
 
   describe("mutate", () => {
@@ -1164,6 +1252,110 @@ describe("Graph", () => {
         }
       )
       assertGraphError(() => Graph.addNode(mutable!, "late"), "Graph is not mutable")
+    })
+
+    it("should reject manual finalization followed by a normal callback return", () => {
+      const graph = Graph.directed<string, number>()
+
+      assertGraphError(() => {
+        Graph.directed<string, number>((mutable) => {
+          Graph.endMutation(mutable)
+        })
+      }, "Graph is not mutable")
+      assertGraphError(() => {
+        Graph.undirected<string, number>((mutable) => {
+          Graph.endMutation(mutable)
+        })
+      }, "Graph is not mutable")
+      assertGraphError(() => {
+        Graph.make("directed")<string, number>((mutable) => {
+          Graph.endMutation(mutable)
+        })
+      }, "Graph is not mutable")
+      assertGraphError(() => {
+        Graph.make("undirected")<string, number>((mutable) => {
+          Graph.endMutation(mutable)
+        })
+      }, "Graph is not mutable")
+      assertGraphError(() => {
+        Graph.mutate(graph, (mutable) => {
+          Graph.endMutation(mutable)
+        })
+      }, "Graph is not mutable")
+      assertGraphError(() => {
+        Graph.mutate((mutable: Graph.MutableDirectedGraph<string, number>) => {
+          Graph.endMutation(mutable)
+        })(graph)
+      }, "Graph is not mutable")
+    })
+
+    it("should preserve a callback error after manual finalization", () => {
+      const error = new Error("callback failure")
+
+      for (
+        const run of [
+          (f: (mutable: Graph.MutableDirectedGraph<string, number>) => undefined) => Graph.directed(f),
+          (f: (mutable: Graph.MutableUndirectedGraph<string, number>) => undefined) => Graph.undirected(f),
+          (f: (mutable: Graph.MutableDirectedGraph<string, number>) => undefined) => Graph.make("directed")(f),
+          (f: (mutable: Graph.MutableUndirectedGraph<string, number>) => undefined) => Graph.make("undirected")(f),
+          (f: (mutable: Graph.MutableDirectedGraph<string, number>) => undefined) =>
+            Graph.mutate(Graph.directed<string, number>(), f),
+          (f: (mutable: Graph.MutableDirectedGraph<string, number>) => undefined) =>
+            Graph.mutate(f)(Graph.directed<string, number>())
+        ]
+      ) {
+        throws(
+          () =>
+            run((mutable) => {
+              Graph.endMutation(mutable)
+              throw error
+            }),
+          (cause) => {
+            strictEqual(cause, error)
+          }
+        )
+      }
+    })
+
+    it("should reject every mutation entry point on a retained finalized handle", () => {
+      let retained: Graph.MutableDirectedGraph<string, number> | undefined
+      let nodeA: Graph.NodeIndex
+      let nodeB: Graph.NodeIndex
+      let edge: Graph.EdgeIndex
+      const result = Graph.directed<string, number>((mutable) => {
+        retained = mutable
+        nodeA = Graph.addNode(mutable, "A")
+        nodeB = Graph.addNode(mutable, "B")
+        edge = Graph.addEdge(mutable, nodeA, nodeB, 1)
+      })
+
+      strictEqual(Graph.nodeCount(retained!), 2)
+      strictEqual(Graph.edgeCount(retained!), 1)
+      assert.deepStrictEqual(Graph.getNode(retained!, nodeA!), Option.some("A"))
+
+      const mutations: ReadonlyArray<() => unknown> = [
+        () => Graph.addNode(retained!, "C"),
+        () => Graph.updateNode(retained!, nodeA!, () => "updated"),
+        () => Graph.updateEdge(retained!, edge!, () => 2),
+        () => Graph.mapNodes(retained!, () => "mapped"),
+        () => Graph.mapEdges(retained!, () => 3),
+        () => Graph.reverse(retained!),
+        () => Graph.filterMapNodes(retained!, () => Option.none()),
+        () => Graph.filterMapEdges(retained!, () => Option.none()),
+        () => Graph.filterNodes(retained!, () => false),
+        () => Graph.filterEdges(retained!, () => false),
+        () => Graph.addEdge(retained!, nodeB!, nodeA!, 4),
+        () => Graph.removeNode(retained!, nodeA!),
+        () => Graph.removeEdge(retained!, edge!)
+      ]
+      for (const mutation of mutations) {
+        assertGraphError(mutation, "Graph is not mutable")
+      }
+
+      strictEqual(Graph.nodeCount(result), 2)
+      strictEqual(Graph.edgeCount(result), 1)
+      assert.deepStrictEqual(Graph.getNode(result, nodeA!), Option.some("A"))
+      assert.deepStrictEqual(Graph.getEdge(result, edge!), Option.some({ source: nodeA!, target: nodeB!, data: 1 }))
     })
   })
 
@@ -2235,6 +2427,82 @@ describe("Graph", () => {
       })
     })
 
+    describe("edge and degree queries", () => {
+      it("should preserve directed parallel edges and self-loops", () => {
+        const graph = Graph.directed<string, number>((mutable) => {
+          Graph.addNode(mutable, "A")
+          Graph.addNode(mutable, "B")
+          Graph.addEdge(mutable, 0, 1, 1)
+          Graph.addEdge(mutable, 0, 1, 2)
+          Graph.addEdge(mutable, 1, 0, 3)
+          Graph.addEdge(mutable, 0, 0, 4)
+        })
+
+        assert.deepStrictEqual(Graph.incidentEdges(graph, 0), [0, 1, 2, 3])
+        assert.deepStrictEqual(Graph.outgoingEdges(graph, 0), [0, 1, 3])
+        assert.deepStrictEqual(Graph.incomingEdges(graph, 0), [2, 3])
+        assert.deepStrictEqual(Graph.edgesBetween(graph, 0, 1), [0, 1])
+        assert.deepStrictEqual(Graph.edgesBetween(graph, 1, 0), [2])
+        assert.strictEqual(Graph.outDegree(graph, 0), 3)
+        assert.strictEqual(Graph.inDegree(graph, 0), 2)
+      })
+
+      it("should count undirected self-loops twice only for degree", () => {
+        const graph = Graph.undirected<string, number>((mutable) => {
+          Graph.addNode(mutable, "A")
+          Graph.addNode(mutable, "B")
+          Graph.addEdge(mutable, 0, 1, 1)
+          Graph.addEdge(mutable, 1, 0, 2)
+          Graph.addEdge(mutable, 0, 0, 3)
+        })
+
+        assert.deepStrictEqual(Graph.incidentEdges(graph, 0), [0, 1, 2])
+        assert.deepStrictEqual(Graph.edgesBetween(graph, 0, 1), [0, 1])
+        assert.deepStrictEqual(Graph.edgesBetween(graph, 0, 0), [2])
+        assert.strictEqual(Graph.degree(graph, 0), 4)
+      })
+
+      it("should support data-last calls and mutable graphs", () => {
+        const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+          Graph.addNode(graph, "A")
+          Graph.addNode(graph, "B")
+          Graph.addEdge(graph, 0, 1, 1)
+        }))
+
+        assert.deepStrictEqual(Graph.incidentEdges(0)(mutable), [0])
+        assert.deepStrictEqual(Graph.outgoingEdges(0)(mutable), [0])
+        assert.deepStrictEqual(Graph.incomingEdges(1)(mutable), [0])
+        assert.deepStrictEqual(Graph.edgesBetween(0, 1)(mutable), [0])
+        assert.strictEqual(Graph.outDegree(0)(mutable), 1)
+        assert.strictEqual(Graph.inDegree(1)(mutable), 1)
+      })
+
+      it("should reject invalid kinds and missing nodes", () => {
+        const directed = Graph.directed<string, number>((mutable) => {
+          Graph.addNode(mutable, "A")
+        })
+        const undirected = Graph.undirected<string, number>((mutable) => {
+          Graph.addNode(mutable, "A")
+        })
+
+        assertGraphError(() => Graph.degree(directed as any, 0), "Cannot get degree of directed graph")
+        assertGraphError(
+          () => Graph.outgoingEdges(undirected as any, 0),
+          "Cannot get outgoing edges of undirected graph"
+        )
+        assertGraphError(
+          () => Graph.incomingEdges(undirected as any, 0),
+          "Cannot get incoming edges of undirected graph"
+        )
+        assertGraphError(() => Graph.outDegree(undirected as any, 0), "Cannot get outgoing edges of undirected graph")
+        assertGraphError(() => Graph.inDegree(undirected as any, 0), "Cannot get incoming edges of undirected graph")
+        assertGraphError(() => Graph.incidentEdges(directed, 1), "Node 1 does not exist")
+        assertGraphError(() => Graph.edgesBetween(directed, 0, 1), "Node 1 does not exist")
+        assertGraphError(() => Graph.outDegree(directed, 1), "Node 1 does not exist")
+        assertGraphError(() => Graph.inDegree(directed, 1), "Node 1 does not exist")
+      })
+    })
+
     describe("neighbors", () => {
       it("should return correct neighbors for directed graph", () => {
         const graph = Graph.directed<string, number>((mutable) => {
@@ -2330,6 +2598,72 @@ describe("Graph", () => {
 
         expect(Graph.successors(graph, 0)).toEqual([1])
         expect(Graph.predecessors(graph, 1).sort()).toEqual([0, 2])
+      })
+
+      it("should return unique directed neighbors in first edge order", () => {
+        const graph = Graph.directed<string, number>((mutable) => {
+          for (let i = 0; i < 3; i++) {
+            Graph.addNode(mutable, String(i))
+          }
+          Graph.addEdge(mutable, 0, 1, 5)
+          Graph.addEdge(mutable, 2, 0, 8)
+          Graph.addEdge(mutable, 0, 1, 1)
+          Graph.addEdge(mutable, 0, 0, 3)
+          Graph.addEdge(mutable, 1, 0, 4)
+          Graph.addEdge(mutable, 0, 2, 2)
+          Graph.addEdge(mutable, 2, 0, 7)
+        })
+        const mutable = Graph.beginMutation(graph)
+
+        const assertNeighbors = (input: typeof graph | typeof mutable) => {
+          assert.deepStrictEqual(Graph.neighbors(input, 0), [1, 0, 2])
+          assert.deepStrictEqual(Graph.successors(input, 0), [1, 0, 2])
+          assert.deepStrictEqual(Graph.predecessors(input, 0), [2, 0, 1])
+          assert.deepStrictEqual(Graph.neighborsDirected(input, 0, "outgoing"), [1, 0, 2])
+          assert.deepStrictEqual(Graph.neighborsDirected(input, 0, "incoming"), [2, 0, 1])
+        }
+
+        assertNeighbors(graph)
+        Array.from(Graph.bfs(graph, { start: [0] }))
+        assertNeighbors(graph)
+        assertNeighbors(mutable)
+        Array.from(Graph.bfs(mutable, { start: [0] }))
+        assertNeighbors(mutable)
+      })
+
+      it("should preserve parallel edges for topological and weighted algorithms", () => {
+        const graph = Graph.directed<string, number>((mutable) => {
+          for (let i = 0; i < 3; i++) {
+            Graph.addNode(mutable, String(i))
+          }
+          Graph.addEdge(mutable, 0, 1, 10)
+          Graph.addEdge(mutable, 0, 1, 1)
+          Graph.addEdge(mutable, 1, 2, 2)
+        })
+        const mutable = Graph.beginMutation(graph)
+        const config = { source: 0, target: 2, cost: (weight: number) => weight }
+
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.topo(graph))), [0, 1, 2])
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.topo(mutable))), [0, 1, 2])
+        assertSome(Graph.dijkstra(graph, config), {
+          path: [0, 1, 2],
+          edges: [1, 2],
+          distance: 3,
+          costs: [1, 2]
+        })
+        assert.deepStrictEqual(Graph.dijkstra(mutable, config), Graph.dijkstra(graph, config))
+      })
+
+      it("should reject non-integer indexes consistently after caching traversal", () => {
+        const graph = Graph.directed<string, number>((mutable) => {
+          const source = Graph.addNode(mutable, "source")
+          const target = Graph.addNode(mutable, "target")
+          Graph.addEdge(mutable, source, target, 1)
+        })
+
+        assert.deepStrictEqual(Graph.successors(graph, 0.5), [])
+        Array.from(Graph.bfs(graph, { start: [0] }))
+        assert.deepStrictEqual(Graph.successors(graph, 0.5), [])
       })
 
       it("should throw for undirected graphs", () => {
@@ -2905,6 +3239,44 @@ describe("Graph", () => {
     })
   })
 
+  describe("findCycle", () => {
+    it("should return directed node and edge witnesses", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 9, data: "C" }],
+        edges: [
+          { index: 3, source: 2, target: 5, data: 1 },
+          { index: 7, source: 5, target: 9, data: 1 },
+          { index: 11, source: 9, target: 2, data: 1 }
+        ]
+      })
+
+      assertSome(Graph.findCycle(graph), { path: [2, 5, 9, 2], edges: [3, 7, 11] })
+      assertSome(Graph.findCycle(Graph.beginMutation(graph)), { path: [2, 5, 9, 2], edges: [3, 7, 11] })
+    })
+
+    it("should return self-loop and parallel-edge witnesses", () => {
+      const selfLoop = Graph.undirected<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addEdge(mutable, 0, 0, 1)
+      })
+      const parallel = Graph.undirected<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 0, 1, 2)
+      })
+
+      assertSome(Graph.findCycle(selfLoop), { path: [0, 0], edges: [0] })
+      assertSome(Graph.findCycle(parallel), { path: [0, 1, 0], edges: [0, 1] })
+    })
+
+    it("should return None for acyclic graphs", () => {
+      assertNone(Graph.findCycle(makeReversedUndirectedPath()))
+      assertNone(Graph.findCycle(Graph.directed()))
+    })
+  })
+
   describe("isAcyclic", () => {
     it("should detect acyclic directed graphs (DAGs)", () => {
       const dag = Graph.directed<string, string>((mutable) => {
@@ -3124,6 +3496,20 @@ describe("Graph", () => {
       expect(components[0]).toHaveLength(3)
       expect(components[0].sort()).toEqual([0, 1, 2])
     })
+
+    it("should preserve component order with parallel edges", () => {
+      const graph = Graph.undirected<string, number>((mutable) => {
+        const root = Graph.addNode(mutable, "root")
+        const first = Graph.addNode(mutable, "first")
+        const second = Graph.addNode(mutable, "second")
+        Graph.addEdge(mutable, root, first, 1)
+        Graph.addEdge(mutable, root, second, 2)
+        Graph.addEdge(mutable, root, first, 3)
+      })
+
+      assert.deepStrictEqual(Graph.connectedComponents(graph), [[0, 2, 1]])
+      assert.deepStrictEqual(Graph.connectedComponents(Graph.beginMutation(graph)), [[0, 2, 1]])
+    })
   })
 
   describe("stronglyConnectedComponents", () => {
@@ -3215,6 +3601,300 @@ describe("Graph", () => {
     })
   })
 
+  describe("reachability and connectivity", () => {
+    it("should compute unweighted distances in each directed traversal mode", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 2, 1)
+        Graph.addEdge(mutable, 3, 1, 1)
+      })
+
+      assert.deepStrictEqual(Array.from(Graph.unweightedDistances(graph, 0)), [[0, 0], [1, 1], [2, 2]])
+      assert.deepStrictEqual(Array.from(Graph.unweightedDistances(graph, 2, { direction: "incoming" })), [
+        [0, 2],
+        [1, 1],
+        [2, 0],
+        [3, 2]
+      ])
+      assert.deepStrictEqual(Array.from(Graph.unweightedDistances(graph, 0, { direction: "undirected" })), [
+        [0, 0],
+        [1, 1],
+        [2, 2],
+        [3, 2]
+      ])
+      assert.strictEqual(Graph.hasPath(graph, 0, 2), true)
+      assert.strictEqual(Graph.hasPath(graph, 2, 0), false)
+      assert.strictEqual(Graph.hasPath(graph, 2, 0, { direction: "incoming" }), true)
+      assert.strictEqual(Graph.hasPath(3, 2, { direction: "undirected" })(Graph.beginMutation(graph)), true)
+      assert.strictEqual(Graph.hasPath(graph, 0, 0), true)
+      assertGraphError(() => Graph.hasPath(graph, 0, 4), "Node 4 does not exist")
+    })
+
+    it("should find weak components and connectivity for immutable and mutable graphs", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 2, 1, 1)
+      })
+
+      for (const candidate of [graph, Graph.beginMutation(graph)]) {
+        const components = Graph.weaklyConnectedComponents(candidate).map((component) => component.sort())
+        components.sort((a, b) => a[0] - b[0])
+        assert.deepStrictEqual(components, [[0, 1, 2], [3]])
+        assert.strictEqual(Graph.isWeaklyConnected(candidate), false)
+        assert.strictEqual(Graph.isStronglyConnected(candidate), false)
+      }
+    })
+
+    it("should preserve weak component traversal order", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "root")
+        Graph.addNode(mutable, "first")
+        Graph.addNode(mutable, "second")
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 0, 2, 2)
+      })
+
+      assert.deepStrictEqual(Graph.weaklyConnectedComponents(graph), [[0, 2, 1]])
+      assert.deepStrictEqual(Graph.weaklyConnectedComponents(Graph.beginMutation(graph)), [[0, 2, 1]])
+    })
+
+    it("should rebuild CSR after graph mutation", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+        Graph.addNode(graph, "A")
+        Graph.addNode(graph, "B")
+        Graph.addNode(graph, "C")
+        Graph.addEdge(graph, 0, 1, 1)
+      }))
+
+      assert.strictEqual(Graph.weaklyConnectedComponents(mutable).length, 2)
+      assert.deepStrictEqual(Array.from(Graph.unweightedDistances(mutable, 0)), [[0, 0], [1, 1]])
+
+      Graph.addEdge(mutable, 1, 2, 1)
+
+      assert.strictEqual(Graph.weaklyConnectedComponents(mutable).length, 1)
+      assert.deepStrictEqual(Array.from(Graph.unweightedDistances(mutable, 0)), [[0, 0], [1, 1], [2, 2]])
+
+      Graph.addNode(mutable, "D")
+      assert.strictEqual(Graph.hasPath(mutable, 0, 3), false)
+
+      Graph.addEdge(mutable, 2, 3, 1)
+      assert.strictEqual(Graph.hasPath(mutable, 0, 3), true)
+    })
+
+    it("should identify undirected trees and connected graphs", () => {
+      const tree = Graph.undirected<string, number>((mutable) => {
+        for (let i = 0; i < 3; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 2, 1)
+      })
+      const cycle = Graph.mutate(tree, (mutable) => {
+        Graph.addEdge(mutable, 2, 0, 1)
+      })
+
+      assert.strictEqual(Graph.isConnected(tree), true)
+      assert.strictEqual(Graph.isTree(tree), true)
+      assert.strictEqual(Graph.isTree(cycle), false)
+      assert.strictEqual(Graph.isConnected(Graph.undirected()), true)
+      assert.strictEqual(Graph.isTree(Graph.undirected()), false)
+      assert.strictEqual(Graph.isWeaklyConnected(Graph.directed()), true)
+      assert.strictEqual(Graph.isStronglyConnected(Graph.directed()), true)
+    })
+
+    it("should test connectivity without constructing components", () => {
+      const connected = Graph.undirected<void, void>((mutable) => {
+        Graph.addNode(mutable, undefined)
+        Graph.addNode(mutable, undefined)
+        Graph.addEdge(mutable, 0, 1, undefined)
+      })
+      const disconnected = Graph.mutate(connected, (mutable) => {
+        Graph.addNode(mutable, undefined)
+      })
+      const weak = Graph.directed<void, void>((mutable) => {
+        Graph.addNode(mutable, undefined)
+        Graph.addNode(mutable, undefined)
+        Graph.addNode(mutable, undefined)
+        Graph.addEdge(mutable, 0, 1, undefined)
+        Graph.addEdge(mutable, 1, 2, undefined)
+      })
+      const strong = Graph.mutate(weak, (mutable) => {
+        Graph.addEdge(mutable, 2, 0, undefined)
+      })
+
+      for (const candidate of [connected, Graph.beginMutation(connected)]) {
+        assert.strictEqual(Graph.isConnected(candidate), true)
+      }
+      for (const candidate of [disconnected, Graph.beginMutation(disconnected)]) {
+        assert.strictEqual(Graph.isConnected(candidate), false)
+      }
+      for (const candidate of [weak, Graph.beginMutation(weak)]) {
+        assert.strictEqual(Graph.isWeaklyConnected(candidate), true)
+        assert.strictEqual(Graph.isStronglyConnected(candidate), false)
+      }
+      for (const candidate of [strong, Graph.beginMutation(strong)]) {
+        assert.strictEqual(Graph.isWeaklyConnected(candidate), true)
+        assert.strictEqual(Graph.isStronglyConnected(candidate), true)
+      }
+    })
+
+    it("should reject directed graphs when testing trees before short-circuiting", () => {
+      assertGraphError(() => Graph.isTree(Graph.directed() as any), "Cannot determine tree status of directed graph")
+      const directed = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+      })
+      assertGraphError(() => Graph.isTree(directed as any), "Cannot determine tree status of directed graph")
+    })
+
+    it("should reject missing nodes and mismatched connectivity kinds", () => {
+      const directed = Graph.directed<string, number>()
+      const undirected = Graph.undirected<string, number>()
+
+      assertGraphError(() => Graph.unweightedDistances(directed, 0), "Node 0 does not exist")
+      assertGraphError(() => Graph.hasPath(directed, 0, 1), "Node 0 does not exist")
+      assertGraphError(
+        () => Graph.connectedComponents(directed as any),
+        "Cannot find connected components of directed graph"
+      )
+      assertGraphError(
+        () => Graph.weaklyConnectedComponents(undirected as any),
+        "Cannot find weakly connected components of undirected graph"
+      )
+      assertGraphError(
+        () => Graph.isConnected(directed as any),
+        "Cannot find connected components of directed graph"
+      )
+      assertGraphError(
+        () => Graph.isWeaklyConnected(undirected as any),
+        "Cannot find weakly connected components of undirected graph"
+      )
+      assertGraphError(
+        () => Graph.isStronglyConnected(undirected as any),
+        "Cannot find strongly connected components of undirected graph"
+      )
+    })
+  })
+
+  describe("minimumSpanningForest", () => {
+    it("should preserve sparse indexes and include isolated nodes", () => {
+      const graph = Graph.fromSnapshot({
+        type: "undirected",
+        nodes: [
+          { index: 2, data: "A" },
+          { index: 5, data: "B" },
+          { index: 9, data: "C" },
+          { index: 20, data: "isolated" }
+        ],
+        edges: [
+          { index: 3, source: 2, target: 5, data: 4 },
+          { index: 7, source: 2, target: 5, data: 1 },
+          { index: 11, source: 5, target: 9, data: -2 },
+          { index: 13, source: 2, target: 9, data: 2 },
+          { index: 17, source: 9, target: 20, data: Infinity }
+        ]
+      })
+
+      for (const candidate of [graph, Graph.beginMutation(graph)]) {
+        const result = Graph.minimumSpanningForest(candidate, (edge) => edge)
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.nodes(result))), [2, 5, 9, 20])
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.edges(result))), [7, 11])
+      }
+    })
+
+    it("should break equal-weight ties by edge order", () => {
+      const graph = Graph.undirected<string, number>((mutable) => {
+        for (let i = 0; i < 3; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 2, 1)
+        Graph.addEdge(mutable, 0, 2, 1)
+      })
+
+      const result = Graph.minimumSpanningForest(graph, (edge) => edge)
+
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.edges(result))), [0, 1])
+    })
+
+    it("should reject directed graphs and unsupported weights", () => {
+      assertGraphError(
+        () => Graph.minimumSpanningForest(Graph.directed() as any, () => 1),
+        "Cannot find minimum spanning forest of directed graph"
+      )
+      for (const weight of [NaN, -Infinity]) {
+        const graph = Graph.undirected<string, number>((mutable) => {
+          Graph.addNode(mutable, "A")
+          Graph.addNode(mutable, "B")
+          Graph.addEdge(mutable, 0, 1, weight)
+        })
+        assertGraphError(
+          () => Graph.minimumSpanningForest(graph, (edge) => edge),
+          "Minimum spanning forest does not support NaN or -Infinity edge weights"
+        )
+      }
+    })
+  })
+
+  describe("transitiveReduction", () => {
+    it("should preserve sparse indexes and coalesce parallel edges", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 9, data: "C" }],
+        edges: [
+          { index: 3, source: 2, target: 5, data: "first" },
+          { index: 4, source: 2, target: 5, data: "parallel" },
+          { index: 7, source: 5, target: 9, data: "next" },
+          { index: 11, source: 2, target: 9, data: "redundant" }
+        ]
+      })
+
+      for (const candidate of [graph, Graph.beginMutation(graph)]) {
+        const result = Graph.transitiveReduction(candidate)
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.nodes(result))), [2, 5, 9])
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.edges(result))), [3, 7])
+        assert.strictEqual(Graph.hasPath(result, 2, 9), true)
+      }
+    })
+
+    it("should retain both branches of a diamond", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 0, 2, 1)
+        Graph.addEdge(mutable, 1, 3, 1)
+        Graph.addEdge(mutable, 2, 3, 1)
+      })
+
+      assert.deepStrictEqual(
+        Array.from(Graph.indices(Graph.edges(Graph.transitiveReduction(graph)))),
+        [0, 1, 2, 3]
+      )
+    })
+
+    it("should reject undirected and cyclic graphs", () => {
+      assertGraphError(
+        () => Graph.transitiveReduction(Graph.undirected() as any),
+        "Cannot transitively reduce undirected graph"
+      )
+      const cyclic = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 0, 1)
+      })
+      assertGraphError(() => Graph.transitiveReduction(cyclic), "Cannot transitively reduce cyclic graph")
+    })
+  })
+
   describe("dijkstra", () => {
     it("should find shortest path in simple graph", () => {
       let nodeA: Graph.NodeIndex
@@ -3236,7 +3916,7 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [nodeA!, nodeB!, nodeC!], distance: 7, costs: [5, 2] })
+      assertSome(result, { path: [nodeA!, nodeB!, nodeC!], edges: [0, 2], distance: 7, costs: [5, 2] })
     })
 
     it("should preserve insertion order for equal priorities", () => {
@@ -3257,7 +3937,28 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [0, 1, 3], distance: 2, costs: [1, 1] })
+      assertSome(result, { path: [0, 1, 3], edges: [0, 2], distance: 2, costs: [1, 1] })
+    })
+
+    it("should preserve insertion order when target edges have the opposite order", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const source = Graph.addNode(mutable, "source")
+        const first = Graph.addNode(mutable, "first")
+        const second = Graph.addNode(mutable, "second")
+        const target = Graph.addNode(mutable, "target")
+        Graph.addEdge(mutable, source, first, 1)
+        Graph.addEdge(mutable, source, second, 1)
+        Graph.addEdge(mutable, second, target, 1)
+        Graph.addEdge(mutable, first, target, 1)
+      })
+      const mutable = Graph.beginMutation(graph)
+      const config = { source: 0, target: 3, cost: (edge: number) => edge }
+
+      const immutableResult = Graph.dijkstra(graph, config)
+      const mutableResult = Graph.dijkstra(mutable, config)
+
+      assertSome(immutableResult, { path: [0, 1, 3], edges: [0, 3], distance: 2, costs: [1, 1] })
+      assert.deepStrictEqual(immutableResult, mutableResult)
     })
 
     it("should skip stale priority queue entries", () => {
@@ -3280,7 +3981,33 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [0, 2, 1, 3, 4], distance: 42, costs: [1, 1, 20, 20] })
+      assertSome(result, {
+        path: [0, 2, 1, 3, 4],
+        edges: [1, 2, 3, 4],
+        distance: 42,
+        costs: [1, 1, 20, 20]
+      })
+    })
+
+    it("should assign a fresh insertion order when decreasing a priority", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const source = Graph.addNode(mutable, "source")
+        const improved = Graph.addNode(mutable, "improved")
+        const shortcut = Graph.addNode(mutable, "shortcut")
+        const direct = Graph.addNode(mutable, "direct")
+        const target = Graph.addNode(mutable, "target")
+        Graph.addEdge(mutable, source, improved, 10)
+        Graph.addEdge(mutable, source, shortcut, 1)
+        Graph.addEdge(mutable, source, direct, 2)
+        Graph.addEdge(mutable, shortcut, improved, 1)
+        Graph.addEdge(mutable, improved, target, 1)
+        Graph.addEdge(mutable, direct, target, 1)
+      })
+      const config = { source: 0, target: 4, cost: (edge: number) => edge }
+      const expected = Option.some({ path: [0, 3, 4], edges: [2, 5], distance: 3, costs: [2, 1] })
+
+      assert.deepStrictEqual(Graph.dijkstra(graph, config), expected)
+      assert.deepStrictEqual(Graph.dijkstra(Graph.beginMutation(graph), config), expected)
     })
 
     it("should return None for unreachable nodes", () => {
@@ -3318,7 +4045,7 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [nodeA!], distance: 0, costs: [] })
+      assertSome(result, { path: [nodeA!], edges: [], distance: 0, costs: [] })
     })
 
     it("should throw for negative weights", () => {
@@ -3425,7 +4152,26 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [0, 1, 2], distance: 2, costs: [1, 1] })
+      assertSome(result, { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [1, 1] })
+    })
+
+    it("should support sparse snapshot indexes", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 1_000_000, data: "C" }],
+        edges: [
+          { index: 3, source: 2, target: 5, data: 2 },
+          { index: 1_000_000, source: 5, target: 1_000_000, data: 3 }
+        ]
+      })
+
+      const result = Graph.dijkstra(graph, {
+        source: 2,
+        target: 1_000_000,
+        cost: (edge) => edge
+      })
+
+      assertSome(result, { path: [2, 5, 1_000_000], edges: [3, 1_000_000], distance: 5, costs: [2, 3] })
     })
   })
 
@@ -3453,7 +4199,7 @@ describe("Graph", () => {
         heuristic
       })
 
-      assertSome(result, { path: [nodeA!, nodeB!, nodeC!], distance: 2, costs: [1, 1] })
+      assertSome(result, { path: [nodeA!, nodeB!, nodeC!], edges: [0, 1], distance: 2, costs: [1, 1] })
     })
 
     it("should preserve insertion order for equal priorities", () => {
@@ -3475,7 +4221,7 @@ describe("Graph", () => {
         heuristic: () => 0
       })
 
-      assertSome(result, { path: [0, 1, 3], distance: 2, costs: [1, 1] })
+      assertSome(result, { path: [0, 1, 3], edges: [0, 2], distance: 2, costs: [1, 1] })
     })
 
     it("should skip stale open set entries", () => {
@@ -3499,7 +4245,12 @@ describe("Graph", () => {
         heuristic: () => 0
       })
 
-      assertSome(result, { path: [0, 2, 1, 3, 4], distance: 42, costs: [1, 1, 20, 20] })
+      assertSome(result, {
+        path: [0, 2, 1, 3, 4],
+        edges: [1, 2, 3, 4],
+        distance: 42,
+        costs: [1, 1, 20, 20]
+      })
     })
 
     it("should return None for unreachable nodes", () => {
@@ -3538,7 +4289,7 @@ describe("Graph", () => {
         heuristic
       })
 
-      assertSome(result, { path: [0], distance: 0, costs: [] })
+      assertSome(result, { path: [0], edges: [], distance: 0, costs: [] })
     })
 
     it("should throw for negative weights", () => {
@@ -3661,7 +4412,7 @@ describe("Graph", () => {
         heuristic: () => 0
       })
 
-      assertSome(result, { path: [0, 1, 2], distance: 2, costs: [1, 1] })
+      assertSome(result, { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [1, 1] })
     })
   })
 
@@ -3682,7 +4433,7 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [0, 1, 2], distance: 2, costs: [-1, 3] })
+      assertSome(result, { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [-1, 3] })
     })
 
     it("should return None for unreachable nodes", () => {
@@ -3714,7 +4465,7 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [0], distance: 0, costs: [] })
+      assertSome(result, { path: [0], edges: [], distance: 0, costs: [] })
     })
 
     it("should throw for NaN and negative infinity weights", () => {
@@ -3751,13 +4502,10 @@ describe("Graph", () => {
         Graph.addEdge(mutable, node, node, -1)
       })
 
-      const result = Graph.bellmanFord(graph, {
-        source: 0,
-        target: 0,
-        cost: (edge) => edge
-      })
-
-      assertNone(result)
+      assertGraphError(
+        () => Graph.bellmanFord(graph, { source: 0, target: 0, cost: (edge) => edge }),
+        "Negative cycle affects path to node 0"
+      )
     })
 
     it("should detect an undirected negative self-loop when source equals target", () => {
@@ -3766,13 +4514,10 @@ describe("Graph", () => {
         Graph.addEdge(mutable, node, node, -1)
       })
 
-      const result = Graph.bellmanFord(graph, {
-        source: 0,
-        target: 0,
-        cost: (edge) => edge
-      })
-
-      assertNone(result)
+      assertGraphError(
+        () => Graph.bellmanFord(graph, { source: 0, target: 0, cost: (edge) => edge }),
+        "Negative cycle affects path to node 0"
+      )
     })
 
     it("should detect negative cycles", () => {
@@ -3785,13 +4530,10 @@ describe("Graph", () => {
         Graph.addEdge(mutable, c, a, 1)
       })
 
-      const result = Graph.bellmanFord(graph, {
-        source: 0,
-        target: 2,
-        cost: (edge) => edge
-      })
-
-      expect(result).toEqual(Option.none())
+      assertGraphError(
+        () => Graph.bellmanFord(graph, { source: 0, target: 2, cost: (edge) => edge }),
+        "Negative cycle affects path to node 2"
+      )
     })
 
     it("should traverse undirected edges in reverse storage direction", () => {
@@ -3803,7 +4545,7 @@ describe("Graph", () => {
         cost: (edge) => edge
       })
 
-      assertSome(result, { path: [0, 1, 2], distance: 2, costs: [1, 1] })
+      assertSome(result, { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [1, 1] })
     })
 
     it("should treat a reachable negative undirected edge as a negative cycle", () => {
@@ -3813,13 +4555,29 @@ describe("Graph", () => {
         Graph.addEdge(mutable, a, b, -1)
       })
 
-      const result = Graph.bellmanFord(graph, {
-        source: 0,
-        target: 1,
-        cost: (edge) => edge
-      })
+      assertGraphError(
+        () => Graph.bellmanFord(graph, { source: 0, target: 1, cost: (edge) => edge }),
+        "Negative cycle affects path to node 1"
+      )
+    })
 
-      assertNone(result)
+    it("should ignore negative cycles that cannot affect the target", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 2, -2)
+        Graph.addEdge(mutable, 2, 1, 1)
+        Graph.addEdge(mutable, 0, 3, 5)
+      })
+      const expected = { path: [0, 3], edges: [3], distance: 5, costs: [5] }
+
+      assertSome(Graph.bellmanFord(graph, { source: 0, target: 3, cost: (edge) => edge }), expected)
+      assertSome(
+        Graph.bellmanFord(Graph.beginMutation(graph), { source: 0, target: 3, cost: (edge) => edge }),
+        expected
+      )
     })
   })
 
@@ -3839,6 +4597,7 @@ describe("Graph", () => {
       // Check distance A to C (should be 5 via B, not 7 direct)
       expect(result.distances.get(0)?.get(2)).toBe(5)
       expect(result.paths.get(0)?.get(2)).toEqual([0, 1, 2])
+      assert.deepStrictEqual(result.edges.get(0)?.get(2), [0, 1])
       expect(result.costs.get(0)?.get(2)).toEqual([3, 2])
 
       // Check distance A to B
@@ -3863,6 +4622,7 @@ describe("Graph", () => {
 
       expect(result.distances.get(0)?.get(2)).toBe(Infinity)
       expect(result.paths.get(0)?.get(2)).toBeNull()
+      assert.deepStrictEqual(result.edges.get(0)?.get(2), [])
     })
 
     it("should handle same source and target", () => {
@@ -3874,6 +4634,7 @@ describe("Graph", () => {
 
       expect(result.distances.get(0)?.get(0)).toBe(0)
       expect(result.paths.get(0)?.get(0)).toEqual([0])
+      assert.deepStrictEqual(result.edges.get(0)?.get(0), [])
       expect(result.costs.get(0)?.get(0)).toEqual([])
     })
 
@@ -3895,6 +4656,7 @@ describe("Graph", () => {
 
       expect(result.distances.get(0)?.get(1)).toBe(Infinity)
       expect(result.paths.get(0)?.get(1)).toBeNull()
+      assert.deepStrictEqual(result.edges.get(0)?.get(1), [])
       expect(result.costs.get(0)?.get(1)).toEqual([])
     })
 
@@ -3909,6 +4671,7 @@ describe("Graph", () => {
 
       assert.strictEqual(result.distances.get(0)?.get(1), 1)
       assert.deepStrictEqual(result.paths.get(0)?.get(1), [0, 1])
+      assert.deepStrictEqual(result.edges.get(0)?.get(1), [0])
       assert.deepStrictEqual(result.costs.get(0)?.get(1), [null])
     })
 
@@ -3928,6 +4691,7 @@ describe("Graph", () => {
 
       assert.strictEqual(result.distances.get(0)?.get(2), 2)
       assert.deepStrictEqual(result.paths.get(0)?.get(2), [0, 1, 2])
+      assert.deepStrictEqual(result.edges.get(0)?.get(2), [0, 1])
       assert.deepStrictEqual(result.costs.get(0)?.get(2), [null, null])
     })
 
@@ -3951,6 +4715,7 @@ describe("Graph", () => {
 
       expect(result.distances.get(0)?.get(2)).toBe(2)
       expect(result.paths.get(0)?.get(2)).toEqual([0, 1, 2])
+      assert.deepStrictEqual(result.edges.get(0)?.get(2), [0, 1])
       expect(result.costs.get(0)?.get(2)).toEqual([1, 1])
     })
 
@@ -3965,26 +4730,417 @@ describe("Graph", () => {
     })
   })
 
-  describe("Iterator Base Methods", () => {
-    const staleTraversalNodeCount = 20000
-
-    const makeSparseMutableGraph = () => {
-      const graph = Graph.directed<string, number>((mutable) => {
-        for (let i = 0; i < staleTraversalNodeCount; i++) {
+  describe("lazy path enumeration", () => {
+    it("should lazily enumerate repeatable simple paths with exact edges", () => {
+      const graph = Graph.directed<string, string>((mutable) => {
+        for (let i = 0; i < 4; i++) {
           Graph.addNode(mutable, String(i))
         }
+        Graph.addEdge(mutable, 0, 1, "0-1")
+        Graph.addEdge(mutable, 0, 2, "0-2")
+        Graph.addEdge(mutable, 1, 2, "1-2")
+        Graph.addEdge(mutable, 1, 3, "1-3")
+        Graph.addEdge(mutable, 2, 3, "2-3")
+        Graph.addEdge(mutable, 2, 1, "2-1")
       })
-      return {
-        mutable: Graph.beginMutation(graph),
-        start: Array.from({ length: staleTraversalNodeCount }, (_, index) => index)
+      const paths = Graph.simplePaths(graph, { source: 0, target: 3, limit: 3 })
+      const expected = [
+        { path: [0, 1, 2, 3], edges: [0, 2, 4], distance: 3, costs: ["0-1", "1-2", "2-3"] },
+        { path: [0, 1, 3], edges: [0, 3], distance: 2, costs: ["0-1", "1-3"] },
+        { path: [0, 2, 3], edges: [1, 4], distance: 2, costs: ["0-2", "2-3"] }
+      ]
+
+      assert.deepStrictEqual(Array.from(paths), expected)
+      assert.deepStrictEqual(Array.from(paths), expected)
+    })
+
+    it("should enumerate parallel and structurally tied shortest paths", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 0, 2, 1)
+        Graph.addEdge(mutable, 1, 3, 1)
+        Graph.addEdge(mutable, 2, 3, 1)
+        Graph.addEdge(mutable, 0, 1, 1)
+      })
+
+      const result = Array.from(Graph.allShortestPaths(graph, { source: 0, target: 3, cost: (edge) => edge }))
+
+      assert.deepStrictEqual(result, [
+        { path: [0, 1, 3], edges: [0, 2], distance: 2, costs: [1, 1] },
+        { path: [0, 1, 3], edges: [4, 2], distance: 2, costs: [1, 1] },
+        { path: [0, 2, 3], edges: [1, 3], distance: 2, costs: [1, 1] }
+      ])
+      assert.deepStrictEqual(
+        Array.from(Graph.allShortestPaths(Graph.beginMutation(graph), {
+          source: 0,
+          target: 3,
+          cost: (edge) => edge,
+          limit: 2
+        })),
+        result.slice(0, 2)
+      )
+    })
+
+    it("should handle empty path enumerations", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+      })
+
+      assert.deepStrictEqual(Array.from(Graph.simplePaths(graph, { source: 0, target: 0 })), [
+        { path: [0], edges: [], distance: 0, costs: [] }
+      ])
+      assert.deepStrictEqual(
+        Array.from(Graph.allShortestPaths(graph, { source: 0, target: 1, cost: (edge) => edge })),
+        []
+      )
+      assert.deepStrictEqual(Array.from(Graph.simplePaths(graph, { source: 0, target: 1, limit: 0 })), [])
+    })
+
+    it("should defer shortest-path computation until iteration", () => {
+      const graph = makeSingleEdgeGraph(1)
+      let costCalls = 0
+      const paths = Graph.allShortestPaths(graph, {
+        source: 0,
+        target: 1,
+        cost: (edge) => {
+          costCalls++
+          return edge
+        }
+      })
+
+      assert.strictEqual(costCalls, 0)
+      assert.deepStrictEqual(Array.from(paths), [{ path: [0, 1], edges: [0], distance: 1, costs: [1] }])
+      assert.strictEqual(costCalls, 1)
+    })
+
+    it("should revalidate mutable path endpoints when iteration starts", () => {
+      const makeMutable = () =>
+        Graph.beginMutation(Graph.directed<string, number>((graph) => {
+          Graph.addNode(graph, "A")
+          Graph.addNode(graph, "B")
+          Graph.addEdge(graph, 0, 1, 1)
+        }))
+      const simpleGraph = makeMutable()
+      const simple = Graph.simplePaths(simpleGraph, { source: 0, target: 1 })
+      Graph.removeNode(simpleGraph, 0)
+      assertGraphError(() => Array.from(simple), "Node 0 does not exist")
+
+      const shortestGraph = makeMutable()
+      const shortest = Graph.allShortestPaths(shortestGraph, { source: 0, target: 1, cost: (edge) => edge })
+      Graph.removeNode(shortestGraph, 1)
+      assertGraphError(() => Array.from(shortest), "Node 1 does not exist")
+    })
+
+    it("should isolate active mutable path iterations from later mutations", () => {
+      const makeMutable = () =>
+        Graph.beginMutation(Graph.directed<string, number>((graph) => {
+          for (let i = 0; i < 4; i++) {
+            Graph.addNode(graph, String(i))
+          }
+          Graph.addEdge(graph, 0, 1, 1)
+          Graph.addEdge(graph, 0, 2, 1)
+          Graph.addEdge(graph, 1, 3, 1)
+          Graph.addEdge(graph, 2, 3, 1)
+        }))
+      const assertSnapshot = (paths: Graph.PathWalker<number>, mutable: Graph.MutableDirectedGraph<string, number>) => {
+        const iterator = paths[Symbol.iterator]()
+        assert.deepStrictEqual(iterator.next().value?.edges, [0, 2])
+        Graph.removeEdge(mutable, 1)
+        assert.deepStrictEqual(iterator.next().value?.edges, [1, 3])
       }
+
+      const simpleGraph = makeMutable()
+      assertSnapshot(Graph.simplePaths(simpleGraph, { source: 0, target: 3 }), simpleGraph)
+
+      const shortestGraph = makeMutable()
+      assertSnapshot(
+        Graph.allShortestPaths(shortestGraph, { source: 0, target: 3, cost: (edge) => edge }),
+        shortestGraph
+      )
+    })
+
+    it("should snapshot mutable adjacency before evaluating shortest-path costs", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+        Graph.addNode(graph, "A")
+        Graph.addNode(graph, "B")
+        Graph.addNode(graph, "C")
+        Graph.addEdge(graph, 0, 1, 1)
+        Graph.addEdge(graph, 1, 2, 1)
+        Graph.addEdge(graph, 0, 2, 3)
+      }))
+      let mutated = false
+      const paths = Graph.allShortestPaths(mutable, {
+        source: 0,
+        target: 2,
+        cost: (edge) => {
+          if (!mutated) {
+            mutated = true
+            Graph.removeEdge(mutable, 1)
+          }
+          return edge
+        }
+      })
+
+      assert.deepStrictEqual(Array.from(paths), [
+        { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [1, 1] }
+      ])
+    })
+
+    it("should validate path enumeration options", () => {
+      const graph = makeSingleEdgeGraph(-1)
+
+      assertGraphError(
+        () => Array.from(Graph.allShortestPaths(graph, { source: 0, target: 1, cost: (edge) => edge })),
+        "All shortest paths requires non-negative edge weights"
+      )
+      assertGraphError(
+        () => Array.from(Graph.allShortestPaths(graph, { source: 0, target: 1, cost: (edge) => edge, limit: 0 })),
+        "All shortest paths requires non-negative edge weights"
+      )
+      assertGraphError(
+        () => Graph.simplePaths(graph, { source: 0, target: 1, limit: -1 }),
+        "Path enumeration limit must be a non-negative integer or Infinity"
+      )
+      assertGraphError(() => Graph.simplePaths(graph, { source: 0, target: 2 }), "Node 2 does not exist")
+    })
+  })
+
+  describe("path edge indexes", () => {
+    it("should preserve sparse parallel edge identity across algorithms and mutability", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 2, data: "source" }, { index: 5, data: "target" }],
+        edges: [
+          { index: 3, source: 2, target: 5, data: 1 },
+          { index: 1_000_000, source: 2, target: 5, data: 1 }
+        ]
+      })
+      const mutable = Graph.beginMutation(graph)
+      const expected = { path: [2, 5], edges: [3], distance: 1, costs: [1] }
+
+      for (const candidate of [graph, mutable]) {
+        assertSome(Graph.dijkstra(candidate, { source: 2, target: 5, cost: (edge) => edge }), expected)
+        assertSome(
+          Graph.astar(candidate, { source: 2, target: 5, cost: (edge) => edge, heuristic: () => 0 }),
+          expected
+        )
+        assertSome(Graph.bellmanFord(candidate, { source: 2, target: 5, cost: (edge) => edge }), expected)
+
+        const allPairs = Graph.floydWarshall(candidate, (edge) => edge)
+        assert.deepStrictEqual(allPairs.paths.get(2)?.get(5), [2, 5])
+        assert.deepStrictEqual(allPairs.edges.get(2)?.get(5), [3])
+      }
+    })
+  })
+
+  describe("immutable algorithm cache", () => {
+    it("should preserve mutable structural and pathfinding results", () => {
+      const graph = Graph.directed<number | undefined, number>((mutable) => {
+        for (let i = 0; i < 6; i++) {
+          Graph.addNode(mutable, i === 3 ? undefined : i)
+        }
+        Graph.addEdge(mutable, 0, 1, 2)
+        Graph.addEdge(mutable, 0, 2, 1)
+        Graph.addEdge(mutable, 2, 1, 1)
+        Graph.addEdge(mutable, 1, 3, 2)
+        Graph.addEdge(mutable, 3, 2, 1)
+        Graph.addEdge(mutable, 3, 4, 3)
+      })
+      const mutable = Graph.beginMutation(graph)
+      const pathConfig = { source: 0, target: 4, cost: (weight: number) => weight }
+
+      assert.deepStrictEqual(Graph.stronglyConnectedComponents(graph), Graph.stronglyConnectedComponents(mutable))
+      assert.strictEqual(Graph.isAcyclic(graph), Graph.isAcyclic(mutable))
+      assert.deepStrictEqual(
+        Graph.astar(graph, { ...pathConfig, heuristic: () => 0 }),
+        Graph.astar(mutable, { ...pathConfig, heuristic: () => 0 })
+      )
+      assert.deepStrictEqual(Graph.bellmanFord(graph, pathConfig), Graph.bellmanFord(mutable, pathConfig))
+      assert.deepStrictEqual(Graph.floydWarshall(graph, pathConfig.cost), Graph.floydWarshall(mutable, pathConfig.cost))
+    })
+
+    it("should preserve mutable undirected and topological results", () => {
+      const undirected = Graph.undirected<string, number>((mutable) => {
+        for (let i = 0; i < 5; i++) Graph.addNode(mutable, String(i))
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 0, 2, 2)
+        Graph.addEdge(mutable, 0, 1, 3)
+        Graph.addEdge(mutable, 3, 4, 4)
+      })
+      const mutableUndirected = Graph.beginMutation(undirected)
+      assert.strictEqual(Graph.isAcyclic(undirected), Graph.isAcyclic(mutableUndirected))
+      assert.strictEqual(Graph.isBipartite(undirected), Graph.isBipartite(mutableUndirected))
+      assert.deepStrictEqual(Graph.connectedComponents(undirected), Graph.connectedComponents(mutableUndirected))
+
+      const dag = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 5; i++) Graph.addNode(mutable, String(i))
+        Graph.addEdge(mutable, 0, 2, 1)
+        Graph.addEdge(mutable, 1, 2, 2)
+        Graph.addEdge(mutable, 2, 3, 3)
+      })
+      assert.deepStrictEqual(
+        Array.from(Graph.indices(Graph.topo(dag, { initials: [1, 0] }))),
+        Array.from(Graph.indices(Graph.topo(Graph.beginMutation(dag), { initials: [1, 0] })))
+      )
+    })
+
+    it("should support sparse indexes across cached algorithms", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 1_000_000, data: "C" }],
+        edges: [
+          { index: 3, source: 2, target: 5, data: 2 },
+          { index: 1_000_000, source: 5, target: 1_000_000, data: 3 }
+        ]
+      })
+      const mutable = Graph.beginMutation(graph)
+      const config = { source: 2, target: 1_000_000, cost: (weight: number) => weight }
+
+      assert.deepStrictEqual(Graph.stronglyConnectedComponents(graph), Graph.stronglyConnectedComponents(mutable))
+      assert.deepStrictEqual(Graph.bellmanFord(graph, config), Graph.bellmanFord(mutable, config))
+      assert.deepStrictEqual(Graph.floydWarshall(graph, config.cost), Graph.floydWarshall(mutable, config.cost))
+      assert.deepStrictEqual(
+        Array.from(Graph.indices(Graph.topo(graph))),
+        Array.from(Graph.indices(Graph.topo(mutable)))
+      )
+    })
+  })
+
+  describe("Iterator Base Methods", () => {
+    const makeMutableTraversalGraph = () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        Graph.addNode(mutable, "C")
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 2, 2)
+      })
+      return Graph.beginMutation(graph)
     }
 
-    const removeNodes = (mutable: Graph.MutableDirectedGraph<string, number>, nodes: Array<Graph.NodeIndex>) => {
-      for (const node of nodes) {
-        Graph.removeNode(mutable, node)
+    const traversalRadiusError = "Traversal radius must be a non-negative integer or Infinity"
+
+    it("validates traversal radius eagerly in data-first and data-last forms", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+      })
+      const traversals = [
+        {
+          dataFirst: (radius: number) => Graph.dfs(graph, { start: [], radius }),
+          dataLast: (radius: number) => Graph.dfs({ start: [], radius })(graph)
+        },
+        {
+          dataFirst: (radius: number) => Graph.bfs(graph, { start: [], radius }),
+          dataLast: (radius: number) => Graph.bfs({ start: [], radius })(graph)
+        },
+        {
+          dataFirst: (radius: number) => Graph.dfsPostOrder(graph, { start: [], radius }),
+          dataLast: (radius: number) => Graph.dfsPostOrder({ start: [], radius })(graph)
+        }
+      ]
+
+      for (const radius of [NaN, -Infinity, -1, -0.5, 0.5, 1.5]) {
+        for (const traversal of traversals) {
+          assertGraphError(() => traversal.dataFirst(radius), traversalRadiusError)
+          assertGraphError(() => traversal.dataLast(radius), traversalRadiusError)
+        }
       }
-    }
+    })
+
+    it("accepts omitted, infinite, negative zero, and non-negative integer radii", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        Graph.addNode(mutable, "C")
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 1, 2, 2)
+      })
+
+      const cases = [
+        { radius: undefined, preorder: [0, 1, 2], postorder: [2, 1, 0] },
+        { radius: Infinity, preorder: [0, 1, 2], postorder: [2, 1, 0] },
+        { radius: -0, preorder: [0], postorder: [0] },
+        { radius: 0, preorder: [0], postorder: [0] },
+        { radius: 1, preorder: [0, 1], postorder: [1, 0] },
+        { radius: 2, preorder: [0, 1, 2], postorder: [2, 1, 0] }
+      ]
+
+      for (const { postorder, preorder, radius } of cases) {
+        const config = radius === undefined ? { start: [0] } : { start: [0], radius }
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfs(graph, config))), preorder)
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.bfs(graph, config))), preorder)
+        assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfsPostOrder(graph, config))), postorder)
+      }
+    })
+
+    it("copies configured starts for every traversal", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+      })
+      const start = [0]
+      const dfs = Graph.dfs(graph, { start })
+      const bfs = Graph.bfs(graph, { start })
+      const postorder = Graph.dfsPostOrder(graph, { start })
+
+      start[0] = 1
+
+      assert.deepStrictEqual(Array.from(Graph.indices(dfs)), [0])
+      assert.deepStrictEqual(Array.from(Graph.indices(bfs)), [0])
+      assert.deepStrictEqual(Array.from(Graph.indices(postorder)), [0])
+    })
+
+    it("revalidates copied starts for every fresh iterator snapshot", () => {
+      const mutable = makeMutableTraversalGraph()
+      const dfs = Graph.indices(Graph.dfs(mutable, { start: [0] }))
+      const bfs = Graph.indices(Graph.bfs(mutable, { start: [0] }))
+      const postorder = Graph.indices(Graph.dfsPostOrder(mutable, { start: [0] }))
+
+      Graph.removeNode(mutable, 0)
+
+      for (const traversal of [dfs, bfs, postorder]) {
+        assertGraphError(() => traversal[Symbol.iterator](), "Node 0 does not exist")
+      }
+    })
+
+    it("keeps active traversal snapshots isolated while fresh iterators see mutations", () => {
+      const mutable = makeMutableTraversalGraph()
+      const dfs = Graph.indices(Graph.dfs(mutable, { start: [0] }))
+      const bfs = Graph.indices(Graph.bfs(mutable, { start: [0] }))
+      const postorder = Graph.indices(Graph.dfsPostOrder(mutable, { start: [0], radius: 2 }))
+      const activeDfs = dfs[Symbol.iterator]()
+      const activeBfs = bfs[Symbol.iterator]()
+      const activePostorder = postorder[Symbol.iterator]()
+
+      Graph.removeNode(mutable, 1)
+
+      assert.deepStrictEqual(Array.from({ [Symbol.iterator]: () => activeDfs }), [0, 1, 2])
+      assert.deepStrictEqual(Array.from({ [Symbol.iterator]: () => activeBfs }), [0, 1, 2])
+      assert.deepStrictEqual(Array.from({ [Symbol.iterator]: () => activePostorder }), [2, 1, 0])
+      assert.deepStrictEqual(Array.from(dfs), [0])
+      assert.deepStrictEqual(Array.from(bfs), [0])
+      assert.deepStrictEqual(Array.from(postorder), [0])
+    })
+
+    it("prioritizes distinct roots in supplied order without duplicate output", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 2, 3, 2)
+      })
+      const config = { start: [0, 0, 2, 2] }
+
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfs(graph, config))), [0, 1, 2, 3])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfs(graph, { ...config, radius: 1 }))), [0, 1, 2, 3])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.bfs(graph, config))), [0, 2, 1, 3])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfsPostOrder(graph, config))), [1, 0, 3, 2])
+    })
 
     it("should provide values() method for DFS iterator", () => {
       const graph = Graph.directed<string, number>((mutable) => {
@@ -4046,13 +5202,87 @@ describe("Graph", () => {
       expect(entries).toEqual([[0, "A"], [1, "B"], [2, "C"]])
     })
 
-    it("should skip stale BFS nodes without recursion", () => {
-      const { mutable, start } = makeSparseMutableGraph()
-      const iterator = Graph.indices(Graph.bfs(mutable, { start }))[Symbol.iterator]()
+    it("should snapshot mutable BFS when iteration begins", () => {
+      const mutable = makeMutableTraversalGraph()
+      const traversal = Graph.indices(Graph.bfs(mutable, { start: [0] }))
+      const iterator = traversal[Symbol.iterator]()
 
-      removeNodes(mutable, start)
+      Graph.removeNode(mutable, 1)
 
-      assert.strictEqual(iterator.next().done, true)
+      assert.deepStrictEqual([iterator.next().value, iterator.next().value, iterator.next().value], [0, 1, 2])
+      assert.deepStrictEqual(Array.from(traversal), [0])
+    })
+
+    it("should snapshot mutable DFS when iteration begins", () => {
+      const mutable = makeMutableTraversalGraph()
+      const iterator = Graph.indices(Graph.dfs(mutable, { start: [0] }))[Symbol.iterator]()
+
+      Graph.removeNode(mutable, 1)
+
+      assert.deepStrictEqual([iterator.next().value, iterator.next().value, iterator.next().value], [0, 1, 2])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfs(mutable, { start: [0] }))), [0])
+    })
+
+    it("should traverse sparse snapshot indexes", () => {
+      const graph = Graph.fromSnapshot({
+        type: "directed",
+        nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 1_000_000, data: "C" }],
+        edges: [
+          { index: 3, source: 2, target: 5, data: 1 },
+          { index: 1_000_000, source: 5, target: 1_000_000, data: 2 }
+        ]
+      })
+
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.bfs(graph, { start: [2] }))), [2, 5, 1_000_000])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfs(graph, { start: [2] }))), [2, 5, 1_000_000])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfsPostOrder(graph, { start: [2] }))), [1_000_000, 5, 2])
+    })
+
+    it("should preserve immutable and mutable depth-first traversal semantics", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 5; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 0, 2, 2)
+        Graph.addEdge(mutable, 1, 3, 3)
+        Graph.addEdge(mutable, 2, 3, 4)
+        Graph.addEdge(mutable, 4, 2, 5)
+      })
+      const mutable = Graph.beginMutation(graph)
+      const configurations: Array<Graph.SearchConfig> = [
+        { start: [0] },
+        { start: [3], direction: "incoming" },
+        { start: [1], direction: "undirected", radius: 2 },
+        { start: [0, 4], radius: 1 }
+      ]
+
+      for (const config of configurations) {
+        assert.deepStrictEqual(
+          Array.from(Graph.indices(Graph.dfs(graph, config))),
+          Array.from(Graph.indices(Graph.dfs(mutable, config)))
+        )
+        assert.deepStrictEqual(
+          Array.from(Graph.indices(Graph.dfsPostOrder(graph, config))),
+          Array.from(Graph.indices(Graph.dfsPostOrder(mutable, config)))
+        )
+      }
+    })
+
+    it("should preserve bounded DFS order for reciprocal neighbors", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < 5; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+        Graph.addEdge(mutable, 0, 1, 1)
+        Graph.addEdge(mutable, 4, 1, 2)
+        Graph.addEdge(mutable, 1, 4, 3)
+      })
+
+      assert.deepStrictEqual(
+        Array.from(Graph.indices(Graph.dfs(graph, { start: [1], direction: "undirected", radius: 2 }))),
+        [1, 4, 0]
+      )
     })
 
     it("should limit DFS traversal by radius", () => {
@@ -4104,6 +5334,29 @@ describe("Graph", () => {
       assert.deepStrictEqual(Array.from(Graph.indices(bfsIterator)), [0, 1, 2])
     })
 
+    it("should traverse incoming and undirected directions", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const source = Graph.addNode(mutable, "source")
+        const first = Graph.addNode(mutable, "first")
+        const second = Graph.addNode(mutable, "second")
+        Graph.addEdge(mutable, source, first, 1)
+        Graph.addEdge(mutable, source, second, 2)
+      })
+
+      assert.deepStrictEqual(
+        Array.from(Graph.indices(Graph.bfs(graph, { start: [1], direction: "incoming" }))),
+        [1, 0]
+      )
+      assert.deepStrictEqual(
+        Array.from(Graph.indices(Graph.bfs(graph, { start: [1], direction: "undirected", radius: 1 }))),
+        [1, 0]
+      )
+      assert.deepStrictEqual(
+        Array.from(Graph.indices(Graph.bfs(graph, { start: [1], direction: "undirected" }))),
+        [1, 0, 2]
+      )
+    })
+
     it("should only include start nodes when radius is zero", () => {
       const graph = Graph.directed<string, number>((mutable) => {
         const a = Graph.addNode(mutable, "A")
@@ -4145,13 +5398,14 @@ describe("Graph", () => {
       expect(entries).toEqual([[0, "A"], [1, "B"], [2, "C"]])
     })
 
-    it("should skip stale topological sort nodes without recursion", () => {
-      const { mutable, start } = makeSparseMutableGraph()
+    it("should snapshot mutable topological sort when iteration begins", () => {
+      const mutable = makeMutableTraversalGraph()
       const iterator = Graph.indices(Graph.topo(mutable))[Symbol.iterator]()
 
-      removeNodes(mutable, start)
+      Graph.removeNode(mutable, 1)
 
-      assert.strictEqual(iterator.next().done, true)
+      assert.deepStrictEqual([iterator.next().value, iterator.next().value, iterator.next().value], [0, 1, 2])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.topo(mutable))), [0, 2])
     })
 
     it("should reject cycles introduced before topological iteration", () => {
@@ -4291,13 +5545,14 @@ describe("Graph", () => {
       expect(entries).toEqual([[2, "C"], [1, "B"], [0, "A"]]) // Postorder: children before parents
     })
 
-    it("should skip stale DFS postorder nodes without recursion", () => {
-      const { mutable, start } = makeSparseMutableGraph()
-      const iterator = Graph.indices(Graph.dfsPostOrder(mutable, { start }))[Symbol.iterator]()
+    it("should snapshot mutable DFS postorder when iteration begins", () => {
+      const mutable = makeMutableTraversalGraph()
+      const iterator = Graph.indices(Graph.dfsPostOrder(mutable, { start: [0] }))[Symbol.iterator]()
 
-      removeNodes(mutable, start)
+      Graph.removeNode(mutable, 1)
 
-      assert.strictEqual(iterator.next().done, true)
+      assert.deepStrictEqual([iterator.next().value, iterator.next().value, iterator.next().value], [2, 1, 0])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfsPostOrder(mutable, { start: [0] }))), [0])
     })
 
     it("should traverse undirected edges in reverse storage direction", () => {

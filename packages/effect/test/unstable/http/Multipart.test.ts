@@ -11,6 +11,15 @@ import * as HttpServerRespondable from "effect/unstable/http/HttpServerRespondab
 import { deepStrictEqual, notStrictEqual, strictEqual } from "node:assert"
 
 describe("Multipart", () => {
+  it.effect("schemaJson applies a JSON reviver", () =>
+    Effect.gen(function*() {
+      const decoded = yield* Multipart.schemaJson(Schema.Struct({ value: Schema.String }), {
+        reviver: (key, value) => key === "value" ? "revived" : value
+      })({ json: "{\"value\":\"original\"}" }, "json")
+
+      deepStrictEqual(decoded, { value: "revived" })
+    }))
+
   it.effect("parses fields and streams file content", () =>
     Effect.gen(function*() {
       const data = new globalThis.FormData()

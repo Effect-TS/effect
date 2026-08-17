@@ -60,8 +60,6 @@ const ProtoGraph = {
       if (
         this.nodes.size !== thatImpl.nodes.size ||
         this.edges.size !== thatImpl.edges.size ||
-        this.nextNodeIndex !== thatImpl.nextNodeIndex ||
-        this.nextEdgeIndex !== thatImpl.nextEdgeIndex ||
         this.type !== thatImpl.type
       ) {
         return false
@@ -86,8 +84,6 @@ const ProtoGraph = {
     hash = hash ^ Hash.string(this.type)
     hash = hash ^ Hash.number(this.nodes.size)
     hash = hash ^ Hash.number(this.edges.size)
-    hash = hash ^ Hash.number(this.nextNodeIndex)
-    hash = hash ^ Hash.number(this.nextEdgeIndex)
     for (const [nodeIndex, nodeData] of this.nodes) {
       hash = hash ^ (Hash.hash(nodeIndex) + Hash.hash(nodeData))
     }
@@ -147,6 +143,21 @@ export const clone = <N, E, T extends Graph.Kind>(
   graph.edges = new Map(source.edges)
   graph.adjacency = cloneAdjacency(source.adjacency)
   graph.reverseAdjacency = cloneAdjacency(source.reverseAdjacency)
+  graph.nextNodeIndex = source.nextNodeIndex
+  graph.nextEdgeIndex = source.nextEdgeIndex
+  graph.acyclic = source.acyclic
+  return graph
+}
+
+/** @internal */
+export const finalize = <N, E, T extends Graph.Kind>(source: GraphImpl<N, E, T>): GraphImpl<N, E, T> => {
+  const graph: GraphImpl<N, E, T> = Object.create(ProtoGraph)
+  graph.type = source.type
+  graph.mutable = false
+  graph.nodes = source.nodes
+  graph.edges = source.edges
+  graph.adjacency = source.adjacency
+  graph.reverseAdjacency = source.reverseAdjacency
   graph.nextNodeIndex = source.nextNodeIndex
   graph.nextEdgeIndex = source.nextEdgeIndex
   graph.acyclic = source.acyclic

@@ -178,12 +178,15 @@ describe("HttpServerRequest", () => {
         name: Schema.String
       })
 
-      const decoded = yield* HttpServerRequest.schemaBodyJson(schema, { onExcessProperty: "preserve" }).pipe(
+      const decoded = yield* HttpServerRequest.schemaBodyJson(schema, {
+        onExcessProperty: "preserve",
+        reviver: (key, value) => key === "status" ? "revived" : value
+      }).pipe(
         Effect.provideService(HttpServerRequest.HttpServerRequest, request)
       )
       const decodedRecord = decoded as Record<string, unknown>
 
-      assert.strictEqual(decoded.status, "ok")
+      assert.strictEqual(decoded.status, "revived")
       assert.strictEqual(decoded.name, "svc")
       assert.strictEqual(decodedRecord.sha, "abc")
       assert.strictEqual(decodedRecord.version, "1.0.0")

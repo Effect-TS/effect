@@ -999,13 +999,16 @@ export const makeStoreSql: (
           sql<Element>`
             UPDATE ${tableNameSql}
             SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}
-            WHERE queue_name = ${name}
-            AND completed = FALSE
-            AND attempts < ${maxAttempts}
-            AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
+            WHERE sequence IN (
+              SELECT sequence FROM ${tableNameSql}
+              WHERE queue_name = ${name}
+              AND completed = FALSE
+              AND attempts < ${maxAttempts}
+              AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
+              ORDER BY updated_at ASC, sequence ASC
+              LIMIT ${sql.literal(size.toString())}
+            )
             RETURNING sequence, id, queue_name, element, attempts
-            ORDER BY updated_at ASC, sequence ASC
-            LIMIT ${sql.literal(size.toString())}
           `
       })
 
@@ -1028,6 +1031,7 @@ export const makeStoreSql: (
           yield* Effect.yieldNow
         }
       }).pipe(
+        Effect.tapCause(Effect.logWarning),
         Effect.sandbox,
         Effect.retry(Schedule.spaced(500)),
         Effect.forkScoped
