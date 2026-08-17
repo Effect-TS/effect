@@ -31,6 +31,32 @@ export const toImpl = <N, E, T extends Graph.Kind = "directed">(
   graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
 ): GraphImpl<N, E, T> => graph as unknown as GraphImpl<N, E, T>
 
+const transformationDepth = new WeakMap<GraphImpl<any, any, any>, number>()
+
+/** @internal */
+export const isTransforming = <N, E, T extends Graph.Kind>(
+  graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
+): boolean => transformationDepth.has(toImpl(graph))
+
+/** @internal */
+export const withTransformation = <N, E, T extends Graph.Kind, A>(
+  graph: Graph.MutableGraph<N, E, T>,
+  evaluate: () => A
+): A => {
+  const impl = toImpl(graph)
+  const depth = transformationDepth.get(impl) ?? 0
+  transformationDepth.set(impl, depth + 1)
+  try {
+    return evaluate()
+  } finally {
+    if (depth === 0) {
+      transformationDepth.delete(impl)
+    } else {
+      transformationDepth.set(impl, depth)
+    }
+  }
+}
+
 const edgeEquals = (type: Graph.Kind, self: Graph.Edge<any>, that: Graph.Edge<any>): boolean =>
   (type === "directed"
     ? self.source === that.source && self.target === that.target
