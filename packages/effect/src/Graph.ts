@@ -3065,12 +3065,40 @@ export const incidentEdges: {
   if (!impl.nodes.has(nodeIndex)) {
     throw missingNode(nodeIndex)
   }
+  const outgoing = impl.adjacency.get(nodeIndex)!
+  if (graph.type === "undirected") {
+    const result: Array<EdgeIndex> = []
+    let previous = -1
+    for (const edgeIndex of outgoing) {
+      if (edgeIndex !== previous) {
+        result.push(edgeIndex)
+        previous = edgeIndex
+      }
+    }
+    return result
+  }
+
+  const incoming = impl.reverseAdjacency.get(nodeIndex)!
   const result: Array<EdgeIndex> = []
-  for (const [edgeIndex, edge] of impl.edges) {
-    if (edge.source === nodeIndex || edge.target === nodeIndex) {
-      result.push(edgeIndex)
+  let outgoingPosition = 0
+  let incomingPosition = 0
+  while (outgoingPosition < outgoing.length && incomingPosition < incoming.length) {
+    const outgoingEdge = outgoing[outgoingPosition]
+    const incomingEdge = incoming[incomingPosition]
+    if (outgoingEdge < incomingEdge) {
+      result.push(outgoingEdge)
+      outgoingPosition++
+    } else if (incomingEdge < outgoingEdge) {
+      result.push(incomingEdge)
+      incomingPosition++
+    } else {
+      result.push(outgoingEdge)
+      outgoingPosition++
+      incomingPosition++
     }
   }
+  while (outgoingPosition < outgoing.length) result.push(outgoing[outgoingPosition++])
+  while (incomingPosition < incoming.length) result.push(incoming[incomingPosition++])
   return result
 })
 
@@ -3168,11 +3196,15 @@ export const edgesBetween: {
     throw missingNode(target)
   }
   const result: Array<EdgeIndex> = []
-  for (const [edgeIndex, edge] of impl.edges) {
-    if (
-      (edge.source === source && edge.target === target) ||
-      (graph.type === "undirected" && edge.source === target && edge.target === source)
-    ) {
+  let previous = -1
+  for (const edgeIndex of impl.adjacency.get(source)!) {
+    if (edgeIndex === previous) {
+      continue
+    }
+    previous = edgeIndex
+    const edge = impl.edges.get(edgeIndex)!
+    const neighbor = graph.type === "undirected" && edge.target === source ? edge.source : edge.target
+    if (neighbor === target) {
       result.push(edgeIndex)
     }
   }
@@ -3269,6 +3301,7 @@ const getDirectedNeighbors = <N, E>(
   direction: Direction
 ): Array<NodeIndex> => {
   const impl = internal.toImpl(graph)
+
   if (!graph.mutable) {
     const cache = csr.peek(graph)
     if (cache !== undefined) {
@@ -3276,17 +3309,21 @@ const getDirectedNeighbors = <N, E>(
       if (node === undefined) {
         return []
       }
+
       const adjacency = direction === "incoming"
         ? csr.getIncoming(cache)
         : csr.getOutgoing(cache)
+
       const start = adjacency.rowOffsets[node]
       const result = new Array<NodeIndex>(adjacency.rowOffsets[node + 1] - start)
       for (let i = 0; i < result.length; i++) {
         result[i] = cache.nodeIds[adjacency.columnIndices[start + i]]
       }
+
       return result
     }
   }
+
   const adjacencyMap = direction === "incoming"
     ? impl.reverseAdjacency
     : impl.adjacency
@@ -3365,11 +3402,7 @@ export const neighbors: {
     return getUndirectedNeighbors(graph as any, nodeIndex)
   }
 
-  return getUniqueDirectedNeighbors(
-    graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
-    nodeIndex,
-    "outgoing"
-  )
+  return getUniqueDirectedNeighbors(graph as any, nodeIndex, "outgoing")
 })
 
 /**
@@ -3409,11 +3442,7 @@ export const successors: {
   if (graph.type === "undirected") {
     throw new GraphError({ message: "Cannot get successors of undirected graph" })
   }
-  return getUniqueDirectedNeighbors(
-    graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
-    nodeIndex,
-    "outgoing"
-  )
+  return getUniqueDirectedNeighbors(graph as any, nodeIndex, "outgoing")
 })
 
 /**
@@ -3453,11 +3482,7 @@ export const predecessors: {
   if (graph.type === "undirected") {
     throw new GraphError({ message: "Cannot get predecessors of undirected graph" })
   }
-  return getUniqueDirectedNeighbors(
-    graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
-    nodeIndex,
-    "incoming"
-  )
+  return getUniqueDirectedNeighbors(graph as any, nodeIndex, "incoming")
 })
 
 /**
@@ -3520,11 +3545,7 @@ export const neighborsDirected: {
   if (graph.type === "undirected") {
     throw new GraphError({ message: "Cannot get directed neighbors of undirected graph" })
   }
-  return getUniqueDirectedNeighbors(
-    graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
-    nodeIndex,
-    direction
-  )
+  return getUniqueDirectedNeighbors(graph as any, nodeIndex, direction)
 })
 
 // =============================================================================
@@ -4211,195 +4232,80 @@ export const isAcyclic = <N, E, T extends Kind = "directed">(
     return impl.acyclic.value
   }
 
-  if (!graph.mutable) {
-    const cache = csr.get(graph)
-    const outgoing = csr.getOutgoingWithEdges(cache)
-    if (graph.type === "undirected") {
-      // Each undirected edge occurs in both endpoint rows; ignore only the edge used to enter the node.
-      const visited = new Uint8Array(cache.nodeIds.length)
-      const stack: Array<number> = []
-      const parentEdges: Array<number> = []
-
-      for (let start = 0; start < cache.nodeIds.length; start++) {
-        if (visited[start] !== 0) {
-          continue
-        }
-        visited[start] = 1
-        stack.push(start)
-        parentEdges.push(-1)
-
-        while (stack.length > 0) {
-          const node = stack.pop()!
-          const parentEdge = parentEdges.pop()!
-          for (let i = outgoing.rowOffsets[node]; i < outgoing.rowOffsets[node + 1]; i++) {
-            const edge = outgoing.edgeIndices[i]
-            if (edge === parentEdge) {
-              continue
-            }
-            const neighbor = outgoing.columnIndices[i]
-            if (visited[neighbor] !== 0) {
-              impl.acyclic = Option.some(false)
-              return false
-            }
-            visited[neighbor] = 1
-            stack.push(neighbor)
-            parentEdges.push(edge)
-          }
-        }
-      }
-    } else {
-      // Colors encode unseen, active, and finished nodes; row positions make the recursive DFS stack explicit.
-      const colors = new Uint8Array(cache.nodeIds.length)
-      const stack: Array<number> = []
-      const positions: Array<number> = []
-
-      for (let start = 0; start < cache.nodeIds.length; start++) {
-        if (colors[start] !== 0) {
-          continue
-        }
-        colors[start] = 1
-        stack.push(start)
-        positions.push(outgoing.rowOffsets[start])
-
-        while (stack.length > 0) {
-          const frame = stack.length - 1
-          const node = stack[frame]
-          const position = positions[frame]
-          if (position < outgoing.rowOffsets[node + 1]) {
-            positions[frame] = position + 1
-            const neighbor = outgoing.columnIndices[position]
-            if (colors[neighbor] === 1) {
-              impl.acyclic = Option.some(false)
-              return false
-            }
-            if (colors[neighbor] === 0) {
-              colors[neighbor] = 1
-              stack.push(neighbor)
-              positions.push(outgoing.rowOffsets[neighbor])
-            }
-          } else {
-            colors[node] = 2
-            stack.pop()
-            positions.pop()
-          }
-        }
-      }
-    }
-
-    impl.acyclic = Option.some(true)
-    return true
-  }
-
+  const cache = csr.get(graph)
+  const outgoing = csr.getOutgoingWithEdges(cache)
   if (graph.type === "undirected") {
-    const visited = new Set<NodeIndex>()
+    // Each undirected edge occurs in both endpoint rows; ignore only the edge used to enter the node.
+    const visited = new Uint8Array(cache.nodeIds.length)
+    const stack: Array<number> = []
+    const parentEdges: Array<number> = []
 
-    for (const startNode of impl.nodes.keys()) {
-      if (visited.has(startNode)) {
+    for (let start = 0; start < cache.nodeIds.length; start++) {
+      if (visited[start] !== 0) {
         continue
       }
-
-      visited.add(startNode)
-      const stack: Array<{ node: NodeIndex; incoming: EdgeIndex | null }> = [{ node: startNode, incoming: null }]
+      visited[start] = 1
+      stack.push(start)
+      parentEdges.push(-1)
 
       while (stack.length > 0) {
-        const { node, incoming } = stack.pop()!
-        const adjacencyList = impl.adjacency.get(node)
-        if (adjacencyList === undefined) {
-          continue
-        }
-
-        for (const edgeIndex of adjacencyList) {
-          if (edgeIndex === incoming) {
+        const node = stack.pop()!
+        const parentEdge = parentEdges.pop()!
+        for (let i = outgoing.rowOffsets[node]; i < outgoing.rowOffsets[node + 1]; i++) {
+          const edge = outgoing.edgeIndices[i]
+          if (edge === parentEdge) {
             continue
           }
-          const edge = impl.edges.get(edgeIndex)
-          if (edge === undefined) {
-            continue
-          }
-          const neighbor = getTraversableNeighbor(graph, node, edge)
-          if (!visited.has(neighbor)) {
-            visited.add(neighbor)
-            stack.push({ node: neighbor, incoming: edgeIndex })
-          } else {
+          const neighbor = outgoing.columnIndices[i]
+          if (visited[neighbor] !== 0) {
             impl.acyclic = Option.some(false)
             return false
           }
+          visited[neighbor] = 1
+          stack.push(neighbor)
+          parentEdges.push(edge)
         }
       }
     }
+  } else {
+    // Colors encode unseen, active, and finished nodes; row positions make the recursive DFS stack explicit.
+    const colors = new Uint8Array(cache.nodeIds.length)
+    const stack: Array<number> = []
+    const positions: Array<number> = []
 
-    impl.acyclic = Option.some(true)
-    return true
-  }
-
-  // Stack-safe DFS cycle detection using iterative approach
-  const visited = new Set<NodeIndex>()
-  const recursionStack = new Set<NodeIndex>()
-
-  // Stack entry: [node, neighbors, neighborIndex, isFirstVisit]
-  type DfsStackEntry = [NodeIndex, Array<NodeIndex>, number, boolean]
-
-  // Get all nodes to handle disconnected components
-  for (const startNode of impl.nodes.keys()) {
-    if (visited.has(startNode)) {
-      continue // Already processed this component
-    }
-
-    // Iterative DFS with explicit stack
-    const stack: Array<DfsStackEntry> = [[startNode, [], 0, true]]
-
-    while (stack.length > 0) {
-      const [node, neighbors, neighborIndex, isFirstVisit] = stack[stack.length - 1]
-
-      // First visit to this node
-      if (isFirstVisit) {
-        if (recursionStack.has(node)) {
-          // Back edge found - cycle detected
-          impl.acyclic = Option.some(false)
-          return false
-        }
-
-        if (visited.has(node)) {
-          stack.pop()
-          continue
-        }
-
-        visited.add(node)
-        recursionStack.add(node)
-
-        // Get neighbors for this node
-        const nodeNeighbors = getDirectedNeighbors(
-          graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
-          node,
-          "outgoing"
-        )
-        stack[stack.length - 1] = [node, nodeNeighbors, 0, false]
+    for (let start = 0; start < cache.nodeIds.length; start++) {
+      if (colors[start] !== 0) {
         continue
       }
+      colors[start] = 1
+      stack.push(start)
+      positions.push(outgoing.rowOffsets[start])
 
-      // Process next neighbor
-      if (neighborIndex < neighbors.length) {
-        const neighbor = neighbors[neighborIndex]
-        stack[stack.length - 1] = [node, neighbors, neighborIndex + 1, false]
-
-        if (recursionStack.has(neighbor)) {
-          // Back edge found - cycle detected
-          impl.acyclic = Option.some(false)
-          return false
+      while (stack.length > 0) {
+        const frame = stack.length - 1
+        const node = stack[frame]
+        const position = positions[frame]
+        if (position < outgoing.rowOffsets[node + 1]) {
+          positions[frame] = position + 1
+          const neighbor = outgoing.columnIndices[position]
+          if (colors[neighbor] === 1) {
+            impl.acyclic = Option.some(false)
+            return false
+          }
+          if (colors[neighbor] === 0) {
+            colors[neighbor] = 1
+            stack.push(neighbor)
+            positions.push(outgoing.rowOffsets[neighbor])
+          }
+        } else {
+          colors[node] = 2
+          stack.pop()
+          positions.pop()
         }
-
-        if (!visited.has(neighbor)) {
-          stack.push([neighbor, [], 0, true])
-        }
-      } else {
-        // Done with this node - backtrack
-        recursionStack.delete(node)
-        stack.pop()
       }
     }
   }
 
-  // Cache the result
   impl.acyclic = Option.some(true)
   return true
 }
@@ -4453,85 +4359,38 @@ export const isAcyclic = <N, E, T extends Kind = "directed">(
 export const isBipartite = <N, E>(
   graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
 ): boolean => {
-  const impl = internal.toImpl(graph)
-  if (!graph.mutable) {
-    const cache = csr.get(graph)
-    const outgoing = csr.getOutgoing(cache)
-    // -1 is uncolored; compact indices let coloring and the queue stay in typed arrays.
-    const colors = new Int8Array(cache.nodeIds.length)
-    const queue = new Uint32Array(cache.nodeIds.length)
-    colors.fill(-1)
-    let head = 0
-    let tail = 0
+  const cache = csr.get(graph)
+  const outgoing = csr.getOutgoing(cache)
+  // -1 is uncolored; compact indices let coloring and the queue stay in typed arrays.
+  const colors = new Int8Array(cache.nodeIds.length)
+  const queue = new Uint32Array(cache.nodeIds.length)
+  colors.fill(-1)
+  let head = 0
+  let tail = 0
 
-    for (let start = 0; start < cache.nodeIds.length; start++) {
-      if (colors[start] !== -1) {
-        continue
-      }
-      colors[start] = 0
-      queue[tail++] = start
-
-      while (head < tail) {
-        const current = queue[head++]
-        const neighborColor = colors[current] === 0 ? 1 : 0
-        for (let i = outgoing.rowOffsets[current]; i < outgoing.rowOffsets[current + 1]; i++) {
-          const neighbor = outgoing.columnIndices[i]
-          if (colors[neighbor] === -1) {
-            colors[neighbor] = neighborColor
-            queue[tail++] = neighbor
-          } else if (colors[neighbor] === colors[current]) {
-            return false
-          }
-        }
-      }
+  for (let start = 0; start < cache.nodeIds.length; start++) {
+    if (colors[start] !== -1) {
+      continue
     }
+    colors[start] = 0
+    queue[tail++] = start
 
-    return true
-  }
-
-  const coloring = new Map<NodeIndex, 0 | 1>()
-  const discovered = new Set<NodeIndex>()
-  let isBipartiteGraph = true
-
-  // Get all nodes to handle disconnected components
-  for (const startNode of impl.nodes.keys()) {
-    if (!discovered.has(startNode)) {
-      // Start BFS coloring from this component
-      const queue: Array<NodeIndex> = [startNode]
-      coloring.set(startNode, 0) // Color start node with 0
-      discovered.add(startNode)
-
-      while (queue.length > 0 && isBipartiteGraph) {
-        const current = queue.shift()!
-        const currentColor = coloring.get(current)!
-        const neighborColor: 0 | 1 = currentColor === 0 ? 1 : 0
-
-        // Get all neighbors for undirected graph
-        const nodeNeighbors = getUndirectedNeighbors(graph, current)
-        for (const neighbor of nodeNeighbors) {
-          if (!discovered.has(neighbor)) {
-            // Color unvisited neighbor with opposite color
-            coloring.set(neighbor, neighborColor)
-            discovered.add(neighbor)
-            queue.push(neighbor)
-          } else {
-            // Check if neighbor has the same color (conflict)
-            if (coloring.get(neighbor) === currentColor) {
-              isBipartiteGraph = false
-              break
-            }
-          }
+    while (head < tail) {
+      const current = queue[head++]
+      const neighborColor = colors[current] === 0 ? 1 : 0
+      for (let i = outgoing.rowOffsets[current]; i < outgoing.rowOffsets[current + 1]; i++) {
+        const neighbor = outgoing.columnIndices[i]
+        if (colors[neighbor] === -1) {
+          colors[neighbor] = neighborColor
+          queue[tail++] = neighbor
+        } else if (colors[neighbor] === colors[current]) {
+          return false
         }
-      }
-
-      // Early exit if not bipartite
-      if (!isBipartiteGraph) {
-        break
       }
     }
   }
 
-  return isBipartiteGraph
+  return true
 }
 
 /**
@@ -5704,6 +5563,7 @@ export const weaklyConnectedComponents = <N, E>(
   if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "undirected") {
     throw new GraphError({ message: "Cannot find weakly connected components of undirected graph" })
   }
+
   const cache = csr.get(graph)
   const { primary, secondary } = csr.getAdjacencies(cache, "undirected")
   const nodeCount = cache.nodeIds.length
@@ -6234,53 +6094,6 @@ export interface PathResult<E> {
   readonly edges: Array<EdgeIndex>
   readonly distance: number
   readonly costs: Array<E>
-}
-
-interface MinHeapEntry {
-  readonly node: NodeIndex
-  readonly priority: number
-  readonly sequence: number
-}
-
-const minHeapLessThan = (self: MinHeapEntry, that: MinHeapEntry): boolean =>
-  self.priority < that.priority || (self.priority === that.priority && self.sequence < that.sequence)
-
-const minHeapPush = (heap: Array<MinHeapEntry>, entry: MinHeapEntry): void => {
-  let index = heap.length
-  heap.push(entry)
-  while (index > 0) {
-    const parent = (index - 1) >>> 1
-    if (!minHeapLessThan(entry, heap[parent])) {
-      break
-    }
-    heap[index] = heap[parent]
-    index = parent
-  }
-  heap[index] = entry
-}
-
-const minHeapPop = (heap: Array<MinHeapEntry>): MinHeapEntry | undefined => {
-  const first = heap[0]
-  const last = heap.pop()
-  if (last === undefined || heap.length === 0) {
-    return first
-  }
-  let index = 0
-  while (true) {
-    const left = index * 2 + 1
-    if (left >= heap.length) {
-      break
-    }
-    const right = left + 1
-    const child = right < heap.length && minHeapLessThan(heap[right], heap[left]) ? right : left
-    if (!minHeapLessThan(heap[child], last)) {
-      break
-    }
-    heap[index] = heap[child]
-    index = child
-  }
-  heap[index] = last
-  return first
 }
 
 interface DenseMinHeap {
@@ -7517,27 +7330,29 @@ export const allShortestPaths: {
     const previous: Array<Array<{ readonly node: number; readonly edge: number }> | undefined> = new Array(
       cache.nodeIds.length
     )
-    const queue: Array<MinHeapEntry> = []
+    const queue = denseMinHeapMake(cache.nodeIds.length)
     let sequence = 0
-    minHeapPush(queue, { node: source, priority: 0, sequence: sequence++ })
-    while (queue.length > 0) {
-      const current = minHeapPop(queue)!
-      if (current.priority !== distances[current.node]) {
+    denseMinHeapPush(queue, source, 0, sequence++)
+    while (queue.size > 0) {
+      denseMinHeapPop(queue)
+      const currentNode = queue.poppedNode
+      const currentDistance = queue.poppedPriority
+      if (currentDistance !== distances[currentNode]) {
         continue
       }
-      for (let i = outgoing.rowOffsets[current.node]; i < outgoing.rowOffsets[current.node + 1]; i++) {
+      for (let i = outgoing.rowOffsets[currentNode]; i < outgoing.rowOffsets[currentNode + 1]; i++) {
         const edge = outgoing.edgeIndices[i]
         const neighbor = outgoing.columnIndices[i]
-        const nextDistance = current.priority + weights[edge]
+        const nextDistance = currentDistance + weights[edge]
         if (weights[edge] !== Infinity && !Number.isFinite(nextDistance)) {
           throw new GraphError({ message: "All shortest paths distance calculation exceeded the finite number range" })
         }
         const known = distances[neighbor]
-        const predecessor = { node: current.node, edge }
+        const predecessor = { node: currentNode, edge }
         if (nextDistance < known) {
           distances[neighbor] = nextDistance
           previous[neighbor] = [predecessor]
-          minHeapPush(queue, { node: neighbor, priority: nextDistance, sequence: sequence++ })
+          denseMinHeapPush(queue, neighbor, nextDistance, sequence++)
         } else if (nextDistance === known && nextDistance !== Infinity) {
           const predecessors = previous[neighbor]
           if (predecessors === undefined) {
@@ -8285,71 +8100,68 @@ export const topo: {
     }
   }
 
-  return makeCsrNodeWalker(
-    graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
-    (cache, f) => {
-      const outgoing = csr.getOutgoing(cache)
-      const incoming = csr.getIncoming(cache)
-      // CSR row lengths are the initial in-degrees used by Kahn's algorithm.
-      const inDegree = new Uint32Array(cache.nodeIds.length)
-      const remaining = new Uint8Array(cache.nodeIds.length)
-      const initialSet = new Uint8Array(cache.nodeIds.length)
-      const queue: Array<number> = []
-      let remainingCount = cache.nodeIds.length
-      let head = 0
-      remaining.fill(1)
+  return makeCsrNodeWalker(graph, (cache, f) => {
+    const outgoing = csr.getOutgoing(cache)
+    const incoming = csr.getIncoming(cache)
+    // CSR row lengths are the initial in-degrees used by Kahn's algorithm.
+    const inDegree = new Uint32Array(cache.nodeIds.length)
+    const remaining = new Uint8Array(cache.nodeIds.length)
+    const initialSet = new Uint8Array(cache.nodeIds.length)
+    const queue: Array<number> = []
+    let remainingCount = cache.nodeIds.length
+    let head = 0
+    remaining.fill(1)
 
-      for (let node = 0; node < cache.nodeIds.length; node++) {
-        inDegree[node] = incoming.rowOffsets[node + 1] - incoming.rowOffsets[node]
+    for (let node = 0; node < cache.nodeIds.length; node++) {
+      inDegree[node] = incoming.rowOffsets[node + 1] - incoming.rowOffsets[node]
+    }
+    for (const initial of initials) {
+      const node = csr.getNodeIndex(cache, initial)
+      if (node === undefined) {
+        throw missingNode(initial)
       }
-      for (const initial of initials) {
-        const node = csr.getNodeIndex(cache, initial)
-        if (node === undefined) {
-          throw missingNode(initial)
-        }
-        if (inDegree[node] !== 0) {
-          throw new GraphError({ message: `Initial node ${initial} has incoming edges` })
-        }
-        initialSet[node] = 1
+      if (inDegree[node] !== 0) {
+        throw new GraphError({ message: `Initial node ${initial} has incoming edges` })
+      }
+      initialSet[node] = 1
+      queue.push(node)
+    }
+    for (let node = 0; node < cache.nodeIds.length; node++) {
+      if (inDegree[node] === 0 && initialSet[node] === 0) {
         queue.push(node)
       }
-      for (let node = 0; node < cache.nodeIds.length; node++) {
-        if (inDegree[node] === 0 && initialSet[node] === 0) {
-          queue.push(node)
-        }
-      }
+    }
 
-      return {
-        next() {
-          while (head < queue.length) {
-            const current = queue[head++]
-            if (remaining[current] === 0) {
-              continue
-            }
-            remaining[current] = 0
-            remainingCount--
+    return {
+      next() {
+        while (head < queue.length) {
+          const current = queue[head++]
+          if (remaining[current] === 0) {
+            continue
+          }
+          remaining[current] = 0
+          remainingCount--
 
-            for (let i = outgoing.rowOffsets[current]; i < outgoing.rowOffsets[current + 1]; i++) {
-              const neighbor = outgoing.columnIndices[i]
-              if (remaining[neighbor] !== 0) {
-                const degree = --inDegree[neighbor]
-                if (degree === 0) {
-                  queue.push(neighbor)
-                }
+          for (let i = outgoing.rowOffsets[current]; i < outgoing.rowOffsets[current + 1]; i++) {
+            const neighbor = outgoing.columnIndices[i]
+            if (remaining[neighbor] !== 0) {
+              const degree = --inDegree[neighbor]
+              if (degree === 0) {
+                queue.push(neighbor)
               }
             }
-
-            return { done: false, value: f(cache.nodeIds[current], cache.nodeData[current] as N) }
           }
 
-          if (remainingCount > 0) {
-            throw new GraphError({ message: "Cannot perform topological sort on cyclic graph" })
-          }
-          return { done: true, value: undefined } as const
+          return { done: false, value: f(cache.nodeIds[current], cache.nodeData[current] as N) }
         }
+
+        if (remainingCount > 0) {
+          throw new GraphError({ message: "Cannot perform topological sort on cyclic graph" })
+        }
+        return { done: true, value: undefined } as const
       }
     }
-  )
+  })
 })
 
 /**
@@ -8458,59 +8270,52 @@ export const dfsPostOrder: {
     }
 
     const stack: Array<number> = []
-    // An expanded flag models recursive return so a node is emitted only after all reachable children.
-    const expanded: Array<boolean> = []
+    const primaryPositions: Array<number> = []
+    const secondaryPositions: Array<number> = []
     const discovered = new Uint8Array(cache.nodeIds.length)
-    const finished = new Uint8Array(cache.nodeIds.length)
 
-    for (let i = startPositions.length - 1; i >= 0; i--) {
-      stack.push(startPositions[i])
-      expanded.push(false)
-    }
-
-    const pushNeighbors = (targets: Uint32Array, offsets: Uint32Array, current: number) => {
-      for (let i = offsets[current + 1] - 1; i >= offsets[current]; i--) {
-        const neighbor = targets[i]
-        if (
-          (reached === undefined || reached[neighbor] !== 0) &&
-          discovered[neighbor] === 0 &&
-          finished[neighbor] === 0
-        ) {
-          stack.push(neighbor)
-          expanded.push(false)
-        }
+    const push = (node: number) => {
+      if ((reached === undefined || reached[node] !== 0) && discovered[node] === 0) {
+        discovered[node] = 1
+        stack.push(node)
+        primaryPositions.push(view.primary.rowOffsets[node])
+        secondaryPositions.push(view.secondary?.rowOffsets[node] ?? 0)
       }
     }
 
+    let startPosition = 0
+
     return {
       next() {
-        while (stack.length > 0) {
+        while (true) {
+          while (stack.length === 0 && startPosition < startPositions.length) {
+            push(startPositions[startPosition++])
+          }
+          if (stack.length === 0) {
+            return { done: true, value: undefined } as const
+          }
           const index = stack.length - 1
           const current = stack[index]
-
-          if (discovered[current] === 0) {
-            discovered[current] = 1
-            expanded[index] = false
-          }
-
-          if (!expanded[index]) {
-            expanded[index] = true
-            if (view.secondary !== undefined) {
-              pushNeighbors(view.secondary.columnIndices, view.secondary.rowOffsets, current)
-            }
-            pushNeighbors(view.primary.columnIndices, view.primary.rowOffsets, current)
+          const primaryPosition = primaryPositions[index]
+          if (primaryPosition < view.primary.rowOffsets[current + 1]) {
+            primaryPositions[index] = primaryPosition + 1
+            push(view.primary.columnIndices[primaryPosition])
             continue
+          }
+          if (view.secondary !== undefined) {
+            const secondaryPosition = secondaryPositions[index]
+            if (secondaryPosition < view.secondary.rowOffsets[current + 1]) {
+              secondaryPositions[index] = secondaryPosition + 1
+              push(view.secondary.columnIndices[secondaryPosition])
+              continue
+            }
           }
 
           stack.pop()
-          expanded.pop()
-          if (finished[current] === 0) {
-            finished[current] = 1
-            return { done: false, value: f(cache.nodeIds[current], cache.nodeData[current] as N) }
-          }
+          primaryPositions.pop()
+          secondaryPositions.pop()
+          return { done: false, value: f(cache.nodeIds[current], cache.nodeData[current] as N) }
         }
-
-        return { done: true, value: undefined } as const
       }
     }
   })
