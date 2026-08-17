@@ -213,6 +213,12 @@ export declare namespace Graph {
  * Use when adding, removing, or updating nodes and edges inside a graph
  * mutation scope.
  *
+ * **Gotchas**
+ *
+ * A callback invoked by another graph operation may query the same mutable
+ * graph, but cannot mutate or finalize it. Mutation is allowed in callbacks
+ * passed to graph constructors and `mutate`, where mutation is the purpose.
+ *
  * @see {@link Graph} for the immutable graph interface
  * @see {@link mutate} for scoped mutation of an immutable graph
  *
@@ -381,6 +387,12 @@ const getMutableImplForMutation = <N, E, T extends Kind>(
   csr.invalidate(graph)
   return internal.toImpl(graph)
 }
+
+/** @internal */
+const withMutationGuard = <N, E, T extends Kind, A>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  evaluate: () => A
+): A => graph.mutable ? internal.withTransformation(graph, evaluate) : evaluate()
 
 // =============================================================================
 // Constructors
@@ -1846,12 +1858,14 @@ export const findNode: {
   predicate: (data: N) => boolean
 ): Option.Option<NodeIndex> => {
   const impl = internal.toImpl(graph)
-  for (const [index, data] of impl.nodes) {
-    if (predicate(data)) {
-      return Option.some(index)
+  return withMutationGuard(graph, () => {
+    for (const [index, data] of impl.nodes) {
+      if (predicate(data)) {
+        return Option.some(index)
+      }
     }
-  }
-  return Option.none()
+    return Option.none()
+  })
 })
 
 /**
@@ -1888,13 +1902,15 @@ export const findNodes: {
   predicate: (data: N) => boolean
 ): Array<NodeIndex> => {
   const impl = internal.toImpl(graph)
-  const results: Array<NodeIndex> = []
-  for (const [index, data] of impl.nodes) {
-    if (predicate(data)) {
-      results.push(index)
+  return withMutationGuard(graph, () => {
+    const results: Array<NodeIndex> = []
+    for (const [index, data] of impl.nodes) {
+      if (predicate(data)) {
+        results.push(index)
+      }
     }
-  }
-  return results
+    return results
+  })
 })
 
 /**
@@ -1933,12 +1949,14 @@ export const findEdge: {
   predicate: (data: E, source: NodeIndex, target: NodeIndex) => boolean
 ): Option.Option<EdgeIndex> => {
   const impl = internal.toImpl(graph)
-  for (const [edgeIndex, edgeData] of impl.edges) {
-    if (predicate(edgeData.data, edgeData.source, edgeData.target)) {
-      return Option.some(edgeIndex)
+  return withMutationGuard(graph, () => {
+    for (const [edgeIndex, edgeData] of impl.edges) {
+      if (predicate(edgeData.data, edgeData.source, edgeData.target)) {
+        return Option.some(edgeIndex)
+      }
     }
-  }
-  return Option.none()
+    return Option.none()
+  })
 })
 
 /**
@@ -1978,13 +1996,15 @@ export const findEdges: {
   predicate: (data: E, source: NodeIndex, target: NodeIndex) => boolean
 ): Array<EdgeIndex> => {
   const impl = internal.toImpl(graph)
-  const results: Array<EdgeIndex> = []
-  for (const [edgeIndex, edgeData] of impl.edges) {
-    if (predicate(edgeData.data, edgeData.source, edgeData.target)) {
-      results.push(edgeIndex)
+  return withMutationGuard(graph, () => {
+    const results: Array<EdgeIndex> = []
+    for (const [edgeIndex, edgeData] of impl.edges) {
+      if (predicate(edgeData.data, edgeData.source, edgeData.target)) {
+        results.push(edgeIndex)
+      }
     }
-  }
-  return results
+    return results
+  })
 })
 
 /**
@@ -3623,23 +3643,25 @@ export const toGraphViz: {
   const edgeOperator = isDirected ? "->" : "--"
   const graphId = `"${escapeGraphVizString(graphName)}"`
 
-  const lines: Array<string> = []
-  lines.push(`${graphType} ${graphId} {`)
+  return withMutationGuard(graph, () => {
+    const lines: Array<string> = []
+    lines.push(`${graphType} ${graphId} {`)
 
-  // Add nodes
-  for (const [nodeIndex, nodeData] of impl.nodes) {
-    const label = escapeGraphVizString(nodeLabel(nodeData))
-    lines.push(`  "${nodeIndex}" [label="${label}"];`)
-  }
+    // Add nodes
+    for (const [nodeIndex, nodeData] of impl.nodes) {
+      const label = escapeGraphVizString(nodeLabel(nodeData))
+      lines.push(`  "${nodeIndex}" [label="${label}"];`)
+    }
 
-  // Add edges
-  for (const [, edgeData] of impl.edges) {
-    const label = escapeGraphVizString(edgeLabel(edgeData.data))
-    lines.push(`  "${edgeData.source}" ${edgeOperator} "${edgeData.target}" [label="${label}"];`)
-  }
+    // Add edges
+    for (const [, edgeData] of impl.edges) {
+      const label = escapeGraphVizString(edgeLabel(edgeData.data))
+      lines.push(`  "${edgeData.source}" ${edgeOperator} "${edgeData.target}" [label="${label}"];`)
+    }
 
-  lines.push("}")
-  return lines.join("\n")
+    lines.push("}")
+    return lines.join("\n")
+  })
 })
 
 // =============================================================================
@@ -3959,34 +3981,36 @@ export const toMermaid: {
   const finalDiagramType = diagramType ??
     (graph.type === "directed" ? "flowchart" : "graph")
 
-  // Generate diagram header
-  const lines: Array<string> = []
-  lines.push(`${finalDiagramType} ${direction}`)
+  return withMutationGuard(graph, () => {
+    // Generate diagram header
+    const lines: Array<string> = []
+    lines.push(`${finalDiagramType} ${direction}`)
 
-  // Add nodes
-  for (const [nodeIndex, nodeData] of impl.nodes) {
-    const nodeId = String(nodeIndex)
-    const label = escapeMermaidLabel(nodeLabel(nodeData))
-    const shape = nodeShape(nodeData)
-    const formattedNode = formatMermaidNode(nodeId, label, shape)
-    lines.push(`  ${formattedNode}`)
-  }
-
-  // Add edges
-  const edgeOperator = finalDiagramType === "flowchart" ? "-->" : "---"
-  for (const [, edgeData] of impl.edges) {
-    const sourceId = String(edgeData.source)
-    const targetId = String(edgeData.target)
-    const label = escapeMermaidLabel(edgeLabel(edgeData.data))
-
-    if (label) {
-      lines.push(`  ${sourceId} ${edgeOperator}|"${label}"| ${targetId}`)
-    } else {
-      lines.push(`  ${sourceId} ${edgeOperator} ${targetId}`)
+    // Add nodes
+    for (const [nodeIndex, nodeData] of impl.nodes) {
+      const nodeId = String(nodeIndex)
+      const label = escapeMermaidLabel(nodeLabel(nodeData))
+      const shape = nodeShape(nodeData)
+      const formattedNode = formatMermaidNode(nodeId, label, shape)
+      lines.push(`  ${formattedNode}`)
     }
-  }
 
-  return lines.join("\n")
+    // Add edges
+    const edgeOperator = finalDiagramType === "flowchart" ? "-->" : "---"
+    for (const [, edgeData] of impl.edges) {
+      const sourceId = String(edgeData.source)
+      const targetId = String(edgeData.target)
+      const label = escapeMermaidLabel(edgeLabel(edgeData.data))
+
+      if (label) {
+        lines.push(`  ${sourceId} ${edgeOperator}|"${label}"| ${targetId}`)
+      } else {
+        lines.push(`  ${sourceId} ${edgeOperator} ${targetId}`)
+      }
+    }
+
+    return lines.join("\n")
+  })
 })
 
 // =============================================================================
@@ -5432,24 +5456,26 @@ const solveMaximumFlow = <N, E>(
   const forwardArc = new Int32Array(edges.length)
   forwardArc.fill(-1)
 
-  for (let edge = 0; edge < edges.length; edge++) {
-    const capacity = config.capacity(edges[edge].data)
-    if (!Number.isFinite(capacity) || capacity < 0) {
-      throw new GraphError({ message: `Edge ${edgeIds[edge]} capacity must be a finite non-negative number` })
+  withMutationGuard(graph, () => {
+    for (let edge = 0; edge < edges.length; edge++) {
+      const capacity = config.capacity(edges[edge].data)
+      if (!Number.isFinite(capacity) || capacity < 0) {
+        throw new GraphError({ message: `Edge ${edgeIds[edge]} capacity must be a finite non-negative number` })
+      }
+      capacities[edge] = capacity
+      const from = endpoints.sources[edge]
+      const to = endpoints.targets[edge]
+      if (from === to) {
+        continue
+      }
+      const index = arcs.length
+      forwardArc[edge] = index
+      adjacency[from].push(index)
+      arcs.push({ from, to, capacity, edge, flow: 0 })
+      adjacency[to].push(index + 1)
+      arcs.push({ from: to, to: from, capacity: 0, edge: -1, flow: 0 })
     }
-    capacities[edge] = capacity
-    const from = endpoints.sources[edge]
-    const to = endpoints.targets[edge]
-    if (from === to) {
-      continue
-    }
-    const index = arcs.length
-    forwardArc[edge] = index
-    adjacency[from].push(index)
-    arcs.push({ from, to, capacity, edge, flow: 0 })
-    adjacency[to].push(index + 1)
-    arcs.push({ from: to, to: from, capacity: 0, edge: -1, flow: 0 })
-  }
+  })
 
   const parentArc = new Int32Array(cache.nodeIds.length)
   const visited = new Uint8Array(cache.nodeIds.length)
@@ -6030,16 +6056,18 @@ export const minimumSpanningForest: {
   }
   const weightedEdges: Array<{ readonly index: EdgeIndex; readonly weight: number; readonly order: number }> = []
   let order = 0
-  for (const [index, edge] of impl.edges) {
-    const weight = cost(edge.data)
-    if (Number.isNaN(weight) || weight === -Infinity) {
-      throw new GraphError({ message: "Minimum spanning forest does not support NaN or -Infinity edge weights" })
+  withMutationGuard(graph, () => {
+    for (const [index, edge] of impl.edges) {
+      const weight = cost(edge.data)
+      if (Number.isNaN(weight) || weight === -Infinity) {
+        throw new GraphError({ message: "Minimum spanning forest does not support NaN or -Infinity edge weights" })
+      }
+      if (weight !== Infinity) {
+        weightedEdges.push({ index, weight, order })
+      }
+      order++
     }
-    if (weight !== Infinity) {
-      weightedEdges.push({ index, weight, order })
-    }
-    order++
-  }
+  })
   weightedEdges.sort((self, that) => self.weight - that.weight || self.order - that.order)
 
   const parents = new Uint32Array(nodes.length)
@@ -6428,7 +6456,7 @@ export interface DijkstraConfig<E> {
  * **Gotchas**
  *
  * Throws a `GraphError` when either endpoint is missing or an edge cost is
- * negative or `NaN`.
+ * negative or `NaN`, or when a path distance exceeds the finite number range.
  *
  * **Example** (Finding shortest paths with Dijkstra)
  *
@@ -6487,13 +6515,15 @@ export const dijkstra: {
   const source = csr.getNodeIndex(cache, config.source)!
   const target = csr.getNodeIndex(cache, config.target)!
   const edgeWeights = new Float64Array(cachedEdges.length)
-  for (let i = 0; i < cachedEdges.length; i++) {
-    const weight = config.cost(cachedEdges[i].data)
-    if (Number.isNaN(weight) || weight < 0) {
-      throw new GraphError({ message: "Dijkstra's algorithm requires non-negative edge weights" })
+  withMutationGuard(graph, () => {
+    for (let i = 0; i < cachedEdges.length; i++) {
+      const weight = config.cost(cachedEdges[i].data)
+      if (Number.isNaN(weight) || weight < 0) {
+        throw new GraphError({ message: "Dijkstra's algorithm requires non-negative edge weights" })
+      }
+      edgeWeights[i] = weight
     }
-    edgeWeights[i] = weight
-  }
+  })
 
   // Early return if source equals target
   if (config.source === config.target) {
@@ -6534,6 +6564,9 @@ export const dijkstra: {
       const neighbor = outgoing.columnIndices[i]
       const edge = outgoing.edgeIndices[i]
       const nextDistance = currentDistance + edgeWeights[edge]
+      if (edgeWeights[edge] !== Infinity && !Number.isFinite(nextDistance)) {
+        throw new GraphError({ message: "Dijkstra distance calculation exceeded the finite number range" })
+      }
       if (nextDistance < distances[neighbor]) {
         distances[neighbor] = nextDistance
         previousNode[neighbor] = currentNode
@@ -6612,7 +6645,8 @@ export interface AllPairsResult<E> {
  * **Gotchas**
  *
  * A `GraphError` is thrown if any edge weight is `NaN` or `-Infinity`, or if
- * any negative cycle is detected.
+ * finite arithmetic overflows or underflows, or if any negative cycle is
+ * detected.
  *
  * **Example** (Finding all-pairs shortest paths)
  *
@@ -6666,28 +6700,30 @@ export const floydWarshall: {
     distancesMatrix[i * size + i] = 0
   }
 
-  for (let edge = 0; edge < edges.length; edge++) {
-    const weight = cost(edges[edge].data)
-    if (Number.isNaN(weight) || weight === -Infinity) {
-      throw new GraphError({ message: "Floyd-Warshall algorithm does not support NaN or -Infinity edge weights" })
-    }
-    const source = edgeCache.sources[edge]
-    const target = edgeCache.targets[edge]
-    const position = source * size + target
-    if (weight < distancesMatrix[position]) {
-      distancesMatrix[position] = weight
-      nextMatrix[position] = target
-      edgeMatrix[position] = edge
-    }
-    if (graph.type === "undirected") {
-      const reverse = target * size + source
-      if (weight < distancesMatrix[reverse]) {
-        distancesMatrix[reverse] = weight
-        nextMatrix[reverse] = source
-        edgeMatrix[reverse] = edge
+  withMutationGuard(graph, () => {
+    for (let edge = 0; edge < edges.length; edge++) {
+      const weight = cost(edges[edge].data)
+      if (Number.isNaN(weight) || weight === -Infinity) {
+        throw new GraphError({ message: "Floyd-Warshall algorithm does not support NaN or -Infinity edge weights" })
+      }
+      const source = edgeCache.sources[edge]
+      const target = edgeCache.targets[edge]
+      const position = source * size + target
+      if (weight < distancesMatrix[position]) {
+        distancesMatrix[position] = weight
+        nextMatrix[position] = target
+        edgeMatrix[position] = edge
+      }
+      if (graph.type === "undirected") {
+        const reverse = target * size + source
+        if (weight < distancesMatrix[reverse]) {
+          distancesMatrix[reverse] = weight
+          nextMatrix[reverse] = source
+          edgeMatrix[reverse] = edge
+        }
       }
     }
-  }
+  })
 
   for (let k = 0; k < size; k++) {
     const kRow = k * size
@@ -6700,8 +6736,14 @@ export const floydWarshall: {
       const nextIK = nextMatrix[iRow + k]
       for (let j = 0; j < size; j++) {
         const distanceKJ = distancesMatrix[kRow + j]
+        if (distanceKJ === Infinity) {
+          continue
+        }
         const candidate = distanceIK + distanceKJ
-        if (distanceKJ !== Infinity && candidate < distancesMatrix[iRow + j] && nextIK !== -1) {
+        if (!Number.isFinite(candidate)) {
+          throw new GraphError({ message: "Floyd-Warshall distance calculation exceeded the finite number range" })
+        }
+        if (candidate < distancesMatrix[iRow + j] && nextIK !== -1) {
           distancesMatrix[iRow + j] = candidate
           nextMatrix[iRow + j] = nextIK
         }
@@ -6818,7 +6860,7 @@ export interface AstarConfig<E, N> {
  *
  * The heuristic must be consistent for the shortest-path guarantee and must
  * return finite values. Missing endpoints, invalid edge costs, or non-finite
- * heuristic values throw a `GraphError`.
+ * heuristic values or arithmetic results throw a `GraphError`.
  *
  * **Example** (Finding shortest paths with A*)
  *
@@ -6884,17 +6926,19 @@ export const astar: {
   const sourceNodeData = cache.nodeData[source] as N
   const targetNodeData = cache.nodeData[target] as N
   const edgeWeights = new Float64Array(cachedEdges.length)
-  for (let i = 0; i < cachedEdges.length; i++) {
-    const weight = config.cost(cachedEdges[i].data)
-    if (Number.isNaN(weight) || weight < 0) {
-      throw new GraphError({ message: "A* algorithm requires non-negative edge weights" })
+  withMutationGuard(graph, () => {
+    for (let i = 0; i < cachedEdges.length; i++) {
+      const weight = config.cost(cachedEdges[i].data)
+      if (Number.isNaN(weight) || weight < 0) {
+        throw new GraphError({ message: "A* algorithm requires non-negative edge weights" })
+      }
+      edgeWeights[i] = weight
     }
-    edgeWeights[i] = weight
-  }
+  })
 
   // Early return if source equals target
   if (config.source === config.target) {
-    if (!Number.isFinite(config.heuristic(sourceNodeData, targetNodeData))) {
+    if (!Number.isFinite(withMutationGuard(graph, () => config.heuristic(sourceNodeData, targetNodeData)))) {
       throw new GraphError({ message: "A* algorithm requires finite heuristic values" })
     }
     return Option.some({
@@ -6906,7 +6950,7 @@ export const astar: {
   }
 
   const getHeuristic = (nodeData: N): number => {
-    const value = config.heuristic(nodeData, targetNodeData)
+    const value = withMutationGuard(graph, () => config.heuristic(nodeData, targetNodeData))
     if (!Number.isFinite(value)) {
       throw new GraphError({ message: "A* algorithm requires finite heuristic values" })
     }
@@ -6945,11 +6989,17 @@ export const astar: {
       }
       const edge = outgoing.edgeIndices[i]
       const tentativeScore = currentScore + edgeWeights[edge]
+      if (edgeWeights[edge] !== Infinity && !Number.isFinite(tentativeScore)) {
+        throw new GraphError({ message: "A* distance calculation exceeded the finite number range" })
+      }
       if (tentativeScore < scores[neighbor]) {
         scores[neighbor] = tentativeScore
         previousNode[neighbor] = current
         previousEdge[neighbor] = edge
         const priority = tentativeScore + getHeuristic(cache.nodeData[neighbor] as N)
+        if (!Number.isFinite(priority)) {
+          throw new GraphError({ message: "A* priority calculation exceeded the finite number range" })
+        }
         denseMinHeapPush(openSet, neighbor, priority, sequence++)
       }
     }
@@ -7077,13 +7127,15 @@ export const bellmanFord: {
   const source = csr.getNodeIndex(cache, config.source)!
   const target = csr.getNodeIndex(cache, config.target)!
   const weights = new Float64Array(edges.length)
-  for (let i = 0; i < edges.length; i++) {
-    const weight = config.cost(edges[i].data)
-    if (Number.isNaN(weight) || weight === -Infinity) {
-      throw new GraphError({ message: "Bellman-Ford algorithm does not support NaN or -Infinity edge weights" })
+  withMutationGuard(graph, () => {
+    for (let i = 0; i < edges.length; i++) {
+      const weight = config.cost(edges[i].data)
+      if (Number.isNaN(weight) || weight === -Infinity) {
+        throw new GraphError({ message: "Bellman-Ford algorithm does not support NaN or -Infinity edge weights" })
+      }
+      weights[i] = weight
     }
-    weights[i] = weight
-  }
+  })
 
   const addWeight = (distance: number, weight: number): number => {
     if (distance === Infinity || weight === Infinity) {
@@ -7402,8 +7454,8 @@ export const simplePaths: {
  * **Gotchas**
  *
  * The number of tied paths can still be large. Missing endpoints, invalid
- * costs, or an invalid `limit` throw a `GraphError`. Mutable graphs are
- * snapshotted when iteration begins.
+ * costs, arithmetic overflow, or an invalid `limit` throw a `GraphError`.
+ * Mutable graphs are snapshotted when iteration begins.
  *
  * @see {@link dijkstra} when one shortest path is sufficient
  * @see {@link simplePaths} for routes regardless of cost
@@ -7446,13 +7498,15 @@ export const allShortestPaths: {
     const edgeIds = csr.getEdgeIds(cache)
     const outgoing = csr.getOutgoingWithEdges(cache)
     const weights = new Float64Array(graphEdges.length)
-    for (let edge = 0; edge < graphEdges.length; edge++) {
-      const weight = config.cost(graphEdges[edge].data)
-      if (Number.isNaN(weight) || weight < 0) {
-        throw new GraphError({ message: "All shortest paths requires non-negative edge weights" })
+    withMutationGuard(graph, () => {
+      for (let edge = 0; edge < graphEdges.length; edge++) {
+        const weight = config.cost(graphEdges[edge].data)
+        if (Number.isNaN(weight) || weight < 0) {
+          throw new GraphError({ message: "All shortest paths requires non-negative edge weights" })
+        }
+        weights[edge] = weight
       }
-      weights[edge] = weight
-    }
+    })
     if (limit === 0) {
       return
     }
@@ -7475,6 +7529,9 @@ export const allShortestPaths: {
         const edge = outgoing.edgeIndices[i]
         const neighbor = outgoing.columnIndices[i]
         const nextDistance = current.priority + weights[edge]
+        if (weights[edge] !== Infinity && !Number.isFinite(nextDistance)) {
+          throw new GraphError({ message: "All shortest paths distance calculation exceeded the finite number range" })
+        }
         const known = distances[neighbor]
         const predecessor = { node: current.node, edge }
         if (nextDistance < known) {
@@ -7633,7 +7690,8 @@ const makeCsrNodeWalker = <N, E, T extends Kind>(
 ): Walker<NodeIndex, N> => {
   return new Walker((f) => ({
     // Capture CSR at iterator creation so invalidation cannot change an in-flight mutable traversal.
-    [Symbol.iterator]: () => makeIterator(csr.get(graph), f)
+    [Symbol.iterator]: () =>
+      makeIterator(csr.get(graph), (index, data) => withMutationGuard(graph, () => f(index, data)))
   }))
 }
 
@@ -8504,7 +8562,7 @@ export const nodes = <N, E, T extends Kind = "directed">(
             return { done: true, value: undefined }
           }
           const [nodeIndex, nodeData] = result.value
-          return { done: false, value: f(nodeIndex, nodeData) }
+          return { done: false, value: withMutationGuard(graph, () => f(nodeIndex, nodeData)) }
         }
       }
     }
@@ -8557,7 +8615,7 @@ export const edges = <N, E, T extends Kind = "directed">(
             return { done: true, value: undefined }
           }
           const [edgeIndex, edgeData] = result.value
-          return { done: false, value: f(edgeIndex, copyEdge(edgeData)) }
+          return { done: false, value: withMutationGuard(graph, () => f(edgeIndex, copyEdge(edgeData))) }
         }
       }
     }
@@ -8660,7 +8718,7 @@ export const externals: {
 
           // Node is external if it has no edges in the specified direction
           if (adjacencyList === undefined || adjacencyList.length === 0) {
-            return { done: false, value: f(nodeIndex, nodeData) }
+            return { done: false, value: withMutationGuard(graph, () => f(nodeIndex, nodeData)) }
           }
           current = nodeIterator.next()
         }

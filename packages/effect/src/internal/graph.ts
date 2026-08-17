@@ -10,7 +10,7 @@ import { hasProperty } from "../Predicate.ts"
 export const TypeId = "~effect/collections/Graph"
 
 /** @internal */
-export interface GraphImpl<in out N, in out E, T extends Graph.Kind = "directed">
+export interface GraphImpl<in out N, in out E, T extends Graph.Kind>
   extends Iterable<readonly [Graph.NodeIndex, N]>, Equal.Equal
 {
   readonly [TypeId]: unknown
@@ -28,7 +28,7 @@ export interface GraphImpl<in out N, in out E, T extends Graph.Kind = "directed"
 }
 
 /** @internal */
-export const toImpl = <N, E, T extends Graph.Kind = "directed">(
+export const toImpl = <N, E, T extends Graph.Kind>(
   graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
 ): GraphImpl<N, E, T> => graph as unknown as GraphImpl<N, E, T>
 
@@ -43,11 +43,12 @@ export const withTransformation = <N, E, T extends Graph.Kind, A>(
   evaluate: () => A
 ): A => {
   const impl = toImpl(graph)
+  const transforming = impl.transforming
   impl.transforming = true
   try {
     return evaluate()
   } finally {
-    impl.transforming = false
+    impl.transforming = transforming
   }
 }
 
@@ -68,15 +69,15 @@ const ProtoGraph = {
     _N: (_: never) => _,
     _E: (_: never) => _
   },
-  [Symbol.iterator](this: GraphImpl<any, any>) {
+  [Symbol.iterator](this: GraphImpl<any, any, any>) {
     return this.nodes[Symbol.iterator]()
   },
-  [NodeInspectSymbol](this: GraphImpl<any, any>) {
+  [NodeInspectSymbol](this: GraphImpl<any, any, any>) {
     return this.toJSON()
   },
-  [Equal.symbol](this: GraphImpl<any, any>, that: Equal.Equal): boolean {
+  [Equal.symbol](this: GraphImpl<any, any, any>, that: Equal.Equal): boolean {
     if (hasProperty(that, TypeId)) {
-      const thatImpl = toImpl(that as Graph.Graph<unknown, unknown, Graph.Kind>)
+      const thatImpl = toImpl(that as Graph.Graph<any, any, any>)
       if (
         this.nodes.size !== thatImpl.nodes.size ||
         this.edges.size !== thatImpl.edges.size ||
@@ -99,7 +100,7 @@ const ProtoGraph = {
     }
     return false
   },
-  [Hash.symbol](this: GraphImpl<any, any>): number {
+  [Hash.symbol](this: GraphImpl<any, any, any>): number {
     let hash = Hash.string("Graph")
     hash = hash ^ Hash.string(this.type)
     hash = hash ^ Hash.number(this.nodes.size)
@@ -112,7 +113,7 @@ const ProtoGraph = {
     }
     return hash
   },
-  toJSON(this: GraphImpl<any, any>) {
+  toJSON(this: GraphImpl<any, any, any>) {
     return {
       _id: "Graph",
       nodeCount: this.nodes.size,
@@ -120,7 +121,7 @@ const ProtoGraph = {
       type: this.type
     }
   },
-  toString(this: GraphImpl<any, any>) {
+  toString(this: GraphImpl<any, any, any>) {
     return `Graph(${this.type}, ${this.nodes.size}, ${this.edges.size})`
   },
   pipe() {
