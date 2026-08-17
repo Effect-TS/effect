@@ -1,6 +1,6 @@
 # `@effect/sql-pg`
 
-An `@effect/sql` implementation using the `postgres.js` library.
+An `@effect/sql` implementation using the `pg` (node-postgres) library.
 
 ## Documentation
 
