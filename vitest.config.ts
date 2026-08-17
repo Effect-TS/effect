@@ -97,6 +97,7 @@ export default defineConfig({
         }
       }),
       ...project("@effect/ai-anthropic", "packages/ai/anthropic"),
+      ...project("@effect/ai-google-agent-platform", "packages/ai/google-agent-platform"),
       ...project("@effect/ai-openai", "packages/ai/openai"),
       ...project("@effect/ai-openai-compat", "packages/ai/openai-compat"),
       ...project("@effect/ai-openrouter", "packages/ai/openrouter"),

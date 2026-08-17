@@ -29,6 +29,8 @@
       "effect/*": ["./packages/effect/src/*.ts"],
       "@effect/ai-anthropic": ["./packages/ai/anthropic/src/index.ts"],
       "@effect/ai-anthropic/*": ["./packages/ai/anthropic/src/*.ts"],
+      "@effect/ai-google-agent-platform": ["./packages/ai/google-agent-platform/src/index.ts"],
+      "@effect/ai-google-agent-platform/*": ["./packages/ai/google-agent-platform/src/*.ts"],
       "@effect/ai-openai-compat": ["./packages/ai/openai-compat/src/index.ts"],
       "@effect/ai-openai-compat/*": ["./packages/ai/openai-compat/src/*.ts"],
       "@effect/ai-openai": ["./packages/ai/openai/src/index.ts"],
