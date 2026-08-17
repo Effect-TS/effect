@@ -1,5 +1,5 @@
 import type * as Graph from "../Graph.ts"
-import { type GraphImpl, isTransforming, toImpl } from "./graph.ts"
+import { isTransforming, toImpl } from "./graph.ts"
 
 /** @internal */
 export interface Adjacency {
@@ -51,7 +51,7 @@ export interface Csr {
   indexByEdgeId: Map<Graph.EdgeIndex, number> | null | undefined
 }
 
-const cache = new WeakMap<GraphImpl<any, any, any>, Csr>()
+const cache = new WeakMap<Graph.Graph<any, any, any> | Graph.MutableGraph<any, any, any>, Csr>()
 
 /** @internal */
 export const getNodeIndex = (csr: Csr, nodeId: Graph.NodeIndex): number | undefined =>
@@ -212,30 +212,30 @@ export const getEdgeEndpoints = (csr: Csr): EdgeEndpoints => {
 /** @internal */
 export const peek = <N, E, T extends Graph.Kind>(
   graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
-): Csr | undefined => cache.get(toImpl(graph))
+): Csr | undefined => cache.get(graph)
 
 /** @internal */
 export const invalidate = <N, E, T extends Graph.Kind>(
   graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
 ): void => {
   // Existing iterators retain their Csr object; only subsequent lookups rebuild from the mutated graph.
-  cache.delete(toImpl(graph))
+  cache.delete(graph)
 }
 
 /** @internal */
 export const get = <N, E, T extends Graph.Kind>(
   graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
 ): Csr => {
-  const impl = toImpl(graph)
   const cacheEnabled = !isTransforming(graph)
   if (cacheEnabled) {
-    const cached = cache.get(impl)
+    const cached = cache.get(graph)
     if (cached !== undefined) {
       return cached
     }
   }
 
   // Node ids and data are captured together so an iterator never consults mutable maps after it starts.
+  const impl = toImpl(graph)
   const nodeIds = new Array<Graph.NodeIndex>(impl.nodes.size)
   const nodeData = new Array<any>(impl.nodes.size)
   let compactNodeIds = true
@@ -272,7 +272,8 @@ export const get = <N, E, T extends Graph.Kind>(
   }
 
   if (cacheEnabled) {
-    cache.set(impl, result)
+    cache.set(graph, result)
   }
+
   return result
 }
