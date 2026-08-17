@@ -383,7 +383,9 @@ const getMutableImplForMutation = <N, E, T extends Kind>(
   graph: MutableGraph<N, E, T>
 ): internal.GraphImpl<N, E, T> => {
   assertMutable(graph)
-  csr.invalidate(graph)
+  if (!internal.isTransforming(graph)) {
+    csr.invalidate(graph)
+  }
   return internal.toImpl(graph)
 }
 
