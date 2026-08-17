@@ -1802,7 +1802,7 @@ describe("Graph", () => {
   })
 
   describe("callback-driven transform caching", () => {
-    it("should reject writes after a transform callback finalizes the graph", () => {
+    it("should reject finalization from a transform callback", () => {
       const mutable = Graph.beginMutation(Graph.directed<string, never>((graph) => {
         Graph.addNode(graph, "old")
       }))
@@ -1815,10 +1815,10 @@ describe("Graph", () => {
             Array.from(Graph.bfs(finalized, { start: [0] }))
             return "new"
           }),
-        "Graph is not mutable"
+        "Cannot finalize graph during a transformation"
       )
-      assertSome(Graph.getNode(finalized!, 0), "old")
-      assert.deepStrictEqual(Array.from(Graph.values(Graph.bfs(finalized!, { start: [0] }))), ["old"])
+      assert.strictEqual(finalized, undefined)
+      assertSome(Graph.getNode(mutable, 0), "old")
     })
 
     it("should not retain node data cached by updateNode callbacks", () => {

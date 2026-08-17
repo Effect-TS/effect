@@ -52,7 +52,7 @@ export interface Csr {
 }
 
 const cache = new WeakMap<GraphImpl<any, any, any>, Csr>()
-const cacheSuspensions = new WeakMap<GraphImpl<any, any, any>, number>()
+const transformationDepth = new WeakMap<GraphImpl<any, any, any>, number>()
 
 /** @internal */
 export const getNodeIndex = (csr: Csr, nodeId: Graph.NodeIndex): number | undefined =>
@@ -224,21 +224,26 @@ export const invalidate = <N, E, T extends Graph.Kind>(
 }
 
 /** @internal */
-export const withoutCache = <N, E, T extends Graph.Kind, A>(
+export const isTransforming = <N, E, T extends Graph.Kind>(
+  graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
+): boolean => transformationDepth.has(toImpl(graph))
+
+/** @internal */
+export const withTransformation = <N, E, T extends Graph.Kind, A>(
   graph: Graph.MutableGraph<N, E, T>,
   evaluate: () => A
 ): A => {
   const impl = toImpl(graph)
-  const depth = cacheSuspensions.get(impl) ?? 0
+  const depth = transformationDepth.get(impl) ?? 0
   cache.delete(impl)
-  cacheSuspensions.set(impl, depth + 1)
+  transformationDepth.set(impl, depth + 1)
   try {
     return evaluate()
   } finally {
     if (depth === 0) {
-      cacheSuspensions.delete(impl)
+      transformationDepth.delete(impl)
     } else {
-      cacheSuspensions.set(impl, depth)
+      transformationDepth.set(impl, depth)
     }
   }
 }
@@ -248,7 +253,7 @@ export const get = <N, E, T extends Graph.Kind>(
   graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
 ): Csr => {
   const impl = toImpl(graph)
-  const cacheEnabled = !cacheSuspensions.has(impl)
+  const cacheEnabled = !transformationDepth.has(impl)
   if (cacheEnabled) {
     const cached = cache.get(impl)
     if (cached !== undefined) {

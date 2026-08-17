@@ -387,15 +387,6 @@ const getMutableImplForMutation = <N, E, T extends Kind>(
   return internal.toImpl(graph)
 }
 
-/** @internal */
-const withoutMutableCache = <N, E, T extends Kind, A>(
-  graph: MutableGraph<N, E, T>,
-  evaluate: (impl: internal.GraphImpl<N, E, T>) => A
-): A => {
-  assertMutable(graph)
-  return csr.withoutCache(graph, () => evaluate(internal.toImpl(graph)))
-}
-
 // =============================================================================
 // Constructors
 // =============================================================================
@@ -683,6 +674,9 @@ export const endMutation = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>
 ): Graph<N, E, T> => {
   assertMutable(mutable)
+  if (csr.isTransforming(mutable)) {
+    throw new GraphError({ message: "Cannot finalize graph during a transformation" })
+  }
   const source = internal.toImpl(mutable)
   csr.invalidate(mutable)
   const graph = internal.finalize(source)
@@ -1869,14 +1863,15 @@ export const updateNode = <N, E, T extends Kind = "directed">(
   index: NodeIndex,
   f: (data: N) => N
 ): void => {
-  withoutMutableCache(mutable, (impl) => {
+  assertMutable(mutable)
+  const impl = internal.toImpl(mutable)
+  csr.withTransformation(mutable, () => {
     if (!impl.nodes.has(index)) {
       return
     }
 
     const currentData = impl.nodes.get(index)!
     const newData = f(currentData)
-    assertMutable(mutable)
     impl.nodes.set(index, newData)
   })
 }
@@ -1907,14 +1902,15 @@ export const updateEdge = <N, E, T extends Kind = "directed">(
   edgeIndex: EdgeIndex,
   f: (data: E) => E
 ): void => {
-  withoutMutableCache(mutable, (impl) => {
+  assertMutable(mutable)
+  const impl = internal.toImpl(mutable)
+  csr.withTransformation(mutable, () => {
     if (!impl.edges.has(edgeIndex)) {
       return
     }
 
     const currentEdge = impl.edges.get(edgeIndex)!
     const newData = f(currentEdge.data)
-    assertMutable(mutable)
     impl.edges.set(edgeIndex, {
       source: currentEdge.source,
       target: currentEdge.target,
@@ -1953,11 +1949,12 @@ export const mapNodes = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   f: (data: N) => N
 ): void => {
-  withoutMutableCache(mutable, (impl) => {
+  assertMutable(mutable)
+  const impl = internal.toImpl(mutable)
+  csr.withTransformation(mutable, () => {
     // Transform existing node data in place
     for (const [index, data] of impl.nodes) {
       const newData = f(data)
-      assertMutable(mutable)
       impl.nodes.set(index, newData)
     }
   })
@@ -1990,11 +1987,12 @@ export const mapEdges = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   f: (data: E) => E
 ): void => {
-  withoutMutableCache(mutable, (impl) => {
+  assertMutable(mutable)
+  const impl = internal.toImpl(mutable)
+  csr.withTransformation(mutable, () => {
     // Transform existing edge data in place
     for (const [index, edgeData] of impl.edges) {
       const newData = f(edgeData.data)
-      assertMutable(mutable)
       impl.edges.set(index, {
         source: edgeData.source,
         target: edgeData.target,
@@ -2109,13 +2107,14 @@ export const filterMapNodes = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   f: (data: N) => Option.Option<N>
 ): void => {
-  withoutMutableCache(mutable, (impl) => {
+  assertMutable(mutable)
+  const impl = internal.toImpl(mutable)
+  csr.withTransformation(mutable, () => {
     const nodesToRemove: Array<NodeIndex> = []
 
     // First pass: identify nodes to remove and transform data for nodes to keep
     for (const [index, data] of impl.nodes) {
       const result = f(data)
-      assertMutable(mutable)
       if (Option.isSome(result)) {
         // Transform node data
         impl.nodes.set(index, result.value)
@@ -2166,13 +2165,14 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   f: (data: E) => Option.Option<E>
 ): void => {
-  withoutMutableCache(mutable, (impl) => {
+  assertMutable(mutable)
+  const impl = internal.toImpl(mutable)
+  csr.withTransformation(mutable, () => {
     const edgesToRemove: Array<EdgeIndex> = []
 
     // First pass: identify edges to remove and transform data for edges to keep
     for (const [index, edgeData] of impl.edges) {
       const result = f(edgeData.data)
-      assertMutable(mutable)
       if (Option.isSome(result)) {
         // Transform edge data
         impl.edges.set(index, {
