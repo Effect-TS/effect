@@ -12,8 +12,8 @@ const decodeCallTool = Schema.decodeUnknownEffect(McpSchema.CallToolResult)
 const decodeJsonSchema2020Tools = Schema.decodeUnknownEffect(Schema.Struct({
   tools: Schema.Array(Schema.Struct({
     name: Schema.String,
-    inputSchema: Schema.Record(Schema.String, Schema.Json),
-    outputSchema: Schema.optional(Schema.Record(Schema.String, Schema.Json))
+    inputSchema: Schema.JsonObject,
+    outputSchema: Schema.optional(Schema.JsonObject)
   }))
 }))
 
@@ -449,6 +449,29 @@ export const statelessModernSuite = (
 
           assert.strictEqual(error.error.code, -32020)
           assert.strictEqual((yield* test.observations).toolInvocations, before)
+        }))
+    })
+
+    describe("Tools > Modern listing", () => {
+      // https://modelcontextprotocol.io/specification/2026-07-28/server/tools#listing-tools
+      it.effect("should return tools in the same order when the registered inventory has not changed", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const initialized = yield* test.initialize({ server: "features" })
+          const list = Effect.fnUntraced(function*() {
+            const response = yield* test.send(initialized, {
+              jsonrpc: "2.0",
+              id: 20,
+              method: "tools/list",
+              params: {}
+            })
+            const result = yield* test.decodeResult(response).pipe(
+              Effect.flatMap((message) => decodeTools(message.result))
+            )
+            return result.tools.map((tool) => tool.name)
+          })
+
+          assert.deepStrictEqual(yield* list(), yield* list())
         }))
     })
   })

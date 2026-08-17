@@ -1053,7 +1053,8 @@ describe("McpServer protocol adapters", () => {
             }),
           supportsAck: true,
           supportsTransferables: false,
-          supportsStructuredClone: false
+          supportsStructuredClone: false,
+          codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
         })
       )
       const protocol = McpProtocol.v2026_07_28

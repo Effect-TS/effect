@@ -117,7 +117,6 @@ export class ToolResultProjectionError extends Data.TaggedError("ToolResultProje
 }> {}
 
 /** @internal */
-/** @internal */
 export class UnsupportedByProtocol extends Data.TaggedError("UnsupportedByProtocol")<{
   readonly protocolVersion: McpProtocol.ProtocolVersion
   readonly feature: string
