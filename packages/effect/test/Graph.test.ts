@@ -1108,6 +1108,28 @@ describe("Graph", () => {
       assert.strictEqual(Graph.hasEdge(graph, 1, 0), true)
     })
 
+    it("preserves edge order when merging directed incidence and scanning undirected adjacency", () => {
+      const directedGraph = directed([0, 1, 2], [
+        [0, 1, "out-first"],
+        [2, 0, "in-first"],
+        [0, 0, "loop"],
+        [0, 2, "out-last"],
+        [1, 0, "in-last"]
+      ])
+      assert.deepStrictEqual(Graph.incidentEdges(directedGraph, 0), [0, 1, 2, 3, 4])
+      assert.deepStrictEqual(Graph.edgesBetween(directedGraph, 0, 0), [2])
+
+      const undirectedGraph = undirected([0, 1, 2], [
+        [1, 0, "reverse"],
+        [0, 0, "loop"],
+        [0, 2, "forward"],
+        [2, 0, "reverse-last"]
+      ])
+      assert.deepStrictEqual(Graph.incidentEdges(undirectedGraph, 0), [0, 1, 2, 3])
+      assert.deepStrictEqual(Graph.edgesBetween(undirectedGraph, 0, 2), [2, 3])
+      assert.deepStrictEqual(Graph.edgesBetween(undirectedGraph, 2, 0), [2, 3])
+    })
+
     it("reports directed edge membership without assuming symmetry", () => {
       const graph = directed(["A", "B", "C"], [[0, 1, 1]])
       assert.strictEqual(Graph.hasEdge(graph, 0, 1), true)
@@ -1399,6 +1421,18 @@ describe("Graph", () => {
       assert.strictEqual(Graph.isBipartite(undirected([0, 1, 2], [[0, 1, 1], [1, 2, 1], [2, 0, 1]])), false)
       assert.strictEqual(Graph.isBipartite(undirected([0, 1, 2, 3], [[0, 1, 1], [2, 3, 1]])), true)
       assert.strictEqual(Graph.isBipartite(undirected([0], [[0, 0, 1]])), false)
+    })
+
+    it("reads fresh mutable structure after bipartite mutations", () => {
+      const mutable = Graph.beginMutation(undirected([0, 1, 2], [[0, 1, 1], [1, 2, 1]]))
+      assert.strictEqual(Graph.isBipartite(mutable), true)
+      Graph.addEdge(mutable, 2, 0, 1)
+      assert.strictEqual(Graph.isBipartite(mutable), false)
+      Graph.removeEdge(mutable, 2)
+      Graph.addEdge(mutable, 0, 1, 1)
+      assert.strictEqual(Graph.isBipartite(mutable), true)
+      Graph.addEdge(mutable, 2, 2, 1)
+      assert.strictEqual(Graph.isBipartite(mutable), false)
     })
 
     it("returns deterministic maximum matches and the first parallel edge", () => {
@@ -2225,6 +2259,23 @@ describe("Graph", () => {
       assertIndices(Graph.bfs(graph, { start: [0] }), [0, 1, 2, 3])
       assertIndices(Graph.dfsPostOrder(graph, { start: [0] }), [3, 1, 2, 0])
       assertIndices(Graph.dfs(graph), [])
+    })
+
+    it("preserves postorder with parallel edges, self-loops, and directionless traversal", () => {
+      const parallel = directed([0, 1, 2, 3, 4], [
+        [0, 1, 1],
+        [0, 1, 2],
+        [0, 1, 3],
+        [1, 2, 4],
+        [1, 3, 5],
+        [1, 4, 6],
+        [1, 1, 7]
+      ])
+      assertIndices(Graph.dfsPostOrder(parallel, { start: [0] }), [2, 3, 4, 1, 0])
+      assertIndices(Graph.dfsPostOrder(parallel, { start: [0, 1] }), [2, 3, 4, 1, 0])
+
+      const directionless = directed([0, 1, 2, 3], [[0, 1, 1], [2, 1, 2], [1, 3, 3], [1, 1, 4]])
+      assertIndices(Graph.dfsPostOrder(directionless, { start: [1], direction: "undirected" }), [3, 0, 2, 1])
     })
 
     it("uses shortest distance for radius membership and supports traversal directions", () => {
