@@ -490,6 +490,47 @@ export const fromSnapshot = <N, E, T extends Kind>(snapshot: Snapshot<N, E, T>):
 }
 
 /**
+ * Returns the active indexed structure of a graph.
+ *
+ * Nodes and edges are returned in graph order with their current indexes.
+ * Undirected edges retain their stored endpoint orientation, and each returned
+ * node and edge record is newly allocated. The operation runs in `O(V + E)`.
+ *
+ * **Example** (Round-tripping a graph snapshot)
+ *
+ * ```ts import.meta.vitest
+ * import { Equal, Graph } from "effect"
+ *
+ * const graph = Graph.fromSnapshot({
+ *   type: "undirected",
+ *   nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }],
+ *   edges: [{ index: 3, source: 5, target: 2, data: "A-B" }]
+ * })
+ *
+ * Equal.equals(Graph.fromSnapshot(Graph.toSnapshot(graph)), graph) // => true
+ * ```
+ *
+ * @see {@link fromSnapshot} for reconstructing an immutable graph
+ * @category converting
+ * @since 4.0.0
+ */
+export const toSnapshot = <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>
+): Snapshot<N, E, T> => {
+  const impl = internal.toImpl(graph)
+  return {
+    type: graph.type,
+    nodes: Array.from(impl.nodes, ([index, data]) => ({ index, data })),
+    edges: Array.from(impl.edges, ([index, edge]) => ({
+      index,
+      source: edge.source,
+      target: edge.target,
+      data: edge.data
+    }))
+  }
+}
+
+/**
  * Creates a graph constructor for the specified graph kind.
  *
  * **When to use**
@@ -4208,6 +4249,214 @@ export const isBipartite = <N, E>(
 }
 
 /**
+ * A pair of matched nodes and the edge that realizes the match.
+ *
+ * `left` and `right` refer to the bipartition derived by
+ * `maximumBipartiteMatching`, not to the stored edge orientation.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface BipartiteMatch {
+  readonly left: NodeIndex
+  readonly right: NodeIndex
+  readonly edge: EdgeIndex
+}
+
+/** @internal */
+const bipartiteColors = <N, E>(
+  graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
+): { readonly cache: csr.Csr; readonly colors: Int8Array } => {
+  if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "directed") {
+    throw new GraphError({ message: "Cannot find bipartite matching of directed graph" })
+  }
+  const cache = csr.get(graph)
+  const outgoing = csr.getOutgoing(cache)
+  const colors = new Int8Array(cache.nodeIds.length)
+  const queue = new Uint32Array(cache.nodeIds.length)
+  colors.fill(-1)
+
+  for (let start = 0; start < cache.nodeIds.length; start++) {
+    if (colors[start] !== -1) {
+      continue
+    }
+    let head = 0
+    let tail = 1
+    colors[start] = 0
+    queue[0] = start
+    while (head < tail) {
+      const node = queue[head++]
+      const color = colors[node] === 0 ? 1 : 0
+      for (let i = outgoing.rowOffsets[node]; i < outgoing.rowOffsets[node + 1]; i++) {
+        const neighbor = outgoing.columnIndices[i]
+        if (colors[neighbor] === -1) {
+          colors[neighbor] = color
+          queue[tail++] = neighbor
+        } else if (colors[neighbor] === colors[node]) {
+          throw new GraphError({ message: "Cannot find bipartite matching of non-bipartite graph" })
+        }
+      }
+    }
+  }
+  return { cache, colors }
+}
+
+/**
+ * Returns a maximum-cardinality matching of an undirected bipartite graph.
+ *
+ * The bipartition is derived internally. Self-loops and odd cycles throw a
+ * `GraphError`. Isolated nodes are allowed. Parallel edges do not change the
+ * matching cardinality, and the first edge in graph order between each matched
+ * pair is reported. Results follow left-partition graph order. Hopcroft-Karp
+ * runs in `O(E * sqrt(V))` time.
+ *
+ * **Example** (Matching a bipartite graph)
+ *
+ * ```ts import.meta.vitest
+ * import { Graph } from "effect"
+ *
+ * const graph = Graph.undirected<string, string>((mutable) => {
+ *   for (const node of ["A", "B", "X", "Y"]) Graph.addNode(mutable, node)
+ *   Graph.addEdge(mutable, 0, 2, "A-X")
+ *   Graph.addEdge(mutable, 0, 3, "A-Y")
+ *   Graph.addEdge(mutable, 1, 2, "B-X")
+ * })
+ *
+ * Graph.maximumBipartiteMatching(graph) // => [{ left: 0, right: 3, edge: 1 }, { left: 1, right: 2, edge: 2 }]
+ * ```
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const maximumBipartiteMatching = <N, E>(
+  graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
+): Array<BipartiteMatch> => {
+  const { cache, colors } = bipartiteColors(graph)
+  const endpoints = csr.getEdgeEndpoints(cache)
+  const edgeIds = csr.getEdgeIds(cache)
+  const adjacency: Array<Array<{ readonly right: number; readonly edge: number }>> = Array.from({
+    length: cache.nodeIds.length
+  }, () => [])
+  const seen = Array.from({ length: cache.nodeIds.length }, () => new Set<number>())
+
+  for (let edge = 0; edge < edgeIds.length; edge++) {
+    const source = endpoints.sources[edge]
+    const target = endpoints.targets[edge]
+    const left = colors[source] === 0 ? source : target
+    const right = colors[source] === 0 ? target : source
+    if (!seen[left].has(right)) {
+      seen[left].add(right)
+      adjacency[left].push({ right, edge })
+    }
+  }
+
+  const unmatched = -1
+  const infinity = 0x7fffffff
+  const matchLeft = new Int32Array(cache.nodeIds.length)
+  const matchRight = new Int32Array(cache.nodeIds.length)
+  const matchEdge = new Int32Array(cache.nodeIds.length)
+  const distance = new Int32Array(cache.nodeIds.length)
+  const queue = new Uint32Array(cache.nodeIds.length)
+  matchLeft.fill(unmatched)
+  matchRight.fill(unmatched)
+  matchEdge.fill(unmatched)
+  let shortestDistance = infinity
+
+  const hasLayer = (): boolean => {
+    let head = 0
+    let tail = 0
+    shortestDistance = infinity
+    for (let left = 0; left < colors.length; left++) {
+      if (colors[left] !== 0) {
+        continue
+      }
+      if (matchLeft[left] === unmatched) {
+        distance[left] = 0
+        queue[tail++] = left
+      } else {
+        distance[left] = infinity
+      }
+    }
+    while (head < tail) {
+      const left = queue[head++]
+      if (distance[left] >= shortestDistance) {
+        continue
+      }
+      for (const arc of adjacency[left]) {
+        const next = matchRight[arc.right]
+        if (next === unmatched) {
+          shortestDistance = distance[left] + 1
+        } else if (distance[next] === infinity) {
+          distance[next] = distance[left] + 1
+          queue[tail++] = next
+        }
+      }
+    }
+    return shortestDistance !== infinity
+  }
+
+  const augment = (start: number): boolean => {
+    const stack: Array<{
+      readonly left: number
+      position: number
+      readonly viaRight: number
+      readonly viaEdge: number
+    }> = [{ left: start, position: 0, viaRight: unmatched, viaEdge: unmatched }]
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1]
+      const arcs = adjacency[frame.left]
+      if (frame.position >= arcs.length) {
+        distance[frame.left] = infinity
+        stack.pop()
+        continue
+      }
+      const arc = arcs[frame.position++]
+      const next = matchRight[arc.right]
+      if (next === unmatched && distance[frame.left] + 1 === shortestDistance) {
+        matchLeft[frame.left] = arc.right
+        matchRight[arc.right] = frame.left
+        matchEdge[frame.left] = arc.edge
+        for (let i = stack.length - 1; i > 0; i--) {
+          const child = stack[i]
+          const parent = stack[i - 1]
+          matchLeft[parent.left] = child.viaRight
+          matchRight[child.viaRight] = parent.left
+          matchEdge[parent.left] = child.viaEdge
+        }
+        return true
+      }
+      if (next === unmatched) {
+        continue
+      }
+      if (distance[next] === distance[frame.left] + 1) {
+        stack.push({ left: next, position: 0, viaRight: arc.right, viaEdge: arc.edge })
+      }
+    }
+    return false
+  }
+
+  while (hasLayer()) {
+    for (let left = 0; left < colors.length; left++) {
+      if (colors[left] === 0 && matchLeft[left] === unmatched) {
+        augment(left)
+      }
+    }
+  }
+
+  const matches: Array<BipartiteMatch> = []
+  for (let left = 0; left < colors.length; left++) {
+    if (matchLeft[left] !== unmatched) {
+      matches.push({
+        left: cache.nodeIds[left],
+        right: cache.nodeIds[matchLeft[left]],
+        edge: edgeIds[matchEdge[left]]
+      })
+    }
+  }
+  return matches
+}
+
+/**
  * Get neighbors for undirected graphs by checking both adjacency and reverse adjacency.
  * For undirected graphs, we need to find the other endpoint of each edge incident to the node.
  */
@@ -4481,6 +4730,515 @@ export const connectedComponents = <N, E>(
 
   return components
 }
+
+/** @internal */
+interface LowLinkResult {
+  readonly bridges: Array<EdgeIndex>
+  readonly articulationPoints: Array<NodeIndex>
+  readonly biconnectedComponents: Array<Array<NodeIndex>>
+}
+
+/** @internal */
+const analyzeLowLinks = <N, E>(
+  graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
+): LowLinkResult => {
+  if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "directed") {
+    throw new GraphError({ message: "Cannot analyze undirected connectivity of directed graph" })
+  }
+  const cache = csr.get(graph)
+  const outgoing = csr.getOutgoingWithEdges(cache)
+  const edgeIds = csr.getEdgeIds(cache)
+  const endpoints = csr.getEdgeEndpoints(cache)
+  const discovered = new Int32Array(cache.nodeIds.length)
+  const low = new Int32Array(cache.nodeIds.length)
+  const parentNode = new Int32Array(cache.nodeIds.length)
+  const parentEdge = new Int32Array(cache.nodeIds.length)
+  const childCount = new Uint32Array(cache.nodeIds.length)
+  const bridgeMarks = new Uint8Array(edgeIds.length)
+  const articulationMarks = new Uint8Array(cache.nodeIds.length)
+  const edgeStack: Array<number> = []
+  const components: Array<Array<number>> = []
+  const loopNodes = new Set<number>()
+  discovered.fill(-1)
+  parentNode.fill(-1)
+  parentEdge.fill(-1)
+  let time = 0
+
+  const popComponent = (stopEdge: number): void => {
+    const nodes = new Set<number>()
+    while (edgeStack.length > 0) {
+      const edge = edgeStack.pop()!
+      nodes.add(endpoints.sources[edge])
+      nodes.add(endpoints.targets[edge])
+      if (edge === stopEdge) {
+        break
+      }
+    }
+    if (nodes.size > 0) {
+      components.push(Array.from(nodes).sort((a, b) => a - b))
+    }
+  }
+
+  for (let start = 0; start < cache.nodeIds.length; start++) {
+    if (discovered[start] !== -1) {
+      continue
+    }
+    discovered[start] = low[start] = time++
+    const stack: Array<{ readonly node: number; position: number }> = [{
+      node: start,
+      position: outgoing.rowOffsets[start]
+    }]
+
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1]
+      const end = outgoing.rowOffsets[frame.node + 1]
+      if (frame.position < end) {
+        const position = frame.position++
+        const edge = outgoing.edgeIndices[position]
+        const neighbor = outgoing.columnIndices[position]
+        if (neighbor === frame.node) {
+          loopNodes.add(frame.node)
+          continue
+        }
+        if (edge === parentEdge[frame.node]) {
+          continue
+        }
+        if (discovered[neighbor] === -1) {
+          childCount[frame.node]++
+          parentNode[neighbor] = frame.node
+          parentEdge[neighbor] = edge
+          discovered[neighbor] = low[neighbor] = time++
+          edgeStack.push(edge)
+          stack.push({ node: neighbor, position: outgoing.rowOffsets[neighbor] })
+        } else if (discovered[neighbor] < discovered[frame.node]) {
+          low[frame.node] = Math.min(low[frame.node], discovered[neighbor])
+          edgeStack.push(edge)
+        }
+        continue
+      }
+
+      stack.pop()
+      const parent = parentNode[frame.node]
+      if (parent === -1) {
+        if (childCount[frame.node] > 1) {
+          articulationMarks[frame.node] = 1
+        }
+      } else {
+        low[parent] = Math.min(low[parent], low[frame.node])
+        if (low[frame.node] > discovered[parent]) {
+          bridgeMarks[parentEdge[frame.node]] = 1
+        }
+        if (low[frame.node] >= discovered[parent]) {
+          if (parentNode[parent] !== -1) {
+            articulationMarks[parent] = 1
+          }
+          popComponent(parentEdge[frame.node])
+        }
+      }
+    }
+  }
+
+  for (const node of loopNodes) {
+    components.push([node])
+  }
+  components.sort((left, right) => {
+    const length = Math.min(left.length, right.length)
+    for (let i = 0; i < length; i++) {
+      if (left[i] !== right[i]) {
+        return left[i] - right[i]
+      }
+    }
+    return left.length - right.length
+  })
+
+  const resultBridges: Array<EdgeIndex> = []
+  for (let edge = 0; edge < edgeIds.length; edge++) {
+    if (bridgeMarks[edge] !== 0) {
+      resultBridges.push(edgeIds[edge])
+    }
+  }
+  const resultArticulationPoints: Array<NodeIndex> = []
+  for (let node = 0; node < cache.nodeIds.length; node++) {
+    if (articulationMarks[node] !== 0) {
+      resultArticulationPoints.push(cache.nodeIds[node])
+    }
+  }
+  return {
+    bridges: resultBridges,
+    articulationPoints: resultArticulationPoints,
+    biconnectedComponents: components.map((component) => component.map((node) => cache.nodeIds[node]))
+  }
+}
+
+/**
+ * Returns the edges whose removal increases the number of connected components.
+ *
+ * The graph must be undirected. Parent edges are tracked by edge index, so a
+ * parallel edge prevents either edge from being a bridge. Self-loops are never
+ * bridges. Results follow graph edge order. The iterative low-link traversal is
+ * stack-safe and runs in `O(V + E)` time.
+ *
+ * **Example** (Finding bridge edges)
+ *
+ * ```ts import.meta.vitest
+ * import { Graph } from "effect"
+ *
+ * const graph = Graph.undirected<void, void>((mutable) => {
+ *   for (let i = 0; i < 3; i++) Graph.addNode(mutable, undefined)
+ *   Graph.addEdge(mutable, 0, 1, undefined)
+ *   Graph.addEdge(mutable, 1, 2, undefined)
+ * })
+ *
+ * Graph.bridges(graph) // => [0, 1]
+ * ```
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const bridges = <N, E>(
+  graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
+): Array<EdgeIndex> => analyzeLowLinks(graph).bridges
+
+/**
+ * Returns the nodes whose removal increases the number of connected components.
+ *
+ * The graph must be undirected. Disconnected components, parallel edges, and
+ * self-loops are handled by an iterative, stack-safe low-link traversal in
+ * `O(V + E)` time. Results follow graph node order.
+ *
+ * **Example** (Finding articulation points)
+ *
+ * ```ts import.meta.vitest
+ * import { Graph } from "effect"
+ *
+ * const graph = Graph.undirected<void, void>((mutable) => {
+ *   for (let i = 0; i < 3; i++) Graph.addNode(mutable, undefined)
+ *   Graph.addEdge(mutable, 0, 1, undefined)
+ *   Graph.addEdge(mutable, 1, 2, undefined)
+ * })
+ *
+ * Graph.articulationPoints(graph) // => [1]
+ * ```
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const articulationPoints = <N, E>(
+  graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
+): Array<NodeIndex> => analyzeLowLinks(graph).articulationPoints
+
+/**
+ * Returns the maximal biconnected node components of an undirected graph.
+ *
+ * Articulation points can occur in more than one component. Isolated vertices
+ * are excluded, while a vertex with a self-loop forms a singleton component.
+ * Nodes within components and the components themselves follow graph order.
+ * Parallel edges are treated independently. The iterative low-link traversal
+ * is stack-safe and runs in `O(V + E)` time.
+ *
+ * **Example** (Finding biconnected components)
+ *
+ * ```ts import.meta.vitest
+ * import { Graph } from "effect"
+ *
+ * const graph = Graph.undirected<void, void>((mutable) => {
+ *   for (let i = 0; i < 5; i++) Graph.addNode(mutable, undefined)
+ *   Graph.addEdge(mutable, 0, 1, undefined)
+ *   Graph.addEdge(mutable, 1, 2, undefined)
+ *   Graph.addEdge(mutable, 2, 0, undefined)
+ *   Graph.addEdge(mutable, 2, 3, undefined)
+ *   Graph.addEdge(mutable, 3, 4, undefined)
+ *   Graph.addEdge(mutable, 4, 2, undefined)
+ * })
+ *
+ * Graph.biconnectedComponents(graph) // => [[0, 1, 2], [2, 3, 4]]
+ * ```
+ *
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const biconnectedComponents = <N, E>(
+  graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
+): Array<Array<NodeIndex>> => analyzeLowLinks(graph).biconnectedComponents
+
+/**
+ * Configuration for source-to-target flow algorithms.
+ *
+ * `capacity` receives stored edge data and must return a finite,
+ * non-negative number.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface MaximumFlowConfig<E> {
+  readonly source: NodeIndex
+  readonly target: NodeIndex
+  readonly capacity: (edge: E) => number
+}
+
+/**
+ * Maximum flow value, per-edge flows, and a corresponding minimum cut.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface MaximumFlowResult {
+  readonly value: number
+  readonly flows: Map<EdgeIndex, number>
+  readonly cut: Array<EdgeIndex>
+}
+
+/**
+ * Minimum cut value, crossing edges, and residual-reachability partitions.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface MinimumCutResult {
+  readonly value: number
+  readonly edges: Array<EdgeIndex>
+  readonly source: Array<NodeIndex>
+  readonly target: Array<NodeIndex>
+}
+
+/** @internal */
+interface FlowSolution extends MaximumFlowResult {
+  readonly sourceSide: Uint8Array
+  readonly nodeIds: Array<NodeIndex>
+}
+
+/** @internal */
+interface ResidualArc {
+  readonly from: number
+  readonly to: number
+  readonly capacity: number
+  readonly edge: number
+  flow: number
+}
+
+/** @internal */
+const solveMaximumFlow = <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+  config: MaximumFlowConfig<E>
+): FlowSolution => {
+  if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "undirected") {
+    throw new GraphError({ message: "Cannot compute flow of undirected graph" })
+  }
+  const cache = csr.get(graph)
+  const source = csr.getNodeIndex(cache, config.source)
+  if (source === undefined) {
+    throw missingNode(config.source)
+  }
+  const target = csr.getNodeIndex(cache, config.target)
+  if (target === undefined) {
+    throw missingNode(config.target)
+  }
+  if (source === target) {
+    throw new GraphError({ message: "Flow source and target must be different nodes" })
+  }
+
+  const edges = csr.getEdges(cache) as Array<Edge<E>>
+  const edgeIds = csr.getEdgeIds(cache)
+  const endpoints = csr.getEdgeEndpoints(cache)
+  const capacities = new Float64Array(edges.length)
+  const arcs: Array<ResidualArc> = []
+  const adjacency: Array<Array<number>> = Array.from({ length: cache.nodeIds.length }, () => [])
+  const forwardArc = new Int32Array(edges.length)
+  forwardArc.fill(-1)
+
+  for (let edge = 0; edge < edges.length; edge++) {
+    const capacity = config.capacity(edges[edge].data)
+    if (!Number.isFinite(capacity) || capacity < 0) {
+      throw new GraphError({ message: `Edge ${edgeIds[edge]} capacity must be a finite non-negative number` })
+    }
+    capacities[edge] = capacity
+    const from = endpoints.sources[edge]
+    const to = endpoints.targets[edge]
+    if (from === to) {
+      continue
+    }
+    const index = arcs.length
+    forwardArc[edge] = index
+    adjacency[from].push(index)
+    arcs.push({ from, to, capacity, edge, flow: 0 })
+    adjacency[to].push(index + 1)
+    arcs.push({ from: to, to: from, capacity: 0, edge: -1, flow: 0 })
+  }
+
+  const parentArc = new Int32Array(cache.nodeIds.length)
+  const visited = new Uint8Array(cache.nodeIds.length)
+  const queue = new Uint32Array(cache.nodeIds.length)
+  let value = 0
+  while (true) {
+    parentArc.fill(-1)
+    visited.fill(0)
+    let head = 0
+    let tail = 1
+    queue[0] = source
+    visited[source] = 1
+    while (head < tail && visited[target] === 0) {
+      const node = queue[head++]
+      for (const arcIndex of adjacency[node]) {
+        const arc = arcs[arcIndex]
+        if (arc.capacity - arc.flow > 0 && visited[arc.to] === 0) {
+          visited[arc.to] = 1
+          parentArc[arc.to] = arcIndex
+          queue[tail++] = arc.to
+          if (arc.to === target) {
+            break
+          }
+        }
+      }
+    }
+    if (visited[target] === 0) {
+      break
+    }
+
+    let amount = Infinity
+    for (let node = target; node !== source;) {
+      const arc = arcs[parentArc[node]]
+      amount = Math.min(amount, arc.capacity - arc.flow)
+      node = arc.from
+    }
+    if (!Number.isFinite(value + amount)) {
+      throw new GraphError({ message: "Maximum flow exceeds the finite number range" })
+    }
+    for (let node = target; node !== source;) {
+      const arcIndex = parentArc[node]
+      const arc = arcs[arcIndex]
+      arc.flow += amount
+      arcs[arcIndex ^ 1].flow -= amount
+      node = arc.from
+    }
+    value += amount
+  }
+
+  const flows = new Map<EdgeIndex, number>()
+  for (let edge = 0; edge < edgeIds.length; edge++) {
+    const arcIndex = forwardArc[edge]
+    flows.set(edgeIds[edge], arcIndex === -1 ? 0 : arcs[arcIndex].flow)
+  }
+
+  visited.fill(0)
+  let head = 0
+  let tail = 1
+  queue[0] = source
+  visited[source] = 1
+  while (head < tail) {
+    const node = queue[head++]
+    for (const arcIndex of adjacency[node]) {
+      const arc = arcs[arcIndex]
+      if (arc.capacity - arc.flow > 0 && visited[arc.to] === 0) {
+        visited[arc.to] = 1
+        queue[tail++] = arc.to
+      }
+    }
+  }
+
+  const cut: Array<EdgeIndex> = []
+  for (let edge = 0; edge < edgeIds.length; edge++) {
+    if (
+      endpoints.sources[edge] !== endpoints.targets[edge] &&
+      visited[endpoints.sources[edge]] !== 0 &&
+      visited[endpoints.targets[edge]] === 0
+    ) {
+      cut.push(edgeIds[edge])
+    }
+  }
+  return { value, flows, cut, sourceSide: visited, nodeIds: cache.nodeIds }
+}
+
+/**
+ * Returns a maximum flow and corresponding minimum cut for a directed graph.
+ *
+ * Capacities must be finite and non-negative. Missing or equal endpoints and a
+ * total flow outside the finite number range throw a `GraphError`. Parallel
+ * edges retain independent capacities, self-loops carry no source-to-target
+ * flow, and the flow map includes every original edge in graph order, including
+ * zero-flow edges. Edmonds-Karp runs in `O(V * E^2)` time.
+ *
+ * **Example** (Computing maximum flow)
+ *
+ * ```ts import.meta.vitest
+ * import { Graph } from "effect"
+ *
+ * const graph = Graph.directed<string, number>((mutable) => {
+ *   for (const node of ["source", "a", "target"]) Graph.addNode(mutable, node)
+ *   Graph.addEdge(mutable, 0, 1, 3)
+ *   Graph.addEdge(mutable, 1, 2, 2)
+ *   Graph.addEdge(mutable, 0, 2, 1)
+ * })
+ *
+ * Graph.maximumFlow(graph, { source: 0, target: 2, capacity: (edge) => edge }).value // => 3
+ * ```
+ *
+ * @see {@link minimumCut} for the residual-reachability partition
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const maximumFlow: {
+  <E>(config: MaximumFlowConfig<E>): <N>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  ) => MaximumFlowResult
+  <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+    config: MaximumFlowConfig<E>
+  ): MaximumFlowResult
+} = dual(2, <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+  config: MaximumFlowConfig<E>
+): MaximumFlowResult => {
+  const { cut, flows, value } = solveMaximumFlow(graph, config)
+  return { value, flows, cut }
+})
+
+/**
+ * Returns a minimum cut and its node partitions for a directed graph.
+ *
+ * The source partition contains nodes reachable from the source in the final
+ * residual network; the target partition contains its complement. Both follow
+ * graph node order. Cut edges follow graph edge order, and their total capacity
+ * equals the returned maximum-flow value. Validation, parallel-edge,
+ * self-loop, and `O(V * E^2)` complexity behavior match `maximumFlow`.
+ *
+ * **Example** (Partitioning a minimum cut)
+ *
+ * ```ts import.meta.vitest
+ * import { Graph } from "effect"
+ *
+ * const graph = Graph.directed<string, number>((mutable) => {
+ *   for (const node of ["source", "a", "target"]) Graph.addNode(mutable, node)
+ *   Graph.addEdge(mutable, 0, 1, 2)
+ *   Graph.addEdge(mutable, 1, 2, 1)
+ * })
+ *
+ * Graph.minimumCut(graph, { source: 0, target: 2, capacity: (edge) => edge }).source // => [0, 1]
+ * ```
+ *
+ * @see {@link maximumFlow} for per-edge flow values
+ * @category algorithms
+ * @since 4.0.0
+ */
+export const minimumCut: {
+  <E>(config: MaximumFlowConfig<E>): <N>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  ) => MinimumCutResult
+  <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+    config: MaximumFlowConfig<E>
+  ): MinimumCutResult
+} = dual(2, <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+  config: MaximumFlowConfig<E>
+): MinimumCutResult => {
+  const solution = solveMaximumFlow(graph, config)
+  const source: Array<NodeIndex> = []
+  const target: Array<NodeIndex> = []
+  for (let node = 0; node < solution.nodeIds.length; node++) {
+    ;(solution.sourceSide[node] === 0 ? target : source).push(solution.nodeIds[node])
+  }
+  return { value: solution.value, edges: solution.cut, source, target }
+})
 
 /**
  * Finds weakly connected components in a directed graph.

@@ -249,6 +249,53 @@ describe("Graph", () => {
         "Edge target 2 does not reference a node"
       )
     })
+
+    describe("toSnapshot", () => {
+      it("preserves empty graphs and supports mutable graphs", () => {
+        assert.deepStrictEqual(Graph.toSnapshot(Graph.directed()), { type: "directed", nodes: [], edges: [] })
+        const mutable = Graph.beginMutation(Graph.undirected<string, number>())
+        Graph.addNode(mutable, "A")
+        assert.deepStrictEqual(Graph.toSnapshot(mutable), {
+          type: "undirected",
+          nodes: [{ index: 0, data: "A" }],
+          edges: []
+        })
+      })
+
+      it("preserves sparse indexes, parallel edges, self-loops, and stored orientation", () => {
+        const graph = Graph.fromSnapshot({
+          type: "undirected",
+          nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }],
+          edges: [
+            { index: 3, source: 5, target: 2, data: "first" },
+            { index: 7, source: 5, target: 2, data: "parallel" },
+            { index: 11, source: 5, target: 5, data: "loop" }
+          ]
+        })
+        const snapshot = Graph.toSnapshot(graph)
+
+        assert.deepStrictEqual(snapshot, {
+          type: "undirected",
+          nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }],
+          edges: [
+            { index: 3, source: 5, target: 2, data: "first" },
+            { index: 7, source: 5, target: 2, data: "parallel" },
+            { index: 11, source: 5, target: 5, data: "loop" }
+          ]
+        })
+        assert.strictEqual(Equal.equals(Graph.fromSnapshot(snapshot), graph), true)
+      })
+
+      it("does not expose stored edge records", () => {
+        const graph = makeSingleEdgeGraph(1)
+        const snapshot = Graph.toSnapshot(graph)
+        const edge = snapshot.edges[0] as { source: number; target: number; data: number }
+        edge.source = 1
+        edge.data = 2
+
+        assert.deepStrictEqual(Option.getOrThrow(Graph.getEdge(graph, 0)), { source: 0, target: 1, data: 1 })
+      })
+    })
   })
 
   describe("equality and hashing", () => {
@@ -3489,6 +3536,121 @@ describe("Graph", () => {
     })
   })
 
+  describe("maximumBipartiteMatching", () => {
+    it("handles empty graphs and isolated nodes", () => {
+      assert.deepStrictEqual(Graph.maximumBipartiteMatching(Graph.undirected()), [])
+      const graph = Graph.undirected<void, void>((mutable) => {
+        Graph.addNode(mutable, undefined)
+        Graph.addNode(mutable, undefined)
+      })
+      assert.deepStrictEqual(Graph.maximumBipartiteMatching(graph), [])
+    })
+
+    it("finds single, perfect, and non-perfect maximum matchings", () => {
+      const single = Graph.undirected<void, void>((mutable) => {
+        Graph.addNode(mutable, undefined)
+        Graph.addNode(mutable, undefined)
+        Graph.addEdge(mutable, 0, 1, undefined)
+      })
+      assert.deepStrictEqual(Graph.maximumBipartiteMatching(single), [{ left: 0, right: 1, edge: 0 }])
+
+      const graph = Graph.undirected<void, void>((mutable) => {
+        for (let i = 0; i < 5; i++) Graph.addNode(mutable, undefined)
+        Graph.addEdge(mutable, 0, 2, undefined)
+        Graph.addEdge(mutable, 0, 3, undefined)
+        Graph.addEdge(mutable, 1, 2, undefined)
+        Graph.addEdge(mutable, 1, 4, undefined)
+      })
+      assert.deepStrictEqual(Graph.maximumBipartiteMatching(graph), [
+        { left: 0, right: 2, edge: 0 },
+        { left: 1, right: 4, edge: 3 }
+      ])
+      assert.strictEqual(Graph.maximumBipartiteMatching(graph).length, 2)
+    })
+
+    it("is deterministic across disconnected components and possible matchings", () => {
+      const graph = Graph.undirected<void, void>((mutable) => {
+        for (let i = 0; i < 8; i++) Graph.addNode(mutable, undefined)
+        for (const [source, target] of [[0, 2], [0, 3], [1, 2], [1, 3], [4, 6], [5, 7]] as const) {
+          Graph.addEdge(mutable, source, target, undefined)
+        }
+      })
+
+      assert.deepStrictEqual(Graph.maximumBipartiteMatching(graph), [
+        { left: 0, right: 2, edge: 0 },
+        { left: 1, right: 3, edge: 3 },
+        { left: 4, right: 6, edge: 4 },
+        { left: 5, right: 7, edge: 5 }
+      ])
+    })
+
+    it("uses the first parallel edge without changing cardinality", () => {
+      const graph = Graph.undirected<void, string>((mutable) => {
+        Graph.addNode(mutable, undefined)
+        Graph.addNode(mutable, undefined)
+        Graph.addEdge(mutable, 1, 0, "first")
+        Graph.addEdge(mutable, 0, 1, "second")
+      })
+
+      assert.deepStrictEqual(Graph.maximumBipartiteMatching(graph), [{ left: 0, right: 1, edge: 0 }])
+    })
+
+    it("matches a brute-force oracle for all three-by-three bipartite graphs", () => {
+      const oracle = (adjacency: ReadonlyArray<ReadonlyArray<number>>, left = 0, used = 0): number => {
+        if (left === adjacency.length) return 0
+        let best = oracle(adjacency, left + 1, used)
+        for (const right of adjacency[left]) {
+          if ((used & (1 << right)) === 0) {
+            best = Math.max(best, 1 + oracle(adjacency, left + 1, used | (1 << right)))
+          }
+        }
+        return best
+      }
+
+      for (let mask = 0; mask < 1 << 9; mask++) {
+        const adjacency: Array<Array<number>> = [[], [], []]
+        const graph = Graph.undirected<void, void>((mutable) => {
+          for (let i = 0; i < 6; i++) Graph.addNode(mutable, undefined)
+          for (let left = 0; left < 3; left++) {
+            for (let right = 0; right < 3; right++) {
+              if ((mask & (1 << (left * 3 + right))) !== 0) {
+                adjacency[left].push(right)
+                Graph.addEdge(mutable, left, right + 3, undefined)
+              }
+            }
+          }
+        })
+        assert.strictEqual(Graph.maximumBipartiteMatching(graph).length, oracle(adjacency))
+      }
+    })
+
+    it("rejects self-loops, odd cycles, and directed graphs", () => {
+      const loop = Graph.undirected<void, void>((mutable) => {
+        Graph.addNode(mutable, undefined)
+        Graph.addEdge(mutable, 0, 0, undefined)
+      })
+      const triangle = Graph.undirected<void, void>((mutable) => {
+        for (let i = 0; i < 3; i++) Graph.addNode(mutable, undefined)
+        Graph.addEdge(mutable, 0, 1, undefined)
+        Graph.addEdge(mutable, 1, 2, undefined)
+        Graph.addEdge(mutable, 2, 0, undefined)
+      })
+
+      assertGraphError(
+        () => Graph.maximumBipartiteMatching(loop),
+        "Cannot find bipartite matching of non-bipartite graph"
+      )
+      assertGraphError(
+        () => Graph.maximumBipartiteMatching(triangle),
+        "Cannot find bipartite matching of non-bipartite graph"
+      )
+      assertGraphError(
+        () => Graph.maximumBipartiteMatching(Graph.directed() as any),
+        "Cannot find bipartite matching of directed graph"
+      )
+    })
+  })
+
   describe("connectedComponents", () => {
     it("should find connected components in disconnected undirected graph", () => {
       const graph = Graph.undirected<string, string>((mutable) => {
@@ -3540,6 +3702,104 @@ describe("Graph", () => {
 
       assert.deepStrictEqual(Graph.connectedComponents(graph), [[0, 2, 1]])
       assert.deepStrictEqual(Graph.connectedComponents(Graph.beginMutation(graph)), [[0, 2, 1]])
+    })
+  })
+
+  describe("low-link connectivity", () => {
+    const analyze = <N, E>(graph: Graph.UndirectedGraph<N, E>) => ({
+      bridges: Graph.bridges(graph),
+      articulationPoints: Graph.articulationPoints(graph),
+      biconnectedComponents: Graph.biconnectedComponents(graph)
+    })
+
+    it("handles empty graphs and isolated nodes", () => {
+      assert.deepStrictEqual(analyze(Graph.undirected()), {
+        bridges: [],
+        articulationPoints: [],
+        biconnectedComponents: []
+      })
+      const isolated = Graph.undirected<void, void>((mutable) => {
+        Graph.addNode(mutable, undefined)
+      })
+      assert.deepStrictEqual(analyze(isolated), {
+        bridges: [],
+        articulationPoints: [],
+        biconnectedComponents: []
+      })
+    })
+
+    it("handles a single edge, paths, and cycles", () => {
+      const single = Graph.undirected<void, void>((mutable) => {
+        Graph.addNode(mutable, undefined)
+        Graph.addNode(mutable, undefined)
+        Graph.addEdge(mutable, 0, 1, undefined)
+      })
+      assert.deepStrictEqual(analyze(single), {
+        bridges: [0],
+        articulationPoints: [],
+        biconnectedComponents: [[0, 1]]
+      })
+
+      const path = Graph.undirected<void, void>((mutable) => {
+        for (let i = 0; i < 3; i++) Graph.addNode(mutable, undefined)
+        Graph.addEdge(mutable, 0, 1, undefined)
+        Graph.addEdge(mutable, 1, 2, undefined)
+      })
+      assert.deepStrictEqual(analyze(path), {
+        bridges: [0, 1],
+        articulationPoints: [1],
+        biconnectedComponents: [[0, 1], [1, 2]]
+      })
+
+      const cycle = Graph.mutate(path, (mutable) => {
+        Graph.addEdge(mutable, 2, 0, undefined)
+      })
+      assert.deepStrictEqual(analyze(cycle), {
+        bridges: [],
+        articulationPoints: [],
+        biconnectedComponents: [[0, 1, 2]]
+      })
+    })
+
+    it("handles shared articulation points and disconnected components", () => {
+      const graph = Graph.undirected<void, void>((mutable) => {
+        for (let i = 0; i < 8; i++) Graph.addNode(mutable, undefined)
+        for (const [source, target] of [[0, 1], [1, 2], [2, 0], [2, 3], [3, 4], [4, 2], [5, 6]] as const) {
+          Graph.addEdge(mutable, source, target, undefined)
+        }
+      })
+
+      assert.deepStrictEqual(analyze(graph), {
+        bridges: [6],
+        articulationPoints: [2],
+        biconnectedComponents: [[0, 1, 2], [2, 3, 4], [5, 6]]
+      })
+    })
+
+    it("handles parallel edges, self-loops, and sparse indexes", () => {
+      const graph = Graph.fromSnapshot({
+        type: "undirected",
+        nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 9, data: "C" }],
+        edges: [
+          { index: 3, source: 5, target: 2, data: "first" },
+          { index: 7, source: 2, target: 5, data: "parallel" },
+          { index: 11, source: 5, target: 9, data: "bridge" },
+          { index: 13, source: 9, target: 9, data: "loop" }
+        ]
+      })
+
+      assert.deepStrictEqual(analyze(graph), {
+        bridges: [11],
+        articulationPoints: [5],
+        biconnectedComponents: [[2, 5], [5, 9], [9]]
+      })
+    })
+
+    it("rejects directed graphs at runtime", () => {
+      const graph = Graph.directed() as any
+      for (const operation of [Graph.bridges, Graph.articulationPoints, Graph.biconnectedComponents]) {
+        assertGraphError(() => operation(graph), "Cannot analyze undirected connectivity of directed graph")
+      }
     })
   })
 
@@ -3810,6 +4070,142 @@ describe("Graph", () => {
         () => Graph.isStronglyConnected(undirected as any),
         "Cannot find strongly connected components of undirected graph"
       )
+    })
+  })
+
+  describe("maximumFlow and minimumCut", () => {
+    const config = { source: 0, target: 2, capacity: (edge: number) => edge }
+
+    it("rejects missing or equal endpoints and undirected graphs", () => {
+      const graph = Graph.directed<void, number>((mutable) => {
+        Graph.addNode(mutable, undefined)
+        Graph.addNode(mutable, undefined)
+      })
+      assertGraphError(() => Graph.maximumFlow(graph, config), "Node 2 does not exist")
+      assertGraphError(
+        () => Graph.minimumCut(graph, { ...config, source: 2 }),
+        "Node 2 does not exist"
+      )
+      assertGraphError(
+        () => Graph.maximumFlow(graph, { ...config, source: 0, target: 0 }),
+        "Flow source and target must be different nodes"
+      )
+      assertGraphError(
+        () => Graph.maximumFlow(Graph.undirected() as any, config),
+        "Cannot compute flow of undirected graph"
+      )
+    })
+
+    it("computes a single-edge flow in data-first and data-last forms", () => {
+      const graph = makeSingleEdgeGraph(3)
+      const expected = { value: 3, flows: new Map([[0, 3]]), cut: [0] }
+
+      assert.deepStrictEqual(Graph.maximumFlow(graph, { ...config, target: 1 }), expected)
+      assert.deepStrictEqual(Graph.maximumFlow({ ...config, target: 1 })(graph), expected)
+      assert.deepStrictEqual(Graph.minimumCut(graph, { ...config, target: 1 }), {
+        value: 3,
+        edges: [0],
+        source: [0],
+        target: [1]
+      })
+    })
+
+    it("handles multiple paths, bottlenecks, and parallel edges", () => {
+      const graph = Graph.directed<void, number>((mutable) => {
+        for (let i = 0; i < 4; i++) Graph.addNode(mutable, undefined)
+        Graph.addEdge(mutable, 0, 1, 3)
+        Graph.addEdge(mutable, 0, 1, 2)
+        Graph.addEdge(mutable, 0, 2, 2)
+        Graph.addEdge(mutable, 1, 2, 1)
+        Graph.addEdge(mutable, 1, 3, 3)
+        Graph.addEdge(mutable, 2, 3, 3)
+      })
+      const result = Graph.maximumFlow(graph, { source: 0, target: 3, capacity: (edge) => edge })
+
+      assert.strictEqual(result.value, 6)
+      assert.deepStrictEqual(Array.from(result.flows.keys()), [0, 1, 2, 3, 4, 5])
+      assert.strictEqual((result.flows.get(0) ?? 0) + (result.flows.get(1) ?? 0), 4)
+    })
+
+    it("uses reverse residual edges to reroute flow", () => {
+      const graph = Graph.directed<void, number>((mutable) => {
+        for (let i = 0; i < 6; i++) Graph.addNode(mutable, undefined)
+        for (const [source, target] of [[0, 1], [0, 2], [1, 3], [2, 3], [3, 5], [1, 4], [4, 5]] as const) {
+          Graph.addEdge(mutable, source, target, 1)
+        }
+      })
+
+      assert.strictEqual(Graph.maximumFlow(graph, { source: 0, target: 5, capacity: (edge) => edge }).value, 2)
+    })
+
+    it("handles zero capacity, disconnected targets, self-loops, and fractions", () => {
+      const graph = Graph.directed<void, number>((mutable) => {
+        for (let i = 0; i < 4; i++) Graph.addNode(mutable, undefined)
+        Graph.addEdge(mutable, 0, 0, 100)
+        Graph.addEdge(mutable, 0, 1, 0)
+        Graph.addEdge(mutable, 0, 2, 0.75)
+        Graph.addEdge(mutable, 2, 1, 0.5)
+      })
+      const result = Graph.maximumFlow(graph, { source: 0, target: 1, capacity: (edge) => edge })
+
+      assert.strictEqual(result.value, 0.5)
+      assert.deepStrictEqual(result.flows, new Map([[0, 0], [1, 0], [2, 0.5], [3, 0.5]]))
+      assert.strictEqual(Graph.maximumFlow(graph, { source: 0, target: 3, capacity: (edge) => edge }).value, 0)
+    })
+
+    it("rejects negative, NaN, and infinite capacities, including self-loops", () => {
+      for (const capacity of [-1, NaN, Infinity, -Infinity]) {
+        const graph = Graph.directed<void, number>((mutable) => {
+          Graph.addNode(mutable, undefined)
+          Graph.addNode(mutable, undefined)
+          Graph.addEdge(mutable, 0, 0, capacity)
+        })
+        assertGraphError(
+          () => Graph.maximumFlow(graph, { source: 0, target: 1, capacity: (edge) => edge }),
+          "Edge 0 capacity must be a finite non-negative number"
+        )
+      }
+    })
+
+    it("rejects a total flow outside the finite number range", () => {
+      const graph = Graph.directed<void, number>((mutable) => {
+        Graph.addNode(mutable, undefined)
+        Graph.addNode(mutable, undefined)
+        Graph.addEdge(mutable, 0, 1, Number.MAX_VALUE)
+        Graph.addEdge(mutable, 0, 1, Number.MAX_VALUE)
+      })
+
+      assertGraphError(
+        () => Graph.maximumFlow(graph, { source: 0, target: 1, capacity: (edge) => edge }),
+        "Maximum flow exceeds the finite number range"
+      )
+    })
+
+    it("enforces capacity bounds, conservation, and max-flow/min-cut equality", () => {
+      const capacities = [16, 13, 10, 4, 12, 9, 14, 7, 20, 4]
+      const endpoints = [[0, 1], [0, 2], [1, 2], [2, 1], [1, 3], [3, 2], [2, 4], [4, 3], [3, 5], [4, 5]] as const
+      const graph = Graph.directed<void, number>((mutable) => {
+        for (let i = 0; i < 6; i++) Graph.addNode(mutable, undefined)
+        for (let i = 0; i < endpoints.length; i++) {
+          Graph.addEdge(mutable, endpoints[i][0], endpoints[i][1], capacities[i])
+        }
+      })
+      const flowConfig = { source: 0, target: 5, capacity: (edge: number) => edge }
+      const flow = Graph.maximumFlow(graph, flowConfig)
+      const cut = Graph.minimumCut(graph, flowConfig)
+      const balance = new Float64Array(6)
+
+      for (let edge = 0; edge < endpoints.length; edge++) {
+        const value = flow.flows.get(edge)!
+        assert.strictEqual(value >= 0 && value <= capacities[edge], true)
+        balance[endpoints[edge][0]] -= value
+        balance[endpoints[edge][1]] += value
+      }
+      assert.strictEqual(flow.value, 23)
+      assert.strictEqual(cut.value, flow.value)
+      assert.strictEqual(cut.edges.reduce((sum, edge) => sum + capacities[edge], 0), flow.value)
+      assert.deepStrictEqual(Array.from(balance), [-23, 0, 0, 0, 0, 23])
+      assert.deepStrictEqual([...cut.source, ...cut.target].sort((a, b) => a - b), [0, 1, 2, 3, 4, 5])
     })
   })
 
