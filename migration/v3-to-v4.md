@@ -4,7 +4,7 @@
 
 Base: `3d390f232bdbc3f0d3d6a2ae3c775084f494b547` (`3d390f232bdbc3f0d3d6a2ae3c775084f494b547`)
 
-Head: `origin/main` (`f4ba735bc450e5120800a4140f4f262a0cab2cae`)
+Head: `origin/main` (`b7559505c831c779eb2c3a974e88d35cb1f2fae5`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -4928,7 +4928,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `McpSchema.ContentBlock` -> `McpSchema.ContentBlock`: Moved to effect/unstable/ai/McpSchema. It remains the MCP content-block union, but v4 exports it as a const schema rather than a Schema.Union subclass. Binary image, audio, and blob data still use Uint8Array values with base64 wire encoding.
 
-- `McpSchema.ElicitResult` -> `McpSchema.ElicitResult`: Moved to effect/unstable/ai/McpSchema. It remains the discriminated union of accepted responses with content and declined or canceled responses without content.
+- `McpSchema.ElicitResult` -> `McpSchema.ElicitResult`: Moved to effect/unstable/ai/McpSchema. It remains discriminated by action, but accepted content is now optional and, when present, is a record of strings, finite numbers, booleans, or string arrays; declined and canceled responses still omit content.
 
 - `McpSchema.McpError` -> `McpSchema.McpError`: Moved, but changed from a constructable base class to a union schema of standard tagged protocol errors plus McpErrorBase. Use McpErrorBase to construct a generic MCP error.
 
@@ -5374,7 +5374,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Options.between` -> `Flag.between`: Use the moved combinator; v4 validates bounds when constructing the parameter.
 
-- `Options.boolean` -> `Flag.boolean`: Use the moved constructor; --no-name is automatic and aliases are added with Flag.withAlias.
+- `Options.boolean` -> `Flag.boolean + Flag.withDefault`: Use Flag.boolean(name).pipe(Flag.withDefault(false)) to preserve v3's omitted-flag default; bare Flag.boolean is now required. --no-name is automatic and aliases are added with Flag.withAlias.
 
 - `Options.choice` -> `Flag.choice`: Use the moved constructor.
 
@@ -9702,8 +9702,6 @@ Schema.toArbitrary(schema)
 
 - `Effect.getRuntimeFlags` -> `none`: RuntimeFlags are no longer a public Effect service; use supported high-level runtime options. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
-- `Effect.head` -> `Effect.flatMap + Array.head + Effect.fromOption`: Inspect the produced iterable explicitly and fail when it is empty. Adapt arguments and imports to the v4 API.
-
 - `Effect.if` -> `Effect.suspend`: Select the branch lazily with a JavaScript conditional inside `Effect.suspend`. Adapt arguments and imports to the v4 API.
 
 - `Effect.ignoreLogged` -> `Effect.ignore`: Pass `{ log: true }` to the consolidated ignore combinator. Adapt arguments and imports to the v4 API.
@@ -10697,6 +10695,8 @@ FastCheck.uuid({ version: 4 })
 - `GlobalValue.globalValue` -> `module-scoped const`: The global registry helper was removed; use a module singleton, or explicitly own a globalThis and Symbol.for registry when cross-bundle identity is required.
 
 ### `effect/Graph`
+
+- `Graph.Edge` -> `Graph.Edge`: The type remains as a structural interface, but its Data.Class constructor/value export was removed. Replace new Graph.Edge({ source, target, data }) with an object literal.
 
 - `Graph.Graph` -> `Graph.Graph`: The immutable type remains, but storage is opaque; replace field access with Graph nodes, edges, count, lookup, neighbor, and acyclicity APIs.
 

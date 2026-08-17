@@ -238,9 +238,6 @@ effect/Effect#getFiberRefs:
 effect/Effect#getRuntimeFlags:
   replacement: "none"
   note: "RuntimeFlags are no longer a public Effect service; use supported high-level runtime options. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive."
-effect/Effect#head:
-  replacement: "Effect.flatMap + Array.head + Effect.fromOption"
-  note: "Inspect the produced iterable explicitly and fail when it is empty. Adapt arguments and imports to the v4 API."
 effect/Effect#if:
   replacement: "Effect.suspend"
   note: "Select the branch lazily with a JavaScript conditional inside `Effect.suspend`. Adapt arguments and imports to the v4 API."
