@@ -6018,6 +6018,9 @@ export const astar: {
 
   // Early return if source equals target
   if (config.source === config.target) {
+    if (!Number.isFinite(config.heuristic(impl.nodes.get(config.source)!, impl.nodes.get(config.target)!))) {
+      throw new GraphError({ message: "A* algorithm requires finite heuristic values" })
+    }
     return Option.some({
       path: [config.source],
       edges: [],
@@ -7218,52 +7221,51 @@ export const dfs: {
       }
     }
 
-    const stackDepths: Array<number> = []
-    // DFS may first discover a node by a longer route, so bounded traversal retries it when a shorter depth appears.
-    const bestDepths = new Int32Array(cache.nodeIds.length)
-    const starts = new Uint8Array(cache.nodeIds.length)
-    const neighborMarks = new Uint32Array(cache.nodeIds.length)
-    const neighbors: Array<number> = []
-    let neighborGeneration = 0
-    bestDepths.fill(-1)
-    const distinctStarts: Array<number> = []
-    for (const node of startPositions) {
-      if (starts[node] === 0) {
-        starts[node] = 1
-        bestDepths[node] = 0
-        distinctStarts.push(node)
+    // Radius is shortest edge distance, so determine membership with BFS before imposing DFS order.
+    const reached = new Uint8Array(cache.nodeIds.length)
+    const queue = new Uint32Array(cache.nodeIds.length)
+    const depths = new Uint32Array(cache.nodeIds.length)
+    let head = 0
+    let tail = 0
+
+    for (const position of startPositions) {
+      if (reached[position] === 0) {
+        reached[position] = 1
+        queue[tail++] = position
       }
     }
-    for (let i = distinctStarts.length - 1; i >= 0; i--) {
-      stack.push(distinctStarts[i])
-      stackDepths.push(0)
-    }
 
-    const collectNeighbors = (targets: Uint32Array, offsets: Uint32Array, current: number) => {
+    const enqueue = (targets: Uint32Array, offsets: Uint32Array, current: number, depth: number) => {
       for (let i = offsets[current]; i < offsets[current + 1]; i++) {
         const neighbor = targets[i]
-        if (neighborMarks[neighbor] !== neighborGeneration) {
-          neighborMarks[neighbor] = neighborGeneration
-          neighbors.push(neighbor)
+        if (reached[neighbor] === 0) {
+          reached[neighbor] = 1
+          queue[tail] = neighbor
+          depths[tail++] = depth + 1
         }
       }
     }
 
-    const pushNeighbors = (current: number, depth: number) => {
-      neighbors.length = 0
-      neighborGeneration++
-      collectNeighbors(view.primary.columnIndices, view.primary.rowOffsets, current)
-      if (view.secondary !== undefined) {
-        collectNeighbors(view.secondary.columnIndices, view.secondary.rowOffsets, current)
+    while (head < tail) {
+      const current = queue[head]
+      const depth = depths[head++]
+      if (depth < radius) {
+        enqueue(view.primary.columnIndices, view.primary.rowOffsets, current, depth)
+        if (view.secondary !== undefined) {
+          enqueue(view.secondary.columnIndices, view.secondary.rowOffsets, current, depth)
+        }
       }
-      const nextDepth = depth + 1
-      for (let i = neighbors.length - 1; i >= 0; i--) {
-        const neighbor = neighbors[i]
-        const neighborDepth = bestDepths[neighbor]
-        if (neighborDepth === -1 || nextDepth < neighborDepth) {
-          bestDepths[neighbor] = nextDepth
+    }
+
+    for (let i = startPositions.length - 1; i >= 0; i--) {
+      stack.push(startPositions[i])
+    }
+
+    const pushNeighbors = (targets: Uint32Array, offsets: Uint32Array, current: number) => {
+      for (let i = offsets[current + 1] - 1; i >= offsets[current]; i--) {
+        const neighbor = targets[i]
+        if (reached[neighbor] !== 0 && yielded[neighbor] === 0) {
           stack.push(neighbor)
-          stackDepths.push(nextDepth)
         }
       }
     }
@@ -7272,18 +7274,14 @@ export const dfs: {
       next() {
         while (stack.length > 0) {
           const current = stack.pop()!
-          const depth = stackDepths.pop()!
-          if (bestDepths[current] !== depth) {
-            continue
-          }
-
-          if (depth < radius) {
-            pushNeighbors(current, depth)
-          }
-
           if (yielded[current] !== 0) {
             continue
           }
+
+          if (view.secondary !== undefined) {
+            pushNeighbors(view.secondary.columnIndices, view.secondary.rowOffsets, current)
+          }
+          pushNeighbors(view.primary.columnIndices, view.primary.rowOffsets, current)
           yielded[current] = 1
 
           return { done: false, value: f(cache.nodeIds[current], cache.nodeData[current] as N) }
