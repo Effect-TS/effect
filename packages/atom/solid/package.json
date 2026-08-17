@@ -66,9 +66,9 @@
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.0",
     "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/jest-dom": "^7.0.1",
     "effect": "workspace:^",
-    "jsdom": "^30.0.0",
+    "jsdom": "^30.0.1",
     "solid-js": "^1.9.14"
   }
 }

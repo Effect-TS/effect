@@ -175,14 +175,17 @@ Missing key
   describe("Literal", () => {
     it("should throw an error if the literal is not a finite number", () => {
       throws(
+        // @effect-diagnostics-next-line schemaLiteralNonFinite:off
         () => Schema.Literal(Infinity),
         new Error("A numeric literal must be finite, got Infinity")
       )
       throws(
+        // @effect-diagnostics-next-line schemaLiteralNonFinite:off
         () => Schema.Literal(-Infinity),
         new Error("A numeric literal must be finite, got -Infinity")
       )
       throws(
+        // @effect-diagnostics-next-line schemaLiteralNonFinite:off
         () => Schema.Literal(NaN),
         new Error("A numeric literal must be finite, got NaN")
       )

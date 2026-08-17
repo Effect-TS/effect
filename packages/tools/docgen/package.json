@@ -60,12 +60,12 @@
     "@babel/code-frame": "^8.0.0",
     "@effect/markdown-toc": "^0.1.0",
     "@effect/platform-node": "workspace:^",
-    "chalk": "^5.6.2",
+    "chalk": "^6.0.0",
     "doctrine": "^3.0.0",
     "effect": "workspace:^",
     "glob": "^13.0.6",
     "prettier": "^3.6.2",
-    "ts-morph": "^27.0.2",
+    "ts-morph": "^28.0.0",
     "tsconfck": "^3.1.6"
   },
   "peerDependencies": {
@@ -76,8 +76,8 @@
     "@effect/vitest": "workspace:^",
     "@types/babel__code-frame": "^7.0.6",
     "@types/doctrine": "^0.0.9",
-    "@types/node": "^26.1.2",
-    "tsx": "^4.23.1",
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.12",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"
   }
