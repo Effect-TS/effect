@@ -43,11 +43,12 @@ export const withTransformation = <N, E, T extends Graph.Kind, A>(
   evaluate: () => A
 ): A => {
   const impl = toImpl(graph)
+  const transforming = impl.transforming
   impl.transforming = true
   try {
     return evaluate()
   } finally {
-    impl.transforming = false
+    impl.transforming = transforming
   }
 }
 

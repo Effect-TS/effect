@@ -540,6 +540,52 @@ describe("Graph", () => {
         assertGraphError(transformation, "Cannot mutate graph during a transformation")
       }
     })
+
+    it("guards read callbacks against nested mutation", () => {
+      const mutable = Graph.beginMutation(directed(["A", "B"], [[0, 1, 1]]))
+      const mutate = () => Graph.addNode(mutable, "C")
+      const operations: ReadonlyArray<() => unknown> = [
+        () =>
+          Graph.findNode(mutable, () => {
+            Graph.findNode(mutable, () => false)
+            mutate()
+            return false
+          }),
+        () => Graph.findNodes(mutable, () => (mutate(), false)),
+        () => Graph.findEdge(mutable, () => (mutate(), false)),
+        () => Graph.findEdges(mutable, () => (mutate(), false)),
+        () => Graph.toGraphViz(mutable, { edgeLabel: (edge) => (mutate(), String(edge)) }),
+        () => Graph.toMermaid(mutable, { nodeShape: () => (mutate(), "rectangle") }),
+        () => Graph.maximumFlow(mutable, { source: 0, target: 1, capacity: (edge) => (mutate(), edge) }),
+        () => Graph.minimumCut(mutable, { source: 0, target: 1, capacity: (edge) => (mutate(), edge) }),
+        () => Graph.dijkstra(mutable, { source: 0, target: 1, cost: (edge) => (mutate(), edge) }),
+        () => Graph.floydWarshall(mutable, (edge) => (mutate(), edge)),
+        () => Graph.astar(mutable, { source: 0, target: 1, cost: (edge) => (mutate(), edge), heuristic: () => 0 }),
+        () => Graph.astar(mutable, { source: 0, target: 1, cost: (edge) => edge, heuristic: () => (mutate(), 0) }),
+        () => Graph.bellmanFord(mutable, { source: 0, target: 1, cost: (edge) => (mutate(), edge) }),
+        () =>
+          Array.from(Graph.allShortestPaths(mutable, {
+            source: 0,
+            target: 1,
+            cost: (edge) => (mutate(), edge)
+          })),
+        () => Array.from(Graph.dfs(mutable, { start: [0] }).visit(() => mutate())),
+        () => Array.from(Graph.nodes(mutable).visit(() => mutate())),
+        () => Array.from(Graph.edges(mutable).visit(() => mutate())),
+        () => Array.from(Graph.externals(mutable).visit(() => mutate()))
+      ]
+
+      for (const operation of operations) {
+        assertGraphError(operation, "Cannot mutate graph during a transformation")
+      }
+
+      const undirectedMutable = Graph.beginMutation(undirected(["A", "B"], [[0, 1, 1]]))
+      assertGraphError(() =>
+        Graph.minimumSpanningForest(undirectedMutable, (edge) => {
+          Graph.addNode(undirectedMutable, "C")
+          return edge
+        }), "Cannot mutate graph during a transformation")
+    })
   })
 
   describe("node operations", () => {
@@ -1799,24 +1845,6 @@ describe("Graph", () => {
       }
     })
 
-    it("snapshots mutable adjacency before evaluating Dijkstra and A* costs", () => {
-      for (const algorithm of ["dijkstra", "astar"] as const) {
-        const mutable = Graph.beginMutation(directed(["A", "B", "C"], [[0, 1, 1], [1, 2, 1], [0, 2, 3]]))
-        let mutated = false
-        const cost = (edge: number) => {
-          if (!mutated) {
-            mutated = true
-            Graph.removeEdge(mutable, 1)
-          }
-          return edge
-        }
-        const result = algorithm === "dijkstra"
-          ? Graph.dijkstra(mutable, { source: 0, target: 2, cost })
-          : Graph.astar(mutable, { source: 0, target: 2, cost, heuristic: () => 0 })
-        assertPath(result, { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [1, 1] })
-      }
-    })
-
     it("handles unreachable and same-node paths completely", () => {
       const graph = directed<string, number>(["A", "B"], [])
       const expected = { path: [0], edges: [], distance: 0, costs: [] }
@@ -2121,25 +2149,6 @@ describe("Graph", () => {
       })
       assert.deepStrictEqual(Array.from(shortest), [
         { path: [0, 1, 3], edges: [0, 2], distance: 2, costs: [1, 1] }
-      ])
-    })
-
-    it("snapshots mutable adjacency before all-shortest-path cost callbacks", () => {
-      const mutable = Graph.beginMutation(directed([0, 1, 2], [[0, 1, 1], [1, 2, 1], [0, 2, 3]]))
-      let mutated = false
-      const paths = Graph.allShortestPaths(mutable, {
-        source: 0,
-        target: 2,
-        cost: (edge) => {
-          if (!mutated) {
-            mutated = true
-            Graph.removeEdge(mutable, 1)
-          }
-          return edge
-        }
-      })
-      assert.deepStrictEqual(Array.from(paths), [
-        { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [1, 1] }
       ])
     })
 
