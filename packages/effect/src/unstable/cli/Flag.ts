@@ -66,6 +66,7 @@ export const string = (name: string): Flag<string> => Param.string(Param.flagKin
  *
  * const verboseFlag = Flag.boolean("verbose")
  * // Usage: --verbose (true) or --no-verbose (false)
+ * // Omission fails unless the flag is made optional or given a fallback.
  * verboseFlag.kind // => "flag"
  * ```
  *

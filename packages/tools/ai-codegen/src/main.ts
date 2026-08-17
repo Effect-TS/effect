@@ -28,11 +28,13 @@ const providerFlag = Flag.string("provider").pipe(
 )
 
 const skipLintFlag = Flag.boolean("skip-lint").pipe(
-  Flag.withDescription("Skip Oxlint step")
+  Flag.withDescription("Skip Oxlint step"),
+  Flag.withDefault(false)
 )
 
 const skipFormatFlag = Flag.boolean("skip-format").pipe(
-  Flag.withDescription("Skip Dprint step")
+  Flag.withDescription("Skip Dprint step"),
+  Flag.withDefault(false)
 )
 
 // =============================================================================

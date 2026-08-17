@@ -98,7 +98,7 @@ import * as Prompt from "./Prompt.ts"
  *   never
  * > = Command.make("deploy", {
  *   env: Flag.string("env"),
- *   force: Flag.boolean("force"),
+ *   force: Flag.boolean("force").pipe(Flag.withDefault(false)),
  *   files: Argument.string("files").pipe(Argument.variadic())
  * })
  *
@@ -456,7 +456,7 @@ export type Services<C> = C extends Command<
  *
  * const parent = Command.make("app").pipe(
  *   Command.withSharedFlags({
- *     verbose: Flag.boolean("verbose"),
+ *     verbose: Flag.boolean("verbose").pipe(Flag.withDefault(false)),
  *     config: Flag.string("config")
  *   })
  * )
@@ -582,14 +582,17 @@ export const isCommand = (u: unknown): u is Command.Any => Predicate.hasProperty
  *     port: Flag.integer("port").pipe(Flag.withDefault(3000))
  *   },
  *   files: Argument.string("files").pipe(Argument.variadic),
- *   force: Flag.boolean("force").pipe(Flag.withDescription("Force deployment"))
+ *   force: Flag.boolean("force").pipe(
+ *     Flag.withDescription("Force deployment"),
+ *     Flag.withDefault(false)
+ *   )
  * })
  *
  * // Command with handler
  * const output: Array<string> = []
  * const deployWithHandler = Command.make("deploy", {
  *   environment: Flag.string("env"),
- *   force: Flag.boolean("force")
+ *   force: Flag.boolean("force").pipe(Flag.withDefault(false))
  * }, (config) =>
  *   Effect.gen(function*() {
  *     yield* Effect.sync(() => output.push(`Starting deployment to ${config.environment}`))
@@ -798,7 +801,7 @@ const normalizeSubcommandEntries = (
  * // Parent command with shared flags
  * const git = Command.make("git").pipe(
  *   Command.withSharedFlags({
- *     verbose: Flag.boolean("verbose")
+ *     verbose: Flag.boolean("verbose").pipe(Flag.withDefault(false))
  *   })
  * )
  *

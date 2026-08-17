@@ -1521,6 +1521,22 @@ describe("Command", () => {
         assert.deepStrictEqual(captured, [false, false])
       }).pipe(Effect.provide(TestLayer)))
 
+    it.effect("should parse required boolean flags when explicitly enabled or disabled", () =>
+      Effect.gen(function*() {
+        const captured: Array<boolean> = []
+
+        const cmd = Command.make("tool", {
+          verbose: Flag.boolean("verbose")
+        }, (config) => Effect.sync(() => captured.push(config.verbose)))
+
+        const runCmd = Command.runWith(cmd, { version: "1.0.0" })
+
+        yield* runCmd(["--verbose"])
+        yield* runCmd(["--no-verbose"])
+
+        assert.deepStrictEqual(captured, [true, false])
+      }).pipe(Effect.provide(TestLayer)))
+
     it.effect("should support optional boolean flags and --no-<flag> negation", () =>
       Effect.gen(function*() {
         const captured: Array<Option.Option<boolean>> = []
@@ -1548,7 +1564,10 @@ describe("Command", () => {
 
         const cmd = Command.make("tool", {
           prompt: Flag.boolean("prompt"),
-          force: Flag.boolean("force").pipe(Flag.withAlias("no-prompt"))
+          force: Flag.boolean("force").pipe(
+            Flag.withAlias("no-prompt"),
+            Flag.withDefault(false)
+          )
         }, (config) => Effect.sync(() => captured.push([config.prompt, config.force] as const)))
 
         const runCmd = Command.runWith(cmd, { version: "1.0.0" })

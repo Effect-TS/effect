@@ -23,7 +23,8 @@ const tasks = Command.make("tasks").pipe(
     workspace,
     verbose: Flag.boolean("verbose").pipe(
       Flag.withAlias("v"),
-      Flag.withDescription("Print diagnostic output")
+      Flag.withDescription("Print diagnostic output"),
+      Flag.withDefault(false)
     )
   }),
   Command.withDescription("Track and manage tasks")
@@ -92,7 +93,8 @@ const list = Command.make(
       Flag.withDefault("open")
     ),
     json: Flag.boolean("json").pipe(
-      Flag.withDescription("Print machine-readable output")
+      Flag.withDescription("Print machine-readable output"),
+      Flag.withDefault(false)
     )
   },
   Effect.fn(function*({ status, json }) {
