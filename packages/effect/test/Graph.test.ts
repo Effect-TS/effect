@@ -4406,6 +4406,25 @@ describe("Graph", () => {
       }
     })
 
+    it("should validate the heuristic when source equals target", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        Graph.addNode(mutable, "source")
+      })
+
+      for (const candidate of [graph, Graph.beginMutation(graph)]) {
+        assertGraphError(
+          () =>
+            Graph.astar(candidate, {
+              source: 0,
+              target: 0,
+              cost: (edge) => edge,
+              heuristic: () => NaN
+            }),
+          "A* algorithm requires finite heuristic values"
+        )
+      }
+    })
+
     it("should treat infinity weights as unreachable", () => {
       const graph = makeSingleEdgeGraph(Infinity)
 
@@ -5369,6 +5388,24 @@ describe("Graph", () => {
       const dfsIterator = Graph.dfs(graph, { start: [0], radius: 2 })
 
       assert.deepStrictEqual(Array.from(Graph.indices(dfsIterator)), [0, 1, 2, 3])
+    })
+
+    it("should preserve DFS order when a finite radius includes every reachable node", () => {
+      const graph = Graph.directed<number, void>((mutable) => {
+        for (let i = 0; i < 4; i++) {
+          Graph.addNode(mutable, i)
+        }
+        Graph.addEdge(mutable, 2, 1, undefined)
+        Graph.addEdge(mutable, 2, 3, undefined)
+        Graph.addEdge(mutable, 2, 0, undefined)
+        Graph.addEdge(mutable, 1, 0, undefined)
+      })
+
+      for (const candidate of [graph, Graph.beginMutation(graph)]) {
+        const unbounded = Array.from(Graph.indices(Graph.dfs(candidate, { start: [2] })))
+        const bounded = Array.from(Graph.indices(Graph.dfs(candidate, { start: [2], radius: 4 })))
+        assert.deepStrictEqual(bounded, unbounded)
+      }
     })
 
     it("should limit BFS traversal by radius", () => {
