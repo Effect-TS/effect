@@ -27,6 +27,44 @@ const TestLayer = Layer.mergeAll(
 )
 
 describe("Param", () => {
+  describe("boolean", () => {
+    it.effect("returns MissingOption when a boolean flag is omitted", () =>
+      Effect.gen(function*() {
+        const error = yield* Effect.flip(
+          Flag.boolean("verbose").parse({
+            flags: {},
+            arguments: []
+          })
+        )
+
+        assert.instanceOf(error, CliError.MissingOption)
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("uses the requested default when a boolean flag is omitted", () =>
+      Effect.gen(function*() {
+        const flag = Flag.boolean("verbose").pipe(Flag.withDefault(true))
+
+        const [, value] = yield* flag.parse({
+          flags: {},
+          arguments: []
+        })
+
+        assert.isTrue(value)
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("restores switch behavior with a false default", () =>
+      Effect.gen(function*() {
+        const flag = Flag.boolean("verbose").pipe(Flag.withDefault(false))
+
+        const [, value] = yield* flag.parse({
+          flags: {},
+          arguments: []
+        })
+
+        assert.isFalse(value)
+      }).pipe(Effect.provide(TestLayer)))
+  })
+
   it.effect("recognizes the alternate flag declared by orElse", () =>
     Effect.gen(function*() {
       const command = Command.make("app", {
@@ -84,7 +122,7 @@ describe("Param", () => {
         assert.deepStrictEqual(value, Option.none())
       }).pipe(Effect.provide(TestLayer)))
 
-    it.effect("returns some when an optional boolean flag is provided", () =>
+    it.effect("returns some false when an optional boolean flag is explicitly disabled", () =>
       Effect.gen(function*() {
         const flag = Flag.boolean("verbose").pipe(Flag.optional)
 
@@ -271,17 +309,32 @@ describe("Param", () => {
         assert.instanceOf(error, CliError.InvalidValue)
       }).pipe(Effect.provide(TestLayer)))
 
-    it.effect("does not prompt for missing boolean flags", () =>
+    it.effect("prompts for missing boolean flags", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.text({ message: "Verbose" })
+        const prompt = Prompt.confirm({ message: "Verbose" })
         const flag = Flag.boolean("verbose").pipe(Flag.withFallbackPrompt(prompt))
+
+        yield* MockTerminal.inputKey("y")
 
         const [, value] = yield* flag.parse({
           flags: {},
           arguments: []
         })
 
-        assert.strictEqual(value, false)
+        assert.isTrue(value)
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("uses an explicitly disabled boolean before prompting", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.confirm({ message: "Verbose" })
+        const flag = Flag.boolean("verbose").pipe(Flag.withFallbackPrompt(prompt))
+
+        const [, value] = yield* flag.parse({
+          flags: { verbose: ["false"] },
+          arguments: []
+        })
+
+        assert.isFalse(value)
       }).pipe(Effect.provide(TestLayer)))
 
     it.effect("returns MissingOption when prompt is cancelled", () =>
@@ -320,6 +373,54 @@ describe("Param", () => {
   })
 
   describe("withFallbackConfig", () => {
+    it.effect("uses ConfigProvider when a boolean flag is missing", () => {
+      const provider = ConfigProvider.fromEnv({
+        env: {
+          VERBOSE: "true"
+        }
+      })
+
+      return Effect.gen(function*() {
+        const flag = Flag.boolean("verbose").pipe(
+          Flag.withFallbackConfig(Config.boolean("VERBOSE"))
+        )
+
+        const [, value] = yield* flag.parse({
+          flags: {},
+          arguments: []
+        })
+
+        assert.isTrue(value)
+      }).pipe(
+        Effect.provideService(ConfigProvider.ConfigProvider, provider),
+        Effect.provide(TestLayer)
+      )
+    })
+
+    it.effect("uses an explicitly disabled boolean before reading config fallbacks", () => {
+      const provider = ConfigProvider.fromEnv({
+        env: {
+          VERBOSE: "true"
+        }
+      })
+
+      return Effect.gen(function*() {
+        const flag = Flag.boolean("verbose").pipe(
+          Flag.withFallbackConfig(Config.boolean("VERBOSE"))
+        )
+
+        const [, value] = yield* flag.parse({
+          flags: { verbose: ["false"] },
+          arguments: []
+        })
+
+        assert.isFalse(value)
+      }).pipe(
+        Effect.provideService(ConfigProvider.ConfigProvider, provider),
+        Effect.provide(TestLayer)
+      )
+    })
+
     it.effect("uses ConfigProvider when a flag is missing", () => {
       const provider = ConfigProvider.fromEnv({
         env: {

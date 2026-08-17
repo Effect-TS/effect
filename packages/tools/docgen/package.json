@@ -1,6 +1,6 @@
 {
   "name": "@effect/docgen",
-  "version": "4.0.0-rc.109",
+  "version": "4.0.0-rc.110",
   "type": "module",
   "license": "MIT",
   "description": "An opinionated documentation generator for Effect projects",

@@ -400,8 +400,9 @@ export const string = <const Kind extends ParamKind>(
  * // Create a boolean argument
  * const enableArg = Param.boolean(Param.argumentKind, "enable")
  *
- * // Usage in CLI: --verbose (defaults to true when present, false when absent)
- * // or as positional: true/false
+ * // Usage in CLI: --verbose (true) or --no-verbose (false).
+ * // The flag is required unless made optional or given a fallback.
+ * // Boolean positional arguments accept true/false.
  * const kinds = [verboseFlag.kind, enableArg.kind] // => ["flag", "argument"]
  * ```
  *
@@ -1272,18 +1273,7 @@ export const optional = <Kind extends ParamKind, A>(
   param: Param<Kind, A>
 ): Param<Kind, Option.Option<A>> => {
   const parse: Parse<Option.Option<A>> = Effect.fnUntraced(function*(args) {
-    const single = getUnderlyingSingleOrThrow(param)
-
-    // Handle boolean params that are explicitly marked as optional (i.e. the
-    // end user wants to return `Option.none()` instead of `false` when the
-    // flag (or its negated variant) are not present on the command line
-    if (
-      isFlagParam(single) &&
-      Primitive.isBoolean(single.primitiveType) &&
-      ![single.name, ...single.aliases].some((name) => (args.flags[name] ?? []).length > 0)
-    ) {
-      return [args.arguments, Option.none()] as const
-    }
+    getUnderlyingSingleOrThrow(param)
 
     return yield* param.parse(args).pipe(
       Effect.map(([leftover, value]) => [leftover, Option.some(value)] as const),
@@ -1967,13 +1957,7 @@ const parseFlag: <A>(
   const providedValues = args.flags[name]
 
   if (providedValues === undefined || providedValues.length === 0) {
-    // Option not provided (empty array due to initialization)
-    if (Primitive.isBoolean(primitiveType)) {
-      // Boolean params default to false when not present
-      return [args.arguments, false as any] as const
-    } else {
-      return yield* new CliError.MissingOption({ option: name })
-    }
+    return yield* new CliError.MissingOption({ option: name })
   }
 
   // Parse the first value (later we can handle multiple)

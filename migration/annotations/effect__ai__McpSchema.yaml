@@ -3,7 +3,7 @@
   note: "Moved to effect/unstable/ai/McpSchema. It remains the MCP content-block union, but v4 exports it as a const schema rather than a Schema.Union subclass. Binary image, audio, and blob data still use Uint8Array values with base64 wire encoding."
 "@effect/ai/McpSchema#ElicitResult":
   replacement: "McpSchema.ElicitResult"
-  note: "Moved to effect/unstable/ai/McpSchema. It remains the discriminated union of accepted responses with content and declined or canceled responses without content."
+  note: "Moved to effect/unstable/ai/McpSchema. It remains discriminated by action, but accepted content is now optional and, when present, is a record of strings, finite numbers, booleans, or string arrays; declined and canceled responses still omit content."
 "@effect/ai/McpSchema#FailureEncoded":
   replacement: "McpSchema.FailureEncoded"
   note: "Moved to effect/unstable/ai/McpSchema and still derives an encoded JSON-RPC failure union from an RpcGroup."
