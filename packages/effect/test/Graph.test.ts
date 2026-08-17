@@ -1801,7 +1801,7 @@ describe("Graph", () => {
     })
   })
 
-  describe("callback-driven transform caching", () => {
+  describe("callback-driven transformations", () => {
     it("should reject finalization from a transform callback", () => {
       const mutable = Graph.beginMutation(Graph.directed<string, never>((graph) => {
         Graph.addNode(graph, "old")
@@ -1815,10 +1815,76 @@ describe("Graph", () => {
             Array.from(Graph.bfs(finalized, { start: [0] }))
             return "new"
           }),
-        "Cannot finalize graph during a transformation"
+        "Cannot mutate graph during a transformation"
       )
       assert.strictEqual(finalized, undefined)
       assertSome(Graph.getNode(mutable, 0), "old")
+    })
+
+    it("should reject every mutation from a transform callback", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+        Graph.addNode(graph, "source")
+        Graph.addNode(graph, "target")
+        Graph.addEdge(graph, 0, 1, 1)
+      }))
+      const mutations: ReadonlyArray<() => unknown> = [
+        () => Graph.addNode(mutable, "new"),
+        () => Graph.updateNode(mutable, 0, () => "updated"),
+        () => Graph.updateEdge(mutable, 0, () => 2),
+        () => Graph.mapNodes(mutable, () => "mapped"),
+        () => Graph.mapEdges(mutable, () => 3),
+        () => Graph.reverse(mutable),
+        () => Graph.filterMapNodes(mutable, () => Option.none()),
+        () => Graph.filterMapEdges(mutable, () => Option.none()),
+        () => Graph.filterNodes(mutable, () => false),
+        () => Graph.filterEdges(mutable, () => false),
+        () => Graph.addEdge(mutable, 1, 0, 4),
+        () => Graph.removeNode(mutable, 0),
+        () => Graph.removeEdge(mutable, 0),
+        () => Graph.endMutation(mutable)
+      ]
+
+      for (const mutation of mutations) {
+        assertGraphError(
+          () =>
+            Graph.updateNode(mutable, 0, (data) => {
+              mutation()
+              return data
+            }),
+          "Cannot mutate graph during a transformation"
+        )
+      }
+
+      assert.deepStrictEqual(Graph.toSnapshot(mutable), {
+        type: "directed",
+        nodes: [{ index: 0, data: "source" }, { index: 1, data: "target" }],
+        edges: [{ index: 0, source: 0, target: 1, data: 1 }]
+      })
+    })
+
+    it("should guard filter predicate callbacks", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+        Graph.addNode(graph, "source")
+        Graph.addNode(graph, "target")
+        Graph.addEdge(graph, 0, 1, 1)
+      }))
+
+      assertGraphError(
+        () =>
+          Graph.filterNodes(mutable, () => {
+            Graph.removeNode(mutable, 0)
+            return true
+          }),
+        "Cannot mutate graph during a transformation"
+      )
+      assertGraphError(
+        () =>
+          Graph.filterEdges(mutable, () => {
+            Graph.removeEdge(mutable, 0)
+            return true
+          }),
+        "Cannot mutate graph during a transformation"
+      )
     })
 
     it("should not retain node data cached by updateNode callbacks", () => {
