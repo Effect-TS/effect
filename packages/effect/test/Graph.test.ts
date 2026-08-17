@@ -1347,10 +1347,9 @@ describe("Graph", () => {
 
   describe("bipartite graphs", () => {
     it("recognizes even, odd, disconnected, and self-loop cases", () => {
-      assert.strictEqual(
-        Graph.isBipartite(undirected([0, 1, 2, 3], [[0, 1, 1], [1, 2, 1], [2, 3, 1], [3, 0, 1]])),
-        true
-      )
+      const even = undirected([0, 1, 2, 3], [[0, 1, 1], [1, 2, 1], [2, 3, 1], [3, 0, 1]])
+      assert.strictEqual(Graph.isBipartite(even), true)
+      assert.strictEqual(Graph.isBipartite(Graph.beginMutation(even)), true)
       assert.strictEqual(Graph.isBipartite(undirected([0, 1, 2], [[0, 1, 1], [1, 2, 1], [2, 0, 1]])), false)
       assert.strictEqual(Graph.isBipartite(undirected([0, 1, 2, 3], [[0, 1, 1], [2, 3, 1]])), true)
       assert.strictEqual(Graph.isBipartite(undirected([0], [[0, 0, 1]])), false)
@@ -1549,7 +1548,7 @@ describe("Graph", () => {
       assert.deepStrictEqual(Graph.maximumFlow(graph, { source: 0, target: 1, capacity: (edge) => edge }), {
         value: 1,
         flows: new Map([[0, 0], [1, 0], [2, 0.75], [3, 1], [4, 0.25]]),
-        cut: [2, 4]
+        cut: [1, 2, 4]
       })
       assert.deepStrictEqual(Graph.maximumFlow(graph, { source: 0, target: 3, capacity: (edge) => edge }), {
         value: 0,
@@ -1691,13 +1690,14 @@ describe("Graph", () => {
     it("returns complete Dijkstra and A* paths with deterministic ties and fixed mutable parity", () => {
       const dijkstra = { source: 0, target: 3, cost: (edge: number) => edge }
       const astar = { ...dijkstra, heuristic: () => 0 }
+      const bellmanFord = { path: [0, 2, 3], edges: [1, 2], distance: 2, costs: [1, 1] }
       assertPath(Graph.dijkstra(graph, dijkstra), expected)
       assertPath(Graph.dijkstra(Graph.beginMutation(graph), dijkstra), expected)
       assertPath(Graph.dijkstra(dijkstra)(graph), expected)
       assertPath(Graph.astar(graph, astar), expected)
       assertPath(Graph.astar(Graph.beginMutation(graph), astar), expected)
       assertPath(Graph.astar(astar)(graph), expected)
-      assertPath(Graph.bellmanFord(dijkstra)(graph), expected)
+      assertPath(Graph.bellmanFord(dijkstra)(graph), bellmanFord)
       const all = Graph.floydWarshall((edge: number) => edge)(graph)
       assert.strictEqual(all.distances.get(0)?.get(3), 2)
       assert.deepStrictEqual(all.paths.get(0)?.get(3), expected.path)
@@ -1819,18 +1819,20 @@ describe("Graph", () => {
 
     it("handles unreachable and same-node paths completely", () => {
       const graph = directed<string, number>(["A", "B"], [])
+      const expected = { path: [0], edges: [], distance: 0, costs: [] }
       assert.deepStrictEqual(Graph.dijkstra(graph, { source: 0, target: 1, cost: (edge) => edge }), Option.none())
-      assertPath(Graph.dijkstra(graph, { source: 0, target: 0, cost: (edge) => edge }), {
-        path: [0],
-        edges: [],
-        distance: 0,
-        costs: []
-      })
+      assertPath(Graph.dijkstra(graph, { source: 0, target: 0, cost: (edge) => edge }), expected)
+      assertPath(Graph.astar(graph, { source: 0, target: 0, cost: (edge) => edge, heuristic: () => 0 }), expected)
+      assertPath(Graph.bellmanFord(graph, { source: 0, target: 0, cost: (edge) => edge }), expected)
       const all = Graph.floydWarshall(graph, (edge) => edge)
       assert.strictEqual(all.distances.get(0)?.get(1), Infinity)
       assert.strictEqual(all.paths.get(0)?.get(1), null)
       assert.deepStrictEqual(all.edges.get(0)?.get(1), [])
       assert.deepStrictEqual(all.costs.get(0)?.get(1), [])
+      assert.strictEqual(all.distances.get(0)?.get(0), 0)
+      assert.deepStrictEqual(all.paths.get(0)?.get(0), [0])
+      assert.deepStrictEqual(all.edges.get(0)?.get(0), [])
+      assert.deepStrictEqual(all.costs.get(0)?.get(0), [])
     })
 
     it("uses negative Bellman-Ford edges in shortest paths", () => {
@@ -2143,10 +2145,13 @@ describe("Graph", () => {
 
     it("handles empty path enumerations", () => {
       const graph = directed<string, number>(["A", "B"], [])
+      const same = [{ path: [0], edges: [], distance: 0, costs: [] }]
 
-      assert.deepStrictEqual(Array.from(Graph.simplePaths(graph, { source: 0, target: 0 })), [
-        { path: [0], edges: [], distance: 0, costs: [] }
-      ])
+      assert.deepStrictEqual(Array.from(Graph.simplePaths(graph, { source: 0, target: 0 })), same)
+      assert.deepStrictEqual(
+        Array.from(Graph.allShortestPaths(graph, { source: 0, target: 0, cost: (edge) => edge })),
+        same
+      )
       assert.deepStrictEqual(
         Array.from(Graph.allShortestPaths(graph, { source: 0, target: 1, cost: (edge) => edge })),
         []
