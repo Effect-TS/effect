@@ -16,6 +16,7 @@ export interface GraphImpl<in out N, in out E, T extends Graph.Kind = "directed"
   readonly [TypeId]: unknown
   type: T
   mutable: boolean
+  transformationDepth: number
   nodes: Map<Graph.NodeIndex, N>
   edges: Map<Graph.EdgeIndex, Graph.Edge<E>>
   adjacency: Map<Graph.NodeIndex, Array<Graph.EdgeIndex>>
@@ -31,12 +32,10 @@ export const toImpl = <N, E, T extends Graph.Kind = "directed">(
   graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
 ): GraphImpl<N, E, T> => graph as unknown as GraphImpl<N, E, T>
 
-const transformationDepth = new WeakMap<GraphImpl<any, any, any>, number>()
-
 /** @internal */
 export const isTransforming = <N, E, T extends Graph.Kind>(
   graph: Graph.Graph<N, E, T> | Graph.MutableGraph<N, E, T>
-): boolean => transformationDepth.has(toImpl(graph))
+): boolean => toImpl(graph).transformationDepth > 0
 
 /** @internal */
 export const withTransformation = <N, E, T extends Graph.Kind, A>(
@@ -44,16 +43,11 @@ export const withTransformation = <N, E, T extends Graph.Kind, A>(
   evaluate: () => A
 ): A => {
   const impl = toImpl(graph)
-  const depth = transformationDepth.get(impl) ?? 0
-  transformationDepth.set(impl, depth + 1)
+  impl.transformationDepth++
   try {
     return evaluate()
   } finally {
-    if (depth === 0) {
-      transformationDepth.delete(impl)
-    } else {
-      transformationDepth.set(impl, depth)
-    }
+    impl.transformationDepth--
   }
 }
 
@@ -139,6 +133,7 @@ export const make = <N, E, T extends Graph.Kind>(type: T, mutable: boolean): Gra
   const graph: GraphImpl<N, E, T> = Object.create(ProtoGraph)
   graph.type = type
   graph.mutable = mutable
+  graph.transformationDepth = 0
   graph.nodes = new Map()
   graph.edges = new Map()
   graph.adjacency = new Map()
@@ -180,6 +175,7 @@ export const finalize = <N, E, T extends Graph.Kind>(source: GraphImpl<N, E, T>)
   const graph: GraphImpl<N, E, T> = Object.create(ProtoGraph)
   graph.type = source.type
   graph.mutable = false
+  graph.transformationDepth = 0
   graph.nodes = source.nodes
   graph.edges = source.edges
   graph.adjacency = source.adjacency
