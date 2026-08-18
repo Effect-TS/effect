@@ -1,7 +1,6 @@
 /** @internal */
 import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as EntityAddress from "effect/unstable/cluster/EntityAddress"
 import * as EntityId from "effect/unstable/cluster/EntityId"
@@ -62,21 +61,20 @@ export const encodeReplyFor = (
       Effect.orDie
     ) as Effect.Effect<string>
   }
-  return Option.match(RpcSchema.getStreamSchemas(rpc.successSchema), {
-    onNone: () => Effect.die(`Expected a stream RPC: ${rpc._tag}`),
-    onSome: (schemas) =>
-      Effect.map(
-        Schema.encodeUnknownEffect(Schema.toCodecJson(Schema.NonEmptyArray(schemas.success)))(reply.values),
-        (values) =>
-          JSON.stringify({
-            _tag: "Chunk" as const,
-            requestId: String(reply.requestId),
-            id: String(reply.id),
-            sequence: reply.sequence,
-            values
-          })
-      )
-  }).pipe(
+  if (!RpcSchema.isStreamSchema(rpc.successSchema)) {
+    return Effect.die(`Expected a stream RPC: ${rpc._tag}`)
+  }
+  return Effect.map(
+    Schema.encodeUnknownEffect(Schema.toCodecJson(Schema.NonEmptyArray(rpc.successSchema.success)))(reply.values),
+    (values) =>
+      JSON.stringify({
+        _tag: "Chunk" as const,
+        requestId: String(reply.requestId),
+        id: String(reply.id),
+        sequence: reply.sequence,
+        values
+      })
+  ).pipe(
     Effect.provideContext(registration.context as any),
     Effect.orDie
   ) as Effect.Effect<string>
@@ -95,18 +93,17 @@ export const decodeReplyFor = (
       (exit) => new Reply.WithExit({ requestId: encoded.requestId as any, id: encoded.id as any, exit: exit as any })
     ).pipe(Effect.provideContext(context as any), Effect.orDie) as Effect.Effect<Reply.Reply<any>>
   }
-  return Option.match(RpcSchema.getStreamSchemas(rpc.successSchema), {
-    onNone: () => Effect.die(`Expected a stream RPC: ${rpc._tag}`),
-    onSome: (schemas) =>
-      Effect.map(
-        Schema.decodeUnknownEffect(Schema.toCodecJson(Schema.NonEmptyArray(schemas.success)))(encoded.values),
-        (values) =>
-          new Reply.Chunk({
-            requestId: encoded.requestId as any,
-            id: encoded.id as any,
-            sequence: encoded.sequence,
-            values
-          })
-      )
-  }).pipe(Effect.provideContext(context as any), Effect.orDie) as Effect.Effect<Reply.Reply<any>>
+  if (!RpcSchema.isStreamSchema(rpc.successSchema)) {
+    return Effect.die(`Expected a stream RPC: ${rpc._tag}`)
+  }
+  return Effect.map(
+    Schema.decodeUnknownEffect(Schema.toCodecJson(Schema.NonEmptyArray(rpc.successSchema.success)))(encoded.values),
+    (values) =>
+      new Reply.Chunk({
+        requestId: encoded.requestId as any,
+        id: encoded.id as any,
+        sequence: encoded.sequence,
+        values
+      })
+  ).pipe(Effect.provideContext(context as any), Effect.orDie) as Effect.Effect<Reply.Reply<any>>
 }
