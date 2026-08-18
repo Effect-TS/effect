@@ -204,6 +204,8 @@ export default {
       const tag = url.searchParams.get("tag") ?? "Get"
       const operationId = url.searchParams.get("operationId") ?? "operation"
       const requestId = crypto.randomUUID()
+      const discardParam = url.searchParams.get("discard")
+      const discard = discardParam === null ? tag === "Add" || tag === "AddVolatile" : discardParam === "true"
       try {
         const result = await stub.invoke(
           JSON.stringify({
@@ -218,7 +220,7 @@ export default {
             payload: tag === "Get" || tag === "Watch" ? null : { operationId },
             headers: {}
           }),
-          tag === "Add" || tag === "AddVolatile"
+          discard
         )
         return Response.json(result)
       } catch (error) {
