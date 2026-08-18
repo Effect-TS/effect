@@ -47,7 +47,7 @@ import { armAlarm, earliestDeliverAt, ensureEntityStorage } from "./internal/ent
 import { decodeReplyFor, decodeRequest, encodeReplyFor } from "./internal/entityWire.ts"
 import type { WorkflowRunOptions, WorkflowStub } from "./internal/workflowRegistry.ts"
 import { makeWorkflowRuntime } from "./internal/workflowRuntime.ts"
-import { earliestClockWakeUp, ensureWorkflowStorage, loadExecutionName } from "./internal/workflowStorage.ts"
+import { earliestClockWakeUp, ensureWorkflowStorage, loadExecution } from "./internal/workflowStorage.ts"
 
 const notExposed = (className: string) => () => {
   throw new Error(
@@ -664,7 +664,7 @@ export class ClusterWorkflow extends DurableObject<unknown> {
     } else {
       // An alarm wake carries no `id.name`; recover it from the stored
       // execution so due clocks still fire after eviction.
-      const stored = loadExecutionName(ctx.storage.sql)
+      const stored = loadExecution(ctx.storage.sql)
       this.#name = stored === undefined ? undefined : encodeName(stored.workflowName, stored.executionId)
     }
     const wakeUp = earliestClockWakeUp(ctx.storage.sql)
