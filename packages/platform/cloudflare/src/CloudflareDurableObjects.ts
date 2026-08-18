@@ -45,6 +45,8 @@ import { deliverReply as deliverEntityReply } from "./internal/entityReply.ts"
 import { makeEntityRuntime } from "./internal/entityRuntime.ts"
 import { armAlarm, earliestDeliverAt, ensureEntityStorage } from "./internal/entityStorage.ts"
 import { decodeReplyFor, decodeRequest, encodeReplyFor } from "./internal/entityWire.ts"
+import { makeQueueRuntime } from "./internal/queueRuntime.ts"
+import { earliestLeaseExpiry, ensureQueueStorage } from "./internal/queueStorage.ts"
 import type { WorkflowRunOptions, WorkflowStub } from "./internal/workflowRegistry.ts"
 import { makeWorkflowRuntime } from "./internal/workflowRuntime.ts"
 import { earliestClockWakeUp, ensureWorkflowStorage, loadExecution } from "./internal/workflowStorage.ts"
@@ -58,6 +60,14 @@ const notExposed = (className: string) => () => {
 type EntityRuntime = Effect.Success<ReturnType<typeof makeEntityRuntime>>
 
 type WorkflowRuntime = ReturnType<typeof makeWorkflowRuntime>
+
+type QueueRuntime = ReturnType<typeof makeQueueRuntime>
+
+interface QueueItem {
+  readonly id: string
+  readonly element: string
+  readonly attempts: number
+}
 
 interface ReplySession {
   readonly replies: Array<string>
@@ -743,13 +753,86 @@ export class ClusterWorkflow extends DurableObject<unknown> {
 }
 
 /**
- * The durable queue class. Placeholder for `DurableQueue`; one object per
- * queue name. It only reserves the binding for now.
+ * The durable queue class behind the `PersistedQueue` implementation used by
+ * `DurableQueue`. One instance holds one named queue.
+ *
+ * **Details**
+ *
+ * The constructor stays cheap: it opens SQLite, ensures the queue table, and
+ * re-arms the single alarm from the earliest pending lease expiry. Items are
+ * leased to takers for a bounded time; the alarm watchdog expires overdue
+ * leases so an item whose worker died is redelivered.
  *
  * @category durable objects
  * @since 4.0.0
  */
 export class ClusterDurableQueue extends DurableObject<unknown> {
+  readonly #state: DurableObjectState
+  #runtime: QueueRuntime | undefined
+
+  constructor(ctx: DurableObjectState, env: unknown) {
+    super(ctx, env)
+    this.#state = ctx
+    if (ctx.id.name !== undefined && decodeName(ctx.id.name) === undefined) {
+      throw new Error("ClusterDurableQueue requires a canonical queue Durable Object name")
+    }
+    ensureQueueStorage(ctx.storage.sql)
+    const expiry = earliestLeaseExpiry(ctx.storage.sql)
+    if (expiry !== undefined) {
+      void ctx.blockConcurrencyWhile(() => Effect.runPromise(armAlarm(ctx.storage, expiry)))
+    }
+  }
+
+  #getRuntime(): QueueRuntime {
+    if (this.#runtime === undefined) {
+      this.#runtime = makeQueueRuntime({
+        sql: this.#state.storage.sql,
+        alarm: this.#state.storage,
+        now: () => Date.now()
+      })
+    }
+    return this.#runtime
+  }
+
+  /** @internal Same-Worker RPC transport used by `CloudflarePersistedQueue.layer`. */
+  offer(id: string, element: string): Promise<void> {
+    return this.#getRuntime().offer(id, element)
+  }
+
+  /** @internal Waits until an item is available, then leases it to the caller. */
+  take(takerId: string, maxAttempts: number, leaseMillis: number): Promise<QueueItem> {
+    return this.#getRuntime().take(takerId, maxAttempts, leaseMillis)
+  }
+
+  /** @internal Cancels a waiting take, releasing an item already leased to it. */
+  cancelTake(takerId: string): Promise<void> {
+    return this.#getRuntime().cancelTake(takerId)
+  }
+
+  /** @internal */
+  complete(id: string): Promise<void> {
+    return this.#getRuntime().complete(id)
+  }
+
+  /** @internal Records a failed attempt and requeues the item. */
+  fail(id: string, lastFailure: string): Promise<void> {
+    return this.#getRuntime().fail(id, lastFailure)
+  }
+
+  /** @internal Requeues the item without counting an attempt. */
+  release(id: string): Promise<void> {
+    return this.#getRuntime().release(id)
+  }
+
+  /** @internal Extends the lease of an item still being processed. */
+  extend(id: string, leaseMillis: number): Promise<void> {
+    return this.#getRuntime().extend(id, leaseMillis)
+  }
+
+  override alarm(): Promise<void> {
+    return this.#getRuntime().runAlarm()
+  }
+
   override fetch: () => never = notExposed("ClusterDurableQueue")
 }
 
