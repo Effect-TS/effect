@@ -1,5 +1,8 @@
-import { ensureEntityStorage, rearmAlarm } from "@effect/platform-cloudflare/internal/entityStorage"
+import type { SqlStorage } from "@cloudflare/workers-types"
+import type { EntityAlarm } from "@effect/platform-cloudflare/internal/entityStorage"
+import { armAlarm, earliestDeliverAt, ensureEntityStorage } from "@effect/platform-cloudflare/internal/entityStorage"
 import { assert, describe, it } from "@effect/vitest"
+import { Effect } from "effect"
 
 class FakeSql {
   readonly statements: Array<string> = []
@@ -11,6 +14,10 @@ class FakeSql {
       ? [{ deliver_at: this.earliestDeliverAt }]
       : []
     return { toArray: () => rows }
+  }
+
+  get sql(): SqlStorage {
+    return this as unknown as SqlStorage
   }
 }
 
@@ -26,13 +33,17 @@ class FakeAlarm {
     this.current = scheduledTime
     return Promise.resolve()
   }
+
+  get alarm(): EntityAlarm {
+    return this as unknown as EntityAlarm
+  }
 }
 
 describe("EntityStorage", () => {
   describe("ensureEntityStorage", () => {
     it("creates the mailbox tables idempotently", () => {
       const sql = new FakeSql()
-      ensureEntityStorage(sql)
+      ensureEntityStorage(sql.sql)
       const first = [...sql.statements]
       assert.isAtLeast(first.length, 1)
       for (const statement of first) {
@@ -41,43 +52,45 @@ describe("EntityStorage", () => {
       assert.isTrue(first.some((statement) => statement.includes("cluster_messages")))
       assert.isTrue(first.some((statement) => statement.includes("cluster_replies")))
 
-      ensureEntityStorage(sql)
+      ensureEntityStorage(sql.sql)
       assert.deepStrictEqual(sql.statements, [...first, ...first])
     })
   })
 
-  describe("rearmAlarm", () => {
-    it("does nothing without pending deliver_at rows", async () => {
-      const sql = new FakeSql()
-      const alarm = new FakeAlarm()
-      await rearmAlarm(alarm, sql)
-      assert.deepStrictEqual(alarm.setCalls, [])
+  describe("earliestDeliverAt", () => {
+    it("returns undefined without pending deliver_at rows", () => {
+      assert.isUndefined(earliestDeliverAt(new FakeSql().sql))
     })
 
-    it("arms the alarm at the earliest deliver_at", async () => {
+    it("returns the earliest pending deliver_at", () => {
       const sql = new FakeSql()
       sql.earliestDeliverAt = 1000
-      const alarm = new FakeAlarm()
-      await rearmAlarm(alarm, sql)
-      assert.deepStrictEqual(alarm.setCalls, [1000])
+      assert.strictEqual(earliestDeliverAt(sql.sql), 1000)
     })
+  })
 
-    it("keeps an already earlier alarm", async () => {
-      const sql = new FakeSql()
-      sql.earliestDeliverAt = 1000
-      const alarm = new FakeAlarm()
-      alarm.current = 500
-      await rearmAlarm(alarm, sql)
-      assert.deepStrictEqual(alarm.setCalls, [])
-    })
+  describe("armAlarm", () => {
+    it.effect("arms an unset alarm", () =>
+      Effect.gen(function*() {
+        const alarm = new FakeAlarm()
+        yield* armAlarm(alarm.alarm, 1000)
+        assert.deepStrictEqual(alarm.setCalls, [1000])
+      }))
 
-    it("moves a later alarm forward", async () => {
-      const sql = new FakeSql()
-      sql.earliestDeliverAt = 1000
-      const alarm = new FakeAlarm()
-      alarm.current = 2000
-      await rearmAlarm(alarm, sql)
-      assert.deepStrictEqual(alarm.setCalls, [1000])
-    })
+    it.effect("keeps an already earlier alarm", () =>
+      Effect.gen(function*() {
+        const alarm = new FakeAlarm()
+        alarm.current = 500
+        yield* armAlarm(alarm.alarm, 1000)
+        assert.deepStrictEqual(alarm.setCalls, [])
+      }))
+
+    it.effect("moves a later alarm forward", () =>
+      Effect.gen(function*() {
+        const alarm = new FakeAlarm()
+        alarm.current = 2000
+        yield* armAlarm(alarm.alarm, 1000)
+        assert.deepStrictEqual(alarm.setCalls, [1000])
+      }))
   })
 })
