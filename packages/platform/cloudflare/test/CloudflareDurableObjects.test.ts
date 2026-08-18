@@ -71,26 +71,51 @@ describe("CloudflareDurableObjects", () => {
       assert.deepStrictEqual(terminal.exit, { _tag: "Success", value: 3 })
     }), 60_000)
 
-  it.effect(
-    "returns the first persisted stream chunk without waiting for the stream to end",
-    () =>
-      Effect.gen(function*() {
-        const miniflare = yield* makeMiniflare
-        const result = yield* Effect.promise(() =>
+  it.effect("acknowledges stream chunks without holding the entity lock", () =>
+    Effect.gen(function*() {
+      const miniflare = yield* makeMiniflare
+      const call = (path: string) =>
+        Effect.promise(() =>
           Promise.race([
-            miniflare.dispatchFetch("http://placeholder/mailbox?tag=Watch").then(async (response) =>
-              await response.json() as { readonly replies: ReadonlyArray<string> }
-            ),
-            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("stream did not yield")), 2_000))
+            miniflare.dispatchFetch(`http://placeholder${path}`).then(async (response) => {
+              const body = await response.text()
+              assert.strictEqual(response.status, 200, body)
+              return JSON.parse(body)
+            }),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`${path} did not return`)), 2_000))
           ])
         )
-        const first = JSON.parse(result.replies[0])
 
-        assert.strictEqual(first._tag, "Chunk")
-        assert.deepStrictEqual(first.values, [1])
-      }),
-    60_000
-  )
+      const result = yield* call("/mailbox?tag=Watch")
+      const first = JSON.parse(result.replies[0])
+      assert.deepStrictEqual(first, {
+        _tag: "Chunk",
+        requestId: result.requestId,
+        id: first.id,
+        sequence: 0,
+        values: [1]
+      })
+
+      const getResult = yield* call("/mailbox?tag=Get")
+      const getReply = JSON.parse(getResult.replies[0])
+      assert.deepStrictEqual(getReply.exit, { _tag: "Success", value: 1 })
+
+      const secondReplies = yield* call(`/ack?requestId=${result.requestId}&replyId=${first.id}`)
+      const second = JSON.parse(secondReplies[0])
+      assert.deepStrictEqual(second, {
+        _tag: "Chunk",
+        requestId: result.requestId,
+        id: second.id,
+        sequence: 1,
+        values: [2]
+      })
+
+      const terminalReplies = yield* call(`/ack?requestId=${result.requestId}&replyId=${second.id}`)
+      const terminal = JSON.parse(terminalReplies[0])
+      assert.strictEqual(terminal._tag, "WithExit")
+      assert.strictEqual(terminal.requestId, result.requestId)
+      assert.deepStrictEqual(terminal.exit, { _tag: "Success", value: null })
+    }), 60_000)
 
   it.effect("isolates an undecodable replay row from later mailbox requests", () =>
     Effect.gen(function*() {
