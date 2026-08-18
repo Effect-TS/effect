@@ -34,12 +34,20 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
   keepAlive?: (enabled: boolean) => Effect.Effect<void>
 ) {
   let cached: CachedHandlers | undefined
+  const metricContext = Context.merge(
+    registration.context,
+    Metric.CurrentMetricAttributes.context({ type: registration.entity.type })
+  )
 
   const invalidate = Effect.fnUntraced(function*() {
     if (cached === undefined) return
     const scope = cached.scope
     cached = undefined
-    yield* Scope.close(scope, Exit.void)
+    yield* Scope.close(scope, Exit.void).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        ClusterMetrics.entities.modifyUnsafe(BigInt(-1), metricContext)
+      }))
+    )
   })
 
   const getHandlers = Effect.fnUntraced(function*() {
@@ -55,6 +63,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
       context = Context.add(context, KeepAliveHandler, keepAlive)
     }
     const handlers = yield* Effect.provideContext(registration.build, context)
+    ClusterMetrics.entities.modifyUnsafe(BigInt(1), metricContext)
     return cached = { handlers, context, scope }
   })
 
@@ -122,19 +131,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
             currentLastSentChunk = Option.some(reply)
           }))
       })
-    })
-
-    const metricContext = Context.merge(
-      entry.context,
-      Metric.CurrentMetricAttributes.context({ type: registration.entity.type })
-    )
-    const handlerEffect = Effect.sync(() => {
-      ClusterMetrics.entities.modifyUnsafe(BigInt(1), metricContext)
     }).pipe(
-      Effect.andThen(runWithDefectRetry(execute)),
-      Effect.ensuring(Effect.sync(() => {
-        ClusterMetrics.entities.modifyUnsafe(BigInt(-1), metricContext)
-      })),
       Effect.withSpan("CloudflareCluster.handler", {
         attributes: {
           entityType: registration.entity.type,
@@ -143,7 +140,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
         }
       }, { captureStackTrace: false })
     )
-    const exit = yield* Effect.provideContext(handlerEffect, entry.context)
+    const exit = yield* Effect.provideContext(runWithDefectRetry(execute), entry.context)
     if (!discard) {
       yield* respond(
         new Reply.WithExit({
