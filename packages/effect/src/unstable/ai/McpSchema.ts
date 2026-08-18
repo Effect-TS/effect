@@ -173,7 +173,7 @@ export class ResultMeta extends Schema.Opaque<ResultMeta>()(Schema.Struct({
    * This result property is reserved by the protocol to allow clients and
    * servers to attach additional metadata to their responses.
    */
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 })) {}
 
 /**
@@ -192,7 +192,7 @@ export class NotificationMeta extends Schema.Opaque<NotificationMeta>()(Schema.S
    * This parameter name is reserved by MCP to allow clients and servers to
    * attach additional metadata to their notifications.
    */
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 })) {}
 
 /**
@@ -919,7 +919,7 @@ export class Resource extends Schema.Class<Resource>(
    * This parameter name is reserved by MCP to allow clients and servers to
    * attach additional metadata to resources.
    */
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 }) {}
 
 /**
@@ -969,7 +969,7 @@ export class ResourceTemplate extends Schema.Class<ResourceTemplate>(
   /**
    * Optional additional metadata for the client.
    */
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 }) {}
 
 /**
@@ -990,7 +990,7 @@ export class ResourceContents extends Schema.Opaque<ResourceContents>()(Schema.S
   /**
    * Optional additional metadata for the client.
    */
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 })) {}
 
 /**
@@ -1235,7 +1235,7 @@ export class Prompt extends Schema.Class<Prompt>(
    * Icons that clients can display for this prompt.
    */
   icons: optional(Schema.Array(Icon)),
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 }) {}
 
 /**
@@ -1254,7 +1254,7 @@ export class TextContent extends Schema.Opaque<TextContent>()(Schema.Struct({
    * Optional annotations for the client.
    */
   annotations: optional(Annotations),
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 })) {}
 
 /**
@@ -1278,7 +1278,7 @@ export class ImageContent extends Schema.Opaque<ImageContent>()(Schema.Struct({
    * Optional annotations for the client.
    */
   annotations: optional(Annotations),
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 })) {}
 
 /**
@@ -1302,7 +1302,7 @@ export class AudioContent extends Schema.Opaque<AudioContent>()(Schema.Struct({
    * Optional annotations for the client.
    */
   annotations: optional(Annotations),
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 })) {}
 
 /**
@@ -1323,7 +1323,7 @@ export class EmbeddedResource extends Schema.Opaque<EmbeddedResource>()(Schema.S
    * Optional annotations for the client.
    */
   annotations: optional(Annotations),
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 })) {}
 
 /**
@@ -1544,10 +1544,10 @@ export type ToolJsonSchema = Schema.JsonObject & {
 export const ToolJsonSchema: Schema.Codec<ToolJsonSchema> = Schema.StructWithRest(
   Schema.Struct({
     type: Schema.Literal("object"),
-    properties: optional(Schema.Record(Schema.String, Schema.Record(Schema.String, Schema.Json))),
+    properties: optional(Schema.Record(Schema.String, Schema.JsonObject)),
     required: optional(Schema.Array(Schema.String))
   }),
-  [Schema.Record(Schema.String, Schema.Json)]
+  [Schema.JsonObject]
 )
 
 /**
@@ -1592,7 +1592,7 @@ export class Tool extends Schema.Class<Tool>(
    * This parameter name is reserved by MCP to allow clients and servers to
    * attach additional metadata to resources.
    */
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 }) {}
 
 /**
@@ -1814,7 +1814,7 @@ export class ToolUseContent extends Schema.Class<ToolUseContent>("@effect/ai/Mcp
    * Arguments supplied to the tool.
    */
   input: Schema.Record(Schema.String, Schema.Unknown),
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 }) {}
 
 /**
@@ -1841,7 +1841,7 @@ export class ToolResultContent extends Schema.Class<ToolResultContent>("@effect/
    * Whether tool execution ended in an error.
    */
   isError: optional(Schema.Boolean),
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 }) {}
 
 /**
@@ -1867,7 +1867,7 @@ export const SamplingMessageContentBlock = Schema.Union([
 export class SamplingMessage extends Schema.Opaque<SamplingMessage>()(Schema.Struct({
   role: Role,
   content: Schema.Union([SamplingMessageContentBlock, Schema.Array(SamplingMessageContentBlock)]),
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 })) {}
 
 /**
@@ -1984,7 +1984,7 @@ export class CreateMessageResult extends Schema.Class<CreateMessageResult>(
 )({
   role: Role,
   content: Schema.Union([SamplingMessageContentBlock, Schema.Array(SamplingMessageContentBlock)]),
-  _meta: optional(Schema.Record(Schema.String, Schema.Json)),
+  _meta: optional(Schema.JsonObject),
   /**
    * The name of the model that generated the message.
    */
@@ -2196,7 +2196,7 @@ export class Root extends Schema.Class<Root>(
   /**
    * Optional additional metadata associated with the root.
    */
-  _meta: optional(Schema.Record(Schema.String, Schema.Json))
+  _meta: optional(Schema.JsonObject)
 }) {}
 
 /**

@@ -104,7 +104,7 @@ const projectContent = Effect.fnUntraced(function*(content: typeof PublicMcpSche
 })
 
 const projectStructuredContent = Effect.fnUntraced(function*(content: Schema.Json | undefined) {
-  if (content === undefined || Schema.is(Schema.Record(Schema.String, Schema.Json))(content)) {
+  if (content === undefined || Schema.is(Schema.JsonObject)(content)) {
     return content
   }
   return yield* new McpCore.UnsupportedByProtocol({

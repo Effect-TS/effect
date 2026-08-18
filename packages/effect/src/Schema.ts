@@ -16223,6 +16223,28 @@ export const Json: Codec<Json> = make(SchemaAST.annotate(SchemaAST.Json, {
 }))
 
 /**
+ * Schema for readonly string-keyed records whose values are JSON-compatible.
+ *
+ * **When to use**
+ *
+ * Use when you need to validate a JSON object rather than any JSON value.
+ *
+ * **Example** (Validating a JSON object)
+ *
+ * ```ts import.meta.vitest
+ * import { Option, Schema } from "effect"
+ *
+ * Schema.decodeUnknownOption(Schema.JsonObject)({ key: [1, true, null] }) // => Option.some({ key: [1, true, null] })
+ * Schema.decodeUnknownOption(Schema.JsonObject)([1, 2, 3]) // => Option.none()
+ * ```
+ *
+ * @see {@link Json} for a schema that also accepts JSON arrays and primitive values
+ * @category schemas
+ * @since 4.0.0
+ */
+export const JsonObject = Record(String, Json)
+
+/**
  * Reviver for persisted `Json` declarations.
  *
  * **When to use**
