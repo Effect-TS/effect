@@ -713,6 +713,11 @@ export const keepAlive: (
   never,
   Sharding | CurrentAddress
 > = Effect.fnUntraced(function*(enabled: boolean) {
+  const ohandler = yield* Effect.serviceOption(KeepAliveHandler)
+  if (ohandler._tag === "Some") {
+    yield* ohandler.value(enabled)
+    return
+  }
   const olatch = yield* Effect.serviceOption(KeepAliveLatch)
   if (olatch._tag === "None") return
   if (!enabled) {
@@ -780,3 +785,9 @@ export const KeepAliveRpc = Rpc.make("Cluster/Entity/keepAlive")
 export class KeepAliveLatch extends Context.Service<KeepAliveLatch, Latch.Latch>()(
   "effect/cluster/Entity/KeepAliveLatch"
 ) {}
+
+/** @internal */
+export class KeepAliveHandler extends Context.Service<
+  KeepAliveHandler,
+  (enabled: boolean) => Effect.Effect<void>
+>()("effect/cluster/Entity/KeepAliveHandler") {}
