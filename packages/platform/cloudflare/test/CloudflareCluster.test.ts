@@ -2,8 +2,16 @@ import * as CloudflareCluster from "@effect/platform-cloudflare/CloudflareCluste
 import { CurrentEntityName, deliverReply } from "@effect/platform-cloudflare/internal/entityReply"
 import { assert, describe, it } from "@effect/vitest"
 import { DateTime, Effect, Exit, Fiber, Layer, PrimaryKey, Schema, Stream } from "effect"
-import { ClusterSchema, DeliverAt, Entity, Sharding, Singleton } from "effect/unstable/cluster"
-import { Rpc, RpcSchema } from "effect/unstable/rpc"
+import {
+  ClusterSchema,
+  DeliverAt,
+  Entity,
+  EntityProxy,
+  EntityProxyServer,
+  Sharding,
+  Singleton
+} from "effect/unstable/cluster"
+import { Rpc, RpcSchema, RpcTest } from "effect/unstable/rpc"
 
 const User = Entity.make("User", [
   Rpc.make("Ping", { success: Schema.String })
@@ -108,6 +116,46 @@ describe("CloudflareCluster", () => {
         makeClient("42")
         assert.deepStrictEqual(entityNamespace.names, ["4:User42"])
       }))
+
+    it.effect("routes generated entity proxy handlers through the encoded Durable Object name", () => {
+      const stub = {
+        invoke(envelopeText: string) {
+          const envelope = JSON.parse(envelopeText)
+          return Promise.resolve({
+            requestId: envelope.requestId,
+            replies: [JSON.stringify({
+              _tag: "WithExit",
+              requestId: envelope.requestId,
+              id: "proxy-reply",
+              exit: { _tag: "Success", value: "pong" }
+            })]
+          })
+        },
+        acknowledge() {
+          return Promise.resolve([])
+        }
+      }
+      const entityNamespace = new FakeNamespace(stub)
+      const options: CloudflareCluster.LayerOptions = {
+        entities: [User],
+        entityNamespace: entityNamespace as any,
+        workflowNamespace: new FakeNamespace() as any,
+        queueNamespace: new FakeNamespace() as any,
+        singletonNamespace: new FakeNamespace() as any
+      }
+      const proxy = EntityProxy.toRpcGroup(User)
+
+      return Effect.gen(function*() {
+        const client = yield* RpcTest.makeClient(proxy)
+        const result = yield* client["User.Ping"]({ entityId: "proxy:id", payload: undefined })
+
+        assert.strictEqual(result, "pong")
+        assert.deepStrictEqual(entityNamespace.names, ["4:Userproxy:id"])
+      }).pipe(
+        Effect.provide(EntityProxyServer.layerRpcHandlers(User)),
+        Effect.provide(CloudflareCluster.layer(options))
+      )
+    })
 
     it.effect("uses uuidv7 request ids and decodes replies from the entity Durable Object", () => {
       const envelopes: Array<any> = []

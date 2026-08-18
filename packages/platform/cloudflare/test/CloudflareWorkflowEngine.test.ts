@@ -6,7 +6,16 @@ import { makeWorkflowRuntime, type WorkflowRuntime } from "@effect/platform-clou
 import { loadExecution } from "@effect/platform-cloudflare/internal/workflowStorage"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Layer, Option, Schema } from "effect"
-import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "effect/unstable/workflow"
+import { RpcTest } from "effect/unstable/rpc"
+import {
+  Activity,
+  DurableClock,
+  DurableDeferred,
+  Workflow,
+  WorkflowEngine,
+  WorkflowProxy,
+  WorkflowProxyServer
+} from "effect/unstable/workflow"
 
 class FakeSql {
   execution: Record<string, unknown> | undefined
@@ -184,6 +193,32 @@ const pollUntil = Effect.fnUntraced(function*<
 })
 
 describe("CloudflareWorkflowEngine", () => {
+  it.effect("routes generated workflow proxy handlers through the encoded Durable Object name", () => {
+    const namespace = new FakeWorkflowNamespace()
+    const Proxied = Workflow.make("Proxied", {
+      payload: { id: Schema.String },
+      success: Schema.String,
+      idempotencyKey: ({ id }) => id
+    })
+    const workflows = [Proxied] as const
+    const proxy = WorkflowProxy.toRpcGroup(workflows)
+    const workflowLayer = Proxied.toLayer(({ id }) => Effect.succeed(`done-${id}`)).pipe(
+      Layer.provideMerge(namespace.layer)
+    )
+
+    return Effect.gen(function*() {
+      const client = yield* RpcTest.makeClient(proxy)
+      const result = yield* client.Proxied({ id: "proxy:id" })
+      const executionId = yield* Proxied.executionId({ id: "proxy:id" })
+
+      assert.strictEqual(result, "done-proxy:id")
+      assert.deepStrictEqual(Array.from(namespace.stores.keys()), [encodeName("Proxied", executionId)])
+    }).pipe(
+      Effect.provide(WorkflowProxyServer.layerRpcHandlers(workflows)),
+      Effect.provide(workflowLayer)
+    )
+  })
+
   it.effect("persists a suspended execution and resumes it after an isolate loss", () => {
     const namespace = new FakeWorkflowNamespace()
     const Gate = DurableDeferred.make("Resumable/Gate", { success: Schema.String })
