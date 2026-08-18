@@ -543,11 +543,17 @@ export function toCodeDocument(
           `Schema.Record(${signature.parameter.runtime}, ${signature.type.runtime})`
         ).join(", ")
         const indexTypes = indexSignatures.map((signature) =>
-          `{ readonly [x: ${signature.parameter.Type}]: ${signature.type.Type} }`
+          `readonly [x: ${signature.parameter.Type}]: ${signature.type.Type}`
         )
+        if (properties.length === 0) {
+          return makeCode(
+            `Schema.StructWithRest(Schema.Struct({ ${propertyRuntimes} }), [${indexRuntimes}])`,
+            `{ ${indexTypes.join(", ")} }`
+          )
+        }
         return makeCode(
           `Schema.StructWithRest(Schema.Struct({ ${propertyRuntimes} }), [${indexRuntimes}])`,
-          [`{ ${propertyTypes} }`, ...indexTypes].join(" & ")
+          [`{ ${propertyTypes} }`, ...indexTypes.map((indexType) => `{ ${indexType} }`)].join(" & ")
         )
       }
       case "Union": {
