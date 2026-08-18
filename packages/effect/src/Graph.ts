@@ -1429,31 +1429,29 @@ export const complement: {
   self: Graph<N, E, T>,
   createEdge: (source: N, target: N) => E
 ): Graph<N, E, T> => {
-  const selfImpl = internal.toImpl(self)
-  const nodeEntries = Array.from(selfImpl.nodes)
+  const cache = csr.get(self)
+  const outgoing = csr.getOutgoing(cache)
+  const neighborMarks = new Uint32Array(cache.nodeIds.length)
 
   return make(self.type)<N, E>((mutable) => {
-    const newIndexMap = new Map<NodeIndex, NodeIndex>()
+    const newIndices = new Uint32Array(cache.nodeIds.length)
 
-    for (const [oldIndex, data] of nodeEntries) {
-      newIndexMap.set(oldIndex, addNode(mutable, data))
+    for (let i = 0; i < cache.nodeIds.length; i++) {
+      newIndices[i] = addNode(mutable, cache.nodeData[i] as N)
     }
 
-    for (let i = 0; i < nodeEntries.length; i++) {
-      const [sourceOldIndex, sourceData] = nodeEntries[i]
+    for (let i = 0; i < cache.nodeIds.length; i++) {
+      const generation = i + 1
+      for (let edge = outgoing.rowOffsets[i]; edge < outgoing.rowOffsets[i + 1]; edge++) {
+        neighborMarks[outgoing.columnIndices[edge]] = generation
+      }
       const start = self.type === "undirected" ? i + 1 : 0
 
-      for (let j = start; j < nodeEntries.length; j++) {
-        const [targetOldIndex, targetData] = nodeEntries[j]
-        if (sourceOldIndex === targetOldIndex || hasEdge(self, sourceOldIndex, targetOldIndex)) {
+      for (let j = start; j < cache.nodeIds.length; j++) {
+        if (i === j || neighborMarks[j] === generation) {
           continue
         }
-
-        const sourceIndex = newIndexMap.get(sourceOldIndex)
-        const targetIndex = newIndexMap.get(targetOldIndex)
-        if (sourceIndex !== undefined && targetIndex !== undefined) {
-          addEdge(mutable, sourceIndex, targetIndex, createEdge(sourceData, targetData))
-        }
+        addEdge(mutable, newIndices[i], newIndices[j], createEdge(cache.nodeData[i] as N, cache.nodeData[j] as N))
       }
     }
   })
@@ -2216,31 +2214,6 @@ export const mapEdges = <N, E, T extends Kind = "directed">(
 }
 
 /**
- * @internal
- */
-const rebuildAdjacency = <N, E, T extends Kind = "directed">(
-  mutable: internal.GraphImpl<N, E, T>
-): void => {
-  mutable.adjacency.clear()
-  mutable.reverseAdjacency.clear()
-
-  for (const nodeIndex of mutable.nodes.keys()) {
-    mutable.adjacency.set(nodeIndex, [])
-    mutable.reverseAdjacency.set(nodeIndex, [])
-  }
-
-  for (const [edgeIndex, edgeData] of mutable.edges) {
-    mutable.adjacency.get(edgeData.source)!.push(edgeIndex)
-    mutable.reverseAdjacency.get(edgeData.target)!.push(edgeIndex)
-
-    if (mutable.type === "undirected") {
-      mutable.adjacency.get(edgeData.target)!.push(edgeIndex)
-      mutable.reverseAdjacency.get(edgeData.source)!.push(edgeIndex)
-    }
-  }
-}
-
-/**
  * Swaps source and target nodes for every edge in a mutable graph.
  *
  * **When to use**
@@ -2293,7 +2266,9 @@ export const reverse = <N, E, T extends Kind = "directed">(
     })
   }
 
-  rebuildAdjacency(impl)
+  const adjacency = impl.adjacency
+  impl.adjacency = impl.reverseAdjacency
+  impl.reverseAdjacency = adjacency
 
   // Invalidate cycle flag since edge directions changed
   impl.acyclic = Option.none()
@@ -2738,28 +2713,30 @@ const removeNodeInternal = <N, E, T extends Kind = "directed">(
     return false // Node doesn't exist, nothing to remove
   }
 
-  // Collect all incident edges for removal
-  const edgesToRemove: Array<EdgeIndex> = []
-
-  // Get outgoing edges
-  const outgoingEdges = impl.adjacency.get(nodeIndex)
-  if (outgoingEdges !== undefined) {
-    for (const edge of outgoingEdges) {
-      edgesToRemove.push(edge)
-    }
+  const edgesToRemove = new Set(impl.adjacency.get(nodeIndex)!)
+  for (const edgeIndex of impl.reverseAdjacency.get(nodeIndex)!) {
+    edgesToRemove.add(edgeIndex)
   }
 
-  // Get incoming edges
-  const incomingEdges = impl.reverseAdjacency.get(nodeIndex)
-  if (incomingEdges !== undefined) {
-    for (const edge of incomingEdges) {
-      edgesToRemove.push(edge)
-    }
-  }
-
-  // Remove all incident edges
   for (const edgeIndex of edgesToRemove) {
-    removeEdgeInternal(impl, edgeIndex)
+    const edge = impl.edges.get(edgeIndex)!
+    if (edge.source !== nodeIndex) {
+      const adjacency = impl.adjacency.get(edge.source)!
+      adjacency.splice(adjacency.indexOf(edgeIndex), 1)
+      if (impl.type === "undirected") {
+        const reverseAdjacency = impl.reverseAdjacency.get(edge.source)!
+        reverseAdjacency.splice(reverseAdjacency.indexOf(edgeIndex), 1)
+      }
+    }
+    if (edge.target !== nodeIndex) {
+      const reverseAdjacency = impl.reverseAdjacency.get(edge.target)!
+      reverseAdjacency.splice(reverseAdjacency.indexOf(edgeIndex), 1)
+      if (impl.type === "undirected") {
+        const adjacency = impl.adjacency.get(edge.target)!
+        adjacency.splice(adjacency.indexOf(edgeIndex), 1)
+      }
+    }
+    impl.edges.delete(edgeIndex)
   }
 
   // Remove the node itself
