@@ -41,6 +41,27 @@ export class ClusterEntity extends BaseClusterEntity {
       envelope
     )
   }
+
+  scheduledRows(): Array<Record<string, unknown>> {
+    return this.#testState.storage.sql.exec(
+      `SELECT request_id, message_id, processed, deliver_at, reply_to
+       FROM cluster_messages
+       ORDER BY rowid ASC`
+    ).toArray()
+  }
+
+  getAlarm(): Promise<number | null> {
+    return this.#testState.storage.getAlarm()
+  }
+
+  override async deliverReply(requestId: string, reply: string): Promise<boolean> {
+    await this.#testState.storage.put("test-delayed-reply", { requestId, reply })
+    return super.deliverReply(requestId, reply)
+  }
+
+  delayedReply(): Promise<{ readonly requestId: string; readonly reply: string } | undefined> {
+    return this.#testState.storage.get("test-delayed-reply")
+  }
 }
 
 registerEntity("Mailbox", {
@@ -72,6 +93,47 @@ registerEntity("Mailbox", {
 export default {
   async fetch(request: Request, env: Record<string, any>): Promise<Response> {
     const url = new URL(request.url)
+    if (url.pathname === "/scheduled-rows") {
+      const id = url.searchParams.get("id") ?? "scheduled"
+      const stub = env.CLUSTER_ENTITY.getByName(`7:Mailbox${id}`)
+      return Response.json({ rows: await stub.scheduledRows(), alarm: await stub.getAlarm() })
+    }
+    if (url.pathname === "/delayed-reply") {
+      const id = url.searchParams.get("id") ?? "caller"
+      const stub = env.CLUSTER_ENTITY.getByName(`7:Mailbox${id}`)
+      return Response.json({ reply: await stub.delayedReply() })
+    }
+    if (url.pathname === "/delayed") {
+      const id = url.searchParams.get("id") ?? "scheduled"
+      const operationId = url.searchParams.get("operationId") ?? "operation"
+      const discard = url.searchParams.get("discard") === "true"
+      const deliverAt = Number(url.searchParams.get("deliverAt"))
+      const requestId = crypto.randomUUID()
+      const stub = env.CLUSTER_ENTITY.getByName(`7:Mailbox${id}`)
+      const result = await stub.invoke(
+        JSON.stringify({
+          _tag: "Request",
+          requestId,
+          address: {
+            shardId: { group: "default", id: 1 },
+            entityType: "Mailbox",
+            entityId: id
+          },
+          tag: "Add",
+          payload: { operationId },
+          headers: {}
+        }),
+        discard,
+        {
+          deliverAt,
+          primaryKey: `Mailbox/${id}/Add/${operationId}`,
+          ...(url.searchParams.get("replyTo") === null
+            ? undefined
+            : { replyTo: url.searchParams.get("replyTo") })
+        }
+      )
+      return Response.json(result)
+    }
     if (url.pathname === "/seed-poison") {
       const stub = env.CLUSTER_ENTITY.getByName("7:Mailboxcounter")
       await stub.seedPoison(JSON.stringify({
@@ -98,7 +160,8 @@ export default {
       )
     }
     if (url.pathname === "/mailbox") {
-      const stub = env.CLUSTER_ENTITY.getByName("7:Mailboxcounter")
+      const id = url.searchParams.get("id") ?? "counter"
+      const stub = env.CLUSTER_ENTITY.getByName(`7:Mailbox${id}`)
       const tag = url.searchParams.get("tag") ?? "Get"
       const operationId = url.searchParams.get("operationId") ?? "operation"
       const requestId = crypto.randomUUID()
@@ -110,7 +173,7 @@ export default {
             address: {
               shardId: { group: "default", id: 1 },
               entityType: "Mailbox",
-              entityId: "counter"
+              entityId: id
             },
             tag,
             payload: tag === "Get" || tag === "Watch" ? null : { operationId },
