@@ -91,13 +91,13 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     const request = new Request({ ...envelope, lastSentChunk })
     const result = handler(request)
     const unwrapped = Rpc.isWrapper(result as object) ? result.value : result
-    const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
+    const streamSchema = RpcSchema.isStreamSchema(rpc.successSchema) ? rpc.successSchema : undefined
     let sequence = Option.match(lastSentChunk, {
       onNone: () => 0,
       onSome: (chunk) => chunk.sequence + 1
     })
 
-    const execute = Option.isSome(streamSchemas)
+    const execute = streamSchema !== undefined
       ? Stream.runForEachArray(unwrapped as Stream.Stream<any, any>, (values) => {
         if (discard) return Effect.void
         const reply = new Reply.Chunk({
@@ -116,7 +116,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
         new Reply.WithExit({
           requestId: envelope.requestId,
           id: nextId() as any,
-          exit: Option.isSome(streamSchemas) && Exit.isSuccess(exit) ? Exit.void : exit as any
+          exit: streamSchema !== undefined && Exit.isSuccess(exit) ? Exit.void : exit as any
         })
       )
     }
