@@ -252,6 +252,31 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
         { type: "object" }
       )
     })
+
+    it("retains a broad index constraint alongside patternProperties", () => {
+      const output = compile({
+        _tag: "Objects",
+        propertySignatures: [],
+        indexSignatures: [
+          { parameter: StringRepresentation, type: NumberRepresentation },
+          {
+            parameter: {
+              _tag: "TemplateLiteral",
+              parts: [
+                { _tag: "Literal", literal: "x_", checks: [] },
+                StringRepresentation
+              ],
+              checks: []
+            },
+            type: StringRepresentation
+          }
+        ],
+        checks: []
+      })
+
+      assert.isDefined(output.patternProperties)
+      assert.isDefined(output.additionalProperties)
+    })
   })
 
   describe("unions", () => {
