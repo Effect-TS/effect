@@ -13,3 +13,8 @@ export * as CloudflareCluster from "./CloudflareCluster.ts"
  * @since 4.0.0
  */
 export * as CloudflareDurableObjects from "./CloudflareDurableObjects.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as CloudflareWorkflowEngine from "./CloudflareWorkflowEngine.ts"
