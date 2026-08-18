@@ -66,4 +66,47 @@ describe("BigInt", () => {
   it("returns zero for two zero operands", () => {
     assert.strictEqual(BigInt.lcm(0n, 0n), 0n)
   })
+
+  it("Order compares bigints", () => {
+    assert.strictEqual(BigInt.Order(1n, 2n), -1)
+    assert.strictEqual(BigInt.Order(2n, 1n), 1)
+    assert.strictEqual(BigInt.Order(1n, 1n), 0)
+  })
+
+  it("isLessThan and isLessThanOrEqualTo compare against an upper bound", () => {
+    assert.strictEqual(BigInt.isLessThan(2n, 3n), true)
+    assert.strictEqual(BigInt.isLessThan(3n, 3n), false)
+    assert.strictEqual(BigInt.isLessThanOrEqualTo(3n, 3n), true)
+    assert.strictEqual(BigInt.isLessThanOrEqualTo(4n, 3n), false)
+  })
+
+  it("isGreaterThan and isGreaterThanOrEqualTo compare against a lower bound", () => {
+    assert.strictEqual(BigInt.isGreaterThan(4n, 3n), true)
+    assert.strictEqual(BigInt.isGreaterThan(3n, 3n), false)
+    assert.strictEqual(BigInt.isGreaterThanOrEqualTo(3n, 3n), true)
+    assert.strictEqual(BigInt.isGreaterThanOrEqualTo(2n, 3n), false)
+  })
+
+  it("between checks inclusive range membership", () => {
+    assert.strictEqual(BigInt.between(3n, { minimum: 1n, maximum: 5n }), true)
+    assert.strictEqual(BigInt.between(0n, { minimum: 1n, maximum: 5n }), false)
+    assert.strictEqual(BigInt.between(6n, { minimum: 1n, maximum: 5n }), false)
+  })
+
+  it("clamp restricts a bigint to an inclusive range", () => {
+    assert.strictEqual(BigInt.clamp(3n, { minimum: 1n, maximum: 5n }), 3n)
+    assert.strictEqual(BigInt.clamp(0n, { minimum: 1n, maximum: 5n }), 1n)
+    assert.strictEqual(BigInt.clamp(6n, { minimum: 1n, maximum: 5n }), 5n)
+  })
+
+  it("min and max select the smaller and larger bigint", () => {
+    assert.strictEqual(BigInt.min(2n, 3n), 2n)
+    assert.strictEqual(BigInt.max(2n, 3n), 3n)
+  })
+
+  it("sign returns the ordering of a bigint against zero", () => {
+    assert.strictEqual(BigInt.sign(5n), 1)
+    assert.strictEqual(BigInt.sign(-5n), -1)
+    assert.strictEqual(BigInt.sign(0n), 0)
+  })
 })
