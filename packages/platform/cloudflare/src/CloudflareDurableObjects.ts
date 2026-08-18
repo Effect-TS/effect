@@ -24,7 +24,7 @@ import * as Envelope from "effect/unstable/cluster/Envelope"
 import * as Reply from "effect/unstable/cluster/Reply"
 import * as ShardId from "effect/unstable/cluster/ShardId"
 import type * as Rpc from "effect/unstable/rpc/Rpc"
-import { decodeName } from "./internal/clusterName.ts"
+import { decodeName, encodeName } from "./internal/clusterName.ts"
 import { makeEntityKeepAlive } from "./internal/entityKeepAlive.ts"
 import {
   ackChunk,
@@ -47,7 +47,7 @@ import { armAlarm, earliestDeliverAt, ensureEntityStorage } from "./internal/ent
 import { decodeReplyFor, decodeRequest, encodeReplyFor } from "./internal/entityWire.ts"
 import type { WorkflowRunOptions, WorkflowStub } from "./internal/workflowRegistry.ts"
 import { makeWorkflowRuntime } from "./internal/workflowRuntime.ts"
-import { earliestClockWakeUp, ensureWorkflowStorage } from "./internal/workflowStorage.ts"
+import { earliestClockWakeUp, ensureWorkflowStorage, loadExecutionName } from "./internal/workflowStorage.ts"
 
 const notExposed = (className: string) => () => {
   throw new Error(
@@ -649,15 +649,24 @@ export class ClusterEntity extends DurableObject<unknown> {
  */
 export class ClusterWorkflow extends DurableObject<unknown> {
   readonly #state: DurableObjectState
+  readonly #name: string | undefined
   #runtime: WorkflowRuntime | undefined
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
     this.#state = ctx
-    if (decodeName(ctx.id.name ?? "") === undefined) {
-      throw new Error("ClusterWorkflow requires a canonical workflow Durable Object name")
-    }
     ensureWorkflowStorage(ctx.storage.sql)
+    if (ctx.id.name !== undefined) {
+      if (decodeName(ctx.id.name) === undefined) {
+        throw new Error("ClusterWorkflow requires a canonical workflow Durable Object name")
+      }
+      this.#name = ctx.id.name
+    } else {
+      // An alarm wake carries no `id.name`; recover it from the stored
+      // execution so due clocks still fire after eviction.
+      const stored = loadExecutionName(ctx.storage.sql)
+      this.#name = stored === undefined ? undefined : encodeName(stored.workflowName, stored.executionId)
+    }
     const wakeUp = earliestClockWakeUp(ctx.storage.sql)
     if (wakeUp !== undefined) {
       void ctx.blockConcurrencyWhile(() => Effect.runPromise(armAlarm(ctx.storage, wakeUp)))
@@ -666,8 +675,11 @@ export class ClusterWorkflow extends DurableObject<unknown> {
 
   #getRuntime(): WorkflowRuntime {
     if (this.#runtime === undefined) {
+      if (this.#name === undefined) {
+        throw new Error("ClusterWorkflow requires a canonical workflow Durable Object name")
+      }
       this.#runtime = makeWorkflowRuntime({
-        name: this.#state.id.name ?? "",
+        name: this.#name,
         sql: this.#state.storage.sql,
         alarm: this.#state.storage,
         now: () => Date.now(),
@@ -722,6 +734,8 @@ export class ClusterWorkflow extends DurableObject<unknown> {
   }
 
   override alarm(): Promise<void> {
+    // No stored execution means no clock could have armed this alarm.
+    if (this.#name === undefined) return Promise.resolve()
     return this.#getRuntime().runAlarm()
   }
 
