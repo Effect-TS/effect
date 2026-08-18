@@ -794,14 +794,16 @@ export const TestClientError = <Tag extends string, E>(
               get: {
                 operationId: "listWidgets",
                 parameters: [
-                  { $ref: "#/components/parameters/Page~1Limit" },
-                  { $ref: "#/components/parameters/Tilde~0Name" }
+                  { $ref: "#/components/parameters/Page~1Limit" } as any,
+                  { $ref: "#/components/parameters/Tilde~0Name" } as any
                 ],
                 responses: {
                   204: {
                     description: "No content"
                   }
-                }
+                },
+                tags: ["Widgets"],
+                security: []
               }
             }
           },
@@ -821,7 +823,9 @@ export const TestClientError = <Tag extends string, E>(
                 schema: { type: "string" }
               }
             }
-          }
+          } as any,
+          security: [],
+          tags: [{ name: "Widgets" }]
         },
         [
           `readonly "limit"?: number`,
