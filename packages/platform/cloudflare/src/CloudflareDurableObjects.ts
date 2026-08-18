@@ -30,6 +30,7 @@ import {
   clearReplies,
   completeTell,
   EncodedMessageTooLargeError,
+  loadDue,
   loadMessage,
   loadNextReply,
   loadUnprocessed,
@@ -39,6 +40,7 @@ import {
   saveReply
 } from "./internal/entityMailbox.ts"
 import { type EntityRegistration, getEntityRegistration } from "./internal/entityRegistry.ts"
+import { deliverReply as deliverEntityReply } from "./internal/entityReply.ts"
 import { makeEntityRuntime } from "./internal/entityRuntime.ts"
 import { armAlarm, earliestDeliverAt, ensureEntityStorage } from "./internal/entityStorage.ts"
 import { decodeReplyFor, decodeRequest, encodeReplyFor } from "./internal/entityWire.ts"
@@ -71,6 +73,31 @@ interface ReplayMessage {
   readonly envelope: string
   readonly lastSentChunk: string | undefined
   readonly discard: boolean
+  readonly deliverAt?: number | undefined
+  readonly replyTo?: string | undefined
+}
+
+interface InvokeResult {
+  readonly requestId: string
+  readonly replies: ReadonlyArray<string>
+  readonly error?: "MailboxFull" | "EncodedMessageTooLarge" | undefined
+}
+
+interface InvokeOutcome {
+  readonly result: InvokeResult
+  readonly deferred?: Promise<InvokeResult> | undefined
+}
+
+interface DeliveryOptions {
+  readonly deliverAt: number
+  readonly primaryKey: string | null
+  readonly replyTo?: string | undefined
+}
+
+interface WorkerWaiter {
+  readonly clientRequestId: string
+  readonly resolve: (result: InvokeResult) => void
+  readonly reject: (error: unknown) => void
 }
 
 /**
@@ -89,14 +116,18 @@ interface ReplayMessage {
 export class ClusterEntity extends DurableObject<unknown> {
   readonly #state: DurableObjectState
   readonly #address: EntityAddress.EntityAddress
+  readonly #name: string
   #runtime: EntityRuntime | undefined
   #serial: Promise<void> = Promise.resolve()
   readonly #sessions = new Map<string, ReplySession>()
+  readonly #workerWaiters = new Map<string, Array<WorkerWaiter>>()
+  readonly #workerWaiterTargets = new Map<string, string>()
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
     this.#state = ctx
-    const name = decodeName(ctx.id.name ?? "")
+    this.#name = ctx.id.name ?? ""
+    const name = decodeName(this.#name)
     if (name === undefined) throw new Error("ClusterEntity requires a canonical entity Durable Object name")
     this.#address = EntityAddress.make({
       shardId: ShardId.make("default", 1),
@@ -111,22 +142,20 @@ export class ClusterEntity extends DurableObject<unknown> {
     }
   }
 
-  // Scheduled rows cannot exist until the mailbox lands; handling the alarm
-  // here keeps an armed alarm from firing into a missing handler.
-  override alarm(): void {}
-
-  /** @internal Same-Worker RPC transport used by `CloudflareCluster.layer`. */
-  invoke(envelopeText: string, discard: boolean): Promise<{
-    readonly requestId: string
-    readonly replies: ReadonlyArray<string>
-    readonly error?: "MailboxFull" | "EncodedMessageTooLarge" | undefined
-  }> {
-    const operation = this.#serial.then(() => Effect.runPromise(this.#invoke(envelopeText, discard)))
+  override alarm(): Promise<void> {
+    const operation = this.#serial.then(() => Effect.runPromise(this.#runAlarm()))
     this.#serial = operation.then(() => void 0, () => void 0)
     return operation
   }
 
-  #invoke(envelopeText: string, discard: boolean) {
+  /** @internal Same-Worker RPC transport used by `CloudflareCluster.layer`. */
+  invoke(envelopeText: string, discard: boolean, delivery?: DeliveryOptions): Promise<InvokeResult> {
+    const operation = this.#serial.then(() => Effect.runPromise(this.#invoke(envelopeText, discard, delivery)))
+    this.#serial = operation.then(() => void 0, () => void 0)
+    return operation.then((outcome) => outcome.deferred ?? outcome.result)
+  }
+
+  #invoke(envelopeText: string, discard: boolean, delivery?: DeliveryOptions): Effect.Effect<InvokeOutcome> {
     const registration = getEntityRegistration(this.#address.entityType)
     if (registration === undefined) {
       return Effect.die(`No handlers registered for entity type: ${this.#address.entityType}`)
@@ -137,7 +166,19 @@ export class ClusterEntity extends DurableObject<unknown> {
       yield* Effect.forEach(
         loadUnprocessed(storage.sql),
         (row) =>
-          this.#runStored(registration, runtime, row.envelope, row.lastSentChunk, row.discard).pipe(
+          this.#runStored(
+            registration,
+            runtime,
+            row.envelope,
+            row.lastSentChunk,
+            row.discard,
+            row.deliverAt === undefined
+              ? undefined
+              : {
+                scheduled: true,
+                ...(row.replyTo === undefined ? undefined : { replyTo: row.replyTo })
+              }
+          ).pipe(
             Effect.catchCause((cause) => this.#completeReplayFailure(registration, row, cause))
           ),
         { discard: true }
@@ -148,7 +189,7 @@ export class ClusterEntity extends DurableObject<unknown> {
       const isPersisted = Context.get(rpc.annotations, Persisted)
       if (!isPersisted) {
         const replies = yield* this.#run(registration, runtime, envelope, undefined, discard, false)
-        return { requestId: String(envelope.requestId), replies }
+        return { result: { requestId: String(envelope.requestId), replies } }
       }
 
       let persisted: PersistResult
@@ -157,15 +198,19 @@ export class ClusterEntity extends DurableObject<unknown> {
           persistRequest(
             storage.sql,
             envelopeText,
-            Envelope.primaryKey(envelope),
-            discard
+            delivery?.primaryKey ?? Envelope.primaryKey(envelope),
+            discard,
+            delivery?.deliverAt,
+            delivery?.replyTo
           )
         )
       } catch (error) {
         if (error instanceof MailboxFullError) {
-          return { requestId: String(envelope.requestId), replies: [], error: "MailboxFull" as const }
+          return { result: { requestId: String(envelope.requestId), replies: [], error: "MailboxFull" as const } }
         } else if (error instanceof EncodedMessageTooLargeError) {
-          return { requestId: String(envelope.requestId), replies: [], error: "EncodedMessageTooLarge" as const }
+          return {
+            result: { requestId: String(envelope.requestId), replies: [], error: "EncodedMessageTooLarge" as const }
+          }
         }
         return yield* Effect.die(error)
       }
@@ -173,10 +218,19 @@ export class ClusterEntity extends DurableObject<unknown> {
         const nextReply = loadNextReply(storage.sql, persisted.originalId)
         if (nextReply !== undefined) {
           this.#releaseTerminalSession(persisted.originalId, nextReply)
-          return { requestId: persisted.originalId, replies: [nextReply] }
+          return { result: { requestId: persisted.originalId, replies: [nextReply] } }
         }
         if (persisted.processed) {
-          return { requestId: persisted.originalId, replies: [] }
+          return { result: { requestId: persisted.originalId, replies: [] } }
+        }
+        if (delivery !== undefined) {
+          yield* this.#armEarliestAlarm()
+          return this.#delayedOutcome(
+            persisted.originalId,
+            discard,
+            delivery.replyTo,
+            String(envelope.requestId)
+          )
         }
         const original = loadMessage(storage.sql, persisted.originalId)
         if (original === undefined) return yield* Effect.die("Duplicate mailbox row disappeared")
@@ -187,11 +241,32 @@ export class ClusterEntity extends DurableObject<unknown> {
           original.lastSentChunk,
           original.discard
         )
-        return { requestId: persisted.originalId, replies }
+        return { result: { requestId: persisted.originalId, replies } }
+      }
+      if (delivery !== undefined) {
+        yield* this.#armEarliestAlarm()
+        return this.#delayedOutcome(String(envelope.requestId), discard, delivery.replyTo)
       }
       const replies = yield* this.#run(registration, runtime, envelope, undefined, discard, true)
-      return { requestId: String(envelope.requestId), replies }
+      return { result: { requestId: String(envelope.requestId), replies } }
     })
+  }
+
+  #delayedOutcome(
+    requestId: string,
+    discard: boolean,
+    replyTo: string | undefined,
+    clientRequestId = requestId
+  ): InvokeOutcome {
+    const result = { requestId, replies: [] }
+    if (discard || replyTo !== undefined) return { result }
+    const deferred = new Promise<InvokeResult>((resolve, reject) => {
+      const waiters = this.#workerWaiters.get(requestId) ?? []
+      waiters.push({ clientRequestId, resolve, reject })
+      this.#workerWaiters.set(requestId, waiters)
+      this.#workerWaiterTargets.set(clientRequestId, requestId)
+    })
+    return { result, deferred }
   }
 
   /** @internal Acknowledges a streamed chunk. */
@@ -213,6 +288,18 @@ export class ClusterEntity extends DurableObject<unknown> {
 
   /** @internal Interrupts an in-memory handler execution. Persisted rows remain replayable. */
   interrupt(requestId: string): Promise<void> {
+    const storageRequestId = this.#workerWaiterTargets.get(requestId) ?? requestId
+    const waiters = this.#workerWaiters.get(storageRequestId)
+    if (waiters !== undefined) {
+      const remaining = waiters.filter((waiter) => {
+        if (waiter.clientRequestId !== requestId) return true
+        waiter.reject(new Error("Delayed entity request interrupted"))
+        return false
+      })
+      this.#workerWaiterTargets.delete(requestId)
+      if (remaining.length === 0) this.#workerWaiters.delete(storageRequestId)
+      else this.#workerWaiters.set(storageRequestId, remaining)
+    }
     const session = this.#sessions.get(requestId)
     if (session === undefined) return Promise.resolve()
     this.#sessions.delete(requestId)
@@ -236,10 +323,13 @@ export class ClusterEntity extends DurableObject<unknown> {
 
   #getRuntime(registration: EntityRegistration) {
     if (this.#runtime !== undefined) return Effect.succeed(this.#runtime)
-    return Effect.map(makeEntityRuntime(registration, this.#address, () => crypto.randomUUID()), (runtime) => {
-      this.#runtime = runtime
-      return runtime
-    })
+    return Effect.map(
+      makeEntityRuntime(registration, this.#address, () => crypto.randomUUID(), this.#name),
+      (runtime) => {
+        this.#runtime = runtime
+        return runtime
+      }
+    )
   }
 
   #runStored(
@@ -247,12 +337,40 @@ export class ClusterEntity extends DurableObject<unknown> {
     runtime: EntityRuntime,
     envelopeText: string,
     lastSentChunk: string | undefined,
-    discard: boolean
+    discard: boolean,
+    options?: { readonly scheduled?: boolean; readonly replyTo?: string | undefined }
   ) {
     return Effect.flatMap(
       decodeRequest(registration, envelopeText),
-      (envelope) => this.#run(registration, runtime, envelope, lastSentChunk, discard, true)
+      (envelope) => this.#run(registration, runtime, envelope, lastSentChunk, discard, true, options)
     )
+  }
+
+  #runAlarm() {
+    const registration = getEntityRegistration(this.#address.entityType)
+    if (registration === undefined) {
+      return Effect.die(`No handlers registered for entity type: ${this.#address.entityType}`)
+    }
+    return Effect.gen({ self: this }, function*() {
+      const runtime = yield* this.#getRuntime(registration)
+      yield* Effect.forEach(
+        loadDue(this.#state.storage.sql),
+        (row) =>
+          this.#runStored(registration, runtime, row.envelope, row.lastSentChunk, row.discard, {
+            scheduled: true,
+            ...(row.replyTo === undefined ? undefined : { replyTo: row.replyTo })
+          }).pipe(
+            Effect.catchCause((cause) => this.#completeReplayFailure(registration, row, cause))
+          ),
+        { discard: true }
+      )
+      yield* this.#armEarliestAlarm()
+    })
+  }
+
+  #armEarliestAlarm(): Effect.Effect<void> {
+    const deliverAt = earliestDeliverAt(this.#state.storage.sql)
+    return deliverAt === undefined ? Effect.void : armAlarm(this.#state.storage, deliverAt)
   }
 
   #completeReplayFailure(
@@ -283,7 +401,10 @@ export class ClusterEntity extends DurableObject<unknown> {
             exit: Exit.failCause(cause)
           })
         ),
-        (reply) => Effect.sync(() => storage.transactionSync(() => saveReply(storage.sql, reply)))
+        (reply) =>
+          Effect.sync(() => storage.transactionSync(() => saveReply(storage.sql, reply))).pipe(
+            Effect.andThen(this.#deliverScheduledReply(encoded.requestId as string, reply, row.replyTo))
+          )
       ).pipe(
         Effect.catchCause(() =>
           Effect.sync(() => {
@@ -300,7 +421,8 @@ export class ClusterEntity extends DurableObject<unknown> {
     envelope: Envelope.Request.Any,
     lastSentChunkText: string | undefined,
     discard: boolean,
-    persisted: boolean
+    persisted: boolean,
+    options?: { readonly scheduled?: boolean; readonly replyTo?: string | undefined }
   ): Effect.Effect<ReadonlyArray<string>> {
     const rpc = registration.entity.protocol.requests.get(envelope.tag) as Rpc.AnyWithProps
     const storage = this.#state.storage
@@ -319,7 +441,8 @@ export class ClusterEntity extends DurableObject<unknown> {
         }
       }
 
-      const session = discard ? undefined : this.#makeSession(requestId)
+      const scheduled = options?.scheduled === true
+      const session = discard || scheduled ? undefined : this.#makeSession(requestId)
       const execution = runtime.run(
         envelope,
         lastSentChunk,
@@ -333,11 +456,14 @@ export class ClusterEntity extends DurableObject<unknown> {
             if (session !== undefined) {
               yield* Effect.promise(() => this.#offerReply(session, encoded))
             }
+            if (scheduled && reply._tag === "WithExit") {
+              yield* this.#deliverScheduledReply(requestId, encoded, options?.replyTo)
+            }
           })
       )
-      if (discard) {
+      if (discard || scheduled) {
         yield* execution
-        if (persisted) completeTell(storage.sql, requestId)
+        if (discard && persisted) completeTell(storage.sql, requestId)
         return []
       }
 
@@ -349,6 +475,32 @@ export class ClusterEntity extends DurableObject<unknown> {
       this.#state.waitUntil(completion)
       return yield* Effect.promise(() => this.#takeReply(requestId, session!))
     })
+  }
+
+  #deliverScheduledReply(requestId: string, reply: string, replyTo: string | undefined): Effect.Effect<void> {
+    const waiters = this.#workerWaiters.get(requestId)
+    if (waiters !== undefined) {
+      this.#workerWaiters.delete(requestId)
+      for (const waiter of waiters) {
+        this.#workerWaiterTargets.delete(waiter.clientRequestId)
+        waiter.resolve({ requestId, replies: [reply] })
+      }
+    }
+    if (replyTo === undefined) return Effect.void
+    const namespace = (this.#state.exports as Record<string, unknown>).ClusterEntity as
+      | {
+        readonly getByName: (
+          name: string
+        ) => { readonly deliverReply: (requestId: string, reply: string) => Promise<boolean> }
+      }
+      | undefined
+    if (namespace === undefined) return Effect.void
+    return Effect.promise(() => namespace.getByName(replyTo).deliverReply(requestId, reply)).pipe(Effect.ignore)
+  }
+
+  /** @internal Completes an in-memory delayed ask owned by this entity object. */
+  deliverReply(requestId: string, reply: string): Promise<boolean> {
+    return deliverEntityReply(requestId, reply)
   }
 
   #makeSession(requestId: string): ReplySession {
