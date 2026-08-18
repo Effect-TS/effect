@@ -235,19 +235,36 @@ describe("Bash completions", () => {
     assert.notInclude(script, `compgen -W 'it`)
   })
 
-  it("requotes matches for insertion but not inside a quote the user opened", () => {
+  it("escapes matches for the quoting context of the word being completed", () => {
     const desc = fromCommand(withTrickyChoices)
     const script = Bash.generate("deploy", desc)
     assert.include(script, `local _prefix="\${_cur#[\\"\\']}"; _prefix="\${_prefix//\\\\/}"`)
-    assert.include(script, `[[ "$_cur" == [\\"\\']* ]] && _quoted_word=1`)
-    assert.include(script, `printf -v _quoted '%q' "$_choice"`)
+    assert.include(script, `[[ "$_cur" == [\\"\\']* ]] && _open="\${_cur:0:1}"`)
+    // unquoted: %q. Double quotes: escape what the shell still expands there.
+    // Single quotes: splice, since a quote cannot be escaped inside them.
+    assert.include(script, `printf -v _match '%q' "$_choice"`)
+    assert.include(script, `_match="\${_match//\\$/\\\\$}"`)
+    assert.include(script, `_match=\${_choice//\\'/\\'\\\\\\'\\'}`)
   })
 
-  it("trims the COMP_WORDBREAKS head so colon values replace the typed word", () => {
+  it("treats only unescaped, unquoted word-break characters as the replacement boundary", () => {
     const desc = fromCommand(withTrickyChoices)
     const script = Bash.generate("deploy", desc)
-    assert.include(script, `[[ "$COMP_WORDBREAKS" == *"\${_head: -1}"* ]] && break`)
+    assert.include(script, `if [[ -z "$_quote" && "$COMP_WORDBREAKS" == *"$_c"* ]]; then _cut=$((_i + 1)); fi`)
     assert.include(script, `COMPREPLY[_i]="\${COMPREPLY[_i]#"$_head"}"`)
+  })
+
+  it("picks a choices-helper name that no generated command function can collide with", () => {
+    const collidingName = Command.make("deploy", {
+      mode: Flag.choice("mode", ["a"])
+    }).pipe(
+      Command.withSubcommands([Command.make("-choices", { m: Flag.choice("m", ["b"]) })])
+    )
+    const script = Bash.generate("deploy", fromCommand(collidingName))
+    assert.include(script, "_deploy__choices()")
+    assert.include(script, "_deploy__choices_()")
+    assert.include(script, `_deploy__choices_ "$cur" 'a'`)
+    assert.notInclude(script, `_deploy__choices "$cur"`)
   })
 
   it("generates separate functions for nested subcommands", () => {

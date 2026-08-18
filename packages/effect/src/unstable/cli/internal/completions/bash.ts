@@ -16,6 +16,24 @@ const escapeForBash = (s: string): string => s.replace(/'/g, "'\\''")
 
 const sanitizeFunctionName = (s: string): string => s.replace(/[^a-zA-Z0-9_]/g, "_")
 
+/**
+ * Every function name `generateFunction` will emit. `sanitizeFunctionName` maps
+ * any character to `_`, so a subcommand can produce any name — the shared helper
+ * has to pick one that is provably not among them.
+ */
+const emittedFunctionNames = (
+  descriptor: Completions.CommandDescriptor,
+  parentPath: ReadonlyArray<string>,
+  names: Set<string>
+): Set<string> => {
+  const currentPath = [...parentPath, descriptor.name]
+  names.add(`_${currentPath.map(sanitizeFunctionName).join("_")}`)
+  for (const sub of descriptor.subcommands) {
+    emittedFunctionNames(sub, currentPath, names)
+  }
+  return names
+}
+
 const flagNamesForWordlist = (flag: Completions.FlagDescriptor): Array<string> => {
   const names: Array<string> = [`--${flag.name}`]
   for (const alias of flag.aliases) {
@@ -65,14 +83,19 @@ const buildFlagGroupDeclarations = (
  *
  * `compgen -W` re-expands every word of its list, which mangles values holding
  * quotes, spaces or glob characters, so matches are filtered from an explicitly
- * quoted list instead. Two further readline details are handled here:
+ * quoted list instead. The rest of the helper deals with how readline inserts
+ * the match:
  *
- * - Bash inserts COMPREPLY entries verbatim when the word is unquoted, so each
- *   match is requoted with `printf %q`. When the user has opened a quote, bash
- *   quotes the entry itself and requoting would double-escape it.
- * - Readline only replaces the text after the last COMP_WORDBREAKS character
- *   (`:` among them), so that head has to be trimmed off every match or a value
- *   like `node:20` is appended to what was typed rather than replacing it.
+ * - An unquoted word is replaced verbatim, so the match is escaped with
+ *   `printf %q`. Inside a quote the user opened, bash closes the quote for us
+ *   but escapes nothing, so the match is escaped for that quote context —
+ *   including the `\'` splice, since a single quote cannot be escaped within
+ *   single quotes.
+ * - Readline replaces only the text after the last COMP_WORDBREAKS character,
+ *   so that head is trimmed from every match; otherwise a value like `node:20`
+ *   is appended to what was typed rather than replacing it. Wordbreaks that are
+ *   backslash-escaped or inside quotes do not split the word, so they must not
+ *   be treated as the boundary.
  *
  * Prefix matching uses the dequoted word. Dequoting is best effort: it strips
  * one opening quote and any backslash escapes, so a value whose own text
@@ -83,26 +106,50 @@ const choicesHelper = (helperName: string, lines: Array<string>): void => {
   lines.push(`{`)
   lines.push(`  local _cur="$1"; shift`)
   lines.push(`  local _prefix="\${_cur#[\\"\\']}"; _prefix="\${_prefix//\\\\/}"`)
-  lines.push(`  local _quoted_word=""`)
-  lines.push(`  [[ "$_cur" == [\\"\\']* ]] && _quoted_word=1`)
+  lines.push(`  local _open=""`)
+  lines.push(`  [[ "$_cur" == [\\"\\']* ]] && _open="\${_cur:0:1}"`)
+  lines.push(``)
   lines.push(`  COMPREPLY=()`)
-  lines.push(`  local _choice _quoted`)
+  lines.push(`  local _choice _match`)
   lines.push(`  for _choice in "$@"; do`)
   lines.push(`    [[ "$_choice" == "$_prefix"* ]] || continue`)
-  lines.push(`    if [[ -n "$_quoted_word" ]]; then`)
-  lines.push(`      COMPREPLY+=("$_choice")`)
-  lines.push(`    else`)
-  lines.push(`      printf -v _quoted '%q' "$_choice"`)
-  lines.push(`      COMPREPLY+=("$_quoted")`)
-  lines.push(`    fi`)
+  lines.push(`    case "$_open" in`)
+  lines.push(`      '"')`)
+  lines.push(`        _match="\${_choice//\\\\/\\\\\\\\}"`)
+  lines.push(`        _match="\${_match//\\$/\\\\$}"`)
+  lines.push(`        _match="\${_match//\\\`/\\\\\\\`}"`)
+  lines.push(`        _match="\${_match//\\"/\\\\\\"}"`)
+  lines.push(`        ;;`)
+  lines.push(`      "'")`)
+  lines.push(`        # bare assignment: inside double quotes \\' is not an escape`)
+  lines.push(`        _match=\${_choice//\\'/\\'\\\\\\'\\'}`)
+  lines.push(`        ;;`)
+  lines.push(`      *)`)
+  lines.push(`        printf -v _match '%q' "$_choice"`)
+  lines.push(`        ;;`)
+  lines.push(`    esac`)
+  lines.push(`    COMPREPLY+=("$_match")`)
   lines.push(`  done`)
-  lines.push(`  local _head="$_cur"`)
-  lines.push(`  while [[ -n "$_head" ]]; do`)
-  lines.push(`    [[ "$COMP_WORDBREAKS" == *"\${_head: -1}"* ]] && break`)
-  lines.push(`    _head="\${_head%?}"`)
+  lines.push(``)
+  lines.push(`  # Boundary = last wordbreak character that is neither escaped nor quoted`)
+  lines.push(`  local _i _c _quote="" _escaped=0 _cut=0`)
+  lines.push(`  for ((_i = 0; _i < \${#_cur}; _i++)); do`)
+  lines.push(`    _c="\${_cur:_i:1}"`)
+  lines.push(`    if ((_escaped)); then _escaped=0; continue; fi`)
+  lines.push(`    case "$_c" in`)
+  lines.push(`      \\\\) _escaped=1 ;;`)
+  lines.push(`      \\"|\\')`)
+  lines.push(`        if [[ -z "$_quote" ]]; then _quote="$_c"`)
+  lines.push(`        elif [[ "$_quote" == "$_c" ]]; then _quote=""`)
+  lines.push(`        fi`)
+  lines.push(`        ;;`)
+  lines.push(`      *)`)
+  lines.push(`        if [[ -z "$_quote" && "$COMP_WORDBREAKS" == *"$_c"* ]]; then _cut=$((_i + 1)); fi`)
+  lines.push(`        ;;`)
+  lines.push(`    esac`)
   lines.push(`  done`)
-  lines.push(`  if [[ -n "$_head" ]]; then`)
-  lines.push(`    local _i`)
+  lines.push(`  if ((_cut > 0)); then`)
+  lines.push(`    local _head="\${_cur:0:_cut}"`)
   lines.push(`    for ((_i = 0; _i < \${#COMPREPLY[@]}; _i++)); do`)
   lines.push(`      COMPREPLY[_i]="\${COMPREPLY[_i]#"$_head"}"`)
   lines.push(`    done`)
@@ -293,7 +340,9 @@ export const generate = (
 ): string => {
   const lines: Array<string> = []
   const safeName = sanitizeFunctionName(executableName)
-  const helperName = `_${safeName}__choices`
+  const taken = emittedFunctionNames(descriptor, [], new Set())
+  let helperName = `_${safeName}__choices`
+  while (taken.has(helperName)) helperName += "_"
 
   lines.push(`###-begin-${escapeForBash(executableName)}-completions-###`)
   lines.push(`#`)
