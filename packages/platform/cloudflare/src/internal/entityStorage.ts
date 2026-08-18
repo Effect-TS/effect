@@ -5,19 +5,11 @@
  *
  * @internal
  */
+import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
+import * as Effect from "effect/Effect"
 
 /** @internal */
-export interface EntitySql {
-  exec(query: string, ...bindings: Array<unknown>): {
-    toArray(): Array<Record<string, unknown>>
-  }
-}
-
-/** @internal */
-export interface EntityAlarm {
-  getAlarm(): Promise<number | null>
-  setAlarm(scheduledTime: number): Promise<unknown>
-}
+export type EntityAlarm = Pick<DurableObjectStorage, "getAlarm" | "setAlarm">
 
 const ddl = [
   `CREATE TABLE IF NOT EXISTS cluster_messages (
@@ -39,30 +31,36 @@ const ddl = [
     kind INTEGER NOT NULL,
     payload TEXT NOT NULL,
     sequence INTEGER,
-    acked INTEGER NOT NULL DEFAULT 0
+    acked INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (request_id, kind),
+    UNIQUE (request_id, sequence)
   )`,
   `CREATE INDEX IF NOT EXISTS cluster_messages_deliver_at_idx
-    ON cluster_messages (processed, deliver_at)`,
-  `CREATE INDEX IF NOT EXISTS cluster_replies_request_id_idx
-    ON cluster_replies (request_id)`
+    ON cluster_messages (processed, deliver_at)`
 ]
 
 /** @internal */
-export const ensureEntityStorage = (sql: EntitySql): void => {
+export const ensureEntityStorage = (sql: SqlStorage): void => {
   for (const statement of ddl) {
     sql.exec(statement)
   }
 }
 
 /** @internal */
-export const rearmAlarm = async (alarm: EntityAlarm, sql: EntitySql): Promise<void> => {
+export const earliestDeliverAt = (sql: SqlStorage): number | undefined => {
   const rows = sql.exec(
     "SELECT min(deliver_at) AS deliver_at FROM cluster_messages WHERE processed = 0 AND deliver_at IS NOT NULL"
   ).toArray()
   const deliverAt = rows[0]?.deliver_at
-  if (typeof deliverAt !== "number") return
-  const current = await alarm.getAlarm()
-  if (current === null || current > deliverAt) {
-    await alarm.setAlarm(deliverAt)
-  }
+  return typeof deliverAt === "number" ? deliverAt : undefined
 }
+
+/** @internal */
+export const armAlarm = (alarm: EntityAlarm, deliverAt: number): Effect.Effect<void> =>
+  Effect.promise(() => alarm.getAlarm()).pipe(
+    Effect.flatMap((current) =>
+      current === null || current > deliverAt
+        ? Effect.promise(() => alarm.setAlarm(deliverAt))
+        : Effect.void
+    )
+  )

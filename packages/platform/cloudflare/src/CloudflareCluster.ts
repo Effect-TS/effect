@@ -58,7 +58,7 @@ export const encodeName: (type: string, id: string) => string = Internal.encodeN
  * including non-canonical length prefixes. A Durable Object uses this to
  * recover its own address from `ctx.id.name`.
  *
- * @category encoding
+ * @category decoding
  * @since 4.0.0
  */
 export const decodeName: (name: string) => ClusterName | undefined = Internal.decodeName
@@ -94,7 +94,7 @@ export interface LayerOptions {
  * address only gives logs, metrics, and `Entity.CurrentRunnerAddress` a stable
  * identity, with the port fixed to `0`.
  *
- * @category models
+ * @category constructors
  * @since 4.0.0
  */
 export const makeRunnerAddress = (objectName: string): RunnerAddress.RunnerAddress => RunnerAddress.make(objectName, 0)
@@ -117,6 +117,8 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
     entities.set(entity.type, entity)
   }
   const registrations = new Map<string, EntityRegistration>()
+  // Snowflakes are isolate-local here (random machine id, no coordination).
+  // Persisted request ids on this path use uuidv7, not these snowflakes.
   const snowflakeGen = yield* Snowflake.makeGenerator
 
   const unknownEntity = (entity: Entity.Entity<any, any>) =>
@@ -126,22 +128,14 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
       )
     )
 
+  const stubMethod = () => notImplemented("entity messaging")
   const makeStubClient = (entity: Entity.Entity<any, any>, entityId: string) => {
     options.entityNamespace.getByName(Internal.encodeName(entity.type, entityId))
-    const target: Record<string | symbol, unknown> = {}
-    return new Proxy(target, {
-      has: (_, tag) => entity.protocol.requests.has(tag as string),
-      get(target, tag) {
-        if (Object.hasOwn(target, tag)) {
-          return target[tag]
-        } else if (!entity.protocol.requests.has(tag as string)) {
-          return undefined
-        }
-        const method = () => notImplemented("entity messaging")
-        target[tag] = method
-        return method
-      }
-    })
+    const client: Record<string, unknown> = {}
+    for (const tag of entity.protocol.requests.keys()) {
+      client[tag] = stubMethod
+    }
+    return client
   }
 
   const makeClient = (entity: Entity.Entity<any, any>) =>
@@ -149,22 +143,24 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
       ? Effect.sync(() => (entityId: string) => makeStubClient(entity, entityId))
       : unknownEntity(entity)
 
-  const registerEntity = (
+  const registerEntity = Effect.fnUntraced(function*(
     entity: Entity.Entity<any, any>,
     build: Effect.Effect<unknown, never, unknown>,
     buildOptions?: Record<string, unknown>
-  ) =>
-    Effect.contextWith((context: Context.Context<never>) => {
-      if (!entities.has(entity.type)) {
-        return unknownEntity(entity)
-      } else if (registrations.has(entity.type)) {
-        return Effect.die(
-          new Error(`CloudflareCluster: handlers for entity type "${entity.type}" are already registered`)
-        )
-      }
-      registrations.set(entity.type, { entity, build, options: buildOptions, context })
-      return Effect.void
-    })
+  ) {
+    if (!entities.has(entity.type)) {
+      return yield* unknownEntity(entity)
+    } else if (registrations.has(entity.type)) {
+      return
+    }
+    const context = yield* Effect.context<never>()
+    registrations.set(entity.type, { entity, build, options: buildOptions, context })
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        registrations.delete(entity.type)
+      })
+    )
+  })
 
   return Sharding.of({
     getRegistrationEvents: Stream.never,

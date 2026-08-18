@@ -10,7 +10,8 @@
  * @since 4.0.0
  */
 import { DurableObject } from "cloudflare:workers"
-import { ensureEntityStorage, rearmAlarm } from "./internal/entityStorage.ts"
+import * as Effect from "effect/Effect"
+import { armAlarm, earliestDeliverAt, ensureEntityStorage } from "./internal/entityStorage.ts"
 
 const notExposed = (className: string) => () => {
   throw new Error(
@@ -34,9 +35,17 @@ const notExposed = (className: string) => () => {
 export class ClusterEntity extends DurableObject<unknown> {
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
-    ensureEntityStorage(ctx.storage.sql)
-    void ctx.blockConcurrencyWhile(() => rearmAlarm(ctx.storage, ctx.storage.sql))
+    const sql = ctx.storage.sql
+    ensureEntityStorage(sql)
+    const deliverAt = earliestDeliverAt(sql)
+    if (deliverAt !== undefined) {
+      void ctx.blockConcurrencyWhile(() => Effect.runPromise(armAlarm(ctx.storage, deliverAt)))
+    }
   }
+
+  // Scheduled rows cannot exist until the mailbox lands; handling the alarm
+  // here keeps an armed alarm from firing into a missing handler.
+  override alarm(): void {}
 
   override fetch: () => never = notExposed("ClusterEntity")
 }
