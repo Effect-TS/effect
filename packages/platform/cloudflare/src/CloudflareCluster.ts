@@ -26,10 +26,12 @@ import * as Envelope from "effect/unstable/cluster/Envelope"
 import * as RunnerAddress from "effect/unstable/cluster/RunnerAddress"
 import * as ShardId from "effect/unstable/cluster/ShardId"
 import { Sharding } from "effect/unstable/cluster/Sharding"
+import type { PersistedQueueFactory } from "effect/unstable/persistence/PersistedQueue"
 import type * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
 import * as RpcSchema from "effect/unstable/rpc/RpcSchema"
 import type { WorkflowEngine } from "effect/unstable/workflow/WorkflowEngine"
+import * as CloudflarePersistedQueue from "./CloudflarePersistedQueue.ts"
 import * as CloudflareWorkflowEngine from "./CloudflareWorkflowEngine.ts"
 import * as Internal from "./internal/clusterName.ts"
 import { registerEntity as registerEntityHandler, unregisterEntity } from "./internal/entityRegistry.ts"
@@ -473,7 +475,9 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
  *
  * Provides the cluster `Sharding` service on top of the four same-Worker
  * Durable Object namespace bindings, plus the `WorkflowEngine` backed by the
- * workflow class. `Entity.client` resolves an entity to its Durable Object by
+ * workflow class and the `PersistedQueueFactory` backed by the queue class, so
+ * the `DurableQueue` user API works out of the box. `Entity.client` resolves
+ * an entity to its Durable Object by
  * encoding `(type, id)` with {@link encodeName} and calling `getByName`; an
  * unknown entity type or a bad encode fails at the Worker before any Durable
  * Object is contacted. Entity handlers registered with `Entity.toLayer` are
@@ -484,8 +488,9 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
  * @category layers
  * @since 4.0.0
  */
-export const layer = (options: LayerOptions): Layer.Layer<Sharding | WorkflowEngine> =>
-  Layer.merge(
+export const layer = (options: LayerOptions): Layer.Layer<Sharding | WorkflowEngine | PersistedQueueFactory> =>
+  Layer.mergeAll(
     Layer.effect(Sharding)(make(options)),
-    CloudflareWorkflowEngine.layer({ workflowNamespace: options.workflowNamespace })
+    CloudflareWorkflowEngine.layer({ workflowNamespace: options.workflowNamespace }),
+    CloudflarePersistedQueue.layer({ queueNamespace: options.queueNamespace })
   )

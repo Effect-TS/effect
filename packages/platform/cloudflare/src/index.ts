@@ -17,4 +17,9 @@ export * as CloudflareDurableObjects from "./CloudflareDurableObjects.ts"
 /**
  * @since 4.0.0
  */
+export * as CloudflarePersistedQueue from "./CloudflarePersistedQueue.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as CloudflareWorkflowEngine from "./CloudflareWorkflowEngine.ts"
