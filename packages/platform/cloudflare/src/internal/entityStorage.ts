@@ -19,7 +19,8 @@ const ddl = [
     discard INTEGER NOT NULL DEFAULT 0,
     processed INTEGER NOT NULL DEFAULT 0,
     last_reply_id TEXT,
-    deliver_at INTEGER
+    deliver_at INTEGER,
+    reply_to TEXT
   )`,
   `CREATE TABLE IF NOT EXISTS cluster_replies (
     reply_id TEXT PRIMARY KEY,
