@@ -839,9 +839,6 @@ const CheckRepresentationAnnotationSchema = Schema.Struct({
   schemas: Schema.optional(RepresentationsSchema)
 })
 
-const LiveAnnotationsSchema = Schema.Record(Schema.String, Schema.Unknown)
-const JsonAnnotationsSchema = Schema.Record(Schema.String, Schema.Json)
-
 function pruneAnnotations(
   annotations: Readonly<Record<string, unknown>>
 ): Option.Option<Readonly<Record<string, Schema.Json>>> {
@@ -854,8 +851,8 @@ function pruneAnnotations(
   return Object.keys(out).length === 0 ? Option.none() : Option.some(out)
 }
 
-const AnnotationsSchema = Schema.optional(LiveAnnotationsSchema).pipe(
-  Schema.encodeTo(Schema.optionalKey(JsonAnnotationsSchema), {
+const AnnotationsSchema = Schema.optional(Schema.Record(Schema.String, Schema.Unknown)).pipe(
+  Schema.encodeTo(Schema.optionalKey(Schema.JsonObject), {
     decode: SchemaGetter.passthroughSubtype(),
     encode: SchemaGetter.transformOptional((annotations) =>
       Option.isNone(annotations) || annotations.value === undefined

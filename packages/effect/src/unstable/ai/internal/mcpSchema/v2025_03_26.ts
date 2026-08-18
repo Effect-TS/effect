@@ -132,7 +132,7 @@ export class CallTool extends Rpc.make("tools/call", {
   payload: {
     ...Previous.RequestMeta.fields,
     name: Schema.String,
-    arguments: optional(Schema.Record(Schema.String, Schema.Json))
+    arguments: optional(Schema.JsonObject)
   }
 }) {}
 
@@ -148,7 +148,7 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
     temperature: optional(Schema.Finite),
     maxTokens: Schema.Finite,
     stopSequences: optional(Schema.Array(Schema.String)),
-    metadata: optional(Schema.Record(Schema.String, Schema.Json))
+    metadata: optional(Schema.JsonObject)
   }
 }) {}
 

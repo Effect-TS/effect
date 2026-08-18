@@ -2988,8 +2988,8 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
-    it("Record(String, Json)", () => {
-      const schema = Schema.Record(Schema.String, Schema.Json)
+    it("JsonObject", () => {
+      const schema = Schema.JsonObject
       assertJsonSchemaDocument(
         schema,
         {
