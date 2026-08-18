@@ -88,17 +88,19 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
       return
     }
 
-    const request = new Request({ ...envelope, lastSentChunk })
-    const result = handler(request)
-    const unwrapped = Rpc.isWrapper(result as object) ? result.value : result
     const streamSchema = RpcSchema.isStreamSchema(rpc.successSchema) ? rpc.successSchema : undefined
+    let currentLastSentChunk = lastSentChunk
     let sequence = Option.match(lastSentChunk, {
       onNone: () => 0,
       onSome: (chunk) => chunk.sequence + 1
     })
 
-    const execute = streamSchema !== undefined
-      ? Stream.runForEachArray(unwrapped as Stream.Stream<any, any>, (values) => {
+    const execute = Effect.suspend(() => {
+      const request = new Request({ ...envelope, lastSentChunk: currentLastSentChunk })
+      const result = handler(request)
+      const unwrapped = Rpc.isWrapper(result as object) ? result.value : result
+      if (streamSchema === undefined) return unwrapped as Effect.Effect<any, any>
+      return Stream.runForEachArray(unwrapped as Stream.Stream<any, any>, (values) => {
         if (discard) return Effect.void
         const reply = new Reply.Chunk({
           requestId: envelope.requestId,
@@ -106,9 +108,12 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
           sequence: sequence++,
           values: values as any
         })
-        return respond(reply)
+        return Effect.tap(respond(reply), () =>
+          Effect.sync(() => {
+            currentLastSentChunk = Option.some(reply)
+          }))
       })
-      : unwrapped as Effect.Effect<any, any>
+    })
 
     const exit = yield* Effect.provideContext(runWithDefectRetry(execute), entry.context)
     if (!discard) {
