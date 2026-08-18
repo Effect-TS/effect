@@ -23,7 +23,7 @@ export const optional = <S extends Schema.Constraint>(
       encode: SchemaGetter.transformOptional(Option.flatMap(Option.fromUndefinedOr))
     })
   )
-const JsonObject = Schema.Record(Schema.String, Schema.Json)
+const JsonObject = Schema.JsonObject
 
 export const RequestId = Schema.Union([Schema.String, Schema.Finite])
 export const ProgressToken = Schema.Union([Schema.String, Schema.Finite])

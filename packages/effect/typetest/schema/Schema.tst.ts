@@ -378,6 +378,11 @@ describe("Schema", () => {
       >()
     })
 
+    it("JsonObject", () => {
+      const schema = Schema.JsonObject
+      expect(schema).type.toBe<Schema.$Record<Schema.String, Schema.Codec<Schema.Json>>>()
+    })
+
     it("NonEmptyArray", () => {
       const schema = Schema.NonEmptyArray(Schema.FiniteFromString.pipe(Schema.brand("a")))
       expect(schema.make).type.toBe<

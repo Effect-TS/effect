@@ -16,7 +16,7 @@ export * from "./v2025_03_26.ts"
 export const protocolVersion = "2025-06-18"
 
 const optional = Previous.optional
-const JsonObject = Schema.Record(Schema.String, Schema.Json)
+const JsonObject = Schema.JsonObject
 const Meta = optional(JsonObject)
 
 export const Implementation = Schema.Struct({
@@ -152,7 +152,7 @@ const ToolJsonSchema = Schema.StructWithRest(
     properties: optional(Schema.Record(Schema.String, JsonObject)),
     required: optional(Schema.Array(Schema.String))
   }),
-  [Schema.Record(Schema.String, Schema.Json)]
+  [Schema.JsonObject]
 )
 
 export const Tool = Schema.Struct({

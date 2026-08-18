@@ -16,7 +16,7 @@ export * from "./v2025_06_18.ts"
 export const protocolVersion = "2025-11-25"
 
 const optional = Previous.optional
-const JsonObject = Schema.Record(Schema.String, Schema.Json)
+const JsonObject = Schema.JsonObject
 const Meta = optional(JsonObject)
 
 export const Icon = Schema.Struct({
@@ -337,7 +337,7 @@ export const URLElicitationRequiredError = Schema.Struct({
       Schema.Struct({
         elicitations: Schema.Array(ElicitRequestURLParams)
       }),
-      [Schema.Record(Schema.String, Schema.Json)]
+      [Schema.JsonObject]
     )
   })
 })
