@@ -430,6 +430,38 @@ describe("CloudflareCluster", () => {
       }).pipe(Effect.provide(CloudflareCluster.layer(options)))
     })
 
+    it.effect("surfaces ask-to-tell deduplication as a persistence failure", () => {
+      const stub = {
+        invoke() {
+          return Promise.resolve({
+            requestId: "original-tell",
+            replies: [],
+            error: "AskDeduplicatedToTell" as const
+          })
+        },
+        acknowledge() {
+          return Promise.resolve([])
+        }
+      }
+      const options: CloudflareCluster.LayerOptions = {
+        entities: [Scheduled],
+        entityNamespace: new FakeNamespace(stub) as any,
+        workflowNamespace: new FakeNamespace() as any,
+        queueNamespace: new FakeNamespace() as any,
+        singletonNamespace: new FakeNamespace() as any
+      }
+
+      return Effect.gen(function*() {
+        const makeClient = yield* Scheduled.client
+        const exit = yield* makeClient("one").Ask({ deliverAt: Date.now() + 60_000, id: "tell" }).pipe(
+          Effect.provideService(CurrentEntityName, "6:Callerone"),
+          Effect.exit
+        )
+        assert.isTrue(Exit.isFailure(exit))
+        assert.isFalse(yield* Effect.promise(() => deliverReply("original-tell", "unused")))
+      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
+    })
+
     it.effect("does not retain reset targets for volatile requests", () => {
       let requestId = ""
       let resets = 0
