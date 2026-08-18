@@ -6,7 +6,7 @@ import { makeWorkflowRuntime, type WorkflowRuntime } from "@effect/platform-clou
 import { loadExecutionName } from "@effect/platform-cloudflare/internal/workflowStorage"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Layer, Option, Schema } from "effect"
-import { Activity, DurableClock, DurableDeferred, Workflow } from "effect/unstable/workflow"
+import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "effect/unstable/workflow"
 
 class FakeSql {
   execution: Record<string, unknown> | undefined
@@ -341,6 +341,39 @@ describe("CloudflareWorkflowEngine", () => {
       const result = yield* pollUntil(Parent, parentExecutionId, "Complete")
       assert(result._tag === "Complete" && Exit.isSuccess(result.exit))
       assert.strictEqual(result.exit.value, "parent-child")
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect("persists an interrupted completion when hard-interrupted mid-activity", () => {
+    const namespace = new FakeWorkflowNamespace()
+    let release!: () => void
+    const started = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const Hard = Workflow.make("HardInterrupt", {
+      payload: { id: Schema.String },
+      idempotencyKey: ({ id }) => id
+    })
+    const layer = Hard.toLayer(() =>
+      Activity.make({
+        name: "hang",
+        execute: Effect.andThen(
+          Effect.sync(() => release()),
+          Effect.promise(() => new Promise<void>(() => {}))
+        )
+      })
+    ).pipe(Layer.provideMerge(namespace.layer))
+
+    return Effect.gen(function*() {
+      const engine = yield* WorkflowEngine.WorkflowEngine
+      const executionId = yield* Hard.executionId({ id: "one" })
+      yield* Hard.execute({ id: "one" }, { discard: true })
+      yield* Effect.promise(() => started)
+
+      yield* engine.interruptUnsafe(Hard, executionId)
+      const result = yield* pollUntil(Hard, executionId, "Complete")
+      assert(result._tag === "Complete" && Exit.isFailure(result.exit))
+      assert.isTrue(Exit.hasInterrupts(result.exit))
     }).pipe(Effect.provide(layer))
   })
 
