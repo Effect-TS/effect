@@ -80,7 +80,7 @@ interface ReplayMessage {
 interface InvokeResult {
   readonly requestId: string
   readonly replies: ReadonlyArray<string>
-  readonly error?: "MailboxFull" | "EncodedMessageTooLarge" | undefined
+  readonly error?: "MailboxFull" | "EncodedMessageTooLarge" | "AskDeduplicatedToTell" | undefined
 }
 
 interface InvokeOutcome {
@@ -214,6 +214,17 @@ export class ClusterEntity extends DurableObject<unknown> {
         return yield* Effect.die(error)
       }
       if (persisted._tag === "Duplicate") {
+        const original = loadMessage(storage.sql, persisted.originalId)
+        if (original === undefined) return yield* Effect.die("Duplicate mailbox row disappeared")
+        if (original.discard && !discard) {
+          return {
+            result: {
+              requestId: persisted.originalId,
+              replies: [],
+              error: "AskDeduplicatedToTell" as const
+            }
+          }
+        }
         const nextReply = loadNextReply(storage.sql, persisted.originalId)
         if (nextReply !== undefined) {
           this.#releaseTerminalSession(persisted.originalId, nextReply)
@@ -231,8 +242,6 @@ export class ClusterEntity extends DurableObject<unknown> {
             String(envelope.requestId)
           )
         }
-        const original = loadMessage(storage.sql, persisted.originalId)
-        if (original === undefined) return yield* Effect.die("Duplicate mailbox row disappeared")
         if (original.deliverAt !== undefined && original.deliverAt > Date.now()) {
           yield* this.#armEarliestAlarm()
           return this.#delayedOutcome(

@@ -53,7 +53,7 @@ export const persistRequest = (
   }
 
   const existing = sql.exec(
-    `SELECT m.request_id, m.processed, m.reply_to, r.reply AS last_reply
+    `SELECT m.request_id, m.discard, m.processed, m.reply_to, r.reply AS last_reply
      FROM cluster_messages m
      LEFT JOIN cluster_replies r ON r.reply_id = m.last_reply_id
      WHERE m.request_id = ? OR (? IS NOT NULL AND m.message_id = ?)
@@ -63,7 +63,7 @@ export const persistRequest = (
     primaryKey
   ).toArray()[0]
   if (existing !== undefined) {
-    if (replyTo !== null && Number(existing.processed) === 0) {
+    if (replyTo !== null && Number(existing.discard) === 0 && Number(existing.processed) === 0) {
       const replyTos = decodeReplyTargets(existing.reply_to)
       if (!replyTos.includes(replyTo)) replyTos.push(replyTo)
       sql.exec(
