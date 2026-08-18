@@ -19,8 +19,11 @@
  * @since 4.0.0
  */
 import * as Arr from "effect/Array"
+import * as Fn from "effect/Function"
 import * as JsonSchema from "effect/JsonSchema"
 import * as Rec from "effect/Record"
+import * as Schema from "effect/Schema"
+import * as SchemaAST from "effect/SchemaAST"
 import * as SchemaRepresentation from "effect/SchemaRepresentation"
 
 type Source = "openapi-3.0" | "openapi-3.1"
@@ -221,7 +224,10 @@ function makeWithRepresentation() {
         return options?.onEnter === undefined ? out : options.onEnter(out)
       }
     }
-    const rootSchemas = SchemaRepresentation.fromJsonSchemaMultiDocument(document, importerOptions)
+    const rootSchemas = Arr.map(
+      SchemaRepresentation.fromJsonSchemaMultiDocument(document, importerOptions),
+      (schema) => schema.rebuild(dropInvalidExamples(schema.ast))
+    )
     const codeDocument = SchemaRepresentation.toCodeDocument(
       SchemaRepresentation.toRepresentations(Arr.map(rootSchemas, (schema) => schema.ast))
     )
@@ -234,6 +240,19 @@ function makeWithRepresentation() {
 
   return { addSchema, generate, generateHttpApi } as const
 }
+
+const dropInvalidExamples = Fn.memoizeIdempotent((ast: SchemaAST.AST): SchemaAST.AST => {
+  const out = "recur" in ast ? ast.recur(dropInvalidExamples) : ast
+  const schema = Schema.make(out)
+  const examples = Schema.resolveAnnotations(schema)?.examples
+  if (!Array.isArray(examples)) return out
+
+  const isValid = Schema.is(schema)
+  const validExamples = examples.filter(isValid)
+  return validExamples.length === examples.length
+    ? out
+    : SchemaAST.annotate(out, { examples: validExamples.length === 0 ? undefined : validExamples })
+})
 
 function fromSchemaOpenApi(source: Source, jsonSchema: JsonSchema.JsonSchema) {
   switch (source) {
