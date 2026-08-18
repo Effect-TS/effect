@@ -33,8 +33,13 @@ class FakeSql {
   exec(query: string, ...bindings: Array<unknown>) {
     if (query.includes("COUNT(*) AS count")) {
       return this.rows([{
+        count: Array.from(this.messages.values()).filter((row) => row.processed === 0).length
+      }])
+    }
+    if (query.includes("COUNT(DISTINCT")) {
+      return this.rows([{
         count: Array.from(this.messages.values()).filter((row) =>
-          row.processed === 0 || Array.from(this.replies.entries()).some(([id, text]) => {
+          row.processed === 1 && Array.from(this.replies.entries()).some(([id, text]) => {
             const reply = JSON.parse(text)
             return reply.requestId === row.request_id && reply._tag === "Chunk" && !this.acked.has(id)
           })
@@ -99,6 +104,7 @@ class FakeSql {
             (row.deliver_at === null || row.deliver_at === undefined || row.deliver_at <= now)
           )
           .map((row) => ({
+            request_id: row.request_id,
             envelope: row.envelope,
             last_reply: row.last_reply_id === null ? null : this.replies.get(row.last_reply_id),
             discard: row.discard,
@@ -117,7 +123,7 @@ class FakeSql {
         .map(([id, text]) => ({ id, value: JSON.parse(text) }))
         .filter(({ id, value }) => value.requestId === request && value._tag === "Chunk" && !this.acked.has(id))
         .sort((left, right) => left.value.sequence - right.value.sequence)[0]
-      return this.rows(reply === undefined ? [] : [{ reply: this.replies.get(reply.id) }])
+      return this.rows(reply === undefined ? [] : [{ reply: this.replies.get(reply.id), kind: "Chunk" }])
     }
     if (query.includes("FROM cluster_replies") && query.includes("kind = 'WithExit'")) {
       const request = String(bindings[0])
@@ -125,7 +131,7 @@ class FakeSql {
         const value = JSON.parse(text)
         return value.requestId === request && value._tag === "WithExit"
       })
-      return this.rows(reply === undefined ? [] : [{ reply }])
+      return this.rows(reply === undefined ? [] : [{ reply, kind: "WithExit" }])
     }
     if (query.includes("DELETE FROM cluster_replies")) {
       const request = String(bindings[0])
@@ -201,6 +207,7 @@ describe("EntityMailbox", () => {
     assert.strictEqual(sql.messages.get(requestId)?.reply_to, JSON.stringify(["7:Callercaller"]))
     assert.deepStrictEqual(loadUnprocessed(sql.sql, 1_999), [])
     assert.deepStrictEqual(loadDue(sql.sql, 2_000), [{
+      requestId,
       envelope,
       lastSentChunk: undefined,
       discard: false,
@@ -223,6 +230,7 @@ describe("EntityMailbox", () => {
     )
 
     assert.deepStrictEqual(loadDue(sql.sql, 2_000), [{
+      requestId,
       envelope,
       lastSentChunk: undefined,
       discard: false,
@@ -245,7 +253,7 @@ describe("EntityMailbox", () => {
 
     assert.deepStrictEqual(
       persistRequest(sql.sql, withRequestId("0198bd72-6a81-72f1-8d87-5e9b5cf1e001"), primaryKey),
-      { _tag: "Duplicate", originalId: requestId, lastReceivedReply: reply, processed: true }
+      { _tag: "Duplicate", originalId: requestId, processed: true }
     )
   })
 
@@ -261,7 +269,7 @@ describe("EntityMailbox", () => {
     })
     saveReply(sql.sql, chunk)
 
-    assert.deepStrictEqual(loadUnprocessed(sql.sql), [{ envelope, lastSentChunk: chunk, discard: false }])
+    assert.deepStrictEqual(loadUnprocessed(sql.sql), [{ requestId, envelope, lastSentChunk: chunk, discard: false }])
   })
 
   it("marks a persisted tell complete without storing a user-visible reply", () => {
@@ -289,7 +297,12 @@ describe("EntityMailbox", () => {
     assert.isTrue(sql.acked.has("chunk-1"))
 
     clearReplies(sql.sql, requestId)
-    assert.deepStrictEqual(loadUnprocessed(sql.sql), [{ envelope, lastSentChunk: undefined, discard: false }])
+    assert.deepStrictEqual(loadUnprocessed(sql.sql), [{
+      requestId,
+      envelope,
+      lastSentChunk: undefined,
+      discard: false
+    }])
     assert.strictEqual(sql.replies.size, 0)
   })
 
@@ -368,17 +381,17 @@ describe("EntityMailbox", () => {
     saveReply(sql.sql, chunk1)
     saveReply(sql.sql, terminal)
 
-    assert.strictEqual(loadNextReply(sql.sql, requestId), chunk0)
+    assert.deepStrictEqual(loadNextReply(sql.sql, requestId), { reply: chunk0, kind: "Chunk" })
     ackChunk(sql.sql, requestId, "chunk-0")
-    assert.strictEqual(loadNextReply(sql.sql, requestId), chunk1)
+    assert.deepStrictEqual(loadNextReply(sql.sql, requestId), { reply: chunk1, kind: "Chunk" })
     ackChunk(sql.sql, requestId, "chunk-1")
-    assert.strictEqual(loadNextReply(sql.sql, requestId), terminal)
+    assert.deepStrictEqual(loadNextReply(sql.sql, requestId), { reply: terminal, kind: "WithExit" })
   })
 
   it("retains tell discard mode for crash replay", () => {
     const sql = new FakeSql()
     persistRequest(sql.sql, envelope, null, true)
 
-    assert.deepStrictEqual(loadUnprocessed(sql.sql), [{ envelope, lastSentChunk: undefined, discard: true }])
+    assert.deepStrictEqual(loadUnprocessed(sql.sql), [{ requestId, envelope, lastSentChunk: undefined, discard: true }])
   })
 })

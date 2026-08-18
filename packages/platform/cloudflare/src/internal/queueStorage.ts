@@ -25,7 +25,12 @@ const ddl = [
   `CREATE INDEX IF NOT EXISTS queue_items_take_idx
     ON queue_items (completed, position)`,
   `CREATE INDEX IF NOT EXISTS queue_items_lease_idx
-    ON queue_items (lease_until)`
+    ON queue_items (lease_until)`,
+  // MAX(position) in offerItem/failItem needs a bare position index; the
+  // (completed, position) index cannot serve it and completed rows are
+  // retained forever for dedup.
+  `CREATE INDEX IF NOT EXISTS queue_items_position_idx
+    ON queue_items (position)`
 ]
 
 /** @internal */
