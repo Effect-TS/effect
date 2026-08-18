@@ -24,6 +24,7 @@ import type * as Rpc from "effect/unstable/rpc/Rpc"
 import { decodeName } from "./internal/clusterName.ts"
 import {
   ackChunk,
+  clearReplies,
   completeTell,
   EncodedMessageTooLargeError,
   loadMessage,
@@ -31,7 +32,7 @@ import {
   loadUnprocessed,
   MailboxFullError,
   persistRequest,
-  resetMessage,
+  type PersistResult,
   saveReply
 } from "./internal/entityMailbox.ts"
 import { type EntityRegistration, getEntityRegistration } from "./internal/entityRegistry.ts"
@@ -104,15 +105,12 @@ export class ClusterEntity extends DurableObject<unknown> {
     if (registration === undefined) {
       return Effect.die(`No handlers registered for entity type: ${this.#address.entityType}`)
     }
-    const storage = this.#state.storage
-    const getRuntime = this.#getRuntime.bind(this)
-    const run = this.#run.bind(this)
-    const runStored = this.#runStored.bind(this)
-    return Effect.gen(function*() {
-      const runtime = yield* getRuntime(registration)
+    return Effect.gen({ self: this }, function*() {
+      const storage = this.#state.storage
+      const runtime = yield* this.#getRuntime(registration)
       yield* Effect.forEach(
         loadUnprocessed(storage.sql),
-        (row) => runStored(registration, runtime, row.envelope, row.lastSentChunk, row.discard),
+        (row) => this.#runStored(registration, runtime, row.envelope, row.lastSentChunk, row.discard),
         { discard: true }
       )
 
@@ -120,52 +118,48 @@ export class ClusterEntity extends DurableObject<unknown> {
       const rpc = registration.entity.protocol.requests.get(envelope.tag) as Rpc.AnyWithProps
       const isPersisted = Context.get(rpc.annotations, Persisted)
       if (!isPersisted) {
-        const replies = yield* run(registration, runtime, envelope, undefined, discard, false)
+        const replies = yield* this.#run(registration, runtime, envelope, undefined, discard, false)
         return { requestId: String(envelope.requestId), replies }
       }
 
-      const result = yield* Effect.result(Effect.catchDefect(
-        Effect.sync(() =>
-          storage.transactionSync(() =>
-            persistRequest(
-              storage.sql,
-              envelopeText,
-              Envelope.primaryKey(envelope),
-              discard
-            )
+      let persisted: PersistResult
+      try {
+        persisted = storage.transactionSync(() =>
+          persistRequest(
+            storage.sql,
+            envelopeText,
+            Envelope.primaryKey(envelope),
+            discard
           )
-        ),
-        (error) => Effect.fail(error)
-      ))
-      if (result._tag === "Failure") {
-        if (result.failure instanceof MailboxFullError) {
+        )
+      } catch (error) {
+        if (error instanceof MailboxFullError) {
           return { requestId: String(envelope.requestId), replies: [], error: "MailboxFull" as const }
-        } else if (result.failure instanceof EncodedMessageTooLargeError) {
+        } else if (error instanceof EncodedMessageTooLargeError) {
           return { requestId: String(envelope.requestId), replies: [], error: "EncodedMessageTooLarge" as const }
         }
-        return yield* Effect.die(result.failure)
+        return yield* Effect.die(error)
       }
-      const persistedResult = result.success
-      if (persistedResult._tag === "Duplicate") {
-        const nextReply = loadNextReply(storage.sql, persistedResult.originalId)
+      if (persisted._tag === "Duplicate") {
+        const nextReply = loadNextReply(storage.sql, persisted.originalId)
         if (nextReply !== undefined) {
-          return { requestId: persistedResult.originalId, replies: [nextReply] }
+          return { requestId: persisted.originalId, replies: [nextReply] }
         }
-        if (persistedResult.processed) {
-          return { requestId: persistedResult.originalId, replies: [] }
+        if (persisted.processed) {
+          return { requestId: persisted.originalId, replies: [] }
         }
-        const original = loadMessage(storage.sql, persistedResult.originalId)
+        const original = loadMessage(storage.sql, persisted.originalId)
         if (original === undefined) return yield* Effect.die("Duplicate mailbox row disappeared")
-        const replies = yield* runStored(
+        const replies = yield* this.#runStored(
           registration,
           runtime,
           original.envelope,
           original.lastSentChunk,
           original.discard
         )
-        return { requestId: persistedResult.originalId, replies }
+        return { requestId: persisted.originalId, replies }
       }
-      const replies = yield* run(registration, runtime, envelope, undefined, discard, true)
+      const replies = yield* this.#run(registration, runtime, envelope, undefined, discard, true)
       return { requestId: String(envelope.requestId), replies }
     })
   }
@@ -179,12 +173,12 @@ export class ClusterEntity extends DurableObject<unknown> {
 
   /** @internal */
   clearReplies(requestId: string): void {
-    this.#state.storage.transactionSync(() => resetMessage(this.#state.storage.sql, requestId))
+    this.#state.storage.transactionSync(() => clearReplies(this.#state.storage.sql, requestId))
   }
 
   /** @internal */
   reset(requestId: string): void {
-    this.#state.storage.transactionSync(() => resetMessage(this.#state.storage.sql, requestId))
+    this.clearReplies(requestId)
   }
 
   #getRuntime(registration: EntityRegistration) {
@@ -219,16 +213,15 @@ export class ClusterEntity extends DurableObject<unknown> {
     const rpc = registration.entity.protocol.requests.get(envelope.tag) as Rpc.AnyWithProps
     const storage = this.#state.storage
     return Effect.gen(function*() {
-      const lastSentChunk = lastSentChunkText === undefined
-        ? Option.none()
-        : Option.filter(
-          Option.some(yield* decodeReplyFor(rpc, registration.context, lastSentChunkText)),
-          (reply): reply is Reply.Chunk<any> => reply._tag === "Chunk"
-        )
+      let lastSentChunk = Option.none<Reply.Chunk<any>>()
+      if (lastSentChunkText !== undefined) {
+        const reply = yield* decodeReplyFor(rpc, registration.context, lastSentChunkText)
+        if (reply._tag === "Chunk") lastSentChunk = Option.some(reply)
+      }
       const replies: Array<string> = []
       yield* runtime.run(
         envelope,
-        lastSentChunk as any,
+        lastSentChunk,
         discard,
         (reply) =>
           Effect.gen(function*() {
