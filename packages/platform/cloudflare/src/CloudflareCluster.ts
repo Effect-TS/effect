@@ -125,7 +125,7 @@ interface EntityStub {
   }) => Promise<{
     readonly requestId: string
     readonly replies: ReadonlyArray<string>
-    readonly error?: "MailboxFull" | "EncodedMessageTooLarge" | undefined
+    readonly error?: "MailboxFull" | "EncodedMessageTooLarge" | "AskDeduplicatedToTell" | undefined
   }>
   readonly acknowledge: (requestId: string, replyId: string) => Promise<ReadonlyArray<string>>
   readonly interrupt?: (storageRequestId: string, clientRequestId?: string) => Promise<void>
@@ -315,6 +315,12 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
                       new PersistenceError({ cause: new Error("Encoded entity message exceeds 2 MB") }) as
                         | MailboxFull
                         | PersistenceError
+                    )
+                  } else if (result.error === "AskDeduplicatedToTell") {
+                    return Effect.fail(
+                      new PersistenceError({
+                        cause: new Error("Cannot deduplicate an ask onto a tell with the same PrimaryKey")
+                      }) as MailboxFull | PersistenceError
                     )
                   }
                   entry.storageRequestId = result.requestId
