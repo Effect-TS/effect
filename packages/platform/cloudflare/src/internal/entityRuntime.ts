@@ -3,10 +3,12 @@ import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Metric from "effect/Metric"
 import * as Option from "effect/Option"
 import type * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import * as ClusterMetrics from "effect/unstable/cluster/ClusterMetrics"
 import { CurrentAddress, CurrentRunnerAddress, KeepAliveHandler, Request } from "effect/unstable/cluster/Entity"
 import type * as EntityAddress from "effect/unstable/cluster/EntityAddress"
 import type * as Envelope from "effect/unstable/cluster/Envelope"
@@ -122,7 +124,26 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
       })
     })
 
-    const exit = yield* Effect.provideContext(runWithDefectRetry(execute), entry.context)
+    const metricContext = Context.merge(
+      entry.context,
+      Metric.CurrentMetricAttributes.context({ type: registration.entity.type })
+    )
+    const handlerEffect = Effect.sync(() => {
+      ClusterMetrics.entities.modifyUnsafe(BigInt(1), metricContext)
+    }).pipe(
+      Effect.andThen(runWithDefectRetry(execute)),
+      Effect.ensuring(Effect.sync(() => {
+        ClusterMetrics.entities.modifyUnsafe(BigInt(-1), metricContext)
+      })),
+      Effect.withSpan("CloudflareCluster.handler", {
+        attributes: {
+          entityType: registration.entity.type,
+          entityId: String(address.entityId),
+          rpc: envelope.tag
+        }
+      }, { captureStackTrace: false })
+    )
+    const exit = yield* Effect.provideContext(handlerEffect, entry.context)
     if (!discard) {
       yield* respond(
         new Reply.WithExit({
