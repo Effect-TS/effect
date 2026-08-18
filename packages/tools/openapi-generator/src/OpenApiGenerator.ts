@@ -496,14 +496,19 @@ const parseOpenApi = (
         const representable: Array<ParsedOperation.ParsedOperationMediaTypeSchema> = []
 
         let jsonSchemaName: string | undefined
+        let jsonResponseContentType: string | undefined
         if (isHttpApi) {
-          const jsonResponseEntry = Object.entries(content ?? {}).find(([contentType, mediaType]) =>
+          const jsonResponseEntries = Object.entries(content ?? {}).filter(([contentType, mediaType]) =>
             isJsonMediaType(normalizeMediaType(contentType)) &&
             Predicate.isObject(mediaType) &&
             Predicate.isNotUndefined(mediaType.schema)
           )
+          const jsonResponseEntry = jsonResponseEntries.find(([contentType]) =>
+            normalizeMediaType(contentType) === "application/json"
+          ) ?? jsonResponseEntries[0]
           if (Predicate.isNotUndefined(jsonResponseEntry)) {
             const [contentType, mediaType] = jsonResponseEntry
+            jsonResponseContentType = contentType
             jsonSchemaName = addSchema(`${schemaId}${status}`, mediaType.schema as JsonSchema.JsonSchema, op)
             representable.push({
               contentType,
@@ -530,7 +535,7 @@ const parseOpenApi = (
 
         if (isHttpApi) {
           for (const [contentType, mediaType] of Object.entries(content ?? {})) {
-            if (isJsonMediaType(normalizeMediaType(contentType))) {
+            if (contentType === jsonResponseContentType) {
               continue
             }
             if (!Predicate.isObject(mediaType)) {

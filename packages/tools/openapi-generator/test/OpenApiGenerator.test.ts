@@ -1603,6 +1603,65 @@ export const CreatePayloadRequestText = Schema.String`,
         ]
       ))
 
+    it.effect("preserves multiple JSON response representations with application/json preferred", () =>
+      assertHttpApiIncludes(
+        {
+          openapi: "3.1.0",
+          info: {
+            title: "Test API",
+            version: "1.0.0"
+          },
+          paths: {
+            "/dual": {
+              get: {
+                operationId: "dualJson",
+                parameters: [],
+                responses: {
+                  200: {
+                    description: "Dual JSON response",
+                    content: {
+                      "application/problem+json": {
+                        schema: {
+                          type: "object",
+                          properties: {
+                            title: { type: "string" }
+                          },
+                          required: ["title"],
+                          additionalProperties: false
+                        }
+                      },
+                      "application/json": {
+                        schema: {
+                          type: "object",
+                          properties: {
+                            value: { type: "string" }
+                          },
+                          required: ["value"],
+                          additionalProperties: false
+                        }
+                      }
+                    }
+                  }
+                },
+                tags: ["DualJson"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {},
+            securitySchemes: {}
+          },
+          security: [],
+          tags: [{ name: "DualJson" }]
+        },
+        [
+          `export type DualJson200 = { readonly "value": string }`,
+          `export type DualJson200ApplicationProblemJson = { readonly "title": string }`,
+          `HttpApiEndpoint.get("dualJson", "/dual", { success: [DualJson200, DualJson200ApplicationProblemJson.pipe(HttpApiSchema.asJson({ contentType: "application/problem+json" }))] })`
+        ]
+      ))
+
     it.effect("maps explicit SSE stream responses to HttpApiSchema.StreamSse", () =>
       assertHttpApiIncludes(
         {
