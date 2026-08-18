@@ -37,6 +37,9 @@ The package ships four Durable Object classes. Re-export them from your Worker e
       ],
     },
   ],
+  "triggers": {
+    "crons": ["0 * * * *"],
+  },
 }
 ```
 
@@ -44,7 +47,7 @@ The package ships four Durable Object classes. Re-export them from your Worker e
 // src/worker.ts
 import { CloudflareCluster } from "@effect/platform-cloudflare"
 import { Effect, Layer, Schema } from "effect"
-import { Entity } from "effect/unstable/cluster"
+import { Entity, Singleton } from "effect/unstable/cluster"
 import { Rpc } from "effect/unstable/rpc"
 
 export {
@@ -63,8 +66,13 @@ const CounterLayer = Counter.toLayer({
   Increment: () => Effect.succeed(1)
 })
 
+const MaintenanceLayer = Singleton.make(
+  "hourly-maintenance",
+  Effect.logInfo("Running hourly maintenance")
+)
+
 const clusterLayer = (env: Env) =>
-  CounterLayer.pipe(
+  Layer.merge(CounterLayer, MaintenanceLayer).pipe(
     Layer.provideMerge(CloudflareCluster.layer({
       entities: [Counter],
       entityNamespace: env.CLUSTER_ENTITY,
@@ -73,6 +81,19 @@ const clusterLayer = (env: Env) =>
       singletonNamespace: env.CLUSTER_SINGLETON
     }))
   )
+```
+
+The Cron Trigger wakes the named singleton through its same-Worker binding.
+The call returns after one run, allowing the Durable Object to hibernate; do
+not make the singleton effect a forever loop.
+
+```ts
+export default {
+  scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    const singleton = env.CLUSTER_SINGLETON.getByName("Singleton/hourly-maintenance")
+    ctx.waitUntil(singleton.wake())
+  }
+}
 ```
 
 `Entity.client` stays the user API. The Worker encodes `(type, id)` into the Durable Object name and resolves the object with `getByName`; an unknown entity type fails at the Worker before any Durable Object is contacted.
