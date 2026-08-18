@@ -793,6 +793,59 @@ export const TestClientError = <Tag extends string, E>(
   }) as any`
       ))
 
+    it.effect("resolves JSON Pointer-escaped local references", () =>
+      assertRuntimeIncludes(
+        {
+          openapi: "3.1.0",
+          info: {
+            title: "Test API",
+            version: "1.0.0"
+          },
+          paths: {
+            "/widgets": {
+              get: {
+                operationId: "listWidgets",
+                parameters: [
+                  { $ref: "#/components/parameters/Page~1Limit" } as any,
+                  { $ref: "#/components/parameters/Tilde~0Name" } as any
+                ],
+                responses: {
+                  204: {
+                    description: "No content"
+                  }
+                },
+                tags: ["Widgets"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {},
+            parameters: {
+              "Page/Limit": {
+                name: "limit",
+                in: "query",
+                required: false,
+                schema: { type: "integer" }
+              },
+              "Tilde~Name": {
+                name: "tilde",
+                in: "query",
+                required: false,
+                schema: { type: "string" }
+              }
+            }
+          } as any,
+          security: [],
+          tags: [{ name: "Widgets" }]
+        },
+        [
+          `readonly "limit"?: number`,
+          `readonly "tilde"?: string`,
+          `HttpClientRequest.setUrlParams({ "limit": options?.params?.["limit"] as any, "tilde": options?.params?.["tilde"] as any })`
+        ]
+      ))
+
     it.effect("sse operation decodes event payload from json string", () =>
       assertRuntimeIncludes(
         {
