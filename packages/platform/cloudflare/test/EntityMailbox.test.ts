@@ -4,6 +4,7 @@ import {
   clearReplies,
   completeTell,
   EncodedMessageTooLargeError,
+  loadDue,
   loadNextReply,
   loadUnprocessed,
   MailboxFullError,
@@ -20,6 +21,8 @@ interface MessageRow {
   readonly discard: number
   processed: number
   last_reply_id: string | null
+  deliver_at?: number | null
+  reply_to?: string | null
 }
 
 class FakeSql {
@@ -39,14 +42,23 @@ class FakeSql {
       }])
     }
     if (query.includes("INSERT INTO cluster_messages")) {
-      const [requestId, messageId, envelope, discard] = bindings as [string, string | null, string, number]
+      const [requestId, messageId, envelope, discard, deliverAt, replyTo] = bindings as [
+        string,
+        string | null,
+        string,
+        number,
+        number | null,
+        string | null
+      ]
       this.messages.set(requestId, {
         request_id: requestId,
         message_id: messageId,
         envelope,
         discard,
         processed: 0,
-        last_reply_id: null
+        last_reply_id: null,
+        deliver_at: deliverAt,
+        reply_to: replyTo
       })
       return this.rows([])
     }
@@ -71,14 +83,27 @@ class FakeSql {
     if (query.includes("UPDATE cluster_messages") && query.includes("last_reply_id")) {
       return this.rows([])
     }
+    if (query.includes("SET reply_to = ?")) {
+      const row = this.messages.get(String(bindings[1]))
+      if (row !== undefined) row.reply_to = String(bindings[0])
+      return this.rows([])
+    }
     if (query.includes("WHERE m.processed = 0")) {
+      const now = Number(bindings[0])
+      const dueOnly = query.includes("m.deliver_at IS NOT NULL")
       return this.rows(
         Array.from(this.messages.values())
-          .filter((row) => row.processed === 0)
+          .filter((row) =>
+            row.processed === 0 &&
+            (!dueOnly || row.deliver_at !== null && row.deliver_at !== undefined) &&
+            (row.deliver_at === null || row.deliver_at === undefined || row.deliver_at <= now)
+          )
           .map((row) => ({
             envelope: row.envelope,
             last_reply: row.last_reply_id === null ? null : this.replies.get(row.last_reply_id),
-            discard: row.discard
+            discard: row.discard,
+            deliver_at: row.deliver_at,
+            reply_to: row.reply_to
           }))
       )
     }
@@ -166,6 +191,22 @@ describe("EntityMailbox", () => {
     assert.deepStrictEqual(result, { _tag: "Success" })
     assert.strictEqual(sql.messages.get(requestId)?.envelope, envelope)
     assert.strictEqual(sql.messages.get(requestId)?.processed, 0)
+  })
+
+  it("persists future delivery metadata and only loads the row when due", () => {
+    const sql = new FakeSql()
+    persistRequest(sql.sql, envelope, "scheduled", false, 2_000, "7:Callercaller")
+
+    assert.strictEqual(sql.messages.get(requestId)?.deliver_at, 2_000)
+    assert.strictEqual(sql.messages.get(requestId)?.reply_to, "7:Callercaller")
+    assert.deepStrictEqual(loadUnprocessed(sql.sql, 1_999), [])
+    assert.deepStrictEqual(loadDue(sql.sql, 2_000), [{
+      envelope,
+      lastSentChunk: undefined,
+      discard: false,
+      deliverAt: 2_000,
+      replyTo: "7:Callercaller"
+    }])
   })
 
   it("maps a primary-key duplicate to the original request and last reply", () => {

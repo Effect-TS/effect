@@ -1,7 +1,8 @@
 import * as CloudflareCluster from "@effect/platform-cloudflare/CloudflareCluster"
+import { CurrentEntityName, deliverReply } from "@effect/platform-cloudflare/internal/entityReply"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Layer, Schema, Stream } from "effect"
-import { ClusterSchema, Entity, Sharding } from "effect/unstable/cluster"
+import { DateTime, Effect, Exit, Fiber, Layer, PrimaryKey, Schema, Stream } from "effect"
+import { ClusterSchema, DeliverAt, Entity, Sharding } from "effect/unstable/cluster"
 import { Rpc, RpcSchema } from "effect/unstable/rpc"
 
 const User = Entity.make("User", [
@@ -18,6 +19,40 @@ const Counter = Entity.make("Counter", [
 
 const Events = Entity.make("Events", [
   Rpc.make("Numbers", { success: RpcSchema.Stream(Schema.Number, Schema.Never) })
+])
+
+class ScheduledPayload extends Schema.Class<ScheduledPayload>("CloudflareScheduledPayload")({
+  deliverAt: Schema.Number,
+  id: Schema.String
+}) {
+  [PrimaryKey.symbol]() {
+    return this.id
+  }
+
+  [DeliverAt.symbol]() {
+    return DateTime.makeUnsafe(this.deliverAt)
+  }
+}
+
+class UnkeyedScheduledPayload extends Schema.Class<UnkeyedScheduledPayload>("CloudflareUnkeyedScheduledPayload")({
+  deliverAt: Schema.Number
+}) {
+  [DeliverAt.symbol]() {
+    return DateTime.makeUnsafe(this.deliverAt)
+  }
+}
+
+const Scheduled = Entity.make("Scheduled", [
+  Rpc.make("Ask", { payload: ScheduledPayload, success: Schema.String }).annotate(ClusterSchema.Persisted, true),
+  Rpc.make("Tell", { payload: ScheduledPayload }).annotate(ClusterSchema.Persisted, true),
+  Rpc.make("Unkeyed", { payload: UnkeyedScheduledPayload, success: Schema.String }).annotate(
+    ClusterSchema.Persisted,
+    true
+  ),
+  Rpc.make("Stream", {
+    payload: ScheduledPayload,
+    success: RpcSchema.Stream(Schema.Number, Schema.Never)
+  }).annotate(ClusterSchema.Persisted, true)
 ])
 
 class FakeNamespace {
@@ -167,6 +202,171 @@ describe("CloudflareCluster", () => {
         yield* Fiber.interrupt(fiber)
 
         assert.deepStrictEqual(interruptions, [requestId])
+      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
+    })
+
+    it.effect("passes future DeliverAt metadata with a destination-scoped primary key", () => {
+      const deliveries: Array<any> = []
+      const stub = {
+        invoke(envelopeText: string, discard: boolean, delivery: unknown) {
+          const envelope = JSON.parse(envelopeText)
+          deliveries.push({ discard, delivery })
+          return Promise.resolve({
+            requestId: envelope.requestId,
+            replies: discard ? [] : [JSON.stringify({
+              _tag: "WithExit",
+              requestId: envelope.requestId,
+              id: "terminal",
+              exit: { _tag: "Success", value: "done" }
+            })]
+          })
+        },
+        acknowledge() {
+          return Promise.resolve([])
+        }
+      }
+      const options: CloudflareCluster.LayerOptions = {
+        entities: [Scheduled],
+        entityNamespace: new FakeNamespace(stub) as any,
+        workflowNamespace: new FakeNamespace() as any,
+        queueNamespace: new FakeNamespace() as any,
+        singletonNamespace: new FakeNamespace() as any
+      }
+
+      return Effect.gen(function*() {
+        const makeClient = yield* Scheduled.client
+        const client = makeClient("one")
+        const deliverAt = Date.now() + 60_000
+        assert.strictEqual(yield* client.Ask({ deliverAt, id: "operation" }), "done")
+        yield* client.Tell({ deliverAt, id: "tell" }, { discard: true })
+
+        assert.deepStrictEqual(deliveries, [
+          {
+            discard: false,
+            delivery: {
+              deliverAt,
+              primaryKey: "Scheduled/one/Ask/operation"
+            }
+          },
+          {
+            discard: true,
+            delivery: {
+              deliverAt,
+              primaryKey: "Scheduled/one/Tell/tell"
+            }
+          }
+        ])
+      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
+    })
+
+    it.effect("keeps a Worker delayed ask open until the destination RPC returns", () => {
+      let resolve!: (result: any) => void
+      const response = new Promise<any>((resume) => {
+        resolve = resume
+      })
+      let requestId = ""
+      const stub = {
+        invoke(envelopeText: string) {
+          requestId = JSON.parse(envelopeText).requestId
+          return response
+        },
+        acknowledge() {
+          return Promise.resolve([])
+        }
+      }
+      const options: CloudflareCluster.LayerOptions = {
+        entities: [Scheduled],
+        entityNamespace: new FakeNamespace(stub) as any,
+        workflowNamespace: new FakeNamespace() as any,
+        queueNamespace: new FakeNamespace() as any,
+        singletonNamespace: new FakeNamespace() as any
+      }
+
+      return Effect.gen(function*() {
+        const makeClient = yield* Scheduled.client
+        const fiber = yield* Effect.forkChild(makeClient("one").Ask({ deliverAt: Date.now() + 60_000, id: "worker" }))
+        yield* Effect.yieldNow
+        assert.isUndefined(fiber.pollUnsafe())
+        resolve({
+          requestId,
+          replies: [JSON.stringify({
+            _tag: "WithExit",
+            requestId,
+            id: "terminal",
+            exit: { _tag: "Success", value: "done" }
+          })]
+        })
+        assert.strictEqual(yield* Fiber.join(fiber), "done")
+      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
+    })
+
+    it.effect("delivers a delayed reply back to a pinned caller entity", () => {
+      const stub = {
+        invoke(envelopeText: string, _discard: boolean, delivery: { readonly replyTo?: string }) {
+          const envelope = JSON.parse(envelopeText)
+          assert.strictEqual(delivery.replyTo, "6:Callerone")
+          queueMicrotask(() => {
+            void deliverReply(
+              envelope.requestId,
+              JSON.stringify({
+                _tag: "WithExit",
+                requestId: envelope.requestId,
+                id: "terminal",
+                exit: { _tag: "Success", value: "callback" }
+              })
+            )
+          })
+          return Promise.resolve({ requestId: envelope.requestId, replies: [] })
+        },
+        acknowledge() {
+          return Promise.resolve([])
+        }
+      }
+      const options: CloudflareCluster.LayerOptions = {
+        entities: [Scheduled],
+        entityNamespace: new FakeNamespace(stub) as any,
+        workflowNamespace: new FakeNamespace() as any,
+        queueNamespace: new FakeNamespace() as any,
+        singletonNamespace: new FakeNamespace() as any
+      }
+
+      return Effect.gen(function*() {
+        const makeClient = yield* Scheduled.client
+        const result = yield* makeClient("one").Ask({ deliverAt: Date.now() + 60_000, id: "caller" }).pipe(
+          Effect.provideService(CurrentEntityName, "6:Callerone")
+        )
+        assert.strictEqual(result, "callback")
+      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
+    })
+
+    it.effect("rejects unkeyed and streaming asks with a future DeliverAt", () => {
+      let invoked = 0
+      const stub = {
+        invoke() {
+          invoked++
+          return Promise.resolve({ requestId: "unused", replies: [] })
+        },
+        acknowledge() {
+          return Promise.resolve([])
+        }
+      }
+      const options: CloudflareCluster.LayerOptions = {
+        entities: [Scheduled],
+        entityNamespace: new FakeNamespace(stub) as any,
+        workflowNamespace: new FakeNamespace() as any,
+        queueNamespace: new FakeNamespace() as any,
+        singletonNamespace: new FakeNamespace() as any
+      }
+
+      return Effect.gen(function*() {
+        const makeClient = yield* Scheduled.client
+        const client = makeClient("one")
+        const deliverAt = Date.now() + 60_000
+        assert.isTrue(Exit.isFailure(yield* client.Unkeyed({ deliverAt }).pipe(Effect.exit)))
+        assert.isTrue(
+          Exit.isFailure(yield* client.Stream({ deliverAt, id: "stream" }).pipe(Stream.runDrain, Effect.exit))
+        )
+        assert.strictEqual(invoked, 0)
       }).pipe(Effect.provide(CloudflareCluster.layer(options)))
     })
 

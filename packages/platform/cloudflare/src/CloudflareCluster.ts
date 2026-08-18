@@ -18,16 +18,20 @@ import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { MailboxFull, PersistenceError } from "effect/unstable/cluster/ClusterError"
 import { Persisted } from "effect/unstable/cluster/ClusterSchema"
+import * as DeliverAt from "effect/unstable/cluster/DeliverAt"
 import type * as Entity from "effect/unstable/cluster/Entity"
 import * as EntityAddress from "effect/unstable/cluster/EntityAddress"
 import * as EntityId from "effect/unstable/cluster/EntityId"
+import * as Envelope from "effect/unstable/cluster/Envelope"
 import * as RunnerAddress from "effect/unstable/cluster/RunnerAddress"
 import * as ShardId from "effect/unstable/cluster/ShardId"
 import { Sharding } from "effect/unstable/cluster/Sharding"
 import type * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
+import * as RpcSchema from "effect/unstable/rpc/RpcSchema"
 import * as Internal from "./internal/clusterName.ts"
 import { registerEntity as registerEntityHandler, unregisterEntity } from "./internal/entityRegistry.ts"
+import { CurrentEntityName, registerReplyHandler, unregisterReplyHandler } from "./internal/entityReply.ts"
 import { decodeReplyFor } from "./internal/entityWire.ts"
 
 /**
@@ -114,7 +118,11 @@ const notImplemented = (method: string) =>
   )
 
 interface EntityStub {
-  readonly invoke: (envelope: string, discard: boolean) => Promise<{
+  readonly invoke: (envelope: string, discard: boolean, delivery?: {
+    readonly deliverAt: number
+    readonly primaryKey: string | null
+    readonly replyTo?: string | undefined
+  }) => Promise<{
     readonly requestId: string
     readonly replies: ReadonlyArray<string>
     readonly error?: "MailboxFull" | "EncodedMessageTooLarge" | undefined
@@ -252,7 +260,49 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
                 storageRequestId: clientRequestId
               }
               if (!discard) entries.set(clientRequestId, entry)
-              return Effect.promise(() => target.stub.invoke(envelope, discard)).pipe(
+              const deliverAt = DeliverAt.toMillis(message.payload)
+              const delayed = deliverAt !== null && deliverAt > clock.currentTimeMillisUnsafe()
+              const persisted = Context.get(rpc.annotations, Persisted)
+              const primaryKey = Envelope.primaryKey({
+                ...message,
+                requestId: message.id,
+                address: target.address,
+                headers: message.headers
+              } as any)
+              const replyTo = discard ? undefined : Context.get(context, CurrentEntityName)
+              if (delayed && (!persisted || (!discard && primaryKey === null))) {
+                entries.delete(clientRequestId)
+                return Effect.fail(
+                  new PersistenceError({
+                    cause: new Error(
+                      !persisted
+                        ? "Future DeliverAt requests must be persisted"
+                        : "Future DeliverAt asks must define a PrimaryKey"
+                    )
+                  })
+                )
+              }
+              if (delayed && RpcSchema.isStreamSchema(rpc.successSchema)) {
+                entries.delete(clientRequestId)
+                return Effect.fail(
+                  new PersistenceError({
+                    cause: new Error("Stream asks with a future DeliverAt are not supported")
+                  })
+                )
+              }
+              const delivery = delayed
+                ? { deliverAt: deliverAt!, primaryKey, ...(replyTo === undefined ? undefined : { replyTo }) }
+                : undefined
+              let replyHandler: ((reply: string) => Promise<void>) | undefined
+              if (delivery?.replyTo !== undefined) {
+                replyHandler = async (reply) => {
+                  unregisterReplyHandler(clientRequestId)
+                  unregisterReplyHandler(entry.storageRequestId)
+                  await Effect.runPromise(deliverReplies(entry, [reply]))
+                }
+                registerReplyHandler(clientRequestId, replyHandler)
+              }
+              return Effect.promise(() => target.stub.invoke(envelope, discard, delivery)).pipe(
                 Effect.flatMap((result) => {
                   if (result.error === "MailboxFull") {
                     return Effect.fail(new MailboxFull({ address: target.address }) as MailboxFull | PersistenceError)
@@ -264,14 +314,31 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
                     )
                   }
                   entry.storageRequestId = result.requestId
+                  if (replyHandler !== undefined && result.requestId !== clientRequestId) {
+                    registerReplyHandler(result.requestId, replyHandler)
+                  }
                   if (!discard && Context.get(rpc.annotations, Persisted)) {
                     rememberRequestTarget(clientRequestId, {
                       stub: target.stub,
                       storageRequestId: result.requestId
                     })
                   }
-                  return discard ? Effect.void : deliverReplies(entry, result.replies)
-                })
+                  const deliver = discard ? Effect.void : deliverReplies(entry, result.replies)
+                  if (replyHandler === undefined || result.replies.length === 0) return deliver
+                  return Effect.ensuring(
+                    deliver,
+                    Effect.sync(() => {
+                      unregisterReplyHandler(clientRequestId)
+                      unregisterReplyHandler(entry.storageRequestId)
+                    })
+                  )
+                }),
+                Effect.tapCause(() =>
+                  Effect.sync(() => {
+                    unregisterReplyHandler(clientRequestId)
+                    unregisterReplyHandler(entry.storageRequestId)
+                  })
+                )
               )
             })
           }
@@ -287,6 +354,8 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
             const entry = entries.get(clientRequestId)
             entries.delete(clientRequestId)
             requestTargets.delete(clientRequestId)
+            unregisterReplyHandler(clientRequestId)
+            if (entry !== undefined) unregisterReplyHandler(entry.storageRequestId)
             if (entry === undefined || target.stub.interrupt === undefined) return Effect.void
             return Effect.promise(() => target.stub.interrupt!(entry.storageRequestId))
           }
@@ -308,13 +377,36 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
       })
       const result: Record<string, unknown> = {}
       for (const tag of entity.protocol.requests.keys()) {
-        result[tag] = (payload: unknown, methodOptions?: { readonly context?: Context.Context<never> }) =>
-          (client.client as any)[tag](payload, {
-            ...methodOptions,
-            context: methodOptions?.context === undefined
-              ? target
-              : Context.merge(methodOptions.context, target)
-          })
+        const rpc = entity.protocol.requests.get(tag)! as Rpc.AnyWithProps
+        const contextFor = (
+          ambient: Context.Context<never>,
+          methodOptions?: { readonly context?: Context.Context<never> }
+        ) => {
+          const currentEntityName = Context.get(ambient, CurrentEntityName)
+          let requestContext = currentEntityName === undefined
+            ? target
+            : Context.add(target, CurrentEntityName, currentEntityName)
+          if (methodOptions?.context !== undefined) {
+            requestContext = Context.merge(methodOptions.context, requestContext)
+          }
+          return requestContext
+        }
+        result[tag] = RpcSchema.isStreamSchema(rpc.successSchema)
+          ? (payload: unknown, methodOptions?: { readonly context?: Context.Context<never> }) =>
+            Stream.unwrap(
+              Effect.map(Effect.context<never>(), (ambient) =>
+                (client.client as any)[tag](payload, {
+                  ...methodOptions,
+                  context: contextFor(ambient, methodOptions)
+                }))
+            )
+          : (payload: unknown, methodOptions?: { readonly context?: Context.Context<never> }) =>
+            Effect.contextWith((ambient) =>
+              (client.client as any)[tag](payload, {
+                ...methodOptions,
+                context: contextFor(ambient, methodOptions)
+              })
+            )
       }
       return result as any
     }
