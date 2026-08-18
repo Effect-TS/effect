@@ -497,18 +497,26 @@ const parseOpenApi = (
 
         let jsonSchemaName: string | undefined
         if (isHttpApi) {
-          const jsonResponseSchema = content?.["application/json"]?.schema
-          if (Predicate.isNotUndefined(jsonResponseSchema)) {
+          const jsonResponseEntry = Object.entries(content ?? {}).find(([contentType]) =>
+            isJsonMediaType(normalizeMediaType(contentType))
+          )
+          if (
+            Predicate.isNotUndefined(jsonResponseEntry) &&
+            Predicate.isObject(jsonResponseEntry[1]) &&
+            Predicate.isNotUndefined(jsonResponseEntry[1].schema)
+          ) {
+            const jsonResponseMediaType = jsonResponseEntry[1]
+            const jsonResponseSchema = jsonResponseMediaType.schema as JsonSchema.JsonSchema
             jsonSchemaName = addSchema(`${schemaId}${status}`, jsonResponseSchema, op)
             representable.push({
-              contentType: "application/json",
+              contentType: jsonResponseEntry[0],
               encoding: "json",
               schema: jsonSchemaName
             })
           }
         } else {
           const jsonSchemas = Object.entries(content ?? {}).flatMap(([contentType, mediaType]) =>
-            isJsonMediaType(contentType.toLowerCase()) &&
+            isJsonMediaType(normalizeMediaType(contentType)) &&
               Predicate.isObject(mediaType) &&
               Predicate.isNotUndefined(mediaType.schema)
               ? [mediaType.schema as JsonSchema.JsonSchema]
@@ -525,7 +533,7 @@ const parseOpenApi = (
 
         if (isHttpApi) {
           for (const [contentType, mediaType] of Object.entries(content ?? {})) {
-            if (contentType === "application/json") {
+            if (isJsonMediaType(normalizeMediaType(contentType))) {
               continue
             }
             if (!Predicate.isObject(mediaType)) {
@@ -600,6 +608,15 @@ const parseOpenApi = (
           op.defaultResponse = parsedResponse
         }
 
+        const normalizedStatus = parsedStatus.toLowerCase()
+        const hasBinaryResponse = Object.entries(content ?? {}).some(([contentType, mediaType]) =>
+          Predicate.isObject(mediaType) &&
+          (isBinaryMediaType(normalizeMediaType(contentType)) || isBinarySchema(mediaType.schema))
+        )
+        if (hasBinaryResponse && isSuccessStatus(parsedStatus)) {
+          httpClientResponses.binarySuccessStatuses.add(normalizedStatus)
+        }
+
         if (Predicate.isNotUndefined(jsonSchemaName)) {
           const schemaName = jsonSchemaName
 
@@ -608,15 +625,16 @@ const parseOpenApi = (
             continue
           }
 
-          const statusLower = parsedStatus.toLowerCase()
           const statusMajorNumber = Number(parsedStatus[0])
           if (Number.isNaN(statusMajorNumber)) {
             continue
           }
           if (statusMajorNumber < 4) {
-            httpClientResponses.successSchemas.set(statusLower, schemaName)
+            if (!httpClientResponses.binarySuccessStatuses.has(normalizedStatus)) {
+              httpClientResponses.successSchemas.set(normalizedStatus, schemaName)
+            }
           } else {
-            httpClientResponses.errorSchemas.set(statusLower, schemaName)
+            httpClientResponses.errorSchemas.set(normalizedStatus, schemaName)
           }
         }
 
@@ -641,20 +659,11 @@ const parseOpenApi = (
           )
         }
 
-        const hasBinaryResponse = Object.entries(content ?? {}).some(([contentType, mediaType]) =>
-          Predicate.isObject(mediaType) &&
-          (isBinaryMediaType(contentType.toLowerCase()) || isBinarySchema(mediaType.schema))
-        )
-        if (hasBinaryResponse && isSuccessStatus(parsedStatus)) {
-          httpClientResponses.binarySuccessStatuses.add(parsedStatus.toLowerCase())
-        }
-
         if (isEmptyResponse && parsedStatus !== "default") {
-          const normalizedStatus = parsedStatus.toLowerCase()
-          if (isErrorStatus(normalizedStatus)) {
-            httpClientResponses.voidErrorStatuses.add(normalizedStatus)
-          } else {
+          if (isSuccessStatus(normalizedStatus)) {
             httpClientResponses.voidSuccessStatuses.add(normalizedStatus)
+          } else {
+            httpClientResponses.voidErrorStatuses.add(normalizedStatus)
           }
         }
       }
@@ -942,6 +951,8 @@ const isJsonMediaType = (contentType: string): boolean =>
   contentType === "application/json" ||
   (contentType.startsWith("application/") && contentType.endsWith("+json"))
 
+const normalizeMediaType = (contentType: string): string => contentType.toLowerCase().split(";", 1)[0].trim()
+
 const isTextMediaType = (contentType: string): boolean => contentType.startsWith("text/")
 
 const binaryMediaTypes = new Set([
@@ -972,8 +983,6 @@ const isBinarySchema = (schema: unknown): boolean =>
     (typeof schema.contentEncoding === "string" && schema.contentEncoding.toLowerCase() === "binary")
   )
 
-const isErrorStatus = (status: string): boolean => status.startsWith("4") || status.startsWith("5")
-
 const isSuccessStatus = (status: string): boolean => {
   const statusMajorNumber = Number(status[0])
   return !Number.isNaN(statusMajorNumber) && statusMajorNumber < 4
@@ -982,7 +991,7 @@ const isSuccessStatus = (status: string): boolean => {
 const getRequestMediaTypeEncoding = (
   contentType: string
 ): ParsedOperation.ParsedOperationMediaTypeEncoding | undefined => {
-  const normalized = contentType.toLowerCase()
+  const normalized = normalizeMediaType(contentType)
   if (isJsonMediaType(normalized)) {
     return "json"
   }
@@ -1004,7 +1013,7 @@ const getRequestMediaTypeEncoding = (
 const getResponseMediaTypeEncoding = (
   contentType: string
 ): ParsedOperation.ParsedOperationMediaTypeEncoding | undefined => {
-  const normalized = contentType.toLowerCase()
+  const normalized = normalizeMediaType(contentType)
   if (isJsonMediaType(normalized)) {
     return "json"
   }

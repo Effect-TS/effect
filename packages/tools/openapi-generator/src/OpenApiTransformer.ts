@@ -13,7 +13,7 @@
 import * as Context from "effect/Context"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
-import type { ParsedOpenApi, ParsedOperation } from "./ParsedOperation.ts"
+import type { ParsedOpenApi, ParsedOperation, ParsedOperationHttpClientResponses } from "./ParsedOperation.ts"
 import * as Utils from "./Utils.ts"
 
 /**
@@ -69,6 +69,16 @@ const computeImportRequirements = (operations: ReadonlyArray<ParsedOperation>): 
 
 const requiresStreaming = (requirements: ImportRequirements): boolean =>
   requirements.eventStream || requirements.octetStream
+
+const normalizeSuccessStatus = (
+  responses: ParsedOperationHttpClientResponses,
+  status: string
+): string => {
+  const successCount = responses.successSchemas.size +
+    responses.binarySuccessStatuses.size +
+    responses.voidSuccessStatuses.size
+  return successCount === 1 && status.startsWith("2") ? "2xx" : status
+}
 
 /**
  * Create the transformer used for schema-backed HttpClient output.
@@ -340,19 +350,11 @@ export const make = (
     }
 
     const decodes: Array<string> = []
-    const singleSuccessCode = responses.successSchemas.size === 1 &&
-      responses.binarySuccessStatuses.size === 0 &&
-      responses.voidSuccessStatuses.size === 0
     responses.successSchemas.forEach((schema, status) => {
-      const statusCode = singleSuccessCode && status.startsWith("2") ? "2xx" : status
-      decodes.push(`"${statusCode}": decodeSuccess(${schema})`)
+      decodes.push(`"${normalizeSuccessStatus(responses, status)}": decodeSuccess(${schema})`)
     })
-    const singleBinarySuccessCode = responses.binarySuccessStatuses.size === 1 &&
-      responses.successSchemas.size === 0 &&
-      responses.voidSuccessStatuses.size === 0
     responses.binarySuccessStatuses.forEach((status) => {
-      const statusCode = singleBinarySuccessCode && status.startsWith("2") ? "2xx" : status
-      decodes.push(`"${statusCode}": decodeBinary`)
+      decodes.push(`"${normalizeSuccessStatus(responses, status)}": decodeBinary`)
     })
     responses.errorSchemas.forEach((schema, status) => {
       decodes.push(`"${status}": decodeError("${schema}", ${schema})`)
@@ -687,7 +689,7 @@ ${clientErrorSource(name)}`
       operation.httpClientResponses.voidSuccessStatuses.size > 0 ||
       operation.httpClientResponses.voidErrorStatuses.size > 0
     )
-    if (requirements.octetStream || hasResponseVariants) {
+    if (hasResponseVariants) {
       helpers.push(decodeBinarySource)
     }
     if (requirements.octetStream) {
@@ -781,30 +783,26 @@ export const make = (
       pipeline.push(`HttpClientRequest.bodyJsonUnsafe(${payloadAccessor})`)
     }
 
-    const successCodesRaw = Array.from(responses.successSchemas.keys())
-    const successCodes = successCodesRaw
-      .map((_) => JSON.stringify(_))
+    const successCodes = Array.from(
+      responses.successSchemas.keys(),
+      (status) => normalizeSuccessStatus(responses, status)
+    )
+      .map((status) => JSON.stringify(status))
       .join(", ")
-    const singleSuccessCode = successCodesRaw.length === 1 &&
-      successCodesRaw[0].startsWith("2") &&
-      responses.binarySuccessStatuses.size === 0 &&
-      responses.voidSuccessStatuses.size === 0
     const errorCodes = responses.errorSchemas.size > 0 &&
       Object.fromEntries(responses.errorSchemas.entries())
     const configAccessor = resolveConfigAccessor(operation, "options", "config")
-    const requestArgs = [`[${singleSuccessCode ? `"2xx"` : successCodes}]`]
+    const requestArgs = [`[${successCodes}]`]
     if (
       responses.binarySuccessStatuses.size > 0 ||
       responses.voidSuccessStatuses.size > 0 ||
       responses.voidErrorStatuses.size > 0
     ) {
-      const binaryCodesRaw = Array.from(responses.binarySuccessStatuses)
-      const singleBinarySuccessCode = binaryCodesRaw.length === 1 &&
-        binaryCodesRaw[0].startsWith("2") &&
-        responses.successSchemas.size === 0 &&
-        responses.voidSuccessStatuses.size === 0
       const responseCodes = {
-        binary: binaryCodesRaw.map((status) => singleBinarySuccessCode ? "2xx" : status),
+        binary: Array.from(
+          responses.binarySuccessStatuses,
+          (status) => normalizeSuccessStatus(responses, status)
+        ),
         voidSuccess: Array.from(responses.voidSuccessStatuses),
         voidError: Array.from(responses.voidErrorStatuses)
       }
@@ -914,8 +912,12 @@ export const make = (
       if (requiresStreaming(requirements)) {
         imports.push(`import * as Stream from "effect/Stream"`)
       }
+      if (requiresStreaming(requirements)) {
+        imports.push(`import * as HttpClient from "effect/unstable/http/HttpClient"`)
+      } else {
+        imports.push(`import type * as HttpClient from "effect/unstable/http/HttpClient"`)
+      }
       imports.push(
-        `import type * as HttpClient from "effect/unstable/http/HttpClient"`,
         `import * as HttpClientError from "effect/unstable/http/HttpClientError"`,
         `import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"`,
         `import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"`

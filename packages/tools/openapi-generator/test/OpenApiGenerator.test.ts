@@ -2,6 +2,10 @@ import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import type { OpenAPISpec } from "effect/unstable/httpapi/OpenApi"
+import { spawnSync } from "node:child_process"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 
 function assertRuntime(spec: OpenAPISpec, expected: string) {
   return Effect.gen(function*() {
@@ -35,7 +39,11 @@ function assertTypeOnly(spec: OpenAPISpec, expected: string) {
   )
 }
 
-function assertRuntimeIncludes(spec: OpenAPISpec, includes: ReadonlyArray<string>) {
+function assertRuntimeIncludes(
+  spec: OpenAPISpec,
+  includes: ReadonlyArray<string>,
+  excludes: ReadonlyArray<string> = []
+) {
   return Effect.gen(function*() {
     const generator = yield* OpenApiGenerator.OpenApiGenerator
 
@@ -47,12 +55,19 @@ function assertRuntimeIncludes(spec: OpenAPISpec, includes: ReadonlyArray<string
     for (const expected of includes) {
       assert.include(result, expected)
     }
+    for (const excluded of excludes) {
+      assert.notInclude(result, excluded)
+    }
   }).pipe(
     Effect.provide(OpenApiGenerator.layerTransformerSchema)
   )
 }
 
-function assertTypeOnlyIncludes(spec: OpenAPISpec, includes: ReadonlyArray<string>) {
+function assertTypeOnlyIncludes(
+  spec: OpenAPISpec,
+  includes: ReadonlyArray<string>,
+  excludes: ReadonlyArray<string> = []
+) {
   return Effect.gen(function*() {
     const generator = yield* OpenApiGenerator.OpenApiGenerator
 
@@ -64,9 +79,64 @@ function assertTypeOnlyIncludes(spec: OpenAPISpec, includes: ReadonlyArray<strin
     for (const expected of includes) {
       assert.include(result, expected)
     }
+    for (const excluded of excludes) {
+      assert.notInclude(result, excluded)
+    }
   }).pipe(
     Effect.provide(OpenApiGenerator.layerTransformerTs)
   )
+}
+
+function assertGeneratedClientsCompile(spec: OpenAPISpec) {
+  const generate = (
+    format: "httpclient" | "httpclient-type-only",
+    layer: typeof OpenApiGenerator.layerTransformerSchema
+  ) =>
+    Effect.gen(function*() {
+      const generator = yield* OpenApiGenerator.OpenApiGenerator
+      return yield* generator.generate(spec, { name: "TestClient", format })
+    }).pipe(Effect.provide(layer))
+
+  return Effect.gen(function*() {
+    const [schemaClient, typeOnlyClient] = yield* Effect.all([
+      generate("httpclient", OpenApiGenerator.layerTransformerSchema),
+      generate("httpclient-type-only", OpenApiGenerator.layerTransformerTs)
+    ])
+    const directory = mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), ".generated-clients-"))
+    try {
+      const schemaPath = join(directory, "SchemaClient.ts")
+      const typeOnlyPath = join(directory, "TypeOnlyClient.ts")
+      writeFileSync(schemaPath, schemaClient)
+      writeFileSync(typeOnlyPath, typeOnlyClient)
+      const configPath = join(directory, "tsconfig.json")
+      writeFileSync(
+        configPath,
+        JSON.stringify({
+          compilerOptions: {
+            allowImportingTsExtensions: true,
+            exactOptionalPropertyTypes: true,
+            lib: ["ESNext", "DOM"],
+            module: "NodeNext",
+            noEmit: true,
+            skipLibCheck: true,
+            strict: true,
+            target: "ES2022",
+            types: [],
+            verbatimModuleSyntax: true
+          },
+          files: [schemaPath, typeOnlyPath]
+        })
+      )
+      const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../..")
+      const result = spawnSync(join(repositoryRoot, "node_modules/.bin/tsc"), ["-p", configPath, "--pretty", "false"], {
+        cwd: repositoryRoot,
+        encoding: "utf8"
+      })
+      assert.strictEqual(result.status, 0, `${result.stdout}${result.stderr}`)
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
+  })
 }
 
 function assertHttpApiIncludes(
@@ -410,6 +480,45 @@ const responseMatchingSpec: OpenAPISpec = {
             content: {
               "application/vnd.example.data": {
                 schema: { type: "string", format: "binary" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mixed-content": {
+      get: {
+        operationId: "downloadMixedContent",
+        parameters: [],
+        tags: ["ResponseMatching"],
+        security: [],
+        responses: {
+          200: {
+            description: "JSON metadata or binary content",
+            content: {
+              "application/json; charset=utf-8": {
+                schema: {
+                  type: "object",
+                  properties: { href: { type: "string" } },
+                  required: ["href"],
+                  additionalProperties: false
+                }
+              },
+              "application/octet-stream; boundary=payload": {
+                schema: { type: "string" }
+              }
+            }
+          },
+          400: {
+            description: "Invalid request",
+            content: {
+              "application/problem+json; charset=utf-8": {
+                schema: {
+                  type: "object",
+                  properties: { title: { type: "string" } },
+                  required: ["title"],
+                  additionalProperties: false
+                }
               }
             }
           }
@@ -870,11 +979,17 @@ export const TestClientError = <Tag extends string, E>(
     withResponse(options?.config)(HttpClientResponse.matchStatus({
       "2xx": decodeBinary`,
         `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `"400": decodeError("DownloadMixedContent400", DownloadMixedContent400)`,
+        `readonly "downloadMixedContent": <Config extends OperationConfig>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
+        `readonly "downloadMixedContentStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
         `"200": () => Effect.void`,
         `"404": decodeVoidError("404")`,
         `"500": decodeVoidError("500")`,
         `TestClientError<"404", undefined>`,
         `TestClientError<"500", undefined>`
+      ], [
+        `"200": decodeSuccess(DownloadMixedContent200)`,
+        `typeof DownloadMixedContent200.Type | Uint8Array`
       ]))
 
     it.effect("routes mixed and non-2xx bodiless success responses", () =>
@@ -1097,10 +1212,16 @@ export const TestClientError = <Tag extends string, E>(
         `"downloadAvatar": (options) => HttpClientRequest.get(\`/avatar\`).pipe(
     onRequest(options?.config)([], undefined, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
         `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `import * as HttpClient from "effect/unstable/http/HttpClient"`,
+        `onRequest(options?.config)([], {"400":"DownloadMixedContent400"}, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
+        `readonly "downloadMixedContent": <Config extends OperationConfig>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
+        `readonly "downloadMixedContentStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
         `onRequest(options?.config)([], undefined, {"binary":[],"voidSuccess":["200"],"voidError":["404","500"]})`,
         `cases[code] = decodeVoidError(code)`,
         `TestClientError<"404", undefined>`,
         `TestClientError<"500", undefined>`
+      ], [
+        `DownloadMixedContent200 | Uint8Array`
       ]))
 
     it.effect("routes mixed and non-2xx bodiless success responses", () =>
@@ -1109,6 +1230,9 @@ export const TestClientError = <Tag extends string, E>(
         `onRequest(options?.config)([], undefined, {"binary":[],"voidSuccess":["304"],"voidError":[]})`,
         `WithOptionalResponse<MixedSuccess200 | void, Config>`
       ]))
+
+    it.effect("emits compilable clients for schema-backed and type-only formats", () =>
+      assertGeneratedClientsCompile(responseMatchingSpec))
   })
 
   describe("httpapi", () => {
