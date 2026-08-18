@@ -786,8 +786,7 @@ export class KeepAliveLatch extends Context.Service<KeepAliveLatch, Latch.Latch>
   "effect/cluster/Entity/KeepAliveLatch"
 ) {}
 
-/** @internal */
-export class KeepAliveHandler extends Context.Service<
+class KeepAliveHandler extends Context.Service<
   KeepAliveHandler,
   (enabled: boolean) => Effect.Effect<void>
 >()("effect/cluster/Entity/KeepAliveHandler") {}
