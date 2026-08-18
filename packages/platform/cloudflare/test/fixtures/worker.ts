@@ -134,6 +134,45 @@ export default {
       )
       return Response.json(result)
     }
+    if (url.pathname === "/interrupt-delayed") {
+      const id = url.searchParams.get("id") ?? "interrupted"
+      const deliverAt = Date.now() + 60_000
+      const firstRequestId = crypto.randomUUID()
+      const secondRequestId = crypto.randomUUID()
+      const stub = env.CLUSTER_ENTITY.getByName(`7:Mailbox${id}`)
+      const invoke = (requestId: string) =>
+        stub.invoke(
+          JSON.stringify({
+            _tag: "Request",
+            requestId,
+            address: {
+              shardId: { group: "default", id: 1 },
+              entityType: "Mailbox",
+              entityId: id
+            },
+            tag: "Add",
+            payload: { operationId: "same" },
+            headers: {}
+          }),
+          false,
+          { deliverAt, primaryKey: `Mailbox/${id}/Add/same` }
+        )
+      const first = invoke(firstRequestId)
+      const second = invoke(secondRequestId)
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      await stub.interrupt(firstRequestId, secondRequestId)
+      const secondStatus = await Promise.race([
+        second.then(() => "resolved", () => "rejected"),
+        new Promise<string>((resolve) => setTimeout(() => resolve("pending"), 250))
+      ])
+      const firstStatus = await Promise.race([
+        first.then(() => "settled", () => "settled"),
+        new Promise<string>((resolve) => setTimeout(() => resolve("pending"), 50))
+      ])
+      await stub.interrupt(firstRequestId, firstRequestId)
+      await Promise.allSettled([first, second])
+      return Response.json({ firstStatus, secondStatus })
+    }
     if (url.pathname === "/seed-poison") {
       const stub = env.CLUSTER_ENTITY.getByName("7:Mailboxcounter")
       await stub.seedPoison(JSON.stringify({

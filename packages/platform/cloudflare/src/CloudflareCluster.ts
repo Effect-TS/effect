@@ -119,8 +119,8 @@ const notImplemented = (method: string) =>
 
 interface EntityStub {
   readonly invoke: (envelope: string, discard: boolean, delivery?: {
-    readonly deliverAt: number
-    readonly primaryKey: string | null
+    readonly deliverAt?: number | undefined
+    readonly primaryKey?: string | null | undefined
     readonly replyTo?: string | undefined
   }) => Promise<{
     readonly requestId: string
@@ -128,7 +128,7 @@ interface EntityStub {
     readonly error?: "MailboxFull" | "EncodedMessageTooLarge" | undefined
   }>
   readonly acknowledge: (requestId: string, replyId: string) => Promise<ReadonlyArray<string>>
-  readonly interrupt?: (requestId: string) => Promise<void>
+  readonly interrupt?: (storageRequestId: string, clientRequestId?: string) => Promise<void>
   readonly reset?: (requestId: string) => Promise<void>
 }
 
@@ -192,6 +192,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
       readonly clientRequestId: string
       storageRequestId: string
       lastChunkId?: string
+      replyHandler?: (reply: string) => Promise<void>
     }
     const entries = new Map<string, ClientEntry>()
     let client!: Effect.Success<ReturnType<typeof RpcClient.makeNoSerialization<any, MailboxFull | PersistenceError>>>
@@ -292,14 +293,17 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
               }
               const delivery = delayed
                 ? { deliverAt: deliverAt!, primaryKey, ...(replyTo === undefined ? undefined : { replyTo }) }
-                : undefined
+                : replyTo === undefined
+                ? undefined
+                : { replyTo }
               let replyHandler: ((reply: string) => Promise<void>) | undefined
               if (delivery?.replyTo !== undefined) {
                 replyHandler = async (reply) => {
-                  unregisterReplyHandler(clientRequestId)
-                  unregisterReplyHandler(entry.storageRequestId)
+                  unregisterReplyHandler(clientRequestId, replyHandler)
+                  unregisterReplyHandler(entry.storageRequestId, replyHandler)
                   await Effect.runPromise(deliverReplies(entry, [reply]))
                 }
+                entry.replyHandler = replyHandler
                 registerReplyHandler(clientRequestId, replyHandler)
               }
               return Effect.promise(() => target.stub.invoke(envelope, discard, delivery)).pipe(
@@ -328,15 +332,15 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
                   return Effect.ensuring(
                     deliver,
                     Effect.sync(() => {
-                      unregisterReplyHandler(clientRequestId)
-                      unregisterReplyHandler(entry.storageRequestId)
+                      unregisterReplyHandler(clientRequestId, replyHandler)
+                      unregisterReplyHandler(entry.storageRequestId, replyHandler)
                     })
                   )
                 }),
                 Effect.tapCause(() =>
                   Effect.sync(() => {
-                    unregisterReplyHandler(clientRequestId)
-                    unregisterReplyHandler(entry.storageRequestId)
+                    unregisterReplyHandler(clientRequestId, replyHandler)
+                    unregisterReplyHandler(entry.storageRequestId, replyHandler)
                   })
                 )
               )
@@ -354,10 +358,12 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
             const entry = entries.get(clientRequestId)
             entries.delete(clientRequestId)
             requestTargets.delete(clientRequestId)
-            unregisterReplyHandler(clientRequestId)
-            if (entry !== undefined) unregisterReplyHandler(entry.storageRequestId)
+            unregisterReplyHandler(clientRequestId, entry?.replyHandler)
+            if (entry?.replyHandler !== undefined) {
+              unregisterReplyHandler(entry.storageRequestId, entry.replyHandler)
+            }
             if (entry === undefined || target.stub.interrupt === undefined) return Effect.void
-            return Effect.promise(() => target.stub.interrupt!(entry.storageRequestId))
+            return Effect.promise(() => target.stub.interrupt!(entry.storageRequestId, clientRequestId))
           }
           default:
             return Effect.void
