@@ -313,6 +313,9 @@ const responseMatchingSpec: OpenAPISpec = {
     "/auth/device/token": {
       post: {
         operationId: "pollDeviceToken",
+        parameters: [],
+        tags: ["ResponseMatching"],
+        security: [],
         responses: {
           400: {
             description: "Problem details or OAuth polling state",
@@ -347,6 +350,9 @@ const responseMatchingSpec: OpenAPISpec = {
     "/archive": {
       get: {
         operationId: "downloadArchive",
+        parameters: [],
+        tags: ["ResponseMatching"],
+        security: [],
         responses: {
           200: {
             description: "Archive",
@@ -377,6 +383,9 @@ const responseMatchingSpec: OpenAPISpec = {
     "/avatar": {
       get: {
         operationId: "downloadAvatar",
+        parameters: [],
+        tags: ["ResponseMatching"],
+        security: [],
         responses: {
           200: {
             description: "Avatar",
@@ -392,6 +401,9 @@ const responseMatchingSpec: OpenAPISpec = {
     "/custom-binary": {
       get: {
         operationId: "downloadCustomBinary",
+        parameters: [],
+        tags: ["ResponseMatching"],
+        security: [],
         responses: {
           200: {
             description: "Custom binary",
@@ -413,6 +425,8 @@ const responseMatchingSpec: OpenAPISpec = {
           required: true,
           schema: { type: "string" }
         }],
+        tags: ["ResponseMatching"],
+        security: [],
         responses: {
           200: { description: "Exists" },
           404: { description: "Not found" },
@@ -420,7 +434,13 @@ const responseMatchingSpec: OpenAPISpec = {
         }
       }
     }
-  }
+  },
+  components: {
+    schemas: {},
+    securitySchemes: {}
+  },
+  security: [],
+  tags: [{ name: "ResponseMatching" }]
 }
 
 describe("OpenApiGenerator", () => {

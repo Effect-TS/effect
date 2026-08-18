@@ -670,17 +670,16 @@ ${clientErrorSource(name)}`
     if (requirements.eventStream) {
       helpers.push(sseRequestSourceTs)
     }
-    if (requirements.octetStream) {
-      helpers.push(decodeBinarySource)
-      helpers.push(binaryRequestSourceTs)
-    }
     const hasResponseVariants = operations.some((operation) =>
       operation.binarySuccessStatuses.size > 0 || operation.voidErrorStatuses.size > 0
     )
+    if (requirements.octetStream || hasResponseVariants) {
+      helpers.push(decodeBinarySource)
+    }
+    if (requirements.octetStream) {
+      helpers.push(binaryRequestSourceTs)
+    }
     if (hasResponseVariants) {
-      if (!requirements.octetStream) {
-        helpers.push(decodeBinarySource)
-      }
       helpers.push(decodeVoidErrorSource(name))
     }
 
@@ -729,7 +728,7 @@ export const make = (
         response.json as Effect.Effect<E, HttpClientError.HttpClientError>,
         (cause) => Effect.fail(${name}Error(tag, cause, response)),
       )
-  ${hasResponseVariants ? onRequestWithVariantsSource : onRequestSource}
+  ${onRequestSource(hasResponseVariants)}
   return {
     httpClient,
     ${implMethods.join(",\n    ")}
@@ -778,8 +777,8 @@ export const make = (
     const errorCodes = operation.errorSchemas.size > 0 &&
       Object.fromEntries(operation.errorSchemas.entries())
     const configAccessor = resolveConfigAccessor(operation, "options", "config")
-    const usesResponseVariants = operation.binarySuccessStatuses.size > 0 || operation.voidErrorStatuses.size > 0
-    if (usesResponseVariants) {
+    const requestArgs = [`[${singleSuccessCode ? `"2xx"` : successCodes}]`]
+    if (operation.binarySuccessStatuses.size > 0 || operation.voidErrorStatuses.size > 0) {
       const binaryCodesRaw = Array.from(operation.binarySuccessStatuses)
       const singleBinarySuccessCode = binaryCodesRaw.length === 1 &&
         binaryCodesRaw[0].startsWith("2") &&
@@ -790,18 +789,11 @@ export const make = (
         void: Array.from(operation.voidSchemas),
         voidError: Array.from(operation.voidErrorStatuses)
       }
-      pipeline.push(
-        `onRequest(${configAccessor})([${singleSuccessCode ? `"2xx"` : successCodes}], ${
-          errorCodes ? JSON.stringify(errorCodes) : "undefined"
-        }, ${JSON.stringify(responseCodes)})`
-      )
-    } else {
-      pipeline.push(
-        `onRequest(${configAccessor})([${singleSuccessCode ? `"2xx"` : successCodes}]${
-          errorCodes ? `, ${JSON.stringify(errorCodes)}` : ""
-        })`
-      )
+      requestArgs.push(errorCodes ? JSON.stringify(errorCodes) : "undefined", JSON.stringify(responseCodes))
+    } else if (errorCodes) {
+      requestArgs.push(JSON.stringify(errorCodes))
     }
+    pipeline.push(`onRequest(${configAccessor})(${requestArgs.join(", ")})`)
 
     return (
       `"${operation.id}": (${params}) => ` +
@@ -972,43 +964,17 @@ const decodeVoidErrorSource = (name: string) =>
     (response: HttpClientResponse.HttpClientResponse) =>
       Effect.fail(${name}Error(tag, undefined, response))`
 
-const onRequestSource = `const onRequest = <Config extends OperationConfig>(config: Config | undefined) => (
-    successCodes: ReadonlyArray<string>,
-    errorCodes?: Record<string, string>,
-  ) => {
-    const cases: any = { orElse: unexpectedStatus }
-    for (const code of successCodes) {
-      cases[code] = decodeSuccess
-    }
-    if (errorCodes) {
-      for (const [code, tag] of Object.entries(errorCodes)) {
-        cases[code] = decodeError(tag)
-      }
-    }
-    if (successCodes.length === 0) {
-      cases["2xx"] = decodeVoid
-    }
-    return withResponse(config)(HttpClientResponse.matchStatus(cases) as any)
-  }`
-
-const onRequestWithVariantsSource = `const onRequest = <Config extends OperationConfig>(config: Config | undefined) => (
-    successCodes: ReadonlyArray<string>,
-    errorCodes: Record<string, string> | undefined = undefined,
+const onRequestSource = (withResponseVariants: boolean) => {
+  const responseCodesParam = withResponseVariants
+    ? `
     responseCodes: {
       readonly binary: ReadonlyArray<string>
       readonly void: ReadonlyArray<string>
       readonly voidError: ReadonlyArray<string>
-    } = { binary: [], void: [], voidError: [] },
-  ) => {
-    const cases: any = { orElse: unexpectedStatus }
-    for (const code of successCodes) {
-      cases[code] = decodeSuccess
-    }
-    if (errorCodes) {
-      for (const [code, tag] of Object.entries(errorCodes)) {
-        cases[code] = decodeError(tag)
-      }
-    }
+    } = { binary: [], void: [], voidError: [] },`
+    : ""
+  const responseCodesCases = withResponseVariants
+    ? `
     for (const code of responseCodes.binary) {
       cases[code] = decodeBinary
     }
@@ -1017,12 +983,30 @@ const onRequestWithVariantsSource = `const onRequest = <Config extends Operation
     }
     for (const code of responseCodes.voidError) {
       cases[code] = decodeVoidError(code)
+    }`
+    : ""
+  const voidFallbackCondition = withResponseVariants
+    ? "successCodes.length === 0 && responseCodes.binary.length === 0 && responseCodes.void.length === 0"
+    : "successCodes.length === 0"
+  return `const onRequest = <Config extends OperationConfig>(config: Config | undefined) => (
+    successCodes: ReadonlyArray<string>,
+    errorCodes?: Record<string, string>,${responseCodesParam}
+  ) => {
+    const cases: any = { orElse: unexpectedStatus }
+    for (const code of successCodes) {
+      cases[code] = decodeSuccess
     }
-    if (successCodes.length === 0 && responseCodes.binary.length === 0 && responseCodes.void.length === 0) {
+    if (errorCodes) {
+      for (const [code, tag] of Object.entries(errorCodes)) {
+        cases[code] = decodeError(tag)
+      }
+    }${responseCodesCases}
+    if (${voidFallbackCondition}) {
       cases["2xx"] = decodeVoid
     }
     return withResponse(config)(HttpClientResponse.matchStatus(cases) as any)
   }`
+}
 
 const sseRequestSource = (_importName: string) =>
   `const sseRequest = <
