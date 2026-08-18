@@ -198,14 +198,36 @@ describe("EntityMailbox", () => {
     persistRequest(sql.sql, envelope, "scheduled", false, 2_000, "7:Callercaller")
 
     assert.strictEqual(sql.messages.get(requestId)?.deliver_at, 2_000)
-    assert.strictEqual(sql.messages.get(requestId)?.reply_to, "7:Callercaller")
+    assert.strictEqual(sql.messages.get(requestId)?.reply_to, JSON.stringify(["7:Callercaller"]))
     assert.deepStrictEqual(loadUnprocessed(sql.sql, 1_999), [])
     assert.deepStrictEqual(loadDue(sql.sql, 2_000), [{
       envelope,
       lastSentChunk: undefined,
       discard: false,
       deliverAt: 2_000,
-      replyTo: "7:Callercaller"
+      replyTos: ["7:Callercaller"]
+    }])
+  })
+
+  it("preserves every reply target when a scheduled request is deduplicated", () => {
+    const sql = new FakeSql()
+    const primaryKey = "Counter/one/Increment/scheduled"
+    persistRequest(sql.sql, envelope, primaryKey, false, 2_000, "7:Callerfirst")
+    persistRequest(
+      sql.sql,
+      withRequestId("0198bd72-6a81-72f1-8d87-5e9b5cf1e001"),
+      primaryKey,
+      false,
+      null,
+      "7:Callersecond"
+    )
+
+    assert.deepStrictEqual(loadDue(sql.sql, 2_000), [{
+      envelope,
+      lastSentChunk: undefined,
+      discard: false,
+      deliverAt: 2_000,
+      replyTos: ["7:Callerfirst", "7:Callersecond"]
     }])
   })
 

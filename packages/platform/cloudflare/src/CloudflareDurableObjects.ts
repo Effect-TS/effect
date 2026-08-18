@@ -74,7 +74,7 @@ interface ReplayMessage {
   readonly lastSentChunk: string | undefined
   readonly discard: boolean
   readonly deliverAt?: number | undefined
-  readonly replyTo?: string | undefined
+  readonly replyTos?: ReadonlyArray<string> | undefined
 }
 
 interface InvokeResult {
@@ -89,8 +89,8 @@ interface InvokeOutcome {
 }
 
 interface DeliveryOptions {
-  readonly deliverAt: number
-  readonly primaryKey: string | null
+  readonly deliverAt?: number | undefined
+  readonly primaryKey?: string | null | undefined
   readonly replyTo?: string | undefined
 }
 
@@ -121,7 +121,6 @@ export class ClusterEntity extends DurableObject<unknown> {
   #serial: Promise<void> = Promise.resolve()
   readonly #sessions = new Map<string, ReplySession>()
   readonly #workerWaiters = new Map<string, Array<WorkerWaiter>>()
-  readonly #workerWaiterTargets = new Map<string, string>()
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
@@ -176,7 +175,7 @@ export class ClusterEntity extends DurableObject<unknown> {
               ? undefined
               : {
                 scheduled: true,
-                ...(row.replyTo === undefined ? undefined : { replyTo: row.replyTo })
+                ...(row.replyTos === undefined ? undefined : { replyTos: row.replyTos })
               }
           ).pipe(
             Effect.catchCause((cause) => this.#completeReplayFailure(registration, row, cause))
@@ -223,7 +222,7 @@ export class ClusterEntity extends DurableObject<unknown> {
         if (persisted.processed) {
           return { result: { requestId: persisted.originalId, replies: [] } }
         }
-        if (delivery !== undefined) {
+        if (delivery?.deliverAt !== undefined) {
           yield* this.#armEarliestAlarm()
           return this.#delayedOutcome(
             persisted.originalId,
@@ -234,6 +233,15 @@ export class ClusterEntity extends DurableObject<unknown> {
         }
         const original = loadMessage(storage.sql, persisted.originalId)
         if (original === undefined) return yield* Effect.die("Duplicate mailbox row disappeared")
+        if (original.deliverAt !== undefined && original.deliverAt > Date.now()) {
+          yield* this.#armEarliestAlarm()
+          return this.#delayedOutcome(
+            persisted.originalId,
+            discard,
+            delivery?.replyTo,
+            String(envelope.requestId)
+          )
+        }
         const replies = yield* this.#runStored(
           registration,
           runtime,
@@ -243,7 +251,7 @@ export class ClusterEntity extends DurableObject<unknown> {
         )
         return { result: { requestId: persisted.originalId, replies } }
       }
-      if (delivery !== undefined) {
+      if (delivery?.deliverAt !== undefined) {
         yield* this.#armEarliestAlarm()
         return this.#delayedOutcome(String(envelope.requestId), discard, delivery.replyTo)
       }
@@ -264,7 +272,6 @@ export class ClusterEntity extends DurableObject<unknown> {
       const waiters = this.#workerWaiters.get(requestId) ?? []
       waiters.push({ clientRequestId, resolve, reject })
       this.#workerWaiters.set(requestId, waiters)
-      this.#workerWaiterTargets.set(clientRequestId, requestId)
     })
     return { result, deferred }
   }
@@ -287,22 +294,20 @@ export class ClusterEntity extends DurableObject<unknown> {
   }
 
   /** @internal Interrupts an in-memory handler execution. Persisted rows remain replayable. */
-  interrupt(requestId: string): Promise<void> {
-    const storageRequestId = this.#workerWaiterTargets.get(requestId) ?? requestId
+  interrupt(storageRequestId: string, clientRequestId = storageRequestId): Promise<void> {
     const waiters = this.#workerWaiters.get(storageRequestId)
     if (waiters !== undefined) {
       const remaining = waiters.filter((waiter) => {
-        if (waiter.clientRequestId !== requestId) return true
+        if (waiter.clientRequestId !== clientRequestId) return true
         waiter.reject(new Error("Delayed entity request interrupted"))
         return false
       })
-      this.#workerWaiterTargets.delete(requestId)
       if (remaining.length === 0) this.#workerWaiters.delete(storageRequestId)
       else this.#workerWaiters.set(storageRequestId, remaining)
     }
-    const session = this.#sessions.get(requestId)
+    const session = this.#sessions.get(storageRequestId)
     if (session === undefined) return Promise.resolve()
-    this.#sessions.delete(requestId)
+    this.#sessions.delete(storageRequestId)
     session.ack?.resolve()
     session.ack = undefined
     session.done = true
@@ -338,7 +343,7 @@ export class ClusterEntity extends DurableObject<unknown> {
     envelopeText: string,
     lastSentChunk: string | undefined,
     discard: boolean,
-    options?: { readonly scheduled?: boolean; readonly replyTo?: string | undefined }
+    options?: { readonly scheduled?: boolean; readonly replyTos?: ReadonlyArray<string> | undefined }
   ) {
     return Effect.flatMap(
       decodeRequest(registration, envelopeText),
@@ -358,7 +363,7 @@ export class ClusterEntity extends DurableObject<unknown> {
         (row) =>
           this.#runStored(registration, runtime, row.envelope, row.lastSentChunk, row.discard, {
             scheduled: true,
-            ...(row.replyTo === undefined ? undefined : { replyTo: row.replyTo })
+            ...(row.replyTos === undefined ? undefined : { replyTos: row.replyTos })
           }).pipe(
             Effect.catchCause((cause) => this.#completeReplayFailure(registration, row, cause))
           ),
@@ -403,7 +408,7 @@ export class ClusterEntity extends DurableObject<unknown> {
         ),
         (reply) =>
           Effect.sync(() => storage.transactionSync(() => saveReply(storage.sql, reply))).pipe(
-            Effect.andThen(this.#deliverScheduledReply(encoded.requestId as string, reply, row.replyTo))
+            Effect.andThen(this.#deliverScheduledReply(encoded.requestId as string, reply, row.replyTos))
           )
       ).pipe(
         Effect.catchCause(() =>
@@ -422,7 +427,7 @@ export class ClusterEntity extends DurableObject<unknown> {
     lastSentChunkText: string | undefined,
     discard: boolean,
     persisted: boolean,
-    options?: { readonly scheduled?: boolean; readonly replyTo?: string | undefined }
+    options?: { readonly scheduled?: boolean; readonly replyTos?: ReadonlyArray<string> | undefined }
   ): Effect.Effect<ReadonlyArray<string>> {
     const rpc = registration.entity.protocol.requests.get(envelope.tag) as Rpc.AnyWithProps
     const storage = this.#state.storage
@@ -457,7 +462,7 @@ export class ClusterEntity extends DurableObject<unknown> {
               yield* Effect.promise(() => this.#offerReply(session, encoded))
             }
             if (scheduled && reply._tag === "WithExit") {
-              yield* this.#deliverScheduledReply(requestId, encoded, options?.replyTo)
+              yield* this.#deliverScheduledReply(requestId, encoded, options?.replyTos)
             }
           })
       )
@@ -477,16 +482,19 @@ export class ClusterEntity extends DurableObject<unknown> {
     })
   }
 
-  #deliverScheduledReply(requestId: string, reply: string, replyTo: string | undefined): Effect.Effect<void> {
+  #deliverScheduledReply(
+    requestId: string,
+    reply: string,
+    replyTos: ReadonlyArray<string> | undefined
+  ): Effect.Effect<void> {
     const waiters = this.#workerWaiters.get(requestId)
     if (waiters !== undefined) {
       this.#workerWaiters.delete(requestId)
       for (const waiter of waiters) {
-        this.#workerWaiterTargets.delete(waiter.clientRequestId)
         waiter.resolve({ requestId, replies: [reply] })
       }
     }
-    if (replyTo === undefined) return Effect.void
+    if (replyTos === undefined) return Effect.void
     const namespace = (this.#state.exports as Record<string, unknown>).ClusterEntity as
       | {
         readonly getByName: (
@@ -494,8 +502,28 @@ export class ClusterEntity extends DurableObject<unknown> {
         ) => { readonly deliverReply: (requestId: string, reply: string) => Promise<boolean> }
       }
       | undefined
-    if (namespace === undefined) return Effect.void
-    return Effect.promise(() => namespace.getByName(replyTo).deliverReply(requestId, reply)).pipe(Effect.ignore)
+    if (namespace === undefined) {
+      return Effect.logError(
+        "Scheduled entity reply delivery failed",
+        new Error("CloudflareCluster: ClusterEntity export is unavailable for scheduled reply delivery")
+      )
+    }
+    return Effect.forEach(
+      replyTos,
+      (replyTo) =>
+        Effect.promise(() => namespace.getByName(replyTo).deliverReply(requestId, reply)).pipe(
+          Effect.flatMap((delivered) =>
+            delivered
+              ? Effect.void
+              : Effect.logError(
+                "Scheduled entity reply delivery failed",
+                new Error(`Scheduled entity reply target is unavailable: ${replyTo}`)
+              )
+          ),
+          Effect.catchCause((cause) => Effect.logError("Scheduled entity reply delivery failed", cause))
+        ),
+      { discard: true }
+    )
   }
 
   /** @internal Completes an in-memory delayed ask owned by this entity object. */
