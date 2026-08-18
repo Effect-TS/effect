@@ -40,7 +40,9 @@ export const persistRequest = (
   sql: SqlStorage,
   envelopeText: string,
   primaryKey: string | null,
-  discard = false
+  discard = false,
+  deliverAt: number | null = null,
+  replyTo: string | null = null
 ): PersistResult => {
   if (encodedSize(envelopeText) > maximumEncodedSize) {
     throw new EncodedMessageTooLargeError("Encoded entity request exceeds 2 MB")
@@ -61,6 +63,13 @@ export const persistRequest = (
     primaryKey
   ).toArray()[0]
   if (existing !== undefined) {
+    if (replyTo !== null && Number(existing.processed) === 0) {
+      sql.exec(
+        "UPDATE cluster_messages SET reply_to = ? WHERE request_id = ?",
+        replyTo,
+        String(existing.request_id)
+      )
+    }
     return {
       _tag: "Duplicate",
       originalId: String(existing.request_id),
@@ -82,12 +91,15 @@ export const persistRequest = (
   }
 
   sql.exec(
-    `INSERT INTO cluster_messages (request_id, message_id, envelope, discard, processed, last_reply_id)
-     VALUES (?, ?, ?, ?, 0, NULL)`,
+    `INSERT INTO cluster_messages
+       (request_id, message_id, envelope, discard, processed, last_reply_id, deliver_at, reply_to)
+     VALUES (?, ?, ?, ?, 0, NULL, ?, ?)`,
     envelope.requestId,
     primaryKey,
     envelopeText,
-    discard ? 1 : 0
+    discard ? 1 : 0,
+    deliverAt,
+    replyTo
   )
   return { _tag: "Success" }
 }
@@ -135,28 +147,47 @@ export interface StoredMessage {
   readonly envelope: string
   readonly lastSentChunk: string | undefined
   readonly discard: boolean
+  readonly deliverAt?: number | undefined
+  readonly replyTo?: string | undefined
 }
 
-const rowToMessage = (row: Record<string, unknown>): StoredMessage => ({
-  envelope: String(row.envelope),
-  lastSentChunk: typeof row.last_reply === "string" ? row.last_reply : undefined,
-  discard: Number(row.discard) === 1
-})
+const rowToMessage = (row: Record<string, unknown>): StoredMessage => {
+  const message: StoredMessage = {
+    envelope: String(row.envelope),
+    lastSentChunk: typeof row.last_reply === "string" ? row.last_reply : undefined,
+    discard: Number(row.discard) === 1,
+    ...(typeof row.deliver_at === "number" ? { deliverAt: row.deliver_at } : undefined),
+    ...(typeof row.reply_to === "string" ? { replyTo: row.reply_to } : undefined)
+  }
+  return message
+}
 
 /** @internal */
-export const loadUnprocessed = (sql: SqlStorage): Array<StoredMessage> =>
+export const loadUnprocessed = (sql: SqlStorage, now = Date.now()): Array<StoredMessage> =>
   sql.exec(
-    `SELECT m.envelope, m.discard, r.reply AS last_reply
+    `SELECT m.envelope, m.discard, m.deliver_at, m.reply_to, r.reply AS last_reply
      FROM cluster_messages m
      LEFT JOIN cluster_replies r ON r.reply_id = m.last_reply_id
-     WHERE m.processed = 0
-     ORDER BY m.rowid ASC`
+     WHERE m.processed = 0 AND (m.deliver_at IS NULL OR m.deliver_at <= ?)
+     ORDER BY m.rowid ASC`,
+    now
+  ).toArray().map(rowToMessage)
+
+/** @internal */
+export const loadDue = (sql: SqlStorage, now = Date.now()): Array<StoredMessage> =>
+  sql.exec(
+    `SELECT m.envelope, m.discard, m.deliver_at, m.reply_to, r.reply AS last_reply
+     FROM cluster_messages m
+     LEFT JOIN cluster_replies r ON r.reply_id = m.last_reply_id
+     WHERE m.processed = 0 AND m.deliver_at IS NOT NULL AND m.deliver_at <= ?
+     ORDER BY m.rowid ASC`,
+    now
   ).toArray().map(rowToMessage)
 
 /** @internal */
 export const loadMessage = (sql: SqlStorage, requestId: string): StoredMessage | undefined => {
   const row = sql.exec(
-    `SELECT m.envelope, m.discard, r.reply AS last_reply
+    `SELECT m.envelope, m.discard, m.deliver_at, m.reply_to, r.reply AS last_reply
      FROM cluster_messages m
      LEFT JOIN cluster_replies r ON r.reply_id = m.last_reply_id
      WHERE m.request_id = ?
