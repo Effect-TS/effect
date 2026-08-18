@@ -16,6 +16,8 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Option from "effect/Option"
+import * as Result from "effect/Result"
+import * as ClusterMetrics from "effect/unstable/cluster/ClusterMetrics"
 import { Persisted } from "effect/unstable/cluster/ClusterSchema"
 import * as EntityAddress from "effect/unstable/cluster/EntityAddress"
 import * as EntityId from "effect/unstable/cluster/EntityId"
@@ -225,19 +227,32 @@ export class ClusterEntity extends DurableObject<unknown> {
         return { result: { requestId: String(envelope.requestId), replies } }
       }
 
-      let persisted: PersistResult
-      try {
-        persisted = storage.transactionSync(() =>
-          persistRequest(
-            storage.sql,
-            envelopeText,
-            delivery?.primaryKey ?? Envelope.primaryKey(envelope),
-            discard,
-            delivery?.deliverAt,
-            delivery?.replyTo
+      const persistedResult = yield* Effect.result(
+        Effect.try(() =>
+          storage.transactionSync(() =>
+            persistRequest(
+              storage.sql,
+              envelopeText,
+              delivery?.primaryKey ?? Envelope.primaryKey(envelope),
+              discard,
+              delivery?.deliverAt,
+              delivery?.replyTo
+            )
           )
+        ).pipe(
+          Effect.withSpan("CloudflareCluster.persist", {
+            attributes: {
+              entityType: registration.entity.type,
+              entityId: String(this.#address.entityId),
+              rpc: envelope.tag
+            }
+          }, { captureStackTrace: false }),
+          Effect.provideContext(registration.context)
         )
-      } catch (error) {
+      )
+      if (Result.isFailure(persistedResult)) {
+        const cause = persistedResult.failure.cause
+        const error = cause instanceof Error ? cause : new Error(String(cause))
         if (error instanceof MailboxFullError) {
           return { result: { requestId: String(envelope.requestId), replies: [], error: "MailboxFull" as const } }
         } else if (error instanceof EncodedMessageTooLargeError) {
@@ -247,6 +262,7 @@ export class ClusterEntity extends DurableObject<unknown> {
         }
         return yield* Effect.die(error)
       }
+      const persisted: PersistResult = persistedResult.success
       if (persisted._tag === "Duplicate") {
         const original = loadMessage(storage.sql, persisted.originalId)
         if (original === undefined) return yield* Effect.die("Duplicate mailbox row disappeared")
@@ -419,7 +435,15 @@ export class ClusterEntity extends DurableObject<unknown> {
         { discard: true }
       )
       yield* this.#armEarliestAlarm()
-    })
+    }).pipe(
+      Effect.withSpan("CloudflareCluster.alarm", {
+        attributes: {
+          entityType: registration.entity.type,
+          entityId: String(this.#address.entityId)
+        }
+      }, { captureStackTrace: false }),
+      Effect.provideContext(registration.context)
+    )
   }
 
   #armEarliestAlarm(): Effect.Effect<void> {
@@ -875,15 +899,22 @@ export class ClusterSingleton extends DurableObject<unknown> {
     if (registration === undefined) {
       throw new Error(`CloudflareCluster: no singleton registered under the name "${name}"`)
     }
+    const run = Effect.sync(() => {
+      ClusterMetrics.singletons.modifyUnsafe(BigInt(1), registration.context)
+    }).pipe(
+      Effect.andThen(registration.run),
+      Effect.ensuring(Effect.sync(() => {
+        ClusterMetrics.singletons.modifyUnsafe(BigInt(-1), registration.context)
+      })),
+      Effect.scoped,
+      Effect.provideContext(registration.context),
+      Effect.orDie
+    )
     this.#runtime = makeSingletonRuntime({
       sql: this.#state.storage.sql,
       alarm: this.#state.storage,
       now: () => Date.now(),
-      run: registration.run.pipe(
-        Effect.scoped,
-        Effect.provideContext(registration.context),
-        Effect.orDie
-      )
+      run
     })
     return this.#runtime
   }
