@@ -1,5 +1,15 @@
 import { dual, identity } from "../Function.ts"
-import type { Case, Matcher, Not, SafeRefinement, TypeMatcher, Types, ValueMatcher, When } from "../Match.ts"
+import type {
+  Case,
+  Matcher,
+  Not,
+  SafeRefinement,
+  TypeMatcher,
+  Types,
+  ValueFlavor,
+  ValueMatcher,
+  When
+} from "../Match.ts"
 import * as Option from "../Option.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import type * as Predicate from "../Predicate.ts"
@@ -46,13 +56,13 @@ const ValueMatcherProto: Omit<
     _filters: identity,
     _result: identity,
     _return: identity,
-    _pr: identity
+    _flavor: identity
   },
   _tag: "ValueMatcher",
-  add<I, R, RA, A, Pr>(
+  add<I, R, RA, A, Provided>(
     this: ValueMatcher<any, any, any, any, any>,
     _case: Case
-  ): ValueMatcher<I, R, RA, A, Pr> {
+  ): ValueMatcher<I, R, RA, A, Provided> {
     if (Result.isSuccess(this.value)) {
       return this
     }
@@ -76,10 +86,10 @@ const ValueMatcherProto: Omit<
   }
 }
 
-function makeValueMatcher<I, R, RA, A, Pr>(
-  provided: Pr,
-  value: Result.Result<Pr, RA>
-): ValueMatcher<I, R, RA, A, Pr> {
+function makeValueMatcher<I, R, RA, A, Provided>(
+  provided: Provided,
+  value: Result.Result<Provided, RA>
+): ValueMatcher<I, R, RA, A, Provided> {
   const matcher = Object.create(ValueMatcherProto)
   matcher.provided = provided
   matcher.value = value
@@ -195,7 +205,7 @@ export const type = <I>(): Matcher<
 /** @internal */
 export const value = <const I>(
   i: I
-): Matcher<I, Types.Without<never>, I, never, "value"> => makeValueMatcher(i, Result.fail(i))
+): Matcher<I, Types.Without<never>, I, never, ValueFlavor> => makeValueMatcher(i, Result.fail(i))
 
 /** @internal */
 export const valueTags: {

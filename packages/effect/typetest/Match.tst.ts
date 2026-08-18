@@ -107,10 +107,15 @@ describe("Match", () => {
   })
 
   it("exhaustiveness checking is preserved", () => {
-    expect(
-      Match.value(stringOrNumber).pipe(
-        Match.when(Match.number, (n) => n)
-      )
-    ).type.not.toBeAssignableTo<Parameters<typeof Match.exhaustive>[0]>()
+    const incomplete = Match.value(stringOrNumber).pipe(
+      Match.when(Match.number, (n) => n)
+    )
+    const complete = Match.value(stringOrNumber).pipe(
+      Match.when(Match.number, (n) => n),
+      Match.when(Match.string, (s) => s)
+    )
+    // @ts-expect-error Argument of type
+    Match.exhaustive(incomplete)
+    expect(Match.exhaustive(complete)).type.toBe<string | number>()
   })
 })

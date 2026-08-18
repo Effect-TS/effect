@@ -21,14 +21,22 @@ import type { Unify } from "./Unify.ts"
 const TypeId = internal.TypeId
 
 /**
+ * Marker used by `Matcher` to distinguish matchers created with `Match.value`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type ValueFlavor = "value"
+
+/**
  * Union type for matchers created by `Match.type` and `Match.value`.
  *
  * **Details**
  *
  * A `Matcher` carries the input type, accumulated filters, remaining cases,
- * result type, and a `Provided` flag distinguishing the two flavors: `never`
- * for matchers created with `Match.type` and `"value"` for matchers created
- * with `Match.value`. Because the flag never depends on the input type,
+ * result type, and a flavor distinguishing the two matcher variants: `never`
+ * for matchers created with `Match.type` and `ValueFlavor` for matchers created
+ * with `Match.value`. Because the flavor never depends on the input type,
  * terminal combinators resolve even when the input contains type parameters.
  *
  * **Example** (Matching string and number values)
@@ -56,9 +64,9 @@ const TypeId = internal.TypeId
  * @category models
  * @since 4.0.0
  */
-export type Matcher<Input, Filters, RemainingApplied, Result, Provided, Return = any> =
+export type Matcher<Input, Filters, RemainingApplied, Result, Flavor, Return = any> =
   | TypeMatcher<Input, Filters, RemainingApplied, Result, Return>
-  | ValueMatcher<Input, Filters, RemainingApplied, Result, Input, Return, Provided>
+  | ValueMatcher<Input, Filters, RemainingApplied, Result, Input, Return, Flavor>
 
 /**
  * Represents a pattern matcher that operates on types rather than specific values.
@@ -109,7 +117,8 @@ export interface TypeMatcher<in Input, out Filters, out Remaining, out Result, o
  *
  * A `ValueMatcher` is created when using `Match.value(someValue)` and contains
  * the actual value to be matched against. It tracks both the provided value
- * and the result of applying patterns to determine matches.
+ * and the result of applying patterns to determine matches. Its optional
+ * seventh type parameter is the matcher flavor and defaults to `ValueFlavor`.
  *
  * **Example** (Creating a value matcher)
  *
@@ -138,7 +147,7 @@ export interface ValueMatcher<
   out Result,
   Provided,
   out Return = any,
-  out Pr = "value"
+  out Flavor = ValueFlavor
 > extends Pipeable {
   readonly _tag: "ValueMatcher"
   readonly [TypeId]: {
@@ -146,11 +155,11 @@ export interface ValueMatcher<
     readonly _filters: T.Covariant<Filters>
     readonly _result: T.Covariant<Result>
     readonly _return: T.Covariant<Return>
-    readonly _pr: T.Covariant<Pr>
+    readonly _flavor: T.Covariant<Flavor>
   }
   readonly provided: Provided
   readonly value: Result.Result<Provided, Remaining>
-  add<I, R, RA, A, Pr>(_case: Case): ValueMatcher<I, R, RA, A, Pr>
+  add<I, R, RA, A, Provided>(_case: Case): ValueMatcher<I, R, RA, A, Provided>
 }
 
 /**
@@ -332,7 +341,7 @@ export const type: <I>() => Matcher<I, Types.Without<never>, I, never, never> = 
  */
 export const value: <const I>(
   i: I
-) => Matcher<I, Types.Without<never>, I, never, "value"> = internal.value
+) => Matcher<I, Types.Without<never>, I, never, ValueFlavor> = internal.value
 
 /**
  * Creates a match function for a specific value with discriminated union handling.
