@@ -37,6 +37,7 @@ import * as Internal from "./internal/clusterName.ts"
 import { registerEntity as registerEntityHandler, unregisterEntity } from "./internal/entityRegistry.ts"
 import { CurrentEntityName, registerReplyHandler, unregisterReplyHandler } from "./internal/entityReply.ts"
 import { decodeReplyFor } from "./internal/entityWire.ts"
+import { registerSingleton as registerSingletonHandler, unregisterSingleton } from "./internal/singletonRegistry.ts"
 
 /**
  * A Durable Object name decoded back into its entity address parts.
@@ -446,6 +447,26 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
     )
   })
 
+  const registerSingleton = Effect.fnUntraced(function*(
+    name: string,
+    run: Effect.Effect<void, unknown, unknown>
+  ) {
+    options.singletonNamespace.getByName(`Singleton/${name}`)
+    const context = yield* Effect.context<never>()
+    const registration = {
+      run: run as Effect.Effect<void, unknown, never>,
+      context
+    }
+    if (!registerSingletonHandler(name, registration)) {
+      return yield* Effect.die(`Singleton '${name}' is already registered`)
+    }
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        unregisterSingleton(name, registration)
+      })
+    )
+  })
+
   return Sharding.of({
     getRegistrationEvents: Stream.never,
     getShardId: (_entityId, group) => ShardId.make(group, 1),
@@ -454,7 +475,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
     isShutdown: Effect.succeed(false),
     makeClient: makeClient as Sharding["Service"]["makeClient"],
     registerEntity: registerEntity as Sharding["Service"]["registerEntity"],
-    registerSingleton: () => notImplemented("Sharding.registerSingleton"),
+    registerSingleton: registerSingleton as Sharding["Service"]["registerSingleton"],
     send: () => notImplemented("Sharding.send"),
     sendOutgoing: () => notImplemented("Sharding.sendOutgoing"),
     notify: () => notImplemented("Sharding.notify"),
