@@ -17,7 +17,7 @@ import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { MailboxFull, PersistenceError } from "effect/unstable/cluster/ClusterError"
-import { Persisted } from "effect/unstable/cluster/ClusterSchema"
+import { Persisted, Uninterruptible } from "effect/unstable/cluster/ClusterSchema"
 import * as DeliverAt from "effect/unstable/cluster/DeliverAt"
 import type * as Entity from "effect/unstable/cluster/Entity"
 import * as EntityAddress from "effect/unstable/cluster/EntityAddress"
@@ -163,6 +163,16 @@ const uuidV7 = (timestamp: number): string => {
 }
 
 const requestTargetCapacity = 4096
+
+// ClusterCron owns this entity inside its layer, so callers cannot include it
+// in LayerOptions.entities. Its reserved shape is the only implicit entity.
+const isClusterCronEntity = (entity: Entity.Entity<any, any>): boolean => {
+  if (!entity.type.startsWith("ClusterCron/") || entity.protocol.requests.size !== 1) return false
+  const run = entity.protocol.requests.get("run")
+  return run !== undefined &&
+    Context.get(run.annotations, Persisted) &&
+    Context.get(run.annotations, Uninterruptible) === true
+}
 
 const make = Effect.fnUntraced(function*(options: LayerOptions) {
   const entities = new Map<string, Entity.Entity<any, any>>()
@@ -434,15 +444,18 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
     build: Effect.Effect<unknown, never, unknown>,
     buildOptions?: Record<string, unknown>
   ) {
-    if (!entities.has(entity.type)) {
+    const declared = entities.has(entity.type)
+    if (!declared && !isClusterCronEntity(entity)) {
       return yield* unknownEntity(entity)
     }
     const context = yield* Effect.context<never>()
     const registration = { entity, build: build as any, options: buildOptions, context }
     if (!registerEntityHandler(entity.type, registration)) return
+    if (!declared) entities.set(entity.type, entity)
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
         unregisterEntity(entity.type, registration)
+        if (!declared && entities.get(entity.type) === entity) entities.delete(entity.type)
       })
     )
   })
