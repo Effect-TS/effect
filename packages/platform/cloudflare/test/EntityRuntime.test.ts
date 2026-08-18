@@ -1,8 +1,8 @@
 import type { EntityRegistration } from "@effect/platform-cloudflare/internal/entityRegistry"
 import { makeEntityRuntime } from "@effect/platform-cloudflare/internal/entityRuntime"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Exit, Option, Schedule, Schema, Stream } from "effect"
-import { Entity, EntityAddress, EntityId, EntityType, ShardId } from "effect/unstable/cluster"
+import { Cause, Context, Effect, Exit, Metric, Option, Schedule, Schema, Stream, Tracer } from "effect"
+import { ClusterMetrics, Entity, EntityAddress, EntityId, EntityType, ShardId } from "effect/unstable/cluster"
 import { Rpc, RpcSchema } from "effect/unstable/rpc"
 
 const User = Entity.make("User", [
@@ -25,6 +25,53 @@ const request = {
 }
 
 describe("EntityRuntime", () => {
+  it.effect("records a handler span and tracks the active entity metric", () => {
+    const Telemetry = Entity.make("Telemetry", [Rpc.make("Ping", { success: Schema.String })])
+    const telemetryAddress = new EntityAddress.EntityAddress({
+      shardId: ShardId.make("default", 1),
+      entityType: EntityType.make("Telemetry"),
+      entityId: EntityId.make("observed")
+    })
+    const spans: Array<Tracer.NativeSpan> = []
+    const tracer = Tracer.make({
+      span(options) {
+        const span = new Tracer.NativeSpan(options)
+        spans.push(span)
+        return span
+      }
+    })
+    const context = Context.empty().pipe(Context.add(Tracer.Tracer, tracer))
+    const metricContext = Context.merge(
+      context,
+      Metric.CurrentMetricAttributes.context({ type: Telemetry.type })
+    )
+    let active = BigInt(0)
+    const registration: EntityRegistration = {
+      entity: Telemetry,
+      build: Effect.succeed(Telemetry.of({
+        Ping: () =>
+          Effect.sync(() => {
+            active = ClusterMetrics.entities.valueUnsafe(metricContext).value
+            return "pong"
+          })
+      })),
+      options: undefined,
+      context
+    }
+
+    return Effect.gen(function*() {
+      const runtime = yield* makeEntityRuntime(registration, telemetryAddress, () => "reply")
+      yield* runtime.run({ ...request, address: telemetryAddress } as any, Option.none(), false, () => Effect.void)
+
+      assert.strictEqual(active, BigInt(1))
+      assert.strictEqual(ClusterMetrics.entities.valueUnsafe(metricContext).value, BigInt(0))
+      assert.deepStrictEqual(spans.map((span) => span.name), ["CloudflareCluster.handler"])
+      assert.strictEqual(spans[0].attributes.get("entityType"), "Telemetry")
+      assert.strictEqual(spans[0].attributes.get("entityId"), "observed")
+      assert.strictEqual(spans[0].attributes.get("rpc"), "Ping")
+    })
+  })
+
   it.effect("builds handlers once per wake and returns terminal ask replies", () =>
     Effect.gen(function*() {
       let builds = 0
