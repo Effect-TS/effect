@@ -587,6 +587,9 @@ export const toSnapshot = <N, E, T extends Kind = "directed">(
  */
 export const make =
   <T extends Kind>(type: T) => <N, E>(mutate?: (mutable: MutableGraph<N, E, T>) => undefined): Graph<N, E, T> => {
+    if (type !== "directed" && type !== "undirected") {
+      throw new GraphError({ message: "Graph type must be directed or undirected" })
+    }
     if (mutate === undefined) {
       return internal.make<N, E, T>(type, false) as unknown as Graph<N, E, T>
     }
@@ -2688,8 +2691,12 @@ export const removeNodes = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   nodeIndices: Iterable<NodeIndex>
 ): void => {
+  assertMutable(mutable)
+  if (internal.isTransforming(mutable)) {
+    throw new GraphError({ message: "Cannot mutate graph during a transformation" })
+  }
+  const indices = internal.withTransformation(mutable, () => Array.from(nodeIndices))
   const impl = getMutableImplForMutation(mutable)
-  const indices = Array.from(nodeIndices)
 
   let removed = false
   for (const nodeIndex of indices) {
@@ -2810,8 +2817,12 @@ export const removeEdges = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   edgeIndices: Iterable<EdgeIndex>
 ): void => {
+  assertMutable(mutable)
+  if (internal.isTransforming(mutable)) {
+    throw new GraphError({ message: "Cannot mutate graph during a transformation" })
+  }
+  const indices = internal.withTransformation(mutable, () => Array.from(edgeIndices))
   const impl = getMutableImplForMutation(mutable)
-  const indices = Array.from(edgeIndices)
 
   let removed = false
   for (const edgeIndex of indices) {
@@ -4336,6 +4347,9 @@ export const isAcyclic = <N, E, T extends Kind = "directed">(
 export const isBipartite = <N, E>(
   graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
 ): boolean => {
+  if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "directed") {
+    throw new GraphError({ message: "Cannot determine bipartite status of directed graph" })
+  }
   const cache = csr.get(graph)
   const outgoing = csr.getOutgoing(cache)
   // -1 is uncolored; compact indices let coloring and the queue stay in typed arrays.
