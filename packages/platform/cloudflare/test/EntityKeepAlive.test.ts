@@ -2,7 +2,7 @@ import { EntityKeepAliveHandler, makeEntityKeepAlive } from "@effect/platform-cl
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber } from "effect"
 import { TestClock } from "effect/testing"
-import { Entity, EntityResource } from "effect/unstable/cluster"
+import { EntityResource } from "effect/unstable/cluster"
 
 const makeFixture = Effect.gen(function*() {
   const started = yield* Deferred.make<void>()
