@@ -4,11 +4,7 @@ import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import * as Schema from "effect/Schema"
 import * as Workflow from "effect/unstable/workflow/Workflow"
-
-const runWith = <A>(
-  effect: Effect.Effect<A, any, any>,
-  context: Context.Context<never>
-): Effect.Effect<A> => effect.pipe(Effect.provideContext(context as any), Effect.orDie) as Effect.Effect<A>
+import { runWith } from "./entityWire.ts"
 
 const AnyOrVoid = Schema.Union([Schema.Undefined, Schema.Any])
 
@@ -44,6 +40,17 @@ const resultCodec = (workflow: Workflow.Any): Schema.Top => {
       error: workflow.errorSchema as any
     }))
     resultCodecs.set(workflow, codec)
+  }
+  return codec
+}
+
+const payloadCodecs = new WeakMap<Workflow.Any, Schema.Top>()
+
+const payloadCodec = (workflow: Workflow.Any): Schema.Top => {
+  let codec = payloadCodecs.get(workflow)
+  if (codec === undefined) {
+    codec = Schema.toCodecJson(workflow.payloadSchema)
+    payloadCodecs.set(workflow, codec)
   }
   return codec
 }
@@ -84,7 +91,7 @@ export const encodePayload = (
 ): Effect.Effect<string> =>
   runWith(
     Effect.map(
-      Schema.encodeUnknownEffect(Schema.toCodecJson(workflow.payloadSchema))(payload),
+      Schema.encodeUnknownEffect(payloadCodec(workflow))(payload),
       (encoded) => JSON.stringify(encoded)
     ),
     context
@@ -97,9 +104,6 @@ export const decodePayload = (
   context: Context.Context<never>
 ): Effect.Effect<object> =>
   runWith(
-    Schema.decodeUnknownEffect(Schema.toCodecJson(workflow.payloadSchema))(JSON.parse(text)) as Effect.Effect<
-      object,
-      any
-    >,
+    Schema.decodeUnknownEffect(payloadCodec(workflow))(JSON.parse(text)) as Effect.Effect<object, any>,
     context
   )
