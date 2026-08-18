@@ -495,10 +495,24 @@ const parseOpenApi = (
         const representable: Array<ParsedOperation.ParsedOperationMediaTypeSchema> = []
 
         let jsonSchemaName: string | undefined
-        const jsonResponseSchema = content?.["application/json"]?.schema
-        if (Predicate.isNotUndefined(jsonResponseSchema)) {
-          jsonSchemaName = addSchema(`${schemaId}${status}`, jsonResponseSchema, op)
-          if (isHttpApi) {
+        const jsonResponses = Object.entries(content ?? {}).filter(
+          (entry): entry is [string, Record<string, any> & { schema: JsonSchema.JsonSchema }] =>
+            isJsonMediaType(entry[0].toLowerCase()) &&
+            Predicate.isObject(entry[1]) &&
+            Predicate.isNotUndefined(entry[1].schema)
+        )
+        if (!isHttpApi && jsonResponses.length > 0) {
+          jsonSchemaName = addSchema(
+            `${schemaId}${status}`,
+            jsonResponses.length === 1
+              ? jsonResponses[0][1].schema
+              : { anyOf: jsonResponses.map(([, mediaType]) => mediaType.schema) },
+            op
+          )
+        } else if (isHttpApi) {
+          const jsonResponseSchema = content?.["application/json"]?.schema
+          if (Predicate.isNotUndefined(jsonResponseSchema)) {
+            jsonSchemaName = addSchema(`${schemaId}${status}`, jsonResponseSchema, op)
             representable.push({
               contentType: "application/json",
               encoding: "json",
@@ -625,16 +639,26 @@ const parseOpenApi = (
           }
         }
 
-        if (Predicate.isNotUndefined(content?.["application/octet-stream"])) {
+        const hasBinaryResponse = Object.entries(content ?? {}).some(([contentType, mediaType]) =>
+          Predicate.isObject(mediaType) &&
+          (isBinaryMediaType(contentType.toLowerCase()) || isBinarySchema(mediaType.schema))
+        )
+        if (hasBinaryResponse) {
           const statusMajorNumber = Number(parsedStatus[0])
           if (!Number.isNaN(statusMajorNumber) && statusMajorNumber < 4) {
             op.binaryResponse = true
+            op.binarySuccessStatuses.add(parsedStatus.toLowerCase())
           }
         }
 
         if (isEmptyResponse) {
           if (parsedStatus !== "default") {
-            op.voidSchemas.add(parsedStatus.toLowerCase())
+            const normalizedStatus = parsedStatus.toLowerCase()
+            if (isErrorStatus(normalizedStatus)) {
+              op.voidErrorStatuses.add(normalizedStatus)
+            } else {
+              op.voidSchemas.add(normalizedStatus)
+            }
           }
         }
       }
@@ -924,7 +948,30 @@ const isTextMediaType = (contentType: string): boolean => contentType.startsWith
 
 const isBinaryMediaType = (contentType: string): boolean =>
   contentType === "application/octet-stream" ||
-  (contentType.startsWith("application/") && (contentType.includes("binary") || contentType.endsWith("+octet-stream")))
+  contentType === "application/pdf" ||
+  contentType === "application/zip" ||
+  contentType === "application/gzip" ||
+  contentType === "application/x-gzip" ||
+  contentType === "application/x-tar" ||
+  contentType === "application/x-zip-compressed" ||
+  contentType.startsWith("image/") ||
+  contentType.startsWith("audio/") ||
+  contentType.startsWith("video/") ||
+  contentType.startsWith("font/") ||
+  (contentType.startsWith("application/") &&
+    (contentType.includes("binary") ||
+      contentType.endsWith("+octet-stream") ||
+      contentType.endsWith("+zip") ||
+      contentType.endsWith("+gzip")))
+
+const isBinarySchema = (schema: unknown): boolean =>
+  Predicate.isObject(schema) &&
+  (
+    (typeof schema.format === "string" && schema.format.toLowerCase() === "binary") ||
+    (typeof schema.contentEncoding === "string" && schema.contentEncoding.toLowerCase() === "binary")
+  )
+
+const isErrorStatus = (status: string): boolean => status.startsWith("4") || status.startsWith("5")
 
 const getRequestMediaTypeEncoding = (
   contentType: string

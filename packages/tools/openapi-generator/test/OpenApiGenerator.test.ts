@@ -52,6 +52,23 @@ function assertRuntimeIncludes(spec: OpenAPISpec, includes: ReadonlyArray<string
   )
 }
 
+function assertTypeOnlyIncludes(spec: OpenAPISpec, includes: ReadonlyArray<string>) {
+  return Effect.gen(function*() {
+    const generator = yield* OpenApiGenerator.OpenApiGenerator
+
+    const result = yield* generator.generate(spec, {
+      name: "TestClient",
+      format: "httpclient-type-only"
+    })
+
+    for (const expected of includes) {
+      assert.include(result, expected)
+    }
+  }).pipe(
+    Effect.provide(OpenApiGenerator.layerTransformerTs)
+  )
+}
+
 function assertHttpApiIncludes(
   spec: OpenAPISpec,
   includes: ReadonlyArray<string>,
@@ -284,6 +301,126 @@ const regressionSpec: OpenAPISpec = {
   },
   security: [],
   tags: [{ name: "Users" }]
+}
+
+const responseMatchingSpec: OpenAPISpec = {
+  openapi: "3.1.0",
+  info: {
+    title: "Response matching API",
+    version: "1.0.0"
+  },
+  paths: {
+    "/auth/device/token": {
+      post: {
+        operationId: "pollDeviceToken",
+        responses: {
+          400: {
+            description: "Problem details or OAuth polling state",
+            content: {
+              "application/problem+json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    kind: { const: "InvalidRequestError" },
+                    code: { type: "string" }
+                  },
+                  required: ["kind", "code"],
+                  additionalProperties: false
+                }
+              },
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    kind: { const: "DeviceTokenOAuthError" },
+                    error: { type: "string" }
+                  },
+                  required: ["kind", "error"],
+                  additionalProperties: false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/archive": {
+      get: {
+        operationId: "downloadArchive",
+        responses: {
+          200: {
+            description: "Archive",
+            content: {
+              "application/zip": {
+                schema: { type: "string", format: "binary" }
+              }
+            }
+          },
+          404: {
+            description: "Not found",
+            content: {
+              "application/problem+json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" }
+                  },
+                  required: ["title"],
+                  additionalProperties: false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/avatar": {
+      get: {
+        operationId: "downloadAvatar",
+        responses: {
+          200: {
+            description: "Avatar",
+            content: {
+              "image/png": {
+                schema: { type: "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/custom-binary": {
+      get: {
+        operationId: "downloadCustomBinary",
+        responses: {
+          200: {
+            description: "Custom binary",
+            content: {
+              "application/vnd.example.data": {
+                schema: { type: "string", format: "binary" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resources/{id}": {
+      head: {
+        operationId: "checkResource",
+        parameters: [{
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string" }
+        }],
+        responses: {
+          200: { description: "Exists" },
+          404: { description: "Not found" },
+          500: { description: "Server error" }
+        }
+      }
+    }
+  }
 }
 
 describe("OpenApiGenerator", () => {
@@ -649,6 +786,30 @@ export const TestClientError = <Tag extends string, E>(
           `readonly payload: typeof IssueTokenRequestFormUrlEncoded.Encoded`
         ]
       ))
+
+    it.effect("preserves response variants and routes binary and bodiless statuses", () =>
+      assertRuntimeIncludes(responseMatchingSpec, [
+        `export const PollDeviceToken400 = Schema.Union(`,
+        `Schema.Literal("InvalidRequestError")`,
+        `Schema.Literal("DeviceTokenOAuthError")`,
+        `"400": decodeError("PollDeviceToken400", PollDeviceToken400)`,
+        `export type DownloadArchive404 = { readonly "title": string }`,
+        `const decodeBinary = (response: HttpClientResponse.HttpClientResponse) =>`,
+        `Effect.map(response.arrayBuffer, (buffer) => new Uint8Array(buffer))`,
+        `"2xx": decodeBinary`,
+        `readonly "downloadArchive": <Config extends OperationConfig>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
+        `readonly "downloadArchiveStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `"downloadAvatar": (options) => HttpClientRequest.get(\`/avatar\`).pipe(
+    withResponse(options?.config)(HttpClientResponse.matchStatus({
+      "2xx": decodeBinary`,
+        `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `"200": () => Effect.void`,
+        `"404": decodeVoidError("404")`,
+        `"500": decodeVoidError("500")`,
+        `TestClientError<"404", undefined>`,
+        `TestClientError<"500", undefined>`
+      ]))
   })
 
   describe("type-only", () => {
@@ -848,6 +1009,25 @@ export const TestClientError = <Tag extends string, E>(
     request: response.request,
   }) as any`
       ))
+
+    it.effect("preserves response variants and routes binary and bodiless statuses", () =>
+      assertTypeOnlyIncludes(responseMatchingSpec, [
+        `export type PollDeviceToken400 =`,
+        `readonly "kind": "InvalidRequestError"`,
+        `readonly "kind": "DeviceTokenOAuthError"`,
+        `onRequest(options?.config)([], {"400":"PollDeviceToken400"})`,
+        `const decodeBinary = (response: HttpClientResponse.HttpClientResponse) =>`,
+        `onRequest(options?.config)([], {"404":"DownloadArchive404"}, {"binary":["2xx"],"void":[],"voidError":[]})`,
+        `readonly "downloadArchive": <Config extends OperationConfig>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
+        `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `"downloadAvatar": (options) => HttpClientRequest.get(\`/avatar\`).pipe(
+    onRequest(options?.config)([], undefined, {"binary":["2xx"],"void":[],"voidError":[]})`,
+        `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `onRequest(options?.config)([], undefined, {"binary":[],"void":["200"],"voidError":["404","500"]})`,
+        `cases[code] = decodeVoidError(code)`,
+        `TestClientError<"404", undefined>`,
+        `TestClientError<"500", undefined>`
+      ]))
   })
 
   describe("httpapi", () => {
