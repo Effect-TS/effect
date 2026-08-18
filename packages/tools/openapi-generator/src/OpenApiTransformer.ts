@@ -70,6 +70,11 @@ const computeImportRequirements = (operations: ReadonlyArray<ParsedOperation>): 
 const requiresStreaming = (requirements: ImportRequirements): boolean =>
   requirements.eventStream || requirements.octetStream
 
+const hasResponseVariants = (responses: ParsedOperationHttpClientResponses): boolean =>
+  responses.binarySuccessStatuses.size > 0 ||
+  responses.voidSuccessStatuses.size > 0 ||
+  responses.voidErrorStatuses.size > 0
+
 const normalizeSuccessStatus = (
   responses: ParsedOperationHttpClientResponses,
   status: string
@@ -684,19 +689,13 @@ ${clientErrorSource(name)}`
     if (requirements.eventStream) {
       helpers.push(sseRequestSourceTs)
     }
-    const hasResponseVariants = operations.some((operation) =>
-      operation.httpClientResponses.binarySuccessStatuses.size > 0 ||
-      operation.httpClientResponses.voidSuccessStatuses.size > 0 ||
-      operation.httpClientResponses.voidErrorStatuses.size > 0
-    )
-    if (hasResponseVariants) {
+    const withResponseVariants = operations.some((op) => hasResponseVariants(op.httpClientResponses))
+    if (withResponseVariants) {
       helpers.push(decodeBinarySource)
+      helpers.push(decodeVoidErrorSource(name))
     }
     if (requirements.octetStream) {
       helpers.push(binaryRequestSourceTs)
-    }
-    if (hasResponseVariants) {
-      helpers.push(decodeVoidErrorSource(name))
     }
 
     return `export interface OperationConfig {
@@ -744,7 +743,7 @@ export const make = (
         response.json as Effect.Effect<E, HttpClientError.HttpClientError>,
         (cause) => Effect.fail(${name}Error(tag, cause, response)),
       )
-  ${onRequestSource(hasResponseVariants)}
+  ${onRequestSource(withResponseVariants)}
   return {
     httpClient,
     ${implMethods.join(",\n    ")}
@@ -785,19 +784,13 @@ export const make = (
 
     const successCodes = Array.from(
       responses.successSchemas.keys(),
-      (status) => normalizeSuccessStatus(responses, status)
-    )
-      .map((status) => JSON.stringify(status))
-      .join(", ")
+      (status) => JSON.stringify(normalizeSuccessStatus(responses, status))
+    ).join(", ")
     const errorCodes = responses.errorSchemas.size > 0 &&
       Object.fromEntries(responses.errorSchemas.entries())
     const configAccessor = resolveConfigAccessor(operation, "options", "config")
     const requestArgs = [`[${successCodes}]`]
-    if (
-      responses.binarySuccessStatuses.size > 0 ||
-      responses.voidSuccessStatuses.size > 0 ||
-      responses.voidErrorStatuses.size > 0
-    ) {
+    if (hasResponseVariants(responses)) {
       const responseCodes = {
         binary: Array.from(
           responses.binarySuccessStatuses,
@@ -910,10 +903,10 @@ export const make = (
         `import * as Effect from "effect/Effect"`
       ]
       if (requiresStreaming(requirements)) {
-        imports.push(`import * as Stream from "effect/Stream"`)
-      }
-      if (requiresStreaming(requirements)) {
-        imports.push(`import * as HttpClient from "effect/unstable/http/HttpClient"`)
+        imports.push(
+          `import * as Stream from "effect/Stream"`,
+          `import * as HttpClient from "effect/unstable/http/HttpClient"`
+        )
       } else {
         imports.push(`import type * as HttpClient from "effect/unstable/http/HttpClient"`)
       }

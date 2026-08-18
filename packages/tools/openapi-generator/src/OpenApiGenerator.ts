@@ -497,19 +497,16 @@ const parseOpenApi = (
 
         let jsonSchemaName: string | undefined
         if (isHttpApi) {
-          const jsonResponseEntry = Object.entries(content ?? {}).find(([contentType]) =>
-            isJsonMediaType(normalizeMediaType(contentType))
+          const jsonResponseEntry = Object.entries(content ?? {}).find(([contentType, mediaType]) =>
+            isJsonMediaType(normalizeMediaType(contentType)) &&
+            Predicate.isObject(mediaType) &&
+            Predicate.isNotUndefined(mediaType.schema)
           )
-          if (
-            Predicate.isNotUndefined(jsonResponseEntry) &&
-            Predicate.isObject(jsonResponseEntry[1]) &&
-            Predicate.isNotUndefined(jsonResponseEntry[1].schema)
-          ) {
-            const jsonResponseMediaType = jsonResponseEntry[1]
-            const jsonResponseSchema = jsonResponseMediaType.schema as JsonSchema.JsonSchema
-            jsonSchemaName = addSchema(`${schemaId}${status}`, jsonResponseSchema, op)
+          if (Predicate.isNotUndefined(jsonResponseEntry)) {
+            const [contentType, mediaType] = jsonResponseEntry
+            jsonSchemaName = addSchema(`${schemaId}${status}`, mediaType.schema as JsonSchema.JsonSchema, op)
             representable.push({
-              contentType: jsonResponseEntry[0],
+              contentType,
               encoding: "json",
               schema: jsonSchemaName
             })
@@ -618,23 +615,20 @@ const parseOpenApi = (
         }
 
         if (Predicate.isNotUndefined(jsonSchemaName)) {
-          const schemaName = jsonSchemaName
-
           if (status === "default" && !isHttpApi) {
-            defaultSchema = schemaName
+            defaultSchema = jsonSchemaName
             continue
           }
 
-          const statusMajorNumber = Number(parsedStatus[0])
-          if (Number.isNaN(statusMajorNumber)) {
+          if (Number.isNaN(Number(parsedStatus[0]))) {
             continue
           }
-          if (statusMajorNumber < 4) {
+          if (isSuccessStatus(parsedStatus)) {
             if (!httpClientResponses.binarySuccessStatuses.has(normalizedStatus)) {
-              httpClientResponses.successSchemas.set(normalizedStatus, schemaName)
+              httpClientResponses.successSchemas.set(normalizedStatus, jsonSchemaName)
             }
           } else {
-            httpClientResponses.errorSchemas.set(normalizedStatus, schemaName)
+            httpClientResponses.errorSchemas.set(normalizedStatus, jsonSchemaName)
           }
         }
 
