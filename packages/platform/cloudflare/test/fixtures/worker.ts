@@ -234,7 +234,8 @@ export default {
     if (namespace === undefined) {
       return new Response(`unknown binding: ${binding}`, { status: 404 })
     }
-    const stub = namespace.getByName(url.searchParams.get("name") ?? "4:User42")
+    const defaultName = binding === "CLUSTER_SINGLETON" ? "Singleton/test" : "4:User42"
+    const stub = namespace.getByName(url.searchParams.get("name") ?? defaultName)
     try {
       await stub.fetch(request)
       return new Response("expected the object to reject direct fetch", { status: 500 })
