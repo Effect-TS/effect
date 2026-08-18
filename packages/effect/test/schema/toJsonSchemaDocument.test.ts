@@ -674,9 +674,7 @@ describe("toJsonSchemaDocument", () => {
                 },
                 "value": {
                   "type": "string",
-                  "allOf": [
-                    { "pattern": "^-?\\d+$" }
-                  ]
+                  "pattern": "^-?\\d+$"
                 }
               },
               "required": ["_tag", "value"],
@@ -838,9 +836,7 @@ describe("toJsonSchemaDocument", () => {
       {
         schema: {
           "type": "string",
-          "allOf": [
-            { "pattern": "^-?\\d+$" }
-          ]
+          "pattern": "^-?\\d+$"
         }
       }
     )
@@ -853,9 +849,7 @@ describe("toJsonSchemaDocument", () => {
       {
         schema: {
           "type": "string",
-          "allOf": [
-            { "pattern": "^Symbol\\((.*)\\)$" }
-          ]
+          "pattern": "^Symbol\\((.*)\\)$"
         }
       }
     )
@@ -868,9 +862,7 @@ describe("toJsonSchemaDocument", () => {
       {
         schema: {
           "type": "string",
-          "allOf": [
-            { "pattern": "^Symbol\\((.*)\\)$" }
-          ]
+          "pattern": "^Symbol\\((.*)\\)$"
         }
       }
     )
@@ -961,9 +953,7 @@ describe("toJsonSchemaDocument", () => {
         {
           schema: {
             "type": "string",
-            "allOf": [
-              { "minLength": 2 }
-            ]
+            "minLength": 2
           }
         }
       )
@@ -987,9 +977,7 @@ describe("toJsonSchemaDocument", () => {
           schema: {
             "type": "string",
             "description": "a",
-            "allOf": [
-              { "minLength": 2 }
-            ]
+            "minLength": 2
           }
         }
       )
@@ -1003,9 +991,8 @@ describe("toJsonSchemaDocument", () => {
         {
           schema: {
             "type": "string",
-            "allOf": [
-              { "minLength": 2, "description": "a" }
-            ]
+            "minLength": 2,
+            "description": "a"
           }
         }
       )
@@ -1017,10 +1004,8 @@ describe("toJsonSchemaDocument", () => {
         {
           schema: {
             "type": "string",
-            "allOf": [
-              { "minLength": 2 },
-              { "maxLength": 3 }
-            ]
+            "minLength": 2,
+            "maxLength": 3
           }
         }
       )
@@ -1033,10 +1018,8 @@ describe("toJsonSchemaDocument", () => {
           schema: {
             "type": "string",
             "description": "a",
-            "allOf": [
-              { "minLength": 2 },
-              { "maxLength": 3 }
-            ]
+            "minLength": 2,
+            "maxLength": 3
           }
         }
       )
@@ -1050,15 +1033,9 @@ describe("toJsonSchemaDocument", () => {
         {
           schema: {
             "type": "string",
-            "allOf": [
-              {
-                "minLength": 2
-              },
-              {
-                "maxLength": 3,
-                "description": "a"
-              }
-            ]
+            "minLength": 2,
+            "maxLength": 3,
+            "description": "a"
           }
         }
       )
@@ -1074,10 +1051,8 @@ describe("toJsonSchemaDocument", () => {
           schema: {
             "type": "string",
             "description": "a",
+            "minLength": 2,
             "allOf": [
-              {
-                "minLength": 2
-              },
               {
                 "maxLength": 3,
                 "description": "c"
@@ -1097,11 +1072,9 @@ describe("toJsonSchemaDocument", () => {
         {
           schema: {
             "type": "string",
+            "minLength": 2,
+            "description": "b",
             "allOf": [
-              {
-                "minLength": 2,
-                "description": "b"
-              },
               {
                 "maxLength": 3,
                 "description": "c"
@@ -1142,9 +1115,7 @@ describe("toJsonSchemaDocument", () => {
         assertJsonSchemaDocument(Schema.String.check(Schema.isPattern(/^abb+$/)), {
           schema: {
             "type": "string",
-            "allOf": [
-              { "pattern": "^abb+$" }
-            ]
+            "pattern": "^abb+$"
           }
         })
       })
@@ -1160,7 +1131,7 @@ describe("toJsonSchemaDocument", () => {
           assertJsonSchemaDocument(Schema.String.check(check), {
             schema: {
               "type": "string",
-              "allOf": [{ pattern }]
+              pattern
             }
           })
         }
@@ -1171,9 +1142,7 @@ describe("toJsonSchemaDocument", () => {
         assertJsonSchemaDocument(schema, {
           schema: {
             "type": "string",
-            "allOf": [
-              { "pattern": "^\\S[\\s\\S]*\\S$|^\\S$|^$" }
-            ]
+            "pattern": "^\\S[\\s\\S]*\\S$|^\\S$|^$"
           }
         })
       })
@@ -1183,9 +1152,7 @@ describe("toJsonSchemaDocument", () => {
         assertJsonSchemaDocument(schema, {
           schema: {
             "type": "string",
-            "allOf": [
-              { "pattern": "^[^A-Z]*$" }
-            ]
+            "pattern": "^[^A-Z]*$"
           }
         })
       })
@@ -1195,9 +1162,7 @@ describe("toJsonSchemaDocument", () => {
         assertJsonSchemaDocument(schema, {
           schema: {
             "type": "string",
-            "allOf": [
-              { "pattern": "^[^a-z]*$" }
-            ]
+            "pattern": "^[^a-z]*$"
           }
         })
       })
@@ -1207,9 +1172,7 @@ describe("toJsonSchemaDocument", () => {
         assertJsonSchemaDocument(schema, {
           schema: {
             "type": "string",
-            "allOf": [
-              { "pattern": "^[^a-z]?.*$" }
-            ]
+            "pattern": "^[^a-z]?.*$"
           }
         })
       })
@@ -1219,9 +1182,7 @@ describe("toJsonSchemaDocument", () => {
         assertJsonSchemaDocument(schema, {
           schema: {
             "type": "string",
-            "allOf": [
-              { "pattern": "^[^A-Z]?.*$" }
-            ]
+            "pattern": "^[^A-Z]?.*$"
           }
         })
       })
@@ -1290,9 +1251,7 @@ describe("toJsonSchemaDocument", () => {
             {
               schema: {
                 "type": "string",
-                "allOf": [
-                  { "minLength": 2 }
-                ]
+                "minLength": 2
               }
             }
           )
@@ -1307,9 +1266,7 @@ describe("toJsonSchemaDocument", () => {
                 "items": {
                   "type": "string"
                 },
-                "allOf": [
-                  { "minItems": 2 }
-                ]
+                "minItems": 2
               }
             }
           )
@@ -1344,9 +1301,7 @@ describe("toJsonSchemaDocument", () => {
             {
               schema: {
                 "type": "string",
-                "allOf": [
-                  { "maxLength": 2 }
-                ]
+                "maxLength": 2
               }
             }
           )
@@ -1361,9 +1316,7 @@ describe("toJsonSchemaDocument", () => {
                 "items": {
                   "type": "string"
                 },
-                "allOf": [
-                  { "maxItems": 2 }
-                ]
+                "maxItems": 2
               }
             }
           )
@@ -1375,16 +1328,14 @@ describe("toJsonSchemaDocument", () => {
             {
               schema: {
                 "type": "array",
+                "maxItems": 2,
                 "minItems": 1,
                 "prefixItems": [{
                   "type": "string"
                 }],
                 "items": {
                   "type": "string"
-                },
-                "allOf": [
-                  { "maxItems": 2 }
-                ]
+                }
               }
             }
           )
@@ -1398,13 +1349,9 @@ describe("toJsonSchemaDocument", () => {
             schema: {
               "type": "string",
               "description": "description",
-              "allOf": [
-                {
-                  "format": "uuid",
-                  "pattern":
-                    "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|[fF]{8}-[fF]{4}-[fF]{4}-[fF]{4}-[fF]{12})$"
-                }
-              ]
+              "format": "uuid",
+              "pattern":
+                "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|[fF]{8}-[fF]{4}-[fF]{4}-[fF]{4}-[fF]{12})$"
             }
           }
         )
@@ -1417,11 +1364,7 @@ describe("toJsonSchemaDocument", () => {
             schema: {
               "type": "string",
               "description": "description",
-              "allOf": [
-                {
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
-                }
-              ]
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
             }
           }
         )
@@ -1434,9 +1377,7 @@ describe("toJsonSchemaDocument", () => {
             schema: {
               "type": "string",
               "description": "description",
-              "allOf": [
-                { "pattern": "^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$" }
-              ]
+              "pattern": "^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$"
             }
           }
         )
@@ -1449,9 +1390,7 @@ describe("toJsonSchemaDocument", () => {
             schema: {
               "type": "string",
               "description": "description",
-              "allOf": [
-                { "pattern": "^([0-9a-zA-Z-_]{4})*(([0-9a-zA-Z-_]{2}(==)?)|([0-9a-zA-Z-_]{3}(=)?))?$" }
-              ]
+              "pattern": "^([0-9a-zA-Z-_]{4})*(([0-9a-zA-Z-_]{2}(==)?)|([0-9a-zA-Z-_]{3}(=)?))?$"
             }
           }
         )
@@ -1526,9 +1465,7 @@ describe("toJsonSchemaDocument", () => {
         {
           schema: {
             "type": "number",
-            "allOf": [{
-              "description": "a"
-            }]
+            "description": "a"
           }
         }
       )
@@ -1614,9 +1551,7 @@ describe("toJsonSchemaDocument", () => {
           {
             schema: {
               "type": "number",
-              "allOf": [
-                { "exclusiveMinimum": 1 }
-              ]
+              "exclusiveMinimum": 1
             }
           }
         )
@@ -1628,9 +1563,7 @@ describe("toJsonSchemaDocument", () => {
           {
             schema: {
               "type": "number",
-              "allOf": [
-                { "minimum": 1 }
-              ]
+              "minimum": 1
             }
           }
         )
@@ -1640,9 +1573,7 @@ describe("toJsonSchemaDocument", () => {
         assertJsonSchemaDocument(Schema.Finite.check(Schema.isLessThan(1)), {
           schema: {
             "type": "number",
-            "allOf": [
-              { "exclusiveMaximum": 1 }
-            ]
+            "exclusiveMaximum": 1
           }
         })
       })
@@ -1651,9 +1582,7 @@ describe("toJsonSchemaDocument", () => {
         assertJsonSchemaDocument(Schema.Finite.check(Schema.isLessThanOrEqualTo(1)), {
           schema: {
             "type": "number",
-            "allOf": [
-              { "maximum": 1 }
-            ]
+            "maximum": 1
           }
         })
       })
@@ -1664,9 +1593,8 @@ describe("toJsonSchemaDocument", () => {
           {
             schema: {
               "type": "number",
-              "allOf": [
-                { "minimum": 1, "maximum": 10 }
-              ]
+              "minimum": 1,
+              "maximum": 10
             }
           }
         )
@@ -1677,9 +1605,8 @@ describe("toJsonSchemaDocument", () => {
           {
             schema: {
               "type": "number",
-              "allOf": [
-                { "exclusiveMinimum": 1, "maximum": 10 }
-              ]
+              "exclusiveMinimum": 1,
+              "maximum": 10
             }
           }
         )
@@ -1690,9 +1617,8 @@ describe("toJsonSchemaDocument", () => {
           {
             schema: {
               "type": "number",
-              "allOf": [
-                { "minimum": 1, "exclusiveMaximum": 10 }
-              ]
+              "minimum": 1,
+              "exclusiveMaximum": 10
             }
           }
         )
@@ -1703,9 +1629,8 @@ describe("toJsonSchemaDocument", () => {
           {
             schema: {
               "type": "number",
-              "allOf": [
-                { "exclusiveMinimum": 1, "exclusiveMaximum": 10 }
-              ]
+              "exclusiveMinimum": 1,
+              "exclusiveMaximum": 10
             }
           }
         )
@@ -1717,9 +1642,7 @@ describe("toJsonSchemaDocument", () => {
           {
             schema: {
               "type": "integer",
-              "allOf": [
-                { "multipleOf": 2 }
-              ]
+              "multipleOf": 2
             }
           }
         )
@@ -2906,9 +2829,7 @@ describe("toJsonSchemaDocument", () => {
             "type": "object",
             "additionalProperties": {
               "type": "number",
-              "allOf": [{
-                "description": "v"
-              }]
+              "description": "v"
             },
             "description": "r"
           }
@@ -2985,9 +2906,7 @@ describe("toJsonSchemaDocument", () => {
               "additionalProperties": {
                 "type": "number"
               },
-              "allOf": [
-                { "minProperties": 2 }
-              ]
+              "minProperties": 2
             }
           }
         )
@@ -3000,7 +2919,7 @@ describe("toJsonSchemaDocument", () => {
             schema: {
               "type": "object",
               "additionalProperties": { "type": "number" },
-              "allOf": [{ "maxProperties": 2 }]
+              "maxProperties": 2
             }
           }
         )
@@ -3013,7 +2932,8 @@ describe("toJsonSchemaDocument", () => {
             schema: {
               "type": "object",
               "additionalProperties": { "type": "number" },
-              "allOf": [{ "minProperties": 2, "maxProperties": 2 }]
+              "minProperties": 2,
+              "maxProperties": 2
             }
           }
         )
@@ -3315,9 +3235,7 @@ describe("toJsonSchemaDocument", () => {
             schema: {
               "type": "array",
               "items": { "type": "string" },
-              "allOf": [
-                { "minItems": 2 }
-              ]
+              "minItems": 2
             }
           }
         )
@@ -3330,9 +3248,7 @@ describe("toJsonSchemaDocument", () => {
             schema: {
               "type": "array",
               "items": { "type": "string" },
-              "allOf": [
-                { "maxItems": 2 }
-              ]
+              "maxItems": 2
             }
           }
         )
@@ -3361,9 +3277,7 @@ describe("toJsonSchemaDocument", () => {
             schema: {
               "type": "array",
               "items": { "type": "string" },
-              "allOf": [
-                { "uniqueItems": true }
-              ]
+              "uniqueItems": true
             }
           }
         )
@@ -3483,9 +3397,7 @@ describe("toJsonSchemaDocument", () => {
             "anyOf": [
               {
                 "type": "string",
-                "allOf": [
-                  { "pattern": "^-?\\d+$" }
-                ]
+                "pattern": "^-?\\d+$"
               },
               { "type": "string" }
             ]

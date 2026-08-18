@@ -116,9 +116,7 @@ describe("toCodecAnthropic", () => {
       assertJsonSchema(Schema.String.check(Schema.isStartsWith("a")), {
         "type": "string",
         "description": `a string starting with "a"`,
-        "allOf": [
-          { "pattern": "^a" }
-        ]
+        "pattern": "^a"
       })
     })
 
@@ -126,8 +124,8 @@ describe("toCodecAnthropic", () => {
       assertJsonSchema(Schema.String.check(Schema.isStartsWith("a"), Schema.isEndsWith("b")), {
         "type": "string",
         "description": `a string starting with "a" and a string ending with "b"`,
+        "pattern": "^a",
         "allOf": [
-          { "pattern": "^a" },
           { "pattern": "b$" }
         ]
       })
@@ -137,9 +135,7 @@ describe("toCodecAnthropic", () => {
       assertJsonSchema(Schema.String.check(Schema.isPattern(/^a/)), {
         "type": "string",
         "description": `a string matching the RegExp ^a`,
-        "allOf": [
-          { "pattern": "^a" }
-        ]
+        "pattern": "^a"
       })
     })
 
@@ -147,9 +143,7 @@ describe("toCodecAnthropic", () => {
       assertJsonSchema(Schema.String.check(Schema.isPattern(/^a/, { description: "description" })), {
         "type": "string",
         "description": "description",
-        "allOf": [
-          { "pattern": "^a" }
-        ]
+        "pattern": "^a"
       })
     })
   })
