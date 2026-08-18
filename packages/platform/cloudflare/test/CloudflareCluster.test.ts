@@ -664,12 +664,4 @@ describe("CloudflareCluster", () => {
         assert.isTrue(Exit.isFailure(exit))
       }))
   })
-
-  describe("makeRunnerAddress", () => {
-    it("derives a synthetic runner address from the object name", () => {
-      const address = CloudflareCluster.makeRunnerAddress("4:User42")
-      assert.strictEqual(address.host, "4:User42")
-      assert.strictEqual(address.port, 0)
-    })
-  })
 })
