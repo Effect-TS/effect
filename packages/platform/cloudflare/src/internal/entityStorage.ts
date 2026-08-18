@@ -15,12 +15,8 @@ const ddl = [
   `CREATE TABLE IF NOT EXISTS cluster_messages (
     request_id TEXT PRIMARY KEY,
     message_id TEXT UNIQUE,
-    tag TEXT NOT NULL,
-    payload TEXT,
-    headers TEXT,
-    trace_id TEXT,
-    span_id TEXT,
-    sampled INTEGER,
+    envelope TEXT NOT NULL,
+    discard INTEGER NOT NULL DEFAULT 0,
     processed INTEGER NOT NULL DEFAULT 0,
     last_reply_id TEXT,
     deliver_at INTEGER
@@ -28,11 +24,10 @@ const ddl = [
   `CREATE TABLE IF NOT EXISTS cluster_replies (
     reply_id TEXT PRIMARY KEY,
     request_id TEXT NOT NULL,
-    kind INTEGER NOT NULL,
-    payload TEXT NOT NULL,
+    reply TEXT NOT NULL,
+    kind TEXT NOT NULL,
     sequence INTEGER,
     acked INTEGER NOT NULL DEFAULT 0,
-    UNIQUE (request_id, kind),
     UNIQUE (request_id, sequence)
   )`,
   `CREATE INDEX IF NOT EXISTS cluster_messages_deliver_at_idx
