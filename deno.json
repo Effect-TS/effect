@@ -27,6 +27,7 @@
     "packages/opentelemetry/",
     "packages/platform/browser/",
     "packages/platform/bun/",
+    "packages/platform/cloudflare/",
     "packages/platform/node/",
     "packages/platform/node-shared/",
     "packages/tools/",
