@@ -1,0 +1,48 @@
+import { assert, describe, it } from "@effect/vitest"
+import { Effect } from "effect"
+import * as esbuild from "esbuild"
+import { Miniflare } from "miniflare"
+import * as path from "node:path"
+
+const bindings = ["CLUSTER_ENTITY", "CLUSTER_WORKFLOW", "CLUSTER_QUEUE", "CLUSTER_SINGLETON"]
+
+const makeMiniflare = Effect.acquireRelease(
+  Effect.promise(async () => {
+    const bundle = await esbuild.build({
+      entryPoints: [path.join(import.meta.dirname, "fixtures", "worker.ts")],
+      bundle: true,
+      format: "esm",
+      write: false,
+      external: ["cloudflare:workers"],
+      alias: {
+        "@effect/platform-cloudflare": path.join(import.meta.dirname, "..", "src")
+      }
+    })
+    return new Miniflare({
+      modules: [{ type: "ESModule", path: "worker.mjs", contents: bundle.outputFiles[0].text }],
+      compatibilityDate: "2026-08-01",
+      durableObjects: {
+        CLUSTER_ENTITY: { className: "ClusterEntity", useSQLite: true },
+        CLUSTER_WORKFLOW: { className: "ClusterWorkflow", useSQLite: true },
+        CLUSTER_QUEUE: { className: "ClusterDurableQueue", useSQLite: true },
+        CLUSTER_SINGLETON: { className: "ClusterSingleton", useSQLite: true }
+      }
+    })
+  }),
+  (miniflare) => Effect.promise(() => miniflare.dispose())
+)
+
+describe("CloudflareDurableObjects", () => {
+  it.effect("binds the four Durable Object classes", () =>
+    Effect.gen(function*() {
+      const miniflare = yield* makeMiniflare
+      for (const binding of bindings) {
+        const response = yield* Effect.promise(async () => {
+          const response = await miniflare.dispatchFetch(`http://placeholder/${binding}`)
+          return { status: response.status, body: await response.text() }
+        })
+        assert.strictEqual(response.status, 200, `${binding}: ${response.body}`)
+        assert.include(response.body, "not exposed over fetch", binding)
+      }
+    }), 60_000)
+})
