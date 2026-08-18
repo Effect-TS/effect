@@ -9,13 +9,14 @@ import type * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as ClusterMetrics from "effect/unstable/cluster/ClusterMetrics"
-import { CurrentAddress, CurrentRunnerAddress, KeepAliveHandler, Request } from "effect/unstable/cluster/Entity"
+import { CurrentAddress, CurrentRunnerAddress, Request } from "effect/unstable/cluster/Entity"
 import type * as EntityAddress from "effect/unstable/cluster/EntityAddress"
 import type * as Envelope from "effect/unstable/cluster/Envelope"
 import * as Reply from "effect/unstable/cluster/Reply"
 import * as RunnerAddress from "effect/unstable/cluster/RunnerAddress"
 import * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcSchema from "effect/unstable/rpc/RpcSchema"
+import { EntityKeepAliveHandler } from "./entityKeepAlive.ts"
 import type { EntityRegistration } from "./entityRegistry.ts"
 import { CurrentEntityName } from "./entityReply.ts"
 
@@ -60,7 +61,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
       Context.add(Scope.Scope, scope)
     )
     if (keepAlive !== undefined) {
-      context = Context.add(context, KeepAliveHandler, keepAlive)
+      context = Context.add(context, EntityKeepAliveHandler, keepAlive)
     }
     const handlers = yield* Effect.provideContext(registration.build, context)
     ClusterMetrics.entities.modifyUnsafe(BigInt(1), metricContext)
