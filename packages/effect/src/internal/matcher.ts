@@ -45,7 +45,8 @@ const ValueMatcherProto: Omit<
     _input: identity,
     _filters: identity,
     _result: identity,
-    _return: identity
+    _return: identity,
+    _pr: identity
   },
   _tag: "ValueMatcher",
   add<I, R, RA, A, Pr>(
@@ -194,7 +195,7 @@ export const type = <I>(): Matcher<
 /** @internal */
 export const value = <const I>(
   i: I
-): Matcher<I, Types.Without<never>, I, never, I> => makeValueMatcher(i, Result.fail(i))
+): Matcher<I, Types.Without<never>, I, never, "value"> => makeValueMatcher(i, Result.fail(i))
 
 /** @internal */
 export const valueTags: {
