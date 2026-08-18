@@ -29,6 +29,8 @@ import { Sharding } from "effect/unstable/cluster/Sharding"
 import type * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
 import * as RpcSchema from "effect/unstable/rpc/RpcSchema"
+import type { WorkflowEngine } from "effect/unstable/workflow/WorkflowEngine"
+import * as CloudflareWorkflowEngine from "./CloudflareWorkflowEngine.ts"
 import * as Internal from "./internal/clusterName.ts"
 import { registerEntity as registerEntityHandler, unregisterEntity } from "./internal/entityRegistry.ts"
 import { CurrentEntityName, registerReplyHandler, unregisterReplyHandler } from "./internal/entityReply.ts"
@@ -470,14 +472,20 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
  * **Details**
  *
  * Provides the cluster `Sharding` service on top of the four same-Worker
- * Durable Object namespace bindings. `Entity.client` resolves an entity to its
- * Durable Object by encoding `(type, id)` with {@link encodeName} and calling
- * `getByName`; an unknown entity type or a bad encode fails at the Worker
- * before any Durable Object is contacted. Entity handlers registered with
- * `Entity.toLayer` are recorded per `EntityType` at Worker init and built once
- * per Durable Object wake.
+ * Durable Object namespace bindings, plus the `WorkflowEngine` backed by the
+ * workflow class. `Entity.client` resolves an entity to its Durable Object by
+ * encoding `(type, id)` with {@link encodeName} and calling `getByName`; an
+ * unknown entity type or a bad encode fails at the Worker before any Durable
+ * Object is contacted. Entity handlers registered with `Entity.toLayer` are
+ * recorded per `EntityType` at Worker init and built once per Durable Object
+ * wake; workflow handlers registered with `Workflow.toLayer` follow the same
+ * pattern on the workflow class.
  *
  * @category layers
  * @since 4.0.0
  */
-export const layer = (options: LayerOptions): Layer.Layer<Sharding> => Layer.effect(Sharding)(make(options))
+export const layer = (options: LayerOptions): Layer.Layer<Sharding | WorkflowEngine> =>
+  Layer.merge(
+    Layer.effect(Sharding)(make(options)),
+    CloudflareWorkflowEngine.layer({ workflowNamespace: options.workflowNamespace })
+  )
