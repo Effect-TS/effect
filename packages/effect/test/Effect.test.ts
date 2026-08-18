@@ -3144,6 +3144,21 @@ describe("Effect", () => {
       })
     })
 
+    it.effect("should support self with pipeable arguments", () => {
+      const self = { prefix: "bound" }
+      const fn = Effect.fn(
+        { self },
+        function*(this: typeof self, value: string) {
+          return `${this.prefix}:${value}`
+        },
+        Effect.map((value) => value.toUpperCase())
+      )
+      return Effect.gen(function*() {
+        const result = yield* fn("value")
+        assert.strictEqual(result, "BOUND:VALUE")
+      })
+    })
+
     it("should proxy body length", () => {
       const traced = Effect.fn(function*(a: string, b: number) {
         return a.length + b
