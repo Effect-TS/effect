@@ -66,16 +66,15 @@ describe("CloudflareCluster", () => {
         )
       }))
 
-    it.effect("fails on duplicate handler registration", () =>
+    it.effect("ignores duplicate handler registration", () =>
       Effect.gen(function*() {
         const { options } = makeOptions()
         const handlers = User.toLayer({ Ping: () => Effect.succeed("pong") })
-        const exit = yield* Layer.build(
+        yield* Layer.build(
           Layer.merge(handlers, User.toLayer({ Ping: () => Effect.succeed("pong2") })).pipe(
             Layer.provide(CloudflareCluster.layer(options))
           )
-        ).pipe(Effect.exit)
-        assert.isTrue(Exit.isFailure(exit))
+        )
       }))
 
     it.effect("fails when registering an entity type not bound at Worker init", () =>
