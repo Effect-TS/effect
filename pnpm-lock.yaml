@@ -456,10 +456,11 @@ importers:
         version: 6.2.2
 
   packages/platform/cloudflare:
-    devDependencies:
+    dependencies:
       '@cloudflare/workers-types':
         specifier: ^5.20260816.1
         version: 5.20260816.1
+    devDependencies:
       effect:
         specifier: workspace:^
         version: link:../../effect

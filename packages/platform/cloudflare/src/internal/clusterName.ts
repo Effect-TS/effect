@@ -1,13 +1,9 @@
-/** @internal */
-export interface ClusterName {
-  readonly type: string
-  readonly id: string
-}
+import type { ClusterName } from "../CloudflareCluster.ts"
 
 /** @internal */
 export const encodeName = (type: string, id: string): string => `${type.length}:${type}${id}`
 
-const lengthPrefix = /^(0|[1-9]\d*):/
+const lengthPrefix = /^([1-9]\d*):/
 
 /** @internal */
 export const decodeName = (name: string): ClusterName | undefined => {
