@@ -65,8 +65,10 @@
   "peerDependencies": {
     "effect": "workspace:^"
   },
+  "dependencies": {
+    "@cloudflare/workers-types": "^5.20260816.1"
+  },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260816.1",
     "effect": "workspace:^",
     "esbuild": "^0.25.12",
     "miniflare": "^4.20260730.0"

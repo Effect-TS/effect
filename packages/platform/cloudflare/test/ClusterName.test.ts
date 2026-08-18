@@ -44,5 +44,9 @@ describe("ClusterName", () => {
     it("rejects non-canonical length prefixes", () => {
       assert.isUndefined(CloudflareCluster.decodeName("04:User42"))
     })
+
+    it("rejects empty entity types", () => {
+      assert.isUndefined(CloudflareCluster.decodeName("0:whatever"))
+    })
   })
 })
