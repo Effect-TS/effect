@@ -12,6 +12,7 @@
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as JsonPointer from "effect/JsonPointer"
 import type * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
@@ -118,8 +119,6 @@ const methodNames: ReadonlyArray<OpenAPISpecMethodName> = [
   "trace"
 ]
 
-const decodeJsonPointerToken = (token: string): string => token.replaceAll("~1", "/").replaceAll("~0", "~")
-
 /**
  * Constructs the OpenAPI generator service implementation.
  *
@@ -139,7 +138,7 @@ export const make = Effect.gen(function*() {
       }
 
       function resolveRef(ref: string) {
-        const parts = ref.split("/").slice(1).map(decodeJsonPointerToken)
+        const parts = ref.split("/").slice(1).map(JsonPointer.unescapeToken)
         let current: any = spec
         for (const part of parts) {
           current = current[part]

@@ -19,6 +19,7 @@
  * @since 4.0.0
  */
 import * as Arr from "effect/Array"
+import * as JsonPointer from "effect/JsonPointer"
 import * as JsonSchema from "effect/JsonSchema"
 import * as Rec from "effect/Record"
 import * as Schema from "effect/Schema"
@@ -357,7 +358,7 @@ function collectReferenceKeys(input: unknown): Set<string> {
   visitReferences(input, ($ref) => {
     const token = $ref.split("/").at(-1)
     if (token !== undefined && token.length > 0) {
-      references.add(token.replaceAll("~1", "/").replaceAll("~0", "~"))
+      references.add(JsonPointer.unescapeToken(token))
     }
   })
   return references
