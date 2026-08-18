@@ -23,7 +23,6 @@ import type * as Entity from "effect/unstable/cluster/Entity"
 import * as EntityAddress from "effect/unstable/cluster/EntityAddress"
 import * as EntityId from "effect/unstable/cluster/EntityId"
 import * as Envelope from "effect/unstable/cluster/Envelope"
-import * as RunnerAddress from "effect/unstable/cluster/RunnerAddress"
 import * as ShardId from "effect/unstable/cluster/ShardId"
 import { Sharding } from "effect/unstable/cluster/Sharding"
 import type { PersistedQueueFactory } from "effect/unstable/persistence/PersistedQueue"
@@ -33,10 +32,11 @@ import * as RpcSchema from "effect/unstable/rpc/RpcSchema"
 import type { WorkflowEngine } from "effect/unstable/workflow/WorkflowEngine"
 import * as CloudflarePersistedQueue from "./CloudflarePersistedQueue.ts"
 import * as CloudflareWorkflowEngine from "./CloudflareWorkflowEngine.ts"
+import { setWithEviction } from "./internal/boundedMap.ts"
 import * as Internal from "./internal/clusterName.ts"
 import { registerEntity as registerEntityHandler, unregisterEntity } from "./internal/entityRegistry.ts"
 import { CurrentEntityName, registerReplyHandler, unregisterReplyHandler } from "./internal/entityReply.ts"
-import { decodeReplyFor } from "./internal/entityWire.ts"
+import { decodeReplyFor, encodeRequest } from "./internal/entityWire.ts"
 import { registerSingleton as registerSingletonHandler, unregisterSingleton } from "./internal/singletonRegistry.ts"
 
 /**
@@ -103,20 +103,6 @@ export interface LayerOptions {
   readonly singletonNamespace: DurableObjectNamespace
 }
 
-/**
- * The synthetic runner address for a Durable Object, derived from its name.
- *
- * **Details**
- *
- * There is no runner fleet and no peer dialing on the Cloudflare path; the
- * address only gives logs, metrics, and `Entity.CurrentRunnerAddress` a stable
- * identity, with the port fixed to `0`.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const makeRunnerAddress = (objectName: string): RunnerAddress.RunnerAddress => RunnerAddress.make(objectName, 0)
-
 const notImplemented = (method: string) =>
   Effect.die(
     new Error(`CloudflareCluster: ${method} is not implemented yet on the Cloudflare Durable Object path`)
@@ -133,8 +119,8 @@ interface EntityStub {
     readonly error?: "MailboxFull" | "EncodedMessageTooLarge" | "AskDeduplicatedToTell" | undefined
   }>
   readonly acknowledge: (requestId: string, replyId: string) => Promise<ReadonlyArray<string>>
-  readonly interrupt?: (storageRequestId: string, clientRequestId?: string) => Promise<void>
-  readonly reset?: (requestId: string) => Promise<void>
+  readonly interrupt: (storageRequestId: string, clientRequestId?: string) => Promise<void>
+  readonly reset: (requestId: string) => Promise<void>
 }
 
 interface ClientTargetValue {
@@ -181,16 +167,6 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
   }
   const clock = yield* Clock
   const requestTargets = new Map<string, { readonly stub: EntityStub; storageRequestId: string }>()
-  const rememberRequestTarget = (
-    requestId: string,
-    target: { readonly stub: EntityStub; storageRequestId: string }
-  ): void => {
-    requestTargets.delete(requestId)
-    requestTargets.set(requestId, target)
-    if (requestTargets.size <= requestTargetCapacity) return
-    const oldest = requestTargets.keys().next().value
-    if (oldest !== undefined) requestTargets.delete(oldest)
-  }
 
   const unknownEntity = (entity: Entity.Entity<any, any>) =>
     Effect.die(
@@ -211,6 +187,12 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
     }
     const entries = new Map<string, ClientEntry>()
     let client!: Effect.Success<ReturnType<typeof RpcClient.makeNoSerialization<any, MailboxFull | PersistenceError>>>
+
+    const dropReplyHandler = (entry: ClientEntry): void => {
+      if (entry.replyHandler === undefined) return
+      unregisterReplyHandler(entry.clientRequestId, entry.replyHandler)
+      unregisterReplyHandler(entry.storageRequestId, entry.replyHandler)
+    }
 
     const deliverReplies = (entry: ClientEntry, replyTexts: ReadonlyArray<string>): Effect.Effect<void> =>
       Effect.forEach(
@@ -252,14 +234,9 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
               Effect.orDie
             ) as unknown as Effect.Effect<unknown>
             return Effect.flatMap(encode, (payload) => {
-              const envelope = JSON.stringify({
-                _tag: "Request",
+              const envelope = encodeRequest({
                 requestId: clientRequestId,
-                address: {
-                  shardId: target.address.shardId,
-                  entityType: target.address.entityType,
-                  entityId: target.address.entityId
-                },
+                address: target.address,
                 tag: message.tag,
                 payload,
                 headers: message.headers,
@@ -314,8 +291,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
               let replyHandler: ((reply: string) => Promise<void>) | undefined
               if (delivery?.replyTo !== undefined) {
                 replyHandler = async (reply) => {
-                  unregisterReplyHandler(clientRequestId, replyHandler)
-                  unregisterReplyHandler(entry.storageRequestId, replyHandler)
+                  dropReplyHandler(entry)
                   await Effect.runPromise(deliverReplies(entry, [reply]))
                 }
                 entry.replyHandler = replyHandler
@@ -342,28 +318,17 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
                   if (replyHandler !== undefined && result.requestId !== clientRequestId) {
                     registerReplyHandler(result.requestId, replyHandler)
                   }
-                  if (!discard && Context.get(rpc.annotations, Persisted)) {
-                    rememberRequestTarget(clientRequestId, {
+                  if (!discard && persisted) {
+                    setWithEviction(requestTargets, clientRequestId, {
                       stub: target.stub,
                       storageRequestId: result.requestId
-                    })
+                    }, requestTargetCapacity)
                   }
                   const deliver = discard ? Effect.void : deliverReplies(entry, result.replies)
                   if (replyHandler === undefined || result.replies.length === 0) return deliver
-                  return Effect.ensuring(
-                    deliver,
-                    Effect.sync(() => {
-                      unregisterReplyHandler(clientRequestId, replyHandler)
-                      unregisterReplyHandler(entry.storageRequestId, replyHandler)
-                    })
-                  )
+                  return Effect.ensuring(deliver, Effect.sync(() => dropReplyHandler(entry)))
                 }),
-                Effect.tapCause(() =>
-                  Effect.sync(() => {
-                    unregisterReplyHandler(clientRequestId, replyHandler)
-                    unregisterReplyHandler(entry.storageRequestId, replyHandler)
-                  })
-                )
+                Effect.tapCause(() => Effect.sync(() => dropReplyHandler(entry)))
               )
             })
           }
@@ -379,12 +344,9 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
             const entry = entries.get(clientRequestId)
             entries.delete(clientRequestId)
             requestTargets.delete(clientRequestId)
-            unregisterReplyHandler(clientRequestId, entry?.replyHandler)
-            if (entry?.replyHandler !== undefined) {
-              unregisterReplyHandler(entry.storageRequestId, entry.replyHandler)
-            }
-            if (entry === undefined || target.stub.interrupt === undefined) return Effect.void
-            return Effect.promise(() => target.stub.interrupt!(entry.storageRequestId, clientRequestId))
+            if (entry === undefined) return Effect.void
+            dropReplyHandler(entry)
+            return Effect.promise(() => target.stub.interrupt(entry.storageRequestId, clientRequestId))
           }
           default:
             return Effect.void
@@ -464,6 +426,8 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
     name: string,
     run: Effect.Effect<void, unknown, unknown>
   ) {
+    // Fails fast at registration when the singleton namespace binding is
+    // missing, before any Cron Trigger fires.
     options.singletonNamespace.getByName(`Singleton/${name}`)
     const context = yield* Effect.context<never>()
     const registration = {
@@ -494,8 +458,8 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
     notify: () => notImplemented("Sharding.notify"),
     reset: (requestId) => {
       const target = requestTargets.get(String(requestId))
-      if (target === undefined || target.stub.reset === undefined) return Effect.succeed(false)
-      return Effect.as(Effect.promise(() => target.stub.reset!(target.storageRequestId)), true)
+      if (target === undefined) return Effect.succeed(false)
+      return Effect.as(Effect.promise(() => target.stub.reset(target.storageRequestId)), true)
     },
     pollStorage: notImplemented("Sharding.pollStorage"),
     activeEntityCount: Effect.succeed(0)

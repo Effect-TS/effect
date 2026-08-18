@@ -32,7 +32,9 @@ const ddl = [
     UNIQUE (request_id, sequence)
   )`,
   `CREATE INDEX IF NOT EXISTS cluster_messages_deliver_at_idx
-    ON cluster_messages (processed, deliver_at)`
+    ON cluster_messages (processed, deliver_at)`,
+  `CREATE INDEX IF NOT EXISTS cluster_replies_unacked_idx
+    ON cluster_replies (request_id) WHERE kind = 'Chunk' AND acked = 0`
 ]
 
 /** @internal */
