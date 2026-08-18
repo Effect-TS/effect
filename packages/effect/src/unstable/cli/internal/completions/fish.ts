@@ -15,10 +15,12 @@ import type * as Completions from "../../Completions.ts"
 const escapeFishString = (s: string): string => s.replace(/\\/g, "\\\\").replace(/'/g, "\\'")
 
 /**
- * Fish re-parses the space-separated list given to `complete -a`, so a value
- * has to survive two rounds: an inner backslash escape, then string quoting.
+ * Fish expands the list given to `complete -a` — command substitution included —
+ * so a value has to survive two rounds: an inner backslash escape, then string
+ * quoting. The inner pass denies by default; keep its character class identical
+ * to `escapeZshChoice`.
  */
-const escapeFishChoice = (s: string): string => escapeFishString(s.replace(/[\\'\s]/g, "\\$&"))
+const escapeFishChoice = (s: string): string => escapeFishString(s.replace(/[^A-Za-z0-9_.,/@%+-]/g, "\\$&"))
 
 /**
  * Build a Fish condition that checks the current subcommand context.

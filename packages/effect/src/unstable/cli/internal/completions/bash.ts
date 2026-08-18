@@ -63,11 +63,18 @@ const buildFlagGroupDeclarations = (
 /**
  * `compgen -W` re-expands every word of its list, which mangles values holding
  * quotes, spaces or glob characters. Filter an explicitly quoted list instead.
+ *
+ * Bash inserts COMPREPLY entries verbatim, so each match is requoted with
+ * `printf %q`; `cur` is dequoted to match, since it still carries whatever
+ * quoting the user typed. Dequoting is best effort — it strips one opening
+ * quote and any backslash escapes, so a value whose own text contains a
+ * backslash will not match once the user escapes it.
  */
 const choiceCompletion = (values: ReadonlyArray<string>): string => {
   const words = values.map((value) => `'${escapeForBash(value)}'`).join(" ")
-  return `COMPREPLY=(); local _choice; for _choice in ${words}; do` +
-    ` if [[ $_choice == "$cur"* ]]; then COMPREPLY+=("$_choice"); fi; done`
+  return `COMPREPLY=(); local _choice _quoted _prefix=\${cur#[\\"\\']}; _prefix=\${_prefix//\\\\/};` +
+    ` for _choice in ${words}; do if [[ $_choice == "$_prefix"* ]]; then` +
+    ` printf -v _quoted '%q' "$_choice"; COMPREPLY+=("$_quoted"); fi; done`
 }
 
 const flagValueCompletion = (type: Completions.FlagType): string | undefined => {

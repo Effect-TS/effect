@@ -62,10 +62,10 @@ const withChoices = Command.make("deploy", {
 }).pipe(Command.withDescription("Deploy application"))
 
 const withTrickyChoices = Command.make("deploy", {
-  mode: Flag.choice("mode", ["it's-fine", "node:20", "with space"]).pipe(
+  mode: Flag.choice("mode", ["it's-fine", "node:20", "with space", "(whoami)", "#tag", "$HOME"]).pipe(
     Flag.withDescription("Deploy mode")
   ),
-  target: Argument.choice("target", ["o'clock", "a:b"]).pipe(
+  target: Argument.choice("target", ["o'clock", "a:b", "{x,y}"]).pipe(
     Argument.withDescription("Deployment target")
   )
 }).pipe(Command.withDescription("Deploy application"))
@@ -154,8 +154,8 @@ describe("Bash completions", () => {
     assert.include(script, `--verbose|-v|--no-verbose) ;;`)
     assert.include(script, `--format|-f) _skip_next=1 ;;`)
     assert.include(script, `--format=*|-f=*) ;;`)
-    assert.include(script, `0)\n      COMPREPLY=(); local _choice; for _choice in 'one';`)
-    assert.include(script, `1)\n      COMPREPLY=(); local _choice; for _choice in 'two';`)
+    assert.match(script, /0\)\n {6}COMPREPLY=\(\);[^\n]*for _choice in 'one';/)
+    assert.match(script, /1\)\n {6}COMPREPLY=\(\);[^\n]*for _choice in 'two';/)
   })
 
   it("generates completion function for root command", () => {
@@ -230,9 +230,16 @@ describe("Bash completions", () => {
   it("quotes choice values instead of exposing them to compgen -W re-expansion", () => {
     const desc = fromCommand(withTrickyChoices)
     const script = Bash.generate("deploy", desc)
-    assert.include(script, `for _choice in 'it'\\''s-fine' 'node:20' 'with space'`)
-    assert.include(script, `for _choice in 'o'\\''clock' 'a:b'`)
+    assert.include(script, `for _choice in 'it'\\''s-fine' 'node:20' 'with space' '(whoami)' '#tag' '$HOME'`)
+    assert.include(script, `for _choice in 'o'\\''clock' 'a:b' '{x,y}'`)
     assert.notInclude(script, `compgen -W 'it`)
+  })
+
+  it("requotes matches for insertion and dequotes the typed prefix", () => {
+    const desc = fromCommand(withTrickyChoices)
+    const script = Bash.generate("deploy", desc)
+    assert.include(script, `local _choice _quoted _prefix=\${cur#[\\"\\']}; _prefix=\${_prefix//\\\\/}`)
+    assert.include(script, `printf -v _quoted '%q' "$_choice"; COMPREPLY+=("$_quoted")`)
   })
 
   it("generates separate functions for nested subcommands", () => {
@@ -372,8 +379,8 @@ describe("Zsh completions", () => {
   it("escapes quotes, colons and spaces in choice values", () => {
     const desc = fromCommand(withTrickyChoices)
     const script = Zsh.generate("deploy", desc)
-    assert.include(script, `(it\\'\\''s-fine node\\:20 with\\ space)`)
-    assert.include(script, `(o\\'\\''clock a\\:b)`)
+    assert.include(script, `(it\\'\\''s-fine node\\:20 with\\ space \\(whoami\\) \\#tag \\$HOME)`)
+    assert.include(script, `(o\\'\\''clock a\\:b \\{x,y\\})`)
   })
 
   it("uses alternative argument sets for positional arguments and subcommands", () => {
@@ -529,8 +536,8 @@ describe("Fish completions", () => {
   it("escapes quotes and spaces in choice values for re-parsing", () => {
     const desc = fromCommand(withTrickyChoices)
     const script = Fish.generate("deploy", desc)
-    assert.include(script, "-r -f -a 'it\\\\\\'s-fine node:20 with\\\\ space'")
-    assert.include(script, "-r -f -a 'o\\\\\\'clock a:b'")
+    assert.include(script, "-r -f -a 'it\\\\\\'s-fine node\\\\:20 with\\\\ space \\\\(whoami\\\\) \\\\#tag \\\\$HOME'")
+    assert.include(script, "-r -f -a 'o\\\\\\'clock a\\\\:b \\\\{x,y\\\\}'")
   })
 
   it("uses -n conditions for nested subcommand flags", () => {
