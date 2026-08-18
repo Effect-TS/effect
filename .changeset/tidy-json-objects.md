@@ -1,5 +1,5 @@
 ---
-"effect": minor
+"effect": patch
 ---
 
 Add `Schema.JsonObject` for readonly string-keyed records containing JSON-compatible values. This provides a canonical,
