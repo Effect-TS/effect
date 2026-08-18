@@ -2718,6 +2718,45 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
   })
 
   describe("regression", () => {
+    it.effect("emits compilable clients when schema examples are invalid", () =>
+      assertGeneratedClientsCompile({
+        openapi: "3.0.3",
+        info: {
+          title: "Invalid examples API",
+          version: "1.0.0"
+        },
+        paths: {
+          "/triggers": {
+            get: {
+              operationId: "getTriggers",
+              parameters: [],
+              responses: {
+                200: {
+                  description: "OK",
+                  content: {
+                    "application/json": {
+                      schema: {
+                        type: "array",
+                        items: { type: "string" },
+                        example: "create"
+                      }
+                    }
+                  }
+                }
+              },
+              tags: ["Triggers"],
+              security: []
+            }
+          }
+        },
+        components: {
+          schemas: {},
+          securitySchemes: {}
+        },
+        security: [],
+        tags: [{ name: "Triggers" }]
+      } as unknown as OpenAPISpec))
+
     it.effect("runtime warnings do not report additional-tags-dropped outside httpapi", () =>
       assertRuntimeStableWithWarnings(
         {
