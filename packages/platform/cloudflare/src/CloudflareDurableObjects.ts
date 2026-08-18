@@ -45,6 +45,9 @@ import { deliverReply as deliverEntityReply } from "./internal/entityReply.ts"
 import { makeEntityRuntime } from "./internal/entityRuntime.ts"
 import { armAlarm, earliestDeliverAt, ensureEntityStorage } from "./internal/entityStorage.ts"
 import { decodeReplyFor, decodeRequest, encodeReplyFor } from "./internal/entityWire.ts"
+import type { WorkflowRunOptions, WorkflowStub } from "./internal/workflowRegistry.ts"
+import { makeWorkflowRuntime } from "./internal/workflowRuntime.ts"
+import { earliestClockWakeUp, ensureWorkflowStorage } from "./internal/workflowStorage.ts"
 
 const notExposed = (className: string) => () => {
   throw new Error(
@@ -53,6 +56,8 @@ const notExposed = (className: string) => () => {
 }
 
 type EntityRuntime = Effect.Success<ReturnType<typeof makeEntityRuntime>>
+
+type WorkflowRuntime = ReturnType<typeof makeWorkflowRuntime>
 
 interface ReplySession {
   readonly replies: Array<string>
@@ -628,13 +633,98 @@ export class ClusterEntity extends DurableObject<unknown> {
 }
 
 /**
- * The workflow execution class. Placeholder for the Cloudflare workflow
- * engine; it only reserves the binding for now.
+ * The workflow execution class behind `CloudflareWorkflowEngine`. One
+ * instance holds one workflow execution: run state, activity results keyed
+ * `${name}/${attempt}`, durable deferred exits, and the clock due table.
+ *
+ * **Details**
+ *
+ * The constructor stays cheap: it opens SQLite, ensures the workflow tables,
+ * and re-arms the single alarm from the earliest pending clock. Workflow
+ * handlers are looked up in the module-level registry and built once per
+ * wake.
  *
  * @category durable objects
  * @since 4.0.0
  */
 export class ClusterWorkflow extends DurableObject<unknown> {
+  readonly #state: DurableObjectState
+  #runtime: WorkflowRuntime | undefined
+
+  constructor(ctx: DurableObjectState, env: unknown) {
+    super(ctx, env)
+    this.#state = ctx
+    if (decodeName(ctx.id.name ?? "") === undefined) {
+      throw new Error("ClusterWorkflow requires a canonical workflow Durable Object name")
+    }
+    ensureWorkflowStorage(ctx.storage.sql)
+    const wakeUp = earliestClockWakeUp(ctx.storage.sql)
+    if (wakeUp !== undefined) {
+      void ctx.blockConcurrencyWhile(() => Effect.runPromise(armAlarm(ctx.storage, wakeUp)))
+    }
+  }
+
+  #getRuntime(): WorkflowRuntime {
+    if (this.#runtime === undefined) {
+      this.#runtime = makeWorkflowRuntime({
+        name: this.#state.id.name ?? "",
+        sql: this.#state.storage.sql,
+        alarm: this.#state.storage,
+        now: () => Date.now(),
+        waitUntil: (promise) => this.#state.waitUntil(promise),
+        getStub: (name) => {
+          const namespace = (this.#state.exports as Record<string, unknown>).ClusterWorkflow as
+            | { readonly getByName: (name: string) => unknown }
+            | undefined
+          if (namespace === undefined) {
+            throw new Error("CloudflareCluster: ClusterWorkflow export is unavailable for workflow delivery")
+          }
+          return namespace.getByName(name) as WorkflowStub
+        }
+      })
+    }
+    return this.#runtime
+  }
+
+  /** @internal Same-Worker RPC transport used by `CloudflareWorkflowEngine`. */
+  run(payload: string, options: WorkflowRunOptions): Promise<string> {
+    return this.#getRuntime().run(payload, options)
+  }
+
+  /** @internal */
+  poll(): Promise<string | undefined> {
+    return this.#getRuntime().poll()
+  }
+
+  /** @internal */
+  resume(): Promise<void> {
+    return this.#getRuntime().resume()
+  }
+
+  /** @internal */
+  interrupt(): Promise<void> {
+    return this.#getRuntime().interrupt()
+  }
+
+  /** @internal */
+  interruptUnsafe(): Promise<void> {
+    return this.#getRuntime().interruptUnsafe()
+  }
+
+  /** @internal Records a durable deferred exit and resumes the execution. */
+  deferredDone(name: string, exit: string): Promise<void> {
+    return this.#getRuntime().deferredDone(name, exit)
+  }
+
+  /** @internal Persists a durable clock and arms the single alarm. */
+  scheduleClock(name: string, deferredName: string, wakeUp: number): Promise<void> {
+    return this.#getRuntime().scheduleClock(name, deferredName, wakeUp)
+  }
+
+  override alarm(): Promise<void> {
+    return this.#getRuntime().runAlarm()
+  }
+
   override fetch: () => never = notExposed("ClusterWorkflow")
 }
 
