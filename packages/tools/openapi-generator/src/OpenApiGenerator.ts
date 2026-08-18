@@ -118,6 +118,8 @@ const methodNames: ReadonlyArray<OpenAPISpecMethodName> = [
   "trace"
 ]
 
+const decodeJsonPointerToken = (token: string): string => token.replaceAll("~1", "/").replaceAll("~0", "~")
+
 /**
  * Constructs the OpenAPI generator service implementation.
  *
@@ -137,7 +139,7 @@ export const make = Effect.gen(function*() {
       }
 
       function resolveRef(ref: string) {
-        const parts = ref.split("/").slice(1)
+        const parts = ref.split("/").slice(1).map(decodeJsonPointerToken)
         let current: any = spec
         for (const part of parts) {
           current = current[part]
