@@ -31,7 +31,9 @@ export type PersistResult = {
   readonly processed: boolean
 }
 
-const encodedSize = (text: string): number => new TextEncoder().encode(text).byteLength
+const textEncoder = new TextEncoder()
+
+const encodedSize = (text: string): number => textEncoder.encode(text).byteLength
 
 /** @internal */
 export const persistRequest = (
@@ -129,29 +131,30 @@ export const saveReply = (sql: SqlStorage, replyText: string): void => {
 }
 
 /** @internal */
-export const loadUnprocessed = (sql: SqlStorage): Array<{
+export interface StoredMessage {
   readonly envelope: string
   readonly lastSentChunk: string | undefined
   readonly discard: boolean
-}> =>
+}
+
+const rowToMessage = (row: Record<string, unknown>): StoredMessage => ({
+  envelope: String(row.envelope),
+  lastSentChunk: typeof row.last_reply === "string" ? row.last_reply : undefined,
+  discard: Number(row.discard) === 1
+})
+
+/** @internal */
+export const loadUnprocessed = (sql: SqlStorage): Array<StoredMessage> =>
   sql.exec(
     `SELECT m.envelope, m.discard, r.reply AS last_reply
      FROM cluster_messages m
      LEFT JOIN cluster_replies r ON r.reply_id = m.last_reply_id
      WHERE m.processed = 0
      ORDER BY m.rowid ASC`
-  ).toArray().map((row) => ({
-    envelope: String(row.envelope),
-    lastSentChunk: typeof row.last_reply === "string" ? row.last_reply : undefined,
-    discard: Number(row.discard) === 1
-  }))
+  ).toArray().map(rowToMessage)
 
 /** @internal */
-export const loadMessage = (sql: SqlStorage, requestId: string): {
-  readonly envelope: string
-  readonly lastSentChunk: string | undefined
-  readonly discard: boolean
-} | undefined => {
+export const loadMessage = (sql: SqlStorage, requestId: string): StoredMessage | undefined => {
   const row = sql.exec(
     `SELECT m.envelope, m.discard, r.reply AS last_reply
      FROM cluster_messages m
@@ -160,11 +163,7 @@ export const loadMessage = (sql: SqlStorage, requestId: string): {
      LIMIT 1`,
     requestId
   ).toArray()[0]
-  return row === undefined ? undefined : {
-    envelope: String(row.envelope),
-    lastSentChunk: typeof row.last_reply === "string" ? row.last_reply : undefined,
-    discard: Number(row.discard) === 1
-  }
+  return row === undefined ? undefined : rowToMessage(row)
 }
 
 /** @internal */
@@ -217,6 +216,3 @@ export const clearReplies = (sql: SqlStorage, requestId: string): void => {
     requestId
   )
 }
-
-/** @internal */
-export const resetMessage = clearReplies
