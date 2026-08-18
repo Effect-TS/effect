@@ -87,7 +87,13 @@ function assertTypeOnlyIncludes(
   )
 }
 
-function assertGeneratedClientsCompile(spec: OpenAPISpec) {
+function assertGeneratedClientsCompile(
+  spec: OpenAPISpec,
+  options: {
+    readonly exactOptionalPropertyTypes?: boolean | undefined
+    readonly formats?: ReadonlyArray<"httpclient" | "httpclient-type-only"> | undefined
+  } = {}
+) {
   const generate = (
     format: "httpclient" | "httpclient-type-only",
     layer: typeof OpenApiGenerator.layerTransformerSchema
@@ -98,23 +104,29 @@ function assertGeneratedClientsCompile(spec: OpenAPISpec) {
     }).pipe(Effect.provide(layer))
 
   return Effect.gen(function*() {
-    const [schemaClient, typeOnlyClient] = yield* Effect.all([
-      generate("httpclient", OpenApiGenerator.layerTransformerSchema),
-      generate("httpclient-type-only", OpenApiGenerator.layerTransformerTs)
-    ])
+    const formats = options.formats ?? ["httpclient", "httpclient-type-only"]
+    const clients = yield* Effect.all(formats.map((format) =>
+      generate(
+        format,
+        format === "httpclient"
+          ? OpenApiGenerator.layerTransformerSchema
+          : OpenApiGenerator.layerTransformerTs
+      )
+    ))
     const directory = mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), ".generated-clients-"))
     try {
-      const schemaPath = join(directory, "SchemaClient.ts")
-      const typeOnlyPath = join(directory, "TypeOnlyClient.ts")
-      writeFileSync(schemaPath, schemaClient)
-      writeFileSync(typeOnlyPath, typeOnlyClient)
+      const files = clients.map((client, index) => {
+        const path = join(directory, `Client${index}.ts`)
+        writeFileSync(path, client)
+        return path
+      })
       const configPath = join(directory, "tsconfig.json")
       writeFileSync(
         configPath,
         JSON.stringify({
           compilerOptions: {
             allowImportingTsExtensions: true,
-            exactOptionalPropertyTypes: true,
+            exactOptionalPropertyTypes: options.exactOptionalPropertyTypes ?? true,
             lib: ["ESNext", "DOM"],
             module: "NodeNext",
             noEmit: true,
@@ -124,7 +136,7 @@ function assertGeneratedClientsCompile(spec: OpenAPISpec) {
             types: [],
             verbatimModuleSyntax: true
           },
-          files: [schemaPath, typeOnlyPath]
+          files
         })
       )
       const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../..")
@@ -2770,5 +2782,54 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
           operationId: "getUser"
         }
       ]))
+
+    it.effect("emits compilable open objects with optional properties", () =>
+      assertGeneratedClientsCompile(
+        {
+          openapi: "3.1.0",
+          info: {
+            title: "Open object regression API",
+            version: "1.0.0"
+          },
+          paths: {
+            "/widget": {
+              get: {
+                operationId: "getWidget",
+                parameters: [],
+                responses: {
+                  200: {
+                    description: "OK",
+                    content: {
+                      "application/json": {
+                        schema: {
+                          type: "object",
+                          properties: {
+                            optionalValue: {
+                              type: "string"
+                            }
+                          },
+                          additionalProperties: true
+                        }
+                      }
+                    }
+                  }
+                },
+                tags: ["Widgets"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {},
+            securitySchemes: {}
+          },
+          security: [],
+          tags: []
+        },
+        {
+          exactOptionalPropertyTypes: false,
+          formats: ["httpclient"]
+        }
+      ))
   })
 })

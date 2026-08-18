@@ -1308,7 +1308,7 @@ describe("toCodeDocument", () => {
       {
         codes: makeCode(
           `Schema.StructWithRest(Schema.Struct({ "a": Schema.Number }), [Schema.Record(Schema.String, Schema.Number)])`,
-          `{ readonly "a": number, readonly [x: string]: number }`
+          `{ readonly "a": number } & { readonly [x: string]: number }`
         )
       }
     )
@@ -1321,7 +1321,7 @@ describe("toCodeDocument", () => {
       {
         codes: makeCode(
           `Schema.StructWithRest(Schema.Struct({ "a": Schema.Number }), [Schema.Record(Schema.String, Schema.Number)]).annotate({ "description": "a" })`,
-          `{ readonly "a": number, readonly [x: string]: number }`
+          `{ readonly "a": number } & { readonly [x: string]: number }`
         )
       }
     )
