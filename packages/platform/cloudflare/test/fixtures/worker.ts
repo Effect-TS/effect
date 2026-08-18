@@ -55,7 +55,15 @@ registerEntity("Mailbox", {
         values.set(request.address.entityId, (values.get(request.address.entityId) ?? 0) + 1)
       }),
     Get: (request) => Effect.sync(() => values.get(request.address.entityId) ?? 0),
-    Watch: () => Stream.concat(Stream.make(1), Stream.never)
+    Watch: (request) =>
+      Stream.fromIterable([1, 2]).pipe(
+        Stream.rechunk(1),
+        Stream.tap((value) =>
+          Effect.sync(() => {
+            values.set(request.address.entityId, value)
+          })
+        )
+      )
   })),
   options: undefined,
   context: Context.empty()
@@ -79,6 +87,15 @@ export default {
         headers: {}
       }))
       return new Response("seeded")
+    }
+    if (url.pathname === "/ack") {
+      const stub = env.CLUSTER_ENTITY.getByName("7:Mailboxcounter")
+      return Response.json(
+        await stub.acknowledge(
+          url.searchParams.get("requestId"),
+          url.searchParams.get("replyId")
+        )
+      )
     }
     if (url.pathname === "/mailbox") {
       const stub = env.CLUSTER_ENTITY.getByName("7:Mailboxcounter")
