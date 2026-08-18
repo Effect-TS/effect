@@ -9,23 +9,32 @@ export const CurrentEntityName = Context.Reference<string | undefined>(
 
 type ReplyHandler = (reply: string) => Promise<void>
 
-const handlers = new Map<string, ReplyHandler>()
+const handlers = new Map<string, Set<ReplyHandler>>()
 
 /** @internal */
 export const registerReplyHandler = (requestId: string, handler: ReplyHandler): void => {
-  handlers.set(requestId, handler)
+  const registered = handlers.get(requestId) ?? new Set()
+  registered.add(handler)
+  handlers.set(requestId, registered)
 }
 
 /** @internal */
-export const unregisterReplyHandler = (requestId: string): void => {
-  handlers.delete(requestId)
+export const unregisterReplyHandler = (requestId: string, handler?: ReplyHandler): void => {
+  if (handler === undefined) {
+    handlers.delete(requestId)
+    return
+  }
+  const registered = handlers.get(requestId)
+  if (registered === undefined) return
+  registered.delete(handler)
+  if (registered.size === 0) handlers.delete(requestId)
 }
 
 /** @internal */
 export const deliverReply = async (requestId: string, reply: string): Promise<boolean> => {
-  const handler = handlers.get(requestId)
-  if (handler === undefined) return false
+  const registered = handlers.get(requestId)
+  if (registered === undefined) return false
   handlers.delete(requestId)
-  await handler(reply)
+  await Promise.all(Array.from(registered, (handler) => handler(reply)))
   return true
 }

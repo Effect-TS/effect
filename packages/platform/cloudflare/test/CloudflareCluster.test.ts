@@ -172,7 +172,7 @@ describe("CloudflareCluster", () => {
       const invoked = new Promise<void>((resolve) => {
         resumeInvoked = resolve
       })
-      const interruptions: Array<string> = []
+      const interruptions: Array<ReadonlyArray<string | undefined>> = []
       const stub = {
         invoke(envelopeText: string) {
           requestId = JSON.parse(envelopeText).requestId
@@ -182,8 +182,8 @@ describe("CloudflareCluster", () => {
         acknowledge() {
           return Promise.resolve([])
         },
-        interrupt(interruptedRequestId: string) {
-          interruptions.push(interruptedRequestId)
+        interrupt(storageRequestId: string, clientRequestId?: string) {
+          interruptions.push([storageRequestId, clientRequestId])
           return Promise.resolve()
         }
       }
@@ -201,7 +201,7 @@ describe("CloudflareCluster", () => {
         yield* Effect.promise(() => invoked)
         yield* Fiber.interrupt(fiber)
 
-        assert.deepStrictEqual(interruptions, [requestId])
+        assert.deepStrictEqual(interruptions, [[requestId, requestId]])
       }).pipe(Effect.provide(CloudflareCluster.layer(options)))
     })
 
@@ -336,6 +336,66 @@ describe("CloudflareCluster", () => {
           Effect.provideService(CurrentEntityName, "6:Callerone")
         )
         assert.strictEqual(result, "callback")
+      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
+    })
+
+    it.effect("delivers a deduplicated delayed reply to every pinned caller", () => {
+      const pending: Array<(value: any) => void> = []
+      let storageRequestId = ""
+      let bothInvoked!: () => void
+      const invoked = new Promise<void>((resolve) => {
+        bothInvoked = resolve
+      })
+      const stub = {
+        invoke(envelopeText: string, _discard: boolean, delivery: { readonly replyTo?: string }) {
+          assert.strictEqual(delivery.replyTo, "6:Callerone")
+          const envelope = JSON.parse(envelopeText)
+          if (storageRequestId === "") storageRequestId = envelope.requestId
+          return new Promise<any>((resolve) => {
+            pending.push(resolve)
+            if (pending.length === 2) bothInvoked()
+          })
+        },
+        acknowledge() {
+          return Promise.resolve([])
+        }
+      }
+      const options: CloudflareCluster.LayerOptions = {
+        entities: [Scheduled],
+        entityNamespace: new FakeNamespace(stub) as any,
+        workflowNamespace: new FakeNamespace() as any,
+        queueNamespace: new FakeNamespace() as any,
+        singletonNamespace: new FakeNamespace() as any
+      }
+
+      return Effect.gen(function*() {
+        const makeClient = yield* Scheduled.client
+        const client = makeClient("one")
+        const request = { deliverAt: Date.now() + 60_000, id: "shared" }
+        const first = yield* Effect.forkChild(
+          client.Ask(request).pipe(Effect.provideService(CurrentEntityName, "6:Callerone"))
+        )
+        const second = yield* Effect.forkChild(
+          client.Ask(request).pipe(Effect.provideService(CurrentEntityName, "6:Callerone"))
+        )
+        yield* Effect.promise(() => invoked)
+        for (const resolve of pending) resolve({ requestId: storageRequestId, replies: [] })
+        yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 0)))
+        const delivered = yield* Effect.promise(() =>
+          deliverReply(
+            storageRequestId,
+            JSON.stringify({
+              _tag: "WithExit",
+              requestId: storageRequestId,
+              id: "terminal",
+              exit: { _tag: "Success", value: "callback" }
+            })
+          )
+        )
+
+        assert.isTrue(delivered)
+        assert.deepStrictEqual(yield* Fiber.join(first), "callback")
+        assert.deepStrictEqual(yield* Fiber.join(second), "callback")
       }).pipe(Effect.provide(CloudflareCluster.layer(options)))
     })
 
