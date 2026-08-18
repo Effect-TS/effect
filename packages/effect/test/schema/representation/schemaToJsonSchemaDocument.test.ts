@@ -34,7 +34,7 @@ describe("Schema.toJsonSchemaDocument", () => {
           anyOf: [
             {
               type: "number",
-              allOf: [{ exclusiveMinimum: 0 }]
+              exclusiveMinimum: 0
             },
             {
               type: "string",
@@ -106,7 +106,7 @@ describe("Schema.toJsonSchemaDocument", () => {
       dialect: "draft-2020-12",
       schema: {
         type: "string",
-        allOf: [{ minLength: 2 }]
+        minLength: 2
       },
       definitions: {}
     })

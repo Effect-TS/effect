@@ -10,6 +10,9 @@ packages:
   - packages/tools/*
   - examples/*
 
+verifyDepsBeforeRun: error
+enableGlobalVirtualStore: false
+
 allowBuilds:
   core-js: false
   cpu-features: false
