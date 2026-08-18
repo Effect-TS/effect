@@ -228,18 +228,22 @@ export class ClusterEntity extends DurableObject<unknown> {
       }
 
       const persistedResult = yield* Effect.result(
-        Effect.try(() =>
-          storage.transactionSync(() =>
-            persistRequest(
-              storage.sql,
-              envelopeText,
-              delivery?.primaryKey ?? Envelope.primaryKey(envelope),
-              discard,
-              delivery?.deliverAt,
-              delivery?.replyTo
-            )
-          )
-        ).pipe(
+        // Preserve unknown thrown values so the fallback defect is unchanged.
+        // @effect-diagnostics-next-line unknownInEffectCatch:off
+        Effect.try({
+          try: () =>
+            storage.transactionSync(() =>
+              persistRequest(
+                storage.sql,
+                envelopeText,
+                delivery?.primaryKey ?? Envelope.primaryKey(envelope),
+                discard,
+                delivery?.deliverAt,
+                delivery?.replyTo
+              )
+            ),
+          catch: (error) => error
+        }).pipe(
           Effect.withSpan("CloudflareCluster.persist", {
             attributes: {
               entityType: registration.entity.type,
@@ -251,8 +255,7 @@ export class ClusterEntity extends DurableObject<unknown> {
         )
       )
       if (Result.isFailure(persistedResult)) {
-        const cause = persistedResult.failure.cause
-        const error = cause instanceof Error ? cause : new Error(String(cause))
+        const error = persistedResult.failure
         if (error instanceof MailboxFullError) {
           return { result: { requestId: String(envelope.requestId), replies: [], error: "MailboxFull" as const } }
         } else if (error instanceof EncodedMessageTooLargeError) {
@@ -903,10 +906,10 @@ export class ClusterSingleton extends DurableObject<unknown> {
       ClusterMetrics.singletons.modifyUnsafe(BigInt(1), registration.context)
     }).pipe(
       Effect.andThen(registration.run),
+      Effect.scoped,
       Effect.ensuring(Effect.sync(() => {
         ClusterMetrics.singletons.modifyUnsafe(BigInt(-1), registration.context)
       })),
-      Effect.scoped,
       Effect.provideContext(registration.context),
       Effect.orDie
     )
