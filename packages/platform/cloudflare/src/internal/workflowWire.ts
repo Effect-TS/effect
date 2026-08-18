@@ -30,30 +30,26 @@ export const decodeExit = (
     context
   )
 
-const resultCodecs = new WeakMap<Workflow.Any, Schema.Top>()
-
-const resultCodec = (workflow: Workflow.Any): Schema.Top => {
-  let codec = resultCodecs.get(workflow)
-  if (codec === undefined) {
-    codec = Schema.toCodecJson(Workflow.Result({
-      success: workflow.successSchema as any,
-      error: workflow.errorSchema as any
-    }))
-    resultCodecs.set(workflow, codec)
+const cachedCodec = (compute: (workflow: Workflow.Any) => Schema.Top): (workflow: Workflow.Any) => Schema.Top => {
+  const cache = new WeakMap<Workflow.Any, Schema.Top>()
+  return (workflow) => {
+    let codec = cache.get(workflow)
+    if (codec === undefined) {
+      codec = compute(workflow)
+      cache.set(workflow, codec)
+    }
+    return codec
   }
-  return codec
 }
 
-const payloadCodecs = new WeakMap<Workflow.Any, Schema.Top>()
+const resultCodec = cachedCodec((workflow) =>
+  Schema.toCodecJson(Workflow.Result({
+    success: workflow.successSchema as any,
+    error: workflow.errorSchema as any
+  }))
+)
 
-const payloadCodec = (workflow: Workflow.Any): Schema.Top => {
-  let codec = payloadCodecs.get(workflow)
-  if (codec === undefined) {
-    codec = Schema.toCodecJson(workflow.payloadSchema)
-    payloadCodecs.set(workflow, codec)
-  }
-  return codec
-}
+const payloadCodec = cachedCodec((workflow) => Schema.toCodecJson(workflow.payloadSchema))
 
 /** @internal */
 export const encodeResult = (
