@@ -47,6 +47,9 @@ import { armAlarm, earliestDeliverAt, ensureEntityStorage } from "./internal/ent
 import { decodeReplyFor, decodeRequest, encodeReplyFor } from "./internal/entityWire.ts"
 import { makeQueueRuntime } from "./internal/queueRuntime.ts"
 import { earliestLeaseExpiry } from "./internal/queueStorage.ts"
+import { getSingletonRegistration } from "./internal/singletonRegistry.ts"
+import { makeSingletonRuntime } from "./internal/singletonRuntime.ts"
+import { ensureSingletonStorage, loadSingletonState, rememberSingletonName } from "./internal/singletonStorage.ts"
 import type { WorkflowRunOptions, WorkflowStub } from "./internal/workflowRegistry.ts"
 import { makeWorkflowRuntime } from "./internal/workflowRuntime.ts"
 import { earliestClockWakeUp, ensureWorkflowStorage, loadExecution } from "./internal/workflowStorage.ts"
@@ -64,6 +67,8 @@ type WorkflowRuntime = ReturnType<typeof makeWorkflowRuntime>
 type QueueRuntime = ReturnType<typeof makeQueueRuntime>
 
 type QueueItem = Awaited<ReturnType<QueueRuntime["take"]>>
+
+type SingletonRuntime = ReturnType<typeof makeSingletonRuntime>
 
 interface ReplySession {
   readonly replies: Array<string>
@@ -824,12 +829,74 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
 }
 
 /**
- * The singleton class. Placeholder for `Singleton`; one object per singleton
- * name, woken by a Worker Cron Trigger. It only reserves the binding for now.
+ * The singleton class. One object holds one registered singleton under the
+ * name `Singleton/<name>` and is woken by a Worker Cron Trigger.
+ *
+ * **Details**
+ *
+ * The constructor opens SQLite, ensures the singleton state table, and
+ * re-arms the watchdog alarm for a wake interrupted by isolate loss. `wake()`
+ * runs the registered effect once and returns; it never appends
+ * `Effect.never`, so Cloudflare may hibernate the object afterward.
  *
  * @category durable objects
  * @since 4.0.0
  */
 export class ClusterSingleton extends DurableObject<unknown> {
+  readonly #state: DurableObjectState
+  readonly #name: string | undefined
+  #runtime: SingletonRuntime | undefined
+
+  constructor(ctx: DurableObjectState, env: unknown) {
+    super(ctx, env)
+    this.#state = ctx
+    const sql = ctx.storage.sql
+    ensureSingletonStorage(sql)
+    if (ctx.id.name !== undefined) {
+      if (!ctx.id.name.startsWith("Singleton/")) {
+        throw new Error("ClusterSingleton requires a Singleton/<name> Durable Object name")
+      }
+      rememberSingletonName(sql, ctx.id.name)
+    }
+    const stored = loadSingletonState(sql)
+    this.#name = ctx.id.name ?? stored.name
+    if (stored.wakeAt !== undefined) {
+      void ctx.blockConcurrencyWhile(() => Effect.runPromise(armAlarm(ctx.storage, stored.wakeAt!)))
+    }
+  }
+
+  #getRuntime(): SingletonRuntime {
+    if (this.#runtime !== undefined) return this.#runtime
+    if (this.#name === undefined) {
+      throw new Error("ClusterSingleton requires a Singleton/<name> Durable Object name")
+    }
+    const name = this.#name.slice("Singleton/".length)
+    const registration = getSingletonRegistration(name)
+    if (registration === undefined) {
+      throw new Error(`CloudflareCluster: no singleton registered under the name "${name}"`)
+    }
+    this.#runtime = makeSingletonRuntime({
+      sql: this.#state.storage.sql,
+      alarm: this.#state.storage,
+      now: () => Date.now(),
+      run: registration.run.pipe(
+        Effect.scoped,
+        Effect.provideContext(registration.context),
+        Effect.orDie
+      )
+    })
+    return this.#runtime
+  }
+
+  /** @internal Runs one Cron Trigger fire, coalescing a concurrent duplicate. */
+  wake(): Promise<void> {
+    return this.#getRuntime().wake()
+  }
+
+  override alarm(): Promise<void> {
+    if (loadSingletonState(this.#state.storage.sql).wakeAt === undefined) return Promise.resolve()
+    return this.#getRuntime().runAlarm()
+  }
+
   override fetch: () => never = notExposed("ClusterSingleton")
 }
