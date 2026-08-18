@@ -61,28 +61,65 @@ const buildFlagGroupDeclarations = (
 }
 
 /**
- * `compgen -W` re-expands every word of its list, which mangles values holding
- * quotes, spaces or glob characters. Filter an explicitly quoted list instead.
+ * Emit the shared choice-completion helper.
  *
- * Bash inserts COMPREPLY entries verbatim, so each match is requoted with
- * `printf %q`; `cur` is dequoted to match, since it still carries whatever
- * quoting the user typed. Dequoting is best effort — it strips one opening
- * quote and any backslash escapes, so a value whose own text contains a
- * backslash will not match once the user escapes it.
+ * `compgen -W` re-expands every word of its list, which mangles values holding
+ * quotes, spaces or glob characters, so matches are filtered from an explicitly
+ * quoted list instead. Two further readline details are handled here:
+ *
+ * - Bash inserts COMPREPLY entries verbatim when the word is unquoted, so each
+ *   match is requoted with `printf %q`. When the user has opened a quote, bash
+ *   quotes the entry itself and requoting would double-escape it.
+ * - Readline only replaces the text after the last COMP_WORDBREAKS character
+ *   (`:` among them), so that head has to be trimmed off every match or a value
+ *   like `node:20` is appended to what was typed rather than replacing it.
+ *
+ * Prefix matching uses the dequoted word. Dequoting is best effort: it strips
+ * one opening quote and any backslash escapes, so a value whose own text
+ * contains a backslash will not match once the user types it escaped.
  */
-const choiceCompletion = (values: ReadonlyArray<string>): string => {
-  const words = values.map((value) => `'${escapeForBash(value)}'`).join(" ")
-  return `COMPREPLY=(); local _choice _quoted _prefix=\${cur#[\\"\\']}; _prefix=\${_prefix//\\\\/};` +
-    ` for _choice in ${words}; do if [[ $_choice == "$_prefix"* ]]; then` +
-    ` printf -v _quoted '%q' "$_choice"; COMPREPLY+=("$_quoted"); fi; done`
+const choicesHelper = (helperName: string, lines: Array<string>): void => {
+  lines.push(`${helperName}()`)
+  lines.push(`{`)
+  lines.push(`  local _cur="$1"; shift`)
+  lines.push(`  local _prefix="\${_cur#[\\"\\']}"; _prefix="\${_prefix//\\\\/}"`)
+  lines.push(`  local _quoted_word=""`)
+  lines.push(`  [[ "$_cur" == [\\"\\']* ]] && _quoted_word=1`)
+  lines.push(`  COMPREPLY=()`)
+  lines.push(`  local _choice _quoted`)
+  lines.push(`  for _choice in "$@"; do`)
+  lines.push(`    [[ "$_choice" == "$_prefix"* ]] || continue`)
+  lines.push(`    if [[ -n "$_quoted_word" ]]; then`)
+  lines.push(`      COMPREPLY+=("$_choice")`)
+  lines.push(`    else`)
+  lines.push(`      printf -v _quoted '%q' "$_choice"`)
+  lines.push(`      COMPREPLY+=("$_quoted")`)
+  lines.push(`    fi`)
+  lines.push(`  done`)
+  lines.push(`  local _head="$_cur"`)
+  lines.push(`  while [[ -n "$_head" ]]; do`)
+  lines.push(`    [[ "$COMP_WORDBREAKS" == *"\${_head: -1}"* ]] && break`)
+  lines.push(`    _head="\${_head%?}"`)
+  lines.push(`  done`)
+  lines.push(`  if [[ -n "$_head" ]]; then`)
+  lines.push(`    local _i`)
+  lines.push(`    for ((_i = 0; _i < \${#COMPREPLY[@]}; _i++)); do`)
+  lines.push(`      COMPREPLY[_i]="\${COMPREPLY[_i]#"$_head"}"`)
+  lines.push(`    done`)
+  lines.push(`  fi`)
+  lines.push(`}`)
+  lines.push(``)
 }
 
-const flagValueCompletion = (type: Completions.FlagType): string | undefined => {
+const choiceCompletion = (helperName: string, values: ReadonlyArray<string>): string =>
+  `${helperName} "$cur" ${values.map((value) => `'${escapeForBash(value)}'`).join(" ")}`
+
+const flagValueCompletion = (type: Completions.FlagType, helperName: string): string | undefined => {
   switch (type._tag) {
     case "Boolean":
       return undefined
     case "Choice":
-      return choiceCompletion(type.values)
+      return choiceCompletion(helperName, type.values)
     case "Path":
       if (type.pathType === "directory") return `COMPREPLY=( $(compgen -d -- "$cur") )`
       return `COMPREPLY=( $(compgen -f -- "$cur") )`
@@ -91,10 +128,10 @@ const flagValueCompletion = (type: Completions.FlagType): string | undefined => 
   }
 }
 
-const argCompletion = (type: Completions.ArgumentType): string | undefined => {
+const argCompletion = (type: Completions.ArgumentType, helperName: string): string | undefined => {
   switch (type._tag) {
     case "Choice":
-      return choiceCompletion(type.values)
+      return choiceCompletion(helperName, type.values)
     case "Path":
       if (type.pathType === "directory") return `COMPREPLY=( $(compgen -d -- "$cur") )`
       return `COMPREPLY=( $(compgen -f -- "$cur") )`
@@ -110,7 +147,8 @@ const argCompletion = (type: Completions.ArgumentType): string | undefined => {
 const generateFunction = (
   descriptor: Completions.CommandDescriptor,
   parentPath: ReadonlyArray<string>,
-  lines: Array<string>
+  lines: Array<string>,
+  helperName: string
 ): void => {
   const currentPath = [...parentPath, descriptor.name]
   const funcName = `_${currentPath.map(sanitizeFunctionName).join("_")}`
@@ -132,7 +170,7 @@ const generateFunction = (
       for (const alias of flag.aliases) {
         longNames.push(alias.length === 1 ? `-${alias}` : `--${alias}`)
       }
-      const completion = flagValueCompletion(flag.type)
+      const completion = flagValueCompletion(flag.type, helperName)
       if (completion) {
         lines.push(`    ${longNames.join("|")})`)
         lines.push(`      ${completion}`)
@@ -188,7 +226,7 @@ const generateFunction = (
 
   // Positional argument completion
   const argsWithCompletions = descriptor.arguments.flatMap((argument, index) => {
-    const completion = argCompletion(argument.type)
+    const completion = argCompletion(argument.type, helperName)
     return completion === undefined ? [] : [{ argument, completion, index }]
   })
   if (argsWithCompletions.length > 0) {
@@ -244,7 +282,7 @@ const generateFunction = (
 
   // Recurse into subcommands
   for (const sub of descriptor.subcommands) {
-    generateFunction(sub, currentPath, lines)
+    generateFunction(sub, currentPath, lines, helperName)
   }
 }
 
@@ -255,6 +293,7 @@ export const generate = (
 ): string => {
   const lines: Array<string> = []
   const safeName = sanitizeFunctionName(executableName)
+  const helperName = `_${safeName}__choices`
 
   lines.push(`###-begin-${escapeForBash(executableName)}-completions-###`)
   lines.push(`#`)
@@ -280,7 +319,8 @@ export const generate = (
   lines.push(`fi`)
   lines.push(``)
 
-  generateFunction(descriptor, [], lines)
+  choicesHelper(helperName, lines)
+  generateFunction(descriptor, [], lines, helperName)
 
   lines.push(`complete -F _${safeName} ${escapeForBash(executableName)}`)
   lines.push(`###-end-${escapeForBash(executableName)}-completions-###`)

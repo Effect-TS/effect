@@ -154,8 +154,8 @@ describe("Bash completions", () => {
     assert.include(script, `--verbose|-v|--no-verbose) ;;`)
     assert.include(script, `--format|-f) _skip_next=1 ;;`)
     assert.include(script, `--format=*|-f=*) ;;`)
-    assert.match(script, /0\)\n {6}COMPREPLY=\(\);[^\n]*for _choice in 'one';/)
-    assert.match(script, /1\)\n {6}COMPREPLY=\(\);[^\n]*for _choice in 'two';/)
+    assert.include(script, `0)\n      _tool__choices "$cur" 'one'`)
+    assert.include(script, `1)\n      _tool__choices "$cur" 'two'`)
   })
 
   it("generates completion function for root command", () => {
@@ -224,22 +224,30 @@ describe("Bash completions", () => {
   it("inlines choice values for choice flags", () => {
     const desc = fromCommand(withChoices)
     const script = Bash.generate("deploy", desc)
-    assert.include(script, `for _choice in 'dev' 'staging' 'prod'`)
+    assert.include(script, `_deploy__choices "$cur" 'dev' 'staging' 'prod'`)
   })
 
   it("quotes choice values instead of exposing them to compgen -W re-expansion", () => {
     const desc = fromCommand(withTrickyChoices)
     const script = Bash.generate("deploy", desc)
-    assert.include(script, `for _choice in 'it'\\''s-fine' 'node:20' 'with space' '(whoami)' '#tag' '$HOME'`)
-    assert.include(script, `for _choice in 'o'\\''clock' 'a:b' '{x,y}'`)
+    assert.include(script, `_deploy__choices "$cur" 'it'\\''s-fine' 'node:20' 'with space' '(whoami)' '#tag' '$HOME'`)
+    assert.include(script, `_deploy__choices "$cur" 'o'\\''clock' 'a:b' '{x,y}'`)
     assert.notInclude(script, `compgen -W 'it`)
   })
 
-  it("requotes matches for insertion and dequotes the typed prefix", () => {
+  it("requotes matches for insertion but not inside a quote the user opened", () => {
     const desc = fromCommand(withTrickyChoices)
     const script = Bash.generate("deploy", desc)
-    assert.include(script, `local _choice _quoted _prefix=\${cur#[\\"\\']}; _prefix=\${_prefix//\\\\/}`)
-    assert.include(script, `printf -v _quoted '%q' "$_choice"; COMPREPLY+=("$_quoted")`)
+    assert.include(script, `local _prefix="\${_cur#[\\"\\']}"; _prefix="\${_prefix//\\\\/}"`)
+    assert.include(script, `[[ "$_cur" == [\\"\\']* ]] && _quoted_word=1`)
+    assert.include(script, `printf -v _quoted '%q' "$_choice"`)
+  })
+
+  it("trims the COMP_WORDBREAKS head so colon values replace the typed word", () => {
+    const desc = fromCommand(withTrickyChoices)
+    const script = Bash.generate("deploy", desc)
+    assert.include(script, `[[ "$COMP_WORDBREAKS" == *"\${_head: -1}"* ]] && break`)
+    assert.include(script, `COMPREPLY[_i]="\${COMPREPLY[_i]#"$_head"}"`)
   })
 
   it("generates separate functions for nested subcommands", () => {
