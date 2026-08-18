@@ -100,6 +100,45 @@ describe("EntityRuntime", () => {
       assert.isTrue(Exit.isSuccess(replies[2].exit))
     }))
 
+  it.effect("retries a defective stream from the last emitted chunk", () =>
+    Effect.gen(function*() {
+      const Streaming = Entity.make("User", [
+        Rpc.make("Values", { success: RpcSchema.Stream(Schema.Number, Schema.Never) })
+      ])
+      const seenLastChunks: Array<number | undefined> = []
+      const registration: EntityRegistration = {
+        entity: Streaming,
+        build: Effect.succeed(Streaming.of({
+          Values: (request) => {
+            const last = Option.getOrUndefined(request.lastSentChunkValue)
+            seenLastChunks.push(last)
+            return last === undefined
+              ? Stream.concat(Stream.make(1), Stream.die("retry"))
+              : Stream.make(last + 1)
+          }
+        })),
+        options: { defectRetryPolicy: Schedule.recurs(1) },
+        context: Context.empty()
+      }
+      let replyId = 0
+      const runtime = yield* makeEntityRuntime(registration, address, () => `reply-${replyId++}`)
+      const replies: Array<any> = []
+
+      yield* runtime.run(
+        { ...request, tag: "Values" } as any,
+        Option.none(),
+        false,
+        (reply) => Effect.sync(() => replies.push(reply))
+      )
+
+      assert.deepStrictEqual(seenLastChunks, [undefined, 1])
+      assert.deepStrictEqual(
+        replies.filter((reply) => reply._tag === "Chunk").map((reply) => [reply.sequence, reply.values]),
+        [[0, [1]], [1, [2]]]
+      )
+      assert.isTrue(Exit.isSuccess(replies.at(-1).exit))
+    }))
+
   it.effect("finishes tells without emitting a stored reply", () =>
     Effect.gen(function*() {
       let handled = 0
