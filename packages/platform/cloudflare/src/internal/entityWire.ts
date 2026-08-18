@@ -21,10 +21,47 @@ export const runWith = <A>(
   context: Context.Context<never>
 ): Effect.Effect<A> => effect.pipe(Effect.provideContext(context as any), Effect.orDie) as Effect.Effect<A>
 
-const chunkValuesCodec = (rpc: Rpc.AnyWithProps) =>
-  RpcSchema.isStreamSchema(rpc.successSchema)
+// Cached per rpc so the derived AST stays stable and the memoized parser
+// compiler can hit on repeated chunks.
+const chunkValuesCache = new WeakMap<Rpc.AnyWithProps, Schema.Top | undefined>()
+
+const chunkValuesCodec = (rpc: Rpc.AnyWithProps): Schema.Top | undefined => {
+  if (chunkValuesCache.has(rpc)) return chunkValuesCache.get(rpc)
+  const codec = RpcSchema.isStreamSchema(rpc.successSchema)
     ? Schema.toCodecJson(Schema.NonEmptyArray(rpc.successSchema.success))
     : undefined
+  chunkValuesCache.set(rpc, codec)
+  return codec
+}
+
+/** @internal */
+export const encodeRequest = (options: {
+  readonly requestId: string
+  readonly address: EntityAddress.EntityAddress
+  readonly tag: string
+  readonly payload: unknown
+  readonly headers: unknown
+  readonly traceId?: string | undefined
+  readonly spanId?: string | undefined
+  readonly sampled?: boolean | undefined
+}): string =>
+  JSON.stringify({
+    _tag: "Request",
+    requestId: options.requestId,
+    address: {
+      shardId: options.address.shardId,
+      entityType: options.address.entityType,
+      entityId: options.address.entityId
+    },
+    tag: options.tag,
+    payload: options.payload,
+    headers: options.headers,
+    ...(options.traceId === undefined ? undefined : {
+      traceId: options.traceId,
+      spanId: options.spanId,
+      sampled: options.sampled
+    })
+  })
 
 /** @internal */
 export const decodeRequest = (

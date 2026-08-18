@@ -11,6 +11,7 @@
  */
 import type { SqlStorage } from "@cloudflare/workers-types"
 import * as Effect from "effect/Effect"
+import { setWithEviction } from "./boundedMap.ts"
 import { armAlarm, type EntityAlarm } from "./entityStorage.ts"
 import {
   completeItem,
@@ -63,13 +64,6 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
   // release the already-leased item instead of stranding it.
   const delivered = new Map<string, string>()
 
-  const rememberDelivered = (takerId: string, itemId: string): void => {
-    delivered.set(takerId, itemId)
-    if (delivered.size <= deliveredCapacity) return
-    const oldest = delivered.keys().next().value
-    if (oldest !== undefined) delivered.delete(oldest)
-  }
-
   // Waiters differ in maxAttempts, so one waiter finding nothing does not mean
   // a later one will; every waiter gets its own lease attempt. Leasing stays
   // fully synchronous so concurrent wake-ups cannot interleave on the waiter
@@ -86,7 +80,7 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
         continue
       }
       waiters.splice(index, 1)
-      rememberDelivered(waiter.takerId, item.id)
+      setWithEviction(delivered, waiter.takerId, item.id, deliveredCapacity)
       const expiry = now + waiter.leaseMillis
       if (earliest === undefined || expiry < earliest) earliest = expiry
       waiter.resolve(item)

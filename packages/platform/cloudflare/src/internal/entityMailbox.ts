@@ -27,13 +27,15 @@ export type PersistResult = {
 } | {
   readonly _tag: "Duplicate"
   readonly originalId: string
-  readonly lastReceivedReply: string | undefined
   readonly processed: boolean
 }
 
 const textEncoder = new TextEncoder()
 
-const encodedSize = (text: string): number => textEncoder.encode(text).byteLength
+// A UTF-16 code unit encodes to at most 3 UTF-8 bytes, so most strings skip
+// the byte-length copy.
+const exceedsMaximumEncodedSize = (text: string): boolean =>
+  text.length * 3 > maximumEncodedSize && textEncoder.encode(text).byteLength > maximumEncodedSize
 
 /** @internal */
 export const persistRequest = (
@@ -44,7 +46,7 @@ export const persistRequest = (
   deliverAt: number | null = null,
   replyTo: string | null = null
 ): PersistResult => {
-  if (encodedSize(envelopeText) > maximumEncodedSize) {
+  if (exceedsMaximumEncodedSize(envelopeText)) {
     throw new EncodedMessageTooLargeError("Encoded entity request exceeds 2 MB")
   }
   const envelope = JSON.parse(envelopeText) as { readonly _tag?: unknown; readonly requestId?: unknown }
@@ -53,9 +55,8 @@ export const persistRequest = (
   }
 
   const existing = sql.exec(
-    `SELECT m.request_id, m.discard, m.processed, m.reply_to, r.reply AS last_reply
+    `SELECT m.request_id, m.discard, m.processed, m.reply_to
      FROM cluster_messages m
-     LEFT JOIN cluster_replies r ON r.reply_id = m.last_reply_id
      WHERE m.request_id = ? OR (? IS NOT NULL AND m.message_id = ?)
      LIMIT 1`,
     envelope.requestId,
@@ -75,20 +76,25 @@ export const persistRequest = (
     return {
       _tag: "Duplicate",
       originalId: String(existing.request_id),
-      lastReceivedReply: typeof existing.last_reply === "string" ? existing.last_reply : undefined,
       processed: Number(existing.processed) === 1
     }
   }
 
-  const count = sql.exec(
-    `SELECT COUNT(*) AS count
-     FROM cluster_messages m
-     WHERE m.processed = 0 OR EXISTS (
-       SELECT 1 FROM cluster_replies r
-       WHERE r.request_id = m.request_id AND r.kind = 'Chunk' AND r.acked = 0
-     )`
-  ).toArray()[0]?.count
-  if (Number(count) >= mailboxCapacity) {
+  // A request counts against capacity until it is processed and, for streams,
+  // until its chunks are acknowledged. Two indexed counts instead of one
+  // `OR EXISTS` scan over the ever-growing dedup history.
+  const pending = Number(
+    sql.exec("SELECT COUNT(*) AS count FROM cluster_messages WHERE processed = 0").toArray()[0]?.count
+  )
+  const unacked = pending >= mailboxCapacity ? 0 : Number(
+    sql.exec(
+      `SELECT COUNT(DISTINCT r.request_id) AS count
+       FROM cluster_replies r
+       JOIN cluster_messages m ON m.request_id = r.request_id
+       WHERE r.kind = 'Chunk' AND r.acked = 0 AND m.processed = 1`
+    ).toArray()[0]?.count
+  )
+  if (pending + unacked >= mailboxCapacity) {
     throw new MailboxFullError("Entity mailbox has reached its 4096 request capacity")
   }
 
@@ -108,7 +114,7 @@ export const persistRequest = (
 
 /** @internal */
 export const saveReply = (sql: SqlStorage, replyText: string): void => {
-  if (encodedSize(replyText) > maximumEncodedSize) {
+  if (exceedsMaximumEncodedSize(replyText)) {
     throw new EncodedMessageTooLargeError("Encoded entity reply chunk exceeds 2 MB")
   }
   const reply = JSON.parse(replyText) as {
@@ -146,6 +152,7 @@ export const saveReply = (sql: SqlStorage, replyText: string): void => {
 
 /** @internal */
 export interface StoredMessage {
+  readonly requestId: string
   readonly envelope: string
   readonly lastSentChunk: string | undefined
   readonly discard: boolean
@@ -159,14 +166,15 @@ const decodeReplyTargets = (value: unknown): Array<string> => {
     const decoded = JSON.parse(value)
     if (Array.isArray(decoded) && decoded.every((item) => typeof item === "string")) return decoded
   } catch {
-    // Rows written before reply targets became a collection contain one plain name.
+    // Malformed rows deliver nowhere instead of poisoning the replay.
   }
-  return [value]
+  return []
 }
 
 const rowToMessage = (row: Record<string, unknown>): StoredMessage => {
   const replyTos = decodeReplyTargets(row.reply_to)
   const message: StoredMessage = {
+    requestId: String(row.request_id),
     envelope: String(row.envelope),
     lastSentChunk: typeof row.last_reply === "string" ? row.last_reply : undefined,
     discard: Number(row.discard) === 1,
@@ -179,7 +187,7 @@ const rowToMessage = (row: Record<string, unknown>): StoredMessage => {
 /** @internal */
 export const loadUnprocessed = (sql: SqlStorage, now = Date.now()): Array<StoredMessage> =>
   sql.exec(
-    `SELECT m.envelope, m.discard, m.deliver_at, m.reply_to, r.reply AS last_reply
+    `SELECT m.request_id, m.envelope, m.discard, m.deliver_at, m.reply_to, r.reply AS last_reply
      FROM cluster_messages m
      LEFT JOIN cluster_replies r ON r.reply_id = m.last_reply_id
      WHERE m.processed = 0 AND (m.deliver_at IS NULL OR m.deliver_at <= ?)
@@ -190,7 +198,7 @@ export const loadUnprocessed = (sql: SqlStorage, now = Date.now()): Array<Stored
 /** @internal */
 export const loadDue = (sql: SqlStorage, now = Date.now()): Array<StoredMessage> =>
   sql.exec(
-    `SELECT m.envelope, m.discard, m.deliver_at, m.reply_to, r.reply AS last_reply
+    `SELECT m.request_id, m.envelope, m.discard, m.deliver_at, m.reply_to, r.reply AS last_reply
      FROM cluster_messages m
      LEFT JOIN cluster_replies r ON r.reply_id = m.last_reply_id
      WHERE m.processed = 0 AND m.deliver_at IS NOT NULL AND m.deliver_at <= ?
@@ -201,7 +209,7 @@ export const loadDue = (sql: SqlStorage, now = Date.now()): Array<StoredMessage>
 /** @internal */
 export const loadMessage = (sql: SqlStorage, requestId: string): StoredMessage | undefined => {
   const row = sql.exec(
-    `SELECT m.envelope, m.discard, m.deliver_at, m.reply_to, r.reply AS last_reply
+    `SELECT m.request_id, m.envelope, m.discard, m.deliver_at, m.reply_to, r.reply AS last_reply
      FROM cluster_messages m
      LEFT JOIN cluster_replies r ON r.reply_id = m.last_reply_id
      WHERE m.request_id = ?
@@ -212,22 +220,28 @@ export const loadMessage = (sql: SqlStorage, requestId: string): StoredMessage |
 }
 
 /** @internal */
-export const loadNextReply = (sql: SqlStorage, requestId: string): string | undefined => {
+export interface NextReply {
+  readonly reply: string
+  readonly kind: "Chunk" | "WithExit"
+}
+
+/** @internal */
+export const loadNextReply = (sql: SqlStorage, requestId: string): NextReply | undefined => {
   const row = sql.exec(
-    `SELECT reply
+    `SELECT reply, kind
      FROM cluster_replies
      WHERE request_id = ? AND kind = 'Chunk' AND acked = 0
      ORDER BY sequence ASC
      LIMIT 1`,
     requestId
   ).toArray()[0] ?? sql.exec(
-    `SELECT reply
+    `SELECT reply, kind
      FROM cluster_replies
      WHERE request_id = ? AND kind = 'WithExit'
      LIMIT 1`,
     requestId
   ).toArray()[0]
-  return typeof row?.reply === "string" ? row.reply : undefined
+  return typeof row?.reply === "string" ? { reply: row.reply, kind: row.kind as NextReply["kind"] } : undefined
 }
 
 /** @internal */
