@@ -752,12 +752,21 @@ export function toMultiDocument(document: Document): MultiDocument {
  *
  * Use when you need JSON Schema output from a representation whose checks carry compiler annotations.
  *
+ * **Details**
+ *
+ * For representation documents whose validation semantics can be expressed exactly in JSON Schema, importing the
+ * emitted document with {@link fromJsonSchemaDocument} reconstructs a schema that accepts the same JSON values. This
+ * is a semantic round-trip guarantee; the emitted document and reconstructed representation may have different shapes.
+ *
  * **Gotchas**
  *
- * Opaque declarations are represented by an unconstrained JSON Schema. Check callback results are used directly, and
- * exceptions raised by a callback pass through unchanged. Callbacks must treat their input schemas as immutable. Each
- * returned value must be a valid JSON Schema object graph and must not be mutated after the callback returns. Local
- * definition references returned by callbacks are resolved together with compiler-generated references.
+ * - Opaque declarations are represented by an unconstrained JSON Schema and are outside the exact round-trip subset.
+ * - Check callback results are used directly, and exceptions raised by a callback pass through unchanged. Callbacks
+ *   must treat their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must
+ *   not be mutated after the callback returns.
+ * - Local definition references returned by callbacks are resolved together with compiler-generated references.
+ * - Effect decoding may discard excess object properties by default. Use `onExcessProperty: "error"` when comparing
+ *   validation semantics with the emitted JSON Schema.
  *
  * @see {@link toJsonSchemaMultiDocument} for multiple roots sharing definitions
  *
@@ -1178,12 +1187,23 @@ export function fromRepresentations(
  *
  * Use when you need to validate or transform values described by an external JSON Schema document.
  *
+ * **Details**
+ *
+ * For the Draft 2020-12 subset translated exactly by this importer, compiling the imported schema through
+ * {@link toRepresentation} and {@link toJsonSchemaDocument} produces a document that accepts the same JSON values as
+ * the input. This is a semantic round-trip guarantee; keyword layout, definitions, and annotations may be normalized.
+ *
  * **Gotchas**
  *
- * Import is best-effort. Built-in declarations and checks are reconstructed with importer-owned revivers. Pattern
- * constraints reached during translation cause an error by default. Use `patterns: "apply"` only for trusted documents,
- * or `patterns: "ignore"` to weaken validation explicitly. Callback results are used directly, and exceptions raised by a
- * callback pass through unchanged.
+ * - Import is best-effort outside the exactly translated subset. Unsupported or ignored keywords are not covered by the
+ *   round-trip guarantee.
+ * - Built-in declarations and checks are reconstructed with importer-owned revivers.
+ * - Pattern constraints reached during translation cause an error by default. Use `patterns: "apply"` only for trusted
+ *   documents, or `patterns: "ignore"` to weaken validation explicitly; ignored patterns are outside the round-trip
+ *   guarantee.
+ * - `onEnter` results replace the corresponding input nodes, so the round-trip guarantee applies to the rewritten
+ *   document.
+ * - Callback results are used directly, and exceptions raised by a callback pass through unchanged.
  *
  * @see {@link fromJsonSchemaMultiDocument} for multiple roots sharing definitions
  * @see {@link toRepresentation} for converting the result to a representation document
