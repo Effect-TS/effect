@@ -31,6 +31,23 @@ describe("OpenApi representation v2 consumer", () => {
     )
   })
 
+  it("includes selected custom annotation keys", () => {
+    const Value = Schema.String.annotate({ identifier: "Value", "x-test-brand": "Value" })
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("value", "/value", { success: Value })
+      )
+    )
+
+    assert.deepStrictEqual(
+      OpenApi.fromApi(Api, { includeAnnotationKey: (key) => key === "x-test-brand" }).components.schemas,
+      { Value: { type: "string", "x-test-brand": "Value" } }
+    )
+    assert.deepStrictEqual(OpenApi.fromApi(Api).components.schemas, {
+      Value: { type: "string" }
+    })
+  })
+
   it("uses canonical JSON codecs for response declaration schemas", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
