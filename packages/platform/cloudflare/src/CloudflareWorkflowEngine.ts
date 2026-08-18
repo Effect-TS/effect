@@ -24,8 +24,8 @@ import * as Workflow from "effect/unstable/workflow/Workflow"
 import * as WorkflowEngine from "effect/unstable/workflow/WorkflowEngine"
 import { encodeName } from "./internal/clusterName.ts"
 import {
+  CurrentExecutionHandle,
   deferredState,
-  getExecution,
   registerWorkflow,
   unregisterWorkflow,
   type WorkflowRegistration,
@@ -60,19 +60,25 @@ export interface LayerOptions {
 export const make = Effect.fnUntraced(function*(options: LayerOptions) {
   const clock = yield* Clock
 
-  const stubFor = (workflowName: string, executionId: string): WorkflowStub =>
-    getExecution(executionId) ??
-      (options.workflowNamespace.getByName(encodeName(workflowName, executionId)) as unknown as WorkflowStub)
+  // Inside a run the execution's own handle avoids a self-RPC; every other
+  // target resolves to its Durable Object stub through the namespace binding.
+  const stubFor = Effect.fnUntraced(function*(workflowName: string, executionId: string) {
+    const handle = yield* Effect.serviceOption(CurrentExecutionHandle)
+    if (Option.isSome(handle) && handle.value.executionId === executionId) {
+      return handle.value as WorkflowStub
+    }
+    return options.workflowNamespace.getByName(encodeName(workflowName, executionId)) as unknown as WorkflowStub
+  })
 
   const localHandle = Effect.fnUntraced(function*(operation: string) {
     const instance = yield* WorkflowEngine.WorkflowInstance
-    const handle = getExecution(instance.executionId)
-    if (handle === undefined) {
+    const handle = yield* Effect.serviceOption(CurrentExecutionHandle)
+    if (Option.isNone(handle)) {
       return yield* Effect.die(
         `CloudflareWorkflowEngine: ${operation} is only available inside a workflow Durable Object execution`
       )
     }
-    return { instance, handle } as const
+    return { instance, handle: handle.value } as const
   })
 
   return WorkflowEngine.makeUnsafe({
@@ -90,33 +96,31 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
     execute: Effect.fnUntraced(function*(workflow, opts) {
       const context = yield* Effect.context<never>()
       const payload = yield* encodePayload(workflow, opts.payload, context)
-      const stub = stubFor(workflow._tag, opts.executionId)
+      const stub = yield* stubFor(workflow._tag, opts.executionId)
       const parent = opts.parent === undefined
         ? undefined
         : { workflowName: opts.parent.workflow._tag, executionId: opts.parent.executionId }
-      const text = yield* Effect.promise(() =>
-        stub.run(payload, {
-          discard: opts.discard,
-          ...(parent === undefined ? undefined : { parent })
-        })
-      )
+      const text = yield* Effect.promise(() => stub.run(payload, { discard: opts.discard, parent }))
       if (opts.discard) return undefined
       return yield* decodeResult(workflow, text, context)
     }) as WorkflowEngine.Encoded["execute"],
 
     poll: Effect.fnUntraced(function*(workflow, executionId) {
       const context = yield* Effect.context<never>()
-      const text = yield* Effect.promise(() => stubFor(workflow._tag, executionId).poll())
+      const stub = yield* stubFor(workflow._tag, executionId)
+      const text = yield* Effect.promise(() => stub.poll())
       if (text === undefined) return Option.none()
       return Option.some(yield* decodeResult(workflow, text, context))
     }),
 
-    interrupt: (workflow, executionId) => Effect.promise(() => stubFor(workflow._tag, executionId).interrupt()),
+    interrupt: (workflow, executionId) =>
+      Effect.flatMap(stubFor(workflow._tag, executionId), (stub) => Effect.promise(() => stub.interrupt())),
 
     interruptUnsafe: (workflow, executionId) =>
-      Effect.promise(() => stubFor(workflow._tag, executionId).interruptUnsafe()),
+      Effect.flatMap(stubFor(workflow._tag, executionId), (stub) => Effect.promise(() => stub.interruptUnsafe())),
 
-    resume: (workflow, executionId) => Effect.promise(() => stubFor(workflow._tag, executionId).resume()),
+    resume: (workflow, executionId) =>
+      Effect.flatMap(stubFor(workflow._tag, executionId), (stub) => Effect.promise(() => stub.resume())),
 
     activityExecute: Effect.fnUntraced(function*(activity, attempt) {
       const { handle, instance } = yield* localHandle("Activity execution")
@@ -148,16 +152,15 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
 
     deferredDone: Effect.fnUntraced(function*({ deferredName, executionId, exit, workflowName }) {
       const text = yield* encodeExit(exit, Context.empty())
-      yield* Effect.promise(() => stubFor(workflowName, executionId).deferredDone(deferredName, text))
+      const stub = yield* stubFor(workflowName, executionId)
+      yield* Effect.promise(() => stub.deferredDone(deferredName, text))
     }),
 
-    scheduleClock: (workflow, opts) =>
-      Effect.suspend(() => {
-        const wakeUp = clock.currentTimeMillisUnsafe() + Math.ceil(Duration.toMillis(opts.clock.duration))
-        return Effect.promise(() =>
-          stubFor(workflow._tag, opts.executionId).scheduleClock(opts.clock.name, opts.clock.deferred.name, wakeUp)
-        )
-      })
+    scheduleClock: Effect.fnUntraced(function*(workflow, opts) {
+      const wakeUp = clock.currentTimeMillisUnsafe() + Math.ceil(Duration.toMillis(opts.clock.duration))
+      const stub = yield* stubFor(workflow._tag, opts.executionId)
+      yield* Effect.promise(() => stub.scheduleClock(opts.clock.name, opts.clock.deferred.name, wakeUp))
+    })
   })
 })
 
