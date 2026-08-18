@@ -10,15 +10,18 @@
  * @since 4.0.0
  */
 import { DurableObject } from "cloudflare:workers"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as Option from "effect/Option"
 import { Persisted } from "effect/unstable/cluster/ClusterSchema"
 import * as EntityAddress from "effect/unstable/cluster/EntityAddress"
 import * as EntityId from "effect/unstable/cluster/EntityId"
 import * as EntityType from "effect/unstable/cluster/EntityType"
 import * as Envelope from "effect/unstable/cluster/Envelope"
-import type * as Reply from "effect/unstable/cluster/Reply"
+import * as Reply from "effect/unstable/cluster/Reply"
 import * as ShardId from "effect/unstable/cluster/ShardId"
 import type * as Rpc from "effect/unstable/rpc/Rpc"
 import { decodeName } from "./internal/clusterName.ts"
@@ -48,6 +51,28 @@ const notExposed = (className: string) => () => {
 
 type EntityRuntime = Effect.Success<ReturnType<typeof makeEntityRuntime>>
 
+interface ReplySession {
+  readonly replies: Array<string>
+  readonly takers: Array<{
+    readonly resolve: (reply: string | undefined) => void
+    readonly reject: (error: unknown) => void
+  }>
+  done: boolean
+  failed: boolean
+  failure: unknown
+  ack: {
+    readonly replyId: string
+    readonly resolve: () => void
+  } | undefined
+  interrupt: (() => Promise<void>) | undefined
+}
+
+interface ReplayMessage {
+  readonly envelope: string
+  readonly lastSentChunk: string | undefined
+  readonly discard: boolean
+}
+
 /**
  * The shared entity class. One instance holds one entity address; the handlers
  * for every `EntityType` are registered at Worker init.
@@ -66,6 +91,7 @@ export class ClusterEntity extends DurableObject<unknown> {
   readonly #address: EntityAddress.EntityAddress
   #runtime: EntityRuntime | undefined
   #serial: Promise<void> = Promise.resolve()
+  readonly #sessions = new Map<string, ReplySession>()
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
@@ -110,7 +136,10 @@ export class ClusterEntity extends DurableObject<unknown> {
       const runtime = yield* this.#getRuntime(registration)
       yield* Effect.forEach(
         loadUnprocessed(storage.sql),
-        (row) => this.#runStored(registration, runtime, row.envelope, row.lastSentChunk, row.discard),
+        (row) =>
+          this.#runStored(registration, runtime, row.envelope, row.lastSentChunk, row.discard).pipe(
+            Effect.catchCause((cause) => this.#completeReplayFailure(registration, row, cause))
+          ),
         { discard: true }
       )
 
@@ -143,6 +172,7 @@ export class ClusterEntity extends DurableObject<unknown> {
       if (persisted._tag === "Duplicate") {
         const nextReply = loadNextReply(storage.sql, persisted.originalId)
         if (nextReply !== undefined) {
+          this.#releaseTerminalSession(persisted.originalId, nextReply)
           return { requestId: persisted.originalId, replies: [nextReply] }
         }
         if (persisted.processed) {
@@ -167,8 +197,30 @@ export class ClusterEntity extends DurableObject<unknown> {
   /** @internal Acknowledges a streamed chunk. */
   acknowledge(requestId: string, replyId: string): Promise<ReadonlyArray<string>> {
     this.#state.storage.transactionSync(() => ackChunk(this.#state.storage.sql, requestId, replyId))
+    const session = this.#sessions.get(requestId)
+    if (session !== undefined) {
+      if (session.ack?.replyId === replyId) {
+        session.ack.resolve()
+        session.ack = undefined
+        return this.#takeReply(requestId, session)
+      }
+      const nextReply = loadNextReply(this.#state.storage.sql, requestId)
+      return Promise.resolve(nextReply === undefined ? [] : [nextReply])
+    }
     const nextReply = loadNextReply(this.#state.storage.sql, requestId)
     return Promise.resolve(nextReply === undefined ? [] : [nextReply])
+  }
+
+  /** @internal Interrupts an in-memory handler execution. Persisted rows remain replayable. */
+  interrupt(requestId: string): Promise<void> {
+    const session = this.#sessions.get(requestId)
+    if (session === undefined) return Promise.resolve()
+    this.#sessions.delete(requestId)
+    session.ack?.resolve()
+    session.ack = undefined
+    session.done = true
+    for (const take of session.takers.splice(0)) take.resolve(undefined)
+    return session.interrupt?.() ?? Promise.resolve()
   }
 
   /** @internal */
@@ -177,8 +229,9 @@ export class ClusterEntity extends DurableObject<unknown> {
   }
 
   /** @internal */
-  reset(requestId: string): void {
+  reset(requestId: string): Promise<void> {
     this.clearReplies(requestId)
+    return Promise.resolve()
   }
 
   #getRuntime(registration: EntityRegistration) {
@@ -202,6 +255,45 @@ export class ClusterEntity extends DurableObject<unknown> {
     )
   }
 
+  #completeReplayFailure(
+    registration: EntityRegistration,
+    row: ReplayMessage,
+    cause: Cause.Cause<unknown>
+  ): Effect.Effect<void> {
+    const storage = this.#state.storage
+    return Effect.suspend(() => {
+      const encoded = JSON.parse(row.envelope) as { readonly requestId?: unknown; readonly tag?: unknown }
+      if (typeof encoded.requestId !== "string") return Effect.void
+      if (row.discard || typeof encoded.tag !== "string") {
+        completeTell(storage.sql, encoded.requestId)
+        return Effect.void
+      }
+      const rpc = registration.entity.protocol.requests.get(encoded.tag) as Rpc.AnyWithProps | undefined
+      if (rpc === undefined) {
+        completeTell(storage.sql, encoded.requestId)
+        return Effect.void
+      }
+      return Effect.flatMap(
+        encodeReplyFor(
+          registration,
+          rpc,
+          new Reply.WithExit({
+            requestId: encoded.requestId as any,
+            id: crypto.randomUUID() as any,
+            exit: Exit.failCause(cause)
+          })
+        ),
+        (reply) => Effect.sync(() => storage.transactionSync(() => saveReply(storage.sql, reply)))
+      ).pipe(
+        Effect.catchCause(() =>
+          Effect.sync(() => {
+            completeTell(storage.sql, encoded.requestId as string)
+          })
+        )
+      )
+    })
+  }
+
   #run(
     registration: EntityRegistration,
     runtime: EntityRuntime,
@@ -212,31 +304,111 @@ export class ClusterEntity extends DurableObject<unknown> {
   ): Effect.Effect<ReadonlyArray<string>> {
     const rpc = registration.entity.protocol.requests.get(envelope.tag) as Rpc.AnyWithProps
     const storage = this.#state.storage
-    return Effect.gen(function*() {
+    return Effect.gen({ self: this }, function*() {
       let lastSentChunk = Option.none<Reply.Chunk<any>>()
       if (lastSentChunkText !== undefined) {
         const reply = yield* decodeReplyFor(rpc, registration.context, lastSentChunkText)
         if (reply._tag === "Chunk") lastSentChunk = Option.some(reply)
       }
-      const replies: Array<string> = []
-      yield* runtime.run(
+      const requestId = String(envelope.requestId)
+      if (!discard) {
+        const active = this.#sessions.get(requestId)
+        if (active !== undefined) {
+          const nextReply = persisted ? loadNextReply(storage.sql, requestId) : undefined
+          return nextReply === undefined ? [] : [nextReply]
+        }
+      }
+
+      const session = discard ? undefined : this.#makeSession(requestId)
+      const execution = runtime.run(
         envelope,
         lastSentChunk,
         discard,
         (reply) =>
-          Effect.gen(function*() {
+          Effect.gen({ self: this }, function*() {
             const encoded = yield* encodeReplyFor(registration, rpc, reply)
             if (persisted) {
               storage.transactionSync(() => saveReply(storage.sql, encoded))
             }
-            replies.push(encoded)
+            if (session !== undefined) {
+              yield* Effect.promise(() => this.#offerReply(session, encoded))
+            }
           })
       )
-      if (discard && persisted) completeTell(storage.sql, String(envelope.requestId))
-      if (discard || !persisted) return replies
-      const nextReply = loadNextReply(storage.sql, String(envelope.requestId))
-      return nextReply === undefined ? [] : [nextReply]
+      if (discard) {
+        yield* execution
+        if (persisted) completeTell(storage.sql, requestId)
+        return []
+      }
+
+      const fiber = Effect.runFork(execution)
+      session!.interrupt = () => Effect.runPromise(Fiber.interrupt(fiber))
+      const completion = Effect.runPromise(Fiber.await(fiber)).then((exit) => {
+        this.#finishSession(requestId, session!, exit)
+      })
+      this.#state.waitUntil(completion)
+      return yield* Effect.promise(() => this.#takeReply(requestId, session!))
     })
+  }
+
+  #makeSession(requestId: string): ReplySession {
+    const session: ReplySession = {
+      replies: [],
+      takers: [],
+      done: false,
+      failed: false,
+      failure: undefined,
+      ack: undefined,
+      interrupt: undefined
+    }
+    this.#sessions.set(requestId, session)
+    return session
+  }
+
+  #offerReply(session: ReplySession, reply: string): Promise<void> {
+    const encoded = JSON.parse(reply) as { readonly _tag?: unknown; readonly id?: unknown }
+    let acknowledged = Promise.resolve()
+    if (encoded._tag === "Chunk" && typeof encoded.id === "string") {
+      let resolve!: () => void
+      acknowledged = new Promise<void>((resume) => {
+        resolve = resume
+      })
+      session.ack = { replyId: encoded.id, resolve }
+    }
+    const take = session.takers.shift()
+    if (take === undefined) session.replies.push(reply)
+    else take.resolve(reply)
+    return acknowledged
+  }
+
+  async #takeReply(requestId: string, session: ReplySession): Promise<ReadonlyArray<string>> {
+    const reply = session.replies.shift() ?? await (session.done
+      ? session.failed ? Promise.reject(session.failure) : Promise.resolve(undefined)
+      : new Promise<string | undefined>((resolve, reject) => session.takers.push({ resolve, reject })))
+    if (reply === undefined) return []
+    this.#releaseTerminalSession(requestId, reply)
+    return [reply]
+  }
+
+  #finishSession(requestId: string, session: ReplySession, exit: Exit.Exit<unknown, unknown>): void {
+    session.done = true
+    if (Exit.isFailure(exit)) {
+      session.failed = true
+      session.failure = Cause.squash(exit.cause)
+    }
+    for (const take of session.takers.splice(0)) {
+      if (session.failed) take.reject(session.failure)
+      else take.resolve(undefined)
+    }
+    if (session.replies.length === 0 && session.ack === undefined) {
+      this.#sessions.delete(requestId)
+    }
+  }
+
+  #releaseTerminalSession(requestId: string, reply: string): void {
+    if ((JSON.parse(reply) as { readonly _tag?: unknown })._tag === "WithExit") {
+      this.#sessions.delete(requestId)
+    }
   }
 
   override fetch: () => never = notExposed("ClusterEntity")
