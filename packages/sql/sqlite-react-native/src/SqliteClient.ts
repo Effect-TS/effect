@@ -29,6 +29,18 @@ import * as Statement from "effect/unstable/sql/Statement"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
 
+// `open` is still exported at runtime in v18, but is missing from the package's
+// root type declarations.
+interface OpenOptions {
+  name: string
+  location?: string
+  encryptionKey?: string
+}
+
+const open = (Sqlite as typeof Sqlite & {
+  readonly open: (options: OpenOptions) => Sqlite.DB
+}).open
+
 const classifyError = (cause: unknown, message: string, operation: string) =>
   classifySqliteError(cause, { message, operation })
 
@@ -122,7 +134,7 @@ export const make = (
   options: SqliteClientConfig
 ): Effect.Effect<SqliteClient, never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
-    const clientOptions: Parameters<typeof Sqlite.open>[0] = {
+    const clientOptions: Parameters<typeof open>[0] = {
       name: options.filename
     }
     if (options.location) {
@@ -138,7 +150,7 @@ export const make = (
       undefined
 
     const makeConnection = Effect.gen(function*() {
-      const db = Sqlite.open(clientOptions) as DB
+      const db = open(clientOptions) as DB
       yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
 
       const run = (

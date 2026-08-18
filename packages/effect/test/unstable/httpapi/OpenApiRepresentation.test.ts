@@ -105,7 +105,7 @@ describe("OpenApi representation v2 consumer", () => {
       OpenApi.fromApi(Api).paths["/create"]?.post?.requestBody?.content["application/json"]?.schema,
       {
         type: "string",
-        allOf: [{ minLength: 2 }]
+        minLength: 2
       }
     )
   })

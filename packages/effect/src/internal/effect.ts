@@ -1257,7 +1257,7 @@ const makeFn = (
 ) => {
   const body = typeof bodyOrOptions === "function"
     ? bodyOrOptions
-    : (pipeables.pop()!).bind(bodyOrOptions.self)
+    : (pipeables.shift()!).bind(bodyOrOptions.self)
 
   return defineFunctionLength(body.length, function(this: any, ...args: Array<any>) {
     let result = suspend(() => {

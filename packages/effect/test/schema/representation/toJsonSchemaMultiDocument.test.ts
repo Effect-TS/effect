@@ -189,7 +189,8 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
       assert.deepStrictEqual(output.definitions, {
         CallbackEncoded: {
           type: "string",
-          allOf: [{ minLength: 1, maxLength: 10 }]
+          minLength: 1,
+          maxLength: 10
         }
       })
     })

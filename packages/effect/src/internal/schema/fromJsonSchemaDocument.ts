@@ -29,34 +29,30 @@ type ImportedJsonSchemaRepresentation = Extract<Representation, {
     | "Union"
 }>
 
+interface ImportedObjectPattern {
+  readonly source: string
+  readonly parameter: SchemaRepresentation.String
+  readonly type: ImportedJsonSchemaRepresentation
+}
+
+interface ImportedObjectProperty {
+  readonly type: ImportedJsonSchemaRepresentation | undefined
+  readonly isOptional: boolean
+}
+
+interface ImportedObjectScope {
+  readonly properties: ReadonlyMap<string, ImportedObjectProperty>
+  readonly hasProperties: boolean
+  readonly patterns: ReadonlyArray<ImportedObjectPattern>
+  readonly additionalProperties: ImportedJsonSchemaRepresentation
+}
+
 const never: ImportedJsonSchemaRepresentation = { _tag: "Never", checks: [] }
 const unknown: ImportedJsonSchemaRepresentation = { _tag: "Unknown", checks: [] }
 const string: ImportedJsonSchemaRepresentation = { _tag: "String", checks: [] }
 
 function makeLiteral(literal: string | number | boolean): SchemaRepresentation.Literal {
   return { _tag: "Literal", literal, checks: [] }
-}
-
-function annotate(
-  representation: ImportedJsonSchemaRepresentation,
-  annotations: Schema.Annotations.Annotations | undefined
-): ImportedJsonSchemaRepresentation {
-  if (annotations === undefined) return representation
-  if (representation._tag === "Reference") {
-    return {
-      _tag: "Suspend",
-      annotations,
-      checks: [],
-      thunk: representation
-    }
-  }
-  return {
-    ...representation,
-    annotations: {
-      ...representation.annotations,
-      ...annotations
-    }
-  }
 }
 
 const jsonSchemaTypes = new Set([
@@ -216,10 +212,36 @@ function translateJsonSchemaMultiDocument(
 ): SchemaRepresentation.MultiDocument {
   const definitionCache = new Map<string, ImportedJsonSchemaRepresentation | null>()
   const reachableDefinitions = new Map<string, Path>()
+  const objectScopesByProperties = new WeakMap<
+    SchemaRepresentation.Objects["propertySignatures"],
+    ReadonlyArray<ImportedObjectScope>
+  >()
   const annotatedReferences: Array<{
     readonly reference: SchemaRepresentation.Reference
     readonly path: Path
   }> = []
+
+  function getObjectScopes(
+    representation: SchemaRepresentation.Objects
+  ): ReadonlyArray<ImportedObjectScope> {
+    const scopes = objectScopesByProperties.get(representation.propertySignatures)
+    if (scopes === undefined) throw new Error("Missing imported object scopes")
+    return scopes
+  }
+
+  function annotate(
+    representation: ImportedJsonSchemaRepresentation,
+    annotations: Schema.Annotations.Annotations | undefined
+  ): ImportedJsonSchemaRepresentation {
+    if (annotations === undefined) return representation
+    if (representation._tag === "Reference") {
+      return { _tag: "Suspend", annotations, checks: [], thunk: representation }
+    }
+    return {
+      ...representation,
+      annotations: { ...representation.annotations, ...annotations }
+    }
+  }
 
   function translateDefinition(
     key: string,
@@ -428,67 +450,104 @@ function translateJsonSchemaMultiDocument(
     return { elements, rest: rest._tag === "Never" ? [] : [rest] }
   }
 
-  function combineProperties(
-    left: ReadonlyArray<SchemaRepresentation.PropertySignature>,
-    right: ReadonlyArray<SchemaRepresentation.PropertySignature>,
+  function combineTypes(
+    types: ReadonlyArray<ImportedJsonSchemaRepresentation>,
     path: Path
-  ): Array<SchemaRepresentation.PropertySignature> {
-    const rightByName = new Map(right.map((property) => [property.name, property]))
-    const names = new Set<PropertyKey>()
-    const properties = left.map((property) => {
-      const name = property.name
-      names.add(name)
-      const other = rightByName.get(name)
-      if (other === undefined) return property
-      return {
-        name: property.name,
-        type: combine(
-          property.type as ImportedJsonSchemaRepresentation,
-          other.type as ImportedJsonSchemaRepresentation,
-          [...path, "properties", globalThis.String(name)]
-        ),
-        isOptional: property.isOptional && other.isOptional,
-        isMutable: false
-      }
-    })
-    for (const property of right) {
-      if (!names.has(property.name)) properties.push(property)
+  ): ImportedJsonSchemaRepresentation {
+    let out = types[0] ?? unknown
+    for (let index = 1; index < types.length; index++) {
+      out = combine(out, types[index], [...path, index])
     }
-    return properties
+    return out
   }
 
-  function isUnconstrainedString(representation: Representation): boolean {
-    return representation._tag === "String" && representation.checks.length === 0 &&
-      representation.annotations === undefined
-  }
-
-  function combineIndexSignatures(
-    left: ReadonlyArray<SchemaRepresentation.IndexSignature>,
-    right: ReadonlyArray<SchemaRepresentation.IndexSignature>,
+  function lowerObject(
+    scopes: ReadonlyArray<ImportedObjectScope>,
+    checks: ReadonlyArray<Check>,
+    annotations: Schema.Annotations.Annotations | undefined,
     path: Path
-  ): Array<SchemaRepresentation.IndexSignature> {
-    if (left.length === 0 || right.length === 0) return []
-    const signatures = [...left]
-    for (const signature of right) {
-      if (isUnconstrainedString(signature.parameter)) {
-        const index = signatures.findIndex((candidate) => isUnconstrainedString(candidate.parameter))
-        if (index !== -1) {
-          signatures[index] = {
-            parameter: signatures[index].parameter,
-            type: combine(
-              signatures[index].type as ImportedJsonSchemaRepresentation,
-              signature.type as ImportedJsonSchemaRepresentation,
-              [...path, "indexSignatures", index, "type"]
-            )
-          }
-        } else {
-          signatures.push(signature)
+  ): ImportedJsonSchemaRepresentation {
+    const names = new Set<string>()
+    let hasFiniteKeyDomain = false
+    let requiresFiniteKeyDomain = false
+    for (const scope of scopes) {
+      for (const name of scope.properties.keys()) names.add(name)
+      hasFiniteKeyDomain ||= scope.additionalProperties._tag === "Never" && scope.patterns.length === 0
+      requiresFiniteKeyDomain ||= scope.additionalProperties._tag === "Never" ||
+        scope.additionalProperties._tag !== "Unknown" && (scope.hasProperties || scope.patterns.length > 0)
+    }
+    if (!hasFiniteKeyDomain && requiresFiniteKeyDomain) {
+      throw errorWithPath("Unsupported object keyword scopes", path)
+    }
+
+    const properties: Array<SchemaRepresentation.PropertySignature> = []
+    for (const name of names) {
+      let isOptional = true
+      const types: Array<ImportedJsonSchemaRepresentation> = []
+      for (const scope of scopes) {
+        const property = scope.properties.get(name)
+        if (property !== undefined) {
+          if (!property.isOptional) isOptional = false
+          if (property.type !== undefined) types.push(property.type)
         }
-      } else {
-        signatures.push(signature)
+        let matches = false
+        for (const pattern of scope.patterns) {
+          if (globalThis.RegExp(pattern.source).test(name)) {
+            types.push(pattern.type)
+            matches = true
+          }
+        }
+        if (property?.type === undefined && !matches) types.push(scope.additionalProperties)
       }
+      const type = combineTypes(types, [...path, "properties", name])
+      if (!isOptional && type._tag === "Never") return never
+      properties.push({ name, type, isOptional, isMutable: false })
     }
-    return signatures
+
+    const indexSignatures: Array<SchemaRepresentation.IndexSignature> = []
+    if (!hasFiniteKeyDomain) {
+      const additionalProperties = combineTypes(
+        scopes.map((scope) => scope.additionalProperties),
+        [...path, "additionalProperties"]
+      )
+      const patterns = new Map<string, ImportedObjectPattern>()
+      for (const scope of scopes) {
+        for (const pattern of scope.patterns) {
+          const previous = patterns.get(pattern.source)
+          patterns.set(
+            pattern.source,
+            previous === undefined
+              ? pattern
+              : {
+                ...pattern,
+                type: combine(
+                  previous.type,
+                  pattern.type,
+                  [...path, "patternProperties", pattern.source]
+                )
+              }
+          )
+        }
+      }
+      for (const { parameter, type } of patterns.values()) {
+        indexSignatures.push({
+          parameter,
+          type: combine(type, additionalProperties, [...path, "indexSignatures"])
+        })
+      }
+      indexSignatures.push({ parameter: string, type: additionalProperties })
+    } else if (properties.length === 0) {
+      indexSignatures.push({ parameter: string, type: never })
+    }
+
+    objectScopesByProperties.set(properties, scopes)
+    return {
+      _tag: "Objects",
+      propertySignatures: properties,
+      indexSignatures,
+      checks,
+      annotations
+    }
   }
 
   function combine(
@@ -614,14 +673,15 @@ function translateJsonSchemaMultiDocument(
       case "Objects": {
         if (right._tag !== "Objects") return never
         const objectChecks = combineChecks(left.checks, right.checks, right.annotations)
-        return annotate(
-          {
-            _tag: "Objects",
-            propertySignatures: combineProperties(left.propertySignatures, right.propertySignatures, path),
-            indexSignatures: combineIndexSignatures(left.indexSignatures, right.indexSignatures, path),
-            checks: objectChecks ?? left.checks
-          },
-          mergeAnnotations(left.annotations, objectChecks === undefined ? right.annotations : undefined)
+        const scopes = [
+          ...getObjectScopes(left),
+          ...getObjectScopes(right)
+        ]
+        return lowerObject(
+          scopes,
+          objectChecks ?? left.checks,
+          mergeAnnotations(left.annotations, objectChecks === undefined ? right.annotations : undefined),
+          path
         )
       }
     }
@@ -779,13 +839,10 @@ function translateJsonSchemaMultiDocument(
           checks: collectArrayChecks(schema, isMaxItemsRedundant)
         }
       }
-      case "object":
-        return {
-          _tag: "Objects",
-          propertySignatures: collectProperties(schema, path),
-          indexSignatures: collectIndexSignatures(schema, path),
-          checks: collectObjectChecks(schema, path)
-        }
+      case "object": {
+        const scope = collectObjectScope(schema, path)
+        return lowerObject([scope], collectObjectChecks(schema, path), undefined, path)
+      }
       default:
         return unknown
     }
@@ -836,31 +893,27 @@ function translateJsonSchemaMultiDocument(
     return checks
   }
 
-  function collectProperties(
+  function collectObjectScope(
     schema: JsonSchema.JsonSchema,
     path: Path
-  ): Array<SchemaRepresentation.PropertySignature> {
-    const properties =
+  ): ImportedObjectScope {
+    const sourceProperties =
       typeof schema.properties === "object" && schema.properties !== null && !Array.isArray(schema.properties)
         ? schema.properties as Record<string, unknown>
         : {}
     const required = Array.isArray(schema.required)
       ? schema.required.filter((key): key is string => typeof key === "string")
       : []
-    const keys = new Set([...Object.keys(properties), ...required])
-    return Array.from(keys, (name) => ({
-      name,
-      type: recur(properties[name], [...path, "properties", name]),
-      isOptional: !required.includes(name),
-      isMutable: false
-    }))
-  }
-
-  function collectIndexSignatures(
-    schema: JsonSchema.JsonSchema,
-    path: Path
-  ): Array<SchemaRepresentation.IndexSignature> {
-    const signatures: Array<SchemaRepresentation.IndexSignature> = []
+    const propertyNames = Object.keys(sourceProperties)
+    const keys = new Set([...propertyNames, ...required])
+    const properties = new Map(Array.from(keys, (name) => [name, {
+      type: Object.hasOwn(sourceProperties, name)
+        ? recur(sourceProperties[name], [...path, "properties", name])
+        : undefined,
+      isOptional: !required.includes(name)
+    }]))
+    const hasProperties = propertyNames.length > 0
+    const patterns: Array<ImportedObjectPattern> = []
     if (
       typeof schema.patternProperties === "object" &&
       schema.patternProperties !== null &&
@@ -868,8 +921,9 @@ function translateJsonSchemaMultiDocument(
     ) {
       for (const [pattern, value] of Object.entries(schema.patternProperties)) {
         const checks = importPatternChecks(pattern, [...path, "patternProperties", pattern])
-        if (checks.length === 0) return [{ parameter: string, type: unknown }]
-        signatures.push({
+        if (checks.length === 0) return { properties, hasProperties, patterns: [], additionalProperties: unknown }
+        patterns.push({
+          source: pattern,
           parameter: {
             _tag: "String",
             checks
@@ -878,18 +932,12 @@ function translateJsonSchemaMultiDocument(
         })
       }
     }
-    if (schema.additionalProperties === undefined || schema.additionalProperties === true) {
-      signatures.push({
-        parameter: string,
-        type: unknown
-      })
-    } else if (typeof schema.additionalProperties === "object" && schema.additionalProperties !== null) {
-      signatures.push({
-        parameter: string,
-        type: recur(schema.additionalProperties, [...path, "additionalProperties"])
-      })
-    }
-    return signatures
+    const additionalProperties = schema.additionalProperties === false
+      ? never
+      : typeof schema.additionalProperties === "object" && schema.additionalProperties !== null
+      ? recur(schema.additionalProperties, [...path, "additionalProperties"])
+      : unknown
+    return { properties, hasProperties, patterns, additionalProperties }
   }
 
   function collectObjectChecks(

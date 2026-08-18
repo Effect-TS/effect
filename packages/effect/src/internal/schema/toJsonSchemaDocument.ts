@@ -111,9 +111,26 @@ function isJsonSchemaNumberEncoding(schema: JsonSchema.JsonSchema): boolean {
     schema.anyOf.slice(1).every((member) => member.type === "string")
 }
 
+// Keep this allowlist closed: applicators and dependent keywords can change meaning when moved across schema objects.
+const inlineableCheckKeywords =
+  "|type|format|pattern|multipleOf|minimum|maximum|exclusiveMinimum|exclusiveMaximum|minLength|maxLength|minItems|maxItems|uniqueItems|minProperties|maxProperties|propertyNames|"
+
+function hasOnlyKeywords(schema: JsonSchema.JsonSchema, allowed: string): boolean {
+  return Object.keys(schema).every((key) => allowed.includes(`|${key}|`))
+}
+
+function hasNoCollisions(left: JsonSchema.JsonSchema, rightKeys: ReadonlyArray<string>): boolean {
+  return typeof left.$ref !== "string" && rightKeys.every((key) => !Object.hasOwn(left, key))
+}
+
+// `format` and `content*` can affect validation, so they are not treated as pure annotations.
+const promotableAnnotationKeywords = "|title|description|default|examples|readOnly|writeOnly|"
+const inlineableAnnotatedCheckKeywords = inlineableCheckKeywords + promotableAnnotationKeywords
+
 function appendJsonSchema(
   left: JsonSchema.JsonSchema,
-  right: JsonSchema.JsonSchema
+  right: JsonSchema.JsonSchema,
+  inlineCheck?: true
 ): JsonSchema.JsonSchema {
   if (Object.keys(left).length === 0) return right
   const rightKeys = Object.keys(right)
@@ -126,8 +143,16 @@ function appendJsonSchema(
       const type = leftType === "integer" || extracted.type === "integer" ? "integer" : "number"
       const base: JsonSchema.JsonSchema = { ...left, type }
       if (isNumberEncoding) delete base.anyOf
-      return Object.keys(extracted.schema).length === 0 ? base : appendJsonSchema(base, extracted.schema)
+      const extractedKeys = Object.keys(extracted.schema)
+      if (extractedKeys.length === 0) return base
+      return hasOnlyKeywords(extracted.schema, promotableAnnotationKeywords) &&
+          hasNoCollisions(base, extractedKeys)
+        ? { ...base, ...extracted.schema }
+        : appendJsonSchema(base, extracted.schema, inlineCheck)
     }
+  }
+  if (inlineCheck && hasNoCollisions(left, rightKeys)) {
+    return { ...left, ...right }
   }
   const members = Array.isArray(right.allOf) && rightKeys.length === 1 ? right.allOf : [right]
   if (Array.isArray(left.allOf)) {
@@ -231,23 +256,30 @@ function compileJsonSchema(
     check: SchemaRepresentation.Check,
     type: JsonSchema.Type | undefined,
     path: Path
-  ): JsonSchema.JsonSchema | undefined {
+  ): readonly [schema: JsonSchema.JsonSchema, inline?: true] | undefined {
     const annotations = check.annotations
     const callback = annotations?.toJsonSchema
     if (callback !== undefined) {
       const schemas = annotationSchemas(check.representation, [...path, "representation"])
       const fragment = (callback as SchemaRepresentation.ToJsonSchema.Check)({ type, schemas })
       const ordinary = collectJsonSchemaAnnotations(annotations, options)
-      return ordinary === undefined ? fragment : { ...fragment, ...ordinary }
+      const schema = ordinary === undefined ? fragment : { ...fragment, ...ordinary }
+      const allowed = ordinary === undefined ? inlineableCheckKeywords : inlineableAnnotatedCheckKeywords
+      return check._tag === "Filter" &&
+          hasOnlyKeywords(schema, allowed) &&
+          (ordinary === undefined || hasOnlyKeywords(ordinary, promotableAnnotationKeywords))
+        ? [schema, true]
+        : [schema]
     }
     if (check._tag === "Filter") return undefined
 
     const children = check.checks
       .map((child, index) => compileCheck(child, type, [...path, "checks", index]))
-      .filter((child): child is JsonSchema.JsonSchema => child !== undefined)
+      .filter((child): child is NonNullable<typeof child> => child !== undefined)
     if (children.length === 0) return undefined
     const ordinary = collectJsonSchemaAnnotations(annotations, options)
-    return ordinary === undefined ? { allOf: children } : { allOf: children, ...ordinary }
+    const allOf = children.map(([schema]) => schema)
+    return [ordinary === undefined ? { allOf } : { allOf, ...ordinary }]
   }
 
   function recur(
@@ -270,7 +302,7 @@ function compileJsonSchema(
       const type = typeof output.type === "string" && isJsonSchemaType(output.type) ? output.type : undefined
       const check = compileCheck(representation.checks[index], type, [...path, "checks", index])
       if (check !== undefined) {
-        output = appendJsonSchema(output, check)
+        output = appendJsonSchema(output, ...check)
       }
     }
     compiledRepresentations.set(representation, output)
@@ -388,8 +420,8 @@ function compileJsonSchema(
         }
         if (representation.propertySignatures.length > 0) out.properties = properties
         if (required.length > 0) out.required = required
-        out.additionalProperties = options?.additionalProperties ?? false
         const patternProperties: Record<string, JsonSchema.JsonSchema | false> = {}
+        const additionalProperties: Array<JsonSchema.JsonSchema | false> = []
         for (let index = 0; index < representation.indexSignatures.length; index++) {
           const signature = representation.indexSignatures[index]
           let type: JsonSchema.JsonSchema | false = recur(
@@ -403,14 +435,36 @@ function compileJsonSchema(
             new Set()
           )
           if (patterns.length === 0) {
-            out.additionalProperties = type
+            additionalProperties.push(type)
           } else {
-            for (const pattern of patterns) InternalRecord.assignProperty(patternProperties, pattern, type)
+            for (const pattern of patterns) {
+              const previous = patternProperties[pattern]
+              InternalRecord.assignProperty(
+                patternProperties,
+                pattern,
+                previous === undefined
+                  ? type
+                  : previous === false || type === false
+                  ? false
+                  : appendJsonSchema(previous, type)
+              )
+            }
           }
         }
-        if (Object.keys(patternProperties).length > 0) {
+        const hasPatternProperties = Object.keys(patternProperties).length > 0
+        if (hasPatternProperties) {
           out.patternProperties = patternProperties
-          delete out.additionalProperties
+        }
+        if (representation.indexSignatures.length === 0) {
+          out.additionalProperties = options?.additionalProperties ?? false
+        } else if (
+          additionalProperties.length === 1 &&
+          representation.propertySignatures.length === 0 &&
+          !hasPatternProperties
+        ) {
+          out.additionalProperties = additionalProperties[0]
+        } else if (additionalProperties.length > 0) {
+          out.allOf = additionalProperties.map((type) => ({ type: "object", additionalProperties: type }))
         }
         if (
           typeof out.additionalProperties === "object" &&

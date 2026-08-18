@@ -21,7 +21,7 @@ describe("AnthropicStructuredOutput representation v2", () => {
     assert.deepStrictEqual(toCodecAnthropic(schema).jsonSchema, {
       type: "string",
       description: "starts with a",
-      allOf: [{ pattern: "^a" }]
+      pattern: "^a"
     })
   })
 
@@ -57,7 +57,7 @@ describe("AnthropicStructuredOutput representation v2", () => {
 
     assert.deepStrictEqual(toCodecAnthropic(schema).jsonSchema, {
       type: "string",
-      allOf: [{ pattern: "^a" }]
+      pattern: "^a"
     })
   })
 
@@ -94,7 +94,7 @@ describe("AnthropicStructuredOutput representation v2", () => {
 
     assert.deepStrictEqual(toCodecAnthropic(schema).jsonSchema, {
       type: "string",
-      allOf: [{ pattern: "^a" }]
+      pattern: "^a"
     })
     assert.strictEqual(invocations, 1)
   })
