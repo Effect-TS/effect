@@ -25,6 +25,7 @@ import * as Reply from "effect/unstable/cluster/Reply"
 import * as ShardId from "effect/unstable/cluster/ShardId"
 import type * as Rpc from "effect/unstable/rpc/Rpc"
 import { decodeName } from "./internal/clusterName.ts"
+import { makeEntityKeepAlive } from "./internal/entityKeepAlive.ts"
 import {
   ackChunk,
   clearReplies,
@@ -121,6 +122,7 @@ export class ClusterEntity extends DurableObject<unknown> {
   #serial: Promise<void> = Promise.resolve()
   readonly #sessions = new Map<string, ReplySession>()
   readonly #workerWaiters = new Map<string, Array<WorkerWaiter>>()
+  readonly #keepAlive
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
@@ -132,6 +134,17 @@ export class ClusterEntity extends DurableObject<unknown> {
       shardId: ShardId.make("default", 1),
       entityType: EntityType.make(name.type),
       entityId: EntityId.make(name.id)
+    })
+    this.#keepAlive = makeEntityKeepAlive(() => {
+      const namespace = (this.#state.exports as Record<string, unknown>).ClusterEntity as
+        | { readonly getByName: (name: string) => { readonly hold: () => Promise<void> } }
+        | undefined
+      if (namespace === undefined) {
+        return Promise.reject(
+          new Error("CloudflareCluster: ClusterEntity export is unavailable for keep-alive")
+        )
+      }
+      return namespace.getByName(this.#name).hold()
     })
     const sql = ctx.storage.sql
     ensureEntityStorage(sql)
@@ -145,6 +158,11 @@ export class ClusterEntity extends DurableObject<unknown> {
     const operation = this.#serial.then(() => Effect.runPromise(this.#runAlarm()))
     this.#serial = operation.then(() => void 0, () => void 0)
     return operation
+  }
+
+  /** @internal Keeps this object non-hibernateable while entity resources have holders. */
+  hold(): Promise<void> {
+    return Effect.runPromise(this.#keepAlive.await)
   }
 
   /** @internal Same-Worker RPC transport used by `CloudflareCluster.layer`. */
@@ -338,7 +356,13 @@ export class ClusterEntity extends DurableObject<unknown> {
   #getRuntime(registration: EntityRegistration) {
     if (this.#runtime !== undefined) return Effect.succeed(this.#runtime)
     return Effect.map(
-      makeEntityRuntime(registration, this.#address, () => crypto.randomUUID(), this.#name),
+      makeEntityRuntime(
+        registration,
+        this.#address,
+        () => crypto.randomUUID(),
+        this.#name,
+        this.#keepAlive.update
+      ),
       (runtime) => {
         this.#runtime = runtime
         return runtime
