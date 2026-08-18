@@ -15,6 +15,7 @@ import * as RunnerAddress from "effect/unstable/cluster/RunnerAddress"
 import * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcSchema from "effect/unstable/rpc/RpcSchema"
 import type { EntityRegistration } from "./entityRegistry.ts"
+import { CurrentEntityName } from "./entityReply.ts"
 
 interface CachedHandlers {
   readonly handlers: Record<string, (request: any) => any>
@@ -26,7 +27,8 @@ interface CachedHandlers {
 export const makeEntityRuntime = Effect.fnUntraced(function*(
   registration: EntityRegistration,
   address: EntityAddress.EntityAddress,
-  nextId: () => string
+  nextId: () => string,
+  entityName = `${String(address.entityType).length}:${address.entityType}${address.entityId}`
 ) {
   let cached: CachedHandlers | undefined
 
@@ -43,6 +45,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     const context = registration.context.pipe(
       Context.add(CurrentAddress, address),
       Context.add(CurrentRunnerAddress, RunnerAddress.make(`${address.entityType}/${address.entityId}`, 0)),
+      Context.add(CurrentEntityName, entityName),
       Context.add(Scope.Scope, scope)
     )
     const handlers = yield* Effect.provideContext(registration.build, context)
