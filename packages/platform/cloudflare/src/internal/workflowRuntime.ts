@@ -84,6 +84,10 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
   let inflight: Inflight | undefined
   let resumeRequested = false
 
+  const detach = (promise: Promise<unknown>): void => {
+    options.waitUntil(promise.then(() => undefined, () => undefined))
+  }
+
   const isComplete = (result: string | undefined): boolean =>
     result !== undefined && (JSON.parse(result) as { readonly _tag?: unknown })._tag === "Complete"
 
@@ -139,7 +143,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
         if (parent !== undefined) options.waitUntil(resumeParent(parent))
       } else if (resumeRequested) {
         resumeRequested = false
-        options.waitUntil(startAttempt(row).then(() => undefined, () => undefined))
+        detach(startAttempt(row))
       } else {
         // This attempt observed every persisted deferred and still suspended,
         // so the pending resume (if any) has been serviced.
@@ -178,23 +182,20 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     let row = WorkflowStorage.loadExecution(sql)
     if (row === undefined) {
       WorkflowStorage.createExecution(sql, workflowName, executionId, payload, opts.parent)
-      row = { workflowName, payload, parent: opts.parent, result: undefined, resumePending: false }
+      row = { workflowName, executionId, payload, parent: opts.parent, result: undefined, resumePending: false }
     } else if (opts.parent !== undefined && row.parent === undefined) {
       // An execution started standalone can gain a parent later; keep the
       // first parent so its completion still wakes that parent.
       WorkflowStorage.setParent(sql, opts.parent)
       row = { ...row, parent: opts.parent }
     }
-    if (inflight !== undefined) {
-      if (!opts.discard) return inflight.promise
-    } else if (row.result === undefined) {
-      const attempt = startAttempt(row)
-      if (!opts.discard) return attempt
-      options.waitUntil(attempt.then(() => undefined, () => undefined))
-    } else if (!opts.discard) {
-      return Promise.resolve(row.result)
+    if (opts.discard) {
+      if (inflight === undefined && row.result === undefined) detach(startAttempt(row))
+      return Promise.resolve("")
     }
-    return Promise.resolve("")
+    if (inflight !== undefined) return inflight.promise
+    if (row.result !== undefined) return Promise.resolve(row.result)
+    return startAttempt(row)
   }
 
   const resume = (): Promise<void> => {
@@ -204,7 +205,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       resumeRequested = true
       return Promise.resolve()
     }
-    options.waitUntil(startAttempt(row).then(() => undefined, () => undefined))
+    detach(startAttempt(row))
     return Promise.resolve()
   }
 
@@ -266,14 +267,12 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
         return (pending ? resume() : Promise.resolve()).then(() => {
           // While a resume is pending a guard alarm stays armed, so a replay
           // lost with this isolate is retried instead of sleeping forever.
-          const earliest = WorkflowStorage.earliestClockWakeUp(sql)
-          const guard = pending ? options.now() + resumeGuardMillis : undefined
-          const target = earliest === undefined
-            ? guard
-            : guard === undefined
-            ? earliest
-            : Math.min(earliest, guard)
-          return target === undefined ? undefined : Effect.runPromise(armAlarm(options.alarm, target))
+          const targets = [
+            WorkflowStorage.earliestClockWakeUp(sql),
+            pending ? options.now() + resumeGuardMillis : undefined
+          ].filter((target) => target !== undefined)
+          if (targets.length === 0) return undefined
+          return Effect.runPromise(armAlarm(options.alarm, Math.min(...targets)))
         })
       })
     }).then(() => undefined)
@@ -295,9 +294,8 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
 
   // Self-heal on wake: a resume recorded by deferredDone but lost with the
   // previous isolate replays now instead of waiting for external contact.
-  const stored = WorkflowStorage.loadExecution(sql)
-  if (stored !== undefined && stored.resumePending && !isComplete(stored.result)) {
-    options.waitUntil(startAttempt(stored).then(() => undefined, () => undefined))
+  if (WorkflowStorage.loadExecution(sql)?.resumePending === true) {
+    void resume()
   }
 
   return runtime
