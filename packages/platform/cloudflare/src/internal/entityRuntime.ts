@@ -67,17 +67,19 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     return cached = { handlers, context, scope }
   })
 
-  const runWithDefectRetry = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-    Effect.flatMap(Effect.exit(effect), (first) => {
-      if (
-        Exit.isSuccess(first) || !Cause.hasDies(first.cause) || registration.options?.defectRetryPolicy === undefined
-      ) {
-        return Effect.succeed(first)
-      }
-      return Effect.exit(
-        Effect.retry(effect, registration.options.defectRetryPolicy as Schedule.Schedule<unknown, E>)
-      )
-    })
+  const runWithDefectRetry = <A, E, R>(effect: Effect.Effect<A, E, R>) => {
+    const policy = registration.options?.defectRetryPolicy
+    if (policy === undefined) return Effect.exit(effect)
+    const retryable = Effect.flatMap(Effect.exit(effect), (exit) =>
+      Exit.isFailure(exit) && Cause.hasDies(exit.cause)
+        ? Effect.fail(exit.cause)
+        : Effect.succeed(exit))
+    return Effect.retryOrElse(
+      retryable,
+      policy as Schedule.Schedule<unknown, Cause.Cause<E>>,
+      (cause) => Effect.succeed(Exit.failCause(cause))
+    )
+  }
 
   const rebuildAfterDefect = invalidate().pipe(
     Effect.andThen(Effect.catchCause(getHandlers(), () => Effect.void))
