@@ -3,7 +3,7 @@ import * as CloudflareWorkflowEngine from "@effect/platform-cloudflare/Cloudflar
 import { encodeName } from "@effect/platform-cloudflare/internal/clusterName"
 import type { EntityAlarm } from "@effect/platform-cloudflare/internal/entityStorage"
 import { makeWorkflowRuntime, type WorkflowRuntime } from "@effect/platform-cloudflare/internal/workflowRuntime"
-import { loadExecutionName } from "@effect/platform-cloudflare/internal/workflowStorage"
+import { loadExecution } from "@effect/platform-cloudflare/internal/workflowStorage"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Layer, Option, Schema } from "effect"
 import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "effect/unstable/workflow"
@@ -61,7 +61,7 @@ class FakeSql {
       const exit = this.activities.get(String(bindings[0]))
       return exit === undefined ? [] : [{ exit }]
     }
-    if (query.includes("INSERT OR IGNORE INTO workflow_deferreds")) {
+    if (query.includes("INSERT INTO workflow_deferreds")) {
       if (!this.deferreds.has(String(bindings[0]))) {
         this.deferreds.set(String(bindings[0]), String(bindings[1]))
       }
@@ -297,7 +297,9 @@ describe("CloudflareWorkflowEngine", () => {
       ])
       assert.strictEqual(store.alarm.current, 30_000)
       // An alarm wake has no `id.name`; the stored execution recovers it.
-      assert.deepStrictEqual(loadExecutionName(store.sql.sql), { workflowName: "Sleeper", executionId })
+      const stored = loadExecution(store.sql.sql)
+      assert.strictEqual(stored?.workflowName, "Sleeper")
+      assert.strictEqual(stored?.executionId, executionId)
 
       namespace.now = 30_000
       yield* Effect.promise(() => namespace.fireDueAlarms())
