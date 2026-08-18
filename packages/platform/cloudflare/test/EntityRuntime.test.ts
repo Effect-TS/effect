@@ -254,7 +254,7 @@ describe("EntityRuntime", () => {
                 : Effect.succeed("recovered")
           })
         }),
-        options: { defectRetryPolicy: Schedule.recurs(1) },
+        options: { defectRetryPolicy: Schedule.recurs(2) },
         context: Context.empty()
       }
       const runtime = yield* makeEntityRuntime(registration, address, () => `reply-${builds}-${attempts}`)
@@ -265,7 +265,7 @@ describe("EntityRuntime", () => {
           replies.push(reply)
         }))
 
-      assert.strictEqual(attempts, 2)
+      assert.strictEqual(attempts, 3)
       assert.strictEqual(builds, 2)
       assert.strictEqual(replies.length, 1)
       assert.isTrue(Exit.isFailure(replies[0].exit))
