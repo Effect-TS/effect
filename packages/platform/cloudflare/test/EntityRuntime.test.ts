@@ -25,8 +25,11 @@ const request = {
 }
 
 describe("EntityRuntime", () => {
-  it.effect("records a handler span and tracks the active entity metric", () => {
-    const Telemetry = Entity.make("Telemetry", [Rpc.make("Ping", { success: Schema.String })])
+  it.effect("records handler exits and tracks the cached entity metric", () => {
+    const Telemetry = Entity.make("Telemetry", [
+      Rpc.make("Ping", { success: Schema.String }),
+      Rpc.make("Fail", { success: Schema.String })
+    ])
     const telemetryAddress = new EntityAddress.EntityAddress({
       shardId: ShardId.make("default", 1),
       entityType: EntityType.make("Telemetry"),
@@ -45,15 +48,16 @@ describe("EntityRuntime", () => {
       context,
       Metric.CurrentMetricAttributes.context({ type: Telemetry.type })
     )
-    let active = BigInt(0)
+    let activeDuringHandler = BigInt(0)
     const registration: EntityRegistration = {
       entity: Telemetry,
       build: Effect.succeed(Telemetry.of({
         Ping: () =>
           Effect.sync(() => {
-            active = ClusterMetrics.entities.valueUnsafe(metricContext).value
+            activeDuringHandler = ClusterMetrics.entities.valueUnsafe(metricContext).value
             return "pong"
-          })
+          }),
+        Fail: () => Effect.die("boom")
       })),
       options: undefined,
       context
@@ -63,12 +67,31 @@ describe("EntityRuntime", () => {
       const runtime = yield* makeEntityRuntime(registration, telemetryAddress, () => "reply")
       yield* runtime.run({ ...request, address: telemetryAddress } as any, Option.none(), false, () => Effect.void)
 
-      assert.strictEqual(active, BigInt(1))
-      assert.strictEqual(ClusterMetrics.entities.valueUnsafe(metricContext).value, BigInt(0))
-      assert.deepStrictEqual(spans.map((span) => span.name), ["CloudflareCluster.handler"])
+      assert.strictEqual(activeDuringHandler, BigInt(1))
+      assert.strictEqual(ClusterMetrics.entities.valueUnsafe(metricContext).value, BigInt(1))
       assert.strictEqual(spans[0].attributes.get("entityType"), "Telemetry")
       assert.strictEqual(spans[0].attributes.get("entityId"), "observed")
       assert.strictEqual(spans[0].attributes.get("rpc"), "Ping")
+      assert(spans[0].status._tag === "Ended")
+      assert.isTrue(Exit.isSuccess(spans[0].status.exit))
+
+      yield* runtime.run(
+        { ...request, address: telemetryAddress, tag: "Fail" } as any,
+        Option.none(),
+        false,
+        () => Effect.void
+      )
+
+      assert.deepStrictEqual(spans.map((span) => span.name), [
+        "CloudflareCluster.handler",
+        "CloudflareCluster.handler"
+      ])
+      assert(spans[1].status._tag === "Ended")
+      assert.isTrue(Exit.isFailure(spans[1].status.exit))
+      assert.strictEqual(ClusterMetrics.entities.valueUnsafe(metricContext).value, BigInt(1))
+
+      yield* runtime.invalidate()
+      assert.strictEqual(ClusterMetrics.entities.valueUnsafe(metricContext).value, BigInt(0))
     })
   })
 
