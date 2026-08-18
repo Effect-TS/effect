@@ -67,6 +67,13 @@ describe("Graph", () => {
       assert.strictEqual(Graph.edgeCount(undirectedGraph), 0)
     })
 
+    it("rejects invalid runtime graph kinds", () => {
+      assertGraphError(
+        () => Graph.make("invalid" as Graph.Kind)<never, never>(),
+        "Graph type must be directed or undirected"
+      )
+    })
+
     it("recognizes immutable and mutable graphs only", () => {
       assert.strictEqual(Graph.isGraph(Graph.directed()), true)
       assert.strictEqual(Graph.isGraph(Graph.beginMutation(Graph.undirected())), true)
@@ -717,6 +724,39 @@ describe("Graph", () => {
       const nodes = Graph.beginMutation(directed<string, never>(["A", "B"], []))
       Graph.removeNodes(nodes, Graph.indices(Graph.nodes(nodes)))
       assert.strictEqual(Graph.nodeCount(nodes), 0)
+    })
+
+    it("keeps caches fresh when bulk-removal iterables query the graph", () => {
+      const edges = Graph.beginMutation(directed(["A", "B"], [[0, 1, 1]]))
+      Graph.removeEdges(edges, {
+        *[Symbol.iterator]() {
+          assert.strictEqual(Graph.hasPath(edges, 0, 1), true)
+          yield 0
+        }
+      })
+      assert.strictEqual(Graph.hasPath(edges, 0, 1), false)
+
+      const nodes = Graph.beginMutation(directed(["A", "B"], [[0, 1, 1], [1, 0, 2]]))
+      Graph.removeNodes(nodes, {
+        *[Symbol.iterator]() {
+          assert.strictEqual(Graph.isAcyclic(nodes), false)
+          yield 1
+        }
+      })
+      assert.strictEqual(Graph.isAcyclic(nodes), true)
+    })
+
+    it("rejects finalization from bulk-removal iterables", () => {
+      const mutable = Graph.beginMutation(directed(["A", "B"], [[0, 1, 1]]))
+      assertGraphError(() =>
+        Graph.removeEdges(mutable, {
+          *[Symbol.iterator]() {
+            Graph.endMutation(mutable)
+            yield 0
+          }
+        }), "Cannot mutate graph during a transformation")
+      assert.strictEqual(mutable.mutable, true)
+      assert.strictEqual(Graph.edgeCount(mutable), 1)
     })
   })
 
@@ -1490,6 +1530,10 @@ describe("Graph", () => {
     })
 
     it("rejects directed and non-bipartite graphs", () => {
+      assertGraphError(
+        () => Graph.isBipartite(Graph.directed() as unknown as Graph.UndirectedGraph<never, never>),
+        "Cannot determine bipartite status of directed graph"
+      )
       assertGraphError(
         () => Graph.maximumBipartiteMatching(Graph.directed() as unknown as Graph.UndirectedGraph<never, never>),
         "Cannot find bipartite matching of directed graph"
