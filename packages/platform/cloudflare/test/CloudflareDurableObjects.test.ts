@@ -70,4 +70,42 @@ describe("CloudflareDurableObjects", () => {
       assert.strictEqual(terminal._tag, "WithExit")
       assert.deepStrictEqual(terminal.exit, { _tag: "Success", value: 3 })
     }), 60_000)
+
+  it.effect(
+    "returns the first persisted stream chunk without waiting for the stream to end",
+    () =>
+      Effect.gen(function*() {
+        const miniflare = yield* makeMiniflare
+        const result = yield* Effect.promise(() =>
+          Promise.race([
+            miniflare.dispatchFetch("http://placeholder/mailbox?tag=Watch").then(async (response) =>
+              await response.json() as { readonly replies: ReadonlyArray<string> }
+            ),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("stream did not yield")), 2_000))
+          ])
+        )
+        const first = JSON.parse(result.replies[0])
+
+        assert.strictEqual(first._tag, "Chunk")
+        assert.deepStrictEqual(first.values, [1])
+      }),
+    60_000
+  )
+
+  it.effect("isolates an undecodable replay row from later mailbox requests", () =>
+    Effect.gen(function*() {
+      const miniflare = yield* makeMiniflare
+      yield* Effect.promise(() => miniflare.dispatchFetch("http://placeholder/seed-poison"))
+      const response = yield* Effect.promise(() =>
+        miniflare.dispatchFetch("http://placeholder/mailbox?tag=Get").then(async (response) => ({
+          status: response.status,
+          body: await response.text()
+        }))
+      )
+
+      assert.strictEqual(response.status, 200, response.body)
+      const result = JSON.parse(response.body)
+      const terminal = JSON.parse(result.replies[0])
+      assert.deepStrictEqual(terminal.exit, { _tag: "Success", value: 0 })
+    }), 60_000)
 })

@@ -1,13 +1,13 @@
 export {
   ClusterDurableQueue,
-  ClusterEntity,
   ClusterSingleton,
   ClusterWorkflow
 } from "@effect/platform-cloudflare/CloudflareDurableObjects"
+import { ClusterEntity as BaseClusterEntity } from "@effect/platform-cloudflare/CloudflareDurableObjects"
 import { registerEntity } from "@effect/platform-cloudflare/internal/entityRegistry"
-import { Context, Effect, Schema } from "effect"
+import { Context, Effect, Schema, Stream } from "effect"
 import { ClusterSchema, Entity } from "effect/unstable/cluster"
-import { Rpc } from "effect/unstable/rpc"
+import { Rpc, RpcSchema } from "effect/unstable/rpc"
 
 const Add = Rpc.make("Add", {
   payload: { operationId: Schema.String },
@@ -17,8 +17,31 @@ const AddVolatile = Rpc.make("AddVolatile", {
   payload: { operationId: Schema.String }
 })
 const Get = Rpc.make("Get", { success: Schema.Number })
-const Mailbox = Entity.make("Mailbox", [Add, AddVolatile, Get])
+const Watch = Rpc.make("Watch", {
+  success: RpcSchema.Stream(Schema.Number, Schema.Never)
+}).annotate(ClusterSchema.Persisted, true)
+const Mailbox = Entity.make("Mailbox", [Add, AddVolatile, Get, Watch])
 const values = new Map<string, number>()
+type TestDurableObjectState = ConstructorParameters<typeof BaseClusterEntity>[0]
+
+export class ClusterEntity extends BaseClusterEntity {
+  readonly #testState: TestDurableObjectState
+
+  constructor(ctx: TestDurableObjectState, env: unknown) {
+    super(ctx, env)
+    this.#testState = ctx
+  }
+
+  seedPoison(envelope: string): void {
+    const requestId = JSON.parse(envelope).requestId
+    this.#testState.storage.sql.exec(
+      `INSERT INTO cluster_messages (request_id, message_id, envelope, discard, processed, last_reply_id)
+       VALUES (?, NULL, ?, 0, 0, NULL)`,
+      requestId,
+      envelope
+    )
+  }
+}
 
 registerEntity("Mailbox", {
   entity: Mailbox,
@@ -31,7 +54,8 @@ registerEntity("Mailbox", {
       Effect.sync(() => {
         values.set(request.address.entityId, (values.get(request.address.entityId) ?? 0) + 1)
       }),
-    Get: (request) => Effect.sync(() => values.get(request.address.entityId) ?? 0)
+    Get: (request) => Effect.sync(() => values.get(request.address.entityId) ?? 0),
+    Watch: () => Stream.concat(Stream.make(1), Stream.never)
   })),
   options: undefined,
   context: Context.empty()
@@ -40,6 +64,22 @@ registerEntity("Mailbox", {
 export default {
   async fetch(request: Request, env: Record<string, any>): Promise<Response> {
     const url = new URL(request.url)
+    if (url.pathname === "/seed-poison") {
+      const stub = env.CLUSTER_ENTITY.getByName("7:Mailboxcounter")
+      await stub.seedPoison(JSON.stringify({
+        _tag: "Request",
+        requestId: crypto.randomUUID(),
+        address: {
+          shardId: { group: "default", id: 1 },
+          entityType: "Mailbox",
+          entityId: "counter"
+        },
+        tag: "Add",
+        payload: { operationId: 123 },
+        headers: {}
+      }))
+      return new Response("seeded")
+    }
     if (url.pathname === "/mailbox") {
       const stub = env.CLUSTER_ENTITY.getByName("7:Mailboxcounter")
       const tag = url.searchParams.get("tag") ?? "Get"
@@ -56,10 +96,10 @@ export default {
               entityId: "counter"
             },
             tag,
-            payload: tag === "Get" ? null : { operationId },
+            payload: tag === "Get" || tag === "Watch" ? null : { operationId },
             headers: {}
           }),
-          tag !== "Get"
+          tag === "Add" || tag === "AddVolatile"
         )
         return Response.json(result)
       } catch (error) {
