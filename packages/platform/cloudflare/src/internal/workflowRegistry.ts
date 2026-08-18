@@ -1,12 +1,13 @@
 /**
  * Module-level workflow state shared between the Worker layer and the workflow
  * Durable Object instances of the same isolate. Registrations are recorded at
- * Worker init; execution handles are recorded per workflow Durable Object so
- * engine operations run against local SQLite instead of a self-RPC.
+ * Worker init; a running execution provides its own handle through
+ * `CurrentExecutionHandle` so engine operations inside the run hit local
+ * SQLite instead of a self-RPC.
  *
  * @internal
  */
-import type * as Context from "effect/Context"
+import * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Workflow from "effect/unstable/workflow/Workflow"
 import * as WorkflowEngine from "effect/unstable/workflow/WorkflowEngine"
@@ -62,23 +63,21 @@ export interface WorkflowStub {
 
 /** @internal */
 export interface WorkflowExecutionHandle extends WorkflowStub {
+  readonly executionId: string
   readonly loadActivity: (key: string) => string | undefined
   readonly saveActivity: (key: string, exit: string) => void
   readonly loadDeferred: (name: string) => string | undefined
 }
 
-const executions = new Map<string, WorkflowExecutionHandle>()
-
-/** @internal */
-export const getExecution = (executionId: string): WorkflowExecutionHandle | undefined => executions.get(executionId)
-
-/** @internal */
-export const registerExecution = (executionId: string, handle: WorkflowExecutionHandle): () => void => {
-  executions.set(executionId, handle)
-  return () => {
-    if (executions.get(executionId) === handle) executions.delete(executionId)
-  }
-}
+/**
+ * The handle of the workflow execution currently running in this fiber,
+ * provided by the workflow Durable Object runtime around each run attempt.
+ *
+ * @internal
+ */
+export class CurrentExecutionHandle extends Context.Service<CurrentExecutionHandle, WorkflowExecutionHandle>()(
+  "@effect/platform-cloudflare/CloudflareWorkflowEngine/CurrentExecutionHandle"
+) {}
 
 /** @internal */
 export const deferredState = WorkflowEngine.makeDeferredState()
