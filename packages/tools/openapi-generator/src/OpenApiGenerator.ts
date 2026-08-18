@@ -265,6 +265,7 @@ const parseOpenApi = (
         pathIds,
         pathTemplate
       })
+      const httpClientResponses = op.httpClientResponses
       op.path = path
       op.operationId = Utils.nonEmptyString(operation.operationId)
       op.tags = [...(operation.tags ?? [])]
@@ -613,23 +614,24 @@ const parseOpenApi = (
             continue
           }
           if (statusMajorNumber < 4) {
-            op.successSchemas.set(statusLower, schemaName)
+            httpClientResponses.successSchemas.set(statusLower, schemaName)
           } else {
-            op.errorSchemas.set(statusLower, schemaName)
+            httpClientResponses.errorSchemas.set(statusLower, schemaName)
           }
         }
 
         const sseMediaType = content?.["text/event-stream"]
         const sseResponseSchema = sseMediaType?.schema
         if (
-          !isHttpApi && Predicate.isUndefined(op.sseSchema) && Predicate.isNotUndefined(sseResponseSchema) &&
+          !isHttpApi && Predicate.isUndefined(httpClientResponses.sseSchema) &&
+          Predicate.isNotUndefined(sseResponseSchema) &&
           isSuccessStatus(parsedStatus)
         ) {
           const effectStream = sseMediaType["x-effect-stream"]
-          op.sseSchemaMode = getEffectStreamEncoding(sseMediaType) === "sse" ? "event" : "data"
-          op.sseSchema = addSchema(
+          httpClientResponses.sseSchemaMode = getEffectStreamEncoding(sseMediaType) === "sse" ? "event" : "data"
+          httpClientResponses.sseSchema = addSchema(
             `${schemaId}${status}Sse`,
-            op.sseSchemaMode === "event"
+            httpClientResponses.sseSchemaMode === "event"
               ? makeSseEventSchema(
                 resolveReference(sseResponseSchema, resolveRef),
                 effectStream?.encoding === "sse" ? effectStream.failureEvent : undefined
@@ -644,22 +646,23 @@ const parseOpenApi = (
           (isBinaryMediaType(contentType.toLowerCase()) || isBinarySchema(mediaType.schema))
         )
         if (hasBinaryResponse && isSuccessStatus(parsedStatus)) {
-          op.binaryResponse = true
-          op.binarySuccessStatuses.add(parsedStatus.toLowerCase())
+          httpClientResponses.binarySuccessStatuses.add(parsedStatus.toLowerCase())
         }
 
         if (isEmptyResponse && parsedStatus !== "default") {
           const normalizedStatus = parsedStatus.toLowerCase()
           if (isErrorStatus(normalizedStatus)) {
-            op.voidErrorStatuses.add(normalizedStatus)
+            httpClientResponses.voidErrorStatuses.add(normalizedStatus)
           } else {
-            op.voidSchemas.add(normalizedStatus)
+            httpClientResponses.voidSuccessStatuses.add(normalizedStatus)
           }
         }
       }
 
-      if (!isHttpApi && op.successSchemas.size === 0 && Predicate.isNotUndefined(defaultSchema)) {
-        op.successSchemas.set("2xx", defaultSchema)
+      if (
+        !isHttpApi && httpClientResponses.successSchemas.size === 0 && Predicate.isNotUndefined(defaultSchema)
+      ) {
+        httpClientResponses.successSchemas.set("2xx", defaultSchema)
         warnForOperation(emitWarning, op, {
           code: "default-response-remapped",
           message: "Default response was remapped to 2xx for the current HttpClient outputs."

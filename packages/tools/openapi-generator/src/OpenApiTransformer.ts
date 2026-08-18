@@ -51,15 +51,16 @@ const computeImportRequirements = (operations: ReadonlyArray<ParsedOperation>): 
   let eventStreamSchema = false
   let octetStream = false
   for (const op of operations) {
-    if (op.sseSchema) {
+    const responses = op.httpClientResponses
+    if (responses.sseSchema) {
       eventStream = true
-      if (op.sseSchemaMode === "event") {
+      if (responses.sseSchemaMode === "event") {
         eventStreamSchema = true
       } else {
         eventStreamData = true
       }
     }
-    if (op.binaryResponse) {
+    if (responses.binarySuccessStatuses.size > 0) {
       octetStream = true
     }
   }
@@ -90,10 +91,10 @@ export const makeTransformerSchema = () => {
     const methods: Array<string> = []
     for (const op of operations) {
       methods.push(operationToMethod(name, op))
-      if (op.sseSchema) {
+      if (op.httpClientResponses.sseSchema) {
         methods.push(operationToSseMethod(name, op))
       }
-      if (op.binaryResponse) {
+      if (op.httpClientResponses.binarySuccessStatuses.size > 0) {
         methods.push(operationToBinaryMethod(name, op))
       }
     }
@@ -106,6 +107,7 @@ ${clientErrorSource(name)}`
   }
 
   const operationToMethod = (name: string, operation: ParsedOperation) => {
+    const responses = operation.httpClientResponses
     const args: Array<string> = []
     if (operation.pathIds.length > 0) {
       Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
@@ -132,22 +134,24 @@ ${clientErrorSource(name)}`
       args.push(`options: { ${options.join("; ")} } | undefined`)
     }
 
-    const successTypes = Array.from(operation.successSchemas.values())
-      .map((schema) => `typeof ${schema}.Type`)
-    if (operation.binarySuccessStatuses.size > 0) {
-      successTypes.push("Uint8Array")
+    const successTypes = new Set(Array.from(responses.successSchemas.values(), (schema) => `typeof ${schema}.Type`))
+    if (responses.binarySuccessStatuses.size > 0) {
+      successTypes.add("Uint8Array")
     }
-    const success = successTypes.length > 0 ? successTypes.join(" | ") : "void"
+    if (responses.voidSuccessStatuses.size > 0) {
+      successTypes.add("void")
+    }
+    const success = successTypes.size > 0 ? Array.from(successTypes).join(" | ") : "void"
     const errors = ["HttpClientError.HttpClientError", "SchemaError"]
-    if (operation.errorSchemas.size > 0) {
+    if (responses.errorSchemas.size > 0) {
       Utils.spreadElementsInto(
-        Array.from(operation.errorSchemas.values()).map(
+        Array.from(responses.errorSchemas.values()).map(
           (schema) => `${name}Error<"${schema}", typeof ${schema}.Type>`
         ),
         errors
       )
     }
-    for (const status of operation.voidErrorStatuses) {
+    for (const status of responses.voidErrorStatuses) {
       errors.push(`${name}Error<"${status}", undefined>`)
     }
 
@@ -160,6 +164,7 @@ ${clientErrorSource(name)}`
   }
 
   const operationToSseMethod = (_name: string, operation: ParsedOperation) => {
+    const responses = operation.httpClientResponses
     const args: Array<string> = []
     if (operation.pathIds.length > 0) {
       Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
@@ -185,11 +190,11 @@ ${clientErrorSource(name)}`
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}Sse"`
     const parameters = args.join(", ")
-    const value = operation.sseSchemaMode === "event"
-      ? `typeof ${operation.sseSchema}.Type`
-      : `{ readonly event: string; readonly id: string | undefined; readonly data: typeof ${operation.sseSchema}.Type }`
+    const value = responses.sseSchemaMode === "event"
+      ? `typeof ${responses.sseSchema}.Type`
+      : `{ readonly event: string; readonly id: string | undefined; readonly data: typeof ${responses.sseSchema}.Type }`
     const returnType =
-      `Stream.Stream<${value}, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof ${operation.sseSchema}.DecodingServices>`
+      `Stream.Stream<${value}, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof ${responses.sseSchema}.DecodingServices>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
   }
 
@@ -232,10 +237,10 @@ ${clientErrorSource(name)}`
     const implMethods: Array<string> = []
     for (const op of operations) {
       implMethods.push(operationToImpl(op))
-      if (op.sseSchema) {
+      if (op.httpClientResponses.sseSchema) {
         implMethods.push(operationToSseImpl(importName, op))
       }
-      if (op.binaryResponse) {
+      if (op.httpClientResponses.binarySuccessStatuses.size > 0) {
         implMethods.push(operationToBinaryImpl(op))
       }
     }
@@ -251,7 +256,7 @@ ${clientErrorSource(name)}`
       helpers.push(decodeBinarySource)
       helpers.push(binaryRequestSource)
     }
-    if (operations.some((operation) => operation.voidErrorStatuses.size > 0)) {
+    if (operations.some((operation) => operation.httpClientResponses.voidErrorStatuses.size > 0)) {
       helpers.push(decodeVoidErrorSource(name))
     }
     return `export interface OperationConfig {
@@ -302,6 +307,7 @@ export const make = (
   }
 
   const operationToImpl = (operation: ParsedOperation) => {
+    const responses = operation.httpClientResponses
     const args: Array<string> = [...operation.pathIds, "options"]
     const params = `${args.join(", ")}`
 
@@ -334,27 +340,27 @@ export const make = (
     }
 
     const decodes: Array<string> = []
-    const singleSuccessCode = operation.successSchemas.size === 1 &&
-      operation.binarySuccessStatuses.size === 0 &&
-      operation.voidSchemas.size === 0
-    operation.successSchemas.forEach((schema, status) => {
+    const singleSuccessCode = responses.successSchemas.size === 1 &&
+      responses.binarySuccessStatuses.size === 0 &&
+      responses.voidSuccessStatuses.size === 0
+    responses.successSchemas.forEach((schema, status) => {
       const statusCode = singleSuccessCode && status.startsWith("2") ? "2xx" : status
       decodes.push(`"${statusCode}": decodeSuccess(${schema})`)
     })
-    const singleBinarySuccessCode = operation.binarySuccessStatuses.size === 1 &&
-      operation.successSchemas.size === 0 &&
-      operation.voidSchemas.size === 0
-    operation.binarySuccessStatuses.forEach((status) => {
+    const singleBinarySuccessCode = responses.binarySuccessStatuses.size === 1 &&
+      responses.successSchemas.size === 0 &&
+      responses.voidSuccessStatuses.size === 0
+    responses.binarySuccessStatuses.forEach((status) => {
       const statusCode = singleBinarySuccessCode && status.startsWith("2") ? "2xx" : status
       decodes.push(`"${statusCode}": decodeBinary`)
     })
-    operation.errorSchemas.forEach((schema, status) => {
+    responses.errorSchemas.forEach((schema, status) => {
       decodes.push(`"${status}": decodeError("${schema}", ${schema})`)
     })
-    operation.voidSchemas.forEach((status) => {
+    responses.voidSuccessStatuses.forEach((status) => {
       decodes.push(`"${status}": () => Effect.void`)
     })
-    operation.voidErrorStatuses.forEach((status) => {
+    responses.voidErrorStatuses.forEach((status) => {
       decodes.push(`"${status}": decodeVoidError("${status}")`)
     })
     decodes.push(`orElse: unexpectedStatus`)
@@ -372,6 +378,7 @@ export const make = (
   }
 
   const operationToSseImpl = (_importName: string, operation: ParsedOperation) => {
+    const responses = operation.httpClientResponses
     const args: Array<string> = [...operation.pathIds]
     const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
     if (hasOptions || operation.params || operation.payload) {
@@ -403,7 +410,7 @@ export const make = (
       pipeline.push(`HttpClientRequest.bodyJsonUnsafe(options.payload)`)
     }
 
-    pipeline.push(`${operation.sseSchemaMode === "event" ? "sseEventRequest" : "sseRequest"}(${operation.sseSchema})`)
+    pipeline.push(`${responses.sseSchemaMode === "event" ? "sseEventRequest" : "sseRequest"}(${responses.sseSchema})`)
 
     return (
       `"${operation.id}Sse": (${params}) => ` +
@@ -525,10 +532,10 @@ export const makeTransformerTs = () => {
     const methods: Array<string> = []
     for (const op of operations) {
       methods.push(operationToMethod(name, op))
-      if (op.sseSchema) {
+      if (op.httpClientResponses.sseSchema) {
         methods.push(operationToSseMethod(op))
       }
-      if (op.binaryResponse) {
+      if (op.httpClientResponses.binarySuccessStatuses.size > 0) {
         methods.push(operationToBinaryMethod(op))
       }
     }
@@ -541,6 +548,7 @@ ${clientErrorSource(name)}`
   }
 
   const operationToMethod = (name: string, operation: ParsedOperation) => {
+    const responses = operation.httpClientResponses
     const args: Array<string> = []
     if (operation.pathIds.length > 0) {
       Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
@@ -565,19 +573,22 @@ ${clientErrorSource(name)}`
       args.push(`options: { ${options.join("; ")} } | undefined`)
     }
 
-    const successTypes = Array.from(operation.successSchemas.values())
-    if (operation.binarySuccessStatuses.size > 0) {
-      successTypes.push("Uint8Array")
+    const successTypes = new Set(responses.successSchemas.values())
+    if (responses.binarySuccessStatuses.size > 0) {
+      successTypes.add("Uint8Array")
     }
-    const success = successTypes.length > 0 ? successTypes.join(" | ") : "void"
+    if (responses.voidSuccessStatuses.size > 0) {
+      successTypes.add("void")
+    }
+    const success = successTypes.size > 0 ? Array.from(successTypes).join(" | ") : "void"
 
     const errors = ["HttpClientError.HttpClientError"]
-    if (operation.errorSchemas.size > 0) {
-      for (const schema of operation.errorSchemas.values()) {
+    if (responses.errorSchemas.size > 0) {
+      for (const schema of responses.errorSchemas.values()) {
         errors.push(`${name}Error<"${schema}", ${schema}>`)
       }
     }
-    for (const status of operation.voidErrorStatuses) {
+    for (const status of responses.voidErrorStatuses) {
       errors.push(`${name}Error<"${status}", undefined>`)
     }
 
@@ -590,6 +601,7 @@ ${clientErrorSource(name)}`
   }
 
   const operationToSseMethod = (operation: ParsedOperation) => {
+    const responses = operation.httpClientResponses
     const args: Array<string> = []
     if (operation.pathIds.length > 0) {
       Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
@@ -615,7 +627,7 @@ ${clientErrorSource(name)}`
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}Sse"`
     const parameters = args.join(", ")
-    const returnType = `Stream.Stream<${operation.sseSchema}, HttpClientError.HttpClientError>`
+    const returnType = `Stream.Stream<${responses.sseSchema}, HttpClientError.HttpClientError>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
   }
 
@@ -658,10 +670,10 @@ ${clientErrorSource(name)}`
     const implMethods: Array<string> = []
     for (const op of operations) {
       implMethods.push(operationToImpl(op))
-      if (op.sseSchema) {
+      if (op.httpClientResponses.sseSchema) {
         implMethods.push(operationToSseImpl(op))
       }
-      if (op.binaryResponse) {
+      if (op.httpClientResponses.binarySuccessStatuses.size > 0) {
         implMethods.push(operationToBinaryImpl(op))
       }
     }
@@ -671,7 +683,9 @@ ${clientErrorSource(name)}`
       helpers.push(sseRequestSourceTs)
     }
     const hasResponseVariants = operations.some((operation) =>
-      operation.binarySuccessStatuses.size > 0 || operation.voidErrorStatuses.size > 0
+      operation.httpClientResponses.binarySuccessStatuses.size > 0 ||
+      operation.httpClientResponses.voidSuccessStatuses.size > 0 ||
+      operation.httpClientResponses.voidErrorStatuses.size > 0
     )
     if (requirements.octetStream || hasResponseVariants) {
       helpers.push(decodeBinarySource)
@@ -737,6 +751,7 @@ export const make = (
   }
 
   const operationToImpl = (operation: ParsedOperation) => {
+    const responses = operation.httpClientResponses
     const args: Array<string> = [...operation.pathIds, "options"]
     const params = `${args.join(", ")}`
 
@@ -766,28 +781,32 @@ export const make = (
       pipeline.push(`HttpClientRequest.bodyJsonUnsafe(${payloadAccessor})`)
     }
 
-    const successCodesRaw = Array.from(operation.successSchemas.keys())
+    const successCodesRaw = Array.from(responses.successSchemas.keys())
     const successCodes = successCodesRaw
       .map((_) => JSON.stringify(_))
       .join(", ")
     const singleSuccessCode = successCodesRaw.length === 1 &&
       successCodesRaw[0].startsWith("2") &&
-      operation.binarySuccessStatuses.size === 0 &&
-      operation.voidSchemas.size === 0
-    const errorCodes = operation.errorSchemas.size > 0 &&
-      Object.fromEntries(operation.errorSchemas.entries())
+      responses.binarySuccessStatuses.size === 0 &&
+      responses.voidSuccessStatuses.size === 0
+    const errorCodes = responses.errorSchemas.size > 0 &&
+      Object.fromEntries(responses.errorSchemas.entries())
     const configAccessor = resolveConfigAccessor(operation, "options", "config")
     const requestArgs = [`[${singleSuccessCode ? `"2xx"` : successCodes}]`]
-    if (operation.binarySuccessStatuses.size > 0 || operation.voidErrorStatuses.size > 0) {
-      const binaryCodesRaw = Array.from(operation.binarySuccessStatuses)
+    if (
+      responses.binarySuccessStatuses.size > 0 ||
+      responses.voidSuccessStatuses.size > 0 ||
+      responses.voidErrorStatuses.size > 0
+    ) {
+      const binaryCodesRaw = Array.from(responses.binarySuccessStatuses)
       const singleBinarySuccessCode = binaryCodesRaw.length === 1 &&
         binaryCodesRaw[0].startsWith("2") &&
-        operation.successSchemas.size === 0 &&
-        operation.voidSchemas.size === 0
+        responses.successSchemas.size === 0 &&
+        responses.voidSuccessStatuses.size === 0
       const responseCodes = {
         binary: binaryCodesRaw.map((status) => singleBinarySuccessCode ? "2xx" : status),
-        void: Array.from(operation.voidSchemas),
-        voidError: Array.from(operation.voidErrorStatuses)
+        voidSuccess: Array.from(responses.voidSuccessStatuses),
+        voidError: Array.from(responses.voidErrorStatuses)
       }
       requestArgs.push(errorCodes ? JSON.stringify(errorCodes) : "undefined", JSON.stringify(responseCodes))
     } else if (errorCodes) {
@@ -969,16 +988,16 @@ const onRequestSource = (withResponseVariants: boolean) => {
     ? `
     responseCodes: {
       readonly binary: ReadonlyArray<string>
-      readonly void: ReadonlyArray<string>
+      readonly voidSuccess: ReadonlyArray<string>
       readonly voidError: ReadonlyArray<string>
-    } = { binary: [], void: [], voidError: [] },`
+    } = { binary: [], voidSuccess: [], voidError: [] },`
     : ""
   const responseCodesCases = withResponseVariants
     ? `
     for (const code of responseCodes.binary) {
       cases[code] = decodeBinary
     }
-    for (const code of responseCodes.void) {
+    for (const code of responseCodes.voidSuccess) {
       cases[code] = decodeVoid
     }
     for (const code of responseCodes.voidError) {
@@ -986,7 +1005,7 @@ const onRequestSource = (withResponseVariants: boolean) => {
     }`
     : ""
   const voidFallbackCondition = withResponseVariants
-    ? "successCodes.length === 0 && responseCodes.binary.length === 0 && responseCodes.void.length === 0"
+    ? "successCodes.length === 0 && responseCodes.binary.length === 0 && responseCodes.voidSuccess.length === 0"
     : "successCodes.length === 0"
   return `const onRequest = <Config extends OperationConfig>(config: Config | undefined) => (
     successCodes: ReadonlyArray<string>,

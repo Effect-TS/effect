@@ -443,6 +443,52 @@ const responseMatchingSpec: OpenAPISpec = {
   tags: [{ name: "ResponseMatching" }]
 }
 
+const voidSuccessSpec: OpenAPISpec = {
+  openapi: "3.1.0",
+  info: {
+    title: "Void success API",
+    version: "1.0.0"
+  },
+  paths: {
+    "/mixed": {
+      get: {
+        operationId: "mixedSuccess",
+        parameters: [],
+        tags: ["VoidSuccess"],
+        security: [],
+        responses: {
+          200: {
+            description: "JSON value",
+            content: {
+              "application/json": {
+                schema: { type: "string" }
+              }
+            }
+          },
+          204: { description: "No content" }
+        }
+      }
+    },
+    "/cached": {
+      get: {
+        operationId: "cached",
+        parameters: [],
+        tags: ["VoidSuccess"],
+        security: [],
+        responses: {
+          304: { description: "Not modified" }
+        }
+      }
+    }
+  },
+  components: {
+    schemas: {},
+    securitySchemes: {}
+  },
+  security: [],
+  tags: [{ name: "VoidSuccess" }]
+}
+
 describe("OpenApiGenerator", () => {
   describe("schema", () => {
     it.effect("get operation", () =>
@@ -830,6 +876,14 @@ export const TestClientError = <Tag extends string, E>(
         `TestClientError<"404", undefined>`,
         `TestClientError<"500", undefined>`
       ]))
+
+    it.effect("routes mixed and non-2xx bodiless success responses", () =>
+      assertRuntimeIncludes(voidSuccessSpec, [
+        `"200": decodeSuccess(MixedSuccess200)`,
+        `"204": () => Effect.void`,
+        `"304": () => Effect.void`,
+        `WithOptionalResponse<typeof MixedSuccess200.Type | void, Config>`
+      ]))
   })
 
   describe("type-only", () => {
@@ -1037,16 +1091,23 @@ export const TestClientError = <Tag extends string, E>(
         `readonly "kind": "DeviceTokenOAuthError"`,
         `onRequest(options?.config)([], {"400":"PollDeviceToken400"})`,
         `const decodeBinary = (response: HttpClientResponse.HttpClientResponse) =>`,
-        `onRequest(options?.config)([], {"404":"DownloadArchive404"}, {"binary":["2xx"],"void":[],"voidError":[]})`,
+        `onRequest(options?.config)([], {"404":"DownloadArchive404"}, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
         `readonly "downloadArchive": <Config extends OperationConfig>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
         `"downloadAvatar": (options) => HttpClientRequest.get(\`/avatar\`).pipe(
-    onRequest(options?.config)([], undefined, {"binary":["2xx"],"void":[],"voidError":[]})`,
+    onRequest(options?.config)([], undefined, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
         `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
-        `onRequest(options?.config)([], undefined, {"binary":[],"void":["200"],"voidError":["404","500"]})`,
+        `onRequest(options?.config)([], undefined, {"binary":[],"voidSuccess":["200"],"voidError":["404","500"]})`,
         `cases[code] = decodeVoidError(code)`,
         `TestClientError<"404", undefined>`,
         `TestClientError<"500", undefined>`
+      ]))
+
+    it.effect("routes mixed and non-2xx bodiless success responses", () =>
+      assertTypeOnlyIncludes(voidSuccessSpec, [
+        `onRequest(options?.config)(["200"], undefined, {"binary":[],"voidSuccess":["204"],"voidError":[]})`,
+        `onRequest(options?.config)([], undefined, {"binary":[],"voidSuccess":["304"],"voidError":[]})`,
+        `WithOptionalResponse<MixedSuccess200 | void, Config>`
       ]))
   })
 
