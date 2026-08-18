@@ -15,7 +15,8 @@ import type { EntityRegistration } from "./entityRegistry.ts"
 
 type EncodedRequest = Extract<Envelope.Encoded, { readonly _tag: "Request" }>
 
-const runWith = <A>(
+/** @internal */
+export const runWith = <A>(
   effect: Effect.Effect<A, any, any>,
   context: Context.Context<never>
 ): Effect.Effect<A> => effect.pipe(Effect.provideContext(context as any), Effect.orDie) as Effect.Effect<A>

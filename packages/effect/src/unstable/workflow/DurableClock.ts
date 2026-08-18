@@ -111,7 +111,7 @@ export const sleep: (
     return
   }
 
-  const inMemoryThreshold = options.inMemoryThreshold
+  const inMemoryThreshold = options.inMemoryThreshold !== undefined
     ? Duration.fromInputUnsafe(options.inMemoryThreshold)
     : yield* InMemoryThreshold
 
