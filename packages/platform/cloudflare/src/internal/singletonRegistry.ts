@@ -1,6 +1,7 @@
 /** @internal */
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import { makeRegistry } from "./registry.ts"
 
 /** @internal */
 export interface SingletonRegistration {
@@ -8,19 +9,13 @@ export interface SingletonRegistration {
   readonly context: Context.Context<never>
 }
 
-const registrations = new Map<string, SingletonRegistration>()
+const registry = makeRegistry<SingletonRegistration>()
 
 /** @internal */
-export const getSingletonRegistration = (name: string): SingletonRegistration | undefined => registrations.get(name)
+export const getSingletonRegistration: (name: string) => SingletonRegistration | undefined = registry.get
 
 /** @internal */
-export const registerSingleton = (name: string, registration: SingletonRegistration): boolean => {
-  if (registrations.has(name)) return false
-  registrations.set(name, registration)
-  return true
-}
+export const registerSingleton: (name: string, registration: SingletonRegistration) => boolean = registry.register
 
 /** @internal */
-export const unregisterSingleton = (name: string, registration: SingletonRegistration): void => {
-  if (registrations.get(name) === registration) registrations.delete(name)
-}
+export const unregisterSingleton: (name: string, registration: SingletonRegistration) => void = registry.unregister

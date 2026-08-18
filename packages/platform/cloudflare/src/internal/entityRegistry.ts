@@ -2,6 +2,7 @@
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Entity from "effect/unstable/cluster/Entity"
+import { makeRegistry } from "./registry.ts"
 
 export interface EntityRegistration {
   readonly entity: Entity.Entity<any, any>
@@ -15,19 +16,13 @@ export interface EntityRegistration {
   readonly context: Context.Context<never>
 }
 
-const registrations = new Map<string, EntityRegistration>()
+const registry = makeRegistry<EntityRegistration>()
 
 /** @internal */
-export const getEntityRegistration = (type: string): EntityRegistration | undefined => registrations.get(type)
+export const getEntityRegistration: (type: string) => EntityRegistration | undefined = registry.get
 
 /** @internal */
-export const registerEntity = (type: string, registration: EntityRegistration): boolean => {
-  if (registrations.has(type)) return false
-  registrations.set(type, registration)
-  return true
-}
+export const registerEntity: (type: string, registration: EntityRegistration) => boolean = registry.register
 
 /** @internal */
-export const unregisterEntity = (type: string, registration: EntityRegistration): void => {
-  if (registrations.get(type) === registration) registrations.delete(type)
-}
+export const unregisterEntity: (type: string, registration: EntityRegistration) => void = registry.unregister

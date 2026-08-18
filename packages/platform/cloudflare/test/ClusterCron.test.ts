@@ -45,6 +45,9 @@ class FakeSql {
         count: Array.from(this.messages.values()).filter((row) => !row.processed).length
       }])
     }
+    if (query.includes("COUNT(DISTINCT")) {
+      return this.rows([{ count: 0 }])
+    }
     if (query.includes("INSERT INTO cluster_messages")) {
       const [requestId, primaryKey, envelope, discard, deliverAt] = bindings
       this.messages.set(String(requestId), {
