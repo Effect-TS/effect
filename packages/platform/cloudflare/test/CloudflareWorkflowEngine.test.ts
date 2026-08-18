@@ -3,6 +3,7 @@ import * as CloudflareWorkflowEngine from "@effect/platform-cloudflare/Cloudflar
 import { encodeName } from "@effect/platform-cloudflare/internal/clusterName"
 import type { EntityAlarm } from "@effect/platform-cloudflare/internal/entityStorage"
 import { makeWorkflowRuntime, type WorkflowRuntime } from "@effect/platform-cloudflare/internal/workflowRuntime"
+import { loadExecutionName } from "@effect/platform-cloudflare/internal/workflowStorage"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Layer, Option, Schema } from "effect"
 import { Activity, DurableClock, DurableDeferred, Workflow } from "effect/unstable/workflow"
@@ -23,11 +24,24 @@ class FakeSql {
     if (query.includes("INSERT OR IGNORE INTO workflow_execution")) {
       this.execution ??= {
         workflow_name: bindings[0],
-        payload: bindings[1],
-        parent_name: bindings[2],
-        parent_execution_id: bindings[3],
-        result: null
+        execution_id: bindings[1],
+        payload: bindings[2],
+        parent_name: bindings[3],
+        parent_execution_id: bindings[4],
+        result: null,
+        resume_pending: 0
       }
+      return []
+    }
+    if (query.includes("SET parent_name")) {
+      if (this.execution !== undefined && this.execution.parent_name === null) {
+        this.execution.parent_name = bindings[0]
+        this.execution.parent_execution_id = bindings[1]
+      }
+      return []
+    }
+    if (query.includes("SET resume_pending")) {
+      if (this.execution !== undefined) this.execution.resume_pending = bindings[0]
       return []
     }
     if (query.includes("UPDATE workflow_execution")) {
@@ -140,9 +154,6 @@ class FakeWorkflowNamespace {
 
   /** Drops every in-memory runtime, as a crashed or hibernated isolate would. */
   crash() {
-    for (const runtime of this.runtimes.values()) {
-      runtime.dispose()
-    }
     this.runtimes.clear()
   }
 
@@ -285,6 +296,8 @@ describe("CloudflareWorkflowEngine", () => {
         ["short", { deferredName: "DurableClock/short", wakeUp: 30_000, fired: false }]
       ])
       assert.strictEqual(store.alarm.current, 30_000)
+      // An alarm wake has no `id.name`; the stored execution recovers it.
+      assert.deepStrictEqual(loadExecutionName(store.sql.sql), { workflowName: "Sleeper", executionId })
 
       namespace.now = 30_000
       yield* Effect.promise(() => namespace.fireDueAlarms())

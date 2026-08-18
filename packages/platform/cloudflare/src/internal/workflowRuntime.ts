@@ -21,10 +21,9 @@ import * as WorkflowEngine from "effect/unstable/workflow/WorkflowEngine"
 import { decodeName, encodeName } from "./clusterName.ts"
 import { armAlarm, type EntityAlarm } from "./entityStorage.ts"
 import {
+  CurrentExecutionHandle,
   deferredState,
-  getExecution,
   getWorkflowRegistration,
-  registerExecution,
   type WorkflowRunOptions,
   type WorkflowStub
 } from "./workflowRegistry.ts"
@@ -33,6 +32,11 @@ import { decodeExit, decodePayload, encodeExit, encodeResult } from "./workflowW
 
 /** @internal */
 export const InterruptSignalName = "Workflow/InterruptSignal"
+
+let voidExitCache: Promise<string> | undefined
+const voidExitText = (): Promise<
+  string
+> => (voidExitCache ??= Effect.runPromise(encodeExit(Exit.void, Context.empty())))
 
 /** @internal */
 export interface WorkflowRuntimeOptions {
@@ -46,12 +50,11 @@ export interface WorkflowRuntimeOptions {
 
 /** @internal */
 export interface WorkflowRuntime extends WorkflowStub {
+  readonly executionId: string
   readonly loadActivity: (key: string) => string | undefined
   readonly saveActivity: (key: string, exit: string) => void
   readonly loadDeferred: (name: string) => string | undefined
   readonly runAlarm: () => Promise<void>
-  /** Drops the module-level execution handle, as isolate loss would. */
-  readonly dispose: () => void
 }
 
 interface Inflight {
@@ -74,10 +77,6 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
   const sql = options.sql
 
   WorkflowStorage.ensureWorkflowStorage(sql)
-  const initialWakeUp = WorkflowStorage.earliestClockWakeUp(sql)
-  if (initialWakeUp !== undefined) {
-    options.waitUntil(Effect.runPromise(armAlarm(options.alarm, initialWakeUp)))
-  }
 
   let inflight: Inflight | undefined
   let resumeRequested = false
@@ -86,7 +85,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     result !== undefined && (JSON.parse(result) as { readonly _tag?: unknown })._tag === "Complete"
 
   const parentStub = (parent: { readonly workflowName: string; readonly executionId: string }): WorkflowStub =>
-    getExecution(parent.executionId) ?? options.getStub(encodeName(parent.workflowName, parent.executionId))
+    options.getStub(encodeName(parent.workflowName, parent.executionId))
 
   const startAttempt = (row: WorkflowStorage.ExecutionRow): Promise<string> => {
     const registration = getWorkflowRegistration(workflowName)
@@ -114,12 +113,15 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       Effect.flatMap((result) =>
         Effect.map(encodeResult(workflow, result, registration.context), (text) => ({ result, text }))
       ),
-      Effect.provideService(DurableClock.InMemoryThreshold, Duration.zero)
+      Effect.provideService(DurableClock.InMemoryThreshold, Duration.zero),
+      Effect.provideService(CurrentExecutionHandle, runtime)
     )
     const fiber = Effect.runFork(execute)
     const promise = Effect.runPromise(Fiber.await(fiber)).then((exit) => {
       inflight = undefined
       if (Exit.isFailure(exit)) {
+        // No auto-replay after a defect: it would hot-loop a defecting
+        // workflow. The next external contact replays from storage.
         resumeRequested = false
         return Effect.runPromise(Effect.logError("Workflow execution failed", exit.cause)).then(() =>
           Promise.reject(Cause.squash(exit.cause))
@@ -128,13 +130,19 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       const { result, text } = exit.value
       WorkflowStorage.saveResult(sql, text)
       if (result._tag === "Complete") {
+        WorkflowStorage.setResumePending(sql, false)
         resumeRequested = false
-        if (row.parent !== undefined) {
-          options.waitUntil(parentStub(row.parent).resume().then(() => undefined, () => undefined))
+        const parent = WorkflowStorage.loadExecution(sql)?.parent
+        if (parent !== undefined) {
+          options.waitUntil(parentStub(parent).resume().then(() => undefined, () => undefined))
         }
       } else if (resumeRequested) {
         resumeRequested = false
         options.waitUntil(startAttempt(row).then(() => undefined, () => undefined))
+      } else {
+        // This attempt observed every persisted deferred and still suspended,
+        // so the pending resume (if any) has been serviced.
+        WorkflowStorage.setResumePending(sql, false)
       }
       return text
     })
@@ -145,8 +153,13 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
   const run = (payload: string, opts: WorkflowRunOptions): Promise<string> => {
     let row = WorkflowStorage.loadExecution(sql)
     if (row === undefined) {
-      WorkflowStorage.createExecution(sql, workflowName, payload, opts.parent)
-      row = WorkflowStorage.loadExecution(sql)!
+      WorkflowStorage.createExecution(sql, workflowName, executionId, payload, opts.parent)
+      row = { workflowName, payload, parent: opts.parent, result: undefined, resumePending: false }
+    } else if (opts.parent !== undefined && row.parent === undefined) {
+      // An execution started standalone can gain a parent later; keep the
+      // first parent so its completion still wakes that parent.
+      WorkflowStorage.setParent(sql, opts.parent)
+      row = { ...row, parent: opts.parent }
     }
     if (inflight !== undefined) {
       if (!opts.discard) return inflight.promise
@@ -173,6 +186,9 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
 
   const deferredDone = (deferredName: string, exitText: string): Promise<void> => {
     if (!WorkflowStorage.saveDeferred(sql, deferredName, exitText)) return Promise.resolve()
+    // Persisted with the exit in the same write batch: if this wake is lost
+    // before the replay finishes, the next wake replays the execution.
+    WorkflowStorage.setResumePending(sql, true)
     return Effect.runPromise(
       Effect.flatMap(
         decodeExit(exitText, Context.empty()),
@@ -184,9 +200,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
   const interrupt = (): Promise<void> => {
     const row = WorkflowStorage.loadExecution(sql)
     if (row === undefined || isComplete(row.result)) return Promise.resolve()
-    return Effect.runPromise(encodeExit(Exit.void, Context.empty())).then((exitText) =>
-      deferredDone(InterruptSignalName, exitText)
-    )
+    return voidExitText().then((exitText) => deferredDone(InterruptSignalName, exitText))
   }
 
   const interruptUnsafe = (): Promise<void> => {
@@ -206,20 +220,23 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
   }
 
   const runAlarm = (): Promise<void> =>
-    Effect.runPromise(encodeExit(Exit.void, Context.empty())).then((voidExit) => {
-      let chain: Promise<unknown> = Promise.resolve()
-      for (const clock of WorkflowStorage.dueClocks(sql, options.now())) {
+    voidExitText().then((voidExit) => {
+      const completed = WorkflowStorage.dueClocks(sql, options.now()).filter((clock) => {
         WorkflowStorage.markClockFired(sql, clock.name)
-        chain = chain.then(() => deferredDone(clock.deferredName, voidExit))
-      }
-      return chain.then(() => {
+        return WorkflowStorage.saveDeferred(sql, clock.deferredName, voidExit)
+      })
+      return Effect.runPromise(Effect.forEach(
+        completed,
+        (clock) => deferredState.deferredDone(executionId, clock.deferredName, Exit.void),
+        { discard: true }
+      )).then(() => completed.length === 0 ? undefined : resume()).then(() => {
         const earliest = WorkflowStorage.earliestClockWakeUp(sql)
         return earliest === undefined ? undefined : Effect.runPromise(armAlarm(options.alarm, earliest))
       })
     }).then(() => undefined)
 
-  let dispose!: () => void
   const runtime: WorkflowRuntime = {
+    executionId,
     run,
     poll: () => Promise.resolve(WorkflowStorage.loadExecution(sql)?.result),
     resume,
@@ -230,9 +247,15 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     runAlarm,
     loadActivity: (key) => WorkflowStorage.loadActivity(sql, key),
     saveActivity: (key, exit) => WorkflowStorage.saveActivity(sql, key, exit),
-    loadDeferred: (deferredName) => WorkflowStorage.loadDeferred(sql, deferredName),
-    dispose: () => dispose()
+    loadDeferred: (deferredName) => WorkflowStorage.loadDeferred(sql, deferredName)
   }
-  dispose = registerExecution(executionId, runtime)
+
+  // Self-heal on wake: a resume recorded by deferredDone but lost with the
+  // previous isolate replays now instead of waiting for external contact.
+  const stored = WorkflowStorage.loadExecution(sql)
+  if (stored !== undefined && stored.resumePending && !isComplete(stored.result)) {
+    options.waitUntil(startAttempt(stored).then(() => undefined, () => undefined))
+  }
+
   return runtime
 }
