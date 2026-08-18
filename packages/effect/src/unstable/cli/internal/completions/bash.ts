@@ -83,83 +83,73 @@ const buildFlagGroupDeclarations = (
  *
  * `compgen -W` re-expands every word of its list, which mangles values holding
  * quotes, spaces or glob characters, so matches are filtered from an explicitly
- * quoted list instead. The rest of the helper deals with how readline inserts
- * the match:
+ * quoted list instead.
  *
- * - An unquoted word is replaced verbatim, so the match is escaped with
- *   `printf %q`. Inside a quote the user opened, bash closes the quote for us
- *   but escapes nothing, so the match is escaped for that quote context —
- *   including the `\'` splice, since a single quote cannot be escaped within
- *   single quotes.
- * - Readline replaces only the text after the last COMP_WORDBREAKS character,
- *   so that head is trimmed from every match; otherwise a value like `node:20`
- *   is appended to what was typed rather than replacing it. Wordbreaks that are
- *   backslash-escaped or inside quotes do not split the word, so they must not
- *   be treated as the boundary.
+ * The rest of the helper is about what readline will actually replace. Bash
+ * passes that text as `$2`, which is not always the whole word: it stops at the
+ * last COMP_WORDBREAKS character (`deploy --mode node:` -> `20` completes only
+ * the part after the colon) and at an opening quote (`--mode it'` -> the empty
+ * word inside the quote). Whatever precedes it is already committed to the
+ * command line, so a match contributes only the remainder, escaped for the
+ * quoting context that the committed text leaves open. A value that cannot be
+ * expressed in that context — a single quote inside single quotes — is dropped
+ * rather than inserted broken.
  *
- * Prefix matching uses the dequoted word. Dequoting is best effort: it strips
- * one opening quote and any backslash escapes, so a value whose own text
- * contains a backslash will not match once the user types it escaped.
+ * Dequoting is best effort: it drops quotes and backslashes, so a value whose
+ * own text contains one will not match once the user types it escaped.
  */
 const choicesHelper = (helperName: string, lines: Array<string>): void => {
   lines.push(`${helperName}()`)
   lines.push(`{`)
-  lines.push(`  local _cur="$1"; shift`)
-  lines.push(`  local _prefix="\${_cur#[\\"\\']}"; _prefix="\${_prefix//\\\\/}"`)
+  lines.push(`  local _cur="$1" _word="$2"; shift 2`)
+  lines.push(``)
+  lines.push(`  # Text readline keeps, and the quote it leaves open`)
+  lines.push(`  local _head="\${_cur%"$_word"}"`)
   lines.push(`  local _open=""`)
-  lines.push(`  [[ "$_cur" == [\\"\\']* ]] && _open="\${_cur:0:1}"`)
+  lines.push(`  case "$_head" in`)
+  lines.push(`    *\\') _open="'" ;;`)
+  lines.push(`    *\\") _open='"' ;;`)
+  lines.push(`  esac`)
+  lines.push(``)
+  lines.push(`  local _prefix="$_cur" _committed="$_head"`)
+  // bare assignments: inside double quotes a bracket holding a quote does not parse
+  lines.push(`  _prefix=\${_prefix//\\\\/}; _prefix=\${_prefix//\\"/}; _prefix=\${_prefix//\\'/}`)
+  lines.push(`  _committed=\${_committed//\\\\/}; _committed=\${_committed//\\"/}; _committed=\${_committed//\\'/}`)
   lines.push(``)
   lines.push(`  COMPREPLY=()`)
-  lines.push(`  local _choice _match`)
+  lines.push(`  local _choice _rest _match`)
   lines.push(`  for _choice in "$@"; do`)
   lines.push(`    [[ "$_choice" == "$_prefix"* ]] || continue`)
+  lines.push(`    _rest="\${_choice#"$_committed"}"`)
   lines.push(`    case "$_open" in`)
+  lines.push(`      "'")`)
+  lines.push(`        if [[ "$_head" == "'" ]]; then`)
+  lines.push(`          # splice: bare assignment, since inside double quotes \\' is not an escape`)
+  lines.push(`          _match=\${_rest//\\'/\\'\\\\\\'\\'}`)
+  lines.push(`        else`)
+  lines.push(`          # quote opened mid-word: a value carrying one cannot be spliced in`)
+  lines.push(`          [[ "$_rest" == *\\'* ]] && continue`)
+  lines.push(`          _match="$_rest"`)
+  lines.push(`        fi`)
+  lines.push(`        ;;`)
   lines.push(`      '"')`)
-  lines.push(`        _match="\${_choice//\\\\/\\\\\\\\}"`)
+  lines.push(`        _match="\${_rest//\\\\/\\\\\\\\}"`)
   lines.push(`        _match="\${_match//\\$/\\\\$}"`)
-  lines.push(`        _match="\${_match//\\\`/\\\\\\\`}"`)
+  lines.push("        _match=\"${_match//\\`/\\\\\\`}\"")
   lines.push(`        _match="\${_match//\\"/\\\\\\"}"`)
   lines.push(`        ;;`)
-  lines.push(`      "'")`)
-  lines.push(`        # bare assignment: inside double quotes \\' is not an escape`)
-  lines.push(`        _match=\${_choice//\\'/\\'\\\\\\'\\'}`)
-  lines.push(`        ;;`)
   lines.push(`      *)`)
-  lines.push(`        printf -v _match '%q' "$_choice"`)
+  lines.push(`        printf -v _match '%q' "$_rest"`)
   lines.push(`        ;;`)
   lines.push(`    esac`)
   lines.push(`    COMPREPLY+=("$_match")`)
   lines.push(`  done`)
-  lines.push(``)
-  lines.push(`  # Boundary = last wordbreak character that is neither escaped nor quoted`)
-  lines.push(`  local _i _c _quote="" _escaped=0 _cut=0`)
-  lines.push(`  for ((_i = 0; _i < \${#_cur}; _i++)); do`)
-  lines.push(`    _c="\${_cur:_i:1}"`)
-  lines.push(`    if ((_escaped)); then _escaped=0; continue; fi`)
-  lines.push(`    case "$_c" in`)
-  lines.push(`      \\\\) _escaped=1 ;;`)
-  lines.push(`      \\"|\\')`)
-  lines.push(`        if [[ -z "$_quote" ]]; then _quote="$_c"`)
-  lines.push(`        elif [[ "$_quote" == "$_c" ]]; then _quote=""`)
-  lines.push(`        fi`)
-  lines.push(`        ;;`)
-  lines.push(`      *)`)
-  lines.push(`        if [[ -z "$_quote" && "$COMP_WORDBREAKS" == *"$_c"* ]]; then _cut=$((_i + 1)); fi`)
-  lines.push(`        ;;`)
-  lines.push(`    esac`)
-  lines.push(`  done`)
-  lines.push(`  if ((_cut > 0)); then`)
-  lines.push(`    local _head="\${_cur:0:_cut}"`)
-  lines.push(`    for ((_i = 0; _i < \${#COMPREPLY[@]}; _i++)); do`)
-  lines.push(`      COMPREPLY[_i]="\${COMPREPLY[_i]#"$_head"}"`)
-  lines.push(`    done`)
-  lines.push(`  fi`)
   lines.push(`}`)
   lines.push(``)
 }
 
 const choiceCompletion = (helperName: string, values: ReadonlyArray<string>): string =>
-  `${helperName} "$cur" ${values.map((value) => `'${escapeForBash(value)}'`).join(" ")}`
+  `${helperName} "$cur" "$_comp_word" ${values.map((value) => `'${escapeForBash(value)}'`).join(" ")}`
 
 const flagValueCompletion = (type: Completions.FlagType, helperName: string): string | undefined => {
   switch (type._tag) {
@@ -205,6 +195,12 @@ const generateFunction = (
   lines.push(`  local cur prev words cword i`)
   lines.push(parentPath.length === 0 ? `  local _command_index=0` : `  local _command_index="$1"`)
   lines.push(`  _init_completion || return`)
+  if (parentPath.length === 0) {
+    // Bash passes the text readline will replace as $2, which subcommand
+    // functions do not receive; bash scopes locals dynamically, so capturing it
+    // here makes it visible to every function this one calls.
+    lines.push(`  local _comp_word="$2"`)
+  }
   lines.push(``)
 
   // Build flag-value dispatch

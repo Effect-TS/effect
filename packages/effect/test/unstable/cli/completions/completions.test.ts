@@ -154,8 +154,8 @@ describe("Bash completions", () => {
     assert.include(script, `--verbose|-v|--no-verbose) ;;`)
     assert.include(script, `--format|-f) _skip_next=1 ;;`)
     assert.include(script, `--format=*|-f=*) ;;`)
-    assert.include(script, `0)\n      _tool__choices "$cur" 'one'`)
-    assert.include(script, `1)\n      _tool__choices "$cur" 'two'`)
+    assert.include(script, `0)\n      _tool__choices "$cur" "$_comp_word" 'one'`)
+    assert.include(script, `1)\n      _tool__choices "$cur" "$_comp_word" 'two'`)
   })
 
   it("generates completion function for root command", () => {
@@ -224,34 +224,37 @@ describe("Bash completions", () => {
   it("inlines choice values for choice flags", () => {
     const desc = fromCommand(withChoices)
     const script = Bash.generate("deploy", desc)
-    assert.include(script, `_deploy__choices "$cur" 'dev' 'staging' 'prod'`)
+    assert.include(script, `_deploy__choices "$cur" "$_comp_word" 'dev' 'staging' 'prod'`)
   })
 
   it("quotes choice values instead of exposing them to compgen -W re-expansion", () => {
     const desc = fromCommand(withTrickyChoices)
     const script = Bash.generate("deploy", desc)
-    assert.include(script, `_deploy__choices "$cur" 'it'\\''s-fine' 'node:20' 'with space' '(whoami)' '#tag' '$HOME'`)
-    assert.include(script, `_deploy__choices "$cur" 'o'\\''clock' 'a:b' '{x,y}'`)
+    assert.include(
+      script,
+      `_deploy__choices "$cur" "$_comp_word" 'it'\\''s-fine' 'node:20' 'with space' '(whoami)' '#tag' '$HOME'`
+    )
+    assert.include(script, `_deploy__choices "$cur" "$_comp_word" 'o'\\''clock' 'a:b' '{x,y}'`)
     assert.notInclude(script, `compgen -W 'it`)
   })
 
-  it("escapes matches for the quoting context of the word being completed", () => {
+  it("completes only the part readline will replace", () => {
     const desc = fromCommand(withTrickyChoices)
     const script = Bash.generate("deploy", desc)
-    assert.include(script, `local _prefix="\${_cur#[\\"\\']}"; _prefix="\${_prefix//\\\\/}"`)
-    assert.include(script, `[[ "$_cur" == [\\"\\']* ]] && _open="\${_cur:0:1}"`)
-    // unquoted: %q. Double quotes: escape what the shell still expands there.
-    // Single quotes: splice, since a quote cannot be escaped inside them.
-    assert.include(script, `printf -v _match '%q' "$_choice"`)
-    assert.include(script, `_match="\${_match//\\$/\\\\$}"`)
-    assert.include(script, `_match=\${_choice//\\'/\\'\\\\\\'\\'}`)
+    // bash passes that text as $2; whatever precedes it is already on the line
+    assert.include(script, `local _comp_word="$2"`)
+    assert.include(script, `local _head="\${_cur%"$_word"}"`)
+    assert.include(script, `_rest="\${_choice#"$_committed"}"`)
   })
 
-  it("treats only unescaped, unquoted word-break characters as the replacement boundary", () => {
+  it("escapes matches for the quoting context the committed text leaves open", () => {
     const desc = fromCommand(withTrickyChoices)
     const script = Bash.generate("deploy", desc)
-    assert.include(script, `if [[ -z "$_quote" && "$COMP_WORDBREAKS" == *"$_c"* ]]; then _cut=$((_i + 1)); fi`)
-    assert.include(script, `COMPREPLY[_i]="\${COMPREPLY[_i]#"$_head"}"`)
+    assert.include(script, `printf -v _match '%q' "$_rest"`)
+    assert.include(script, `_match="\${_match//\\$/\\\\$}"`)
+    assert.include(script, `_match=\${_rest//\\'/\\'\\\\\\'\\'}`)
+    // a quote opened mid-word cannot absorb a value carrying one
+    assert.include(script, `[[ "$_rest" == *\\'* ]] && continue`)
   })
 
   it("picks a choices-helper name that no generated command function can collide with", () => {
@@ -263,7 +266,7 @@ describe("Bash completions", () => {
     const script = Bash.generate("deploy", fromCommand(collidingName))
     assert.include(script, "_deploy__choices()")
     assert.include(script, "_deploy__choices_()")
-    assert.include(script, `_deploy__choices_ "$cur" 'a'`)
+    assert.include(script, `_deploy__choices_ "$cur" "$_comp_word" 'a'`)
     assert.notInclude(script, `_deploy__choices "$cur"`)
   })
 
