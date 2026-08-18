@@ -17,6 +17,7 @@ import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { MailboxFull, PersistenceError } from "effect/unstable/cluster/ClusterError"
+import { Persisted } from "effect/unstable/cluster/ClusterSchema"
 import type * as Entity from "effect/unstable/cluster/Entity"
 import * as EntityAddress from "effect/unstable/cluster/EntityAddress"
 import * as EntityId from "effect/unstable/cluster/EntityId"
@@ -119,7 +120,8 @@ interface EntityStub {
     readonly error?: "MailboxFull" | "EncodedMessageTooLarge" | undefined
   }>
   readonly acknowledge: (requestId: string, replyId: string) => Promise<ReadonlyArray<string>>
-  readonly reset?: (requestId: string) => void
+  readonly interrupt?: (requestId: string) => Promise<void>
+  readonly reset?: (requestId: string) => Promise<void>
 }
 
 interface ClientTargetValue {
@@ -147,6 +149,8 @@ const uuidV7 = (timestamp: number): string => {
     .join("-")
 }
 
+const requestTargetCapacity = 4096
+
 const make = Effect.fnUntraced(function*(options: LayerOptions) {
   const entities = new Map<string, Entity.Entity<any, any>>()
   for (const entity of options.entities) {
@@ -154,6 +158,16 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
   }
   const clock = yield* Clock
   const requestTargets = new Map<string, { readonly stub: EntityStub; storageRequestId: string }>()
+  const rememberRequestTarget = (
+    requestId: string,
+    target: { readonly stub: EntityStub; storageRequestId: string }
+  ): void => {
+    requestTargets.delete(requestId)
+    requestTargets.set(requestId, target)
+    if (requestTargets.size <= requestTargetCapacity) return
+    const oldest = requestTargets.keys().next().value
+    if (oldest !== undefined) requestTargets.delete(oldest)
+  }
 
   const unknownEntity = (entity: Entity.Entity<any, any>) =>
     Effect.die(
@@ -250,7 +264,12 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
                     )
                   }
                   entry.storageRequestId = result.requestId
-                  requestTargets.set(clientRequestId, { stub: target.stub, storageRequestId: result.requestId })
+                  if (!discard && Context.get(rpc.annotations, Persisted)) {
+                    rememberRequestTarget(clientRequestId, {
+                      stub: target.stub,
+                      storageRequestId: result.requestId
+                    })
+                  }
                   return discard ? Effect.void : deliverReplies(entry, result.replies)
                 })
               )
@@ -264,8 +283,12 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
             )
           }
           case "Interrupt": {
-            entries.delete(String(message.requestId))
-            return Effect.void
+            const clientRequestId = String(message.requestId)
+            const entry = entries.get(clientRequestId)
+            entries.delete(clientRequestId)
+            requestTargets.delete(clientRequestId)
+            if (entry === undefined || target.stub.interrupt === undefined) return Effect.void
+            return Effect.promise(() => target.stub.interrupt!(entry.storageRequestId))
           }
           default:
             return Effect.void
@@ -330,10 +353,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
     reset: (requestId) => {
       const target = requestTargets.get(String(requestId))
       if (target === undefined || target.stub.reset === undefined) return Effect.succeed(false)
-      return Effect.sync(() => {
-        target.stub.reset!(target.storageRequestId)
-        return true
-      })
+      return Effect.as(Effect.promise(() => target.stub.reset!(target.storageRequestId)), true)
     },
     pollStorage: notImplemented("Sharding.pollStorage"),
     activeEntityCount: Effect.succeed(0)
