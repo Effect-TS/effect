@@ -388,8 +388,8 @@ function compileJsonSchema(
         }
         if (representation.propertySignatures.length > 0) out.properties = properties
         if (required.length > 0) out.required = required
-        out.additionalProperties = options?.additionalProperties ?? false
         const patternProperties: Record<string, JsonSchema.JsonSchema | false> = {}
+        const additionalProperties: Array<JsonSchema.JsonSchema | false> = []
         for (let index = 0; index < representation.indexSignatures.length; index++) {
           const signature = representation.indexSignatures[index]
           let type: JsonSchema.JsonSchema | false = recur(
@@ -403,14 +403,36 @@ function compileJsonSchema(
             new Set()
           )
           if (patterns.length === 0) {
-            out.additionalProperties = type
+            additionalProperties.push(type)
           } else {
-            for (const pattern of patterns) InternalRecord.assignProperty(patternProperties, pattern, type)
+            for (const pattern of patterns) {
+              const previous = patternProperties[pattern]
+              InternalRecord.assignProperty(
+                patternProperties,
+                pattern,
+                previous === undefined
+                  ? type
+                  : previous === false || type === false
+                  ? false
+                  : appendJsonSchema(previous, type)
+              )
+            }
           }
         }
-        if (Object.keys(patternProperties).length > 0) {
+        const hasPatternProperties = Object.keys(patternProperties).length > 0
+        if (hasPatternProperties) {
           out.patternProperties = patternProperties
-          delete out.additionalProperties
+        }
+        if (representation.indexSignatures.length === 0) {
+          out.additionalProperties = options?.additionalProperties ?? false
+        } else if (
+          additionalProperties.length === 1 &&
+          representation.propertySignatures.length === 0 &&
+          !hasPatternProperties
+        ) {
+          out.additionalProperties = additionalProperties[0]
+        } else if (additionalProperties.length > 0) {
+          out.allOf = additionalProperties.map((type) => ({ type: "object", additionalProperties: type }))
         }
         if (
           typeof out.additionalProperties === "object" &&

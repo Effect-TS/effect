@@ -3021,27 +3021,50 @@ describe("toJsonSchemaDocument", () => {
     })
   })
 
-  it("StructWithRest", () => {
-    assertJsonSchemaDocument(
-      Schema.StructWithRest(Schema.Struct({ a: Schema.String }), [
-        Schema.Record(Schema.String, Schema.Union([Schema.Finite, Schema.String]))
-      ]),
-      {
-        schema: {
-          "type": "object",
-          "properties": {
-            "a": { "type": "string" }
-          },
-          "additionalProperties": {
-            "anyOf": [
-              { "type": "number" },
-              { "type": "string" }
-            ]
-          },
-          "required": ["a"]
+  describe("StructWithRest", () => {
+    it("property and string index", () => {
+      assertJsonSchemaDocument(
+        Schema.StructWithRest(Schema.Struct({ a: Schema.String }), [
+          Schema.Record(Schema.String, Schema.Union([Schema.Finite, Schema.String]))
+        ]),
+        {
+          schema: {
+            "type": "object",
+            "properties": {
+              "a": { "type": "string" }
+            },
+            "allOf": [{
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  { "type": "number" },
+                  { "type": "string" }
+                ]
+              }
+            }],
+            "required": ["a"]
+          }
         }
-      }
-    )
+      )
+    })
+
+    it("pattern and string indexes", () => {
+      assertJsonSchemaDocument(
+        Schema.StructWithRest(Schema.Struct({}), [
+          Schema.Record(Schema.String.check(Schema.isUppercased()), Schema.Finite),
+          Schema.Record(Schema.String, Schema.Boolean)
+        ]),
+        {
+          schema: {
+            type: "object",
+            patternProperties: {
+              "^[^a-z]*$": { type: "number" }
+            },
+            allOf: [{ type: "object", additionalProperties: { type: "boolean" } }]
+          }
+        }
+      )
+    })
   })
 
   describe("Tuple", () => {

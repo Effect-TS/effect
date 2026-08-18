@@ -1980,7 +1980,18 @@ describe("fromJsonSchemaDocument", () => {
             "_tag": "Objects",
             "checks": [],
             "propertySignatures": [],
-            "indexSignatures": []
+            "indexSignatures": [
+              {
+                "parameter": {
+                  "_tag": "String",
+                  "checks": []
+                },
+                "type": {
+                  "_tag": "Never",
+                  "checks": []
+                }
+              }
+            ]
           },
           "references": {}
         }
@@ -2066,211 +2077,44 @@ describe("fromJsonSchemaDocument", () => {
     })
 
     it("properties & additionalProperties", () => {
-      assertFromJsonSchema(
-        {
-          schema: {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
             type: "object",
             properties: { a: { type: "string" } },
             required: ["a"],
             additionalProperties: { type: "boolean" }
-          }
-        },
-        {
-          "representation": {
-            "_tag": "Objects",
-            "checks": [],
-            "propertySignatures": [
-              {
-                "name": {
-                  "type": "string",
-                  "value": "a"
-                },
-                "type": {
-                  "_tag": "String",
-                  "checks": []
-                },
-                "isOptional": false,
-                "isMutable": false
-              }
-            ],
-            "indexSignatures": [
-              {
-                "parameter": {
-                  "_tag": "String",
-                  "checks": []
-                },
-                "type": {
-                  "_tag": "Boolean",
-                  "checks": []
-                }
-              }
-            ]
-          },
-          "references": {}
-        }
+          })),
+        `Unsupported object keyword scopes\n  at ["schema"]`
       )
     })
 
-    it("imports a single pattern property", () => {
-      assertFromJsonSchema(
-        {
-          schema: {
+    it("rejects a closed single pattern property", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
             type: "object",
             patternProperties: {
               "a*": { type: "string" }
             },
             additionalProperties: false
-          }
-        },
-        {
-          "representation": {
-            "_tag": "Objects",
-            "checks": [],
-            "propertySignatures": [],
-            "indexSignatures": [
-              {
-                "parameter": {
-                  "_tag": "String",
-                  "checks": [
-                    {
-                      "_tag": "Filter",
-                      "representation": {
-                        "id": "effect/schema/isPattern",
-                        "payload": {
-                          "source": "a*",
-                          "flags": ""
-                        }
-                      },
-                      "annotations": {
-                        "expected": "a string matching the RegExp a*",
-                        "arbitrary": {
-                          "constraint": {
-                            "patterns": [
-                              "a*"
-                            ]
-                          }
-                        }
-                      },
-                      "aborted": false
-                    }
-                  ]
-                },
-                "type": {
-                  "_tag": "String",
-                  "checks": []
-                }
-              }
-            ]
-          },
-          "references": {}
-        }
+          })),
+        `Unsupported object keyword scopes\n  at ["schema"]`
       )
     })
 
-    it("imports multiple pattern properties", () => {
-      assertFromJsonSchema(
-        {
-          schema: {
+    it("rejects closed multiple pattern properties", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
             type: "object",
             patternProperties: {
               "a*": { type: "string" },
               "b*": { type: "number" }
             },
             additionalProperties: false
-          }
-        },
-        {
-          "representation": {
-            "_tag": "Objects",
-            "checks": [],
-            "propertySignatures": [],
-            "indexSignatures": [
-              {
-                "parameter": {
-                  "_tag": "String",
-                  "checks": [
-                    {
-                      "_tag": "Filter",
-                      "representation": {
-                        "id": "effect/schema/isPattern",
-                        "payload": {
-                          "source": "a*",
-                          "flags": ""
-                        }
-                      },
-                      "annotations": {
-                        "expected": "a string matching the RegExp a*",
-                        "arbitrary": {
-                          "constraint": {
-                            "patterns": [
-                              "a*"
-                            ]
-                          }
-                        }
-                      },
-                      "aborted": false
-                    }
-                  ]
-                },
-                "type": {
-                  "_tag": "String",
-                  "checks": []
-                }
-              },
-              {
-                "parameter": {
-                  "_tag": "String",
-                  "checks": [
-                    {
-                      "_tag": "Filter",
-                      "representation": {
-                        "id": "effect/schema/isPattern",
-                        "payload": {
-                          "source": "b*",
-                          "flags": ""
-                        }
-                      },
-                      "annotations": {
-                        "expected": "a string matching the RegExp b*",
-                        "arbitrary": {
-                          "constraint": {
-                            "patterns": [
-                              "b*"
-                            ]
-                          }
-                        }
-                      },
-                      "aborted": false
-                    }
-                  ]
-                },
-                "type": {
-                  "_tag": "Number",
-                  "checks": [
-                    {
-                      "_tag": "Filter",
-                      "representation": {
-                        "id": "effect/schema/isFinite",
-                        "payload": null
-                      },
-                      "annotations": {
-                        "expected": "a finite number",
-                        "arbitrary": {
-                          "constraint": {
-                            "noInfinity": true,
-                            "noNaN": true
-                          }
-                        }
-                      },
-                      "aborted": false
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          "references": {}
-        }
+          })),
+        `Unsupported object keyword scopes\n  at ["schema"]`
       )
     })
 
@@ -3283,7 +3127,18 @@ describe("fromJsonSchemaDocument", () => {
             },
             "checks": [],
             "propertySignatures": [],
-            "indexSignatures": []
+            "indexSignatures": [
+              {
+                "parameter": {
+                  "_tag": "String",
+                  "checks": []
+                },
+                "type": {
+                  "_tag": "Never",
+                  "checks": []
+                }
+              }
+            ]
           },
           "references": {}
         }
@@ -5424,26 +5279,126 @@ describe("fromJsonSchemaDocument", () => {
       }
     })
 
-    it("merges object index signatures", () => {
-      const indexes = fromJsonSchemaRepresentation(
-        JsonSchema.fromSchemaDraft2020_12({
-          type: "object",
-          additionalProperties: false,
-          patternProperties: { "^a": { type: "string" } },
-          allOf: [
-            { type: "object", additionalProperties: true },
-            {
-              type: "object",
-              additionalProperties: false,
-              patternProperties: { "^b": { type: "number" } }
-            }
-          ]
-        })
-      )
-      strictEqual(indexes.representation._tag, "Objects")
-      if (indexes.representation._tag === "Objects") {
-        strictEqual(indexes.representation.indexSignatures.length, 3)
+    it("keeps additionalProperties scopes separate", () => {
+      for (
+        const schema of [
+          {
+            type: "object",
+            additionalProperties: false,
+            allOf: [{ properties: { a: { type: "string" } } }]
+          },
+          {
+            type: "object",
+            properties: { a: { type: "string" } },
+            allOf: [{ additionalProperties: false }]
+          }
+        ]
+      ) {
+        const is = Schema.is(toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema)))
+        assertTrue(is({}))
+        assertFalse(is({ a: "a" }))
       }
+    })
+
+    it("does not move sibling properties into a closed scope", () => {
+      const is = Schema.is(toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        properties: { a: { type: "string" } },
+        additionalProperties: false,
+        allOf: [{ properties: { b: { type: "number" } } }]
+      })))
+      assertTrue(is({ a: "a" }))
+      assertFalse(is({ b: 1 }))
+      assertFalse(is({ a: "a", b: 1 }))
+    })
+
+    it("rejects an object when a required sibling property is outside a closed scope", () => {
+      const is = Schema.is(toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        additionalProperties: false,
+        allOf: [{ properties: { a: { type: "string" } }, required: ["a"] }]
+      })))
+      assertFalse(is({}))
+      assertFalse(is({ a: "a" }))
+    })
+
+    it("keeps object keyword scopes through references", () => {
+      const is = Schema.is(toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Closed",
+        allOf: [{ properties: { a: { type: "string" } } }],
+        $defs: {
+          Closed: { type: "object", additionalProperties: false }
+        }
+      })))
+      assertTrue(is({}))
+      assertFalse(is({ a: "a" }))
+    })
+
+    it("applies a sibling additionalProperties schema to fixed properties", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        properties: { a: { type: "string" } },
+        allOf: [{ additionalProperties: { type: "boolean" } }]
+      }))
+      const is = Schema.is(schema)
+      assertTrue(is({ b: true }))
+      assertFalse(is({ a: "a" }))
+      assertFalse(is({ b: "b" }))
+      deepStrictEqual(Schema.toJsonSchemaDocument(schema).schema, {
+        type: "object",
+        properties: { a: { not: {} } },
+        allOf: [{ type: "object", additionalProperties: { type: "boolean" } }]
+      })
+    })
+
+    it("lowers open patterns over a finite object domain", () => {
+      const is = Schema.is(toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        properties: { a: { type: "string" } },
+        additionalProperties: false,
+        allOf: [{ patternProperties: { "^a$": { minLength: 2 } } }]
+      })))
+      assertTrue(is({ a: "aa" }))
+      assertFalse(is({ a: "a" }))
+    })
+
+    it("preserves open pattern scopes", () => {
+      const is = Schema.is(toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        patternProperties: { "^a": { type: "string" } }
+      })))
+      assertTrue(is({ a: "a", b: 1 }))
+      assertFalse(is({ a: 1 }))
+    })
+
+    it("applies open patterns to fixed properties", () => {
+      const is = Schema.is(toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        properties: { a: { type: "string" } },
+        patternProperties: { "^a$": { minLength: 2 } }
+      })))
+      assertTrue(is({ a: "aa" }))
+      assertFalse(is({ a: "a" }))
+    })
+
+    it("rejects object scopes that require pattern complements", () => {
+      throws(
+        () =>
+          fromJsonSchemaRepresentation(JsonSchema.fromSchemaDraft2020_12({
+            type: "object",
+            additionalProperties: false,
+            patternProperties: { "^a": { type: "string" } },
+            allOf: [
+              { type: "object", additionalProperties: true },
+              {
+                type: "object",
+                additionalProperties: false,
+                patternProperties: { "^b": { type: "number" } }
+              }
+            ]
+          })),
+        `Unsupported object keyword scopes\n  at ["schema"]`
+      )
     })
 
     describe("type: object", () => {
@@ -5469,7 +5424,7 @@ describe("fromJsonSchemaDocument", () => {
                     "value": "a"
                   },
                   "type": {
-                    "_tag": "String",
+                    "_tag": "Never",
                     "checks": []
                   },
                   "isOptional": true,

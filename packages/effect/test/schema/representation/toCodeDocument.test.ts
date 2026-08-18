@@ -1824,7 +1824,8 @@ describe("toCodeDocument", () => {
                   properties: {
                     a: {
                       type: "string"
-                    }
+                    },
+                    b: {}
                   },
                   required: ["a"]
                 }
@@ -1835,7 +1836,8 @@ describe("toCodeDocument", () => {
               properties: {
                 b: {
                   type: "number"
-                }
+                },
+                a: {}
               },
               required: ["b"]
             }

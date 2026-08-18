@@ -15171,15 +15171,18 @@ export interface ToJsonSchemaOptions {
  * The `options` parameter controls generation details such as additional
  * properties and synthesized check descriptions; it does not change the draft
  * target. Declarations are lowered through their `toCodecJson` or `toCodec`
- * annotation when available before the representation document is compiled.
+ * annotation when available before the representation document is compiled. For schemas whose codec JSON AST can be
+ * represented exactly in JSON Schema, importing the emitted document reconstructs a schema that accepts the same JSON
+ * values. This is a semantic round-trip guarantee; the reconstructed AST may have a different shape.
  *
  * **Gotchas**
  *
  * JSON Schema generation is best-effort. Some Effect schema semantics cannot
  * be represented exactly in JSON Schema, and importing an emitted JSON Schema
  * may produce an equivalent approximation rather than the original schema
- * shape. Opaque declarations without a structural codec are represented by an
- * unconstrained JSON Schema.
+ * shape. Such schemas are outside the exact round-trip subset. Opaque declarations without a structural codec are
+ * represented by an unconstrained JSON Schema. Effect decoding may discard excess object properties by default; use
+ * `onExcessProperty: "error"` when comparing validation semantics with an emitted JSON Schema.
  *
  * @category converting
  * @since 4.0.0
