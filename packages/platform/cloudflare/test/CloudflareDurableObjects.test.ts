@@ -45,4 +45,29 @@ describe("CloudflareDurableObjects", () => {
         assert.include(response.body, "not exposed over fetch", binding)
       }
     }), 60_000)
+
+  it.effect("journals only persisted RPCs and deduplicates primary keys", () =>
+    Effect.gen(function*() {
+      const miniflare = yield* makeMiniflare
+      const call = (tag: string, operationId: string) =>
+        Effect.promise(() =>
+          miniflare.dispatchFetch(
+            `http://placeholder/mailbox?tag=${tag}&operationId=${operationId}`
+          ).then(async (response) => {
+            const body = await response.text()
+            assert.strictEqual(response.status, 200, body)
+            return JSON.parse(body)
+          })
+        )
+
+      yield* call("Add", "same-operation")
+      yield* call("Add", "same-operation")
+      yield* call("AddVolatile", "volatile-1")
+      yield* call("AddVolatile", "volatile-2")
+      const result = yield* call("Get", "read")
+      const terminal = JSON.parse(result.replies[0])
+
+      assert.strictEqual(terminal._tag, "WithExit")
+      assert.deepStrictEqual(terminal.exit, { _tag: "Success", value: 3 })
+    }), 60_000)
 })
