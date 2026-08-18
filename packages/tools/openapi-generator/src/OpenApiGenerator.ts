@@ -290,8 +290,8 @@ const parseOpenApi = (
 
       const schemaId = Utils.identifier(operation.operationId ?? path)
 
-      const pathParameters = Predicate.isObject(methods) && Array.isArray((methods as any).parameters)
-        ? (methods as any).parameters as ReadonlyArray<unknown>
+      const pathParameters = Array.isArray(methods.parameters)
+        ? methods.parameters
         : undefined
       const parameters = resolveOperationParameters(
         pathParameters,

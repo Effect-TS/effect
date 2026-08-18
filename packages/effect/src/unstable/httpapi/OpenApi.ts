@@ -1051,13 +1051,18 @@ export type OpenAPISpecMethodName =
 
 /**
  * Generated OpenAPI path item mapping HTTP methods to operations for a single route path.
+ * Parameters declared here are shared by every operation on the path.
  *
  * @category models
  * @since 4.0.0
  */
-export type OpenAPISpecPathItem = {
-  [K in OpenAPISpecMethodName]?: OpenAPISpecOperation
-}
+export type OpenAPISpecPathItem =
+  & {
+    [K in OpenAPISpecMethodName]?: OpenAPISpecOperation
+  }
+  & {
+    parameters?: Array<OpenAPISpecParameter>
+  }
 
 /**
  * Generated OpenAPI parameter object for path, query, header, or cookie parameters.

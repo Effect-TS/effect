@@ -1370,7 +1370,7 @@ export const TestClientError = <Tag extends string, E>(
                 tags: ["Applications"],
                 security: []
               }
-            } as any
+            }
           },
           components: {
             schemas: {},
