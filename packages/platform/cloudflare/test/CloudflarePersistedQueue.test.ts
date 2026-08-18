@@ -3,7 +3,7 @@ import * as CloudflarePersistedQueue from "@effect/platform-cloudflare/Cloudflar
 import { encodeName } from "@effect/platform-cloudflare/internal/clusterName"
 import { armAlarm, type EntityAlarm } from "@effect/platform-cloudflare/internal/entityStorage"
 import { makeQueueRuntime, type QueueRuntime } from "@effect/platform-cloudflare/internal/queueRuntime"
-import { earliestLeaseExpiry, ensureQueueStorage } from "@effect/platform-cloudflare/internal/queueStorage"
+import { earliestLeaseExpiry } from "@effect/platform-cloudflare/internal/queueStorage"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Fiber, Layer, Schema } from "effect"
 import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
@@ -145,18 +145,17 @@ class FakeQueueNamespace {
     let runtime = this.runtimes.get(name)
     if (runtime === undefined) {
       const store = this.store(name)
-      // Mirrors the ClusterDurableQueue constructor: ensure the table and
+      // Mirrors the ClusterDurableQueue constructor: build the runtime and
       // re-arm the single alarm from the earliest pending lease expiry.
-      ensureQueueStorage(store.sql.sql)
-      const expiry = earliestLeaseExpiry(store.sql.sql)
-      if (expiry !== undefined) {
-        void Effect.runPromise(armAlarm(store.alarm.alarm, expiry))
-      }
       runtime = makeQueueRuntime({
         sql: store.sql.sql,
         alarm: store.alarm.alarm,
         now: () => this.now
       })
+      const expiry = earliestLeaseExpiry(store.sql.sql)
+      if (expiry !== undefined) {
+        void Effect.runPromise(armAlarm(store.alarm.alarm, expiry))
+      }
       this.runtimes.set(name, runtime)
     }
     return runtime

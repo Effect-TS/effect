@@ -70,19 +70,6 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
     if (oldest !== undefined) delivered.delete(oldest)
   }
 
-  const lease = (
-    takerId: string,
-    maxAttempts: number,
-    leaseMillis: number
-  ): Effect.Effect<QueueItem | undefined> =>
-    Effect.suspend(() => {
-      const now = options.now()
-      const item = leaseNextItem(sql, now, now + leaseMillis, maxAttempts)
-      if (item === undefined) return Effect.succeed(undefined)
-      rememberDelivered(takerId, item.id)
-      return Effect.as(armAlarm(options.alarm, now + leaseMillis), item)
-    })
-
   // Waiters differ in maxAttempts, so one waiter finding nothing does not mean
   // a later one will; every waiter gets its own lease attempt. Leasing stays
   // fully synchronous so concurrent wake-ups cannot interleave on the waiter
@@ -116,12 +103,14 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
         offerItem(sql, id, element)
       }),
 
-    take: (takerId, maxAttempts, leaseMillis) =>
-      Effect.runPromise(lease(takerId, maxAttempts, leaseMillis)).then((item) =>
-        item !== undefined ? item : new Promise<QueueItem>((resolve) => {
-          waiters.push({ takerId, maxAttempts, leaseMillis, resolve })
-        })
-      ),
+    // The taker joins the waiter list and the shared wake pass leases to it,
+    // so an immediate take and a woken one follow the same code path.
+    take: (takerId, maxAttempts, leaseMillis) => {
+      const item = new Promise<QueueItem>((resolve) => {
+        waiters.push({ takerId, maxAttempts, leaseMillis, resolve })
+      })
+      return Effect.runPromise(wakeWaiters).then(() => item)
+    },
 
     cancelTake: (takerId) => {
       const index = waiters.findIndex((waiter) => waiter.takerId === takerId)
