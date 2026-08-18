@@ -2,7 +2,7 @@ import * as CloudflareCluster from "@effect/platform-cloudflare/CloudflareCluste
 import { CurrentEntityName, deliverReply } from "@effect/platform-cloudflare/internal/entityReply"
 import { assert, describe, it } from "@effect/vitest"
 import { DateTime, Effect, Exit, Fiber, Layer, PrimaryKey, Schema, Stream } from "effect"
-import { ClusterSchema, DeliverAt, Entity, Sharding } from "effect/unstable/cluster"
+import { ClusterSchema, DeliverAt, Entity, Sharding, Singleton } from "effect/unstable/cluster"
 import { Rpc, RpcSchema } from "effect/unstable/rpc"
 
 const User = Entity.make("User", [
@@ -79,6 +79,26 @@ const makeOptions = () => {
 
 describe("CloudflareCluster", () => {
   describe("layer", () => {
+    it.effect("registers singleton effects under named Durable Objects without running them forever", () => {
+      const singletonNamespace = new FakeNamespace()
+      const options: CloudflareCluster.LayerOptions = {
+        entities: [User],
+        entityNamespace: new FakeNamespace() as any,
+        workflowNamespace: new FakeNamespace() as any,
+        queueNamespace: new FakeNamespace() as any,
+        singletonNamespace: singletonNamespace as any
+      }
+
+      return Effect.gen(function*() {
+        yield* Layer.build(
+          Singleton.make("hourly", Effect.void).pipe(
+            Layer.provide(CloudflareCluster.layer(options))
+          )
+        )
+        assert.deepStrictEqual(singletonNamespace.names, ["Singleton/hourly"])
+      })
+    })
+
     it.effect("resolves entity clients through the namespace binding", () =>
       Effect.gen(function*() {
         const { entityNamespace, options } = makeOptions()
