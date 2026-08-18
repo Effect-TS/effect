@@ -7,7 +7,7 @@ import * as Option from "effect/Option"
 import type * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import { CurrentAddress, CurrentRunnerAddress, Request } from "effect/unstable/cluster/Entity"
+import { CurrentAddress, CurrentRunnerAddress, KeepAliveHandler, Request } from "effect/unstable/cluster/Entity"
 import type * as EntityAddress from "effect/unstable/cluster/EntityAddress"
 import type * as Envelope from "effect/unstable/cluster/Envelope"
 import * as Reply from "effect/unstable/cluster/Reply"
@@ -28,7 +28,8 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
   registration: EntityRegistration,
   address: EntityAddress.EntityAddress,
   nextId: () => string,
-  entityName = `${String(address.entityType).length}:${address.entityType}${address.entityId}`
+  entityName = `${String(address.entityType).length}:${address.entityType}${address.entityId}`,
+  keepAlive?: (enabled: boolean) => Effect.Effect<void>
 ) {
   let cached: CachedHandlers | undefined
 
@@ -42,12 +43,15 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
   const getHandlers = Effect.fnUntraced(function*() {
     if (cached !== undefined) return cached
     const scope = yield* Scope.make()
-    const context = registration.context.pipe(
+    let context = registration.context.pipe(
       Context.add(CurrentAddress, address),
       Context.add(CurrentRunnerAddress, RunnerAddress.make(`${address.entityType}/${address.entityId}`, 0)),
       Context.add(CurrentEntityName, entityName),
       Context.add(Scope.Scope, scope)
     )
+    if (keepAlive !== undefined) {
+      context = Context.add(context, KeepAliveHandler, keepAlive)
+    }
     const handlers = yield* Effect.provideContext(registration.build, context)
     return cached = { handlers, context, scope }
   })
