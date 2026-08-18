@@ -133,4 +133,103 @@ describe("CloudflareDurableObjects", () => {
       const terminal = JSON.parse(result.replies[0])
       assert.deepStrictEqual(terminal.exit, { _tag: "Success", value: 0 })
     }), 60_000)
+
+  it.effect("persists DeliverAt rows and runs and re-arms the entity alarm", () =>
+    Effect.gen(function*() {
+      const miniflare = yield* makeMiniflare
+      const fetchJson = (path: string) =>
+        Effect.promise(() =>
+          miniflare.dispatchFetch(`http://placeholder${path}`).then(async (response) => {
+            const body = await response.text()
+            assert.strictEqual(response.status, 200, body)
+            return JSON.parse(body)
+          })
+        )
+      const id = "scheduled-alarm"
+      const firstAt = Date.now() + 500
+      const secondAt = firstAt + 600
+
+      const first = yield* fetchJson(
+        `/delayed?id=${id}&operationId=first&discard=true&deliverAt=${firstAt}`
+      )
+      const second = yield* fetchJson(
+        `/delayed?id=${id}&operationId=second&discard=true&deliverAt=${secondAt}`
+      )
+      assert.deepStrictEqual(first.replies, [])
+      assert.deepStrictEqual(second.replies, [])
+
+      const persisted = yield* fetchJson(`/scheduled-rows?id=${id}`)
+      assert.deepStrictEqual(
+        persisted.rows.map((row: any) => ({ messageId: row.message_id, deliverAt: row.deliver_at })),
+        [
+          { messageId: `Mailbox/${id}/Add/first`, deliverAt: firstAt },
+          { messageId: `Mailbox/${id}/Add/second`, deliverAt: secondAt }
+        ]
+      )
+      assert.strictEqual(persisted.alarm, firstAt)
+
+      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 700)))
+      const afterFirst = yield* fetchJson(`/mailbox?id=${id}&tag=Get`)
+      assert.deepStrictEqual(JSON.parse(afterFirst.replies[0]).exit, { _tag: "Success", value: 1 })
+      const rearmed = yield* fetchJson(`/scheduled-rows?id=${id}`)
+      assert.strictEqual(rearmed.alarm, secondAt)
+
+      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 500)))
+      const afterSecond = yield* fetchJson(`/mailbox?id=${id}&tag=Get`)
+      assert.deepStrictEqual(JSON.parse(afterSecond.replies[0]).exit, { _tag: "Success", value: 2 })
+    }), 60_000)
+
+  it.effect("keeps a Worker delayed ask open and deduplicates its primary key", () =>
+    Effect.gen(function*() {
+      const miniflare = yield* makeMiniflare
+      const fetchJson = (path: string) =>
+        Effect.promise(() =>
+          miniflare.dispatchFetch(`http://placeholder${path}`).then(async (response) => {
+            const body = await response.text()
+            assert.strictEqual(response.status, 200, body)
+            return JSON.parse(body)
+          })
+        )
+      const id = "scheduled-ask"
+      const deliverAt = Date.now() + 300
+      const [first, duplicate] = yield* Effect.promise(() =>
+        Promise.all([
+          Effect.runPromise(fetchJson(`/delayed?id=${id}&operationId=same&discard=false&deliverAt=${deliverAt}`)),
+          Effect.runPromise(fetchJson(`/delayed?id=${id}&operationId=same&discard=false&deliverAt=${deliverAt}`))
+        ])
+      )
+      const terminal = JSON.parse(first.replies[0])
+      assert.strictEqual(terminal._tag, "WithExit")
+      assert.strictEqual(duplicate.requestId, first.requestId)
+      const result = yield* fetchJson(`/mailbox?id=${id}&tag=Get`)
+      assert.deepStrictEqual(JSON.parse(result.replies[0]).exit, { _tag: "Success", value: 1 })
+    }), 60_000)
+
+  it.effect("delivers a scheduled ask reply to the caller Durable Object", () =>
+    Effect.gen(function*() {
+      const miniflare = yield* makeMiniflare
+      const fetchJson = (path: string) =>
+        Effect.promise(() =>
+          miniflare.dispatchFetch(`http://placeholder${path}`).then(async (response) => {
+            const body = await response.text()
+            assert.strictEqual(response.status, 200, body)
+            return JSON.parse(body)
+          })
+        )
+      const targetId = "callback-target"
+      const callerId = "callback-caller"
+      const replyTo = `7:Mailbox${callerId}`
+      const accepted = yield* fetchJson(
+        `/delayed?id=${targetId}&operationId=callback&discard=false&deliverAt=${Date.now() + 100}` +
+          `&replyTo=${encodeURIComponent(replyTo)}`
+      )
+      assert.deepStrictEqual(accepted.replies, [])
+
+      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 200)))
+      const received = yield* fetchJson(`/delayed-reply?id=${callerId}`)
+      assert.strictEqual(received.reply.requestId, accepted.requestId)
+      const terminal = JSON.parse(received.reply.reply)
+      assert.strictEqual(terminal._tag, "WithExit")
+      assert.deepStrictEqual(terminal.exit, { _tag: "Success", value: null })
+    }), 60_000)
 })
