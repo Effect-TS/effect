@@ -16,6 +16,7 @@ import * as Reply from "effect/unstable/cluster/Reply"
 import * as RunnerAddress from "effect/unstable/cluster/RunnerAddress"
 import * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcSchema from "effect/unstable/rpc/RpcSchema"
+import { encodeName } from "./clusterName.ts"
 import { EntityKeepAliveHandler } from "./entityKeepAlive.ts"
 import type { EntityRegistration } from "./entityRegistry.ts"
 import { CurrentEntityName } from "./entityReply.ts"
@@ -31,7 +32,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
   registration: EntityRegistration,
   address: EntityAddress.EntityAddress,
   nextId: () => string,
-  entityName = `${String(address.entityType).length}:${address.entityType}${address.entityId}`,
+  entityName = encodeName(address.entityType, address.entityId),
   keepAlive?: (enabled: boolean) => Effect.Effect<void>
 ) {
   let cached: CachedHandlers | undefined

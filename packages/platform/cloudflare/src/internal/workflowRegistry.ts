@@ -11,6 +11,7 @@ import * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Workflow from "effect/unstable/workflow/Workflow"
 import * as WorkflowEngine from "effect/unstable/workflow/WorkflowEngine"
+import { makeRegistry } from "./registry.ts"
 
 /** @internal */
 export interface WorkflowRegistration {
@@ -22,22 +23,16 @@ export interface WorkflowRegistration {
   readonly context: Context.Context<never>
 }
 
-const registrations = new Map<string, WorkflowRegistration>()
+const registry = makeRegistry<WorkflowRegistration>()
 
 /** @internal */
-export const getWorkflowRegistration = (name: string): WorkflowRegistration | undefined => registrations.get(name)
+export const getWorkflowRegistration: (name: string) => WorkflowRegistration | undefined = registry.get
 
 /** @internal */
-export const registerWorkflow = (name: string, registration: WorkflowRegistration): boolean => {
-  if (registrations.has(name)) return false
-  registrations.set(name, registration)
-  return true
-}
+export const registerWorkflow: (name: string, registration: WorkflowRegistration) => boolean = registry.register
 
 /** @internal */
-export const unregisterWorkflow = (name: string, registration: WorkflowRegistration): void => {
-  if (registrations.get(name) === registration) registrations.delete(name)
-}
+export const unregisterWorkflow: (name: string, registration: WorkflowRegistration) => void = registry.unregister
 
 /** @internal */
 export interface WorkflowRunOptions {
