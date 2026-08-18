@@ -205,6 +205,41 @@ describe("CloudflareDurableObjects", () => {
       assert.deepStrictEqual(JSON.parse(result.replies[0]).exit, { _tag: "Success", value: 1 })
     }), 60_000)
 
+  it.effect("interrupts only the matching deduplicated Worker waiter", () =>
+    Effect.gen(function*() {
+      const miniflare = yield* makeMiniflare
+      const result = yield* Effect.promise(() =>
+        miniflare.dispatchFetch("http://placeholder/interrupt-delayed?id=interrupt-waiter").then(async (response) => {
+          const body = await response.text()
+          assert.strictEqual(response.status, 200, body)
+          return JSON.parse(body)
+        })
+      )
+
+      assert.deepStrictEqual(result, { firstStatus: "pending", secondStatus: "rejected" })
+    }), 60_000)
+
+  it.effect("does not run a future row when an immediate request deduplicates to it", () =>
+    Effect.gen(function*() {
+      const miniflare = yield* makeMiniflare
+      const fetchJson = (path: string) =>
+        Effect.promise(() =>
+          miniflare.dispatchFetch(`http://placeholder${path}`).then(async (response) => {
+            const body = await response.text()
+            assert.strictEqual(response.status, 200, body)
+            return JSON.parse(body)
+          })
+        )
+      const id = "scheduled-dedup"
+      yield* fetchJson(
+        `/delayed?id=${id}&operationId=same&discard=true&deliverAt=${Date.now() + 60_000}`
+      )
+      yield* fetchJson(`/mailbox?id=${id}&tag=Add&operationId=same`)
+
+      const result = yield* fetchJson(`/mailbox?id=${id}&tag=Get`)
+      assert.deepStrictEqual(JSON.parse(result.replies[0]).exit, { _tag: "Success", value: 0 })
+    }), 60_000)
+
   it.effect("delivers a scheduled ask reply to the caller Durable Object", () =>
     Effect.gen(function*() {
       const miniflare = yield* makeMiniflare

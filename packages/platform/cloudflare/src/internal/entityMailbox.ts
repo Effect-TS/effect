@@ -53,7 +53,7 @@ export const persistRequest = (
   }
 
   const existing = sql.exec(
-    `SELECT m.request_id, m.processed, r.reply AS last_reply
+    `SELECT m.request_id, m.processed, m.reply_to, r.reply AS last_reply
      FROM cluster_messages m
      LEFT JOIN cluster_replies r ON r.reply_id = m.last_reply_id
      WHERE m.request_id = ? OR (? IS NOT NULL AND m.message_id = ?)
@@ -64,9 +64,11 @@ export const persistRequest = (
   ).toArray()[0]
   if (existing !== undefined) {
     if (replyTo !== null && Number(existing.processed) === 0) {
+      const replyTos = decodeReplyTargets(existing.reply_to)
+      if (!replyTos.includes(replyTo)) replyTos.push(replyTo)
       sql.exec(
         "UPDATE cluster_messages SET reply_to = ? WHERE request_id = ?",
-        replyTo,
+        JSON.stringify(replyTos),
         String(existing.request_id)
       )
     }
@@ -99,7 +101,7 @@ export const persistRequest = (
     envelopeText,
     discard ? 1 : 0,
     deliverAt,
-    replyTo
+    replyTo === null ? null : JSON.stringify([replyTo])
   )
   return { _tag: "Success" }
 }
@@ -148,16 +150,28 @@ export interface StoredMessage {
   readonly lastSentChunk: string | undefined
   readonly discard: boolean
   readonly deliverAt?: number | undefined
-  readonly replyTo?: string | undefined
+  readonly replyTos?: ReadonlyArray<string> | undefined
+}
+
+const decodeReplyTargets = (value: unknown): Array<string> => {
+  if (typeof value !== "string") return []
+  try {
+    const decoded = JSON.parse(value)
+    if (Array.isArray(decoded) && decoded.every((item) => typeof item === "string")) return decoded
+  } catch {
+    // Rows written before reply targets became a collection contain one plain name.
+  }
+  return [value]
 }
 
 const rowToMessage = (row: Record<string, unknown>): StoredMessage => {
+  const replyTos = decodeReplyTargets(row.reply_to)
   const message: StoredMessage = {
     envelope: String(row.envelope),
     lastSentChunk: typeof row.last_reply === "string" ? row.last_reply : undefined,
     discard: Number(row.discard) === 1,
     ...(typeof row.deliver_at === "number" ? { deliverAt: row.deliver_at } : undefined),
-    ...(typeof row.reply_to === "string" ? { replyTo: row.reply_to } : undefined)
+    ...(replyTos.length === 0 ? undefined : { replyTos })
   }
   return message
 }
