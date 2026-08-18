@@ -49,12 +49,13 @@ interface QueueStub {
 const leaseMillis = 120_000
 const leaseRefreshMillis = 30_000
 
-const finalize = (run: () => Promise<void>): Effect.Effect<void> =>
+const attempt = (run: () => Promise<void>) =>
   Effect.promise(run).pipe(
     Effect.sandbox,
-    Effect.retry({ times: 5, schedule: Schedule.exponential(100, 1.5) }),
-    Effect.orDie
+    Effect.retry({ times: 5, schedule: Schedule.exponential(100, 1.5) })
   )
+
+const finalize = (run: () => Promise<void>): Effect.Effect<void> => Effect.orDie(attempt(run))
 
 /**
  * Creates the `PersistedQueueStore` backed by the queue Durable Object
@@ -95,13 +96,7 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
               Effect.orDie
             )
           ).pipe(
-            Effect.onInterrupt(() =>
-              Effect.promise(() => stubFor(name).cancelTake(takerId)).pipe(
-                Effect.sandbox,
-                Effect.retry({ times: 5, schedule: Schedule.exponential(100, 1.5) }),
-                Effect.ignore
-              )
-            )
+            Effect.onInterrupt(() => Effect.ignore(attempt(() => stubFor(name).cancelTake(takerId))))
           )
           yield* Effect.addFinalizer(Exit.match({
             onFailure: (cause) =>
