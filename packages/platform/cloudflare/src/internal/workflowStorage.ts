@@ -41,9 +41,15 @@ export const ensureWorkflowStorage = (sql: SqlStorage): void => {
   }
 }
 
-/** @internal */
+/**
+ * The stored `(workflowName, executionId)` also serve to recover the object
+ * name on an alarm wake, where `ctx.id.name` is undefined.
+ *
+ * @internal
+ */
 export interface ExecutionRow {
   readonly workflowName: string
+  readonly executionId: string
   readonly payload: string
   readonly parent: { readonly workflowName: string; readonly executionId: string } | undefined
   readonly result: string | undefined
@@ -53,12 +59,13 @@ export interface ExecutionRow {
 /** @internal */
 export const loadExecution = (sql: SqlStorage): ExecutionRow | undefined => {
   const row = sql.exec(
-    `SELECT workflow_name, payload, parent_name, parent_execution_id, result, resume_pending
+    `SELECT workflow_name, execution_id, payload, parent_name, parent_execution_id, result, resume_pending
      FROM workflow_execution WHERE id = 0`
   ).toArray()[0]
   if (row === undefined) return undefined
   return {
     workflowName: String(row.workflow_name),
+    executionId: String(row.execution_id),
     payload: String(row.payload),
     parent: typeof row.parent_name === "string" && typeof row.parent_execution_id === "string"
       ? { workflowName: row.parent_name, executionId: row.parent_execution_id }
@@ -66,20 +73,6 @@ export const loadExecution = (sql: SqlStorage): ExecutionRow | undefined => {
     result: typeof row.result === "string" ? row.result : undefined,
     resumePending: row.resume_pending === 1
   }
-}
-
-/**
- * The stored `(workflowName, executionId)` of this object's execution, used to
- * recover the object name on an alarm wake where `ctx.id.name` is undefined.
- *
- * @internal
- */
-export const loadExecutionName = (
-  sql: SqlStorage
-): { readonly workflowName: string; readonly executionId: string } | undefined => {
-  const row = sql.exec("SELECT workflow_name, execution_id FROM workflow_execution WHERE id = 0").toArray()[0]
-  if (row === undefined) return undefined
-  return { workflowName: String(row.workflow_name), executionId: String(row.execution_id) }
 }
 
 /** @internal */
@@ -141,10 +134,15 @@ export const loadDeferred = (sql: SqlStorage, name: string): string | undefined 
   return row === undefined ? undefined : String(row.exit)
 }
 
-/** @internal */
+/**
+ * First write wins; safe without a conflict clause because a Durable Object's
+ * SQLite access is single-threaded.
+ *
+ * @internal
+ */
 export const saveDeferred = (sql: SqlStorage, name: string, exit: string): boolean => {
   if (loadDeferred(sql, name) !== undefined) return false
-  sql.exec("INSERT OR IGNORE INTO workflow_deferreds (name, exit) VALUES (?, ?)", name, exit)
+  sql.exec("INSERT INTO workflow_deferreds (name, exit) VALUES (?, ?)", name, exit)
   return true
 }
 
