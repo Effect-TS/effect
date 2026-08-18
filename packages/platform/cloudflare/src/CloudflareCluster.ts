@@ -10,16 +10,24 @@
  *
  * @since 4.0.0
  */
-import type * as Context from "effect/Context"
+import { Clock } from "effect/Clock"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import { MailboxFull, PersistenceError } from "effect/unstable/cluster/ClusterError"
 import type * as Entity from "effect/unstable/cluster/Entity"
+import * as EntityAddress from "effect/unstable/cluster/EntityAddress"
+import * as EntityId from "effect/unstable/cluster/EntityId"
 import * as RunnerAddress from "effect/unstable/cluster/RunnerAddress"
 import * as ShardId from "effect/unstable/cluster/ShardId"
 import { Sharding } from "effect/unstable/cluster/Sharding"
-import * as Snowflake from "effect/unstable/cluster/Snowflake"
+import type * as Rpc from "effect/unstable/rpc/Rpc"
+import * as RpcClient from "effect/unstable/rpc/RpcClient"
 import * as Internal from "./internal/clusterName.ts"
+import { registerEntity as registerEntityHandler, unregisterEntity } from "./internal/entityRegistry.ts"
+import { decodeReplyFor } from "./internal/entityWire.ts"
 
 /**
  * A Durable Object name decoded back into its entity address parts.
@@ -99,27 +107,53 @@ export interface LayerOptions {
  */
 export const makeRunnerAddress = (objectName: string): RunnerAddress.RunnerAddress => RunnerAddress.make(objectName, 0)
 
-interface EntityRegistration {
-  readonly entity: Entity.Entity<any, any>
-  readonly build: Effect.Effect<unknown, never, unknown>
-  readonly options: Record<string, unknown> | undefined
-  readonly context: Context.Context<never>
-}
-
 const notImplemented = (method: string) =>
   Effect.die(
     new Error(`CloudflareCluster: ${method} is not implemented yet on the Cloudflare Durable Object path`)
   )
+
+interface EntityStub {
+  readonly invoke: (envelope: string, discard: boolean) => Promise<{
+    readonly requestId: string
+    readonly replies: ReadonlyArray<string>
+    readonly error?: "MailboxFull" | "EncodedMessageTooLarge" | undefined
+  }>
+  readonly acknowledge: (requestId: string, replyId: string) => Promise<ReadonlyArray<string>>
+  readonly reset?: (requestId: string) => void
+}
+
+interface ClientTargetValue {
+  readonly address: EntityAddress.EntityAddress
+  readonly stub: EntityStub
+}
+
+class ClientTarget extends Context.Service<ClientTarget, ClientTargetValue>()(
+  "@effect/platform-cloudflare/CloudflareCluster/ClientTarget"
+) {}
+
+const uuidV7 = (timestamp: number): string => {
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[0] = Math.floor(timestamp / 2 ** 40)
+  bytes[1] = Math.floor(timestamp / 2 ** 32) & 0xff
+  bytes[2] = Math.floor(timestamp / 2 ** 24) & 0xff
+  bytes[3] = Math.floor(timestamp / 2 ** 16) & 0xff
+  bytes[4] = Math.floor(timestamp / 2 ** 8) & 0xff
+  bytes[5] = timestamp & 0xff
+  bytes[6] = (bytes[6] & 0x0f) | 0x70
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const hex = (byte: number) => byte.toString(16).padStart(2, "0")
+  return [bytes.subarray(0, 4), bytes.subarray(4, 6), bytes.subarray(6, 8), bytes.subarray(8, 10), bytes.subarray(10)]
+    .map((part) => Array.from(part, hex).join(""))
+    .join("-")
+}
 
 const make = Effect.fnUntraced(function*(options: LayerOptions) {
   const entities = new Map<string, Entity.Entity<any, any>>()
   for (const entity of options.entities) {
     entities.set(entity.type, entity)
   }
-  const registrations = new Map<string, EntityRegistration>()
-  // Snowflakes are isolate-local here (random machine id, no coordination).
-  // Persisted request ids on this path use uuidv7, not these snowflakes.
-  const snowflakeGen = yield* Snowflake.makeGenerator
+  const clock = yield* Clock
+  const requestTargets = new Map<string, { readonly stub: EntityStub; storageRequestId: string }>()
 
   const unknownEntity = (entity: Entity.Entity<any, any>) =>
     Effect.die(
@@ -128,20 +162,140 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
       )
     )
 
-  const stubMethod = () => notImplemented("entity messaging")
-  const makeStubClient = (entity: Entity.Entity<any, any>, entityId: string) => {
-    options.entityNamespace.getByName(Internal.encodeName(entity.type, entityId))
-    const client: Record<string, unknown> = {}
-    for (const tag of entity.protocol.requests.keys()) {
-      client[tag] = stubMethod
+  const makeClient = Effect.fnUntraced(function*(entity: Entity.Entity<any, any>) {
+    if (!entities.has(entity.type)) return yield* unknownEntity(entity)
+    type ClientEntry = {
+      readonly rpc: Rpc.AnyWithProps
+      readonly context: Context.Context<never>
+      readonly clientRequestId: string
+      storageRequestId: string
+      lastChunkId?: string
     }
-    return client
-  }
+    const entries = new Map<string, ClientEntry>()
+    let client!: Effect.Success<ReturnType<typeof RpcClient.makeNoSerialization<any, MailboxFull | PersistenceError>>>
 
-  const makeClient = (entity: Entity.Entity<any, any>) =>
-    entities.has(entity.type)
-      ? Effect.sync(() => (entityId: string) => makeStubClient(entity, entityId))
-      : unknownEntity(entity)
+    const deliverReplies = (entry: ClientEntry, replyTexts: ReadonlyArray<string>): Effect.Effect<void> =>
+      Effect.forEach(
+        replyTexts,
+        (replyText) =>
+          Effect.flatMap(decodeReplyFor(entry.rpc, entry.context, replyText), (reply) => {
+            if (reply._tag === "Chunk") {
+              entry.lastChunkId = String(reply.id)
+              return client.write({
+                _tag: "Chunk",
+                clientId: 0,
+                requestId: entry.clientRequestId as any,
+                values: reply.values
+              })
+            }
+            entries.delete(entry.clientRequestId)
+            return client.write({
+              _tag: "Exit",
+              clientId: 0,
+              requestId: entry.clientRequestId as any,
+              exit: reply.exit
+            })
+          }),
+        { discard: true }
+      )
+
+    client = yield* RpcClient.makeNoSerialization<any, MailboxFull | PersistenceError>(entity.protocol, {
+      spanPrefix: `${entity.type}.client`,
+      supportsAck: true,
+      generateRequestId: () => uuidV7(clock.currentTimeMillisUnsafe()) as any,
+      onFromClient({ context, discard, message }): Effect.Effect<void, MailboxFull | PersistenceError> {
+        const target = Context.getUnsafe(context, ClientTarget)
+        switch (message._tag) {
+          case "Request": {
+            const rpc = entity.protocol.requests.get(message.tag)! as Rpc.AnyWithProps
+            const clientRequestId = String(message.id)
+            const encode = Schema.encodeUnknownEffect(Schema.toCodecJson(rpc.payloadSchema))(message.payload).pipe(
+              Effect.provideContext(context as any),
+              Effect.orDie
+            ) as unknown as Effect.Effect<unknown>
+            return Effect.flatMap(encode, (payload) => {
+              const envelope = JSON.stringify({
+                _tag: "Request",
+                requestId: clientRequestId,
+                address: {
+                  shardId: target.address.shardId,
+                  entityType: target.address.entityType,
+                  entityId: target.address.entityId
+                },
+                tag: message.tag,
+                payload,
+                headers: message.headers,
+                ...(message.traceId === undefined ? undefined : {
+                  traceId: message.traceId,
+                  spanId: message.spanId,
+                  sampled: message.sampled
+                })
+              })
+              const entry: ClientEntry = {
+                rpc,
+                context,
+                clientRequestId,
+                storageRequestId: clientRequestId
+              }
+              if (!discard) entries.set(clientRequestId, entry)
+              return Effect.promise(() => target.stub.invoke(envelope, discard)).pipe(
+                Effect.flatMap((result) => {
+                  if (result.error === "MailboxFull") {
+                    return Effect.fail(new MailboxFull({ address: target.address }) as MailboxFull | PersistenceError)
+                  } else if (result.error === "EncodedMessageTooLarge") {
+                    return Effect.fail(
+                      new PersistenceError({ cause: new Error("Encoded entity message exceeds 2 MB") }) as
+                        | MailboxFull
+                        | PersistenceError
+                    )
+                  }
+                  entry.storageRequestId = result.requestId
+                  requestTargets.set(clientRequestId, { stub: target.stub, storageRequestId: result.requestId })
+                  return discard ? Effect.void : deliverReplies(entry, result.replies)
+                })
+              )
+            })
+          }
+          case "Ack": {
+            const entry = entries.get(String(message.requestId))
+            if (entry === undefined || entry.lastChunkId === undefined) return Effect.void
+            return Effect.promise(() => target.stub.acknowledge(entry.storageRequestId, entry.lastChunkId!)).pipe(
+              Effect.flatMap((replies) => deliverReplies(entry, replies))
+            )
+          }
+          case "Interrupt": {
+            entries.delete(String(message.requestId))
+            return Effect.void
+          }
+          default:
+            return Effect.void
+        }
+      }
+    })
+
+    return (entityId: string) => {
+      const id = EntityId.make(entityId)
+      const target = ClientTarget.context({
+        address: EntityAddress.make({
+          shardId: ShardId.make(entity.getShardGroup(id), 1),
+          entityId: id,
+          entityType: entity.type
+        }),
+        stub: options.entityNamespace.getByName(Internal.encodeName(entity.type, entityId)) as unknown as EntityStub
+      })
+      const result: Record<string, unknown> = {}
+      for (const tag of entity.protocol.requests.keys()) {
+        result[tag] = (payload: unknown, methodOptions?: { readonly context?: Context.Context<never> }) =>
+          (client.client as any)[tag](payload, {
+            ...methodOptions,
+            context: methodOptions?.context === undefined
+              ? target
+              : Context.merge(methodOptions.context, target)
+          })
+      }
+      return result as any
+    }
+  })
 
   const registerEntity = Effect.fnUntraced(function*(
     entity: Entity.Entity<any, any>,
@@ -150,14 +304,13 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
   ) {
     if (!entities.has(entity.type)) {
       return yield* unknownEntity(entity)
-    } else if (registrations.has(entity.type)) {
-      return
     }
     const context = yield* Effect.context<never>()
-    registrations.set(entity.type, { entity, build, options: buildOptions, context })
+    const registration = { entity, build: build as any, options: buildOptions, context }
+    if (!registerEntityHandler(entity.type, registration)) return
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
-        registrations.delete(entity.type)
+        unregisterEntity(entity.type, registration)
       })
     )
   })
@@ -166,7 +319,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
     getRegistrationEvents: Stream.never,
     getShardId: (_entityId, group) => ShardId.make(group, 1),
     hasShardId: () => true,
-    getSnowflake: Effect.sync(() => snowflakeGen.nextUnsafe()),
+    getSnowflake: Effect.sync(() => uuidV7(clock.currentTimeMillisUnsafe()) as any),
     isShutdown: Effect.succeed(false),
     makeClient: makeClient as Sharding["Service"]["makeClient"],
     registerEntity: registerEntity as Sharding["Service"]["registerEntity"],
@@ -174,7 +327,14 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
     send: () => notImplemented("Sharding.send"),
     sendOutgoing: () => notImplemented("Sharding.sendOutgoing"),
     notify: () => notImplemented("Sharding.notify"),
-    reset: () => notImplemented("Sharding.reset"),
+    reset: (requestId) => {
+      const target = requestTargets.get(String(requestId))
+      if (target === undefined || target.stub.reset === undefined) return Effect.succeed(false)
+      return Effect.sync(() => {
+        target.stub.reset!(target.storageRequestId)
+        return true
+      })
+    },
     pollStorage: notImplemented("Sharding.pollStorage"),
     activeEntityCount: Effect.succeed(0)
   })
