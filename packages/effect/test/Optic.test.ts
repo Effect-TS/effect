@@ -78,6 +78,35 @@ describe("Optic", () => {
     strictEqual(iso.modify(addOne)(1), 2)
   })
 
+  describe("standalone functions", () => {
+    const lens = Optic.id<{ readonly value: number }>().key("value")
+    const optional = Optic.id<Record<string, number>>().at("value")
+    const prism = Optic.some<number>()
+    const traversal = Optic.id<ReadonlyArray<number>>().forEach((item) => item)
+
+    it("supports data-first usage", () => {
+      strictEqual(Optic.get({ value: 1 }, lens), 1)
+      assertSuccess(Optic.getResult({ value: 1 }, optional), 1)
+      deepStrictEqual(Optic.set(1, prism), Option.some(1))
+      deepStrictEqual(Optic.replace({ value: 1 }, lens, 2), { value: 2 })
+      assertSuccess(Optic.replaceResult({ value: 1 }, optional, 2), { value: 2 })
+      deepStrictEqual(Optic.modify({ value: 1 }, lens, addOne), { value: 2 })
+      deepStrictEqual(Optic.getAll([1, 2, 3], traversal), [1, 2, 3])
+      deepStrictEqual(Optic.modifyAll([1, 2, 3], traversal, addOne), [2, 3, 4])
+    })
+
+    it("supports data-last usage", () => {
+      strictEqual(Optic.get(lens)({ value: 1 }), 1)
+      assertSuccess(Optic.getResult(optional)({ value: 1 }), 1)
+      deepStrictEqual(Optic.set(prism)(1), Option.some(1))
+      deepStrictEqual(Optic.replace(lens, 2)({ value: 1 }), { value: 2 })
+      assertSuccess(Optic.replaceResult(optional, 2)({ value: 1 }), { value: 2 })
+      deepStrictEqual(Optic.modify(lens, addOne)({ value: 1 }), { value: 2 })
+      deepStrictEqual(Optic.getAll(traversal)([1, 2, 3]), [1, 2, 3])
+      deepStrictEqual(Optic.modifyAll(traversal, addOne)([1, 2, 3]), [2, 3, 4])
+    })
+  })
+
   describe("compose", () => {
     it("sets through composed isos without reading a source", () => {
       const value = Optic.makeIso<{ readonly value: number }, number>(
