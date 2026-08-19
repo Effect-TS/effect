@@ -21,6 +21,10 @@ const User = Entity.make("User", [
   Rpc.make("Ping", { success: Schema.String })
 ])
 
+const UninterruptibleUser = Entity.make("UninterruptibleUser", [
+  Rpc.make("Ping", { success: Schema.String }).annotate(ClusterSchema.Uninterruptible, true)
+])
+
 const PersistedUser = Entity.make("PersistedUser", [
   Rpc.make("Ping", { success: Schema.String }).annotate(ClusterSchema.Persisted, true)
 ])
@@ -277,6 +281,43 @@ describe("CloudflareCluster", () => {
         yield* Fiber.interrupt(fiber)
 
         assert.deepStrictEqual(interruptions, [[requestId, requestId]])
+      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
+    })
+
+    it.effect("does not interrupt an Uninterruptible Durable Object handler", () => {
+      let resumeInvoked!: () => void
+      const invoked = new Promise<void>((resolve) => {
+        resumeInvoked = resolve
+      })
+      const interruptions: Array<ReadonlyArray<string | undefined>> = []
+      const stub = {
+        invoke() {
+          resumeInvoked()
+          return new Promise<never>(() => {})
+        },
+        acknowledge() {
+          return Promise.resolve([])
+        },
+        interrupt(storageRequestId: string, clientRequestId?: string) {
+          interruptions.push([storageRequestId, clientRequestId])
+          return Promise.resolve()
+        }
+      }
+      const options: CloudflareCluster.LayerOptions = {
+        entities: [UninterruptibleUser],
+        entityNamespace: new FakeNamespace(stub) as any,
+        workflowNamespace: new FakeNamespace() as any,
+        queueNamespace: new FakeNamespace() as any,
+        singletonNamespace: new FakeNamespace() as any
+      }
+
+      return Effect.gen(function*() {
+        const makeClient = yield* UninterruptibleUser.client
+        const fiber = yield* Effect.forkChild(makeClient("42").Ping(void 0))
+        yield* Effect.promise(() => invoked)
+        yield* Fiber.interrupt(fiber)
+
+        assert.isEmpty(interruptions)
       }).pipe(Effect.provide(CloudflareCluster.layer(options)))
     })
 
