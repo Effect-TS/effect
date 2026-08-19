@@ -206,6 +206,7 @@ interface SessionReply {
 
 interface Session {
   readonly queue: Queue.Queue<SessionReply, Cause.Done>
+  readonly completeInterrupt: Effect.Effect<void>
   ack: {
     readonly replyId: string
     readonly deferred: Deferred.Deferred<void>
@@ -471,7 +472,27 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     }
 
     const queue = yield* Queue.make<SessionReply, Cause.Done>()
-    const session: Session = { queue, ack: undefined, fiber: undefined }
+    const completeInterrupt = persisted
+      ? Effect.flatMap(
+        encodeReplyFor(
+          registration,
+          rpc,
+          new Reply.WithExit({
+            requestId: envelope.requestId,
+            id: crypto.randomUUID() as any,
+            exit: Exit.interrupt()
+          })
+        ),
+        (reply) =>
+          Effect.sync(() =>
+            storage.transactionSync(() => {
+              clearReplies(sql, requestId)
+              saveReply(sql, reply)
+            })
+          )
+      )
+      : Effect.void
+    const session: Session = { queue, completeInterrupt, ack: undefined, fiber: undefined }
     sessions.set(requestId, session)
     const permit = makeHandlerPermit(entityRuntime.handlerSemaphore)
     const respond = (reply: Reply.Reply<any>) =>
@@ -777,7 +798,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         session.ack = undefined
       }
       Queue.endUnsafe(session.queue)
-      return session.fiber === undefined ? Effect.void : Fiber.interrupt(session.fiber)
+      const stop = session.fiber === undefined ? Effect.void : Effect.asVoid(Fiber.interrupt(session.fiber))
+      return Effect.andThen(stop, session.completeInterrupt)
     })
 
   const reset = (requestId: string): Effect.Effect<void> =>
