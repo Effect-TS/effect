@@ -786,7 +786,20 @@ export class KeepAliveLatch extends Context.Service<KeepAliveLatch, Latch.Latch>
   "effect/cluster/Entity/KeepAliveLatch"
 ) {}
 
-class KeepAliveHandler extends Context.Service<
+/**
+ * Service tag for the runtime hook behind {@link keepAlive}.
+ *
+ * **Details**
+ *
+ * Runtimes that support pinning an entity in memory provide this service; the
+ * handler receives `true` while at least one keep-alive holder exists and
+ * `false` once the last holder is released. When the service is absent,
+ * `keepAlive` is a no-op.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export class KeepAliveHandler extends Context.Service<
   KeepAliveHandler,
   (enabled: boolean) => Effect.Effect<void>
 >()("effect/cluster/Entity/KeepAliveHandler") {}

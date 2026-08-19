@@ -4,10 +4,9 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 
 /** @internal */
-export const CurrentEntityName = Context.Reference<string | undefined>(
-  "@effect/platform-cloudflare/CurrentEntityName",
-  { defaultValue: () => undefined }
-)
+export class CurrentEntityName extends Context.Service<CurrentEntityName, string>()(
+  "@effect/platform-cloudflare/CurrentEntityName"
+) {}
 
 /**
  * Completes the delayed asks made by one entity Durable Object's handlers.
@@ -50,7 +49,6 @@ export const makeReplyRegistry = (): EntityReplyRegistry => {
 }
 
 /** @internal */
-export const CurrentReplyRegistry = Context.Reference<EntityReplyRegistry | undefined>(
-  "@effect/platform-cloudflare/CurrentReplyRegistry",
-  { defaultValue: () => undefined }
-)
+export class CurrentReplyRegistry extends Context.Service<CurrentReplyRegistry, EntityReplyRegistry>()(
+  "@effect/platform-cloudflare/CurrentReplyRegistry"
+) {}
