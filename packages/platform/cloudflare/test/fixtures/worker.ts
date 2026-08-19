@@ -4,6 +4,7 @@ export {
   ClusterWorkflow
 } from "@effect/platform-cloudflare/CloudflareDurableObjects"
 import { ClusterEntity as BaseClusterEntity } from "@effect/platform-cloudflare/CloudflareDurableObjects"
+import { encodeName } from "@effect/platform-cloudflare/internal/clusterName"
 import { registerEntity } from "@effect/platform-cloudflare/internal/entityRegistry"
 import { Context, Deferred, Effect, Schema, Stream } from "effect"
 import { ClusterSchema, Entity } from "effect/unstable/cluster"
@@ -83,27 +84,31 @@ const requestEnvelope = (entityType: string, entityId: string, tag: string) =>
     headers: {}
   })
 
+const invokeValue = (
+  namespace: { getByName: (name: string) => any },
+  entityType: string,
+  entityId: string,
+  tag: string
+): Promise<string> =>
+  namespace
+    .getByName(encodeName(entityType, entityId))
+    .invoke(requestEnvelope(entityType, entityId, tag), false)
+    .then((result: { readonly replies: ReadonlyArray<string> }) => String(JSON.parse(result.replies[0]).exit.value))
+
 const askEntity = (entityType: string, entityId: string, tag: string) =>
-  Effect.promise((): Promise<string> =>
-    entityEnv!.CLUSTER_ENTITY
-      .getByName(`${entityType.length}:${entityType}${entityId}`)
-      .invoke(requestEnvelope(entityType, entityId, tag), false)
-      .then((result: { readonly replies: ReadonlyArray<string> }) => String(JSON.parse(result.replies[0]).exit.value))
-  )
+  Effect.promise(() => invokeValue(entityEnv!.CLUSTER_ENTITY, entityType, entityId, tag))
 
 const gates = new Map<string, Deferred.Deferred<void>>()
 const gateKey = (address: { readonly entityType: string; readonly entityId: string }) =>
   `${address.entityType}/${address.entityId}`
-const makeGateEntity = (type: string) =>
-  Entity.make(type, [
-    Rpc.make("WaitTurn", { success: Schema.String }),
-    Rpc.make("Open", { success: Schema.String })
-  ])
 const registerGateEntity = (
   type: string,
   options: { readonly concurrency?: number | "unbounded" } | undefined
 ) => {
-  const entity = makeGateEntity(type)
+  const entity = Entity.make(type, [
+    Rpc.make("WaitTurn", { success: Schema.String }),
+    Rpc.make("Open", { success: Schema.String })
+  ])
   registerEntity(type, {
     entity,
     build: Effect.succeed(entity.of({
@@ -273,21 +278,14 @@ export default {
     if (url.pathname === "/gate") {
       const type = url.searchParams.get("type") ?? "GateSerial"
       const id = url.searchParams.get("id") ?? "gate"
-      const stub = env.CLUSTER_ENTITY.getByName(`${type.length}:${type}${id}`)
-      const invokeGate = (tag: string) =>
-        stub.invoke(requestEnvelope(type, id, tag), false).then(
-          (result: { readonly replies: ReadonlyArray<string> }) => JSON.parse(result.replies[0]).exit.value
-        )
-      const wait = invokeGate("WaitTurn")
+      const wait = invokeValue(env.CLUSTER_ENTITY, type, id, "WaitTurn")
       await new Promise((resolve) => setTimeout(resolve, 100))
-      const open = await invokeGate("Open")
+      const open = await invokeValue(env.CLUSTER_ENTITY, type, id, "Open")
       return Response.json({ wait: await wait, open })
     }
     if (url.pathname === "/cycle") {
       const id = url.searchParams.get("id") ?? "cycle"
-      const stub = env.CLUSTER_ENTITY.getByName(`6:CycleA${id}`)
-      const result = await stub.invoke(requestEnvelope("CycleA", id, "Start"), false)
-      return Response.json({ value: JSON.parse(result.replies[0]).exit.value })
+      return Response.json({ value: await invokeValue(env.CLUSTER_ENTITY, "CycleA", id, "Start") })
     }
     if (url.pathname === "/seed-poison") {
       const stub = env.CLUSTER_ENTITY.getByName("7:Mailboxcounter")
