@@ -227,15 +227,11 @@ const compileSchemas: CompileSchemas = (asts) =>
     )
   )
 
-const jsonWithRawJSON = JSON as unknown as { isRawJSON?: (value: unknown) => boolean }
-
-const isJsonRawJSON = (value: unknown): boolean => jsonWithRawJSON.isRawJSON?.(value) === true
-
 const cloneOpenAPISpec = <A>(value: A): A => {
   if (Array.isArray(value)) {
     return value.map(cloneOpenAPISpec) as A
   }
-  if (value !== null && typeof value === "object" && !isJsonRawJSON(value)) {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
     const out: Record<string, unknown> = {}
     for (const key of Object.keys(value)) {
       InternalRecord.assignProperty(out, key, cloneOpenAPISpec((value as Record<string, unknown>)[key]))
