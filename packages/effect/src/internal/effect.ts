@@ -3793,10 +3793,16 @@ export const scopeCloseUnsafe = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>
   return scopeCloseFinalizers(self, finalizers, exit_)
 }
 
-const scopeCloseWithExit = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) => {
+const combineFinalizerCause = <A, E, XE, XR>(
+  exit_: Exit.Exit<A, E>,
+  finalizer: Effect.Effect<void, XE, XR>
+): Effect.Effect<void, E | XE, XR> =>
+  exitIsSuccess(exit_) ? finalizer : catchCause(finalizer, (cause) => failCause(causeCombine(exit_.cause, cause)))
+
+/** @internal */
+export const scopeCloseWithExit = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) => {
   const close = scopeCloseUnsafe(self, exit_)
-  if (close === undefined || exitIsSuccess(exit_)) return close
-  return catchCause(close, (cause) => failCause(causeCombine(exit_.cause, cause)))
+  return close && combineFinalizerCause(exit_, close)
 }
 
 const scopeCloseFinalizers = fnUntraced(function*<A, E>(
@@ -4175,16 +4181,12 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
   release: (a: Resource, exit: Exit.Exit<A, E2>) => Effect.Effect<void, E3, R3>
 ): Effect.Effect<A, E | E2 | E3, R | R2 | R3> =>
   uninterruptibleMask((restore) =>
-    flatMap(
-      acquire,
-      (a) =>
-        flatMap(exit(restore(use(a))), (useExit) =>
-          flatMap(exit(release(a, useExit)), (releaseExit) => {
-            if (exitIsSuccess(releaseExit)) return useExit
-            if (exitIsSuccess(useExit)) return failCause(releaseExit.cause)
-            return exitFailCause(causeCombine(useExit.cause, releaseExit.cause))
-          }))
-    )
+    flatMap(acquire, (a) =>
+      onExitPrimitive(
+        restore(use(a)),
+        (exit) => combineFinalizerCause(exit, release(a, exit)),
+        true
+      ))
   )
 
 /** @internal */
