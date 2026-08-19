@@ -355,6 +355,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
           entries.delete(clientRequestId)
           requestTargets.delete(clientRequestId)
           if (entry === undefined) return Effect.void
+          if (Context.get(entry.rpc.annotations, Uninterruptible) === true) return Effect.void
           return Effect.promise(() => target.stub.interrupt(entry.storageRequestId, clientRequestId))
         }
         default:
