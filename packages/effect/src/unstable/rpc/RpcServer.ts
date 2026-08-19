@@ -806,7 +806,7 @@ export const layerHttp = <Rpcs extends Rpc.Any>(options: {
   readonly spanAttributes?: Record<string, unknown> | undefined
   readonly concurrency?: number | "unbounded" | undefined
   readonly disableFatalDefects?: boolean | undefined
-  readonly streamBufferSize?: number | undefined
+  readonly streamBufferSize?: number | "unbounded" | undefined
 }): Layer.Layer<
   never,
   never,
@@ -987,7 +987,7 @@ export const makeProtocolWithHttpEffect: Effect.Effect<
 > = Effect.suspend(() => makeProtocolWithHttpEffectOptions({}))
 
 const makeProtocolWithHttpEffectOptions = Effect.fnUntraced(function*(options: {
-  readonly streamBufferSize?: number | undefined
+  readonly streamBufferSize?: number | "unbounded" | undefined
 }) {
   const serialization = yield* RpcSerialization.RpcSerialization
   const includesFraming = serialization.includesFraming
@@ -1024,7 +1024,9 @@ const makeProtocolWithHttpEffectOptions = Effect.fnUntraced(function*(options: {
     )
     const id = clientId++
     const queue = yield* Queue.make<Uint8Array | FromServerEncoded, Cause.Done>({
-      capacity: includesFraming ? options.streamBufferSize : undefined
+      capacity: includesFraming && options.streamBufferSize !== "unbounded"
+        ? options.streamBufferSize ?? 16
+        : undefined
     })
     const parser = serialization.makeUnsafe()
     const requestIds: Array<RequestId> = []
@@ -1153,7 +1155,7 @@ const mergeUint8Arrays = (arrays: ReadonlyArray<Uint8Array>) => {
  */
 export const makeProtocolHttp: (options: {
   readonly path: HttpRouter.PathInput
-  readonly streamBufferSize?: number | undefined
+  readonly streamBufferSize?: number | "unbounded" | undefined
 }) => Effect.Effect<
   Protocol["Service"],
   never,
@@ -1174,7 +1176,7 @@ export const makeProtocolHttp: (options: {
  */
 export const layerProtocolHttp = (options: {
   readonly path: HttpRouter.PathInput
-  readonly streamBufferSize?: number | undefined
+  readonly streamBufferSize?: number | "unbounded" | undefined
 }): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | HttpRouter.HttpRouter> => {
   return Layer.effect(Protocol)(makeProtocolHttp(options))
 }
@@ -1193,7 +1195,7 @@ export const toHttpEffect: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableFatalDefects?: boolean | undefined
-    readonly streamBufferSize?: number | undefined
+    readonly streamBufferSize?: number | "unbounded" | undefined
   } | undefined
 ) => Effect.Effect<
   Effect.Effect<HttpServerResponse.HttpServerResponse, never, Scope.Scope | HttpServerRequest.HttpServerRequest>,
@@ -1210,7 +1212,7 @@ export const toHttpEffect: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableFatalDefects?: boolean | undefined
-    readonly streamBufferSize?: number | undefined
+    readonly streamBufferSize?: number | "unbounded" | undefined
   }
 ) {
   const { httpEffect, protocol } = yield* makeProtocolWithHttpEffectOptions(options ?? {})
