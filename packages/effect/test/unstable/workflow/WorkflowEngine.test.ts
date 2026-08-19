@@ -248,4 +248,38 @@ describe("WorkflowEngine", () => {
         assert.deepStrictEqual(yield* Ref.get(observed), [true])
       }).pipe(Effect.provide(layer))
     }))
+
+  it.effect("layerMemory preserves interruptUnsafe across a suspended replay", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("WorkflowEngine/InterruptUnsafeReplay/Gate")
+      const Suspends = Workflow.make("WorkflowEngine/InterruptUnsafeReplay", {
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      })
+      const layer = Suspends.toLayer(() => DurableDeferred.await(gate)).pipe(
+        Layer.provideMerge(WorkflowEngine.layerMemory)
+      )
+
+      yield* Effect.gen(function*() {
+        const engine = yield* WorkflowEngine.WorkflowEngine
+        const payload = { id: "one" }
+        const executionId = yield* Suspends.execute(payload, { discard: true })
+        let result = yield* Suspends.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Suspends.poll(executionId)
+        }
+
+        yield* engine.interruptUnsafe(Suspends, executionId)
+        const token = DurableDeferred.tokenFromExecutionId(gate, { workflow: Suspends, executionId })
+        yield* DurableDeferred.succeed(gate, { token, value: void 0 })
+        while (Option.isNone(result) || result.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          result = yield* Suspends.poll(executionId)
+        }
+
+        assert(Option.isSome(result) && result.value._tag === "Complete")
+        assert(Exit.hasInterrupts(result.value.exit))
+      }).pipe(Effect.provide(layer))
+    }))
 })

@@ -782,7 +782,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       interruptUnsafe: Effect.fnUntraced(function*(_workflow, executionId) {
         const state = executions.get(executionId)
         if (!state) return
-        state.instance.interrupted = true
+        state.interrupted = true
         if (state.fiber) {
           yield* Fiber.interrupt(state.fiber)
         }
