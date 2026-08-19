@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Cause, Deferred, Duration, Effect, Exit, FileSystem, Latch, Layer, Schedule } from "effect"
+import { Cause, Duration, Effect, Exit, FileSystem, Latch, Layer, Schedule } from "effect"
 import { TestClock } from "effect/testing"
 import {
   ClusterError,
@@ -54,6 +54,15 @@ describe("SqlRunnerStorage", () => {
         yield* Effect.sleep(20)
       })
 
+      const expectRecovery = Effect.fnUntraced(function*() {
+        restoreConnection(partitioned)
+        expect(
+          yield* storage.refresh(runnerAddress1, shards).pipe(
+            Effect.retry({ times: 5, schedule: Schedule.spaced(20) })
+          )
+        ).toEqual(shards)
+      })
+
       yield* expectDeadline(storage.refresh(runnerAddress1, shards))
       yield* expectDeadline(storage.refresh(runnerAddress1, shards))
       yield* expectDeadline(storage.refresh(runnerAddress1, shards))
@@ -61,20 +70,15 @@ describe("SqlRunnerStorage", () => {
       assert.isAtLeast(partitioned.interruptedQueries, 1)
       assert.isAtMost(partitioned.maxActiveQueries, 1)
 
-      // Rebuilding is asynchronous, so wait until the replacement connection
-      // is ready before checking that lock operations recover.
-      yield* restoreAndWaitForUsableConnection(partitioned)
-      expect(yield* storage.refresh(runnerAddress1, shards)).toEqual(shards)
+      yield* expectRecovery()
 
       partitionConnection(partitioned)
       yield* expectDeadline(storage.acquire(runnerAddress1, [ShardId.make("default", 2)]))
-      yield* restoreAndWaitForUsableConnection(partitioned)
-      yield* storage.refresh(runnerAddress1, shards)
+      yield* expectRecovery()
 
       partitionConnection(partitioned)
       yield* expectDeadline(storage.release(runnerAddress1, shards[0]))
-      yield* restoreAndWaitForUsableConnection(partitioned)
-      yield* storage.refresh(runnerAddress1, shards)
+      yield* expectRecovery()
       yield* storage.release(runnerAddress1, shards[0])
 
       assert.strictEqual(partitioned.activeQueries, 0)
@@ -118,19 +122,24 @@ describe("SqlRunnerStorage", () => {
       yield* storage.register(runner, true)
       yield* storage.acquire(runnerAddress1, shards)
       partitionConnection(partitioned)
-      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
+      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
       yield* waitUntil(() => partitioned.activeQueries === 0)
 
       restoreConnection(partitioned)
       expect(
         yield* storage.refresh(runnerAddress1, shards).pipe(
-          Effect.retry({ times: 5, schedule: Schedule.spaced(20) }),
-          TestClock.withLive
+          Effect.retry({ times: 5, schedule: Schedule.spaced(20) })
         )
       ).toEqual(shards)
       assert.isAtLeast(partitioned.interruptedQueries, 1)
       assert.isAtMost(partitioned.maxActiveQueries, 1)
-    }).pipe(Effect.provide(layer))
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        restoreConnection(partitioned)
+      })),
+      Effect.provide(layer),
+      TestClock.withLive
+    )
   }, 60_000)
 
   it.effect("rebuilds the reserved connection again when a rebuilt connection stops responding", () => {
@@ -157,25 +166,30 @@ describe("SqlRunnerStorage", () => {
 
       // a failing lock operation rebuilds the reserved connection
       partitioned.failNextQueries = 1
-      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
+      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
       yield* waitUntil(() => partitioned.usableConnections === 2)
 
       // the rebuilt connection then wedges, without any lock operation
       // succeeding in between - a further rebuild still has to be attempted
       const reserved = partitioned.reservedConnections
       partitionConnection(partitioned)
-      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
-      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
+      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
+      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
       restoreConnection(partitioned)
       yield* waitUntil(() => partitioned.reservedConnections > reserved)
 
       expect(
         yield* storage.refresh(runnerAddress1, shards).pipe(
-          Effect.retry({ times: 5, schedule: Schedule.spaced(20) }),
-          TestClock.withLive
+          Effect.retry({ times: 5, schedule: Schedule.spaced(20) })
         )
       ).toEqual(shards)
-    }).pipe(Effect.provide(layer))
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        restoreConnection(partitioned)
+      })),
+      Effect.provide(layer),
+      TestClock.withLive
+    )
   }, 60_000)
 
   it.effect("rebuilds the reserved connection when releasing the previous one hangs", () => {
@@ -205,27 +219,28 @@ describe("SqlRunnerStorage", () => {
       // pool, so the rebuild stalls closing the previous scope
       partitionConnection(partitioned)
       partitioned.blockRelease = true
-      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
-      yield* Effect.sleep(150).pipe(TestClock.withLive)
+      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
+      yield* Effect.sleep(150)
 
       // the stalled release must not disable further rebuilds
       restoreConnection(partitioned)
       const reserved = partitioned.reservedConnections
-      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
+      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
       yield* waitUntil(() => partitioned.reservedConnections > reserved)
 
       expect(
         yield* storage.refresh(runnerAddress1, shards).pipe(
-          Effect.retry({ times: 5, schedule: Schedule.spaced(20) }),
-          TestClock.withLive
+          Effect.retry({ times: 5, schedule: Schedule.spaced(20) })
         )
       ).toEqual(shards)
     }).pipe(
       // let the stalled release finish so the layer can be torn down
       Effect.ensuring(Effect.sync(() => {
+        restoreConnection(partitioned)
         partitioned.blockRelease = false
       })),
-      Effect.provide(layer)
+      Effect.provide(layer),
+      TestClock.withLive
     )
   }, 60_000)
 
@@ -337,7 +352,6 @@ const runnerAddress2 = RunnerAddress.make("localhost", 5678)
 
 interface PartitionState {
   connectionAvailable: Latch.Latch
-  nextUsableConnection: Deferred.Deferred<void>
   blockRelease: boolean
   activeQueries: number
   maxActiveQueries: number
@@ -349,7 +363,6 @@ interface PartitionState {
 
 const makePartitionState = (): PartitionState => ({
   connectionAvailable: Latch.makeUnsafe(true),
-  nextUsableConnection: Deferred.makeUnsafe(),
   blockRelease: false,
   activeQueries: 0,
   maxActiveQueries: 0,
@@ -375,21 +388,6 @@ const partitionDiagnostics = (partitioned: PartitionState) =>
     `usable=${partitioned.usableConnections}`
   ].join(", ")
 
-const restoreAndWaitForUsableConnection = (partitioned: PartitionState) =>
-  Effect.suspend(() => {
-    const nextUsableConnection = partitioned.nextUsableConnection
-    restoreConnection(partitioned)
-    return Deferred.await(nextUsableConnection).pipe(
-      Effect.timeoutOrElse({
-        duration: 5_000,
-        orElse: () =>
-          Effect.die(
-            `timed out waiting for rebuilt reserved connection (${partitionDiagnostics(partitioned)})`
-          )
-      })
-    )
-  })
-
 const waitUntil = Effect.fnUntraced(
   function*(predicate: () => boolean) {
     while (!predicate()) {
@@ -399,8 +397,7 @@ const waitUntil = Effect.fnUntraced(
   Effect.timeoutOrElse({
     duration: 10_000,
     orElse: () => Effect.die("timed out waiting for condition")
-  }),
-  TestClock.withLive
+  })
 )
 
 const blackholeReservedConnection = (partitioned: PartitionState, resumePending: boolean) =>
@@ -436,9 +433,6 @@ const blackholeReservedConnection = (partitioned: PartitionState, resumePending:
                     if (Exit.isSuccess(exit) && !usable) {
                       usable = true
                       partitioned.usableConnections++
-                      const nextUsableConnection = partitioned.nextUsableConnection
-                      partitioned.nextUsableConnection = Deferred.makeUnsafe()
-                      Deferred.doneUnsafe(nextUsableConnection, Effect.void)
                     }
                   })
                 )
