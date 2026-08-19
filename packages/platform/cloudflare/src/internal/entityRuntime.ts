@@ -68,6 +68,10 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     registration.context,
     Metric.CurrentMetricAttributes.context({ type: registration.entity.type })
   )
+  // Bounds concurrent handler executions from the entity's `concurrency`
+  // build option; `"unbounded"` leaves handlers unlimited.
+  const concurrency = registration.options?.concurrency ?? 1
+  const handlerSemaphore = concurrency === "unbounded" ? undefined : Semaphore.makeUnsafe(concurrency)
 
   const invalidate = Effect.fnUntraced(function*() {
     if (cached === undefined) return
@@ -190,7 +194,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     }
   })
 
-  return { run, invalidate } as const
+  return { run, invalidate, handlerSemaphore } as const
 })
 
 type EntityRuntime = Effect.Success<ReturnType<typeof makeEntityRuntime>>
@@ -212,17 +216,6 @@ interface Session {
 interface WorkerWaiter {
   readonly clientRequestId: string
   readonly deferred: Deferred.Deferred<InvokeResult>
-}
-
-type InvokeOutcome = {
-  readonly _tag: "Done"
-  readonly result: InvokeResult
-} | {
-  readonly _tag: "Wait"
-  readonly deferred: Deferred.Deferred<InvokeResult>
-} | {
-  readonly _tag: "Continue"
-  readonly effect: Effect.Effect<InvokeResult>
 }
 
 interface RunOptions {
@@ -270,10 +263,6 @@ const success = (requestId: string, replies: ReadonlyArray<string>): InvokeResul
   requestId,
   replies
 })
-
-const done = (result: InvokeResult): InvokeOutcome => ({ _tag: "Done", result })
-
-const proceed = (effect: Effect.Effect<InvokeResult>): InvokeOutcome => ({ _tag: "Continue", effect })
 
 interface HandlerPermit {
   readonly acquire: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
@@ -352,21 +341,6 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   const workerWaiters = new Map<string, Array<WorkerWaiter>>()
   const replyRegistry = makeReplyRegistry()
   let runtime: EntityRuntime | undefined
-
-  // Handler executions share one budget across live, replayed, and alarm-due
-  // requests, sized from the entity's `concurrency` build option.
-  let handlerSemaphore: Semaphore.Semaphore | undefined
-  let handlerSemaphoreResolved = false
-  const getHandlerSemaphore = (registration: EntityRegistration): Semaphore.Semaphore | undefined => {
-    if (!handlerSemaphoreResolved) {
-      handlerSemaphoreResolved = true
-      const concurrency = registration.options?.concurrency ?? 1
-      if (concurrency !== "unbounded") {
-        handlerSemaphore = Semaphore.makeUnsafe(concurrency)
-      }
-    }
-    return handlerSemaphore
-  }
 
   const getRuntime = (registration: EntityRegistration): Effect.Effect<EntityRuntime> =>
     runtime !== undefined ? Effect.succeed(runtime) : Effect.map(
@@ -462,34 +436,35 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       }
     }
 
-    const permit = makeHandlerPermit(getHandlerSemaphore(registration))
     const scheduled = runOptions?.scheduled === true
     if (discard || scheduled) {
       if (persisted) {
         if (pendingRuns.has(requestId)) return Effect.succeed([])
         pendingRuns.add(requestId)
       }
+      // No stream acks on this path, so a plain permit is enough.
+      const execute = entityRuntime.run(envelope, lastSentChunk, discard, (reply) =>
+        Effect.gen(function*() {
+          const encoded = yield* encodeReplyFor(registration, rpc, reply)
+          if (persisted) {
+            storage.transactionSync(() => saveReply(sql, encoded))
+          }
+          if (scheduled && reply._tag === "WithExit") {
+            yield* deliverScheduledReply(requestId, encoded, runOptions?.replyTos)
+          }
+        }))
       const fiber = yield* Effect.forkDetach(
-        permit.acquire(
-          entityRuntime.run(envelope, lastSentChunk, discard, (reply) =>
-            Effect.gen(function*() {
-              const encoded = yield* encodeReplyFor(registration, rpc, reply)
-              if (persisted) {
-                storage.transactionSync(() => saveReply(sql, encoded))
-              }
-              if (scheduled && reply._tag === "WithExit") {
-                yield* deliverScheduledReply(requestId, encoded, runOptions?.replyTos)
-              }
-            }))
-        ).pipe(
-          Effect.onExit((exit) =>
-            Effect.sync(() => {
-              if (!persisted) return
-              if (discard && Exit.isSuccess(exit)) completeTell(sql, requestId)
-              pendingRuns.delete(requestId)
-            })
+        (entityRuntime.handlerSemaphore === undefined
+          ? execute
+          : Semaphore.withPermit(entityRuntime.handlerSemaphore, execute)).pipe(
+            Effect.onExit((exit) =>
+              Effect.sync(() => {
+                if (!persisted) return
+                if (discard && Exit.isSuccess(exit)) completeTell(sql, requestId)
+                pendingRuns.delete(requestId)
+              })
+            )
           )
-        )
       )
       options.waitUntil(Fiber.await(fiber))
       return Effect.as(Fiber.join(fiber), [])
@@ -498,6 +473,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     const queue = yield* Queue.make<SessionReply, Cause.Done>()
     const session: Session = { queue, ack: undefined, fiber: undefined }
     sessions.set(requestId, session)
+    const permit = makeHandlerPermit(entityRuntime.handlerSemaphore)
     const respond = (reply: Reply.Reply<any>) =>
       Effect.gen(function*() {
         const encoded = yield* encodeReplyFor(registration, rpc, reply)
@@ -594,7 +570,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     entityRuntime: EntityRuntime,
     rows: ReadonlyArray<StoredMessage>
   ): Effect.Effect<Array<Fiber.Fiber<void>>> =>
-    Effect.forEach(
+    rows.length === 0 ? Effect.succeed([]) : Effect.forEach(
       rows,
       (row) =>
         // An active session or in-flight run already owns this request;
@@ -620,30 +596,40 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
               )
             )
           ),
-          Effect.tap((fiber) => Effect.sync(() => options.waitUntil(Fiber.await(fiber)))),
           Effect.catchCause((cause) => Effect.as(completeReplayFailure(registration, row, cause), undefined))
         )
-    ).pipe(Effect.map((fibers) => fibers.filter((fiber) => fiber !== undefined)))
+    ).pipe(
+      Effect.map((fibers) => fibers.filter((fiber) => fiber !== undefined)),
+      Effect.tap((fibers) =>
+        Effect.sync(() => {
+          if (fibers.length > 0) options.waitUntil(Fiber.awaitAll(fibers))
+        })
+      )
+    )
 
+  // Registers the waiter eagerly (under the entry permit) and returns the
+  // await for the caller to run once the permit is released.
   const delayedOutcome = (
     requestId: string,
     discard: boolean,
     replyTo: string | undefined,
     clientRequestId = requestId
-  ): InvokeOutcome => {
-    if (discard || replyTo !== undefined) return done(success(requestId, []))
+  ): Effect.Effect<InvokeResult> => {
+    if (discard || replyTo !== undefined) return Effect.succeed(success(requestId, []))
     const deferred = Deferred.makeUnsafe<InvokeResult>()
     const waiters = workerWaiters.get(requestId) ?? []
     waiters.push({ clientRequestId, deferred })
     workerWaiters.set(requestId, waiters)
-    return { _tag: "Wait", deferred }
+    return Deferred.await(deferred)
   }
 
+  // Runs the storage entry under the caller-held permit and returns the
+  // effect that produces the invoke result after the permit is released.
   const invokeEntry = (
     envelopeText: string,
     discard: boolean,
     delivery: DeliveryOptions | undefined
-  ): Effect.Effect<InvokeOutcome> => {
+  ): Effect.Effect<Effect.Effect<InvokeResult>> => {
     const registration = getEntityRegistration(options.address.entityType)
     if (registration === undefined) {
       return Effect.die(`No handlers registered for entity type: ${options.address.entityType}`)
@@ -653,10 +639,12 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       const replayFibers = yield* replayRows(registration, entityRuntime, loadUnprocessed(sql))
       // Preserves the pre-split ordering: the invoke result is delivered
       // only after the replayed rows this entry kicked off have finished.
-      const finish = (requestId: string, continuation: Effect.Effect<ReadonlyArray<string>>): InvokeOutcome =>
-        proceed(
-          (replayFibers.length === 0 ? continuation : Effect.andThen(Fiber.awaitAll(replayFibers), continuation))
-            .pipe(Effect.map((replies) => success(requestId, replies)))
+      const finish = (
+        requestId: string,
+        continuation: Effect.Effect<ReadonlyArray<string>>
+      ): Effect.Effect<InvokeResult> =>
+        Effect.andThen(Fiber.awaitAll(replayFibers), continuation).pipe(
+          Effect.map((replies) => success(requestId, replies))
         )
 
       const envelope = yield* decodeRequest(registration, envelopeText)
@@ -697,9 +685,9 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       if (Result.isFailure(persistedResult)) {
         const error = persistedResult.failure
         if (error instanceof MailboxFullError) {
-          return done({ _tag: "MailboxFull" })
+          return Effect.succeed<InvokeResult>({ _tag: "MailboxFull" })
         } else if (error instanceof EncodedMessageTooLargeError) {
-          return done({ _tag: "EncodedMessageTooLarge" })
+          return Effect.succeed<InvokeResult>({ _tag: "EncodedMessageTooLarge" })
         }
         return yield* Effect.die(error)
       }
@@ -708,15 +696,15 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         const original = loadMessage(sql, persisted.originalId)
         if (original === undefined) return yield* Effect.die("Duplicate mailbox row disappeared")
         if (original.discard && !discard) {
-          return done({ _tag: "AskDeduplicatedToTell" })
+          return Effect.succeed<InvokeResult>({ _tag: "AskDeduplicatedToTell" })
         }
         const nextReply = loadNextReply(sql, persisted.originalId)
         if (nextReply !== undefined) {
           if (nextReply.kind === "WithExit") sessions.delete(persisted.originalId)
-          return done(success(persisted.originalId, [nextReply.reply]))
+          return Effect.succeed(success(persisted.originalId, [nextReply.reply]))
         }
         if (persisted.processed) {
-          return done(success(persisted.originalId, []))
+          return Effect.succeed(success(persisted.originalId, []))
         }
         if (
           delivery?.deliverAt !== undefined ||
@@ -753,15 +741,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     discard: boolean,
     delivery?: DeliveryOptions | undefined
   ): Effect.Effect<InvokeResult> =>
-    Semaphore.withPermit(semaphore, invokeEntry(envelopeText, discard, delivery)).pipe(
-      Effect.flatMap((outcome) =>
-        outcome._tag === "Done"
-          ? Effect.succeed(outcome.result)
-          : outcome._tag === "Wait"
-          ? Deferred.await(outcome.deferred)
-          : outcome.effect
-      )
-    )
+    Effect.flatten(Semaphore.withPermit(semaphore, invokeEntry(envelopeText, discard, delivery)))
 
   const acknowledge = (requestId: string, replyId: string): Effect.Effect<ReadonlyArray<string>> =>
     Effect.suspend(() => {
@@ -820,7 +800,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         (entityRuntime) => replayRows(registration, entityRuntime, loadDue(sql))
       )
     ).pipe(
-      Effect.flatMap((fibers) => fibers.length === 0 ? Effect.void : Effect.asVoid(Fiber.awaitAll(fibers))),
+      Effect.flatMap((fibers) => Effect.asVoid(Fiber.awaitAll(fibers))),
       Effect.andThen(Semaphore.withPermit(semaphore, armEarliestAlarm)),
       Effect.withSpan("CloudflareCluster.alarm", {
         attributes: {
