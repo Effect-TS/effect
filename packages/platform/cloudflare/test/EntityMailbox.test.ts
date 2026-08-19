@@ -13,6 +13,7 @@ import {
   saveReply
 } from "@effect/platform-cloudflare/internal/entityMailbox"
 import { assert, describe, it } from "@effect/vitest"
+import { Effect } from "effect"
 
 interface MessageRow {
   readonly request_id: string
@@ -190,208 +191,231 @@ const envelope = JSON.stringify({
 const withRequestId = (id: string) => JSON.stringify({ ...JSON.parse(envelope), requestId: id })
 
 describe("EntityMailbox", () => {
-  it("persists a durable request before its handler can run", () => {
-    const sql = new FakeSql()
-    const result = persistRequest(sql.sql, envelope, null)
+  it.effect("persists a durable request before its handler can run", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      const result = yield* persistRequest(sql.sql, envelope, null)
 
-    assert.deepStrictEqual(result, { _tag: "Success" })
-    assert.strictEqual(sql.messages.get(requestId)?.envelope, envelope)
-    assert.strictEqual(sql.messages.get(requestId)?.processed, 0)
-  })
+      assert.deepStrictEqual(result, { _tag: "Success" })
+      assert.strictEqual(sql.messages.get(requestId)?.envelope, envelope)
+      assert.strictEqual(sql.messages.get(requestId)?.processed, 0)
+    }))
 
-  it("persists future delivery metadata and only loads the row when due", () => {
-    const sql = new FakeSql()
-    persistRequest(sql.sql, envelope, "scheduled", false, 2_000, "7:Callercaller")
+  it.effect("persists future delivery metadata and only loads the row when due", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      yield* persistRequest(sql.sql, envelope, "scheduled", false, 2_000, "7:Callercaller")
 
-    assert.strictEqual(sql.messages.get(requestId)?.deliver_at, 2_000)
-    assert.strictEqual(sql.messages.get(requestId)?.reply_to, JSON.stringify(["7:Callercaller"]))
-    assert.deepStrictEqual(loadUnprocessed(sql.sql, 1_999), [])
-    assert.deepStrictEqual(loadDue(sql.sql, 2_000), [{
-      requestId,
-      envelope,
-      lastSentChunk: undefined,
-      discard: false,
-      deliverAt: 2_000,
-      replyTos: ["7:Callercaller"]
-    }])
-  })
-
-  it("preserves every reply target when a scheduled request is deduplicated", () => {
-    const sql = new FakeSql()
-    const primaryKey = "Counter/one/Increment/scheduled"
-    persistRequest(sql.sql, envelope, primaryKey, false, 2_000, "7:Callerfirst")
-    persistRequest(
-      sql.sql,
-      withRequestId("0198bd72-6a81-72f1-8d87-5e9b5cf1e001"),
-      primaryKey,
-      false,
-      null,
-      "7:Callersecond"
-    )
-
-    assert.deepStrictEqual(loadDue(sql.sql, 2_000), [{
-      requestId,
-      envelope,
-      lastSentChunk: undefined,
-      discard: false,
-      deliverAt: 2_000,
-      replyTos: ["7:Callerfirst", "7:Callersecond"]
-    }])
-  })
-
-  it("maps a primary-key duplicate to the original request and last reply", () => {
-    const sql = new FakeSql()
-    const primaryKey = "Counter/one/Increment/operation-1"
-    persistRequest(sql.sql, envelope, primaryKey)
-    const reply = JSON.stringify({
-      _tag: "WithExit",
-      requestId,
-      id: "reply-1",
-      exit: { _tag: "Success", value: 1 }
-    })
-    saveReply(sql.sql, reply)
-
-    assert.deepStrictEqual(
-      persistRequest(sql.sql, withRequestId("0198bd72-6a81-72f1-8d87-5e9b5cf1e001"), primaryKey),
-      { _tag: "Duplicate", originalId: requestId, processed: true }
-    )
-  })
-
-  it("replays an unprocessed row with its last sent chunk after a crash", () => {
-    const sql = new FakeSql()
-    persistRequest(sql.sql, envelope, null)
-    const chunk = JSON.stringify({
-      _tag: "Chunk",
-      requestId,
-      id: "chunk-1",
-      sequence: 0,
-      values: [1]
-    })
-    saveReply(sql.sql, chunk)
-
-    assert.deepStrictEqual(loadUnprocessed(sql.sql), [{ requestId, envelope, lastSentChunk: chunk, discard: false }])
-  })
-
-  it("marks a persisted tell complete without storing a user-visible reply", () => {
-    const sql = new FakeSql()
-    persistRequest(sql.sql, envelope, null)
-    completeTell(sql.sql, requestId)
-
-    assert.strictEqual(sql.messages.get(requestId)?.processed, 1)
-    assert.strictEqual(sql.replies.size, 0)
-    assert.deepStrictEqual(loadUnprocessed(sql.sql), [])
-  })
-
-  it("acknowledges stream chunks and clearReplies resumes the request", () => {
-    const sql = new FakeSql()
-    persistRequest(sql.sql, envelope, null)
-    const chunk = JSON.stringify({
-      _tag: "Chunk",
-      requestId,
-      id: "chunk-1",
-      sequence: 0,
-      values: [1]
-    })
-    saveReply(sql.sql, chunk)
-    ackChunk(sql.sql, requestId, "chunk-1")
-    assert.isTrue(sql.acked.has("chunk-1"))
-
-    clearReplies(sql.sql, requestId)
-    assert.deepStrictEqual(loadUnprocessed(sql.sql), [{
-      requestId,
-      envelope,
-      lastSentChunk: undefined,
-      discard: false
-    }])
-    assert.strictEqual(sql.replies.size, 0)
-  })
-
-  it("rejects the 4097th unprocessed request", () => {
-    const sql = new FakeSql()
-    for (let index = 0; index < 4096; index++) {
-      sql.messages.set(String(index), {
-        request_id: String(index),
-        message_id: null,
+      assert.strictEqual(sql.messages.get(requestId)?.deliver_at, 2_000)
+      assert.strictEqual(sql.messages.get(requestId)?.reply_to, JSON.stringify(["7:Callercaller"]))
+      assert.deepStrictEqual(yield* loadUnprocessed(sql.sql, 1_999), [])
+      assert.deepStrictEqual(yield* loadDue(sql.sql, 2_000), [{
+        requestId,
         envelope,
-        discard: 0,
-        processed: 0,
-        last_reply_id: null
-      })
-    }
-    assert.throws(() => persistRequest(sql.sql, envelope, null), MailboxFullError)
-  })
+        lastSentChunk: undefined,
+        discard: false,
+        deliverAt: 2_000,
+        replyTos: ["7:Callercaller"]
+      }])
+    }))
 
-  it("counts a completed stream with an unacknowledged chunk against capacity", () => {
-    const sql = new FakeSql()
-    for (let index = 0; index < 4095; index++) {
-      sql.messages.set(String(index), {
-        request_id: String(index),
-        message_id: null,
+  it.effect("preserves every reply target when a scheduled request is deduplicated", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      const primaryKey = "Counter/one/Increment/scheduled"
+      yield* persistRequest(sql.sql, envelope, primaryKey, false, 2_000, "7:Callerfirst")
+      yield* persistRequest(
+        sql.sql,
+        withRequestId("0198bd72-6a81-72f1-8d87-5e9b5cf1e001"),
+        primaryKey,
+        false,
+        null,
+        "7:Callersecond"
+      )
+
+      assert.deepStrictEqual(yield* loadDue(sql.sql, 2_000), [{
+        requestId,
         envelope,
-        discard: 0,
-        processed: 0,
-        last_reply_id: null
+        lastSentChunk: undefined,
+        discard: false,
+        deliverAt: 2_000,
+        replyTos: ["7:Callerfirst", "7:Callersecond"]
+      }])
+    }))
+
+  it.effect("maps a primary-key duplicate to the original request and last reply", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      const primaryKey = "Counter/one/Increment/operation-1"
+      yield* persistRequest(sql.sql, envelope, primaryKey)
+      const reply = JSON.stringify({
+        _tag: "WithExit",
+        requestId,
+        id: "reply-1",
+        exit: { _tag: "Success", value: 1 }
       })
-    }
-    persistRequest(sql.sql, envelope, null)
-    saveReply(sql.sql, JSON.stringify({ _tag: "Chunk", requestId, id: "chunk", sequence: 0, values: [1] }))
-    saveReply(
-      sql.sql,
-      JSON.stringify({
+      yield* saveReply(sql.sql, reply)
+
+      assert.deepStrictEqual(
+        yield* persistRequest(sql.sql, withRequestId("0198bd72-6a81-72f1-8d87-5e9b5cf1e001"), primaryKey),
+        { _tag: "Duplicate", originalId: requestId, processed: true }
+      )
+    }))
+
+  it.effect("replays an unprocessed row with its last sent chunk after a crash", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      yield* persistRequest(sql.sql, envelope, null)
+      const chunk = JSON.stringify({
+        _tag: "Chunk",
+        requestId,
+        id: "chunk-1",
+        sequence: 0,
+        values: [1]
+      })
+      yield* saveReply(sql.sql, chunk)
+
+      assert.deepStrictEqual(yield* loadUnprocessed(sql.sql), [{
+        requestId,
+        envelope,
+        lastSentChunk: chunk,
+        discard: false
+      }])
+    }))
+
+  it.effect("marks a persisted tell complete without storing a user-visible reply", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      yield* persistRequest(sql.sql, envelope, null)
+      yield* completeTell(sql.sql, requestId)
+
+      assert.strictEqual(sql.messages.get(requestId)?.processed, 1)
+      assert.strictEqual(sql.replies.size, 0)
+      assert.deepStrictEqual(yield* loadUnprocessed(sql.sql), [])
+    }))
+
+  it.effect("acknowledges stream chunks and clearReplies resumes the request", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      yield* persistRequest(sql.sql, envelope, null)
+      const chunk = JSON.stringify({
+        _tag: "Chunk",
+        requestId,
+        id: "chunk-1",
+        sequence: 0,
+        values: [1]
+      })
+      yield* saveReply(sql.sql, chunk)
+      yield* ackChunk(sql.sql, requestId, "chunk-1")
+      assert.isTrue(sql.acked.has("chunk-1"))
+
+      yield* clearReplies(sql.sql, requestId)
+      assert.deepStrictEqual(yield* loadUnprocessed(sql.sql), [{
+        requestId,
+        envelope,
+        lastSentChunk: undefined,
+        discard: false
+      }])
+      assert.strictEqual(sql.replies.size, 0)
+    }))
+
+  it.effect("rejects the 4097th unprocessed request", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      for (let index = 0; index < 4096; index++) {
+        sql.messages.set(String(index), {
+          request_id: String(index),
+          message_id: null,
+          envelope,
+          discard: 0,
+          processed: 0,
+          last_reply_id: null
+        })
+      }
+      const error = yield* Effect.flip(persistRequest(sql.sql, envelope, null))
+      assert.instanceOf(error, MailboxFullError)
+    }))
+
+  it.effect("counts a completed stream with an unacknowledged chunk against capacity", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      for (let index = 0; index < 4095; index++) {
+        sql.messages.set(String(index), {
+          request_id: String(index),
+          message_id: null,
+          envelope,
+          discard: 0,
+          processed: 0,
+          last_reply_id: null
+        })
+      }
+      yield* persistRequest(sql.sql, envelope, null)
+      yield* saveReply(sql.sql, JSON.stringify({ _tag: "Chunk", requestId, id: "chunk", sequence: 0, values: [1] }))
+      yield* saveReply(
+        sql.sql,
+        JSON.stringify({
+          _tag: "WithExit",
+          requestId,
+          id: "terminal",
+          exit: { _tag: "Success", value: null }
+        })
+      )
+
+      const error = yield* Effect.flip(
+        persistRequest(sql.sql, withRequestId("0198bd72-6a83-72f1-8d87-5e9b5cf1e003"), null)
+      )
+      assert.instanceOf(error, MailboxFullError)
+    }))
+
+  it.effect("rejects encoded requests and chunks over 2 MB", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      const largeRequest = JSON.stringify({ ...JSON.parse(envelope), payload: "x".repeat(maximumEncodedSize) })
+      assert.instanceOf(yield* Effect.flip(persistRequest(sql.sql, largeRequest, null)), EncodedMessageTooLargeError)
+
+      const largeChunk = JSON.stringify({
+        _tag: "Chunk",
+        requestId,
+        id: "chunk-large",
+        sequence: 0,
+        values: ["x".repeat(maximumEncodedSize)]
+      })
+      assert.instanceOf(yield* Effect.flip(saveReply(sql.sql, largeChunk)), EncodedMessageTooLargeError)
+    }))
+
+  it.effect("releases persisted stream replies one chunk per acknowledgement", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      yield* persistRequest(sql.sql, envelope, null)
+      const chunk0 = JSON.stringify({ _tag: "Chunk", requestId, id: "chunk-0", sequence: 0, values: [0] })
+      const chunk1 = JSON.stringify({ _tag: "Chunk", requestId, id: "chunk-1", sequence: 1, values: [1] })
+      const terminal = JSON.stringify({
         _tag: "WithExit",
         requestId,
         id: "terminal",
         exit: { _tag: "Success", value: null }
       })
-    )
+      yield* saveReply(sql.sql, chunk0)
+      yield* saveReply(sql.sql, chunk1)
+      yield* saveReply(sql.sql, terminal)
 
-    assert.throws(
-      () => persistRequest(sql.sql, withRequestId("0198bd72-6a83-72f1-8d87-5e9b5cf1e003"), null),
-      MailboxFullError
-    )
-  })
+      assert.deepStrictEqual(yield* loadNextReply(sql.sql, requestId), { reply: chunk0, kind: "Chunk" })
+      yield* ackChunk(sql.sql, requestId, "chunk-0")
+      assert.deepStrictEqual(yield* loadNextReply(sql.sql, requestId), { reply: chunk1, kind: "Chunk" })
+      yield* ackChunk(sql.sql, requestId, "chunk-1")
+      assert.deepStrictEqual(yield* loadNextReply(sql.sql, requestId), { reply: terminal, kind: "WithExit" })
+    }))
 
-  it("rejects encoded requests and chunks over 2 MB", () => {
-    const sql = new FakeSql()
-    const largeRequest = JSON.stringify({ ...JSON.parse(envelope), payload: "x".repeat(maximumEncodedSize) })
-    assert.throws(() => persistRequest(sql.sql, largeRequest, null), EncodedMessageTooLargeError)
+  it.effect("retains tell discard mode for crash replay", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      yield* persistRequest(sql.sql, envelope, null, true)
 
-    const largeChunk = JSON.stringify({
-      _tag: "Chunk",
-      requestId,
-      id: "chunk-large",
-      sequence: 0,
-      values: ["x".repeat(maximumEncodedSize)]
-    })
-    assert.throws(() => saveReply(sql.sql, largeChunk), EncodedMessageTooLargeError)
-  })
-
-  it("releases persisted stream replies one chunk per acknowledgement", () => {
-    const sql = new FakeSql()
-    persistRequest(sql.sql, envelope, null)
-    const chunk0 = JSON.stringify({ _tag: "Chunk", requestId, id: "chunk-0", sequence: 0, values: [0] })
-    const chunk1 = JSON.stringify({ _tag: "Chunk", requestId, id: "chunk-1", sequence: 1, values: [1] })
-    const terminal = JSON.stringify({
-      _tag: "WithExit",
-      requestId,
-      id: "terminal",
-      exit: { _tag: "Success", value: null }
-    })
-    saveReply(sql.sql, chunk0)
-    saveReply(sql.sql, chunk1)
-    saveReply(sql.sql, terminal)
-
-    assert.deepStrictEqual(loadNextReply(sql.sql, requestId), { reply: chunk0, kind: "Chunk" })
-    ackChunk(sql.sql, requestId, "chunk-0")
-    assert.deepStrictEqual(loadNextReply(sql.sql, requestId), { reply: chunk1, kind: "Chunk" })
-    ackChunk(sql.sql, requestId, "chunk-1")
-    assert.deepStrictEqual(loadNextReply(sql.sql, requestId), { reply: terminal, kind: "WithExit" })
-  })
-
-  it("retains tell discard mode for crash replay", () => {
-    const sql = new FakeSql()
-    persistRequest(sql.sql, envelope, null, true)
-
-    assert.deepStrictEqual(loadUnprocessed(sql.sql), [{ requestId, envelope, lastSentChunk: undefined, discard: true }])
-  })
+      assert.deepStrictEqual(yield* loadUnprocessed(sql.sql), [{
+        requestId,
+        envelope,
+        lastSentChunk: undefined,
+        discard: true
+      }])
+    }))
 })
