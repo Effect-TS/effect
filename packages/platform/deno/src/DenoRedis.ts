@@ -81,6 +81,9 @@ const make = Effect.fnUntraced(function*(options: RedisOptions = {}) {
             const subscriber = await connectClient()
             try {
               const subscription = await subscriber.subscribe(channel)
+              // @db/redis resolves subscribe after writing the command, before
+              // reading its acknowledgement. This ordered reply proves that
+              // Redis processed SUBSCRIBE before the dequeue is returned.
               await subscriber.ping()
               return { subscriber, subscription }
             } catch (cause) {

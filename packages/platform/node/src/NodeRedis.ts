@@ -95,7 +95,26 @@ const make = Effect.fnUntraced(function*(
         yield* Effect.acquireRelease(
           Effect.tryPromise({
             try: async () => {
-              const subscriber = client.duplicate()
+              let subscriberReady = false
+              const subscriber = client.duplicate(
+                socket?.reconnectStrategy === undefined
+                  ? {
+                    socket: {
+                      ...socket,
+                      reconnectStrategy: (retries, cause) => {
+                        if (!subscriberReady) return cause
+                        if (cause instanceof SocketTimeoutError) return false
+                        const jitter = Math.floor(Math.random() * 200)
+                        const delay = Math.min(2 ** retries * 50, 2000)
+                        return delay + jitter
+                      }
+                    }
+                  }
+                  : {}
+              )
+              subscriber.once("ready", () => {
+                subscriberReady = true
+              })
               subscriber.on("error", (cause) => {
                 runSync(Effect.logWarning("NodeRedis subscriber error", cause))
                 if (!subscriber.isOpen) {

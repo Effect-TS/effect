@@ -58,7 +58,10 @@ const make = Effect.fnUntraced(function*(
         yield* Effect.acquireRelease(
           Effect.tryPromise({
             try: async () => {
-              const subscriber = new RedisClient(options?.url, options)
+              const subscriber = new RedisClient(options?.url, {
+                ...options,
+                autoReconnect: false
+              })
               subscriber.onclose = (cause) => {
                 runSync(Deferred.fail(terminal, new Redis.RedisError({ cause })))
               }

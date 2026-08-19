@@ -43,6 +43,11 @@ export interface RedisMessage {
 export class Redis extends Context.Service<Redis, {
   readonly send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) => Effect.Effect<A, RedisError>
 
+  /**
+   * Subscribes to a Redis pub/sub channel for the lifetime of the current
+   * scope. Redis does not replay messages published while a connection is
+   * interrupted, so reconnecting subscribers can observe delivery gaps.
+   */
   readonly subscribe: (
     channel: string
   ) => Effect.Effect<Queue.Dequeue<RedisMessage, RedisError>, never, Scope.Scope>

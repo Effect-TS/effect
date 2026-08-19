@@ -215,6 +215,6 @@ describe("Redis", () => {
       yield* Scope.close(scope, Exit.void)
 
       assert.isTrue(released)
-      assert.strictEqual(subscription.state._tag, "Done")
+      assert.isTrue(Exit.hasInterrupts(yield* Queue.take(subscription).pipe(Effect.exit)))
     }))
 })
