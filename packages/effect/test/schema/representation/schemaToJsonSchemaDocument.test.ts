@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Schema, SchemaGetter, SchemaTransformation } from "effect"
+import { Schema } from "effect"
 
 describe("Schema.toJsonSchemaDocument", () => {
   it("uses the encoded side for representations and JSON Schema", () => {
@@ -25,17 +25,14 @@ describe("Schema.toJsonSchemaDocument", () => {
     })
   })
 
-  it("preserves Number checks on the finite encoded branch", () => {
+  it("does not project checks through an artificial JSON encoding", () => {
     assert.deepStrictEqual(
       Schema.toJsonSchemaDocument(Schema.Number.check(Schema.isGreaterThan(0))),
       {
         dialect: "draft-2020-12",
         schema: {
           anyOf: [
-            {
-              type: "number",
-              exclusiveMinimum: 0
-            },
+            { type: "number" },
             {
               type: "string",
               enum: ["Infinity", "-Infinity", "NaN"]
@@ -47,126 +44,35 @@ describe("Schema.toJsonSchemaDocument", () => {
     )
   })
 
-  it("preserves selected annotations when JSON derivation introduces an encoding", () => {
+  it("preserves checks when no artificial JSON encoding is needed", () => {
     assert.deepStrictEqual(
-      Schema.toJsonSchemaDocument(
-        Schema.Number.annotate({
-          title: "Numeric value",
-          description: "A finite or non-finite number",
-          documentation: "Numeric documentation",
-          readOnly: true,
-          writeOnly: false,
-          default: 0,
-          examples: [1],
-          format: "numeric",
-          custom: "custom value"
-        }),
-        {
-          includeAnnotationKey: (key) => key === "documentation" || key === "custom"
-        }
-      ),
+      Schema.toJsonSchemaDocument(Schema.Number.check(Schema.isFinite(), Schema.isGreaterThan(0))),
       {
         dialect: "draft-2020-12",
         schema: {
-          anyOf: [
-            { type: "number" },
-            {
-              type: "string",
-              enum: ["Infinity", "-Infinity", "NaN"]
-            }
-          ],
-          title: "Numeric value",
-          description: "A finite or non-finite number",
-          documentation: "Numeric documentation",
-          readOnly: true,
-          writeOnly: false
+          type: "number",
+          exclusiveMinimum: 0
         },
         definitions: {}
       }
     )
   })
 
-  it("preserves annotations for every built-in artificial JSON encoding", () => {
-    const schemas = [
-      Schema.Unknown,
-      Schema.ObjectKeyword,
-      Schema.Undefined,
-      Schema.Void,
-      Schema.Literal(1n),
-      Schema.Number,
-      Schema.UniqueSymbol(Symbol.for("a")),
-      Schema.Symbol,
-      Schema.BigInt,
-      Schema.declare((input): input is object => typeof input === "object" && input !== null)
-    ] as const
-
-    for (const schema of schemas) {
-      const jsonSchema = Schema.toJsonSchemaDocument(schema.annotate({ title: "source title" })).schema
-      assert.strictEqual(jsonSchema.title, "source title", schema.ast._tag)
-    }
-  })
-
-  it("preserves annotations already present on the artificial JSON encoding", () => {
-    const schema = Schema.declare((input): input is URL => input instanceof URL, {
-      title: "source title",
-      description: "source description",
-      documentation: "source documentation",
-      readOnly: true,
-      writeOnly: true,
-      toCodecJson: () =>
-        Schema.link<URL>()(
-          Schema.String.annotate({
-            title: "target title",
-            description: "target description",
-            readOnly: false
-          }).check(Schema.isMinLength(1)),
-          SchemaTransformation.transform({
-            decode: (url) => new URL(url),
-            encode: (url) => url.href
-          })
-        )
-    })
-
-    const jsonSchema = Schema.toJsonSchemaDocument(schema, {
-      includeAnnotationKey: (key) => key === "documentation"
-    }).schema
-
-    assert.deepStrictEqual(
-      {
-        title: jsonSchema.title,
-        description: jsonSchema.description,
-        documentation: jsonSchema.documentation,
-        readOnly: jsonSchema.readOnly,
-        writeOnly: jsonSchema.writeOnly
+  it("does not project annotations through an artificial JSON encoding", () => {
+    const schema = Schema.Number.annotate({ description: "source description" })
+    const expected = {
+      dialect: "draft-2020-12" as const,
+      schema: {
+        anyOf: [
+          { type: "number" },
+          { type: "string", enum: ["Infinity", "-Infinity", "NaN"] }
+        ]
       },
-      {
-        title: "target title",
-        description: "target description",
-        documentation: "source documentation",
-        readOnly: false,
-        writeOnly: true
-      }
-    )
-  })
+      definitions: {}
+    }
 
-  it("inherits annotations only from the terminal encoded side", () => {
-    const schema = Schema.String.annotate({ description: "type description" }).pipe(
-      Schema.encodeTo(Schema.Number.annotate({ title: "encoded title" }), {
-        decode: SchemaGetter.transform((value: number) => String(value)),
-        encode: SchemaGetter.transform((value: string) => Number(value))
-      })
-    )
-
-    const jsonSchema = Schema.toJsonSchemaDocument(schema).schema
-
-    assert.strictEqual(jsonSchema.title, "encoded title")
-    assert.strictEqual(jsonSchema.description, undefined)
-  })
-
-  it("does not inherit annotations resolved from checks", () => {
-    const schema = Schema.Number.check(Schema.isGreaterThan(0)).annotate({ description: "positive number" })
-
-    assert.strictEqual(Schema.toJsonSchemaDocument(schema).schema.description, undefined)
+    assert.deepStrictEqual(Schema.toJsonSchemaDocument(schema), expected)
+    assert.deepStrictEqual(Schema.toJsonSchemaDocument(Schema.toCodecJson(schema)), expected)
   })
 
   it("preserves output, references and generation options", () => {

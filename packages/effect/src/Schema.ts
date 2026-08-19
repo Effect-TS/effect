@@ -15163,42 +15163,6 @@ export interface ToJsonSchemaOptions {
   readonly includeAnnotationKey?: ((key: string) => boolean) | undefined
 }
 
-const toJsonSchemaInheritedAnnotationKeys = [
-  "title",
-  "description",
-  "documentation",
-  "readOnly",
-  "writeOnly"
-] as const
-
-function inheritToJsonSchemaAnnotations(
-  sourceAnnotations: Annotations.Annotations,
-  target: SchemaAST.AST
-): SchemaAST.AST {
-  let inherited: Record<string, unknown> | undefined
-  for (const key of toJsonSchemaInheritedAnnotationKeys) {
-    const value = sourceAnnotations[key]
-    if (value !== undefined && target.annotations?.[key] === undefined) {
-      ;(inherited ??= {})[key] = value
-    }
-  }
-  return inherited === undefined ? target : SchemaAST.modifyOwnPropertyDescriptors(target, (d) => {
-    d.annotations.value = { ...d.annotations.value, ...inherited }
-  })
-}
-
-const toCodecJsonASTForJsonSchema = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
-  const out = toCodecJsonASTStep(ast, toCodecJsonASTForJsonSchema)
-  if (out === ast || out.encoding === undefined) return out
-  const annotations = ast.annotations
-  const inherited = annotations === undefined ?
-    out :
-    SchemaAST.applyToSelfOrLastLinkEncoding((target) => inheritToJsonSchemaAnnotations(annotations, target))(out)
-  return ast.context === undefined ?
-    inherited :
-    SchemaAST.replaceContextLastLink(inherited, withoutConstructorDefault(ast.context))
-})
-
 /**
  * Returns a JSON Schema document using draft 2020-12.
  *
@@ -15208,23 +15172,23 @@ const toCodecJsonASTForJsonSchema = SchemaAST.applyToSelfOrLastLinkEncodingIdemp
  * properties and synthesized check descriptions; it does not change the draft
  * target. Declarations are lowered through their `toCodecJson` or `toCodec`
  * annotation when available before the representation document is compiled.
- * Artificial JSON encodings inherit only `title`, `description`,
- * `documentation`, `readOnly`, and `writeOnly` directly attached to the terminal
- * encoded node. Existing target values take precedence; check annotations,
- * earlier encoding nodes, and all other annotations do not transfer. For schemas
- * whose codec JSON AST can be represented exactly in JSON Schema, importing the
- * emitted document reconstructs a schema that accepts the same JSON values.
- * This is a semantic round-trip guarantee; the reconstructed AST may have a
- * different shape.
+ * For schemas whose codec JSON AST can be represented exactly in JSON Schema,
+ * importing the emitted document reconstructs a schema that accepts the same
+ * JSON values. This is a semantic round-trip guarantee; the reconstructed AST
+ * may have a different shape.
  *
  * **Gotchas**
  *
  * JSON Schema generation is best-effort. Some Effect schema semantics cannot
  * be represented exactly in JSON Schema, and importing an emitted JSON Schema
  * may produce an equivalent approximation rather than the original schema
- * shape. Such schemas are outside the exact round-trip subset. Opaque declarations without a structural codec are
- * represented by an unconstrained JSON Schema. Effect decoding may discard excess object properties by default; use
- * `onExcessProperty: "error"` when comparing validation semantics with an emitted JSON Schema.
+ * shape. Such schemas are outside the exact round-trip subset. When canonical
+ * JSON derivation adds an artificial transformation, checks and annotations on
+ * its source node are not copied to the JSON target, so they do not appear in
+ * the emitted document. Opaque declarations without a structural codec are
+ * represented by an unconstrained JSON Schema. Effect decoding may discard
+ * excess object properties by default; use `onExcessProperty: "error"` when
+ * comparing validation semantics with an emitted JSON Schema.
  *
  * @category converting
  * @since 4.0.0
@@ -15234,7 +15198,7 @@ export function toJsonSchemaDocument(
   options?: ToJsonSchemaOptions
 ): JsonSchema.Document<"draft-2020-12"> {
   const document = InternalToRepresentation.toRepresentation(
-    toCodecJsonASTForJsonSchema(schema.ast),
+    toCodecJsonAST(schema.ast),
     InternalToJsonSchemaDocument.toRepresentationOptions
   )
   return InternalToJsonSchemaDocument.toJsonSchemaDocument(document, options)
@@ -15289,7 +15253,9 @@ export interface toCodecJson<S extends Constraint> extends
  * their encoded schema. This keeps codec construction total, but encoding or
  * decoding can still fail when declaration values are not JSON values. A
  * `toCodecJson` callback can return `undefined` when the declaration is already
- * in canonical JSON form.
+ * in canonical JSON form. When derivation adds an artificial transformation,
+ * checks and annotations remain on its source node rather than being copied to
+ * the JSON target. Source checks still run after the transformation.
  *
  * @category converting
  * @since 4.0.0
