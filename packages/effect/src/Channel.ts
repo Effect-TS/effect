@@ -406,8 +406,16 @@ export const fromTransformBracket = <OutElem, OutErr, OutDone, InElem, InErr, In
   fromTransform(
     Effect.fnUntraced(function*(upstream, scope) {
       const closableScope = Scope.forkUnsafe(scope)
-      const onCause = (cause: Cause.Cause<EX | OutErr | Cause.Done<OutDone>>) =>
-        Scope.close(closableScope, Pull.doneExitFromCause(cause))
+      const onCause = (cause: Cause.Cause<EX | OutErr | Cause.Done<OutDone>>): Effect.Effect<void> => {
+        const exit = Pull.doneExitFromCause(cause)
+        const close = Scope.close(closableScope, exit)
+        return Exit.isFailure(exit)
+          ? Effect.catchCause(
+            close,
+            (closeCause) => Effect.failCause(Cause.combine(exit.cause, closeCause)) as Effect.Effect<never>
+          )
+          : close
+      }
       const pull = yield* Effect.onError(
         f(upstream, scope, closableScope),
         onCause

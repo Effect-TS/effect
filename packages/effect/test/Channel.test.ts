@@ -168,6 +168,19 @@ describe("Channel", () => {
         assert.isTrue(yield* Ref.get(acquired))
         assert.isTrue(yield* Ref.get(released))
       }))
+
+    it.effect("acquireUseRelease combines usage and release failures", () =>
+      Effect.gen(function*() {
+        const result = yield* Channel.acquireUseRelease(
+          Effect.void,
+          () => Channel.fail("usage failure"),
+          () => Effect.die("release failure")
+        ).pipe(Channel.runDrain, Effect.exit)
+        assert.deepStrictEqual(
+          result,
+          Exit.failCause(Cause.combine(Cause.fail("usage failure"), Cause.die("release failure")))
+        )
+      }))
   })
 
   describe("destructors", () => {

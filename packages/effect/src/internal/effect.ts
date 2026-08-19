@@ -3793,6 +3793,12 @@ export const scopeCloseUnsafe = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>
   return scopeCloseFinalizers(self, finalizers, exit_)
 }
 
+const scopeCloseWithExit = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) => {
+  const close = scopeCloseUnsafe(self, exit_)
+  if (close === undefined || exitIsSuccess(exit_)) return close
+  return catchCause(close, (cause) => failCause(causeCombine(exit_.cause, cause)))
+}
+
 const scopeCloseFinalizers = fnUntraced(function*<A, E>(
   self: Scope.Scope,
   finalizers: Scope.State.Open["finalizers"],
@@ -3907,7 +3913,7 @@ export const scoped = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, 
     fiber.setContext(Context.add(fiber.context, scopeTag, scope))
     return onExitPrimitive(self, (exit) => {
       fiber.setContext(prev)
-      return scopeCloseUnsafe(scope, exit)
+      return scopeCloseWithExit(scope, exit)
     })
   }) as any
 
@@ -3920,7 +3926,7 @@ export const scopeUse: {
 } = dual(
   2,
   <A, E, R>(self: Effect.Effect<A, E, R>, scope: Scope.Closeable): Effect.Effect<A, E, Exclude<R, Scope.Scope>> =>
-    onExit(provideScope(self, scope), (exit) => suspend(() => scopeCloseUnsafe(scope, exit) ?? void_))
+    onExit(provideScope(self, scope), (exit) => suspend(() => scopeCloseWithExit(scope, exit) ?? void_))
 )
 
 /** @internal */
@@ -3929,7 +3935,7 @@ export const scopedWith = <A, E, R>(
 ): Effect.Effect<A, E, R> =>
   suspend(() => {
     const scope = scopeMakeUnsafe()
-    return onExit(f(scope), (exit) => suspend(() => scopeCloseUnsafe(scope, exit) ?? void_))
+    return onExit(f(scope), (exit) => suspend(() => scopeCloseWithExit(scope, exit) ?? void_))
   })
 
 /** @internal */
@@ -4169,12 +4175,16 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
   release: (a: Resource, exit: Exit.Exit<A, E2>) => Effect.Effect<void, E3, R3>
 ): Effect.Effect<A, E | E2 | E3, R | R2 | R3> =>
   uninterruptibleMask((restore) =>
-    flatMap(acquire, (a) =>
-      onExitPrimitive(
-        restore(use(a)),
-        (exit) => release(a, exit),
-        true
-      ))
+    flatMap(
+      acquire,
+      (a) =>
+        flatMap(exit(restore(use(a))), (useExit) =>
+          flatMap(exit(release(a, useExit)), (releaseExit) => {
+            if (exitIsSuccess(releaseExit)) return useExit
+            if (exitIsSuccess(useExit)) return failCause(releaseExit.cause)
+            return exitFailCause(causeCombine(useExit.cause, releaseExit.cause))
+          }))
+    )
   )
 
 /** @internal */

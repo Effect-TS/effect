@@ -2114,6 +2114,18 @@ describe("Effect", () => {
         assert.isFalse(reported !== undefined && Exit.isSuccess(reported))
       }))
 
+    it.effect("scoped combines usage and finalizer failures", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.gen(function*() {
+          yield* Effect.addFinalizer(() => Effect.die("finalizer failure"))
+          return yield* Effect.fail("usage failure")
+        }).pipe(Effect.scoped, Effect.exit)
+        assert.deepStrictEqual(
+          result,
+          Exit.failCause(Cause.combine(Cause.fail("usage failure"), Cause.die("finalizer failure")))
+        )
+      }))
+
     it.effect("acquireUseRelease usage result", () =>
       Effect.gen(function*() {
         const result = yield* Effect.acquireUseRelease(
@@ -2161,6 +2173,19 @@ describe("Effect", () => {
           Effect.exit
         )
         assert.deepStrictEqual(result, Exit.fail(ExampleError))
+      }))
+
+    it.effect("combines usage and release failures", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.acquireUseRelease(
+          Effect.void,
+          () => Effect.fail("usage failure"),
+          () => Effect.fail("release failure")
+        ).pipe(Effect.exit)
+        assert.deepStrictEqual(
+          result,
+          Exit.failCause(Cause.combine(Cause.fail("usage failure"), Cause.fail("release failure")))
+        )
       }))
 
     it.effect("rethrown caught error in acquisition", () =>
