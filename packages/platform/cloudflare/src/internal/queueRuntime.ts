@@ -89,7 +89,10 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
   })
 
   const mutateAndWake = (mutate: () => void): Promise<void> =>
-    Effect.runPromise(Effect.andThen(Effect.sync(mutate), wakeWaiters))
+    Effect.runPromise(Effect.suspend(() => {
+      mutate()
+      return wakeWaiters
+    }))
 
   return {
     offer: (id, element) =>
