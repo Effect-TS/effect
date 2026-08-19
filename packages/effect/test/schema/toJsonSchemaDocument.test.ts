@@ -784,7 +784,7 @@ describe("toJsonSchemaDocument", () => {
     assertJsonSchemaDocument(
       schema.annotate({ description: "a" }),
       {
-        schema: {}
+        schema: { description: "a" }
       }
     )
   })
@@ -803,7 +803,8 @@ describe("toJsonSchemaDocument", () => {
       schema.annotate({ description: "a" }),
       {
         schema: {
-          "type": "null"
+          "type": "null",
+          "description": "a"
         }
       }
     )
@@ -823,7 +824,8 @@ describe("toJsonSchemaDocument", () => {
       schema.annotate({ description: "a" }),
       {
         schema: {
-          "type": "null"
+          "type": "null",
+          "description": "a"
         }
       }
     )
@@ -1419,7 +1421,8 @@ describe("toJsonSchemaDocument", () => {
             "anyOf": [
               { "type": "number" },
               { "type": "string", "enum": ["Infinity", "-Infinity", "NaN"] }
-            ]
+            ],
+            "description": "a"
           }
         }
       )
@@ -1686,7 +1689,8 @@ describe("toJsonSchemaDocument", () => {
           "anyOf": [
             { "type": "array" },
             { "type": "object" }
-          ]
+          ],
+          "description": "a"
         }
       }
     )
@@ -1778,7 +1782,8 @@ describe("toJsonSchemaDocument", () => {
         {
           schema: {
             "type": "string",
-            "enum": ["1"]
+            "enum": ["1"],
+            "description": "a"
           }
         }
       )
