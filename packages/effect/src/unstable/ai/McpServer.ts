@@ -1066,7 +1066,9 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
           server.initializedClients.delete(clientId)
           continue
         }
-        if (!protocol.supportsNotifications) {
+        // This must stay below stale-client cleanup so transports without
+        // notification support still prune initializedClients.
+        if (!patchedProtocol.supportsNotifications) {
           continue
         }
         const selectedProtocol = clientProtocols.get(clientId)

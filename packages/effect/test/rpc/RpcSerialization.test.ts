@@ -261,12 +261,15 @@ describe("RpcSerialization", () => {
       id: "",
       tag: "notifications/message",
       payload: { level: "info" },
-      headers: [],
+      headers: [["x-test", "value"]],
+      traceId: "trace",
+      spanId: "span",
+      sampled: true,
       isNotification: true
     })
     assert.strictEqual(
       encoded,
-      "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\",\"params\":{\"level\":\"info\"}}"
+      "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\",\"params\":{\"level\":\"info\"},\"headers\":[[\"x-test\",\"value\"]],\"traceId\":\"trace\",\"spanId\":\"span\",\"sampled\":true}"
     )
   })
 
