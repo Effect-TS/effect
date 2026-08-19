@@ -204,7 +204,7 @@ describe("RpcSerialization", () => {
     })
     assert.strictEqual(
       encoded,
-      "{\"jsonrpc\":\"2.0\",\"method\":\"users.get\",\"params\":null,\"id\":0,\"headers\":[]}"
+      "{\"jsonrpc\":\"2.0\",\"method\":\"users.get\",\"params\":null,\"id\":0}"
     )
   })
 
@@ -240,7 +240,36 @@ describe("RpcSerialization", () => {
     })
     assert.strictEqual(
       encoded,
-      "{\"jsonrpc\":\"2.0\",\"method\":\"users.get\",\"params\":null,\"id\":\"\",\"headers\":[]}"
+      "{\"jsonrpc\":\"2.0\",\"method\":\"users.get\",\"params\":null,\"id\":\"\"}"
+    )
+  })
+
+  it("jsonRpc encodes a notification without an id", () => {
+    const parser = RpcSerialization.jsonRpc().makeUnsafe()
+    const decoded = parser.decode("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\"}")
+    assert.deepStrictEqual(decoded, [{
+      _tag: "Request",
+      id: "",
+      tag: "notifications/message",
+      payload: null,
+      headers: [],
+      isNotification: true
+    }])
+
+    const encoded = parser.encode({
+      _tag: "Request",
+      id: "",
+      tag: "notifications/message",
+      payload: { level: "info" },
+      headers: [["x-test", "value"]],
+      traceId: "trace",
+      spanId: "span",
+      sampled: true,
+      isNotification: true
+    })
+    assert.strictEqual(
+      encoded,
+      "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\",\"params\":{\"level\":\"info\"},\"headers\":[[\"x-test\",\"value\"]],\"traceId\":\"trace\",\"spanId\":\"span\",\"sampled\":true}"
     )
   })
 

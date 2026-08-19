@@ -488,6 +488,54 @@ describe("McpServer", () => {
       strictEqual(pingResponseBody.length > 0, true)
     }))
 
+  it.effect("drops server notifications from buffered JSON-RPC responses", () =>
+    Effect.gen(function*() {
+      const serverLayer = Layer.effectDiscard(Effect.gen(function*() {
+        const router = yield* HttpRouter.HttpRouter
+        const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect
+        yield* protocol.run((clientId, message) => {
+          if (message._tag !== "Request") {
+            return Effect.void
+          }
+          return Effect.gen(function*() {
+            yield* protocol.send(clientId, {
+              _tag: "Request",
+              id: "",
+              tag: "notifications/message",
+              payload: { level: "info" },
+              headers: [],
+              isNotification: true
+            })
+            yield* protocol.send(clientId, {
+              _tag: "Exit",
+              requestId: message.id,
+              exit: { _tag: "Success", value: { ok: true } }
+            })
+            yield* protocol.end(clientId)
+          })
+        }).pipe(Effect.forkScoped)
+        yield* router.add("POST", "/mcp", () => httpEffect)
+      })).pipe(
+        Layer.provideMerge(HttpRouter.layer),
+        Layer.provide(RpcSerialization.layerJsonRpc())
+      )
+      const harness = yield* makeHttpHarness(serverLayer)
+
+      const response = yield* harness.post({
+        jsonrpc: "2.0",
+        method: "ping",
+        params: {},
+        id: 1
+      })
+
+      assert.strictEqual(response.status, 200)
+      assert.deepStrictEqual(yield* Effect.promise(() => response.json()), {
+        jsonrpc: "2.0",
+        id: 1,
+        result: { ok: true }
+      })
+    }))
+
   it.effect("validates supplied protocol versions on POST", () =>
     Effect.gen(function*() {
       const { client, httpClient } = yield* makeRouterTestClient(HttpRouter.cors())
@@ -561,12 +609,8 @@ describe("McpServer", () => {
     it.effect("should isolate resource update subscriptions between sessions", () =>
       Effect.gen(function*() {
         const clientIds = new Set([1, 2])
-        const client1Outbound = yield* Queue.unbounded<
-          RpcMessage.FromServerEncoded | RpcMessage.RequestEncoded
-        >()
-        const client2Outbound = yield* Queue.unbounded<
-          RpcMessage.FromServerEncoded | RpcMessage.RequestEncoded
-        >()
+        const client1Outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
+        const client2Outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
         const disconnects = yield* Queue.unbounded<number>()
         const writeRequest = yield* Deferred.make<
           (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
@@ -582,7 +626,8 @@ describe("McpServer", () => {
               initialMessage: Effect.succeedNone,
               supportsAck: false,
               supportsTransferables: false,
-              supportsSpanPropagation: false
+              supportsSpanPropagation: false,
+              supportsNotifications: true
             })
           )
         )

@@ -719,13 +719,18 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
         return {
           send(id, request, _transferables) {
             cid = id
-            return protocol.send(key.clientId, {
-              ...request,
-              headers: undefined,
-              traceId: undefined,
-              spanId: undefined,
-              sampled: undefined
-            } as any)
+            if (request._tag === "Request") {
+              return protocol.send(key.clientId, {
+                _tag: "Request",
+                id: request.id,
+                tag: request.tag,
+                payload: request.payload,
+                headers: []
+              })
+            }
+            // Ack & co are not part of FromServerEncoded, but the JSON-RPC
+            // serializer encodes them symmetrically for reverse control flow
+            return protocol.send(key.clientId, request as any)
           },
           supportsAck: true,
           supportsTransferables: false,
@@ -1061,6 +1066,11 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
           server.initializedClients.delete(clientId)
           continue
         }
+        // This must stay below stale-client cleanup so transports without
+        // notification support still prune initializedClients.
+        if (!patchedProtocol.supportsNotifications) {
+          continue
+        }
         const selectedProtocol = clientProtocols.get(clientId)
         if (!selectedProtocol) {
           continue
@@ -1088,14 +1098,14 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
             return
           }
           const encoded = yield* selectedProtocol.payloadCodecs(rpc).encode(projected.payload)
-          // TODO: Extend RpcServer.Protocol's outbound message contract with server-originated
-          // notifications so MCP does not need to treat this notification as an RPC response.
-          const message: RpcMessage.RequestEncoded = {
+          yield* patchedProtocol.send(clientId, {
             _tag: "Request",
+            id: "",
             tag: projected.tag,
-            payload: encoded
-          } as any
-          yield* patchedProtocol.send(clientId, message as any)
+            payload: encoded,
+            headers: [],
+            isNotification: true
+          })
         }).pipe(Effect.catchCause(() => Effect.void))
       }
     })),

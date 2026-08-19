@@ -854,6 +854,7 @@ export class Protocol extends Context.Service<
     readonly supportsAck: boolean
     readonly supportsTransferables: boolean
     readonly supportsSpanPropagation: boolean
+    readonly supportsNotifications: boolean
   }
 >()("effect/rpc/RpcServer/Protocol") {
   /**
@@ -1025,7 +1026,11 @@ export const makeProtocolWithHttpEffect: Effect.Effect<
       typeof data === "string" ? Queue.offer(queue, encoder.encode(data)) : Queue.offer(queue, data)
     const client: Client = {
       write: !includesFraming
-        ? (response) => Queue.offer(queue, response)
+        ? (response) =>
+          // buffered responses cannot carry notifications, so they are dropped
+          response._tag === "Request" && response.isNotification === true
+            ? Effect.void
+            : Queue.offer(queue, response)
         : (response) => {
           try {
             const encoded = parser.encode(response)
@@ -1111,7 +1116,8 @@ export const makeProtocolWithHttpEffect: Effect.Effect<
       initialMessage: Effect.succeedNone,
       supportsAck: false,
       supportsTransferables: false,
-      supportsSpanPropagation: false
+      supportsSpanPropagation: false,
+      supportsNotifications: includesFraming
     })
   })
 
@@ -1302,7 +1308,8 @@ export const makeProtocolStdio = Effect.gen(function*() {
       initialMessage: Effect.succeedNone,
       supportsAck: true,
       supportsTransferables: false,
-      supportsSpanPropagation: true
+      supportsSpanPropagation: true,
+      supportsNotifications: true
     }
   }))
 })
@@ -1376,7 +1383,8 @@ export const makeProtocolWorkerRunner: Effect.Effect<
     initialMessage: Effect.asSome(Deferred.await(initialMessage)),
     supportsAck: true,
     supportsTransferables: true,
-    supportsSpanPropagation: true
+    supportsSpanPropagation: true,
+    supportsNotifications: true
   }
 }))
 
@@ -1497,7 +1505,8 @@ const makeSocketProtocol: Effect.Effect<
       initialMessage: Effect.succeedNone,
       supportsAck: true,
       supportsTransferables: false,
-      supportsSpanPropagation: true
+      supportsSpanPropagation: true,
+      supportsNotifications: true
     })
   })
 
