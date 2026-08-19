@@ -789,6 +789,9 @@ export const provideScope = <A, E, R>(
  * Adds an exit finalizer to the current workflow scope, preserving the
  * services available when the finalizer is registered.
  *
+ * Body-level `Effect.onExit` finalizers cannot observe a deposited workflow
+ * interrupt. Use this function for terminal-state work that must observe it.
+ *
  * @category resource management
  * @since 4.0.0
  */
