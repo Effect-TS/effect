@@ -3799,12 +3799,6 @@ const combineFinalizerCause = <A, E, XE, XR>(
 ): Effect.Effect<void, E | XE, XR> =>
   exitIsSuccess(exit_) ? finalizer : catchCause(finalizer, (cause) => failCause(causeCombine(exit_.cause, cause)))
 
-/** @internal */
-export const scopeCloseWithExit = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) => {
-  const close = scopeCloseUnsafe(self, exit_)
-  return close && combineFinalizerCause(exit_, close)
-}
-
 const scopeCloseFinalizers = fnUntraced(function*<A, E>(
   self: Scope.Scope,
   finalizers: Scope.State.Open["finalizers"],
@@ -3919,7 +3913,7 @@ export const scoped = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, 
     fiber.setContext(Context.add(fiber.context, scopeTag, scope))
     return onExitPrimitive(self, (exit) => {
       fiber.setContext(prev)
-      return scopeCloseWithExit(scope, exit)
+      return scopeCloseUnsafe(scope, exit)
     })
   }) as any
 
@@ -4001,7 +3995,7 @@ export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
   [contE](cause, _, exit) {
     exit ??= exitFailCause(cause)
     const eff = this[args][1](exit)
-    return eff ? flatMap(eff, (_) => exit) : exit
+    return eff ? flatMap(combineFinalizerCause(exit, eff), (_) => exit) : exit
   }
 })
 
@@ -4014,10 +4008,7 @@ export const onExit: {
     self: Effect.Effect<A, E, R>,
     f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, XE, XR>
   ): Effect.Effect<A, E | XE, R | XR>
-} = dual(2, <A, E, R, XE = never, XR = never>(
-  self: Effect.Effect<A, E, R>,
-  f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, XE, XR>
-): Effect.Effect<A, E | XE, R | XR> => onExitPrimitive(self, (exit) => combineFinalizerCause(exit, f(exit))))
+} = dual(2, onExitPrimitive)
 
 /** @internal */
 export const ensuring: {
@@ -4187,7 +4178,7 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
     flatMap(acquire, (a) =>
       onExitPrimitive(
         restore(use(a)),
-        (exit) => combineFinalizerCause(exit, release(a, exit)),
+        (exit) => release(a, exit),
         true
       ))
   )

@@ -214,19 +214,35 @@ export const isDoneFailure = <E>(
  *
  * **Details**
  *
- * Returns a successful `Result` with the `Cause.Done` value when one is
- * present, otherwise returns a failed `Result` containing the non-done cause.
+ * Returns a successful `Result` with the `Cause.Done` value when the cause
+ * contains a done signal and no other failures besides interruptions. When the
+ * done signal was merged with a real failure (for example a failing
+ * finalizer), the `Result` fails with the remaining cause, stripped of the
+ * done signal. Without a done signal the `Result` fails with the original
+ * cause.
  *
  * @category filtering
  * @since 4.0.0
  */
 export const filterDone: <E>(
   input: Cause.Cause<E>
-) => Result.Result<Cause.Done.Only<E>, Cause.Cause<ExcludeDone<E>>> = Filter
-  .composePassthrough(
-    Cause.findError,
-    (e) => Cause.isDone(e) ? Result.succeed(e) : Result.fail(e)
-  ) as any
+) => Result.Result<Cause.Done.Only<E>, Cause.Cause<ExcludeDone<E>>> = <E>(
+  cause: Cause.Cause<E>
+): Result.Result<any, any> => {
+  let done: Cause.Done<any> | undefined
+  let hasFailure = false
+  for (const reason of cause.reasons) {
+    if (isDoneFailure(reason)) {
+      done ??= reason.error
+    } else if (reason._tag !== "Interrupt") {
+      hasFailure = true
+    }
+  }
+  if (done === undefined) return Result.fail(cause)
+  return hasFailure
+    ? Result.fail(Cause.fromReasons(cause.reasons.filter((reason) => !isDoneFailure(reason))))
+    : Result.succeed(done)
+}
 
 /**
  * Finds a `Cause.Done` failure in a cause whose done value is not used.
@@ -238,8 +254,8 @@ export const filterDone: <E>(
  *
  * **Details**
  *
- * Returns a successful `Result` with the done marker when present, otherwise
- * returns a failed `Result` with the non-done cause.
+ * Returns a successful `Result` with the done marker when it is the only
+ * failure, otherwise returns a failed `Result` with the non-done cause.
  *
  * @see {@link filterDone} for preserving the typed `Cause.Done` value when the done payload matters
  * @see {@link filterDoneLeftover} for extracting only the done leftover value
@@ -250,10 +266,7 @@ export const filterDone: <E>(
  */
 export const filterDoneVoid: <E extends Cause.Done>(
   input: Cause.Cause<E>
-) => Result.Result<Cause.Done, Cause.Cause<Exclude<E, Cause.Done>>> = Filter.composePassthrough(
-  Cause.findError,
-  (e) => Cause.isDone(e) ? Result.succeed(e) : Result.fail(e)
-) as any
+) => Result.Result<Cause.Done, Cause.Cause<Exclude<E, Cause.Done>>> = filterDone as any
 
 /**
  * Keeps a `Cause` only when it contains no `Cause.Done` failures.
@@ -296,10 +309,10 @@ export const filterNoDone: <E>(
  */
 export const filterDoneLeftover: <E>(
   cause: Cause.Cause<E>
-) => Result.Result<Cause.Done.Extract<E>, Cause.Cause<ExcludeDone<E>>> = Filter.composePassthrough(
-  Cause.findError,
-  (e) => Cause.isDone(e) ? Result.succeed(e.value) : Result.fail(e)
-) as any
+) => Result.Result<Cause.Done.Extract<E>, Cause.Cause<ExcludeDone<E>>> = ((cause: Cause.Cause<any>) => {
+  const done = filterDone(cause)
+  return Result.isFailure(done) ? done : Result.succeed(done.success.value)
+}) as any
 
 /**
  * Converts a `Cause` into an `Exit`, treating `Cause.Done` as successful
@@ -313,8 +326,9 @@ export const filterDoneLeftover: <E>(
  *
  * **Details**
  *
- * If the cause contains a done value, that leftover becomes the successful
- * value. Otherwise the non-done cause becomes the failure cause.
+ * If the done signal is the only failure in the cause, its leftover becomes
+ * the successful value. Otherwise the non-done cause becomes the failure
+ * cause.
  *
  * @see {@link filterDone} for extracting the done signal without converting the cause to an `Exit`
  * @see {@link matchEffect} for handling `Pull` success, failure, and done outcomes directly

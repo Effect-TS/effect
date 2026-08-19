@@ -20,7 +20,7 @@ import * as Fiber from "./Fiber.ts"
 import type * as Filter from "./Filter.ts"
 import type { LazyArg } from "./Function.ts"
 import { constant, constTrue, constVoid, dual, identity as identity_ } from "./Function.ts"
-import { ClockRef, endSpan, scopeCloseWithExit } from "./internal/effect.ts"
+import { ClockRef, endSpan } from "./internal/effect.ts"
 import { addSpanStackTrace } from "./internal/tracer.ts"
 import * as Iterable from "./Iterable.ts"
 import * as Latch from "./Latch.ts"
@@ -406,20 +406,13 @@ export const fromTransformBracket = <OutElem, OutErr, OutDone, InElem, InErr, In
   fromTransform(
     Effect.fnUntraced(function*(upstream, scope) {
       const closableScope = Scope.forkUnsafe(scope)
-      // Uses the replace-semantics onExitPrimitive instead of onError: merging
-      // a close failure into a Cause.Done cause would make consumers read the
-      // combined cause as graceful completion and drop the close failure.
-      const onExitClose = (exit: Exit.Exit<unknown, EX | OutErr | Cause.Done<OutDone>>) =>
-        Exit.isSuccess(exit)
-          ? undefined
-          : Effect.suspend(() =>
-            scopeCloseWithExit(closableScope, Pull.doneExitFromCause(exit.cause)) ?? Effect.void
-          ) as Effect.Effect<void>
-      const pull = yield* Effect.onExitPrimitive(
+      const onCause = (cause: Cause.Cause<EX | OutErr | Cause.Done<OutDone>>) =>
+        Scope.close(closableScope, Pull.doneExitFromCause(cause))
+      const pull = yield* Effect.onError(
         f(upstream, scope, closableScope),
-        onExitClose
+        onCause
       )
-      return Effect.onExitPrimitive(pull, onExitClose)
+      return Effect.onError(pull, onCause)
     })
   )
 
