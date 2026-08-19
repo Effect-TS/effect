@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Layer } from "effect"
+import { Duration, Effect, Exit, Layer, Queue, Scope } from "effect"
 import { Persistence, Redis } from "effect/unstable/persistence"
 
 describe("Redis", () => {
@@ -24,6 +24,7 @@ describe("Redis", () => {
         }
         return Effect.succeed(undefined as unknown as A)
       },
+      subscribe: () => Queue.unbounded<Redis.RedisMessage, Redis.RedisError>(),
       eval: () => () => Effect.die("unused")
     })
     return Effect.gen(function*() {
@@ -43,6 +44,7 @@ describe("Redis", () => {
         commands.push([command, args])
         return Effect.succeed(undefined as unknown as A)
       },
+      subscribe: () => Queue.unbounded<Redis.RedisMessage, Redis.RedisError>(),
       eval:
         <Config extends { readonly params: ReadonlyArray<unknown>; readonly result: unknown }>() =>
         (...params: Config["params"]) => {
@@ -87,7 +89,8 @@ describe("Redis", () => {
               return Effect.succeed("sha" as any)
             }
             return Effect.succeed("ok")
-          })
+          }),
+        subscribe: () => Effect.succeed(Effect.never)
       })
       const evalScript = redis.eval(
         Redis.script((key: string) => [key], {
@@ -126,7 +129,8 @@ describe("Redis", () => {
               return Effect.fail(new Redis.RedisError({ cause: new Error("NOSCRIPT No matching script") }))
             }
             return Effect.succeed("ok")
-          })
+          }),
+        subscribe: () => Effect.succeed(Effect.never)
       })
       const evalScript = redis.eval(
         Redis.script((key: string) => [key], {
@@ -144,5 +148,73 @@ describe("Redis", () => {
         "SCRIPT",
         "EVALSHA"
       ])
+    }))
+
+  it.effect("receives messages from a subscription", () =>
+    Effect.gen(function*() {
+      const redis = yield* Redis.make({
+        send: () => Effect.die("unused"),
+        subscribe: (_channel, onMessage) =>
+          Effect.sync(() => {
+            onMessage({ channel: "events", message: "hello" })
+            return Effect.never
+          })
+      })
+
+      const subscription = yield* redis.subscribe("events")
+
+      assert.deepStrictEqual(yield* Queue.take(subscription), {
+        channel: "events",
+        message: "hello"
+      })
+    }))
+
+  it.effect("reports subscription setup failures through the dequeue", () =>
+    Effect.gen(function*() {
+      const error = new Redis.RedisError({ cause: new Error("subscription failed") })
+      const redis = yield* Redis.make({
+        send: () => Effect.die("unused"),
+        subscribe: () => Effect.fail(error)
+      })
+
+      const subscription = yield* redis.subscribe("events")
+
+      assert.strictEqual(yield* Queue.take(subscription).pipe(Effect.flip), error)
+    }))
+
+  it.effect("reports listener failures through the dequeue", () =>
+    Effect.gen(function*() {
+      const error = new Redis.RedisError({ cause: new Error("listener failed") })
+      const redis = yield* Redis.make({
+        send: () => Effect.die("unused"),
+        subscribe: () => Effect.succeed(Effect.fail(error))
+      })
+
+      const subscription = yield* redis.subscribe("events")
+
+      assert.strictEqual(yield* Queue.take(subscription).pipe(Effect.flip), error)
+    }))
+
+  it.effect("shuts down the dequeue and releases the subscriber with its scope", () =>
+    Effect.gen(function*() {
+      let released = false
+      const redis = yield* Redis.make({
+        send: () => Effect.die("unused"),
+        subscribe: () =>
+          Effect.acquireRelease(
+            Effect.void,
+            () =>
+              Effect.sync(() => {
+                released = true
+              })
+          ).pipe(Effect.as(Effect.never))
+      })
+      const scope = yield* Scope.make()
+      const subscription = yield* redis.subscribe("events").pipe(Scope.provide(scope))
+
+      yield* Scope.close(scope, Exit.void)
+
+      assert.isTrue(released)
+      assert.isTrue(Exit.hasInterrupts(yield* Queue.take(subscription).pipe(Effect.exit)))
     }))
 })

@@ -1,7 +1,7 @@
 import { NodeRedis } from "@effect/platform-node"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
-import { Effect, Layer, Schema } from "effect"
+import { Effect, Layer, Queue, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/unstable/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
 import { PersistedQueue, Persistence, Redis } from "effect/unstable/persistence"
@@ -68,6 +68,19 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
       Effect.gen(function*() {
         const redis = yield* NodeRedis.NodeRedis
         assert.strictEqual(redis.client.options.RESP, undefined)
+      }))
+
+    it.effect("receives published messages", () =>
+      Effect.gen(function*() {
+        const redis = yield* Redis.Redis
+        const subscription = yield* redis.subscribe("effect-test")
+
+        yield* redis.send("PUBLISH", "effect-test", "hello")
+
+        assert.deepStrictEqual(yield* Queue.take(subscription), {
+          channel: "effect-test",
+          message: "hello"
+        })
       }))
 
     // The shared PersistedQueue suite can only assert that exhausted elements
