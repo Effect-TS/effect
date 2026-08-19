@@ -15163,6 +15163,42 @@ export interface ToJsonSchemaOptions {
   readonly includeAnnotationKey?: ((key: string) => boolean) | undefined
 }
 
+const toJsonSchemaInheritedAnnotationKeys = [
+  "title",
+  "description",
+  "documentation",
+  "readOnly",
+  "writeOnly"
+] as const
+
+function inheritToJsonSchemaAnnotations(
+  sourceAnnotations: Annotations.Annotations,
+  target: SchemaAST.AST
+): SchemaAST.AST {
+  let inherited: Record<string, unknown> | undefined
+  for (const key of toJsonSchemaInheritedAnnotationKeys) {
+    const value = sourceAnnotations[key]
+    if (value !== undefined && target.annotations?.[key] === undefined) {
+      ;(inherited ??= {})[key] = value
+    }
+  }
+  return inherited === undefined ? target : SchemaAST.modifyOwnPropertyDescriptors(target, (d) => {
+    d.annotations.value = { ...d.annotations.value, ...inherited }
+  })
+}
+
+const toCodecJsonASTForJsonSchema = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+  const out = toCodecJsonASTStep(ast, toCodecJsonASTForJsonSchema)
+  if (out === ast || out.encoding === undefined) return out
+  const annotations = ast.annotations
+  const inherited = annotations === undefined ?
+    out :
+    SchemaAST.applyToSelfOrLastLinkEncoding((target) => inheritToJsonSchemaAnnotations(annotations, target))(out)
+  return ast.context === undefined ?
+    inherited :
+    SchemaAST.replaceContextLastLink(inherited, withoutConstructorDefault(ast.context))
+})
+
 /**
  * Returns a JSON Schema document using draft 2020-12.
  *
@@ -15171,9 +15207,15 @@ export interface ToJsonSchemaOptions {
  * The `options` parameter controls generation details such as additional
  * properties and synthesized check descriptions; it does not change the draft
  * target. Declarations are lowered through their `toCodecJson` or `toCodec`
- * annotation when available before the representation document is compiled. For schemas whose codec JSON AST can be
- * represented exactly in JSON Schema, importing the emitted document reconstructs a schema that accepts the same JSON
- * values. This is a semantic round-trip guarantee; the reconstructed AST may have a different shape.
+ * annotation when available before the representation document is compiled.
+ * Artificial JSON encodings inherit only `title`, `description`,
+ * `documentation`, `readOnly`, and `writeOnly` directly attached to the terminal
+ * encoded node. Existing target values take precedence; check annotations,
+ * earlier encoding nodes, and all other annotations do not transfer. For schemas
+ * whose codec JSON AST can be represented exactly in JSON Schema, importing the
+ * emitted document reconstructs a schema that accepts the same JSON values.
+ * This is a semantic round-trip guarantee; the reconstructed AST may have a
+ * different shape.
  *
  * **Gotchas**
  *
@@ -15192,7 +15234,7 @@ export function toJsonSchemaDocument(
   options?: ToJsonSchemaOptions
 ): JsonSchema.Document<"draft-2020-12"> {
   const document = InternalToRepresentation.toRepresentation(
-    toCodecJsonAST(schema.ast),
+    toCodecJsonASTForJsonSchema(schema.ast),
     InternalToJsonSchemaDocument.toRepresentationOptions
   )
   return InternalToJsonSchemaDocument.toJsonSchemaDocument(document, options)
@@ -15241,12 +15283,6 @@ export interface toCodecJson<S extends Constraint> extends
  * execution and failure handling. Because hooks do not widen the returned
  * service types, links cannot require services not declared by the input schema.
  *
- * Artificial JSON encodings inherit only `title`, `description`,
- * `documentation`, `readOnly`, and `writeOnly` directly attached to the terminal
- * encoded node. They are attached directly to the terminal JSON node, where
- * existing values take precedence. Check annotations, earlier encoding nodes,
- * and all other annotations do not transfer.
- *
  * **Gotchas**
  *
  * Declarations without a `toCodecJson` or `toCodec` annotation use `Json` as
@@ -15262,54 +15298,13 @@ export function toCodecJson<S extends Constraint>(schema: S): toCodecJson<S> {
   return make(toCodecJsonAST(schema.ast), { schema })
 }
 
-const toCodecJsonInheritedAnnotationKeys = [
-  "title",
-  "description",
-  "documentation",
-  "readOnly",
-  "writeOnly"
-] as const
-
-function inheritToCodecJsonAnnotations(
-  sourceAnnotations: Annotations.Annotations,
-  target: SchemaAST.AST
-): SchemaAST.AST {
-  let inherited: Record<string, unknown> | undefined
-  for (const key of toCodecJsonInheritedAnnotationKeys) {
-    const value = sourceAnnotations[key]
-    if (value !== undefined && target.annotations?.[key] === undefined) {
-      ;(inherited ??= {})[key] = value
-    }
-  }
-  return inherited === undefined ? target : SchemaAST.modifyOwnPropertyDescriptors(target, (d) => {
-    d.annotations.value = { ...d.annotations.value, ...inherited }
-  })
-}
-
 /** @internal */
 export const toCodecJsonAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
   const out = toCodecJsonASTStep(ast, toCodecJsonAST)
-  if (out === ast || out.encoding === undefined) return out
-  const annotations = ast.annotations
-  const inherited = annotations === undefined ?
-    out :
-    SchemaAST.applyToSelfOrLastLinkEncoding((target) => inheritToCodecJsonAnnotations(annotations, target))(out)
-  return ast.context === undefined ?
-    inherited :
-    SchemaAST.replaceContextLastLink(inherited, withoutConstructorDefault(ast.context))
-})
-
-// Skips metadata copied to artificial JSON nodes because parsers do not consume it.
-const toCodecJsonASTForParser = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
-  const out = toCodecJsonASTStep(ast, toCodecJsonASTForParser)
   const context = ast.context
   if (out === ast || context === undefined) return out
   return SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(context))
 })
-
-function toCodecJsonForParser<S extends Constraint>(schema: S): toCodecJson<S> {
-  return make(toCodecJsonASTForParser(schema.ast), { schema })
-}
 
 function withoutConstructorDefault(context: SchemaAST.Context): SchemaAST.Context {
   return context.constructorDefault === undefined ?
@@ -16186,7 +16181,7 @@ export function overrideToCodecIso<S extends Constraint, Iso>(
  * @since 4.0.0
  */
 export function toDifferJsonPatch<T>(schema: ConstraintCodec<T, unknown>): Differ<T, JsonPatch.JsonPatch> {
-  const serializer = toCodecJsonForParser(schema)
+  const serializer = toCodecJson(schema)
   const get = SchemaParser.encodeSync(serializer)
   const set = SchemaParser.decodeSync(serializer)
   return {

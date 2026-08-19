@@ -4914,8 +4914,6 @@ When you call `Schema.toCodecJson(schema)`, the library:
 3. **Applies transformations**: it replaces types that are not JSON-friendly with types that are.
 4. **Composes recursively**: it builds codecs for nested schemas by combining the codecs of their parts.
 
-An artificial JSON encoding inherits only `title`, `description`, `documentation`, `readOnly`, and `writeOnly` directly attached to the terminal encoded node. They are attached directly to the JSON target, where existing values take precedence. Check annotations and earlier encoding nodes do not contribute metadata; value-bearing (`default`, `examples`), representation-specific (`format`, `contentMediaType`), and custom annotations stay on their original representation.
-
 #### Custom Encodings
 
 `Schema.toCodecJson` respects **explicit encodings** you add to a schema. If you choose a custom representation, that choice takes priority over the default.
@@ -5199,6 +5197,8 @@ Use `.annotate(...)` to attach standard JSON Schema annotations:
 - `examples`
 - `readOnly`
 - `writeOnly`
+
+When JSON Schema generation introduces an artificial JSON encoding, it transfers only `title`, `description`, `documentation`, `readOnly`, and `writeOnly` directly attached to the terminal encoded node. Existing values on the JSON target take precedence. Check annotations and earlier encoding nodes do not contribute metadata; value-bearing (`default`, `examples`), representation-specific (`format`, `contentMediaType`), and custom annotations stay on their original representation.
 
 **Example** (Adding basic annotations)
 
