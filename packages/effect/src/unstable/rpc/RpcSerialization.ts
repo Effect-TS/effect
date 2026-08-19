@@ -401,12 +401,20 @@ function encodeJsonRpcResponse(
 function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessage.FromClientEncoded): JsonRpcMessage {
   switch (response._tag) {
     case "Request":
+      // a JSON-RPC notification is a request without an id
+      if (response.isNotification) {
+        return {
+          jsonrpc: "2.0",
+          method: response.tag,
+          params: response.payload
+        }
+      }
       return {
         jsonrpc: "2.0",
         method: response.tag,
         params: response.payload,
         id: response.id,
-        headers: response.headers,
+        ...(response.headers.length > 0 ? { headers: response.headers } : {}),
         traceId: response.traceId,
         spanId: response.spanId,
         sampled: response.sampled

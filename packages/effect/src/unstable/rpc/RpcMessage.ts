@@ -54,6 +54,9 @@ export const RequestId = (id: string | number): RequestId => id as RequestId
  * The transport-encoded RPC request envelope, including the string request id,
  * RPC tag, encoded payload, headers, and optional trace context.
  *
+ * Requests flow in both directions: servers use them for server-originated
+ * requests and, with `isNotification` set, for server notifications.
+ *
  * @category models
  * @since 4.0.0
  */
@@ -195,6 +198,7 @@ export type FromServerEncoded =
   | ResponseDefectEncoded
   | Pong
   | ClientProtocolError
+  | RequestEncoded
 
 /**
  * The brand identifier used by the `ResponseId` type.

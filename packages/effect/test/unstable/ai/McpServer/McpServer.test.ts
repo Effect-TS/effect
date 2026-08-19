@@ -561,12 +561,8 @@ describe("McpServer", () => {
     it.effect("should isolate resource update subscriptions between sessions", () =>
       Effect.gen(function*() {
         const clientIds = new Set([1, 2])
-        const client1Outbound = yield* Queue.unbounded<
-          RpcMessage.FromServerEncoded | RpcMessage.RequestEncoded
-        >()
-        const client2Outbound = yield* Queue.unbounded<
-          RpcMessage.FromServerEncoded | RpcMessage.RequestEncoded
-        >()
+        const client1Outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
+        const client2Outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
         const disconnects = yield* Queue.unbounded<number>()
         const writeRequest = yield* Deferred.make<
           (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
@@ -582,7 +578,8 @@ describe("McpServer", () => {
               initialMessage: Effect.succeedNone,
               supportsAck: false,
               supportsTransferables: false,
-              supportsSpanPropagation: false
+              supportsSpanPropagation: false,
+              supportsNotifications: true
             })
           )
         )
