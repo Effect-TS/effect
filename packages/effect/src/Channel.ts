@@ -406,15 +406,20 @@ export const fromTransformBracket = <OutElem, OutErr, OutDone, InElem, InErr, In
   fromTransform(
     Effect.fnUntraced(function*(upstream, scope) {
       const closableScope = Scope.forkUnsafe(scope)
-      const onCause = (cause: Cause.Cause<EX | OutErr | Cause.Done<OutDone>>) =>
-        Effect.suspend(() =>
-          scopeCloseWithExit(closableScope, Pull.doneExitFromCause(cause)) ?? Effect.void
-        ) as Effect.Effect<void>
-      const pull = yield* Effect.onError(
+      // Uses the replace-semantics onExitPrimitive instead of onError: merging
+      // a close failure into a Cause.Done cause would make consumers read the
+      // combined cause as graceful completion and drop the close failure.
+      const onExitClose = (exit: Exit.Exit<unknown, EX | OutErr | Cause.Done<OutDone>>) =>
+        Exit.isSuccess(exit)
+          ? undefined
+          : Effect.suspend(() =>
+            scopeCloseWithExit(closableScope, Pull.doneExitFromCause(exit.cause)) ?? Effect.void
+          ) as Effect.Effect<void>
+      const pull = yield* Effect.onExitPrimitive(
         f(upstream, scope, closableScope),
-        onCause
+        onExitClose
       )
-      return Effect.onError(pull, onCause)
+      return Effect.onExitPrimitive(pull, onExitClose)
     })
   )
 

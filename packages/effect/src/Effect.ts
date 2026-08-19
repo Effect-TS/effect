@@ -6947,6 +6947,8 @@ export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
  * Ensures that a cleanup function runs whether this effect succeeds, fails, or
  * is interrupted.
  *
+ * If both the effect and the cleanup function fail, the two causes are merged.
+ *
  * **Example** (Observing every exit)
  *
  * ```ts import.meta.vitest

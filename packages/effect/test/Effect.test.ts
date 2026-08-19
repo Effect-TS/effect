@@ -2077,7 +2077,7 @@ describe("Effect", () => {
         assert.isTrue(finalized)
       }))
 
-    it.effect("finalizer errors not caught", () =>
+    it.effect("finalizer errors merged", () =>
       Effect.gen(function*() {
         const e2 = new Error("e2")
         const e3 = new Error("e3")
@@ -2089,7 +2089,10 @@ describe("Effect", () => {
           Effect.flip,
           Effect.map((cause) => cause)
         )
-        assert.deepStrictEqual(result, Cause.die(e3))
+        assert.deepStrictEqual(
+          result,
+          Cause.combine(Cause.combine(Cause.fail(ExampleError), Cause.die(e2)), Cause.die(e3))
+        )
       }))
 
     it.effect("finalizer errors reported", () =>

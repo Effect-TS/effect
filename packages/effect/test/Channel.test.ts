@@ -181,6 +181,16 @@ describe("Channel", () => {
           Exit.failCause(Cause.combine(Cause.fail("usage failure"), Cause.die("release failure")))
         )
       }))
+
+    it.effect("acquireUseRelease surfaces release failure after successful usage", () =>
+      Effect.gen(function*() {
+        const result = yield* Channel.acquireUseRelease(
+          Effect.void,
+          () => Channel.succeed(1),
+          () => Effect.die("release failure")
+        ).pipe(Channel.runDrain, Effect.exit)
+        assert.deepStrictEqual(result, Exit.die("release failure"))
+      }))
   })
 
   describe("destructors", () => {

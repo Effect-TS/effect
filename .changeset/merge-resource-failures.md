@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve both usage and finalizer causes when bracketed Effect, scoped, and Channel resources fail during cleanup.
+Merge effect and finalizer failure causes instead of dropping the original cause. This applies to `Effect.onExit`, `Effect.ensuring`, `Effect.onError` and everything built on them, including `Effect.acquireUseRelease`, scoped resources, and Channel bracket cleanup. The low-level `Effect.onExitPrimitive` keeps its replace semantics.

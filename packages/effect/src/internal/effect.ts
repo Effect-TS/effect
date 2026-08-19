@@ -3932,7 +3932,7 @@ export const scopeUse: {
 } = dual(
   2,
   <A, E, R>(self: Effect.Effect<A, E, R>, scope: Scope.Closeable): Effect.Effect<A, E, Exclude<R, Scope.Scope>> =>
-    onExit(provideScope(self, scope), (exit) => suspend(() => scopeCloseWithExit(scope, exit) ?? void_))
+    onExit(provideScope(self, scope), (exit) => suspend(() => scopeCloseUnsafe(scope, exit) ?? void_))
 )
 
 /** @internal */
@@ -3941,7 +3941,7 @@ export const scopedWith = <A, E, R>(
 ): Effect.Effect<A, E, R> =>
   suspend(() => {
     const scope = scopeMakeUnsafe()
-    return onExit(f(scope), (exit) => suspend(() => scopeCloseWithExit(scope, exit) ?? void_))
+    return onExit(f(scope), (exit) => suspend(() => scopeCloseUnsafe(scope, exit) ?? void_))
   })
 
 /** @internal */
@@ -4014,7 +4014,10 @@ export const onExit: {
     self: Effect.Effect<A, E, R>,
     f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, XE, XR>
   ): Effect.Effect<A, E | XE, R | XR>
-} = dual(2, onExitPrimitive)
+} = dual(2, <A, E, R, XE = never, XR = never>(
+  self: Effect.Effect<A, E, R>,
+  f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, XE, XR>
+): Effect.Effect<A, E | XE, R | XR> => onExitPrimitive(self, (exit) => combineFinalizerCause(exit, f(exit))))
 
 /** @internal */
 export const ensuring: {
