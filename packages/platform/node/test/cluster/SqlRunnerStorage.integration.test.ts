@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, FileSystem, Layer, Schedule } from "effect"
+import { Cause, Deferred, Duration, Effect, Exit, FileSystem, Latch, Layer, Schedule } from "effect"
 import { TestClock } from "effect/testing"
 import {
   ClusterError,
@@ -40,19 +40,18 @@ describe("SqlRunnerStorage", () => {
 
       yield* storage.register(runner, true)
       yield* storage.acquire(runnerAddress1, shards)
-      partitioned.current = true
+      partitionConnection(partitioned)
 
       const expectDeadline = Effect.fnUntraced(function*(operation: Effect.Effect<unknown, unknown>) {
         const [elapsed, exit] = yield* operation.pipe(
           Effect.exit,
-          Effect.timed,
-          TestClock.withLive
+          Effect.timed
         )
         assert(Exit.isFailure(exit))
         const error = Cause.squash(exit.cause)
         assert(error instanceof ClusterError.PersistenceError)
         assert.isBelow(Duration.toMillis(elapsed), 1000)
-        yield* Effect.sleep(20).pipe(TestClock.withLive)
+        yield* Effect.sleep(20)
       })
 
       yield* expectDeadline(storage.refresh(runnerAddress1, shards))
@@ -64,33 +63,35 @@ describe("SqlRunnerStorage", () => {
 
       // Rebuilding is asynchronous, so wait until the replacement connection
       // is ready before checking that lock operations recover.
-      const usableConnections = partitioned.usableConnections
-      partitioned.current = false
-      yield* waitUntil(() => partitioned.usableConnections > usableConnections)
-      expect(yield* storage.refresh(runnerAddress1, shards).pipe(TestClock.withLive)).toEqual(shards)
+      yield* restoreAndWaitForUsableConnection(partitioned)
+      expect(yield* storage.refresh(runnerAddress1, shards)).toEqual(shards)
 
-      partitioned.current = true
+      partitionConnection(partitioned)
       yield* expectDeadline(storage.acquire(runnerAddress1, [ShardId.make("default", 2)]))
-      const usableConnectionsAfterAcquire = partitioned.usableConnections
-      partitioned.current = false
-      yield* waitUntil(() => partitioned.usableConnections > usableConnectionsAfterAcquire)
-      yield* storage.refresh(runnerAddress1, shards).pipe(TestClock.withLive)
+      yield* restoreAndWaitForUsableConnection(partitioned)
+      yield* storage.refresh(runnerAddress1, shards)
 
-      partitioned.current = true
+      partitionConnection(partitioned)
       yield* expectDeadline(storage.release(runnerAddress1, shards[0]))
-      const usableConnectionsAfterRelease = partitioned.usableConnections
-      partitioned.current = false
-      yield* waitUntil(() => partitioned.usableConnections > usableConnectionsAfterRelease)
-      yield* storage.refresh(runnerAddress1, shards).pipe(TestClock.withLive)
-      yield* storage.release(runnerAddress1, shards[0]).pipe(TestClock.withLive)
+      yield* restoreAndWaitForUsableConnection(partitioned)
+      yield* storage.refresh(runnerAddress1, shards)
+      yield* storage.release(runnerAddress1, shards[0])
 
       assert.strictEqual(partitioned.activeQueries, 0)
     }).pipe(
+      Effect.timeoutOrElse({
+        duration: 15_000,
+        orElse: () =>
+          Effect.die(
+            `timed out exercising shard lock rebuilds (${partitionDiagnostics(partitioned)})`
+          )
+      }),
       // Ensure layer teardown cannot mask a body failure with Vitest's timeout.
       Effect.ensuring(Effect.sync(() => {
-        partitioned.current = false
+        restoreConnection(partitioned)
       })),
-      Effect.provide(layer)
+      Effect.provide(layer),
+      TestClock.withLive
     )
   }, 60_000)
 
@@ -116,11 +117,11 @@ describe("SqlRunnerStorage", () => {
 
       yield* storage.register(runner, true)
       yield* storage.acquire(runnerAddress1, shards)
-      partitioned.current = true
+      partitionConnection(partitioned)
       yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
       yield* waitUntil(() => partitioned.activeQueries === 0)
 
-      partitioned.current = false
+      restoreConnection(partitioned)
       expect(
         yield* storage.refresh(runnerAddress1, shards).pipe(
           Effect.retry({ times: 5, schedule: Schedule.spaced(20) }),
@@ -162,10 +163,10 @@ describe("SqlRunnerStorage", () => {
       // the rebuilt connection then wedges, without any lock operation
       // succeeding in between - a further rebuild still has to be attempted
       const reserved = partitioned.reservedConnections
-      partitioned.current = true
+      partitionConnection(partitioned)
       yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
       yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
-      partitioned.current = false
+      restoreConnection(partitioned)
       yield* waitUntil(() => partitioned.reservedConnections > reserved)
 
       expect(
@@ -202,13 +203,13 @@ describe("SqlRunnerStorage", () => {
 
       // the connection wedges and the driver never releases it back to the
       // pool, so the rebuild stalls closing the previous scope
-      partitioned.current = true
+      partitionConnection(partitioned)
       partitioned.blockRelease = true
       yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
       yield* Effect.sleep(150).pipe(TestClock.withLive)
 
       // the stalled release must not disable further rebuilds
-      partitioned.current = false
+      restoreConnection(partitioned)
       const reserved = partitioned.reservedConnections
       yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
       yield* waitUntil(() => partitioned.reservedConnections > reserved)
@@ -335,7 +336,8 @@ const runnerAddress1 = RunnerAddress.make("localhost", 1234)
 const runnerAddress2 = RunnerAddress.make("localhost", 5678)
 
 interface PartitionState {
-  current: boolean
+  connectionAvailable: Latch.Latch
+  nextUsableConnection: Deferred.Deferred<void>
   blockRelease: boolean
   activeQueries: number
   maxActiveQueries: number
@@ -346,7 +348,8 @@ interface PartitionState {
 }
 
 const makePartitionState = (): PartitionState => ({
-  current: false,
+  connectionAvailable: Latch.makeUnsafe(true),
+  nextUsableConnection: Deferred.makeUnsafe(),
   blockRelease: false,
   activeQueries: 0,
   maxActiveQueries: 0,
@@ -355,6 +358,37 @@ const makePartitionState = (): PartitionState => ({
   reservedConnections: 0,
   usableConnections: 0
 })
+
+const partitionConnection = (partitioned: PartitionState) => {
+  Latch.closeUnsafe(partitioned.connectionAvailable)
+}
+
+const restoreConnection = (partitioned: PartitionState) => {
+  Latch.openUnsafe(partitioned.connectionAvailable)
+}
+
+const partitionDiagnostics = (partitioned: PartitionState) =>
+  [
+    `active=${partitioned.activeQueries}`,
+    `interrupted=${partitioned.interruptedQueries}`,
+    `reserved=${partitioned.reservedConnections}`,
+    `usable=${partitioned.usableConnections}`
+  ].join(", ")
+
+const restoreAndWaitForUsableConnection = (partitioned: PartitionState) =>
+  Effect.suspend(() => {
+    const nextUsableConnection = partitioned.nextUsableConnection
+    restoreConnection(partitioned)
+    return Deferred.await(nextUsableConnection).pipe(
+      Effect.timeoutOrElse({
+        duration: 5_000,
+        orElse: () =>
+          Effect.die(
+            `timed out waiting for rebuilt reserved connection (${partitionDiagnostics(partitioned)})`
+          )
+      })
+    )
+  })
 
 const waitUntil = Effect.fnUntraced(
   function*(predicate: () => boolean) {
@@ -388,25 +422,27 @@ const blackholeReservedConnection = (partitioned: PartitionState, resumePending:
             }
             partitioned.activeQueries++
             partitioned.maxActiveQueries = Math.max(partitioned.maxActiveQueries, partitioned.activeQueries)
-            return Effect.suspend(function waitForConnection(): Effect.Effect<A, E, R> {
-              if (!partitioned.current) return effect
-              return resumePending
-                ? Effect.andThen(Effect.sleep(5), waitForConnection)
+            return (!Latch.isOpen(partitioned.connectionAvailable)
+              ? resumePending
+                ? Effect.andThen(Latch.await(partitioned.connectionAvailable), effect)
                 : Effect.never
-            }).pipe(
-              Effect.onExit((exit) =>
-                Effect.sync(() => {
-                  partitioned.activeQueries--
-                  if (Exit.hasInterrupts(exit)) {
-                    partitioned.interruptedQueries++
-                  }
-                  if (Exit.isSuccess(exit) && !usable) {
-                    usable = true
-                    partitioned.usableConnections++
-                  }
-                })
+              : effect).pipe(
+                Effect.onExit((exit) =>
+                  Effect.sync(() => {
+                    partitioned.activeQueries--
+                    if (Exit.hasInterrupts(exit)) {
+                      partitioned.interruptedQueries++
+                    }
+                    if (Exit.isSuccess(exit) && !usable) {
+                      usable = true
+                      partitioned.usableConnections++
+                      const nextUsableConnection = partitioned.nextUsableConnection
+                      partitioned.nextUsableConnection = Deferred.makeUnsafe()
+                      Deferred.doneUnsafe(nextUsableConnection, Effect.void)
+                    }
+                  })
+                )
               )
-            )
           })
         return {
           ...connection,
