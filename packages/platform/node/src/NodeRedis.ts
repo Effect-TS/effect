@@ -12,6 +12,7 @@
  */
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fn from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -89,28 +90,38 @@ const make = Effect.fnUntraced(function*(
         catch: (cause) => new Redis.RedisError({ cause })
       }),
     subscribe: (channel, onMessage) =>
-      Effect.acquireRelease(
-        Effect.tryPromise({
-          try: async () => {
-            const subscriber = client.duplicate()
-            subscriber.on("error", (cause) => {
-              runSync(Effect.logWarning("NodeRedis subscriber error", cause))
-            })
-            try {
-              await subscriber.connect()
-              await subscriber.subscribe(channel, (message, channel) => {
-                onMessage({ channel, message })
+      Effect.gen(function*() {
+        const terminal = yield* Deferred.make<void, Redis.RedisError>()
+        yield* Effect.acquireRelease(
+          Effect.tryPromise({
+            try: async () => {
+              const subscriber = client.duplicate()
+              subscriber.on("error", (cause) => {
+                runSync(Effect.logWarning("NodeRedis subscriber error", cause))
+                if (!subscriber.isOpen) {
+                  runSync(Deferred.fail(terminal, new Redis.RedisError({ cause })))
+                }
               })
-              return subscriber
-            } catch (cause) {
-              subscriber.destroy()
-              throw cause
-            }
-          },
-          catch: (cause) => new Redis.RedisError({ cause })
-        }),
-        (subscriber) => Effect.sync(() => subscriber.destroy())
-      ).pipe(Effect.as(Effect.never))
+              try {
+                await subscriber.connect()
+                await subscriber.subscribe(channel, (message, channel) => {
+                  onMessage({ channel, message })
+                })
+                return subscriber
+              } catch (cause) {
+                if (subscriber.isOpen) subscriber.destroy()
+                throw cause
+              }
+            },
+            catch: (cause) => new Redis.RedisError({ cause })
+          }),
+          (subscriber) =>
+            Effect.sync(() => {
+              if (subscriber.isOpen) subscriber.destroy()
+            })
+        )
+        return Deferred.await(terminal)
+      })
   })
 
   const nodeRedis = Fn.identity<NodeRedis["Service"]>({

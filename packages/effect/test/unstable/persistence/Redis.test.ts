@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Layer, Queue } from "effect"
+import { Duration, Effect, Exit, Layer, Queue, Scope } from "effect"
 import { Persistence, Redis } from "effect/unstable/persistence"
 
 describe("Redis", () => {
@@ -169,7 +169,7 @@ describe("Redis", () => {
       })
     })))
 
-  it.effect("reports subscription failures through the dequeue", () =>
+  it.effect("reports subscription setup failures through the dequeue", () =>
     Effect.scoped(Effect.gen(function*() {
       const error = new Redis.RedisError({ cause: new Error("subscription failed") })
       const redis = yield* Redis.make({
@@ -181,4 +181,40 @@ describe("Redis", () => {
 
       assert.strictEqual(yield* Queue.take(subscription).pipe(Effect.flip), error)
     })))
+
+  it.effect("reports listener failures through the dequeue", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const error = new Redis.RedisError({ cause: new Error("listener failed") })
+      const redis = yield* Redis.make({
+        send: () => Effect.die("unused"),
+        subscribe: () => Effect.succeed(Effect.fail(error))
+      })
+
+      const subscription = yield* redis.subscribe("events")
+
+      assert.strictEqual(yield* Queue.take(subscription).pipe(Effect.flip), error)
+    })))
+
+  it.effect("shuts down the dequeue and releases the subscriber with its scope", () =>
+    Effect.gen(function*() {
+      let released = false
+      const redis = yield* Redis.make({
+        send: () => Effect.die("unused"),
+        subscribe: () =>
+          Effect.acquireRelease(
+            Effect.void,
+            () =>
+              Effect.sync(() => {
+                released = true
+              })
+          ).pipe(Effect.as(Effect.never))
+      })
+      const scope = yield* Scope.make()
+      const subscription = yield* redis.subscribe("events").pipe(Scope.provide(scope))
+
+      yield* Scope.close(scope, Exit.void)
+
+      assert.isTrue(released)
+      assert.strictEqual(subscription.state._tag, "Done")
+    }))
 })

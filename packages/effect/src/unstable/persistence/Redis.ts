@@ -10,6 +10,7 @@
  * @since 4.0.0
  */
 import * as Cache from "../../Cache.ts"
+import type * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
@@ -113,16 +114,12 @@ export const make = Effect.fnUntraced(function*(
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<RedisMessage, RedisError>()
       yield* Scope.addFinalizer(yield* Effect.scope, Queue.shutdown(queue))
-      const subscribeResult = yield* Effect.result(options.subscribe(channel, (message) => {
+      const onFailure = (cause: Cause.Cause<RedisError>) => Queue.failCause(queue, cause).pipe(Effect.asVoid)
+      yield* options.subscribe(channel, (message) => {
         Queue.offerUnsafe(queue, message)
-      }))
-      if (subscribeResult._tag === "Failure") {
-        yield* Queue.fail(queue, subscribeResult.failure)
-        return queue
-      }
-      yield* subscribeResult.success.pipe(
-        Effect.catchCause((cause) => Queue.failCause(queue, cause).pipe(Effect.asVoid)),
-        Effect.forkScoped
+      }).pipe(
+        Effect.flatMap((listen) => Effect.forkScoped(Effect.catchCause(listen, onFailure))),
+        Effect.catchCause(onFailure)
       )
       return queue
     })

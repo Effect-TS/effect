@@ -44,17 +44,19 @@ export class DenoRedis extends Context.Service<DenoRedis, {
 }>()("@effect/platform-deno/DenoRedis") {}
 
 const make = Effect.fnUntraced(function*(options: RedisOptions = {}) {
+  const connectClient = () => {
+    const { url, ...connectOptions } = options
+    const { name, ...parsed } = url === undefined ? { hostname: "localhost" } : parseURL(url)
+    return connect({
+      ...parsed,
+      ...(name === undefined ? {} : { username: name }),
+      ...Record.filter(connectOptions, Predicate.isNotUndefined)
+    })
+  }
+
   const client = yield* Effect.acquireRelease(
     Effect.tryPromise({
-      try: () => {
-        const { url, ...connectOptions } = options
-        const { name, ...parsed } = url === undefined ? { hostname: "localhost" } : parseURL(url)
-        return connect({
-          ...parsed,
-          ...(name === undefined ? {} : { username: name }),
-          ...Record.filter(connectOptions, Predicate.isNotUndefined)
-        })
-      },
+      try: connectClient,
       catch: (cause) => new Redis.RedisError({ cause })
     }),
     (client) => Effect.sync(() => client.close())
@@ -76,15 +78,10 @@ const make = Effect.fnUntraced(function*(options: RedisOptions = {}) {
       Effect.acquireRelease(
         Effect.tryPromise({
           try: async () => {
-            const { url, ...connectOptions } = options
-            const { name, ...parsed } = url === undefined ? { hostname: "localhost" } : parseURL(url)
-            const subscriber = await connect({
-              ...parsed,
-              ...(name === undefined ? {} : { username: name }),
-              ...Record.filter(connectOptions, Predicate.isNotUndefined)
-            })
+            const subscriber = await connectClient()
             try {
               const subscription = await subscriber.subscribe(channel)
+              await subscriber.ping()
               return { subscriber, subscription }
             } catch (cause) {
               subscriber.close()

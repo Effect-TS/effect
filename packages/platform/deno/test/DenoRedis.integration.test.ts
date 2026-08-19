@@ -52,7 +52,8 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
         const redis = yield* Redis.Redis
         const subscription = yield* redis.subscribe("effect-test")
 
-        yield* redis.send("PUBLISH", "effect-test", "hello")
+        const subscribers = yield* redis.send<number>("PUBLISH", "effect-test", "hello")
+        assert.strictEqual(subscribers, 1)
 
         assert.deepStrictEqual(yield* Queue.take(subscription), {
           channel: "effect-test",
