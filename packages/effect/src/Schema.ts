@@ -15079,15 +15079,26 @@ export function toEquivalence<T>(schema: Schema<T>): Equivalence.Equivalence<T> 
  * Derives an intermediate `SchemaRepresentation.Document` from the encoded
  * side of a schema.
  *
+ * **When to use**
+ *
+ * Use when you have a `Schema` and need its live structural representation for inspection, persistence, or compilation.
+ *
  * **Details**
  *
  * Use {@link toType} before this function to represent the type side instead.
+ * The optional reference policy controls which candidates are extracted into the document's reference table. By
+ * default, only candidates with a resolved identifier become references; recursive candidates always require one.
+ *
+ * @see {@link SchemaRepresentation.toRepresentation} for converting a `SchemaAST.AST` directly
  *
  * @category converting
  * @since 4.0.0
  */
-export function toRepresentation(schema: Constraint): SchemaRepresentation.Document {
-  return InternalToRepresentation.toRepresentation(schema.ast)
+export function toRepresentation(
+  schema: Constraint,
+  options?: SchemaRepresentation.ToRepresentationOptions
+): SchemaRepresentation.Document {
+  return InternalToRepresentation.toRepresentation(schema.ast, options)
 }
 
 // -----------------------------------------------------------------------------
@@ -15095,12 +15106,23 @@ export function toRepresentation(schema: Constraint): SchemaRepresentation.Docum
 // -----------------------------------------------------------------------------
 
 /**
- * Options for {@link toJsonSchemaDocument}.
+ * Options for reference allocation and JSON Schema generation in {@link toJsonSchemaDocument}.
+ *
+ * **Details**
+ *
+ * The inherited `referencePolicy` runs after the input schema is converted to its canonical JSON codec, so it receives
+ * canonical JSON-encoded ASTs. The remaining options control compilation of the resulting live representation.
+ *
+ * **Gotchas**
+ *
+ * When these options are passed directly to `SchemaRepresentation.toJsonSchemaDocument` or
+ * `SchemaRepresentation.toJsonSchemaMultiDocument`, reference allocation has already happened and `referencePolicy`
+ * has no effect.
  *
  * @category options
  * @since 4.0.0
  */
-export interface ToJsonSchemaOptions {
+export interface ToJsonSchemaOptions extends SchemaRepresentation.ToRepresentationOptions {
   /**
    * Controls how additional properties are handled while resolving the JSON
    * schema.
@@ -15166,11 +15188,17 @@ export interface ToJsonSchemaOptions {
 /**
  * Returns a JSON Schema document using draft 2020-12.
  *
+ * **When to use**
+ *
+ * Use when you need a draft-2020-12 description of the canonical JSON form of a runtime schema.
+ *
  * **Details**
  *
- * The `options` parameter controls generation details such as additional
- * properties and synthesized check descriptions; it does not change the draft
- * target. Declarations are lowered through their `toCodecJson` or `toCodec`
+ * The `options` parameter controls reference extraction and generation details
+ * such as additional properties and synthesized check descriptions; it does
+ * not change the draft target. The reference policy receives canonical JSON
+ * encoded ASTs. By default, anonymous non-recursive candidates remain inline, while candidates with resolved identifiers
+ * become definitions. Declarations are lowered through their `toCodecJson` or `toCodec`
  * annotation when available before the representation document is compiled.
  * For schemas whose codec JSON AST can be represented exactly in JSON Schema,
  * importing the emitted document reconstructs a schema that accepts the same
@@ -15190,6 +15218,8 @@ export interface ToJsonSchemaOptions {
  * excess object properties by default; use `onExcessProperty: "error"` when
  * comparing validation semantics with an emitted JSON Schema.
  *
+ * @see {@link SchemaRepresentation.toJsonSchemaDocument} for compiling an existing live representation document
+ *
  * @category converting
  * @since 4.0.0
  */
@@ -15199,7 +15229,7 @@ export function toJsonSchemaDocument(
 ): JsonSchema.Document<"draft-2020-12"> {
   const document = InternalToRepresentation.toRepresentation(
     toCodecJsonAST(schema.ast),
-    InternalToJsonSchemaDocument.toRepresentationOptions
+    options
   )
   return InternalToJsonSchemaDocument.toJsonSchemaDocument(document, options)
 }

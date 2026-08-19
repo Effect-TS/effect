@@ -22,11 +22,6 @@ const jsonSchemaAnnotationExcludedKeys = new Set([
   ...InternalAnnotations.jsonSchemaAnnotationKeys
 ])
 
-/** @internal */
-export const toRepresentationOptions = {
-  isAnonymousReferenceAllowed: (ast: SchemaAST.AST): boolean => !SchemaAST.isDeclaration(ast)
-}
-
 function collectJsonSchemaAnnotations(
   annotations: Schema.Annotations.Annotations | undefined,
   options: Schema.ToJsonSchemaOptions | undefined
