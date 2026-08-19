@@ -1,5 +1,9 @@
 import * as CloudflareCluster from "@effect/platform-cloudflare/CloudflareCluster"
-import { CurrentEntityName, deliverReply } from "@effect/platform-cloudflare/internal/entityReply"
+import {
+  CurrentEntityName,
+  CurrentReplyRegistry,
+  makeReplyRegistry
+} from "@effect/platform-cloudflare/internal/entityReply"
 import { assert, describe, it } from "@effect/vitest"
 import { DateTime, Effect, Exit, Fiber, Layer, PrimaryKey, Schema, Stream } from "effect"
 import {
@@ -122,6 +126,7 @@ describe("CloudflareCluster", () => {
         invoke(envelopeText: string) {
           const envelope = JSON.parse(envelopeText)
           return Promise.resolve({
+            _tag: "Success",
             requestId: envelope.requestId,
             replies: [JSON.stringify({
               _tag: "WithExit",
@@ -164,6 +169,7 @@ describe("CloudflareCluster", () => {
           const envelope = JSON.parse(envelopeText)
           envelopes.push(envelope)
           return Promise.resolve({
+            _tag: "Success",
             requestId: envelope.requestId,
             replies: [JSON.stringify({
               _tag: "WithExit",
@@ -204,6 +210,7 @@ describe("CloudflareCluster", () => {
         invoke(envelopeText: string) {
           requestId = JSON.parse(envelopeText).requestId
           return Promise.resolve({
+            _tag: "Success",
             requestId,
             replies: [reply({ _tag: "Chunk", id: "chunk-0", sequence: 0, values: [1] })]
           })
@@ -280,6 +287,7 @@ describe("CloudflareCluster", () => {
           const envelope = JSON.parse(envelopeText)
           deliveries.push({ discard, delivery })
           return Promise.resolve({
+            _tag: "Success",
             requestId: envelope.requestId,
             replies: discard ? [] : [JSON.stringify({
               _tag: "WithExit",
@@ -356,6 +364,7 @@ describe("CloudflareCluster", () => {
         yield* Effect.yieldNow
         assert.isUndefined(fiber.pollUnsafe())
         resolve({
+          _tag: "Success",
           requestId,
           replies: [JSON.stringify({
             _tag: "WithExit",
@@ -369,12 +378,13 @@ describe("CloudflareCluster", () => {
     })
 
     it.effect("delivers a delayed reply back to a pinned caller entity", () => {
+      const registry = makeReplyRegistry()
       const stub = {
         invoke(envelopeText: string, _discard: boolean, delivery: { readonly replyTo?: string }) {
           const envelope = JSON.parse(envelopeText)
           assert.strictEqual(delivery.replyTo, "6:Callerone")
           queueMicrotask(() => {
-            void deliverReply(
+            registry.deliver(
               envelope.requestId,
               JSON.stringify({
                 _tag: "WithExit",
@@ -384,7 +394,7 @@ describe("CloudflareCluster", () => {
               })
             )
           })
-          return Promise.resolve({ requestId: envelope.requestId, replies: [] })
+          return Promise.resolve({ _tag: "Success", requestId: envelope.requestId, replies: [] })
         },
         acknowledge() {
           return Promise.resolve([])
@@ -401,13 +411,15 @@ describe("CloudflareCluster", () => {
       return Effect.gen(function*() {
         const makeClient = yield* Scheduled.client
         const result = yield* makeClient("one").Ask({ deliverAt: Date.now() + 60_000, id: "caller" }).pipe(
-          Effect.provideService(CurrentEntityName, "6:Callerone")
+          Effect.provideService(CurrentEntityName, "6:Callerone"),
+          Effect.provideService(CurrentReplyRegistry, registry)
         )
         assert.strictEqual(result, "callback")
       }).pipe(Effect.provide(CloudflareCluster.layer(options)))
     })
 
     it.effect("delivers a deduplicated delayed reply to every pinned caller", () => {
+      const registry = makeReplyRegistry()
       const pending: Array<(value: any) => void> = []
       let storageRequestId = ""
       let bothInvoked!: () => void
@@ -440,25 +452,24 @@ describe("CloudflareCluster", () => {
         const makeClient = yield* Scheduled.client
         const client = makeClient("one")
         const request = { deliverAt: Date.now() + 60_000, id: "shared" }
-        const first = yield* Effect.forkChild(
-          client.Ask(request).pipe(Effect.provideService(CurrentEntityName, "6:Callerone"))
-        )
-        const second = yield* Effect.forkChild(
-          client.Ask(request).pipe(Effect.provideService(CurrentEntityName, "6:Callerone"))
-        )
-        yield* Effect.promise(() => invoked)
-        for (const resolve of pending) resolve({ requestId: storageRequestId, replies: [] })
-        yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 0)))
-        const delivered = yield* Effect.promise(() =>
-          deliverReply(
-            storageRequestId,
-            JSON.stringify({
-              _tag: "WithExit",
-              requestId: storageRequestId,
-              id: "terminal",
-              exit: { _tag: "Success", value: "callback" }
-            })
+        const pinned = (effect: Effect.Effect<string, any>) =>
+          effect.pipe(
+            Effect.provideService(CurrentEntityName, "6:Callerone"),
+            Effect.provideService(CurrentReplyRegistry, registry)
           )
+        const first = yield* Effect.forkChild(pinned(client.Ask(request)))
+        const second = yield* Effect.forkChild(pinned(client.Ask(request)))
+        yield* Effect.promise(() => invoked)
+        for (const resolve of pending) resolve({ _tag: "Success", requestId: storageRequestId, replies: [] })
+        yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 0)))
+        const delivered = registry.deliver(
+          storageRequestId,
+          JSON.stringify({
+            _tag: "WithExit",
+            requestId: storageRequestId,
+            id: "terminal",
+            exit: { _tag: "Success", value: "callback" }
+          })
         )
 
         assert.isTrue(delivered)
@@ -472,7 +483,7 @@ describe("CloudflareCluster", () => {
       const stub = {
         invoke() {
           invoked++
-          return Promise.resolve({ requestId: "unused", replies: [] })
+          return Promise.resolve({ _tag: "Success", requestId: "unused", replies: [] })
         },
         acknowledge() {
           return Promise.resolve([])
@@ -499,13 +510,10 @@ describe("CloudflareCluster", () => {
     })
 
     it.effect("surfaces ask-to-tell deduplication as a persistence failure", () => {
+      const registry = makeReplyRegistry()
       const stub = {
         invoke() {
-          return Promise.resolve({
-            requestId: "original-tell",
-            replies: [],
-            error: "AskDeduplicatedToTell" as const
-          })
+          return Promise.resolve({ _tag: "AskDeduplicatedToTell" as const })
         },
         acknowledge() {
           return Promise.resolve([])
@@ -523,10 +531,11 @@ describe("CloudflareCluster", () => {
         const makeClient = yield* Scheduled.client
         const exit = yield* makeClient("one").Ask({ deliverAt: Date.now() + 60_000, id: "tell" }).pipe(
           Effect.provideService(CurrentEntityName, "6:Callerone"),
+          Effect.provideService(CurrentReplyRegistry, registry),
           Effect.exit
         )
         assert.isTrue(Exit.isFailure(exit))
-        assert.isFalse(yield* Effect.promise(() => deliverReply("original-tell", "unused")))
+        assert.isFalse(registry.deliver("original-tell", "unused"))
       }).pipe(Effect.provide(CloudflareCluster.layer(options)))
     })
 
@@ -538,6 +547,7 @@ describe("CloudflareCluster", () => {
           const envelope = JSON.parse(envelopeText)
           requestId = envelope.requestId
           return Promise.resolve({
+            _tag: "Success",
             requestId,
             replies: [JSON.stringify({
               _tag: "WithExit",
@@ -582,6 +592,7 @@ describe("CloudflareCluster", () => {
           const requestId = JSON.parse(envelopeText).requestId
           requestIds.push(requestId)
           return Promise.resolve({
+            _tag: "Success",
             requestId,
             replies: [JSON.stringify({
               _tag: "WithExit",
