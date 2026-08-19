@@ -7,9 +7,27 @@
  */
 import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
 import * as Effect from "effect/Effect"
+import * as Result from "effect/Result"
 
 /** @internal */
 export type EntityAlarm = Pick<DurableObjectStorage, "getAlarm" | "setAlarm">
+
+/**
+ * Runs a synchronous storage effect inside `transactionSync`. A defect throws
+ * out of the callback and rolls the transaction back; a typed failure happens
+ * before any write in the mailbox operations, so it is carried out as a plain
+ * failure.
+ *
+ * @internal
+ */
+export const withTransaction = <A, E>(
+  storage: Pick<DurableObjectStorage, "transactionSync">,
+  effect: Effect.Effect<A, E>
+): Effect.Effect<A, E> =>
+  Effect.suspend(() => {
+    const result = storage.transactionSync(() => Effect.runSync(Effect.result(effect)))
+    return Result.isSuccess(result) ? Effect.succeed(result.success) : Effect.fail(result.failure)
+  })
 
 const ddl = [
   `CREATE TABLE IF NOT EXISTS cluster_messages (
