@@ -2171,7 +2171,7 @@ const mapEffectConcurrent = <
           Effect.Effect<OutElem2, OutErr | EX | Cause.Done<OutDone>>,
           OutErr | EX | Cause.Done<OutDone>
         >(concurrencyN - 2)
-        yield* Scope.addFinalizer(forkedScope, Queue.shutdown(queue))
+        yield* Scope.addFinalizer(forkedScope, Queue.shutdown(effects))
 
         yield* Queue.take(effects).pipe(
           Effect.flatten,
