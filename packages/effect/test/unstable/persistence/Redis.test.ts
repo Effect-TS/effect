@@ -151,7 +151,7 @@ describe("Redis", () => {
     }))
 
   it.effect("receives messages from a subscription", () =>
-    Effect.scoped(Effect.gen(function*() {
+    Effect.gen(function*() {
       const redis = yield* Redis.make({
         send: () => Effect.die("unused"),
         subscribe: (_channel, onMessage) =>
@@ -167,10 +167,10 @@ describe("Redis", () => {
         channel: "events",
         message: "hello"
       })
-    })))
+    }))
 
   it.effect("reports subscription setup failures through the dequeue", () =>
-    Effect.scoped(Effect.gen(function*() {
+    Effect.gen(function*() {
       const error = new Redis.RedisError({ cause: new Error("subscription failed") })
       const redis = yield* Redis.make({
         send: () => Effect.die("unused"),
@@ -180,10 +180,10 @@ describe("Redis", () => {
       const subscription = yield* redis.subscribe("events")
 
       assert.strictEqual(yield* Queue.take(subscription).pipe(Effect.flip), error)
-    })))
+    }))
 
   it.effect("reports listener failures through the dequeue", () =>
-    Effect.scoped(Effect.gen(function*() {
+    Effect.gen(function*() {
       const error = new Redis.RedisError({ cause: new Error("listener failed") })
       const redis = yield* Redis.make({
         send: () => Effect.die("unused"),
@@ -193,7 +193,7 @@ describe("Redis", () => {
       const subscription = yield* redis.subscribe("events")
 
       assert.strictEqual(yield* Queue.take(subscription).pipe(Effect.flip), error)
-    })))
+    }))
 
   it.effect("shuts down the dequeue and releases the subscriber with its scope", () =>
     Effect.gen(function*() {

@@ -38,7 +38,6 @@ const make = Effect.fnUntraced(function*(
   const scope = yield* Effect.scope
   yield* Scope.addFinalizer(scope, Effect.sync(() => client.close()))
   const client = new RedisClient(options?.url, options)
-  const runSync = Effect.runSyncWith(yield* Effect.context<never>())
 
   const use = <A>(f: (client: RedisClient) => Promise<A>) =>
     Effect.tryPromise({
@@ -63,7 +62,7 @@ const make = Effect.fnUntraced(function*(
                 autoReconnect: false
               })
               subscriber.onclose = (cause) => {
-                runSync(Deferred.fail(terminal, new Redis.RedisError({ cause })))
+                Deferred.doneUnsafe(terminal, new Redis.RedisError({ cause }))
               }
               try {
                 await subscriber.subscribe(channel, (message, channel) => {

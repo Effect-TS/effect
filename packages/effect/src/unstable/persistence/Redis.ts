@@ -113,21 +113,18 @@ export const make = Effect.fnUntraced(function*(
     )
   }
 
-  const subscribe = (
-    channel: string
-  ): Effect.Effect<Queue.Dequeue<RedisMessage, RedisError>, never, Scope.Scope> =>
-    Effect.gen(function*() {
-      const queue = yield* Queue.unbounded<RedisMessage, RedisError>()
-      yield* Scope.addFinalizer(yield* Effect.scope, Queue.shutdown(queue))
-      const onFailure = (cause: Cause.Cause<RedisError>) => Queue.failCause(queue, cause).pipe(Effect.asVoid)
-      yield* options.subscribe(channel, (message) => {
-        Queue.offerUnsafe(queue, message)
-      }).pipe(
-        Effect.flatMap((listen) => Effect.forkScoped(Effect.catchCause(listen, onFailure))),
-        Effect.catchCause(onFailure)
-      )
-      return queue
-    })
+  const subscribe = Effect.fnUntraced(function*(channel: string) {
+    const queue = yield* Queue.unbounded<RedisMessage, RedisError>()
+    yield* Scope.addFinalizer(yield* Effect.scope, Queue.shutdown(queue))
+    const onFailure = (cause: Cause.Cause<RedisError>) => Queue.failCause(queue, cause).pipe(Effect.asVoid)
+    yield* options.subscribe(channel, (message) => {
+      Queue.offerUnsafe(queue, message)
+    }).pipe(
+      Effect.flatMap((listen) => Effect.forkScoped(Effect.catchCause(listen, onFailure))),
+      Effect.catchCause(onFailure)
+    )
+    return queue
+  })
 
   return identity<Redis["Service"]>({
     send: options.send,
