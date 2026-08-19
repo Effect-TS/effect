@@ -214,16 +214,18 @@ export const annotations: (
 const apiCache = new WeakMap<HttpApi.Constraint, OpenAPISpec>()
 
 type CompileSchemas = (
-  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
+  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>],
+  options?: FromApiOptions
 ) => JsonSchema.MultiDocument<"openapi-3.1">
 
-const compileSchemas: CompileSchemas = (asts) =>
+const compileSchemas: CompileSchemas = (asts, options) =>
   JsonSchema.toMultiDocumentOpenApi3_1(
     InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(
       InternalToRepresentation.toRepresentations(
         Arr.map(asts, Schema.toCodecJsonAST),
         InternalToJsonSchemaDocument.toRepresentationOptions
-      )
+      ),
+      options
     )
   )
 
@@ -258,6 +260,23 @@ function processAnnotation<Services, S, I>(
 }
 
 /**
+ * Options for {@link fromApi}.
+ *
+ * @category options
+ * @since 4.0.0
+ */
+export interface FromApiOptions {
+  /**
+   * A predicate that controls which additional schema annotation keys are
+   * included in the generated OpenAPI document.
+   *
+   * Standard JSON Schema keys are always included. Use this for vendor
+   * extensions such as `x-*`.
+   */
+  readonly includeAnnotationKey?: Schema.ToJsonSchemaOptions["includeAnnotationKey"]
+}
+
+/**
  * Converts an `HttpApi` instance into an OpenAPI Specification object.
  *
  * **Details**
@@ -272,23 +291,27 @@ function processAnnotation<Services, S, I>(
  * The function also deduplicates schemas, applies transformations, and
  * integrates annotations like descriptions, summaries, external documentation,
  * and overrides. Cached results are used for better performance when the same
- * `HttpApi` instance is processed multiple times.
+ * `HttpApi` instance is processed multiple times without schema options.
  *
  * @category constructors
  * @since 4.0.0
  */
 export function fromApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
-  api: HttpApi.HttpApi<Id, Groups>
+  api: HttpApi.HttpApi<Id, Groups>,
+  options?: FromApiOptions
 ): OpenAPISpec {
-  return fromApiWith(api, apiCache, compileSchemas)
+  if (options?.includeAnnotationKey === undefined) {
+    return fromApiWith(api, apiCache, compileSchemas)
+  }
+  return fromApiWith(api, undefined, (asts) => compileSchemas(asts, options))
 }
 
 function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
   api: HttpApi.HttpApi<Id, Groups>,
-  cache: WeakMap<HttpApi.Constraint, OpenAPISpec>,
+  cache: WeakMap<HttpApi.Constraint, OpenAPISpec> | undefined,
   compileSchemas: CompileSchemas
 ): OpenAPISpec {
-  const cached = cache.get(api)
+  const cached = cache?.get(api)
   if (cached !== undefined) {
     return cloneOpenAPISpec(cached)
   }
@@ -699,7 +722,7 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
     spec = transformFn(spec) as OpenAPISpec
   })
 
-  cache.set(api, cloneOpenAPISpec(spec))
+  cache?.set(api, cloneOpenAPISpec(spec))
 
   return spec
 }

@@ -125,6 +125,36 @@ describe("OpenApi", () => {
     assert.strictEqual(cached.info.title, "Api")
   })
 
+  it("includes selected schema annotations", () => {
+    const Value = Schema.String.annotate({
+      identifier: "Value",
+      "x-test-brand": "Value"
+    })
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("value", "/value", { success: Value })
+      )
+    )
+
+    assert.deepStrictEqual(OpenApi.fromApi(Api).components.schemas, {
+      Value: { type: "string" }
+    })
+
+    assert.deepStrictEqual(
+      OpenApi.fromApi(Api, { includeAnnotationKey: (key) => key === "x-test-brand" }).components.schemas,
+      {
+        Value: {
+          type: "string",
+          "x-test-brand": "Value"
+        }
+      }
+    )
+
+    assert.deepStrictEqual(OpenApi.fromApi(Api).components.schemas, {
+      Value: { type: "string" }
+    })
+  })
+
   it("preserves every declared payload content type for normalized equivalents", () => {
     const profileA = "Application/Vnd.Effect+JSON; Profile=A"
     const profileB = "application/vnd.effect+json; profile=b"
