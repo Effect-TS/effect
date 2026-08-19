@@ -22,6 +22,7 @@ import * as JsonSchema from "../../JsonSchema.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
+import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import * as HttpMethod from "../http/HttpMethod.ts"
 import * as HttpApi from "./HttpApi.ts"
 import * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
@@ -211,19 +212,23 @@ export const annotations: (
   transform: Transform
 })
 
-const apiCache = new WeakMap<HttpApi.Constraint, OpenAPISpec>()
+const defaultOptions: SchemaRepresentation.ToRepresentationOptions = {}
+const apiCache = new WeakMap<
+  SchemaRepresentation.ToRepresentationOptions,
+  WeakMap<HttpApi.Constraint, OpenAPISpec>
+>()
 
 type CompileSchemas = (
   asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
 ) => JsonSchema.MultiDocument<"openapi-3.1">
 
-const compileSchemas: CompileSchemas = (asts) =>
+const compileSchemas = (
+  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>],
+  options: SchemaRepresentation.ToRepresentationOptions
+): JsonSchema.MultiDocument<"openapi-3.1"> =>
   JsonSchema.toMultiDocumentOpenApi3_1(
     InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(
-      InternalToRepresentation.toRepresentations(
-        Arr.map(asts, Schema.toCodecJsonAST),
-        InternalToJsonSchemaDocument.toRepresentationOptions
-      )
+      InternalToRepresentation.toRepresentations(Arr.map(asts, Schema.toCodecJsonAST), options)
     )
   )
 
@@ -258,7 +263,11 @@ function processAnnotation<Services, S, I>(
 }
 
 /**
- * Converts an `HttpApi` instance into an OpenAPI Specification object.
+ * Generates an OpenAPI 3.1 specification from an `HttpApi`.
+ *
+ * **When to use**
+ *
+ * Use when you need a programmatic OpenAPI document for an API definition.
  *
  * **Details**
  *
@@ -271,16 +280,34 @@ function processAnnotation<Services, S, I>(
  *
  * The function also deduplicates schemas, applies transformations, and
  * integrates annotations like descriptions, summaries, external documentation,
- * and overrides. Cached results are used for better performance when the same
- * `HttpApi` instance is processed multiple times.
+ * and overrides. The optional reference policy receives canonical JSON encoded
+ * ASTs and controls which schemas are extracted into components. By default, only candidates with resolved identifiers
+ * become references; anonymous non-recursive schemas remain inline.
+ *
+ * **Gotchas**
+ *
+ * Cached results are keyed by both the `HttpApi` instance and the identity of the options object. Reuse the same immutable
+ * options object to reuse a cached result; mutating an options object after its first use does not invalidate the cached
+ * specification. Each call returns a copy of the cached specification.
  *
  * @category constructors
  * @since 4.0.0
  */
 export function fromApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
-  api: HttpApi.HttpApi<Id, Groups>
+  api: HttpApi.HttpApi<Id, Groups>,
+  options?: SchemaRepresentation.ToRepresentationOptions
 ): OpenAPISpec {
-  return fromApiWith(api, apiCache, compileSchemas)
+  const resolvedOptions = options ?? defaultOptions
+  let cache = apiCache.get(resolvedOptions)
+  if (cache === undefined) {
+    cache = new WeakMap()
+    apiCache.set(resolvedOptions, cache)
+  }
+  return fromApiWith(
+    api,
+    cache,
+    (asts) => compileSchemas(asts, resolvedOptions)
+  )
 }
 
 function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(

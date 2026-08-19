@@ -6261,19 +6261,63 @@ const multiDocument = SchemaRepresentation.toRepresentations([
 ])
 ```
 
-Repeated structural nodes, identifiers, and recursive schemas are placed in `references`. Repeated `Suspend` and
-`Declaration` nodes are reference candidates as well. For unions, enums, template literals, and string literals, the
-converter uses an inexpensive size estimate and creates an anonymous reference only when it expects the reference to be
-smaller than repeating the body. `toMultiDocument(document)` wraps a single document when a compiler requires multiple
-roots.
+By default, only candidates with a resolved identifier are placed in `references`. Anonymous non-recursive nodes remain
+inline even when the same AST occurs more than once. Recursive schemas always require a reference; when no identifier is
+available, the converter assigns a synthetic name such as `Objects_` or `Suspend_`.
 
-An explicit `identifier` requests a reference name within a conversion. Reusing the same schema shares its reference.
+The default policy uses an explicit `identifier` as the reference name. Reusing the same schema shares its reference.
 Context-only copies created through `SchemaAST.replaceContext` retain the original AST as their reference owner, including
-across several successive context changes. Context still belongs to each occurrence and does not, by itself, make a node a
-reference candidate. Independently constructed ASTs are not canonicalized merely because their other fields contain the
-same references. When distinct schemas request the same name, the first schema keeps it and later schemas receive numeric
-suffixes in encounter order, such as `Value_1` and `Value_2`. Internal `~identifier` annotations are fallback allocation
-hints; their generated names use the `Encoded` suffix and follow the same collision rules.
+across several successive context changes. Context still belongs to each occurrence and does not, by itself, create a new
+candidate. Independently constructed ASTs are not canonicalized merely because they are structurally equal. When distinct
+schemas request the same name, the first schema keeps it and later schemas receive numeric suffixes in encounter order,
+such as `Value_1` and `Value_2`. Internal `~identifier` annotations are fallback allocation hints; their generated names
+use the `Encoded` suffix and follow the same collision rules.
+
+`toMultiDocument(document)` wraps a single document when a compiler requires multiple roots.
+
+### Reference policies
+
+`Schema.toRepresentation`, `SchemaRepresentation.toRepresentation`, and `SchemaRepresentation.toRepresentations` accept
+an optional `referencePolicy`. The policy runs once for every candidate, after occurrences across all roots have been
+counted:
+
+```ts
+interface ReferencePolicyInput {
+  readonly ast: SchemaAST.AST
+  readonly occurrences: number
+  readonly identifier: string | undefined
+}
+```
+
+Return a reference name to move the candidate into `references`, or return `undefined` to leave it inline. This example
+extracts anonymous candidates only when the same candidate occurs more than once, while still respecting identifiers:
+
+```ts
+import { Schema, SchemaRepresentation } from "effect"
+
+const Item = Schema.Struct({ name: Schema.String })
+
+const document = SchemaRepresentation.toRepresentations([Item.ast, Item.ast], {
+  referencePolicy: ({ ast, identifier, occurrences }) => identifier ?? (occurrences > 1 ? `${ast._tag}_` : undefined)
+})
+
+console.log(document.representations)
+// [
+//   { _tag: "Reference", $ref: "Objects_" },
+//   { _tag: "Reference", $ref: "Objects_" }
+// ]
+```
+
+Occurrences are counted by candidate identity, not structural equality. Two independently constructed but structurally
+equal ASTs are separate candidates and each reports one occurrence. Recursive candidates cannot remain inline: if a policy
+returns `undefined` for one, the converter assigns a synthetic reference name. If different candidates request the same
+name, later candidates receive numeric suffixes.
+
+`Schema.toJsonSchemaDocument(schema, options)` forwards the policy after deriving the schema's canonical JSON codec, so
+the policy receives canonical JSON-encoded ASTs. `OpenApi.fromApi(api, options)` applies the policy at the same canonical
+JSON boundary when deciding which schemas become OpenAPI components. A `referencePolicy` passed to
+`SchemaRepresentation.toJsonSchemaDocument` or `toJsonSchemaMultiDocument` cannot change an existing document's references;
+pass it while creating the `Document` or `MultiDocument` instead.
 
 ## JSON persistence
 
@@ -6373,9 +6417,10 @@ The same reviver can then be included in the `revivers` array passed to `fromRep
 ### Exporting JSON Schema
 
 For a runtime schema, prefer `Schema.toJsonSchemaDocument(schema)`. It first derives the schema's canonical JSON codec,
-then compiles its encoded representation to JSON Schema Draft 2020-12. During this high-level conversion, declarations
-are not extracted into anonymous references: their JSON Schema body is unconstrained, and leaving it inline preserves
-empty-schema simplifications. Explicit and recursive references are unaffected.
+then compiles its encoded representation to JSON Schema Draft 2020-12. The default reference policy extracts candidates
+with resolved identifiers and leaves anonymous non-recursive candidates inline, including repeated declarations. Recursive
+candidates still receive references, using a synthetic name when necessary. Pass `referencePolicy` in the options to use a
+different allocation rule.
 
 At the lower level, `SchemaRepresentation.toJsonSchemaDocument(document)` compiles a live `Document`, and
 `toJsonSchemaMultiDocument` compiles a live `MultiDocument`. Check-level `toJsonSchema` callbacks contribute JSON Schema
