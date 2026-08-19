@@ -12,6 +12,7 @@
  */
 import { Clock } from "effect/Clock"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
@@ -28,6 +29,7 @@ import { Sharding } from "effect/unstable/cluster/Sharding"
 import type { PersistedQueueFactory } from "effect/unstable/persistence/PersistedQueue"
 import type * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
+import { type FromClient, RequestId } from "effect/unstable/rpc/RpcMessage"
 import * as RpcSchema from "effect/unstable/rpc/RpcSchema"
 import type { WorkflowEngine } from "effect/unstable/workflow/WorkflowEngine"
 import * as CloudflarePersistedQueue from "./CloudflarePersistedQueue.ts"
@@ -35,8 +37,8 @@ import * as CloudflareWorkflowEngine from "./CloudflareWorkflowEngine.ts"
 import { setWithEviction } from "./internal/boundedMap.ts"
 import * as Internal from "./internal/clusterName.ts"
 import { registerEntity as registerEntityHandler, unregisterEntity } from "./internal/entityRegistry.ts"
-import { CurrentEntityName, registerReplyHandler, unregisterReplyHandler } from "./internal/entityReply.ts"
-import { decodeReplyFor, encodeRequest } from "./internal/entityWire.ts"
+import { CurrentEntityName, CurrentReplyRegistry } from "./internal/entityReply.ts"
+import { decodeInvokeResult, decodeReplyFor, encodeRequest } from "./internal/entityWire.ts"
 import { registerSingleton as registerSingletonHandler, unregisterSingleton } from "./internal/singletonRegistry.ts"
 
 /**
@@ -113,11 +115,7 @@ interface EntityStub {
     readonly deliverAt?: number | undefined
     readonly primaryKey?: string | null | undefined
     readonly replyTo?: string | undefined
-  }) => Promise<{
-    readonly requestId: string
-    readonly replies: ReadonlyArray<string>
-    readonly error?: "MailboxFull" | "EncodedMessageTooLarge" | "AskDeduplicatedToTell" | undefined
-  }>
+  }) => Promise<unknown>
   readonly acknowledge: (requestId: string, replyId: string) => Promise<ReadonlyArray<string>>
   readonly interrupt: (storageRequestId: string, clientRequestId?: string) => Promise<void>
   readonly reset: (requestId: string) => Promise<void>
@@ -183,16 +181,17 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
       readonly clientRequestId: string
       storageRequestId: string
       lastChunkId?: string
-      replyHandler?: (reply: string) => Promise<void>
     }
     const entries = new Map<string, ClientEntry>()
-    let client!: Effect.Success<ReturnType<typeof RpcClient.makeNoSerialization<any, MailboxFull | PersistenceError>>>
 
-    const dropReplyHandler = (entry: ClientEntry): void => {
-      if (entry.replyHandler === undefined) return
-      unregisterReplyHandler(entry.clientRequestId, entry.replyHandler)
-      unregisterReplyHandler(entry.storageRequestId, entry.replyHandler)
-    }
+    // `handleFromClient` is hoisted and only invoked once requests are made,
+    // after `client` is constructed.
+    const client = yield* RpcClient.makeNoSerialization<any, MailboxFull | PersistenceError>(entity.protocol, {
+      spanPrefix: `${entity.type}.client`,
+      supportsAck: true,
+      generateRequestId: () => RequestId(uuidV7(clock.currentTimeMillisUnsafe())),
+      onFromClient: (options) => handleFromClient(options)
+    })
 
     const deliverReplies = (entry: ClientEntry, replyTexts: ReadonlyArray<string>): Effect.Effect<void> =>
       Effect.forEach(
@@ -204,7 +203,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
               return client.write({
                 _tag: "Chunk",
                 clientId: 0,
-                requestId: entry.clientRequestId as any,
+                requestId: RequestId(entry.clientRequestId),
                 values: reply.values
               })
             }
@@ -212,147 +211,156 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
             return client.write({
               _tag: "Exit",
               clientId: 0,
-              requestId: entry.clientRequestId as any,
+              requestId: RequestId(entry.clientRequestId),
               exit: reply.exit
             })
           }),
         { discard: true }
       )
 
-    client = yield* RpcClient.makeNoSerialization<any, MailboxFull | PersistenceError>(entity.protocol, {
-      spanPrefix: `${entity.type}.client`,
-      supportsAck: true,
-      generateRequestId: () => uuidV7(clock.currentTimeMillisUnsafe()) as any,
-      onFromClient({ context, discard, message }): Effect.Effect<void, MailboxFull | PersistenceError> {
-        const target = Context.getUnsafe(context, ClientTarget)
-        switch (message._tag) {
-          case "Request": {
-            const rpc = entity.protocol.requests.get(message.tag)! as Rpc.AnyWithProps
-            const clientRequestId = String(message.id)
-            const encode = Schema.encodeUnknownEffect(Schema.toCodecJson(rpc.payloadSchema))(message.payload).pipe(
-              Effect.provideContext(context as any),
-              Effect.orDie
-            ) as unknown as Effect.Effect<unknown>
-            return Effect.flatMap(encode, (payload) => {
-              const envelope = encodeRequest({
-                requestId: clientRequestId,
-                address: target.address,
-                tag: message.tag,
-                payload,
-                headers: message.headers,
-                ...(message.traceId === undefined ? undefined : {
-                  traceId: message.traceId,
-                  spanId: message.spanId,
-                  sampled: message.sampled
-                })
+    function handleFromClient({ context, discard, message }: {
+      readonly message: FromClient<any>
+      readonly context: Context.Context<never>
+      readonly discard: boolean
+    }): Effect.Effect<void, MailboxFull | PersistenceError> {
+      const target = Context.getUnsafe(context, ClientTarget)
+      switch (message._tag) {
+        case "Request": {
+          const rpc = entity.protocol.requests.get(message.tag)! as Rpc.AnyWithProps
+          const clientRequestId = String(message.id)
+          const encode = Schema.encodeUnknownEffect(Schema.toCodecJson(rpc.payloadSchema))(message.payload).pipe(
+            Effect.provideContext(context as any),
+            Effect.orDie
+          ) as unknown as Effect.Effect<unknown>
+          return Effect.flatMap(encode, (payload) => {
+            const envelope = encodeRequest({
+              requestId: clientRequestId,
+              address: target.address,
+              tag: message.tag,
+              payload,
+              headers: message.headers,
+              ...(message.traceId === undefined ? undefined : {
+                traceId: message.traceId,
+                spanId: message.spanId,
+                sampled: message.sampled
               })
-              const entry: ClientEntry = {
-                rpc,
-                context,
-                clientRequestId,
-                storageRequestId: clientRequestId
-              }
-              if (!discard) entries.set(clientRequestId, entry)
-              const deliverAt = DeliverAt.toMillis(message.payload)
-              const delayed = deliverAt !== null && deliverAt > clock.currentTimeMillisUnsafe()
-              const persisted = Context.get(rpc.annotations, Persisted)
-              const primaryKey = Envelope.primaryKey({
-                ...message,
-                requestId: message.id,
-                address: target.address,
-                headers: message.headers
-              } as any)
-              const replyTo = discard ? undefined : Context.get(context, CurrentEntityName)
-              if (delayed && (!persisted || (!discard && primaryKey === null))) {
-                entries.delete(clientRequestId)
-                return Effect.fail(
-                  new PersistenceError({
-                    cause: new Error(
-                      !persisted
-                        ? "Future DeliverAt requests must be persisted"
-                        : "Future DeliverAt asks must define a PrimaryKey"
-                    )
-                  })
-                )
-              }
-              if (delayed && RpcSchema.isStreamSchema(rpc.successSchema)) {
-                entries.delete(clientRequestId)
-                return Effect.fail(
-                  new PersistenceError({
-                    cause: new Error("Stream asks with a future DeliverAt are not supported")
-                  })
-                )
-              }
-              const delivery = delayed
-                ? { deliverAt: deliverAt!, primaryKey, ...(replyTo === undefined ? undefined : { replyTo }) }
-                : replyTo === undefined
-                ? undefined
-                : { replyTo }
-              let replyHandler: ((reply: string) => Promise<void>) | undefined
-              if (delivery?.replyTo !== undefined) {
-                replyHandler = async (reply) => {
-                  dropReplyHandler(entry)
-                  await Effect.runPromise(deliverReplies(entry, [reply]))
-                }
-                entry.replyHandler = replyHandler
-                registerReplyHandler(clientRequestId, replyHandler)
-              }
-              return Effect.promise(() => target.stub.invoke(envelope, discard, delivery)).pipe(
-                Effect.flatMap((result) => {
-                  if (result.error === "MailboxFull") {
-                    return Effect.fail(new MailboxFull({ address: target.address }) as MailboxFull | PersistenceError)
-                  } else if (result.error === "EncodedMessageTooLarge") {
+            })
+            const entry: ClientEntry = {
+              rpc,
+              context,
+              clientRequestId,
+              storageRequestId: clientRequestId
+            }
+            if (!discard) entries.set(clientRequestId, entry)
+            const deliverAt = DeliverAt.toMillis(message.payload)
+            const delayed = deliverAt !== null && deliverAt > clock.currentTimeMillisUnsafe()
+            const persisted = Context.get(rpc.annotations, Persisted)
+            const primaryKey = Envelope.primaryKey({
+              ...message,
+              requestId: message.id,
+              address: target.address,
+              headers: message.headers
+            } as any)
+            const replyTo = discard ? undefined : Context.get(context, CurrentEntityName)
+            const replyRegistry = discard ? undefined : Context.get(context, CurrentReplyRegistry)
+            if (delayed && (!persisted || (!discard && primaryKey === null))) {
+              entries.delete(clientRequestId)
+              return Effect.fail(
+                new PersistenceError({
+                  cause: new Error(
+                    !persisted
+                      ? "Future DeliverAt requests must be persisted"
+                      : "Future DeliverAt asks must define a PrimaryKey"
+                  )
+                })
+              )
+            }
+            if (delayed && RpcSchema.isStreamSchema(rpc.successSchema)) {
+              entries.delete(clientRequestId)
+              return Effect.fail(
+                new PersistenceError({
+                  cause: new Error("Stream asks with a future DeliverAt are not supported")
+                })
+              )
+            }
+            const delivery = delayed
+              ? { deliverAt: deliverAt!, primaryKey, ...(replyTo === undefined ? undefined : { replyTo }) }
+              : replyTo === undefined
+              ? undefined
+              : { replyTo }
+            // A pinned caller receives the scheduled reply pushed over its own
+            // Durable Object's `deliverReply` RPC, which completes this waiter.
+            const pushedReply = delivery?.replyTo !== undefined && replyRegistry !== undefined
+              ? Deferred.makeUnsafe<string>()
+              : undefined
+            if (pushedReply !== undefined) replyRegistry!.register(clientRequestId, pushedReply)
+            const send = Effect.promise(() => target.stub.invoke(envelope, discard, delivery)).pipe(
+              Effect.flatMap(decodeInvokeResult),
+              Effect.flatMap((result): Effect.Effect<void, MailboxFull | PersistenceError> => {
+                switch (result._tag) {
+                  case "MailboxFull":
+                    return Effect.fail(new MailboxFull({ address: target.address }))
+                  case "EncodedMessageTooLarge":
                     return Effect.fail(
-                      new PersistenceError({ cause: new Error("Encoded entity message exceeds 2 MB") }) as
-                        | MailboxFull
-                        | PersistenceError
+                      new PersistenceError({ cause: new Error("Encoded entity message exceeds 2 MB") })
                     )
-                  } else if (result.error === "AskDeduplicatedToTell") {
+                  case "AskDeduplicatedToTell":
                     return Effect.fail(
                       new PersistenceError({
                         cause: new Error("Cannot deduplicate an ask onto a tell with the same PrimaryKey")
-                      }) as MailboxFull | PersistenceError
+                      })
                     )
+                  case "Success": {
+                    entry.storageRequestId = result.requestId
+                    if (pushedReply !== undefined && result.requestId !== clientRequestId) {
+                      replyRegistry!.register(result.requestId, pushedReply)
+                    }
+                    if (!discard && persisted) {
+                      setWithEviction(requestTargets, clientRequestId, {
+                        stub: target.stub,
+                        storageRequestId: result.requestId
+                      }, requestTargetCapacity)
+                    }
+                    if (discard) return Effect.void
+                    if (pushedReply !== undefined && result.replies.length === 0) {
+                      return Effect.flatMap(
+                        Deferred.await(pushedReply),
+                        (replyText) => deliverReplies(entry, [replyText])
+                      )
+                    }
+                    return deliverReplies(entry, result.replies)
                   }
-                  entry.storageRequestId = result.requestId
-                  if (replyHandler !== undefined && result.requestId !== clientRequestId) {
-                    registerReplyHandler(result.requestId, replyHandler)
-                  }
-                  if (!discard && persisted) {
-                    setWithEviction(requestTargets, clientRequestId, {
-                      stub: target.stub,
-                      storageRequestId: result.requestId
-                    }, requestTargetCapacity)
-                  }
-                  const deliver = discard ? Effect.void : deliverReplies(entry, result.replies)
-                  if (replyHandler === undefined || result.replies.length === 0) return deliver
-                  return Effect.ensuring(deliver, Effect.sync(() => dropReplyHandler(entry)))
-                }),
-                Effect.tapCause(() => Effect.sync(() => dropReplyHandler(entry)))
-              )
-            })
-          }
-          case "Ack": {
-            const entry = entries.get(String(message.requestId))
-            if (entry === undefined || entry.lastChunkId === undefined) return Effect.void
-            return Effect.promise(() => target.stub.acknowledge(entry.storageRequestId, entry.lastChunkId!)).pipe(
-              Effect.flatMap((replies) => deliverReplies(entry, replies))
+                }
+              })
             )
-          }
-          case "Interrupt": {
-            const clientRequestId = String(message.requestId)
-            const entry = entries.get(clientRequestId)
-            entries.delete(clientRequestId)
-            requestTargets.delete(clientRequestId)
-            if (entry === undefined) return Effect.void
-            dropReplyHandler(entry)
-            return Effect.promise(() => target.stub.interrupt(entry.storageRequestId, clientRequestId))
-          }
-          default:
-            return Effect.void
+            return pushedReply === undefined ? send : Effect.ensuring(
+              send,
+              Effect.sync(() => {
+                replyRegistry!.unregister(clientRequestId, pushedReply)
+                replyRegistry!.unregister(entry.storageRequestId, pushedReply)
+              })
+            )
+          })
         }
+        case "Ack": {
+          const entry = entries.get(String(message.requestId))
+          if (entry === undefined || entry.lastChunkId === undefined) return Effect.void
+          return Effect.promise(() => target.stub.acknowledge(entry.storageRequestId, entry.lastChunkId!)).pipe(
+            Effect.flatMap((replies) => deliverReplies(entry, replies))
+          )
+        }
+        case "Interrupt": {
+          const clientRequestId = String(message.requestId)
+          const entry = entries.get(clientRequestId)
+          entries.delete(clientRequestId)
+          requestTargets.delete(clientRequestId)
+          if (entry === undefined) return Effect.void
+          return Effect.promise(() => target.stub.interrupt(entry.storageRequestId, clientRequestId))
+        }
+        default:
+          return Effect.void
       }
-    })
+    }
 
     return (entityId: string) => {
       const id = EntityId.make(entityId)
@@ -372,9 +380,13 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
           methodOptions?: { readonly context?: Context.Context<never> }
         ) => {
           const currentEntityName = Context.get(ambient, CurrentEntityName)
+          const replyRegistry = Context.get(ambient, CurrentReplyRegistry)
           let requestContext = currentEntityName === undefined
             ? target
             : Context.add(target, CurrentEntityName, currentEntityName)
+          if (replyRegistry !== undefined) {
+            requestContext = Context.add(requestContext, CurrentReplyRegistry, replyRegistry)
+          }
           if (methodOptions?.context !== undefined) {
             requestContext = Context.merge(methodOptions.context, requestContext)
           }

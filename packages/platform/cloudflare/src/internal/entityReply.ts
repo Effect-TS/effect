@@ -1,5 +1,7 @@
 /** @internal */
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
+import * as Effect from "effect/Effect"
 
 /** @internal */
 export const CurrentEntityName = Context.Reference<string | undefined>(
@@ -7,34 +9,48 @@ export const CurrentEntityName = Context.Reference<string | undefined>(
   { defaultValue: () => undefined }
 )
 
-type ReplyHandler = (reply: string) => Promise<void>
-
-const handlers = new Map<string, Set<ReplyHandler>>()
-
-/** @internal */
-export const registerReplyHandler = (requestId: string, handler: ReplyHandler): void => {
-  const registered = handlers.get(requestId) ?? new Set()
-  registered.add(handler)
-  handlers.set(requestId, registered)
+/**
+ * Completes the delayed asks made by one entity Durable Object's handlers.
+ * The destination object pushes the stored reply back over the caller's
+ * `deliverReply` RPC, which finds the waiting `Deferred` here.
+ *
+ * @internal
+ */
+export interface EntityReplyRegistry {
+  readonly register: (requestId: string, waiter: Deferred.Deferred<string>) => void
+  readonly unregister: (requestId: string, waiter: Deferred.Deferred<string>) => void
+  readonly deliver: (requestId: string, reply: string) => boolean
 }
 
 /** @internal */
-export const unregisterReplyHandler = (requestId: string, handler?: ReplyHandler): void => {
-  if (handler === undefined) {
-    handlers.delete(requestId)
-    return
+export const makeReplyRegistry = (): EntityReplyRegistry => {
+  const waiters = new Map<string, Set<Deferred.Deferred<string>>>()
+  return {
+    register(requestId, waiter) {
+      const registered = waiters.get(requestId) ?? new Set()
+      registered.add(waiter)
+      waiters.set(requestId, registered)
+    },
+    unregister(requestId, waiter) {
+      const registered = waiters.get(requestId)
+      if (registered === undefined) return
+      registered.delete(waiter)
+      if (registered.size === 0) waiters.delete(requestId)
+    },
+    deliver(requestId, reply) {
+      const registered = waiters.get(requestId)
+      if (registered === undefined) return false
+      waiters.delete(requestId)
+      for (const waiter of registered) {
+        Deferred.doneUnsafe(waiter, Effect.succeed(reply))
+      }
+      return true
+    }
   }
-  const registered = handlers.get(requestId)
-  if (registered === undefined) return
-  registered.delete(handler)
-  if (registered.size === 0) handlers.delete(requestId)
 }
 
 /** @internal */
-export const deliverReply = async (requestId: string, reply: string): Promise<boolean> => {
-  const registered = handlers.get(requestId)
-  if (registered === undefined) return false
-  handlers.delete(requestId)
-  await Promise.all(Array.from(registered, (handler) => handler(reply)))
-  return true
-}
+export const CurrentReplyRegistry = Context.Reference<EntityReplyRegistry | undefined>(
+  "@effect/platform-cloudflare/CurrentReplyRegistry",
+  { defaultValue: () => undefined }
+)
