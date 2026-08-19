@@ -567,8 +567,8 @@ export type ExtractTools<Options> = Options extends {
  * @since 4.0.0
  */
 export type ExtractEncodedToolParameters<Options> = Options extends {
-  readonly disableToolCallResolution: infer Disabled
-} ? Disabled extends true ? true : false
+  readonly disableToolCallResolution: true
+} ? true
   : false
 
 type ExtractErrorFromToolkitOption<ToolkitValue, DisableToolCallResolution extends boolean> = ToolkitValue extends
@@ -1183,20 +1183,15 @@ export const make: (params: {
       }
     }
 
-    // Construct the response schema with the tools from the toolkit
-    const ResponseSchema = Schema.mutable(
-      Schema.Array(Response.Part(toolkit))
-    )
-
     // If tool call resolution is disabled, return the response without
     // resolving the tool calls that were generated
     if (options.disableToolCallResolution === true) {
-      const rawToolkit = makeToolkitWithRawParameters(toolkit)
-      const RawResponseSchema = Schema.mutable(
-        Schema.Array(Response.Part(rawToolkit))
+      const encodedToolkit = makeToolkitWithEncodedParameters(toolkit)
+      const EncodedResponseSchema = Schema.mutable(
+        Schema.Array(Response.Part(encodedToolkit))
       )
       const rawContent = yield* generateWithNonIncrementalFallback()
-      const content = yield* Schema.decodeEffect(RawResponseSchema)(rawContent)
+      const content = yield* Schema.decodeEffect(EncodedResponseSchema)(rawContent)
       if (tracker) {
         const responseMetadata = content.find((part) => part.type === "response-metadata")
         if (Predicate.isNotUndefined(responseMetadata) && Predicate.isNotUndefined(responseMetadata.id)) {
@@ -1205,6 +1200,11 @@ export const make: (params: {
       }
       return content as Array<Response.Part<Tools>>
     }
+
+    // Construct the response schema with the tools from the toolkit
+    const ResponseSchema = Schema.mutable(
+      Schema.Array(Response.Part(toolkit))
+    )
 
     const rawContent = yield* generateWithNonIncrementalFallback()
 
@@ -1467,8 +1467,8 @@ export const make: (params: {
     // If tool call resolution is disabled, return the response without
     // resolving the tool calls that were generated
     if (options.disableToolCallResolution === true) {
-      const rawToolkit = makeToolkitWithRawParameters(toolkit)
-      const schema = Schema.NonEmptyArray(Response.StreamPart(rawToolkit))
+      const encodedToolkit = makeToolkitWithEncodedParameters(toolkit)
+      const schema = Schema.NonEmptyArray(Response.StreamPart(encodedToolkit))
       const decodeParts = Schema.decodeEffect(schema)
       return streamWithNonIncrementalFallback().pipe(
         Stream.mapArrayEffect((parts) =>
@@ -2224,11 +2224,11 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 // Utilities
 // =============================================================================
 
-const makeToolkitWithRawParameters = <Tools extends Record<string, Tool.Any>>(
+const makeToolkitWithEncodedParameters = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>
 ): Toolkit.Any =>
   Toolkit.make(
-    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.Unknown))
+    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.toEncoded(tool.parametersSchema)))
   )
 
 const resolveToolkit = <Tools extends Record<string, Tool.Any>, E, R>(

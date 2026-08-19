@@ -61,6 +61,28 @@ describe("LanguageModel", () => {
   }
 
   describe("generateText", () => {
+    it.effect("validates encoded tool parameters when tool call resolution is disabled", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: TransformToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [{
+              type: "tool-call",
+              id: "tool-invalid-transform",
+              name: "TransformTool",
+              params: { invalid: true }
+            }]
+          }),
+          Effect.provide(TransformToolkitLayer),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }))
+
     it.effect("preserves encoded tool parameters when tool call resolution is disabled", () =>
       Effect.gen(function*() {
         const response = yield* LanguageModel.generateText({
@@ -92,6 +114,29 @@ describe("LanguageModel", () => {
   })
 
   describe("streamText", () => {
+    it.effect("validates encoded tool parameters when tool call resolution is disabled", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: TransformToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: [{
+              type: "tool-call",
+              id: "tool-invalid-transform",
+              name: "TransformTool",
+              params: { invalid: true }
+            }]
+          }),
+          Effect.provide(TransformToolkitLayer),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }))
+
     it.effect("preserves encoded tool parameters when tool call resolution is disabled", () =>
       Effect.gen(function*() {
         const parts = yield* LanguageModel.streamText({
