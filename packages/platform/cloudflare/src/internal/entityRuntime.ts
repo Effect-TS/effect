@@ -6,6 +6,7 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import { identity } from "effect/Function"
 import * as Metric from "effect/Metric"
 import * as Option from "effect/Option"
 import * as Pull from "effect/Pull"
@@ -219,6 +220,9 @@ type InvokeOutcome = {
 } | {
   readonly _tag: "Wait"
   readonly deferred: Deferred.Deferred<InvokeResult>
+} | {
+  readonly _tag: "Continue"
+  readonly effect: Effect.Effect<InvokeResult>
 }
 
 interface RunOptions {
@@ -269,6 +273,62 @@ const success = (requestId: string, replies: ReadonlyArray<string>): InvokeResul
 
 const done = (result: InvokeResult): InvokeOutcome => ({ _tag: "Done", result })
 
+const proceed = (effect: Effect.Effect<InvokeResult>): InvokeOutcome => ({ _tag: "Continue", effect })
+
+interface HandlerPermit {
+  readonly acquire: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  readonly pause: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+}
+
+const unlimitedHandlerPermit: HandlerPermit = { acquire: identity, pause: identity }
+
+/**
+ * One permit per handler execution. `acquire` holds the permit for the whole
+ * run; `pause` gives it back while a chunk is parked on its client
+ * acknowledgement so an unacked stream cannot starve other handlers. The
+ * `held` flag keeps take/release balanced when interruption lands inside a
+ * paused section: a pause that never re-acquires leaves `held` false, and
+ * `acquire` then skips its release.
+ */
+const makeHandlerPermit = (semaphore: Semaphore.Semaphore | undefined): HandlerPermit => {
+  if (semaphore === undefined) return unlimitedHandlerPermit
+  let held = false
+  return {
+    acquire: (effect) =>
+      Effect.uninterruptibleMask((restore) =>
+        restore(Semaphore.take(semaphore, 1)).pipe(
+          Effect.flatMap(() => {
+            held = true
+            return restore(effect)
+          }),
+          Effect.onExit(() =>
+            Effect.suspend(() => {
+              if (!held) return Effect.void
+              held = false
+              return Effect.asVoid(Semaphore.release(semaphore, 1))
+            })
+          )
+        )
+      ),
+    pause: (effect) =>
+      Effect.uninterruptibleMask((restore) =>
+        Effect.suspend(() => {
+          if (!held) return restore(effect)
+          held = false
+          return Semaphore.release(semaphore, 1).pipe(
+            Effect.flatMap(() => restore(effect)),
+            Effect.flatMap((value) =>
+              Effect.map(restore(Semaphore.take(semaphore, 1)), () => {
+                held = true
+                return value
+              })
+            )
+          )
+        })
+      )
+  }
+}
+
 /**
  * The Effect-land state machine behind one `ClusterEntity` Durable Object.
  * The class methods are one-line `Effect.runPromise` adapters over the
@@ -280,12 +340,33 @@ const done = (result: InvokeResult): InvokeOutcome => ({ _tag: "Done", result })
 export const makeEntityManager = (options: EntityManagerOptions): EntityManager => {
   const storage = options.storage
   const sql = storage.sql
-  // Serializes invoke/alarm entry, matching single-threaded mailbox order.
+  // Serializes storage entry: envelope decode, persist-before-run, dedupe,
+  // duplicate resume, and alarm arming. Handler execution runs in forked
+  // fibers governed by the handler concurrency semaphore below.
   const semaphore = Semaphore.makeUnsafe(1)
   const sessions = new Map<string, Session>()
+  // Persisted discard/scheduled requests with an in-flight handler; guards
+  // against a second execution from replay or duplicate delivery in the same
+  // wake, the way `sessions` does for asks.
+  const pendingRuns = new Set<string>()
   const workerWaiters = new Map<string, Array<WorkerWaiter>>()
   const replyRegistry = makeReplyRegistry()
   let runtime: EntityRuntime | undefined
+
+  // Handler executions share one budget across live, replayed, and alarm-due
+  // requests, sized from the entity's `concurrency` build option.
+  let handlerSemaphore: Semaphore.Semaphore | undefined
+  let handlerSemaphoreResolved = false
+  const getHandlerSemaphore = (registration: EntityRegistration): Semaphore.Semaphore | undefined => {
+    if (!handlerSemaphoreResolved) {
+      handlerSemaphoreResolved = true
+      const concurrency = registration.options?.concurrency ?? 1
+      if (concurrency !== "unbounded") {
+        handlerSemaphore = Semaphore.makeUnsafe(concurrency)
+      }
+    }
+    return handlerSemaphore
+  }
 
   const getRuntime = (registration: EntityRegistration): Effect.Effect<EntityRuntime> =>
     runtime !== undefined ? Effect.succeed(runtime) : Effect.map(
@@ -353,6 +434,10 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       )
     })
 
+  // Runs one request under the entry permit up to forking its handler fiber,
+  // then returns a continuation that awaits the handler output. Callers run
+  // the continuation after the entry permit is released so handlers governed
+  // by the concurrency semaphore can interleave with later storage entries.
   const run = Effect.fnUntraced(function*(
     registration: EntityRegistration,
     entityRuntime: EntityRuntime,
@@ -373,24 +458,41 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       const active = sessions.get(requestId)
       if (active !== undefined) {
         const nextReply = persisted ? loadNextReply(sql, requestId) : undefined
-        return nextReply === undefined ? [] : [nextReply.reply]
+        return Effect.succeed(nextReply === undefined ? [] : [nextReply.reply])
       }
     }
 
+    const permit = makeHandlerPermit(getHandlerSemaphore(registration))
     const scheduled = runOptions?.scheduled === true
     if (discard || scheduled) {
-      yield* entityRuntime.run(envelope, lastSentChunk, discard, (reply) =>
-        Effect.gen(function*() {
-          const encoded = yield* encodeReplyFor(registration, rpc, reply)
-          if (persisted) {
-            storage.transactionSync(() => saveReply(sql, encoded))
-          }
-          if (scheduled && reply._tag === "WithExit") {
-            yield* deliverScheduledReply(requestId, encoded, runOptions?.replyTos)
-          }
-        }))
-      if (discard && persisted) completeTell(sql, requestId)
-      return []
+      if (persisted) {
+        if (pendingRuns.has(requestId)) return Effect.succeed([])
+        pendingRuns.add(requestId)
+      }
+      const fiber = yield* Effect.forkDetach(
+        permit.acquire(
+          entityRuntime.run(envelope, lastSentChunk, discard, (reply) =>
+            Effect.gen(function*() {
+              const encoded = yield* encodeReplyFor(registration, rpc, reply)
+              if (persisted) {
+                storage.transactionSync(() => saveReply(sql, encoded))
+              }
+              if (scheduled && reply._tag === "WithExit") {
+                yield* deliverScheduledReply(requestId, encoded, runOptions?.replyTos)
+              }
+            }))
+        ).pipe(
+          Effect.onExit((exit) =>
+            Effect.sync(() => {
+              if (!persisted) return
+              if (discard && Exit.isSuccess(exit)) completeTell(sql, requestId)
+              pendingRuns.delete(requestId)
+            })
+          )
+        )
+      )
+      options.waitUntil(Fiber.await(fiber))
+      return Effect.as(Fiber.join(fiber), [])
     }
 
     const queue = yield* Queue.make<SessionReply, Cause.Done>()
@@ -408,14 +510,14 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           // A false offer means the session was interrupted and the queue
           // ended; awaiting the acknowledgement would then never resume.
           const offered = yield* Queue.offer(queue, { text: encoded, terminal: false })
-          if (offered) yield* Deferred.await(acknowledged)
+          if (offered) yield* permit.pause(Deferred.await(acknowledged))
           else session.ack = undefined
         } else {
           yield* Queue.offer(queue, { text: encoded, terminal: true })
         }
       })
     session.fiber = yield* Effect.forkDetach(
-      entityRuntime.run(envelope, lastSentChunk, discard, respond).pipe(
+      permit.acquire(entityRuntime.run(envelope, lastSentChunk, discard, respond)).pipe(
         Effect.onExit((exit) =>
           Effect.sync(() => {
             if (Exit.isSuccess(exit)) Queue.endUnsafe(queue)
@@ -428,7 +530,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       )
     )
     options.waitUntil(Fiber.await(session.fiber))
-    return yield* takeReply(requestId, session)
+    return takeReply(requestId, session)
   })
 
   const runStored = (
@@ -484,17 +586,20 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       })
     )
 
+  // Phase one runs each row up to forking its handler under the entry
+  // permit; the returned fibers observe the handler output and route
+  // failures through `completeReplayFailure`.
   const replayRows = (
     registration: EntityRegistration,
     entityRuntime: EntityRuntime,
     rows: ReadonlyArray<StoredMessage>
-  ): Effect.Effect<void> =>
+  ): Effect.Effect<Array<Fiber.Fiber<void>>> =>
     Effect.forEach(
       rows,
       (row) =>
-        // An active session already owns this request; replaying it would only
-        // decode the envelope to hit the same-session early return.
-        sessions.has(row.requestId) ? Effect.void : runStored(
+        // An active session or in-flight run already owns this request;
+        // replaying it would start a second execution in the same wake.
+        sessions.has(row.requestId) || pendingRuns.has(row.requestId) ? Effect.succeed(undefined) : runStored(
           registration,
           entityRuntime,
           row.envelope,
@@ -507,10 +612,18 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
               ...(row.replyTos === undefined ? undefined : { replyTos: row.replyTos })
             }
         ).pipe(
-          Effect.catchCause((cause) => completeReplayFailure(registration, row, cause))
-        ),
-      { discard: true }
-    )
+          Effect.flatMap((continuation) =>
+            Effect.forkDetach(
+              Effect.catchCause(
+                Effect.asVoid(continuation),
+                (cause) => completeReplayFailure(registration, row, cause)
+              )
+            )
+          ),
+          Effect.tap((fiber) => Effect.sync(() => options.waitUntil(Fiber.await(fiber)))),
+          Effect.catchCause((cause) => Effect.as(completeReplayFailure(registration, row, cause), undefined))
+        )
+    ).pipe(Effect.map((fibers) => fibers.filter((fiber) => fiber !== undefined)))
 
   const delayedOutcome = (
     requestId: string,
@@ -537,14 +650,21 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     }
     return Effect.gen(function*() {
       const entityRuntime = yield* getRuntime(registration)
-      yield* replayRows(registration, entityRuntime, loadUnprocessed(sql))
+      const replayFibers = yield* replayRows(registration, entityRuntime, loadUnprocessed(sql))
+      // Preserves the pre-split ordering: the invoke result is delivered
+      // only after the replayed rows this entry kicked off have finished.
+      const finish = (requestId: string, continuation: Effect.Effect<ReadonlyArray<string>>): InvokeOutcome =>
+        proceed(
+          (replayFibers.length === 0 ? continuation : Effect.andThen(Fiber.awaitAll(replayFibers), continuation))
+            .pipe(Effect.map((replies) => success(requestId, replies)))
+        )
 
       const envelope = yield* decodeRequest(registration, envelopeText)
       const rpc = registration.entity.protocol.requests.get(envelope.tag) as Rpc.AnyWithProps
       const isPersisted = Context.get(rpc.annotations, Persisted)
       if (!isPersisted) {
-        const replies = yield* run(registration, entityRuntime, envelope, undefined, discard, false)
-        return done(success(String(envelope.requestId), replies))
+        const continuation = yield* run(registration, entityRuntime, envelope, undefined, discard, false)
+        return finish(String(envelope.requestId), continuation)
       }
 
       const persistedResult = yield* Effect.result(
@@ -610,21 +730,21 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
             String(envelope.requestId)
           )
         }
-        const replies = yield* runStored(
+        const continuation = yield* runStored(
           registration,
           entityRuntime,
           original.envelope,
           original.lastSentChunk,
           original.discard
         )
-        return done(success(persisted.originalId, replies))
+        return finish(persisted.originalId, continuation)
       }
       if (delivery?.deliverAt !== undefined) {
         yield* armEarliestAlarm
         return delayedOutcome(String(envelope.requestId), discard, delivery.replyTo)
       }
-      const replies = yield* run(registration, entityRuntime, envelope, undefined, discard, true)
-      return done(success(String(envelope.requestId), replies))
+      const continuation = yield* run(registration, entityRuntime, envelope, undefined, discard, true)
+      return finish(String(envelope.requestId), continuation)
     })
   }
 
@@ -635,7 +755,11 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   ): Effect.Effect<InvokeResult> =>
     Semaphore.withPermit(semaphore, invokeEntry(envelopeText, discard, delivery)).pipe(
       Effect.flatMap((outcome) =>
-        outcome._tag === "Done" ? Effect.succeed(outcome.result) : Deferred.await(outcome.deferred)
+        outcome._tag === "Done"
+          ? Effect.succeed(outcome.result)
+          : outcome._tag === "Wait"
+          ? Deferred.await(outcome.deferred)
+          : outcome.effect
       )
     )
 
@@ -681,28 +805,32 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       storage.transactionSync(() => clearReplies(sql, requestId))
     })
 
-  const alarm = Semaphore.withPermit(
-    semaphore,
-    Effect.suspend(() => {
-      const registration = getEntityRegistration(options.address.entityType)
-      if (registration === undefined) {
-        return Effect.die(`No handlers registered for entity type: ${options.address.entityType}`)
-      }
-      return Effect.gen(function*() {
-        const entityRuntime = yield* getRuntime(registration)
-        yield* replayRows(registration, entityRuntime, loadDue(sql))
-        yield* armEarliestAlarm
-      }).pipe(
-        Effect.withSpan("CloudflareCluster.alarm", {
-          attributes: {
-            entityType: registration.entity.type,
-            entityId: String(options.address.entityId)
-          }
-        }, { captureStackTrace: false }),
-        Effect.provideContext(registration.context)
+  const alarm = Effect.suspend(() => {
+    const registration = getEntityRegistration(options.address.entityType)
+    if (registration === undefined) {
+      return Effect.die(`No handlers registered for entity type: ${options.address.entityType}`)
+    }
+    // The entry permit covers replay setup and alarm arming; awaiting the
+    // due handlers happens between the two so they can draw handler permits
+    // while later invokes still enter storage.
+    return Semaphore.withPermit(
+      semaphore,
+      Effect.flatMap(
+        getRuntime(registration),
+        (entityRuntime) => replayRows(registration, entityRuntime, loadDue(sql))
       )
-    })
-  )
+    ).pipe(
+      Effect.flatMap((fibers) => fibers.length === 0 ? Effect.void : Effect.asVoid(Fiber.awaitAll(fibers))),
+      Effect.andThen(Semaphore.withPermit(semaphore, armEarliestAlarm)),
+      Effect.withSpan("CloudflareCluster.alarm", {
+        attributes: {
+          entityType: registration.entity.type,
+          entityId: String(options.address.entityId)
+        }
+      }, { captureStackTrace: false }),
+      Effect.provideContext(registration.context)
+    )
+  })
 
   const deliverReply = (requestId: string, reply: string): Effect.Effect<boolean> =>
     Effect.sync(() => replyRegistry.deliver(requestId, reply))
