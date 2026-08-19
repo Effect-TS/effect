@@ -25,6 +25,7 @@ describe("RpcServer", () => {
     })
     RpcServer.layerProtocolHttp({ path: "/rpc", streamBufferSize: 16 })
     void RpcServer.makeProtocolHttp({ path: "/rpc", streamBufferSize: 16 })
+    void RpcServer.makeProtocolWithHttpEffect({ streamBufferSize: 16 })
     void RpcServer.toHttpEffect(Group, { streamBufferSize: 16 })
 
     RpcServer.layerHttp({
@@ -35,6 +36,7 @@ describe("RpcServer", () => {
     })
     RpcServer.layerProtocolHttp({ path: "/rpc", streamBufferSize: "unbounded" })
     void RpcServer.makeProtocolHttp({ path: "/rpc", streamBufferSize: "unbounded" })
+    void RpcServer.makeProtocolWithHttpEffect({ streamBufferSize: "unbounded" })
     void RpcServer.toHttpEffect(Group, { streamBufferSize: "unbounded" })
   })
 
