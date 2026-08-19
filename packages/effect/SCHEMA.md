@@ -2238,7 +2238,7 @@ console.log(String(Schema.decodeUnknownExit(URLSchema)(null)))
 
 ### Adding JSON support with `toCodecJson`
 
-`Schema.toCodecJson` derives a codec that can convert your type **to and from JSON**. By default, declared schemas have no JSON representation — encoding produces `null`:
+`Schema.toCodecJson` derives a codec that can convert your type **to and from JSON**. By default, declared schemas use `Schema.Json` as their encoded representation. This keeps codec derivation defined, but it does not invent a serialization for your custom type. For example, a `URL` instance is not itself a JSON value, so encoding fails:
 
 ```ts
 import { Schema } from "effect"
@@ -2251,10 +2251,9 @@ const URLSchema = Schema.declare(
 // Derive a JSON codec from the schema
 const codec = Schema.toCodecJson(URLSchema)
 
-// Encoding a URL produces null because Schema doesn't know
-// how to serialize a URL to JSON yet
+// Encoding fails because Schema doesn't know how to serialize a URL to JSON yet
 console.log(String(Schema.encodeUnknownExit(codec)(new URL("https://example.com"))))
-// Success(null)
+// Failure(Cause([Fail(SchemaError(Expected JSON value))]))
 ```
 
 To fix this, provide a `toCodecJson` annotation. This annotation is a function that returns an `AST.Link`, a bridge that describes how to convert between your custom type and a JSON-friendly representation.
@@ -2263,6 +2262,8 @@ You build a `Link` using `Schema.link<T>()`, which takes two arguments:
 
 1. **A JSON-side schema** — the shape of the JSON value (e.g. `Schema.String` for a URL string)
 2. **A transformation** — how to convert back and forth between your type and the JSON value
+
+The annotation only defines the link; the consuming parser chooses its execution and failure handling. Transformations may be asynchronous, may fail, and may use optional services, but cannot require services not declared by the input schema.
 
 **Example** (Making `URL` JSON-serializable)
 
@@ -4789,6 +4790,8 @@ A canonical codec describes how values that match a schema should be converted t
 2. **AST transformation**: the codec builder walks the schema AST and produces a new schema that represents the serialized form (this traversal is handled by Effect).
 3. **Recursive composition**: codecs apply through nested structures (objects, arrays, unions, and so on) without you having to wire everything manually.
 
+Canonical codec derivation does not run transformations; the consuming parser chooses execution and failure handling. Annotation links may be asynchronous, may fail, and may use optional services, but cannot add required services absent from the derived codec type. `toCodecIso` declares none, while `toCodecJson` and `toCodecStringTree` preserve the input schema's requirements.
+
 The next example shows why a custom class needs a codec when working with JSON.
 
 **Example** (A custom class that does not round-trip through JSON)
@@ -4810,30 +4813,23 @@ class Point {
 const PointSchema = Schema.instanceOf(Point)
 ```
 
-Even if encoding produces something JSON-looking, decoding cannot rebuild a `Point` instance (including its prototype and methods) from plain JSON data.
+Without an annotation, `Schema.toCodecJson` uses `Schema.Json` as the encoded representation. A `Point` instance is not a JSON value, and a plain object parsed from JSON is not a `Point` instance (including its prototype and methods), so neither direction can bridge the two representations.
 
 ```ts
-// Encode a Point instance using the schema, then stringify it.
-// This produces a plain JSON object, not a class instance.
-const json = JSON.stringify(Schema.encodeUnknownSync(PointSchema)(new Point(1, 2)))
+const codecJson = Schema.toCodecJson(PointSchema)
 
-console.log(json)
-// '{"x":1,"y":2}'
+console.log(String(Schema.encodeUnknownExit(codecJson)(new Point(1, 2))))
+// Failure(Cause([Fail(SchemaError(Expected JSON value))]))
 
-// Decode attempts to create a Point instance from parsed JSON.
-// This fails because JSON.parse returns a plain object, not `new Point(...)`.
-try {
-  Schema.decodeUnknownSync(PointSchema)(JSON.parse(json))
-} catch (error) {
-  console.error(String(error))
-}
+console.log(String(Schema.decodeUnknownExit(codecJson)({ x: 1, y: 2 })))
+// Failure(Cause([Fail(SchemaError(Expected <Declaration>))]))
 ```
 
-The same issue shows up when generating a JSON Schema document: since the schema represents a class instance and there is no JSON representation for it, the generator falls back to a placeholder.
+The same issue shows up when generating a JSON Schema document. Since the opaque declaration has no structural JSON representation, the generator emits an unconstrained JSON Schema:
 
 ```ts
 console.log(Schema.toJsonSchemaDocument(PointSchema))
-// { dialect: 'draft-2020-12', schema: { type: 'null' }, definitions: {} }
+// { dialect: 'draft-2020-12', schema: {}, definitions: {} }
 ```
 
 #### Configuring the Codec
@@ -4917,6 +4913,8 @@ When you call `Schema.toCodecJson(schema)`, the library:
 2. **Finds annotations**: it looks for `toCodecJson` annotations on nodes.
 3. **Applies transformations**: it replaces types that are not JSON-friendly with types that are.
 4. **Composes recursively**: it builds codecs for nested schemas by combining the codecs of their parts.
+
+When this traversal adds a transformation because a node has no direct JSON representation, its checks and annotations remain on the source node; they are not copied to the artificial JSON target. The codec still applies source checks after transforming values.
 
 #### Custom Encodings
 
@@ -5202,6 +5200,8 @@ Use `.annotate(...)` to attach standard JSON Schema annotations:
 - `readOnly`
 - `writeOnly`
 
+`Schema.toJsonSchemaDocument` compiles the canonical JSON target. Checks and annotations left on the source side of an artificial transformation therefore do not appear in the generated document. Put metadata on an explicit JSON target when it must appear there.
+
 **Example** (Adding basic annotations)
 
 ```ts
@@ -5369,7 +5369,7 @@ console.log(JSON.stringify(document, null, 2))
 
 #### Defining a JSON-safe representation for custom types
 
-This example shows how `Schema.toCodecJson` and `Schema.toJsonSchema` can describe the same JSON shape for a custom type.
+This example shows how `Schema.toCodecJson` and `Schema.toJsonSchemaDocument` can describe the same JSON shape for a custom type.
 
 `Headers` is not JSON-friendly by default. `JSON.stringify(new Headers({ a: "b" }))` produces `{}` because the header data is not stored in enumerable properties. By adding a `toCodecJson` annotation, you define a JSON-safe representation and use it for both serialization and JSON Schema generation.
 
@@ -6031,7 +6031,7 @@ console.log(_s.replace("b", new B({ a: new A({ s: "a" }) })))
 // B { a: A { s: 'b' } }
 ```
 
-Reading through the generated `Iso` encodes the schema value, while replacing through it decodes the new focus. Either direction can throw an `Error` with the generic message `"Schema validation failed"` and a `SchemaIssue.Issue` in its `cause`. Use `SchemaIssue.makeFormatterDefault()` to format that cause when human-readable details are needed.
+Reading through the generated `Iso` encodes the schema value, while replacing through it decodes the new focus. `Schema.toIso` consumes `Schema.toCodecIso` synchronously, so failing, asynchronous, or service-dependent transformations can throw. Schema failures use `"Schema validation failed"` with a `SchemaIssue.Issue` in `cause`; format it with `SchemaIssue.makeFormatterDefault()`, or use an effectful parser with `Schema.toCodecIso` for asynchronous execution or explicit failure handling.
 
 ### Using the Differ Module for Type-Safe JSON Patches
 
@@ -6112,7 +6112,7 @@ The idea is simple: if you have a `Schema` for a type `T`, you can serialize any
 
 This approach keeps patches independent from TypeScript types and uses the schema as the guardrail when turning JSON back into `T`.
 
-Schema conversion failures from `diff` or `patch` throw an `Error` with the generic message `"Schema validation failed"` and a `SchemaIssue.Issue` in its `cause`. Format that cause explicitly with `SchemaIssue.makeFormatterDefault()`. Errors raised while applying an invalid JSON Patch operation are separate `JsonPatch` errors rather than schema validation failures.
+`Schema.toDifferJsonPatch` consumes `Schema.toCodecJson` synchronously, so failing, asynchronous, or service-dependent transformations can throw. Schema failures use `"Schema validation failed"` with a `SchemaIssue.Issue` in `cause`, which `SchemaIssue.makeFormatterDefault()` can format; invalid patch operations instead produce `JsonPatch` errors.
 
 # Schema Representation
 
