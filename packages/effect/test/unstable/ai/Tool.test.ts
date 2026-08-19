@@ -158,7 +158,7 @@ describe("Tool", () => {
         deepStrictEqual(response, toolResult)
       }))
 
-    it.effect("should raise an error when tool call parameters are invalid", () =>
+    it.effect("should return a tool-result with isFailure when tool call parameters are invalid", () =>
       Effect.gen(function*() {
         const toolkit = Toolkit.make(FailureModeReturn)
 
@@ -182,22 +182,40 @@ describe("Tool", () => {
               params: {}
             }]
           }),
-          Effect.provide(handlers),
-          Effect.flip
+          Effect.provide(handlers)
         )
 
-        deepStrictEqual(
-          response,
-          AiError.make({
-            module: "Toolkit",
-            method: "FailureModeReturn.handle",
-            reason: new AiError.ToolParameterValidationError({
-              toolName: "FailureModeReturn",
-              toolParams: {},
-              description: `Missing key\n  at ["testParam"]`
-            })
+        const validationError = AiError.make({
+          module: "Toolkit",
+          method: "FailureModeReturn.handle",
+          reason: new AiError.ToolParameterValidationError({
+            toolName: "FailureModeReturn",
+            toolParams: {},
+            description: `Missing key\n  at ["testParam"]`
           })
-        )
+        })
+
+        deepStrictEqual(response.toolResults, [
+          Response.toolResultPart({
+            id: toolCallId,
+            name: toolName,
+            isFailure: true,
+            providerExecuted: false,
+            preliminary: false,
+            result: validationError,
+            encodedResult: {
+              _tag: "AiError",
+              module: "Toolkit",
+              method: "FailureModeReturn.handle",
+              reason: {
+                _tag: "ToolParameterValidationError",
+                toolName: "FailureModeReturn",
+                toolParams: {},
+                description: `Missing key\n  at ["testParam"]`
+              }
+            }
+          })
+        ])
       }))
 
     it.effect("should return AiError when user returns an AiErrorReason when failure mode is return", () =>
@@ -870,7 +888,7 @@ describe("Tool", () => {
         deepStrictEqual(response, toolResult)
       }))
 
-    it.effect("should raise an error when tool call parameters are invalid", () =>
+    it.effect("should return a tool-result with isFailure when tool call parameters are invalid", () =>
       Effect.gen(function*() {
         const tool = HandlerRequired({
           failureMode: "return",
@@ -902,22 +920,40 @@ describe("Tool", () => {
               }
             ]
           }),
-          Effect.provide(handlers),
-          Effect.flip
+          Effect.provide(handlers)
         )
 
-        deepStrictEqual(
-          response,
-          AiError.make({
-            module: "Toolkit",
-            method: "HandlerRequired.handle",
-            reason: new AiError.ToolParameterValidationError({
-              toolName: "HandlerRequired",
-              toolParams: {},
-              description: `Missing key\n  at ["testParam"]`
-            })
+        const validationError = AiError.make({
+          module: "Toolkit",
+          method: "HandlerRequired.handle",
+          reason: new AiError.ToolParameterValidationError({
+            toolName: "HandlerRequired",
+            toolParams: {},
+            description: `Missing key\n  at ["testParam"]`
           })
-        )
+        })
+
+        deepStrictEqual(response.toolResults, [
+          Response.toolResultPart({
+            id: toolCallId,
+            name: tool.name,
+            isFailure: true,
+            providerExecuted: false,
+            preliminary: false,
+            result: validationError,
+            encodedResult: {
+              _tag: "AiError",
+              module: "Toolkit",
+              method: "HandlerRequired.handle",
+              reason: {
+                _tag: "ToolParameterValidationError",
+                toolName: "HandlerRequired",
+                toolParams: {},
+                description: `Missing key\n  at ["testParam"]`
+              }
+            }
+          })
+        ])
       }))
 
     describe("addDependency", () => {
