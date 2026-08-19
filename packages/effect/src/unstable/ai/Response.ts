@@ -230,7 +230,7 @@ export type Part<
 > =
   | TextPart
   | ReasoningPart
-  | (EncodedToolParameters extends true ? ToolCallPartsEncoded<Tools> : ToolCallParts<Tools>)
+  | ToolCallParts<Tools, EncodedToolParameters>
   | ToolResultParts<Tools>
   | ToolApprovalRequestPart
   | FilePart
@@ -318,7 +318,7 @@ export type StreamPart<
   | ToolParamsStartPart
   | ToolParamsDeltaPart
   | ToolParamsEndPart
-  | (EncodedToolParameters extends true ? ToolCallPartsEncoded<Tools> : ToolCallParts<Tools>)
+  | ToolCallParts<Tools, EncodedToolParameters>
   | ToolResultParts<Tools>
   | ToolApprovalRequestPart
   | FilePart
@@ -408,20 +408,14 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
  * @category utility types
  * @since 4.0.0
  */
-export type ToolCallParts<Tools extends Record<string, Tool.Any>> = {
-  [Name in keyof Tools]: Name extends string ? ToolCallPart<Name, Tool.Parameters<Tools[Name]>>
-    : never
-}[keyof Tools]
-
-/**
- * Utility type that extracts tool call parts with encoded parameters from a set
- * of tools.
- *
- * @category utility types
- * @since 4.0.0
- */
-export type ToolCallPartsEncoded<Tools extends Record<string, Tool.Any>> = {
-  [Name in keyof Tools]: Name extends string ? ToolCallPart<Name, Tool.ParametersEncoded<Tools[Name]>>
+export type ToolCallParts<
+  Tools extends Record<string, Tool.Any>,
+  EncodedParameters extends boolean = false
+> = {
+  [Name in keyof Tools]: Name extends string ? ToolCallPart<
+      Name,
+      EncodedParameters extends true ? Tool.ParametersEncoded<Tools[Name]> : Tool.Parameters<Tools[Name]>
+    >
     : never
 }[keyof Tools]
 

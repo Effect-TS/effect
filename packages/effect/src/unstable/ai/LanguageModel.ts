@@ -410,9 +410,7 @@ export class GenerateTextResponse<
   /**
    * Returns all tool call parts from the response.
    */
-  get toolCalls(): Array<
-    EncodedToolParameters extends true ? Response.ToolCallPartsEncoded<Tools> : Response.ToolCallParts<Tools>
-  > {
+  get toolCalls(): Array<Response.ToolCallParts<Tools, EncodedToolParameters>> {
     return this.content.filter((part) => part.type === "tool-call")
   }
 
@@ -1183,15 +1181,17 @@ export const make: (params: {
       }
     }
 
+    // Construct the response schema with the tools from the toolkit, keeping
+    // tool call parameters encoded when tool call resolution is disabled
+    const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(
+      options.disableToolCallResolution === true ? makeToolkitWithEncodedParameters(toolkit) : toolkit
+    )))
+
     // If tool call resolution is disabled, return the response without
     // resolving the tool calls that were generated
     if (options.disableToolCallResolution === true) {
-      const encodedToolkit = makeToolkitWithEncodedParameters(toolkit)
-      const EncodedResponseSchema = Schema.mutable(
-        Schema.Array(Response.Part(encodedToolkit))
-      )
       const rawContent = yield* generateWithNonIncrementalFallback()
-      const content = yield* Schema.decodeEffect(EncodedResponseSchema)(rawContent)
+      const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
       if (tracker) {
         const responseMetadata = content.find((part) => part.type === "response-metadata")
         if (Predicate.isNotUndefined(responseMetadata) && Predicate.isNotUndefined(responseMetadata.id)) {
@@ -1200,11 +1200,6 @@ export const make: (params: {
       }
       return content as Array<Response.Part<Tools>>
     }
-
-    // Construct the response schema with the tools from the toolkit
-    const ResponseSchema = Schema.mutable(
-      Schema.Array(Response.Part(toolkit))
-    )
 
     const rawContent = yield* generateWithNonIncrementalFallback()
 
@@ -1464,12 +1459,16 @@ export const make: (params: {
       }
     }
 
+    // Construct the response schema with the tools from the toolkit, keeping
+    // tool call parameters encoded when tool call resolution is disabled
+    const ResponseSchema = Schema.NonEmptyArray(Response.StreamPart(
+      options.disableToolCallResolution === true ? makeToolkitWithEncodedParameters(toolkit) : toolkit
+    ))
+    const decodeParts = Schema.decodeEffect(ResponseSchema)
+
     // If tool call resolution is disabled, return the response without
     // resolving the tool calls that were generated
     if (options.disableToolCallResolution === true) {
-      const encodedToolkit = makeToolkitWithEncodedParameters(toolkit)
-      const schema = Schema.NonEmptyArray(Response.StreamPart(encodedToolkit))
-      const decodeParts = Schema.decodeEffect(schema)
       return streamWithNonIncrementalFallback().pipe(
         Stream.mapArrayEffect((parts) =>
           decodeParts(parts).pipe(
@@ -1491,9 +1490,6 @@ export const make: (params: {
         IdGenerator
       >
     }
-
-    const ResponseSchema = Schema.NonEmptyArray(Response.StreamPart(toolkit))
-    const decodeParts = Schema.decodeEffect(ResponseSchema)
 
     // Queue for decoded parts and tool results
     const queue = yield* Queue.make<
