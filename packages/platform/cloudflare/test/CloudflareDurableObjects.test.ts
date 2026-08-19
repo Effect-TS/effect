@@ -269,6 +269,48 @@ describe("CloudflareDurableObjects", () => {
       assert.strictEqual(duplicate._tag, "AskDeduplicatedToTell")
     }), 60_000)
 
+  it.effect("honors the entity concurrency option for in-flight handlers", () =>
+    Effect.gen(function*() {
+      const miniflare = yield* makeMiniflare
+      const gate = (type: string) =>
+        Effect.promise(() =>
+          miniflare.dispatchFetch(`http://placeholder/gate?type=${type}&id=g1`).then(async (response) => {
+            const body = await response.text()
+            assert.strictEqual(response.status, 200, body)
+            return JSON.parse(body)
+          })
+        )
+
+      // Default concurrency serializes: Open cannot run while WaitTurn is
+      // still in flight, so WaitTurn times out and Open finds no waiter.
+      const serial = yield* gate("GateSerial")
+      assert.deepStrictEqual(serial, { wait: "timeout", open: "no-waiter" })
+
+      // With two permits the second ask interleaves while the first handler
+      // is suspended, and releases it.
+      const concurrent = yield* gate("GateConcurrent")
+      assert.deepStrictEqual(concurrent, { wait: "opened", open: "opened" })
+
+      const unbounded = yield* gate("GateUnbounded")
+      assert.deepStrictEqual(unbounded, { wait: "opened", open: "opened" })
+    }), 60_000)
+
+  it.effect("completes an ask cycle between entities given sufficient concurrency", () =>
+    Effect.gen(function*() {
+      const miniflare = yield* makeMiniflare
+      const result = yield* Effect.promise(() =>
+        Promise.race([
+          miniflare.dispatchFetch("http://placeholder/cycle?id=c1").then(async (response) => {
+            const body = await response.text()
+            assert.strictEqual(response.status, 200, body)
+            return JSON.parse(body)
+          }),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("ask cycle did not complete")), 5_000))
+        ])
+      )
+      assert.deepStrictEqual(result, { value: "cycle:pong" })
+    }), 60_000)
+
   it.effect("delivers a scheduled ask reply to the caller Durable Object", () =>
     Effect.gen(function*() {
       const miniflare = yield* makeMiniflare

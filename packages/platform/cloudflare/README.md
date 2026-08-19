@@ -123,6 +123,25 @@ are user code on the Worker.
   workflow with `DurableClock` and `DurableDeferred`.
 - Stream asks with a future `DeliverAt` are outside v1.
 
+## Handler concurrency
+
+`Entity.toLayer(..., { concurrency })` applies inside the entity Durable
+Object. The default of 1 runs one handler at a time, a number allows that many
+in-flight handlers per entity, and `"unbounded"` removes the limit. Durable
+Object isolates are single-threaded, so this is interleaving of suspended
+handlers, not parallelism.
+
+- Envelope decode, persist-before-run, dedupe, duplicate resume, and alarm
+  arming stay serialized at any setting.
+- With `concurrency` above 1, strict mailbox ordering holds per permit, the
+  same as the classic runner path: in-flight handlers interleave at every
+  suspension point.
+- An ask cycle (entity A asks B while B's handler asks A back) needs
+  `concurrency` of at least 2 on the entity receiving the second ask. At the
+  default of 1 the cycle deadlocks, matching the classic contract.
+- Replayed mailbox rows and alarm-due runs draw from the same budget as live
+  requests.
+
 ## v1 compatibility
 
 The status vocabulary is **maps 1:1**, **adapted**, and **out of scope**.
@@ -141,6 +160,7 @@ The status vocabulary is **maps 1:1**, **adapted**, and **out of scope**.
 | Ask + future `DeliverAt`                                                      | adapted      | Destination may hibernate through `replyTo`; ask pins its caller, and a Worker ask pins the destination too |
 | `MailboxFull` / 4096 cap / 2 MB row rejection                                 | maps 1:1     | Same limits; the SQLite row is the hard ceiling                                                             |
 | `defectRetryPolicy` then terminal defect                                      | adapted      | Rebuilds handlers in the wake; crash or deployment wipes memory and replays unprocessed rows                |
+| `Entity.toLayer` `concurrency`                                                | maps 1:1     | Same per-entity handler interleaving contract; storage entry stays serialized at any setting                |
 | `Entity.keepAlive`                                                            | adapted      | Pins while holders exist; hibernation is allowed with no holders                                            |
 | `CurrentRunnerAddress`                                                        | adapted      | Synthetic address for identity and telemetry; no peer dialing                                               |
 | `EntityResource.make`                                                         | adapted      | External lifetimes such as a browser; close or idle TTL unpins                                              |
