@@ -492,7 +492,7 @@ describe("McpServer", () => {
     Effect.gen(function*() {
       const serverLayer = Layer.effectDiscard(Effect.gen(function*() {
         const router = yield* HttpRouter.HttpRouter
-        const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect
+        const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect()
         yield* protocol.run((clientId, message) => {
           if (message._tag !== "Request") {
             return Effect.void

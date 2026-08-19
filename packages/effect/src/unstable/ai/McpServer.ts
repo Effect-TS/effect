@@ -1356,7 +1356,7 @@ const layerMcpProtocolHttp = (options: {
 > =>
   Layer.effect(RpcServer.Protocol)(Effect.gen(function*() {
     const state = yield* McpProtocolState
-    const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect
+    const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect()
     const router = yield* HttpRouter.HttpRouter
     yield* router.add("POST", options.path, (request) => {
       if (!isAllowedMcpOrigin(request, options.allowedOrigins)) {
