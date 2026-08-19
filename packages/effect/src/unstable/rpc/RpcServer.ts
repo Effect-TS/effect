@@ -1361,6 +1361,7 @@ export const makeProtocolWorkerRunner: Effect.Effect<
         clientIds.delete(clientId)
         return Queue.offer(disconnects, clientId)
       }),
+      Effect.forever,
       Effect.forkScoped
     )
   }
