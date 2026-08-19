@@ -218,20 +218,6 @@ const apiCache = new WeakMap<
   WeakMap<HttpApi.Constraint, OpenAPISpec>
 >()
 
-type CompileSchemas = (
-  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
-) => JsonSchema.MultiDocument<"openapi-3.1">
-
-const compileSchemas = (
-  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>],
-  options: SchemaRepresentation.ToRepresentationOptions
-): JsonSchema.MultiDocument<"openapi-3.1"> =>
-  JsonSchema.toMultiDocumentOpenApi3_1(
-    InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(
-      InternalToRepresentation.toRepresentations(Arr.map(asts, Schema.toCodecJsonAST), options)
-    )
-  )
-
 const cloneOpenAPISpec = <A>(value: A): A => {
   if (Array.isArray(value)) {
     return value.map(cloneOpenAPISpec) as A
@@ -303,22 +289,17 @@ export function fromApi<Id extends string, Groups extends HttpApiGroup.Constrain
     cache = new WeakMap()
     apiCache.set(resolvedOptions, cache)
   }
-  return fromApiWith(
-    api,
-    cache,
-    (asts) => compileSchemas(asts, resolvedOptions)
-  )
+  const cached = cache.get(api)
+  if (cached !== undefined) return cloneOpenAPISpec(cached)
+  const spec = makeOpenApi(api, resolvedOptions)
+  cache.set(api, cloneOpenAPISpec(spec))
+  return spec
 }
 
-function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
+function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
   api: HttpApi.HttpApi<Id, Groups>,
-  cache: WeakMap<HttpApi.Constraint, OpenAPISpec>,
-  compileSchemas: CompileSchemas
+  options: SchemaRepresentation.ToRepresentationOptions
 ): OpenAPISpec {
-  const cached = cache.get(api)
-  if (cached !== undefined) {
-    return cloneOpenAPISpec(cached)
-  }
   let spec: OpenAPISpec = {
     openapi: "3.1.0",
     info: {
@@ -688,7 +669,14 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
   }
 
   if (Arr.isArrayNonEmpty(pathOps)) {
-    const jsonSchemaMultiDocument = compileSchemas(Arr.map(pathOps, (op) => op.ast))
+    const jsonSchemaMultiDocument = JsonSchema.toMultiDocumentOpenApi3_1(
+      InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(
+        InternalToRepresentation.toRepresentations(
+          Arr.map(pathOps, (op) => Schema.toCodecJsonAST(op.ast)),
+          options
+        )
+      )
+    )
     const patchOps: Array<JsonPatch.JsonPatchOperation> = pathOps.map((op, i) => {
       const oppath = escapePath(op.path)
       const value = jsonSchemaMultiDocument.schemas[i]
@@ -725,8 +713,6 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
   processAnnotation(api.annotations, Transform, (transformFn) => {
     spec = transformFn(spec) as OpenAPISpec
   })
-
-  cache.set(api, cloneOpenAPISpec(spec))
 
   return spec
 }
