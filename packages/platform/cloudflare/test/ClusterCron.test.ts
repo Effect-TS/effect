@@ -142,7 +142,9 @@ class FakeCronDestination {
     const effect = delivery?.deliverAt === undefined
       ? Effect.void
       : armAlarm(this.alarm.storage, delivery.deliverAt)
-    return Effect.runPromise(Effect.as(effect, { requestId, replies: [] as ReadonlyArray<string> }))
+    return Effect.runPromise(
+      Effect.as(effect, { _tag: "Success" as const, requestId, replies: [] as ReadonlyArray<string> })
+    )
   }
 
   acknowledge() {
