@@ -2077,7 +2077,7 @@ describe("Effect", () => {
         assert.isTrue(finalized)
       }))
 
-    it.effect("finalizer errors not caught", () =>
+    it.effect("finalizer errors merged", () =>
       Effect.gen(function*() {
         const e2 = new Error("e2")
         const e3 = new Error("e3")
@@ -2089,7 +2089,10 @@ describe("Effect", () => {
           Effect.flip,
           Effect.map((cause) => cause)
         )
-        assert.deepStrictEqual(result, Cause.die(e3))
+        assert.deepStrictEqual(
+          result,
+          Cause.combine(Cause.combine(Cause.fail(ExampleError), Cause.die(e2)), Cause.die(e3))
+        )
       }))
 
     it.effect("finalizer errors reported", () =>
@@ -2112,6 +2115,18 @@ describe("Effect", () => {
         )
         assert.isUndefined(result)
         assert.isFalse(reported !== undefined && Exit.isSuccess(reported))
+      }))
+
+    it.effect("scoped combines usage and finalizer failures", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.gen(function*() {
+          yield* Effect.addFinalizer(() => Effect.die("finalizer failure"))
+          return yield* Effect.fail("usage failure")
+        }).pipe(Effect.scoped, Effect.exit)
+        assert.deepStrictEqual(
+          result,
+          Exit.failCause(Cause.combine(Cause.fail("usage failure"), Cause.die("finalizer failure")))
+        )
       }))
 
     it.effect("acquireUseRelease usage result", () =>
@@ -2161,6 +2176,19 @@ describe("Effect", () => {
           Effect.exit
         )
         assert.deepStrictEqual(result, Exit.fail(ExampleError))
+      }))
+
+    it.effect("combines usage and release failures", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.acquireUseRelease(
+          Effect.void,
+          () => Effect.fail("usage failure"),
+          () => Effect.fail("release failure")
+        ).pipe(Effect.exit)
+        assert.deepStrictEqual(
+          result,
+          Exit.failCause(Cause.combine(Cause.fail("usage failure"), Cause.fail("release failure")))
+        )
       }))
 
     it.effect("rethrown caught error in acquisition", () =>

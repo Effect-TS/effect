@@ -3793,6 +3793,12 @@ export const scopeCloseUnsafe = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>
   return scopeCloseFinalizers(self, finalizers, exit_)
 }
 
+const combineFinalizerCause = <A, E, XE, XR>(
+  exit_: Exit.Exit<A, E>,
+  finalizer: Effect.Effect<void, XE, XR>
+): Effect.Effect<void, E | XE, XR> =>
+  exitIsSuccess(exit_) ? finalizer : catchCause(finalizer, (cause) => failCause(causeCombine(exit_.cause, cause)))
+
 const scopeCloseFinalizers = fnUntraced(function*<A, E>(
   self: Scope.Scope,
   finalizers: Scope.State.Open["finalizers"],
@@ -3989,7 +3995,7 @@ export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
   [contE](cause, _, exit) {
     exit ??= exitFailCause(cause)
     const eff = this[args][1](exit)
-    return eff ? flatMap(eff, (_) => exit) : exit
+    return eff ? flatMap(combineFinalizerCause(exit, eff), (_) => exit) : exit
   }
 })
 

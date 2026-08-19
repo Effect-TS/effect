@@ -6930,7 +6930,8 @@ export const onErrorFilter: {
  * **Details**
  *
  * This low-level operator preserves the source effect's result unless the
- * finalizer fails. Prefer `onExit` for normal cleanup logic.
+ * finalizer fails. If both the source effect and the finalizer fail, the two
+ * causes are merged. Prefer `onExit` for normal cleanup logic.
  *
  * @see {@link onExit} for ordinary exit-aware cleanup whose finalizer always returns an effect
  *
@@ -6946,6 +6947,8 @@ export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
 /**
  * Ensures that a cleanup function runs whether this effect succeeds, fails, or
  * is interrupted.
+ *
+ * If both the effect and the cleanup function fail, the two causes are merged.
  *
  * **Example** (Observing every exit)
  *
