@@ -144,7 +144,7 @@ export class ClusterEntity extends DurableObject<unknown> {
     return Effect.runPromise(this.#manager.acknowledge(requestId, replyId))
   }
 
-  /** @internal Interrupts an in-memory handler execution. Persisted rows remain replayable. */
+  /** @internal Interrupts a handler execution and completes its persisted ask, if any. */
   interrupt(storageRequestId: string, clientRequestId = storageRequestId): Promise<void> {
     return Effect.runPromise(this.#manager.interrupt(storageRequestId, clientRequestId))
   }
