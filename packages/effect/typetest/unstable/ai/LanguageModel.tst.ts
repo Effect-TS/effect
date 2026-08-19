@@ -31,8 +31,27 @@ const ToolWithRequestContext = Tool.make("ToolWithRequestContext", {
   dependencies: [RequestContext]
 })
 
+const TransformTool = Tool.make("TransformTool", {
+  parameters: Schema.FiniteFromString,
+  success: Schema.Finite
+})
+
 describe("LanguageModel", () => {
   describe("generateText", () => {
+    it("uses encoded tool parameters when tool call resolution is disabled", () => {
+      const toolkit = Toolkit.make(TransformTool)
+      const program = LanguageModel.generateText({
+        prompt: "hello",
+        toolkit,
+        disableToolCallResolution: true
+      })
+
+      type ProgramSuccess = typeof program extends Effect.Effect<infer A, any, any> ? A : never
+      type ToolCallParams = ProgramSuccess["toolCalls"][number]["params"]
+
+      expect<ToolCallParams>().type.toBe<string>()
+    })
+
     it("returns an empty tool record when no toolkit is provided", () => {
       const program = LanguageModel.generateText({
         prompt: "hello"

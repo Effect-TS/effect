@@ -240,7 +240,7 @@ export interface Service {
         readonly toolkit: LanguageModel.ToolkitInput<Tools>
       }
     ): Effect.Effect<
-      LanguageModel.GenerateTextResponse<Tools>,
+      LanguageModel.GenerateTextResponse<Tools, LanguageModel.ExtractEncodedToolParameters<Options>>,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
     >
@@ -253,7 +253,10 @@ export interface Service {
         readonly toolkit: Options["toolkit"]
       }
     ): Effect.Effect<
-      LanguageModel.GenerateTextResponse<LanguageModel.ExtractTools<Options>>,
+      LanguageModel.GenerateTextResponse<
+        LanguageModel.ExtractTools<Options>,
+        LanguageModel.ExtractEncodedToolParameters<Options>
+      >,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
     >
@@ -319,7 +322,7 @@ export interface Service {
         readonly toolkit: LanguageModel.ToolkitInput<Tools>
       }
     ): Stream.Stream<
-      Response.StreamPart<Tools>,
+      Response.StreamPart<Tools, LanguageModel.ExtractEncodedToolParameters<Options>>,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
     >
@@ -332,7 +335,10 @@ export interface Service {
         readonly toolkit: Options["toolkit"]
       }
     ): Stream.Stream<
-      Response.StreamPart<LanguageModel.ExtractTools<Options>>,
+      Response.StreamPart<
+        LanguageModel.ExtractTools<Options>,
+        LanguageModel.ExtractEncodedToolParameters<Options>
+      >,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
     >
@@ -390,7 +396,11 @@ export interface Service {
   >(
     options: Options & LanguageModel.GenerateObjectOptions<LanguageModel.ExtractTools<Options>, ObjectSchema>
   ) => Effect.Effect<
-    LanguageModel.GenerateObjectResponse<LanguageModel.ExtractTools<Options>, ObjectSchema["Type"]>,
+    LanguageModel.GenerateObjectResponse<
+      LanguageModel.ExtractTools<Options>,
+      ObjectSchema["Type"],
+      LanguageModel.ExtractEncodedToolParameters<Options>
+    >,
     LanguageModel.ExtractError<Options>,
     LanguageModel.ExtractServices<Options> | ObjectSchema["DecodingServices"] | LanguageModel.LanguageModel
   >
