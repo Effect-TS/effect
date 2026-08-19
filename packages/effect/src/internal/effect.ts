@@ -564,6 +564,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     this._observers.push(cb)
     return () => {
+      if (this._exit) return
       const index = this._observers.indexOf(cb)
       if (index >= 0) {
         this._observers.splice(index, 1)
