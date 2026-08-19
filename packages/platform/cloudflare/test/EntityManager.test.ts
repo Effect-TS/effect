@@ -117,7 +117,7 @@ describe("EntityManager", () => {
         streamRequestId
       ).toArray()[0]
       assert.strictEqual(row.processed, 1)
-      assert.strictEqual(loadNextReply(storage.sql, streamRequestId)?.kind, "WithExit")
+      assert.strictEqual((yield* loadNextReply(storage.sql, streamRequestId))?.kind, "WithExit")
       assert.strictEqual(
         storage.sql.exec(
           "SELECT COUNT(*) AS count FROM cluster_replies WHERE request_id = ? AND kind = 'Chunk' AND acked = 0",
