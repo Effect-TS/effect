@@ -49,7 +49,26 @@ const make = Effect.fnUntraced(function*(
       Effect.tryPromise({
         try: () => client.send(command, args as Array<string>) as Promise<A>,
         catch: (cause) => new Redis.RedisError({ cause })
-      })
+      }),
+    subscribe: (channel, onMessage) =>
+      Effect.acquireRelease(
+        Effect.tryPromise({
+          try: async () => {
+            const subscriber = new RedisClient(options?.url, options)
+            try {
+              await subscriber.subscribe(channel, (message, channel) => {
+                onMessage({ channel, message })
+              })
+              return subscriber
+            } catch (cause) {
+              subscriber.close()
+              throw cause
+            }
+          },
+          catch: (cause) => new Redis.RedisError({ cause })
+        }),
+        (subscriber) => Effect.sync(() => subscriber.close())
+      ).pipe(Effect.as(Effect.never))
   })
 
   const bunRedis = Fn.identity<BunRedis["Service"]>({

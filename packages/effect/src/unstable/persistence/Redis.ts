@@ -1,9 +1,9 @@
 /**
  * Redis support shared by persistence modules.
  *
- * This module defines a `Redis` service that can send Redis commands and run
- * Lua scripts. It does not create a Redis client itself; callers provide a
- * `send` function from their client or connection pool. The module also
+ * This module defines a `Redis` service that can send Redis commands, subscribe
+ * to pub/sub channels, and run Lua scripts. It does not create a Redis client
+ * itself; callers provide the client-specific operations. The module also
  * provides helpers for describing Lua scripts, loading them once, and running
  * them later by their cached Redis id.
  *
@@ -17,16 +17,34 @@ import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import { constant, identity } from "../../Function.ts"
 import * as Hash from "../../Hash.ts"
+import * as Queue from "../../Queue.ts"
 import * as Schema from "../../Schema.ts"
+import * as Scope from "../../Scope.ts"
 
 /**
- * Service for sending Redis commands and evaluating cached Lua scripts.
+ * A message received from a Redis pub/sub channel.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface RedisMessage {
+  readonly channel: string
+  readonly message: string
+}
+
+/**
+ * Service for sending Redis commands, subscribing to channels, and evaluating
+ * cached Lua scripts.
  *
  * @category services
  * @since 4.0.0
  */
 export class Redis extends Context.Service<Redis, {
   readonly send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) => Effect.Effect<A, RedisError>
+
+  readonly subscribe: (
+    channel: string
+  ) => Effect.Effect<Queue.Dequeue<RedisMessage, RedisError>, never, Scope.Scope>
 
   readonly eval: <
     Config extends {
@@ -37,7 +55,7 @@ export class Redis extends Context.Service<Redis, {
 }>()("effect/persistence/Redis") {}
 
 /**
- * Creates a `Redis` service from a raw command sender.
+ * Creates a `Redis` service from raw command and subscription operations.
  *
  * **Details**
  *
@@ -50,6 +68,10 @@ export class Redis extends Context.Service<Redis, {
 export const make = Effect.fnUntraced(function*(
   options: {
     readonly send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) => Effect.Effect<A, RedisError>
+    readonly subscribe: (
+      channel: string,
+      onMessage: (message: RedisMessage) => void
+    ) => Effect.Effect<Effect.Effect<void, RedisError>, RedisError, Scope.Scope>
   }
 ) {
   const scriptCache = yield* Cache.makeWith(
@@ -85,8 +107,29 @@ export const make = Effect.fnUntraced(function*(
     )
   }
 
+  const subscribe = (
+    channel: string
+  ): Effect.Effect<Queue.Dequeue<RedisMessage, RedisError>, never, Scope.Scope> =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<RedisMessage, RedisError>()
+      yield* Scope.addFinalizer(yield* Effect.scope, Queue.shutdown(queue))
+      const subscribeResult = yield* Effect.result(options.subscribe(channel, (message) => {
+        Queue.offerUnsafe(queue, message)
+      }))
+      if (subscribeResult._tag === "Failure") {
+        yield* Queue.fail(queue, subscribeResult.failure)
+        return queue
+      }
+      yield* subscribeResult.success.pipe(
+        Effect.catchCause((cause) => Queue.failCause(queue, cause).pipe(Effect.asVoid)),
+        Effect.forkScoped
+      )
+      return queue
+    })
+
   return identity<Redis["Service"]>({
     send: options.send,
+    subscribe,
     eval: eval_
   })
 })

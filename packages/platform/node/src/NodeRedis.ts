@@ -87,7 +87,30 @@ const make = Effect.fnUntraced(function*(
       Effect.tryPromise({
         try: () => client.sendCommand([command, ...args]) as Promise<A>,
         catch: (cause) => new Redis.RedisError({ cause })
-      })
+      }),
+    subscribe: (channel, onMessage) =>
+      Effect.acquireRelease(
+        Effect.tryPromise({
+          try: async () => {
+            const subscriber = client.duplicate()
+            subscriber.on("error", (cause) => {
+              runSync(Effect.logWarning("NodeRedis subscriber error", cause))
+            })
+            try {
+              await subscriber.connect()
+              await subscriber.subscribe(channel, (message, channel) => {
+                onMessage({ channel, message })
+              })
+              return subscriber
+            } catch (cause) {
+              subscriber.destroy()
+              throw cause
+            }
+          },
+          catch: (cause) => new Redis.RedisError({ cause })
+        }),
+        (subscriber) => Effect.sync(() => subscriber.destroy())
+      ).pipe(Effect.as(Effect.never))
   })
 
   const nodeRedis = Fn.identity<NodeRedis["Service"]>({

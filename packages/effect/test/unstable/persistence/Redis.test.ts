@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Layer } from "effect"
+import { Duration, Effect, Layer, Queue } from "effect"
 import { Persistence, Redis } from "effect/unstable/persistence"
 
 describe("Redis", () => {
@@ -24,6 +24,7 @@ describe("Redis", () => {
         }
         return Effect.succeed(undefined as unknown as A)
       },
+      subscribe: () => Effect.succeed(Effect.never),
       eval: () => () => Effect.die("unused")
     })
     return Effect.gen(function*() {
@@ -43,6 +44,7 @@ describe("Redis", () => {
         commands.push([command, args])
         return Effect.succeed(undefined as unknown as A)
       },
+      subscribe: () => Effect.succeed(Effect.never),
       eval:
         <Config extends { readonly params: ReadonlyArray<unknown>; readonly result: unknown }>() =>
         (...params: Config["params"]) => {
@@ -87,7 +89,8 @@ describe("Redis", () => {
               return Effect.succeed("sha" as any)
             }
             return Effect.succeed("ok")
-          })
+          }),
+        subscribe: () => Effect.succeed(Effect.never)
       })
       const evalScript = redis.eval(
         Redis.script((key: string) => [key], {
@@ -126,7 +129,8 @@ describe("Redis", () => {
               return Effect.fail(new Redis.RedisError({ cause: new Error("NOSCRIPT No matching script") }))
             }
             return Effect.succeed("ok")
-          })
+          }),
+        subscribe: () => Effect.succeed(Effect.never)
       })
       const evalScript = redis.eval(
         Redis.script((key: string) => [key], {
@@ -145,4 +149,36 @@ describe("Redis", () => {
         "EVALSHA"
       ])
     }))
+
+  it.effect("receives messages from a subscription", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const redis = yield* Redis.make({
+        send: () => Effect.die("unused"),
+        subscribe: (_channel, onMessage) =>
+          Effect.sync(() => {
+            onMessage({ channel: "events", message: "hello" })
+            return Effect.never
+          })
+      })
+
+      const subscription = yield* redis.subscribe("events")
+
+      assert.deepStrictEqual(yield* Queue.take(subscription), {
+        channel: "events",
+        message: "hello"
+      })
+    })))
+
+  it.effect("reports subscription failures through the dequeue", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const error = new Redis.RedisError({ cause: new Error("subscription failed") })
+      const redis = yield* Redis.make({
+        send: () => Effect.die("unused"),
+        subscribe: () => Effect.fail(error)
+      })
+
+      const subscription = yield* redis.subscribe("events")
+
+      assert.strictEqual(yield* Queue.take(subscription).pipe(Effect.flip), error)
+    })))
 })
