@@ -16,6 +16,18 @@ describe("RpcServer", () => {
     })
   })
 
+  it("HTTP server options accept streamBufferSize", () => {
+    RpcServer.layerHttp({
+      group: Group,
+      path: "/rpc",
+      protocol: "http",
+      streamBufferSize: 16
+    })
+    RpcServer.layerProtocolHttp({ path: "/rpc", streamBufferSize: 16 })
+    void RpcServer.makeProtocolHttp({ path: "/rpc", streamBufferSize: 16 })
+    void RpcServer.toHttpEffect(Group, { streamBufferSize: 16 })
+  })
+
   it("toHttpEffect accepts disableFatalDefects", () => {
     void RpcServer.toHttpEffect(Group, { disableFatalDefects: true })
   })
