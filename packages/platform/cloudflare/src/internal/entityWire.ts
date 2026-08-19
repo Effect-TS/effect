@@ -15,6 +15,44 @@ import type { EntityRegistration } from "./entityRegistry.ts"
 
 type EncodedRequest = Extract<Envelope.Encoded, { readonly _tag: "Request" }>
 
+/**
+ * The result of a `ClusterEntity.invoke` RPC. Constructed in the Durable
+ * Object as this schema's `Type` (its JSON encoding is the identity) and
+ * decoded once on the Worker side.
+ *
+ * @internal
+ */
+export const InvokeResult = Schema.Union([
+  Schema.Struct({
+    _tag: Schema.Literal("Success"),
+    requestId: Schema.String,
+    replies: Schema.Array(Schema.String)
+  }),
+  Schema.Struct({ _tag: Schema.Literal("MailboxFull") }),
+  Schema.Struct({ _tag: Schema.Literal("EncodedMessageTooLarge") }),
+  Schema.Struct({ _tag: Schema.Literal("AskDeduplicatedToTell") })
+])
+
+/** @internal */
+export type InvokeResult = typeof InvokeResult.Type
+
+/** @internal */
+export const decodeInvokeResult = (value: unknown): Effect.Effect<InvokeResult> =>
+  Effect.orDie(Schema.decodeUnknownEffect(InvokeResult)(value))
+
+const EnvelopePeek = Schema.Struct({ tag: Schema.optional(Schema.String) })
+
+/**
+ * Reads the RPC tag out of a stored envelope without decoding the payload,
+ * for rows whose full decode already failed.
+ *
+ * @internal
+ */
+export const peekEnvelopeTag = (envelopeText: string): Effect.Effect<string | undefined> =>
+  Schema.decodeUnknownEffect(EnvelopePeek)(JSON.parse(envelopeText)).pipe(
+    Effect.match({ onFailure: () => undefined, onSuccess: ({ tag }) => tag })
+  )
+
 /** @internal */
 export const runWith = <A>(
   effect: Effect.Effect<A, any, any>,
