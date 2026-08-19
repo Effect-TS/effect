@@ -3377,6 +3377,11 @@ export function annotate<A extends AST>(ast: A, annotations: Schema.Annotations.
     const last = ast.checks[ast.checks.length - 1]
     return replaceChecks(ast, Arr.append(ast.checks.slice(0, -1), last.annotate(annotations)))
   }
+  return annotateOwn(ast, annotations)
+}
+
+/** @internal */
+export function annotateOwn<A extends AST>(ast: A, annotations: Schema.Annotations.Annotations): A {
   return modifyOwnPropertyDescriptors(ast, (d) => {
     d.annotations.value = { ...d.annotations.value, ...annotations }
   })

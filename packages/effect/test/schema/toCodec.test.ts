@@ -47,6 +47,106 @@ describe("Serializers", () => {
       strictEqual(Schema.toCodecJson(once).ast, once.ast)
     })
 
+    it("inherits representation-independent annotations on artificial JSON encodings", () => {
+      const schema = Schema.Number.annotate({
+        title: "source title",
+        description: "source description",
+        documentation: "source documentation",
+        readOnly: true,
+        writeOnly: false,
+        default: 0,
+        examples: [1],
+        format: "source format",
+        contentEncoding: "source encoding",
+        contentMediaType: "source media type",
+        contentSchema: { type: "number" },
+        custom: "source custom"
+      })
+
+      const encoded = SchemaAST.getLastEncoding(Schema.toCodecJson(schema).ast)
+
+      deepStrictEqual(encoded.annotations, {
+        title: "source title",
+        description: "source description",
+        documentation: "source documentation",
+        readOnly: true,
+        writeOnly: false
+      })
+    })
+
+    it("inherits annotations for every built-in artificial JSON encoding", () => {
+      const schemas = [
+        Schema.Unknown,
+        Schema.ObjectKeyword,
+        Schema.Undefined,
+        Schema.Void,
+        Schema.Literal(1n),
+        Schema.Number,
+        Schema.UniqueSymbol(Symbol.for("a")),
+        Schema.Symbol,
+        Schema.BigInt,
+        Schema.declare((input): input is object => typeof input === "object" && input !== null)
+      ] as const
+
+      for (const schema of schemas) {
+        const encoded = SchemaAST.getLastEncoding(Schema.toCodecJson(schema.annotate({ title: "source title" })).ast)
+        strictEqual(encoded.annotations?.title, "source title", schema.ast._tag)
+      }
+    })
+
+    it("preserves annotations already present on the artificial JSON encoding", () => {
+      const schema = Schema.declare((input): input is URL => input instanceof URL, {
+        title: "source title",
+        description: "source description",
+        documentation: "source documentation",
+        readOnly: true,
+        writeOnly: true,
+        toCodecJson: () =>
+          Schema.link<URL>()(
+            Schema.String.annotate({
+              title: "target title",
+              description: "target description",
+              readOnly: false
+            }).check(Schema.isMinLength(1)),
+            SchemaTransformation.transform({
+              decode: (url) => new URL(url),
+              encode: (url) => url.href
+            })
+          )
+      })
+
+      const encoded = SchemaAST.getLastEncoding(Schema.toCodecJson(schema).ast)
+
+      deepStrictEqual(encoded.annotations, {
+        title: "target title",
+        description: "target description",
+        documentation: "source documentation",
+        readOnly: false,
+        writeOnly: true
+      })
+    })
+
+    it("inherits annotations only from the terminal encoded side", () => {
+      const schema = Schema.String.annotate({ description: "type description" }).pipe(
+        Schema.encodeTo(Schema.Number.annotate({ title: "encoded title" }), {
+          decode: SchemaGetter.transform((value: number) => String(value)),
+          encode: SchemaGetter.transform((value: string) => Number(value))
+        })
+      )
+
+      const encoded = SchemaAST.getLastEncoding(Schema.toCodecJson(schema).ast)
+
+      deepStrictEqual(encoded.annotations, { title: "encoded title" })
+    })
+
+    it("does not inherit annotations resolved from checks", () => {
+      const schema = Schema.Number.check(Schema.isGreaterThan(0)).annotate({ description: "positive number" })
+
+      const encoded = SchemaAST.getLastEncoding(Schema.toCodecJson(schema).ast)
+
+      strictEqual(encoded.annotations, undefined)
+    })
+
     it("should reorder the types in the Union based on the encoded side", async () => {
       const schema = Schema.Union([
         Schema.String,

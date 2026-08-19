@@ -15234,6 +15234,19 @@ export interface toCodecJson<S extends Constraint> extends
  * Derives a canonical JSON codec from a schema. The encoded form is `Json`, and
  * decoding produces the schema's `Type`.
  *
+ * **Details**
+ *
+ * Derivation does not run transformations. Annotation links may be asynchronous,
+ * may fail, and may use optional services; the consuming parser chooses the
+ * execution and failure handling. Because hooks do not widen the returned
+ * service types, links cannot require services not declared by the input schema.
+ *
+ * Artificial JSON encodings inherit only `title`, `description`,
+ * `documentation`, `readOnly`, and `writeOnly` directly attached to the terminal
+ * encoded node. They are attached directly to the terminal JSON node, where
+ * existing values take precedence. Check annotations, earlier encoding nodes,
+ * and all other annotations do not transfer.
+ *
  * **Gotchas**
  *
  * Declarations without a `toCodecJson` or `toCodec` annotation use `Json` as
@@ -15249,12 +15262,37 @@ export function toCodecJson<S extends Constraint>(schema: S): toCodecJson<S> {
   return make(toCodecJsonAST(schema.ast), { schema })
 }
 
+const toCodecJsonInheritedAnnotationKeys = [
+  "title",
+  "description",
+  "documentation",
+  "readOnly",
+  "writeOnly"
+] as const
+
+function inheritToCodecJsonAnnotations(source: SchemaAST.AST, target: SchemaAST.AST): SchemaAST.AST {
+  const sourceAnnotations = source.annotations
+  if (sourceAnnotations === undefined) return target
+  let inherited: Record<string, unknown> | undefined
+  for (const key of toCodecJsonInheritedAnnotationKeys) {
+    const value = sourceAnnotations[key]
+    if (value !== undefined && target.annotations?.[key] === undefined) {
+      if (inherited === undefined) inherited = {}
+      inherited[key] = value
+    }
+  }
+  return inherited === undefined ? target : SchemaAST.annotateOwn(target, inherited)
+}
+
 /** @internal */
 export const toCodecJsonAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
   const out = toCodecJsonASTStep(ast, toCodecJsonAST)
+  const inherited = out !== ast && out.encoding !== undefined && ast.annotations !== undefined ?
+    SchemaAST.applyToSelfOrLastLinkEncoding((target) => inheritToCodecJsonAnnotations(ast, target))(out) :
+    out
   const context = ast.context
-  if (out === ast || context === undefined) return out
-  return SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(context))
+  if (inherited === ast || context === undefined) return inherited
+  return SchemaAST.replaceContextLastLink(inherited, withoutConstructorDefault(context))
 })
 
 function withoutConstructorDefault(context: SchemaAST.Context): SchemaAST.Context {
@@ -15359,8 +15397,18 @@ function toCodecJsonASTStep(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => S
 }
 
 /**
- * Derives an isomorphism codec from a schema. The encoded form is the
- * schema's `Iso` type — the intermediate representation used for round-tripping.
+ * Derives an isomorphism codec from a schema. The encoded form is the schema's
+ * `Iso` type — the intermediate representation used for round-tripping.
+ *
+ * **Details**
+ *
+ * Annotation links may be asynchronous, may fail, and may use optional services;
+ * the consuming parser chooses the execution and failure handling.
+ *
+ * **Gotchas**
+ *
+ * Links cannot require services because the returned `Codec` does not expose
+ * service requirements.
  *
  * @category converting
  * @since 4.0.0
@@ -15435,6 +15483,13 @@ export interface toCodecStringTree<S extends Constraint> extends
 /**
  * Converts a schema to the StringTree canonical codec, where every leaf value
  * becomes a string while preserving the original structure.
+ *
+ * **Details**
+ *
+ * Derivation does not run transformations. Annotation links may be asynchronous,
+ * may fail, and may use optional services; the consuming parser chooses the
+ * execution and failure handling. Links cannot require services not declared by
+ * the input schema because hooks do not widen the returned service types.
  *
  * **Gotchas**
  *
@@ -15993,10 +16048,11 @@ export const isBetweenBigIntReviver: SchemaRepresentation.FilterReviver<{
  *
  * **Gotchas**
  *
- * Either direction can throw an `Error` with the generic message
- * `"Schema validation failed"` and a `SchemaIssue.Issue` in its `cause`. Format
- * the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
- * human-readable details are needed.
+ * This API runs synchronously, so failing, asynchronous, or service-dependent
+ * transformations can throw. Schema failures use `"Schema validation failed"`
+ * with a `SchemaIssue.Issue` in `cause`; format it with
+ * `SchemaIssue.makeFormatterDefault()`. Consume {@link toCodecIso} with an
+ * effectful parser for asynchronous execution or explicit failure handling.
  *
  * @category converting
  * @since 4.0.0
@@ -16104,11 +16160,11 @@ export function overrideToCodecIso<S extends Constraint, Iso>(
  *
  * **Gotchas**
  *
- * Schema encoding or decoding failures throw an `Error` with the generic message
- * `"Schema validation failed"` and a `SchemaIssue.Issue` in its `cause`. Format
- * the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
- * human-readable details are needed. Errors produced by {@link JsonPatch.apply}
- * for invalid patch operations are separate from schema validation failures.
+ * This API runs synchronously, so failing, asynchronous, or service-dependent
+ * transformations can throw. Schema failures use `"Schema validation failed"`
+ * with a `SchemaIssue.Issue` in `cause`; format it with
+ * `SchemaIssue.makeFormatterDefault()`. Invalid patch operations instead produce
+ * {@link JsonPatch.apply} errors.
  *
  * @category converting
  * @since 4.0.0
@@ -16568,15 +16624,41 @@ export declare namespace Annotations {
     readonly representation?:
       | SchemaRepresentation.RepresentationAnnotation
       | undefined
+    /**
+     * Returns the fallback link used by canonical codec derivations.
+     *
+     * Transformations may be asynchronous, may fail, and may use optional
+     * services, but cannot require services absent from the derived codec type.
+     */
     readonly toCodec?:
       | ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link)
       | undefined
+    /**
+     * Returns the link used to derive the declaration's JSON representation, or
+     * `undefined` when the declaration is already in canonical JSON form.
+     *
+     * Transformations follow the execution and service constraints of `toCodec`.
+     */
     readonly toCodecJson?:
       | ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link | undefined)
       | undefined
+    /**
+     * Returns the link used to derive the declaration's StringTree
+     * representation, or `undefined` when it is already canonical.
+     *
+     * Transformations follow the execution and service constraints of `toCodec`.
+     */
     readonly toCodecStringTree?:
       | ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link | undefined)
       | undefined
+    /**
+     * Returns the link used to derive the declaration's isomorphism
+     * representation.
+     *
+     * Transformations may be asynchronous, may fail, and may use optional
+     * services, but cannot require services because the derived `Codec` exposes
+     * none.
+     */
     readonly toCodecIso?:
       | ((typeParameters: TypeParameters.Type<TypeParameters>) => SchemaAST.Link)
       | undefined

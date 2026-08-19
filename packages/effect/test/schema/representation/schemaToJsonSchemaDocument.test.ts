@@ -47,6 +47,34 @@ describe("Schema.toJsonSchemaDocument", () => {
     )
   })
 
+  it("preserves annotations when the JSON codec introduces an encoding", () => {
+    assert.deepStrictEqual(
+      Schema.toJsonSchemaDocument(Schema.Number.annotate({
+        title: "Numeric value",
+        description: "A finite or non-finite number",
+        readOnly: true,
+        writeOnly: false
+      })),
+      {
+        dialect: "draft-2020-12",
+        schema: {
+          anyOf: [
+            { type: "number" },
+            {
+              type: "string",
+              enum: ["Infinity", "-Infinity", "NaN"]
+            }
+          ],
+          title: "Numeric value",
+          description: "A finite or non-finite number",
+          readOnly: true,
+          writeOnly: false
+        },
+        definitions: {}
+      }
+    )
+  })
+
   it("preserves output, references and generation options", () => {
     const shared = Schema.String.check(Schema.isMinLength(2)).annotate({
       identifier: "Shared",
