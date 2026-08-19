@@ -973,9 +973,11 @@ export const layerProtocolWebsocket = (options: {
  * @category protocols
  * @since 4.0.0
  */
-export const makeProtocolWithHttpEffect: (options: {
-  readonly streamBufferSize?: number | "unbounded" | undefined
-}) => Effect.Effect<
+export const makeProtocolWithHttpEffect: (
+  options?: {
+    readonly streamBufferSize?: number | "unbounded" | undefined
+  } | undefined
+) => Effect.Effect<
   {
     readonly protocol: Protocol["Service"]
     readonly httpEffect: Effect.Effect<
@@ -986,7 +988,7 @@ export const makeProtocolWithHttpEffect: (options: {
   },
   never,
   RpcSerialization.RpcSerialization
-> = Effect.fnUntraced(function*(options) {
+> = Effect.fnUntraced(function*(options = {}) {
   const serialization = yield* RpcSerialization.RpcSerialization
   const includesFraming = serialization.includesFraming
   const isBinary = !serialization.contentType.includes("json")
@@ -1213,7 +1215,7 @@ export const toHttpEffect: <Rpcs extends Rpc.Any>(
     readonly streamBufferSize?: number | "unbounded" | undefined
   }
 ) {
-  const { httpEffect, protocol } = yield* makeProtocolWithHttpEffect(options ?? {})
+  const { httpEffect, protocol } = yield* makeProtocolWithHttpEffect(options)
   yield* make(group, options).pipe(
     Effect.provideService(Protocol, protocol),
     Effect.forkScoped
