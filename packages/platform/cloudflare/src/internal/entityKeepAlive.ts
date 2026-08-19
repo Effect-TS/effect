@@ -1,14 +1,8 @@
 /** @internal */
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Latch from "effect/Latch"
 
 /** @internal */
-export class EntityKeepAliveHandler extends Context.Service<
-  EntityKeepAliveHandler,
-  (enabled: boolean) => Effect.Effect<void>
->()("effect/cluster/Entity/KeepAliveHandler") {}
-
 export interface EntityKeepAlive {
   readonly update: (enabled: boolean) => Effect.Effect<void>
   readonly await: Effect.Effect<void>

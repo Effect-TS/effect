@@ -1,8 +1,8 @@
-import { EntityKeepAliveHandler, makeEntityKeepAlive } from "@effect/platform-cloudflare/internal/entityKeepAlive"
+import { makeEntityKeepAlive } from "@effect/platform-cloudflare/internal/entityKeepAlive"
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber } from "effect"
 import { TestClock } from "effect/testing"
-import { EntityResource } from "effect/unstable/cluster"
+import { Entity, EntityResource } from "effect/unstable/cluster"
 
 const makeFixture = Effect.gen(function*() {
   const started = yield* Deferred.make<void>()
@@ -17,7 +17,7 @@ const makeFixture = Effect.gen(function*() {
 const provideKeepAlive = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
   keepAlive: ReturnType<typeof makeEntityKeepAlive>
-) => Effect.provideService(effect, EntityKeepAliveHandler, keepAlive.update) as Effect.Effect<A, E, never>
+) => Effect.provideService(effect, Entity.KeepAliveHandler, keepAlive.update) as Effect.Effect<A, E, never>
 
 describe("EntityKeepAlive", () => {
   it.effect("keeps the pin until the last holder releases", () =>

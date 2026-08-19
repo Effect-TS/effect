@@ -15,6 +15,7 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { MailboxFull, PersistenceError } from "effect/unstable/cluster/ClusterError"
@@ -261,8 +262,10 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
               address: target.address,
               headers: message.headers
             } as any)
-            const replyTo = discard ? undefined : Context.get(context, CurrentEntityName)
-            const replyRegistry = discard ? undefined : Context.get(context, CurrentReplyRegistry)
+            const replyTo = discard ? undefined : Option.getOrUndefined(Context.getOption(context, CurrentEntityName))
+            const replyRegistry = discard
+              ? undefined
+              : Option.getOrUndefined(Context.getOption(context, CurrentReplyRegistry))
             if (delayed && (!persisted || (!discard && primaryKey === null))) {
               entries.delete(clientRequestId)
               return Effect.fail(
@@ -380,8 +383,8 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
           ambient: Context.Context<never>,
           methodOptions?: { readonly context?: Context.Context<never> }
         ) => {
-          const currentEntityName = Context.get(ambient, CurrentEntityName)
-          const replyRegistry = Context.get(ambient, CurrentReplyRegistry)
+          const currentEntityName = Option.getOrUndefined(Context.getOption(ambient, CurrentEntityName))
+          const replyRegistry = Option.getOrUndefined(Context.getOption(ambient, CurrentReplyRegistry))
           let requestContext = currentEntityName === undefined
             ? target
             : Context.add(target, CurrentEntityName, currentEntityName)
