@@ -15270,30 +15270,46 @@ const toCodecJsonInheritedAnnotationKeys = [
   "writeOnly"
 ] as const
 
-function inheritToCodecJsonAnnotations(source: SchemaAST.AST, target: SchemaAST.AST): SchemaAST.AST {
-  const sourceAnnotations = source.annotations
-  if (sourceAnnotations === undefined) return target
+function inheritToCodecJsonAnnotations(
+  sourceAnnotations: Annotations.Annotations,
+  target: SchemaAST.AST
+): SchemaAST.AST {
   let inherited: Record<string, unknown> | undefined
   for (const key of toCodecJsonInheritedAnnotationKeys) {
     const value = sourceAnnotations[key]
     if (value !== undefined && target.annotations?.[key] === undefined) {
-      if (inherited === undefined) inherited = {}
-      inherited[key] = value
+      ;(inherited ??= {})[key] = value
     }
   }
-  return inherited === undefined ? target : SchemaAST.annotateOwn(target, inherited)
+  return inherited === undefined ? target : SchemaAST.modifyOwnPropertyDescriptors(target, (d) => {
+    d.annotations.value = { ...d.annotations.value, ...inherited }
+  })
 }
 
 /** @internal */
 export const toCodecJsonAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
   const out = toCodecJsonASTStep(ast, toCodecJsonAST)
-  const inherited = out !== ast && out.encoding !== undefined && ast.annotations !== undefined ?
-    SchemaAST.applyToSelfOrLastLinkEncoding((target) => inheritToCodecJsonAnnotations(ast, target))(out) :
-    out
-  const context = ast.context
-  if (inherited === ast || context === undefined) return inherited
-  return SchemaAST.replaceContextLastLink(inherited, withoutConstructorDefault(context))
+  if (out === ast || out.encoding === undefined) return out
+  const annotations = ast.annotations
+  const inherited = annotations === undefined ?
+    out :
+    SchemaAST.applyToSelfOrLastLinkEncoding((target) => inheritToCodecJsonAnnotations(annotations, target))(out)
+  return ast.context === undefined ?
+    inherited :
+    SchemaAST.replaceContextLastLink(inherited, withoutConstructorDefault(ast.context))
 })
+
+// Skips metadata copied to artificial JSON nodes because parsers do not consume it.
+const toCodecJsonASTForParser = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+  const out = toCodecJsonASTStep(ast, toCodecJsonASTForParser)
+  const context = ast.context
+  if (out === ast || context === undefined) return out
+  return SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(context))
+})
+
+function toCodecJsonForParser<S extends Constraint>(schema: S): toCodecJson<S> {
+  return make(toCodecJsonASTForParser(schema.ast), { schema })
+}
 
 function withoutConstructorDefault(context: SchemaAST.Context): SchemaAST.Context {
   return context.constructorDefault === undefined ?
@@ -16170,7 +16186,7 @@ export function overrideToCodecIso<S extends Constraint, Iso>(
  * @since 4.0.0
  */
 export function toDifferJsonPatch<T>(schema: ConstraintCodec<T, unknown>): Differ<T, JsonPatch.JsonPatch> {
-  const serializer = toCodecJson(schema)
+  const serializer = toCodecJsonForParser(schema)
   const get = SchemaParser.encodeSync(serializer)
   const set = SchemaParser.decodeSync(serializer)
   return {
