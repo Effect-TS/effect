@@ -24,7 +24,7 @@ describe("Redis", () => {
         }
         return Effect.succeed(undefined as unknown as A)
       },
-      subscribe: () => Effect.succeed(Effect.never),
+      subscribe: () => Queue.unbounded<Redis.RedisMessage, Redis.RedisError>(),
       eval: () => () => Effect.die("unused")
     })
     return Effect.gen(function*() {
@@ -44,7 +44,7 @@ describe("Redis", () => {
         commands.push([command, args])
         return Effect.succeed(undefined as unknown as A)
       },
-      subscribe: () => Effect.succeed(Effect.never),
+      subscribe: () => Queue.unbounded<Redis.RedisMessage, Redis.RedisError>(),
       eval:
         <Config extends { readonly params: ReadonlyArray<unknown>; readonly result: unknown }>() =>
         (...params: Config["params"]) => {
