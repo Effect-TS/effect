@@ -1,7 +1,21 @@
 import type { EntityRegistration } from "@effect/platform-cloudflare/internal/entityRegistry"
 import { makeEntityRuntime } from "@effect/platform-cloudflare/internal/entityRuntime"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Exit, Metric, Option, Schedule, Schema, Stream, Tracer } from "effect"
+import {
+  Cause,
+  Context,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Metric,
+  Option,
+  Schedule,
+  Schema,
+  Scope,
+  Stream,
+  Tracer
+} from "effect"
 import { ClusterMetrics, Entity, EntityAddress, EntityId, EntityType, ShardId } from "effect/unstable/cluster"
 import { Rpc, RpcSchema } from "effect/unstable/rpc"
 
@@ -129,6 +143,72 @@ describe("EntityRuntime", () => {
       assert.strictEqual(replies.length, 2)
       assert.isTrue(replies.every((reply) => reply._tag === "WithExit" && Exit.isSuccess(reply.exit)))
       assert.deepStrictEqual(replies.map((reply) => reply.exit.value), ["pong", "pong"])
+    }))
+
+  it.effect("shares an asynchronous handler build between concurrent first requests", () =>
+    Effect.gen(function*() {
+      const Concurrent = Entity.make("Concurrent", [
+        Rpc.make("Ping", { success: Schema.String })
+      ])
+      const concurrentAddress = new EntityAddress.EntityAddress({
+        shardId: ShardId.make("default", 1),
+        entityType: EntityType.make("Concurrent"),
+        entityId: EntityId.make("42")
+      })
+      const context = Context.empty()
+      const metricContext = Context.merge(
+        context,
+        Metric.CurrentMetricAttributes.context({ type: Concurrent.type })
+      )
+      const releaseBuild = Deferred.makeUnsafe<void>()
+      let builds = 0
+      let finalizers = 0
+      const registration: EntityRegistration = {
+        entity: Concurrent,
+        build: Effect.gen(function*() {
+          const scope = Option.getOrThrow(yield* Effect.serviceOption(Scope.Scope))
+          builds++
+          yield* Scope.addFinalizer(
+            scope,
+            Effect.sync(() => {
+              finalizers++
+            })
+          )
+          yield* Deferred.await(releaseBuild)
+          return Concurrent.of({ Ping: () => Effect.succeed("pong") })
+        }),
+        options: { concurrency: "unbounded" },
+        context
+      }
+      const runtime = yield* makeEntityRuntime(registration, concurrentAddress, () => "reply")
+      const first = yield* Effect.forkChild(
+        runtime.run({ ...request, address: concurrentAddress } as any, Option.none(), false, () => Effect.void)
+      )
+      const second = yield* Effect.forkChild(
+        runtime.run(
+          {
+            ...request,
+            requestId: "0198bd72-6a83-72f1-8d87-5e9b5cf1e003",
+            address: concurrentAddress
+          } as any,
+          Option.none(),
+          false,
+          () => Effect.void
+        )
+      )
+
+      yield* Effect.yieldNow
+      yield* Deferred.succeed(releaseBuild, undefined)
+      yield* Fiber.join(first)
+      yield* Fiber.join(second)
+
+      assert.strictEqual(builds, 1)
+      assert.strictEqual(ClusterMetrics.entities.valueUnsafe(metricContext).value, BigInt(1))
+      assert.strictEqual(finalizers, 0)
+
+      yield* runtime.invalidate()
+      assert.strictEqual(ClusterMetrics.entities.valueUnsafe(metricContext).value, BigInt(0))
+      assert.strictEqual(finalizers, 1)
     }))
 
   it.effect("resumes ask stream sequence from lastSentChunk and ends with WithExit", () =>
