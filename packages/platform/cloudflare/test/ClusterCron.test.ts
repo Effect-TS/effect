@@ -132,7 +132,7 @@ class FakeCronDestination {
     delivery?: { readonly deliverAt?: number; readonly primaryKey?: string | null }
   ) {
     const requestId = String(JSON.parse(envelope).requestId)
-    persistRequest(
+    const persist = persistRequest(
       this.sql.sql,
       envelope,
       delivery?.primaryKey ?? null,
@@ -140,8 +140,8 @@ class FakeCronDestination {
       delivery?.deliverAt ?? null
     )
     const effect = delivery?.deliverAt === undefined
-      ? Effect.void
-      : armAlarm(this.alarm.storage, delivery.deliverAt)
+      ? persist
+      : Effect.andThen(persist, armAlarm(this.alarm.storage, delivery.deliverAt))
     return Effect.runPromise(
       Effect.as(effect, { _tag: "Success" as const, requestId, replies: [] as ReadonlyArray<string> })
     )
@@ -156,14 +156,14 @@ class FakeCronDestination {
     const nextReplyId = () => `reply-${this.#nextReplyId++}`
     return Effect.gen(function*() {
       alarm.current = null
-      for (const row of loadDue(sql.sql, now)) {
+      for (const row of yield* loadDue(sql.sql, now)) {
         const encoded = JSON.parse(row.envelope)
         const registration = getEntityRegistration(encoded.address.entityType)
         if (registration === undefined) return yield* Effect.die("Missing cron entity registration")
         const request = yield* decodeRequest(registration, row.envelope)
         const runtime = yield* makeEntityRuntime(registration, request.address, nextReplyId)
         yield* runtime.run(request, Option.none(), row.discard, () => Effect.void)
-        completeTell(sql.sql, String(request.requestId))
+        yield* completeTell(sql.sql, String(request.requestId))
       }
       const next = earliestDeliverAt(sql.sql)
       if (next !== undefined) yield* armAlarm(alarm.storage, next)

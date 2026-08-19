@@ -18,7 +18,7 @@ import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
 import * as ClusterMetrics from "effect/unstable/cluster/ClusterMetrics"
 import { Persisted } from "effect/unstable/cluster/ClusterSchema"
-import { CurrentAddress, CurrentRunnerAddress, Request } from "effect/unstable/cluster/Entity"
+import { CurrentAddress, CurrentRunnerAddress, KeepAliveHandler, Request } from "effect/unstable/cluster/Entity"
 import type * as EntityAddress from "effect/unstable/cluster/EntityAddress"
 import * as Envelope from "effect/unstable/cluster/Envelope"
 import * as Reply from "effect/unstable/cluster/Reply"
@@ -26,18 +26,15 @@ import * as RunnerAddress from "effect/unstable/cluster/RunnerAddress"
 import * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcSchema from "effect/unstable/rpc/RpcSchema"
 import { encodeName } from "./clusterName.ts"
-import { EntityKeepAliveHandler } from "./entityKeepAlive.ts"
 import type { EntityKeepAlive } from "./entityKeepAlive.ts"
 import {
   ackChunk,
   clearReplies,
   completeTell,
-  EncodedMessageTooLargeError,
   loadDue,
   loadMessage,
   loadNextReply,
   loadUnprocessed,
-  MailboxFullError,
   persistRequest,
   type PersistResult,
   saveReply,
@@ -45,7 +42,7 @@ import {
 } from "./entityMailbox.ts"
 import { type EntityRegistration, getEntityRegistration } from "./entityRegistry.ts"
 import { CurrentEntityName, CurrentReplyRegistry, type EntityReplyRegistry, makeReplyRegistry } from "./entityReply.ts"
-import { armAlarm, earliestDeliverAt } from "./entityStorage.ts"
+import { armAlarm, earliestDeliverAt, withTransaction } from "./entityStorage.ts"
 import { decodeReplyFor, decodeRequest, encodeReplyFor, type InvokeResult, peekEnvelopeTag } from "./entityWire.ts"
 
 interface CachedHandlers {
@@ -94,7 +91,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
       Context.add(Scope.Scope, scope)
     )
     if (keepAlive !== undefined) {
-      context = Context.add(context, EntityKeepAliveHandler, keepAlive)
+      context = Context.add(context, KeepAliveHandler, keepAlive)
     }
     if (replyRegistry !== undefined) {
       context = Context.add(context, CurrentReplyRegistry, replyRegistry)
@@ -448,7 +445,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     if (!discard) {
       const active = sessions.get(requestId)
       if (active !== undefined) {
-        const nextReply = persisted ? loadNextReply(sql, requestId) : undefined
+        const nextReply = persisted ? yield* loadNextReply(sql, requestId) : undefined
         return Effect.succeed(nextReply === undefined ? [] : [nextReply.reply])
       }
     }
@@ -464,7 +461,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         Effect.gen(function*() {
           const encoded = yield* encodeReplyFor(registration, rpc, reply)
           if (persisted) {
-            storage.transactionSync(() => saveReply(sql, encoded))
+            yield* Effect.orDie(withTransaction(storage, saveReply(sql, encoded)))
           }
           if (scheduled && reply._tag === "WithExit") {
             yield* deliverScheduledReply(requestId, encoded, runOptions?.replyTos)
@@ -475,10 +472,10 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           ? execute
           : Semaphore.withPermit(entityRuntime.handlerSemaphore, execute)).pipe(
             Effect.onExit((exit) =>
-              Effect.sync(() => {
-                if (!persisted) return
-                if (discard && Exit.isSuccess(exit)) completeTell(sql, requestId)
+              Effect.suspend(() => {
+                if (!persisted) return Effect.void
                 pendingRuns.delete(requestId)
+                return discard && Exit.isSuccess(exit) ? completeTell(sql, requestId) : Effect.void
               })
             )
           )
@@ -500,11 +497,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           })
         ),
         (reply) =>
-          Effect.sync(() =>
-            storage.transactionSync(() => {
-              clearReplies(sql, requestId)
-              saveReply(sql, reply)
-            })
+          Effect.orDie(
+            withTransaction(storage, Effect.andThen(clearReplies(sql, requestId), saveReply(sql, reply)))
           )
       )
       : Effect.void
@@ -515,7 +509,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       Effect.gen(function*() {
         const encoded = yield* encodeReplyFor(registration, rpc, reply)
         if (persisted) {
-          storage.transactionSync(() => saveReply(sql, encoded))
+          yield* Effect.orDie(withTransaction(storage, saveReply(sql, encoded)))
         }
         if (reply._tag === "Chunk") {
           const acknowledged = Deferred.makeUnsafe<void>()
@@ -567,13 +561,11 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     Effect.suspend(() => peekEnvelopeTag(row.envelope)).pipe(
       Effect.flatMap((tag) => {
         if (row.discard || tag === undefined) {
-          completeTell(sql, row.requestId)
-          return Effect.void
+          return completeTell(sql, row.requestId)
         }
         const rpc = registration.entity.protocol.requests.get(tag) as Rpc.AnyWithProps | undefined
         if (rpc === undefined) {
-          completeTell(sql, row.requestId)
-          return Effect.void
+          return completeTell(sql, row.requestId)
         }
         return Effect.flatMap(
           encodeReplyFor(
@@ -586,15 +578,11 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
             })
           ),
           (reply) =>
-            Effect.sync(() => storage.transactionSync(() => saveReply(sql, reply))).pipe(
+            withTransaction(storage, saveReply(sql, reply)).pipe(
               Effect.andThen(deliverScheduledReply(row.requestId, reply, row.replyTos))
             )
         ).pipe(
-          Effect.catchCause(() =>
-            Effect.sync(() => {
-              completeTell(sql, row.requestId)
-            })
-          )
+          Effect.catchCause(() => completeTell(sql, row.requestId))
         )
       })
     )
@@ -673,7 +661,10 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     }
     return Effect.gen(function*() {
       const entityRuntime = yield* getRuntime(registration)
-      const replayFibers = yield* replayRows(registration, entityRuntime, loadUnprocessed(sql))
+      const replayFibers = yield* Effect.flatMap(
+        loadUnprocessed(sql),
+        (rows) => replayRows(registration, entityRuntime, rows)
+      )
       // Preserves the pre-split ordering: the invoke result is delivered
       // only after the replayed rows this entry kicked off have finished.
       const finish = (
@@ -693,22 +684,17 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       }
 
       const persistedResult = yield* Effect.result(
-        // Preserve unknown thrown values so the fallback defect is unchanged.
-        // @effect-diagnostics-next-line unknownInEffectCatch:off
-        Effect.try({
-          try: () =>
-            storage.transactionSync(() =>
-              persistRequest(
-                sql,
-                envelopeText,
-                delivery?.primaryKey ?? Envelope.primaryKey(envelope),
-                discard,
-                delivery?.deliverAt,
-                delivery?.replyTo
-              )
-            ),
-          catch: (error) => error
-        }).pipe(
+        withTransaction(
+          storage,
+          persistRequest(
+            sql,
+            envelopeText,
+            delivery?.primaryKey ?? Envelope.primaryKey(envelope),
+            discard,
+            delivery?.deliverAt,
+            delivery?.replyTo
+          )
+        ).pipe(
           Effect.withSpan("CloudflareCluster.persist", {
             attributes: {
               entityType: registration.entity.type,
@@ -720,22 +706,20 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         )
       )
       if (Result.isFailure(persistedResult)) {
-        const error = persistedResult.failure
-        if (error instanceof MailboxFullError) {
-          return Effect.succeed<InvokeResult>({ _tag: "MailboxFull" })
-        } else if (error instanceof EncodedMessageTooLargeError) {
-          return Effect.succeed<InvokeResult>({ _tag: "EncodedMessageTooLarge" })
-        }
-        return yield* Effect.die(error)
+        return Effect.succeed<InvokeResult>(
+          persistedResult.failure._tag === "MailboxFull"
+            ? { _tag: "MailboxFull" }
+            : { _tag: "EncodedMessageTooLarge" }
+        )
       }
       const persisted: PersistResult = persistedResult.success
       if (persisted._tag === "Duplicate") {
-        const original = loadMessage(sql, persisted.originalId)
+        const original = yield* loadMessage(sql, persisted.originalId)
         if (original === undefined) return yield* Effect.die("Duplicate mailbox row disappeared")
         if (original.discard && !discard) {
           return Effect.succeed<InvokeResult>({ _tag: "AskDeduplicatedToTell" })
         }
-        const nextReply = loadNextReply(sql, persisted.originalId)
+        const nextReply = yield* loadNextReply(sql, persisted.originalId)
         if (nextReply !== undefined) {
           if (nextReply.kind === "WithExit") sessions.delete(persisted.originalId)
           return Effect.succeed(success(persisted.originalId, [nextReply.reply]))
@@ -781,18 +765,21 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     Effect.flatten(Semaphore.withPermit(semaphore, invokeEntry(envelopeText, discard, delivery)))
 
   const acknowledge = (requestId: string, replyId: string): Effect.Effect<ReadonlyArray<string>> =>
-    Effect.suspend(() => {
-      storage.transactionSync(() => ackChunk(sql, requestId, replyId))
-      const session = sessions.get(requestId)
-      if (session?.ack?.replyId === replyId) {
-        const acknowledged = session.ack.deferred
-        session.ack = undefined
-        Deferred.doneUnsafe(acknowledged, Effect.void)
-        return takeReply(requestId, session)
-      }
-      const nextReply = loadNextReply(sql, requestId)
-      return Effect.succeed(nextReply === undefined ? [] : [nextReply.reply])
-    })
+    withTransaction(storage, ackChunk(sql, requestId, replyId)).pipe(
+      Effect.flatMap(() => {
+        const session = sessions.get(requestId)
+        if (session?.ack?.replyId === replyId) {
+          const acknowledged = session.ack.deferred
+          session.ack = undefined
+          Deferred.doneUnsafe(acknowledged, Effect.void)
+          return takeReply(requestId, session)
+        }
+        return Effect.map(
+          loadNextReply(sql, requestId),
+          (nextReply) => nextReply === undefined ? [] : [nextReply.reply]
+        )
+      })
+    )
 
   const interrupt = (storageRequestId: string, clientRequestId = storageRequestId): Effect.Effect<void> =>
     Effect.suspend(() => {
@@ -818,10 +805,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       return Effect.andThen(stop, session.completeInterrupt)
     })
 
-  const reset = (requestId: string): Effect.Effect<void> =>
-    Effect.sync(() => {
-      storage.transactionSync(() => clearReplies(sql, requestId))
-    })
+  const reset = (requestId: string): Effect.Effect<void> => withTransaction(storage, clearReplies(sql, requestId))
 
   const alarm = Effect.suspend(() => {
     const registration = getEntityRegistration(options.address.entityType)
@@ -835,7 +819,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       semaphore,
       Effect.flatMap(
         getRuntime(registration),
-        (entityRuntime) => replayRows(registration, entityRuntime, loadDue(sql))
+        (entityRuntime) => Effect.flatMap(loadDue(sql), (rows) => replayRows(registration, entityRuntime, rows))
       )
     ).pipe(
       Effect.flatMap((fibers) => Effect.asVoid(Fiber.awaitAll(fibers))),
