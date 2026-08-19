@@ -64,6 +64,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
   replyRegistry?: EntityReplyRegistry
 ) {
   let cached: CachedHandlers | undefined
+  let building: Deferred.Deferred<CachedHandlers> | undefined
   const metricContext = Context.merge(
     registration.context,
     Metric.CurrentMetricAttributes.context({ type: registration.entity.type })
@@ -84,8 +85,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     )
   })
 
-  const getHandlers = Effect.fnUntraced(function*() {
-    if (cached !== undefined) return cached
+  const buildHandlers = Effect.fnUntraced(function*() {
     const scope = yield* Scope.make()
     let context = registration.context.pipe(
       Context.add(CurrentAddress, address),
@@ -99,10 +99,26 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     if (replyRegistry !== undefined) {
       context = Context.add(context, CurrentReplyRegistry, replyRegistry)
     }
-    const handlers = yield* Effect.provideContext(registration.build, context)
+    const handlers = yield* Effect.provideContext(registration.build, context).pipe(
+      Effect.tapCause((cause) => Scope.close(scope, Exit.failCause(cause)))
+    )
     ClusterMetrics.entities.modifyUnsafe(BigInt(1), metricContext)
-    return cached = { handlers, context, scope }
+    return { handlers, context, scope }
   })
+
+  const getHandlers = (): Effect.Effect<CachedHandlers> =>
+    Effect.suspend(() => {
+      if (cached !== undefined) return Effect.succeed(cached)
+      if (building !== undefined) return Deferred.await(building)
+      const deferred = Deferred.makeUnsafe<CachedHandlers>()
+      building = deferred
+      return Effect.onExit(buildHandlers(), (exit) =>
+        Effect.sync(() => {
+          building = undefined
+          if (Exit.isSuccess(exit)) cached = exit.value
+          Deferred.doneUnsafe(deferred, exit)
+        }))
+    })
 
   const runWithDefectRetry = <A, E, R>(effect: Effect.Effect<A, E, R>) => {
     const policy = registration.options?.defectRetryPolicy
