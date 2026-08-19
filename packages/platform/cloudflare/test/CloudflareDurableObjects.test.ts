@@ -240,7 +240,7 @@ describe("CloudflareDurableObjects", () => {
           `/delayed?id=${id}&operationId=same&discard=true&deliverAt=${Date.now() + 60_000}`
         )
         const duplicate = yield* fetchJson(`/mailbox?id=${id}&tag=Add&operationId=same&discard=false`)
-        assert.strictEqual(duplicate.error, "AskDeduplicatedToTell")
+        assert.strictEqual(duplicate._tag, "AskDeduplicatedToTell")
 
         const result = yield* fetchJson(`/mailbox?id=${id}&tag=Get`)
         assert.deepStrictEqual(JSON.parse(result.replies[0]).exit, { _tag: "Success", value: 0 })
@@ -266,7 +266,7 @@ describe("CloudflareDurableObjects", () => {
       yield* fetchJson(`/mailbox?id=${id}&tag=Add&operationId=same`)
       const duplicate = yield* fetchJson(`/mailbox?id=${id}&tag=Add&operationId=same&discard=false`)
 
-      assert.strictEqual(duplicate.error, "AskDeduplicatedToTell")
+      assert.strictEqual(duplicate._tag, "AskDeduplicatedToTell")
     }), 60_000)
 
   it.effect("delivers a scheduled ask reply to the caller Durable Object", () =>
