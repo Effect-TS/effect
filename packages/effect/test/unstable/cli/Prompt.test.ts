@@ -416,13 +416,19 @@ describe("Prompt.select", () => {
 
       yield* Prompt.run(Prompt.select({
         message: "Pick item",
-        theme: { descriptionSeparator: "" },
+        theme: {
+          descriptionSeparator: "",
+          mutedColor: `${escape}[34m`
+        },
         choices: [{ title: "First", value: "first", description: "one" }]
       }))
 
-      const frames = toFrames(yield* MockTerminal.displayLines)
+      const output = yield* MockTerminal.displayLines
+      const frames = toFrames(output)
+      const rawFrames = toRawFrames(output)
       assert.isTrue(frames.some((frame) => frame.includes("First one")))
       assert.isFalse(frames.some((frame) => frame.includes("Firstone")))
+      assert.isTrue(rawFrames.some((frame) => frame.includes(`${escape}[34mone${escape}[0m`)))
     }).pipe(Effect.provide(TestLayer)))
 
   it.effect("aligns choices when paging arrows have different widths", () =>
@@ -520,6 +526,20 @@ describe("Prompt.toggle", () => {
       const frames = toFrames(yield* MockTerminal.displayLines)
       assert.isTrue(frames.some((frame) => frame.includes("on | off")))
       assert.isFalse(frames.some((frame) => frame.includes("on / off")))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("keeps labels separated when the theme separator is empty", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.toggle({
+        message: "Enabled",
+        theme: { toggleSeparator: "" }
+      }))
+
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.isTrue(frames.some((frame) => frame.includes("on off")))
+      assert.isFalse(frames.some((frame) => frame.includes("onoff")))
     }).pipe(Effect.provide(TestLayer)))
 })
 

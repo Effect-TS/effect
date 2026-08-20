@@ -2668,12 +2668,10 @@ const renderChoiceDescription = <A>(
   renderOptions?: RenderOptions | undefined
 ) => {
   if (!choice.disabled && choice.description && isActive) {
-    if (theme.descriptionSeparator.length === 0) {
-      return choice.description
-    }
+    const text = theme.descriptionSeparator + choice.description
     return renderOptions?.plain === true
-      ? theme.descriptionSeparator + choice.description
-      : Ansi.annotate(theme.descriptionSeparator + choice.description, theme.mutedColor)
+      ? text
+      : Ansi.annotate(text, theme.mutedColor)
   }
   return ""
 }
@@ -3670,8 +3668,6 @@ const renderTextInput = (
     theme.errorColor
     : submitted ?
     theme.submittedColor
-    : nextState.value.length === 0 ?
-    theme.mutedColor
     : Ansi.combine(Ansi.underlined, theme.primaryColor)
 
   switch (options.type) {
@@ -3928,9 +3924,7 @@ const handleToggleClear = Effect.fnUntraced(function*(options: ToggleOptionsReq)
   const columns = yield* terminal.columns
   const figures = yield* getTheme(options)
   const clearPrompt = Ansi.eraseLine + Ansi.cursorLeft
-  const toggleText = options.active
-    + (figures.toggleSeparator.length === 0 ? "" : ` ${figures.toggleSeparator} `)
-    + options.inactive
+  const toggleText = options.active + " " + separateSymbol(figures.toggleSeparator, options.inactive)
   const promptText = renderPrompt(toggleText, options.message, figures.prefix, figures.pointerSmall, { plain: true })
   const clearOutput = eraseText(promptText, columns)
   return clearOutput + clearPrompt
@@ -3953,7 +3947,7 @@ const renderToggle = (
   const active = value
     ? Ansi.annotate(options.active, selectedAnnotation)
     : options.active
-  return active + (separator.length === 0 ? "" : " " + separator + " ") + inactive
+  return active + " " + separateSymbol(separator, inactive)
 }
 
 const renderToggleOutput = (
