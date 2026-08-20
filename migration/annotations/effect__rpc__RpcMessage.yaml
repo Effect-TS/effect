@@ -1,3 +1,6 @@
+"@effect/rpc/RpcMessage#FromServerEncoded":
+  replacement: "effect/unstable/rpc/RpcMessage#FromServerEncoded"
+  note: "The union is retained and now also includes RequestEncoded for server-originated requests and notifications. Handle _tag: \"Request\" when matching exhaustively; isNotification identifies notifications."
 "@effect/rpc/RpcMessage#RequestIdTypeId":
   replacement: "effect/unstable/rpc/RpcMessage#RequestId"
   note: "The public symbol marker was removed; use the branded RequestId type and RequestId constructor rather than inspecting its brand."
