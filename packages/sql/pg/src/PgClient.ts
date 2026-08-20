@@ -97,7 +97,7 @@ export interface PgClient extends Client.SqlClient {
 export const PgClient = Context.Service<PgClient>("@effect/sql-pg/PgClient")
 
 /**
- * Configuration for a PostgreSQL client, including connection, TLS, custom stream, application name, type parser, JSON transform, and query/result name transform options.
+ * Configuration for a PostgreSQL client, including connection, TLS, pipelining, custom stream, application name, type parser, JSON transform, and query/result name transform options.
  *
  * @category models
  * @since 4.0.0
@@ -114,6 +114,11 @@ export interface PgClientConfig {
   readonly password?: Redacted.Redacted | undefined
 
   readonly connectTimeout?: Duration.Input | undefined
+
+  /**
+   * Whether to enable `pg` pipeline mode. Defaults to `false`.
+   */
+  readonly pipeline?: boolean | undefined
 
   readonly stream?: (() => Duplex) | undefined
 
@@ -162,6 +167,7 @@ export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, S
         connectionTimeoutMillis: options.connectTimeout
           ? Duration.toMillis(Duration.fromInputUnsafe(options.connectTimeout))
           : undefined,
+        pipeline: options.pipeline ?? false,
         idleTimeoutMillis: options.idleTimeout
           ? Duration.toMillis(Duration.fromInputUnsafe(options.idleTimeout))
           : undefined,
@@ -234,6 +240,7 @@ export const makeClient = (
             password: options.password ? Redacted.value(options.password) : undefined,
             ssl: options.ssl,
             port: options.port,
+            pipeline: options.pipeline ?? false,
             ...(options.stream ? { stream: options.stream } : {}),
             application_name: options.applicationName ?? "@effect/sql-pg",
             types: options.types
@@ -443,6 +450,7 @@ export const fromPool = Effect.fnUntraced(function*(
     username: pool.options.user,
     password: typeof pool.options.password === "string" ? Redacted.make(pool.options.password) : undefined,
     ssl: pool.options.ssl,
+    pipeline: pool.options.pipeline,
     applicationName: pool.options.application_name,
     types: pool.options.types
   }
@@ -547,7 +555,8 @@ export const fromClient = Effect.fnUntraced(function*(
     database: client.database,
     username: client.user,
     password: typeof client.password === "string" ? Redacted.make(client.password) : undefined,
-    ssl: client.ssl
+    ssl: client.ssl,
+    pipeline: client.pipeline
   }
 
   return yield* makeWith({
