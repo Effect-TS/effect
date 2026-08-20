@@ -17,8 +17,9 @@
  * compiled wire layout; structs are written positionally, with a presence
  * bitmap instead of field ids and no length prefix on fixed-size leaves, and
  * union members are addressed by a canonical index. A reader whose layout
- * hashes differently rejects the frame instead of guessing it. The two modes
- * are selected by envelope flag bit 0 and are never interchangeable.
+ * hashes differently rejects the frame instead of guessing it, so peers must
+ * ship the same schema definition rather than merely a compatible one. The two
+ * modes are selected by envelope flag bit 0 and are never interchangeable.
  *
  * @since 4.0.0
  */
@@ -1512,15 +1513,25 @@ function pushU64(out: Array<number>, n: bigint) {
 }
 
 /**
- * Hashes the wire-relevant structure of a compiled layout with 64-bit FNV-1a.
+ * Hashes the compiled layout graph with 64-bit FNV-1a.
  *
  * The hash is a Merkle walk: every node mixes its own structure plus the
- * 64-bit hash of each child, so two structurally identical layouts hash the
- * same whether or not they share a compiled node. Field and property names,
- * checks, and annotations are never mixed in; field ids, optionality, wire
- * kinds, variant tags, and array shape are. Cycles terminate on a back edge
- * carrying the number of levels back to the repeated node, which keeps the
- * hash independent of where the cycle was entered.
+ * 64-bit hash of each child. Field and property names, checks, and annotations
+ * are never mixed in; field ids, optionality, wire kinds, variant tags, and
+ * array shape are. Cycles terminate on a back edge carrying the number of
+ * levels back to the repeated node, so the hash does not depend on where a
+ * given cycle is entered, and an acyclic sub-layout hashes the same whether it
+ * is a shared compiled node or written out twice.
+ *
+ * What this hashes is the compiled layout *graph*, not the infinite wire shape
+ * that graph denotes. Those coincide for acyclic layouts. They do not once a
+ * cycle is involved: the same unfolding has many finite cyclic representations
+ * and each encodes differently, so a self-recursive `Tree` and the same schema
+ * with one extra non-recursive node in front of the cycle produce identical
+ * frames but different hashes and reject each other. Closing that gap needs
+ * bisimulation minimisation over the layout graph, which is a lot of machinery
+ * for a case that already fails closed. Peers must ship the same schema
+ * definition, not merely the same wire shape.
  */
 function layoutFingerprint(root: Layout): bigint {
   const cache = new Map<Layout, bigint>()
@@ -2906,9 +2917,15 @@ function withCycleGuard(target: Schema.Constraint): Schema.Constraint {
  * positionally without field ids, fixed-size leaves drop their length prefix,
  * and union members are addressed by a canonical index instead of a kind byte
  * and a 32-bit sentinel tag. A reader whose layout hashes differently rejects
- * the frame rather than guessing, so both sides must ship the same wire
- * layout. Non-wire schema changes (checks, annotations, decoded-side
- * transformations, field declaration order) leave the hash alone.
+ * the frame rather than guessing. Non-wire schema changes (checks,
+ * annotations, decoded-side transformations, field declaration order, and
+ * repeating an acyclic sub-schema instead of sharing one) leave the hash
+ * alone.
+ *
+ * The hash covers the compiled layout graph rather than the wire shape it
+ * denotes, so peers must ship the same schema definition. Re-factoring a
+ * recursive schema without changing a byte of its output still moves the
+ * hash; see {@link layoutFingerprint}.
  *
  * @category models
  * @since 4.0.0

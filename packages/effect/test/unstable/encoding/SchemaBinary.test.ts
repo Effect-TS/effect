@@ -51,15 +51,25 @@ const roundtripFingerprint = <A, I>(schema: Schema.Codec<A, I>, value: A): A => 
   return Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(value))
 }
 
-// The 8 bytes that follow the fingerprint envelope, as a comparable string.
-const fingerprintOf = <A, I>(schema: Schema.Codec<A, I>, value: A): string => {
+// Splits a fingerprint frame into its layout hash and the payload after it,
+// both as comparable strings.
+const fingerprintFrame = <A, I>(
+  schema: Schema.Codec<A, I>,
+  value: A
+): { readonly fingerprint: string; readonly payload: string } => {
   const bytes = encodeFingerprint(schema, value)
   let offset = 0
   while ((bytes[offset] & 0x80) !== 0) offset++
   offset++
   assert.strictEqual(bytes[offset], 0x11)
-  return Array.from(bytes.subarray(offset + 1, offset + 9)).join(",")
+  return {
+    fingerprint: Array.from(bytes.subarray(offset + 1, offset + 9)).join(","),
+    payload: Array.from(bytes.subarray(offset + 9)).join(",")
+  }
 }
+
+const fingerprintOf = <A, I>(schema: Schema.Codec<A, I>, value: A): string =>
+  fingerprintFrame(schema, value).fingerprint
 
 const schemaError = (f: () => unknown): Schema.SchemaError => {
   try {
@@ -1315,7 +1325,7 @@ describe("SchemaBinary", () => {
       )
     })
 
-    it("does not depend on whether a sub-schema is shared or repeated", () => {
+    it("does not depend on whether an acyclic sub-schema is shared or repeated", () => {
       const Point = Schema.Struct({ x: Schema.Number, y: Schema.Number })
       const pair = { a: { x: 1, y: 2 }, b: { x: 3, y: 4 } }
       const shared = fingerprintOf(Schema.Struct({ a: Point, b: Point }), pair)
@@ -1341,12 +1351,72 @@ describe("SchemaBinary", () => {
       }
       const leaf = { value: 1, children: [] }
       assert.strictEqual(fingerprintOf(makeTree(), leaf), fingerprintOf(makeTree(), leaf))
-      // one recursive node reached from two fields, versus two of them
+      // one recursive node reached from two fields, versus two of them. Both
+      // sides have the same cycle structure, which is the only recursive case
+      // the hash canonicalises; see the factoring test below for the limit.
       const both = { left: leaf, right: leaf }
       const one = makeTree()
       assert.strictEqual(
         fingerprintOf(Schema.Struct({ left: one, right: one }), both),
         fingerprintOf(Schema.Struct({ left: makeTree(), right: makeTree() }), both)
+      )
+    })
+
+    it("hashes the layout graph, so re-factoring a recursive schema moves it", () => {
+      interface Tree {
+        readonly value: number
+        readonly children: ReadonlyArray<Tree>
+      }
+      const makeTree = (): Schema.Codec<Tree> => {
+        const self: Schema.Codec<Tree> = Schema.Struct({
+          value: Schema.Number,
+          children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => self))
+        })
+        return self
+      }
+      // Three finite graphs denoting the same infinite wire shape: the cycle
+      // itself, the cycle behind one non-recursive alias, and a two-node
+      // mutual recursion of the same shape.
+      const direct = makeTree()
+      const aliased = Schema.Struct({
+        value: Schema.Number,
+        children: Schema.Array(makeTree())
+      }) as unknown as Schema.Codec<Tree>
+      const mutualA: Schema.Codec<Tree> = Schema.Struct({
+        value: Schema.Number,
+        children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => mutualB))
+      })
+      const mutualB: Schema.Codec<Tree> = Schema.Struct({
+        value: Schema.Number,
+        children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => mutualA))
+      })
+
+      const tree = { value: 1, children: [{ value: 2, children: [] }] }
+      const frames = [direct, aliased, mutualA].map((schema) => fingerprintFrame(schema, tree))
+
+      // identical bytes on the wire
+      assert.strictEqual(new Set(frames.map((frame) => frame.payload)).size, 1)
+      // and identical in the tolerant default mode, in both directions
+      const directDefault = SchemaBinary.toCodec(direct)
+      const aliasedDefault = SchemaBinary.toCodec(aliased)
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(aliasedDefault)(Schema.encodeUnknownSync(directDefault)(tree)),
+        tree
+      )
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(directDefault)(Schema.encodeUnknownSync(aliasedDefault)(tree)),
+        tree
+      )
+
+      // but each factoring hashes differently, and they reject each other
+      assert.strictEqual(new Set(frames.map((frame) => frame.fingerprint)).size, 3)
+      assert.include(
+        schemaError(() =>
+          Schema.decodeUnknownSync(SchemaBinary.toCodec(aliased, { fingerprint: true }))(
+            encodeFingerprint(direct, tree)
+          )
+        ).message,
+        "Expected matching layout fingerprint"
       )
     })
 
