@@ -114,6 +114,10 @@ export interface PgClientConfig {
   readonly password?: Redacted.Redacted | undefined
 
   readonly connectTimeout?: Duration.Input | undefined
+
+  /**
+   * Whether to enable `pg` pipeline mode. Defaults to `false`.
+   */
   readonly pipeline?: boolean | undefined
 
   readonly stream?: (() => Duplex) | undefined
@@ -163,7 +167,7 @@ export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, S
         connectionTimeoutMillis: options.connectTimeout
           ? Duration.toMillis(Duration.fromInputUnsafe(options.connectTimeout))
           : undefined,
-        pipeline: options.pipeline ?? true,
+        pipeline: options.pipeline ?? false,
         idleTimeoutMillis: options.idleTimeout
           ? Duration.toMillis(Duration.fromInputUnsafe(options.idleTimeout))
           : undefined,
@@ -236,7 +240,7 @@ export const makeClient = (
             password: options.password ? Redacted.value(options.password) : undefined,
             ssl: options.ssl,
             port: options.port,
-            pipeline: options.pipeline ?? true,
+            pipeline: options.pipeline ?? false,
             ...(options.stream ? { stream: options.stream } : {}),
             application_name: options.applicationName ?? "@effect/sql-pg",
             types: options.types
