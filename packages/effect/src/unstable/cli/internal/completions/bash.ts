@@ -16,24 +16,6 @@ const escapeForBash = (s: string): string => s.replace(/'/g, "'\\''")
 
 const sanitizeFunctionName = (s: string): string => s.replace(/[^a-zA-Z0-9_]/g, "_")
 
-/**
- * Every function name `generateFunction` will emit. `sanitizeFunctionName` maps
- * any character to `_`, so a subcommand can produce any name — the shared helper
- * has to pick one that is provably not among them.
- */
-const emittedFunctionNames = (
-  descriptor: Completions.CommandDescriptor,
-  parentPath: ReadonlyArray<string>,
-  names: Set<string>
-): Set<string> => {
-  const currentPath = [...parentPath, descriptor.name]
-  names.add(`_${currentPath.map(sanitizeFunctionName).join("_")}`)
-  for (const sub of descriptor.subcommands) {
-    emittedFunctionNames(sub, currentPath, names)
-  }
-  return names
-}
-
 const flagNamesForWordlist = (flag: Completions.FlagDescriptor): Array<string> => {
   const names: Array<string> = [`--${flag.name}`]
   for (const alias of flag.aliases) {
@@ -67,7 +49,8 @@ const buildFlagGroupDeclarations = (
   }
   lines.push(`  local -A _used_groups`)
   lines.push(`  for ((i = 1; i < cword; i++)); do`)
-  lines.push(`    local _g="\${_flag_groups[\${words[i]}]:-}"`)
+  lines.push(`    local _w="\${words[i]%%=*}"`)
+  lines.push(`    local _g="\${_flag_groups[$_w]:-}"`)
   lines.push(`    [[ -n "$_g" ]] && _used_groups[$_g]=1`)
   lines.push(`  done`)
   lines.push(`  local _filtered_flags=""`)
@@ -96,7 +79,9 @@ const buildFlagGroupDeclarations = (
  * rather than inserted broken.
  *
  * Dequoting is best effort: it drops quotes and backslashes, so a value whose
- * own text contains one will not match once the user types it escaped.
+ * own text contains one will not match once the user types it escaped. A value
+ * holding `!` is also left as is inside a user-opened double quote: history
+ * expansion still applies there and `\!` would stay literal.
  */
 const choicesHelper = (helperName: string, lines: Array<string>): void => {
   lines.push(`${helperName}()`)
@@ -142,6 +127,8 @@ const choicesHelper = (helperName: string, lines: Array<string>): void => {
   lines.push(`        printf -v _match '%q' "$_rest"`)
   lines.push(`        ;;`)
   lines.push(`    esac`)
+  // readline omits the closing quote when the match already ends with it
+  lines.push(`    [[ -n "$_open" && "$_match" == *"$_open" ]] && _match+="$_open"`)
   lines.push(`    COMPREPLY+=("$_match")`)
   lines.push(`  done`)
   lines.push(`}`)
@@ -194,7 +181,9 @@ const generateFunction = (
   lines.push(`{`)
   lines.push(`  local cur prev words cword i`)
   lines.push(parentPath.length === 0 ? `  local _command_index=0` : `  local _command_index="$1"`)
-  lines.push(`  _init_completion || return`)
+  // Split words on whitespace only; a value like `node:20` is otherwise three
+  // words, which hides the flag from `$prev` and inflates the positional count.
+  lines.push(`  _init_completion -n "$COMP_WORDBREAKS" || return`)
   if (parentPath.length === 0) {
     // Bash passes the text readline will replace as $2, which subcommand
     // functions do not receive; bash scopes locals dynamically, so capturing it
@@ -336,9 +325,9 @@ export const generate = (
 ): string => {
   const lines: Array<string> = []
   const safeName = sanitizeFunctionName(executableName)
-  const taken = emittedFunctionNames(descriptor, [], new Set())
-  let helperName = `_${safeName}__choices`
-  while (taken.has(helperName)) helperName += "_"
+  // `-` cannot appear in a name `sanitizeFunctionName` produces, so no command
+  // function can collide with the helper.
+  const helperName = `_${safeName}--choices`
 
   lines.push(`###-begin-${escapeForBash(executableName)}-completions-###`)
   lines.push(`#`)
@@ -351,15 +340,32 @@ export const generate = (
 
   // Inline minimal _init_completion fallback for environments without
   // bash-completion installed. The real _init_completion handles edge cases
-  // (= in options, redirections, etc.) but this covers the common path.
+  // (redirections, etc.) but this covers the common path, including the
+  // whitespace-only word splitting that `-n "$COMP_WORDBREAKS"` asks for.
   lines.push(`if ! type _init_completion &>/dev/null; then`)
   lines.push(`  _init_completion()`)
   lines.push(`  {`)
   lines.push(`    COMPREPLY=()`)
-  lines.push(`    cur="\${COMP_WORDS[COMP_CWORD]}"`)
-  lines.push(`    prev="\${COMP_WORDS[COMP_CWORD-1]}"`)
-  lines.push(`    words=("\${COMP_WORDS[@]}")`)
-  lines.push(`    cword=$COMP_CWORD`)
+  lines.push(`    local _i _j=0 _piece _line="$COMP_LINE"`)
+  lines.push(`    words=("\${COMP_WORDS[0]}")`)
+  lines.push(`    cword=0`)
+  lines.push(`    _line="\${_line#*"\${COMP_WORDS[0]}"}"`)
+  lines.push(`    # A word ends where the line has whitespace, not at every wordbreak`)
+  lines.push(`    for ((_i = 1; _i < \${#COMP_WORDS[@]}; _i++)); do`)
+  lines.push(`      _piece="\${COMP_WORDS[_i]}"`)
+  lines.push(`      if [[ "$_line" == [[:blank:]]* ]]; then`)
+  lines.push(`        ((_j++))`)
+  lines.push(`        words[_j]="$_piece"`)
+  lines.push(`      else`)
+  lines.push(`        words[_j]="\${words[_j]}$_piece"`)
+  lines.push(`      fi`)
+  lines.push(`      ((_i == COMP_CWORD)) && cword=$_j`)
+  lines.push(`      _line="\${_line#*"$_piece"}"`)
+  lines.push(`    done`)
+  lines.push(`    cur="\${words[cword]}"`)
+  lines.push(`    prev=""`)
+  lines.push(`    ((cword > 0)) && prev="\${words[cword-1]}"`)
+  lines.push(`    return 0`)
   lines.push(`  }`)
   lines.push(`fi`)
   lines.push(``)

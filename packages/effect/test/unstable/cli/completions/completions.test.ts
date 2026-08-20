@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Argument, Command, Flag } from "effect/unstable/cli"
 import * as Completions from "effect/unstable/cli/Completions"
 import * as Bash from "effect/unstable/cli/internal/completions/bash"
@@ -61,11 +61,28 @@ const withChoices = Command.make("deploy", {
   )
 }).pipe(Command.withDescription("Deploy application"))
 
+const trickyValues = [
+  "it's-fine",
+  "node:20",
+  "with space",
+  "(whoami)",
+  "#tag",
+  "$HOME",
+  "back\\slash",
+  `say"hi"`,
+  "a*b",
+  "a;b",
+  "~x",
+  "foo'",
+  "a!b",
+  "\u{1F680}"
+]
+
 const withTrickyChoices = Command.make("deploy", {
-  mode: Flag.choice("mode", ["it's-fine", "node:20", "with space", "(whoami)", "#tag", "$HOME"]).pipe(
+  mode: Flag.choice("mode", trickyValues).pipe(
     Flag.withDescription("Deploy mode")
   ),
-  target: Argument.choice("target", ["o'clock", "a:b", "{x,y}"]).pipe(
+  target: Argument.choice("target", ["o'clock", "a:b", "{x,y}", "a\u{1F600}b"]).pipe(
     Argument.withDescription("Deployment target")
   )
 }).pipe(Command.withDescription("Deploy application"))
@@ -106,6 +123,15 @@ const nested3Levels = (() => {
 const emptyCmd = Command.make("noop").pipe(
   Command.withDescription("Does nothing")
 )
+
+const choicesHelperSource = (script: string): string => {
+  const start = script.indexOf("_deploy--choices()")
+  const end = script.indexOf("\n}\n", start)
+  return script.slice(start, end + 2)
+}
+
+const linesWith = (script: string, needle: string): string =>
+  script.split("\n").filter((line) => line.includes(needle)).map((line) => line.trim()).join("\n")
 
 // ---------------------------------------------------------------------------
 // Bash completions
@@ -154,8 +180,8 @@ describe("Bash completions", () => {
     assert.include(script, `--verbose|-v|--no-verbose) ;;`)
     assert.include(script, `--format|-f) _skip_next=1 ;;`)
     assert.include(script, `--format=*|-f=*) ;;`)
-    assert.include(script, `0)\n      _tool__choices "$cur" "$_comp_word" 'one'`)
-    assert.include(script, `1)\n      _tool__choices "$cur" "$_comp_word" 'two'`)
+    assert.include(script, `0)\n      _tool--choices "$cur" "$_comp_word" 'one'`)
+    assert.include(script, `1)\n      _tool--choices "$cur" "$_comp_word" 'two'`)
   })
 
   it("generates completion function for root command", () => {
@@ -163,7 +189,7 @@ describe("Bash completions", () => {
     const script = Bash.generate("greet", desc)
     assert.include(script, "_greet()")
     assert.include(script, "complete -F _greet greet")
-    assert.include(script, "_init_completion || return")
+    assert.include(script, `_init_completion -n "$COMP_WORDBREAKS" || return`)
   })
 
   it("includes subcommand names in word list", () => {
@@ -224,50 +250,73 @@ describe("Bash completions", () => {
   it("inlines choice values for choice flags", () => {
     const desc = fromCommand(withChoices)
     const script = Bash.generate("deploy", desc)
-    assert.include(script, `_deploy__choices "$cur" "$_comp_word" 'dev' 'staging' 'prod'`)
+    assert.include(script, `_deploy--choices "$cur" "$_comp_word" 'dev' 'staging' 'prod'`)
   })
 
   it("quotes choice values instead of exposing them to compgen -W re-expansion", () => {
-    const desc = fromCommand(withTrickyChoices)
-    const script = Bash.generate("deploy", desc)
-    assert.include(
-      script,
-      `_deploy__choices "$cur" "$_comp_word" 'it'\\''s-fine' 'node:20' 'with space' '(whoami)' '#tag' '$HOME'`
-    )
-    assert.include(script, `_deploy__choices "$cur" "$_comp_word" 'o'\\''clock' 'a:b' '{x,y}'`)
+    const script = Bash.generate("deploy", fromCommand(withTrickyChoices))
+    expect(linesWith(script, `_deploy--choices "$cur"`)).toMatchInlineSnapshot(`
+      "_deploy--choices "$cur" "$_comp_word" 'it'\\''s-fine' 'node:20' 'with space' '(whoami)' '#tag' '$HOME' 'back\\slash' 'say"hi"' 'a*b' 'a;b' '~x' 'foo'\\''' 'a!b' '🚀'
+      _deploy--choices "$cur" "$_comp_word" 'o'\\''clock' 'a:b' '{x,y}' 'a😀b'"
+    `)
     assert.notInclude(script, `compgen -W 'it`)
   })
 
-  it("completes only the part readline will replace", () => {
-    const desc = fromCommand(withTrickyChoices)
-    const script = Bash.generate("deploy", desc)
-    // bash passes that text as $2; whatever precedes it is already on the line
-    assert.include(script, `local _comp_word="$2"`)
-    assert.include(script, `local _head="\${_cur%"$_word"}"`)
-    assert.include(script, `_rest="\${_choice#"$_committed"}"`)
+  it("splits words on whitespace only, so a value holding a word-break character stays one word", () => {
+    const script = Bash.generate("deploy", fromCommand(withTrickyChoices))
+    assert.include(script, `_init_completion -n "$COMP_WORDBREAKS" || return`)
   })
 
-  it("escapes matches for the quoting context the committed text leaves open", () => {
-    const desc = fromCommand(withTrickyChoices)
-    const script = Bash.generate("deploy", desc)
-    assert.include(script, `printf -v _match '%q' "$_rest"`)
-    assert.include(script, `_match="\${_match//\\$/\\\\$}"`)
-    assert.include(script, `_match=\${_rest//\\'/\\'\\\\\\'\\'}`)
-    // a quote opened mid-word cannot absorb a value carrying one
-    assert.include(script, `[[ "$_rest" == *\\'* ]] && continue`)
-  })
+  it("emits the choice helper", () => {
+    const script = Bash.generate("deploy", fromCommand(withTrickyChoices))
+    expect(choicesHelperSource(script)).toMatchInlineSnapshot(`
+      "_deploy--choices()
+      {
+        local _cur="$1" _word="$2"; shift 2
 
-  it("picks a choices-helper name that no generated command function can collide with", () => {
-    const collidingName = Command.make("deploy", {
-      mode: Flag.choice("mode", ["a"])
-    }).pipe(
-      Command.withSubcommands([Command.make("-choices", { m: Flag.choice("m", ["b"]) })])
-    )
-    const script = Bash.generate("deploy", fromCommand(collidingName))
-    assert.include(script, "_deploy__choices()")
-    assert.include(script, "_deploy__choices_()")
-    assert.include(script, `_deploy__choices_ "$cur" "$_comp_word" 'a'`)
-    assert.notInclude(script, `_deploy__choices "$cur"`)
+        # Text readline keeps, and the quote it leaves open
+        local _head="\${_cur%"$_word"}"
+        local _open=""
+        case "$_head" in
+          *\\') _open="'" ;;
+          *\\") _open='"' ;;
+        esac
+
+        local _prefix="$_cur" _committed="$_head"
+        _prefix=\${_prefix//\\\\/}; _prefix=\${_prefix//\\"/}; _prefix=\${_prefix//\\'/}
+        _committed=\${_committed//\\\\/}; _committed=\${_committed//\\"/}; _committed=\${_committed//\\'/}
+
+        COMPREPLY=()
+        local _choice _rest _match
+        for _choice in "$@"; do
+          [[ "$_choice" == "$_prefix"* ]] || continue
+          _rest="\${_choice#"$_committed"}"
+          case "$_open" in
+            "'")
+              if [[ "$_head" == "'" ]]; then
+                # splice: bare assignment, since inside double quotes \\' is not an escape
+                _match=\${_rest//\\'/\\'\\\\\\'\\'}
+              else
+                # quote opened mid-word: a value carrying one cannot be spliced in
+                [[ "$_rest" == *\\'* ]] && continue
+                _match="$_rest"
+              fi
+              ;;
+            '"')
+              _match="\${_rest//\\\\/\\\\\\\\}"
+              _match="\${_match//\\$/\\\\$}"
+              _match="\${_match//\\\`/\\\\\\\`}"
+              _match="\${_match//\\"/\\\\\\"}"
+              ;;
+            *)
+              printf -v _match '%q' "$_rest"
+              ;;
+          esac
+          [[ -n "$_open" && "$_match" == *"$_open" ]] && _match+="$_open"
+          COMPREPLY+=("$_match")
+        done
+      }"
+    `)
   })
 
   it("generates separate functions for nested subcommands", () => {
@@ -326,9 +375,10 @@ describe("Bash completions", () => {
     const script = Bash.generate("greet", desc)
     assert.include(script, "if ! type _init_completion &>/dev/null; then")
     assert.include(script, "COMPREPLY=()")
-    assert.include(script, "cur=\"${COMP_WORDS[COMP_CWORD]}\"")
-    assert.include(script, "cword=$COMP_CWORD")
-    assert.include(script, "fi")
+    // reassembles COMP_WORDS the way `-n "$COMP_WORDBREAKS"` would
+    assert.include(script, `if [[ "$_line" == [[:blank:]]* ]]; then`)
+    assert.include(script, "((_i == COMP_CWORD)) && cword=$_j")
+    assert.include(script, `cur="\${words[cword]}"`)
   })
 })
 
