@@ -542,8 +542,14 @@ class IndexSignatureCache {
   }
 }
 
-const EMPTY_READER_BUFFER = new Uint8Array(0)
-const EMPTY_READER_VIEW = new DataView(EMPTY_READER_BUFFER.buffer)
+// Both placeholders read the same named `ArrayBuffer` rather than reaching
+// through `EMPTY_READER_BUFFER.buffer`. A member access in argument position
+// defeats the `@__PURE__` annotation the build adds, which pinned this pair
+// into the bundle of every consumer that imports the encoding barrel without
+// ever touching this module.
+const EMPTY_READER_ARRAY_BUFFER = new ArrayBuffer(0)
+const EMPTY_READER_BUFFER = new Uint8Array(EMPTY_READER_ARRAY_BUFFER)
+const EMPTY_READER_VIEW = new DataView(EMPTY_READER_ARRAY_BUFFER)
 const EMPTY_PARSE_OPTIONS: SchemaAST.ParseOptions = {}
 
 class Reader {
@@ -2384,9 +2390,9 @@ function decodeExtraPair(layout: StructLayout, r: Reader, out: Record<string, un
 }
 
 // Both wire modes report a missing required field the same way: one
-// `MissingKey` per field under a `Pointer` to its name, collected into a
-// `Composite`. Only `errors: "all"` decides whether the first one stops the
-// decode.
+// `MissingKey` under a `Pointer` to its name. The call sites accumulate them
+// and `throwMissingKeys` wraps the batch in a `Composite`; only
+// `errors: "all"` decides whether the first one stops the decode.
 function missingKeyIssue(field: Field): SchemaIssue.Issue {
   return new SchemaIssue.Pointer([field.name], new SchemaIssue.MissingKey(field.annotations))
 }
