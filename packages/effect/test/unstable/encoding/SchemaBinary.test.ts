@@ -36,6 +36,13 @@ const concat = (...chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
   return out
 }
 
+const sameNumber = (actual: unknown, expected: number) => {
+  assert.isTrue(
+    Object.is(actual, expected),
+    `expected ${globalThis.String(actual)} to be exactly ${globalThis.String(expected)}`
+  )
+}
+
 const schemaError = (f: () => unknown): Schema.SchemaError => {
   try {
     f()
@@ -52,7 +59,8 @@ describe("SchemaBinary", () => {
       const numbers = [1.5, Number.NaN, -0, Number.POSITIVE_INFINITY]
       const numberBytes = encode(Schema.Array(Schema.Number), numbers)
       const decoded = roundtrip(Schema.Array(Schema.Number), numbers)
-      assert.strictEqual(numberBytes.length, 35)
+      // length, envelope, count, mode byte, four f64 elements
+      assert.strictEqual(numberBytes.length, 36)
       assert.strictEqual(decoded[0], 1.5)
       assert.isTrue(Number.isNaN(decoded[1]))
       assert.isTrue(Object.is(decoded[2], -0))
@@ -84,7 +92,8 @@ describe("SchemaBinary", () => {
 
     it("omits the count for fixed tuples and includes it for optional tuples", () => {
       const pair = Schema.Tuple([Schema.String, Schema.Number])
-      assert.strictEqual(encode(pair, ["key", 42]).length, 14)
+      // length, envelope, then a length-prefixed slot each: "key" and varint 42
+      assert.strictEqual(encode(pair, ["key", 42]).length, 8)
       assert.deepStrictEqual(roundtrip(pair, ["key", 42]), ["key", 42])
 
       const optional = Schema.Tuple([Schema.Number, Schema.optionalKey(Schema.Number)])
@@ -104,7 +113,7 @@ describe("SchemaBinary", () => {
     it("writes a length-first frame and rejects envelope or leftovers", () => {
       const codec = SchemaBinary.toCodec(Schema.Number)
       const bytes = Schema.encodeUnknownSync(codec)(1)
-      assert.deepStrictEqual(Array.from(bytes.slice(0, 2)), [9, 0x10])
+      assert.deepStrictEqual(Array.from(bytes), [2, 0x10, 0x02])
 
       const flags = bytes.slice()
       flags[1] = 0x11
@@ -176,6 +185,170 @@ describe("SchemaBinary", () => {
         yield* Effect.yieldNow
         assert.deepStrictEqual(encoded.map((bytes) => decode(bytes)), values)
       })
+    })
+  })
+
+  describe("numbers", () => {
+    it("encodes integral values as sign-magnitude varints", () => {
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, 0)), [2, 0x10, 0])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, -0)), [2, 0x10, 1])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, 1)), [2, 0x10, 2])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, -1)), [2, 0x10, 3])
+      for (const value of [0, -0, 1, -1, 42, -42, 127, -128]) {
+        sameNumber(roundtrip(Schema.Number, value), value)
+      }
+    })
+
+    it("covers every varint width up to the seven byte cap, both signs", () => {
+      for (let width = 1; width <= 7; width++) {
+        // the widest magnitude this many varint bytes can hold, and the first
+        // magnitude that needs one more
+        const last = 2 ** (7 * width - 1) - 1
+        const next = 2 ** (7 * width - 1)
+        for (const sign of [1, -1]) {
+          const inside = sign * last
+          const outside = sign * next
+          assert.strictEqual(encode(Schema.Number, inside).length, 2 + width, `${inside}`)
+          sameNumber(roundtrip(Schema.Number, inside), inside)
+          // past the cap the value takes the f64 form instead of an eighth byte
+          assert.strictEqual(encode(Schema.Number, outside).length, width === 7 ? 10 : 3 + width, `${outside}`)
+          sameNumber(roundtrip(Schema.Number, outside), outside)
+        }
+      }
+    })
+
+    it("keeps f64 for values no capped varint can hold", () => {
+      const values = [
+        1.5,
+        -1.5,
+        Number.EPSILON,
+        Number.NaN,
+        Number.POSITIVE_INFINITY,
+        Number.NEGATIVE_INFINITY,
+        Number.MAX_SAFE_INTEGER,
+        Number.MIN_SAFE_INTEGER,
+        Number.MAX_VALUE,
+        2 ** 48,
+        -(2 ** 48)
+      ]
+      for (const value of values) {
+        assert.strictEqual(encode(Schema.Number, value).length, 10, `${value}`)
+        sameNumber(roundtrip(Schema.Number, value), value)
+      }
+    })
+
+    it("discriminates the two forms by the enclosing field length", () => {
+      const schema = Schema.Struct({ n: Schema.Number })
+      // length, envelope, five-byte field id, field length, payload
+      assert.strictEqual(encode(schema, { n: 7 }).length, 9)
+      assert.strictEqual(encode(schema, { n: 7.5 }).length, 16)
+      assert.deepStrictEqual(roundtrip(schema, { n: 7 }), { n: 7 })
+      assert.deepStrictEqual(roundtrip(schema, { n: 7.5 }), { n: 7.5 })
+      sameNumber(roundtrip(schema, { n: -0 }).n, -0)
+    })
+
+    it("packs a uniform number array behind one mode byte", () => {
+      const integers = [0, -0, 1, -1, 1000, -1000]
+      // length, envelope, count, mode, four one-byte and two two-byte varints
+      assert.strictEqual(encode(Schema.Array(Schema.Number), integers).length, 12)
+      const decoded = roundtrip(Schema.Array(Schema.Number), integers)
+      integers.forEach((value, index) => sameNumber(decoded[index], value))
+
+      // one value outside the varint form moves the whole run to f64
+      const mixed = [1, 2.5]
+      assert.strictEqual(encode(Schema.Array(Schema.Number), mixed).length, 20)
+      assert.deepStrictEqual(roundtrip(Schema.Array(Schema.Number), mixed), mixed)
+      assert.deepStrictEqual(roundtrip(Schema.Array(Schema.Number), []), [])
+      assert.deepStrictEqual(
+        roundtrip(Schema.Array(Schema.Array(Schema.Number)), [[1, 2], [], [3.5]]),
+        [[1, 2], [], [3.5]]
+      )
+    })
+
+    it("length-prefixes each number slot of a tuple", () => {
+      const pair = Schema.Tuple([Schema.Number, Schema.Number])
+      assert.strictEqual(encode(pair, [1, 2]).length, 6)
+      assert.strictEqual(encode(pair, [1, 2.5]).length, 13)
+      assert.deepStrictEqual(roundtrip(pair, [1, 2.5]), [1, 2.5])
+      const rest = Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number])
+      assert.deepStrictEqual(roundtrip(rest, ["head", 1, 2.5, 3]), ["head", 1, 2.5, 3])
+    })
+
+    it("carries both forms behind the union kind byte", () => {
+      const schema = Schema.Union([Schema.Number, Schema.String])
+      assert.strictEqual(encode(schema, 5).length, 4)
+      assert.strictEqual(encode(schema, 5.5).length, 11)
+      assert.strictEqual(roundtrip(schema, 5), 5)
+      assert.strictEqual(roundtrip(schema, 5.5), 5.5)
+      assert.strictEqual(roundtrip(schema, "x"), "x")
+      sameNumber(roundtrip(schema, -0), -0)
+
+      const tagged = Schema.Union([
+        Schema.Struct({ _tag: Schema.Literal("A"), n: Schema.Number }),
+        Schema.Struct({ _tag: Schema.Literal("B"), n: Schema.Int })
+      ])
+      assert.deepStrictEqual(roundtrip(tagged, { _tag: "A", n: 1.5 }), { _tag: "A", n: 1.5 })
+      assert.deepStrictEqual(roundtrip(tagged, { _tag: "B", n: -7 }), { _tag: "B", n: -7 })
+    })
+
+    it("parses a stream whose numbers change width", () => {
+      const values = [0, -0, 1, -1, 63, 64, 1_000_000, -1_000_000, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER]
+      const bytes = concat(...values.map((value) => encode(Schema.Number, value)))
+      const parser = SchemaBinary.parser(Schema.Number)
+      const out: Array<number> = []
+      for (const byte of bytes) out.push(...parser.feedSync(Uint8Array.of(byte)))
+      parser.endSync()
+      assert.strictEqual(out.length, values.length)
+      values.forEach((value, index) => sameNumber(out[index], value))
+    })
+
+    it("emits a bare varint when the schema proves the value is an integer", () => {
+      assert.deepStrictEqual(Array.from(encode(Schema.Int, 1)), [2, 0x10, 2])
+      assert.deepStrictEqual(Array.from(encode(Schema.Natural, 1)), [2, 0x10, 2])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number.check(Schema.isInt32()), 1)), [2, 0x10, 2])
+
+      // no mode byte for an array, no length prefix for a tuple slot
+      assert.strictEqual(encode(Schema.Array(Schema.Int), [1, 2, 3]).length, 6)
+      assert.strictEqual(encode(Schema.Array(Schema.Number), [1, 2, 3]).length, 7)
+      assert.strictEqual(encode(Schema.Tuple([Schema.Int, Schema.Int]), [1, 2]).length, 4)
+      assert.strictEqual(encode(Schema.Tuple([Schema.Number, Schema.Number]), [1, 2]).length, 6)
+
+      for (const value of [0, -0, 1, -1, 2 ** 48, -(2 ** 48), Number.MAX_SAFE_INTEGER, Number.MIN_SAFE_INTEGER]) {
+        sameNumber(roundtrip(Schema.Int, value), value)
+        sameNumber(roundtrip(Schema.Array(Schema.Int), [value])[0], value)
+        sameNumber(roundtrip(Schema.Struct({ n: Schema.Int }), { n: value }).n, value)
+      }
+      assert.deepStrictEqual(
+        roundtrip(Schema.Array(Schema.Int), [1, -2, 3]),
+        [1, -2, 3]
+      )
+    })
+
+    it("rejects a non-integer that reaches the integer layout", () => {
+      const codec = SchemaBinary.toCodec(Schema.Int)
+      assert.match(
+        schemaError(() => Schema.encodeUnknownSync(codec, { disableChecks: true })(1.5)).message,
+        /an integer/
+      )
+    })
+
+    it("rejects malformed number payloads", () => {
+      const codec = SchemaBinary.toCodec(Schema.Number)
+      // nine payload bytes are neither the varint nor the f64 form
+      const wide = new Uint8Array([10, 0x10, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+      assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(wide)).message, /Expected f64/)
+      // a varint that never terminates inside its extent
+      const truncated = new Uint8Array([3, 0x10, 0x80, 0x80])
+      assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(truncated)).message, /complete value/)
+
+      const arrayCodec = SchemaBinary.toCodec(Schema.Array(Schema.Number))
+      const run = Schema.encodeUnknownSync(arrayCodec)([1, 2, 3])
+      const unknownMode = run.slice()
+      unknownMode[3] = 2
+      assert.match(schemaError(() => Schema.decodeUnknownSync(arrayCodec)(unknownMode)).message, /Expected f64/)
+      const shortRun = run.slice(0, run.length - 1)
+      shortRun[0] -= 1
+      assert.match(schemaError(() => Schema.decodeUnknownSync(arrayCodec)(shortRun)).message, /complete value/)
     })
   })
 
@@ -310,7 +483,7 @@ describe("SchemaBinary", () => {
 
     it("delivers completed values before reporting a later failure", () => {
       const good = encode(Schema.Number, 1)
-      const bad = encode(Schema.Number, 2).slice(0, 4)
+      const bad = encode(Schema.Number, 2).slice(0, 2)
       const parser = SchemaBinary.parser(Schema.Number)
       assert.deepStrictEqual(parser.feedSync(concat(good, bad)), [1])
       assert.match(schemaError(() => parser.endSync()).message, /complete value/)
@@ -526,14 +699,15 @@ describe("SchemaBinary", () => {
 
   describe("parse options", () => {
     it("honors checks and disableChecks", () => {
-      const bytes = encode(Schema.Number, 1.5)
+      const NonNegative = Schema.Number.check(Schema.isGreaterThanOrEqualTo(0))
+      const bytes = encode(Schema.Number, -1.5)
       assert.match(
-        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Int))(bytes)).message,
-        /integer/
+        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(NonNegative))(bytes)).message,
+        /greater than or equal to 0/
       )
 
-      const parser = SchemaBinary.parser(Schema.Int, { disableChecks: true })
-      assert.deepStrictEqual(parser.feedSync(bytes), [1.5])
+      const parser = SchemaBinary.parser(NonNegative, { disableChecks: true })
+      assert.deepStrictEqual(parser.feedSync(bytes), [-1.5])
       parser.endSync()
     })
 
@@ -549,10 +723,10 @@ describe("SchemaBinary", () => {
       })
       let Reader: Schema.Codec<Node>
       Reader = Schema.Struct({
-        value: Schema.Int,
+        value: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
         children: Schema.Array(Schema.suspend(() => Reader))
       })
-      const value: Node = { value: 1.5, children: [] }
+      const value: Node = { value: -1.5, children: [] }
       const parser = SchemaBinary.parser(Reader, { disableChecks: true })
 
       assert.deepStrictEqual(parser.feedSync(encode(Writer, value)), [value])

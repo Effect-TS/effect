@@ -18,35 +18,52 @@ Treat the measurements as a per-machine comparison within one run. Runtime versi
 
 ## Measured comparison
 
-One run on Node 26.7.0, Linux x64. One-shot throughput is the average of 1,000 measured
+One run on Node 26.7.0, Linux x64, on the wire format that encodes integral
+numbers as varints. One-shot throughput is the average of 1,000 measured
 samples per task; treat these as a within-run comparison, not a portable score.
+
+Payload sizes are exact and portable, so they are the part of this table worth
+comparing across machines.
+
+| Case                   | SchemaBinary |  JSON | Msgpack | SchemaBinary vs Msgpack |
+| ---------------------- | -----------: | ----: | ------: | ----------------------: |
+| small record           |           58 |    89 |      69 |           1.19x smaller |
+| nested payload         |          318 |   453 |     385 |           1.21x smaller |
+| collections            |         1452 |  1828 |    1462 |           1.01x smaller |
+| large repeated records |        27646 | 57529 |   51283 |           1.85x smaller |
+
+Encoding integral numbers as varints took these payloads from 72, 347, 2553 and
+31486 bytes. The collections case stays close to Msgpack because it is
+dominated by genuinely non-integral floats, which stay in the eight-byte f64
+form.
 
 The encode rows exercise both ownership models on every case. Decode does not depend on output ownership, so the arena rows below are compared with Msgpack.
 
 | Case                   | SchemaBinary arena | SchemaBinary copy | Arena vs copy | Msgpack |
 | ---------------------- | -----------------: | ----------------: | ------------: | ------: |
-| small record           |            462,238 |           444,428 |         1.04x | 470,631 |
-| nested payload         |            235,971 |           223,358 |         1.06x | 209,940 |
-| collections            |             34,632 |            34,224 |         1.01x |  22,340 |
-| large repeated records |              6,196 |             6,094 |         1.02x |   3,514 |
+| small record           |            462,101 |           488,902 |         0.95x | 480,796 |
+| nested payload         |            237,505 |           223,273 |         1.06x | 210,144 |
+| collections            |             34,139 |            33,853 |         1.01x |  22,929 |
+| large repeated records |              6,001 |             5,932 |         1.01x |   3,461 |
 
 | Case                   | SchemaBinary decode | Msgpack decode | SchemaBinary vs Msgpack |
 | ---------------------- | ------------------: | -------------: | ----------------------: |
-| small record           |             485,041 |        471,327 |                   1.03x |
-| nested payload         |             223,300 |        203,587 |                   1.10x |
-| collections            |              37,881 |         21,442 |                   1.77x |
-| large repeated records |               6,129 |          4,066 |                   1.51x |
+| small record           |             489,273 |        483,113 |                   1.01x |
+| nested payload         |             231,041 |        203,513 |                   1.14x |
+| collections            |              38,306 |         22,508 |                   1.70x |
+| large repeated records |               6,142 |          4,116 |                   1.49x |
 
 Both codecs run the same Schema parser, which costs roughly 140 us per
 direction on the largest case and sets a floor neither format can go below.
 The numbers above therefore understate the difference between the two
 serialization layers.
 
-Removing the output copy matters most for the 72-byte small record, where the
-arena was 4% faster than the ownership-copy control and nearly closed the gap
-with msgpackr. The other three cases were 1-6% faster than the copy control;
-none showed a material regression. Results returned by the arena keep an exact
-byte range but can share a larger backing buffer, as documented by
+The small record is now the noisiest case rather than the slowest one: at 58
+bytes both encode paths are dominated by fixed per-call cost, the arena row
+carried a 6.9% relative margin of error in this run, and arena and copy trade
+places between runs. The other three cases put the arena 1-6% ahead of the
+ownership-copy control. Results returned by the arena keep an exact byte range
+but can share a larger backing buffer, as documented by
 `SchemaBinary.toCodec`.
 
 ## Streaming decode comparison
@@ -55,9 +72,9 @@ Each sample decodes 32 concatenated frames with parser state reused between samp
 
 | Case                   | SchemaBinary parser | Msgpack unpackMultiple | SchemaBinary vs Msgpack |
 | ---------------------- | ------------------: | ---------------------: | ----------------------: |
-| small record           |             819,397 |                605,873 |                   1.35x |
-| nested payload         |             264,288 |                194,432 |                   1.36x |
-| collections            |              37,852 |                 20,760 |                   1.82x |
-| large repeated records |               5,823 |                  4,910 |                   1.19x |
+| small record           |             820,916 |                626,090 |                   1.31x |
+| nested payload         |             260,545 |                196,463 |                   1.33x |
+| collections            |              37,921 |                 21,565 |                   1.76x |
+| large repeated records |               5,725 |                  5,038 |                   1.14x |
 
-The stream-size table printed by the benchmark matters here. A persistent Msgpack `Packr` can reuse record definitions across frames, so its large repeated-record stream averages 19,484 bytes per frame versus 31,486 bytes for SchemaBinary in this run. The throughput comparison still favors SchemaBinary, but the two formats make different size-versus-parse-cost tradeoffs.
+The stream-size table printed by the benchmark matters here. A persistent Msgpack `Packr` can reuse record definitions across frames, so its large repeated-record stream averages 19,484 bytes per frame versus 27,646 bytes for SchemaBinary in this run. The throughput comparison still favors SchemaBinary, but the two formats make different size-versus-parse-cost tradeoffs.
