@@ -74,6 +74,14 @@ describe("SchemaBinary", () => {
       )
     })
 
+    it("round-trips zero-width array elements", () => {
+      assert.deepStrictEqual(roundtrip(Schema.Array(Schema.Null), [null, null, null]), [null, null, null])
+      assert.deepStrictEqual(
+        roundtrip(Schema.Array(Schema.Undefined), [undefined, undefined]),
+        [undefined, undefined]
+      )
+    })
+
     it("omits the count for fixed tuples and includes it for optional tuples", () => {
       const pair = Schema.Tuple([Schema.String, Schema.Number])
       assert.strictEqual(encode(pair, ["key", 42]).length, 14)
@@ -204,6 +212,15 @@ describe("SchemaBinary", () => {
       assert.deepStrictEqual(parser.feedSync(bytes.slice(first.length + 3)), [{ a: 2 }])
       parser.endSync()
       assert.match(schemaError(() => parser.feedSync(new Uint8Array())).message, /parser is spent/)
+    })
+
+    it("retains partial frames across one-byte feeds", () => {
+      const bytes = concat(...Array.from({ length: 100 }, (_, i) => encode(Schema.Number, i)))
+      const parser = SchemaBinary.parser(Schema.Number)
+      const values: Array<number> = []
+      for (const byte of bytes) values.push(...parser.feedSync(Uint8Array.of(byte)))
+      parser.endSync()
+      assert.deepStrictEqual(values, Array.from({ length: 100 }, (_, i) => i))
     })
 
     it("delivers completed values before reporting a later failure", () => {
@@ -378,6 +395,12 @@ describe("SchemaBinary", () => {
         { renamed: 123 }
       )
     })
+
+    it("keeps a sound runtime type guard on the derived codec", () => {
+      const codec = SchemaBinary.toCodec(Schema.Struct({ name: Schema.String, age: Schema.Number }))
+      assert.isTrue(Schema.is(codec)({ name: "Ada", age: 42 }))
+      assert.isFalse(Schema.is(codec)({ nope: 1 }))
+    })
   })
 
   describe("parse options", () => {
@@ -424,6 +447,26 @@ describe("SchemaBinary", () => {
           })),
         /Binary layout field id collision: 1/
       )
+      assert.throws(
+        () =>
+          SchemaBinary.toCodec(Schema.Union([
+            Schema.Literal("a"),
+            Schema.UniqueSymbol(Symbol.for("SchemaBinary/symbol"))
+          ])),
+        /union members are not uniquely identifiable/
+      )
+      assert.throws(
+        () => SchemaBinary.toCodec(Schema.Struct({ [Symbol.for("SchemaBinary/key")]: Schema.String })),
+        /symbol property names are illegal/
+      )
+      assert.throws(
+        () =>
+          SchemaBinary.toCodec(Schema.Union([
+            Schema.Struct({ _tag: Schema.Literal("1a0a49t3mq") }),
+            Schema.Struct({ _tag: Schema.Literal("m7r4q02dm7") })
+          ])),
+        /Binary layout sentinel collision: 3370793117/
+      )
     })
 
     it("uses SchemaIssue for binary failures", () => {
@@ -449,6 +492,63 @@ describe("SchemaBinary", () => {
         Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Tuple([Schema.String])))(emptyTuple)
       )
       assert.match(error.message, /Missing key/)
+    })
+
+    it("rejects malformed lengths and text", () => {
+      const string = SchemaBinary.toCodec(Schema.String)
+      assert.match(
+        schemaError(() => Schema.decodeUnknownSync(string)(Uint8Array.of(0))).message,
+        /nonzero frame length/
+      )
+      assert.match(
+        schemaError(() =>
+          Schema.decodeUnknownSync(string)(Uint8Array.of(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x10))
+        ).message,
+        /safe integer length/
+      )
+      assert.match(
+        schemaError(() => Schema.decodeUnknownSync(string)(Uint8Array.of(2, 0x10, 0xFF))).message,
+        /utf-8/
+      )
+    })
+
+    it("rejects attacker-sized zero-width array counts", () => {
+      const codec = SchemaBinary.toCodec(Schema.Array(Schema.Null))
+      const bytes = Uint8Array.of(6, 0x10, 0x80, 0x80, 0x80, 0x80, 0x10)
+      assert.match(
+        schemaError(() => Schema.decodeUnknownSync(codec)(bytes)).message,
+        /array count within allocation limit/
+      )
+    })
+
+    it("rejects duplicate struct field ids and extra keys", () => {
+      const struct = Schema.Struct({ value: Schema.String })
+      const encodedStruct = encode(struct, { value: "x" })
+      const field = encodedStruct.slice(2)
+      const duplicateField = concat(Uint8Array.of(1 + field.length * 2, 0x10), field, field)
+      assert.match(
+        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(struct))(duplicateField)).message,
+        /unique field ids/
+      )
+
+      const record = Schema.Record(Schema.String, Schema.Number)
+      const encodedRecord = encode(record, { a: 1 })
+      const pair = encodedRecord.slice(4)
+      const duplicateKey = concat(Uint8Array.of(3 + pair.length * 2, 0x10, 0, pair.length * 2), pair, pair)
+      assert.match(
+        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(record))(duplicateKey)).message,
+        /unique extra keys/
+      )
+    })
+
+    it("fails Never values and unregistered symbols through SchemaError", () => {
+      assert.isTrue(Schema.isSchemaError(schemaError(() => encode(Schema.Never, undefined))))
+      assert.isTrue(
+        Schema.isSchemaError(
+          schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Never))(Uint8Array.of(1, 0x10)))
+        )
+      )
+      assert.match(schemaError(() => encode(Schema.Symbol, Symbol("local"))).message, /registered symbol/)
     })
   })
 })

@@ -175,13 +175,23 @@ class Writer {
 class Reader {
   pos: number
   readonly buf: Uint8Array
+  readonly view: DataView
   readonly end: number
   readonly options: SchemaAST.ParseOptions
-  constructor(buf: Uint8Array, start: number, end: number, options: SchemaAST.ParseOptions) {
+  readonly indexSignatures: WeakMap<StructLayout, Map<string, ExtraSignature | undefined>>
+  constructor(
+    buf: Uint8Array,
+    start: number,
+    end: number,
+    options: SchemaAST.ParseOptions,
+    indexSignatures = new WeakMap<StructLayout, Map<string, ExtraSignature | undefined>>()
+  ) {
     this.buf = buf
+    this.view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
     this.pos = start
     this.end = end
     this.options = options
+    this.indexSignatures = indexSignatures
   }
   get remaining(): number {
     return this.end - this.pos
@@ -198,21 +208,24 @@ class Reader {
   }
   sub(len: number): Reader {
     if (this.pos + len > this.end) invalid("complete value", undefined, this.options)
-    const sub = new Reader(this.buf, this.pos, this.pos + len, this.options)
+    const sub = new Reader(this.buf, this.pos, this.pos + len, this.options, this.indexSignatures)
     this.pos += len
     return sub
   }
   uvarint(): number {
-    let value = BIGINT_ZERO
-    let shift = BIGINT_ZERO
+    let value = 0
+    let shift = 0
     for (let i = 0; i < 10; i++) {
       const b = this.byte()
-      value |= BigInt(b & 0x7F) << shift
-      if ((b & 0x80) === 0) {
-        if (value > MAX_SAFE_BIGINT) invalid("safe integer length", undefined, this.options)
-        return Number(value)
+      const chunk = (b & 0x7F) * 2 ** shift
+      if (chunk > Number.MAX_SAFE_INTEGER - value) {
+        invalid("safe integer length", undefined, this.options)
       }
-      shift += BIGINT_SEVEN
+      value += chunk
+      if ((b & 0x80) === 0) {
+        return value
+      }
+      shift += 7
     }
     invalid("uvarint", undefined, this.options)
   }
@@ -233,20 +246,28 @@ class Reader {
       : u >> BIGINT_ONE
   }
   f64(): number {
-    const b = this.take(8)
-    return new DataView(b.buffer, b.byteOffset, 8).getFloat64(0, true)
+    if (this.pos + 8 > this.end) invalid("complete value", undefined, this.options)
+    const value = this.view.getFloat64(this.pos, true)
+    this.pos += 8
+    return value
   }
   i64(): bigint {
-    const b = this.take(8)
-    return new DataView(b.buffer, b.byteOffset, 8).getBigInt64(0, true)
+    if (this.pos + 8 > this.end) invalid("complete value", undefined, this.options)
+    const value = this.view.getBigInt64(this.pos, true)
+    this.pos += 8
+    return value
   }
   u32le(): number {
-    const b = this.take(4)
-    return new DataView(b.buffer, b.byteOffset, 4).getUint32(0, true)
+    if (this.pos + 4 > this.end) invalid("complete value", undefined, this.options)
+    const value = this.view.getUint32(this.pos, true)
+    this.pos += 4
+    return value
   }
   i32le(): number {
-    const b = this.take(4)
-    return new DataView(b.buffer, b.byteOffset, 4).getInt32(0, true)
+    if (this.pos + 4 > this.end) invalid("complete value", undefined, this.options)
+    const value = this.view.getInt32(this.pos, true)
+    this.pos += 4
+    return value
   }
   utf8(bytes: Uint8Array): string {
     try {
@@ -544,9 +565,9 @@ function flattenMembers(union: SchemaAST.Union): Array<SchemaAST.AST> {
   const out: Array<SchemaAST.AST> = []
   const seen = new Set<SchemaAST.AST>()
   const go = (ast: SchemaAST.AST) => {
-    if (seen.has(ast)) return
-    seen.add(ast)
     const resolved = resolveSuspend(ast)
+    if (seen.has(resolved)) return
+    seen.add(resolved)
     switch (resolved._tag) {
       case "Never":
         return
@@ -557,8 +578,6 @@ function flattenMembers(union: SchemaAST.Union): Array<SchemaAST.AST> {
         SchemaAST.enumsToLiterals(resolved).types.forEach(go)
         return
       default:
-        if (resolved !== ast && seen.has(resolved)) return
-        seen.add(resolved)
         out.push(resolved)
     }
   }
@@ -838,14 +857,21 @@ function compileLayout(root: SchemaAST.AST): Layout {
     const variantMembers: Array<{ member: SchemaAST.AST; sentinels: ReadonlyArray<SchemaAST.Sentinel> }> = []
     const rowMembers: Array<{ member: SchemaAST.AST; kind: number }> = []
     const literalRows = new Map<number, Layout>()
+    const addLiteralRow = (kind: number, row: Layout) => {
+      const existing = literalRows.get(kind)
+      if (existing !== undefined && existing._ !== row._) {
+        throw new Error("Binary layout: union members are not uniquely identifiable")
+      }
+      literalRows.set(kind, row)
+    }
     for (const member of members) {
       if (member._tag === "Literal") {
-        literalRows.set(astKind(member), { _: literalKind(member.literal) })
+        addLiteralRow(astKind(member), { _: literalKind(member.literal) })
         continue
       }
       if (member._tag === "UniqueSymbol") {
         astKind(member) // validates the symbol is registered
-        literalRows.set(K.string, { _: "symbol" })
+        addLiteralRow(K.string, { _: "symbol" })
         continue
       }
       if (member._tag === "Objects" || member._tag === "Arrays") {
@@ -999,6 +1025,9 @@ function matchesLayout(layout: Layout, value: unknown): boolean {
 interface EncodeContext {
   readonly cycle: WeakSet<object>
   readonly options: SchemaAST.ParseOptions
+  readonly scratch: Array<Writer>
+  scratchDepth: number
+  readonly indexSignatures: WeakMap<StructLayout, Map<string, ExtraSignature | undefined>>
 }
 
 function encodeFail(expected: string, input: unknown, options: SchemaAST.ParseOptions): never {
@@ -1082,11 +1111,46 @@ function withCycleCheck<A>(ctx: EncodeContext, value: unknown, f: () => A): A {
   return f()
 }
 
+function findIndexSignature(
+  layout: StructLayout,
+  key: string,
+  options: SchemaAST.ParseOptions,
+  cache: WeakMap<StructLayout, Map<string, ExtraSignature | undefined>>
+): ExtraSignature | undefined {
+  let entries = cache.get(layout)
+  if (entries === undefined) {
+    entries = new Map()
+    cache.set(layout, entries)
+  }
+  if (entries.has(key)) return entries.get(key)
+  const signature = layout.extra.find((s) =>
+    SchemaAST.getIndexSignatureKeys({ [key]: null }, s.parameter, options).length > 0
+  )
+  entries.set(key, signature)
+  return signature
+}
+
+function withScratch<A>(ctx: EncodeContext, f: (writer: Writer) => A): A {
+  const index = ctx.scratchDepth++
+  const writer = ctx.scratch[index] ?? (ctx.scratch[index] = new Writer())
+  writer.len = 0
+  try {
+    return f(writer)
+  } finally {
+    ctx.scratchDepth--
+  }
+}
+
+function writeSized(ctx: EncodeContext, w: Writer, encode: (writer: Writer) => void) {
+  withScratch(ctx, (tmp) => {
+    encode(tmp)
+    w.uvarint(tmp.len)
+    w.bytes(tmp.buf.subarray(0, tmp.len))
+  })
+}
+
 function encodeSized(ctx: EncodeContext, layout: Layout, value: unknown, w: Writer) {
-  const tmp = new Writer()
-  encodeValue(ctx, layout, value, tmp)
-  w.uvarint(tmp.len)
-  w.bytes(tmp.buf.subarray(0, tmp.len))
+  writeSized(ctx, w, (tmp) => encodeValue(ctx, layout, value, tmp))
 }
 
 function encodeSymbol(ctx: EncodeContext, value: unknown, w: Writer) {
@@ -1123,23 +1187,20 @@ function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: obj
     const pairs: Array<[Uint8Array, string, ExtraSignature]> = []
     for (const key of Object.keys(obj)) {
       if (named.has(key)) continue
-      const signature = layout.extra.find((s) =>
-        SchemaAST.getIndexSignatureKeys({ [key]: null }, s.parameter, ctx.options).length > 0
-      )
+      const signature = findIndexSignature(layout, key, ctx.options, ctx.indexSignatures)
       if (signature === undefined) continue
       pairs.push([utf8Encode.encode(key), key, signature])
     }
     if (pairs.length > 0) {
       pairs.sort((a, b) => compareBytes(a[0], b[0]))
-      const tmp = new Writer()
-      for (const [keyBytes, key, signature] of pairs) {
-        tmp.uvarint(keyBytes.length)
-        tmp.bytes(keyBytes)
-        atKey(key, () => encodeSized(ctx, signature.layout, obj[key], tmp))
-      }
       w.uvarint(0)
-      w.uvarint(tmp.len)
-      w.bytes(tmp.buf.subarray(0, tmp.len))
+      writeSized(ctx, w, (tmp) => {
+        for (const [keyBytes, key, signature] of pairs) {
+          tmp.uvarint(keyBytes.length)
+          tmp.bytes(keyBytes)
+          atKey(key, () => encodeSized(ctx, signature.layout, obj[key], tmp))
+        }
+      })
     }
   }
   for (const field of layout.fields) {
@@ -1331,10 +1392,7 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       withCycleCheck(ctx, value, () => {
         w.uvarint(reasons.length)
         for (const reason of reasons) {
-          const tmp = new Writer()
-          encodeReason(ctx, layout, reason, tmp)
-          w.uvarint(tmp.len)
-          w.bytes(tmp.buf.subarray(0, tmp.len))
+          writeSized(ctx, w, (tmp) => encodeReason(ctx, layout, reason, tmp))
         }
       })
       return
@@ -1357,7 +1415,13 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
 }
 
 function encodeFrame(layout: Layout, value: unknown, options: SchemaAST.ParseOptions): Uint8Array<ArrayBuffer> {
-  const ctx: EncodeContext = { cycle: new WeakSet(), options }
+  const ctx: EncodeContext = {
+    cycle: new WeakSet(),
+    options,
+    scratch: [],
+    scratchDepth: 0,
+    indexSignatures: new WeakMap()
+  }
   const body = new Writer()
   body.byte(ENVELOPE)
   encodeValue(ctx, layout, value, body)
@@ -1423,9 +1487,7 @@ function decodeExtraPairs(layout: StructLayout, r: Reader, out: Record<string, u
     seen.add(key)
     const valueLen = r.uvarint()
     const sub = r.sub(valueLen)
-    const signature = layout.extra.find((s) =>
-      SchemaAST.getIndexSignatureKeys({ [key]: null }, s.parameter, r.options).length > 0
-    )
+    const signature = findIndexSignature(layout, key, r.options, r.indexSignatures)
     if (signature === undefined) continue
     const value = atKey(key, () => decodeChecked(signature.layout, sub))
     if (value !== ABSENT) out[key] = value
@@ -1435,6 +1497,11 @@ function decodeExtraPairs(layout: StructLayout, r: Reader, out: Record<string, u
 function decodeArray(layout: ArrayLayout, r: Reader): unknown {
   const elementLen = layout.elements.length
   const count = layout.hasCount ? r.uvarint() : elementLen
+  // Counts normally pay for at least one byte per slot. Zero-width null and
+  // undefined slots are the exception, so cap their amplification explicitly.
+  if (layout.hasCount && count > r.remaining + 1_048_576) {
+    invalid("array count within allocation limit", count, r.options)
+  }
   if (layout.rest.length === 0 && count > elementLen) {
     throw new IssueError(
       new SchemaIssue.Pointer([elementLen], new SchemaIssue.UnexpectedKey(layout.ast, undefined, r.options))
@@ -1699,18 +1766,15 @@ function compileTarget(schema: Schema.Constraint): { target: Schema.Constraint; 
   return { target, layout }
 }
 
-const CycleGuard = Schema.declare((_: unknown): _ is unknown => true)
-
 function withCycleGuard(target: Schema.Constraint): Schema.Constraint {
+  const isTarget = Schema.is(target)
+  const guard = Schema.declare(
+    (value: unknown): value is unknown => !isCyclic(value) && isTarget(value),
+    { identifier: "acyclic value" }
+  )
   return Schema.decodeTo(
-    CycleGuard,
-    SchemaTransformation.transformOrFail({
-      decode: (value) => Effect.succeed(value),
-      encode: (value, options) =>
-        isCyclic(value)
-          ? Effect.fail(new SchemaIssue.InvalidValue({ expected: "acyclic value" }, value, options))
-          : Effect.succeed(value)
-    })
+    guard,
+    SchemaTransformation.passthrough()
   )(target)
 }
 
@@ -1808,6 +1872,8 @@ export function parser<S extends Schema.Constraint>(
   const maxFrameSize = options?.maxFrameSize
   const decodeEncoded = Schema.decodeUnknownSync(target as Schema.ConstraintDecoder<unknown>, parseOptions)
   let buffer = new Uint8Array(0)
+  let bufferStart = 0
+  let bufferEnd = 0
   let stashed: Schema.SchemaError | undefined
   let spent = false
 
@@ -1825,10 +1891,23 @@ export function parser<S extends Schema.Constraint>(
     feedSync(chunk) {
       if (stashed !== undefined) return takeStashed()
       if (spent) return failSync("parser is spent")
-      const next = new Uint8Array(buffer.length + chunk.length)
-      next.set(buffer)
-      next.set(chunk, buffer.length)
-      buffer = next
+      if (chunk.length > 0) {
+        const remaining = bufferEnd - bufferStart
+        const required = remaining + chunk.length
+        if (required > buffer.length) {
+          const next = new Uint8Array(Math.max(256, buffer.length * 2, required))
+          next.set(buffer.subarray(bufferStart, bufferEnd))
+          buffer = next
+          bufferStart = 0
+          bufferEnd = remaining
+        } else if (bufferStart > 0) {
+          buffer.copyWithin(0, bufferStart, bufferEnd)
+          bufferStart = 0
+          bufferEnd = remaining
+        }
+        buffer.set(chunk, bufferEnd)
+        bufferEnd += chunk.length
+      }
       const out: Array<S["Type"]> = []
       const fail = (expected: string, input?: unknown): Array<S["Type"]> => {
         spent = true
@@ -1836,6 +1915,7 @@ export function parser<S extends Schema.Constraint>(
         if (out.length === 0) throw error
         stashed = error
         buffer = new Uint8Array(0)
+        bufferStart = bufferEnd = 0
         return out
       }
       while (true) {
@@ -1843,15 +1923,17 @@ export function parser<S extends Schema.Constraint>(
         // 10 continuation bytes is malformed immediately
         let n = BIGINT_ZERO
         let headerLen = -1
-        for (let i = 0; i < Math.min(10, buffer.length); i++) {
-          n |= BigInt(buffer[i] & 0x7F) << BigInt(i * 7)
-          if ((buffer[i] & 0x80) === 0) {
+        const buffered = bufferEnd - bufferStart
+        for (let i = 0; i < Math.min(10, buffered); i++) {
+          const b = buffer[bufferStart + i]
+          n |= BigInt(b & 0x7F) << BigInt(i * 7)
+          if ((b & 0x80) === 0) {
             headerLen = i + 1
             break
           }
         }
         if (headerLen === -1) {
-          if (buffer.length >= 10) return fail("uvarint", buffer.subarray(0, 10))
+          if (buffered >= 10) return fail("uvarint", buffer.subarray(bufferStart, bufferStart + 10))
           return out
         }
         if (n > MAX_SAFE_BIGINT) return fail("safe integer length", n)
@@ -1860,9 +1942,10 @@ export function parser<S extends Schema.Constraint>(
         if (maxFrameSize !== undefined && frameLen > maxFrameSize) {
           return fail("frame within maxFrameSize", frameLen)
         }
-        if (headerLen + frameLen > buffer.length) return out
+        if (headerLen + frameLen > buffered) return out
         try {
-          const body = new Reader(buffer, headerLen, headerLen + frameLen, parseOptions)
+          const bodyStart = bufferStart + headerLen
+          const body = new Reader(buffer, bodyStart, bodyStart + frameLen, parseOptions)
           out.push(decodeEncoded(decodeFrameBody(layout, body)))
         } catch (e) {
           spent = true
@@ -1876,16 +1959,18 @@ export function parser<S extends Schema.Constraint>(
           if (out.length === 0) throw error
           stashed = error
           buffer = new Uint8Array(0)
+          bufferStart = bufferEnd = 0
           return out
         }
-        buffer = buffer.slice(headerLen + frameLen)
+        bufferStart += headerLen + frameLen
+        if (bufferStart === bufferEnd) bufferStart = bufferEnd = 0
       }
     },
     endSync() {
       if (stashed !== undefined) return takeStashed()
       if (spent) return failSync("parser is spent")
       spent = true
-      if (buffer.length > 0) return failSync("complete value", buffer)
+      if (bufferStart < bufferEnd) return failSync("complete value", buffer.subarray(bufferStart, bufferEnd))
     },
     feed: (chunk) =>
       Effect.suspend(() => {
