@@ -17,6 +17,7 @@ import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import * as HashMap from "../../HashMap.ts"
 import * as HashSet from "../../HashSet.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Redacted from "../../Redacted.ts"
@@ -1024,9 +1025,12 @@ function astKind(ast: SchemaAST.AST): number {
 interface CompiledLayout {
   readonly layout: Layout
   readonly recursive: boolean
+  readonly decodeExact: boolean
 }
 
 function compileLayout(root: SchemaAST.AST): CompiledLayout {
+  const decodeExact = isDecodeExact(root)
+  root = SchemaAST.toEncoded(root)
   const memo = new Map<SchemaAST.AST, Layout>()
   let recursive = false
 
@@ -1373,7 +1377,42 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
   }
 
   const layout = compile(root)
-  return { layout, recursive }
+  return { layout, recursive, decodeExact }
+}
+
+// The parser may return the binary decoder's value directly only when that
+// decoder proves every predicate and no Schema parser behavior can change it.
+function isDecodeExact(root: SchemaAST.AST): boolean {
+  const exact = (ast: SchemaAST.AST): boolean => {
+    if (
+      ast.encoding !== undefined || ast.checks !== undefined ||
+      (ast as { readonly encodingChecks?: SchemaAST.Checks }).encodingChecks !== undefined ||
+      ast.annotations?.parseOptions !== undefined || ast.context?.constructorDefault !== undefined
+    ) {
+      return false
+    }
+    switch (ast._tag) {
+      case "String":
+      case "Symbol":
+      case "Boolean":
+      case "Null":
+      case "Undefined":
+      case "Void":
+      case "Number":
+      case "BigInt":
+        return true
+      case "Arrays":
+        return ast.elements.every(exact) && ast.rest.every(exact)
+      case "Objects":
+        return ast.propertySignatures.every((property) => exact(property.type)) &&
+          ast.indexSignatures.every((signature) =>
+            signature.parameter._tag === "String" && exact(signature.parameter) && exact(signature.type)
+          )
+      default:
+        return false
+    }
+  }
+  return exact(root)
 }
 
 // Layouts sharing a wire kind can still require different fingerprints.
@@ -2163,7 +2202,7 @@ function decodeExtraPair(layout: StructLayout, r: Reader, out: Record<string, un
     issuePath[issuePathLen++] = key
     const value = decodeChecked(signature.layout, r)
     issuePathLen--
-    if (value !== ABSENT) out[key] = value
+    if (value !== ABSENT) InternalRecord.assignProperty(out, key, value)
   }
   r.exit(saved)
 }
@@ -2231,7 +2270,7 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
     const value = decodeChecked(field.layout, r)
     issuePathLen--
     if (value !== ABSENT) {
-      out[field.name] = value
+      InternalRecord.assignProperty(out, field.name, value)
       if (index < 32) presentMask |= 1 << index
       else (presentWide ??= new Set()).add(index)
     }
@@ -2274,7 +2313,7 @@ function decodeStructPositional(layout: StructLayout, r: Reader): unknown {
     issuePath[issuePathLen++] = field.name
     const value = field.inline ? decodeInline(field.layout, r) : decodeSized(field.layout, r)
     issuePathLen--
-    if (value !== ABSENT) out[field.name] = value
+    if (value !== ABSENT) InternalRecord.assignProperty(out, field.name, value)
     else if (!field.optional) {
       ;(issues ??= []).push(missingKeyIssue(field))
       if (r.options.errors !== "all") break
@@ -2389,7 +2428,7 @@ function decodeUnion(layout: UnionLayout, r: Reader): unknown {
     if (payload === ABSENT) return ABSENT
     if (!variant.tuple) {
       for (const sentinel of variant.sentinels) {
-        ;(payload as Record<PropertyKey, unknown>)[sentinel.key] = sentinel.literal
+        InternalRecord.assignProperty(payload as object, sentinel.key, sentinel.literal)
       }
     }
     return payload
@@ -2410,7 +2449,7 @@ function decodeUnionPositional(layout: UnionLayout, r: Reader): unknown {
   const variant = position.variant
   if (variant !== undefined && !variant.tuple && payload !== ABSENT) {
     for (const sentinel of variant.sentinels) {
-      ;(payload as Record<PropertyKey, unknown>)[sentinel.key] = sentinel.literal
+      InternalRecord.assignProperty(payload as object, sentinel.key, sentinel.literal)
     }
   }
   return payload
@@ -2644,11 +2683,13 @@ function compileMode(layout: Layout, fingerprint: boolean | undefined): Mode {
   return fingerprint === true ? fingerprintMode(layout) : defaultMode
 }
 
-function compileTarget(schema: Schema.Constraint): { target: Schema.Constraint; layout: Layout } {
+function compileTarget(
+  schema: Schema.Constraint
+): { target: Schema.Constraint; layout: Layout; decodeExact: boolean } {
   const raw = Schema.make<Schema.Constraint>(toBinaryAST(schema.ast))
-  const { layout, recursive } = compileLayout(SchemaAST.toEncoded(raw.ast))
+  const { decodeExact, layout, recursive } = compileLayout(raw.ast)
   // Only recursive schemas need the cycle walk.
-  return { target: recursive ? withCycleGuard(raw) : raw, layout }
+  return { target: recursive ? withCycleGuard(raw) : raw, layout, decodeExact }
 }
 
 // Skip the cycle walk once for structurally decoded values.
@@ -2781,11 +2822,13 @@ export function parser<S extends Schema.Constraint>(
   schema: S,
   options?: SchemaAST.ParseOptions & Options & { readonly maxFrameSize?: number | undefined }
 ): Parser<S["Type"]> {
-  const { layout, target } = compileTarget(schema)
+  const { decodeExact, layout, target } = compileTarget(schema)
   const mode = compileMode(layout, options?.fingerprint)
   const parseOptions: SchemaAST.ParseOptions = options ?? {}
   const maxFrameSize = options?.maxFrameSize
-  const decodeEncoded = Schema.decodeUnknownSync(target as Schema.ConstraintDecoder<unknown>, parseOptions)
+  const decodeEncoded = decodeExact
+    ? undefined
+    : Schema.decodeUnknownSync(target as Schema.ConstraintDecoder<unknown>, parseOptions)
   let buffer = new Uint8Array(0)
   let bufferStart = 0
   let bufferEnd = 0
@@ -2885,7 +2928,8 @@ export function parser<S extends Schema.Constraint>(
           const bodyStart = bufferStart + headerLen
           indexSignatures.beginFrame()
           body.reset(buffer, bodyStart, bodyStart + frameLen, parseOptions, indexSignatures, mode.positional)
-          out.push(decodeEncoded(decodeFrameBody(layout, body, mode)))
+          const value = decodeFrameBody(layout, body, mode)
+          out.push((decodeEncoded === undefined ? value : decodeEncoded(value)) as S["Type"])
         } catch (e) {
           spent = true
           release()
