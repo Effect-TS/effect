@@ -1233,7 +1233,7 @@ function encodeFail(expected: string, input: unknown, options: SchemaAST.ParseOp
 }
 
 function isCyclic(value: unknown, stack = new Set<object>()): boolean {
-  if (!Predicate.isObject(value)) return false
+  if (!Predicate.isObjectOrArray(value)) return false
   if (
     value instanceof Date ||
     value instanceof Uint8Array ||
@@ -1690,6 +1690,9 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
   // tracked in a 32-bit mask, and the rarer wide-struct and unknown-id cases
   // fall back to sets that are only created when they are actually needed.
   let seenMask = 0
+  // A known union may decode to ABSENT, so presence cannot reuse the duplicate
+  // mask: an absent first copy must not make a repeated id legal.
+  let presentMask = 0
   let seenWide: Set<number> | undefined
   let seenUnknown: Set<number> | undefined
   let seenExtra = false
@@ -1738,15 +1741,17 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
     issuePath[issuePathLen++] = field.name
     const value = decodeChecked(field.layout, r)
     issuePathLen--
-    if (value !== ABSENT) out[field.name] = value
-    else if (index < 32) seenMask &= ~(1 << index)
+    if (value !== ABSENT) {
+      out[field.name] = value
+      if (index < 32) presentMask |= 1 << index
+    }
     r.exit(saved)
   }
   let issues: Array<SchemaIssue.Issue> | undefined
   for (let i = 0; i < fields.length; i++) {
     const field = fields[i]
     const index = field.index
-    const present = index < 32 ? (seenMask & (1 << index)) !== 0 : Object.hasOwn(out, field.name)
+    const present = index < 32 ? (presentMask & (1 << index)) !== 0 : Object.hasOwn(out, field.name)
     if (!field.optional && !present) {
       const issue = new SchemaIssue.Pointer([field.name], new SchemaIssue.MissingKey(field.annotations))
       if (issues === undefined) issues = [issue]
@@ -1814,8 +1819,8 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
         : r.enter(r.uvarint())
       const value = decodeChecked(uniform, r)
       r.exit(saved)
-      issuePathLen--
       if (value === ABSENT) throw issueError(new SchemaIssue.MissingKey(undefined))
+      issuePathLen--
       out[i] = value
     }
     return out
@@ -2090,9 +2095,8 @@ function compileTarget(schema: Schema.Constraint): { target: Schema.Constraint; 
 }
 
 function withCycleGuard(target: Schema.Constraint): Schema.Constraint {
-  const isTarget = Schema.is(target)
   const guard = Schema.declare(
-    (value: unknown): value is unknown => !isCyclic(value) && isTarget(value),
+    (value: unknown): value is unknown => !isCyclic(value),
     { identifier: "acyclic value" }
   )
   return Schema.decodeTo(
