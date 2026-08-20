@@ -12,6 +12,14 @@
  * a bare varint, so a checked number and an unchecked one are different wire
  * layouts for the same value.
  *
+ * The opt-in fingerprint mode (`{ fingerprint: true }`) trades that tolerance
+ * for a smaller frame. Every frame carries an 8-byte 64-bit FNV-1a hash of the
+ * compiled wire layout; structs are written positionally, with a presence
+ * bitmap instead of field ids and no length prefix on fixed-size leaves, and
+ * union members are addressed by a canonical index. A reader whose layout
+ * hashes differently rejects the frame instead of guessing it. The two modes
+ * are selected by envelope flag bit 0 and are never interchangeable.
+ *
  * @since 4.0.0
  */
 import * as BigDecimal from "../../BigDecimal.ts"
@@ -35,7 +43,10 @@ import * as SchemaTransformation from "../../SchemaTransformation.ts"
 
 const FIELD_ID_ANNOTATION_KEY = "~effect/encoding/SchemaBinary/fieldId"
 
+// Envelope flags select the wire mode. Bit 0 is the opt-in fingerprint /
+// positional mode; every other bit stays reserved and fails closed.
 const ENVELOPE = 0x10 // version nibble 1, flags 0
+const ENVELOPE_FINGERPRINT = 0x11 // version nibble 1, flag bit 0
 
 const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER)
 const BIGINT_ZERO = BigInt(0)
@@ -44,6 +55,9 @@ const BIGINT_TWO = BigInt(2)
 const BIGINT_SEVEN = BigInt(7)
 const BIGINT_VARINT_MASK = BigInt(0x7F)
 const BIGINT_NANOS_PER_MILLI = BigInt(1_000_000)
+const BIGINT_BYTE_MASK = BigInt(0xFF)
+const BIGINT_U32_MASK = BigInt(0xFFFFFFFF)
+const BIGINT_THIRTY_TWO = BigInt(32)
 
 const utf8Encode = new TextEncoder()
 const utf8DecodeFatal = new TextDecoder("utf-8", { fatal: true })
@@ -124,6 +138,18 @@ function fnv32(bytes: Uint8Array): number {
     hash = Math.imul(hash ^ bytes[i], 0x01000193)
   }
   return hash >>> 0
+}
+
+const FNV64_OFFSET_BASIS = BigInt("14695981039346656037")
+const FNV64_PRIME = BigInt("1099511628211")
+const FNV64_MASK = BigInt("18446744073709551615")
+
+function fnv64(bytes: ArrayLike<number>): bigint {
+  let hash = FNV64_OFFSET_BASIS
+  for (let i = 0; i < bytes.length; i++) {
+    hash = ((hash ^ BigInt(bytes[i])) * FNV64_PRIME) & FNV64_MASK
+  }
+  return hash
 }
 
 function compareBytes(a: Uint8Array, b: Uint8Array): number {
@@ -482,12 +508,14 @@ class Reader {
   end = 0
   options: SchemaAST.ParseOptions = EMPTY_PARSE_OPTIONS
   indexSignatures: IndexSignatureCache | undefined
+  positional = false
   reset(
     buf: Uint8Array,
     start: number,
     end: number,
     options: SchemaAST.ParseOptions,
-    indexSignatures: IndexSignatureCache
+    indexSignatures: IndexSignatureCache,
+    positional: boolean
   ) {
     if (
       this.buf.buffer !== buf.buffer ||
@@ -501,6 +529,7 @@ class Reader {
     this.end = end
     this.options = options
     this.indexSignatures = indexSignatures
+    this.positional = positional
   }
   release() {
     this.pos = this.end = 0
@@ -508,6 +537,7 @@ class Reader {
     this.view = EMPTY_READER_VIEW
     this.options = EMPTY_PARSE_OPTIONS
     this.indexSignatures = undefined
+    this.positional = false
   }
   get remaining(): number {
     return this.end - this.pos
@@ -710,6 +740,8 @@ interface Field {
   readonly optional: boolean
   readonly annotations: Schema.Annotations.Key<unknown> | undefined
   layout: Layout
+  // fingerprint mode: true when the field is written without a length prefix
+  inline: boolean
 }
 
 interface ExtraSignature {
@@ -724,6 +756,8 @@ interface StructLayout {
   readonly byId: Map<number, Field>
   readonly extra: Array<ExtraSignature>
   readonly names: Set<string>
+  // fingerprint mode: one presence bit per optional field, in field order
+  optionalCount: number
 }
 
 interface Slot {
@@ -754,6 +788,23 @@ interface VariantRow {
   readonly sentinels: ReadonlyArray<SchemaAST.Sentinel>
   readonly tuple: boolean
   payload: Layout
+  // fingerprint mode: index into `byPos`
+  position: number
+}
+
+interface UnionMember {
+  readonly kind: number
+  readonly layout: Layout
+  // fingerprint mode: index into `byPos`
+  position: number
+}
+
+// A row of the canonical member order fingerprint mode writes as a varint.
+// `variant` is set for sentinel-discriminated members, whose sentinel
+// properties decode restores.
+interface UnionPosition {
+  readonly variant: VariantRow | undefined
+  readonly layout: Layout
 }
 
 interface UnionLayout {
@@ -761,56 +812,11 @@ interface UnionLayout {
   readonly ast: SchemaAST.AST
   readonly variants: Array<VariantRow>
   readonly byTag: Map<number, VariantRow>
-  readonly others: Array<Layout>
+  readonly others: Array<UnionMember>
   readonly byKind: Map<number, Layout>
-}
-
-function kindByte(layout: Layout): number {
-  switch (layout._) {
-    case "bool":
-      return K.bool
-    case "null":
-      return K.null
-    case "undefined":
-      return K.undefined
-    case "number":
-    case "int":
-      return K.number
-    case "string":
-    case "symbol":
-      return K.string
-    case "bytes":
-      return K.bytes
-    case "bigint":
-      return K.bigint
-    case "int64":
-      return K.int64
-    case "struct":
-      return K.struct
-    case "array":
-      return K.array
-    case "option":
-      return K.option
-    case "result":
-      return K.result
-    case "duration":
-      return K.duration
-    case "bigDecimal":
-      return K.bigDecimal
-    case "dateTimeZoned":
-      return K.dateTimeZoned
-    case "json":
-      return K.json
-    case "exit":
-      return K.exit
-    case "cause":
-      return K.cause
-    case "causeReason":
-      return K.causeReason
-    case "union":
-    case "never":
-      throw new Error("Binary layout: union members are not uniquely identifiable")
-  }
+  // fingerprint mode: variants by ascending tag, then the remaining members by
+  // ascending kind, so declaration order never reaches the wire.
+  readonly byPos: Array<UnionPosition>
 }
 
 // A slot whose encoding delimits itself, so it needs no length prefix even
@@ -828,6 +834,13 @@ function packedSize(layout: Layout): number | undefined {
     default:
       return undefined
   }
+}
+
+// A slot the layout alone can delimit, so no length prefix is written: a
+// fixed-size leaf, a zero-width leaf, or a self-delimiting varint.
+function isInlineSlot(layout: Layout): boolean {
+  return packedSize(layout) !== undefined || isSelfDelimiting(layout) ||
+    layout._ === "null" || layout._ === "undefined"
 }
 
 // -----------------------------------------------------------------------------
@@ -1171,7 +1184,8 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
         index: 0,
         optional: ps.type.context?.isOptional === true,
         annotations,
-        layout: undefined as unknown as Layout
+        layout: undefined as unknown as Layout,
+        inline: false
       })
       types.push(ps.type)
     }
@@ -1193,12 +1207,18 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       fields,
       byId: new Map(),
       extra,
-      names: new Set(fields.map((f) => f.name))
+      names: new Set(fields.map((f) => f.name)),
+      optionalCount: 0
     }
     memo.set(ast, layout)
     for (let i = 0; i < fields.length; i++) {
-      fields[i].layout = compile(types[i])
-      layout.byId.set(fields[i].id, fields[i])
+      const field = fields[i]
+      field.layout = compile(types[i])
+      // A recursive field sees a partially filled placeholder here, but its
+      // discriminant is set at construction, which is all inlining depends on.
+      field.inline = isInlineSlot(field.layout)
+      if (field.optional) layout.optionalCount++
+      layout.byId.set(field.id, field)
     }
     fields.sort((a, b) => a.id - b.id)
     for (let i = 0; i < fields.length; i++) fields[i].index = i
@@ -1371,7 +1391,15 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       }
       tags.set(tag, sentinels)
     }
-    const layout: UnionLayout = { _: "union", ast, variants: [], byTag: new Map(), others: [], byKind: new Map() }
+    const layout: UnionLayout = {
+      _: "union",
+      ast,
+      variants: [],
+      byTag: new Map(),
+      others: [],
+      byKind: new Map(),
+      byPos: []
+    }
     memo.set(ast, layout)
     for (const { member, sentinels } of variantMembers) {
       const tag = sentinelSetHash(sentinels)
@@ -1388,32 +1416,262 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
           fields,
           byId: new Map(fields.map((f) => [f.id, f])),
           extra: struct.extra,
-          names: struct.names
+          names: struct.names,
+          optionalCount: fields.reduce((count, f) => f.optional ? count + 1 : count, 0)
         }
         tuple = false
       } else {
         payload = full
         tuple = true
       }
-      const row: VariantRow = { tag, sentinels, tuple, payload }
+      const row: VariantRow = { tag, sentinels, tuple, payload, position: 0 }
       layout.variants.push(row)
       layout.byTag.set(tag, row)
     }
     for (const [kind, row] of literalRows) {
-      layout.others.push(row)
+      layout.others.push({ kind, layout: row, position: 0 })
       layout.byKind.set(kind, row)
     }
     for (const { kind, member } of rowMembers) {
       const row = compile(member)
-      layout.others.push(row)
+      layout.others.push({ kind, layout: row, position: 0 })
       layout.byKind.set(kind, row)
     }
-    layout.others.sort((a, b) => matchRank(a) - matchRank(b))
+    // Fingerprint mode addresses members by position, so that order is derived
+    // from tags and kinds rather than from how the union was written.
+    for (const row of [...layout.variants].sort((a, b) => a.tag - b.tag)) {
+      row.position = layout.byPos.length
+      layout.byPos.push({ variant: row, layout: row.payload })
+    }
+    for (const member of [...layout.others].sort((a, b) => a.kind - b.kind)) {
+      member.position = layout.byPos.length
+      layout.byPos.push({ variant: undefined, layout: member.layout })
+    }
+    // Encode probes members in match order: specific runtime guards first,
+    // `json` (which matches anything) last.
+    layout.others.sort((a, b) => matchRank(a.layout) - matchRank(b.layout))
     return layout
   }
 
   const layout = compile(root)
   return { layout, recursive }
+}
+
+// -----------------------------------------------------------------------------
+// layout fingerprint
+// -----------------------------------------------------------------------------
+
+// Structural tags for the fingerprint walk. They are deliberately separate
+// from the wire kinds `K`, because layouts that share a wire kind can still
+// differ on the wire or in the value they produce (`number` vs `int`,
+// `string` vs `symbol`, `Date` vs `DateTimeUtc`).
+const F = {
+  backEdge: 0,
+  bool: 1,
+  null: 2,
+  undefined: 3,
+  number: 4,
+  int: 5,
+  string: 6,
+  symbol: 7,
+  bytes: 8,
+  bigint: 9,
+  json: 10,
+  duration: 11,
+  bigDecimal: 12,
+  dateTimeZoned: 13,
+  date: 14,
+  dateTimeUtc: 15,
+  never: 16,
+  struct: 17,
+  array: 18,
+  union: 19,
+  option: 20,
+  result: 21,
+  exit: 22,
+  cause: 23,
+  causeReason: 24
+} as const
+
+function pushUvarint(out: Array<number>, n: number) {
+  while (n > 0x7F) {
+    out.push((n & 0x7F) | 0x80)
+    n = Math.floor(n / 128)
+  }
+  out.push(n)
+}
+
+function pushU32(out: Array<number>, n: number) {
+  out.push(n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF)
+}
+
+function pushU64(out: Array<number>, n: bigint) {
+  for (let i = 0; i < 8; i++) {
+    out.push(Number((n >> BigInt(i * 8)) & BIGINT_BYTE_MASK))
+  }
+}
+
+/**
+ * Hashes the wire-relevant structure of a compiled layout with 64-bit FNV-1a.
+ *
+ * The hash is a Merkle walk: every node mixes its own structure plus the
+ * 64-bit hash of each child, so two structurally identical layouts hash the
+ * same whether or not they share a compiled node. Field and property names,
+ * checks, and annotations are never mixed in; field ids, optionality, wire
+ * kinds, variant tags, and array shape are. Cycles terminate on a back edge
+ * carrying the number of levels back to the repeated node, which keeps the
+ * hash independent of where the cycle was entered.
+ */
+function layoutFingerprint(root: Layout): bigint {
+  const cache = new Map<Layout, bigint>()
+  const stack: Array<Layout> = []
+  // Shallowest stack index the subtree currently being hashed reached back to.
+  // A subtree that never reached above its own root is a closed unit, so its
+  // hash can be reused wherever that layout appears.
+  let escape = Number.MAX_SAFE_INTEGER
+
+  function go(layout: Layout): bigint {
+    const at = stack.lastIndexOf(layout)
+    if (at >= 0) {
+      if (at < escape) escape = at
+      const out: Array<number> = [F.backEdge]
+      pushUvarint(out, stack.length - at)
+      return fnv64(out)
+    }
+    const cached = cache.get(layout)
+    if (cached !== undefined) return cached
+    const self = stack.length
+    const outerEscape = escape
+    escape = Number.MAX_SAFE_INTEGER
+    stack.push(layout)
+    const hash = fnv64(structure(layout))
+    stack.pop()
+    const closed = escape >= self
+    if (closed) cache.set(layout, hash)
+    escape = closed ? outerEscape : Math.min(outerEscape, escape)
+    return hash
+  }
+
+  function structure(layout: Layout): Array<number> {
+    const out: Array<number> = []
+    switch (layout._) {
+      case "bool":
+      case "null":
+      case "undefined":
+      case "number":
+      case "int":
+      case "string":
+      case "symbol":
+      case "bytes":
+      case "bigint":
+      case "json":
+      case "duration":
+      case "bigDecimal":
+      case "dateTimeZoned":
+        out.push(F[layout._])
+        return out
+      case "int64":
+        out.push(layout.flavor === "date" ? F.date : F.dateTimeUtc)
+        return out
+      case "never":
+        out.push(F.never)
+        return out
+      case "struct": {
+        out.push(F.struct)
+        pushUvarint(out, layout.fields.length)
+        for (const field of layout.fields) {
+          pushU32(out, field.id)
+          out.push(field.optional ? 1 : 0)
+          pushU64(out, go(field.layout))
+        }
+        pushUvarint(out, layout.extra.length)
+        for (const signature of layout.extra) pushU64(out, go(signature.layout))
+        return out
+      }
+      case "array": {
+        out.push(F.array)
+        pushUvarint(out, layout.elements.length)
+        for (const slot of layout.elements) {
+          out.push(slot.optional ? 1 : 0)
+          pushU64(out, go(slot.layout))
+        }
+        pushUvarint(out, layout.rest.length)
+        for (const rest of layout.rest) pushU64(out, go(rest))
+        return out
+      }
+      case "union": {
+        out.push(F.union)
+        pushUvarint(out, layout.byPos.length)
+        for (const position of layout.byPos) {
+          const variant = position.variant
+          if (variant === undefined) out.push(0)
+          else {
+            out.push(1, variant.tuple ? 1 : 0)
+            pushU32(out, variant.tag)
+          }
+          pushU64(out, go(position.layout))
+        }
+        return out
+      }
+      case "option":
+        out.push(F.option)
+        pushU64(out, go(layout.value))
+        return out
+      case "result":
+        out.push(F.result)
+        pushU64(out, go(layout.success))
+        pushU64(out, go(layout.failure))
+        return out
+      case "exit":
+        out.push(F.exit)
+        pushU64(out, go(layout.value))
+        pushU64(out, go(layout.error))
+        pushU64(out, go(layout.defect))
+        return out
+      case "cause":
+      case "causeReason":
+        out.push(layout._ === "cause" ? F.cause : F.causeReason)
+        pushU64(out, go(layout.error))
+        pushU64(out, go(layout.defect))
+        return out
+    }
+  }
+
+  return go(root)
+}
+
+// -----------------------------------------------------------------------------
+// wire modes
+// -----------------------------------------------------------------------------
+
+// A codec speaks exactly one wire mode. The default mode carries field ids and
+// tolerates unknown fields and members; fingerprint mode drops both in favour
+// of a per-frame layout hash that fails closed on any mismatch.
+interface Mode {
+  readonly positional: boolean
+  readonly envelope: number
+  readonly expectedEnvelope: string
+  readonly fingerprintLo: number
+  readonly fingerprintHi: number
+}
+
+const defaultMode: Mode = {
+  positional: false,
+  envelope: ENVELOPE,
+  expectedEnvelope: "version 1 envelope, flags 0",
+  fingerprintLo: 0,
+  fingerprintHi: 0
+}
+
+function fingerprintMode(layout: Layout): Mode {
+  const fingerprint = layoutFingerprint(layout)
+  return {
+    positional: true,
+    envelope: ENVELOPE_FINGERPRINT,
+    expectedEnvelope: "version 1 envelope, flags 1",
+    fingerprintLo: Number(fingerprint & BIGINT_U32_MASK),
+    fingerprintHi: Number((fingerprint >> BIGINT_THIRTY_TWO) & BIGINT_U32_MASK)
+  }
 }
 
 // specific runtime guards first, `json` (which matches anything) last
@@ -1485,6 +1743,7 @@ function matchesLayout(layout: Layout, value: unknown): boolean {
 
 interface EncodeContext {
   readonly options: SchemaAST.ParseOptions
+  readonly positional: boolean
   indexSignatures: IndexSignatureCache | undefined
 }
 
@@ -1611,19 +1870,28 @@ function encodeReason(ctx: EncodeContext, layout: { error: Layout; defect: Layou
   }
 }
 
+type ExtraPair = [keyBytes: Uint8Array, key: string, signature: ExtraSignature]
+
+// Extra keys sorted by raw UTF-8, so a record encodes the same bytes whatever
+// order its keys were inserted in.
+function extraPairs(ctx: EncodeContext, layout: StructLayout, obj: Record<string, unknown>): Array<ExtraPair> {
+  const named = layout.names
+  const pairs: Array<ExtraPair> = []
+  for (const key of Object.keys(obj)) {
+    if (named.has(key)) continue
+    const signature = (ctx.indexSignatures ??= new IndexSignatureCache(ctx.options)).find(layout, key)
+    if (signature === undefined) continue
+    pairs.push([utf8Encode.encode(key), key, signature])
+  }
+  pairs.sort((a, b) => compareBytes(a[0], b[0]))
+  return pairs
+}
+
 function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: object, w: Writer) {
   const obj = value as Record<string, unknown>
   if (layout.extra.length > 0) {
-    const named = layout.names
-    const pairs: Array<[Uint8Array, string, ExtraSignature]> = []
-    for (const key of Object.keys(obj)) {
-      if (named.has(key)) continue
-      const signature = (ctx.indexSignatures ??= new IndexSignatureCache(ctx.options)).find(layout, key)
-      if (signature === undefined) continue
-      pairs.push([utf8Encode.encode(key), key, signature])
-    }
+    const pairs = extraPairs(ctx, layout, obj)
     if (pairs.length > 0) {
-      pairs.sort((a, b) => compareBytes(a[0], b[0]))
       w.uvarint(0)
       const mark = w.beginSized()
       for (const [keyBytes, key, signature] of pairs) {
@@ -1649,6 +1917,52 @@ function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: obj
     issuePath[issuePathLen++] = name
     encodeSized(ctx, field.layout, obj[name], w)
     issuePathLen--
+  }
+}
+
+// Fingerprint mode struct: both sides compiled the same layout, so a field
+// needs neither an id nor a length the layout already implies. Optional fields
+// announce themselves in a leading bitmap, one bit per optional field in field
+// order, and extra keys follow the named fields behind their own count.
+function encodeStructPositional(ctx: EncodeContext, layout: StructLayout, value: object, w: Writer) {
+  const obj = value as Record<string, unknown>
+  const bitmapBytes = (layout.optionalCount + 7) >> 3
+  let bitmap = 0
+  if (bitmapBytes > 0) {
+    bitmap = w.len
+    for (let i = 0; i < bitmapBytes; i++) w.byte(0)
+  }
+  const fields = layout.fields
+  let optionalIndex = 0
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i]
+    const name = field.name
+    const present = Object.hasOwn(obj, name)
+    if (field.optional) {
+      // `w.buf` and `w.start` move when the arena grows, so the bitmap byte is
+      // addressed from the current base every time.
+      if (present) w.buf[w.start + bitmap + (optionalIndex >> 3)] |= 1 << (optionalIndex & 7)
+      optionalIndex++
+      if (!present) continue
+    } else if (!present) {
+      issuePath[issuePathLen++] = name
+      throw issueError(new SchemaIssue.MissingKey(field.annotations))
+    }
+    issuePath[issuePathLen++] = name
+    if (field.inline) encodeValue(ctx, field.layout, obj[name], w)
+    else encodeSized(ctx, field.layout, obj[name], w)
+    issuePathLen--
+  }
+  if (layout.extra.length > 0) {
+    const pairs = extraPairs(ctx, layout, obj)
+    w.uvarint(pairs.length)
+    for (const [keyBytes, key, signature] of pairs) {
+      w.uvarint(keyBytes.length)
+      w.bytes(keyBytes)
+      issuePath[issuePathLen++] = key
+      encodeSized(ctx, signature.layout, obj[key], w)
+      issuePathLen--
+    }
   }
 }
 
@@ -1694,9 +2008,7 @@ function encodeArray(ctx: EncodeContext, layout: ArrayLayout, value: unknown, w:
   for (let i = 0; i < count; i++) {
     const slot = arraySlot(layout, i, count)
     issuePath[issuePathLen++] = i
-    if (
-      packedSize(slot) !== undefined || isSelfDelimiting(slot) || slot._ === "null" || slot._ === "undefined"
-    ) {
+    if (isInlineSlot(slot)) {
       encodeValue(ctx, slot, arr[i], w)
     } else {
       encodeSized(ctx, slot, arr[i], w)
@@ -1725,13 +2037,16 @@ function encodeNumberRun(arr: ReadonlyArray<unknown>, count: number, w: Writer) 
   }
 }
 
+function matchesVariant(variant: VariantRow, value: unknown): boolean {
+  return variant.tuple
+    ? Array.isArray(value) && variant.sentinels.every((s) => value[s.key as number] === s.literal)
+    : Predicate.isObject(value) && !Array.isArray(value) &&
+      variant.sentinels.every((s) => (value as Record<PropertyKey, unknown>)[s.key] === s.literal)
+}
+
 function encodeUnion(ctx: EncodeContext, layout: UnionLayout, value: unknown, w: Writer) {
   for (const variant of layout.variants) {
-    const matches = variant.tuple
-      ? Array.isArray(value) && variant.sentinels.every((s) => value[s.key as number] === s.literal)
-      : Predicate.isObject(value) && !Array.isArray(value) &&
-        variant.sentinels.every((s) => (value as Record<PropertyKey, unknown>)[s.key] === s.literal)
-    if (matches) {
+    if (matchesVariant(variant, value)) {
       w.byte(K.variant)
       w.u32le(variant.tag)
       encodeValue(ctx, variant.payload, value, w)
@@ -1739,9 +2054,30 @@ function encodeUnion(ctx: EncodeContext, layout: UnionLayout, value: unknown, w:
     }
   }
   for (const member of layout.others) {
-    if (matchesLayout(member, value)) {
-      w.byte(kindByte(member))
-      encodeValue(ctx, member, value, w)
+    if (matchesLayout(member.layout, value)) {
+      w.byte(member.kind)
+      encodeValue(ctx, member.layout, value, w)
+      return
+    }
+  }
+  throw issueError(new SchemaIssue.InvalidType(layout.ast, value, ctx.options))
+}
+
+// Fingerprint mode union: both sides share the member table, so one varint
+// index into the canonical order replaces the kind byte and the 32-bit
+// sentinel tag.
+function encodeUnionPositional(ctx: EncodeContext, layout: UnionLayout, value: unknown, w: Writer) {
+  for (const variant of layout.variants) {
+    if (matchesVariant(variant, value)) {
+      w.uvarint(variant.position)
+      encodeValue(ctx, variant.payload, value, w)
+      return
+    }
+  }
+  for (const member of layout.others) {
+    if (matchesLayout(member.layout, value)) {
+      w.uvarint(member.position)
+      encodeValue(ctx, member.layout, value, w)
       return
     }
   }
@@ -1885,7 +2221,8 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       return
     }
     case "struct": {
-      encodeStructFields(ctx, layout, value as object, w)
+      if (ctx.positional) encodeStructPositional(ctx, layout, value as object, w)
+      else encodeStructFields(ctx, layout, value as object, w)
       return
     }
     case "array": {
@@ -1893,7 +2230,8 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       return
     }
     case "union":
-      encodeUnion(ctx, layout, value, w)
+      if (ctx.positional) encodeUnionPositional(ctx, layout, value, w)
+      else encodeUnion(ctx, layout, value, w)
       return
     case "never":
       throw issueError(new SchemaIssue.InvalidType(layout.ast, value, ctx.options))
@@ -1905,9 +2243,15 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
 // (an inner `toCodec` used as a `Uint8Array` field) simply allocates its own.
 let pooledWriter: Writer | undefined = new Writer()
 
-function encodeFrame(layout: Layout, value: unknown, options: SchemaAST.ParseOptions): Uint8Array<ArrayBuffer> {
+function encodeFrame(
+  layout: Layout,
+  value: unknown,
+  options: SchemaAST.ParseOptions,
+  mode: Mode
+): Uint8Array<ArrayBuffer> {
   const ctx: EncodeContext = {
     options,
+    positional: mode.positional,
     indexSignatures: undefined
   }
   const w = pooledWriter ?? new Writer()
@@ -1918,7 +2262,11 @@ function encodeFrame(layout: Layout, value: unknown, options: SchemaAST.ParseOpt
   issuePathLen = 0
   try {
     const mark = w.beginSized()
-    w.byte(ENVELOPE)
+    w.byte(mode.envelope)
+    if (mode.positional) {
+      w.u32le(mode.fingerprintLo)
+      w.u32le(mode.fingerprintHi)
+    }
     encodeValue(ctx, layout, value, w)
     w.endSized(mark)
     return w.out()
@@ -2024,6 +2372,86 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
     throw issueError(
       new SchemaIssue.Composite(layout.ast, issues as [SchemaIssue.Issue, ...Array<SchemaIssue.Issue>])
     )
+  }
+  return out
+}
+
+// Mirror of `encodeStructPositional`. Field order is the layout, so there is
+// no id to read, no cursor to advance, and no duplicate-id bookkeeping; a
+// field is either announced by the presence bitmap or unconditionally there.
+function decodeStructPositional(layout: StructLayout, r: Reader): unknown {
+  const out: Record<string, unknown> = {}
+  const bitmapBytes = (layout.optionalCount + 7) >> 3
+  let bitmap = 0
+  if (bitmapBytes > 0) {
+    if (r.pos + bitmapBytes > r.end) invalid("complete value", undefined, r.options)
+    bitmap = r.pos
+    r.pos += bitmapBytes
+  }
+  const buf = r.buf
+  const fields = layout.fields
+  let optionalIndex = 0
+  let issues: Array<SchemaIssue.Issue> | undefined
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i]
+    if (field.optional) {
+      const present = (buf[bitmap + (optionalIndex >> 3)] & (1 << (optionalIndex & 7))) !== 0
+      optionalIndex++
+      if (!present) continue
+    }
+    issuePath[issuePathLen++] = field.name
+    let value: unknown
+    if (field.inline) {
+      if (isSelfDelimiting(field.layout)) {
+        value = decodeValue(field.layout, r)
+      } else {
+        // a fixed-size leaf, or a zero-width `null` / `undefined`
+        const saved = r.enter(packedSize(field.layout) ?? 0)
+        value = decodeChecked(field.layout, r)
+        r.exit(saved)
+      }
+    } else {
+      const saved = r.enter(r.uvarint())
+      value = decodeChecked(field.layout, r)
+      r.exit(saved)
+    }
+    issuePathLen--
+    // Only a newer writer's unknown `CauseReason` tag reaches this, since
+    // fingerprint mode has no unknown fields or union members.
+    if (value !== ABSENT) out[field.name] = value
+    else if (!field.optional) {
+      const issue = new SchemaIssue.Pointer([field.name], new SchemaIssue.MissingKey(field.annotations))
+      if (issues === undefined) issues = [issue]
+      else issues.push(issue)
+      if (r.options.errors !== "all") break
+    }
+  }
+  if (issues !== undefined) {
+    throw issueError(
+      new SchemaIssue.Composite(layout.ast, issues as [SchemaIssue.Issue, ...Array<SchemaIssue.Issue>])
+    )
+  }
+  if (layout.extra.length > 0) {
+    const count = r.uvarint()
+    if (count > r.remaining) invalid("complete value", undefined, r.options)
+    let seen: Set<string> | undefined
+    for (let i = 0; i < count; i++) {
+      const key = r.readUtf8(r.uvarint())
+      if (seen === undefined) seen = new Set([key])
+      else {
+        if (seen.has(key)) invalid("unique extra keys", undefined, r.options)
+        seen.add(key)
+      }
+      const saved = r.enter(r.uvarint())
+      const signature = r.indexSignatures!.find(layout, key)
+      if (signature !== undefined) {
+        issuePath[issuePathLen++] = key
+        const value = decodeChecked(signature.layout, r)
+        issuePathLen--
+        if (value !== ABSENT) out[key] = value
+      }
+      r.exit(saved)
+    }
   }
   return out
 }
@@ -2173,6 +2601,22 @@ function decodeUnion(layout: UnionLayout, r: Reader): unknown {
   return decodeChecked(member, r)
 }
 
+// Mirror of `encodeUnionPositional`. An index outside the table means the
+// frame does not match the layout its fingerprint claimed, so it fails rather
+// than resolving to absent.
+function decodeUnionPositional(layout: UnionLayout, r: Reader): unknown {
+  const position = layout.byPos[r.uvarint()]
+  if (position === undefined) invalid("known union member", undefined, r.options)
+  const payload = decodeChecked(position.layout, r)
+  const variant = position.variant
+  if (variant !== undefined && !variant.tuple && payload !== ABSENT) {
+    for (const sentinel of variant.sentinels) {
+      ;(payload as Record<PropertyKey, unknown>)[sentinel.key] = sentinel.literal
+    }
+  }
+  return payload
+}
+
 function decodeReason(layout: { error: Layout; defect: Layout }, r: Reader): unknown {
   const tag = r.byte()
   switch (tag) {
@@ -2320,19 +2764,25 @@ function decodeValue(layout: Layout, r: Reader): unknown {
     case "causeReason":
       return decodeReason(layout, r)
     case "struct":
-      return decodeStruct(layout, r)
+      return r.positional ? decodeStructPositional(layout, r) : decodeStruct(layout, r)
     case "array":
       return decodeArray(layout, r)
     case "union":
-      return decodeUnion(layout, r)
+      return r.positional ? decodeUnionPositional(layout, r) : decodeUnion(layout, r)
     case "never":
       throw issueError(new SchemaIssue.InvalidType(layout.ast, undefined, r.options))
   }
 }
 
-function decodeFrameBody(layout: Layout, r: Reader): unknown {
+function decodeFrameBody(layout: Layout, r: Reader, mode: Mode): unknown {
   const envelope = r.byte()
-  if (envelope !== ENVELOPE) invalid("version 1 envelope, flags 0", envelope, r.options)
+  if (envelope !== mode.envelope) invalid(mode.expectedEnvelope, envelope, r.options)
+  if (mode.positional) {
+    if (r.remaining < 8) invalid("complete value", undefined, r.options)
+    if (r.u32le() !== mode.fingerprintLo || r.u32le() !== mode.fingerprintHi) {
+      invalid("matching layout fingerprint", undefined, r.options)
+    }
+  }
   const value = decodeChecked(layout, r)
   if (value === ABSENT) throw issueError(new SchemaIssue.MissingKey(undefined))
   return value
@@ -2343,18 +2793,23 @@ function decodeFrameBody(layout: Layout, r: Reader): unknown {
 // is returned even when decoding fails.
 let pooledReader: Reader | undefined = new Reader()
 
-function decodeOneShot(layout: Layout, bytes: Uint8Array, options: SchemaAST.ParseOptions): unknown {
+function decodeOneShot(
+  layout: Layout,
+  bytes: Uint8Array,
+  options: SchemaAST.ParseOptions,
+  mode: Mode
+): unknown {
   const r = pooledReader ?? new Reader()
   const pooled = r === pooledReader
   if (pooled) pooledReader = undefined
-  r.reset(bytes, 0, bytes.length, options, new IndexSignatureCache(options))
+  r.reset(bytes, 0, bytes.length, options, new IndexSignatureCache(options), mode.positional)
   const savedPathLen = issuePathLen
   issuePathLen = 0
   try {
     const n = r.uvarint()
     if (n === 0) invalid("nonzero frame length", undefined, options)
     const saved = r.enter(n)
-    const value = decodeFrameBody(layout, r)
+    const value = decodeFrameBody(layout, r, mode)
     r.exit(saved)
     if (r.pos !== bytes.length) invalid("no leftover bytes", undefined, options)
     return value
@@ -2369,12 +2824,15 @@ function decodeOneShot(layout: Layout, bytes: Uint8Array, options: SchemaAST.Par
 // user API
 // -----------------------------------------------------------------------------
 
-function makeTransformation(layout: Layout): SchemaTransformation.Transformation<unknown, Uint8Array<ArrayBuffer>> {
+function makeTransformation(
+  layout: Layout,
+  mode: Mode
+): SchemaTransformation.Transformation<unknown, Uint8Array<ArrayBuffer>> {
   return SchemaTransformation.transformOrFail({
     decode: (bytes: Uint8Array<ArrayBuffer>, options) =>
       Effect.suspend(() => {
         try {
-          return Effect.succeed(decodeOneShot(layout, bytes, options))
+          return Effect.succeed(decodeOneShot(layout, bytes, options, mode))
         } catch (e) {
           if (e instanceof IssueError) return Effect.fail(e.issue)
           throw e
@@ -2383,13 +2841,17 @@ function makeTransformation(layout: Layout): SchemaTransformation.Transformation
     encode: (value: unknown, options) =>
       Effect.suspend(() => {
         try {
-          return Effect.succeed(encodeFrame(layout, value, options))
+          return Effect.succeed(encodeFrame(layout, value, options, mode))
         } catch (e) {
           if (e instanceof IssueError) return Effect.fail(e.issue)
           throw e
         }
       })
   })
+}
+
+function compileMode(layout: Layout, fingerprint: boolean | undefined): Mode {
+  return fingerprint === true ? fingerprintMode(layout) : defaultMode
 }
 
 function compileTarget(schema: Schema.Constraint): { target: Schema.Constraint; layout: Layout } {
@@ -2433,6 +2895,32 @@ function withCycleGuard(target: Schema.Constraint): Schema.Constraint {
 }
 
 /**
+ * Selects the wire mode.
+ *
+ * The default mode is evolution friendly: every struct field carries its wire
+ * id, unknown fields and union members are skipped, and a reader compiled from
+ * a different but compatible schema still decodes the frame.
+ *
+ * `fingerprint: true` trades that tolerance for size and speed. Each frame
+ * carries an 8-byte hash of the compiled wire layout, structs are written
+ * positionally without field ids, fixed-size leaves drop their length prefix,
+ * and union members are addressed by a canonical index instead of a kind byte
+ * and a 32-bit sentinel tag. A reader whose layout hashes differently rejects
+ * the frame rather than guessing, so both sides must ship the same wire
+ * layout. Non-wire schema changes (checks, annotations, decoded-side
+ * transformations, field declaration order) leave the hash alone.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Options {
+  /**
+   * @since 4.0.0
+   */
+  readonly fingerprint?: boolean | undefined
+}
+
+/**
  * The codec type returned by {@link toCodec}.
  *
  * @category models
@@ -2458,6 +2946,10 @@ export interface toCodec<S extends Schema.Constraint> extends
  * One-shot encode/decode reuse the existing runners: exactly one frame,
  * leftover bytes are malformed. Use {@link parser} for concatenated frames.
  *
+ * Pass `{ fingerprint: true }` for the positional wire mode described on
+ * {@link Options}. The two modes are not interchangeable: a frame written in
+ * one is rejected by a codec built for the other.
+ *
  * Encoded results are stable views into a bump-allocated arena. A result's
  * `byteLength` covers exactly one frame, but its `.buffer` may be larger,
  * `byteOffset` may be non-zero, and unrelated encoded results may share the
@@ -2480,10 +2972,10 @@ export interface toCodec<S extends Schema.Constraint> extends
  * @category constructors
  * @since 4.0.0
  */
-export function toCodec<S extends Schema.Constraint>(schema: S): toCodec<S> {
+export function toCodec<S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> {
   const { layout, target } = compileTarget(schema)
   return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
-    Schema.decodeTo(target, makeTransformation(layout))
+    Schema.decodeTo(target, makeTransformation(layout, compileMode(layout, options?.fingerprint)))
   ) as unknown as toCodec<S>
 }
 
@@ -2520,14 +3012,18 @@ export interface Parser<T> {
  * stay observable; after a failure the parser is spent and rejects further
  * calls.
  *
+ * `fingerprint` selects the wire mode and must match the writer; see
+ * {@link Options}.
+ *
  * @category constructors
  * @since 4.0.0
  */
 export function parser<S extends Schema.Constraint>(
   schema: S,
-  options?: SchemaAST.ParseOptions & { readonly maxFrameSize?: number | undefined }
+  options?: SchemaAST.ParseOptions & Options & { readonly maxFrameSize?: number | undefined }
 ): Parser<S["Type"]> {
   const { layout, target } = compileTarget(schema)
+  const mode = compileMode(layout, options?.fingerprint)
   const parseOptions: SchemaAST.ParseOptions = options ?? {}
   const maxFrameSize = options?.maxFrameSize
   const decodeEncoded = Schema.decodeUnknownSync(target as Schema.ConstraintDecoder<unknown>, parseOptions)
@@ -2632,8 +3128,8 @@ export function parser<S extends Schema.Constraint>(
           issuePathLen = 0
           const bodyStart = bufferStart + headerLen
           indexSignatures.beginFrame()
-          body.reset(buffer, bodyStart, bodyStart + frameLen, parseOptions, indexSignatures)
-          out.push(decodeEncoded(decodeFrameBody(layout, body)))
+          body.reset(buffer, bodyStart, bodyStart + frameLen, parseOptions, indexSignatures, mode.positional)
+          out.push(decodeEncoded(decodeFrameBody(layout, body, mode)))
         } catch (e) {
           spent = true
           release()
