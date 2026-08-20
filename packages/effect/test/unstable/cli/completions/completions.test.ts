@@ -454,11 +454,14 @@ describe("Zsh completions", () => {
     assert.include(script, "(us-east eu-west ap-south)")
   })
 
-  it("escapes quotes, colons and spaces in choice values", () => {
-    const desc = fromCommand(withTrickyChoices)
-    const script = Zsh.generate("deploy", desc)
-    assert.include(script, `(it\\'\\''s-fine node\\:20 with\\ space \\(whoami\\) \\#tag \\$HOME)`)
-    assert.include(script, `(o\\'\\''clock a\\:b \\{x,y\\})`)
+  it("escapes choice values for both the spec quoting and the action list re-parse", () => {
+    const script = Zsh.generate("deploy", fromCommand(withTrickyChoices))
+    expect(linesWith(script, ":value:(")).toMatchInlineSnapshot(
+      `"'(--mode)--mode[Deploy mode]:value:(it\\'\\''s-fine node\\:20 with\\ space \\(whoami\\) \\#tag \\$HOME back\\\\slash say\\"hi\\" a\\*b a\\;b \\~x foo\\'\\'' a\\!b \\🚀)'"`
+    )
+    expect(linesWith(script, "Deployment target")).toMatchInlineSnapshot(
+      `"':Deployment target:(o\\'\\''clock a\\:b \\{x,y\\} a\\😀b)'"`
+    )
   })
 
   it("uses alternative argument sets for positional arguments and subcommands", () => {
@@ -611,11 +614,20 @@ describe("Fish completions", () => {
     assert.include(script, "-r -f -a 'dev staging prod'")
   })
 
-  it("escapes quotes and spaces in choice values for re-parsing", () => {
-    const desc = fromCommand(withTrickyChoices)
-    const script = Fish.generate("deploy", desc)
-    assert.include(script, "-r -f -a 'it\\\\\\'s-fine node\\\\:20 with\\\\ space \\\\(whoami\\\\) \\\\#tag \\\\$HOME'")
-    assert.include(script, "-r -f -a 'o\\\\\\'clock a\\\\:b \\\\{x,y\\\\}'")
+  it("escapes choice values for both the string quoting and the expansion of the -a list", () => {
+    const script = Fish.generate("deploy", fromCommand(withTrickyChoices))
+    expect(linesWith(script, "-r -f -a")).toMatchInlineSnapshot(`
+      "complete -c deploy -l mode -d 'Deploy mode' -r -f -a 'it\\\\\\'s-fine node\\\\:20 with\\\\ space \\\\(whoami\\\\) \\\\#tag \\\\$HOME back\\\\\\\\slash say\\\\"hi\\\\" a\\\\*b a\\\\;b \\\\~x foo\\\\\\' a\\\\!b \\\\🚀'
+      complete -c deploy -r -f -a 'o\\\\\\'clock a\\\\:b \\\\{x,y\\\\} a\\\\😀b' -d 'Deployment target'"
+    `)
+  })
+
+  it("escapes backslashes in descriptions before quotes", () => {
+    const trailingBackslash = Command.make("deploy", {
+      mode: Flag.choice("mode", ["a"]).pipe(Flag.withDescription("Path like C:\\"))
+    })
+    const script = Fish.generate("deploy", fromCommand(trailingBackslash))
+    assert.include(script, `-d 'Path like C:\\\\'`)
   })
 
   it("uses -n conditions for nested subcommand flags", () => {

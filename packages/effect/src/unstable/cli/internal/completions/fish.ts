@@ -20,7 +20,7 @@ const escapeFishString = (s: string): string => s.replace(/\\/g, "\\\\").replace
  * quoting. The inner pass denies by default; keep its character class identical
  * to `escapeZshChoice`.
  */
-const escapeFishChoice = (s: string): string => escapeFishString(s.replace(/[^A-Za-z0-9_.,/@%+-]/g, "\\$&"))
+const escapeFishChoice = (s: string): string => escapeFishString(s.replace(/[^A-Za-z0-9_.,/@%+-]/gu, "\\$&"))
 
 /**
  * Build a Fish condition that checks the current subcommand context.

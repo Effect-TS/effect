@@ -19,7 +19,7 @@ const escapeZsh = (s: string): string => s.replace(/\\/g, "\\\\").replace(/'/g, 
  * itself is unquoted, so a value has to survive two rounds: an inner backslash
  * escape, then the surrounding single quotes.
  */
-const escapeZshChoice = (s: string): string => s.replace(/[^A-Za-z0-9_.,/@%+-]/g, "\\$&").replace(/'/g, "'\\''")
+const escapeZshChoice = (s: string): string => s.replace(/[^A-Za-z0-9_.,/@%+-]/gu, "\\$&").replace(/'/g, "'\\''")
 
 const sanitize = (s: string): string => s.replace(/[^a-zA-Z0-9_]/g, "_")
 
