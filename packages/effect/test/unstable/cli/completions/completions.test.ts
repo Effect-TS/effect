@@ -310,6 +310,7 @@ describe("Bash completions", () => {
               ;;
             *)
               printf -v _match '%q' "$_rest"
+              [[ -z "$_head" && "$_match" == '~'* ]] && _match="\\\\$_match"
               ;;
           esac
           [[ -n "$_open" && "$_match" == *"$_open" ]] && _match+="$_open"

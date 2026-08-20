@@ -118,6 +118,8 @@ const choicesHelper = (helperName: string, lines: Array<string>): void => {
   lines.push(`        ;;`)
   lines.push(`      *)`)
   lines.push(`        printf -v _match '%q' "$_rest"`)
+  // bash 3.2's %q leaves a leading ~ unescaped, and it would tilde-expand
+  lines.push(`        [[ -z "$_head" && "$_match" == '~'* ]] && _match="\\\\$_match"`)
   lines.push(`        ;;`)
   lines.push(`    esac`)
   // readline omits the closing quote when the match already ends with it
