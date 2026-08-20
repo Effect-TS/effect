@@ -1,7 +1,10 @@
 import { Schema } from "effect"
 import { Msgpack, SchemaBinary } from "effect/unstable/encoding"
+import { Packr, Unpackr } from "msgpackr"
 import assert from "node:assert/strict"
 import { Bench } from "tinybench"
+
+const streamBatchSize = 32
 
 const SmallRecord = Schema.Struct({
   id: Schema.Number,
@@ -133,12 +136,39 @@ interface Format {
   readonly decode: () => unknown
 }
 
+interface StreamFormat {
+  readonly name: string
+  readonly encodedSize: number
+  readonly decode: () => ReadonlyArray<unknown>
+}
+
 const textEncoder = new TextEncoder()
+
+const repeatFrame = (frame: Uint8Array, count: number): Uint8Array<ArrayBuffer> => {
+  const out = new Uint8Array(frame.length * count)
+  for (let i = 0; i < count; i++) {
+    out.set(frame, i * frame.length)
+  }
+  return out
+}
+
+const concatFrames = (frames: ReadonlyArray<Uint8Array>): Uint8Array<ArrayBuffer> => {
+  const out = new Uint8Array(frames.reduce((length, frame) => length + frame.length, 0))
+  let offset = 0
+  for (const frame of frames) {
+    out.set(frame, offset)
+    offset += frame.length
+  }
+  return out
+}
 
 const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   schema: S,
   value: S["Type"]
-): ReadonlyArray<Format> => {
+): {
+  readonly formats: ReadonlyArray<Format>
+  readonly streamFormats: ReadonlyArray<StreamFormat>
+} => {
   const jsonSchema = Schema.toCodecJson(schema)
   const binaryCodec = SchemaBinary.toCodec(schema)
   const jsonCodec = Schema.fromJsonString(jsonSchema)
@@ -159,32 +189,61 @@ const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   assert.deepStrictEqual(jsonDecode(json), value)
   assert.deepStrictEqual(msgpackDecode(msgpack), value)
 
-  return [
-    {
-      name: "SchemaBinary",
-      encodedSize: binary.length,
-      encode: () => binaryEncode(value),
-      decode: () => binaryDecode(binary)
-    },
-    {
-      name: "JSON",
-      encodedSize: textEncoder.encode(json).length,
-      encode: () => jsonEncode(value),
-      decode: () => jsonDecode(json)
-    },
-    {
-      name: "Msgpack",
-      encodedSize: msgpack.length,
-      encode: () => msgpackEncode(value),
-      decode: () => msgpackDecode(msgpack)
-    }
-  ]
+  const expectedStream = Array.from({ length: streamBatchSize }, () => value)
+  const binaryStream = repeatFrame(binary, streamBatchSize)
+  const encodeMsgpackValue = Schema.encodeUnknownSync(jsonSchema)
+  const msgpackPackr = new Packr()
+  const msgpackValue = encodeMsgpackValue(value)
+  const msgpackStream = concatFrames(
+    Array.from({ length: streamBatchSize }, () => msgpackPackr.pack(msgpackValue).slice())
+  )
+  const binaryParser = SchemaBinary.parser(schema)
+  const msgpackUnpackr = new Unpackr()
+  const decodeMsgpackValue = Schema.decodeUnknownSync(jsonSchema)
+  const decodeBinaryStream = () => binaryParser.feedSync(binaryStream)
+  const decodeMsgpackStream = () =>
+    msgpackUnpackr.unpackMultiple(msgpackStream).map((value) => decodeMsgpackValue(value))
+
+  assert.deepStrictEqual(decodeBinaryStream(), expectedStream)
+  assert.deepStrictEqual(decodeMsgpackStream(), expectedStream)
+
+  return {
+    formats: [
+      {
+        name: "SchemaBinary",
+        encodedSize: binary.length,
+        encode: () => binaryEncode(value),
+        decode: () => binaryDecode(binary)
+      },
+      {
+        name: "JSON",
+        encodedSize: textEncoder.encode(json).length,
+        encode: () => jsonEncode(value),
+        decode: () => jsonDecode(json)
+      },
+      {
+        name: "Msgpack",
+        encodedSize: msgpack.length,
+        encode: () => msgpackEncode(value),
+        decode: () => msgpackDecode(msgpack)
+      }
+    ],
+    streamFormats: [
+      {
+        name: "SchemaBinary parser",
+        encodedSize: binaryStream.length,
+        decode: decodeBinaryStream
+      },
+      {
+        name: "Msgpack unpackMultiple",
+        encodedSize: msgpackStream.length,
+        decode: decodeMsgpackStream
+      }
+    ]
+  }
 }
 
-const prepared = cases.map((testCase) => ({
-  name: testCase.name,
-  formats: prepare(testCase.schema, testCase.value)
-}))
+const prepared = cases.map((testCase) => ({ name: testCase.name, ...prepare(testCase.schema, testCase.value) }))
 
 console.log(`Node ${process.version}; codec and schema construction excluded from timings.`)
 console.log("JSON and Msgpack use the same Schema.toCodecJson representation; JSON sizes are UTF-8 bytes.")
@@ -197,6 +256,19 @@ console.table(prepared.flatMap((testCase) =>
     Case: testCase.name,
     Format: format.name,
     "Encoded bytes": format.encodedSize
+  }))
+))
+
+console.log(
+  `Streaming decode reuses one parser per format and processes ${streamBatchSize} concatenated frames per sample.`
+)
+console.table(prepared.flatMap((testCase) =>
+  testCase.streamFormats.map((format) => ({
+    Case: testCase.name,
+    Format: format.name,
+    Frames: streamBatchSize,
+    "Encoded bytes": format.encodedSize,
+    "Bytes / frame": format.encodedSize / streamBatchSize
   }))
 ))
 
@@ -254,6 +326,54 @@ console.table(bench.tasks.map((task) => {
     Direction: labels.direction,
     "Throughput avg (ops/s)": Math.round(result.throughput.mean),
     "Latency med (us/op)": (result.latency.p50 * 1_000).toFixed(2),
+    "Latency RME": `${result.latency.rme.toFixed(2)}%`,
+    Samples: result.latency.samplesCount
+  }
+}))
+
+const streamBench = new Bench({
+  iterations: 250,
+  time: 0,
+  warmupIterations: 25,
+  warmupTime: 0,
+  timestampProvider: "hrtimeNow"
+})
+const streamTasks = new Map<string, { readonly caseName: string; readonly formatName: string }>()
+
+for (const testCase of prepared) {
+  for (const format of testCase.streamFormats) {
+    const name = `${testCase.name} / ${format.name} / stream decode`
+    streamTasks.set(name, { caseName: testCase.name, formatName: format.name })
+    streamBench.add(name, () => {
+      sink = format.decode()
+    })
+  }
+}
+
+await streamBench.run()
+
+console.table(streamBench.tasks.map((task) => {
+  const labels = streamTasks.get(task.name)!
+  const result = task.result
+  if (result?.state === "errored") {
+    return {
+      Case: labels.caseName,
+      Format: labels.formatName,
+      Error: result.error.message
+    }
+  }
+  if (result?.state !== "completed") {
+    return {
+      Case: labels.caseName,
+      Format: labels.formatName,
+      State: result?.state ?? "missing result"
+    }
+  }
+  return {
+    Case: labels.caseName,
+    Format: labels.formatName,
+    "Throughput avg (values/s)": Math.round(result.throughput.mean * streamBatchSize),
+    "Latency med (us/value)": (result.latency.p50 * 1_000 / streamBatchSize).toFixed(2),
     "Latency RME": `${result.latency.rme.toFixed(2)}%`,
     Samples: result.latency.samplesCount
   }
