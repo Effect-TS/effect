@@ -6,11 +6,11 @@ Run from the repository root:
 nix develop -c pnpm --dir packages/effect exec node benchmark/schema/SchemaBinary.ts
 ```
 
-The benchmark compares arena-backed `SchemaBinary`, `SchemaBinary` followed by an ownership copy, JSON, and Effect's Msgpack schema codec with the same Schema values. The copy case calls `.slice()` on every arena result, reproducing the allocation that the arena removes. It covers a small scalar-heavy record, a nested order payload, collections, index-signature records below and above the parser's 256-entry cache bound, and 200 repeated records where framing and field-name overhead become visible.
+The benchmark compares arena-backed `SchemaBinary`, `SchemaBinary` followed by an ownership copy, `SchemaBinary` in fingerprint mode, JSON, and Effect's Msgpack schema codec with the same Schema values. The copy case calls `.slice()` on every arena result, reproducing the allocation that the arena removes. It covers a small scalar-heavy record, a nested order payload, collections, index-signature records below and above the parser's 256-entry cache bound, and 200 repeated records where framing and field-name overhead become visible.
 
 Codec and schema construction happen before timing. Decode uses payloads encoded before timing. Each one-shot encode and decode task gets 100 warmup samples followed by 1,000 measured samples. The output includes UTF-8 payload sizes, average operations per second, median latency, relative margin of error, and sample count.
 
-A second table compares stateful streaming decode with one frame per feed, 32 frames per feed, and each frame split immediately after its first byte. That fragment boundary exercises the incremental frame-header path instead of merely splitting the body. It also includes 200 distinct repeated-record frames, rather than one frame containing a 200-element array. `SchemaBinary.parser(schema).feedSync` processes the binary stream; a reusable msgpackr `Unpackr.unpackMultiple` processes the Msgpack batch, then the same precompiled Schema decoder validates every value. Parser construction, stream encoding, and fragmentation happen before timing. The streaming tasks get 25 warmup samples and 250 measured samples, and report throughput and median latency per decoded value.
+A second table compares stateful streaming decode with one frame per feed, 32 frames per feed, and each frame split immediately after its first byte. That fragment boundary exercises the incremental frame-header path instead of merely splitting the body. It also includes 200 distinct repeated-record frames, rather than one frame containing a 200-element array. `SchemaBinary.parser(schema).feedSync` processes the binary stream, once per wire mode; a reusable msgpackr `Unpackr.unpackMultiple` processes the Msgpack batch, then the same precompiled Schema decoder validates every value. Parser construction, stream encoding, and fragmentation happen before timing. The streaming tasks get 25 warmup samples and 250 measured samples, and report throughput and median latency per decoded value.
 
 Size output includes raw, gzip level 6, and zstd bytes for each one-shot payload and concatenated stream. Compression is applied to the whole stream so repeated field ids can share the compressor dictionary.
 
@@ -20,49 +20,70 @@ Treat the measurements as a per-machine comparison within one run. Runtime versi
 
 ## Measured comparison
 
-These measurements used Node 26.7.0 on Linux x64. Payload sizes are exact; throughput is machine-local.
+These measurements used Node 26.7.0 on Linux x64. Payload sizes are exact; throughput is the median of three full runs and is machine-local.
 
-| Case                   | SchemaBinary raw/gzip/zstd |  JSON raw/gzip/zstd | Msgpack raw/gzip/zstd |
-| ---------------------- | -------------------------: | ------------------: | --------------------: |
-| small record           |               58 / 78 / 67 |       89 / 100 / 92 |          69 / 88 / 78 |
-| nested payload         |            318 / 305 / 300 |     453 / 303 / 309 |       385 / 304 / 299 |
-| collections            |           1452 / 792 / 776 |    1828 / 671 / 660 |      1462 / 788 / 805 |
-| index signatures / 128 |           2251 / 689 / 656 |    2235 / 573 / 559 |      2203 / 676 / 629 |
-| index signatures / 512 |         9355 / 2373 / 2189 |  9531 / 2266 / 2074 |    9287 / 2544 / 2304 |
-| large repeated records |        27646 / 3065 / 3175 | 57529 / 3230 / 3008 |   51283 / 3516 / 3320 |
+| Case                   | SchemaBinary raw/gzip/zstd | Fingerprint raw/gzip/zstd |  JSON raw/gzip/zstd | Msgpack raw/gzip/zstd |
+| ---------------------- | -------------------------: | ------------------------: | ------------------: | --------------------: |
+| small record           |               58 / 78 / 67 |              35 / 53 / 44 |       89 / 100 / 92 |          69 / 88 / 78 |
+| nested payload         |            318 / 305 / 300 |           206 / 209 / 203 |     453 / 303 / 309 |       385 / 304 / 299 |
+| collections            |           1452 / 792 / 776 |          1438 / 776 / 758 |    1828 / 671 / 660 |      1462 / 788 / 805 |
+| index signatures / 128 |           2251 / 689 / 656 |          2258 / 697 / 665 |    2235 / 573 / 559 |      2203 / 676 / 629 |
+| index signatures / 512 |         9355 / 2373 / 2189 |        9362 / 2383 / 2197 |  9531 / 2266 / 2074 |    9287 / 2544 / 2304 |
+| large repeated records |        27646 / 3065 / 3175 |       19454 / 2766 / 2701 | 57529 / 3230 / 3008 |   51283 / 3516 / 3320 |
 
 Compression narrows or reverses the raw-size advantage on several cases. Repeated field ids compress well, so raw transport size and compressed transport size should be treated as separate results.
 
-One representative run of the combined tree produced the following one-shot encode rates in operations per second:
+Encode rates in operations per second:
 
-| Case                   | SchemaBinary arena | SchemaBinary copy | Msgpack |
-| ---------------------- | -----------------: | ----------------: | ------: |
-| small record           |            491,619 |           500,578 | 488,432 |
-| nested payload         |            232,943 |           220,297 | 208,758 |
-| collections            |             34,078 |            33,545 |  21,706 |
-| index signatures / 128 |             14,286 |            14,191 |  33,791 |
-| index signatures / 512 |              2,883 |             2,887 |   6,333 |
-| large repeated records |              6,156 |             6,086 |   3,521 |
+| Case                   | SchemaBinary arena | SchemaBinary copy | Fingerprint | Msgpack |
+| ---------------------- | -----------------: | ----------------: | ----------: | ------: |
+| small record           |            501,284 |           488,131 |     517,385 | 480,915 |
+| nested payload         |            233,724 |           220,297 |     249,978 | 207,419 |
+| collections            |             34,342 |            33,780 |      34,180 |  21,994 |
+| index signatures / 128 |             14,096 |            14,048 |      14,214 |  34,134 |
+| index signatures / 512 |              2,830 |             2,852 |       2,864 |   6,218 |
+| large repeated records |              5,908 |             5,719 |       6,688 |   3,445 |
 
-The corresponding one-shot decode rates were:
+Decode rates:
 
-| Case                   | SchemaBinary | Msgpack |
-| ---------------------- | -----------: | ------: |
-| small record           |      496,806 | 470,364 |
-| nested payload         |      221,214 | 201,178 |
-| collections            |       37,080 |  21,081 |
-| index signatures / 128 |       20,494 |  29,208 |
-| index signatures / 512 |        4,979 |   4,456 |
-| large repeated records |        5,876 |   4,000 |
+| Case                   | SchemaBinary | Fingerprint | Msgpack |
+| ---------------------- | -----------: | ----------: | ------: |
+| small record           |      507,538 |     518,477 | 494,179 |
+| nested payload         |      225,371 |     242,223 | 201,306 |
+| collections            |       38,060 |      37,874 |  21,327 |
+| index signatures / 128 |       20,750 |      20,387 |  29,064 |
+| index signatures / 512 |        5,031 |       4,943 |   4,511 |
+| large repeated records |        6,089 |       6,638 |   3,972 |
 
 The small cases are dominated by fixed per-call cost, so their arena and ownership-copy rows can trade places between runs. The larger cases are more stable; all throughput numbers remain machine-local rather than portable scores.
 
-The per-frame repeated-record stream makes that distinction concrete:
+The per-frame repeated-record stream makes the framing cost concrete:
 
-| Format       | Frames | Raw bytes | gzip -6 | zstd |
-| ------------ | -----: | --------: | ------: | ---: |
-| SchemaBinary |    200 |     27840 |    3109 | 3174 |
-| Msgpack      |    200 |     51520 |    2956 | 2888 |
+| Format                   | Frames | Raw bytes | gzip -6 | zstd |
+| ------------------------ | -----: | --------: | ------: | ---: |
+| SchemaBinary             |    200 |     27840 |    3109 | 3174 |
+| SchemaBinary fingerprint |    200 |     21240 |    2876 | 2733 |
+| Msgpack                  |    200 |     51520 |    2956 | 2888 |
+
+## Fingerprint mode
+
+Fingerprint mode is measured against the optimized default mode in the same run, not against any earlier tree. Sizes are exact; rates are medians of three runs.
+
+| Case                      | Raw bytes | Encode | Decode | Stream single | Stream batch | Stream fragmented |
+| ------------------------- | --------: | -----: | -----: | ------------: | -----------: | ----------------: |
+| small record              |    -39.7% |  +3.2% |  +2.2% |         +4.9% |        +7.0% |            +14.7% |
+| nested payload            |    -35.2% |  +7.0% |  +7.5% |        +11.4% |        +6.7% |             +6.3% |
+| collections               |     -1.0% |  -0.5% |  -0.5% |         +1.4% |        -0.3% |             -0.5% |
+| index signatures / 128    |     +0.3% |  +0.8% |  -1.7% |         +0.8% |        +0.5% |             +1.0% |
+| index signatures / 512    |     +0.1% |  +1.2% |  -1.7% |         +2.7% |        -1.4% |             -0.9% |
+| large repeated records    |    -29.6% | +13.2% |  +9.0% |        +10.2% |       +10.9% |             +9.7% |
+| per-frame repeated record |    -23.7% |        |        |         +8.1% |        +5.3% |             +2.2% |
+
+The size result splits by shape. Struct-heavy payloads drop the 5-byte field id and, for fixed-size leaves, the length byte too, which is where the 24% to 40% raw savings come from. Index-signature records carry almost no named fields, so they pay the 8-byte fingerprint and save nothing: those two cases get marginally larger. Collections sit in between.
+
+Compression narrows the gap without erasing it. On the 200-frame stream, gzip goes from 3109 to 2876 bytes (-7.5%) and zstd from 3174 to 2733 (-13.9%), against -23.7% raw. Fingerprint mode is strongest on uncompressed transports, but the mismatch detection it adds is independent of compression.
+
+The decode gain comes from dropping the field-id varint, the sorted-field cursor and map fallback, the duplicate-id bookkeeping, and the per-field length prefix on fixed-size leaves. It is reported here as a measurement against the optimized parser. The pre-optimization estimate that field varints were 24% of decode time predates the unrolled reader and is not a forecast for this change.
 
 ## Parser optimization effects
 
