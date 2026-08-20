@@ -481,6 +481,121 @@ describe("SchemaBinary", () => {
       assert.deepStrictEqual(values, Array.from({ length: 100 }, (_, i) => i))
     })
 
+    it("waits for a fragmented multi-byte frame header", () => {
+      const value = "x".repeat(300)
+      const bytes = encode(Schema.String, value)
+      const parser = SchemaBinary.parser(Schema.String)
+
+      assert.deepStrictEqual(parser.feedSync(bytes.slice(0, 1)), [])
+      assert.deepStrictEqual(parser.feedSync(bytes.slice(1)), [value])
+      parser.endSync()
+    })
+
+    it("uses the bigint header path for longer safe lengths", () => {
+      // Canonical uvarint(Number.MAX_SAFE_INTEGER): seven continuation groups
+      // followed by the final four bits. maxFrameSize rejects it before the
+      // parser waits for an impractically large body.
+      const bytes = Uint8Array.of(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F)
+      const parser = SchemaBinary.parser(Schema.String, { maxFrameSize: 1 })
+
+      assert.deepStrictEqual(parser.feedSync(bytes.slice(0, 7)), [])
+      assert.match(schemaError(() => parser.feedSync(bytes.slice(7))).message, /frame within maxFrameSize/)
+    })
+
+    it("keeps parser index-signature caching bounded with FIFO eviction", () => {
+      let checks = 0
+      const Key = Schema.String.check(Schema.makeFilter((_: string) => {
+        checks++
+        return true
+      }))
+      const Writer = Schema.Record(Schema.String, Schema.Number)
+      const parser = SchemaBinary.parser(Schema.Record(Key, Schema.Number))
+      const feed = (key: string) => {
+        const value = { [key]: 1 }
+        assert.deepStrictEqual(parser.feedSync(encode(Writer, value)), [value])
+      }
+
+      // The parser cache holds 256 attacker-controlled (layout, key) pairs.
+      // The 257th evicts key-0, while key-1 remains cached.
+      for (let i = 0; i < 257; i++) feed(`key-${i}`)
+      const beforeHit = checks
+      feed("key-1")
+      const hitChecks = checks - beforeHit
+      const beforeMiss = checks
+      feed("key-0")
+      const missChecks = checks - beforeMiss
+
+      assert.strictEqual(missChecks, hitChecks + 1)
+      parser.endSync()
+    })
+
+    it("does not thrash the index-signature cache above its bound", () => {
+      let checks = 0
+      const Key = Schema.String.check(Schema.makeFilter((_: string) => {
+        checks++
+        return true
+      }))
+      const Writer = Schema.Record(Schema.String, Schema.Number)
+      const Reader = Schema.Record(Key, Schema.Number)
+      const allHitParser = SchemaBinary.parser(Reader)
+      const allHitValue = Object.fromEntries(Array.from({ length: 256 }, (_, index) => [`hit-${index}`, index]))
+      const allHitBytes = encode(Writer, allHitValue)
+
+      assert.deepStrictEqual(allHitParser.feedSync(allHitBytes), [allHitValue])
+      const beforeAllHit = checks
+      assert.deepStrictEqual(allHitParser.feedSync(allHitBytes), [allHitValue])
+      const allHitChecksPerKey = (checks - beforeAllHit) / 256
+      allHitParser.endSync()
+
+      const parser = SchemaBinary.parser(Reader)
+      const value = Object.fromEntries(Array.from({ length: 300 }, (_, index) => [`key-${index}`, index]))
+      const bytes = encode(Writer, value)
+
+      assert.deepStrictEqual(parser.feedSync(bytes), [value])
+      const firstChecks = checks
+      assert.deepStrictEqual(parser.feedSync(bytes), [value])
+      const secondChecks = checks - firstChecks
+      const misses = secondChecks - allHitChecksPerKey * 300
+
+      // Derive the decoder's per-key work from a fully warm parser. Each cache
+      // miss adds one classification check beyond that all-hit baseline.
+      assert.strictEqual(misses, 45)
+      parser.endSync()
+    })
+
+    it("isolates index-signature caches by parser options", () => {
+      const Key = Schema.String.check(Schema.makeFilter((key: string) => key.startsWith("allowed-")))
+      const Writer = Schema.Record(Schema.String, Schema.Number)
+      const Reader = Schema.Record(Key, Schema.Number)
+      const bytes = encode(Writer, { denied: 1 })
+      const strict = SchemaBinary.parser(Reader)
+      const unchecked = SchemaBinary.parser(Reader, { disableChecks: true })
+
+      assert.deepStrictEqual(strict.feedSync(bytes), [{}])
+      assert.deepStrictEqual(unchecked.feedSync(bytes), [{ denied: 1 }])
+      strict.endSync()
+      unchecked.endSync()
+    })
+
+    it("keeps nested SchemaBinary decodes independent from the outer reader", () => {
+      const Inner = Schema.Struct({ id: Schema.Number, label: Schema.String })
+      const Outer = Schema.Struct({ id: Schema.String, inner: SchemaBinary.toCodec(Inner) })
+      const first = { id: "first", inner: { id: 1, label: "one" } }
+      const second = { id: "second", inner: { id: 2, label: "two" } }
+      const parser = SchemaBinary.parser(Outer)
+
+      assert.deepStrictEqual(parser.feedSync(concat(encode(Outer, first), encode(Outer, second))), [first, second])
+      parser.endSync()
+    })
+
+    it("returns a checked-out one-shot reader after an exceptional decode", () => {
+      const codec = SchemaBinary.toCodec(Schema.String)
+      const decode = Schema.decodeUnknownSync(codec)
+
+      assert.match(schemaError(() => decode(Uint8Array.of(2, 0x10, 0xFF))).message, /utf-8/)
+      assert.strictEqual(decode(encode(Schema.String, "after failure")), "after failure")
+    })
+
     it("delivers completed values before reporting a later failure", () => {
       const good = encode(Schema.Number, 1)
       const bad = encode(Schema.Number, 2).slice(0, 2)
@@ -502,6 +617,14 @@ describe("SchemaBinary", () => {
       const error = schemaError(() => parser.feedSync(bytes))
       assert.match(error.message, /uvarint/)
       assert.isTrue(SchemaIssue.hasInput(error.issue))
+    })
+
+    it("rejects a terminated header above the safe-integer bound", () => {
+      const bytes = Uint8Array.of(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x10)
+      const parser = SchemaBinary.parser(Schema.String)
+
+      assert.match(schemaError(() => parser.feedSync(bytes)).message, /safe integer length/)
+      assert.match(schemaError(() => parser.feedSync(new Uint8Array())).message, /parser is spent/)
     })
 
     it.effect("wraps feed and end in SchemaError effects", () =>
@@ -735,6 +858,16 @@ describe("SchemaBinary", () => {
         Schema.decodeUnknownSync(SchemaBinary.toCodec(Reader), { disableChecks: true })(encode(Writer, value)),
         value
       )
+    })
+
+    it("keeps one-shot index-signature caching within each options call", () => {
+      const Key = Schema.String.check(Schema.makeFilter((key: string) => key.startsWith("allowed-")))
+      const Writer = Schema.Record(Schema.String, Schema.Number)
+      const codec = SchemaBinary.toCodec(Schema.Record(Key, Schema.Number))
+      const bytes = encode(Writer, { denied: 1 })
+
+      assert.deepStrictEqual(Schema.decodeUnknownSync(codec)(bytes), {})
+      assert.deepStrictEqual(Schema.decodeUnknownSync(codec, { disableChecks: true })(bytes), { denied: 1 })
     })
 
     it("honors errors all for missing fields", () => {
