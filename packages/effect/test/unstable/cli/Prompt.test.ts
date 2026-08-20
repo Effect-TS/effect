@@ -158,26 +158,48 @@ describe("Prompt.float", () => {
 })
 
 describe("Prompt.text", () => {
-  it.effect("uses the default prompt prefix when prefix is explicitly undefined", () =>
+  it.effect("renders the default prompt theme", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
 
-      const options = { message: "Name", prefix: undefined } as unknown as Prompt.TextOptions
-      yield* Prompt.run(Prompt.text(options))
+      yield* Prompt.run(Prompt.text({ message: "Name" }))
 
       const frames = toFrames(yield* MockTerminal.displayLines)
       assert.include(frames[0] ?? "", "? Name")
-      assert.notInclude(frames[0] ?? "", "undefined")
     }).pipe(Effect.provide(TestLayer)))
 
-  it.effect("renders a custom prompt prefix", () =>
+  it.effect("renders the prompt theme from context", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
 
-      yield* Prompt.run(Prompt.text({ message: "Name", prefix: "!" }))
+      yield* Prompt.run(Prompt.text({ message: "Name" })).pipe(
+        Effect.provideService(
+          Prompt.Theme,
+          Prompt.makeTheme({
+            prefix: "!",
+            pointerSmall: ">",
+            tick: "+",
+            ellipsis: "~"
+          })
+        )
+      )
 
       const frames = toFrames(yield* MockTerminal.displayLines)
-      assert.include(frames[0] ?? "", "! Name")
+      assert.include(frames[0] ?? "", "! Name >")
+      assert.include(frames.at(-1) ?? "", "+ Name ~")
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("omits spacing for empty theme symbols", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.text({
+        message: "Name",
+        theme: { prefix: "", pointerSmall: "" }
+      }))
+
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.strictEqual(frames[0], "Name")
     }).pipe(Effect.provide(TestLayer)))
 
   it.effect("starts from the default value so it can be edited", () =>
@@ -281,27 +303,46 @@ describe("Prompt.text", () => {
 })
 
 describe("Prompt.select", () => {
-  it.effect("preserves a custom prompt prefix across redraws", () =>
+  it.effect("renders a per-prompt theme across redraws", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("down")
       yield* MockTerminal.inputKey("enter")
 
       const result = yield* Prompt.run(Prompt.select({
         message: "Pick item",
-        prefix: "!",
+        theme: {
+          prefix: "!",
+          pointer: ">",
+          descriptionSeparator: ": "
+        },
         choices: [
-          { title: "First", value: "first" },
-          { title: "Second", value: "second" }
+          { title: "First", value: "first", description: "one" },
+          { title: "Second", value: "second", description: "two" }
         ]
       }))
 
       assert.strictEqual(result, "second")
       const frames = toFrames(yield* MockTerminal.displayLines)
       assert.strictEqual(frames.filter((frame) => frame.includes("! Pick item")).length, 2)
+      assert.isTrue(frames.some((frame) => frame.includes("> Second : two")))
     }).pipe(Effect.provide(TestLayer)))
 })
 
 describe("Prompt.password", () => {
+  it.effect("renders the password mask from the prompt theme", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputText("abc")
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.password({ message: "Password" })).pipe(
+        Effect.provideService(Prompt.Theme, Prompt.makeTheme({ passwordMask: "•" }))
+      )
+
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.isTrue(frames.some((frame) => frame.includes("•••")))
+      assert.isFalse(frames.some((frame) => frame.includes("***")))
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("starts from the default value so it can be edited", () =>
     Effect.gen(function*() {
       const prompt = Prompt.password({
@@ -328,6 +369,22 @@ describe("Prompt.password", () => {
 
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(Redacted.value(result), "")
+    }).pipe(Effect.provide(TestLayer)))
+})
+
+describe("Prompt.toggle", () => {
+  it.effect("renders the separator from the prompt theme", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.toggle({
+        message: "Enabled",
+        theme: { toggleSeparator: "|" }
+      }))
+
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.isTrue(frames.some((frame) => frame.includes("on | off")))
+      assert.isFalse(frames.some((frame) => frame.includes("on / off")))
     }).pipe(Effect.provide(TestLayer)))
 })
 
@@ -566,6 +623,34 @@ describe("Prompt.file", () => {
 })
 
 describe("Prompt.multiSelect", () => {
+  it.effect("renders paging and checkbox symbols from the prompt theme", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        maxPerPage: 3,
+        theme: {
+          arrowDown: "v",
+          checkboxOn: "[x]",
+          checkboxOff: "[ ]"
+        },
+        choices: [
+          { title: "Alpha", value: "alpha" },
+          { title: "Beta", value: "beta" }
+        ]
+      })
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("space")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(prompt)
+
+      assert.deepStrictEqual(value, ["alpha"])
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.isTrue(frames.some((frame) => frame.includes("v [ ] Alpha")))
+      assert.isTrue(frames.some((frame) => frame.includes("[x] Alpha")))
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("does not allow a disabled multi-select choice to be selected", () =>
     Effect.gen(function*() {
       const prompt = Prompt.multiSelect({
