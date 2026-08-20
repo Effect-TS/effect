@@ -170,46 +170,85 @@ function decodeUtf8(
   }
 }
 
+const OUTPUT_ARENA_SIZE = 8 * 1024
+
+interface OutputArena {
+  readonly buf: Uint8Array<ArrayBuffer>
+  offset: number
+  writing: boolean
+}
+
+function makeOutputArena(size: number): OutputArena {
+  return { buf: new Uint8Array(size), offset: 0, writing: false }
+}
+
+let outputArena = makeOutputArena(OUTPUT_ARENA_SIZE)
+
 class Writer {
-  buf = new Uint8Array(1024)
+  buf: Uint8Array<ArrayBuffer> = new Uint8Array(0)
   view = new DataView(this.buf.buffer)
+  arena: OutputArena | undefined
+  start = 0
   len = 0
+  reset() {
+    let arena = outputArena
+    // A nested SchemaBinary codec can start while the outer writer still owns
+    // the current arena tail. Move the nested writer to a fresh arena rather
+    // than reserving a guessed range that the outer writer could outgrow.
+    if (arena.writing || arena.offset >= arena.buf.length) {
+      arena = outputArena = makeOutputArena(OUTPUT_ARENA_SIZE)
+    }
+    arena.writing = true
+    this.arena = arena
+    this.buf = arena.buf
+    this.view = new DataView(arena.buf.buffer)
+    this.start = arena.offset
+    this.len = 0
+  }
   ensure(n: number) {
-    if (this.len + n > this.buf.length) {
-      const next = new Uint8Array(Math.max(this.buf.length * 2, this.len + n))
-      next.set(this.buf)
-      this.buf = next
-      this.view = new DataView(next.buffer)
+    if (this.start + this.len + n > this.buf.length) {
+      const previous = this.arena!
+      const required = this.len + n
+      let size = OUTPUT_ARENA_SIZE
+      while (size < required) size *= 2
+      const next = makeOutputArena(size)
+      next.writing = true
+      next.buf.set(this.buf.subarray(this.start, this.start + this.len))
+      previous.writing = false
+      this.arena = outputArena = next
+      this.buf = next.buf
+      this.view = new DataView(next.buf.buffer)
+      this.start = 0
     }
   }
   byte(b: number) {
     this.ensure(1)
-    this.buf[this.len++] = b
+    this.buf[this.start + this.len++] = b
   }
   bytes(b: Uint8Array) {
     this.ensure(b.length)
-    this.buf.set(b, this.len)
+    this.buf.set(b, this.start + this.len)
     this.len += b.length
   }
   uvarint(n: number) {
     this.ensure(10)
     const buf = this.buf
-    let p = this.len
+    let p = this.start + this.len
     while (n > 0x7F) {
       buf[p++] = (n & 0x7F) | 0x80
       n = n < 0x80000000 ? n >>> 7 : Math.floor(n / 128)
     }
     buf[p++] = n
-    this.len = p
+    this.len = p - this.start
   }
   // Field ids are fixed by the layout, so their varint bytes are encoded once
   // at compile time and blitted here.
   raw(bytes: Uint8Array) {
     this.ensure(bytes.length)
     const buf = this.buf
-    let p = this.len
+    let p = this.start + this.len
     for (let i = 0; i < bytes.length; i++) buf[p++] = bytes[i]
-    this.len = p
+    this.len = p - this.start
   }
   uvarintBig(n: bigint) {
     while (n > BIGINT_VARINT_MASK) {
@@ -223,22 +262,22 @@ class Writer {
   }
   f64(n: number) {
     this.ensure(8)
-    this.view.setFloat64(this.len, n, true)
+    this.view.setFloat64(this.start + this.len, n, true)
     this.len += 8
   }
   i64(n: bigint) {
     this.ensure(8)
-    this.view.setBigInt64(this.len, n, true)
+    this.view.setBigInt64(this.start + this.len, n, true)
     this.len += 8
   }
   u32le(n: number) {
     this.ensure(4)
-    this.view.setUint32(this.len, n >>> 0, true)
+    this.view.setUint32(this.start + this.len, n >>> 0, true)
     this.len += 4
   }
   i32le(n: number) {
     this.ensure(4)
-    this.view.setInt32(this.len, n | 0, true)
+    this.view.setInt32(this.start + this.len, n | 0, true)
     this.len += 4
   }
   // Reserves one byte for a length prefix that is not known yet. The payload is
@@ -251,16 +290,17 @@ class Writer {
   endSized(mark: number) {
     const payload = this.len - mark - 1
     if (payload < 0x80) {
-      this.buf[mark] = payload
+      this.buf[this.start + mark] = payload
       return
     }
     const size = uvarintSize(payload)
     const extra = size - 1
     this.ensure(extra)
-    this.buf.copyWithin(mark + size, mark + 1, this.len)
+    const absoluteMark = this.start + mark
+    this.buf.copyWithin(absoluteMark + size, absoluteMark + 1, this.start + this.len)
     this.len += extra
     let n = payload
-    let p = mark
+    let p = absoluteMark
     while (n > 0x7F) {
       this.buf[p++] = (n & 0x7F) | 0x80
       n = Math.floor(n / 128)
@@ -272,19 +312,31 @@ class Writer {
     if (n === 0) return
     this.ensure(n * 3)
     const buf = this.buf
-    let p = this.len
+    let p = this.start + this.len
     for (let i = 0; i < n; i++) {
       const c = s.charCodeAt(i)
       if (c > 0x7F) {
-        this.len += utf8Encode.encodeInto(s, buf.subarray(this.len)).written
+        this.len += utf8Encode.encodeInto(s, buf.subarray(this.start + this.len)).written
         return
       }
       buf[p++] = c
     }
-    this.len = p
+    this.len = p - this.start
   }
   out(): Uint8Array<ArrayBuffer> {
-    return this.buf.slice(0, this.len) as Uint8Array<ArrayBuffer>
+    const arena = this.arena!
+    const out = new Uint8Array(arena.buf.buffer, this.start, this.len)
+    if (arena === outputArena) arena.offset = this.start + this.len
+    arena.writing = false
+    this.arena = undefined
+    return out
+  }
+  abort() {
+    const arena = this.arena
+    if (arena === undefined) return
+    if (arena === outputArena) arena.offset = this.start
+    arena.writing = false
+    this.arena = undefined
   }
 }
 
@@ -1621,7 +1673,7 @@ function encodeFrame(layout: Layout, value: unknown, options: SchemaAST.ParseOpt
   const w = pooledWriter ?? new Writer()
   const pooled = w === pooledWriter
   if (pooled) pooledWriter = undefined
-  w.len = 0
+  w.reset()
   const savedPathLen = issuePathLen
   issuePathLen = 0
   try {
@@ -1631,6 +1683,7 @@ function encodeFrame(layout: Layout, value: unknown, options: SchemaAST.ParseOpt
     w.endSized(mark)
     return w.out()
   } finally {
+    w.abort()
     issuePathLen = savedPathLen
     if (pooled) pooledWriter = w
   }
@@ -2114,6 +2167,12 @@ export interface toCodec<S extends Schema.Constraint> extends
  *
  * One-shot encode/decode reuse the existing runners: exactly one frame,
  * leftover bytes are malformed. Use {@link parser} for concatenated frames.
+ *
+ * Encoded results are stable views into a bump-allocated arena. A result's
+ * `byteLength` covers exactly one frame, but its `.buffer` may be larger,
+ * `byteOffset` may be non-zero, and unrelated encoded results may share the
+ * same buffer. Transferring or detaching that buffer affects every view into
+ * it. Use `bytes.slice()` when an independently owned buffer is required.
  *
  * **Example**
  *
