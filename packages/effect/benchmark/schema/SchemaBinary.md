@@ -99,4 +99,4 @@ The final combined implementation was then compared with the pre-refactor `8e60b
 | per-frame repeated record | batch 200  |     647k |     710k |  +9.6% |
 | per-frame repeated record | fragmented |     578k |     634k |  +9.8% |
 
-The collections result matches the original roughly 20% target. The 128-key case benefits more because the parser reuses every classification on later frames. The 512-key case verifies that inputs wider than the cache bound still improve rather than thrash: the cache retains most classifications and admits at most one replacement per frame. Those targets were diagnostic estimates, not acceptance thresholds.
+The collections result matches the original roughly 20% target. The 128-key case benefits more because the parser reuses every classification on later frames. The 512-key case verifies that inputs wider than the cache bound still improve rather than thrash: the cache retains roughly half of the classifications and admits at most one replacement per frame. Those targets were diagnostic estimates, not acceptance thresholds.

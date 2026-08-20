@@ -223,6 +223,8 @@ const OUTPUT_ARENA_SIZE = 8 * 1024
 // attacker-controlled state retained across feed calls. Once full, the cache
 // admits at most one FIFO replacement per frame. Repeated frames wider than
 // the cache therefore keep their existing hits instead of cycling every entry.
+// One replacement still adapts to gradual key changes without making churn
+// scale with either frame width or cache capacity.
 const PARSER_INDEX_SIGNATURE_CACHE_SIZE = 256
 
 interface OutputArena {

@@ -536,7 +536,18 @@ describe("SchemaBinary", () => {
         return true
       }))
       const Writer = Schema.Record(Schema.String, Schema.Number)
-      const parser = SchemaBinary.parser(Schema.Record(Key, Schema.Number))
+      const Reader = Schema.Record(Key, Schema.Number)
+      const allHitParser = SchemaBinary.parser(Reader)
+      const allHitValue = Object.fromEntries(Array.from({ length: 256 }, (_, index) => [`hit-${index}`, index]))
+      const allHitBytes = encode(Writer, allHitValue)
+
+      assert.deepStrictEqual(allHitParser.feedSync(allHitBytes), [allHitValue])
+      const beforeAllHit = checks
+      assert.deepStrictEqual(allHitParser.feedSync(allHitBytes), [allHitValue])
+      const allHitChecksPerKey = (checks - beforeAllHit) / 256
+      allHitParser.endSync()
+
+      const parser = SchemaBinary.parser(Reader)
       const value = Object.fromEntries(Array.from({ length: 300 }, (_, index) => [`key-${index}`, index]))
       const bytes = encode(Writer, value)
 
@@ -544,10 +555,11 @@ describe("SchemaBinary", () => {
       const firstChecks = checks
       assert.deepStrictEqual(parser.feedSync(bytes), [value])
       const secondChecks = checks - firstChecks
+      const misses = secondChecks - allHitChecksPerKey * 300
 
-      // The Schema decoder checks all 300 keys. The binary layout only has to
-      // reclassify 45 misses after retaining 255 of the first frame's entries.
-      assert.strictEqual(secondChecks, 345)
+      // Derive the decoder's per-key work from a fully warm parser. Each cache
+      // miss adds one classification check beyond that all-hit baseline.
+      assert.strictEqual(misses, 45)
       parser.endSync()
     })
 
