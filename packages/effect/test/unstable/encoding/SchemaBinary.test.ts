@@ -186,6 +186,32 @@ describe("SchemaBinary", () => {
       )
     })
 
+    it("reports the array or tuple index for an unknown positional union member", () => {
+      const A = Schema.Struct({ _tag: Schema.Literal("A") })
+      const B = Schema.Struct({ _tag: Schema.Literal("B") })
+      const WriterArray = Schema.Struct({ xs: Schema.Array(Schema.Union([A, B])) })
+      const ReaderArray = Schema.Struct({ xs: Schema.Array(Schema.Union([A])) })
+      assert.match(
+        schemaError(() =>
+          Schema.decodeUnknownSync(SchemaBinary.toCodec(ReaderArray))(
+            encode(WriterArray, { xs: [{ _tag: "B" }] })
+          )
+        ).message,
+        /Missing key\n  at \["xs"\]\[0\]/
+      )
+
+      const WriterTuple = Schema.Struct({ xs: Schema.Tuple([Schema.String, Schema.Union([A, B])]) })
+      const ReaderTuple = Schema.Struct({ xs: Schema.Tuple([Schema.String, Schema.Union([A])]) })
+      assert.match(
+        schemaError(() =>
+          Schema.decodeUnknownSync(SchemaBinary.toCodec(ReaderTuple))(
+            encode(WriterTuple, { xs: ["head", { _tag: "B" }] })
+          )
+        ).message,
+        /Missing key\n  at \["xs"\]\[1\]/
+      )
+    })
+
     it("uses kind tags for mixed enums", () => {
       const Mixed = { Text: "text", Code: 1 } as const
       const schema = Schema.Enum(Mixed)
@@ -383,6 +409,25 @@ describe("SchemaBinary", () => {
       assert.match(schemaError(() => encode(Node, value)).message, /acyclic value/)
     })
 
+    it("fails array-mediated cycles with the acyclic value issue", () => {
+      interface Node {
+        readonly name: string
+        readonly children: ReadonlyArray<Node>
+      }
+      let Node: Schema.Codec<Node>
+      Node = Schema.Struct({
+        name: Schema.String,
+        children: Schema.Array(Schema.suspend(() => Node))
+      })
+      const node: { name: string; children: Array<Node> } = { name: "root", children: [] }
+      node.children.push(node)
+      assert.match(schemaError(() => encode(Node, node)).message, /acyclic value/)
+
+      const unknown: Array<unknown> = []
+      unknown.push(unknown)
+      assert.match(schemaError(() => encode(Schema.Unknown, unknown)).message, /acyclic value/)
+    })
+
     it("runs user encoding links before the binary layer", () => {
       const bytes = encode(Schema.NumberFromString, 123)
       assert.strictEqual(bytes.length, 5)
@@ -413,6 +458,28 @@ describe("SchemaBinary", () => {
 
       const parser = SchemaBinary.parser(Schema.Int, { disableChecks: true })
       assert.deepStrictEqual(parser.feedSync(bytes), [1.5])
+      parser.endSync()
+    })
+
+    it("honors disableChecks for recursive schemas", () => {
+      interface Node {
+        readonly value: number
+        readonly children: ReadonlyArray<Node>
+      }
+      let Writer: Schema.Codec<Node>
+      Writer = Schema.Struct({
+        value: Schema.Number,
+        children: Schema.Array(Schema.suspend(() => Writer))
+      })
+      let Reader: Schema.Codec<Node>
+      Reader = Schema.Struct({
+        value: Schema.Int,
+        children: Schema.Array(Schema.suspend(() => Reader))
+      })
+      const value: Node = { value: 1.5, children: [] }
+      const parser = SchemaBinary.parser(Reader, { disableChecks: true })
+
+      assert.deepStrictEqual(parser.feedSync(encode(Writer, value)), [value])
       parser.endSync()
     })
 
@@ -538,6 +605,21 @@ describe("SchemaBinary", () => {
       assert.match(
         schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(record))(duplicateKey)).message,
         /unique extra keys/
+      )
+    })
+
+    it("rejects a duplicate field id after an unknown union decodes as absent", () => {
+      const A = Schema.Struct({ _tag: Schema.Literal("A") })
+      const B = Schema.Struct({ _tag: Schema.Literal("B"), value: Schema.String })
+      const Writer = Schema.Struct({ event: Schema.optionalKey(Schema.Union([A, B])) })
+      const Reader = Schema.Struct({ event: Schema.optionalKey(Schema.Union([A])) })
+      const encoded = encode(Writer, { event: { _tag: "B", value: "new" } })
+      const field = encoded.slice(2)
+      const duplicateField = concat(Uint8Array.of(1 + field.length * 2, 0x10), field, field)
+
+      assert.match(
+        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Reader))(duplicateField)).message,
+        /unique field ids/
       )
     })
 
