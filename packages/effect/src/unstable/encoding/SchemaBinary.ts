@@ -1403,6 +1403,28 @@ function encodeFail(expected: string, input: unknown, options: SchemaAST.ParseOp
 
 function isCyclic(value: unknown, stack = new Set<object>()): boolean {
   if (!Predicate.isObjectOrArray(value)) return false
+  // Plain objects and arrays cannot be any of the branded types below, so they
+  // skip every tag probe and walk their own keys directly.
+  const isArray = Array.isArray(value)
+  const prototype = Object.getPrototypeOf(value)
+  if (isArray || prototype === Object.prototype || prototype === null) {
+    if (stack.has(value)) return true
+    stack.add(value)
+    try {
+      if (isArray) {
+        for (let i = 0; i < value.length; i++) {
+          if (isCyclic(value[i], stack)) return true
+        }
+      } else {
+        for (const key of Object.keys(value)) {
+          if (isCyclic((value as Record<string, unknown>)[key], stack)) return true
+        }
+      }
+    } finally {
+      stack.delete(value)
+    }
+    return false
+  }
   if (
     value instanceof Date ||
     value instanceof Uint8Array ||
@@ -2303,6 +2325,9 @@ function compileTarget(schema: Schema.Constraint): { target: Schema.Constraint; 
   return { target: recursive ? withCycleGuard(raw) : raw, layout }
 }
 
+// The transformation marks each structurally decoded frame exactly once, and
+// the guard is the immediately following decode step. Deleting the mark as it
+// is read makes the validation skip one-shot so it cannot bypass later checks.
 function withCycleGuard(target: Schema.Constraint): Schema.Constraint {
   const type = Schema.make(SchemaAST.toType(target.ast))
   const decoded = new WeakSet<object>()
