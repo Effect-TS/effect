@@ -23,6 +23,7 @@ import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaIssue from "../../SchemaIssue.ts"
+import * as SchemaParser from "../../SchemaParser.ts"
 import * as SchemaTransformation from "../../SchemaTransformation.ts"
 
 const FIELD_ID_ANNOTATION_KEY = "~effect/encoding/SchemaBinary/fieldId"
@@ -1296,24 +1297,6 @@ function isCyclic(value: unknown, stack = new Set<object>()): boolean {
   return false
 }
 
-// Returns the object that was marked, or undefined when the value cannot
-// participate in a cycle. The caller clears the mark on the success path; a
-// throw discards the whole context, so no `finally` is needed.
-// Only ancestors of the value being written can form a cycle, and nesting
-// depth is small, so a scanned stack beats the add/has/delete traffic of a
-// WeakSet and allocates nothing.
-const cycleStack: Array<unknown> = []
-let cycleDepth = 0
-
-function cycleEnter(ctx: EncodeContext, value: unknown): boolean {
-  if (value === null || (typeof value !== "object" && typeof value !== "function")) return false
-  for (let i = 0; i < cycleDepth; i++) {
-    if (cycleStack[i] === value) encodeFail("acyclic value", value, ctx.options)
-  }
-  cycleStack[cycleDepth++] = value
-  return true
-}
-
 function findIndexSignature(
   layout: StructLayout,
   key: string,
@@ -1569,15 +1552,12 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
         w.byte(0)
       } else {
         w.byte(1)
-        const tracked = cycleEnter(ctx, option)
         encodeValue(ctx, layout.value, option.value, w)
-        if (tracked) cycleDepth--
       }
       return
     }
     case "result": {
       const result = value as Result.Result<unknown, unknown>
-      const tracked = cycleEnter(ctx, result)
       if (result._tag === "Success") {
         w.byte(0)
         encodeValue(ctx, layout.success, result.success, w)
@@ -1585,12 +1565,10 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
         w.byte(1)
         encodeValue(ctx, layout.failure, result.failure, w)
       }
-      if (tracked) cycleDepth--
       return
     }
     case "exit": {
       const exit = value as Exit.Exit<unknown, unknown>
-      const tracked = cycleEnter(ctx, exit)
       if (exit._tag === "Success") {
         w.byte(0)
         encodeValue(ctx, layout.value, exit.value, w)
@@ -1598,37 +1576,28 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
         w.byte(1)
         encodeValue(ctx, { _: "cause", error: layout.error, defect: layout.defect }, exit.cause, w)
       }
-      if (tracked) cycleDepth--
       return
     }
     case "cause": {
       const reasons = (value as Cause.Cause<unknown>).reasons
-      const tracked = cycleEnter(ctx, value)
       w.uvarint(reasons.length)
       for (const reason of reasons) {
         const mark = w.beginSized()
         encodeReason(ctx, layout, reason, w)
         w.endSized(mark)
       }
-      if (tracked) cycleDepth--
       return
     }
     case "causeReason": {
-      const tracked = cycleEnter(ctx, value)
       encodeReason(ctx, layout, value, w)
-      if (tracked) cycleDepth--
       return
     }
     case "struct": {
-      const tracked = cycleEnter(ctx, value)
       encodeStructFields(ctx, layout, value as object, w)
-      if (tracked) cycleDepth--
       return
     }
     case "array": {
-      const tracked = cycleEnter(ctx, value)
       encodeArray(ctx, layout, value, w)
-      if (tracked) cycleDepth--
       return
     }
     case "union":
@@ -1654,9 +1623,7 @@ function encodeFrame(layout: Layout, value: unknown, options: SchemaAST.ParseOpt
   if (pooled) pooledWriter = undefined
   w.len = 0
   const savedPathLen = issuePathLen
-  const savedCycleDepth = cycleDepth
   issuePathLen = 0
-  cycleDepth = 0
   try {
     const mark = w.beginSized()
     w.byte(ENVELOPE)
@@ -1665,7 +1632,6 @@ function encodeFrame(layout: Layout, value: unknown, options: SchemaAST.ParseOpt
     return w.out()
   } finally {
     issuePathLen = savedPathLen
-    cycleDepth = savedCycleDepth
     if (pooled) pooledWriter = w
   }
 }
@@ -1694,6 +1660,7 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
   // mask: an absent first copy must not make a repeated id legal.
   let presentMask = 0
   let seenWide: Set<number> | undefined
+  let presentWide: Set<number> | undefined
   let seenUnknown: Set<number> | undefined
   let seenExtra = false
   // Encoders emit fields in ascending id order, so walking a cursor over the
@@ -1744,6 +1711,7 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
     if (value !== ABSENT) {
       out[field.name] = value
       if (index < 32) presentMask |= 1 << index
+      else (presentWide ??= new Set()).add(index)
     }
     r.exit(saved)
   }
@@ -1751,7 +1719,7 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
   for (let i = 0; i < fields.length; i++) {
     const field = fields[i]
     const index = field.index
-    const present = index < 32 ? (presentMask & (1 << index)) !== 0 : Object.hasOwn(out, field.name)
+    const present = index < 32 ? (presentMask & (1 << index)) !== 0 : presentWide?.has(index) === true
     if (!field.optional && !present) {
       const issue = new SchemaIssue.Pointer([field.name], new SchemaIssue.MissingKey(field.annotations))
       if (issues === undefined) issues = [issue]
@@ -2089,19 +2057,35 @@ function compileTarget(schema: Schema.Constraint): { target: Schema.Constraint; 
   const { layout, recursive } = compileLayout(SchemaAST.toEncoded(raw.ast))
   // The guard walks the whole value to reject cycles before the parser can
   // recurse into them. Only a recursive schema can recurse without bound, so
-  // non-recursive schemas skip the walk entirely and rely on the cycle
-  // detection the encoder already does as it writes.
+  // non-recursive schemas skip the walk; JSON leaves still distinguish cyclic
+  // values from other values that JSON.stringify cannot serialize.
   return { target: recursive ? withCycleGuard(raw) : raw, layout }
 }
 
 function withCycleGuard(target: Schema.Constraint): Schema.Constraint {
-  const guard = Schema.declare(
-    (value: unknown): value is unknown => !isCyclic(value),
+  const type = Schema.make(SchemaAST.toType(target.ast))
+  const decoded = new WeakSet<object>()
+  const guard = Schema.declareConstructor<unknown>()(
+    [type],
+    ([type]) => (input, ast, options) => {
+      if (Predicate.isObjectOrArray(input) && decoded.delete(input)) {
+        return Effect.succeed(input)
+      }
+      return isCyclic(input)
+        ? Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
+        : SchemaParser.decodeUnknownEffect(type)(input, options)
+    },
     { identifier: "acyclic value" }
   )
   return Schema.decodeTo(
     guard,
-    SchemaTransformation.passthrough()
+    SchemaTransformation.transform({
+      decode: (value) => {
+        if (Predicate.isObjectOrArray(value)) decoded.add(value)
+        return value
+      },
+      encode: (value) => value
+    })
   )(target)
 }
 

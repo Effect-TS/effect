@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
 Add `SchemaBinary`, a compact binary codec derived from the Schema AST.
