@@ -72,6 +72,19 @@ const flagContainsOptCondition = (flag: Completions.FlagDescriptor): string => {
   return `not __fish_contains_opt ${optArgs.join(" ")}`
 }
 
+/**
+ * Dedup for a value-taking flag: hide it once typed, except while fish is
+ * completing its value (previous token is the flag itself), where hiding the
+ * entry would suppress the value completions too.
+ */
+const valueFlagDedupCondition = (flag: Completions.FlagDescriptor): string => {
+  const forms = [`--${flag.name}`]
+  for (const alias of flag.aliases) {
+    forms.push(alias.length === 1 ? `-${alias}` : `--${alias}`)
+  }
+  return `begin; ${flagContainsOptCondition(flag)}; or contains -- (commandline -poc)[-1] ${forms.join(" ")}; end`
+}
+
 const flagCompletionArgs = (flag: Completions.FlagDescriptor): Array<string> => {
   const args: Array<string> = [`-l ${flag.name}`]
   for (const alias of flag.aliases) {
@@ -155,13 +168,9 @@ const generateCompletions = (
 
   // Flag completions
   for (const flag of descriptor.flags) {
-    // Only apply __fish_contains_opt dedup for boolean flags. For value-taking
-    // flags, the dedup condition would suppress the entry while fish is waiting
-    // for a value (e.g. typing `--env <TAB>` wouldn't show choices).
     const isBoolean = flag.type._tag === "Boolean"
-    const flagCondition = isBoolean
-      ? (condition ? `${condition}; and ${flagContainsOptCondition(flag)}` : flagContainsOptCondition(flag))
-      : condition
+    const dedup = isBoolean ? flagContainsOptCondition(flag) : valueFlagDedupCondition(flag)
+    const flagCondition = condition ? `${condition}; and ${dedup}` : dedup
     const flagCondArg = flagCondition ? `-n '${flagCondition}'` : ``
 
     const parts = [`complete -c ${executableName}`]

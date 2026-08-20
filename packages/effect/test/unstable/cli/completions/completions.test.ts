@@ -623,7 +623,7 @@ describe("Fish completions", () => {
   it("escapes choice values for both the string quoting and the expansion of the -a list", () => {
     const script = Fish.generate("deploy", fromCommand(withTrickyChoices))
     expect(linesWith(script, "-r -f -a")).toMatchInlineSnapshot(`
-      "complete -c deploy -l mode -d 'Deploy mode' -r -f -a 'it\\\\\\'s-fine node\\\\:20 with\\\\ space \\\\(whoami\\\\) \\\\#tag \\\\$HOME back\\\\\\\\slash say\\\\"hi\\\\" a\\\\*b a\\\\;b \\\\~x foo\\\\\\' a\\\\!b \\\\🚀'
+      "complete -c deploy -n 'begin; not __fish_contains_opt mode; or contains -- (commandline -poc)[-1] --mode; end' -l mode -d 'Deploy mode' -r -f -a 'it\\\\\\'s-fine node\\\\:20 with\\\\ space \\\\(whoami\\\\) \\\\#tag \\\\$HOME back\\\\\\\\slash say\\\\"hi\\\\" a\\\\*b a\\\\;b \\\\~x foo\\\\\\' a\\\\!b \\\\🚀'
       complete -c deploy -r -f -a 'o\\\\\\'clock a\\\\:b \\\\{x,y\\\\} a\\\\😀b' -d 'Deployment target'"
     `)
   })
@@ -677,31 +677,36 @@ describe("Fish completions", () => {
     assert.include(script, "###-end-greet-completions-###")
   })
 
-  it("generates __fish_contains_opt conditions for boolean flags", () => {
+  it("generates used-flag dedup conditions", () => {
     const desc = fromCommand(simpleCmd)
     const script = Fish.generate("greet", desc)
     // --loud is boolean with alias -l — gets dedup condition on the -l entry
     assert.include(script, "not __fish_contains_opt -s l loud no-loud")
-    // --times is a value-taking flag — its -l entry has NO dedup (would suppress
-    // value completions), but its bare-TAB -a entry DOES use dedup
+    // --times is a value-taking flag — hidden once typed, except while fish is
+    // completing its value (previous token is the flag itself)
     const lines = script.split("\n")
     const timesLongEntry = lines.find((l) => l.includes("-l times"))!
-    assert.notInclude(timesLongEntry, "__fish_contains_opt")
+    assert.include(
+      timesLongEntry,
+      "-n 'begin; not __fish_contains_opt times; or contains -- (commandline -poc)[-1] --times; end'"
+    )
     const timesArgEntry = lines.find((l) => l.includes("-a '--times'"))!
     assert.include(timesArgEntry, "not __fish_contains_opt times")
   })
 
-  it("combines subcommand and boolean dedup conditions", () => {
+  it("combines subcommand and dedup conditions", () => {
     const desc = fromCommand(withSubcommands)
     const script = Fish.generate("server", desc)
     // daemon is boolean — gets subcommand + dedup condition on -l entry
     assert.include(script, "__fish_seen_subcommand_from start; and not __fish_contains_opt daemon no-daemon")
-    // port is value-taking — its -l entry has only subcommand condition (no dedup),
-    // but its bare-TAB -a entry DOES use dedup
+    // port is value-taking — subcommand condition plus dedup with the
+    // completing-its-value exception
     const lines = script.split("\n")
     const portLongEntry = lines.find((l) => l.includes("-l port"))!
-    assert.include(portLongEntry, "-n '__fish_seen_subcommand_from start'")
-    assert.notInclude(portLongEntry, "__fish_contains_opt")
+    assert.include(
+      portLongEntry,
+      "-n '__fish_seen_subcommand_from start; and begin; not __fish_contains_opt -s p port; or contains -- (commandline -poc)[-1] --port -p; end'"
+    )
     const portArgEntry = lines.find((l) => l.includes("-a '--port'"))!
     assert.include(portArgEntry, "not __fish_contains_opt -s p port")
   })
