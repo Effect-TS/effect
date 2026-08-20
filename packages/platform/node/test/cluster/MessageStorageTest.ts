@@ -2,6 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Fiber, Latch, Layer, Option, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import {
+  DeliverAt,
   EntityAddress,
   EntityId,
   EntityType,
@@ -143,6 +144,19 @@ export class LongKeyRpc extends Rpc.make("LongKeyRpc", {
     id: Schema.String
   },
   primaryKey: (value) => value.id
+}) {}
+
+export class ScheduledPayload extends Schema.Class<ScheduledPayload>("ScheduledPayload")({
+  id: Schema.Number,
+  deliverAt: Schema.DateTimeUtcFromMillis
+}) {
+  [DeliverAt.symbol]() {
+    return this.deliverAt
+  }
+}
+
+export class ScheduledRpc extends Rpc.make("ScheduledRpc", {
+  payload: ScheduledPayload
 }) {}
 
 export class StreamRpc extends Rpc.make("StreamTest", {

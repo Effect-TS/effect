@@ -4,6 +4,7 @@ import {
   Cause,
   Clock,
   Context,
+  DateTime,
   Deferred,
   Effect,
   Exit,
@@ -481,6 +482,314 @@ describe.concurrent("Sharding", () => {
       const reply = driver.requests.get(request.requestId)!.replies[0]
       assert(reply._tag === "WithExit" && reply.exit._tag === "Failure" && reply.exit.cause[0]._tag === "Die")
     }).pipe(Effect.provide(TestSharding)))
+
+  it.effect("uses poll cadence for scheduled messages by default", () =>
+    Effect.gen(function*() {
+      let nextDeliverAtCalls = 0
+
+      yield* Effect.gen(function*() {
+        const state = yield* TestEntityState
+        const makeClient = yield* TestEntity.client
+        yield* TestClock.adjust(1)
+        const client = makeClient("1")
+
+        const now = yield* Clock.currentTimeMillis
+        const fiber = yield* client.GetUserScheduled({
+          id: 1,
+          deliverAt: DateTime.makeUnsafe(now + 2000)
+        }).pipe(Effect.forkChild)
+        yield* TestClock.adjust(1)
+        yield* TestClock.adjust(1999)
+
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0)
+        assert.isUndefined(fiber.pollUnsafe())
+        assert.strictEqual(nextDeliverAtCalls, 0)
+
+        yield* TestClock.adjust(3000)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+        const exit = fiber.pollUnsafe()
+        assert(exit && Exit.isSuccess(exit))
+        assert.strictEqual(nextDeliverAtCalls, 0)
+      }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
+        Layer.updateService(MessageStorage.MessageStorage, (storage) => ({
+          ...storage,
+          nextDeliverAt(shardIds) {
+            nextDeliverAtCalls++
+            return storage.nextDeliverAt(shardIds)
+          }
+        })),
+        Layer.provide(MessageStorage.layerMemory),
+        Layer.provide(TestShardingConfig)
+      )))
+    }))
+
+  it.effect("delivers scheduled messages at their deadline when timely delivery is enabled", () =>
+    Effect.gen(function*() {
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+      const client = makeClient("1")
+
+      const now = yield* Clock.currentTimeMillis
+      const fiber = yield* client.GetUserScheduled({
+        id: 1,
+        deliverAt: DateTime.makeUnsafe(now + 2000)
+      }).pipe(Effect.forkChild)
+      yield* TestClock.adjust(1)
+
+      // the message is persisted, but not yet deliverable
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0)
+      assert.isUndefined(fiber.pollUnsafe())
+
+      // just before the deadline nothing is delivered
+      yield* TestClock.adjust(1997)
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0)
+
+      // the deadline wake delivers the message before the 5000ms poll interval
+      yield* TestClock.adjust(2)
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+      const exit = fiber.pollUnsafe()
+      assert(exit && Exit.isSuccess(exit))
+    }).pipe(Effect.provide(TimelyTestSharding)))
+
+  it.effect("reads due messages while discovering the next deadline in the background", () =>
+    Effect.gen(function*() {
+      const queryStarted = yield* Deferred.make<void>()
+      const releaseQuery = yield* Deferred.make<void>()
+
+      yield* Effect.gen(function*() {
+        const state = yield* TestEntityState
+        const makeClient = yield* TestEntity.client
+        yield* TestClock.adjust(1)
+        const client = makeClient("1")
+
+        const fiber = yield* client.GetUser({ id: 1 }).pipe(Effect.forkChild)
+        yield* Deferred.await(queryStarted)
+        yield* TestClock.adjust(1)
+
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+        const exit = fiber.pollUnsafe()
+        assert(exit && Exit.isSuccess(exit))
+        yield* Deferred.succeed(releaseQuery, undefined)
+      }).pipe(Effect.provide(TimelyTestShardingWithoutStorage.pipe(
+        Layer.updateService(MessageStorage.MessageStorage, (storage) => ({
+          ...storage,
+          nextDeliverAt(shardIds) {
+            return Deferred.succeed(queryStarted, undefined).pipe(
+              Effect.andThen(Deferred.await(releaseQuery)),
+              Effect.andThen(storage.nextDeliverAt(shardIds))
+            )
+          }
+        })),
+        Layer.provide(MessageStorage.layerMemory),
+        Layer.provide(TimelyTestShardingConfig)
+      )))
+    }))
+
+  it.effect("arms a deadline wake before reading due messages", () =>
+    Effect.gen(function*() {
+      const blockedReadComplete = yield* Deferred.make<void>()
+      const releaseBlockedRead = yield* Deferred.make<void>()
+      let blockNextReadAfterQuery = false
+
+      yield* Effect.gen(function*() {
+        const state = yield* TestEntityState
+        const makeClient = yield* TestEntity.client
+        yield* TestClock.adjust(1)
+        const client = makeClient("1")
+
+        const now = yield* Clock.currentTimeMillis
+        blockNextReadAfterQuery = true
+        const fiber = yield* client.GetUserScheduled({
+          id: 1,
+          deliverAt: DateTime.makeUnsafe(now + 200)
+        }).pipe(Effect.forkChild)
+
+        yield* Deferred.await(blockedReadComplete)
+        yield* TestClock.adjust(200)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0)
+
+        yield* Deferred.succeed(releaseBlockedRead, undefined)
+        yield* TestClock.adjust(1)
+
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+        const exit = fiber.pollUnsafe()
+        assert(exit && Exit.isSuccess(exit))
+      }).pipe(Effect.provide(TimelyTestShardingWithoutStorage.pipe(
+        Layer.updateService(MessageStorage.MessageStorage, (storage) => ({
+          ...storage,
+          unprocessedMessages(shardIds) {
+            return storage.unprocessedMessages(shardIds).pipe(
+              Effect.tap(() => {
+                if (!blockNextReadAfterQuery) {
+                  return Effect.void
+                }
+                blockNextReadAfterQuery = false
+                return Deferred.succeed(blockedReadComplete, undefined).pipe(
+                  Effect.andThen(Deferred.await(releaseBlockedRead))
+                )
+              })
+            )
+          }
+        })),
+        Layer.provide(MessageStorage.layerMemory),
+        Layer.provide(TimelyTestShardingConfig)
+      )))
+    }))
+
+  it.effect("wakes for each scheduled deadline independently", () =>
+    Effect.gen(function*() {
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+      const client = makeClient("1")
+
+      const now = yield* Clock.currentTimeMillis
+      yield* client.GetUserScheduled({
+        id: 1,
+        deliverAt: DateTime.makeUnsafe(now + 3500)
+      }).pipe(Effect.forkChild)
+      yield* client.GetUserScheduled({
+        id: 2,
+        deliverAt: DateTime.makeUnsafe(now + 2000)
+      }).pipe(Effect.forkChild)
+      yield* TestClock.adjust(1)
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0)
+
+      // the earlier deadline fires without cancelling the later one
+      yield* TestClock.adjust(2000)
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+
+      yield* TestClock.adjust(1500)
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 2)
+    }).pipe(Effect.provide(TimelyTestSharding)))
+
+  it.effect("delivers scheduled messages with a past deadline immediately", () =>
+    Effect.gen(function*() {
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+      const client = makeClient("1")
+
+      const now = yield* Clock.currentTimeMillis
+      const fiber = yield* client.GetUserScheduled({
+        id: 1,
+        deliverAt: DateTime.makeUnsafe(now - 1000)
+      }).pipe(Effect.forkChild)
+      yield* TestClock.adjust(1)
+
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+      const exit = fiber.pollUnsafe()
+      assert(exit && Exit.isSuccess(exit))
+    }).pipe(Effect.provide(TimelyTestSharding)))
+
+  it.effect("re-arms the wake when an earlier deadline arrives", () =>
+    Effect.gen(function*() {
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+      const client = makeClient("1")
+
+      const now = yield* Clock.currentTimeMillis
+      yield* client.GetUserScheduled({
+        id: 1,
+        deliverAt: DateTime.makeUnsafe(now + 4000)
+      }).pipe(Effect.forkChild)
+      yield* TestClock.adjust(1)
+
+      yield* client.GetUserScheduled({
+        id: 2,
+        deliverAt: DateTime.makeUnsafe(now + 1000)
+      }).pipe(Effect.forkChild)
+      yield* TestClock.adjust(1000)
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+
+      yield* TestClock.adjust(3000)
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 2)
+    }).pipe(Effect.provide(TimelyTestSharding)))
+
+  it.effect("discovers scheduled messages persisted before the runner starts", () =>
+    Effect.gen(function*() {
+      const driver = yield* MessageStorage.MemoryDriver
+      const state = yield* TestEntityState
+      const now = yield* Clock.currentTimeMillis
+      const EnvLayer = TestShardingWithoutState.pipe(
+        Layer.provide(Runners.layerNoop),
+        Layer.provide(TimelyTestShardingConfig)
+      )
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const makeClient = yield* TestEntity.client
+        const client = makeClient("1")
+        yield* client.GetUserScheduled({
+          id: 1,
+          deliverAt: DateTime.makeUnsafe(now + 3000)
+        }).pipe(Effect.forkChild)
+        yield* TestClock.adjust(1)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0)
+      }).pipe(
+        Effect.provide(EnvLayer),
+        Effect.scoped
+      )
+
+      assert.strictEqual(driver.unprocessed.size, 1)
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0)
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0)
+
+        yield* TestClock.adjust(2996)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0)
+
+        yield* TestClock.adjust(1)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+      }).pipe(
+        Effect.provide(EnvLayer),
+        Effect.scoped
+      )
+    }).pipe(Effect.provide(MessageStorage.layerMemory.pipe(
+      Layer.provide(TimelyTestShardingConfig),
+      Layer.merge(TestEntityState.layer)
+    ))))
+
+  it.effect("falls back to polling when nextDeliverAt fails", () =>
+    Effect.gen(function*() {
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+      const client = makeClient("1")
+
+      const now = yield* Clock.currentTimeMillis
+      const scheduledFiber = yield* client.GetUserScheduled({
+        id: 1,
+        deliverAt: DateTime.makeUnsafe(now + 2000)
+      }).pipe(Effect.forkChild)
+      yield* TestClock.adjust(1)
+
+      yield* TestClock.adjust(1999)
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0)
+      assert.isUndefined(scheduledFiber.pollUnsafe())
+
+      yield* TestClock.adjust(3000)
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+      const scheduledExit = scheduledFiber.pollUnsafe()
+      assert(scheduledExit && Exit.isSuccess(scheduledExit))
+
+      const immediateFiber = yield* client.GetUser({ id: 2 }).pipe(Effect.forkChild)
+      yield* TestClock.adjust(1)
+      const user = yield* Fiber.join(immediateFiber)
+      assert.deepStrictEqual(user, new User({ id: 2, name: "User 2" }))
+    }).pipe(Effect.provide(TimelyTestShardingWithoutStorage.pipe(
+      Layer.updateService(MessageStorage.MessageStorage, (storage) => ({
+        ...storage,
+        nextDeliverAt: () =>
+          Effect.fail(new ClusterError.PersistenceError({ cause: new Error("nextDeliverAt failed") }))
+      })),
+      Layer.provide(MessageStorage.layerMemory),
+      Layer.provide(TimelyTestShardingConfig)
+    ))))
 
   it.effect("fails volatile requests immediately when the mailbox is full", () =>
     Effect.gen(function*() {
@@ -1669,6 +1978,10 @@ const testConfigDefaults: Partial<ShardingConfig.ShardingConfig["Service"]> = {
 }
 
 const TestShardingConfig = ShardingConfig.layer(testConfigDefaults)
+const TimelyTestShardingConfig = ShardingConfig.layer({
+  ...testConfigDefaults,
+  timelyScheduledMessageDelivery: true
+})
 
 const TestShardingWithoutState = TestEntityNoState.pipe(
   Layer.provideMerge(Sharding.layer),
@@ -1687,9 +2000,19 @@ const TestShardingWithoutStorage = TestShardingWithoutRunners.pipe(
   Layer.provide(TestShardingConfig)
 )
 
+const TimelyTestShardingWithoutStorage = TestShardingWithoutRunners.pipe(
+  Layer.provide(Runners.layerNoop),
+  Layer.provide(TimelyTestShardingConfig)
+)
+
 const TestSharding = TestShardingWithoutStorage.pipe(
   Layer.provideMerge(MessageStorage.layerMemory),
   Layer.provide(TestShardingConfig)
+)
+
+const TimelyTestSharding = TimelyTestShardingWithoutStorage.pipe(
+  Layer.provideMerge(MessageStorage.layerMemory),
+  Layer.provide(TimelyTestShardingConfig)
 )
 
 const CappedSharding = (
