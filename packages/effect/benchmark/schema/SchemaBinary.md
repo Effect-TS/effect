@@ -6,7 +6,7 @@ Run from the repository root:
 nix develop -c pnpm --dir packages/effect exec node benchmark/schema/SchemaBinary.ts
 ```
 
-The benchmark compares `SchemaBinary`, JSON, and Effect's Msgpack schema codec with the same Schema values. It covers a small scalar-heavy record, a nested order payload, arrays and records, and 200 repeated records where framing and field-name overhead become visible.
+The benchmark compares arena-backed `SchemaBinary`, `SchemaBinary` followed by an ownership copy, JSON, and Effect's Msgpack schema codec with the same Schema values. The copy case calls `.slice()` on every arena result, reproducing the allocation that the arena removes. It covers a small scalar-heavy record, a nested order payload, arrays and records, and 200 repeated records where framing and field-name overhead become visible.
 
 Codec and schema construction happen before timing. Decode uses payloads encoded before timing. Each one-shot encode and decode task gets 100 warmup samples followed by 1,000 measured samples. The output includes UTF-8 payload sizes, average operations per second, median latency, relative margin of error, and sample count.
 
@@ -21,27 +21,33 @@ Treat the measurements as a per-machine comparison within one run. Runtime versi
 One run on Node 26.7.0, Linux x64. One-shot throughput is the average of 1,000 measured
 samples per task; treat these as a within-run comparison, not a portable score.
 
-| Case                   | Direction | SchemaBinary | Msgpack | SchemaBinary vs Msgpack |
-| ---------------------- | --------- | -----------: | ------: | ----------------------: |
-| small record           | encode    |      413,942 | 468,259 |                   0.88x |
-| small record           | decode    |      472,582 | 474,553 |                   1.00x |
-| nested payload         | encode    |      230,222 | 205,683 |                   1.12x |
-| nested payload         | decode    |      227,531 | 199,069 |                   1.14x |
-| collections            | encode    |       33,596 |  21,846 |                   1.54x |
-| collections            | decode    |       37,822 |  21,604 |                   1.75x |
-| large repeated records | encode    |        6,366 |   3,543 |                   1.80x |
-| large repeated records | decode    |        6,248 |   4,156 |                   1.50x |
+The encode rows exercise both ownership models on every case. Decode does not depend on output ownership, so the arena rows below are compared with Msgpack.
+
+| Case                   | SchemaBinary arena | SchemaBinary copy | Arena vs copy | Msgpack |
+| ---------------------- | -----------------: | ----------------: | ------------: | ------: |
+| small record           |            462,238 |           444,428 |         1.04x | 470,631 |
+| nested payload         |            235,971 |           223,358 |         1.06x | 209,940 |
+| collections            |             34,632 |            34,224 |         1.01x |  22,340 |
+| large repeated records |              6,196 |             6,094 |         1.02x |   3,514 |
+
+| Case                   | SchemaBinary decode | Msgpack decode | SchemaBinary vs Msgpack |
+| ---------------------- | ------------------: | -------------: | ----------------------: |
+| small record           |             485,041 |        471,327 |                   1.03x |
+| nested payload         |             223,300 |        203,587 |                   1.10x |
+| collections            |              37,881 |         21,442 |                   1.77x |
+| large repeated records |               6,129 |          4,066 |                   1.51x |
 
 Both codecs run the same Schema parser, which costs roughly 140 us per
 direction on the largest case and sets a floor neither format can go below.
 The numbers above therefore understate the difference between the two
 serialization layers.
 
-The small-record row is the one case where msgpackr stays ahead. It returns a
-view into a reused 8 KiB buffer rather than allocating per call, so it skips
-the output copy that `SchemaBinary` pays on every encode. `SchemaBinary`
-returns a freshly allocated `Uint8Array` that the caller owns outright, which
-costs roughly 250 ns and dominates a 72-byte payload.
+Removing the output copy matters most for the 72-byte small record, where the
+arena was 4% faster than the ownership-copy control and nearly closed the gap
+with msgpackr. The other three cases were 1-6% faster than the copy control;
+none showed a material regression. Results returned by the arena keep an exact
+byte range but can share a larger backing buffer, as documented by
+`SchemaBinary.toCodec`.
 
 ## Streaming decode comparison
 
