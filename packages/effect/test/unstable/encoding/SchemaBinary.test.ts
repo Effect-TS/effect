@@ -446,6 +446,23 @@ describe("SchemaBinary", () => {
       assert.isTrue(Schema.is(codec)({ name: "Ada", age: 42 }))
       assert.isFalse(Schema.is(codec)({ nope: 1 }))
     })
+
+    it("keeps a sound runtime type guard on recursive derived codecs", () => {
+      interface Node {
+        readonly value: number
+        readonly children: ReadonlyArray<Node>
+      }
+      let Node: Schema.Codec<Node>
+      Node = Schema.Struct({
+        value: Schema.Number,
+        children: Schema.Array(Schema.suspend(() => Node))
+      })
+      const codec = SchemaBinary.toCodec(Node)
+
+      assert.isTrue(Schema.is(codec)({ value: 1, children: [] }))
+      assert.isFalse(Schema.is(codec)({ nope: 1 }))
+      assert.isFalse(Schema.is(Schema.Struct({ inner: codec }))({ inner: { nope: 1 } }))
+    })
   })
 
   describe("parse options", () => {
@@ -481,6 +498,10 @@ describe("SchemaBinary", () => {
 
       assert.deepStrictEqual(parser.feedSync(encode(Writer, value)), [value])
       parser.endSync()
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(SchemaBinary.toCodec(Reader), { disableChecks: true })(encode(Writer, value)),
+        value
+      )
     })
 
     it("honors errors all for missing fields", () => {
@@ -621,6 +642,23 @@ describe("SchemaBinary", () => {
         schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Reader))(duplicateField)).message,
         /unique field ids/
       )
+    })
+
+    it("does not satisfy wide-field presence from the extra-key map", () => {
+      const fields: Record<string, typeof Schema.String> = {}
+      const value: Record<string, string> = {}
+      for (let i = 0; i < 34; i++) {
+        const key = `field${i}`
+        fields[key] = Schema.String
+        value[key] = key
+      }
+      const record = Schema.Record(Schema.String, Schema.String)
+      const struct = Schema.StructWithRest(Schema.Struct(fields), [record])
+      const error = schemaError(() =>
+        Schema.decodeUnknownSync(SchemaBinary.toCodec(struct), { errors: "all" })(encode(record, value))
+      )
+
+      assert.strictEqual(error.message.match(/Missing key/g)?.length, 34)
     })
 
     it("fails Never values and unregistered symbols through SchemaError", () => {
