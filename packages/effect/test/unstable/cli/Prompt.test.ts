@@ -189,6 +189,54 @@ describe("Prompt.text", () => {
       assert.include(frames.at(-1) ?? "", "+ Name ~")
     }).pipe(Effect.provide(TestLayer)))
 
+  it.effect("renders theme colors from context with per-prompt overrides", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputText("A")
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.text({
+        message: "Name",
+        theme: { primaryColor: `${escape}[35m` }
+      })).pipe(
+        Effect.provideService(
+          Prompt.Theme,
+          Prompt.makeTheme({
+            primaryColor: `${escape}[31m`,
+            mutedColor: `${escape}[34m`,
+            successColor: `${escape}[33m`,
+            submittedColor: `${escape}[36m`
+          })
+        )
+      )
+
+      const output = toRawFrames(yield* MockTerminal.displayLines).join("\n")
+      assert.include(output, `${escape}[35m?`)
+      assert.include(output, `${escape}[34m›`)
+      assert.include(output, `${escape}[33m✔`)
+      assert.include(output, `${escape}[36mA`)
+      assert.notInclude(output, `${escape}[31m?`)
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("renders validation errors with the theme error color", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputText("bad")
+      yield* MockTerminal.inputKey("enter")
+      yield* MockTerminal.inputKey("u", { ctrl: true })
+      yield* MockTerminal.inputText("ok")
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.text({
+        message: "Name",
+        validate: (value) => value === "bad" ? Effect.fail("Try again") : Effect.succeed(value),
+        theme: { errorColor: `${escape}[35m` }
+      }))
+
+      const output = toRawFrames(yield* MockTerminal.displayLines).join("\n")
+      assert.include(output, `${escape}[35m›`)
+      assert.include(output, `${escape}[35mbad`)
+      assert.notInclude(output, `${escape}[31m›`)
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("omits spacing for empty theme symbols", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputKey("enter")
@@ -325,6 +373,28 @@ describe("Prompt.select", () => {
       const frames = toFrames(yield* MockTerminal.displayLines)
       assert.strictEqual(frames.filter((frame) => frame.includes("! Pick item")).length, 2)
       assert.isTrue(frames.some((frame) => frame.includes("> Second : two")))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("renders selection colors from the prompt theme", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.select({
+        message: "Pick item",
+        theme: {
+          primaryColor: `${escape}[35m`,
+          mutedColor: `${escape}[34m`,
+          successColor: `${escape}[33m`,
+          submittedColor: `${escape}[36m`
+        },
+        choices: [{ title: "First", value: "first", description: "one" }]
+      }))
+
+      const output = toRawFrames(yield* MockTerminal.displayLines).join("\n")
+      assert.include(output, `${escape}[35m❯`)
+      assert.include(output, `${escape}[34m- one`)
+      assert.include(output, `${escape}[33m✔`)
+      assert.include(output, `${escape}[36mFirst`)
     }).pipe(Effect.provide(TestLayer)))
 })
 
