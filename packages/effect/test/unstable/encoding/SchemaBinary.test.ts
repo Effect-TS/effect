@@ -43,6 +43,34 @@ const sameNumber = (actual: unknown, expected: number) => {
   )
 }
 
+const encodeFingerprint = <A, I>(schema: Schema.Codec<A, I>, value: A): Uint8Array<ArrayBuffer> =>
+  Schema.encodeUnknownSync(SchemaBinary.toCodec(schema, { fingerprint: true }))(value)
+
+const roundtripFingerprint = <A, I>(schema: Schema.Codec<A, I>, value: A): A => {
+  const codec = SchemaBinary.toCodec(schema, { fingerprint: true })
+  return Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(value))
+}
+
+// Splits a fingerprint frame into its layout hash and the payload after it,
+// both as comparable strings.
+const fingerprintFrame = <A, I>(
+  schema: Schema.Codec<A, I>,
+  value: A
+): { readonly fingerprint: string; readonly payload: string } => {
+  const bytes = encodeFingerprint(schema, value)
+  let offset = 0
+  while ((bytes[offset] & 0x80) !== 0) offset++
+  offset++
+  assert.strictEqual(bytes[offset], 0x11)
+  return {
+    fingerprint: Array.from(bytes.subarray(offset + 1, offset + 9)).join(","),
+    payload: Array.from(bytes.subarray(offset + 9)).join(",")
+  }
+}
+
+const fingerprintOf = <A, I>(schema: Schema.Codec<A, I>, value: A): string =>
+  fingerprintFrame(schema, value).fingerprint
+
 const schemaError = (f: () => unknown): Schema.SchemaError => {
   try {
     f()
@@ -1035,6 +1063,542 @@ describe("SchemaBinary", () => {
         )
       )
       assert.match(schemaError(() => encode(Schema.Symbol, Symbol("local"))).message, /registered symbol/)
+    })
+  })
+
+  describe("fingerprint mode", () => {
+    const Person = Schema.Struct({
+      name: Schema.String,
+      age: Schema.Number.check(Schema.isInt()),
+      active: Schema.Boolean,
+      nickname: Schema.optional(Schema.String)
+    })
+    const person = { name: "Ada", age: 36, active: true }
+
+    it("writes a fingerprint envelope, a presence bitmap, and no field ids", () => {
+      // length | envelope 0x11 | fingerprint | bitmap | age varint | name | active
+      assert.deepStrictEqual([...encodeFingerprint(Person, person)], [
+        16,
+        0x11,
+        184,
+        213,
+        85,
+        38,
+        67,
+        231,
+        116,
+        53,
+        0,
+        72,
+        3,
+        65,
+        100,
+        97,
+        1
+      ])
+      // the same frame with the optional field present: its bit is set and it
+      // moves ahead of `age`, which is where its wire id sorts it
+      assert.deepStrictEqual([...encodeFingerprint(Person, { ...person, nickname: "A" })], [
+        19,
+        0x11,
+        184,
+        213,
+        85,
+        38,
+        67,
+        231,
+        116,
+        53,
+        1,
+        2,
+        1,
+        65,
+        72,
+        3,
+        65,
+        100,
+        97,
+        1
+      ])
+    })
+
+    it("leaves the default mode untouched", () => {
+      const expected = [...encode(Person, person)]
+      assert.deepStrictEqual(expected[1], 0x10)
+      assert.deepStrictEqual([...Schema.encodeUnknownSync(SchemaBinary.toCodec(Person, {}))(person)], expected)
+      assert.deepStrictEqual(
+        [...Schema.encodeUnknownSync(SchemaBinary.toCodec(Person, { fingerprint: false }))(person)],
+        expected
+      )
+    })
+
+    it("addresses union members by canonical position", () => {
+      const Click = Schema.Struct({ _tag: Schema.Literal("click"), x: Schema.Number.check(Schema.isInt()) })
+      const Key = Schema.Struct({ _tag: Schema.Literal("key"), code: Schema.String })
+      const Event = Schema.Union([Click, Key])
+      assert.deepStrictEqual([...encodeFingerprint(Event, { _tag: "click", x: 3 })], [
+        11,
+        0x11,
+        237,
+        163,
+        78,
+        151,
+        96,
+        43,
+        76,
+        0,
+        0,
+        6
+      ])
+      const key = { _tag: "key", code: "Esc" } as const
+      const keyFrame = [...encodeFingerprint(Event, key)]
+      assert.deepStrictEqual(keyFrame, [14, 0x11, 237, 163, 78, 151, 96, 43, 76, 0, 1, 3, 69, 115, 99])
+      // declaration order never reaches the wire
+      assert.deepStrictEqual([...encodeFingerprint(Schema.Union([Key, Click]), key)], keyFrame)
+      assert.deepStrictEqual(roundtripFingerprint(Event, key), key)
+    })
+
+    it("counts the extra-key map instead of reserving field zero", () => {
+      const schema = Schema.Record(Schema.String, Schema.Number)
+      assert.deepStrictEqual([...encodeFingerprint(schema, { b: 2, a: 1 })], [
+        18,
+        0x11,
+        189,
+        249,
+        115,
+        23,
+        65,
+        225,
+        229,
+        6,
+        2,
+        1,
+        97,
+        1,
+        2,
+        1,
+        98,
+        1,
+        4
+      ])
+      assert.deepStrictEqual(roundtripFingerprint(schema, { z: 1, a: 2 }), { z: 1, a: 2 })
+      assert.deepStrictEqual(roundtripFingerprint(schema, {}), {})
+    })
+
+    it("keeps the default tuple and array layout", () => {
+      assert.deepStrictEqual([...encodeFingerprint(Schema.Tuple([Schema.Boolean, Schema.String]), [true, "x"])], [
+        12,
+        0x11,
+        3,
+        44,
+        71,
+        25,
+        31,
+        66,
+        141,
+        82,
+        1,
+        1,
+        120
+      ])
+      assert.deepStrictEqual([...encodeFingerprint(Schema.Array(Schema.Number.check(Schema.isInt())), [1, -2, 3])], [
+        13,
+        0x11,
+        206,
+        94,
+        13,
+        113,
+        158,
+        175,
+        76,
+        32,
+        3,
+        2,
+        5,
+        6
+      ])
+    })
+
+    it("inlines fixed-size and zero-width leaves", () => {
+      const schema = Schema.Struct({
+        nothing: Schema.Null,
+        flag: Schema.Boolean,
+        missing: Schema.Undefined,
+        when: Schema.Date,
+        count: Schema.Number.check(Schema.isInt()),
+        label: Schema.String
+      })
+      const value = { nothing: null, flag: true, missing: undefined, when: new Date(1000), count: -7, label: "hi" }
+      // 1 envelope + 8 fingerprint + 1 varint + 8 int64 + 3 string + 1 bool
+      assert.strictEqual(encodeFingerprint(schema, value).length, 23)
+      assert.deepStrictEqual(roundtripFingerprint(schema, value), value)
+    })
+
+    it("spans a presence bitmap across several bytes", () => {
+      const schema = Schema.Struct({
+        a: Schema.optional(Schema.Number),
+        b: Schema.optional(Schema.Number),
+        c: Schema.optional(Schema.Number),
+        d: Schema.optional(Schema.Number),
+        e: Schema.optional(Schema.Number),
+        f: Schema.optional(Schema.Number),
+        g: Schema.optional(Schema.Number),
+        h: Schema.optional(Schema.Number),
+        i: Schema.optional(Schema.Number),
+        j: Schema.optional(Schema.Number)
+      })
+      assert.deepStrictEqual(roundtripFingerprint(schema, {}), {})
+      assert.deepStrictEqual(roundtripFingerprint(schema, { a: 1, j: 2 }), { a: 1, j: 2 })
+      const full = { a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8, i: 9, j: 10 }
+      assert.deepStrictEqual(roundtripFingerprint(schema, full), full)
+    })
+
+    it("round-trips native declarations, recursion, and mixed unions", () => {
+      const natives = Schema.Struct({
+        option: Schema.Option(Schema.String),
+        result: Schema.Result(Schema.Number, Schema.String),
+        big: Schema.BigInt,
+        bytes: Schema.Uint8Array,
+        duration: Schema.Duration,
+        decimal: Schema.BigDecimal
+      })
+      const nativeValue = {
+        option: Option.some("x"),
+        result: Result.fail("boom"),
+        big: 2n ** 70n,
+        bytes: new Uint8Array([1, 2, 3]),
+        duration: Duration.nanos(1_500_000_000n),
+        decimal: BigDecimal.make(123n, 2)
+      }
+      const natived = roundtripFingerprint(natives, nativeValue)
+      assert.deepStrictEqual(natived.option, nativeValue.option)
+      assert.deepStrictEqual(natived.result, nativeValue.result)
+      assert.strictEqual(natived.big, nativeValue.big)
+      assert.deepStrictEqual([...natived.bytes], [1, 2, 3])
+      assert.strictEqual(Duration.toNanosUnsafe(natived.duration), 1_500_000_000n)
+      assert.strictEqual(natived.decimal.value, 123n)
+      assert.strictEqual(natived.decimal.scale, 2)
+
+      interface Tree {
+        readonly value: number
+        readonly children: ReadonlyArray<Tree>
+      }
+      const Tree: Schema.Codec<Tree> = Schema.Struct({
+        value: Schema.Number,
+        children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => Tree))
+      })
+      const tree = { value: 1, children: [{ value: 2, children: [] }, { value: 3, children: [] }] }
+      assert.deepStrictEqual(roundtripFingerprint(Tree, tree), tree)
+
+      const mixed = Schema.Union([Schema.String, Schema.Number, Schema.Struct({ n: Schema.Boolean })])
+      assert.deepStrictEqual(roundtripFingerprint(mixed, "x"), "x")
+      assert.deepStrictEqual(roundtripFingerprint(mixed, 1.5), 1.5)
+      assert.deepStrictEqual(roundtripFingerprint(mixed, { n: true }), { n: true })
+    })
+  })
+
+  describe("layout fingerprint", () => {
+    const base = Schema.Struct({ name: Schema.String, age: Schema.Number })
+    const value = { name: "a", age: 1 }
+    const baseline = fingerprintOf(base, value)
+
+    it("ignores schema changes that do not reach the wire", () => {
+      assert.strictEqual(
+        fingerprintOf(
+          Schema.Struct({
+            name: Schema.String.check(Schema.isMinLength(1)).annotate({ description: "the name" }),
+            age: Schema.Number
+          }),
+          value
+        ),
+        baseline
+      )
+      // property declaration order: encode sorts by wire id
+      assert.strictEqual(fingerprintOf(Schema.Struct({ age: Schema.Number, name: Schema.String }), value), baseline)
+      // a decoded-side transformation leaves the encoded layout alone
+      assert.strictEqual(
+        fingerprintOf(
+          Schema.Struct({ name: Schema.String, age: Schema.Number.pipe(Schema.decodeTo(Schema.Number)) }),
+          value
+        ),
+        baseline
+      )
+    })
+
+    it("does not depend on whether an acyclic sub-schema is shared or repeated", () => {
+      const Point = Schema.Struct({ x: Schema.Number, y: Schema.Number })
+      const pair = { a: { x: 1, y: 2 }, b: { x: 3, y: 4 } }
+      const shared = fingerprintOf(Schema.Struct({ a: Point, b: Point }), pair)
+      const repeated = fingerprintOf(
+        Schema.Struct({
+          a: Schema.Struct({ x: Schema.Number, y: Schema.Number }),
+          b: Schema.Struct({ x: Schema.Number, y: Schema.Number })
+        }),
+        pair
+      )
+      assert.strictEqual(shared, repeated)
+
+      interface Tree {
+        readonly value: number
+        readonly children: ReadonlyArray<Tree>
+      }
+      const makeTree = (): Schema.Codec<Tree> => {
+        const self: Schema.Codec<Tree> = Schema.Struct({
+          value: Schema.Number,
+          children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => self))
+        })
+        return self
+      }
+      const leaf = { value: 1, children: [] }
+      assert.strictEqual(fingerprintOf(makeTree(), leaf), fingerprintOf(makeTree(), leaf))
+      // one recursive node reached from two fields, versus two of them. Both
+      // sides have the same cycle structure, which is the only recursive case
+      // the hash canonicalises; see the factoring test below for the limit.
+      const both = { left: leaf, right: leaf }
+      const one = makeTree()
+      assert.strictEqual(
+        fingerprintOf(Schema.Struct({ left: one, right: one }), both),
+        fingerprintOf(Schema.Struct({ left: makeTree(), right: makeTree() }), both)
+      )
+    })
+
+    it("hashes the layout graph, so re-factoring a recursive schema moves it", () => {
+      interface Tree {
+        readonly value: number
+        readonly children: ReadonlyArray<Tree>
+      }
+      const makeTree = (): Schema.Codec<Tree> => {
+        const self: Schema.Codec<Tree> = Schema.Struct({
+          value: Schema.Number,
+          children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => self))
+        })
+        return self
+      }
+      // Three finite graphs denoting the same infinite wire shape: the cycle
+      // itself, the cycle behind one non-recursive alias, and a two-node
+      // mutual recursion of the same shape.
+      const direct = makeTree()
+      const aliased = Schema.Struct({
+        value: Schema.Number,
+        children: Schema.Array(makeTree())
+      }) as unknown as Schema.Codec<Tree>
+      const mutualA: Schema.Codec<Tree> = Schema.Struct({
+        value: Schema.Number,
+        children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => mutualB))
+      })
+      const mutualB: Schema.Codec<Tree> = Schema.Struct({
+        value: Schema.Number,
+        children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => mutualA))
+      })
+
+      const tree = { value: 1, children: [{ value: 2, children: [] }] }
+      const frames = [direct, aliased, mutualA].map((schema) => fingerprintFrame(schema, tree))
+
+      // identical bytes on the wire
+      assert.strictEqual(new Set(frames.map((frame) => frame.payload)).size, 1)
+      // and identical in the tolerant default mode, in both directions
+      const directDefault = SchemaBinary.toCodec(direct)
+      const aliasedDefault = SchemaBinary.toCodec(aliased)
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(aliasedDefault)(Schema.encodeUnknownSync(directDefault)(tree)),
+        tree
+      )
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(directDefault)(Schema.encodeUnknownSync(aliasedDefault)(tree)),
+        tree
+      )
+
+      // but each factoring hashes differently, and they reject each other
+      assert.strictEqual(new Set(frames.map((frame) => frame.fingerprint)).size, 3)
+      assert.include(
+        schemaError(() =>
+          Schema.decodeUnknownSync(SchemaBinary.toCodec(aliased, { fingerprint: true }))(
+            encodeFingerprint(direct, tree)
+          )
+        ).message,
+        "Expected matching layout fingerprint"
+      )
+    })
+
+    it("changes whenever the wire layout changes", () => {
+      const changed = [
+        fingerprintOf(Schema.Struct({ label: Schema.String, age: Schema.Number }), { label: "a", age: 1 }),
+        fingerprintOf(
+          Schema.Struct({ name: Schema.String, age: Schema.Number, extra: Schema.Boolean }),
+          { name: "a", age: 1, extra: true }
+        ),
+        fingerprintOf(Schema.Struct({ name: Schema.String, age: Schema.optional(Schema.Number) }), value),
+        fingerprintOf(Schema.Struct({ name: Schema.String, age: Schema.Number.check(Schema.isInt()) }), value),
+        fingerprintOf(
+          Schema.Struct({ name: Schema.String.pipe(SchemaBinary.fieldId(1)), age: Schema.Number }),
+          value
+        ),
+        fingerprintOf(Schema.Struct({ name: Schema.String, age: Schema.String }), { name: "a", age: "1" })
+      ]
+      assert.strictEqual(new Set([baseline, ...changed]).size, changed.length + 1)
+
+      assert.notStrictEqual(
+        fingerprintOf(Schema.Tuple([Schema.Number, Schema.Number]), [1, 2]),
+        fingerprintOf(Schema.Tuple([Schema.Number, Schema.Number, Schema.Number]), [1, 2, 3])
+      )
+      assert.notStrictEqual(
+        fingerprintOf(Schema.Array(Schema.Number), [1]),
+        fingerprintOf(Schema.Tuple([Schema.Number]), [1])
+      )
+      assert.notStrictEqual(
+        fingerprintOf(Schema.Date, new Date(0)),
+        fingerprintOf(Schema.DateTimeUtc, DateTime.makeUnsafe(0))
+      )
+
+      const A = Schema.Struct({ _tag: Schema.Literal("a"), n: Schema.Number })
+      const B = Schema.Struct({ _tag: Schema.Literal("b"), s: Schema.String })
+      const C = Schema.Struct({ _tag: Schema.Literal("c"), s: Schema.String })
+      const a = { _tag: "a", n: 1 } as const
+      assert.strictEqual(fingerprintOf(Schema.Union([A, B]), a), fingerprintOf(Schema.Union([B, A]), a))
+      assert.notStrictEqual(fingerprintOf(Schema.Union([A, B]), a), fingerprintOf(Schema.Union([A, B, C]), a))
+    })
+  })
+
+  describe("fingerprint mode failures", () => {
+    const Person = Schema.Struct({ name: Schema.String, age: Schema.Number })
+    const person = { name: "Ada", age: 36 }
+
+    it("fails closed when the layout fingerprint differs", () => {
+      const frame = encodeFingerprint(Person, person)
+      const other = SchemaBinary.toCodec(Schema.Struct({ label: Schema.String, age: Schema.Number }), {
+        fingerprint: true
+      })
+      assert.include(
+        schemaError(() => Schema.decodeUnknownSync(other)(frame)).message,
+        "Expected matching layout fingerprint"
+      )
+    })
+
+    it("rejects the other mode's frames in both directions", () => {
+      const fingerprintFrame = encodeFingerprint(Person, person)
+      const defaultFrame = encode(Person, person)
+      assert.include(
+        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Person))(fingerprintFrame)).message,
+        "Expected version 1 envelope, flags 0"
+      )
+      assert.include(
+        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Person, { fingerprint: true }))(defaultFrame))
+          .message,
+        "Expected version 1 envelope, flags 1"
+      )
+    })
+
+    it("rejects truncated and oversized frames", () => {
+      const codec = SchemaBinary.toCodec(Person, { fingerprint: true })
+      const frame = encodeFingerprint(Person, person)
+      // the fingerprint itself does not fit
+      const shortFrame = concat(new Uint8Array([5, 0x11]), frame.subarray(2, 6))
+      assert.include(
+        schemaError(() => Schema.decodeUnknownSync(codec)(shortFrame)).message,
+        "Expected complete value"
+      )
+      assert.include(
+        schemaError(() => Schema.decodeUnknownSync(codec)(frame.subarray(0, frame.length - 1))).message,
+        "Expected complete value"
+      )
+      assert.include(
+        schemaError(() => Schema.decodeUnknownSync(codec)(concat(frame, new Uint8Array([0])))).message,
+        "Expected no leftover bytes"
+      )
+      const withLeftover = new Uint8Array(frame)
+      withLeftover[0] = frame[0] + 1
+      assert.include(
+        schemaError(() => Schema.decodeUnknownSync(codec)(concat(withLeftover, new Uint8Array([0])))).message,
+        "Expected no leftover bytes"
+      )
+    })
+
+    it("rejects a union position outside the member table", () => {
+      const Event = Schema.Union([
+        Schema.Struct({ _tag: Schema.Literal("a"), n: Schema.Number }),
+        Schema.Struct({ _tag: Schema.Literal("b"), s: Schema.String })
+      ])
+      const codec = SchemaBinary.toCodec(Event, { fingerprint: true })
+      const frame = new Uint8Array(encodeFingerprint(Event, { _tag: "b", s: "x" }))
+      // the byte after the envelope and fingerprint is the member position
+      frame[10] = 7
+      assert.include(
+        schemaError(() => Schema.decodeUnknownSync(codec)(frame)).message,
+        "Expected known union member"
+      )
+    })
+
+    it("reports a required field a newer writer left unreadable as missing", () => {
+      const schema = Schema.Struct({ reason: Schema.CauseReason(Schema.String, Schema.String) })
+      const frame = new Uint8Array(encodeFingerprint(schema, { reason: Cause.makeFailReason("boom") }))
+      // the reason payload is length-prefixed; its first byte is the tag
+      frame[11] = 9
+      const error = schemaError(() =>
+        Schema.decodeUnknownSync(SchemaBinary.toCodec(schema, { fingerprint: true }))(frame)
+      )
+      assert.include(error.message, "reason")
+      assert.include(error.message, "Missing key")
+    })
+
+    it("rejects duplicate extra keys", () => {
+      const schema = Schema.Record(Schema.String, Schema.Number)
+      const frame = encodeFingerprint(schema, { a: 1, b: 2 })
+      const duplicated = new Uint8Array(frame)
+      // rewrite the second key so both pairs claim "a"
+      duplicated[duplicated.length - 3] = 97
+      assert.include(
+        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(schema, { fingerprint: true }))(duplicated))
+          .message,
+        "Expected unique extra keys"
+      )
+    })
+  })
+
+  describe("fingerprint mode parser", () => {
+    const Person = Schema.Struct({ name: Schema.String, age: Schema.Number })
+    const first = { name: "Ada", age: 36 }
+    const second = { name: "Grace", age: 45 }
+
+    it("parses concatenated frames, one byte at a time, and mid-frame splits", () => {
+      const frames = concat(encodeFingerprint(Person, first), encodeFingerprint(Person, second))
+      assert.deepStrictEqual(
+        SchemaBinary.parser(Person, { fingerprint: true }).feedSync(frames),
+        [first, second]
+      )
+
+      const byteParser = SchemaBinary.parser(Person, { fingerprint: true })
+      const out: Array<unknown> = []
+      for (const byte of frames) out.push(...byteParser.feedSync(new Uint8Array([byte])))
+      byteParser.endSync()
+      assert.deepStrictEqual(out, [first, second])
+
+      // a split inside the fingerprint must wait rather than fail
+      const split = SchemaBinary.parser(Person, { fingerprint: true })
+      assert.deepStrictEqual(split.feedSync(frames.subarray(0, 6)), [])
+      assert.deepStrictEqual(split.feedSync(frames.subarray(6)), [first, second])
+    })
+
+    it("fails closed on a default-mode frame in a fingerprint stream", () => {
+      const parser = SchemaBinary.parser(Person, { fingerprint: true })
+      const mixed = concat(encodeFingerprint(Person, first), encode(Person, second))
+      assert.deepStrictEqual(parser.feedSync(mixed), [first])
+      assert.include(
+        schemaError(() => parser.feedSync(new Uint8Array(0))).message,
+        "Expected version 1 envelope, flags 1"
+      )
+      assert.include(schemaError(() => parser.endSync()).message, "Expected parser is spent")
+    })
+
+    it("honours maxFrameSize and reports truncation at end", () => {
+      const bounded = SchemaBinary.parser(Person, { fingerprint: true, maxFrameSize: 4 })
+      assert.include(
+        schemaError(() => bounded.feedSync(encodeFingerprint(Person, first))).message,
+        "Expected frame within maxFrameSize"
+      )
+      const truncated = SchemaBinary.parser(Person, { fingerprint: true })
+      const frame = encodeFingerprint(Person, first)
+      assert.deepStrictEqual(truncated.feedSync(frame.subarray(0, frame.length - 2)), [])
+      assert.include(schemaError(() => truncated.endSync()).message, "Expected complete value")
     })
   })
 })

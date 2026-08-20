@@ -195,11 +195,14 @@ const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
 } => {
   const jsonSchema = Schema.toCodecJson(schema)
   const binaryCodec = SchemaBinary.toCodec(schema)
+  const fingerprintCodec = SchemaBinary.toCodec(schema, { fingerprint: true })
   const jsonCodec = Schema.fromJsonString(jsonSchema)
   const msgpackCodec = Msgpack.schema(jsonSchema)
 
   const binaryEncode = Schema.encodeUnknownSync(binaryCodec)
   const binaryDecode = Schema.decodeUnknownSync(binaryCodec)
+  const fingerprintEncode = Schema.encodeUnknownSync(fingerprintCodec)
+  const fingerprintDecode = Schema.decodeUnknownSync(fingerprintCodec)
   const jsonEncode = Schema.encodeUnknownSync(jsonCodec)
   const jsonDecode = Schema.decodeUnknownSync(jsonCodec)
   const msgpackEncode = Schema.encodeUnknownSync(msgpackCodec)
@@ -207,11 +210,13 @@ const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
 
   const binary = binaryEncode(value)
   const binaryCopy = binary.slice()
+  const fingerprint = fingerprintEncode(value).slice()
   const json = jsonEncode(value)
   const jsonBytes = textEncoder.encode(json)
   const msgpack = msgpackEncode(value)
 
   assert.deepStrictEqual(binaryDecode(binary), value)
+  assert.deepStrictEqual(fingerprintDecode(fingerprint), value)
   assert.deepStrictEqual(jsonDecode(json), value)
   assert.deepStrictEqual(msgpackDecode(msgpack), value)
 
@@ -228,6 +233,12 @@ const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
         ...sizes(binaryCopy),
         encode: () => binaryEncode(value).slice(),
         decode: () => binaryDecode(binaryCopy)
+      },
+      {
+        name: "SchemaBinary fingerprint",
+        ...sizes(fingerprint),
+        encode: () => fingerprintEncode(value),
+        decode: () => fingerprintDecode(fingerprint)
       },
       {
         name: "JSON",
@@ -253,9 +264,16 @@ const prepareStream = <S extends Schema.ConstraintCodec<unknown, unknown>>(
 ): { readonly formats: ReadonlyArray<StreamFormat>; readonly sizes: ReadonlyArray<StreamSize> } => {
   const binaryCodec = SchemaBinary.toCodec(schema)
   const binaryEncode = Schema.encodeUnknownSync(binaryCodec)
-  const binaryFrames = values.map((value) => binaryEncode(value))
+  const binaryFrames = values.map((value) => binaryEncode(value).slice())
   const binaryStream = concatFrames(binaryFrames)
   const binaryFragments = binaryFrames.map((frame) => {
+    return [frame.subarray(0, 1), frame.subarray(1)] as const
+  })
+
+  const fingerprintEncode = Schema.encodeUnknownSync(SchemaBinary.toCodec(schema, { fingerprint: true }))
+  const fingerprintFrames = values.map((value) => fingerprintEncode(value).slice())
+  const fingerprintStream = concatFrames(fingerprintFrames)
+  const fingerprintFragments = fingerprintFrames.map((frame) => {
     return [frame.subarray(0, 1), frame.subarray(1)] as const
   })
 
@@ -266,25 +284,41 @@ const prepareStream = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   const msgpackStream = concatFrames(values.map((value) => msgpackPackr.pack(encodeMsgpackValue(value)).slice()))
   const msgpackUnpackr = new Unpackr()
 
-  const singleParser = SchemaBinary.parser(schema)
-  const fragmentedParser = SchemaBinary.parser(schema)
-  const batchParser = SchemaBinary.parser(schema)
-  let singleIndex = 0
-  let fragmentedIndex = 0
-  const decodeSingle = () => singleParser.feedSync(binaryFrames[singleIndex++ % binaryFrames.length])
-  const decodeFragmented = () => {
-    const fragments = binaryFragments[fragmentedIndex++ % binaryFragments.length]
-    const first = fragmentedParser.feedSync(fragments[0])
-    const second = fragmentedParser.feedSync(fragments[1])
-    return first.length === 0 ? second : [...first, ...second]
+  const feedShapes = (options?: { readonly fingerprint: true }) => {
+    const frames = options === undefined ? binaryFrames : fingerprintFrames
+    const fragments = options === undefined ? binaryFragments : fingerprintFragments
+    const stream = options === undefined ? binaryStream : fingerprintStream
+    const singleParser = SchemaBinary.parser(schema, options)
+    const fragmentedParser = SchemaBinary.parser(schema, options)
+    const batchParser = SchemaBinary.parser(schema, options)
+    let singleIndex = 0
+    let fragmentedIndex = 0
+    return {
+      single: () => singleParser.feedSync(frames[singleIndex++ % frames.length]),
+      fragmented: () => {
+        const pair = fragments[fragmentedIndex++ % fragments.length]
+        const first = fragmentedParser.feedSync(pair[0])
+        const second = fragmentedParser.feedSync(pair[1])
+        return first.length === 0 ? second : [...first, ...second]
+      },
+      batch: () => batchParser.feedSync(stream)
+    }
   }
-  const decodeBatch = () => batchParser.feedSync(binaryStream)
+
+  const defaultFeeds = feedShapes()
+  const fingerprintFeeds = feedShapes({ fingerprint: true })
+  const decodeSingle = defaultFeeds.single
+  const decodeFragmented = defaultFeeds.fragmented
+  const decodeBatch = defaultFeeds.batch
   const decodeMsgpackStream = () =>
     msgpackUnpackr.unpackMultiple(msgpackStream).map((value) => decodeMsgpackValue(value))
 
   assert.deepStrictEqual(decodeSingle(), [values[0]])
   assert.deepStrictEqual(decodeFragmented(), [values[0]])
   assert.deepStrictEqual(decodeBatch(), values)
+  assert.deepStrictEqual(fingerprintFeeds.single(), [values[0]])
+  assert.deepStrictEqual(fingerprintFeeds.fragmented(), [values[0]])
+  assert.deepStrictEqual(fingerprintFeeds.batch(), values)
   assert.deepStrictEqual(decodeMsgpackStream(), values)
 
   return {
@@ -292,10 +326,14 @@ const prepareStream = <S extends Schema.ConstraintCodec<unknown, unknown>>(
       { name: "SchemaBinary parser / single frame", framesPerOp: 1, decode: decodeSingle },
       { name: "SchemaBinary parser / batch", framesPerOp: values.length, decode: decodeBatch },
       { name: "SchemaBinary parser / fragmented", framesPerOp: 1, decode: decodeFragmented },
+      { name: "SchemaBinary fingerprint / single frame", framesPerOp: 1, decode: fingerprintFeeds.single },
+      { name: "SchemaBinary fingerprint / batch", framesPerOp: values.length, decode: fingerprintFeeds.batch },
+      { name: "SchemaBinary fingerprint / fragmented", framesPerOp: 1, decode: fingerprintFeeds.fragmented },
       { name: "Msgpack unpackMultiple / batch", framesPerOp: values.length, decode: decodeMsgpackStream }
     ],
     sizes: [
       { name: "SchemaBinary", frames: values.length, ...sizes(binaryStream) },
+      { name: "SchemaBinary fingerprint", frames: values.length, ...sizes(fingerprintStream) },
       { name: "Msgpack", frames: values.length, ...sizes(msgpackStream) }
     ]
   }
