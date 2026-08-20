@@ -727,6 +727,29 @@ describe("SchemaBinary", () => {
       const exit = roundtrip(Schema.Exit(Schema.Number, Schema.String, Schema.Unknown), Exit.failCause(cause))
       assert.isTrue(Exit.isFailure(exit))
     })
+
+    // An `Exit` layout carries the `Cause` node its failure branch writes,
+    // rather than rebuilding one per value. Both branches must still round-trip
+    // in fingerprint mode, where the failure branch has no length prefix to
+    // resynchronise on, and the shared node must not make the two schemas hash
+    // alike.
+    it("round-trips both Exit branches in fingerprint mode", () => {
+      const ExitSchema = Schema.Exit(Schema.Number, Schema.String, Schema.Unknown)
+      const cause = Cause.fromReasons([Cause.makeFailReason("boom"), Cause.makeDieReason({ defect: true })])
+
+      assert.isTrue(Exit.isSuccess(roundtripFingerprint(ExitSchema, Exit.succeed(7))))
+
+      const failure = roundtripFingerprint(ExitSchema, Exit.failCause(cause))
+      assert.deepStrictEqual(
+        Exit.isFailure(failure) ? failure.cause.reasons.map((reason) => reason._tag) : [],
+        ["Fail", "Die"]
+      )
+
+      assert.notStrictEqual(
+        fingerprintFrame(ExitSchema, Exit.failCause(cause)).fingerprint,
+        fingerprintFrame(Schema.Cause(Schema.String, Schema.Unknown), cause).fingerprint
+      )
+    })
   })
 
   describe("generic declarations and recursion", () => {
