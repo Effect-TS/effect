@@ -189,6 +189,19 @@ describe("Prompt.text", () => {
       assert.include(frames.at(-1) ?? "", "+ Name ~")
     }).pipe(Effect.provide(TestLayer)))
 
+  it.effect("keeps theme defaults when a JavaScript override is undefined", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.text({
+        message: "Name",
+        theme: { prefix: undefined } as unknown as Partial<Prompt.Theme>
+      }))
+
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.include(frames[0] ?? "", "? Name")
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("renders theme colors from context with per-prompt overrides", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputText("A")
@@ -396,6 +409,43 @@ describe("Prompt.select", () => {
       assert.include(output, `${escape}[33m✔`)
       assert.include(output, `${escape}[36mFirst`)
     }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("keeps title and description separated when the theme separator is empty", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.select({
+        message: "Pick item",
+        theme: { descriptionSeparator: "" },
+        choices: [{ title: "First", value: "first", description: "one" }]
+      }))
+
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.isTrue(frames.some((frame) => frame.includes("First one")))
+      assert.isFalse(frames.some((frame) => frame.includes("Firstone")))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("aligns choices when paging arrows have different widths", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.select({
+        message: "Pick item",
+        maxPerPage: 2,
+        theme: { arrowUp: "", arrowDown: "vvv" },
+        choices: [
+          { title: "Alpha", value: "alpha" },
+          { title: "Beta", value: "beta" },
+          { title: "Gamma", value: "gamma" }
+        ]
+      }))
+
+      const frames = toFrames(yield* MockTerminal.displayLines)
+      assert.isTrue(frames.some((frame) => frame.includes("❯   Alpha") && frame.includes("vvv Beta")))
+      assert.isTrue(frames.some((frame) => frame.includes("    Beta") && frame.includes("❯   Gamma")))
+    }).pipe(Effect.provide(TestLayer)))
 })
 
 describe("Prompt.password", () => {
@@ -411,6 +461,21 @@ describe("Prompt.password", () => {
       const frames = toFrames(yield* MockTerminal.displayLines)
       assert.isTrue(frames.some((frame) => frame.includes("•••")))
       assert.isFalse(frames.some((frame) => frame.includes("***")))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("keeps cursor movement aligned with a multi-character password mask", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputText("abc")
+      yield* MockTerminal.inputKey("left")
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.password({
+        message: "Password",
+        theme: { passwordMask: "**" }
+      }))
+
+      const frames = toRawFrames(yield* MockTerminal.displayLines)
+      assert.isTrue(frames.some((frame) => frame.includes("******") && frame.endsWith(`${escape}[2D`)))
     }).pipe(Effect.provide(TestLayer)))
 
   it.effect("starts from the default value so it can be edited", () =>
@@ -719,6 +784,29 @@ describe("Prompt.multiSelect", () => {
       const frames = toFrames(yield* MockTerminal.displayLines)
       assert.isTrue(frames.some((frame) => frame.includes("v [ ] Alpha")))
       assert.isTrue(frames.some((frame) => frame.includes("[x] Alpha")))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("aligns choices when checkbox symbols have different widths", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        theme: { checkboxOn: "[x]", checkboxOff: "" },
+        choices: [
+          { title: "Alpha", value: "alpha", selected: true },
+          { title: "Beta", value: "beta" }
+        ]
+      })
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(prompt)
+
+      const frame = toFrames(yield* MockTerminal.displayLines).find((frame) =>
+        frame.includes("[x] Alpha") && frame.includes("Beta")
+      )
+      assert.isTrue(frame !== undefined)
+      const alpha = frame?.split("\n").find((line) => line.includes("Alpha")) ?? ""
+      const beta = frame?.split("\n").find((line) => line.includes("Beta")) ?? ""
+      assert.strictEqual(alpha.indexOf("Alpha"), beta.indexOf("Beta"))
     }).pipe(Effect.provide(TestLayer)))
 
   it.effect("does not allow a disabled multi-select choice to be selected", () =>

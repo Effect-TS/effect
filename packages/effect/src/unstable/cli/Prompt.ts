@@ -205,6 +205,8 @@ export interface ThemeOptions {
   readonly theme?: Partial<Theme>
 }
 
+type OptionsReq<A> = Required<Omit<A, "theme">> & ThemeOptions
+
 /**
  * Options for a confirmation prompt that asks the user to choose a boolean
  * yes/no value.
@@ -625,16 +627,28 @@ const windowsTheme: Theme = {
   pointer: ">"
 }
 
+const mergeTheme = (base: Theme, overrides: Partial<Theme> | undefined): Theme => {
+  if (overrides === undefined) {
+    return base
+  }
+  const theme = { ...base }
+  for (const key of Object.keys(overrides) as Array<keyof Theme>) {
+    const value = overrides[key]
+    if (value !== undefined) {
+      Object.assign(theme, { [key]: value })
+    }
+  }
+  return theme
+}
+
 /**
  * Creates a prompt theme using the current platform defaults.
  *
  * @category constructors
  * @since 4.0.0
  */
-export const makeTheme = (options?: Partial<Theme>): Theme => ({
-  ...(process.platform === "win32" ? windowsTheme : defaultTheme),
-  ...options
-})
+export const makeTheme = (options?: Partial<Theme>): Theme =>
+  mergeTheme(process.platform === "win32" ? windowsTheme : defaultTheme, options)
 
 /**
  * Context reference for the theme used by built-in prompts.
@@ -649,11 +663,8 @@ export const Theme: Context.Reference<Theme> = Context.Reference("effect/unstabl
   defaultValue: makeTheme
 })
 
-/** @internal */
-export const platformFigures = Theme
-
 const getTheme = (options: ThemeOptions): Effect.Effect<Theme> =>
-  Effect.map(Theme, (theme) => ({ ...theme, ...options.theme }))
+  Effect.map(Theme, (theme) => mergeTheme(theme, options.theme))
 
 /**
  * Type alias for any `Prompt`, regardless of its output type.
@@ -805,6 +816,16 @@ const annotateErrorLine = (line: string, color: string): string =>
 const annotateSymbol = (symbol: string, ...styles: Array<string | Array<string>>): string =>
   symbol.length === 0 ? "" : Ansi.annotate(symbol, ...styles)
 const separateSymbol = (symbol: string, text: string): string => symbol.length === 0 ? text : symbol + " " + text
+const renderPagingPrefix = (theme: Theme, showArrowUp: boolean, showArrowDown: boolean): string => {
+  const width = Math.max(theme.arrowUp.length, theme.arrowDown.length)
+  if (showArrowUp) {
+    return theme.arrowUp.padEnd(width)
+  }
+  if (showArrowDown) {
+    return theme.arrowDown.padEnd(width)
+  }
+  return " ".repeat(width)
+}
 
 /**
  * Creates a confirmation prompt that asks the user to choose a boolean yes/no
@@ -825,10 +846,9 @@ const separateSymbol = (symbol: string, text: string): string => symbol.length =
  * @since 4.0.0
  */
 export const confirm = (options: ConfirmOptions): Prompt<boolean> => {
-  const opts: Required<ConfirmOptions> = {
+  const opts: ConfirmOptionsReq = {
     initial: false,
     ...options,
-    theme: options.theme ?? {},
     label: {
       confirm: "yes",
       deny: "no",
@@ -921,12 +941,11 @@ export const custom: {
  * @since 4.0.0
  */
 export const date = (options: DateOptions): Prompt<Date> => {
-  const opts: Required<DateOptions> = {
+  const opts: DateOptionsReq = {
     initial: new Date(),
     dateMask: "YYYY-MM-DD HH:mm:ss",
     validate: Effect.succeed,
     ...options,
-    theme: options.theme ?? {},
     locales: {
       ...defaultLocales,
       ...options.locales
@@ -961,9 +980,9 @@ export const date = (options: DateOptions): Prompt<Date> => {
  */
 export const file = (options: FileOptions = {}): Prompt<string> => {
   const opts: FileOptionsReq = {
+    ...options,
     type: options.type ?? "file",
     message: options.message ?? `Choose a file`,
-    theme: options.theme ?? {},
     startingPath: Option.fromUndefinedOr(options.startingPath),
     default: Option.fromUndefinedOr(options.default),
     maxPerPage: options.maxPerPage ?? 10,
@@ -1052,8 +1071,7 @@ export const float = (options: FloatOptions): Prompt<number> => {
       }
       return Effect.succeed(n)
     },
-    ...options,
-    theme: options.theme ?? {}
+    ...options
   }
   const initialValue = options.default === undefined ? "" : `${opts.default}`
   const initialState: NumberState = {
@@ -1105,8 +1123,7 @@ export const integer = (options: IntegerOptions): Prompt<number> => {
       }
       return Effect.succeed(n)
     },
-    ...options,
-    theme: options.theme ?? {}
+    ...options
   }
   const initialValue = options.default === undefined ? "" : `${opts.default}`
   const initialState: NumberState = {
@@ -1223,8 +1240,7 @@ const getSelectInitialIndex = <A>(choices: ReadonlyArray<SelectChoice<A>>): numb
 export const select = <const A>(options: SelectOptions<A>): Prompt<A> => {
   const opts: SelectOptionsReq<A> = {
     maxPerPage: 10,
-    ...options,
-    theme: options.theme ?? {}
+    ...options
   }
   const initialIndex = getSelectInitialIndex(opts.choices)
   return custom(initialIndex, {
@@ -1263,8 +1279,7 @@ export const autoComplete = <const A>(options: AutoCompleteOptions<A>): Prompt<A
     filterLabel: "filter",
     filterPlaceholder: "type to filter",
     emptyMessage: "No matches",
-    ...options,
-    theme: options.theme ?? {}
+    ...options
   }
   const initialIndex = getSelectInitialIndex(opts.choices)
   const filtered = filterAutoCompleteChoices(opts.choices, "")
@@ -1302,8 +1317,7 @@ export const multiSelect = <const A>(
 ): Prompt<Array<A>> => {
   const opts: SelectOptionsReq<A> & MultiSelectOptionsReq = {
     maxPerPage: 10,
-    ...options,
-    theme: options.theme ?? {}
+    ...options
   }
   // Seed initial selection from choices marked as selected: true
   const initialSelected = new Set<number>()
@@ -1362,8 +1376,7 @@ export const toggle = (options: ToggleOptions): Prompt<boolean> => {
     initial: false,
     active: "on",
     inactive: "off",
-    ...options,
-    theme: options.theme ?? {}
+    ...options
   }
   return custom(opts.initial, {
     render: handleToggleRender(opts),
@@ -1539,7 +1552,7 @@ const clearOutputWithError = (outputText: string, columns: number, errorText?: s
   return eraseText(outputText, columns)
 }
 
-interface ConfirmOptionsReq extends Required<ConfirmOptions> {}
+interface ConfirmOptionsReq extends OptionsReq<ConfirmOptions> {}
 
 interface ConfirmState {
   readonly value: boolean
@@ -1629,7 +1642,7 @@ const handleConfirmProcess = (input: Terminal.UserInput, defaultValue: boolean) 
   return Effect.succeed(Action.Beep())
 }
 
-interface DateOptionsReq extends Required<DateOptions> {}
+interface DateOptionsReq extends OptionsReq<DateOptions> {}
 
 interface DateState {
   readonly typed: string
@@ -2178,7 +2191,7 @@ class Meridiem extends DatePart {
   }
 }
 
-interface FileOptionsReq extends Required<Omit<FileOptions, "startingPath" | "default">> {
+interface FileOptionsReq extends OptionsReq<Omit<FileOptions, "startingPath" | "default">> {
   readonly startingPath: Option.Option<string>
   readonly default: Option.Option<string>
 }
@@ -2359,21 +2372,20 @@ const renderPrefix = (
   toDisplay: { readonly startIndex: number; readonly endIndex: number },
   currentIndex: number,
   length: number,
-  figures: Effect.Success<typeof platformFigures>,
+  figures: Theme,
   renderOptions?: RenderOptions | undefined
 ) => {
-  let prefix = figures.arrowUp.length === 0 && figures.arrowDown.length === 0 ? "" : " "
-  if (currentIndex === toDisplay.startIndex && toDisplay.startIndex > 0) {
-    prefix = figures.arrowUp
-  } else if (currentIndex === toDisplay.endIndex - 1 && toDisplay.endIndex < length) {
-    prefix = figures.arrowDown
-  }
+  const prefix = renderPagingPrefix(
+    figures,
+    currentIndex === toDisplay.startIndex && toDisplay.startIndex > 0,
+    currentIndex === toDisplay.endIndex - 1 && toDisplay.endIndex < length
+  )
   if (state.cursor === currentIndex) {
     return renderOptions?.plain === true
       ? figures.pointer + prefix
       : annotateSymbol(figures.pointer, figures.primaryColor) + prefix
   }
-  return prefix + (figures.pointer.length === 0 ? "" : " ".repeat(figures.pointer.length))
+  return prefix + " ".repeat(figures.pointer.length)
 }
 
 const renderFileName = (
@@ -2404,7 +2416,7 @@ const renderFileFilter = (state: FileState, theme: Theme, renderOptions?: Render
 const renderFiles = (
   state: FileState,
   files: ReadonlyArray<string>,
-  figures: Effect.Success<typeof platformFigures>,
+  figures: Theme,
   options: FileOptionsReq,
   renderOptions?: RenderOptions | undefined
 ) => {
@@ -2618,7 +2630,7 @@ const handleFileProcess = (options: FileOptionsReq) => {
   })
 }
 
-interface SelectOptionsReq<A> extends Required<SelectOptions<A>> {}
+interface SelectOptionsReq<A> extends OptionsReq<SelectOptions<A>> {}
 interface MultiSelectOptionsReq extends MultiSelectOptions {}
 
 type MultiSelectState = {
@@ -2683,10 +2695,11 @@ const renderMultiSelectTitle = (
 const renderMultiSelectChoices = <A>(
   state: MultiSelectState,
   options: SelectOptionsReq<A> & MultiSelectOptionsReq,
-  figures: Effect.Success<typeof platformFigures>,
+  figures: Theme,
   renderOptions?: RenderOptions | undefined
 ) => {
   const choices = options.choices
+  const checkboxWidth = Math.max(figures.checkboxOn.length, figures.checkboxOff.length)
   const selectableCount = choices.filter((choice) => !choice.disabled).length
   const selectedCount = Array.from(state.selectedIndices).filter((index) => !choices[index].disabled).length
   const allSelected = selectedCount === selectableCount
@@ -2707,12 +2720,11 @@ const renderMultiSelectChoices = <A>(
   for (let index = toDisplay.startIndex; index < toDisplay.endIndex; index++) {
     const choice = allChoices[index]
     const isHighlighted = state.index === index
-    let prefix = figures.arrowUp.length === 0 && figures.arrowDown.length === 0 ? "" : " "
-    if (index === toDisplay.startIndex && toDisplay.startIndex > 0) {
-      prefix = figures.arrowUp
-    } else if (index === toDisplay.endIndex - 1 && toDisplay.endIndex < allChoices.length) {
-      prefix = figures.arrowDown
-    }
+    const prefix = renderPagingPrefix(
+      figures,
+      index === toDisplay.startIndex && toDisplay.startIndex > 0,
+      index === toDisplay.endIndex - 1 && toDisplay.endIndex < allChoices.length
+    )
     if (index < metaOptions.length) {
       // Meta options
       const title = renderMultiSelectTitle(choice.title, isHighlighted, figures, renderOptions)
@@ -2728,10 +2740,11 @@ const renderMultiSelectChoices = <A>(
       const selectChoice = choice as SelectChoice<A>
       const title = renderChoiceTitle(selectChoice, isHighlighted, figures, renderOptions)
       const description = renderChoiceDescription(selectChoice, isHighlighted, figures, renderOptions)
-      const checkboxPrefix = checkbox.length === 0 ? "" : annotatedCheckbox + " "
-      const descriptionPrefix = description.length === 0 || figures.descriptionSeparator.length > 0 ? " " : ""
+      const checkboxPrefix = checkboxWidth === 0
+        ? ""
+        : annotatedCheckbox + " ".repeat(checkboxWidth - checkbox.length + 1)
       documents.push(
-        prefix + (prefix.length === 0 ? "" : " ") + checkboxPrefix + title + descriptionPrefix + description
+        prefix + (prefix.length === 0 ? "" : " ") + checkboxPrefix + title + " " + description
       )
     }
   }
@@ -2875,8 +2888,8 @@ const handleMultiSelectRender = <A>(options: SelectOptionsReq<A>) => {
   }
 }
 
-interface IntegerOptionsReq extends Required<IntegerOptions> {}
-interface FloatOptionsReq extends Required<FloatOptions> {}
+interface IntegerOptionsReq extends OptionsReq<IntegerOptions> {}
+interface FloatOptionsReq extends OptionsReq<FloatOptions> {}
 
 interface NumberState {
   readonly cursor: number
@@ -3185,8 +3198,8 @@ type AutoCompleteState = {
   readonly filtered: ReadonlyArray<number>
 }
 
-interface SelectOptionsReq<A> extends Required<SelectOptions<A>> {}
-interface AutoCompleteOptionsReq<A> extends Required<AutoCompleteOptions<A>> {}
+interface SelectOptionsReq<A> extends OptionsReq<SelectOptions<A>> {}
+interface AutoCompleteOptionsReq<A> extends OptionsReq<AutoCompleteOptions<A>> {}
 
 const filterAutoCompleteChoices = <A>(choices: ReadonlyArray<SelectChoice<A>>, query: string) => {
   const normalizedQuery = query.toLowerCase()
@@ -3257,29 +3270,28 @@ const renderChoicePrefix = <A>(
   choices: SelectOptionsReq<A>["choices"],
   toDisplay: { readonly startIndex: number; readonly endIndex: number },
   currentIndex: number,
-  figures: Effect.Success<typeof platformFigures>,
+  figures: Theme,
   renderOptions?: RenderOptions | undefined
 ) => {
-  let prefix = figures.arrowUp.length === 0 && figures.arrowDown.length === 0 ? "" : " "
-  if (currentIndex === toDisplay.startIndex && toDisplay.startIndex > 0) {
-    prefix = figures.arrowUp
-  } else if (currentIndex === toDisplay.endIndex - 1 && toDisplay.endIndex < choices.length) {
-    prefix = figures.arrowDown
-  }
+  const prefix = renderPagingPrefix(
+    figures,
+    currentIndex === toDisplay.startIndex && toDisplay.startIndex > 0,
+    currentIndex === toDisplay.endIndex - 1 && toDisplay.endIndex < choices.length
+  )
   if (renderOptions?.plain === true) {
     return state === currentIndex
       ? figures.pointer + prefix
-      : prefix + (figures.pointer.length === 0 ? "" : " ".repeat(figures.pointer.length))
+      : prefix + " ".repeat(figures.pointer.length)
   }
   if (choices[currentIndex].disabled) {
     const annotation = Ansi.combine(Ansi.bold, figures.mutedColor)
     return state === currentIndex
       ? annotateSymbol(figures.pointer, annotation) + prefix
-      : prefix + (figures.pointer.length === 0 ? "" : " ".repeat(figures.pointer.length))
+      : prefix + " ".repeat(figures.pointer.length)
   }
   return state === currentIndex
     ? annotateSymbol(figures.pointer, figures.primaryColor) + prefix
-    : prefix + (figures.pointer.length === 0 ? "" : " ".repeat(figures.pointer.length))
+    : prefix + " ".repeat(figures.pointer.length)
 }
 
 const renderAutoCompleteChoicePrefix = <A>(
@@ -3287,31 +3299,30 @@ const renderAutoCompleteChoicePrefix = <A>(
   options: AutoCompleteOptionsReq<A>,
   toDisplay: { readonly startIndex: number; readonly endIndex: number },
   currentIndex: number,
-  figures: Effect.Success<typeof platformFigures>,
+  figures: Theme,
   renderOptions?: RenderOptions | undefined
 ) => {
-  let prefix = figures.arrowUp.length === 0 && figures.arrowDown.length === 0 ? "" : " "
-  if (currentIndex === toDisplay.startIndex && toDisplay.startIndex > 0) {
-    prefix = figures.arrowUp
-  } else if (currentIndex === toDisplay.endIndex - 1 && toDisplay.endIndex < state.filtered.length) {
-    prefix = figures.arrowDown
-  }
+  const prefix = renderPagingPrefix(
+    figures,
+    currentIndex === toDisplay.startIndex && toDisplay.startIndex > 0,
+    currentIndex === toDisplay.endIndex - 1 && toDisplay.endIndex < state.filtered.length
+  )
   const choiceIndex = state.filtered[currentIndex]
   if (renderOptions?.plain === true) {
     return state.index === choiceIndex
       ? figures.pointer + prefix
-      : prefix + (figures.pointer.length === 0 ? "" : " ".repeat(figures.pointer.length))
+      : prefix + " ".repeat(figures.pointer.length)
   }
   const choice = options.choices[choiceIndex]
   if (choice.disabled) {
     const annotation = Ansi.combine(Ansi.bold, figures.mutedColor)
     return state.index === choiceIndex
       ? annotateSymbol(figures.pointer, annotation) + prefix
-      : prefix + (figures.pointer.length === 0 ? "" : " ".repeat(figures.pointer.length))
+      : prefix + " ".repeat(figures.pointer.length)
   }
   return state.index === choiceIndex
     ? annotateSymbol(figures.pointer, figures.primaryColor) + prefix
-    : prefix + (figures.pointer.length === 0 ? "" : " ".repeat(figures.pointer.length))
+    : prefix + " ".repeat(figures.pointer.length)
 }
 
 const renderChoiceTitle = <A>(
@@ -3337,7 +3348,7 @@ const renderChoiceTitle = <A>(
 const renderSelectChoices = <A>(
   state: SelectState,
   options: SelectOptionsReq<A>,
-  figures: Effect.Success<typeof platformFigures>,
+  figures: Theme,
   renderOptions?: RenderOptions | undefined
 ) => {
   const choices = options.choices
@@ -3349,8 +3360,7 @@ const renderSelectChoices = <A>(
     const prefix = renderChoicePrefix(state, choices, toDisplay, index, figures, renderOptions)
     const title = renderChoiceTitle(choice, isSelected, figures, renderOptions)
     const description = renderChoiceDescription(choice, isSelected, figures, renderOptions)
-    const descriptionPrefix = description.length === 0 || figures.descriptionSeparator.length > 0 ? " " : ""
-    documents.push(prefix + title + descriptionPrefix + description)
+    documents.push(prefix + title + " " + description)
   }
   return documents.join("\n")
 }
@@ -3358,7 +3368,7 @@ const renderSelectChoices = <A>(
 const renderAutoCompleteChoices = <A>(
   state: AutoCompleteState,
   options: AutoCompleteOptionsReq<A>,
-  figures: Effect.Success<typeof platformFigures>,
+  figures: Theme,
   renderOptions?: RenderOptions | undefined
 ) => {
   if (state.filtered.length === 0) {
@@ -3376,8 +3386,7 @@ const renderAutoCompleteChoices = <A>(
     const prefix = renderAutoCompleteChoicePrefix(state, options, toDisplay, index, figures, renderOptions)
     const title = renderChoiceTitle(choice, isSelected, figures, renderOptions)
     const description = renderChoiceDescription(choice, isSelected, figures, renderOptions)
-    const descriptionPrefix = description.length === 0 || figures.descriptionSeparator.length > 0 ? " " : ""
-    documents.push(prefix + title + descriptionPrefix + description)
+    documents.push(prefix + title + " " + description)
   }
   return documents.join("\n")
 }
@@ -3602,7 +3611,7 @@ const handleAutoCompleteProcess = <A>(options: AutoCompleteOptionsReq<A>) => {
   }
 }
 
-interface TextOptionsReq extends Required<TextOptions> {
+interface TextOptionsReq extends OptionsReq<TextOptions> {
   /**
    * The type of the text option.
    */
@@ -3652,6 +3661,8 @@ const renderTextInput = (
   }
 
   if (text.length === 0) {
+    // Avoid wrapping an empty value in ANSI codes, which would make renderPrompt
+    // add spacing for content that occupies no terminal columns.
     return ""
   }
 
@@ -3717,7 +3728,8 @@ const renderTextNextFrame = Effect.fnUntraced(function*(state: TextState, option
   const trailingSymbol = annotateSymbol(figures.pointerSmall, figures.mutedColor)
   const promptMsg = renderTextOutput(state, leadingSymbol, trailingSymbol, options, figures)
   const errorMsg = renderTextError(state, figures.pointerSmall, figures)
-  const offset = state.cursor - state.value.length
+  const cursorWidth = options.type === "password" ? figures.passwordMask.length : 1
+  const offset = (state.cursor - state.value.length) * cursorWidth
   return promptMsg + errorMsg + Ansi.cursorMove(offset)
 })
 
@@ -3892,8 +3904,7 @@ const basePrompt = (
     default: "",
     type,
     validate: Effect.succeed,
-    ...options,
-    theme: options.theme ?? {}
+    ...options
   }
 
   const initialState: TextState = {
@@ -3908,7 +3919,7 @@ const basePrompt = (
   })
 }
 
-interface ToggleOptionsReq extends Required<ToggleOptions> {}
+interface ToggleOptionsReq extends OptionsReq<ToggleOptions> {}
 
 type ToggleState = boolean
 
