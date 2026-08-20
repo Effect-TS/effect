@@ -12,6 +12,11 @@ export * as CloudflareCluster from "./CloudflareCluster.ts"
 /**
  * @since 4.0.0
  */
+export * as CloudflareDurableObjectPrograms from "./CloudflareDurableObjectPrograms.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as CloudflareDurableObjects from "./CloudflareDurableObjects.ts"
 
 /**

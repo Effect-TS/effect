@@ -1,4 +1,8 @@
-import type { SqlStorage } from "@cloudflare/workers-types"
+import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
+import {
+  type DurableObjectProgramState,
+  makeClusterWorkflowProgram
+} from "@effect/platform-cloudflare/CloudflareDurableObjectPrograms"
 import * as CloudflareWorkflowEngine from "@effect/platform-cloudflare/CloudflareWorkflowEngine"
 import { encodeName } from "@effect/platform-cloudflare/internal/clusterName"
 import type { EntityAlarm } from "@effect/platform-cloudflare/internal/entityStorage"
@@ -178,7 +182,26 @@ class FakeWorkflowNamespace {
   }
 
   get layer() {
-    return CloudflareWorkflowEngine.layer({ workflowNamespace: this as never })
+    return CloudflareWorkflowEngine.layer({ workflowNamespace: this })
+  }
+
+  get effectLayer() {
+    const workflowNamespace = {
+      getByName: (name) => {
+        const stub = this.getByName(name)
+        return {
+          run: (payload, options) => Effect.promise(() => stub.run(payload, options)),
+          poll: () => Effect.promise(() => stub.poll()),
+          resume: () => Effect.promise(() => stub.resume()),
+          interrupt: () => Effect.promise(() => stub.interrupt()),
+          interruptUnsafe: () => Effect.promise(() => stub.interruptUnsafe()),
+          deferredDone: (deferredName, exit) => Effect.promise(() => stub.deferredDone(deferredName, exit)),
+          scheduleClock: (clockName, deferredName, wakeUp) =>
+            Effect.promise(() => stub.scheduleClock(clockName, deferredName, wakeUp))
+        }
+      }
+    }
+    return CloudflareWorkflowEngine.layer({ workflowNamespace: workflowNamespace as never })
   }
 }
 
@@ -193,6 +216,38 @@ const pollUntil = Effect.fnUntraced(function*<
 })
 
 describe("CloudflareWorkflowEngine", () => {
+  it.effect("re-arms persisted clocks before exposing the workflow handlers", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      const alarm = new FakeAlarm()
+      sql.execution = {
+        workflow_name: "Restarted",
+        execution_id: "execution",
+        payload: "{}",
+        parent_name: null,
+        parent_execution_id: null,
+        result: null,
+        resume_pending: 0
+      }
+      sql.clocks.set("sleep", { deferredName: "DurableClock/sleep", wakeUp: 1_000, fired: false })
+      const storage = {
+        sql: sql.sql,
+        getAlarm: () => alarm.getAlarm(),
+        setAlarm: (scheduledTime: number) => alarm.setAlarm(scheduledTime)
+      } as unknown as DurableObjectStorage
+      const state: DurableObjectProgramState = {
+        id: {},
+        storage,
+        exports: {},
+        waitUntil: () => undefined
+      }
+
+      const program = yield* makeClusterWorkflowProgram(state)
+
+      assert.strictEqual(alarm.current, 1_000)
+      assert.isUndefined(yield* program.poll())
+    }))
+
   it.effect("routes generated workflow proxy handlers through the encoded Durable Object name", () => {
     const namespace = new FakeWorkflowNamespace()
     const Proxied = Workflow.make("Proxied", {
@@ -290,7 +345,7 @@ describe("CloudflareWorkflowEngine", () => {
           return Effect.succeed(42)
         })
       })
-    ).pipe(Layer.provideMerge(namespace.layer))
+    ).pipe(Layer.provideMerge(namespace.effectLayer))
 
     return Effect.gen(function*() {
       const executionId = yield* Crashing.executionId({ id: "one" })
