@@ -2,9 +2,11 @@ import { Schema } from "effect"
 import { Msgpack, SchemaBinary } from "effect/unstable/encoding"
 import { Packr, Unpackr } from "msgpackr"
 import assert from "node:assert/strict"
+import { gzipSync, zstdCompressSync } from "node:zlib"
 import { Bench } from "tinybench"
 
 const streamBatchSize = 32
+const repeatedRecordStreamSize = 200
 
 const SmallRecord = Schema.Struct({
   id: Schema.Number,
@@ -62,6 +64,20 @@ const LargeRow = Schema.Struct({
 
 const LargePayload = Schema.Array(LargeRow)
 
+const largeRows = Array.from({ length: repeatedRecordStreamSize }, (_, index) => ({
+  transactionIdentifier: `transaction-${index.toString().padStart(4, "0")}`,
+  customerIdentifier: `customer-${index % 37}`,
+  productDescription: `Product ${index % 19} with a repeated descriptive field value`,
+  fulfillmentLocation: ["London", "New York", "Singapore", "Sydney"][index % 4]!,
+  quantityPurchased: index % 9 + 1,
+  unitPriceInCents: 500 + index % 73 * 25,
+  discountInBasisPoints: index % 5 * 125,
+  requiresManualReview: index % 17 === 0
+}))
+
+const metrics = (count: number) =>
+  Object.fromEntries(Array.from({ length: count }, (_, index) => [`metric-${index}`, index * 1.25]))
+
 const cases = [
   {
     name: "small record",
@@ -114,43 +130,46 @@ const cases = [
     }
   },
   {
+    name: "index signatures / 128 keys",
+    schema: Schema.Record(Schema.String, Schema.Number),
+    value: metrics(128)
+  },
+  {
+    name: "index signatures / 512 keys",
+    schema: Schema.Record(Schema.String, Schema.Number),
+    value: metrics(512)
+  },
+  {
     name: "large repeated records",
     schema: LargePayload,
-    value: Array.from({ length: 200 }, (_, index) => ({
-      transactionIdentifier: `transaction-${index.toString().padStart(4, "0")}`,
-      customerIdentifier: `customer-${index % 37}`,
-      productDescription: `Product ${index % 19} with a repeated descriptive field value`,
-      fulfillmentLocation: ["London", "New York", "Singapore", "Sydney"][index % 4]!,
-      quantityPurchased: index % 9 + 1,
-      unitPriceInCents: 500 + index % 73 * 25,
-      discountInBasisPoints: index % 5 * 125,
-      requiresManualReview: index % 17 === 0
-    }))
+    value: largeRows
   }
 ] as const
 
 interface Format {
   readonly name: string
   readonly encodedSize: number
+  readonly gzipSize: number
+  readonly zstdSize: number
   readonly encode: () => unknown
   readonly decode: () => unknown
 }
 
 interface StreamFormat {
   readonly name: string
-  readonly encodedSize: number
+  readonly framesPerOp: number
   readonly decode: () => ReadonlyArray<unknown>
 }
 
-const textEncoder = new TextEncoder()
-
-const repeatFrame = (frame: Uint8Array, count: number): Uint8Array<ArrayBuffer> => {
-  const out = new Uint8Array(frame.length * count)
-  for (let i = 0; i < count; i++) {
-    out.set(frame, i * frame.length)
-  }
-  return out
+interface StreamSize {
+  readonly name: string
+  readonly frames: number
+  readonly encodedSize: number
+  readonly gzipSize: number
+  readonly zstdSize: number
 }
+
+const textEncoder = new TextEncoder()
 
 const concatFrames = (frames: ReadonlyArray<Uint8Array>): Uint8Array<ArrayBuffer> => {
   const out = new Uint8Array(frames.reduce((length, frame) => length + frame.length, 0))
@@ -162,12 +181,17 @@ const concatFrames = (frames: ReadonlyArray<Uint8Array>): Uint8Array<ArrayBuffer
   return out
 }
 
+const sizes = (encoded: Uint8Array): Pick<Format, "encodedSize" | "gzipSize" | "zstdSize"> => ({
+  encodedSize: encoded.length,
+  gzipSize: gzipSync(encoded).length,
+  zstdSize: zstdCompressSync(encoded).length
+})
+
 const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   schema: S,
   value: S["Type"]
 ): {
   readonly formats: ReadonlyArray<Format>
-  readonly streamFormats: ReadonlyArray<StreamFormat>
 } => {
   const jsonSchema = Schema.toCodecJson(schema)
   const binaryCodec = SchemaBinary.toCodec(schema)
@@ -184,73 +208,106 @@ const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   const binary = binaryEncode(value)
   const binaryCopy = binary.slice()
   const json = jsonEncode(value)
+  const jsonBytes = textEncoder.encode(json)
   const msgpack = msgpackEncode(value)
 
   assert.deepStrictEqual(binaryDecode(binary), value)
   assert.deepStrictEqual(jsonDecode(json), value)
   assert.deepStrictEqual(msgpackDecode(msgpack), value)
 
-  const expectedStream = Array.from({ length: streamBatchSize }, () => value)
-  const binaryStream = repeatFrame(binary, streamBatchSize)
-  const encodeMsgpackValue = Schema.encodeUnknownSync(jsonSchema)
-  const msgpackPackr = new Packr()
-  const msgpackValue = encodeMsgpackValue(value)
-  const msgpackStream = concatFrames(
-    Array.from({ length: streamBatchSize }, () => msgpackPackr.pack(msgpackValue).slice())
-  )
-  const binaryParser = SchemaBinary.parser(schema)
-  const msgpackUnpackr = new Unpackr()
-  const decodeMsgpackValue = Schema.decodeUnknownSync(jsonSchema)
-  const decodeBinaryStream = () => binaryParser.feedSync(binaryStream)
-  const decodeMsgpackStream = () =>
-    msgpackUnpackr.unpackMultiple(msgpackStream).map((value) => decodeMsgpackValue(value))
-
-  assert.deepStrictEqual(decodeBinaryStream(), expectedStream)
-  assert.deepStrictEqual(decodeMsgpackStream(), expectedStream)
-
   return {
     formats: [
       {
         name: "SchemaBinary arena",
-        encodedSize: binary.length,
+        ...sizes(binary),
         encode: () => binaryEncode(value),
         decode: () => binaryDecode(binary)
       },
       {
         name: "SchemaBinary copy",
-        encodedSize: binaryCopy.length,
+        ...sizes(binaryCopy),
         encode: () => binaryEncode(value).slice(),
         decode: () => binaryDecode(binaryCopy)
       },
       {
         name: "JSON",
-        encodedSize: textEncoder.encode(json).length,
+        ...sizes(jsonBytes),
         encode: () => jsonEncode(value),
         decode: () => jsonDecode(json)
       },
       {
         name: "Msgpack",
-        encodedSize: msgpack.length,
+        ...sizes(msgpack),
         encode: () => msgpackEncode(value),
         decode: () => msgpackDecode(msgpack)
-      }
-    ],
-    streamFormats: [
-      {
-        name: "SchemaBinary parser",
-        encodedSize: binaryStream.length,
-        decode: decodeBinaryStream
-      },
-      {
-        name: "Msgpack unpackMultiple",
-        encodedSize: msgpackStream.length,
-        decode: decodeMsgpackStream
       }
     ]
   }
 }
 
 const prepared = cases.map((testCase) => ({ name: testCase.name, ...prepare(testCase.schema, testCase.value) }))
+
+const prepareStream = <S extends Schema.ConstraintCodec<unknown, unknown>>(
+  schema: S,
+  values: ReadonlyArray<S["Type"]>
+): { readonly formats: ReadonlyArray<StreamFormat>; readonly sizes: ReadonlyArray<StreamSize> } => {
+  const binaryCodec = SchemaBinary.toCodec(schema)
+  const binaryEncode = Schema.encodeUnknownSync(binaryCodec)
+  const binaryFrames = values.map((value) => binaryEncode(value))
+  const binaryStream = concatFrames(binaryFrames)
+  const binaryFragments = binaryFrames.map((frame) => {
+    return [frame.subarray(0, 1), frame.subarray(1)] as const
+  })
+
+  const jsonSchema = Schema.toCodecJson(schema)
+  const encodeMsgpackValue = Schema.encodeUnknownSync(jsonSchema)
+  const decodeMsgpackValue = Schema.decodeUnknownSync(jsonSchema)
+  const msgpackPackr = new Packr()
+  const msgpackStream = concatFrames(values.map((value) => msgpackPackr.pack(encodeMsgpackValue(value)).slice()))
+  const msgpackUnpackr = new Unpackr()
+
+  const singleParser = SchemaBinary.parser(schema)
+  const fragmentedParser = SchemaBinary.parser(schema)
+  const batchParser = SchemaBinary.parser(schema)
+  let singleIndex = 0
+  let fragmentedIndex = 0
+  const decodeSingle = () => singleParser.feedSync(binaryFrames[singleIndex++ % binaryFrames.length])
+  const decodeFragmented = () => {
+    const fragments = binaryFragments[fragmentedIndex++ % binaryFragments.length]
+    const first = fragmentedParser.feedSync(fragments[0])
+    const second = fragmentedParser.feedSync(fragments[1])
+    return first.length === 0 ? second : [...first, ...second]
+  }
+  const decodeBatch = () => batchParser.feedSync(binaryStream)
+  const decodeMsgpackStream = () =>
+    msgpackUnpackr.unpackMultiple(msgpackStream).map((value) => decodeMsgpackValue(value))
+
+  assert.deepStrictEqual(decodeSingle(), [values[0]])
+  assert.deepStrictEqual(decodeFragmented(), [values[0]])
+  assert.deepStrictEqual(decodeBatch(), values)
+  assert.deepStrictEqual(decodeMsgpackStream(), values)
+
+  return {
+    formats: [
+      { name: "SchemaBinary parser / single frame", framesPerOp: 1, decode: decodeSingle },
+      { name: "SchemaBinary parser / batch", framesPerOp: values.length, decode: decodeBatch },
+      { name: "SchemaBinary parser / fragmented", framesPerOp: 1, decode: decodeFragmented },
+      { name: "Msgpack unpackMultiple / batch", framesPerOp: values.length, decode: decodeMsgpackStream }
+    ],
+    sizes: [
+      { name: "SchemaBinary", frames: values.length, ...sizes(binaryStream) },
+      { name: "Msgpack", frames: values.length, ...sizes(msgpackStream) }
+    ]
+  }
+}
+
+const preparedStreams = [
+  ...cases.map((testCase) => ({
+    name: testCase.name,
+    ...prepareStream(testCase.schema, Array.from({ length: streamBatchSize }, () => testCase.value))
+  })),
+  { name: "per-frame repeated records", ...prepareStream(LargeRow, largeRows) }
+]
 
 console.log(`Node ${process.version}; codec and schema construction excluded from timings.`)
 console.log("JSON and Msgpack use the same Schema.toCodecJson representation; JSON sizes are UTF-8 bytes.")
@@ -262,20 +319,24 @@ console.table(prepared.flatMap((testCase) =>
   testCase.formats.map((format) => ({
     Case: testCase.name,
     Format: format.name,
-    "Encoded bytes": format.encodedSize
+    "Raw bytes": format.encodedSize,
+    "gzip -6 bytes": format.gzipSize,
+    "zstd bytes": format.zstdSize
   }))
 ))
 
 console.log(
-  `Streaming decode reuses one parser per format and processes ${streamBatchSize} concatenated frames per sample.`
+  "Streaming decode reuses one parser per feed shape. Fragmented frames split after the first byte."
 )
-console.table(prepared.flatMap((testCase) =>
-  testCase.streamFormats.map((format) => ({
+console.table(preparedStreams.flatMap((testCase) =>
+  testCase.sizes.map((format) => ({
     Case: testCase.name,
     Format: format.name,
-    Frames: streamBatchSize,
-    "Encoded bytes": format.encodedSize,
-    "Bytes / frame": format.encodedSize / streamBatchSize
+    Frames: format.frames,
+    "Raw bytes": format.encodedSize,
+    "Bytes / frame": format.encodedSize / format.frames,
+    "gzip -6 bytes": format.gzipSize,
+    "zstd bytes": format.zstdSize
   }))
 ))
 
@@ -345,12 +406,19 @@ const streamBench = new Bench({
   warmupTime: 0,
   timestampProvider: "hrtimeNow"
 })
-const streamTasks = new Map<string, { readonly caseName: string; readonly formatName: string }>()
+const streamTasks = new Map<
+  string,
+  { readonly caseName: string; readonly formatName: string; readonly framesPerOp: number }
+>()
 
-for (const testCase of prepared) {
-  for (const format of testCase.streamFormats) {
+for (const testCase of preparedStreams) {
+  for (const format of testCase.formats) {
     const name = `${testCase.name} / ${format.name} / stream decode`
-    streamTasks.set(name, { caseName: testCase.name, formatName: format.name })
+    streamTasks.set(name, {
+      caseName: testCase.name,
+      formatName: format.name,
+      framesPerOp: format.framesPerOp
+    })
     streamBench.add(name, () => {
       sink = format.decode()
     })
@@ -379,8 +447,8 @@ console.table(streamBench.tasks.map((task) => {
   return {
     Case: labels.caseName,
     Format: labels.formatName,
-    "Throughput avg (values/s)": Math.round(result.throughput.mean * streamBatchSize),
-    "Latency med (us/value)": (result.latency.p50 * 1_000 / streamBatchSize).toFixed(2),
+    "Throughput avg (values/s)": Math.round(result.throughput.mean * labels.framesPerOp),
+    "Latency med (us/value)": (result.latency.p50 * 1_000 / labels.framesPerOp).toFixed(2),
     "Latency RME": `${result.latency.rme.toFixed(2)}%`,
     Samples: result.latency.samplesCount
   }
