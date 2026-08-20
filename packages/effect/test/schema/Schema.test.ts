@@ -48,6 +48,22 @@ const SnakeToCamel = Schema.String.pipe(
 )
 
 describe("Schema", () => {
+  it("keeps synchronous decode and encode effects eager", () => {
+    const decodeSuccess = Schema.decodeUnknownEffect(Schema.String)("a")
+    const decodeFailure = Schema.decodeUnknownEffect(Schema.String)(null)
+    const encodeSuccess = Schema.encodeUnknownEffect(Schema.String)("a")
+    const encodeFailure = Schema.encodeUnknownEffect(Schema.String)(null)
+
+    assertTrue(Exit.isSuccess(decodeSuccess))
+    assertTrue(Exit.isFailure(decodeFailure))
+    assertTrue(Exit.isSuccess(encodeSuccess))
+    assertTrue(Exit.isFailure(encodeFailure))
+    assertTrue(Cause.hasFails(decodeFailure.cause))
+    assertTrue(Cause.hasFails(encodeFailure.cause))
+    assertTrue(Schema.isSchemaError(decodeFailure.cause.reasons[0].error))
+    assertTrue(Schema.isSchemaError(encodeFailure.cause.reasons[0].error))
+  })
+
   it("isSchema", () => {
     class A extends Schema.Class<A>("A")(Schema.Struct({
       a: Schema.String

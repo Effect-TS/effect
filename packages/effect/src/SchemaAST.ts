@@ -2192,7 +2192,7 @@ export class Objects extends Base {
       }) :
       undefined
 
-    return Effect.fnUntracedEager(function*(input, options) {
+    const fallback: SchemaParser.Parser = Effect.fnUntracedEager(function*(input, options) {
       if (input === InternalParser.missing) {
         return InternalParser.missing
       }
@@ -2320,6 +2320,121 @@ export class Objects extends Base {
       }
       return out
     })
+
+    if (indexCount) return fallback
+
+    const finish = (state: ObjectParserState): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
+      if (state.issues) {
+        return Effect.fail(
+          new SchemaIssue.Composite(ast, state.issues, state.input, state.options)
+        )
+      }
+      return InternalParser.succeed(state.out)
+    }
+    const resume = (
+      state: ObjectParserState,
+      index: number,
+      pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
+    ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
+      const property = properties![index]
+      if (Object.hasOwn(state.input, property.name)) {
+        InternalRecord.assignProperty(state.out, property.name, state.input[property.name])
+      }
+      return Effect.flatMap(Effect.exit(pending), (exit) => {
+        const terminal = parsePropertyStep(state, property, exit)
+        if (terminal) return terminal
+        const remaining = properties!.slice(index + 1)
+        const effect = remaining.length === 0 ? undefined : parseProperties(state, remaining)
+        return effect ? Effect.flatMap(effect, () => finish(state)) : finish(state)
+      })
+    }
+    const fast: SchemaParser.Parser = (input, options) => {
+      if (input === InternalParser.missing) return InternalParser.missingExit
+      if (
+        options.errors === "all" ||
+        options.onExcessProperty !== undefined ||
+        options.propertyOrder === "original" ||
+        options.concurrency !== undefined
+      ) {
+        return fallback(input, options)
+      }
+      if (!(typeof input === "object" && input !== null && !Array.isArray(input))) {
+        return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
+      }
+      properties ??= ast.propertySignatures.map((property) => ({
+        parser: compileConstructorDefault(property.type),
+        name: property.name,
+        type: property.type
+      }))
+      const record = input as Record<PropertyKey, unknown>
+      const out: Record<PropertyKey, unknown> = {}
+      const state: ObjectParserState = {
+        ast,
+        input: record,
+        out,
+        issues: undefined,
+        options
+      }
+      try {
+        for (let index = 0; index < properties.length; index++) {
+          const property = properties[index]
+          const name = property.name
+          if (!Object.hasOwn(record, name)) {
+            const result = property.parser(InternalParser.missing, options)
+            if (!effectIsExit(result)) {
+              return resume(state, index, result)
+            }
+            if (result._tag === "Failure") {
+              return wrapPropertyKeyIssue(state, ast, name, result) ?? Exit.void
+            }
+            const value = (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+            if (value === InternalParser.missing) {
+              if (isOptional(property.type)) continue
+              return Effect.fail(
+                new SchemaIssue.Composite(
+                  ast,
+                  [new SchemaIssue.Pointer([name], new SchemaIssue.MissingKey(property.type.context?.annotations))],
+                  input,
+                  options
+                )
+              )
+            }
+            InternalRecord.assignProperty(out, name, value)
+            continue
+          }
+
+          const value = record[name]
+          const result = property.parser(value, options)
+          if (!effectIsExit(result)) {
+            return resume(state, index, result)
+          }
+          if (result._tag === "Failure") {
+            return wrapPropertyKeyIssue(state, ast, name, result) ?? Exit.void
+          }
+          if (result === InternalParser.sameExit) {
+            InternalRecord.assignProperty(out, name, value)
+            continue
+          }
+          const parsed = (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+          if (parsed === InternalParser.missing) {
+            if (isOptional(property.type)) continue
+            return Effect.fail(
+              new SchemaIssue.Composite(
+                ast,
+                [new SchemaIssue.Pointer([name], new SchemaIssue.MissingKey(property.type.context?.annotations))],
+                input,
+                options
+              )
+            )
+          }
+          InternalRecord.assignProperty(out, name, parsed)
+        }
+      } catch (error) {
+        return Effect.die(error)
+      }
+      return InternalParser.succeed(out)
+    }
+    return fast
   }
   private _rebuild(
     recur: (ast: AST) => AST,
@@ -2373,13 +2488,42 @@ type ObjectParserState = {
   readonly input: Record<PropertyKey, unknown>
   readonly options: ParseOptions
   readonly out: Record<PropertyKey, unknown>
-  issues: Array<SchemaIssue.Issue> | undefined
+  issues: Arr.NonEmptyArray<SchemaIssue.Issue> | undefined
 }
 
 type ParsedProperty = {
   readonly parser: SchemaParser.Parser
   readonly name: PropertyKey
   readonly type: AST
+}
+
+function parsePropertyStep(
+  s: ObjectParserState,
+  p: ParsedProperty,
+  exit: Exit.Exit<unknown, SchemaIssue.Issue>
+): Exit.Exit<void, SchemaIssue.Issue> | void {
+  if (exit._tag === "Failure") {
+    return wrapPropertyKeyIssue(s, s.ast, p.name, exit)
+  }
+  if (exit === InternalParser.sameExit) return
+  const value = (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+  if (value !== InternalParser.missing) {
+    InternalRecord.assignProperty(s.out, p.name, value)
+    return
+  }
+  delete s.out[p.name]
+  if (!isOptional(p.type)) {
+    const issue = new SchemaIssue.Pointer([p.name], new SchemaIssue.MissingKey(p.type.context?.annotations))
+    if (s.options.errors === "all") {
+      if (s.issues) s.issues.push(issue)
+      else s.issues = [issue]
+      return
+    } else {
+      return Exit.fail(
+        new SchemaIssue.Composite(s.ast, [issue], s.input, s.options)
+      )
+    }
+  }
 }
 
 const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()({
@@ -2391,30 +2535,7 @@ const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()({
     InternalRecord.assignProperty(s.out, p.name, value)
     return p.parser(value, s.options)
   },
-  step(s, p, exit) {
-    if (exit._tag === "Failure") {
-      return wrapPropertyKeyIssue(s, s.ast, p.name, exit)
-    }
-    if (exit === InternalParser.sameExit) return
-    const value = (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-    if (value !== InternalParser.missing) {
-      InternalRecord.assignProperty(s.out, p.name, value)
-      return
-    }
-    delete s.out[p.name]
-    if (!isOptional(p.type)) {
-      const issue = new SchemaIssue.Pointer([p.name], new SchemaIssue.MissingKey(p.type.context?.annotations))
-      if (s.options.errors === "all") {
-        if (s.issues) s.issues.push(issue)
-        else s.issues = [issue]
-        return
-      } else {
-        return Exit.fail(
-          new SchemaIssue.Composite(s.ast, [issue], s.input, s.options)
-        )
-      }
-    }
-  }
+  step: parsePropertyStep
 })
 
 function combineChecks(a: Checks | undefined, b: Checks | undefined): Checks | undefined {

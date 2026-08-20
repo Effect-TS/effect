@@ -528,6 +528,18 @@ describe("SchemaParser", () => {
       strictEqual(calls.join(","), "a,b,c")
     })
 
+    it("converts synchronous property parser throws into defects", () => {
+      const field = Schema.declareConstructor<string>()([], () => () => {
+        throw new Error("property defect")
+      })
+      const schema = Schema.Struct({ field })
+
+      const exit = SchemaParser.decodeUnknownExit(schema)({ field: "value" })
+
+      assertTrue(Exit.isFailure(exit))
+      assertTrue(Cause.hasDies(exit.cause))
+    })
+
     it("keeps encoding-link parser compilation lazy for Suspend", () => {
       let evaluations = 0
       const schema = Schema.suspend(() => {
