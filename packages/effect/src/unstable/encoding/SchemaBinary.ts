@@ -2349,6 +2349,21 @@ function decodeInline(layout: Layout, r: Reader): unknown {
   return value
 }
 
+// `decodeInline` and `decodeSized` under one decision. `decodeStructPositional`
+// does not need this: its fields carry `inline`, computed at compile time. A
+// tuple slot has no such flag, so asking `isInlineSlot` and then letting
+// `decodeInline` re-derive the same answer would classify every element twice.
+function decodeSlot(layout: Layout, r: Reader): unknown {
+  if (isSelfDelimiting(layout)) return decodeValue(layout, r)
+  const size = packedSize(layout)
+  const saved = r.enter(
+    size !== undefined ? size : layout._ === "null" || layout._ === "undefined" ? 0 : r.uvarint()
+  )
+  const value = decodeChecked(layout, r)
+  r.exit(saved)
+  return value
+}
+
 // One extra key/value pair. Both wire modes read pairs the same way and differ
 // only in what bounds the loop, so the bound stays with each caller.
 function decodeExtraPair(layout: StructLayout, r: Reader, out: Record<string, unknown>, seen: Set<string>) {
@@ -2372,14 +2387,8 @@ function decodeExtraPair(layout: StructLayout, r: Reader, out: Record<string, un
 // `MissingKey` per field under a `Pointer` to its name, collected into a
 // `Composite`. Only `errors: "all"` decides whether the first one stops the
 // decode.
-function addMissingKey(
-  issues: Array<SchemaIssue.Issue> | undefined,
-  field: Field
-): Array<SchemaIssue.Issue> {
-  const issue = new SchemaIssue.Pointer([field.name], new SchemaIssue.MissingKey(field.annotations))
-  if (issues === undefined) return [issue]
-  issues.push(issue)
-  return issues
+function missingKeyIssue(field: Field): SchemaIssue.Issue {
+  return new SchemaIssue.Pointer([field.name], new SchemaIssue.MissingKey(field.annotations))
 }
 
 // Callers guard on `issues !== undefined` themselves: every struct decode runs
@@ -2461,7 +2470,7 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
     const index = field.index
     const present = index < 32 ? (presentMask & (1 << index)) !== 0 : presentWide?.has(index) === true
     if (!field.optional && !present) {
-      issues = addMissingKey(issues, field)
+      ;(issues ??= []).push(missingKeyIssue(field))
       if (r.options.errors !== "all") break
     }
   }
@@ -2499,7 +2508,7 @@ function decodeStructPositional(layout: StructLayout, r: Reader): unknown {
     // fingerprint mode has no unknown fields or union members.
     if (value !== ABSENT) out[field.name] = value
     else if (!field.optional) {
-      issues = addMissingKey(issues, field)
+      ;(issues ??= []).push(missingKeyIssue(field))
       if (r.options.errors !== "all") break
     }
   }
@@ -2573,7 +2582,7 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
       throw issueError(new SchemaIssue.MissingKey(undefined))
     }
     issuePath[issuePathLen++] = i
-    const value = isInlineSlot(slot) ? decodeInline(slot, r) : decodeSized(slot, r)
+    const value = decodeSlot(slot, r)
     if (value === ABSENT) {
       if (optional) invalid("known union member", undefined, r.options)
       throw issueError(new SchemaIssue.MissingKey(undefined))
