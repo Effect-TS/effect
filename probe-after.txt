@@ -1,0 +1,3 @@
+path "/home/tim/multica_workspaces/6eac4221-824e-4b2f-8517-546454766676/01a01eca/workdir/effect/packages" does not contain a 'flake.nix', searching up
+[ERROR] ENOENT: no such file or directory, lstat '/home/tim/multica_workspaces/6eac4221-824e-4b2f-8517-546454766676/01a01eca/workdir/effect/packages/packages'
+For help, run: pnpm help exec

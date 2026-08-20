@@ -21,6 +21,17 @@
  * ship the same schema definition rather than merely a compatible one. The two
  * modes are selected by envelope flag bit 0 and are never interchangeable.
  *
+ * Encoded results are views into a shared bump-allocated arena, so an encode
+ * hands back borrowed memory rather than an owned buffer; see {@link toCodec}
+ * for what that means for the caller.
+ *
+ * Every failure surfaces as a `SchemaIssue` through the usual `Schema` runners
+ * (`SchemaError` on the {@link Parser} surface). Malformed bytes, a truncated
+ * frame, an unexpected envelope, and a fingerprint mismatch are all
+ * `InvalidValue`; a required field that never arrived is a `MissingKey` under
+ * a `Pointer` to its path. Schema-author bugs are different in kind and throw
+ * an `Error` while the layout is compiled, not while a value is processed.
+ *
  * @since 4.0.0
  */
 import * as BigDecimal from "../../BigDecimal.ts"
@@ -133,7 +144,7 @@ const K = {
 // primitives
 // -----------------------------------------------------------------------------
 
-function fnv32(bytes: Uint8Array): number {
+function fnv32(bytes: ArrayLike<number>): number {
   let hash = 0x811C9DC5
   for (let i = 0; i < bytes.length; i++) {
     hash = Math.imul(hash ^ bytes[i], 0x01000193)
@@ -151,6 +162,30 @@ function fnv64(bytes: ArrayLike<number>): bigint {
     hash = ((hash ^ BigInt(bytes[i])) * FNV64_PRIME) & FNV64_MASK
   }
   return hash
+}
+
+// Both hashes fold a byte sequence, so the sequence is built in a plain array
+// first and hashed once. These are the only encoders that feed them.
+function pushBytes(out: Array<number>, bytes: ArrayLike<number>) {
+  for (let i = 0; i < bytes.length; i++) out.push(bytes[i])
+}
+
+function pushUvarint(out: Array<number>, n: number) {
+  while (n > 0x7F) {
+    out.push((n & 0x7F) | 0x80)
+    n = Math.floor(n / 128)
+  }
+  out.push(n)
+}
+
+function pushU32(out: Array<number>, n: number) {
+  out.push(n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF)
+}
+
+function pushU64(out: Array<number>, n: bigint) {
+  for (let i = 0; i < 8; i++) {
+    out.push(Number((n >> BigInt(i * 8)) & BIGINT_BYTE_MASK))
+  }
 }
 
 function compareBytes(a: Uint8Array, b: Uint8Array): number {
@@ -432,6 +467,13 @@ class Writer {
   }
 }
 
+// Index-signature *keys* are matched by running the parameter schema, and a
+// key no signature accepts is dropped rather than rejected. That is the one
+// seam where the two guarantees pull against each other: a key predicate is a
+// check, and checks never reach the wire or the fingerprint, so a reader
+// cannot tell "the writer sent a key I filter out" from "the writer used a
+// different schema". Field ids and union members, which the layout does
+// describe, still fail the frame. Both wire modes behave the same way here.
 function matchIndexSignature(
   layout: StructLayout,
   key: string,
@@ -448,8 +490,10 @@ class IndexSignatureCache {
   size = 0
   next = 0
   replace = false
+  // A cache without a capacity is unbounded and must not outlive one top-level
+  // encode or decode; the parser is the only caller that keeps one across
+  // frames, and it always passes `PARSER_INDEX_SIGNATURE_CACHE_SIZE`.
   constructor(options: SchemaAST.ParseOptions, capacity?: number) {
-    if (capacity !== undefined && capacity < 1) throw new Error("IndexSignatureCache capacity must be positive")
     this.options = options
     this.orderLayouts = capacity === undefined ? undefined : new Array(capacity)
     this.orderKeys = capacity === undefined ? undefined : new Array(capacity)
@@ -729,9 +773,17 @@ type Layout =
   | UnionLayout
   | { readonly _: "option"; value: Layout }
   | { readonly _: "result"; success: Layout; failure: Layout }
-  | { readonly _: "exit"; value: Layout; error: Layout; defect: Layout }
-  | { readonly _: "cause"; error: Layout; defect: Layout }
-  | { readonly _: "causeReason"; error: Layout; defect: Layout }
+  | { readonly _: "exit"; value: Layout; cause: ReasonLayout }
+  | ReasonLayout
+
+// A `Cause` and a bare `CauseReason` write the same two children, and an
+// `Exit` failure is a `Cause`, so all three share one compiled node instead of
+// rebuilding it per value.
+interface ReasonLayout {
+  readonly _: "cause" | "causeReason"
+  error: Layout
+  defect: Layout
+}
 
 interface Field {
   readonly name: string
@@ -920,34 +972,36 @@ function sentinelSetHash(sentinels: ReadonlyArray<SchemaAST.Sentinel>): number {
     if (an) return (a.key as number) - (b.key as number)
     return compareBytes(utf8Encode.encode(a.key as string), utf8Encode.encode(b.key as string))
   })
-  let hash = 0x811C9DC5
-  const mix = (bytes: Uint8Array) => {
-    for (let i = 0; i < bytes.length; i++) hash = Math.imul(hash ^ bytes[i], 0x01000193)
-  }
-  const u32le = (n: number) => {
-    mix(new Uint8Array([n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF]))
-  }
+  const out: Array<number> = []
   for (const sentinel of sorted) {
     const keyBytes = utf8Encode.encode(String(sentinel.key))
-    mix(new Uint8Array([typeof sentinel.key === "number" ? 0 : 1]))
-    u32le(keyBytes.length)
-    mix(keyBytes)
+    out.push(typeof sentinel.key === "number" ? 0 : 1)
+    pushU32(out, keyBytes.length)
+    pushBytes(out, keyBytes)
     const literal = sentinel.literal
-    const valueKind = typeof literal === "string"
-      ? 1
-      : typeof literal === "number"
-      ? 2
-      : typeof literal === "boolean"
-      ? 3
-      : typeof literal === "bigint"
-      ? 4
-      : 5
     const valueBytes = utf8Encode.encode(sentinelLiteralString(literal))
-    mix(new Uint8Array([valueKind]))
-    u32le(valueBytes.length)
-    mix(valueBytes)
+    out.push(sentinelLiteralKind(literal))
+    pushU32(out, valueBytes.length)
+    pushBytes(out, valueBytes)
   }
-  return hash >>> 0
+  return fnv32(out)
+}
+
+// Distinguishes literals that share a string form, so `1` and `"1"` cannot
+// collide into one sentinel tag.
+function sentinelLiteralKind(literal: SchemaAST.LiteralValue | symbol): number {
+  switch (typeof literal) {
+    case "string":
+      return 1
+    case "number":
+      return 2
+    case "boolean":
+      return 3
+    case "bigint":
+      return 4
+    default:
+      return 5
+  }
 }
 
 function sentinelLiteralString(literal: SchemaAST.LiteralValue | symbol): string {
@@ -1260,8 +1314,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       layout.uniform = slot
       layout.uniformPacked = packedSize(slot)
       layout.uniformNumbers = slot._ === "number"
-      layout.uniformInline = layout.uniformPacked !== undefined || isSelfDelimiting(slot) ||
-        slot._ === "null" || slot._ === "undefined"
+      layout.uniformInline = isInlineSlot(slot)
     }
     return layout
   }
@@ -1302,22 +1355,22 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
         return layout
       }
       case "effect/schema/Exit": {
-        const layout = {
-          _: "exit" as const,
-          value: undefined as unknown as Layout,
+        const cause: ReasonLayout = {
+          _: "cause",
           error: undefined as unknown as Layout,
           defect: undefined as unknown as Layout
         }
+        const layout = { _: "exit" as const, value: undefined as unknown as Layout, cause }
         memo.set(ast, layout)
         layout.value = compile(tps[0])
-        layout.error = compile(tps[1])
-        layout.defect = compile(tps[2])
+        cause.error = compile(tps[1])
+        cause.defect = compile(tps[2])
         return layout
       }
       case "effect/schema/Cause":
       case "effect/schema/CauseReason": {
-        const layout = {
-          _: id === "effect/schema/Cause" ? "cause" as const : "causeReason" as const,
+        const layout: ReasonLayout = {
+          _: id === "effect/schema/Cause" ? "cause" : "causeReason",
           error: undefined as unknown as Layout,
           defect: undefined as unknown as Layout
         }
@@ -1494,24 +1547,6 @@ const F = {
   causeReason: 24
 } as const
 
-function pushUvarint(out: Array<number>, n: number) {
-  while (n > 0x7F) {
-    out.push((n & 0x7F) | 0x80)
-    n = Math.floor(n / 128)
-  }
-  out.push(n)
-}
-
-function pushU32(out: Array<number>, n: number) {
-  out.push(n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF)
-}
-
-function pushU64(out: Array<number>, n: bigint) {
-  for (let i = 0; i < 8; i++) {
-    out.push(Number((n >> BigInt(i * 8)) & BIGINT_BYTE_MASK))
-  }
-}
-
 /**
  * Hashes the compiled layout graph with 64-bit FNV-1a.
  *
@@ -1636,8 +1671,8 @@ function layoutFingerprint(root: Layout): bigint {
       case "exit":
         out.push(F.exit)
         pushU64(out, go(layout.value))
-        pushU64(out, go(layout.error))
-        pushU64(out, go(layout.defect))
+        pushU64(out, go(layout.cause.error))
+        pushU64(out, go(layout.cause.defect))
         return out
       case "cause":
       case "causeReason":
@@ -1685,7 +1720,6 @@ function fingerprintMode(layout: Layout): Mode {
   }
 }
 
-// specific runtime guards first, `json` (which matches anything) last
 function matchRank(layout: Layout): number {
   switch (layout._) {
     case "json":
@@ -1860,7 +1894,7 @@ function encodeSymbol(ctx: EncodeContext, value: unknown, w: Writer) {
   w.string(key)
 }
 
-function encodeReason(ctx: EncodeContext, layout: { error: Layout; defect: Layout }, value: unknown, w: Writer) {
+function encodeReason(ctx: EncodeContext, layout: ReasonLayout, value: unknown, w: Writer) {
   const reason = value as Cause.Reason<unknown>
   switch (reason._tag) {
     case "Fail":
@@ -1898,20 +1932,32 @@ function extraPairs(ctx: EncodeContext, layout: StructLayout, obj: Record<string
   return pairs
 }
 
+// The pairs themselves are written identically in both modes; only the framing
+// around them differs, so the loop is shared and the framing is not.
+function encodeExtraPairs(
+  ctx: EncodeContext,
+  pairs: Array<ExtraPair>,
+  obj: Record<string, unknown>,
+  w: Writer
+) {
+  for (const [keyBytes, key, signature] of pairs) {
+    w.uvarint(keyBytes.length)
+    w.bytes(keyBytes)
+    issuePath[issuePathLen++] = key
+    encodeSized(ctx, signature.layout, obj[key], w)
+    issuePathLen--
+  }
+}
+
 function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: object, w: Writer) {
   const obj = value as Record<string, unknown>
   if (layout.extra.length > 0) {
     const pairs = extraPairs(ctx, layout, obj)
     if (pairs.length > 0) {
+      // reserved id 0 introduces the extra-key block
       w.uvarint(0)
       const mark = w.beginSized()
-      for (const [keyBytes, key, signature] of pairs) {
-        w.uvarint(keyBytes.length)
-        w.bytes(keyBytes)
-        issuePath[issuePathLen++] = key
-        encodeSized(ctx, signature.layout, obj[key], w)
-        issuePathLen--
-      }
+      encodeExtraPairs(ctx, pairs, obj, w)
       w.endSized(mark)
     }
   }
@@ -1967,13 +2013,7 @@ function encodeStructPositional(ctx: EncodeContext, layout: StructLayout, value:
   if (layout.extra.length > 0) {
     const pairs = extraPairs(ctx, layout, obj)
     w.uvarint(pairs.length)
-    for (const [keyBytes, key, signature] of pairs) {
-      w.uvarint(keyBytes.length)
-      w.bytes(keyBytes)
-      issuePath[issuePathLen++] = key
-      encodeSized(ctx, signature.layout, obj[key], w)
-      issuePathLen--
-    }
+    encodeExtraPairs(ctx, pairs, obj, w)
   }
 }
 
@@ -2055,39 +2095,27 @@ function matchesVariant(variant: VariantRow, value: unknown): boolean {
       variant.sentinels.every((s) => (value as Record<PropertyKey, unknown>)[s.key] === s.literal)
 }
 
+// Both modes pick the member the same way; they differ only in the selector
+// they write for it. The default mode writes a kind byte plus, for a
+// sentinel-discriminated member, its 32-bit tag. Fingerprint mode writes one
+// varint index into the canonical member order, which both sides share.
 function encodeUnion(ctx: EncodeContext, layout: UnionLayout, value: unknown, w: Writer) {
   for (const variant of layout.variants) {
     if (matchesVariant(variant, value)) {
-      w.byte(K.variant)
-      w.u32le(variant.tag)
+      if (ctx.positional) {
+        w.uvarint(variant.position)
+      } else {
+        w.byte(K.variant)
+        w.u32le(variant.tag)
+      }
       encodeValue(ctx, variant.payload, value, w)
       return
     }
   }
   for (const member of layout.others) {
     if (matchesLayout(member.layout, value)) {
-      w.byte(member.kind)
-      encodeValue(ctx, member.layout, value, w)
-      return
-    }
-  }
-  throw issueError(new SchemaIssue.InvalidType(layout.ast, value, ctx.options))
-}
-
-// Fingerprint mode union: both sides share the member table, so one varint
-// index into the canonical order replaces the kind byte and the 32-bit
-// sentinel tag.
-function encodeUnionPositional(ctx: EncodeContext, layout: UnionLayout, value: unknown, w: Writer) {
-  for (const variant of layout.variants) {
-    if (matchesVariant(variant, value)) {
-      w.uvarint(variant.position)
-      encodeValue(ctx, variant.payload, value, w)
-      return
-    }
-  }
-  for (const member of layout.others) {
-    if (matchesLayout(member.layout, value)) {
-      w.uvarint(member.position)
+      if (ctx.positional) w.uvarint(member.position)
+      else w.byte(member.kind)
       encodeValue(ctx, member.layout, value, w)
       return
     }
@@ -2213,7 +2241,7 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
         encodeValue(ctx, layout.value, exit.value, w)
       } else {
         w.byte(1)
-        encodeValue(ctx, { _: "cause", error: layout.error, defect: layout.defect }, exit.cause, w)
+        encodeValue(ctx, layout.cause, exit.cause, w)
       }
       return
     }
@@ -2241,8 +2269,7 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       return
     }
     case "union":
-      if (ctx.positional) encodeUnionPositional(ctx, layout, value, w)
-      else encodeUnion(ctx, layout, value, w)
+      encodeUnion(ctx, layout, value, w)
       return
     case "never":
       throw issueError(new SchemaIssue.InvalidType(layout.ast, value, ctx.options))
@@ -2300,6 +2327,67 @@ function decodeChecked(layout: Layout, r: Reader): unknown {
   const value = decodeValue(layout, r)
   if (value !== ABSENT && r.pos !== r.end) invalid("no leftover bytes", undefined, r.options)
   return value
+}
+
+// Mirror of `encodeSized`: a uvarint length introduces a window the value must
+// consume exactly.
+function decodeSized(layout: Layout, r: Reader): unknown {
+  const saved = r.enter(r.uvarint())
+  const value = decodeChecked(layout, r)
+  r.exit(saved)
+  return value
+}
+
+// Mirror of `isInlineSlot`: the layout alone delimits the slot, so there is no
+// length prefix on the wire. A self-delimiting varint reads itself; everything
+// else is a fixed-size leaf or a zero-width `null` / `undefined`.
+function decodeInline(layout: Layout, r: Reader): unknown {
+  if (isSelfDelimiting(layout)) return decodeValue(layout, r)
+  const saved = r.enter(packedSize(layout) ?? 0)
+  const value = decodeChecked(layout, r)
+  r.exit(saved)
+  return value
+}
+
+// One extra key/value pair. Both wire modes read pairs the same way and differ
+// only in what bounds the loop, so the bound stays with each caller.
+function decodeExtraPair(layout: StructLayout, r: Reader, out: Record<string, unknown>, seen: Set<string>) {
+  const key = r.readUtf8(r.uvarint())
+  if (seen.has(key)) invalid("unique extra keys", undefined, r.options)
+  seen.add(key)
+  const saved = r.enter(r.uvarint())
+  // A key no index signature accepts is dropped rather than rejected; see
+  // `matchIndexSignature`.
+  const signature = r.indexSignatures!.find(layout, key)
+  if (signature !== undefined) {
+    issuePath[issuePathLen++] = key
+    const value = decodeChecked(signature.layout, r)
+    issuePathLen--
+    if (value !== ABSENT) out[key] = value
+  }
+  r.exit(saved)
+}
+
+// Both wire modes report a missing required field the same way: one
+// `MissingKey` per field under a `Pointer` to its name, collected into a
+// `Composite`. Only `errors: "all"` decides whether the first one stops the
+// decode.
+function addMissingKey(
+  issues: Array<SchemaIssue.Issue> | undefined,
+  field: Field
+): Array<SchemaIssue.Issue> {
+  const issue = new SchemaIssue.Pointer([field.name], new SchemaIssue.MissingKey(field.annotations))
+  if (issues === undefined) return [issue]
+  issues.push(issue)
+  return issues
+}
+
+// Callers guard on `issues !== undefined` themselves: every struct decode runs
+// that check and only a failing one runs this.
+function throwMissingKeys(layout: StructLayout, issues: Array<SchemaIssue.Issue>): never {
+  throw issueError(
+    new SchemaIssue.Composite(layout.ast, issues as [SchemaIssue.Issue, ...Array<SchemaIssue.Issue>])
+  )
 }
 
 function decodeStruct(layout: StructLayout, r: Reader): unknown {
@@ -2373,17 +2461,11 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
     const index = field.index
     const present = index < 32 ? (presentMask & (1 << index)) !== 0 : presentWide?.has(index) === true
     if (!field.optional && !present) {
-      const issue = new SchemaIssue.Pointer([field.name], new SchemaIssue.MissingKey(field.annotations))
-      if (issues === undefined) issues = [issue]
-      else issues.push(issue)
+      issues = addMissingKey(issues, field)
       if (r.options.errors !== "all") break
     }
   }
-  if (issues !== undefined) {
-    throw issueError(
-      new SchemaIssue.Composite(layout.ast, issues as [SchemaIssue.Issue, ...Array<SchemaIssue.Issue>])
-    )
-  }
+  if (issues !== undefined) throwMissingKeys(layout, issues)
   return out
 }
 
@@ -2411,83 +2493,31 @@ function decodeStructPositional(layout: StructLayout, r: Reader): unknown {
       if (!present) continue
     }
     issuePath[issuePathLen++] = field.name
-    let value: unknown
-    if (field.inline) {
-      if (isSelfDelimiting(field.layout)) {
-        value = decodeValue(field.layout, r)
-      } else {
-        // a fixed-size leaf, or a zero-width `null` / `undefined`
-        const saved = r.enter(packedSize(field.layout) ?? 0)
-        value = decodeChecked(field.layout, r)
-        r.exit(saved)
-      }
-    } else {
-      const saved = r.enter(r.uvarint())
-      value = decodeChecked(field.layout, r)
-      r.exit(saved)
-    }
+    const value = field.inline ? decodeInline(field.layout, r) : decodeSized(field.layout, r)
     issuePathLen--
     // Only a newer writer's unknown `CauseReason` tag reaches this, since
     // fingerprint mode has no unknown fields or union members.
     if (value !== ABSENT) out[field.name] = value
     else if (!field.optional) {
-      const issue = new SchemaIssue.Pointer([field.name], new SchemaIssue.MissingKey(field.annotations))
-      if (issues === undefined) issues = [issue]
-      else issues.push(issue)
+      issues = addMissingKey(issues, field)
       if (r.options.errors !== "all") break
     }
   }
-  if (issues !== undefined) {
-    throw issueError(
-      new SchemaIssue.Composite(layout.ast, issues as [SchemaIssue.Issue, ...Array<SchemaIssue.Issue>])
-    )
-  }
+  if (issues !== undefined) throwMissingKeys(layout, issues)
   if (layout.extra.length > 0) {
     const count = r.uvarint()
     if (count > r.remaining) invalid("complete value", undefined, r.options)
-    let seen: Set<string> | undefined
-    for (let i = 0; i < count; i++) {
-      const key = r.readUtf8(r.uvarint())
-      if (seen === undefined) seen = new Set([key])
-      else {
-        if (seen.has(key)) invalid("unique extra keys", undefined, r.options)
-        seen.add(key)
-      }
-      const saved = r.enter(r.uvarint())
-      const signature = r.indexSignatures!.find(layout, key)
-      if (signature !== undefined) {
-        issuePath[issuePathLen++] = key
-        const value = decodeChecked(signature.layout, r)
-        issuePathLen--
-        if (value !== ABSENT) out[key] = value
-      }
-      r.exit(saved)
+    if (count > 0) {
+      const seen = new Set<string>()
+      for (let i = 0; i < count; i++) decodeExtraPair(layout, r, out, seen)
     }
   }
   return out
 }
 
 function decodeExtraPairs(layout: StructLayout, r: Reader, out: Record<string, unknown>) {
-  let seen: Set<string> | undefined
-  while (r.pos < r.end) {
-    const keyLen = r.uvarint()
-    const key = r.readUtf8(keyLen)
-    if (seen === undefined) seen = new Set([key])
-    else {
-      if (seen.has(key)) invalid("unique extra keys", undefined, r.options)
-      seen.add(key)
-    }
-    const valueLen = r.uvarint()
-    const saved = r.enter(valueLen)
-    const signature = r.indexSignatures!.find(layout, key)
-    if (signature !== undefined) {
-      issuePath[issuePathLen++] = key
-      const value = decodeChecked(signature.layout, r)
-      issuePathLen--
-      if (value !== ABSENT) out[key] = value
-    }
-    r.exit(saved)
-  }
+  const seen = new Set<string>()
+  while (r.pos < r.end) decodeExtraPair(layout, r, out, seen)
 }
 
 function decodeArray(layout: ArrayLayout, r: Reader): unknown {
@@ -2509,7 +2539,10 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
   const out: Array<unknown> = new Array(count)
   const uniform = layout.uniform
   if (uniform !== undefined) {
-    // `Schema.Array(S)`: one layout for every slot, none of them optional.
+    // `Schema.Array(S)`: one layout for every slot, none of them optional, so
+    // the slot lookup and the length rule are settled once here instead of per
+    // element as the tuple path below has to. That is why this stays separate
+    // from `decodeInline` / `decodeSized`.
     if (layout.uniformNumbers) return decodeNumberRun(out, count, r)
     if (isSelfDelimiting(uniform)) {
       for (let i = 0; i < count; i++) {
@@ -2523,9 +2556,7 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
     const inline = layout.uniformInline
     for (let i = 0; i < count; i++) {
       issuePath[issuePathLen++] = i
-      const saved = inline
-        ? r.enter(packed === undefined ? 0 : packed)
-        : r.enter(r.uvarint())
+      const saved = r.enter(inline ? packed ?? 0 : r.uvarint())
       const value = decodeChecked(uniform, r)
       r.exit(saved)
       if (value === ABSENT) throw issueError(new SchemaIssue.MissingKey(undefined))
@@ -2542,19 +2573,7 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
       throw issueError(new SchemaIssue.MissingKey(undefined))
     }
     issuePath[issuePathLen++] = i
-    if (isSelfDelimiting(slot)) {
-      out[i] = decodeValue(slot, r)
-      issuePathLen--
-      continue
-    }
-    const size = packedSize(slot)
-    const saved = size !== undefined
-      ? r.enter(size)
-      : slot._ === "null" || slot._ === "undefined"
-      ? r.enter(0)
-      : r.enter(r.uvarint())
-    const value = decodeChecked(slot, r)
-    r.exit(saved)
+    const value = isInlineSlot(slot) ? decodeInline(slot, r) : decodeSized(slot, r)
     if (value === ABSENT) {
       if (optional) invalid("known union member", undefined, r.options)
       throw issueError(new SchemaIssue.MissingKey(undefined))
@@ -2612,9 +2631,11 @@ function decodeUnion(layout: UnionLayout, r: Reader): unknown {
   return decodeChecked(member, r)
 }
 
-// Mirror of `encodeUnionPositional`. An index outside the table means the
-// frame does not match the layout its fingerprint claimed, so it fails rather
-// than resolving to absent.
+// The decode halves stay separate, unlike `encodeUnion`. The default mode
+// skips a member it does not know and resolves to absent; fingerprint mode has
+// no unknown members, so an index outside the table means the frame does not
+// match the layout its fingerprint claimed and the frame fails. Folding the
+// two together would put that fail-closed rule behind a flag.
 function decodeUnionPositional(layout: UnionLayout, r: Reader): unknown {
   const position = layout.byPos[r.uvarint()]
   if (position === undefined) invalid("known union member", undefined, r.options)
@@ -2628,7 +2649,7 @@ function decodeUnionPositional(layout: UnionLayout, r: Reader): unknown {
   return payload
 }
 
-function decodeReason(layout: { error: Layout; defect: Layout }, r: Reader): unknown {
+function decodeReason(layout: ReasonLayout, r: Reader): unknown {
   const tag = r.byte()
   switch (tag) {
     case 0:
@@ -2754,7 +2775,7 @@ function decodeValue(layout: Layout, r: Reader): unknown {
       const tag = r.byte()
       if (tag === 0) return Exit.succeed(requirePresent(decodeChecked(layout.value, r)))
       if (tag !== 1) invalid("bool", undefined, r.options)
-      const cause = decodeValue({ _: "cause", error: layout.error, defect: layout.defect }, r)
+      const cause = decodeValue(layout.cause, r)
       return Exit.failCause(cause as Cause.Cause<unknown>)
     }
     case "cause": {
@@ -2925,7 +2946,7 @@ function withCycleGuard(target: Schema.Constraint): Schema.Constraint {
  * The hash covers the compiled layout graph rather than the wire shape it
  * denotes, so peers must ship the same schema definition. Re-factoring a
  * recursive schema without changing a byte of its output still moves the
- * hash; see {@link layoutFingerprint}.
+ * hash, and the mismatch fails closed.
  *
  * @category models
  * @since 4.0.0
@@ -3031,6 +3052,13 @@ export interface Parser<T> {
  *
  * `fingerprint` selects the wire mode and must match the writer; see
  * {@link Options}.
+ *
+ * A parser owns state that outlives a single `feed`, which is why the parse
+ * options are fixed here rather than per call. Its index-signature cache is
+ * keyed by wire keys and therefore by attacker-controlled input, so it is
+ * bounded to 256 entries and admits at most one replacement per frame. Pass
+ * `maxFrameSize` to bound what a single frame may claim before its bytes are
+ * buffered.
  *
  * @category constructors
  * @since 4.0.0
