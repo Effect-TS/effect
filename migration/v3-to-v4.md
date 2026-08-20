@@ -4,7 +4,7 @@
 
 Base: `3d390f232bdbc3f0d3d6a2ae3c775084f494b547` (`3d390f232bdbc3f0d3d6a2ae3c775084f494b547`)
 
-Head: `origin/main` (`b7559505c831c779eb2c3a974e88d35cb1f2fae5`)
+Head: `origin/main` (`648f566dd259898e7697c7fcb796183ccbc474ab`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -7590,6 +7590,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/rpc/RpcMessage`
 
+- `RpcMessage.FromServerEncoded` -> `effect/unstable/rpc/RpcMessage#FromServerEncoded`: The union is retained and now also includes RequestEncoded for server-originated requests and notifications. Handle \_tag: "Request" when matching exhaustively; isNotification identifies notifications.
+
 - `RpcMessage.RequestId` -> `effect/unstable/rpc/RpcMessage#RequestId`: Request ids are now branded string or number values; convert bigint ids before calling the retained RequestId constructor.
 
 - `RpcMessage.RequestIdTypeId` -> `effect/unstable/rpc/RpcMessage#RequestId`: The public symbol marker was removed; use the branded RequestId type and RequestId constructor rather than inspecting its brand.
@@ -11267,7 +11269,11 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 ### `effect/Match`
 
+- `Match.Matcher` -> `Match.Matcher`: The type is retained, but its fifth argument is now a flavor marker (ValueFlavor for Match.value and never for Match.type or Match.fn) rather than the provided value; an optional seventh Args tuple tracks Match.fn selector arguments. Prefer inference from Match.type, Match.value, or Match.fn and update hand-written Matcher annotations.
+
 - `Match.MatcherTypeId` -> `none`: The public matcher brand was internalized. Obtain matchers from Match.type or Match.value and use their public \_tag when discrimination is required.
+
+- `Match.Not` -> `Match.Not`: The case type is retained. Its evaluate method now receives any Match.fn selector arguments after the selected input; update custom case implementations that consume those arguments.
 
 - `Match.SafeRefinementId` -> `none`: The public safe-refinement brand was internalized. Use Predicate.Refinement, Predicate.Predicate, or a built-in Match refinement instead of constructing the brand.
 
@@ -11292,6 +11298,8 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 - `Match.Types.ToSafeRefinement` -> `Match.Types.ToSafeRefinement`: The type-only matching helper is retained unchanged.
 
 - `Match.ValueMatcher` -> `Match.ValueMatcher`: The type is retained, but value now uses Result instead of Either and the brand is private; create values with Match.value.
+
+- `Match.When` -> `Match.When`: The case type is retained. Its evaluate method now receives any Match.fn selector arguments after the selected input; update custom case implementations that consume those arguments.
 
 - `Match.either` -> `Match.result`: Renamed finalizer with a container change: matched Right and unmatched Left become Result.Success and Result.Failure.
 
