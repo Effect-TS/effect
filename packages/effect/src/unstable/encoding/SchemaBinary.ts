@@ -95,25 +95,85 @@ class IssueError extends Error {
 }
 
 function invalid(expected: string, input?: unknown, options?: SchemaAST.ParseOptions): never {
-  throw new IssueError(new SchemaIssue.InvalidValue({ expected }, input, options))
+  throw issueError(new SchemaIssue.InvalidValue({ expected }, input, options))
 }
 
-function atKey<A>(key: PropertyKey, f: () => A): A {
-  try {
-    return f()
-  } catch (e) {
-    if (e instanceof IssueError) {
-      throw new IssueError(new SchemaIssue.Pointer([key], e.issue))
+// Ambient path of the field or index currently being processed. Pushing a key
+// costs one array store, where wrapping every field in a closure plus try/catch
+// cost an allocation per field. The path is only materialised when an issue is
+// actually raised.
+const issuePath: Array<PropertyKey> = []
+let issuePathLen = 0
+
+function issueError(issue: SchemaIssue.Issue): IssueError {
+  return new IssueError(
+    issuePathLen === 0 ? issue : new SchemaIssue.Pointer(issuePath.slice(0, issuePathLen), issue)
+  )
+}
+
+function uvarintBytes(n: number): Uint8Array {
+  const out = new Uint8Array(uvarintSize(n))
+  let p = 0
+  while (n > 0x7F) {
+    out[p++] = (n & 0x7F) | 0x80
+    n = Math.floor(n / 128)
+  }
+  out[p] = n
+  return out
+}
+
+function uvarintSize(n: number): number {
+  let size = 1
+  while (n > 0x7F) {
+    n = Math.floor(n / 128)
+    size++
+  }
+  return size
+}
+
+// `TextDecoder.decode` has a fixed per-call cost, and the `subarray` view it
+// needs costs another allocation. Below this length, building the string from
+// char codes is measurably cheaper; above it the decoder wins again.
+const UTF8_INLINE_LIMIT = 32
+
+// Decodes an ASCII run without allocating a view. Non-ASCII input and longer
+// runs fall through to the platform decoder.
+function decodeUtf8(
+  buf: Uint8Array,
+  start: number,
+  end: number,
+  options: SchemaAST.ParseOptions | undefined
+): string {
+  const len = end - start
+  if (len === 0) return ""
+  if (len <= UTF8_INLINE_LIMIT) {
+    let ascii = true
+    for (let i = start; i < end; i++) {
+      if (buf[i] > 0x7F) {
+        ascii = false
+        break
+      }
     }
-    throw e
+    if (ascii) {
+      let out = ""
+      let i = start
+      for (; i + 4 <= end; i += 4) out += String.fromCharCode(buf[i], buf[i + 1], buf[i + 2], buf[i + 3])
+      for (; i < end; i++) out += String.fromCharCode(buf[i])
+      return out
+    }
+  }
+  try {
+    return utf8DecodeFatal.decode(buf.subarray(start, end))
+  } catch {
+    invalid("utf-8", undefined, options)
   }
 }
 
 class Writer {
-  buf = new Uint8Array(256)
+  buf = new Uint8Array(1024)
   view = new DataView(this.buf.buffer)
   len = 0
-  private ensure(n: number) {
+  ensure(n: number) {
     if (this.len + n > this.buf.length) {
       const next = new Uint8Array(Math.max(this.buf.length * 2, this.len + n))
       next.set(this.buf)
@@ -131,11 +191,24 @@ class Writer {
     this.len += b.length
   }
   uvarint(n: number) {
+    this.ensure(10)
+    const buf = this.buf
+    let p = this.len
     while (n > 0x7F) {
-      this.byte((n & 0x7F) | 0x80)
-      n = Math.floor(n / 128)
+      buf[p++] = (n & 0x7F) | 0x80
+      n = n < 0x80000000 ? n >>> 7 : Math.floor(n / 128)
     }
-    this.byte(n)
+    buf[p++] = n
+    this.len = p
+  }
+  // Field ids are fixed by the layout, so their varint bytes are encoded once
+  // at compile time and blitted here.
+  raw(bytes: Uint8Array) {
+    this.ensure(bytes.length)
+    const buf = this.buf
+    let p = this.len
+    for (let i = 0; i < bytes.length; i++) buf[p++] = bytes[i]
+    this.len = p
   }
   uvarintBig(n: bigint) {
     while (n > BIGINT_VARINT_MASK) {
@@ -167,6 +240,48 @@ class Writer {
     this.view.setInt32(this.len, n | 0, true)
     this.len += 4
   }
+  // Reserves one byte for a length prefix that is not known yet. The payload is
+  // written straight into this buffer and `endSized` backfills the prefix,
+  // removing the scratch buffer and the copy a nested encode needed before.
+  beginSized(): number {
+    this.ensure(1)
+    return this.len++
+  }
+  endSized(mark: number) {
+    const payload = this.len - mark - 1
+    if (payload < 0x80) {
+      this.buf[mark] = payload
+      return
+    }
+    const size = uvarintSize(payload)
+    const extra = size - 1
+    this.ensure(extra)
+    this.buf.copyWithin(mark + size, mark + 1, this.len)
+    this.len += extra
+    let n = payload
+    let p = mark
+    while (n > 0x7F) {
+      this.buf[p++] = (n & 0x7F) | 0x80
+      n = Math.floor(n / 128)
+    }
+    this.buf[p] = n
+  }
+  string(s: string) {
+    const n = s.length
+    if (n === 0) return
+    this.ensure(n * 3)
+    const buf = this.buf
+    let p = this.len
+    for (let i = 0; i < n; i++) {
+      const c = s.charCodeAt(i)
+      if (c > 0x7F) {
+        this.len += utf8Encode.encodeInto(s, buf.subarray(this.len)).written
+        return
+      }
+      buf[p++] = c
+    }
+    this.len = p
+  }
   out(): Uint8Array<ArrayBuffer> {
     return this.buf.slice(0, this.len) as Uint8Array<ArrayBuffer>
   }
@@ -176,7 +291,7 @@ class Reader {
   pos: number
   readonly buf: Uint8Array
   readonly view: DataView
-  readonly end: number
+  end: number
   readonly options: SchemaAST.ParseOptions
   readonly indexSignatures: WeakMap<StructLayout, Map<string, ExtraSignature | undefined>>
   constructor(
@@ -206,27 +321,80 @@ class Reader {
     this.pos += n
     return out
   }
-  sub(len: number): Reader {
+  // Narrows this reader to the next `len` bytes and returns the previous
+  // extent. Restoring it with `exit` is equivalent to decoding through a child
+  // reader, without allocating one per field.
+  enter(len: number): number {
     if (this.pos + len > this.end) invalid("complete value", undefined, this.options)
-    const sub = new Reader(this.buf, this.pos, this.pos + len, this.options, this.indexSignatures)
-    this.pos += len
-    return sub
+    const saved = this.end
+    this.end = this.pos + len
+    return saved
   }
+  exit(saved: number) {
+    this.pos = this.end
+    this.end = saved
+  }
+  readUtf8(n: number): string {
+    if (this.pos + n > this.end) invalid("complete value", undefined, this.options)
+    const start = this.pos
+    this.pos += n
+    return decodeUtf8(this.buf, start, start + n, this.options)
+  }
+  // Field ids are 32-bit hashes, so five-byte varints are the common case
+  // rather than the exception. The first four groups fit in a signed 32-bit
+  // int and use shifts; only the rare wider groups need multiplication.
   uvarint(): number {
-    let value = 0
-    let shift = 0
-    for (let i = 0; i < 10; i++) {
-      const b = this.byte()
-      const chunk = (b & 0x7F) * 2 ** shift
+    const buf = this.buf
+    const end = this.end
+    let pos = this.pos
+    if (pos >= end) invalid("complete value", undefined, this.options)
+    let b = buf[pos++]
+    if (b < 0x80) {
+      this.pos = pos
+      return b
+    }
+    let value = b & 0x7F
+    if (pos >= end) invalid("complete value", undefined, this.options)
+    b = buf[pos++]
+    value |= (b & 0x7F) << 7
+    if (b < 0x80) {
+      this.pos = pos
+      return value
+    }
+    if (pos >= end) invalid("complete value", undefined, this.options)
+    b = buf[pos++]
+    value |= (b & 0x7F) << 14
+    if (b < 0x80) {
+      this.pos = pos
+      return value
+    }
+    if (pos >= end) invalid("complete value", undefined, this.options)
+    b = buf[pos++]
+    value |= (b & 0x7F) << 21
+    if (b < 0x80) {
+      this.pos = pos
+      return value
+    }
+    let scale = 268435456 // 2 ** 28
+    for (let i = 4; i < 10; i++) {
+      if (pos >= end) {
+        this.pos = pos
+        invalid("complete value", undefined, this.options)
+      }
+      b = buf[pos++]
+      const chunk = (b & 0x7F) * scale
       if (chunk > Number.MAX_SAFE_INTEGER - value) {
+        this.pos = pos
         invalid("safe integer length", undefined, this.options)
       }
       value += chunk
-      if ((b & 0x80) === 0) {
+      if (b < 0x80) {
+        this.pos = pos
         return value
       }
-      shift += 7
+      scale *= 128
     }
+    this.pos = pos
     invalid("uvarint", undefined, this.options)
   }
   uvarintBig(): bigint {
@@ -269,13 +437,6 @@ class Reader {
     this.pos += 4
     return value
   }
-  utf8(bytes: Uint8Array): string {
-    try {
-      return utf8DecodeFatal.decode(bytes)
-    } catch {
-      invalid("utf-8", undefined, this.options)
-    }
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -312,6 +473,8 @@ type Layout =
 interface Field {
   readonly name: string
   readonly id: number
+  readonly idBytes: Uint8Array
+  index: number
   readonly optional: boolean
   readonly annotations: Schema.Annotations.Key<unknown> | undefined
   layout: Layout
@@ -328,6 +491,7 @@ interface StructLayout {
   readonly fields: Array<Field>
   readonly byId: Map<number, Field>
   readonly extra: Array<ExtraSignature>
+  readonly names: Set<string>
 }
 
 interface Slot {
@@ -342,6 +506,12 @@ interface ArrayLayout {
   readonly rest: Array<Layout>
   readonly hasCount: boolean
   readonly minCount: number
+  // Set when every slot shares one layout (`Schema.Array(S)`), which lets the
+  // encode and decode loops skip the per-index slot lookup.
+  uniform: Layout | undefined
+  // True when that uniform slot is written without a length prefix.
+  uniformInline: boolean
+  uniformPacked: number | undefined
 }
 
 interface VariantRow {
@@ -654,8 +824,17 @@ function astKind(ast: SchemaAST.AST): number {
   }
 }
 
-function compileLayout(root: SchemaAST.AST): Layout {
+interface CompiledLayout {
+  readonly layout: Layout
+  // True when the encoded AST contains a `Suspend`, i.e. the schema is
+  // recursive and a cyclic value could drive the parser into unbounded
+  // recursion. Non-recursive schemas have bounded depth by construction.
+  readonly recursive: boolean
+}
+
+function compileLayout(root: SchemaAST.AST): CompiledLayout {
   const memo = new Map<SchemaAST.AST, Layout>()
+  let recursive = false
 
   function compile(ast: SchemaAST.AST): Layout {
     const hit = memo.get(ast)
@@ -695,6 +874,7 @@ function compileLayout(root: SchemaAST.AST): Layout {
       case "Enum":
         return compileUnion(ast, flattenMembers(SchemaAST.enumsToLiterals(ast)))
       case "Suspend": {
+        recursive = true
         const layout = compile(ast.thunk())
         memo.set(ast, layout)
         return layout
@@ -731,6 +911,8 @@ function compileLayout(root: SchemaAST.AST): Layout {
       fields.push({
         name,
         id,
+        idBytes: uvarintBytes(id),
+        index: 0,
         optional: ps.type.context?.isOptional === true,
         annotations,
         layout: undefined as unknown as Layout
@@ -749,13 +931,21 @@ function compileLayout(root: SchemaAST.AST): Layout {
       }
       extra.push({ parameter: is.parameter, layout: undefined as unknown as Layout })
     }
-    const layout: StructLayout = { _: "struct", ast, fields, byId: new Map(), extra }
+    const layout: StructLayout = {
+      _: "struct",
+      ast,
+      fields,
+      byId: new Map(),
+      extra,
+      names: new Set(fields.map((f) => f.name))
+    }
     memo.set(ast, layout)
     for (let i = 0; i < fields.length; i++) {
       fields[i].layout = compile(types[i])
       layout.byId.set(fields[i].id, fields[i])
     }
     fields.sort((a, b) => a.id - b.id)
+    for (let i = 0; i < fields.length; i++) fields[i].index = i
     for (let i = 0; i < extra.length; i++) {
       extra[i].layout = compile(ast.indexSignatures[i].type)
     }
@@ -772,7 +962,10 @@ function compileLayout(root: SchemaAST.AST): Layout {
       elements: [],
       rest: [],
       hasCount,
-      minCount: requiredElements + tailLen
+      minCount: requiredElements + tailLen,
+      uniform: undefined,
+      uniformInline: false,
+      uniformPacked: undefined
     }
     memo.set(ast, layout)
     for (const element of ast.elements) {
@@ -783,6 +976,12 @@ function compileLayout(root: SchemaAST.AST): Layout {
     }
     for (const rest of ast.rest) {
       layout.rest.push(compile(rest))
+    }
+    if (layout.elements.length === 0 && layout.rest.length === 1) {
+      const slot = layout.rest[0]
+      layout.uniform = slot
+      layout.uniformPacked = packedSize(slot)
+      layout.uniformInline = layout.uniformPacked !== undefined || slot._ === "null" || slot._ === "undefined"
     }
     return layout
   }
@@ -929,7 +1128,8 @@ function compileLayout(root: SchemaAST.AST): Layout {
           ast: struct.ast,
           fields,
           byId: new Map(fields.map((f) => [f.id, f])),
-          extra: struct.extra
+          extra: struct.extra,
+          names: struct.names
         }
         tuple = false
       } else {
@@ -953,7 +1153,8 @@ function compileLayout(root: SchemaAST.AST): Layout {
     return layout
   }
 
-  return compile(root)
+  const layout = compile(root)
+  return { layout, recursive }
 }
 
 // specific runtime guards first, `json` (which matches anything) last
@@ -1023,15 +1224,12 @@ function matchesLayout(layout: Layout, value: unknown): boolean {
 // -----------------------------------------------------------------------------
 
 interface EncodeContext {
-  readonly cycle: WeakSet<object>
   readonly options: SchemaAST.ParseOptions
-  readonly scratch: Array<Writer>
-  scratchDepth: number
-  readonly indexSignatures: WeakMap<StructLayout, Map<string, ExtraSignature | undefined>>
+  indexSignatures: WeakMap<StructLayout, Map<string, ExtraSignature | undefined>> | undefined
 }
 
 function encodeFail(expected: string, input: unknown, options: SchemaAST.ParseOptions): never {
-  throw new IssueError(new SchemaIssue.InvalidValue({ expected }, input, options))
+  throw issueError(new SchemaIssue.InvalidValue({ expected }, input, options))
 }
 
 function isCyclic(value: unknown, stack = new Set<object>()): boolean {
@@ -1098,17 +1296,22 @@ function isCyclic(value: unknown, stack = new Set<object>()): boolean {
   return false
 }
 
-function withCycleCheck<A>(ctx: EncodeContext, value: unknown, f: () => A): A {
-  if (Predicate.isObject(value)) {
-    if (ctx.cycle.has(value)) encodeFail("acyclic value", value, ctx.options)
-    ctx.cycle.add(value)
-    try {
-      return f()
-    } finally {
-      ctx.cycle.delete(value)
-    }
+// Returns the object that was marked, or undefined when the value cannot
+// participate in a cycle. The caller clears the mark on the success path; a
+// throw discards the whole context, so no `finally` is needed.
+// Only ancestors of the value being written can form a cycle, and nesting
+// depth is small, so a scanned stack beats the add/has/delete traffic of a
+// WeakSet and allocates nothing.
+const cycleStack: Array<unknown> = []
+let cycleDepth = 0
+
+function cycleEnter(ctx: EncodeContext, value: unknown): boolean {
+  if (value === null || (typeof value !== "object" && typeof value !== "function")) return false
+  for (let i = 0; i < cycleDepth; i++) {
+    if (cycleStack[i] === value) encodeFail("acyclic value", value, ctx.options)
   }
-  return f()
+  cycleStack[cycleDepth++] = value
+  return true
 }
 
 function findIndexSignature(
@@ -1130,33 +1333,16 @@ function findIndexSignature(
   return signature
 }
 
-function withScratch<A>(ctx: EncodeContext, f: (writer: Writer) => A): A {
-  const index = ctx.scratchDepth++
-  const writer = ctx.scratch[index] ?? (ctx.scratch[index] = new Writer())
-  writer.len = 0
-  try {
-    return f(writer)
-  } finally {
-    ctx.scratchDepth--
-  }
-}
-
-function writeSized(ctx: EncodeContext, w: Writer, encode: (writer: Writer) => void) {
-  withScratch(ctx, (tmp) => {
-    encode(tmp)
-    w.uvarint(tmp.len)
-    w.bytes(tmp.buf.subarray(0, tmp.len))
-  })
-}
-
 function encodeSized(ctx: EncodeContext, layout: Layout, value: unknown, w: Writer) {
-  writeSized(ctx, w, (tmp) => encodeValue(ctx, layout, value, tmp))
+  const mark = w.beginSized()
+  encodeValue(ctx, layout, value, w)
+  w.endSized(mark)
 }
 
 function encodeSymbol(ctx: EncodeContext, value: unknown, w: Writer) {
   const key = globalThis.Symbol.keyFor(value as symbol)
   if (key === undefined) encodeFail("registered symbol", value, ctx.options)
-  w.bytes(utf8Encode.encode(key))
+  w.string(key)
 }
 
 function encodeReason(ctx: EncodeContext, layout: { error: Layout; defect: Layout }, value: unknown, w: Writer) {
@@ -1183,33 +1369,46 @@ function encodeReason(ctx: EncodeContext, layout: { error: Layout; defect: Layou
 function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: object, w: Writer) {
   const obj = value as Record<string, unknown>
   if (layout.extra.length > 0) {
-    const named = new Set(layout.fields.map((f) => f.name))
+    const named = layout.names
     const pairs: Array<[Uint8Array, string, ExtraSignature]> = []
     for (const key of Object.keys(obj)) {
       if (named.has(key)) continue
-      const signature = findIndexSignature(layout, key, ctx.options, ctx.indexSignatures)
+      const signature = findIndexSignature(
+        layout,
+        key,
+        ctx.options,
+        ctx.indexSignatures ??= new WeakMap()
+      )
       if (signature === undefined) continue
       pairs.push([utf8Encode.encode(key), key, signature])
     }
     if (pairs.length > 0) {
       pairs.sort((a, b) => compareBytes(a[0], b[0]))
       w.uvarint(0)
-      writeSized(ctx, w, (tmp) => {
-        for (const [keyBytes, key, signature] of pairs) {
-          tmp.uvarint(keyBytes.length)
-          tmp.bytes(keyBytes)
-          atKey(key, () => encodeSized(ctx, signature.layout, obj[key], tmp))
-        }
-      })
+      const mark = w.beginSized()
+      for (const [keyBytes, key, signature] of pairs) {
+        w.uvarint(keyBytes.length)
+        w.bytes(keyBytes)
+        issuePath[issuePathLen++] = key
+        encodeSized(ctx, signature.layout, obj[key], w)
+        issuePathLen--
+      }
+      w.endSized(mark)
     }
   }
-  for (const field of layout.fields) {
-    if (!Object.hasOwn(obj, field.name)) {
+  const fields = layout.fields
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i]
+    const name = field.name
+    if (!Object.hasOwn(obj, name)) {
       if (field.optional) continue
-      throw new IssueError(new SchemaIssue.Pointer([field.name], new SchemaIssue.MissingKey(field.annotations)))
+      issuePath[issuePathLen++] = name
+      throw issueError(new SchemaIssue.MissingKey(field.annotations))
     }
-    w.uvarint(field.id)
-    atKey(field.name, () => encodeSized(ctx, field.layout, obj[field.name], w))
+    w.raw(field.idBytes)
+    issuePath[issuePathLen++] = name
+    encodeSized(ctx, field.layout, obj[name], w)
+    issuePathLen--
   }
 }
 
@@ -1223,27 +1422,40 @@ function arraySlot(layout: ArrayLayout, index: number, count: number): Layout {
 
 function encodeArray(ctx: EncodeContext, layout: ArrayLayout, value: unknown, w: Writer) {
   const arr = value as ReadonlyArray<unknown>
-  if (layout.rest.length === 0 && arr.length > layout.elements.length) {
-    throw new IssueError(
-      new SchemaIssue.Pointer(
-        [layout.elements.length],
-        new SchemaIssue.UnexpectedKey(layout.ast, arr[layout.elements.length], ctx.options)
-      )
+  const count = arr.length
+  if (layout.rest.length === 0 && count > layout.elements.length) {
+    issuePath[issuePathLen++] = layout.elements.length
+    throw issueError(
+      new SchemaIssue.UnexpectedKey(layout.ast, arr[layout.elements.length], ctx.options)
     )
   }
-  if (arr.length < layout.minCount) {
-    throw new IssueError(new SchemaIssue.Pointer([arr.length], new SchemaIssue.MissingKey(undefined)))
+  if (count < layout.minCount) {
+    issuePath[issuePathLen++] = count
+    throw issueError(new SchemaIssue.MissingKey(undefined))
   }
-  if (layout.hasCount) w.uvarint(arr.length)
-  for (let i = 0; i < arr.length; i++) {
-    const slot = arraySlot(layout, i, arr.length)
-    atKey(i, () => {
-      if (packedSize(slot) !== undefined || slot._ === "null" || slot._ === "undefined") {
-        encodeValue(ctx, slot, arr[i], w)
-      } else {
-        encodeSized(ctx, slot, arr[i], w)
-      }
-    })
+  if (layout.hasCount) w.uvarint(count)
+  // `Schema.Array(S)` gives every slot the same layout, so the per-index slot
+  // and packing lookups can be hoisted out of the loop.
+  const uniform = layout.uniform
+  if (uniform !== undefined) {
+    const inline = layout.uniformInline
+    for (let i = 0; i < count; i++) {
+      issuePath[issuePathLen++] = i
+      if (inline) encodeValue(ctx, uniform, arr[i], w)
+      else encodeSized(ctx, uniform, arr[i], w)
+      issuePathLen--
+    }
+    return
+  }
+  for (let i = 0; i < count; i++) {
+    const slot = arraySlot(layout, i, count)
+    issuePath[issuePathLen++] = i
+    if (packedSize(slot) !== undefined || slot._ === "null" || slot._ === "undefined") {
+      encodeValue(ctx, slot, arr[i], w)
+    } else {
+      encodeSized(ctx, slot, arr[i], w)
+    }
+    issuePathLen--
   }
 }
 
@@ -1267,7 +1479,7 @@ function encodeUnion(ctx: EncodeContext, layout: UnionLayout, value: unknown, w:
       return
     }
   }
-  throw new IssueError(new SchemaIssue.InvalidType(layout.ast, value, ctx.options))
+  throw issueError(new SchemaIssue.InvalidType(layout.ast, value, ctx.options))
 }
 
 function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writer): void {
@@ -1282,7 +1494,7 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       w.f64(value as number)
       return
     case "string":
-      w.bytes(utf8Encode.encode(value as string))
+      w.string(value as string)
       return
     case "symbol":
       encodeSymbol(ctx, value, w)
@@ -1307,7 +1519,7 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
         w.i32le(zoned.zone.offset)
       } else {
         w.byte(1)
-        w.bytes(utf8Encode.encode(zoned.zone.id))
+        w.string(zoned.zone.id)
       }
       return
     }
@@ -1348,7 +1560,7 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
         if (isCyclic(value)) encodeFail("acyclic value", value, ctx.options)
         encodeFail("a JSON-serializable value", value, ctx.options)
       }
-      w.bytes(utf8Encode.encode(text))
+      w.string(text)
       return
     }
     case "option": {
@@ -1357,78 +1569,105 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
         w.byte(0)
       } else {
         w.byte(1)
-        withCycleCheck(ctx, option, () => encodeValue(ctx, layout.value, option.value, w))
+        const tracked = cycleEnter(ctx, option)
+        encodeValue(ctx, layout.value, option.value, w)
+        if (tracked) cycleDepth--
       }
       return
     }
     case "result": {
       const result = value as Result.Result<unknown, unknown>
-      withCycleCheck(ctx, result, () => {
-        if (result._tag === "Success") {
-          w.byte(0)
-          encodeValue(ctx, layout.success, result.success, w)
-        } else {
-          w.byte(1)
-          encodeValue(ctx, layout.failure, result.failure, w)
-        }
-      })
+      const tracked = cycleEnter(ctx, result)
+      if (result._tag === "Success") {
+        w.byte(0)
+        encodeValue(ctx, layout.success, result.success, w)
+      } else {
+        w.byte(1)
+        encodeValue(ctx, layout.failure, result.failure, w)
+      }
+      if (tracked) cycleDepth--
       return
     }
     case "exit": {
       const exit = value as Exit.Exit<unknown, unknown>
-      withCycleCheck(ctx, exit, () => {
-        if (exit._tag === "Success") {
-          w.byte(0)
-          encodeValue(ctx, layout.value, exit.value, w)
-        } else {
-          w.byte(1)
-          encodeValue(ctx, { _: "cause", error: layout.error, defect: layout.defect }, exit.cause, w)
-        }
-      })
+      const tracked = cycleEnter(ctx, exit)
+      if (exit._tag === "Success") {
+        w.byte(0)
+        encodeValue(ctx, layout.value, exit.value, w)
+      } else {
+        w.byte(1)
+        encodeValue(ctx, { _: "cause", error: layout.error, defect: layout.defect }, exit.cause, w)
+      }
+      if (tracked) cycleDepth--
       return
     }
     case "cause": {
       const reasons = (value as Cause.Cause<unknown>).reasons
-      withCycleCheck(ctx, value, () => {
-        w.uvarint(reasons.length)
-        for (const reason of reasons) {
-          writeSized(ctx, w, (tmp) => encodeReason(ctx, layout, reason, tmp))
-        }
-      })
+      const tracked = cycleEnter(ctx, value)
+      w.uvarint(reasons.length)
+      for (const reason of reasons) {
+        const mark = w.beginSized()
+        encodeReason(ctx, layout, reason, w)
+        w.endSized(mark)
+      }
+      if (tracked) cycleDepth--
       return
     }
-    case "causeReason":
-      withCycleCheck(ctx, value, () => encodeReason(ctx, layout, value, w))
+    case "causeReason": {
+      const tracked = cycleEnter(ctx, value)
+      encodeReason(ctx, layout, value, w)
+      if (tracked) cycleDepth--
       return
-    case "struct":
-      withCycleCheck(ctx, value, () => encodeStructFields(ctx, layout, value as object, w))
+    }
+    case "struct": {
+      const tracked = cycleEnter(ctx, value)
+      encodeStructFields(ctx, layout, value as object, w)
+      if (tracked) cycleDepth--
       return
-    case "array":
-      withCycleCheck(ctx, value, () => encodeArray(ctx, layout, value, w))
+    }
+    case "array": {
+      const tracked = cycleEnter(ctx, value)
+      encodeArray(ctx, layout, value, w)
+      if (tracked) cycleDepth--
       return
+    }
     case "union":
       encodeUnion(ctx, layout, value, w)
       return
     case "never":
-      throw new IssueError(new SchemaIssue.InvalidType(layout.ast, value, ctx.options))
+      throw issueError(new SchemaIssue.InvalidType(layout.ast, value, ctx.options))
   }
 }
 
+// One writer is reused across top-level encodes so the buffer keeps its
+// high-water mark instead of regrowing from scratch every call. A nested codec
+// (an inner `toCodec` used as a `Uint8Array` field) simply allocates its own.
+let pooledWriter: Writer | undefined = new Writer()
+
 function encodeFrame(layout: Layout, value: unknown, options: SchemaAST.ParseOptions): Uint8Array<ArrayBuffer> {
   const ctx: EncodeContext = {
-    cycle: new WeakSet(),
     options,
-    scratch: [],
-    scratchDepth: 0,
-    indexSignatures: new WeakMap()
+    indexSignatures: undefined
   }
-  const body = new Writer()
-  body.byte(ENVELOPE)
-  encodeValue(ctx, layout, value, body)
-  const frame = new Writer()
-  frame.uvarint(body.len)
-  frame.bytes(body.buf.subarray(0, body.len))
-  return frame.out()
+  const w = pooledWriter ?? new Writer()
+  const pooled = w === pooledWriter
+  if (pooled) pooledWriter = undefined
+  w.len = 0
+  const savedPathLen = issuePathLen
+  const savedCycleDepth = cycleDepth
+  issuePathLen = 0
+  cycleDepth = 0
+  try {
+    const mark = w.beginSized()
+    w.byte(ENVELOPE)
+    encodeValue(ctx, layout, value, w)
+    w.endSized(mark)
+    return w.out()
+  } finally {
+    issuePathLen = savedPathLen
+    cycleDepth = savedCycleDepth
+    if (pooled) pooledWriter = w
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -1447,31 +1686,76 @@ function decodeChecked(layout: Layout, r: Reader): unknown {
 
 function decodeStruct(layout: StructLayout, r: Reader): unknown {
   const out: Record<string, unknown> = {}
-  const seen = new Set<number>()
+  // Duplicate-id detection without allocating a Set per value: known fields are
+  // tracked in a 32-bit mask, and the rarer wide-struct and unknown-id cases
+  // fall back to sets that are only created when they are actually needed.
+  let seenMask = 0
+  let seenWide: Set<number> | undefined
+  let seenUnknown: Set<number> | undefined
+  let seenExtra = false
+  // Encoders emit fields in ascending id order, so walking a cursor over the
+  // sorted field list turns the per-field lookup into one integer compare.
+  // Reordered or unknown ids fall back to the map.
+  const fields = layout.fields
+  let cursor = 0
   while (r.pos < r.end) {
     const id = r.uvarint()
     const len = r.uvarint()
-    if (seen.has(id)) invalid("unique field ids", undefined, r.options)
-    seen.add(id)
-    const sub = r.sub(len)
+    const saved = r.enter(len)
     if (id === 0) {
-      decodeExtraPairs(layout, sub, out)
+      if (seenExtra) invalid("unique field ids", undefined, r.options)
+      seenExtra = true
+      decodeExtraPairs(layout, r, out)
+      r.exit(saved)
       continue
     }
-    const field = layout.byId.get(id)
-    if (field === undefined) continue
-    const value = atKey(field.name, () => decodeChecked(field.layout, sub))
+    let field: Field | undefined
+    if (cursor < fields.length && fields[cursor].id === id) {
+      field = fields[cursor]
+      cursor++
+    } else {
+      field = layout.byId.get(id)
+      if (field !== undefined) cursor = field.index + 1
+    }
+    if (field === undefined) {
+      if (seenUnknown === undefined) seenUnknown = new Set()
+      else if (seenUnknown.has(id)) invalid("unique field ids", undefined, r.options)
+      seenUnknown.add(id)
+      r.exit(saved)
+      continue
+    }
+    const index = field.index
+    if (index < 32) {
+      const bit = 1 << index
+      if ((seenMask & bit) !== 0) invalid("unique field ids", undefined, r.options)
+      seenMask |= bit
+    } else if (seenWide === undefined) {
+      seenWide = new Set([index])
+    } else {
+      if (seenWide.has(index)) invalid("unique field ids", undefined, r.options)
+      seenWide.add(index)
+    }
+    issuePath[issuePathLen++] = field.name
+    const value = decodeChecked(field.layout, r)
+    issuePathLen--
     if (value !== ABSENT) out[field.name] = value
+    else if (index < 32) seenMask &= ~(1 << index)
+    r.exit(saved)
   }
-  const issues: Array<SchemaIssue.Issue> = []
-  for (const field of layout.fields) {
-    if (!field.optional && !Object.hasOwn(out, field.name)) {
-      issues.push(new SchemaIssue.Pointer([field.name], new SchemaIssue.MissingKey(field.annotations)))
+  let issues: Array<SchemaIssue.Issue> | undefined
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i]
+    const index = field.index
+    const present = index < 32 ? (seenMask & (1 << index)) !== 0 : Object.hasOwn(out, field.name)
+    if (!field.optional && !present) {
+      const issue = new SchemaIssue.Pointer([field.name], new SchemaIssue.MissingKey(field.annotations))
+      if (issues === undefined) issues = [issue]
+      else issues.push(issue)
       if (r.options.errors !== "all") break
     }
   }
-  if (issues.length > 0) {
-    throw new IssueError(
+  if (issues !== undefined) {
+    throw issueError(
       new SchemaIssue.Composite(layout.ast, issues as [SchemaIssue.Issue, ...Array<SchemaIssue.Issue>])
     )
   }
@@ -1479,18 +1763,25 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
 }
 
 function decodeExtraPairs(layout: StructLayout, r: Reader, out: Record<string, unknown>) {
-  const seen = new Set<string>()
+  let seen: Set<string> | undefined
   while (r.pos < r.end) {
     const keyLen = r.uvarint()
-    const key = r.utf8(r.take(keyLen))
-    if (seen.has(key)) invalid("unique extra keys", undefined, r.options)
-    seen.add(key)
+    const key = r.readUtf8(keyLen)
+    if (seen === undefined) seen = new Set([key])
+    else {
+      if (seen.has(key)) invalid("unique extra keys", undefined, r.options)
+      seen.add(key)
+    }
     const valueLen = r.uvarint()
-    const sub = r.sub(valueLen)
+    const saved = r.enter(valueLen)
     const signature = findIndexSignature(layout, key, r.options, r.indexSignatures)
-    if (signature === undefined) continue
-    const value = atKey(key, () => decodeChecked(signature.layout, sub))
-    if (value !== ABSENT) out[key] = value
+    if (signature !== undefined) {
+      issuePath[issuePathLen++] = key
+      const value = decodeChecked(signature.layout, r)
+      issuePathLen--
+      if (value !== ABSENT) out[key] = value
+    }
+    r.exit(saved)
   }
 }
 
@@ -1503,41 +1794,58 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
     invalid("array count within allocation limit", count, r.options)
   }
   if (layout.rest.length === 0 && count > elementLen) {
-    throw new IssueError(
-      new SchemaIssue.Pointer([elementLen], new SchemaIssue.UnexpectedKey(layout.ast, undefined, r.options))
-    )
+    issuePath[issuePathLen++] = elementLen
+    throw issueError(new SchemaIssue.UnexpectedKey(layout.ast, undefined, r.options))
   }
   if (count < layout.minCount) {
-    throw new IssueError(new SchemaIssue.Pointer([count], new SchemaIssue.MissingKey(undefined)))
+    issuePath[issuePathLen++] = count
+    throw issueError(new SchemaIssue.MissingKey(undefined))
   }
-  const out: Array<unknown> = []
+  const out: Array<unknown> = new Array(count)
+  const uniform = layout.uniform
+  if (uniform !== undefined) {
+    // `Schema.Array(S)`: one layout for every slot, none of them optional.
+    const packed = layout.uniformPacked
+    const inline = layout.uniformInline
+    for (let i = 0; i < count; i++) {
+      issuePath[issuePathLen++] = i
+      const saved = inline
+        ? r.enter(packed === undefined ? 0 : packed)
+        : r.enter(r.uvarint())
+      const value = decodeChecked(uniform, r)
+      r.exit(saved)
+      issuePathLen--
+      if (value === ABSENT) throw issueError(new SchemaIssue.MissingKey(undefined))
+      out[i] = value
+    }
+    return out
+  }
   for (let i = 0; i < count; i++) {
     const slot = arraySlot(layout, i, count)
     const optional = i < elementLen && layout.elements[i].optional
     if (!layout.hasCount && r.remaining === 0 && !optional && slot._ !== "null" && slot._ !== "undefined") {
-      throw new IssueError(new SchemaIssue.Pointer([i], new SchemaIssue.MissingKey(undefined)))
+      issuePath[issuePathLen++] = i
+      throw issueError(new SchemaIssue.MissingKey(undefined))
     }
-    atKey(i, () => {
-      const size = packedSize(slot)
-      let value: unknown
-      if (size !== undefined) {
-        value = decodeChecked(slot, r.sub(size))
-      } else if (slot._ === "null" || slot._ === "undefined") {
-        value = decodeChecked(slot, r.sub(0))
-      } else {
-        value = decodeChecked(slot, r.sub(r.uvarint()))
-      }
-      if (value === ABSENT) {
-        if (optional) invalid("known union member", undefined, r.options)
-        throw new IssueError(new SchemaIssue.MissingKey(undefined))
-      }
-      out.push(value)
-    })
+    issuePath[issuePathLen++] = i
+    const size = packedSize(slot)
+    const saved = size !== undefined
+      ? r.enter(size)
+      : slot._ === "null" || slot._ === "undefined"
+      ? r.enter(0)
+      : r.enter(r.uvarint())
+    const value = decodeChecked(slot, r)
+    r.exit(saved)
+    if (value === ABSENT) {
+      if (optional) invalid("known union member", undefined, r.options)
+      throw issueError(new SchemaIssue.MissingKey(undefined))
+    }
+    issuePathLen--
+    out[i] = value
   }
   if (!layout.hasCount && r.pos < r.end) {
-    throw new IssueError(
-      new SchemaIssue.Pointer([elementLen], new SchemaIssue.UnexpectedKey(layout.ast, undefined, r.options))
-    )
+    issuePath[issuePathLen++] = elementLen
+    throw issueError(new SchemaIssue.UnexpectedKey(layout.ast, undefined, r.options))
   }
   return out
 }
@@ -1590,7 +1898,7 @@ function decodeReason(layout: { error: Layout; defect: Layout }, r: Reader): unk
 }
 
 function requirePresent(value: unknown): unknown {
-  if (value === ABSENT) throw new IssueError(new SchemaIssue.MissingKey(undefined))
+  if (value === ABSENT) throw issueError(new SchemaIssue.MissingKey(undefined))
   return value
 }
 
@@ -1612,9 +1920,9 @@ function decodeValue(layout: Layout, r: Reader): unknown {
       if (r.remaining !== 8) invalid("f64", undefined, r.options)
       return r.f64()
     case "string":
-      return r.utf8(r.take(r.remaining))
+      return r.readUtf8(r.end - r.pos)
     case "symbol":
-      return globalThis.Symbol.for(r.utf8(r.take(r.remaining)))
+      return globalThis.Symbol.for(r.readUtf8(r.end - r.pos))
     case "bytes":
       return r.take(r.remaining).slice()
     case "bigint":
@@ -1632,7 +1940,7 @@ function decodeValue(layout: Layout, r: Reader): unknown {
         if (r.remaining !== 4) invalid("time zone", undefined, r.options)
         timeZone = r.i32le()
       } else if (tag === 1) {
-        timeZone = r.utf8(r.take(r.remaining))
+        timeZone = r.readUtf8(r.end - r.pos)
       } else {
         return invalid("time zone", undefined, r.options)
       }
@@ -1662,7 +1970,7 @@ function decodeValue(layout: Layout, r: Reader): unknown {
       return BigDecimal.make(value, Number(scale))
     }
     case "json": {
-      const text = r.utf8(r.take(r.remaining))
+      const text = r.readUtf8(r.end - r.pos)
       try {
         return JSON.parse(text)
       } catch {
@@ -1695,7 +2003,11 @@ function decodeValue(layout: Layout, r: Reader): unknown {
       const count = r.uvarint()
       const reasons: Array<Cause.Reason<unknown>> = []
       for (let i = 0; i < count; i++) {
-        const reason = atKey(i, () => decodeReason(layout, r.sub(r.uvarint())))
+        issuePath[issuePathLen++] = i
+        const saved = r.enter(r.uvarint())
+        const reason = decodeReason(layout, r)
+        r.exit(saved)
+        issuePathLen--
         // unknown reason tags from newer writers are dropped
         if (reason !== ABSENT) reasons.push(reason as Cause.Reason<unknown>)
       }
@@ -1711,7 +2023,7 @@ function decodeValue(layout: Layout, r: Reader): unknown {
     case "union":
       return decodeUnion(layout, r)
     case "never":
-      throw new IssueError(new SchemaIssue.InvalidType(layout.ast, undefined, r.options))
+      throw issueError(new SchemaIssue.InvalidType(layout.ast, undefined, r.options))
   }
 }
 
@@ -1719,18 +2031,25 @@ function decodeFrameBody(layout: Layout, r: Reader): unknown {
   const envelope = r.byte()
   if (envelope !== ENVELOPE) invalid("version 1 envelope, flags 0", envelope, r.options)
   const value = decodeChecked(layout, r)
-  if (value === ABSENT) throw new IssueError(new SchemaIssue.MissingKey(undefined))
+  if (value === ABSENT) throw issueError(new SchemaIssue.MissingKey(undefined))
   return value
 }
 
 function decodeOneShot(layout: Layout, bytes: Uint8Array, options: SchemaAST.ParseOptions): unknown {
-  const r = new Reader(bytes, 0, bytes.length, options)
-  const n = r.uvarint()
-  if (n === 0) invalid("nonzero frame length", undefined, options)
-  const body = r.sub(n)
-  const value = decodeFrameBody(layout, body)
-  if (r.pos !== bytes.length) invalid("no leftover bytes", undefined, options)
-  return value
+  const savedPathLen = issuePathLen
+  issuePathLen = 0
+  try {
+    const r = new Reader(bytes, 0, bytes.length, options)
+    const n = r.uvarint()
+    if (n === 0) invalid("nonzero frame length", undefined, options)
+    const saved = r.enter(n)
+    const value = decodeFrameBody(layout, r)
+    r.exit(saved)
+    if (r.pos !== bytes.length) invalid("no leftover bytes", undefined, options)
+    return value
+  } finally {
+    issuePathLen = savedPathLen
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -1761,9 +2080,13 @@ function makeTransformation(layout: Layout): SchemaTransformation.Transformation
 }
 
 function compileTarget(schema: Schema.Constraint): { target: Schema.Constraint; layout: Layout } {
-  const target = Schema.make<Schema.Constraint>(toBinaryAST(schema.ast))
-  const layout = compileLayout(SchemaAST.toEncoded(target.ast))
-  return { target, layout }
+  const raw = Schema.make<Schema.Constraint>(toBinaryAST(schema.ast))
+  const { layout, recursive } = compileLayout(SchemaAST.toEncoded(raw.ast))
+  // The guard walks the whole value to reject cycles before the parser can
+  // recurse into them. Only a recursive schema can recurse without bound, so
+  // non-recursive schemas skip the walk entirely and rely on the cycle
+  // detection the encoder already does as it writes.
+  return { target: recursive ? withCycleGuard(raw) : raw, layout }
 }
 
 function withCycleGuard(target: Schema.Constraint): Schema.Constraint {
@@ -1823,7 +2146,7 @@ export interface toCodec<S extends Schema.Constraint> extends
 export function toCodec<S extends Schema.Constraint>(schema: S): toCodec<S> {
   const { layout, target } = compileTarget(schema)
   return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
-    Schema.decodeTo(withCycleGuard(target), makeTransformation(layout))
+    Schema.decodeTo(target, makeTransformation(layout))
   ) as unknown as toCodec<S>
 }
 
@@ -1943,7 +2266,9 @@ export function parser<S extends Schema.Constraint>(
           return fail("frame within maxFrameSize", frameLen)
         }
         if (headerLen + frameLen > buffered) return out
+        const savedPathLen = issuePathLen
         try {
+          issuePathLen = 0
           const bodyStart = bufferStart + headerLen
           const body = new Reader(buffer, bodyStart, bodyStart + frameLen, parseOptions)
           out.push(decodeEncoded(decodeFrameBody(layout, body)))
@@ -1961,6 +2286,8 @@ export function parser<S extends Schema.Constraint>(
           buffer = new Uint8Array(0)
           bufferStart = bufferEnd = 0
           return out
+        } finally {
+          issuePathLen = savedPathLen
         }
         bufferStart += headerLen + frameLen
         if (bufferStart === bufferEnd) bufferStart = bufferEnd = 0
