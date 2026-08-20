@@ -219,6 +219,12 @@ function decodeUtf8(
 
 const OUTPUT_ARENA_SIZE = 8 * 1024
 
+// Parser cache entries are derived from wire keys, so this is a hard bound on
+// attacker-controlled state retained across feed calls. Entries use FIFO
+// eviction: after the first 256 distinct (layout, key) pairs, each miss evicts
+// the oldest surviving pair.
+const PARSER_INDEX_SIGNATURE_CACHE_SIZE = 256
+
 interface OutputArena {
   readonly buf: Uint8Array<ArrayBuffer>
   offset: number
@@ -397,22 +403,89 @@ class Writer {
   }
 }
 
+function matchIndexSignature(
+  layout: StructLayout,
+  key: string,
+  options: SchemaAST.ParseOptions
+): ExtraSignature | undefined {
+  return layout.extra.find((s) => SchemaAST.getIndexSignatureKeys({ [key]: null }, s.parameter, options).length > 0)
+}
+
+interface BoundedIndexSignatureCacheEntry {
+  readonly layout: StructLayout
+  readonly key: string
+}
+
+class IndexSignatureCache {
+  readonly entries = new WeakMap<StructLayout, Map<string, ExtraSignature | undefined>>()
+  readonly order: Array<BoundedIndexSignatureCacheEntry | undefined> | undefined
+  size = 0
+  next = 0
+  constructor(capacity?: number) {
+    this.order = capacity === undefined ? undefined : new Array(capacity)
+  }
+  find(layout: StructLayout, key: string, options: SchemaAST.ParseOptions): ExtraSignature | undefined {
+    let entries = this.entries.get(layout)
+    if (entries === undefined) {
+      entries = new Map()
+      this.entries.set(layout, entries)
+    }
+    if (entries.has(key)) return entries.get(key)
+    const signature = matchIndexSignature(layout, key, options)
+    const order = this.order
+    if (order !== undefined) {
+      if (this.size === order.length) {
+        const evicted = order[this.next]!
+        this.entries.get(evicted.layout)?.delete(evicted.key)
+      } else {
+        this.size++
+      }
+      order[this.next] = { layout, key }
+      this.next = (this.next + 1) % order.length
+    }
+    entries.set(key, signature)
+    return signature
+  }
+}
+
+const EMPTY_READER_BUFFER = new Uint8Array(0)
+
 class Reader {
   pos: number
-  readonly buf: Uint8Array
-  readonly view: DataView
+  buf: Uint8Array
+  view: DataView
   end: number
-  readonly options: SchemaAST.ParseOptions
-  readonly indexSignatures: WeakMap<StructLayout, Map<string, ExtraSignature | undefined>>
+  options: SchemaAST.ParseOptions
+  indexSignatures: IndexSignatureCache
   constructor(
+    buf: Uint8Array = EMPTY_READER_BUFFER,
+    start = 0,
+    end = 0,
+    options: SchemaAST.ParseOptions = {},
+    indexSignatures: IndexSignatureCache = new IndexSignatureCache()
+  ) {
+    this.buf = buf
+    this.view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
+    this.pos = start
+    this.end = end
+    this.options = options
+    this.indexSignatures = indexSignatures
+  }
+  reset(
     buf: Uint8Array,
     start: number,
     end: number,
     options: SchemaAST.ParseOptions,
-    indexSignatures = new WeakMap<StructLayout, Map<string, ExtraSignature | undefined>>()
+    indexSignatures: IndexSignatureCache
   ) {
+    if (
+      this.buf.buffer !== buf.buffer ||
+      this.buf.byteOffset !== buf.byteOffset ||
+      this.buf.byteLength !== buf.byteLength
+    ) {
+      this.view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
+    }
     this.buf = buf
-    this.view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
     this.pos = start
     this.end = end
     this.options = options
@@ -1394,7 +1467,7 @@ function matchesLayout(layout: Layout, value: unknown): boolean {
 
 interface EncodeContext {
   readonly options: SchemaAST.ParseOptions
-  indexSignatures: WeakMap<StructLayout, Map<string, ExtraSignature | undefined>> | undefined
+  indexSignatures: IndexSignatureCache | undefined
 }
 
 function encodeFail(expected: string, input: unknown, options: SchemaAST.ParseOptions): never {
@@ -1487,25 +1560,6 @@ function isCyclic(value: unknown, stack = new Set<object>()): boolean {
   return false
 }
 
-function findIndexSignature(
-  layout: StructLayout,
-  key: string,
-  options: SchemaAST.ParseOptions,
-  cache: WeakMap<StructLayout, Map<string, ExtraSignature | undefined>>
-): ExtraSignature | undefined {
-  let entries = cache.get(layout)
-  if (entries === undefined) {
-    entries = new Map()
-    cache.set(layout, entries)
-  }
-  if (entries.has(key)) return entries.get(key)
-  const signature = layout.extra.find((s) =>
-    SchemaAST.getIndexSignatureKeys({ [key]: null }, s.parameter, options).length > 0
-  )
-  entries.set(key, signature)
-  return signature
-}
-
 function encodeSized(ctx: EncodeContext, layout: Layout, value: unknown, w: Writer) {
   const mark = w.beginSized()
   encodeValue(ctx, layout, value, w)
@@ -1546,12 +1600,7 @@ function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: obj
     const pairs: Array<[Uint8Array, string, ExtraSignature]> = []
     for (const key of Object.keys(obj)) {
       if (named.has(key)) continue
-      const signature = findIndexSignature(
-        layout,
-        key,
-        ctx.options,
-        ctx.indexSignatures ??= new WeakMap()
-      )
+      const signature = (ctx.indexSignatures ??= new IndexSignatureCache()).find(layout, key, ctx.options)
       if (signature === undefined) continue
       pairs.push([utf8Encode.encode(key), key, signature])
     }
@@ -1973,7 +2022,7 @@ function decodeExtraPairs(layout: StructLayout, r: Reader, out: Record<string, u
     }
     const valueLen = r.uvarint()
     const saved = r.enter(valueLen)
-    const signature = findIndexSignature(layout, key, r.options, r.indexSignatures)
+    const signature = r.indexSignatures.find(layout, key, r.options)
     if (signature !== undefined) {
       issuePath[issuePathLen++] = key
       const value = decodeChecked(signature.layout, r)
@@ -2271,11 +2320,19 @@ function decodeFrameBody(layout: Layout, r: Reader): unknown {
   return value
 }
 
+// Reuse the one-shot reader when possible. A nested SchemaBinary decode sees
+// the pool checked out and allocates independent state, then the outer reader
+// is returned even when decoding fails.
+let pooledReader: Reader | undefined = new Reader()
+
 function decodeOneShot(layout: Layout, bytes: Uint8Array, options: SchemaAST.ParseOptions): unknown {
+  const r = pooledReader ?? new Reader()
+  const pooled = r === pooledReader
+  if (pooled) pooledReader = undefined
+  r.reset(bytes, 0, bytes.length, options, new IndexSignatureCache())
   const savedPathLen = issuePathLen
   issuePathLen = 0
   try {
-    const r = new Reader(bytes, 0, bytes.length, options)
     const n = r.uvarint()
     if (n === 0) invalid("nonzero frame length", undefined, options)
     const saved = r.enter(n)
@@ -2285,6 +2342,7 @@ function decodeOneShot(layout: Layout, bytes: Uint8Array, options: SchemaAST.Par
     return value
   } finally {
     issuePathLen = savedPathLen
+    if (pooled) pooledReader = r
   }
 }
 
@@ -2459,6 +2517,8 @@ export function parser<S extends Schema.Constraint>(
   let bufferEnd = 0
   let stashed: Schema.SchemaError | undefined
   let spent = false
+  const body = new Reader()
+  const indexSignatures = new IndexSignatureCache(PARSER_INDEX_SIGNATURE_CACHE_SIZE)
 
   const failSync = (expected: string, input?: unknown): never => {
     throw new Schema.SchemaError(new SchemaIssue.InvalidValue({ expected }, input, parseOptions))
@@ -2503,24 +2563,40 @@ export function parser<S extends Schema.Constraint>(
       }
       while (true) {
         // frame length varint: fewer than 10 bytes without a terminator waits,
-        // 10 continuation bytes is malformed immediately
-        let n = BIGINT_ZERO
+        // 10 continuation bytes is malformed immediately. Common headers that
+        // terminate in fewer than seven groups stay in number arithmetic;
+        // longer valid headers retain the exact bigint path.
+        let frameLen = 0
         let headerLen = -1
         const buffered = bufferEnd - bufferStart
-        for (let i = 0; i < Math.min(10, buffered); i++) {
+        let scale = 1
+        for (let i = 0; i < Math.min(6, buffered); i++) {
           const b = buffer[bufferStart + i]
-          n |= BigInt(b & 0x7F) << BigInt(i * 7)
+          frameLen += (b & 0x7F) * scale
           if ((b & 0x80) === 0) {
             headerLen = i + 1
             break
           }
+          scale *= 128
         }
         if (headerLen === -1) {
-          if (buffered >= 10) return fail("uvarint", buffer.subarray(bufferStart, bufferStart + 10))
-          return out
+          if (buffered < 6) return out
+          let n = BIGINT_ZERO
+          for (let i = 0; i < Math.min(10, buffered); i++) {
+            const b = buffer[bufferStart + i]
+            n |= BigInt(b & 0x7F) << BigInt(i * 7)
+            if ((b & 0x80) === 0) {
+              headerLen = i + 1
+              if (n > MAX_SAFE_BIGINT) return fail("safe integer length", n)
+              frameLen = Number(n)
+              break
+            }
+          }
+          if (headerLen === -1) {
+            if (buffered >= 10) return fail("uvarint", buffer.subarray(bufferStart, bufferStart + 10))
+            return out
+          }
         }
-        if (n > MAX_SAFE_BIGINT) return fail("safe integer length", n)
-        const frameLen = Number(n)
         if (frameLen === 0) return fail("nonzero frame length", frameLen)
         if (maxFrameSize !== undefined && frameLen > maxFrameSize) {
           return fail("frame within maxFrameSize", frameLen)
@@ -2530,7 +2606,7 @@ export function parser<S extends Schema.Constraint>(
         try {
           issuePathLen = 0
           const bodyStart = bufferStart + headerLen
-          const body = new Reader(buffer, bodyStart, bodyStart + frameLen, parseOptions)
+          body.reset(buffer, bodyStart, bodyStart + frameLen, parseOptions, indexSignatures)
           out.push(decodeEncoded(decodeFrameBody(layout, body)))
         } catch (e) {
           spent = true
