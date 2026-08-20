@@ -5,6 +5,13 @@
  * wire, unknown struct fields are skipped, missing optionals decode as
  * absent, and field reorder is compatible.
  *
+ * A `Number` takes whichever of two forms is smaller and the enclosing length
+ * says which: a sign-magnitude varint for integral values, IEEE 754 binary64
+ * otherwise. When the schema proves the value is an integer (`Schema.Int`,
+ * `Schema.Natural`, any `isInt` check) the layout drops the f64 form and emits
+ * a bare varint, so a checked number and an unchecked one are different wire
+ * layouts for the same value.
+ *
  * @since 4.0.0
  */
 import * as BigDecimal from "../../BigDecimal.ts"
@@ -33,12 +40,51 @@ const ENVELOPE = 0x10 // version nibble 1, flags 0
 const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER)
 const BIGINT_ZERO = BigInt(0)
 const BIGINT_ONE = BigInt(1)
+const BIGINT_TWO = BigInt(2)
 const BIGINT_SEVEN = BigInt(7)
 const BIGINT_VARINT_MASK = BigInt(0x7F)
 const BIGINT_NANOS_PER_MILLI = BigInt(1_000_000)
 
 const utf8Encode = new TextEncoder()
 const utf8DecodeFatal = new TextDecoder("utf-8", { fatal: true })
+
+// -----------------------------------------------------------------------------
+// number forms
+// -----------------------------------------------------------------------------
+
+// A general `Number` takes one of two forms and the enclosing length says
+// which: eight bytes are the f64 form, one to seven bytes are the varint form.
+// Capping the varint at seven bytes is what keeps the two apart, and f64 is
+// exact for every integer well past that cap, so nothing is lost above it.
+const NUMBER_VARINT_MAX_BYTES = 7
+
+// Largest magnitude whose sign-magnitude code (`2 * magnitude + sign`) still
+// fits in seven varint bytes, i.e. in 49 bits.
+const NUMBER_VARINT_MAX_MAGNITUDE = 281_474_976_710_655 // 2 ** 48 - 1
+
+// Largest magnitude whose code is still a safe integer; above this the code is
+// built with bigint arithmetic so a schema-proven integer keeps its exact
+// value.
+const EXACT_MAGNITUDE_MAX = 4_503_599_627_370_495 // 2 ** 52 - 1
+
+// A uniform array of general numbers writes one mode byte and then a run in
+// that single form, rather than paying a discriminator per element.
+const NUMBER_RUN_F64 = 0
+const NUMBER_RUN_VARINT = 1
+
+function isVarintNumber(value: unknown): boolean {
+  return typeof value === "number" && Number.isInteger(value) &&
+    value >= -NUMBER_VARINT_MAX_MAGNITUDE && value <= NUMBER_VARINT_MAX_MAGNITUDE
+}
+
+// Sign-magnitude: the low bit is the sign, the rest is the magnitude. Unlike
+// plain zigzag this leaves `-0` a code of its own (`1`), so the varint form
+// covers every integral JavaScript number rather than needing an f64 escape
+// for the one value zigzag cannot express.
+function decodeSignMagnitude(code: number): number {
+  const magnitude = Math.floor(code / 2)
+  return code % 2 === 1 ? -magnitude : magnitude
+}
 
 // -----------------------------------------------------------------------------
 // wire kinds
@@ -48,7 +94,8 @@ const K = {
   bool: 1,
   null: 2,
   undefined: 3,
-  f64: 4,
+  // both number forms, general and schema-proven integer
+  number: 4,
   string: 5,
   bytes: 6,
   bigint: 7,
@@ -260,6 +307,16 @@ class Writer {
   zigzag(n: bigint) {
     this.uvarintBig(n >= BIGINT_ZERO ? n << BIGINT_ONE : (-n << BIGINT_ONE) - BIGINT_ONE)
   }
+  // Sign-magnitude varint of an integral number. See `decodeSignMagnitude`.
+  numberVarint(n: number) {
+    const negative = n < 0 || (n === 0 && 1 / n < 0)
+    const magnitude = negative ? -n : n
+    if (magnitude <= EXACT_MAGNITUDE_MAX) {
+      this.uvarint(magnitude * 2 + (negative ? 1 : 0))
+    } else {
+      this.uvarintBig(BigInt(magnitude) * BIGINT_TWO + (negative ? BIGINT_ONE : BIGINT_ZERO))
+    }
+  }
   f64(n: number) {
     this.ensure(8)
     this.view.setFloat64(this.start + this.len, n, true)
@@ -460,6 +517,34 @@ class Reader {
       shift += BIGINT_SEVEN
     }
   }
+  // Reads a sign-magnitude varint. Seven groups cover every code the capped
+  // general form can produce; only the schema-proven integer layout reaches
+  // further, and those rare codes are re-read through bigint so the magnitude
+  // stays exact.
+  numberVarint(): number {
+    const buf = this.buf
+    const end = this.end
+    let pos = this.pos
+    let value = 0
+    let scale = 1
+    for (let i = 0; i < NUMBER_VARINT_MAX_BYTES; i++) {
+      if (pos >= end) {
+        this.pos = pos
+        invalid("complete value", undefined, this.options)
+      }
+      const b = buf[pos++]
+      value += (b & 0x7F) * scale
+      if (b < 0x80) {
+        this.pos = pos
+        return decodeSignMagnitude(value)
+      }
+      scale *= 128
+    }
+    const code = this.uvarintBig()
+    const magnitude = Number(code >> BIGINT_ONE)
+    if (!Number.isFinite(magnitude)) invalid("safe integer length", undefined, this.options)
+    return (code & BIGINT_ONE) === BIGINT_ONE ? -magnitude : magnitude
+  }
   zigzag(): bigint {
     const u = this.uvarintBig()
     return (u & BIGINT_ONE) === BIGINT_ONE
@@ -500,7 +585,10 @@ type LeafKind =
   | "bool"
   | "null"
   | "undefined"
-  | "f64"
+  // a general number: varint when integral and within the cap, f64 otherwise
+  | "number"
+  // a number the encoded-side schema proves is an integer: always a varint
+  | "int"
   | "string"
   | "symbol"
   | "bytes"
@@ -565,6 +653,9 @@ interface ArrayLayout {
   // True when that uniform slot is written without a length prefix.
   uniformInline: boolean
   uniformPacked: number | undefined
+  // True when the uniform slot is a general number, which is written as one
+  // mode byte followed by a run in a single form.
+  uniformNumbers: boolean
 }
 
 interface VariantRow {
@@ -591,8 +682,9 @@ function kindByte(layout: Layout): number {
       return K.null
     case "undefined":
       return K.undefined
-    case "f64":
-      return K.f64
+    case "number":
+    case "int":
+      return K.number
     case "string":
     case "symbol":
       return K.string
@@ -630,11 +722,16 @@ function kindByte(layout: Layout): number {
   }
 }
 
+// A slot whose encoding delimits itself, so it needs no length prefix even
+// though its width varies.
+function isSelfDelimiting(layout: Layout): boolean {
+  return layout._ === "int"
+}
+
 function packedSize(layout: Layout): number | undefined {
   switch (layout._) {
     case "bool":
       return 1
-    case "f64":
     case "int64":
       return 8
     default:
@@ -777,6 +874,21 @@ function isJsonDeclaration(ast: SchemaAST.Declaration): boolean {
   return Predicate.isFunction(ast.annotations?.toCodecJson)
 }
 
+// True when an encoded-side `Number` carries an `isInt` check, so every value
+// reaching the wire is an integer and the layout can drop the f64 form.
+// `Schema.Int` and `Schema.Natural` are the common spellings; a `FilterGroup`
+// such as `Schema.isInt32()` nests the same check.
+function provesInteger(ast: SchemaAST.AST): boolean {
+  const checks = ast.checks
+  if (checks === undefined) return false
+  const go = (check: SchemaAST.Check<never>): boolean => {
+    const id = check.annotations?.representation?.id
+    if (id === "effect/schema/isInt") return true
+    return check._tag === "FilterGroup" && check.checks.some(go)
+  }
+  return checks.some(go)
+}
+
 function resolveSuspend(ast: SchemaAST.AST): SchemaAST.AST {
   while (ast._tag === "Suspend") {
     ast = ast.thunk()
@@ -813,7 +925,7 @@ function literalKind(literal: SchemaAST.LiteralValue): LeafKind {
     case "string":
       return "string"
     case "number":
-      return "f64"
+      return "number"
     case "boolean":
       return "bool"
     default:
@@ -842,7 +954,7 @@ function astKind(ast: SchemaAST.AST): number {
     case "Void":
       return K.undefined
     case "Number":
-      return K.f64
+      return K.number
     case "BigInt":
       return K.bigint
     case "Literal":
@@ -850,7 +962,7 @@ function astKind(ast: SchemaAST.AST): number {
         case "string":
           return K.string
         case "number":
-          return K.f64
+          return K.number
         case "boolean":
           return K.bool
         default:
@@ -913,7 +1025,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       case "Void":
         return { _: "undefined" }
       case "Number":
-        return { _: "f64" }
+        return provesInteger(ast) ? { _: "int" } : { _: "number" }
       case "BigInt":
         return { _: "bigint" }
       case "Literal":
@@ -1018,7 +1130,8 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       minCount: requiredElements + tailLen,
       uniform: undefined,
       uniformInline: false,
-      uniformPacked: undefined
+      uniformPacked: undefined,
+      uniformNumbers: false
     }
     memo.set(ast, layout)
     for (const element of ast.elements) {
@@ -1034,7 +1147,9 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       const slot = layout.rest[0]
       layout.uniform = slot
       layout.uniformPacked = packedSize(slot)
-      layout.uniformInline = layout.uniformPacked !== undefined || slot._ === "null" || slot._ === "undefined"
+      layout.uniformNumbers = slot._ === "number"
+      layout.uniformInline = layout.uniformPacked !== undefined || isSelfDelimiting(slot) ||
+        slot._ === "null" || slot._ === "undefined"
     }
     return layout
   }
@@ -1230,7 +1345,8 @@ function matchesLayout(layout: Layout, value: unknown): boolean {
       return value === null
     case "undefined":
       return value === undefined
-    case "f64":
+    case "number":
+    case "int":
       return typeof value === "number"
     case "string":
       return typeof value === "string"
@@ -1473,6 +1589,10 @@ function encodeArray(ctx: EncodeContext, layout: ArrayLayout, value: unknown, w:
   // and packing lookups can be hoisted out of the loop.
   const uniform = layout.uniform
   if (uniform !== undefined) {
+    if (layout.uniformNumbers) {
+      encodeNumberRun(arr, count, w)
+      return
+    }
     const inline = layout.uniformInline
     for (let i = 0; i < count; i++) {
       issuePath[issuePathLen++] = i
@@ -1485,12 +1605,34 @@ function encodeArray(ctx: EncodeContext, layout: ArrayLayout, value: unknown, w:
   for (let i = 0; i < count; i++) {
     const slot = arraySlot(layout, i, count)
     issuePath[issuePathLen++] = i
-    if (packedSize(slot) !== undefined || slot._ === "null" || slot._ === "undefined") {
+    if (
+      packedSize(slot) !== undefined || isSelfDelimiting(slot) || slot._ === "null" || slot._ === "undefined"
+    ) {
       encodeValue(ctx, slot, arr[i], w)
     } else {
       encodeSized(ctx, slot, arr[i], w)
     }
     issuePathLen--
+  }
+}
+
+// A run of general numbers pays one mode byte for the whole array instead of a
+// length prefix per element: every element takes the varint form, or every
+// element takes the f64 form.
+function encodeNumberRun(arr: ReadonlyArray<unknown>, count: number, w: Writer) {
+  let varint = true
+  for (let i = 0; i < count; i++) {
+    if (!isVarintNumber(arr[i])) {
+      varint = false
+      break
+    }
+  }
+  if (varint) {
+    w.byte(NUMBER_RUN_VARINT)
+    for (let i = 0; i < count; i++) w.numberVarint(arr[i] as number)
+  } else {
+    w.byte(NUMBER_RUN_F64)
+    for (let i = 0; i < count; i++) w.f64(arr[i] as number)
   }
 }
 
@@ -1525,9 +1667,18 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
     case "null":
     case "undefined":
       return
-    case "f64":
-      w.f64(value as number)
+    case "number":
+      if (isVarintNumber(value)) w.numberVarint(value as number)
+      else w.f64(value as number)
       return
+    case "int": {
+      // The `isInt` check normally rejects a non-integer before the value
+      // reaches this layout; `disableChecks` is the one path that does not,
+      // and a bare varint has no form to fall back to.
+      if (!Number.isSafeInteger(value)) encodeFail("an integer", value, ctx.options)
+      w.numberVarint(value as number)
+      return
+    }
     case "string":
       w.string(value as string)
       return
@@ -1831,6 +1982,15 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
   const uniform = layout.uniform
   if (uniform !== undefined) {
     // `Schema.Array(S)`: one layout for every slot, none of them optional.
+    if (layout.uniformNumbers) return decodeNumberRun(out, count, r)
+    if (isSelfDelimiting(uniform)) {
+      for (let i = 0; i < count; i++) {
+        issuePath[issuePathLen++] = i
+        out[i] = decodeValue(uniform, r)
+        issuePathLen--
+      }
+      return out
+    }
     const packed = layout.uniformPacked
     const inline = layout.uniformInline
     for (let i = 0; i < count; i++) {
@@ -1854,6 +2014,11 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
       throw issueError(new SchemaIssue.MissingKey(undefined))
     }
     issuePath[issuePathLen++] = i
+    if (isSelfDelimiting(slot)) {
+      out[i] = decodeValue(slot, r)
+      issuePathLen--
+      continue
+    }
     const size = packedSize(slot)
     const saved = size !== undefined
       ? r.enter(size)
@@ -1872,6 +2037,23 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
   if (!layout.hasCount && r.pos < r.end) {
     issuePath[issuePathLen++] = elementLen
     throw issueError(new SchemaIssue.UnexpectedKey(layout.ast, undefined, r.options))
+  }
+  return out
+}
+
+// Mirror of `encodeNumberRun`: one mode byte, then a run in that single form.
+function decodeNumberRun(out: Array<unknown>, count: number, r: Reader): Array<unknown> {
+  const mode = r.byte()
+  if (mode === NUMBER_RUN_F64) {
+    if (r.remaining !== count * 8) invalid("f64", undefined, r.options)
+    for (let i = 0; i < count; i++) out[i] = r.f64()
+    return out
+  }
+  if (mode !== NUMBER_RUN_VARINT) invalid("f64", undefined, r.options)
+  for (let i = 0; i < count; i++) {
+    issuePath[issuePathLen++] = i
+    out[i] = r.numberVarint()
+    issuePathLen--
   }
   return out
 }
@@ -1942,9 +2124,15 @@ function decodeValue(layout: Layout, r: Reader): unknown {
     case "undefined":
       if (r.remaining !== 0) invalid("empty", undefined, r.options)
       return undefined
-    case "f64":
-      if (r.remaining !== 8) invalid("f64", undefined, r.options)
-      return r.f64()
+    case "number": {
+      // the enclosing length is the discriminator
+      const len = r.remaining
+      if (len === 8) return r.f64()
+      if (len === 0 || len > NUMBER_VARINT_MAX_BYTES) invalid("f64", undefined, r.options)
+      return r.numberVarint()
+    }
+    case "int":
+      return r.numberVarint()
     case "string":
       return r.readUtf8(r.end - r.pos)
     case "symbol":
