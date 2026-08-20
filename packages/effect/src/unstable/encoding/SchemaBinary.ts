@@ -1,36 +1,10 @@
 /**
- * A layout-compiled compact binary codec derived from the encoded-side Schema
- * AST. The payload is schema-required (not self-describing): both sides
- * compile a wire layout from the same schema, field names never appear on the
- * wire, unknown struct fields are skipped, missing optionals decode as
- * absent, and field reorder is compatible.
+ * A compact binary codec derived from the encoded side of a Schema.
  *
- * A `Number` takes whichever of two forms is smaller and the enclosing length
- * says which: a sign-magnitude varint for integral values, IEEE 754 binary64
- * otherwise. When the schema proves the value is an integer (`Schema.Int`,
- * `Schema.Natural`, any `isInt` check) the layout drops the f64 form and emits
- * a bare varint, so a checked number and an unchecked one are different wire
- * layouts for the same value.
- *
- * The opt-in fingerprint mode (`{ fingerprint: true }`) trades that tolerance
- * for a smaller frame. Every frame carries an 8-byte 64-bit FNV-1a hash of the
- * compiled wire layout; structs are written positionally, with a presence
- * bitmap instead of field ids and no length prefix on fixed-size leaves, and
- * union members are addressed by a canonical index. A reader whose layout
- * hashes differently rejects the frame instead of guessing it, so peers must
- * ship the same schema definition rather than merely a compatible one. The two
- * modes are selected by envelope flag bit 0 and are never interchangeable.
- *
- * Encoded results are views into a shared bump-allocated arena, so an encode
- * hands back borrowed memory rather than an owned buffer; see {@link toCodec}
- * for what that means for the caller.
- *
- * Every failure surfaces as a `SchemaIssue` through the usual `Schema` runners
- * (`SchemaError` on the {@link Parser} surface). Malformed bytes, a truncated
- * frame, an unexpected envelope, and a fingerprint mismatch are all
- * `InvalidValue`; a required field that never arrived is a `MissingKey` under
- * a `Pointer` to its path. Schema-author bugs are different in kind and throw
- * an `Error` while the layout is compiled, not while a value is processed.
+ * The default wire format supports compatible schema evolution. Fingerprint
+ * mode uses positional layouts and rejects mismatches for smaller frames.
+ * Encoded results are arena-backed views; see {@link toCodec} for ownership
+ * details.
  *
  * @since 4.0.0
  */
@@ -55,8 +29,7 @@ import * as SchemaTransformation from "../../SchemaTransformation.ts"
 
 const FIELD_ID_ANNOTATION_KEY = "~effect/encoding/SchemaBinary/fieldId"
 
-// Envelope flags select the wire mode. Bit 0 is the opt-in fingerprint /
-// positional mode; every other bit stays reserved and fails closed.
+// Bit 0 selects fingerprint mode; all other flag bits are reserved.
 const ENVELOPE = 0x10 // version nibble 1, flags 0
 const ENVELOPE_FINGERPRINT = 0x11 // version nibble 1, flag bit 0
 
@@ -74,27 +47,14 @@ const BIGINT_THIRTY_TWO = BigInt(32)
 const utf8Encode = new TextEncoder()
 const utf8DecodeFatal = new TextDecoder("utf-8", { fatal: true })
 
-// -----------------------------------------------------------------------------
-// number forms
-// -----------------------------------------------------------------------------
-
-// A general `Number` takes one of two forms and the enclosing length says
-// which: eight bytes are the f64 form, one to seven bytes are the varint form.
-// Capping the varint at seven bytes is what keeps the two apart, and f64 is
-// exact for every integer well past that cap, so nothing is lost above it.
+// General numbers use up to seven varint bytes or an eight-byte f64.
 const NUMBER_VARINT_MAX_BYTES = 7
 
-// Largest magnitude whose sign-magnitude code (`2 * magnitude + sign`) still
-// fits in seven varint bytes, i.e. in 49 bits.
 const NUMBER_VARINT_MAX_MAGNITUDE = 281_474_976_710_655 // 2 ** 48 - 1
 
-// Largest magnitude whose code is still a safe integer; above this the code is
-// built with bigint arithmetic so a schema-proven integer keeps its exact
-// value.
+// Above this magnitude, build the sign-magnitude code with bigint.
 const EXACT_MAGNITUDE_MAX = 4_503_599_627_370_495 // 2 ** 52 - 1
 
-// A uniform array of general numbers writes one mode byte and then a run in
-// that single form, rather than paying a discriminator per element.
 const NUMBER_RUN_F64 = 0
 const NUMBER_RUN_VARINT = 1
 
@@ -103,24 +63,16 @@ function isVarintNumber(value: unknown): boolean {
     value >= -NUMBER_VARINT_MAX_MAGNITUDE && value <= NUMBER_VARINT_MAX_MAGNITUDE
 }
 
-// Sign-magnitude: the low bit is the sign, the rest is the magnitude. Unlike
-// plain zigzag this leaves `-0` a code of its own (`1`), so the varint form
-// covers every integral JavaScript number rather than needing an f64 escape
-// for the one value zigzag cannot express.
+// Sign-magnitude preserves `-0`, unlike zigzag.
 function decodeSignMagnitude(code: number): number {
   const magnitude = Math.floor(code / 2)
   return code % 2 === 1 ? -magnitude : magnitude
 }
 
-// -----------------------------------------------------------------------------
-// wire kinds
-// -----------------------------------------------------------------------------
-
 const K = {
   bool: 1,
   null: 2,
   undefined: 3,
-  // both number forms, general and schema-proven integer
   number: 4,
   string: 5,
   bytes: 6,
@@ -139,10 +91,6 @@ const K = {
   cause: 19,
   causeReason: 20
 } as const
-
-// -----------------------------------------------------------------------------
-// primitives
-// -----------------------------------------------------------------------------
 
 function fnv32(bytes: ArrayLike<number>): number {
   let hash = 0x811C9DC5
@@ -164,8 +112,6 @@ function fnv64(bytes: ArrayLike<number>): bigint {
   return hash
 }
 
-// Both hashes fold a byte sequence, so the sequence is built in a plain array
-// first and hashed once. These are the only encoders that feed them.
 function pushBytes(out: Array<number>, bytes: ArrayLike<number>) {
   for (let i = 0; i < bytes.length; i++) out.push(bytes[i])
 }
@@ -208,10 +154,7 @@ function invalid(expected: string, input?: unknown, options?: SchemaAST.ParseOpt
   throw issueError(new SchemaIssue.InvalidValue({ expected }, input, options))
 }
 
-// Ambient path of the field or index currently being processed. Pushing a key
-// costs one array store, where wrapping every field in a closure plus try/catch
-// cost an allocation per field. The path is only materialised when an issue is
-// actually raised.
+// Materialize the ambient path only when raising an issue.
 const issuePath: Array<PropertyKey> = []
 let issuePathLen = 0
 
@@ -241,13 +184,9 @@ function uvarintSize(n: number): number {
   return size
 }
 
-// `TextDecoder.decode` has a fixed per-call cost, and the `subarray` view it
-// needs costs another allocation. Below this length, building the string from
-// char codes is measurably cheaper; above it the decoder wins again.
+// Avoid TextDecoder's fixed cost for short strings.
 const UTF8_INLINE_LIMIT = 32
 
-// Decodes an ASCII run without allocating a view. Non-ASCII input and longer
-// runs fall through to the platform decoder.
 function decodeUtf8(
   buf: Uint8Array,
   start: number,
@@ -281,12 +220,7 @@ function decodeUtf8(
 
 const OUTPUT_ARENA_SIZE = 8 * 1024
 
-// Parser cache entries are derived from wire keys, so this is a hard bound on
-// attacker-controlled state retained across feed calls. Once full, the cache
-// admits at most one FIFO replacement per frame. Repeated frames wider than
-// the cache therefore keep their existing hits instead of cycling every entry.
-// One replacement still adapts to gradual key changes without making churn
-// scale with either frame width or cache capacity.
+// Bound attacker-controlled keys retained between parser feeds.
 const PARSER_INDEX_SIGNATURE_CACHE_SIZE = 256
 
 interface OutputArena {
@@ -309,9 +243,7 @@ class Writer {
   len = 0
   reset() {
     let arena = outputArena
-    // A nested SchemaBinary codec can start while the outer writer still owns
-    // the current arena tail. Move the nested writer to a fresh arena rather
-    // than reserving a guessed range that the outer writer could outgrow.
+    // Nested codecs cannot share the active arena tail.
     if (arena.writing || arena.offset >= arena.buf.length) {
       arena = outputArena = makeOutputArena(OUTPUT_ARENA_SIZE)
     }
@@ -358,8 +290,6 @@ class Writer {
     buf[p++] = n
     this.len = p - this.start
   }
-  // Field ids are fixed by the layout, so their varint bytes are encoded once
-  // at compile time and blitted here.
   raw(bytes: Uint8Array) {
     this.ensure(bytes.length)
     const buf = this.buf
@@ -377,7 +307,6 @@ class Writer {
   zigzag(n: bigint) {
     this.uvarintBig(n >= BIGINT_ZERO ? n << BIGINT_ONE : (-n << BIGINT_ONE) - BIGINT_ONE)
   }
-  // Sign-magnitude varint of an integral number. See `decodeSignMagnitude`.
   numberVarint(n: number) {
     const negative = n < 0 || (n === 0 && 1 / n < 0)
     const magnitude = negative ? -n : n
@@ -407,9 +336,7 @@ class Writer {
     this.view.setInt32(this.start + this.len, n | 0, true)
     this.len += 4
   }
-  // Reserves one byte for a length prefix that is not known yet. The payload is
-  // written straight into this buffer and `endSized` backfills the prefix,
-  // removing the scratch buffer and the copy a nested encode needed before.
+  // Reserve one byte, then expand and backfill the length prefix if needed.
   beginSized(): number {
     this.ensure(1)
     return this.len++
@@ -467,13 +394,8 @@ class Writer {
   }
 }
 
-// Index-signature *keys* are matched by running the parameter schema, and a
-// key no signature accepts is dropped rather than rejected. That is the one
-// seam where the two guarantees pull against each other: a key predicate is a
-// check, and checks never reach the wire or the fingerprint, so a reader
-// cannot tell "the writer sent a key I filter out" from "the writer used a
-// different schema". Field ids and union members, which the layout does
-// describe, still fail the frame. Both wire modes behave the same way here.
+// Index-signature predicates are not part of the fingerprint, so unmatched
+// keys are dropped in both modes.
 function matchIndexSignature(
   layout: StructLayout,
   key: string,
@@ -490,9 +412,7 @@ class IndexSignatureCache {
   size = 0
   next = 0
   replace = false
-  // A cache without a capacity is unbounded and must not outlive one top-level
-  // encode or decode; the parser is the only caller that keeps one across
-  // frames, and it always passes `PARSER_INDEX_SIGNATURE_CACHE_SIZE`.
+  // Only the parser cache outlives one operation, and it is always bounded.
   constructor(options: SchemaAST.ParseOptions, capacity?: number) {
     this.options = options
     this.orderLayouts = capacity === undefined ? undefined : new Array(capacity)
@@ -511,7 +431,6 @@ class IndexSignatureCache {
     const signature = matchIndexSignature(layout, key, this.options)
     const orderLayouts = this.orderLayouts
     if (orderLayouts === undefined) {
-      // This unbounded form only lives for one top-level encode or decode.
       entries.set(key, signature)
       return signature
     }
@@ -542,11 +461,7 @@ class IndexSignatureCache {
   }
 }
 
-// Both placeholders read the same named `ArrayBuffer` rather than reaching
-// through `EMPTY_READER_BUFFER.buffer`. A member access in argument position
-// defeats the `@__PURE__` annotation the build adds, which pinned this pair
-// into the bundle of every consumer that imports the encoding barrel without
-// ever touching this module.
+// A named buffer preserves the build's pure annotation for these placeholders.
 const EMPTY_READER_ARRAY_BUFFER = new ArrayBuffer(0)
 const EMPTY_READER_BUFFER = new Uint8Array(EMPTY_READER_ARRAY_BUFFER)
 const EMPTY_READER_VIEW = new DataView(EMPTY_READER_ARRAY_BUFFER)
@@ -603,9 +518,7 @@ class Reader {
     this.pos += n
     return out
   }
-  // Narrows this reader to the next `len` bytes and returns the previous
-  // extent. Restoring it with `exit` is equivalent to decoding through a child
-  // reader, without allocating one per field.
+  // Decode a bounded child value without allocating another reader.
   enter(len: number): number {
     if (this.pos + len > this.end) invalid("complete value", undefined, this.options)
     const saved = this.end
@@ -622,9 +535,7 @@ class Reader {
     this.pos += n
     return decodeUtf8(this.buf, start, start + n, this.options)
   }
-  // Field ids are 32-bit hashes, so five-byte varints are the common case
-  // rather than the exception. The first four groups fit in a signed 32-bit
-  // int and use shifts; only the rare wider groups need multiplication.
+  // Use bitwise arithmetic for the first four varint groups.
   uvarint(): number {
     const buf = this.buf
     const end = this.end
@@ -689,10 +600,7 @@ class Reader {
       shift += BIGINT_SEVEN
     }
   }
-  // Reads a sign-magnitude varint. Seven groups cover every code the capped
-  // general form can produce; only the schema-proven integer layout reaches
-  // further, and those rare codes are re-read through bigint so the magnitude
-  // stays exact.
+  // Wider schema-proven integers switch to bigint arithmetic.
   numberVarint(): number {
     const buf = this.buf
     const end = this.end
@@ -749,17 +657,11 @@ class Reader {
   }
 }
 
-// -----------------------------------------------------------------------------
-// layouts
-// -----------------------------------------------------------------------------
-
 type LeafKind =
   | "bool"
   | "null"
   | "undefined"
-  // a general number: varint when integral and within the cap, f64 otherwise
   | "number"
-  // a number the encoded-side schema proves is an integer: always a varint
   | "int"
   | "string"
   | "symbol"
@@ -782,9 +684,6 @@ type Layout =
   | { readonly _: "exit"; value: Layout; cause: ReasonLayout }
   | ReasonLayout
 
-// A `Cause` and a bare `CauseReason` write the same two children, and an
-// `Exit` failure is a `Cause`, so all three share one compiled node instead of
-// rebuilding it per value.
 interface ReasonLayout {
   readonly _: "cause" | "causeReason"
   error: Layout
@@ -799,7 +698,6 @@ interface Field {
   readonly optional: boolean
   readonly annotations: Schema.Annotations.Key<unknown> | undefined
   layout: Layout
-  // fingerprint mode: true when the field is written without a length prefix
   inline: boolean
 }
 
@@ -815,7 +713,6 @@ interface StructLayout {
   readonly byId: Map<number, Field>
   readonly extra: Array<ExtraSignature>
   readonly names: Set<string>
-  // fingerprint mode: one presence bit per optional field, in field order
   optionalCount: number
 }
 
@@ -831,14 +728,10 @@ interface ArrayLayout {
   readonly rest: Array<Layout>
   readonly hasCount: boolean
   readonly minCount: number
-  // Set when every slot shares one layout (`Schema.Array(S)`), which lets the
-  // encode and decode loops skip the per-index slot lookup.
+  // Shared layout for `Schema.Array(S)`.
   uniform: Layout | undefined
-  // True when that uniform slot is written without a length prefix.
   uniformInline: boolean
   uniformPacked: number | undefined
-  // True when the uniform slot is a general number, which is written as one
-  // mode byte followed by a run in a single form.
   uniformNumbers: boolean
 }
 
@@ -847,20 +740,15 @@ interface VariantRow {
   readonly sentinels: ReadonlyArray<SchemaAST.Sentinel>
   readonly tuple: boolean
   payload: Layout
-  // fingerprint mode: index into `byPos`
   position: number
 }
 
 interface UnionMember {
   readonly kind: number
   readonly layout: Layout
-  // fingerprint mode: index into `byPos`
   position: number
 }
 
-// A row of the canonical member order fingerprint mode writes as a varint.
-// `variant` is set for sentinel-discriminated members, whose sentinel
-// properties decode restores.
 interface UnionPosition {
   readonly variant: VariantRow | undefined
   readonly layout: Layout
@@ -873,13 +761,10 @@ interface UnionLayout {
   readonly byTag: Map<number, VariantRow>
   readonly others: Array<UnionMember>
   readonly byKind: Map<number, Layout>
-  // fingerprint mode: variants by ascending tag, then the remaining members by
-  // ascending kind, so declaration order never reaches the wire.
+  // Canonical order used by fingerprint mode.
   readonly byPos: Array<UnionPosition>
 }
 
-// A slot whose encoding delimits itself, so it needs no length prefix even
-// though its width varies.
 function isSelfDelimiting(layout: Layout): boolean {
   return layout._ === "int"
 }
@@ -895,17 +780,10 @@ function packedSize(layout: Layout): number | undefined {
   }
 }
 
-// A slot the layout alone can delimit, so no length prefix is written: a
-// fixed-size leaf, a zero-width leaf, or a self-delimiting varint.
 function isInlineSlot(layout: Layout): boolean {
   return packedSize(layout) !== undefined || isSelfDelimiting(layout) ||
     layout._ === "null" || layout._ === "undefined"
 }
-
-// -----------------------------------------------------------------------------
-// declaration rewrite: attach `toCodecJson ?? toCodec` links to non-native
-// declarations so the existing Schema machinery runs them at encode/decode time
-// -----------------------------------------------------------------------------
 
 const nativeKinds: Record<string, number> = {
   "effect/schema/Date": K.int64,
@@ -966,10 +844,6 @@ function toBinaryASTStep(ast: SchemaAST.AST): SchemaAST.AST {
   }
 }
 
-// -----------------------------------------------------------------------------
-// layout compile (encoded-side AST -> layout)
-// -----------------------------------------------------------------------------
-
 function sentinelSetHash(sentinels: ReadonlyArray<SchemaAST.Sentinel>): number {
   const sorted = [...sentinels].sort((a, b) => {
     const an = typeof a.key === "number"
@@ -993,8 +867,6 @@ function sentinelSetHash(sentinels: ReadonlyArray<SchemaAST.Sentinel>): number {
   return fnv32(out)
 }
 
-// Distinguishes literals that share a string form, so `1` and `"1"` cannot
-// collide into one sentinel tag.
 function sentinelLiteralKind(literal: SchemaAST.LiteralValue | symbol): number {
   switch (typeof literal) {
     case "string":
@@ -1035,14 +907,10 @@ function parameterHasSymbol(parameter: SchemaAST.AST): boolean {
 function isJsonDeclaration(ast: SchemaAST.Declaration): boolean {
   const id = representationId(ast)
   if (id === "effect/schema/Json" || id === "effect/schema/MutableJson") return true
-  // `toCodecJson` returning `undefined` means the encoded value is already JSON
   return Predicate.isFunction(ast.annotations?.toCodecJson)
 }
 
-// True when an encoded-side `Number` carries an `isInt` check, so every value
-// reaching the wire is an integer and the layout can drop the f64 form.
-// `Schema.Int` and `Schema.Natural` are the common spellings; a `FilterGroup`
-// such as `Schema.isInt32()` nests the same check.
+// Detect integer checks nested inside filter groups.
 function provesInteger(ast: SchemaAST.AST): boolean {
   const checks = ast.checks
   if (checks === undefined) return false
@@ -1098,8 +966,7 @@ function literalKind(literal: SchemaAST.LiteralValue): LeafKind {
   }
 }
 
-// wire kind of an encoded-side AST node, used to classify union members
-// without compiling them (so recursive members stay lazy)
+// Classify union members without eagerly compiling recursive members.
 function astKind(ast: SchemaAST.AST): number {
   switch (ast._tag) {
     case "String":
@@ -1156,9 +1023,6 @@ function astKind(ast: SchemaAST.AST): number {
 
 interface CompiledLayout {
   readonly layout: Layout
-  // True when the encoded AST contains a `Suspend`, i.e. the schema is
-  // recursive and a cyclic value could drive the parser into unbounded
-  // recursion. Non-recursive schemas have bounded depth by construction.
   readonly recursive: boolean
 }
 
@@ -1275,8 +1139,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
     for (let i = 0; i < fields.length; i++) {
       const field = fields[i]
       field.layout = compile(types[i])
-      // A recursive field sees a partially filled placeholder here, but its
-      // discriminant is set at construction, which is all inlining depends on.
+      // Recursive placeholders already have the discriminant used here.
       field.inline = isInlineSlot(field.layout)
       if (field.optional) layout.optionalCount++
       layout.byId.set(field.id, field)
@@ -1426,7 +1289,6 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       }
       rowMembers.push({ member, kind: astKind(member) })
     }
-    // in-band: only literal members that share one wire kind
     if (variantMembers.length === 0 && rowMembers.length === 0 && literalRows.size === 1) {
       return literalRows.values().next().value!
     }
@@ -1437,7 +1299,6 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       }
       kinds.add(kind)
     }
-    // single untagged member unwraps
     if (variantMembers.length === 0 && literalRows.size === 0 && rowMembers.length === 1) {
       const layout = compile(rowMembers[0].member)
       memo.set(ast, layout)
@@ -1497,8 +1358,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       layout.others.push({ kind, layout: row, position: 0 })
       layout.byKind.set(kind, row)
     }
-    // Fingerprint mode addresses members by position, so that order is derived
-    // from tags and kinds rather than from how the union was written.
+    // Fingerprint positions are independent of declaration order.
     for (const row of [...layout.variants].sort((a, b) => a.tag - b.tag)) {
       row.position = layout.byPos.length
       layout.byPos.push({ variant: row, layout: row.payload })
@@ -1507,8 +1367,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       member.position = layout.byPos.length
       layout.byPos.push({ variant: undefined, layout: member.layout })
     }
-    // Encode probes members in match order: specific runtime guards first,
-    // `json` (which matches anything) last.
+    // Probe specific runtime guards before `json`, which matches anything.
     layout.others.sort((a, b) => matchRank(a.layout) - matchRank(b.layout))
     return layout
   }
@@ -1517,14 +1376,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
   return { layout, recursive }
 }
 
-// -----------------------------------------------------------------------------
-// layout fingerprint
-// -----------------------------------------------------------------------------
-
-// Structural tags for the fingerprint walk. They are deliberately separate
-// from the wire kinds `K`, because layouts that share a wire kind can still
-// differ on the wire or in the value they produce (`number` vs `int`,
-// `string` vs `symbol`, `Date` vs `DateTimeUtc`).
+// Layouts sharing a wire kind can still require different fingerprints.
 const F = {
   backEdge: 0,
   bool: 1,
@@ -1553,33 +1405,11 @@ const F = {
   causeReason: 24
 } as const
 
-/**
- * Hashes the compiled layout graph with 64-bit FNV-1a.
- *
- * The hash is a Merkle walk: every node mixes its own structure plus the
- * 64-bit hash of each child. Field and property names, checks, and annotations
- * are never mixed in; field ids, optionality, wire kinds, variant tags, and
- * array shape are. Cycles terminate on a back edge carrying the number of
- * levels back to the repeated node, so the hash does not depend on where a
- * given cycle is entered, and an acyclic sub-layout hashes the same whether it
- * is a shared compiled node or written out twice.
- *
- * What this hashes is the compiled layout *graph*, not the infinite wire shape
- * that graph denotes. Those coincide for acyclic layouts. They do not once a
- * cycle is involved: the same unfolding has many finite cyclic representations
- * and each encodes differently, so a self-recursive `Tree` and the same schema
- * with one extra non-recursive node in front of the cycle produce identical
- * frames but different hashes and reject each other. Closing that gap needs
- * bisimulation minimisation over the layout graph, which is a lot of machinery
- * for a case that already fails closed. Peers must ship the same schema
- * definition, not merely the same wire shape.
- */
+// Hash the compiled layout graph, including cycle back-edge distances.
 function layoutFingerprint(root: Layout): bigint {
   const cache = new Map<Layout, bigint>()
   const stack: Array<Layout> = []
-  // Shallowest stack index the subtree currently being hashed reached back to.
-  // A subtree that never reached above its own root is a closed unit, so its
-  // hash can be reused wherever that layout appears.
+  // Cache only subtrees that do not escape above their own root.
   let escape = Number.MAX_SAFE_INTEGER
 
   function go(layout: Layout): bigint {
@@ -1692,13 +1522,6 @@ function layoutFingerprint(root: Layout): bigint {
   return go(root)
 }
 
-// -----------------------------------------------------------------------------
-// wire modes
-// -----------------------------------------------------------------------------
-
-// A codec speaks exactly one wire mode. The default mode carries field ids and
-// tolerates unknown fields and members; fingerprint mode drops both in favour
-// of a per-frame layout hash that fails closed on any mismatch.
 interface Mode {
   readonly positional: boolean
   readonly envelope: number
@@ -1788,10 +1611,6 @@ function matchesLayout(layout: Layout, value: unknown): boolean {
   }
 }
 
-// -----------------------------------------------------------------------------
-// encode
-// -----------------------------------------------------------------------------
-
 interface EncodeContext {
   readonly options: SchemaAST.ParseOptions
   readonly positional: boolean
@@ -1804,8 +1623,6 @@ function encodeFail(expected: string, input: unknown, options: SchemaAST.ParseOp
 
 function isCyclic(value: unknown, stack = new Set<object>()): boolean {
   if (!Predicate.isObjectOrArray(value)) return false
-  // Plain objects and arrays cannot be any of the branded types below, so they
-  // skip every tag probe and walk their own keys directly.
   const isArray = Array.isArray(value)
   const prototype = Object.getPrototypeOf(value)
   if (isArray || prototype === Object.prototype || prototype === null) {
@@ -1923,8 +1740,7 @@ function encodeReason(ctx: EncodeContext, layout: ReasonLayout, value: unknown, 
 
 type ExtraPair = [keyBytes: Uint8Array, key: string, signature: ExtraSignature]
 
-// Extra keys sorted by raw UTF-8, so a record encodes the same bytes whatever
-// order its keys were inserted in.
+// Sort extra keys by raw UTF-8 for deterministic output.
 function extraPairs(ctx: EncodeContext, layout: StructLayout, obj: Record<string, unknown>): Array<ExtraPair> {
   const named = layout.names
   const pairs: Array<ExtraPair> = []
@@ -1938,8 +1754,6 @@ function extraPairs(ctx: EncodeContext, layout: StructLayout, obj: Record<string
   return pairs
 }
 
-// The pairs themselves are written identically in both modes; only the framing
-// around them differs, so the loop is shared and the framing is not.
 function encodeExtraPairs(
   ctx: EncodeContext,
   pairs: Array<ExtraPair>,
@@ -1960,7 +1774,6 @@ function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: obj
   if (layout.extra.length > 0) {
     const pairs = extraPairs(ctx, layout, obj)
     if (pairs.length > 0) {
-      // reserved id 0 introduces the extra-key block
       w.uvarint(0)
       const mark = w.beginSized()
       encodeExtraPairs(ctx, pairs, obj, w)
@@ -1983,10 +1796,7 @@ function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: obj
   }
 }
 
-// Fingerprint mode struct: both sides compiled the same layout, so a field
-// needs neither an id nor a length the layout already implies. Optional fields
-// announce themselves in a leading bitmap, one bit per optional field in field
-// order, and extra keys follow the named fields behind their own count.
+// Fingerprint structs use a presence bitmap followed by positional fields.
 function encodeStructPositional(ctx: EncodeContext, layout: StructLayout, value: object, w: Writer) {
   const obj = value as Record<string, unknown>
   const bitmapBytes = (layout.optionalCount + 7) >> 3
@@ -2002,8 +1812,7 @@ function encodeStructPositional(ctx: EncodeContext, layout: StructLayout, value:
     const name = field.name
     const present = Object.hasOwn(obj, name)
     if (field.optional) {
-      // `w.buf` and `w.start` move when the arena grows, so the bitmap byte is
-      // addressed from the current base every time.
+      // Resolve the bitmap address again after any arena growth.
       if (present) w.buf[w.start + bitmap + (optionalIndex >> 3)] |= 1 << (optionalIndex & 7)
       optionalIndex++
       if (!present) continue
@@ -2045,8 +1854,6 @@ function encodeArray(ctx: EncodeContext, layout: ArrayLayout, value: unknown, w:
     throw issueError(new SchemaIssue.MissingKey(undefined))
   }
   if (layout.hasCount) w.uvarint(count)
-  // `Schema.Array(S)` gives every slot the same layout, so the per-index slot
-  // and packing lookups can be hoisted out of the loop.
   const uniform = layout.uniform
   if (uniform !== undefined) {
     if (layout.uniformNumbers) {
@@ -2074,9 +1881,7 @@ function encodeArray(ctx: EncodeContext, layout: ArrayLayout, value: unknown, w:
   }
 }
 
-// A run of general numbers pays one mode byte for the whole array instead of a
-// length prefix per element: every element takes the varint form, or every
-// element takes the f64 form.
+// Uniform number arrays share one varint-or-f64 mode byte.
 function encodeNumberRun(arr: ReadonlyArray<unknown>, count: number, w: Writer) {
   let varint = true
   for (let i = 0; i < count; i++) {
@@ -2101,10 +1906,6 @@ function matchesVariant(variant: VariantRow, value: unknown): boolean {
       variant.sentinels.every((s) => (value as Record<PropertyKey, unknown>)[s.key] === s.literal)
 }
 
-// Both modes pick the member the same way; they differ only in the selector
-// they write for it. The default mode writes a kind byte plus, for a
-// sentinel-discriminated member, its 32-bit tag. Fingerprint mode writes one
-// varint index into the canonical member order, which both sides share.
 function encodeUnion(ctx: EncodeContext, layout: UnionLayout, value: unknown, w: Writer) {
   for (const variant of layout.variants) {
     if (matchesVariant(variant, value)) {
@@ -2142,9 +1943,7 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       else w.f64(value as number)
       return
     case "int": {
-      // The `isInt` check normally rejects a non-integer before the value
-      // reaches this layout; `disableChecks` is the one path that does not,
-      // and a bare varint has no form to fall back to.
+      // `disableChecks` can bypass the integer check used to select this layout.
       if (!Number.isSafeInteger(value)) encodeFail("an integer", value, ctx.options)
       w.numberVarint(value as number)
       return
@@ -2282,9 +2081,7 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
   }
 }
 
-// One writer is reused across top-level encodes so the buffer keeps its
-// high-water mark instead of regrowing from scratch every call. A nested codec
-// (an inner `toCodec` used as a `Uint8Array` field) simply allocates its own.
+// Reuse one top-level writer while allowing nested codecs to allocate their own.
 let pooledWriter: Writer | undefined = new Writer()
 
 function encodeFrame(
@@ -2321,12 +2118,7 @@ function encodeFrame(
   }
 }
 
-// -----------------------------------------------------------------------------
-// decode
-// -----------------------------------------------------------------------------
-
-// unknown union member skipped; only a struct field or a top-level union may
-// resolve to "absent"
+// Unknown union members resolve to this sentinel.
 const ABSENT = globalThis.Symbol.for("~effect/encoding/SchemaBinary/absent")
 
 function decodeChecked(layout: Layout, r: Reader): unknown {
@@ -2335,8 +2127,6 @@ function decodeChecked(layout: Layout, r: Reader): unknown {
   return value
 }
 
-// Mirror of `encodeSized`: a uvarint length introduces a window the value must
-// consume exactly.
 function decodeSized(layout: Layout, r: Reader): unknown {
   const saved = r.enter(r.uvarint())
   const value = decodeChecked(layout, r)
@@ -2344,9 +2134,6 @@ function decodeSized(layout: Layout, r: Reader): unknown {
   return value
 }
 
-// Mirror of `isInlineSlot`: the layout alone delimits the slot, so there is no
-// length prefix on the wire. A self-delimiting varint reads itself; everything
-// else is a fixed-size leaf or a zero-width `null` / `undefined`.
 function decodeInline(layout: Layout, r: Reader): unknown {
   if (isSelfDelimiting(layout)) return decodeValue(layout, r)
   const saved = r.enter(packedSize(layout) ?? 0)
@@ -2355,10 +2142,6 @@ function decodeInline(layout: Layout, r: Reader): unknown {
   return value
 }
 
-// `decodeInline` and `decodeSized` under one decision. `decodeStructPositional`
-// does not need this: its fields carry `inline`, computed at compile time. A
-// tuple slot has no such flag, so asking `isInlineSlot` and then letting
-// `decodeInline` re-derive the same answer would classify every element twice.
 function decodeSlot(layout: Layout, r: Reader): unknown {
   if (isSelfDelimiting(layout)) return decodeValue(layout, r)
   const size = packedSize(layout)
@@ -2370,15 +2153,11 @@ function decodeSlot(layout: Layout, r: Reader): unknown {
   return value
 }
 
-// One extra key/value pair. Both wire modes read pairs the same way and differ
-// only in what bounds the loop, so the bound stays with each caller.
 function decodeExtraPair(layout: StructLayout, r: Reader, out: Record<string, unknown>, seen: Set<string>) {
   const key = r.readUtf8(r.uvarint())
   if (seen.has(key)) invalid("unique extra keys", undefined, r.options)
   seen.add(key)
   const saved = r.enter(r.uvarint())
-  // A key no index signature accepts is dropped rather than rejected; see
-  // `matchIndexSignature`.
   const signature = r.indexSignatures!.find(layout, key)
   if (signature !== undefined) {
     issuePath[issuePathLen++] = key
@@ -2389,16 +2168,10 @@ function decodeExtraPair(layout: StructLayout, r: Reader, out: Record<string, un
   r.exit(saved)
 }
 
-// Both wire modes report a missing required field the same way: one
-// `MissingKey` under a `Pointer` to its name. The call sites accumulate them
-// and `throwMissingKeys` wraps the batch in a `Composite`; only
-// `errors: "all"` decides whether the first one stops the decode.
 function missingKeyIssue(field: Field): SchemaIssue.Issue {
   return new SchemaIssue.Pointer([field.name], new SchemaIssue.MissingKey(field.annotations))
 }
 
-// Callers guard on `issues !== undefined` themselves: every struct decode runs
-// that check and only a failing one runs this.
 function throwMissingKeys(layout: StructLayout, issues: Array<SchemaIssue.Issue>): never {
   throw issueError(
     new SchemaIssue.Composite(layout.ast, issues as [SchemaIssue.Issue, ...Array<SchemaIssue.Issue>])
@@ -2407,20 +2180,14 @@ function throwMissingKeys(layout: StructLayout, issues: Array<SchemaIssue.Issue>
 
 function decodeStruct(layout: StructLayout, r: Reader): unknown {
   const out: Record<string, unknown> = {}
-  // Duplicate-id detection without allocating a Set per value: known fields are
-  // tracked in a 32-bit mask, and the rarer wide-struct and unknown-id cases
-  // fall back to sets that are only created when they are actually needed.
+  // Use bitmasks for common structs and allocate sets only when needed.
   let seenMask = 0
-  // A known union may decode to ABSENT, so presence cannot reuse the duplicate
-  // mask: an absent first copy must not make a repeated id legal.
   let presentMask = 0
   let seenWide: Set<number> | undefined
   let presentWide: Set<number> | undefined
   let seenUnknown: Set<number> | undefined
   let seenExtra = false
-  // Encoders emit fields in ascending id order, so walking a cursor over the
-  // sorted field list turns the per-field lookup into one integer compare.
-  // Reordered or unknown ids fall back to the map.
+  // Fast-path fields in encoder order and fall back to the id map.
   const fields = layout.fields
   let cursor = 0
   while (r.pos < r.end) {
@@ -2484,9 +2251,6 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
   return out
 }
 
-// Mirror of `encodeStructPositional`. Field order is the layout, so there is
-// no id to read, no cursor to advance, and no duplicate-id bookkeeping; a
-// field is either announced by the presence bitmap or unconditionally there.
 function decodeStructPositional(layout: StructLayout, r: Reader): unknown {
   const out: Record<string, unknown> = {}
   const bitmapBytes = (layout.optionalCount + 7) >> 3
@@ -2510,8 +2274,6 @@ function decodeStructPositional(layout: StructLayout, r: Reader): unknown {
     issuePath[issuePathLen++] = field.name
     const value = field.inline ? decodeInline(field.layout, r) : decodeSized(field.layout, r)
     issuePathLen--
-    // Only a newer writer's unknown `CauseReason` tag reaches this, since
-    // fingerprint mode has no unknown fields or union members.
     if (value !== ABSENT) out[field.name] = value
     else if (!field.optional) {
       ;(issues ??= []).push(missingKeyIssue(field))
@@ -2538,8 +2300,7 @@ function decodeExtraPairs(layout: StructLayout, r: Reader, out: Record<string, u
 function decodeArray(layout: ArrayLayout, r: Reader): unknown {
   const elementLen = layout.elements.length
   const count = layout.hasCount ? r.uvarint() : elementLen
-  // Counts normally pay for at least one byte per slot. Zero-width null and
-  // undefined slots are the exception, so cap their amplification explicitly.
+  // Cap allocation amplification from zero-width slots.
   if (layout.hasCount && count > r.remaining + 1_048_576) {
     invalid("array count within allocation limit", count, r.options)
   }
@@ -2554,10 +2315,6 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
   const out: Array<unknown> = new Array(count)
   const uniform = layout.uniform
   if (uniform !== undefined) {
-    // `Schema.Array(S)`: one layout for every slot, none of them optional, so
-    // the slot lookup and the length rule are settled once here instead of per
-    // element as the tuple path below has to. That is why this stays separate
-    // from `decodeInline` / `decodeSized`.
     if (layout.uniformNumbers) return decodeNumberRun(out, count, r)
     if (isSelfDelimiting(uniform)) {
       for (let i = 0; i < count; i++) {
@@ -2603,7 +2360,6 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
   return out
 }
 
-// Mirror of `encodeNumberRun`: one mode byte, then a run in that single form.
 function decodeNumberRun(out: Array<unknown>, count: number, r: Reader): Array<unknown> {
   const mode = r.byte()
   if (mode === NUMBER_RUN_F64) {
@@ -2646,11 +2402,7 @@ function decodeUnion(layout: UnionLayout, r: Reader): unknown {
   return decodeChecked(member, r)
 }
 
-// The decode halves stay separate, unlike `encodeUnion`. The default mode
-// skips a member it does not know and resolves to absent; fingerprint mode has
-// no unknown members, so an index outside the table means the frame does not
-// match the layout its fingerprint claimed and the frame fails. Folding the
-// two together would put that fail-closed rule behind a flag.
+// Fingerprint mode rejects selectors outside its canonical member table.
 function decodeUnionPositional(layout: UnionLayout, r: Reader): unknown {
   const position = layout.byPos[r.uvarint()]
   if (position === undefined) invalid("known union member", undefined, r.options)
@@ -2679,7 +2431,6 @@ function decodeReason(layout: ReasonLayout, r: Reader): unknown {
       return Cause.makeInterruptReason(r.f64())
     }
     default:
-      // an unknown reason tag was added by a newer writer
       r.take(r.remaining)
       return ABSENT
   }
@@ -2705,7 +2456,6 @@ function decodeValue(layout: Layout, r: Reader): unknown {
       if (r.remaining !== 0) invalid("empty", undefined, r.options)
       return undefined
     case "number": {
-      // the enclosing length is the discriminator
       const len = r.remaining
       if (len === 8) return r.f64()
       if (len === 0 || len > NUMBER_VARINT_MAX_BYTES) invalid("f64", undefined, r.options)
@@ -2802,7 +2552,6 @@ function decodeValue(layout: Layout, r: Reader): unknown {
         const reason = decodeReason(layout, r)
         r.exit(saved)
         issuePathLen--
-        // unknown reason tags from newer writers are dropped
         if (reason !== ABSENT) reasons.push(reason as Cause.Reason<unknown>)
       }
       if (r.pos !== r.end) invalid("no leftover bytes", undefined, r.options)
@@ -2835,9 +2584,7 @@ function decodeFrameBody(layout: Layout, r: Reader, mode: Mode): unknown {
   return value
 }
 
-// Reuse the one-shot reader when possible. A nested SchemaBinary decode sees
-// the pool checked out and allocates independent state, then the outer reader
-// is returned even when decoding fails.
+// Reuse one top-level reader while allowing nested codecs to allocate their own.
 let pooledReader: Reader | undefined = new Reader()
 
 function decodeOneShot(
@@ -2866,10 +2613,6 @@ function decodeOneShot(
     if (pooled) pooledReader = r
   }
 }
-
-// -----------------------------------------------------------------------------
-// user API
-// -----------------------------------------------------------------------------
 
 function makeTransformation(
   layout: Layout,
@@ -2904,16 +2647,11 @@ function compileMode(layout: Layout, fingerprint: boolean | undefined): Mode {
 function compileTarget(schema: Schema.Constraint): { target: Schema.Constraint; layout: Layout } {
   const raw = Schema.make<Schema.Constraint>(toBinaryAST(schema.ast))
   const { layout, recursive } = compileLayout(SchemaAST.toEncoded(raw.ast))
-  // The guard walks the whole value to reject cycles before the parser can
-  // recurse into them. Only a recursive schema can recurse without bound, so
-  // non-recursive schemas skip the walk; JSON leaves still distinguish cyclic
-  // values from other values that JSON.stringify cannot serialize.
+  // Only recursive schemas need the cycle walk.
   return { target: recursive ? withCycleGuard(raw) : raw, layout }
 }
 
-// The transformation marks each structurally decoded frame exactly once, and
-// the guard is the immediately following decode step. Deleting the mark as it
-// is read makes the validation skip one-shot so it cannot bypass later checks.
+// Skip the cycle walk once for structurally decoded values.
 function withCycleGuard(target: Schema.Constraint): Schema.Constraint {
   const type = Schema.make(SchemaAST.toType(target.ast))
   const decoded = new WeakSet<object>()
@@ -2944,24 +2682,9 @@ function withCycleGuard(target: Schema.Constraint): Schema.Constraint {
 /**
  * Selects the wire mode.
  *
- * The default mode is evolution friendly: every struct field carries its wire
- * id, unknown fields and union members are skipped, and a reader compiled from
- * a different but compatible schema still decodes the frame.
- *
- * `fingerprint: true` trades that tolerance for size and speed. Each frame
- * carries an 8-byte hash of the compiled wire layout, structs are written
- * positionally without field ids, fixed-size leaves drop their length prefix,
- * and union members are addressed by a canonical index instead of a kind byte
- * and a 32-bit sentinel tag. A reader whose layout hashes differently rejects
- * the frame rather than guessing. Non-wire schema changes (checks,
- * annotations, decoded-side transformations, field declaration order, and
- * repeating an acyclic sub-schema instead of sharing one) leave the hash
- * alone.
- *
- * The hash covers the compiled layout graph rather than the wire shape it
- * denotes, so peers must ship the same schema definition. Re-factoring a
- * recursive schema without changing a byte of its output still moves the
- * hash, and the mismatch fails closed.
+ * The default mode supports compatible schema evolution. `fingerprint: true`
+ * uses positional layouts and an 8-byte layout hash for smaller frames, but
+ * requires peers to use the same schema definition.
  *
  * @category models
  * @since 4.0.0
@@ -2991,23 +2714,11 @@ export interface toCodec<S extends Schema.Constraint> extends
 /**
  * Derives a compact binary codec from a schema.
  *
- * The wire layout is compiled from the encoded-side AST at construction and
- * schema-author bugs (field-id collisions, symbol property names, unannotated
- * declarations, unions whose members are not uniquely identifiable) throw an
- * `Error` immediately.
+ * The wire layout is compiled from the encoded side of the schema. Each
+ * encode/decode handles exactly one frame; use {@link parser} for streams.
  *
- * One-shot encode/decode reuse the existing runners: exactly one frame,
- * leftover bytes are malformed. Use {@link parser} for concatenated frames.
- *
- * Pass `{ fingerprint: true }` for the positional wire mode described on
- * {@link Options}. The two modes are not interchangeable: a frame written in
- * one is rejected by a codec built for the other.
- *
- * Encoded results are stable views into a bump-allocated arena. A result's
- * `byteLength` covers exactly one frame, but its `.buffer` may be larger,
- * `byteOffset` may be non-zero, and unrelated encoded results may share the
- * same buffer. Transferring or detaching that buffer affects every view into
- * it. Use `bytes.slice()` when an independently owned buffer is required.
+ * Encoded results are arena-backed views and may share a larger buffer. Use
+ * `bytes.slice()` when independent ownership is required.
  *
  * **Example**
  *
@@ -3060,20 +2771,8 @@ export interface Parser<T> {
 /**
  * Creates a stateful parser for a stream of concatenated frames.
  *
- * The sync surface is the real parser: `feed` / `end` are `Effect.suspend`
- * wrappers around `feedSync` / `endSync`. Values completed before a failure
- * stay observable; after a failure the parser is spent and rejects further
- * calls.
- *
- * `fingerprint` selects the wire mode and must match the writer; see
- * {@link Options}.
- *
- * A parser owns state that outlives a single `feed`, which is why the parse
- * options are fixed here rather than per call. Its index-signature cache is
- * keyed by wire keys and therefore by attacker-controlled input, so it is
- * bounded to 256 entries and admits at most one replacement per frame. Pass
- * `maxFrameSize` to bound what a single frame may claim before its bytes are
- * buffered.
+ * Values completed before a failure remain observable. After a failure, the
+ * parser rejects further calls. Use `maxFrameSize` to limit buffered frames.
  *
  * @category constructors
  * @since 4.0.0
@@ -3143,10 +2842,7 @@ export function parser<S extends Schema.Constraint>(
         return out
       }
       while (true) {
-        // frame length varint: fewer than 10 bytes without a terminator waits,
-        // 10 continuation bytes is malformed immediately. Common headers that
-        // terminate in fewer than seven groups stay in number arithmetic;
-        // longer valid headers retain the exact bigint path.
+        // Use bigint only for frame lengths wider than six varint groups.
         let frameLen = 0
         let headerLen = -1
         const buffered = bufferEnd - bufferStart
@@ -3244,12 +2940,8 @@ export function parser<S extends Schema.Constraint>(
 /**
  * Assigns an explicit wire field id to a struct property.
  *
- * By default a field's wire id is the 32-bit FNV-1a hash of its property
- * name. An explicit id overrides that hash, which allows renaming a field
- * without breaking the wire format, or resolving a hash collision.
- *
- * `0` is reserved for the extra-keys map and non-integers are invalid; both
- * throw immediately.
+ * Use this to preserve the wire id across a rename or resolve a hash collision.
+ * Valid ids are integers from 1 through 4294967295.
  *
  * **Example**
  *
