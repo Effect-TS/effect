@@ -220,9 +220,9 @@ function decodeUtf8(
 const OUTPUT_ARENA_SIZE = 8 * 1024
 
 // Parser cache entries are derived from wire keys, so this is a hard bound on
-// attacker-controlled state retained across feed calls. Entries use FIFO
-// eviction: after the first 256 distinct (layout, key) pairs, each miss evicts
-// the oldest surviving pair.
+// attacker-controlled state retained across feed calls. Once full, the cache
+// admits at most one FIFO replacement per frame. Repeated frames wider than
+// the cache therefore keep their existing hits instead of cycling every entry.
 const PARSER_INDEX_SIGNATURE_CACHE_SIZE = 256
 
 interface OutputArena {
@@ -411,66 +411,75 @@ function matchIndexSignature(
   return layout.extra.find((s) => SchemaAST.getIndexSignatureKeys({ [key]: null }, s.parameter, options).length > 0)
 }
 
-interface BoundedIndexSignatureCacheEntry {
-  readonly layout: StructLayout
-  readonly key: string
-}
-
 class IndexSignatureCache {
-  readonly entries = new WeakMap<StructLayout, Map<string, ExtraSignature | undefined>>()
-  readonly order: Array<BoundedIndexSignatureCacheEntry | undefined> | undefined
+  entries = new WeakMap<StructLayout, Map<string, ExtraSignature | undefined>>()
+  readonly orderLayouts: Array<StructLayout | undefined> | undefined
+  readonly orderKeys: Array<string | undefined> | undefined
+  readonly options: SchemaAST.ParseOptions
   size = 0
   next = 0
-  constructor(capacity?: number) {
-    this.order = capacity === undefined ? undefined : new Array(capacity)
+  replace = false
+  constructor(options: SchemaAST.ParseOptions, capacity?: number) {
+    if (capacity !== undefined && capacity < 1) throw new Error("IndexSignatureCache capacity must be positive")
+    this.options = options
+    this.orderLayouts = capacity === undefined ? undefined : new Array(capacity)
+    this.orderKeys = capacity === undefined ? undefined : new Array(capacity)
   }
-  find(layout: StructLayout, key: string, options: SchemaAST.ParseOptions): ExtraSignature | undefined {
+  beginFrame() {
+    this.replace = true
+  }
+  find(layout: StructLayout, key: string): ExtraSignature | undefined {
     let entries = this.entries.get(layout)
     if (entries === undefined) {
       entries = new Map()
       this.entries.set(layout, entries)
     }
     if (entries.has(key)) return entries.get(key)
-    const signature = matchIndexSignature(layout, key, options)
-    const order = this.order
-    if (order !== undefined) {
-      if (this.size === order.length) {
-        const evicted = order[this.next]!
-        this.entries.get(evicted.layout)?.delete(evicted.key)
-      } else {
-        this.size++
-      }
-      order[this.next] = { layout, key }
-      this.next = (this.next + 1) % order.length
+    const signature = matchIndexSignature(layout, key, this.options)
+    const orderLayouts = this.orderLayouts
+    if (orderLayouts === undefined) {
+      // This unbounded form only lives for one top-level encode or decode.
+      entries.set(key, signature)
+      return signature
     }
-    entries.set(key, signature)
+    const orderKeys = this.orderKeys!
+    if (this.size < orderLayouts.length) {
+      orderLayouts[this.size] = layout
+      orderKeys[this.size] = key
+      this.size++
+      entries.set(key, signature)
+    } else if (this.replace) {
+      this.replace = false
+      const evictedLayout = orderLayouts[this.next]!
+      const evictedEntries = evictedLayout === layout ? entries : this.entries.get(evictedLayout)
+      evictedEntries?.delete(orderKeys[this.next]!)
+      orderLayouts[this.next] = layout
+      orderKeys[this.next] = key
+      this.next = (this.next + 1) % orderLayouts.length
+      entries.set(key, signature)
+    }
     return signature
+  }
+  clear() {
+    this.entries = new WeakMap()
+    this.orderLayouts?.fill(undefined)
+    this.orderKeys?.fill(undefined)
+    this.size = this.next = 0
+    this.replace = false
   }
 }
 
 const EMPTY_READER_BUFFER = new Uint8Array(0)
+const EMPTY_READER_VIEW = new DataView(EMPTY_READER_BUFFER.buffer)
+const EMPTY_PARSE_OPTIONS: SchemaAST.ParseOptions = {}
 
 class Reader {
-  pos: number
-  buf: Uint8Array
-  view: DataView
-  end: number
-  options: SchemaAST.ParseOptions
-  indexSignatures: IndexSignatureCache
-  constructor(
-    buf: Uint8Array = EMPTY_READER_BUFFER,
-    start = 0,
-    end = 0,
-    options: SchemaAST.ParseOptions = {},
-    indexSignatures: IndexSignatureCache = new IndexSignatureCache()
-  ) {
-    this.buf = buf
-    this.view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
-    this.pos = start
-    this.end = end
-    this.options = options
-    this.indexSignatures = indexSignatures
-  }
+  pos = 0
+  buf: Uint8Array = EMPTY_READER_BUFFER
+  view: DataView = EMPTY_READER_VIEW
+  end = 0
+  options: SchemaAST.ParseOptions = EMPTY_PARSE_OPTIONS
+  indexSignatures: IndexSignatureCache | undefined
   reset(
     buf: Uint8Array,
     start: number,
@@ -490,6 +499,13 @@ class Reader {
     this.end = end
     this.options = options
     this.indexSignatures = indexSignatures
+  }
+  release() {
+    this.pos = this.end = 0
+    this.buf = EMPTY_READER_BUFFER
+    this.view = EMPTY_READER_VIEW
+    this.options = EMPTY_PARSE_OPTIONS
+    this.indexSignatures = undefined
   }
   get remaining(): number {
     return this.end - this.pos
@@ -1600,7 +1616,7 @@ function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: obj
     const pairs: Array<[Uint8Array, string, ExtraSignature]> = []
     for (const key of Object.keys(obj)) {
       if (named.has(key)) continue
-      const signature = (ctx.indexSignatures ??= new IndexSignatureCache()).find(layout, key, ctx.options)
+      const signature = (ctx.indexSignatures ??= new IndexSignatureCache(ctx.options)).find(layout, key)
       if (signature === undefined) continue
       pairs.push([utf8Encode.encode(key), key, signature])
     }
@@ -2022,7 +2038,7 @@ function decodeExtraPairs(layout: StructLayout, r: Reader, out: Record<string, u
     }
     const valueLen = r.uvarint()
     const saved = r.enter(valueLen)
-    const signature = r.indexSignatures.find(layout, key, r.options)
+    const signature = r.indexSignatures!.find(layout, key)
     if (signature !== undefined) {
       issuePath[issuePathLen++] = key
       const value = decodeChecked(signature.layout, r)
@@ -2329,7 +2345,7 @@ function decodeOneShot(layout: Layout, bytes: Uint8Array, options: SchemaAST.Par
   const r = pooledReader ?? new Reader()
   const pooled = r === pooledReader
   if (pooled) pooledReader = undefined
-  r.reset(bytes, 0, bytes.length, options, new IndexSignatureCache())
+  r.reset(bytes, 0, bytes.length, options, new IndexSignatureCache(options))
   const savedPathLen = issuePathLen
   issuePathLen = 0
   try {
@@ -2342,6 +2358,7 @@ function decodeOneShot(layout: Layout, bytes: Uint8Array, options: SchemaAST.Par
     return value
   } finally {
     issuePathLen = savedPathLen
+    r.release()
     if (pooled) pooledReader = r
   }
 }
@@ -2518,7 +2535,14 @@ export function parser<S extends Schema.Constraint>(
   let stashed: Schema.SchemaError | undefined
   let spent = false
   const body = new Reader()
-  const indexSignatures = new IndexSignatureCache(PARSER_INDEX_SIGNATURE_CACHE_SIZE)
+  const indexSignatures = new IndexSignatureCache(parseOptions, PARSER_INDEX_SIGNATURE_CACHE_SIZE)
+
+  const release = () => {
+    body.release()
+    indexSignatures.clear()
+    buffer = EMPTY_READER_BUFFER
+    bufferStart = bufferEnd = 0
+  }
 
   const failSync = (expected: string, input?: unknown): never => {
     throw new Schema.SchemaError(new SchemaIssue.InvalidValue({ expected }, input, parseOptions))
@@ -2555,10 +2579,9 @@ export function parser<S extends Schema.Constraint>(
       const fail = (expected: string, input?: unknown): Array<S["Type"]> => {
         spent = true
         const error = new Schema.SchemaError(new SchemaIssue.InvalidValue({ expected }, input, parseOptions))
+        release()
         if (out.length === 0) throw error
         stashed = error
-        buffer = new Uint8Array(0)
-        bufferStart = bufferEnd = 0
         return out
       }
       while (true) {
@@ -2581,8 +2604,8 @@ export function parser<S extends Schema.Constraint>(
         }
         if (headerLen === -1) {
           if (buffered < 6) return out
-          let n = BIGINT_ZERO
-          for (let i = 0; i < Math.min(10, buffered); i++) {
+          let n = BigInt(frameLen)
+          for (let i = 6; i < Math.min(10, buffered); i++) {
             const b = buffer[bufferStart + i]
             n |= BigInt(b & 0x7F) << BigInt(i * 7)
             if ((b & 0x80) === 0) {
@@ -2606,10 +2629,12 @@ export function parser<S extends Schema.Constraint>(
         try {
           issuePathLen = 0
           const bodyStart = bufferStart + headerLen
+          indexSignatures.beginFrame()
           body.reset(buffer, bodyStart, bodyStart + frameLen, parseOptions, indexSignatures)
           out.push(decodeEncoded(decodeFrameBody(layout, body)))
         } catch (e) {
           spent = true
+          release()
           const error = e instanceof IssueError
             ? new Schema.SchemaError(e.issue)
             : Schema.isSchemaError(e)
@@ -2619,8 +2644,6 @@ export function parser<S extends Schema.Constraint>(
             })()
           if (out.length === 0) throw error
           stashed = error
-          buffer = new Uint8Array(0)
-          bufferStart = bufferEnd = 0
           return out
         } finally {
           issuePathLen = savedPathLen
@@ -2633,7 +2656,9 @@ export function parser<S extends Schema.Constraint>(
       if (stashed !== undefined) return takeStashed()
       if (spent) return failSync("parser is spent")
       spent = true
-      if (bufferStart < bufferEnd) return failSync("complete value", buffer.subarray(bufferStart, bufferEnd))
+      const input = bufferStart < bufferEnd ? buffer.subarray(bufferStart, bufferEnd) : undefined
+      release()
+      if (input !== undefined) return failSync("complete value", input)
     },
     feed: (chunk) =>
       Effect.suspend(() => {

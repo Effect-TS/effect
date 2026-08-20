@@ -75,6 +75,9 @@ const largeRows = Array.from({ length: repeatedRecordStreamSize }, (_, index) =>
   requiresManualReview: index % 17 === 0
 }))
 
+const metrics = (count: number) =>
+  Object.fromEntries(Array.from({ length: count }, (_, index) => [`metric-${index}`, index * 1.25]))
+
 const cases = [
   {
     name: "small record",
@@ -127,9 +130,14 @@ const cases = [
     }
   },
   {
-    name: "index-signature-heavy",
+    name: "index signatures / 128 keys",
     schema: Schema.Record(Schema.String, Schema.Number),
-    value: Object.fromEntries(Array.from({ length: 128 }, (_, index) => [`metric-${index}`, index * 1.25]))
+    value: metrics(128)
+  },
+  {
+    name: "index signatures / 512 keys",
+    schema: Schema.Record(Schema.String, Schema.Number),
+    value: metrics(512)
   },
   {
     name: "large repeated records",
@@ -248,8 +256,7 @@ const prepareStream = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   const binaryFrames = values.map((value) => binaryEncode(value))
   const binaryStream = concatFrames(binaryFrames)
   const binaryFragments = binaryFrames.map((frame) => {
-    const split = Math.max(1, Math.floor(frame.length / 2))
-    return [frame.subarray(0, split), frame.subarray(split)] as const
+    return [frame.subarray(0, 1), frame.subarray(1)] as const
   })
 
   const jsonSchema = Schema.toCodecJson(schema)
@@ -319,7 +326,7 @@ console.table(prepared.flatMap((testCase) =>
 ))
 
 console.log(
-  "Streaming decode reuses one parser per feed shape. Fragmented frames are split into two precomputed chunks."
+  "Streaming decode reuses one parser per feed shape. Fragmented frames split after the first byte."
 )
 console.table(preparedStreams.flatMap((testCase) =>
   testCase.sizes.map((format) => ({

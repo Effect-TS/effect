@@ -498,7 +498,8 @@ describe("SchemaBinary", () => {
       const bytes = Uint8Array.of(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F)
       const parser = SchemaBinary.parser(Schema.String, { maxFrameSize: 1 })
 
-      assert.match(schemaError(() => parser.feedSync(bytes)).message, /frame within maxFrameSize/)
+      assert.deepStrictEqual(parser.feedSync(bytes.slice(0, 7)), [])
+      assert.match(schemaError(() => parser.feedSync(bytes.slice(7))).message, /frame within maxFrameSize/)
     })
 
     it("keeps parser index-signature caching bounded with FIFO eviction", () => {
@@ -525,6 +526,28 @@ describe("SchemaBinary", () => {
       const missChecks = checks - beforeMiss
 
       assert.strictEqual(missChecks, hitChecks + 1)
+      parser.endSync()
+    })
+
+    it("does not thrash the index-signature cache above its bound", () => {
+      let checks = 0
+      const Key = Schema.String.check(Schema.makeFilter((_: string) => {
+        checks++
+        return true
+      }))
+      const Writer = Schema.Record(Schema.String, Schema.Number)
+      const parser = SchemaBinary.parser(Schema.Record(Key, Schema.Number))
+      const value = Object.fromEntries(Array.from({ length: 300 }, (_, index) => [`key-${index}`, index]))
+      const bytes = encode(Writer, value)
+
+      assert.deepStrictEqual(parser.feedSync(bytes), [value])
+      const firstChecks = checks
+      assert.deepStrictEqual(parser.feedSync(bytes), [value])
+      const secondChecks = checks - firstChecks
+
+      // The Schema decoder checks all 300 keys. The binary layout only has to
+      // reclassify 45 misses after retaining 255 of the first frame's entries.
+      assert.strictEqual(secondChecks, 345)
       parser.endSync()
     })
 
