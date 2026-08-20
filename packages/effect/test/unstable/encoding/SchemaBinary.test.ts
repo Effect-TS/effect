@@ -120,6 +120,65 @@ describe("SchemaBinary", () => {
     })
   })
 
+  describe("output arena", () => {
+    it("keeps an earlier result stable through later encodes and arena rollover", () => {
+      const codec = SchemaBinary.toCodec(Schema.String)
+      const encode = Schema.encodeUnknownSync(codec)
+      const first = encode("first")
+      const expected = first.slice()
+      let rolledOver = false
+
+      for (let i = 0; i < 500; i++) {
+        const later = encode(`later-${i}-${"x".repeat(32)}`)
+        if (later.buffer !== first.buffer) rolledOver = true
+        assert.deepStrictEqual(first, expected)
+      }
+
+      assert.isTrue(rolledOver)
+      assert.strictEqual(Schema.decodeUnknownSync(codec)(first), "first")
+    })
+
+    it("keeps different results independent inside a shared arena", () => {
+      const codec = SchemaBinary.toCodec(Schema.String)
+      const encode = Schema.encodeUnknownSync(codec)
+      const decode = Schema.decodeUnknownSync(codec)
+      const results = [encode("alpha"), encode("bravo"), encode("charlie")]
+
+      assert.deepStrictEqual(results.map((bytes) => decode(bytes)), ["alpha", "bravo", "charlie"])
+      const shared = results.flatMap((left, index) => results.slice(index + 1).map((right) => [left, right] as const))
+        .find(([left, right]) => left.buffer === right.buffer)
+      assert.isDefined(shared)
+      assert.notStrictEqual(shared![0].byteOffset, shared![1].byteOffset)
+    })
+
+    it("preserves nested two-phase codec composition", () => {
+      const Inner = Schema.Struct({ id: Schema.Number, label: Schema.String })
+      const Outer = Schema.Struct({ id: Schema.String, inner: SchemaBinary.toCodec(Inner) })
+      const codec = SchemaBinary.toCodec(Outer)
+      const value = { id: "outer", inner: { id: 1, label: "inner" } }
+
+      assert.deepStrictEqual(Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(value)), value)
+    })
+
+    it.effect("keeps concurrent fiber results readable after their producing turn", () => {
+      const Value = Schema.Struct({ id: Schema.Number, value: Schema.String })
+      const codec = SchemaBinary.toCodec(Value)
+      const encode = Schema.encodeUnknownEffect(codec)
+      const decode = Schema.decodeUnknownSync(codec)
+      const values = Array.from({ length: 100 }, (_, id) => ({ id, value: `value-${id}` }))
+
+      return Effect.gen(function*() {
+        const encoded = yield* Effect.forEach(
+          values,
+          (value) => encode(value).pipe(Effect.flatMap((bytes) => Effect.yieldNow.pipe(Effect.as(bytes)))),
+          { concurrency: "unbounded" }
+        )
+        yield* Effect.yieldNow
+        assert.deepStrictEqual(encoded.map((bytes) => decode(bytes)), values)
+      })
+    })
+  })
+
   describe("schema evolution", () => {
     it("skips unknown fields, accepts field reorder, and leaves missing optionals absent", () => {
       const Writer = Schema.Struct({ a: Schema.Number, extra: Schema.String, b: Schema.String })

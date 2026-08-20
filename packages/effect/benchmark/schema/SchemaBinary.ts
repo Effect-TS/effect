@@ -182,6 +182,7 @@ const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   const msgpackDecode = Schema.decodeUnknownSync(msgpackCodec)
 
   const binary = binaryEncode(value)
+  const binaryCopy = binary.slice()
   const json = jsonEncode(value)
   const msgpack = msgpackEncode(value)
 
@@ -210,10 +211,16 @@ const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   return {
     formats: [
       {
-        name: "SchemaBinary",
+        name: "SchemaBinary arena",
         encodedSize: binary.length,
         encode: () => binaryEncode(value),
         decode: () => binaryDecode(binary)
+      },
+      {
+        name: "SchemaBinary copy",
+        encodedSize: binaryCopy.length,
+        encode: () => binaryEncode(value).slice(),
+        decode: () => binaryDecode(binaryCopy)
       },
       {
         name: "JSON",
