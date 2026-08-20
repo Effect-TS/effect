@@ -28,36 +28,29 @@ const flagNamesForWordlist = (flag: Completions.FlagDescriptor): Array<string> =
 }
 
 /**
- * Build an associative array mapping each flag form to a group index.
- * At completion time, if any form in a group appears in COMP_WORDS,
- * all forms in that group are removed from the candidate list.
+ * Mark one variable per flag, so that when any form of a flag has been typed,
+ * every form of it drops out of the candidate list. Which form maps to which
+ * group is known here, so no runtime map — and no bash 4 — is needed.
  */
 const buildFlagGroupDeclarations = (
   flags: ReadonlyArray<Completions.FlagDescriptor>,
   lines: Array<string>
 ): void => {
   if (flags.length === 0) return
+  const groups = flags.map(flagNamesForWordlist)
   lines.push(`  # Build used-flag filter`)
-  lines.push(`  local -A _flag_groups`)
-  let groupIdx = 0
-  for (const flag of flags) {
-    const forms = flagNamesForWordlist(flag)
-    for (const form of forms) {
-      lines.push(`  _flag_groups[${form}]=${groupIdx}`)
-    }
-    groupIdx++
-  }
-  lines.push(`  local -A _used_groups`)
+  lines.push(`  local ${groups.map((_, index) => `_used_${index}=""`).join(" ")}`)
   lines.push(`  for ((i = 1; i < cword; i++)); do`)
-  lines.push(`    local _w="\${words[i]%%=*}"`)
-  lines.push(`    local _g="\${_flag_groups[$_w]:-}"`)
-  lines.push(`    [[ -n "$_g" ]] && _used_groups[$_g]=1`)
+  lines.push(`    case "\${words[i]%%=*}" in`)
+  groups.forEach((forms, index) => {
+    lines.push(`      ${forms.join("|")}) _used_${index}=1 ;;`)
+  })
+  lines.push(`    esac`)
   lines.push(`  done`)
   lines.push(`  local _filtered_flags=""`)
-  lines.push(`  for _f in ${flags.flatMap(flagNamesForWordlist).join(" ")}; do`)
-  lines.push(`    local _g="\${_flag_groups[$_f]:-}"`)
-  lines.push(`    [[ -z "$_g" || -z "\${_used_groups[$_g]:-}" ]] && _filtered_flags+=" $_f"`)
-  lines.push(`  done`)
+  groups.forEach((forms, index) => {
+    lines.push(`  [[ -n "$_used_${index}" ]] || _filtered_flags+=" ${forms.join(" ")}"`)
+  })
   lines.push(``)
 }
 

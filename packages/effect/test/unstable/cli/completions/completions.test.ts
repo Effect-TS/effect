@@ -353,12 +353,11 @@ describe("Bash completions", () => {
   it("groups flag aliases for used-flag filtering", () => {
     const desc = fromCommand(simpleCmd)
     const script = Bash.generate("greet", desc)
-    // All forms of --loud share the same group index
-    assert.include(script, "_flag_groups[--loud]=0")
-    assert.include(script, "_flag_groups[-l]=0")
-    assert.include(script, "_flag_groups[--no-loud]=0")
-    // --times has a different group index
-    assert.include(script, "_flag_groups[--times]=1")
+    // Any form of --loud marks the whole group used, --times is its own group
+    assert.include(script, "--loud|-l|--no-loud) _used_0=1 ;;")
+    assert.include(script, "--times) _used_1=1 ;;")
+    assert.include(script, `[[ -n "$_used_0" ]] || _filtered_flags+=" --loud -l --no-loud"`)
+    assert.include(script, `[[ -n "$_used_1" ]] || _filtered_flags+=" --times"`)
     // Uses _filtered_flags instead of a static word list
     assert.include(script, "compgen -W \"$_filtered_flags\"")
   })
@@ -366,8 +365,14 @@ describe("Bash completions", () => {
   it("does not generate flag groups for commands with no flags", () => {
     const desc = fromCommand(emptyCmd)
     const script = Bash.generate("noop", desc)
-    assert.notInclude(script, "_flag_groups")
+    assert.notInclude(script, "_used_0")
     assert.notInclude(script, "_filtered_flags")
+  })
+
+  it("uses no bash 4 syntax, so the script runs on the bash macOS ships", () => {
+    const script = Bash.generate("comprehensive", fromCommand(ComprehensiveCli))
+    assert.notInclude(script, "local -A")
+    assert.notInclude(script, "declare -A")
   })
 
   it("includes inline _init_completion fallback", () => {
