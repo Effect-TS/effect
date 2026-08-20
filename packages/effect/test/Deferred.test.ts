@@ -3,6 +3,7 @@ import { Deferred, Fiber, Option } from "effect"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as TestClock from "effect/testing/TestClock"
 
 describe("Deferred", () => {
   describe("success", () => {
@@ -143,6 +144,34 @@ describe("Deferred", () => {
         assert.isFalse(Exit.hasDies(exit))
 
         assert.strictEqual(yield* Fiber.join(live), 42)
+      }))
+
+    it.effect("done with an interrupt cause resumes every suspended waiter", () =>
+      Effect.gen(function*() {
+        const deferred = yield* Deferred.make<number>()
+        const first = yield* Deferred.await(deferred).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        const second = yield* Deferred.await(deferred).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        assert.strictEqual(deferred.resumes?.length, 2)
+
+        // Resuming the first waiter with an interrupt cause kills it
+        // synchronously, so its await cleanup must not shift later waiters
+        // out from under the completion loop.
+        assert.isTrue(yield* Deferred.done(deferred, Exit.failCause(Cause.interrupt())))
+
+        const settled = yield* Fiber.awaitAll([first, second]).pipe(
+          Effect.timeoutOption(1000),
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* TestClock.adjust(1000)
+        const exits = yield* Fiber.join(settled)
+        assert.isTrue(Option.isSome(exits), "every waiter should settle")
+        for (const exit of Option.getOrThrow(exits)) {
+          assert.isTrue(Exit.hasInterrupts(exit))
+        }
       }))
   })
 
