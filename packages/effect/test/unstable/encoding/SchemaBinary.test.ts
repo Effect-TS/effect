@@ -485,6 +485,44 @@ describe("SchemaBinary", () => {
       assert.deepStrictEqual(roundtrip(schema, value), value)
       assert.deepStrictEqual([...encode(schema, value)], [...encode(schema, { a: 2, z: 1 })])
     })
+
+    it("round-trips __proto__ named fields without changing the prototype", () => {
+      const schema = Schema.Struct({ ["__proto__"]: Schema.String, ok: Schema.String })
+      const value = { ["__proto__"]: "named", ok: "yes" }
+
+      for (const result of [roundtrip(schema, value), roundtripFingerprint(schema, value)]) {
+        assert.strictEqual(Object.getPrototypeOf(result), Object.prototype)
+        assert.isTrue(Object.prototype.propertyIsEnumerable.call(result, "__proto__"))
+        assert.strictEqual(result.__proto__, "named")
+        assert.strictEqual(({} as Record<string, unknown>).polluted, undefined)
+      }
+    })
+
+    it("round-trips __proto__ record entries with object values without changing the prototype", () => {
+      const schema = Schema.Record(Schema.String, Schema.Struct({ polluted: Schema.Boolean }))
+      const value = { ["__proto__"]: { polluted: true } }
+
+      for (const result of [roundtrip(schema, value), roundtripFingerprint(schema, value)]) {
+        assert.strictEqual(Object.getPrototypeOf(result), Object.prototype)
+        assert.isTrue(Object.prototype.propertyIsEnumerable.call(result, "__proto__"))
+        assert.deepStrictEqual(result.__proto__, { polluted: true })
+        assert.strictEqual(({} as Record<string, unknown>).polluted, undefined)
+      }
+    })
+
+    it("round-trips __proto__ tagged-union sentinels without changing the prototype", () => {
+      const A = Schema.Struct({ ["__proto__"]: Schema.Literal("A"), value: Schema.String })
+      const B = Schema.Struct({ ["__proto__"]: Schema.Literal("B"), value: Schema.String })
+      const schema = Schema.Union([A, B])
+      const value = { ["__proto__"]: "A" as const, value: "a" }
+
+      for (const result of [roundtrip(schema, value), roundtripFingerprint(schema, value)]) {
+        assert.strictEqual(Object.getPrototypeOf(result), Object.prototype)
+        assert.isTrue(Object.prototype.propertyIsEnumerable.call(result, "__proto__"))
+        assert.strictEqual(result.__proto__, "A")
+        assert.strictEqual(({} as Record<string, unknown>).polluted, undefined)
+      }
+    })
   })
 
   describe("parser", () => {
@@ -498,6 +536,109 @@ describe("SchemaBinary", () => {
       assert.deepStrictEqual(parser.feedSync(bytes.slice(first.length + 3)), [{ a: 2 }])
       parser.endSync()
       assert.match(schemaError(() => parser.feedSync(new Uint8Array())).message, /parser is spent/)
+    })
+
+    it("parses exact nested structs, arrays, and string records", () => {
+      const schema = Schema.Struct({
+        id: Schema.Number,
+        active: Schema.Boolean,
+        tags: Schema.Array(Schema.String),
+        metrics: Schema.Record(Schema.String, Schema.Number)
+      })
+      const value = { id: 1, active: true, tags: ["a", "b"], metrics: { x: 1, y: 2 } }
+      const parser = SchemaBinary.parser(schema)
+
+      assert.deepStrictEqual(parser.feedSync(encode(schema, value)), [value])
+      parser.endSync()
+    })
+
+    it("keeps __proto__ safe on the exact parser path", () => {
+      const schema = Schema.Struct({ ["__proto__"]: Schema.String, value: Schema.Number })
+      const value = { ["__proto__"]: "own", value: 1 }
+      const parser = SchemaBinary.parser(schema)
+      const [result] = parser.feedSync(encode(schema, value))
+
+      assert.strictEqual(Object.getPrototypeOf(result), Object.prototype)
+      assert.isTrue(Object.prototype.propertyIsEnumerable.call(result, "__proto__"))
+      assert.strictEqual(result.__proto__, "own")
+      assert.strictEqual(({} as Record<string, unknown>).polluted, undefined)
+      parser.endSync()
+    })
+
+    it("retains Schema predicates erased by the binary layout", () => {
+      const rejects = (
+        reader: Schema.Constraint,
+        writer: Schema.Codec<unknown, unknown>,
+        value: unknown
+      ) => {
+        const parser = SchemaBinary.parser(reader)
+        assert.isTrue(Schema.isSchemaError(schemaError(() => parser.feedSync(encode(writer, value)))))
+      }
+
+      rejects(Schema.TemplateLiteral(["a"]), Schema.String, "zzz")
+      rejects(Schema.Literal("a"), Schema.String, "zzz")
+      rejects(Schema.Enum({ A: "a", B: "b" }), Schema.String, "zzz")
+      rejects(Schema.UniqueSymbol(Symbol.for("expected")), Schema.Symbol, Symbol.for("other"))
+      rejects(Schema.ObjectKeyword, Schema.Unknown, 1)
+    })
+
+    it("retains Schema parsing for numeric record keys", () => {
+      const Writer = Schema.Record(Schema.String, Schema.Number)
+      const Reader = Schema.Record(Schema.Number, Schema.Number)
+      const parser = SchemaBinary.parser(Reader)
+
+      assert.deepStrictEqual(parser.feedSync(encode(Writer, { "01": 1, "1e2": 2, "-0": 3 })), [{
+        "0": 3,
+        "1": 1,
+        "100": 2
+      }])
+      parser.endSync()
+    })
+
+    it("retains transformations, checks, unions, declarations, and recursive validation", () => {
+      const transformed = SchemaBinary.parser(Schema.NumberFromString)
+      assert.deepStrictEqual(transformed.feedSync(encode(Schema.NumberFromString, 123)), [123])
+      transformed.endSync()
+
+      const NonNegative = Schema.Number.check(Schema.isGreaterThanOrEqualTo(0))
+      assert.match(
+        schemaError(() => SchemaBinary.parser(NonNegative).feedSync(encode(Schema.Number, -1))).message,
+        /greater than or equal to 0/
+      )
+
+      const CheckedUnion = Schema.Union([NonNegative, Schema.String])
+      const BroadUnion = Schema.Union([Schema.Number, Schema.String])
+      assert.match(
+        schemaError(() => SchemaBinary.parser(CheckedUnion).feedSync(encode(BroadUnion, -1))).message,
+        /greater than or equal to 0/
+      )
+
+      const CheckedOption = Schema.Option(NonNegative)
+      const BroadOption = Schema.Option(Schema.Number)
+      assert.match(
+        schemaError(() => SchemaBinary.parser(CheckedOption).feedSync(encode(BroadOption, Option.some(-1)))).message,
+        /greater than or equal to 0/
+      )
+
+      interface Node {
+        readonly value: number
+        readonly children: ReadonlyArray<Node>
+      }
+      let Writer: Schema.Codec<Node>
+      Writer = Schema.Struct({
+        value: Schema.Number,
+        children: Schema.Array(Schema.suspend(() => Writer))
+      })
+      let Reader: Schema.Codec<Node>
+      Reader = Schema.Struct({
+        value: NonNegative,
+        children: Schema.Array(Schema.suspend(() => Reader))
+      })
+      const invalid = { value: 1, children: [{ value: -1, children: [] }] }
+      assert.match(
+        schemaError(() => SchemaBinary.parser(Reader).feedSync(encode(Writer, invalid))).message,
+        /greater than or equal to 0/
+      )
     })
 
     it("retains partial frames across one-byte feeds", () => {
