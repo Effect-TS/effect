@@ -216,6 +216,67 @@ const decodeArrayPg = () => pgArrayParser(int4ArrayText)
 assert.deepStrictEqual(decodeArrayEffect(), int4ArrayValue)
 assert.deepStrictEqual(decodeArrayPg(), int4ArrayValue)
 
+// Column names are the one place the parser decodes text, and the existing
+// payload has none: every field of a `DataRow` stays raw bytes.
+const columnNames = ["id", "email", "created_at", "balance", "metadata", "is_active"]
+const makeRowDescription = (names: ReadonlyArray<string>): Uint8Array => {
+  const encoded = names.map((name) => Buffer.from(name, "utf8"))
+  const length = 4 + 2 + encoded.reduce((total, name) => total + name.length + 1 + 18, 0)
+  const frame = Buffer.allocUnsafe(1 + length)
+  frame[0] = 0x54
+  frame.writeInt32BE(length, 1)
+  frame.writeInt16BE(names.length, 5)
+  let offset = 7
+  for (const name of encoded) {
+    name.copy(frame, offset)
+    offset += name.length
+    frame[offset++] = 0
+    frame.writeInt32BE(0, offset)
+    frame.writeInt16BE(0, offset + 4)
+    frame.writeInt32BE(23, offset + 6)
+    frame.writeInt16BE(4, offset + 10)
+    frame.writeInt32BE(-1, offset + 12)
+    frame.writeInt16BE(1, offset + 16)
+    offset += 18
+  }
+  return frame
+}
+
+const descriptionsPerRun = 100
+const rowDescription = makeRowDescription(columnNames)
+const descriptionPayload = new Uint8Array(rowDescription.length * descriptionsPerRun)
+for (let index = 0; index < descriptionsPerRun; index++) {
+  descriptionPayload.set(rowDescription, index * rowDescription.length)
+}
+const descriptionBuffer = Buffer.from(
+  descriptionPayload.buffer,
+  descriptionPayload.byteOffset,
+  descriptionPayload.byteLength
+)
+
+const effectDescriptionParser = PgProtocol.makeParser()
+const pgDescriptionParser = new PgParser()
+const parseDescriptionEffect = () => effectDescriptionParser.push(descriptionPayload).length
+const parseDescriptionPg = () => {
+  let count = 0
+  pgDescriptionParser.parse(descriptionBuffer, () => count++)
+  return count
+}
+
+assert.equal(parseDescriptionEffect(), descriptionsPerRun)
+assert.equal(parseDescriptionPg(), descriptionsPerRun)
+
+// `numeric` is the one builtin whose text is built a digit group at a time, and
+// the existing payload has no column of that type either.
+// Neither `pg` nor postgres.js has anything to compare against here: both hand
+// back the text PostgreSQL sent without looking at it, while the binary codec
+// has to build that text out of base-10000 digit groups.
+const numericValues = ["0.00", "12345.6789", "-1", "9".repeat(20) + "." + "1".repeat(10), "NaN"]
+const numericEncoded = numericValues.map((value) => PgTypes.encode(value, PgTypes.OID.numeric))
+const decodeNumericEffect = () => numericEncoded.map((bytes) => PgTypes.decode(bytes, PgTypes.OID.numeric, 1))
+
+assert.deepStrictEqual(decodeNumericEffect(), numericValues)
+
 const codecRowsPerRun = 100
 let sink: unknown
 
@@ -300,6 +361,15 @@ await runSuite("DataRow frames to JavaScript values", rowsPerParserRun, [
   ["@effect/sql-pg binary", decodeRowsEffect],
   ["pg text", decodeRowsPg]
 ])
+
+await runSuite("numeric decode", codecRowsPerRun, [
+  ["@effect/sql-pg binary", batch(decodeNumericEffect)]
+], `${numericValues.length} values per row`)
+
+await runSuite("protocol RowDescription parser", descriptionsPerRun, [
+  ["@effect/sql-pg", parseDescriptionEffect],
+  ["pg-protocol (pg)", parseDescriptionPg]
+], `${columnNames.length} columns per description`)
 
 await runSuite("protocol DataRow parser, one chunk", rowsPerParserRun, [
   ["@effect/sql-pg", parseEffectSingle],
