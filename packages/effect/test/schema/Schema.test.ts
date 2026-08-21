@@ -34,7 +34,14 @@ import {
 import { TestSchema } from "effect/testing"
 import { produce } from "immer"
 import { deepStrictEqual, fail, strictEqual } from "node:assert"
-import { assertFalse, assertInclude, assertSchemaIssueError, assertTrue, throws } from "../utils/assert.ts"
+import {
+  assertExitSuccess,
+  assertFalse,
+  assertInclude,
+  assertSchemaIssueError,
+  assertTrue,
+  throws
+} from "../utils/assert.ts"
 
 const verifyGeneration = true
 
@@ -49,19 +56,27 @@ const SnakeToCamel = Schema.String.pipe(
 
 describe("Schema", () => {
   it("keeps synchronous decode and encode effects eager", () => {
-    const decodeSuccess = Schema.decodeUnknownEffect(Schema.String)("a")
-    const decodeFailure = Schema.decodeUnknownEffect(Schema.String)(null)
-    const encodeSuccess = Schema.encodeUnknownEffect(Schema.String)("a")
-    const encodeFailure = Schema.encodeUnknownEffect(Schema.String)(null)
+    // A synchronous parser already produces an `Exit`, so the adapter must hand
+    // it back as-is instead of wrapping it in something a fiber has to run.
+    const eagerExit = <A>(effect: Effect.Effect<A, Schema.SchemaError>): Exit.Exit<A, Schema.SchemaError> => {
+      assertTrue(Exit.isExit(effect), "expected the adapter to return an Exit")
+      return effect as Exit.Exit<A, Schema.SchemaError>
+    }
+    const schemaError = <A>(exit: Exit.Exit<A, Schema.SchemaError>) =>
+      Exit.isFailure(exit) ? Cause.findErrorOption(exit.cause) : Option.none()
 
-    assertTrue(Exit.isSuccess(decodeSuccess))
-    assertTrue(Exit.isFailure(decodeFailure))
-    assertTrue(Exit.isSuccess(encodeSuccess))
-    assertTrue(Exit.isFailure(encodeFailure))
-    assertTrue(Cause.hasFails(decodeFailure.cause))
-    assertTrue(Cause.hasFails(encodeFailure.cause))
-    assertTrue(Schema.isSchemaError(decodeFailure.cause.reasons[0].error))
-    assertTrue(Schema.isSchemaError(encodeFailure.cause.reasons[0].error))
+    assertExitSuccess(eagerExit(Schema.decodeUnknownEffect(Schema.String)("a")), "a")
+    assertExitSuccess(eagerExit(Schema.encodeUnknownEffect(Schema.String)("a")), "a")
+
+    for (
+      const effect of [
+        Schema.decodeUnknownEffect(Schema.String)(null),
+        Schema.encodeUnknownEffect(Schema.String)(null)
+      ]
+    ) {
+      const error = schemaError(eagerExit(effect))
+      assertTrue(Option.isSome(error) && Schema.isSchemaError(error.value))
+    }
   })
 
   it("isSchema", () => {

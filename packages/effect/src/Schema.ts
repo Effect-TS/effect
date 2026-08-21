@@ -1519,11 +1519,7 @@ function fromIssueEffect<A, R>(
   self: Effect.Effect<A, SchemaIssue.Issue, R>
 ): Effect.Effect<A, SchemaError, R> {
   if (core.isExit(self)) {
-    return self._tag === "Success"
-      ? self as unknown as Effect.Effect<A, SchemaError, R>
-      : Exit_.failCause(
-        Cause_.map(self.cause as Cause_.Cause<SchemaIssue.Issue>, (issue) => new SchemaError(issue))
-      )
+    return fromIssueExit(self as Exit_.Exit<A, SchemaIssue.Issue>)
   }
   return Effect.catchCause(
     self,
