@@ -6201,6 +6201,14 @@ type Flatten<Schemas> = Schemas extends readonly [infer Head, ...infer Tail]
   : [Head, ...Flatten<Tail>]
   : []
 
+type MatchCasesResult<Cases> = {
+  [K in keyof Cases]-?: NonNullable<Cases[K]> extends (...args: Array<any>) => infer R ? R : never
+}[keyof Cases]
+
+type MatchOrElseResult<Cases, OrElse extends (...args: Array<any>) => any> = Unify<
+  MatchCasesResult<Cases> | ReturnType<OrElse>
+>
+
 type TaggedUnionUtils<
   Tag extends PropertyKey,
   Members extends ReadonlyArray<Constraint & { readonly Type: { readonly [K in Tag]: PropertyKey } }>,
@@ -6233,15 +6241,29 @@ type TaggedUnionUtils<
       : never
   }
   readonly matchOrElse: {
-    <Output>(
+    <
+      Cases extends
+        & { [M in Flattened[number] as M["Type"][Tag]]+?: (value: M["Type"]) => any }
+        & { [K in Exclude<keyof Cases, Flattened[number]["Type"][Tag]>]: never },
+      OrElse extends (
+        value: Exclude<Members[number]["Type"], { readonly [K in Tag]: keyof Cases }>
+      ) => any
+    >(
       value: Members[number]["Type"],
-      cases: { [M in Flattened[number] as M["Type"][Tag]]+?: (value: M["Type"]) => Output },
-      orElse: (value: Members[number]["Type"]) => Output
-    ): Output
-    <Output>(
-      cases: { [M in Flattened[number] as M["Type"][Tag]]+?: (value: M["Type"]) => Output },
-      orElse: (value: Members[number]["Type"]) => Output
-    ): (value: Members[number]["Type"]) => Output
+      cases: Cases,
+      orElse: OrElse
+    ): MatchOrElseResult<Cases, OrElse>
+    <
+      Cases extends
+        & { [M in Flattened[number] as M["Type"][Tag]]+?: (value: M["Type"]) => any }
+        & { [K in Exclude<keyof Cases, Flattened[number]["Type"][Tag]>]: never },
+      OrElse extends (
+        value: Exclude<Members[number]["Type"], { readonly [K in Tag]: keyof Cases }>
+      ) => any
+    >(
+      cases: Cases,
+      orElse: OrElse
+    ): (value: Members[number]["Type"]) => MatchOrElseResult<Cases, OrElse>
   }
 }
 

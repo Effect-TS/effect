@@ -203,6 +203,30 @@ describe("Union", () => {
     })
 
     describe("matchOrElse", () => {
+      it("should preserve toTaggedUnion branch outputs and narrow the fallback", () => {
+        const schema = Schema.Union([
+          Schema.TaggedStruct("A", { a: Schema.String }),
+          Schema.TaggedStruct("B", { b: Schema.Number }),
+          Schema.TaggedStruct("C", { c: Schema.Boolean })
+        ]).pipe(Schema.toTaggedUnion("_tag"))
+        const value = hole<Schema.Schema.Type<typeof schema>>()
+        const cases: {
+          readonly A?: (value: { readonly _tag: "A"; readonly a: string }) => Effect.Effect<string>
+        } = {
+          A: (value) => Effect.succeed(value.a)
+        }
+
+        const result = schema.matchOrElse(value, cases, (value) => {
+          expect(value).type.toBe<
+            | { readonly _tag: "B"; readonly b: number }
+            | { readonly _tag: "C"; readonly c: boolean }
+          >()
+          return Effect.fail(value._tag)
+        })
+
+        expect(result).type.toBe<Effect.Effect<string, "B" | "C">>()
+      })
+
       it("should type partial cases with a shared output", () => {
         const schema = Schema.TaggedUnion({
           A: { a: Schema.String },
