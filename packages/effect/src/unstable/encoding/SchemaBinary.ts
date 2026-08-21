@@ -2858,12 +2858,13 @@ function compileTarget(
 // every other input, `Schema.is` included, still runs the real check.
 function withTrustedDecode(target: Schema.Constraint, trusted: WeakSet<object>): Schema.Constraint {
   const type = Schema.make(SchemaAST.toType(target.ast))
+  const decodeType = SchemaParser.decodeUnknownEffect(type as Schema.ConstraintDecoder<unknown>)
   return Schema.declareConstructor<unknown>()(
     [type],
-    ([type]) => (input, _ast, options) =>
+    () => (input, _ast, options) =>
       Predicate.isObjectOrArray(input) && trusted.delete(input)
         ? Effect.succeed(input)
-        : SchemaParser.decodeUnknownEffect(type)(input, options),
+        : decodeType(input, options),
     { identifier: "binary value" }
   )
 }
