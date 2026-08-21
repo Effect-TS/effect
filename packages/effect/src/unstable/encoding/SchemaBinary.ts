@@ -403,6 +403,12 @@ class Writer {
 
 // Index-signature predicates are not part of the fingerprint, so unmatched
 // keys are dropped in both modes.
+// A plain string parameter accepts every key without running the matcher.
+function matchesEveryKey(parameter: SchemaAST.AST): boolean {
+  const ast = SchemaAST.toEncoded(parameter)
+  return ast._tag === "String" && ast.checks === undefined
+}
+
 function matchIndexSignature(
   layout: StructLayout,
   key: string,
@@ -749,6 +755,8 @@ interface StructLayout {
   readonly fields: Array<Field>
   readonly byId: Map<number, Field>
   readonly extra: Array<ExtraSignature>
+  // The lone signature every key matches, so lookups skip the cache.
+  readonly extraAll: ExtraSignature | undefined
   readonly names: Set<string>
   optionalCount: number
 }
@@ -1175,6 +1183,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       fields,
       byId: new Map(),
       extra,
+      extraAll: extra.length === 1 && matchesEveryKey(extra[0].parameter) ? extra[0] : undefined,
       names: new Set(fields.map((f) => f.name)),
       optionalCount: 0
     }
@@ -1390,6 +1399,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
           fields,
           byId: new Map(fields.map((f) => [f.id, f])),
           extra: struct.extra,
+          extraAll: struct.extraAll,
           names: struct.names,
           optionalCount: fields.reduce((count, f) => f.optional ? count + 1 : count, 0)
         }
@@ -1849,19 +1859,36 @@ function encodeReason(ctx: EncodeContext, layout: ReasonLayout, value: unknown, 
   }
 }
 
-type ExtraPair = [keyBytes: Uint8Array, key: string, signature: ExtraSignature]
+// `keyBytes` stays undefined while every key is ASCII, where code unit order
+// and length already match raw UTF-8.
+type ExtraPair = [key: string, signature: ExtraSignature, keyBytes: Uint8Array | undefined]
+
+function isAscii(key: string): boolean {
+  for (let i = 0; i < key.length; i++) {
+    if (key.charCodeAt(i) > 0x7F) return false
+  }
+  return true
+}
 
 // Sort extra keys by raw UTF-8 for deterministic output.
 function extraPairs(ctx: EncodeContext, layout: StructLayout, obj: Record<string, unknown>): Array<ExtraPair> {
   const named = layout.names
+  const every = layout.extraAll
   const pairs: Array<ExtraPair> = []
+  let ascii = true
   for (const key of Object.keys(obj)) {
     if (named.has(key)) continue
-    const signature = (ctx.indexSignatures ??= new IndexSignatureCache(ctx.options)).find(layout, key)
+    const signature = every ?? (ctx.indexSignatures ??= new IndexSignatureCache(ctx.options)).find(layout, key)
     if (signature === undefined) continue
-    pairs.push([utf8Encode.encode(key), key, signature])
+    if (ascii && !isAscii(key)) ascii = false
+    pairs.push([key, signature, undefined])
   }
-  pairs.sort((a, b) => compareBytes(a[0], b[0]))
+  if (ascii) {
+    pairs.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)
+    return pairs
+  }
+  for (const pair of pairs) pair[2] = utf8Encode.encode(pair[0])
+  pairs.sort((a, b) => compareBytes(a[2]!, b[2]!))
   return pairs
 }
 
@@ -1871,9 +1898,14 @@ function encodeExtraPairs(
   obj: Record<string, unknown>,
   w: Writer
 ) {
-  for (const [keyBytes, key, signature] of pairs) {
-    w.uvarint(keyBytes.length)
-    w.bytes(keyBytes)
+  for (const [key, signature, keyBytes] of pairs) {
+    if (keyBytes === undefined) {
+      w.uvarint(key.length)
+      w.string(key)
+    } else {
+      w.uvarint(keyBytes.length)
+      w.bytes(keyBytes)
+    }
     issuePath[issuePathLen++] = key
     encodeSized(ctx, signature.layout, obj[key], w)
     issuePathLen--
@@ -2274,7 +2306,8 @@ function decodeExtraPair(layout: StructLayout, r: Reader, out: Record<string, un
   if (seen.has(key)) invalid("unique extra keys", undefined, r.options)
   seen.add(key)
   const saved = r.enter(r.uvarint())
-  const signature = (r.indexSignatures ??= new IndexSignatureCache(r.options)).find(layout, key)
+  const signature = layout.extraAll ??
+    (r.indexSignatures ??= new IndexSignatureCache(r.options)).find(layout, key)
   if (signature !== undefined) {
     issuePath[issuePathLen++] = key
     const value = decodeChecked(signature.layout, r)
