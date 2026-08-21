@@ -686,38 +686,44 @@ const resizeLoop = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
   })
 
 const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
-  Effect.acquireUseRelease(
-    Scope.make(),
-    (scope) =>
-      self.config.acquire.pipe(
-        Scope.provide(scope),
-        Effect.exit,
-        Effect.flatMap((exit) => {
-          const item: PoolItem<A, E> = {
-            exit,
-            finalizer: Effect.catchCause(Scope.close(scope, exit), reportUnhandledError),
-            refCount: 0,
-            disableReclaim: false,
-            isAvailable: false,
-            availablePrevious: undefined,
-            availableNext: undefined,
-            release: undefined as any
-          }
-          item.release = constant(releaseItem(self, item))
-          self.state.items.add(item)
-          addAvailable(self, item)
-          if (self.config.strategy === strategyNoop) {
-            return exit._tag === "Success" ? Effect.succeed(item) : Effect.as(item.finalizer, item)
-          }
-          return Effect.as(
-            exit._tag === "Success"
-              ? self.config.strategy.onAcquire(item)
-              : Effect.flatMap(item.finalizer, () => self.config.strategy.onAcquire(item)),
-            item
-          )
-        })
-      ),
-    (scope, exit) => exit._tag === "Failure" ? Scope.close(scope, exit) : Effect.void
+  internal.uninterruptibleMask((restore) =>
+    core.withFiber((fiber) => {
+      const scope = internal.scopeMakeUnsafe()
+      const previousContext = fiber.context
+      fiber.setContext(Context.add(previousContext, Scope.Scope, scope))
+      const use = Effect.flatMap(Effect.exit(self.config.acquire), (exit) => {
+        const item: PoolItem<A, E> = {
+          exit,
+          finalizer: Effect.catchCause(Scope.close(scope, exit), reportUnhandledError),
+          refCount: 0,
+          disableReclaim: false,
+          isAvailable: false,
+          availablePrevious: undefined,
+          availableNext: undefined,
+          release: undefined as any
+        }
+        item.release = constant(releaseItem(self, item))
+        self.state.items.add(item)
+        addAvailable(self, item)
+        if (self.config.strategy === strategyNoop) {
+          return exit._tag === "Success" ? Effect.succeed(item) : Effect.as(item.finalizer, item)
+        }
+        return Effect.as(
+          exit._tag === "Success"
+            ? self.config.strategy.onAcquire(item)
+            : Effect.flatMap(item.finalizer, () => self.config.strategy.onAcquire(item)),
+          item
+        )
+      })
+      return internal.onExitPrimitive(
+        restore(use) as Effect.Effect<PoolItem<A, E>>,
+        (exit) => {
+          fiber.setContext(previousContext)
+          return exit._tag === "Failure" ? internal.scopeCloseUnsafe(scope, exit) : undefined
+        },
+        true
+      )
+    })
   )
 
 const targetSize = <A, E>(self: Pool<A, E>) => {
