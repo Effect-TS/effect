@@ -33,6 +33,17 @@ export type PersistResult = {
   readonly processed: boolean
 }
 
+type ExistingMessageRow = {
+  readonly request_id: string
+  readonly discard: number
+  readonly processed: number
+  readonly reply_to: string | null
+}
+
+type CountRow = {
+  readonly count: number
+}
+
 const textEncoder = new TextEncoder()
 
 // A UTF-16 code unit encodes to at most 3 UTF-8 bytes, so most strings skip
@@ -58,7 +69,7 @@ export const persistRequest = (
       throw new TypeError("Expected an encoded Request envelope")
     }
 
-    const existing = sql.exec(
+    const existing = sql.exec<ExistingMessageRow>(
       `SELECT m.request_id, m.discard, m.processed, m.reply_to
        FROM cluster_messages m
        WHERE m.request_id = ? OR (? IS NOT NULL AND m.message_id = ?)
@@ -68,36 +79,36 @@ export const persistRequest = (
       primaryKey
     ).toArray()[0]
     if (existing !== undefined) {
-      if (replyTo !== null && Number(existing.discard) === 0 && Number(existing.processed) === 0) {
+      if (replyTo !== null && existing.discard === 0 && existing.processed === 0) {
         const replyTos = decodeReplyTargets(existing.reply_to)
         if (!replyTos.includes(replyTo)) replyTos.push(replyTo)
         sql.exec(
           "UPDATE cluster_messages SET reply_to = ? WHERE request_id = ?",
           JSON.stringify(replyTos),
-          String(existing.request_id)
+          existing.request_id
         )
       }
       return Effect.succeed<PersistResult>({
         _tag: "Duplicate",
-        originalId: String(existing.request_id),
-        processed: Number(existing.processed) === 1
+        originalId: existing.request_id,
+        processed: existing.processed === 1
       })
     }
 
     // A request counts against capacity until it is processed and, for streams,
     // until its chunks are acknowledged. Two indexed counts instead of one
     // `OR EXISTS` scan over the ever-growing dedup history.
-    const pending = Number(
-      sql.exec("SELECT COUNT(*) AS count FROM cluster_messages WHERE processed = 0").toArray()[0]?.count
-    )
-    const unacked = pending >= mailboxCapacity ? 0 : Number(
-      sql.exec(
+    const pending = sql.exec<CountRow>(
+      "SELECT COUNT(*) AS count FROM cluster_messages WHERE processed = 0"
+    ).toArray()[0]?.count ?? 0
+    const unacked = pending >= mailboxCapacity ?
+      0 :
+      sql.exec<CountRow>(
         `SELECT COUNT(DISTINCT r.request_id) AS count
          FROM cluster_replies r
          JOIN cluster_messages m ON m.request_id = r.request_id
          WHERE r.kind = 'Chunk' AND r.acked = 0 AND m.processed = 1`
-      ).toArray()[0]?.count
-    )
+      ).toArray()[0]?.count ?? 0
     if (pending + unacked >= mailboxCapacity) {
       return Effect.fail(new MailboxFullError("Entity mailbox has reached its 4096 request capacity"))
     }
@@ -166,6 +177,15 @@ export interface StoredMessage {
   readonly replyTos?: ReadonlyArray<string> | undefined
 }
 
+type StoredMessageRow = {
+  readonly request_id: string
+  readonly envelope: string
+  readonly discard: number
+  readonly deliver_at: number | null
+  readonly reply_to: string | null
+  readonly last_reply: string | null
+}
+
 const decodeReplyTargets = (value: unknown): Array<string> => {
   if (typeof value !== "string") return []
   try {
@@ -177,14 +197,14 @@ const decodeReplyTargets = (value: unknown): Array<string> => {
   return []
 }
 
-const rowToMessage = (row: Record<string, unknown>): StoredMessage => {
+const rowToMessage = (row: StoredMessageRow): StoredMessage => {
   const replyTos = decodeReplyTargets(row.reply_to)
   const message: StoredMessage = {
-    requestId: String(row.request_id),
-    envelope: String(row.envelope),
-    lastSentChunk: typeof row.last_reply === "string" ? row.last_reply : undefined,
-    discard: Number(row.discard) === 1,
-    ...(typeof row.deliver_at === "number" ? { deliverAt: row.deliver_at } : undefined),
+    requestId: row.request_id,
+    envelope: row.envelope,
+    lastSentChunk: row.last_reply ?? undefined,
+    discard: row.discard === 1,
+    ...(row.deliver_at === null ? undefined : { deliverAt: row.deliver_at }),
     ...(replyTos.length === 0 ? undefined : { replyTos })
   }
   return message
@@ -193,7 +213,7 @@ const rowToMessage = (row: Record<string, unknown>): StoredMessage => {
 /** @internal */
 export const loadUnprocessed = (sql: SqlStorage, now?: number): Effect.Effect<Array<StoredMessage>> =>
   Effect.sync(() =>
-    sql.exec(
+    sql.exec<StoredMessageRow>(
       `SELECT m.request_id, m.envelope, m.discard, m.deliver_at, m.reply_to, r.reply AS last_reply
        FROM cluster_messages m
        LEFT JOIN cluster_replies r ON r.reply_id = m.last_reply_id
@@ -206,7 +226,7 @@ export const loadUnprocessed = (sql: SqlStorage, now?: number): Effect.Effect<Ar
 /** @internal */
 export const loadDue = (sql: SqlStorage, now?: number): Effect.Effect<Array<StoredMessage>> =>
   Effect.sync(() =>
-    sql.exec(
+    sql.exec<StoredMessageRow>(
       `SELECT m.request_id, m.envelope, m.discard, m.deliver_at, m.reply_to, r.reply AS last_reply
        FROM cluster_messages m
        LEFT JOIN cluster_replies r ON r.reply_id = m.last_reply_id
@@ -219,7 +239,7 @@ export const loadDue = (sql: SqlStorage, now?: number): Effect.Effect<Array<Stor
 /** @internal */
 export const loadMessage = (sql: SqlStorage, requestId: string): Effect.Effect<StoredMessage | undefined> =>
   Effect.sync(() => {
-    const row = sql.exec(
+    const row = sql.exec<StoredMessageRow>(
       `SELECT m.request_id, m.envelope, m.discard, m.deliver_at, m.reply_to, r.reply AS last_reply
        FROM cluster_messages m
        LEFT JOIN cluster_replies r ON r.reply_id = m.last_reply_id
@@ -236,24 +256,29 @@ export interface NextReply {
   readonly kind: "Chunk" | "WithExit"
 }
 
+type NextReplyRow = {
+  readonly reply: string
+  readonly kind: NextReply["kind"]
+}
+
 /** @internal */
 export const loadNextReply = (sql: SqlStorage, requestId: string): Effect.Effect<NextReply | undefined> =>
   Effect.sync(() => {
-    const row = sql.exec(
+    const row = sql.exec<NextReplyRow>(
       `SELECT reply, kind
        FROM cluster_replies
        WHERE request_id = ? AND kind = 'Chunk' AND acked = 0
        ORDER BY sequence ASC
        LIMIT 1`,
       requestId
-    ).toArray()[0] ?? sql.exec(
+    ).toArray()[0] ?? sql.exec<NextReplyRow>(
       `SELECT reply, kind
        FROM cluster_replies
        WHERE request_id = ? AND kind = 'WithExit'
        LIMIT 1`,
       requestId
     ).toArray()[0]
-    return typeof row?.reply === "string" ? { reply: row.reply, kind: row.kind as NextReply["kind"] } : undefined
+    return row
   })
 
 /** @internal */

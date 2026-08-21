@@ -24,6 +24,13 @@ const Watch = Rpc.make("Watch", {
 const Mailbox = Entity.make("Mailbox", [Add, AddVolatile, Get, Watch])
 const values = new Map<string, number>()
 type TestDurableObjectState = ConstructorParameters<typeof BaseClusterEntity>[0]
+type ScheduledRow = {
+  readonly request_id: string
+  readonly message_id: string | null
+  readonly processed: number
+  readonly deliver_at: number | null
+  readonly reply_to: string | null
+}
 
 export class ClusterEntity extends BaseClusterEntity {
   readonly #testState: TestDurableObjectState
@@ -44,8 +51,8 @@ export class ClusterEntity extends BaseClusterEntity {
     )
   }
 
-  scheduledRows(): Array<Record<string, unknown>> {
-    return this.#testState.storage.sql.exec(
+  scheduledRows(): Array<ScheduledRow> {
+    return this.#testState.storage.sql.exec<ScheduledRow>(
       `SELECT request_id, message_id, processed, deliver_at, reply_to
        FROM cluster_messages
        ORDER BY rowid ASC`
