@@ -722,7 +722,7 @@ export const layerMsgPackWith = (
  * @category layers
  * @since 4.0.0
  */
-export const layerSchemaBinary: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSerialization)(makeSchemaBinary())
+export const layerSchemaBinary: Layer.Layer<RpcSerialization> = Layer.sync(RpcSerialization)(makeSchemaBinary)
 
 /**
  * RPC serialization layer that uses SchemaBinary with a custom maximum frame
@@ -733,4 +733,4 @@ export const layerSchemaBinary: Layer.Layer<RpcSerialization> = Layer.succeed(Rp
  */
 export const layerSchemaBinaryWith = (options: {
   readonly maxFrameSize: number
-}): Layer.Layer<RpcSerialization> => Layer.succeed(RpcSerialization)(makeSchemaBinary(options))
+}): Layer.Layer<RpcSerialization> => Layer.sync(RpcSerialization)(() => makeSchemaBinary(options))
