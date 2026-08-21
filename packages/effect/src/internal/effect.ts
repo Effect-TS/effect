@@ -4747,7 +4747,7 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
     if (concurrency === 1) {
       return runSequential(state, items, 0, end)
     }
-    const orderedStep = opts?.orderedStep === true && concurrency > 1
+    const orderedStep = opts?.orderedStep === true
     let done = false
     let parentFiber: Fiber.Fiber<any, any> | undefined
     let fibers: Set<Fiber.Fiber<any, any>> | undefined
