@@ -399,6 +399,47 @@ describe("Pool", () => {
       deepStrictEqual(yield* Fiber.await(fiber), Exit.interrupt(fiberId))
     }))
 
+  it.effect("interrupts pending gets without leaking usage", () =>
+    Effect.gen(function*() {
+      const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1 })
+      const scope = yield* Scope.make()
+      yield* Scope.provide(Pool.get(pool), scope)
+      const fibers: Array<Fiber.Fiber<string>> = []
+      for (let i = 0; i < 10; i++) {
+        fibers.push(yield* Effect.forkChild(Pool.get(pool), { startImmediately: true }))
+      }
+      yield* Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(() => pool.state.waiters.size)), {
+        until: (size) => size === fibers.length
+      })
+      yield* Effect.all(fibers.map(Fiber.interrupt), { concurrency: "unbounded", discard: true })
+      strictEqual(pool.state.waiters.size, 0)
+      strictEqual(pool.state.usage, 1)
+      yield* Scope.close(scope, Exit.void)
+      strictEqual(pool.state.usage, 0)
+    }))
+
+  it.effect("does not re-wake waiters registered during notification", () =>
+    Effect.gen(function*() {
+      const acquire = yield* Deferred.make<void>()
+      const pool = yield* Pool.makeWithTTL({
+        acquire: Effect.as(Deferred.await(acquire), "resource"),
+        min: 0,
+        max: 1,
+        timeToLive: Duration.infinity
+      })
+      const fibers: Array<Fiber.Fiber<string>> = []
+      for (let i = 0; i < 10; i++) {
+        fibers.push(yield* Effect.forkChild(Effect.scoped(Pool.get(pool)), { startImmediately: true }))
+      }
+      yield* Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(() => pool.state.waiters.size)), {
+        until: (size) => size === fibers.length
+      })
+      yield* Deferred.succeed(acquire, undefined)
+      yield* Effect.all(fibers.map(Fiber.join), { concurrency: "unbounded", discard: true })
+      strictEqual(pool.state.waiters.size, 0)
+      strictEqual(pool.state.usage, 0)
+    }))
+
   it.effect("finalizer is called for failed allocations", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()
