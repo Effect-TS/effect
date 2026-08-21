@@ -6201,6 +6201,14 @@ type Flatten<Schemas> = Schemas extends readonly [infer Head, ...infer Tail]
   : [Head, ...Flatten<Tail>]
   : []
 
+type MatchCasesResult<Cases> = {
+  [K in keyof Cases]-?: NonNullable<Cases[K]> extends (...args: Array<any>) => infer R ? R : never
+}[keyof Cases]
+
+type MatchOrElseResult<Cases, OrElse extends (...args: Array<any>) => any> = Unify<
+  MatchCasesResult<Cases> | ReturnType<OrElse>
+>
+
 type TaggedUnionUtils<
   Tag extends PropertyKey,
   Members extends ReadonlyArray<Constraint & { readonly Type: { readonly [K in Tag]: PropertyKey } }>,
@@ -6231,6 +6239,31 @@ type TaggedUnionUtils<
       cases: Cases
     ): (value: Members[number]["Type"]) => Cases[keyof Cases] extends (value: any) => infer R ? Unify<R>
       : never
+  }
+  readonly matchOrElse: {
+    <
+      Cases extends
+        & { [M in Flattened[number] as M["Type"][Tag]]+?: (value: M["Type"]) => any }
+        & { [K in Exclude<keyof Cases, Flattened[number]["Type"][Tag]>]: never },
+      OrElse extends (
+        value: Exclude<Members[number]["Type"], { readonly [K in Tag]: keyof Cases }>
+      ) => any
+    >(
+      value: Members[number]["Type"],
+      cases: Cases,
+      orElse: OrElse
+    ): MatchOrElseResult<Cases, OrElse>
+    <
+      Cases extends
+        & { [M in Flattened[number] as M["Type"][Tag]]+?: (value: M["Type"]) => any }
+        & { [K in Exclude<keyof Cases, Flattened[number]["Type"][Tag]>]: never },
+      OrElse extends (
+        value: Exclude<Members[number]["Type"], { readonly [K in Tag]: keyof Cases }>
+      ) => any
+    >(
+      cases: Cases,
+      orElse: OrElse
+    ): (value: Members[number]["Type"]) => MatchOrElseResult<Cases, OrElse>
   }
 }
 
@@ -6287,7 +6320,7 @@ export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
 
     walk(self)
 
-    return Object.assign(self, { cases, discriminants, isAnyOf, guards, match }) as any
+    return Object.assign(self, { cases, discriminants, isAnyOf, guards, match, matchOrElse }) as any
 
     function walk(schema: Constraint) {
       const ast = schema.ast
@@ -6333,6 +6366,24 @@ export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
       const handler = Object.hasOwn(cases, key) ? cases[key] : undefined
       return handler(value)
     }
+
+    function matchOrElse() {
+      if (arguments.length === 2) {
+        const cases = arguments[0]
+        const orElse = arguments[1]
+        return function(value: any) {
+          const key = value[tag]
+          const handler = Object.hasOwn(cases, key) ? cases[key] ?? orElse : orElse
+          return handler(value)
+        }
+      }
+      const value = arguments[0]
+      const cases = arguments[1]
+      const orElse = arguments[2]
+      const key = value[tag]
+      const handler = Object.hasOwn(cases, key) ? cases[key] ?? orElse : orElse
+      return handler(value)
+    }
   }
 }
 
@@ -6369,12 +6420,23 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
       cases: { [K in keyof Cases]: (value: Cases[K]["Type"]) => Output }
     ): Output
   }
+  readonly matchOrElse: {
+    <Output>(
+      value: Cases[keyof Cases]["Type"],
+      cases: { [K in keyof Cases]?: (value: Cases[K]["Type"]) => Output },
+      orElse: (value: Cases[keyof Cases]["Type"]) => Output
+    ): Output
+    <Output>(
+      cases: { [K in keyof Cases]?: (value: Cases[K]["Type"]) => Output },
+      orElse: (value: Cases[keyof Cases]["Type"]) => Output
+    ): (value: Cases[keyof Cases]["Type"]) => Output
+  }
 }
 
 /**
  * Builds a discriminated union from a record of field sets, one per variant.
  * Each key becomes the `_tag` literal and the value is passed to {@link TaggedStruct}.
- * The result includes `cases`, `guards`, `isAnyOf`, and `match` utilities.
+ * The result includes `cases`, `guards`, `isAnyOf`, `match`, and `matchOrElse` utilities.
  *
  * **Example** (Pattern matching a discriminated union)
  *
@@ -6409,8 +6471,8 @@ export function TaggedUnion<const CasesByTag extends Record<string, Struct.Field
     members.push(member)
   }
   const union = Union(members)
-  const { guards, isAnyOf, match } = toTaggedUnion("_tag")(union)
-  return make(union.ast, { cases, isAnyOf, guards, match })
+  const { guards, isAnyOf, match, matchOrElse } = toTaggedUnion("_tag")(union)
+  return make(union.ast, { cases, isAnyOf, guards, match, matchOrElse })
 }
 
 /**
