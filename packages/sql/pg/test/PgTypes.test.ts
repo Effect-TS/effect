@@ -641,6 +641,42 @@ describe("PgTypes", () => {
       }
     })
 
+    it("decodes a non-ASCII character at every position of the fast path", () => {
+      // The fast path reads eight bytes at a time, so a character it cannot
+      // handle has to be caught wherever it falls in a group and whatever the
+      // tail after the last full one.
+      for (let prefix = 0; prefix <= 48; prefix++) {
+        const value = "a".repeat(prefix) + "é☃"
+        assert.strictEqual(PgTypes.decode(PgTypes.encode(value, PgTypes.OID.text), PgTypes.OID.text, 1), value)
+      }
+    })
+
+    it("rejects a stray high byte at every position of the fast path", () => {
+      // A lone lead byte is not valid UTF-8, so the fast path has to hand it to
+      // the decoder rather than read it as a character of its own.
+      for (let length = 1; length <= 16; length++) {
+        for (let at = 0; at < length; at++) {
+          const bytes = new Uint8Array(length).fill(0x61)
+          bytes[at] = 0xc3
+          assert.throws(() => PgTypes.decode(bytes, PgTypes.OID.text, 1), /Invalid UTF-8 in text value/)
+        }
+      }
+    })
+
+    it("decodes a multi-byte character at every position of the fast path", () => {
+      for (let prefix = 0; prefix <= 16; prefix++) {
+        const value = "a".repeat(prefix) + "é☃"
+        assert.strictEqual(PgTypes.decode(PgTypes.encode(value, PgTypes.OID.text), PgTypes.OID.text, 1), value)
+      }
+    })
+
+    it("decodes ASCII text of every length across the fast path boundary", () => {
+      for (let length = 0; length <= 16; length++) {
+        const value = "abcdefgh".repeat(2).slice(0, length)
+        assert.strictEqual(PgTypes.decode(PgTypes.encode(value, PgTypes.OID.text), PgTypes.OID.text, 1), value)
+      }
+    })
+
     it("writes every builtin parameter as the bytes encode produces", () => {
       const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
       const parameters = [

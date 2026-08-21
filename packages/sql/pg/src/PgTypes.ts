@@ -547,8 +547,6 @@ const numericSpecial = (sign: number): Uint8Array => {
   return bytes
 }
 
-const fourDigits = (value: number): string => twoDigits[(value / 100) | 0] + twoDigits[value % 100]
-
 const decodeNumeric = (bytes: Uint8Array, offset: number, size: number): string => {
   if (size < 8) return fail("Truncated numeric value")
   const count = readInt16(bytes, offset)
@@ -577,13 +575,21 @@ const decodeNumeric = (bytes: Uint8Array, offset: number, size: number): string 
     result += "0"
   } else {
     for (let i = 0; i <= weight; i++) {
-      result += i === 0 ? String(digitAt(i)) : fourDigits(digitAt(i))
+      const digit = digitAt(i)
+      if (i === 0) {
+        result += String(digit)
+      } else {
+        result += twoDigits[(digit / 100) | 0]
+        result += twoDigits[digit % 100]
+      }
     }
   }
   if (scale > 0) {
     let fraction = ""
     for (let i = weight + 1; fraction.length < scale; i++) {
-      fraction += fourDigits(digitAt(i))
+      const digit = digitAt(i)
+      fraction += twoDigits[(digit / 100) | 0]
+      fraction += twoDigits[digit % 100]
     }
     result += `.${fraction.slice(0, scale)}`
   }
