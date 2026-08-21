@@ -393,6 +393,32 @@ describe("SchemaBinary", () => {
       assert.deepStrictEqual([...encode(OrderedA, { a: 1, b: "x" })], [...encode(OrderedB, { a: 1, b: "x" })])
     })
 
+    it("orders extra keys by raw UTF-8 whatever the insertion order", () => {
+      const record = Schema.Record(Schema.String, Schema.Number)
+      // Code unit order puts the surrogate pair first, raw UTF-8 does not.
+      const wide = "\u{10000}"
+      const replacement = "\uFFFD"
+      assert.deepStrictEqual(
+        [...encode(record, { [wide]: 1, [replacement]: 2 })],
+        [...encode(record, { [replacement]: 2, [wide]: 1 })]
+      )
+      assert.deepStrictEqual(roundtrip(record, { [wide]: 1, [replacement]: 2 }), { [wide]: 1, [replacement]: 2 })
+      assert.deepStrictEqual(
+        [...encode(record, { b: 1, a: 2 })],
+        [...encode(record, { a: 2, b: 1 })]
+      )
+    })
+
+    it("keeps canonical key order when record shapes change within a frame", () => {
+      const rows = Schema.Array(Schema.Record(Schema.String, Schema.Number))
+      const mixed = [{ b: 2, a: 1 }, { a: 1, b: 2 }, { a: 1 }, { c: 3, a: 1 }, { a: 1, b: 2 }]
+      assert.deepStrictEqual(roundtrip(rows, mixed), mixed)
+      assert.deepStrictEqual(
+        [...encode(rows, mixed)],
+        [...encode(rows, [{ a: 1, b: 2 }, { b: 2, a: 1 }, { a: 1 }, { a: 1, c: 3 }, { b: 2, a: 1 }])]
+      )
+    })
+
     it("uses fieldId as the encoded-side field identity", () => {
       const Before = Schema.Struct({ oldName: Schema.String.pipe(SchemaBinary.fieldId(1)) })
       const After = Schema.Struct({ newName: Schema.String.pipe(SchemaBinary.fieldId(1)) })
@@ -1236,6 +1262,35 @@ describe("SchemaBinary", () => {
       assert.strictEqual(error.message.match(/Missing key/g)?.length, 34)
     })
 
+    it("validates literals instead of leaning on the schema pass", () => {
+      const Tagged = Schema.Struct({ kind: Schema.Literal("ok") })
+      const Loose = Schema.Struct({ kind: Schema.String })
+      assert.match(
+        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Tagged))(encode(Loose, { kind: "nope" })))
+          .message,
+        /"ok"/
+      )
+      assert.match(schemaError(() => encode(Tagged, { kind: "nope" } as never)).message, /"ok"/)
+
+      const Level = Schema.Struct({ kind: Schema.Literals(["info", "warning"]) })
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(SchemaBinary.toCodec(Level))(encode(Loose, { kind: "warning" })),
+        { kind: "warning" }
+      )
+      assert.match(
+        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Level))(encode(Loose, { kind: "debug" })))
+          .message,
+        /"info" \| "warning"/
+      )
+    })
+
+    it("rejects a Date outside the representable range", () => {
+      const codec = SchemaBinary.toCodec(Schema.Date)
+      const bytes = Schema.encodeUnknownSync(codec)(new Date(0))
+      bytes.set(Uint8Array.of(0, 0, 0, 0, 0, 0, 0, 0x7F), bytes.length - 8)
+      assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(bytes)).message, /a valid Date/)
+    })
+
     it("fails Never values and unregistered symbols through SchemaError", () => {
       assert.isTrue(Schema.isSchemaError(schemaError(() => encode(Schema.Never, undefined))))
       assert.isTrue(
@@ -1504,6 +1559,18 @@ describe("SchemaBinary", () => {
         ),
         baseline
       )
+    })
+
+    it("does not depend on the order a literal union declares its members", () => {
+      assert.strictEqual(
+        fingerprintOf(Schema.Literals(["a", "b", "c"]), "a"),
+        fingerprintOf(Schema.Literals(["c", "a", "b"]), "a")
+      )
+      assert.notStrictEqual(
+        fingerprintOf(Schema.Literals(["a", "b"]), "a"),
+        fingerprintOf(Schema.Literals(["a", "c"]), "a")
+      )
+      assert.notStrictEqual(fingerprintOf(Schema.Literal("a"), "a"), fingerprintOf(Schema.String, "a"))
     })
 
     it("does not depend on whether an acyclic sub-schema is shared or repeated", () => {
