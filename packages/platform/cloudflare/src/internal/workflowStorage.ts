@@ -56,21 +56,44 @@ export interface ExecutionRow {
   readonly resumePending: boolean
 }
 
+type StoredExecutionRow = {
+  readonly workflow_name: string
+  readonly execution_id: string
+  readonly payload: string
+  readonly parent_name: string | null
+  readonly parent_execution_id: string | null
+  readonly result: string | null
+  readonly resume_pending: number
+}
+
+type ExitRow = {
+  readonly exit: string
+}
+
+type ClockWakeUpRow = {
+  readonly wake_up: number | null
+}
+
+type ClockRow = {
+  readonly name: string
+  readonly deferred_name: string
+}
+
 /** @internal */
 export const loadExecution = (sql: SqlStorage): ExecutionRow | undefined => {
-  const row = sql.exec(
+  const row = sql.exec<StoredExecutionRow>(
     `SELECT workflow_name, execution_id, payload, parent_name, parent_execution_id, result, resume_pending
      FROM workflow_execution WHERE id = 0`
   ).toArray()[0]
   if (row === undefined) return undefined
   return {
-    workflowName: String(row.workflow_name),
-    executionId: String(row.execution_id),
-    payload: String(row.payload),
-    parent: typeof row.parent_name === "string" && typeof row.parent_execution_id === "string"
+    workflowName: row.workflow_name,
+    executionId: row.execution_id,
+    payload: row.payload,
+    parent: row.parent_name !== null && row.parent_execution_id !== null
       ? { workflowName: row.parent_name, executionId: row.parent_execution_id }
       : undefined,
-    result: typeof row.result === "string" ? row.result : undefined,
+    result: row.result ?? undefined,
     resumePending: row.resume_pending === 1
   }
 }
@@ -119,8 +142,8 @@ export const setResumePending = (sql: SqlStorage, pending: boolean): void => {
 
 /** @internal */
 export const loadActivity = (sql: SqlStorage, key: string): string | undefined => {
-  const row = sql.exec("SELECT exit FROM workflow_activities WHERE key = ?", key).toArray()[0]
-  return row === undefined ? undefined : String(row.exit)
+  const row = sql.exec<ExitRow>("SELECT exit FROM workflow_activities WHERE key = ?", key).toArray()[0]
+  return row?.exit
 }
 
 /** @internal */
@@ -130,8 +153,8 @@ export const saveActivity = (sql: SqlStorage, key: string, exit: string): void =
 
 /** @internal */
 export const loadDeferred = (sql: SqlStorage, name: string): string | undefined => {
-  const row = sql.exec("SELECT exit FROM workflow_deferreds WHERE name = ?", name).toArray()[0]
-  return row === undefined ? undefined : String(row.exit)
+  const row = sql.exec<ExitRow>("SELECT exit FROM workflow_deferreds WHERE name = ?", name).toArray()[0]
+  return row?.exit
 }
 
 /**
@@ -158,11 +181,10 @@ export const saveClock = (sql: SqlStorage, name: string, deferredName: string, w
 
 /** @internal */
 export const earliestClockWakeUp = (sql: SqlStorage): number | undefined => {
-  const row = sql.exec(
+  const row = sql.exec<ClockWakeUpRow>(
     "SELECT min(wake_up) AS wake_up FROM workflow_clocks WHERE fired = 0"
   ).toArray()[0]
-  const wakeUp = row?.wake_up
-  return typeof wakeUp === "number" ? wakeUp : undefined
+  return row?.wake_up ?? undefined
 }
 
 /** @internal */
@@ -170,12 +192,12 @@ export const dueClocks = (
   sql: SqlStorage,
   now: number
 ): Array<{ readonly name: string; readonly deferredName: string }> =>
-  sql.exec(
+  sql.exec<ClockRow>(
     "SELECT name, deferred_name FROM workflow_clocks WHERE fired = 0 AND wake_up <= ?",
     now
   ).toArray().map((row) => ({
-    name: String(row.name),
-    deferredName: String(row.deferred_name)
+    name: row.name,
+    deferredName: row.deferred_name
   }))
 
 /** @internal */
