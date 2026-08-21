@@ -422,6 +422,21 @@ describe("PgProtocol", () => {
       assertThrowsTagged("PgProtocolParseError", () => parseOne("4400000006ffff"))
     })
 
+    it("rejects negative collection counts", () => {
+      for (
+        const frame of [
+          "5400000006ffff", // RowDescription
+          "7400000006ffff", // ParameterDescription
+          "470000000700ffff", // CopyInResponse
+          "480000000700ffff", // CopyOutResponse
+          "570000000700ffff", // CopyBothResponse
+          "760000000c00000000ffffffff" // NegotiateProtocolVersion
+        ]
+      ) {
+        assertThrowsTagged("PgProtocolParseError", () => parseOne(frame))
+      }
+    })
+
     it("rejects a truncated DataRow field length", () => {
       assertThrowsTagged("PgProtocolParseError", () => parseOne("440000000800010000"))
     })

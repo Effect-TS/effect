@@ -721,7 +721,11 @@ const dateCodec: Codec<any> = {
     } else if (text === "-infinity") {
       writeInt32(bytes, 0, INT32_MIN)
     } else {
-      writeInt32(bytes, 0, parseDate(text) - PG_EPOCH_DAYS)
+      const days = parseDate(text) - PG_EPOCH_DAYS
+      if (days <= INT32_MIN || days >= INT32_MAX) {
+        fail(`date out of range: "${text}"`)
+      }
+      writeInt32(bytes, 0, days)
     }
     return bytes
   },

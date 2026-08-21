@@ -171,6 +171,12 @@ describe("PgTypes", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("not-a-uuid", PgTypes.OID.uuid))
     })
 
+    it("rejects finite dates outside the PostgreSQL wire range or on its infinity sentinels", () => {
+      for (const value of ["5881610-07-11", "-5877611-06-22", "999999999-12-31", "-999999999-01-01"]) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(value, PgTypes.OID.date))
+      }
+    })
+
     it("rejects host bits outside a cidr netmask", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("10.1.2.3/8", PgTypes.OID.cidr))
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("2001:db8::1/32", PgTypes.OID.cidr))

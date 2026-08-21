@@ -1203,11 +1203,18 @@ const decodeErrorFields = (reader: Reader): ErrorFields => {
   return fields
 }
 
+const requireNonNegativeCount = (count: number, name: string): number => {
+  if (count < 0) {
+    throw new ParseError({ message: `Invalid ${name} count: ${count}` })
+  }
+  return count
+}
+
 const decodeCopyResponse = (
   reader: Reader
 ): { readonly format: number; readonly columnFormats: ReadonlyArray<number> } => {
   const format = reader.uint8()
-  const count = reader.int16()
+  const count = requireNonNegativeCount(reader.int16(), "COPY column")
   const columnFormats: Array<number> = new Array(count)
   for (let i = 0; i < count; i++) {
     columnFormats[i] = reader.int16()
@@ -1275,7 +1282,7 @@ const decodeBackend = (type: number, reader: Reader): BackendMessage => {
       return { _tag: "ReadyForQuery", status }
     }
     case BackendType.RowDescription: {
-      const count = reader.int16()
+      const count = requireNonNegativeCount(reader.int16(), "RowDescription field")
       const fields: Array<FieldDescription> = new Array(count)
       for (let i = 0; i < count; i++) {
         fields[i] = {
@@ -1307,7 +1314,7 @@ const decodeBackend = (type: number, reader: Reader): BackendMessage => {
     case BackendType.PortalSuspended:
       return { _tag: "PortalSuspended" }
     case BackendType.ParameterDescription: {
-      const count = reader.int16()
+      const count = requireNonNegativeCount(reader.int16(), "ParameterDescription parameter")
       const parameterTypes: Array<number> = new Array(count)
       for (let i = 0; i < count; i++) {
         parameterTypes[i] = reader.uint32()
@@ -1327,7 +1334,7 @@ const decodeBackend = (type: number, reader: Reader): BackendMessage => {
       }
     case BackendType.NegotiateProtocolVersion: {
       const minorVersion = reader.int32()
-      const count = reader.int32()
+      const count = requireNonNegativeCount(reader.int32(), "NegotiateProtocolVersion option")
       const unrecognizedOptions: Array<string> = new Array(count)
       for (let i = 0; i < count; i++) {
         unrecognizedOptions[i] = reader.cString()
