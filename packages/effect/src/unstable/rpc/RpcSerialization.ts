@@ -597,8 +597,7 @@ const makeSchemaBinary = (options?: {
   readonly maxFrameSize?: number | undefined
 }): RpcSerialization["Service"] => {
   const maxFrameSize = options?.maxFrameSize ?? defaultSchemaBinaryMaxFrameSize
-  const envelopeCodec = SchemaBinary.toCodec(RpcMessage.EncodedSchema, { fingerprint: true })
-  const encodeEnvelope = Schema.encodeUnknownSync(envelopeCodec)
+  const encodeEnvelope = SchemaBinary.encodeUnknownSync(RpcMessage.EncodedSchema, { fingerprint: true })
   return RpcSerialization.of({
     contentType: "application/vnd.effect.rpc+schema-binary",
     includesFraming: true,

@@ -6,7 +6,7 @@ Run from the repository root:
 nix develop -c pnpm --dir packages/effect exec node benchmark/schema/SchemaBinary.ts
 ```
 
-These results are from one full run at commit `ef9b90a9b` on Linux x86_64 with Node 26.7.0. Codec and schema construction are excluded. One-shot tasks use 100 warmups and 1,000 measured samples; streaming tasks use 25 warmups and 250 measured samples. Throughput is machine-local and should only be compared within this run.
+These results are from one full run at commit `d854fd7c9` on Linux x86_64 (AMD EPYC 4344P) with Node 26.7.0. Codec and schema construction are excluded. One-shot tasks use 100 warmups and 1,000 measured samples; streaming tasks use 25 warmups and 250 measured samples. Throughput is machine-local and should only be compared within this run.
 
 Fingerprint mode omits field identifiers when the schema fingerprint matches. JSON, Msgpack, and NDJSON use the same `Schema.toCodecJson` representation.
 
@@ -47,23 +47,23 @@ Average encode operations per second:
 
 | Case                   |   Default | Fingerprint |    JSON | Msgpack |
 | ---------------------- | --------: | ----------: | ------: | ------: |
-| small record           | 1,138,225 |   1,147,081 | 452,215 | 715,571 |
-| nested payload         |   395,240 |     408,163 | 263,498 | 281,540 |
-| collections            |    35,376 |      35,651 |  21,778 |  22,134 |
-| index signatures / 128 |    14,096 |      14,167 |  35,928 |  35,077 |
-| index signatures / 512 |     2,871 |       2,867 |   6,508 |   6,314 |
-| 200-row array payload  |     6,995 |       8,128 |   6,125 |   4,038 |
+| small record           | 1,083,812 |   1,104,689 | 431,684 | 708,480 |
+| nested payload         |   386,908 |     399,853 | 253,652 | 284,580 |
+| collections            |    52,004 |      53,623 |  21,927 |  22,351 |
+| index signatures / 128 |    46,620 |      46,380 |  36,181 |  35,102 |
+| index signatures / 512 |     8,601 |       8,378 |   6,568 |   6,263 |
+| 200-row array payload  |     7,282 |       8,471 |   7,113 |   4,184 |
 
 Average decode operations per second:
 
 | Case                   |   Default | Fingerprint |    JSON | Msgpack |
 | ---------------------- | --------: | ----------: | ------: | ------: |
-| small record           | 1,121,650 |   1,115,901 | 418,359 | 687,335 |
-| nested payload         |   354,482 |     376,201 | 217,858 | 266,371 |
-| collections            |    39,697 |      39,708 |  20,723 |  21,943 |
-| index signatures / 128 |    20,589 |      20,675 |  28,624 |  29,884 |
-| index signatures / 512 |     4,988 |       4,969 |   5,411 |   4,562 |
-| 200-row array payload  |     7,233 |       7,934 |   5,630 |   4,761 |
+| small record           | 1,135,739 |   1,189,669 | 394,682 | 697,231 |
+| nested payload         |   511,328 |     559,500 | 212,849 | 262,936 |
+| collections            |   112,183 |     112,971 |  21,062 |  22,290 |
+| index signatures / 128 |    62,425 |      61,355 |  28,622 |  29,607 |
+| index signatures / 512 |    15,913 |      15,686 |   5,396 |   4,569 |
+| 200-row array payload  |    11,074 |      12,862 |   5,732 |   4,835 |
 
 ## Streaming decode throughput
 
@@ -71,28 +71,28 @@ Average decoded values per second for batched input:
 
 | Case                   |   Default | Fingerprint | Msgpack |  NDJSON |
 | ---------------------- | --------: | ----------: | ------: | ------: |
-| small record           | 4,385,709 |   5,493,837 | 901,253 | 849,385 |
-| nested payload         |   819,281 |     977,777 | 284,386 | 306,687 |
-| collections            |   118,938 |     119,806 |  21,189 |  20,364 |
-| index signatures / 128 |    58,715 |      58,699 |  27,863 |  28,431 |
-| index signatures / 512 |     8,374 |       8,322 |   4,055 |   5,064 |
-| 200-row array payload  |    11,147 |      12,996 |   6,345 |   4,953 |
-| 200 single-row frames  | 2,127,598 |   2,382,278 | 856,723 | 946,703 |
+| small record           | 4,252,786 |   5,123,480 | 914,260 | 855,356 |
+| nested payload         |   770,680 |     944,310 | 277,764 | 308,887 |
+| collections            |   120,646 |     121,229 |  21,830 |  21,217 |
+| index signatures / 128 |    64,516 |      64,617 |  28,148 |  28,768 |
+| index signatures / 512 |    15,741 |      15,598 |   4,115 |   5,040 |
+| 200-row array payload  |    10,785 |      12,613 |   6,491 |   5,053 |
+| 200 single-row frames  | 2,126,081 |   2,431,681 | 861,368 | 955,186 |
 
 Average decoded values per second for single and first-byte-fragmented input:
 
 | Case                   | Default single | Default fragmented | Fingerprint single | Fingerprint fragmented | NDJSON single | NDJSON fragmented |
 | ---------------------- | -------------: | -----------------: | -----------------: | ---------------------: | ------------: | ----------------: |
-| small record           |      2,585,851 |          2,296,255 |          3,131,403 |              2,871,336 |       137,242 |           142,477 |
-| nested payload         |        710,222 |            699,114 |            836,484 |                826,233 |       109,985 |           108,842 |
-| collections            |        116,964 |            116,132 |            117,837 |                116,882 |        18,463 |            18,438 |
-| index signatures / 128 |         57,343 |             57,974 |             58,448 |                 58,763 |        24,688 |            24,643 |
-| index signatures / 512 |          8,414 |              8,704 |              8,793 |                  8,619 |         5,218 |             5,195 |
-| 200-row array payload  |         11,419 |             11,474 |             13,312 |                 13,295 |         5,206 |             5,127 |
-| 200 single-row frames  |      1,390,397 |          1,369,513 |          1,594,590 |              1,512,635 |       130,684 |           127,909 |
+| small record           |      2,460,050 |          2,216,227 |          2,997,308 |              2,724,743 |       136,936 |           121,880 |
+| nested payload         |        578,884 |            689,451 |            848,984 |                794,700 |       111,254 |           108,171 |
+| collections            |        119,007 |            118,729 |            119,230 |                119,443 |        19,291 |            19,358 |
+| index signatures / 128 |         64,046 |             62,358 |             63,707 |                 63,685 |        25,199 |            24,520 |
+| index signatures / 512 |         15,721 |             15,884 |             15,804 |                 15,930 |         5,252 |             5,297 |
+| 200-row array payload  |         11,052 |             11,029 |             13,031 |                 12,984 |         5,301 |             5,178 |
+| 200 single-row frames  |      1,341,720 |          1,282,335 |          1,536,088 |              1,310,227 |       128,268 |           124,832 |
 
 ## Analysis
 
-- SchemaBinary leads JSON and Msgpack on struct- and collection-heavy one-shot cases. JSON and Msgpack remain faster on large index-signature encodes, where field lookup dominates and the binary layout offers little structural advantage.
+- SchemaBinary leads JSON and Msgpack on every one-shot case, index signatures included. Schemas the binary layer validates on its own skip the schema pass that used to run over each decoded value, and a lone string index signature no longer matches keys one at a time.
 - SchemaBinary is faster than both text and Msgpack streaming in every batch case. NDJSON and Msgpack batch throughput are close and trade places by shape, but NDJSON single-frame throughput is dominated by running a complete Effect Channel for each value.
 - NDJSON is the largest raw stream in every case. Compression changes the ranking for repeated keys: NDJSON has the smallest zstd output for collections and both index-signature cases. Fingerprint SchemaBinary remains the smallest raw format for struct-heavy values.

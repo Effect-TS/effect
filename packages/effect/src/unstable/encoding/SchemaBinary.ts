@@ -403,6 +403,12 @@ class Writer {
 
 // Index-signature predicates are not part of the fingerprint, so unmatched
 // keys are dropped in both modes.
+// A plain string parameter accepts every key without running the matcher.
+function matchesEveryKey(parameter: SchemaAST.AST): boolean {
+  const ast = SchemaAST.toEncoded(parameter)
+  return ast._tag === "String" && ast.checks === undefined
+}
+
 function matchIndexSignature(
   layout: StructLayout,
   key: string,
@@ -474,29 +480,16 @@ const EMPTY_READER_BUFFER = new Uint8Array(EMPTY_READER_ARRAY_BUFFER)
 const EMPTY_READER_VIEW = new DataView(EMPTY_READER_ARRAY_BUFFER)
 const EMPTY_PARSE_OPTIONS: SchemaAST.ParseOptions = {}
 
-let lastReaderBuffer: ArrayBufferLike = EMPTY_READER_ARRAY_BUFFER
-let lastReaderOffset = 0
-let lastReaderLength = 0
-let lastReaderView: DataView = EMPTY_READER_VIEW
-
-function readerView(buf: Uint8Array): DataView {
-  if (
-    buf.buffer !== lastReaderBuffer ||
-    buf.byteOffset !== lastReaderOffset ||
-    buf.byteLength !== lastReaderLength
-  ) {
-    lastReaderBuffer = buf.buffer
-    lastReaderOffset = buf.byteOffset
-    lastReaderLength = buf.byteLength
-    lastReaderView = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
-  }
-  return lastReaderView
-}
-
 class Reader {
   pos = 0
   buf: Uint8Array = EMPTY_READER_BUFFER
-  view: DataView = EMPTY_READER_VIEW
+  // Frames of varints and strings never need a view, so it is built on demand
+  // and reused while the reader stays on one buffer.
+  view: DataView | undefined
+  viewCache: DataView = EMPTY_READER_VIEW
+  viewBuffer: ArrayBufferLike = EMPTY_READER_ARRAY_BUFFER
+  viewOffset = 0
+  viewLength = 0
   end = 0
   options: SchemaAST.ParseOptions = EMPTY_PARSE_OPTIONS
   indexSignatures: IndexSignatureCache | undefined
@@ -509,7 +502,7 @@ class Reader {
     indexSignatures: IndexSignatureCache | undefined,
     positional: boolean
   ) {
-    this.view = readerView(buf)
+    this.view = undefined
     this.buf = buf
     this.pos = start
     this.end = end
@@ -520,13 +513,28 @@ class Reader {
   release() {
     this.pos = this.end = 0
     this.buf = EMPTY_READER_BUFFER
-    this.view = EMPTY_READER_VIEW
+    this.view = undefined
+    this.viewCache = EMPTY_READER_VIEW
+    this.viewBuffer = EMPTY_READER_ARRAY_BUFFER
+    this.viewOffset = this.viewLength = 0
     this.options = EMPTY_PARSE_OPTIONS
     this.indexSignatures = undefined
     this.positional = false
   }
   get remaining(): number {
     return this.end - this.pos
+  }
+  dataView(): DataView {
+    const buf = this.buf
+    if (
+      buf.buffer !== this.viewBuffer || buf.byteOffset !== this.viewOffset || buf.byteLength !== this.viewLength
+    ) {
+      this.viewBuffer = buf.buffer
+      this.viewOffset = buf.byteOffset
+      this.viewLength = buf.byteLength
+      this.viewCache = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
+    }
+    return this.view = this.viewCache
   }
   byte(): number {
     if (this.pos >= this.end) invalid("complete value", undefined, this.options)
@@ -653,25 +661,25 @@ class Reader {
   }
   f64(): number {
     if (this.pos + 8 > this.end) invalid("complete value", undefined, this.options)
-    const value = this.view.getFloat64(this.pos, true)
+    const value = (this.view ?? this.dataView()).getFloat64(this.pos, true)
     this.pos += 8
     return value
   }
   i64(): bigint {
     if (this.pos + 8 > this.end) invalid("complete value", undefined, this.options)
-    const value = this.view.getBigInt64(this.pos, true)
+    const value = (this.view ?? this.dataView()).getBigInt64(this.pos, true)
     this.pos += 8
     return value
   }
   u32le(): number {
     if (this.pos + 4 > this.end) invalid("complete value", undefined, this.options)
-    const value = this.view.getUint32(this.pos, true)
+    const value = (this.view ?? this.dataView()).getUint32(this.pos, true)
     this.pos += 4
     return value
   }
   i32le(): number {
     if (this.pos + 4 > this.end) invalid("complete value", undefined, this.options)
-    const value = this.view.getInt32(this.pos, true)
+    const value = (this.view ?? this.dataView()).getInt32(this.pos, true)
     this.pos += 4
     return value
   }
@@ -694,6 +702,7 @@ type LeafKind =
 
 type Layout =
   | { readonly _: LeafKind }
+  | LiteralLayout
   | { readonly _: "int64"; readonly flavor: "date" | "utc" }
   | { readonly _: "never"; readonly ast: SchemaAST.AST }
   | StructLayout
@@ -703,6 +712,22 @@ type Layout =
   | { readonly _: "result"; success: Layout; failure: Layout }
   | { readonly _: "exit"; value: Layout; cause: ReasonLayout }
   | ReasonLayout
+
+// Literal values are validated here rather than by a downstream schema pass.
+interface LiteralLayout {
+  readonly _: "literal"
+  readonly leaf: Layout
+  readonly values: ReadonlyArray<SchemaAST.LiteralValue>
+}
+
+function hasLiteral(layout: LiteralLayout, value: unknown): boolean {
+  const values = layout.values
+  return values.length === 1 ? value === values[0] : values.includes(value as SchemaAST.LiteralValue)
+}
+
+function literalExpected(layout: LiteralLayout): string {
+  return layout.values.map((value) => typeof value === "string" ? JSON.stringify(value) : String(value)).join(" | ")
+}
 
 interface ReasonLayout {
   readonly _: "cause" | "causeReason"
@@ -732,6 +757,8 @@ interface StructLayout {
   readonly fields: Array<Field>
   readonly byId: Map<number, Field>
   readonly extra: Array<ExtraSignature>
+  // The lone signature every key matches, so lookups skip the cache.
+  readonly extraAll: ExtraSignature | undefined
   readonly names: Set<string>
   optionalCount: number
 }
@@ -786,11 +813,13 @@ interface UnionLayout {
 }
 
 function isSelfDelimiting(layout: Layout): boolean {
-  return layout._ === "int"
+  return layout._ === "literal" ? isSelfDelimiting(layout.leaf) : layout._ === "int"
 }
 
 function packedSize(layout: Layout): number | undefined {
   switch (layout._) {
+    case "literal":
+      return packedSize(layout.leaf)
     case "bool":
       return 1
     case "int64":
@@ -1045,11 +1074,11 @@ function astKind(ast: SchemaAST.AST): number {
 interface CompiledLayout {
   readonly layout: Layout
   readonly recursive: boolean
-  readonly decodeExact: boolean
+  readonly exact: boolean
 }
 
 function compileLayout(root: SchemaAST.AST): CompiledLayout {
-  const decodeExact = isDecodeExact(root)
+  const exact = isExact(root)
   root = SchemaAST.toEncoded(root)
   const memo = new Map<SchemaAST.AST, Layout>()
   let recursive = false
@@ -1082,7 +1111,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       case "BigInt":
         return { _: "bigint" }
       case "Literal":
-        return { _: literalKind(ast.literal) }
+        return { _: "literal", leaf: { _: literalKind(ast.literal) }, values: [ast.literal] }
       case "Unknown":
       case "Any":
       case "ObjectKeyword":
@@ -1156,6 +1185,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       fields,
       byId: new Map(),
       extra,
+      extraAll: extra.length === 1 && matchesEveryKey(extra[0].parameter) ? extra[0] : undefined,
       names: new Set(fields.map((f) => f.name)),
       optionalCount: 0
     }
@@ -1282,6 +1312,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
     const variantMembers: Array<{ member: SchemaAST.AST; sentinels: ReadonlyArray<SchemaAST.Sentinel> }> = []
     const rowMembers: Array<{ member: SchemaAST.AST; kind: number }> = []
     const literalRows = new Map<number, Layout>()
+    const literalValues = new Map<number, Array<SchemaAST.LiteralValue>>()
     const addLiteralRow = (kind: number, row: Layout) => {
       const existing = literalRows.get(kind)
       if (existing !== undefined && existing._ !== row._) {
@@ -1291,7 +1322,13 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
     }
     for (const member of members) {
       if (member._tag === "Literal") {
-        addLiteralRow(astKind(member), { _: literalKind(member.literal) })
+        const kind = astKind(member)
+        const values = literalValues.get(kind)
+        if (values === undefined) {
+          literalValues.set(kind, [member.literal])
+        } else if (!values.includes(member.literal)) {
+          values.push(member.literal)
+        }
         continue
       }
       if (member._tag === "UniqueSymbol") {
@@ -1312,6 +1349,9 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
         }
       }
       rowMembers.push({ member, kind: astKind(member) })
+    }
+    for (const [kind, values] of literalValues) {
+      addLiteralRow(kind, { _: "literal", leaf: { _: literalKind(values[0]) }, values })
     }
     if (variantMembers.length === 0 && rowMembers.length === 0 && literalRows.size === 1) {
       return literalRows.values().next().value!
@@ -1361,6 +1401,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
           fields,
           byId: new Map(fields.map((f) => [f.id, f])),
           extra: struct.extra,
+          extraAll: struct.extraAll,
           names: struct.names,
           optionalCount: fields.reduce((count, f) => f.optional ? count + 1 : count, 0)
         }
@@ -1397,17 +1438,20 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
   }
 
   const layout = compile(root)
-  return { layout, recursive, decodeExact }
+  return { layout, recursive, exact }
 }
 
 // The parser may return the binary decoder's value directly only when that
 // decoder proves every predicate and no Schema parser behavior can change it.
-function isDecodeExact(root: SchemaAST.AST): boolean {
+// Schemas whose decoded values the binary layer already produces and validates
+// on its own, so the schema pass around it would only repeat work. Constructor
+// defaults are ignored because they only run during construction.
+function isExact(root: SchemaAST.AST): boolean {
   const exact = (ast: SchemaAST.AST): boolean => {
     if (
       ast.encoding !== undefined || ast.checks !== undefined ||
       (ast as { readonly encodingChecks?: SchemaAST.Checks }).encodingChecks !== undefined ||
-      ast.annotations?.parseOptions !== undefined || ast.context?.constructorDefault !== undefined
+      ast.annotations?.parseOptions !== undefined
     ) {
       return false
     }
@@ -1420,6 +1464,7 @@ function isDecodeExact(root: SchemaAST.AST): boolean {
       case "Void":
       case "Number":
       case "BigInt":
+      case "Literal":
         return true
       case "Arrays":
         return ast.elements.every(exact) && ast.rest.every(exact)
@@ -1428,6 +1473,12 @@ function isDecodeExact(root: SchemaAST.AST): boolean {
           ast.indexSignatures.every((signature) =>
             signature.parameter._tag === "String" && exact(signature.parameter) && exact(signature.type)
           )
+      case "Union":
+        return ast.mode === "anyOf" && ast.types.every(exact)
+      case "Declaration": {
+        const id = representationId(ast)
+        return id === "effect/schema/Uint8Array" || id === "effect/schema/Date"
+      }
       default:
         return false
     }
@@ -1461,7 +1512,8 @@ const F = {
   result: 21,
   exit: 22,
   cause: 23,
-  causeReason: 24
+  causeReason: 24,
+  literal: 25
 } as const
 
 // Hash the compiled layout graph, including cycle back-edge distances.
@@ -1511,6 +1563,22 @@ function layoutFingerprint(root: Layout): bigint {
       case "dateTimeZoned":
         out.push(F[layout._])
         return out
+      case "literal": {
+        out.push(F.literal)
+        pushBytes(out, structure(layout.leaf))
+        pushUvarint(out, layout.values.length)
+        // Sorted, so a union hashes the same whatever order it declares.
+        const sorted = layout.values
+          .map((value) => [sentinelLiteralKind(value), sentinelLiteralString(value)] as const)
+          .sort((a, b) => a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : a[0] - b[0])
+        for (const [kind, text] of sorted) {
+          out.push(kind)
+          const bytes = utf8Encode.encode(text)
+          pushUvarint(out, bytes.length)
+          pushBytes(out, bytes)
+        }
+        return out
+      }
       case "int64":
         out.push(layout.flavor === "date" ? F.date : F.dateTimeUtc)
         return out
@@ -1581,12 +1649,24 @@ function layoutFingerprint(root: Layout): bigint {
   return go(root)
 }
 
+// A frame header the decoder can compare byte by byte, so frames that hold no
+// wide numbers never build a DataView.
+function fingerprintBytes(lo: number, hi: number): Uint8Array {
+  const out = new Uint8Array(8)
+  for (let i = 0; i < 4; i++) {
+    out[i] = (lo >>> (i * 8)) & 0xFF
+    out[i + 4] = (hi >>> (i * 8)) & 0xFF
+  }
+  return out
+}
+
 interface Mode {
   readonly positional: boolean
   readonly envelope: number
   readonly expectedEnvelope: string
   readonly fingerprintLo: number
   readonly fingerprintHi: number
+  readonly fingerprint: Uint8Array
 }
 
 const defaultMode: Mode = {
@@ -1594,17 +1674,21 @@ const defaultMode: Mode = {
   envelope: ENVELOPE,
   expectedEnvelope: "version 1 envelope, flags 0",
   fingerprintLo: 0,
-  fingerprintHi: 0
+  fingerprintHi: 0,
+  fingerprint: new Uint8Array(8)
 }
 
 function fingerprintMode(layout: Layout): Mode {
   const fingerprint = layoutFingerprint(layout)
+  const lo = Number(fingerprint & BIGINT_U32_MASK)
+  const hi = Number((fingerprint >> BIGINT_THIRTY_TWO) & BIGINT_U32_MASK)
   return {
     positional: true,
     envelope: ENVELOPE_FINGERPRINT,
     expectedEnvelope: "version 1 envelope, flags 1",
-    fingerprintLo: Number(fingerprint & BIGINT_U32_MASK),
-    fingerprintHi: Number((fingerprint >> BIGINT_THIRTY_TWO) & BIGINT_U32_MASK)
+    fingerprintLo: lo,
+    fingerprintHi: hi,
+    fingerprint: fingerprintBytes(lo, hi)
   }
 }
 
@@ -1621,6 +1705,8 @@ function matchRank(layout: Layout): number {
 
 function matchesLayout(layout: Layout, value: unknown): boolean {
   switch (layout._) {
+    case "literal":
+      return hasLiteral(layout, value)
     case "bool":
       return typeof value === "boolean"
     case "null":
@@ -1674,6 +1760,8 @@ interface EncodeContext {
   readonly options: SchemaAST.ParseOptions
   readonly positional: boolean
   indexSignatures: IndexSignatureCache | undefined
+  // Records of one shape repeat within a frame, so the last one is reused.
+  extraShape: ExtraShape | undefined
 }
 
 function encodeFail(expected: string, input: unknown, options: SchemaAST.ParseOptions): never {
@@ -1797,19 +1885,54 @@ function encodeReason(ctx: EncodeContext, layout: ReasonLayout, value: unknown, 
   }
 }
 
-type ExtraPair = [keyBytes: Uint8Array, key: string, signature: ExtraSignature]
+// `keyBytes` stays undefined while every key is ASCII, where code unit order
+// and length already match raw UTF-8.
+type ExtraPair = [key: string, signature: ExtraSignature, keyBytes: Uint8Array | undefined]
+
+function isAscii(key: string): boolean {
+  for (let i = 0; i < key.length; i++) {
+    if (key.charCodeAt(i) > 0x7F) return false
+  }
+  return true
+}
+
+interface ExtraShape {
+  readonly layout: StructLayout
+  readonly keys: ReadonlyArray<string>
+  readonly pairs: Array<ExtraPair>
+}
+
+function sameShape(shape: ExtraShape, layout: StructLayout, keys: ReadonlyArray<string>): boolean {
+  if (shape.layout !== layout || shape.keys.length !== keys.length) return false
+  for (let i = 0; i < keys.length; i++) {
+    if (shape.keys[i] !== keys[i]) return false
+  }
+  return true
+}
 
 // Sort extra keys by raw UTF-8 for deterministic output.
 function extraPairs(ctx: EncodeContext, layout: StructLayout, obj: Record<string, unknown>): Array<ExtraPair> {
+  const keys = Object.keys(obj)
+  const shape = ctx.extraShape
+  if (shape !== undefined && sameShape(shape, layout, keys)) return shape.pairs
   const named = layout.names
+  const every = layout.extraAll
   const pairs: Array<ExtraPair> = []
-  for (const key of Object.keys(obj)) {
+  let ascii = true
+  for (const key of keys) {
     if (named.has(key)) continue
-    const signature = (ctx.indexSignatures ??= new IndexSignatureCache(ctx.options)).find(layout, key)
+    const signature = every ?? (ctx.indexSignatures ??= new IndexSignatureCache(ctx.options)).find(layout, key)
     if (signature === undefined) continue
-    pairs.push([utf8Encode.encode(key), key, signature])
+    if (ascii && !isAscii(key)) ascii = false
+    pairs.push([key, signature, undefined])
   }
-  pairs.sort((a, b) => compareBytes(a[0], b[0]))
+  if (ascii) {
+    pairs.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)
+  } else {
+    for (const pair of pairs) pair[2] = utf8Encode.encode(pair[0])
+    pairs.sort((a, b) => compareBytes(a[2]!, b[2]!))
+  }
+  ctx.extraShape = { layout, keys, pairs }
   return pairs
 }
 
@@ -1819,9 +1942,14 @@ function encodeExtraPairs(
   obj: Record<string, unknown>,
   w: Writer
 ) {
-  for (const [keyBytes, key, signature] of pairs) {
-    w.uvarint(keyBytes.length)
-    w.bytes(keyBytes)
+  for (const [key, signature, keyBytes] of pairs) {
+    if (keyBytes === undefined) {
+      w.uvarint(key.length)
+      w.string(key)
+    } else {
+      w.uvarint(keyBytes.length)
+      w.bytes(keyBytes)
+    }
     issuePath[issuePathLen++] = key
     encodeSized(ctx, signature.layout, obj[key], w)
     issuePathLen--
@@ -1992,6 +2120,10 @@ function encodeUnion(ctx: EncodeContext, layout: UnionLayout, value: unknown, w:
 
 function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writer): void {
   switch (layout._) {
+    case "literal":
+      if (!hasLiteral(layout, value)) encodeFail(literalExpected(layout), value, ctx.options)
+      encodeValue(ctx, layout.leaf, value, w)
+      return
     case "bool":
       w.byte(value === true ? 1 : 0)
       return
@@ -2153,7 +2285,8 @@ function encodeFrame(
   const ctx: EncodeContext = {
     options,
     positional: mode.positional,
-    indexSignatures: undefined
+    indexSignatures: undefined,
+    extraShape: undefined
   }
   const w = pooledWriter ?? new Writer()
   const pooled = w === pooledWriter
@@ -2218,7 +2351,8 @@ function decodeExtraPair(layout: StructLayout, r: Reader, out: Record<string, un
   if (seen.has(key)) invalid("unique extra keys", undefined, r.options)
   seen.add(key)
   const saved = r.enter(r.uvarint())
-  const signature = (r.indexSignatures ??= new IndexSignatureCache(r.options)).find(layout, key)
+  const signature = layout.extraAll ??
+    (r.indexSignatures ??= new IndexSignatureCache(r.options)).find(layout, key)
   if (signature !== undefined) {
     issuePath[issuePathLen++] = key
     const value = decodeChecked(signature.layout, r)
@@ -2503,6 +2637,11 @@ function requirePresent(value: unknown): unknown {
 
 function decodeValue(layout: Layout, r: Reader): unknown {
   switch (layout._) {
+    case "literal": {
+      const value = decodeValue(layout.leaf, r)
+      if (!hasLiteral(layout, value)) invalid(literalExpected(layout), value, r.options)
+      return value
+    }
     case "bool": {
       if (r.remaining !== 1) invalid("bool", undefined, r.options)
       const b = r.byte()
@@ -2534,7 +2673,10 @@ function decodeValue(layout: Layout, r: Reader): unknown {
     case "int64": {
       if (r.remaining !== 8) invalid("int64", undefined, r.options)
       const millis = Number(r.i64())
-      return layout.flavor === "date" ? new Date(millis) : DateTime.makeUnsafe(millis)
+      if (layout.flavor !== "date") return DateTime.makeUnsafe(millis)
+      const date = new Date(millis)
+      if (Number.isNaN(date.getTime())) invalid("a valid Date", millis, r.options)
+      return date
     }
     case "dateTimeZoned": {
       const millis = Number(r.i64())
@@ -2635,9 +2777,13 @@ function decodeFrameBody(layout: Layout, r: Reader, mode: Mode): unknown {
   if (envelope !== mode.envelope) invalid(mode.expectedEnvelope, envelope, r.options)
   if (mode.positional) {
     if (r.remaining < 8) invalid("complete value", undefined, r.options)
-    if (r.u32le() !== mode.fingerprintLo || r.u32le() !== mode.fingerprintHi) {
-      invalid("matching layout fingerprint", undefined, r.options)
+    const buf = r.buf
+    const expected = mode.fingerprint
+    const pos = r.pos
+    for (let i = 0; i < 8; i++) {
+      if (buf[pos + i] !== expected[i]) invalid("matching layout fingerprint", undefined, r.options)
     }
+    r.pos = pos + 8
   }
   const value = decodeChecked(layout, r)
   if (value === ABSENT) throw issueError(new SchemaIssue.MissingKey(undefined))
@@ -2676,12 +2822,15 @@ function decodeOneShot(
 
 function makeTransformation(
   layout: Layout,
-  mode: Mode
+  mode: Mode,
+  trusted: WeakSet<object> | undefined
 ): SchemaTransformation.Transformation<unknown, Uint8Array<ArrayBuffer>> {
   return SchemaTransformation.transformOrFail({
     decode: (bytes: Uint8Array<ArrayBuffer>, options) => {
       try {
-        return Effect.succeed(decodeOneShot(layout, bytes, options, mode))
+        const value = decodeOneShot(layout, bytes, options, mode)
+        if (trusted !== undefined && Predicate.isObjectOrArray(value)) trusted.add(value)
+        return Effect.succeed(value)
       } catch (e) {
         return e instanceof IssueError ? Effect.fail(e.issue) : Effect.die(e)
       }
@@ -2711,7 +2860,7 @@ function compileMode(layout: Layout, fingerprint: boolean | undefined): Mode {
 interface CompiledTarget {
   readonly target: Schema.Constraint
   readonly layout: Layout
-  readonly decodeExact: boolean
+  readonly exact: boolean
 }
 
 const compileTargetCache = new WeakMap<SchemaAST.AST, CompiledTarget>()
@@ -2722,11 +2871,27 @@ function compileTarget(
   const cached = compileTargetCache.get(schema.ast)
   if (cached !== undefined) return cached
   const raw = Schema.make<Schema.Constraint>(toBinaryAST(schema.ast))
-  const { decodeExact, layout, recursive } = compileLayout(raw.ast)
+  const { exact, layout, recursive } = compileLayout(raw.ast)
   // Only recursive schemas need the cycle walk.
-  const compiled = { target: recursive ? withCycleGuard(raw) : raw, layout, decodeExact }
+  const compiled = { target: recursive ? withCycleGuard(raw) : raw, layout, exact }
   compileTargetCache.set(schema.ast, compiled)
   return compiled
+}
+
+// The binary layer already validates an exact schema, so the schema pass around
+// it repeats that work. Values it just decoded pass straight through, while
+// every other input, `Schema.is` included, still runs the real check.
+function withTrustedDecode(target: Schema.Constraint, trusted: WeakSet<object>): Schema.Constraint {
+  const type = Schema.make(SchemaAST.toType(target.ast))
+  const decodeType = SchemaParser.decodeUnknownEffect(type as Schema.ConstraintDecoder<unknown>)
+  return Schema.declareConstructor<unknown>()(
+    [type],
+    () => (input, _ast, options) =>
+      Predicate.isObjectOrArray(input) && trusted.delete(input)
+        ? Effect.succeed(input)
+        : decodeType(input, options),
+    { identifier: "binary value" }
+  )
 }
 
 // Skip the cycle walk once for structurally decoded values.
@@ -2815,10 +2980,47 @@ export interface toCodec<S extends Schema.Constraint> extends
  * @since 4.0.0
  */
 export function toCodec<S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> {
-  const { layout, target } = compileTarget(schema)
+  const { exact, layout, target } = compileTarget(schema)
+  const mode = compileMode(layout, options?.fingerprint)
+  const trusted = exact ? new WeakSet<object>() : undefined
   return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
-    Schema.decodeTo(target, makeTransformation(layout, compileMode(layout, options?.fingerprint)))
+    Schema.decodeTo(
+      trusted === undefined ? target : withTrustedDecode(target, trusted),
+      makeTransformation(layout, mode, trusted)
+    )
   ) as unknown as toCodec<S>
+}
+
+/**
+ * Encodes one frame without the schema pass {@link toCodec} wraps around it.
+ *
+ * Only schemas the binary layer already validates on its own take the direct
+ * path; anything else falls back to the codec, so checks and transformations
+ * still run.
+ *
+ * @internal
+ */
+export function encodeUnknownSync<S extends Schema.Constraint>(
+  schema: S,
+  options?: SchemaAST.ParseOptions & Options
+): (value: unknown) => Uint8Array<ArrayBuffer> {
+  const { exact, layout } = compileTarget(schema)
+  if (!exact) {
+    return Schema.encodeUnknownSync(
+      toCodec(schema, options) as unknown as Schema.ConstraintEncoder<unknown, never>,
+      options
+    ) as (value: unknown) => Uint8Array<ArrayBuffer>
+  }
+  const mode = compileMode(layout, options?.fingerprint)
+
+  const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
+  return (value) => {
+    try {
+      return encodeFrame(layout, value, parseOptions, mode)
+    } catch (e) {
+      throw e instanceof IssueError ? new Schema.SchemaError(e.issue) : e
+    }
+  }
 }
 
 /**
@@ -2859,11 +3061,11 @@ export function parser<S extends Schema.Constraint>(
   schema: S,
   options?: SchemaAST.ParseOptions & Options & { readonly maxFrameSize?: number | undefined }
 ): Parser<S["Type"]> {
-  const { decodeExact, layout, target } = compileTarget(schema)
+  const { exact, layout, target } = compileTarget(schema)
   const mode = compileMode(layout, options?.fingerprint)
   const parseOptions: SchemaAST.ParseOptions = options ?? {}
   const maxFrameSize = options?.maxFrameSize
-  const decodeEncoded = decodeExact
+  const decodeEncoded = exact
     ? undefined
     : Schema.decodeUnknownSync(target as Schema.ConstraintDecoder<unknown>, parseOptions)
   let buffer = new Uint8Array(0)
