@@ -140,7 +140,7 @@ const cases = [
     value: metrics(512)
   },
   {
-    name: "large repeated records",
+    name: "200-row array payload",
     schema: LargePayload,
     value: largeRows
   }
@@ -364,7 +364,7 @@ const preparedStreams = await Promise.all([
     name: testCase.name,
     prepared: prepareStream(testCase.schema, Array.from({ length: streamBatchSize }, () => testCase.value))
   })),
-  { name: "per-frame repeated records", prepared: prepareStream(LargeRow, largeRows) }
+  { name: "200 single-row frames", prepared: prepareStream(LargeRow, largeRows) }
 ].map(async ({ name, prepared }) => ({ name, ...await prepared })))
 
 console.log(`Node ${process.version}; codec and schema construction excluded from timings.`)
