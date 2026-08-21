@@ -274,7 +274,6 @@ describe("Bash completions", () => {
       {
         local _cur="$1" _word="$2"; shift 2
 
-        # Text readline keeps, and the quote it leaves open
         local _head="\${_cur%"$_word"}"
         local _open=""
         case "$_head" in
@@ -294,10 +293,8 @@ describe("Bash completions", () => {
           case "$_open" in
             "'")
               if [[ "$_head" == "'" ]]; then
-                # splice: bare assignment, since inside double quotes \\' is not an escape
                 _match=\${_rest//\\'/\\'\\\\\\'\\'}
               else
-                # quote opened mid-word: a value carrying one cannot be spliced in
                 [[ "$_rest" == *\\'* ]] && continue
                 _match="$_rest"
               fi
@@ -354,7 +351,6 @@ describe("Bash completions", () => {
   it("groups flag aliases for used-flag filtering", () => {
     const desc = fromCommand(simpleCmd)
     const script = Bash.generate("greet", desc)
-    // Any form of --loud marks the whole group used, --times is its own group
     assert.include(script, "--loud|-l|--no-loud) _used_0=1 ;;")
     assert.include(script, "--times) _used_1=1 ;;")
     assert.include(script, `[[ -n "$_used_0" ]] || _filtered_flags+=" --loud -l --no-loud"`)
@@ -381,7 +377,6 @@ describe("Bash completions", () => {
     const script = Bash.generate("greet", desc)
     assert.include(script, "if ! type _init_completion &>/dev/null; then")
     assert.include(script, "COMPREPLY=()")
-    // reassembles COMP_WORDS the way `-n "$COMP_WORDBREAKS"` would
     assert.include(script, `if [[ "$_line" == [[:blank:]]* ]]; then`)
     assert.include(script, "((_i == COMP_CWORD)) && cword=$_j")
     assert.include(script, `cur="\${words[cword]}"`)
@@ -682,8 +677,6 @@ describe("Fish completions", () => {
     const script = Fish.generate("greet", desc)
     // --loud is boolean with alias -l — gets dedup condition on the -l entry
     assert.include(script, "not __fish_contains_opt -s l loud no-loud")
-    // --times is a value-taking flag — hidden once typed, except while fish is
-    // completing its value (previous token is the flag itself)
     const lines = script.split("\n")
     const timesLongEntry = lines.find((l) => l.includes("-l times"))!
     assert.include(
@@ -699,8 +692,6 @@ describe("Fish completions", () => {
     const script = Fish.generate("server", desc)
     // daemon is boolean — gets subcommand + dedup condition on -l entry
     assert.include(script, "__fish_seen_subcommand_from start; and not __fish_contains_opt daemon no-daemon")
-    // port is value-taking — subcommand condition plus dedup with the
-    // completing-its-value exception
     const lines = script.split("\n")
     const portLongEntry = lines.find((l) => l.includes("-l port"))!
     assert.include(

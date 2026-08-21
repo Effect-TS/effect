@@ -27,18 +27,13 @@ const flagNamesForWordlist = (flag: Completions.FlagDescriptor): Array<string> =
   return names
 }
 
-/**
- * Mark one variable per flag, so that when any form of a flag has been typed,
- * every form of it drops out of the candidate list. Which form maps to which
- * group is known here, so no runtime map — and no bash 4 — is needed.
- */
+/** Emit a Bash 3.2-compatible used-flag filter. */
 const buildFlagGroupDeclarations = (
   flags: ReadonlyArray<Completions.FlagDescriptor>,
   lines: Array<string>
 ): void => {
   if (flags.length === 0) return
   const groups = flags.map(flagNamesForWordlist)
-  lines.push(`  # Build used-flag filter`)
   lines.push(`  local ${groups.map((_, index) => `_used_${index}=""`).join(" ")}`)
   lines.push(`  for ((i = 1; i < cword; i++)); do`)
   lines.push(`    case "\${words[i]%%=*}" in`)
@@ -55,33 +50,17 @@ const buildFlagGroupDeclarations = (
 }
 
 /**
- * Emit the shared choice-completion helper.
+ * Complete choices without `compgen -W`, which reparses quoted values. Escape
+ * only the portion readline replaces for the active quote context.
  *
- * `compgen -W` re-expands every word of its list, which mangles values holding
- * quotes, spaces or glob characters, so matches are filtered from an explicitly
- * quoted list instead.
- *
- * The rest of the helper is about what readline will actually replace. Bash
- * passes that text as `$2`, which is not always the whole word: it stops at the
- * last COMP_WORDBREAKS character (`deploy --mode node:` -> `20` completes only
- * the part after the colon) and at an opening quote (`--mode it'` -> the empty
- * word inside the quote). Whatever precedes it is already committed to the
- * command line, so a match contributes only the remainder, escaped for the
- * quoting context that the committed text leaves open. A value that cannot be
- * expressed in that context — a single quote inside single quotes — is dropped
- * rather than inserted broken.
- *
- * Dequoting is best effort: it drops quotes and backslashes, so a value whose
- * own text contains one will not match once the user types it escaped. A value
- * holding `!` is also left as is inside a user-opened double quote: history
- * expansion still applies there and `\!` would stay literal.
+ * `!` cannot be escaped inside a user-opened double quote without changing the
+ * resulting argument.
  */
 const choicesHelper = (helperName: string, lines: Array<string>): void => {
   lines.push(`${helperName}()`)
   lines.push(`{`)
   lines.push(`  local _cur="$1" _word="$2"; shift 2`)
   lines.push(``)
-  lines.push(`  # Text readline keeps, and the quote it leaves open`)
   lines.push(`  local _head="\${_cur%"$_word"}"`)
   lines.push(`  local _open=""`)
   lines.push(`  case "$_head" in`)
@@ -90,7 +69,7 @@ const choicesHelper = (helperName: string, lines: Array<string>): void => {
   lines.push(`  esac`)
   lines.push(``)
   lines.push(`  local _prefix="$_cur" _committed="$_head"`)
-  // bare assignments: inside double quotes a bracket holding a quote does not parse
+  // Quoting these substitutions breaks quote matching on Bash 3.2.
   lines.push(`  _prefix=\${_prefix//\\\\/}; _prefix=\${_prefix//\\"/}; _prefix=\${_prefix//\\'/}`)
   lines.push(`  _committed=\${_committed//\\\\/}; _committed=\${_committed//\\"/}; _committed=\${_committed//\\'/}`)
   lines.push(``)
@@ -102,10 +81,10 @@ const choicesHelper = (helperName: string, lines: Array<string>): void => {
   lines.push(`    case "$_open" in`)
   lines.push(`      "'")`)
   lines.push(`        if [[ "$_head" == "'" ]]; then`)
-  lines.push(`          # splice: bare assignment, since inside double quotes \\' is not an escape`)
+  // Use a shell splice for a quote opened at the start of the word.
   lines.push(`          _match=\${_rest//\\'/\\'\\\\\\'\\'}`)
   lines.push(`        else`)
-  lines.push(`          # quote opened mid-word: a value carrying one cannot be spliced in`)
+  // A mid-word single-quote context cannot contain another single quote.
   lines.push(`          [[ "$_rest" == *\\'* ]] && continue`)
   lines.push(`          _match="$_rest"`)
   lines.push(`        fi`)
@@ -118,11 +97,11 @@ const choicesHelper = (helperName: string, lines: Array<string>): void => {
   lines.push(`        ;;`)
   lines.push(`      *)`)
   lines.push(`        printf -v _match '%q' "$_rest"`)
-  // bash 3.2's %q leaves a leading ~ unescaped, and it would tilde-expand
+  // Bash 3.2 leaves a leading tilde unescaped.
   lines.push(`        [[ -z "$_head" && "$_match" == '~'* ]] && _match="\\\\$_match"`)
   lines.push(`        ;;`)
   lines.push(`    esac`)
-  // readline omits the closing quote when the match already ends with it
+  // Readline omits a closing quote already present in the match.
   lines.push(`    [[ -n "$_open" && "$_match" == *"$_open" ]] && _match+="$_open"`)
   lines.push(`    COMPREPLY+=("$_match")`)
   lines.push(`  done`)
@@ -176,13 +155,10 @@ const generateFunction = (
   lines.push(`{`)
   lines.push(`  local cur prev words cword i`)
   lines.push(parentPath.length === 0 ? `  local _command_index=0` : `  local _command_index="$1"`)
-  // Split words on whitespace only; a value like `node:20` is otherwise three
-  // words, which hides the flag from `$prev` and inflates the positional count.
+  // Keep values containing COMP_WORDBREAKS characters in one word.
   lines.push(`  _init_completion -n "$COMP_WORDBREAKS" || return`)
   if (parentPath.length === 0) {
-    // Bash passes the text readline will replace as $2, which subcommand
-    // functions do not receive; bash scopes locals dynamically, so capturing it
-    // here makes it visible to every function this one calls.
+    // Subcommand functions inherit this through Bash's dynamic scope.
     lines.push(`  local _comp_word="$2"`)
   }
   lines.push(``)
@@ -320,8 +296,7 @@ export const generate = (
 ): string => {
   const lines: Array<string> = []
   const safeName = sanitizeFunctionName(executableName)
-  // `-` cannot appear in a name `sanitizeFunctionName` produces, so no command
-  // function can collide with the helper.
+  // Sanitized command names cannot contain `-`.
   const helperName = `_${safeName}--choices`
 
   lines.push(`###-begin-${escapeForBash(executableName)}-completions-###`)
@@ -333,10 +308,8 @@ export const generate = (
   lines.push(`#`)
   lines.push(``)
 
-  // Inline minimal _init_completion fallback for environments without
-  // bash-completion installed. The real _init_completion handles edge cases
-  // (redirections, etc.) but this covers the common path, including the
-  // whitespace-only word splitting that `-n "$COMP_WORDBREAKS"` asks for.
+  // Fallback for environments without bash-completion. Preserve word-break
+  // characters inside values.
   lines.push(`if ! type _init_completion &>/dev/null; then`)
   lines.push(`  _init_completion()`)
   lines.push(`  {`)
@@ -345,7 +318,6 @@ export const generate = (
   lines.push(`    words=("\${COMP_WORDS[0]}")`)
   lines.push(`    cword=0`)
   lines.push(`    _line="\${_line#*"\${COMP_WORDS[0]}"}"`)
-  lines.push(`    # A word ends where the line has whitespace, not at every wordbreak`)
   lines.push(`    for ((_i = 1; _i < \${#COMP_WORDS[@]}; _i++)); do`)
   lines.push(`      _piece="\${COMP_WORDS[_i]}"`)
   lines.push(`      if [[ "$_line" == [[:blank:]]* ]]; then`)

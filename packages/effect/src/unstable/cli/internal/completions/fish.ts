@@ -14,12 +14,7 @@ import type * as Completions from "../../Completions.ts"
 
 const escapeFishString = (s: string): string => s.replace(/\\/g, "\\\\").replace(/'/g, "\\'")
 
-/**
- * Fish expands the list given to `complete -a` — command substitution included —
- * so a value has to survive two rounds: an inner backslash escape, then string
- * quoting. The inner pass denies by default; keep its character class identical
- * to `escapeZshChoice`.
- */
+/** Escape choices for Fish's second expansion of `complete -a`. */
 const escapeFishChoice = (s: string): string => escapeFishString(s.replace(/[^A-Za-z0-9_.,/@%+-]/gu, "\\$&"))
 
 /**
@@ -72,11 +67,7 @@ const flagContainsOptCondition = (flag: Completions.FlagDescriptor): string => {
   return `not __fish_contains_opt ${optArgs.join(" ")}`
 }
 
-/**
- * Dedup for a value-taking flag: hide it once typed, except while fish is
- * completing its value (previous token is the flag itself), where hiding the
- * entry would suppress the value completions too.
- */
+/** Hide used value flags without suppressing their value completions. */
 const valueFlagDedupCondition = (flag: Completions.FlagDescriptor): string => {
   const forms = [`--${flag.name}`]
   for (const alias of flag.aliases) {
