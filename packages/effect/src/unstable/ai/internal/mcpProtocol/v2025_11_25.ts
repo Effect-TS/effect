@@ -1,6 +1,7 @@
 import * as Effect from "../../../../Effect.ts"
 import * as Encoding from "../../../../Encoding.ts"
 import * as Match from "../../../../Match.ts"
+import * as Predicate from "../../../../Predicate.ts"
 import * as Schema from "../../../../Schema.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
 import * as McpCore from "../mcpCore.ts"
@@ -15,7 +16,21 @@ const ClientRequestRpcs = McpSchema.ClientRequestRpcs.middleware(
 const ClientRpcs = ClientRequestRpcs.merge(McpSchema.ClientNotificationRpcs)
 
 const AdapterRpcs = ClientRpcs.omit("ping")
-const isToolOutputSchema = Schema.is(McpSchema.Tool.fields.outputSchema)
+const isToolOutputSchema = (
+  schema: PublicMcpSchema.ToolOutputJson | undefined
+): schema is PublicMcpSchema.ToolJson => {
+  if (schema?.type !== "object") {
+    return false
+  }
+
+  const isPropertiesSupported = schema.properties === undefined ||
+    (Predicate.isReadonlyObject(schema.properties) &&
+      Object.values(schema.properties).every(Predicate.isReadonlyObject))
+  const isRequiredDefined = schema.required === undefined ||
+    (Array.isArray(schema.required) && schema.required.every(Predicate.isString))
+
+  return isPropertiesSupported && isRequiredDefined
+}
 
 const unsupported = (
   operation: PublicMcpSchema.McpReverseOperationUnsupported["operation"],
@@ -107,7 +122,9 @@ const projectContent = Effect.fnUntraced(function*(content: typeof PublicMcpSche
 
 const projectStructuredContent = (
   content: Schema.Json | undefined
-): Schema.JsonObject | undefined => content === undefined || Schema.is(Schema.JsonObject)(content) ? content : undefined
+): Schema.JsonObject | undefined => content === undefined || isJsonObject(content) ? content : undefined
+
+const isJsonObject = (value: Schema.Json): value is Schema.JsonObject => Predicate.isReadonlyObject(value)
 
 /** @internal */
 export const protocol = McpProtocol.make({

@@ -669,6 +669,11 @@ describe("McpServer", () => {
 
         assert.strictEqual((yield* fixture.takeMessage).method, "notifications/tools/list_changed")
         assert.strictEqual((yield* fixture.takeMessage).method, "notifications/prompts/list_changed")
+
+        yield* fixture.server.addTool(makeTool("next-window-tool"))
+        yield* fixture.flushListChanged
+        assert.strictEqual((yield* fixture.takeMessage).method, "notifications/tools/list_changed")
+
         yield* subscription.cancel()
       }))
   })
