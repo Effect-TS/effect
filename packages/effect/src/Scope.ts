@@ -126,6 +126,12 @@ export declare namespace State {
    * Represents an open scope state where finalizers can be added and
    * the scope is still accepting new resources.
    *
+   * **Details**
+   *
+   * A single registered finalizer is stored directly in `finalizerKey` /
+   * `finalizer`; once a second finalizer is added, all finalizers move into
+   * the `finalizers` map.
+   *
    * **Example** (Inspecting an open scope state)
    *
    * ```ts import.meta.vitest
@@ -138,7 +144,7 @@ export declare namespace State {
    * if (state._tag !== "Open") throw new Error("unexpected state")
    *
    * state._tag // => "Open"
-   * state.finalizers.size // => 1
+   * state.finalizer !== undefined // => true
    * ```
    *
    * @category models
@@ -146,7 +152,9 @@ export declare namespace State {
    */
   export type Open = {
     readonly _tag: "Open"
-    readonly finalizers: Map<{}, (exit: Exit<any, any>) => Effect<void>>
+    finalizerKey: {} | undefined
+    finalizer: ((exit: Exit<any, any>) => Effect<void>) | undefined
+    finalizers: Map<{}, (exit: Exit<any, any>) => Effect<void>> | undefined
   }
   /**
    * Represents a closed scope state where finalizers have been executed
