@@ -874,11 +874,23 @@ const make = Effect.gen(function*() {
       )
 
       const write = journal.withRemoteUncommited(remote.id, (entries) => remote.write({ identity, entries, storeId }))
+      const writeUntilSuccess = write.pipe(
+        Effect.retry(Schedule.min([
+          Schedule.exponential(200, 1.5),
+          Schedule.spaced({ seconds: 10 })
+        ]))
+      )
       yield* Effect.addFinalizer(() => Effect.ignore(write))
-      yield* write
       const changesSub = yield* journal.changes
-      return yield* PubSub.takeAll(changesSub).pipe(
-        Effect.andThen(write),
+      const changes = yield* Queue.dropping<void>(1)
+      yield* PubSub.takeAll(changesSub).pipe(
+        Effect.andThen(Queue.offer(changes, undefined)),
+        Effect.forever,
+        Effect.forkScoped
+      )
+      yield* writeUntilSuccess
+      return yield* Queue.take(changes).pipe(
+        Effect.andThen(writeUntilSuccess),
         Effect.catchCause(Effect.logError),
         Effect.forever
       )
