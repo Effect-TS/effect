@@ -29,6 +29,14 @@ import * as Semaphore from "./Semaphore.ts"
 
 const TypeId = "~effect/Pool"
 
+const Acquire = Symbol()
+const AcquireContext = Symbol()
+
+interface PoolImpl<A, E> extends Pool<A, E> {
+  readonly [Acquire]: Effect.Effect<A, E, Scope.Scope>
+  readonly [AcquireContext]: Context.Context<Scope.Scope>
+}
+
 /**
  * A `Pool<A, E>` is a pool of items of type `A`, each of which may be
  * associated with the acquisition and release of resources. An attempt to get
@@ -368,8 +376,10 @@ export const makeWithStrategy = <A, E, R>(options: {
       invalidated: new Set(),
       waiters: new Set()
     }
-    const self: Pool<A, E> = {
+    const self: PoolImpl<A, E> = {
       [TypeId]: TypeId,
+      [Acquire]: options.acquire as Effect.Effect<A, E, Scope.Scope>,
+      [AcquireContext]: services as Context.Context<Scope.Scope>,
       config,
       state,
       pipe() {
@@ -379,7 +389,7 @@ export const makeWithStrategy = <A, E, R>(options: {
     yield* Scope.addFinalizer(scope, shutdown(self))
     if (config.minSize > 0) {
       yield* Effect.tap(
-        Effect.forkDetach(restore(resize(self))),
+        Effect.forkDetach(restore(resize(self)), { startImmediately: true }),
         (fiber) => Scope.addFinalizer(scope, Fiber.interrupt(fiber))
       )
     }
@@ -747,7 +757,7 @@ const invalidatePoolItem = <A, E>(self: Pool<A, E>, poolItem: PoolItem<A, E>): E
       self.state.invalidated.delete(poolItem)
       return Effect.asVoid(Effect.flatMap(
         poolItem.finalizer,
-        () => Effect.forkIn(Effect.interruptible(resize(self)), self.state.scope)
+        () => Effect.forkIn(Effect.interruptible(resize(self)), self.state.scope, { startImmediately: true })
       ))
     }
     self.state.invalidated.add(poolItem)
@@ -773,25 +783,31 @@ const resizeLoop = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
         (item) => item ? Effect.succeed(item) : allocate(self)
       )
     if (toAcquire === 1) {
-      return acquireOne.pipe(
-        Effect.tap(wakeAll(self)),
-        Effect.flatMap((item) => item.exit._tag === "Failure" ? Effect.void : resizeLoop(self))
-      )
+      const acquired = Effect.tap(acquireOne, wakeAll(self))
+      return self.config.isFixed
+        ? Effect.asVoid(acquired)
+        : Effect.flatMap(acquired, (item) => item.exit._tag === "Failure" ? Effect.void : resizeLoop(self))
     }
-    return acquireOne.pipe(
+    const acquired = acquireOne.pipe(
       Effect.replicateEffect(toAcquire, { concurrency: toAcquire }),
-      Effect.tap(wakeAll(self)),
-      Effect.flatMap((items) => items.some((_) => _.exit._tag === "Failure") ? Effect.void : resizeLoop(self))
+      Effect.tap(wakeAll(self))
     )
+    return self.config.isFixed
+      ? Effect.asVoid(acquired)
+      : Effect.flatMap(
+        acquired,
+        (items) => items.some((_) => _.exit._tag === "Failure") ? Effect.void : resizeLoop(self)
+      )
   })
 
 const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
   internal.uninterruptibleMask((restore) =>
     core.withFiber((fiber) => {
+      const impl = self as PoolImpl<A, E>
       const scope = internal.scopeMakeUnsafe()
       const previousContext = fiber.context
-      fiber.setContext(Context.add(previousContext, Scope.Scope, scope))
-      const use = Effect.flatMap(Effect.exit(self.config.acquire), (exit) => {
+      fiber.setContext(Context.add(impl[AcquireContext], Scope.Scope, scope))
+      const use = Effect.flatMap(Effect.exit(impl[Acquire]), (exit) => {
         const item: PoolItem<A, E> = {
           exit,
           finalizer: Effect.catchCause(Scope.close(scope, exit), reportUnhandledError),
