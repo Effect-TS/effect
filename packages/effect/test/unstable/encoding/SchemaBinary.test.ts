@@ -409,6 +409,16 @@ describe("SchemaBinary", () => {
       )
     })
 
+    it("keeps canonical key order when record shapes change within a frame", () => {
+      const rows = Schema.Array(Schema.Record(Schema.String, Schema.Number))
+      const mixed = [{ b: 2, a: 1 }, { a: 1, b: 2 }, { a: 1 }, { c: 3, a: 1 }, { a: 1, b: 2 }]
+      assert.deepStrictEqual(roundtrip(rows, mixed), mixed)
+      assert.deepStrictEqual(
+        [...encode(rows, mixed)],
+        [...encode(rows, [{ a: 1, b: 2 }, { b: 2, a: 1 }, { a: 1 }, { a: 1, c: 3 }, { b: 2, a: 1 }])]
+      )
+    })
+
     it("uses fieldId as the encoded-side field identity", () => {
       const Before = Schema.Struct({ oldName: Schema.String.pipe(SchemaBinary.fieldId(1)) })
       const After = Schema.Struct({ newName: Schema.String.pipe(SchemaBinary.fieldId(1)) })

@@ -1756,6 +1756,8 @@ interface EncodeContext {
   readonly options: SchemaAST.ParseOptions
   readonly positional: boolean
   indexSignatures: IndexSignatureCache | undefined
+  // Records of one shape repeat within a frame, so the last one is reused.
+  extraShape: ExtraShape | undefined
 }
 
 function encodeFail(expected: string, input: unknown, options: SchemaAST.ParseOptions): never {
@@ -1890,13 +1892,30 @@ function isAscii(key: string): boolean {
   return true
 }
 
+interface ExtraShape {
+  readonly layout: StructLayout
+  readonly keys: ReadonlyArray<string>
+  readonly pairs: Array<ExtraPair>
+}
+
+function sameShape(shape: ExtraShape, layout: StructLayout, keys: ReadonlyArray<string>): boolean {
+  if (shape.layout !== layout || shape.keys.length !== keys.length) return false
+  for (let i = 0; i < keys.length; i++) {
+    if (shape.keys[i] !== keys[i]) return false
+  }
+  return true
+}
+
 // Sort extra keys by raw UTF-8 for deterministic output.
 function extraPairs(ctx: EncodeContext, layout: StructLayout, obj: Record<string, unknown>): Array<ExtraPair> {
+  const keys = Object.keys(obj)
+  const shape = ctx.extraShape
+  if (shape !== undefined && sameShape(shape, layout, keys)) return shape.pairs
   const named = layout.names
   const every = layout.extraAll
   const pairs: Array<ExtraPair> = []
   let ascii = true
-  for (const key of Object.keys(obj)) {
+  for (const key of keys) {
     if (named.has(key)) continue
     const signature = every ?? (ctx.indexSignatures ??= new IndexSignatureCache(ctx.options)).find(layout, key)
     if (signature === undefined) continue
@@ -1905,10 +1924,11 @@ function extraPairs(ctx: EncodeContext, layout: StructLayout, obj: Record<string
   }
   if (ascii) {
     pairs.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)
-    return pairs
+  } else {
+    for (const pair of pairs) pair[2] = utf8Encode.encode(pair[0])
+    pairs.sort((a, b) => compareBytes(a[2]!, b[2]!))
   }
-  for (const pair of pairs) pair[2] = utf8Encode.encode(pair[0])
-  pairs.sort((a, b) => compareBytes(a[2]!, b[2]!))
+  ctx.extraShape = { layout, keys, pairs }
   return pairs
 }
 
@@ -2261,7 +2281,8 @@ function encodeFrame(
   const ctx: EncodeContext = {
     options,
     positional: mode.positional,
-    indexSignatures: undefined
+    indexSignatures: undefined,
+    extraShape: undefined
   }
   const w = pooledWriter ?? new Writer()
   const pooled = w === pooledWriter
