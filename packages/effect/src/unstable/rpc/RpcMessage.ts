@@ -15,7 +15,7 @@ import type { Branded } from "../../Brand.ts"
 import * as Schema from "../../Schema.ts"
 import type { Headers } from "../http/Headers.ts"
 import type * as Rpc from "./Rpc.ts"
-import { RpcClientError } from "./RpcClientError.ts"
+import type { RpcClientError } from "./RpcClientError.ts"
 
 /**
  * Decoded messages that can be sent from an RPC client to a server.
@@ -337,6 +337,10 @@ export interface ResponseDefectEncoded {
  * hole belongs to the protocol. Encode it with
  * `protocol.codecFor(Schema.Defect())` first.
  *
+ * This constructor produces the structured exit used by JSON-compatible
+ * protocols. Serializations whose `codecFor` returns bytes must encode the
+ * complete RPC exit before placing it in the response envelope instead.
+ *
  * @category constructors
  * @since 4.0.0
  */
@@ -413,7 +417,7 @@ const RequestIdSchema = Schema.Union([Schema.String, Schema.Number])
  * @category schemas
  * @since 4.0.0
  */
-export const RequestEncodedSchema = Schema.Struct({
+const RequestEncodedSchema = Schema.Struct({
   _tag: Schema.tag("Request"),
   id: RequestIdSchema,
   tag: Schema.String,
@@ -426,12 +430,15 @@ export const RequestEncodedSchema = Schema.Struct({
 })
 
 /**
- * Schema for transport-encoded RPC messages sent from clients to servers.
+ * Schema for every transport-encoded RPC envelope that crosses the wire.
+ * Binary serializers use it only after each schema-dependent hole has been
+ * encoded as bytes. `ClientProtocolError` is excluded because clients create
+ * it locally rather than receiving it from a server.
  *
  * @category schemas
  * @since 4.0.0
  */
-export const FromClientEncodedSchema = Schema.Union([
+export const EncodedSchema = Schema.Union([
   RequestEncodedSchema,
   Schema.Struct({
     _tag: Schema.tag("Ack"),
@@ -442,16 +449,7 @@ export const FromClientEncodedSchema = Schema.Union([
     requestId: RequestIdSchema
   }),
   Schema.Struct({ _tag: Schema.tag("Ping") }),
-  Schema.Struct({ _tag: Schema.tag("Eof") })
-])
-
-/**
- * Schema for transport-encoded RPC messages sent from servers to clients.
- *
- * @category schemas
- * @since 4.0.0
- */
-export const FromServerEncodedSchema = Schema.Union([
+  Schema.Struct({ _tag: Schema.tag("Eof") }),
   Schema.Struct({
     _tag: Schema.tag("Chunk"),
     requestId: RequestIdSchema,
@@ -466,24 +464,7 @@ export const FromServerEncodedSchema = Schema.Union([
     _tag: Schema.tag("Defect"),
     defect: Schema.Uint8Array
   }),
-  Schema.Struct({ _tag: Schema.tag("Pong") }),
-  Schema.Struct({
-    _tag: Schema.tag("ClientProtocolError"),
-    error: RpcClientError
-  }),
-  RequestEncodedSchema
-])
-
-/**
- * Schema for every transport-encoded RPC envelope. Binary serializers use it
- * only after each schema-dependent hole has been encoded as bytes.
- *
- * @category schemas
- * @since 4.0.0
- */
-export const EncodedSchema = Schema.Union([
-  FromClientEncodedSchema,
-  FromServerEncodedSchema
+  Schema.Struct({ _tag: Schema.tag("Pong") })
 ])
 
 /**

@@ -49,4 +49,10 @@ describe("Envelope.OpaqueHole", () => {
       bytes
     )
   })
+
+  it("reports non-byte OpaqueHole inputs as schema failures", () => {
+    const encode = Schema.encodeUnknownSync(SchemaBinary.toCodec(Envelope.OpaqueHole))
+
+    assert.throws(() => encode({ id: 1 }), /Uint8Array/)
+  })
 })
