@@ -76,6 +76,7 @@ export interface Pool<in out A, in out E = never> extends Pipeable {
 export interface Config<A, E> {
   readonly acquire: Effect.Effect<A, E, Scope.Scope>
   readonly concurrency: number
+  readonly isFixed: boolean
   readonly minSize: number
   readonly maxSize: number
   readonly strategy: Strategy<A, E>
@@ -88,13 +89,13 @@ export interface Config<A, E> {
  * **When to use**
  *
  * Use when you need to inspect or support the runtime state backing a `Pool`,
- * including its scope, item sets, semaphores, waiters, invalidation tracking,
+ * including its scope, item collections, resize coordination, waiters, invalidation tracking,
  * and shutdown flag.
  *
  * **Details**
  *
  * This state tracks the pool scope, active and available items, invalidated
- * items, semaphores, waiters, and shutdown status. It is exposed for
+ * items, resize coordination, waiters, and shutdown status. It is exposed for
  * inspection and implementation support; user code should prefer the
  * high-level pool operations.
  *
@@ -109,12 +110,13 @@ export interface Config<A, E> {
 export interface State<A, E> {
   readonly scope: Scope.Scope
   isShuttingDown: boolean
-  readonly semaphore: Semaphore.Semaphore
   readonly resizeSemaphore: Semaphore.Semaphore
   readonly items: Set<PoolItem<A, E>>
-  readonly available: Set<PoolItem<A, E>>
+  availableHead: PoolItem<A, E> | undefined
+  availableTail: PoolItem<A, E> | undefined
   readonly availableLatch: Latch.Latch
   readonly invalidated: Set<PoolItem<A, E>>
+  usage: number
   waiters: number
 }
 
@@ -141,6 +143,9 @@ export interface State<A, E> {
  */
 export interface PoolItem<A, E> {
   readonly exit: Exit.Exit<A, E>
+  isAvailable: boolean
+  availablePrevious: PoolItem<A, E> | undefined
+  availableNext: PoolItem<A, E> | undefined
   finalizer: Effect.Effect<void>
   refCount: number
   disableReclaim: boolean
@@ -340,6 +345,7 @@ export const makeWithStrategy = <A, E, R>(options: {
     const config: Config<A, E> = {
       acquire,
       concurrency,
+      isFixed: options.min === options.max,
       minSize: options.min,
       maxSize: options.max,
       strategy: options.strategy,
@@ -348,12 +354,13 @@ export const makeWithStrategy = <A, E, R>(options: {
     const state: State<A, E> = {
       scope,
       isShuttingDown: false,
-      semaphore: Semaphore.makeUnsafe(concurrency * options.max),
       resizeSemaphore: Semaphore.makeUnsafe(1),
       items: new Set(),
-      available: new Set(),
+      availableHead: undefined,
+      availableTail: undefined,
       availableLatch: Latch.makeUnsafe(false),
       invalidated: new Set(),
+      usage: 0,
       waiters: 0
     }
     const self: Pool<A, E> = {
@@ -369,10 +376,12 @@ export const makeWithStrategy = <A, E, R>(options: {
       Effect.forkDetach(restore(resize(self))),
       (fiber) => Scope.addFinalizer(scope, Fiber.interrupt(fiber))
     )
-    yield* Effect.tap(
-      Effect.forkDetach(restore(options.strategy.run(self))),
-      (fiber) => Scope.addFinalizer(scope, Fiber.interrupt(fiber))
-    )
+    if (options.strategy !== noopStrategy) {
+      yield* Effect.tap(
+        Effect.forkDetach(restore(options.strategy.run(self))),
+        (fiber) => Scope.addFinalizer(scope, Fiber.interrupt(fiber))
+      )
+    }
     return self
   }))
 
@@ -388,7 +397,7 @@ const shutdown = Effect.fnUntraced(function*<A, E>(self: Pool<A, E>) {
       yield* semaphore.take(1)
     } else {
       self.state.items.delete(item)
-      self.state.available.delete(item)
+      removeAvailable(self, item)
       self.state.invalidated.delete(item)
       yield* item.finalizer
     }
@@ -421,72 +430,93 @@ const shutdown = Effect.fnUntraced(function*<A, E>(self: Pool<A, E>) {
  * @since 2.0.0
  */
 export const get = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
-  Effect.suspend(() => {
-    if (self.state.isShuttingDown) {
-      return Effect.interrupt
-    }
-    return Effect.flatMap(getPoolItem(self), (item) => item.exit)
-  })
+  Effect.flatMap(getPoolItem(self), (item) => item.exit)
+
+const addAvailable = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
+  if (item.isAvailable) return
+  item.isAvailable = true
+  item.availablePrevious = self.state.availableTail
+  item.availableNext = undefined
+  if (self.state.availableTail) {
+    self.state.availableTail.availableNext = item
+  } else {
+    self.state.availableHead = item
+  }
+  self.state.availableTail = item
+}
+
+const removeAvailable = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
+  if (!item.isAvailable) return
+  item.isAvailable = false
+  if (item.availablePrevious) {
+    item.availablePrevious.availableNext = item.availableNext
+  } else {
+    self.state.availableHead = item.availableNext
+  }
+  if (item.availableNext) {
+    item.availableNext.availablePrevious = item.availablePrevious
+  } else {
+    self.state.availableTail = item.availablePrevious
+  }
+  item.availablePrevious = undefined
+  item.availableNext = undefined
+}
 
 const getPoolItem = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>, never, Scope.Scope> =>
   Effect.uninterruptibleMask((restore) =>
-    restore(self.state.semaphore.take(1)).pipe(
-      Effect.flatMap(() => Effect.scope),
-      Effect.flatMap((scope) =>
-        getPoolItemInner(self).pipe(
-          Effect.ensuring(Effect.sync(() => self.state.waiters--)),
-          Effect.tap((item) => {
-            if (item.exit._tag === "Failure") {
-              self.state.items.delete(item)
-              self.state.invalidated.delete(item)
-              self.state.available.delete(item)
-              return self.state.semaphore.release(1)
-            }
-            item.refCount++
-            self.state.available.delete(item)
-            if (item.refCount < self.config.concurrency) {
-              self.state.available.add(item)
-            }
-            return Scope.addFinalizerExit(scope, () =>
-              Effect.flatMap(
-                Effect.suspend(() => {
-                  item.refCount--
-                  if (self.state.invalidated.has(item)) {
-                    return invalidatePoolItem(self, item)
-                  }
-                  self.state.available.add(item)
-                  return Effect.void
-                }),
-                () => self.state.semaphore.release(1)
-              ))
-          }),
-          Effect.onInterrupt(() => self.state.semaphore.release(1))
-        )
-      )
-    )
+    Effect.flatMap(Effect.scope, (scope) =>
+      restore(
+        self.config.isFixed
+          ? getPoolItemInner(self)
+          : Effect.ensuring(getPoolItemInner(self), Effect.sync(() => self.state.waiters--))
+      ).pipe(
+        Effect.tap((item) => {
+          if (item.exit._tag === "Failure") {
+            self.state.items.delete(item)
+            self.state.invalidated.delete(item)
+            removeAvailable(self, item)
+            return Effect.void
+          }
+          item.refCount++
+          if (!self.config.isFixed) self.state.usage++
+          if (item.refCount === self.config.concurrency) removeAvailable(self, item)
+          return Scope.addFinalizerExit(scope, () =>
+            Effect.suspend(() => {
+              item.refCount--
+              if (!self.config.isFixed) self.state.usage--
+              if (self.state.invalidated.has(item)) {
+                return invalidatePoolItem(self, item)
+              }
+              addAvailable(self, item)
+              self.state.availableLatch.openUnsafe()
+              return Effect.void
+            }))
+        })
+      ))
   )
 
 const getPoolItemInner = Effect.fnUntraced(function*<A, E>(
   self: Pool<A, E>
 ) {
-  self.state.waiters++
-  if (self.state.isShuttingDown) {
-    return yield* Effect.interrupt
-  } else if (targetSize(self) > activeSize(self)) {
-    while (true) {
+  if (!self.config.isFixed) self.state.waiters++
+  while (true) {
+    if (self.state.isShuttingDown) {
+      return yield* Effect.interrupt
+    } else if (targetSize(self) > activeSize(self)) {
       yield* self.state.resizeSemaphore.withPermitsIfAvailable(1)(
         Effect.forkIn(Effect.interruptible(resize(self)), self.state.scope)
       )
       if (self.state.isShuttingDown) {
         return yield* Effect.interrupt
-      } else if (self.state.available.size > 0) {
-        return Iterable.headUnsafe(self.state.available)
+      } else if (self.state.availableHead) {
+        return self.state.availableHead
       }
-      self.state.availableLatch.closeUnsafe()
-      yield* self.state.availableLatch.await
+    } else if (self.state.availableHead) {
+      return self.state.availableHead
     }
+    self.state.availableLatch.closeUnsafe()
+    yield* self.state.availableLatch.await
   }
-  return Iterable.headUnsafe(self.state.available)
 })
 
 /**
@@ -529,7 +559,7 @@ const invalidatePoolItem = <A, E>(self: Pool<A, E>, poolItem: PoolItem<A, E>): E
       return Effect.void
     } else if (poolItem.refCount === 0) {
       self.state.items.delete(poolItem)
-      self.state.available.delete(poolItem)
+      removeAvailable(self, poolItem)
       self.state.invalidated.delete(poolItem)
       return Effect.asVoid(Effect.flatMap(
         poolItem.finalizer,
@@ -537,7 +567,7 @@ const invalidatePoolItem = <A, E>(self: Pool<A, E>, poolItem: PoolItem<A, E>): E
       ))
     }
     self.state.invalidated.add(poolItem)
-    self.state.available.delete(poolItem)
+    removeAvailable(self, poolItem)
     return Effect.void
   })
 
@@ -552,8 +582,19 @@ const resizeLoop = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
       return Effect.void
     }
     const toAcquire = target - active
-    return self.config.strategy.reclaim(self).pipe(
-      Effect.flatMap((item) => item ? Effect.succeed(item) : allocate(self)),
+    const acquire = self.config.strategy === noopStrategy
+      ? allocate(self)
+      : Effect.flatMap(
+        self.config.strategy.reclaim(self),
+        (item) => item ? Effect.succeed(item) : allocate(self)
+      )
+    if (toAcquire === 1) {
+      return acquire.pipe(
+        Effect.tap(() => self.state.availableLatch.open),
+        Effect.flatMap((item) => item.exit._tag === "Failure" ? Effect.void : resizeLoop(self))
+      )
+    }
+    return acquire.pipe(
       Effect.replicateEffect(toAcquire, { concurrency: toAcquire }),
       Effect.tap(self.state.availableLatch.open),
       Effect.flatMap((items) => items.some((_) => _.exit._tag === "Failure") ? Effect.void : resizeLoop(self))
@@ -570,12 +611,18 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
         Effect.flatMap((exit) => {
           const item: PoolItem<A, E> = {
             exit,
+            isAvailable: false,
+            availablePrevious: undefined,
+            availableNext: undefined,
             finalizer: Effect.catchCause(Scope.close(scope, exit), reportUnhandledError),
             refCount: 0,
             disableReclaim: false
           }
           self.state.items.add(item)
-          self.state.available.add(item)
+          addAvailable(self, item)
+          if (self.config.strategy === noopStrategy) {
+            return exit._tag === "Success" ? Effect.succeed(item) : Effect.as(item.finalizer, item)
+          }
           return Effect.as(
             exit._tag === "Success"
               ? self.config.strategy.onAcquire(item)
@@ -588,15 +635,12 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
   )
 
 const currentUsage = <A, E>(self: Pool<A, E>) => {
-  let count = self.state.waiters
-  for (const item of self.state.items) {
-    count += item.refCount
-  }
-  return count
+  return self.state.waiters + self.state.usage
 }
 
 const targetSize = <A, E>(self: Pool<A, E>) => {
   if (self.state.isShuttingDown) return 0
+  if (self.config.isFixed) return self.config.minSize
   const utilization = currentUsage(self) / self.config.targetUtilization
   const target = Math.ceil(utilization / self.config.concurrency)
   return Math.min(Math.max(self.config.minSize, target), self.config.maxSize)
@@ -610,11 +654,13 @@ const activeSize = <A, E>(self: Pool<A, E>) => {
 // Strategy
 // -----------------------------------------------------------------------------
 
-const strategyNoop = <A, E>(): Strategy<A, E> => ({
+const noopStrategy: Strategy<any, any> = {
   run: (_) => Effect.void,
   onAcquire: (_) => Effect.void,
   reclaim: (_) => Effect.undefined
-})
+}
+
+const strategyNoop = <A, E>(): Strategy<A, E> => noopStrategy
 
 const strategyCreationTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) {
   const clock = yield* Clock
@@ -680,7 +726,7 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
         }
         pool.state.invalidated.delete(item.value)
         if (item.value.refCount < pool.config.concurrency) {
-          pool.state.available.add(item.value)
+          addAvailable(pool, item.value)
         }
         return Effect.as(Queue.offer(queue, item.value), item.value)
       })
