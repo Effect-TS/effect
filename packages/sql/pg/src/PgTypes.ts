@@ -989,6 +989,7 @@ const builtins = new Map<number, Codec<any>>([
 for (const [arrayOid, elementOid] of arrayToElement) {
   builtins.set(arrayOid, {
     encode: (value) => encodeArray(value, elementOid),
+    write: (sink, value) => writeArray(sink, value, elementOid),
     decode: (bytes) => decodeArray(bytes, elementOid)
   })
 }
@@ -1040,6 +1041,13 @@ export const unregister = (oid: number): void => {
 // arrays
 // -----------------------------------------------------------------------------
 
+const writeValue = (sink: ValueSink, value: unknown, oid: number): void => {
+  const codec = lookup(oid)
+  if (codec === undefined) return fail(`No codec registered for OID ${oid}`)
+  if (codec.write === undefined) sink.raw(codec.encode(value))
+  else codec.write(sink, value)
+}
+
 const encodeArray = (value: unknown, elementOid: number): Uint8Array => {
   if (!Array.isArray(value)) {
     return fail("Expected an array")
@@ -1083,6 +1091,45 @@ const encodeArray = (value: unknown, elementOid: number): Uint8Array => {
     }
   }
   return bytes
+}
+
+/**
+ * As `encodeArray`, but into a sink: each element is framed with `beginLength`
+ * and written in place, so neither the elements nor the array itself needs an
+ * array of bytes of its own.
+ */
+const writeArray = (sink: ValueSink, value: unknown, elementOid: number): void => {
+  if (!Array.isArray(value)) {
+    return fail("Expected an array")
+  }
+  const count = value.length
+  // The null flag sits ahead of the elements, so it is the one thing that has
+  // to be known before any of them are written.
+  let hasNull = false
+  for (let i = 0; i < count; i++) {
+    if (value[i] === null) {
+      hasNull = true
+      break
+    }
+  }
+  const dimensions = count === 0 ? 0 : 1
+  sink.int32(dimensions)
+  sink.int32(hasNull ? 1 : 0)
+  sink.int32(elementOid)
+  if (dimensions === 1) {
+    sink.int32(count)
+    sink.int32(1)
+  }
+  for (let i = 0; i < count; i++) {
+    const element = value[i]
+    if (element === null) {
+      sink.int32(-1)
+    } else {
+      const token = sink.beginLength()
+      writeValue(sink, element, elementOid)
+      sink.endLength(token)
+    }
+  }
 }
 
 const decodeArray = (bytes: Uint8Array, elementOid: number): ReadonlyArray<unknown> => {
@@ -1182,14 +1229,8 @@ export const encodeParameter = (parameter: Parameter): Uint8Array | null =>
  * @category encoding
  * @since 4.0.0
  */
-export const writeParameter = (sink: ValueSink, parameter: Parameter): void => {
-  const value = parameter.value
-  if (value === null) return sink.sqlNull()
-  const codec = lookup(parameter.oid)
-  if (codec === undefined) return fail(`No codec registered for OID ${parameter.oid}`)
-  if (codec.write === undefined) sink.raw(codec.encode(value))
-  else codec.write(sink, value)
-}
+export const writeParameter = (sink: ValueSink, parameter: Parameter): void =>
+  parameter.value === null ? sink.sqlNull() : writeValue(sink, parameter.value, parameter.oid)
 
 const parameter = (oid: number) => (value: unknown): Parameter => ({ oid, value })
 

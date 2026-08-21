@@ -156,6 +156,19 @@ class Writer {
     this.isNull = true
   }
 
+  beginLength(): number {
+    // Relative to `start`, because a later write may move the message to a new
+    // pool buffer, which rebases `start` and `offset` but not the distance
+    // between them.
+    const token = this.offset - this.start
+    this.int32(0)
+    return token
+  }
+
+  endLength(token: number): void {
+    this.setInt32(this.start + token, this.offset - this.start - token - 4)
+  }
+
   utf8(value: string): void {
     const length = value.length
     if (length <= asciiEncodeLimit) {
@@ -592,6 +605,15 @@ export interface ValueSink {
   readonly utf8: (value: string) => void
   /** Writes SQL NULL. The value must write nothing else. */
   readonly sqlNull: () => void
+  /**
+   * Leaves room for an int32 length and returns a token for `endLength`, so a
+   * value that contains other values can frame them without knowing their
+   * sizes up front. Tokens nest, and must be closed in the order they were
+   * opened.
+   */
+  readonly beginLength: () => number
+  /** Backfills the length of everything written since its `beginLength`. */
+  readonly endLength: (token: number) => void
 }
 
 /**
@@ -632,18 +654,15 @@ export const makeBindEncoder = <A>(
   header[headerOffset + 5] = count
   writer.offset = headerOffset + 6
   for (let index = 0; index < count; index++) {
-    // Relative to `start`, because writing the value may move the message to a
-    // new pool buffer.
-    const at = writer.offset - writer.start
-    writer.int32(0)
+    const token = writer.beginLength()
     writer.isNull = false
     writeParameter(writer, parameters[index])
     if (writer.isNull) {
       writer.isNull = false
-      writer.offset = writer.start + at
+      writer.offset = writer.start + token
       writer.int32(-1)
     } else {
-      writer.setInt32(writer.start + at, writer.offset - writer.start - at - 4)
+      writer.endLength(token)
     }
   }
   writer.reserve(4)

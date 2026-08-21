@@ -308,6 +308,61 @@ describe("PgTypes", () => {
       }
     })
 
+    it("writes every array OID as the bytes encode produces", () => {
+      const samples: Record<number, unknown> = {
+        [PgTypes.OID.bool]: true,
+        [PgTypes.OID.bytea]: new Uint8Array([1, 2, 3]),
+        [PgTypes.OID.name]: "some_name",
+        [PgTypes.OID.int8]: BigInt("9007199254740993"),
+        [PgTypes.OID.int2]: -3,
+        [PgTypes.OID.int4]: 70000,
+        [PgTypes.OID.text]: "héllo ☃",
+        [PgTypes.OID.oid]: 4294967295,
+        [PgTypes.OID.json]: { a: [1, 2] },
+        [PgTypes.OID.jsonb]: { a: [1, 2] },
+        [PgTypes.OID.cidr]: "10.0.0.0/8",
+        [PgTypes.OID.float4]: 1.5,
+        [PgTypes.OID.float8]: -3.0625,
+        [PgTypes.OID.inet]: "192.168.0.1",
+        [PgTypes.OID.bpchar]: "xy",
+        [PgTypes.OID.varchar]: "abc",
+        [PgTypes.OID.date]: "2024-02-29",
+        [PgTypes.OID.time]: BigInt(45296000000),
+        [PgTypes.OID.timestamp]: 1717171717123,
+        [PgTypes.OID.timestamptz]: 0,
+        [PgTypes.OID.timetz]: "12:34:56+02:00",
+        [PgTypes.OID.numeric]: "-98765432109876543210",
+        [PgTypes.OID.uuid]: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+      }
+      const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
+      for (const [elementOid, sample] of Object.entries(samples)) {
+        const arrayOid = PgTypes.arrayOidFor(Number(elementOid))!
+        assert.notStrictEqual(arrayOid, undefined)
+        for (const value of [[], [sample], [null], [sample, null, sample]]) {
+          const parameters = [{ oid: arrayOid, value }]
+          assert.deepStrictEqual(
+            encodeBind({ portal: "", statement: "", parameters }),
+            PgProtocol.encodeBind({
+              portal: "",
+              statement: "",
+              parameters: parameters.map(PgTypes.encodeParameter)
+            }),
+            `array of OID ${elementOid} with ${value.length} element(s)`
+          )
+        }
+      }
+    })
+
+    it("frames array elements that grow the pool mid-write", () => {
+      const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
+      const value = ["a", "b".repeat(24 * 1024), null, "c"]
+      const parameters = [{ oid: PgTypes.OID.textArray, value }, PgTypes.int4(7)]
+      assert.deepStrictEqual(
+        encodeBind({ portal: "p", statement: "s", parameters }),
+        PgProtocol.encodeBind({ portal: "p", statement: "s", parameters: parameters.map(PgTypes.encodeParameter) })
+      )
+    })
+
     it("writes a registered codec through encode when it has no writer", () => {
       const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
       const parameters = [{ oid: 99999, value: "ab" }]
