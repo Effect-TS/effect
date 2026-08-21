@@ -7,6 +7,7 @@ import * as Arr from "../../../../Array.ts"
 import * as Effect from "../../../../Effect.ts"
 import * as Encoding from "../../../../Encoding.ts"
 import * as Match from "../../../../Match.ts"
+import * as Predicate from "../../../../Predicate.ts"
 import * as PubSub from "../../../../PubSub.ts"
 import * as Schema from "../../../../Schema.ts"
 import type * as Rpc from "../../../rpc/Rpc.ts"
@@ -58,7 +59,7 @@ const resultMetadata = (
 ): Schema.JsonObject => {
   const metadata: unknown = value._meta
   return {
-    ...(Schema.is(Schema.JsonObject)(metadata) ? metadata : {}),
+    ...(Predicate.isReadonlyObject(metadata) ? metadata : {}),
     "io.modelcontextprotocol/serverInfo": serverInfo
   }
 }
