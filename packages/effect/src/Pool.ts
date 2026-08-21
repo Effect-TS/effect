@@ -77,6 +77,7 @@ export interface Pool<in out A, in out E = never> extends Pipeable {
 export interface Config<A, E> {
   readonly acquire: Effect.Effect<A, E, Scope.Scope>
   readonly concurrency: number
+  readonly isFixed: boolean
   readonly minSize: number
   readonly maxSize: number
   readonly strategy: Strategy<A, E>
@@ -350,6 +351,7 @@ export const makeWithStrategy = <A, E, R>(options: {
     const config: Config<A, E> = {
       acquire,
       concurrency,
+      isFixed: options.min === options.max,
       minSize: options.min,
       maxSize: options.max,
       strategy: options.strategy,
@@ -444,7 +446,7 @@ export const get = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
     if (state.isShuttingDown) return internal.interrupt
     if (state.availableHead !== undefined) {
       state.usage++
-      if (targetSize(self) <= activeSize(self)) {
+      if (self.config.isFixed || targetSize(self) <= activeSize(self)) {
         return leaseItem(self, state.availableHead, fiber)
       }
       state.usage--
@@ -664,10 +666,12 @@ const resizeLoop = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
       return Effect.void
     }
     const toAcquire = target - active
-    const acquireOne = Effect.flatMap(
-      self.config.strategy.reclaim(self),
-      (item) => item ? Effect.succeed(item) : allocate(self)
-    )
+    const acquireOne = self.config.strategy === strategyNoop
+      ? allocate(self)
+      : Effect.flatMap(
+        self.config.strategy.reclaim(self),
+        (item) => item ? Effect.succeed(item) : allocate(self)
+      )
     if (toAcquire === 1) {
       return acquireOne.pipe(
         Effect.tap(wakeAll(self)),
@@ -702,6 +706,9 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           item.release = constant(releaseItem(self, item))
           self.state.items.add(item)
           addAvailable(self, item)
+          if (self.config.strategy === strategyNoop) {
+            return exit._tag === "Success" ? Effect.succeed(item) : Effect.as(item.finalizer, item)
+          }
           return Effect.as(
             exit._tag === "Success"
               ? self.config.strategy.onAcquire(item)
@@ -715,6 +722,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
 
 const targetSize = <A, E>(self: Pool<A, E>) => {
   if (self.state.isShuttingDown) return 0
+  if (self.config.isFixed) return self.config.minSize
   const utilization = self.state.usage / self.config.targetUtilization
   const target = Math.ceil(utilization / self.config.concurrency)
   return Math.min(Math.max(self.config.minSize, target), self.config.maxSize)
