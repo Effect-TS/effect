@@ -565,10 +565,11 @@ describe("SchemaBinary", () => {
       tags: index % 3 === 0 ? ["red", "blue"] : ["blue"],
       attributes: { region: "eu", worker: `w${index}` }
     }))
+    const nonEmptyRows = rows as [typeof rows[number], ...Array<typeof rows[number]>]
 
     it("shares field ids and repeated strings across rows", () => {
       assert.deepStrictEqual(roundtrip(Schema.Array(Row), rows), rows)
-      assert.deepStrictEqual(roundtrip(Schema.NonEmptyArray(Row), rows), rows)
+      assert.deepStrictEqual(roundtrip(Schema.NonEmptyArray(Row), nonEmptyRows), nonEmptyRows)
       const one = encode(Schema.Array(Row), rows.slice(0, 1)).length
       const six = encode(Schema.Array(Row), rows).length
       assert.isBelow(six, one * 6)
