@@ -103,15 +103,8 @@ export interface Config<A, E> {
  *
  * **Details**
  *
- * This state tracks the pool scope, active and available items, invalidated
- * items, current usage, waiters, and shutdown status. It is exposed for
- * inspection and implementation support; user code should prefer the
- * high-level pool operations.
- *
- * `usage` counts fibers waiting for or currently holding an item, and is what
- * drives the pool's target size.
- * `waiters` holds the wake-up callbacks of fibers waiting for an item to
- * become available.
+ * This state is exposed for inspection and implementation support. User code
+ * should prefer the high-level pool operations.
  *
  * @see {@link Pool} for the pool value exposing this state
  * @see {@link PoolItem} for the entries stored in the runtime item sets
@@ -465,20 +458,12 @@ export const get = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
   })
 
 /**
- * Borrows an item from the pool for the duration of a single effect, without
- * requiring a `Scope`.
+ * Borrows an item while an effect runs and returns it when the effect exits.
  *
  * **When to use**
  *
- * Use when an item is only needed to run one effect. Compared to wrapping
- * {@link get} in `Effect.scoped`, this skips scope creation and finalizer
- * bookkeeping, so it is the faster way to use a pooled item for a single
- * operation.
- *
- * **Details**
- *
- * The item is returned to the pool as soon as the provided effect completes,
- * whether it succeeds, fails, or is interrupted.
+ * Use when an item is needed by one effect. Unlike `Effect.scoped` with
+ * {@link get}, this avoids allocating a scope and registering a finalizer.
  *
  * **Example** (Running a single operation with a pooled item)
  *

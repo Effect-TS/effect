@@ -128,9 +128,8 @@ export declare namespace State {
    *
    * **Details**
    *
-   * A single registered finalizer is stored directly in `finalizerKey` /
-   * `finalizer`; once a second finalizer is added, all finalizers move into
-   * the `finalizers` map.
+   * Stores one finalizer inline and allocates the `finalizers` map when a
+   * second is added.
    *
    * **Example** (Inspecting an open scope state)
    *
