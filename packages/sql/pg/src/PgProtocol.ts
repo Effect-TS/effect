@@ -93,6 +93,9 @@ class Reader {
   }
 
   require(size: number): void {
+    if (size < 0) {
+      throw new ParseError({ message: `Invalid read of ${size} byte(s)` })
+    }
     if (this.offset + size > this.bytes.length) {
       throw new ParseError({ message: `Truncated message: expected ${size} more byte(s)` })
     }
@@ -1160,6 +1163,9 @@ const decodeBackend = (type: number, payload: Uint8Array): BackendMessage => {
       const values: Array<Uint8Array | null> = new Array(count)
       for (let i = 0; i < count; i++) {
         const size = reader.int32()
+        if (size < -1) {
+          throw new ParseError({ message: `Invalid DataRow field length: ${size}` })
+        }
         values[i] = size === -1 ? null : reader.raw(size)
       }
       return { _tag: "DataRow", values }
@@ -1239,7 +1245,9 @@ export interface Parser {
   /**
    * Feeds the next chunk of socket bytes and returns every message that is now
    * complete. A partial trailing message is retained until the bytes that
-   * finish it arrive.
+   * finish it arrive. A `ParseError` is terminal and the parser cannot be
+   * reused afterward; any messages decoded earlier in the failing push are
+   * discarded.
    */
   readonly push: (chunk: Uint8Array) => ReadonlyArray<BackendMessage>
 }
@@ -1261,6 +1269,7 @@ export const makeParser = (options?: {
   let view = new DataView(buffer.buffer)
   let start = 0
   let end = 0
+  let failed = false
 
   const append = (chunk: Uint8Array): void => {
     if (end + chunk.length > buffer.length) {
@@ -1284,28 +1293,36 @@ export const makeParser = (options?: {
 
   return {
     push: (chunk) => {
-      append(chunk)
-      const messages: Array<BackendMessage> = []
-      while (end - start >= 5) {
-        const length = view.getInt32(start + 1)
-        if (length < 4) {
-          throw new ParseError({ message: `Invalid message length: ${length}` })
-        }
-        if (length > maxMessageSize) {
-          throw new ParseError({
-            message: `Message length ${length} exceeds maxMessageSize ${maxMessageSize}`
-          })
-        }
-        if (end - start < length + 1) break
-        const type = buffer[start]
-        messages.push(decodeBackend(type, buffer.subarray(start + 5, start + 1 + length)))
-        start += length + 1
+      if (failed) {
+        throw new ParseError({ message: "Parser cannot be reused after a ParseError" })
       }
-      if (start === end) {
-        start = 0
-        end = 0
+      try {
+        append(chunk)
+        const messages: Array<BackendMessage> = []
+        while (end - start >= 5) {
+          const length = view.getInt32(start + 1)
+          if (length < 4) {
+            throw new ParseError({ message: `Invalid message length: ${length}` })
+          }
+          if (length > maxMessageSize) {
+            throw new ParseError({
+              message: `Message length ${length} exceeds maxMessageSize ${maxMessageSize}`
+            })
+          }
+          if (end - start < length + 1) break
+          const type = buffer[start]
+          messages.push(decodeBackend(type, buffer.subarray(start + 5, start + 1 + length)))
+          start += length + 1
+        }
+        if (start === end) {
+          start = 0
+          end = 0
+        }
+        return messages
+      } catch (error) {
+        failed = true
+        throw error
       }
-      return messages
     }
   }
 }

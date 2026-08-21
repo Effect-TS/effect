@@ -53,6 +53,18 @@ describe("PgAuth", () => {
       )
     })
 
+    it("rejects a server nonce that only echoes the client nonce", () => {
+      const started = PgAuth.scramInit({ password: scram.password, nonce: scram.clientNonce })
+      assertThrowsTagged(
+        "PgAuthError",
+        () =>
+          PgAuth.scramContinue(
+            started.state,
+            encoder.encode(`r=${scram.clientNonce},s=DBRmN4Xi9iMOo1tZfsi+Hg==,i=4096`)
+          )
+      )
+    })
+
     it("rejects a missing attribute", () => {
       const started = PgAuth.scramInit({ password: scram.password, nonce: scram.clientNonce })
       assertThrowsTagged(

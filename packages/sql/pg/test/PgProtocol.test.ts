@@ -116,6 +116,28 @@ describe("PgProtocol", () => {
       )
       assert.strictEqual(hex(PgProtocol.encode({ _tag: "Sync" })), frontend.sync)
     })
+
+    it("writes the actual typed frame length into every message", () => {
+      const messages = [
+        PgProtocol.encodeParse({ name: "s1", query: "SELECT $1", parameterTypes: [23] }),
+        PgProtocol.encodeBind({ portal: "p1", statement: "s1", parameters: [bytes("00000001"), null] }),
+        PgProtocol.encodeExecute({ portal: "p1", maxRows: 5 }),
+        PgProtocol.encodeDescribe({ target: "statement", name: "s1" }),
+        PgProtocol.encodeClose({ target: "portal", name: "p1" }),
+        PgProtocol.encodeSync(),
+        PgProtocol.encodeFlush(),
+        PgProtocol.encodeTerminate(),
+        PgProtocol.encodePasswordMessage({ password: "md5abc" }),
+        PgProtocol.encodeSASLInitialResponse({ mechanism: "SCRAM-SHA-256", initialResponse: bytes("6e2c2c") }),
+        PgProtocol.encodeSASLResponse({ data: bytes("010203") })
+      ]
+      for (const message of messages) {
+        assert.strictEqual(
+          new DataView(message.buffer, message.byteOffset, message.byteLength).getInt32(1),
+          message.length - 1
+        )
+      }
+    })
   })
 
   describe("authentication messages", () => {
@@ -351,6 +373,27 @@ describe("PgProtocol", () => {
       assert.strictEqual(messages[0]._tag, "RowDescription")
     })
 
+    it("grows its buffer for a large fragmented DataRow", () => {
+      const field = new Uint8Array(40 * 1024)
+      for (let index = 0; index < field.length; index++) field[index] = index % 251
+      const frame = new Uint8Array(11 + field.length)
+      const view = new DataView(frame.buffer)
+      frame[0] = 0x44
+      view.setInt32(1, frame.length - 1)
+      view.setInt16(5, 1)
+      view.setInt32(7, field.length)
+      frame.set(field, 11)
+
+      const parser = PgProtocol.makeParser()
+      const messages: Array<PgProtocol.BackendMessage> = []
+      for (let offset = 0; offset < frame.length; offset += 1024) {
+        messages.push(...parser.push(frame.subarray(offset, offset + 1024)))
+      }
+      assert.strictEqual(messages.length, 1)
+      assert.strictEqual(messages[0]._tag, "DataRow")
+      assert.deepStrictEqual((messages[0] as PgProtocol.DataRow).values, [field])
+    })
+
     it("rejects a length prefix above maxMessageSize", () => {
       const parser = PgProtocol.makeParser()
       assertThrowsTagged("PgProtocolParseError", () => parser.push(bytes("447fffffff0000")))
@@ -369,6 +412,28 @@ describe("PgProtocol", () => {
     it("rejects a truncated payload", () => {
       // CommandComplete whose command tag is never NUL-terminated
       assertThrowsTagged("PgProtocolParseError", () => parseOne("430000000953454c454354"))
+    })
+
+    it("rejects a DataRow field length below the NULL sentinel", () => {
+      assertThrowsTagged("PgProtocolParseError", () => parseOne("440000000a0001fffffffe"))
+    })
+
+    it("cannot be reused after a malformed frame", () => {
+      const parser = PgProtocol.makeParser()
+      assertThrowsTagged(
+        "PgProtocolParseError",
+        () => parser.push(bytes(`${backend.parseComplete}430000000953454c454354`))
+      )
+      try {
+        parser.push(bytes(backend.bindComplete))
+        assert.fail("Expected the failed parser to reject another push")
+      } catch (error) {
+        assert.strictEqual((error as { readonly _tag?: string })._tag, "PgProtocolParseError")
+        assert.strictEqual(
+          (error as { readonly message?: string }).message,
+          "Parser cannot be reused after a ParseError"
+        )
+      }
     })
   })
 })

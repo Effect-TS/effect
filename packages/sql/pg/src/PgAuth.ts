@@ -191,7 +191,7 @@ export const scramContinue = (
   const serverFirstMessage = decodeUtf8(challenge, "the SCRAM server-first-message")
   const attributes = parseAttributes(serverFirstMessage)
   const nonce = attribute(attributes, "r")
-  if (!nonce.startsWith(state.clientNonce)) {
+  if (!nonce.startsWith(state.clientNonce) || nonce.length === state.clientNonce.length) {
     return fail("SCRAM server nonce does not extend the client nonce")
   }
   const salt = fromBase64(attribute(attributes, "s"), "s")

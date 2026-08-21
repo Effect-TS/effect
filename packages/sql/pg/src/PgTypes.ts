@@ -11,7 +11,8 @@
  * or through a constructor such as `int4` that carries it.
  *
  * `timestamp` has no time zone on the wire and is treated as UTC in both
- * directions.
+ * directions. Decoding drops sub-millisecond precision by truncating toward
+ * zero, including for timestamps before the PostgreSQL epoch.
  *
  * @since 4.0.0
  */
@@ -214,7 +215,12 @@ const parseDate = (text: string): number => {
   if (month < 1 || month > 12 || day < 1 || day > 31) {
     return fail(`Invalid date "${text}"`)
   }
-  return daysFromCivil(year, month, day)
+  const days = daysFromCivil(year, month, day)
+  const civil = civilFromDays(days)
+  if (civil.year !== year || civil.month !== month || civil.day !== day) {
+    return fail(`Invalid date "${text}"`)
+  }
+  return days
 }
 
 const formatDate = (days: number): string => {
@@ -480,6 +486,16 @@ const encodeInet = (value: unknown, isCidr: boolean): Uint8Array => {
   if (!Number.isInteger(bits) || bits < 0 || bits > fullBits) {
     return fail(`Invalid netmask length in "${text}"`)
   }
+  if (isCidr) {
+    const wholeBytes = Math.floor(bits / 8)
+    const partialBits = bits % 8
+    if (partialBits !== 0 && (bytes[wholeBytes] & ((1 << (8 - partialBits)) - 1)) !== 0) {
+      return fail(`CIDR address has host bits set in "${text}"`)
+    }
+    for (let index = wholeBytes + (partialBits === 0 ? 0 : 1); index < bytes.length; index++) {
+      if (bytes[index] !== 0) return fail(`CIDR address has host bits set in "${text}"`)
+    }
+  }
   const result = new Uint8Array(4 + bytes.length)
   result[0] = v4 === undefined ? PGSQL_AF_INET6 : PGSQL_AF_INET
   result[1] = bits
@@ -590,7 +606,15 @@ const timestampCodec: Codec<any> = {
     } else if (ms === Number.NEGATIVE_INFINITY) {
       view.setBigInt64(0, INT64_MIN)
     } else {
-      view.setBigInt64(0, BigInt(Math.trunc((ms - PG_EPOCH_MS) * 1000)))
+      const unixMicros = Math.trunc(ms * 1000)
+      if (!Number.isFinite(unixMicros)) {
+        fail(`timestamp out of range: ${ms}`)
+      }
+      const micros = BigInt(unixMicros) - BigInt(PG_EPOCH_MS) * THOUSAND
+      if (micros < INT64_MIN || micros > INT64_MAX) {
+        fail(`timestamp out of range: ${ms}`)
+      }
+      view.setBigInt64(0, micros)
     }
     return bytes
   },
@@ -681,7 +705,7 @@ const builtins = new Map<number, Codec<any>>([
     }
   }],
   [OID.bytea, {
-    encode: (value) => value instanceof Uint8Array ? value : fail("Expected a Uint8Array for bytea"),
+    encode: (value) => value instanceof Uint8Array ? value.slice() : fail("Expected a Uint8Array for bytea"),
     decode: (bytes) => bytes
   }],
   [
@@ -834,12 +858,15 @@ const decodeArray = (bytes: Uint8Array, elementOid: number): ReadonlyArray<unkno
   }
   if (bytes.length < 20) return fail("Truncated array value")
   const length = view.getInt32(12)
+  const lowerBound = view.getInt32(16)
+  if (lowerBound !== 1) return fail(`Only arrays with a lower bound of 1 are supported, received ${lowerBound}`)
   const values: Array<unknown> = new Array(length)
   let offset = 20
   for (let i = 0; i < length; i++) {
     if (offset + 4 > bytes.length) return fail("Truncated array element")
     const size = view.getInt32(offset)
     offset += 4
+    if (size < -1) return fail(`Invalid array element length: ${size}`)
     if (size === -1) {
       values[i] = null
     } else {

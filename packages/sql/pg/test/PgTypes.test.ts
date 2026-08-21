@@ -111,6 +111,25 @@ describe("PgTypes", () => {
         () => PgTypes.decode(bytes("000000010000000000000017000000010000000100000004000000"), PgTypes.OID.int4Array, 1)
       )
     })
+
+    it("rejects an array element length below the NULL sentinel", () => {
+      assertThrowsTagged(
+        "PgTypesCodecError",
+        () => PgTypes.decode(bytes("0000000100000000000000110000000100000001fffffffe"), PgTypes.OID.byteaArray, 1)
+      )
+    })
+
+    it("rejects an array whose lower bound is not one", () => {
+      assertThrowsTagged(
+        "PgTypesCodecError",
+        () =>
+          PgTypes.decode(
+            bytes("0000000100000000000000170000000300000000000000040000000100000004000000020000000400000003"),
+            PgTypes.OID.int4Array,
+            1
+          )
+      )
+    })
   })
 
   describe("errors", () => {
@@ -139,9 +158,22 @@ describe("PgTypes", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(Number.NaN, PgTypes.OID.timestamptz))
     })
 
+    it("rejects timestamps outside the PostgreSQL int64 range", () => {
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(1e300, PgTypes.OID.timestamptz))
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(-1e300, PgTypes.OID.timestamp))
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(Number.MAX_VALUE, PgTypes.OID.timestamp))
+    })
+
     it("rejects malformed dates and uuids", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("2024-2-9", PgTypes.OID.date))
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("2023-02-31", PgTypes.OID.date))
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("2023-04-31", PgTypes.OID.date))
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("not-a-uuid", PgTypes.OID.uuid))
+    })
+
+    it("rejects host bits outside a cidr netmask", () => {
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("10.1.2.3/8", PgTypes.OID.cidr))
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("2001:db8::1/32", PgTypes.OID.cidr))
     })
 
     it("rejects a value the wrong size for its OID", () => {
@@ -191,7 +223,26 @@ describe("PgTypes", () => {
     })
   })
 
+  describe("timestamps", () => {
+    it("truncates sub-millisecond values toward zero on both sides of the PostgreSQL epoch", () => {
+      const before = new Uint8Array(8)
+      const after = new Uint8Array(8)
+      new DataView(before.buffer).setBigInt64(0, BigInt(-1))
+      new DataView(after.buffer).setBigInt64(0, BigInt(1))
+      assert.strictEqual(PgTypes.decode(before, PgTypes.OID.timestamp, 1), 946684800000)
+      assert.strictEqual(PgTypes.decode(after, PgTypes.OID.timestamp, 1), 946684800000)
+    })
+  })
+
   describe("parameters", () => {
+    it("copies bytea values when encoding", () => {
+      const source = bytes("010203")
+      const encoded = PgTypes.encode(source, PgTypes.OID.bytea)
+      assert.notStrictEqual(encoded, source)
+      source[0] = 0xff
+      assert.deepStrictEqual(encoded, bytes("010203"))
+    })
+
     it("carries the OID with the value", () => {
       assert.deepStrictEqual(PgTypes.int4(1), { oid: PgTypes.OID.int4, value: 1 })
       assert.deepStrictEqual(PgTypes.timestamptz(0), { oid: PgTypes.OID.timestamptz, value: 0 })
