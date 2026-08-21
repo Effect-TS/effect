@@ -6351,7 +6351,7 @@ export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
         const orElse = arguments[1]
         return function(value: any) {
           const key = value[tag]
-          const handler = Object.hasOwn(cases, key) ? cases[key] : orElse
+          const handler = Object.hasOwn(cases, key) ? cases[key] ?? orElse : orElse
           return handler(value)
         }
       }
@@ -6359,7 +6359,7 @@ export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
       const cases = arguments[1]
       const orElse = arguments[2]
       const key = value[tag]
-      const handler = Object.hasOwn(cases, key) ? cases[key] : orElse
+      const handler = Object.hasOwn(cases, key) ? cases[key] ?? orElse : orElse
       return handler(value)
     }
   }
