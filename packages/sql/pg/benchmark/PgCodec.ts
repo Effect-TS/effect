@@ -160,6 +160,67 @@ for (let index = 0; index < rowsPerParserRun; index++) {
   binaryRowsPayload.set(binaryDataRow, index * binaryDataRow.length)
 }
 
+// Fields read through the field reader are plain array reads, so unlike the
+// codec calls the other suites make they need somewhere to land to survive.
+let fieldSink: unknown
+
+// The same rows read through a parser that decodes each field where it lies,
+// with no view per column. This is what a client should use: the view is a
+// fixed cost per field, so it dominates exactly when the columns are cheap.
+const binaryColumns = payload.map(({ oid }) => ({ dataTypeOid: oid, format: 1 }))
+const fusedRowParser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader(binaryColumns) })
+
+const decodeRowsFused = () => {
+  let count = 0
+  for (const message of fusedRowParser.push(binaryRowsPayload)) {
+    if (message._tag !== "DataRow") continue
+    for (let index = 0; index < message.values.length; index++) {
+      fieldSink = message.values[index]
+    }
+    count++
+  }
+  return count
+}
+
+// A wide row of cheap columns, where the view per field is most of the work.
+const wideColumnCount = 20
+const wideOid = PgTypes.OID.int4
+const wideEncoded = Array.from({ length: wideColumnCount }, (_, index) => PgTypes.encode(index * 7, wideOid))
+const wideRow = makeDataRow(wideEncoded)
+const wideRowsPayload = new Uint8Array(wideRow.length * rowsPerParserRun)
+for (let index = 0; index < rowsPerParserRun; index++) {
+  wideRowsPayload.set(wideRow, index * wideRow.length)
+}
+const wideParser = PgProtocol.makeParser()
+const wideFusedParser = PgProtocol.makeParser({
+  readField: PgTypes.makeFieldReader(wideEncoded.map(() => ({ dataTypeOid: wideOid, format: 1 })))
+})
+
+const decodeWideRows = () => {
+  let count = 0
+  for (const message of wideParser.push(wideRowsPayload)) {
+    if (message._tag !== "DataRow") continue
+    for (let index = 0; index < message.values.length; index++) {
+      const field = message.values[index]
+      if (field !== null) fieldSink = PgTypes.decode(field, wideOid, 1)
+    }
+    count++
+  }
+  return count
+}
+
+const decodeWideRowsFused = () => {
+  let count = 0
+  for (const message of wideFusedParser.push(wideRowsPayload)) {
+    if (message._tag !== "DataRow") continue
+    for (let index = 0; index < message.values.length; index++) {
+      fieldSink = message.values[index]
+    }
+    count++
+  }
+  return count
+}
+
 const effectRowParser = PgProtocol.makeParser()
 const pgRowParser = new PgParser()
 
@@ -190,6 +251,9 @@ const decodeRowsPg = () => {
 }
 
 assert.equal(decodeRowsEffect(), rowsPerParserRun)
+assert.equal(decodeRowsFused(), rowsPerParserRun)
+assert.equal(decodeWideRows(), rowsPerParserRun)
+assert.equal(decodeWideRowsFused(), rowsPerParserRun)
 assert.equal(decodeRowsPg(), rowsPerParserRun)
 assert.ok(bindEffect().length > 0)
 assert.ok(bindPg().length > 0)
@@ -358,9 +422,15 @@ await runSuite(
 )
 
 await runSuite("DataRow frames to JavaScript values", rowsPerParserRun, [
-  ["@effect/sql-pg binary", decodeRowsEffect],
+  ["@effect/sql-pg binary, field reader", decodeRowsFused],
+  ["@effect/sql-pg binary, view per field", decodeRowsEffect],
   ["pg text", decodeRowsPg]
 ])
+
+await runSuite("DataRow frames to JavaScript values, wide rows", rowsPerParserRun, [
+  ["@effect/sql-pg binary, field reader", decodeWideRowsFused],
+  ["@effect/sql-pg binary, view per field", decodeWideRows]
+], `${wideColumnCount} int4 columns per row`)
 
 await runSuite("numeric decode", codecRowsPerRun, [
   ["@effect/sql-pg binary", batch(decodeNumericEffect)]
@@ -381,7 +451,7 @@ await runSuite("protocol DataRow parser, 64-byte chunks", rowsPerParserRun, [
   ["pg-protocol (pg)", parsePgChunked]
 ])
 
-if (sink === undefined) {
+if (sink === undefined || fieldSink === undefined) {
   throw new Error("Benchmark did not run")
 }
 

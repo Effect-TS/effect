@@ -17,6 +17,7 @@
  * @since 4.0.0
  */
 import * as Data from "effect/Data"
+import type * as PgProtocol from "./PgProtocol.ts"
 import type { ValueSink } from "./PgProtocol.ts"
 
 /**
@@ -1422,6 +1423,56 @@ const decodeArray = (
 // -----------------------------------------------------------------------------
 // entry points
 // -----------------------------------------------------------------------------
+
+/**
+ * A result column, as `RowDescription` describes one.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Column {
+  readonly dataTypeOid: number
+  readonly format: number
+}
+
+/**
+ * Builds a field reader for `PgProtocol.makeParser`, so a result's rows decode
+ * as they are parsed rather than through a view per column.
+ *
+ * Every column is resolved once here rather than once per row, and a codec that
+ * can read in place does; the rest are handed a view. SQL NULL reads as `null`,
+ * and a column whose OID has no codec reads as a copy of its bytes.
+ *
+ * Only the binary format is supported, and a text column fails here rather than
+ * once per row.
+ *
+ * ```ts
+ * import { PgProtocol, PgTypes } from "@effect/sql-pg"
+ *
+ * const parser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader([]) })
+ * // on each RowDescription
+ * declare const description: PgProtocol.RowDescription
+ * parser.readField = PgTypes.makeFieldReader(description.fields)
+ * ```
+ *
+ * @category decoding
+ * @since 4.0.0
+ */
+export const makeFieldReader = (columns: ReadonlyArray<Column>): PgProtocol.FieldReader<unknown> => {
+  const codecs = columns.map((column, index) => {
+    if (column.format !== 1) {
+      return fail(`Only the binary format is supported, column ${index} has format ${column.format}`)
+    }
+    return lookup(column.dataTypeOid)
+  })
+  return (bytes, offset, size, column) => {
+    if (size < 0) return null
+    const codec = codecs[column]
+    if (codec === undefined) return bytes.slice(offset, offset + size)
+    const read = codec.read
+    return read === undefined ? codec.decode(bytes.subarray(offset, offset + size)) : read(bytes, offset, size)
+  }
+}
 
 /**
  * Encodes a JavaScript value as the binary representation of the given OID.

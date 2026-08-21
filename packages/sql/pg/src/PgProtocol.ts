@@ -1087,10 +1087,25 @@ export interface RowDescription {
  * @category models
  * @since 4.0.0
  */
-export interface DataRow {
+export interface DataRow<out A = Uint8Array | null> {
   readonly _tag: "DataRow"
-  readonly values: ReadonlyArray<Uint8Array | null>
+  readonly values: ReadonlyArray<A>
 }
+
+/**
+ * Reads one `DataRow` field out of the parser's buffer, for a parser given a
+ * `readField`. `size` is -1 for SQL NULL, and `column` is the field's position
+ * in the row.
+ *
+ * The bytes are the parser's buffer rather than a view of the field, so they
+ * are only the field's for `offset` to `offset + size`, and reading outside
+ * that reads the rest of the stream. `PgTypes.makeFieldReader` is the
+ * implementation for OID-typed columns.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type FieldReader<A> = (bytes: Uint8Array, offset: number, size: number, column: number) => A
 
 /**
  * A command finished, reporting its tag such as `SELECT 3`.
@@ -1327,7 +1342,7 @@ export interface Unknown {
  * @category models
  * @since 4.0.0
  */
-export type BackendMessage =
+export type BackendMessage<A = Uint8Array | null> =
   | AuthenticationOk
   | AuthenticationCleartextPassword
   | AuthenticationMD5Password
@@ -1339,7 +1354,7 @@ export type BackendMessage =
   | BackendKeyData
   | ReadyForQuery
   | RowDescription
-  | DataRow
+  | DataRow<A>
   | CommandComplete
   | EmptyQueryResponse
   | NoData
@@ -1467,13 +1482,14 @@ const decodeCopyResponse = (
 // instead of going through `Reader`. Callers have already checked that the
 // whole frame is buffered, which turns every field read into one bounds check
 // against `limit`.
-const decodeDataRow = (
+const decodeDataRow = <A>(
   bytes: Uint8Array,
   store: ArrayBufferLike,
   base: number,
   offset: number,
-  limit: number
-): DataRow => {
+  limit: number,
+  readField: FieldReader<A> | undefined
+): DataRow<A> => {
   if (offset + 2 > limit) {
     throw new ParseError({ message: "Truncated message: expected 2 more byte(s)" })
   }
@@ -1481,7 +1497,7 @@ const decodeDataRow = (
   if (count < 0) {
     throw new ParseError({ message: `Invalid DataRow field count: ${count}` })
   }
-  const values: Array<Uint8Array | null> = new Array(count)
+  const values: Array<any> = new Array(count)
   let position = offset + 2
   for (let i = 0; i < count; i++) {
     if (position + 4 > limit) {
@@ -1494,14 +1510,16 @@ const decodeDataRow = (
       if (size < -1) {
         throw new ParseError({ message: `Invalid DataRow field length: ${size}` })
       }
-      values[i] = null
+      values[i] = readField === undefined ? null : readField(bytes, position, -1, i)
       continue
     }
     const next = position + size
     if (next > limit) {
       throw new ParseError({ message: `Truncated message: expected ${size} more byte(s)` })
     }
-    values[i] = view(store, base + position, size)
+    values[i] = readField === undefined
+      ? view(store, base + position, size)
+      : readField(bytes, position, size, i)
     position = next
   }
   if (position !== limit) {
@@ -1542,7 +1560,7 @@ const decodeBackend = (type: number, reader: Reader): BackendMessage => {
       return { _tag: "RowDescription", fields }
     }
     case BackendType.DataRow:
-      return decodeDataRow(reader.bytes, reader.store, reader.base, reader.offset, reader.limit)
+      return decodeDataRow(reader.bytes, reader.store, reader.base, reader.offset, reader.limit, undefined)
     case BackendType.CommandComplete:
       return { _tag: "CommandComplete", commandTag: reader.cString() }
     case BackendType.EmptyQueryResponse:
@@ -1617,7 +1635,14 @@ const maxBufferSize = 64 * 1024
  * @category models
  * @since 4.0.0
  */
-export interface Parser {
+export interface Parser<A = Uint8Array | null> {
+  /**
+   * Reads each `DataRow` field, for a parser built with one. A result's
+   * columns are only known from its `RowDescription`, which arrives on the
+   * same stream, so this is settable: replace it when the columns change.
+   */
+  readField: FieldReader<A> | undefined
+
   /**
    * Feeds the next chunk of socket bytes and returns every message that is now
    * complete. A partial trailing message is retained until the bytes that
@@ -1631,7 +1656,7 @@ export interface Parser {
    * meant to be consumed before the next `push`: holding one keeps its whole
    * buffer alive, so copy it if it has to outlive the row.
    */
-  readonly push: (chunk: Uint8Array) => ReadonlyArray<BackendMessage>
+  readonly push: (chunk: Uint8Array) => ReadonlyArray<BackendMessage<A>>
 }
 
 /**
@@ -1643,9 +1668,15 @@ export interface Parser {
  * @category constructors
  * @since 4.0.0
  */
-export const makeParser = (options?: {
+export const makeParser = <A = Uint8Array | null>(options?: {
   readonly maxMessageSize?: number | undefined
-}): Parser => {
+  /**
+   * Reads each `DataRow` field as it is parsed, so a client that decodes its
+   * columns never needs a view per column. Without one every field is handed
+   * out as a view, which is the default.
+   */
+  readonly readField?: FieldReader<A> | undefined
+}): Parser<A> => {
   const maxMessageSize = options?.maxMessageSize ?? defaultMaxMessageSize
   const reader = new Reader()
   let bufferSize = 8192
@@ -1682,13 +1713,14 @@ export const makeParser = (options?: {
   }
 
   return {
-    push: (chunk) => {
+    readField: options?.readField,
+    push(chunk) {
       if (failed) {
         throw new ParseError({ message: "Parser cannot be reused after a ParseError" })
       }
       try {
         append(chunk)
-        const messages: Array<BackendMessage> = []
+        const messages: Array<BackendMessage<A>> = []
         while (end - start >= 5) {
           const length = (buffer[start + 1] << 24) | (buffer[start + 2] << 16) | (buffer[start + 3] << 8) |
             buffer[start + 4]
@@ -1707,14 +1739,14 @@ export const makeParser = (options?: {
           start = limit
           if (type === BackendType.DataRow) {
             // `buffer` always starts at byte 0 of `store`, so offsets index both.
-            messages.push(decodeDataRow(buffer, store, 0, body, limit))
+            messages.push(decodeDataRow<A>(buffer, store, 0, body, limit, this.readField))
           } else {
             reader.reset(buffer, body, limit)
             const message = decodeBackend(type, reader)
             if (reader.offset !== limit) {
               throw new ParseError({ message: `Message has ${limit - reader.offset} trailing byte(s)` })
             }
-            messages.push(message)
+            messages.push(message as BackendMessage<A>)
           }
         }
         return messages

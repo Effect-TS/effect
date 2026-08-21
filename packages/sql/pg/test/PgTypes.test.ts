@@ -100,6 +100,29 @@ const int64Bytes = (value: bigint): Uint8Array => {
   return wire
 }
 
+/** A `DataRow` frame whose fields are the given bytes; `null` is SQL NULL. */
+const dataRow = (fields: ReadonlyArray<Uint8Array | null>): Uint8Array => {
+  const size = fields.reduce((total, field) => total + 4 + (field === null ? 0 : field.length), 0)
+  const frame = new Uint8Array(1 + 4 + 2 + size)
+  const view = new DataView(frame.buffer)
+  frame[0] = 0x44
+  view.setInt32(1, 4 + 2 + size)
+  view.setInt16(5, fields.length)
+  let offset = 7
+  for (const field of fields) {
+    view.setInt32(offset, field === null ? -1 : field.length)
+    offset += 4
+    if (field !== null) {
+      frame.set(field, offset)
+      offset += field.length
+    }
+  }
+  return frame
+}
+
+const binary = (oids: ReadonlyArray<number>): Array<PgTypes.Column> =>
+  oids.map((dataTypeOid) => ({ dataTypeOid, format: 1 }))
+
 describe("PgTypes", () => {
   describe("round trips against captured PostgreSQL rows", () => {
     for (const { encoded, name, oid, value } of roundTrips) {
@@ -789,6 +812,92 @@ describe("PgTypes", () => {
       assert.strictEqual(PgTypes.arrayOidFor(PgTypes.OID.text), PgTypes.OID.textArray)
       assert.strictEqual(PgTypes.arrayOidFor(99999), undefined)
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.array([], 99999))
+    })
+  })
+
+  describe("makeFieldReader", () => {
+    it("reads every builtin column as decode does", () => {
+      const columns = roundTrips.map(({ oid }) => oid)
+      const fields = roundTrips.map(({ oid, value }) => PgTypes.encode(value, oid))
+      const parser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader(binary(columns)) })
+      const messages = parser.push(dataRow(fields))
+      assert.strictEqual(messages.length, 1)
+      const row = messages[0] as PgProtocol.DataRow<unknown>
+      assert.deepStrictEqual(row.values, fields.map((field, index) => PgTypes.decode(field, columns[index], 1)))
+    })
+
+    it("reads SQL NULL as null", () => {
+      const parser = PgProtocol.makeParser({
+        readField: PgTypes.makeFieldReader(binary([PgTypes.OID.int4, PgTypes.OID.text]))
+      })
+      const messages = parser.push(dataRow([null, PgTypes.encode("a", PgTypes.OID.text)]))
+      assert.deepStrictEqual((messages[0] as PgProtocol.DataRow<unknown>).values, [null, "a"])
+    })
+
+    it("copies the bytes of a column whose OID has no codec", () => {
+      const parser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader(binary([99999])) })
+      const payload = new Uint8Array([1, 2, 3])
+      const value = (parser.push(dataRow([payload]))[0] as PgProtocol.DataRow<unknown>).values[0]
+      assert.deepStrictEqual(value, payload)
+      // A copy, not a view into the parser's buffer, which is far larger and
+      // holds the whole frame rather than just this field.
+      assert.strictEqual((value as Uint8Array).byteOffset, 0)
+      assert.strictEqual((value as Uint8Array).buffer.byteLength, payload.length)
+    })
+
+    it("hands a view to a registered codec that cannot read in place", () => {
+      const oid = 90001
+      let sawWholeField: Uint8Array | undefined
+      PgTypes.register(oid, {
+        encode: (value) => value as Uint8Array,
+        decode: (fieldBytes) => {
+          sawWholeField = fieldBytes
+          return `saw ${fieldBytes.length}`
+        }
+      })
+      try {
+        const parser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader(binary([PgTypes.OID.int4, oid])) })
+        const messages = parser.push(dataRow([PgTypes.encode(1, PgTypes.OID.int4), new Uint8Array([9, 8, 7])]))
+        assert.deepStrictEqual((messages[0] as PgProtocol.DataRow<unknown>).values, [1, "saw 3"])
+        // The view covers the field and nothing else, though the buffer behind
+        // it holds the whole frame.
+        assert.deepStrictEqual(Array.from(sawWholeField!), [9, 8, 7])
+      } finally {
+        PgTypes.unregister(oid)
+      }
+    })
+
+    it("rejects a text column when the reader is built, not once per row", () => {
+      assertThrowsTagged(
+        "PgTypesCodecError",
+        () => PgTypes.makeFieldReader([{ dataTypeOid: PgTypes.OID.int4, format: 0 }])
+      )
+    })
+
+    it("reads a row split across chunks", () => {
+      const columns = [PgTypes.OID.int4, PgTypes.OID.text, PgTypes.OID.uuid]
+      const values = [7, "a longer value than the fast path covers", "6ba7b810-9dad-11d1-80b4-00c04fd430c8"]
+      const frame = dataRow(columns.map((oid, index) => PgTypes.encode(values[index], oid)))
+      const parser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader(binary(columns)) })
+      const decoded: Array<unknown> = []
+      for (let at = 0; at < frame.length; at += 3) {
+        for (const message of parser.push(frame.subarray(at, at + 3))) {
+          decoded.push(...(message as PgProtocol.DataRow<unknown>).values)
+        }
+      }
+      assert.deepStrictEqual(decoded, values)
+    })
+
+    it("reads through a reader replaced mid-stream", () => {
+      const parser = PgProtocol.makeParser<unknown>({
+        readField: PgTypes.makeFieldReader(binary([PgTypes.OID.int4]))
+      })
+      const payload = PgTypes.encode(1, PgTypes.OID.int4)
+      assert.deepStrictEqual((parser.push(dataRow([payload]))[0] as PgProtocol.DataRow<unknown>).values, [1])
+      parser.readField = PgTypes.makeFieldReader(binary([PgTypes.OID.oid]))
+      assert.deepStrictEqual((parser.push(dataRow([payload]))[0] as PgProtocol.DataRow<unknown>).values, [1])
+      parser.readField = undefined
+      assert.deepStrictEqual((parser.push(dataRow([payload]))[0] as PgProtocol.DataRow<unknown>).values, [payload])
     })
   })
 })
