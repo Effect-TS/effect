@@ -1241,6 +1241,12 @@ export const select = <const A>(options: SelectOptions<A>): Prompt<A> => {
 /**
  * Creates a prompt that lets users filter select choices by typing.
  *
+ * **Details**
+ *
+ * Every printable character is appended to the filter query, so navigation is
+ * bound to the arrow keys, `tab`, and the `Ctrl+P` / `Ctrl+N` chords used by
+ * `readline` and `fzf` (`Ctrl+K` also moves up). `Ctrl+U` clears the query.
+ *
  * **Example** (Filtering choices with autocomplete)
  *
  * ```ts import.meta.vitest
@@ -3558,18 +3564,29 @@ const handleSelectProcess = <A>(options: SelectOptionsReq<A>) => {
 
 const handleAutoCompleteProcess = <A>(options: AutoCompleteOptionsReq<A>) => {
   return (input: Terminal.UserInput, state: AutoCompleteState) => {
+    // Navigation is bound to ctrl chords rather than bare `j`/`k`, so that every
+    // printable character reaches the filter input.
     if (input.key.ctrl) {
-      if (input.key.name === "u") {
-        return processAutoCompleteClear(state, options)
+      switch (input.key.name) {
+        case "u": {
+          return processAutoCompleteClear(state, options)
+        }
+        case "p":
+        case "k": {
+          return processAutoCompleteCursorUp(state)
+        }
+        case "n": {
+          return processAutoCompleteCursorDown(state)
+        }
+        default: {
+          return Effect.succeed(Action.Beep())
+        }
       }
-      return Effect.succeed(Action.Beep())
     }
     switch (input.key.name) {
-      case "k":
       case "up": {
         return processAutoCompleteCursorUp(state)
       }
-      case "j":
       case "down": {
         return processAutoCompleteCursorDown(state)
       }
