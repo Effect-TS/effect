@@ -12,6 +12,10 @@ import * as Result from "effect/Result"
 /** @internal */
 export type EntityAlarm = Pick<DurableObjectStorage, "getAlarm" | "setAlarm">
 
+type DeliverAtRow = {
+  readonly deliver_at: number | null
+}
+
 /**
  * Runs a synchronous storage effect inside `transactionSync`. A defect throws
  * out of the callback and rolls the transaction back; a typed failure happens
@@ -64,11 +68,10 @@ export const ensureEntityStorage = (sql: SqlStorage): void => {
 
 /** @internal */
 export const earliestDeliverAt = (sql: SqlStorage): number | undefined => {
-  const rows = sql.exec(
+  const rows = sql.exec<DeliverAtRow>(
     "SELECT min(deliver_at) AS deliver_at FROM cluster_messages WHERE processed = 0 AND deliver_at IS NOT NULL"
   ).toArray()
-  const deliverAt = rows[0]?.deliver_at
-  return typeof deliverAt === "number" ? deliverAt : undefined
+  return rows[0]?.deliver_at ?? undefined
 }
 
 /** @internal */
