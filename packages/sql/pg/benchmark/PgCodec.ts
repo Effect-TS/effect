@@ -4,6 +4,7 @@ import assert from "node:assert/strict"
 import { Buffer } from "node:buffer"
 import { createRequire } from "node:module"
 import { types as pgTypes } from "pg"
+import { DataRowMessage as PgDataRowMessage } from "pg-protocol/dist/messages.js"
 import { Parser as PgParser } from "pg-protocol/dist/parser.js"
 import { serialize as pgSerialize } from "pg-protocol/dist/serializer.js"
 import postgres from "postgres"
@@ -154,10 +155,9 @@ const decodeRowsEffect = () => {
 const decodeRowsPg = () => {
   let count = 0
   pgRowParser.parse(parserBuffer, (message) => {
-    if (message.name !== "dataRow") return
-    const fields = (message as { readonly fields: ReadonlyArray<string | null> }).fields
-    for (let index = 0; index < fields.length; index++) {
-      const field = fields[index]
+    if (!(message instanceof PgDataRowMessage)) return
+    for (let index = 0; index < message.fields.length; index++) {
+      const field = message.fields[index]
       if (field !== null) pgTextParsers[index](field)
     }
     count++
