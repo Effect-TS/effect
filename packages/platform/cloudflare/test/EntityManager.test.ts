@@ -112,14 +112,14 @@ describe("EntityManager", () => {
       assert.strictEqual(streamRuns, 1)
       assert.isTrue(waitUntilFibers.every((fiber) => fiber.pollUnsafe() !== undefined))
 
-      const row = storage.sql.exec(
+      const row = storage.sql.exec<{ readonly processed: number }>(
         "SELECT processed FROM cluster_messages WHERE request_id = ?",
         streamRequestId
       ).toArray()[0]
       assert.strictEqual(row.processed, 1)
       assert.strictEqual((yield* loadNextReply(storage.sql, streamRequestId))?.kind, "WithExit")
       assert.strictEqual(
-        storage.sql.exec(
+        storage.sql.exec<{ readonly count: number }>(
           "SELECT COUNT(*) AS count FROM cluster_replies WHERE request_id = ? AND kind = 'Chunk' AND acked = 0",
           streamRequestId
         ).toArray()[0].count,
