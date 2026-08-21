@@ -35,6 +35,7 @@ import * as Graph_ from "./Graph.ts"
 import * as HashMap_ from "./HashMap.ts"
 import * as HashSet_ from "./HashSet.ts"
 import * as core from "./internal/core.ts"
+import { effectIsExit } from "./internal/effect.ts"
 import * as InternalGraph from "./internal/graph.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
@@ -1518,6 +1519,9 @@ export function decodeUnknownEffect<S extends Constraint>(schema: S, options?: S
 function fromIssueEffect<A, R>(
   self: Effect.Effect<A, SchemaIssue.Issue, R>
 ): Effect.Effect<A, SchemaError, R> {
+  if (effectIsExit(self)) {
+    return fromIssueExit(self as Exit_.Exit<A, SchemaIssue.Issue>)
+  }
   return Effect.catchCause(
     self,
     (cause) => Effect.failCauseSync(() => Cause_.map(cause, (issue) => new SchemaError(issue)))
