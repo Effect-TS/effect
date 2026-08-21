@@ -378,6 +378,19 @@ describe("PgTypes", () => {
       }
     })
 
+    it("enforces PostgreSQL's wire time zone displacement range", () => {
+      assert.strictEqual(PgTypes.decode(bytes("00000000000000000000e0ff"), PgTypes.OID.timetz, 1), "00:00:00-15:59")
+      assert.strictEqual(PgTypes.decode(bytes("0000000000000000ffff1f01"), PgTypes.OID.timetz, 1), "00:00:00+15:59")
+      assertThrowsTagged(
+        "PgTypesCodecError",
+        () => PgTypes.decode(bytes("00000000000000000000e100"), PgTypes.OID.timetz, 1)
+      )
+      assertThrowsTagged(
+        "PgTypesCodecError",
+        () => PgTypes.decode(bytes("0000000000000000ffff1f00"), PgTypes.OID.timetz, 1)
+      )
+    })
+
     it("rejects times past midnight at both ends", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("24:00:01+00:00", PgTypes.OID.timetz))
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("25:00:00+00:00", PgTypes.OID.timetz))

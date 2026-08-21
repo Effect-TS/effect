@@ -237,6 +237,8 @@ const MAX_EXACT_HIGH = 0x200000
 
 /** Midnight to midnight, the widest PostgreSQL `time` and `timetz` allow. */
 const MAX_TIME_MICROS_NUMBER = 86_400_000_000
+/** PostgreSQL accepts time zone displacements strictly inside +/-16 hours. */
+const TZDISP_LIMIT_SECONDS = 57_600
 
 // -----------------------------------------------------------------------------
 // OIDs
@@ -980,7 +982,11 @@ const dateCodec: Codec<any> = codecOf(
 const timetzCodec: Codec<any> = codecOf(
   (bytes, offset, size) => {
     requireSize(size, 12, "timetz")
-    return formatTimeOfDay(readTimeMicros(bytes, offset)) + formatZone(-readInt32(bytes, offset + 8))
+    const zone = readInt32(bytes, offset + 8)
+    if (zone <= -TZDISP_LIMIT_SECONDS || zone >= TZDISP_LIMIT_SECONDS) {
+      return fail(`timetz time zone displacement out of range: ${zone}`)
+    }
+    return formatTimeOfDay(readTimeMicros(bytes, offset)) + formatZone(-zone)
   },
   (value) => {
     const text = requireString(value, "timetz")
