@@ -9,7 +9,6 @@ import * as Queue from "effect/Queue"
 import * as Sink from "effect/Sink"
 import * as Stdio from "effect/Stdio"
 import * as Stream from "effect/Stream"
-import * as TestClock from "effect/testing/TestClock"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import type * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
@@ -270,7 +269,7 @@ export const makeMcpStdioHarness = Effect.fnUntraced(function*<A>(
     takeRawStdout: Queue.take(rawStdout),
     takeStderr: Queue.take(rawStderr),
     awaitOutboundMethod,
-    flushListChanged: TestClock.adjust(0),
+    flushListChanged: Effect.yieldNow,
     respond: (id, result) => sendRaw({ jsonrpc: "2.0", id, result })
   } satisfies McpStdioHarness
 })

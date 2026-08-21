@@ -341,8 +341,7 @@ export class McpServer extends Context.Service<McpServer, {
           if (message.tag.includes("list_changed")) {
             if (!pendingListChanged.has(message.tag)) {
               pendingListChanged.add(message.tag)
-              yield* Effect.sleep(0).pipe(
-                Effect.andThen(Queue.offer(notificationsQueue, { notification })),
+              yield* Queue.offer(notificationsQueue, { notification }).pipe(
                 Effect.ensuring(Effect.sync(() => pendingListChanged.delete(message.tag))),
                 Effect.forkDetach
               )
@@ -677,7 +676,6 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
 }, runtime: McpRuntime.ServerRuntimeShape) {
-  const serverScope = yield* Effect.scope
   const protocol = yield* RpcServer.Protocol
   const server = yield* McpServer
   const defaultLogLevel = yield* CurrentLogLevel
@@ -697,23 +695,26 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
         clientId: number,
         notification: McpProtocol.ProjectedNotification
       ) =>
-        Effect.gen(function*() {
+        Effect.suspend(() => {
           const selectedProtocol = runtime.selectProtocol(protocolVersion)
           const rpc = selectedProtocol.serverNotificationRpcs.requests.get(notification.tag)
           if (rpc === undefined) {
-            return yield* Effect.die(
+            return Effect.die(
               `MCP protocol ${protocolVersion} does not define server notification ${notification.tag}`
             )
           }
-          const payload = yield* selectedProtocol.payloadCodecs(rpc).encode(notification.payload)
-          yield* protocol.send(clientId, {
-            _tag: "Request",
-            id: "",
-            tag: notification.tag,
-            payload,
-            headers: [],
-            isNotification: true
-          })
+          return selectedProtocol.payloadCodecs(rpc).encode(notification.payload).pipe(
+            Effect.flatMap((payload) =>
+              protocol.send(clientId, {
+                _tag: "Request",
+                id: "",
+                tag: notification.tag,
+                payload,
+                headers: [],
+                isNotification: true
+              })
+            )
+          )
         }).pipe(Effect.orDie)
     }),
     defaultLogLevel,
@@ -939,10 +940,8 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
                 }
                 const routedRequest = runtime.routeClientRequest(selectedProtocol, request)
                 const rpc = runtime.clientRpcs.requests.get(routedRequest.tag)
-                if (
-                  rpc &&
-                  selectedProtocol.clientNotificationRpcs.requests.has(request.tag)
-                ) {
+                const isClientNotification = selectedProtocol.clientNotificationRpcs.requests.has(request.tag)
+                if (rpc && isClientNotification && request.isNotification) {
                   if (!session && selectedProtocol.runtime._tag === "Stateful") {
                     if (httpRequest) {
                       appendPreResponseHandlerUnsafe(
@@ -960,25 +959,6 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
                   const decode = selectedProtocol.payloadCodecs(rpc).decode(request.payload)
                   return decode.pipe(
                     Effect.flatMap((payload) => {
-                      if (
-                        request.tag === "notifications/roots/list_changed" &&
-                        session?.initializePayload.capabilities.roots?.listChanged === true &&
-                        httpRequest === undefined
-                      ) {
-                        return RcMap.get(
-                          clients,
-                          new McpClientKey({
-                            clientId,
-                            profile: session.negotiatedProfile
-                          })
-                        ).pipe(
-                          Effect.flatMap(({ client }) => client.listRoots()),
-                          Effect.scoped,
-                          Effect.ignoreCause,
-                          Effect.forkIn(serverScope),
-                          Effect.asVoid
-                        )
-                      }
                       if (request.tag === "notifications/cancelled") {
                         return selectedProtocol.normalizeCancellation(payload).pipe(
                           Effect.flatMap((cancellation) => {
@@ -1011,7 +991,7 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
                     Effect.catchCause(() => Effect.void)
                   )
                 }
-                if (!rpc) {
+                if (!rpc || isClientNotification) {
                   if (request.isNotification) {
                     return Effect.void
                   }
