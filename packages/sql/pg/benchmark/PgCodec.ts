@@ -134,6 +134,24 @@ const bindPg = () =>
     valueMapper: pgUtils.prepareValue as (value: unknown, index: number) => unknown
   })
 
+// Array parameters, where the win is much larger: every element used to be
+// encoded into an array of its own before being copied into the frame.
+const arrayRow = [
+  { oid: PgTypes.OID.int4Array, value: Array.from({ length: 16 }, (_, index) => index) },
+  { oid: PgTypes.OID.textArray, value: Array.from({ length: 8 }, (_, index) => `tag-${index}`) }
+]
+const arrayValues = arrayRow.map(({ value }) => value)
+const bindArrayEffectFused = () => encodeBindFused({ portal: "", statement: "s2", parameters: arrayRow })
+const bindArrayEffect = () =>
+  PgProtocol.encodeBind({ portal: "", statement: "s2", parameters: arrayRow.map(PgTypes.encodeParameter) })
+const bindArrayPg = () =>
+  pgSerialize.bind({
+    portal: "",
+    statement: "s2",
+    values: arrayValues,
+    valueMapper: pgUtils.prepareValue as (value: unknown, index: number) => unknown
+  })
+
 // End to end: DataRow frames in, JavaScript values out. Each library reads its
 // own wire format, so the frames the binary codec sees carry binary fields.
 const binaryDataRow = makeDataRow(effectEncoded)
@@ -176,6 +194,8 @@ assert.equal(decodeRowsPg(), rowsPerParserRun)
 assert.ok(bindEffect().length > 0)
 assert.ok(bindPg().length > 0)
 assert.deepStrictEqual(Array.from(bindEffectFused()), Array.from(bindEffect()))
+assert.deepStrictEqual(Array.from(bindArrayEffectFused()), Array.from(bindArrayEffect()))
+assert.ok(bindArrayPg().length > 0)
 
 const codecRowsPerRun = 100
 let sink: unknown
@@ -199,14 +219,15 @@ const options = {
 const runSuite = async (
   name: string,
   rowsPerRun: number,
-  tasks: ReadonlyArray<readonly [name: string, run: () => unknown]>
+  tasks: ReadonlyArray<readonly [name: string, run: () => unknown]>,
+  shape = `${payload.length} columns per row`
 ) => {
   const bench = new Bench(options)
   for (const [taskName, run] of tasks) {
     bench.add(taskName, run)
   }
   await bench.run()
-  console.log(`\n${name} (${payload.length} columns per row)`)
+  console.log(`\n${name} (${shape})`)
   console.table(bench.table((task) => {
     const result = task.result
     if (result?.state !== "completed") {
@@ -239,6 +260,17 @@ await runSuite("Bind frame from JavaScript values", codecRowsPerRun, [
   ["@effect/sql-pg binary, encoded parameters", batch(bindEffect)],
   ["pg text", batch(bindPg)]
 ])
+
+await runSuite(
+  "Bind frame from array parameters",
+  codecRowsPerRun,
+  [
+    ["@effect/sql-pg binary, value sink", batch(bindArrayEffectFused)],
+    ["@effect/sql-pg binary, encoded parameters", batch(bindArrayEffect)],
+    ["pg text", batch(bindArrayPg)]
+  ],
+  "int4[16] and text[8] per row"
+)
 
 await runSuite("DataRow frames to JavaScript values", rowsPerParserRun, [
   ["@effect/sql-pg binary", decodeRowsEffect],

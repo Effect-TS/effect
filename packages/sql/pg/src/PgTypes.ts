@@ -1120,13 +1120,17 @@ const writeArray = (sink: ValueSink, value: unknown, elementOid: number): void =
     sink.int32(count)
     sink.int32(1)
   }
+  // One lookup for the whole array. A codec with no writer of its own is left
+  // to `writeValue`, which allocates for the element anyway.
+  const write = lookup(elementOid)?.write
   for (let i = 0; i < count; i++) {
     const element = value[i]
     if (element === null) {
       sink.int32(-1)
     } else {
       const token = sink.beginLength()
-      writeValue(sink, element, elementOid)
+      if (write === undefined) writeValue(sink, element, elementOid)
+      else write(sink, element)
       sink.endLength(token)
     }
   }

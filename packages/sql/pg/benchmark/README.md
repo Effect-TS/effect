@@ -26,6 +26,11 @@ which writes each value straight into the frame; it is what a client should use.
 `PgProtocol.encodeBind` over `PgTypes.encode` output, which allocates an array per parameter and copies it into the
 frame. Both produce the same bytes.
 
+`Bind frame from array parameters` is the same comparison for a row of two arrays, a 16-element `int4[]` and an
+8-element `text[]`. Arrays are where writing values in place pays most, because the old path encoded every element
+into an array of its own before copying all of them into the frame. Its rows are per parameter row, not per element,
+so they are not comparable with the six-column suites.
+
 ## The component suites
 
 The four remaining suites split that work up, which is useful for finding hot spots but not for ranking the libraries:
