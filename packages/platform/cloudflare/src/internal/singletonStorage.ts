@@ -24,12 +24,17 @@ export interface SingletonState {
   readonly wakeAt: number | undefined
 }
 
+type SingletonStateRow = {
+  readonly name: string | null
+  readonly wake_at: number | null
+}
+
 /** @internal */
 export const loadSingletonState = (sql: SqlStorage): SingletonState => {
-  const row = sql.exec("SELECT name, wake_at FROM singleton_state WHERE id = 1").toArray()[0]
+  const row = sql.exec<SingletonStateRow>("SELECT name, wake_at FROM singleton_state WHERE id = 1").toArray()[0]
   return {
-    name: typeof row?.name === "string" ? row.name : undefined,
-    wakeAt: typeof row?.wake_at === "number" ? row.wake_at : undefined
+    name: row?.name ?? undefined,
+    wakeAt: row?.wake_at ?? undefined
   }
 }
 
