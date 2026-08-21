@@ -1041,13 +1041,6 @@ export const unregister = (oid: number): void => {
 // arrays
 // -----------------------------------------------------------------------------
 
-const writeValue = (sink: ValueSink, value: unknown, oid: number): void => {
-  const codec = lookup(oid)
-  if (codec === undefined) return fail(`No codec registered for OID ${oid}`)
-  if (codec.write === undefined) sink.raw(codec.encode(value))
-  else codec.write(sink, value)
-}
-
 const encodeArray = (value: unknown, elementOid: number): Uint8Array => {
   if (!Array.isArray(value)) {
     return fail("Expected an array")
@@ -1233,6 +1226,13 @@ export const encodeParameter = (parameter: Parameter): Uint8Array | null =>
  * @category encoding
  * @since 4.0.0
  */
+const writeValue = (sink: ValueSink, value: unknown, oid: number): void => {
+  const codec = lookup(oid)
+  if (codec === undefined) return fail(`No codec registered for OID ${oid}`)
+  if (codec.write === undefined) sink.raw(codec.encode(value))
+  else codec.write(sink, value)
+}
+
 export const writeParameter = (sink: ValueSink, parameter: Parameter): void =>
   parameter.value === null ? sink.sqlNull() : writeValue(sink, parameter.value, parameter.oid)
 
