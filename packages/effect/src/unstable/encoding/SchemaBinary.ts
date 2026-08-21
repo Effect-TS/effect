@@ -1,10 +1,12 @@
 /**
  * A compact binary codec derived from the encoded side of a Schema.
  *
- * The default wire format supports compatible schema evolution. Fingerprint
- * mode uses positional layouts and rejects mismatches for smaller frames.
- * Encoded results are arena-backed views; see {@link toCodec} for ownership
- * details.
+ * The default wire format supports compatible schema evolution. An array of
+ * structs is written as a row run: rows declare their field ids once per
+ * distinct shape and back-reference repeated strings, so both stay off the
+ * wire on later rows. Fingerprint mode uses positional layouts and rejects
+ * mismatches for smaller frames. Encoded results are arena-backed views; see
+ * {@link toCodec} for ownership details.
  *
  * @since 4.0.0
  */
@@ -349,18 +351,24 @@ class Writer {
     return this.len++
   }
   endSized(mark: number) {
-    const payload = this.len - mark - 1
-    if (payload < 0x80) {
-      this.buf[this.start + mark] = payload
-      return
-    }
-    const size = uvarintSize(payload)
+    const code = this.len - mark - 1
+    if (code < 0x80) this.buf[this.start + mark] = code
+    else this.growSized(mark, code)
+  }
+  // Row-run regions prefix `length * 2`; odd codes are back-references.
+  endSizedRun(mark: number) {
+    const code = (this.len - mark - 1) * 2
+    if (code < 0x80) this.buf[this.start + mark] = code
+    else this.growSized(mark, code)
+  }
+  private growSized(mark: number, code: number) {
+    const size = uvarintSize(code)
     const extra = size - 1
     this.ensure(extra)
     const absoluteMark = this.start + mark
     this.buf.copyWithin(absoluteMark + size, absoluteMark + 1, this.start + this.len)
     this.len += extra
-    let n = payload
+    let n = code
     let p = absoluteMark
     while (n > 0x7F) {
       this.buf[p++] = (n & 0x7F) | 0x80
@@ -494,6 +502,8 @@ class Reader {
   options: SchemaAST.ParseOptions = EMPTY_PARSE_OPTIONS
   indexSignatures: IndexSignatureCache | undefined
   positional = false
+  // Handed to the row-run field's immediate consumer, then cleared.
+  intern: Array<unknown> | undefined
   reset(
     buf: Uint8Array,
     start: number,
@@ -509,6 +519,7 @@ class Reader {
     this.options = options
     this.indexSignatures = indexSignatures
     this.positional = positional
+    this.intern = undefined
   }
   release() {
     this.pos = this.end = 0
@@ -520,6 +531,7 @@ class Reader {
     this.options = EMPTY_PARSE_OPTIONS
     this.indexSignatures = undefined
     this.positional = false
+    this.intern = undefined
   }
   get remaining(): number {
     return this.end - this.pos
@@ -780,7 +792,26 @@ interface ArrayLayout {
   uniformInline: boolean
   uniformPacked: number | undefined
   uniformNumbers: boolean
+  // Lazily compiled row-run plan; `null` once known to be unavailable.
+  run: RunPlan | null | undefined
 }
+
+// Struct rows repeated in one array share their field ids and repeated strings.
+interface RunPlan {
+  readonly struct: StructLayout
+  // Per field index: INTERN_NONE / SELF / ELEMENTS / KEYS.
+  readonly intern: Array<number>
+  readonly shapes: boolean
+}
+
+const INTERN_NONE = 0
+const INTERN_SELF = 1
+const INTERN_ELEMENTS = 2
+const INTERN_KEYS = 3
+
+// Rows carry a presence mask over fields plus one bit for the extra block.
+const RUN_MAX_FIELDS = 30
+const RUN_EXTRA_BIT = 1 << RUN_MAX_FIELDS
 
 interface VariantRow {
   readonly tag: number
@@ -1220,7 +1251,8 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       uniform: undefined,
       uniformInline: false,
       uniformPacked: undefined,
-      uniformNumbers: false
+      uniformNumbers: false,
+      run: undefined
     }
     memo.set(ast, layout)
     for (const element of ast.elements) {
@@ -1762,6 +1794,8 @@ interface EncodeContext {
   indexSignatures: IndexSignatureCache | undefined
   // Records of one shape repeat within a frame, so the last one is reused.
   extraShape: ExtraShape | undefined
+  // Handed to the row-run field's immediate consumer, then cleared.
+  intern: InternWrite | undefined
 }
 
 function encodeFail(expected: string, input: unknown, options: SchemaAST.ParseOptions): never {
@@ -1940,16 +1974,27 @@ function encodeExtraPairs(
   ctx: EncodeContext,
   pairs: Array<ExtraPair>,
   obj: Record<string, unknown>,
-  w: Writer
+  w: Writer,
+  keys?: InternWrite | undefined
 ) {
   for (const [key, signature, keyBytes] of pairs) {
-    if (keyBytes === undefined) {
-      w.uvarint(key.length)
-      w.string(key)
+    const keyLength = keyBytes === undefined ? key.length : keyBytes.length
+    if (keys === undefined) {
+      w.uvarint(keyLength)
     } else {
-      w.uvarint(keyBytes.length)
-      w.bytes(keyBytes)
+      const ref = internRef(keys, key)
+      if (ref !== undefined) {
+        w.uvarint(ref * 2 + 1)
+        issuePath[issuePathLen++] = key
+        encodeSized(ctx, signature.layout, obj[key], w)
+        issuePathLen--
+        continue
+      }
+      internAdd(keys, key)
+      w.uvarint(keyLength * 2)
     }
+    if (keyBytes === undefined) w.string(key)
+    else w.bytes(keyBytes)
     issuePath[issuePathLen++] = key
     encodeSized(ctx, signature.layout, obj[key], w)
     issuePathLen--
@@ -1959,11 +2004,14 @@ function encodeExtraPairs(
 function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: object, w: Writer) {
   const obj = value as Record<string, unknown>
   if (layout.extra.length > 0) {
+    // Only a run field with index signatures hands over an intern table.
+    const keys = ctx.intern
+    ctx.intern = undefined
     const pairs = extraPairs(ctx, layout, obj)
     if (pairs.length > 0) {
       w.uvarint(0)
       const mark = w.beginSized()
-      encodeExtraPairs(ctx, pairs, obj, w)
+      encodeExtraPairs(ctx, pairs, obj, w, keys)
       w.endSized(mark)
     }
   }
@@ -2020,6 +2068,172 @@ function encodeStructPositional(ctx: EncodeContext, layout: StructLayout, value:
   }
 }
 
+function internKind(layout: Layout): number {
+  switch (layout._) {
+    case "string":
+      return INTERN_SELF
+    case "array":
+      return layout.uniform?._ === "string" ? INTERN_ELEMENTS : INTERN_NONE
+    case "struct":
+      return layout.extra.length > 0 ? INTERN_KEYS : INTERN_NONE
+    default:
+      return INTERN_NONE
+  }
+}
+
+// `Schema.Array(S)` and `Schema.NonEmptyArray(S)` both give every slot one layout.
+function runStruct(layout: ArrayLayout): StructLayout | undefined {
+  let uniform = layout.uniform
+  if (uniform === undefined) {
+    if (layout.rest.length !== 1) return undefined
+    uniform = layout.rest[0]
+    for (const slot of layout.elements) {
+      if (slot.optional || slot.layout !== uniform) return undefined
+    }
+  }
+  return uniform._ === "struct" ? uniform : undefined
+}
+
+function runPlan(layout: ArrayLayout): RunPlan | null {
+  let plan = layout.run
+  if (plan !== undefined) return plan
+  const struct = runStruct(layout)
+  if (struct === undefined) {
+    layout.run = plan = null
+    return plan
+  }
+  const intern = struct.fields.map((field) => internKind(field.layout))
+  plan = { struct, intern, shapes: struct.fields.length <= RUN_MAX_FIELDS }
+  layout.run = plan
+  return plan
+}
+
+// One table per field, so a field the reader skips can never shift another
+// field's references. Holds the values written literally so far, in reference
+// order; short runs scan the array, longer ones build a map.
+interface InternWrite {
+  readonly values: Array<unknown>
+  refs: Map<unknown, number> | undefined
+}
+
+const INTERN_MAP_AT = 8
+
+function internWrite(tables: Array<InternWrite | undefined>, index: number): InternWrite {
+  return tables[index] ??= { values: [], refs: undefined }
+}
+
+function internRef(table: InternWrite, value: unknown): number | undefined {
+  const refs = table.refs
+  if (refs !== undefined) return refs.get(value)
+  const values = table.values
+  for (let i = 0; i < values.length; i++) {
+    if (values[i] === value) return i
+  }
+  return undefined
+}
+
+function internAdd(table: InternWrite, value: unknown) {
+  const values = table.values
+  if (table.refs !== undefined) {
+    table.refs.set(value, values.length)
+  } else if (values.length >= INTERN_MAP_AT) {
+    const refs = table.refs = new Map()
+    for (let i = 0; i < values.length; i++) refs.set(values[i], i)
+    refs.set(value, values.length)
+  }
+  values.push(value)
+}
+
+function encodeInterned(table: InternWrite, ctx: EncodeContext, layout: Layout, value: unknown, w: Writer) {
+  const ref = internRef(table, value)
+  if (ref !== undefined) {
+    w.uvarint(ref * 2 + 1)
+    return
+  }
+  internAdd(table, value)
+  const mark = w.beginSized()
+  encodeValue(ctx, layout, value, w)
+  w.endSizedRun(mark)
+}
+
+function encodeStructRun(ctx: EncodeContext, plan: RunPlan, arr: ReadonlyArray<unknown>, count: number, w: Writer) {
+  const shapes: Array<number> = []
+  const tables: Array<InternWrite | undefined> = []
+  for (let i = 0; i < count; i++) {
+    issuePath[issuePathLen++] = i
+    const mark = w.beginSized()
+    encodeRunRow(ctx, plan, shapes, tables, arr[i], w)
+    w.endSized(mark)
+    issuePathLen--
+  }
+}
+
+function encodeRunRow(
+  ctx: EncodeContext,
+  plan: RunPlan,
+  shapes: Array<number>,
+  tables: Array<InternWrite | undefined>,
+  value: unknown,
+  w: Writer
+) {
+  const struct = plan.struct
+  const obj = value as Record<string, unknown>
+  const fields = struct.fields
+  let pairs: Array<ExtraPair> | undefined
+  if (struct.extra.length > 0) {
+    const found = extraPairs(ctx, struct, obj)
+    if (found.length > 0) pairs = found
+  }
+  const wide = !plan.shapes
+  let mask = pairs === undefined ? 0 : RUN_EXTRA_BIT
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i]
+    if (Object.hasOwn(obj, field.name)) {
+      if (!wide) mask |= 1 << i
+    } else if (!field.optional) {
+      issuePath[issuePathLen++] = field.name
+      throw issueError(new SchemaIssue.MissingKey(field.annotations))
+    }
+  }
+  let shape = -1
+  for (let i = 0; i < shapes.length; i++) {
+    if (shapes[i] === mask) {
+      shape = i
+      break
+    }
+  }
+  if (shape >= 0) {
+    w.uvarint(shape + 1)
+  } else {
+    w.uvarint(0)
+    if (!wide) shapes.push(mask)
+  }
+  const declare = shape < 0
+  if (pairs !== undefined) {
+    if (declare) w.uvarint(0)
+    const mark = w.beginSized()
+    encodeExtraPairs(ctx, pairs, obj, w)
+    w.endSizedRun(mark)
+  }
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i]
+    if (wide ? !Object.hasOwn(obj, field.name) : (mask & (1 << i)) === 0) continue
+    if (declare) w.uvarint(field.id)
+    issuePath[issuePathLen++] = field.name
+    const kind = plan.intern[i]
+    if (kind === INTERN_SELF) {
+      encodeInterned(internWrite(tables, i), ctx, field.layout, obj[field.name], w)
+    } else {
+      if (kind !== INTERN_NONE) ctx.intern = internWrite(tables, i)
+      const mark = w.beginSized()
+      encodeValue(ctx, field.layout, obj[field.name], w)
+      w.endSizedRun(mark)
+      ctx.intern = undefined
+    }
+    issuePathLen--
+  }
+}
+
 function arraySlot(layout: ArrayLayout, index: number, count: number): Layout {
   const elementLen = layout.elements.length
   if (index < elementLen) return layout.elements[index].layout
@@ -2042,10 +2256,28 @@ function encodeArray(ctx: EncodeContext, layout: ArrayLayout, value: unknown, w:
     throw issueError(new SchemaIssue.MissingKey(undefined))
   }
   if (layout.hasCount) w.uvarint(count)
+  if (!ctx.positional && count > 0) {
+    const plan = runPlan(layout)
+    if (plan !== null) {
+      encodeStructRun(ctx, plan, arr, count, w)
+      return
+    }
+  }
   const uniform = layout.uniform
   if (uniform !== undefined) {
     if (layout.uniformNumbers) {
       encodeNumberRun(arr, count, w)
+      return
+    }
+    // Only a run field holding an array of strings hands over an intern table.
+    const table = ctx.intern
+    ctx.intern = undefined
+    if (table !== undefined) {
+      for (let i = 0; i < count; i++) {
+        issuePath[issuePathLen++] = i
+        encodeInterned(table, ctx, uniform, arr[i], w)
+        issuePathLen--
+      }
       return
     }
     const inline = layout.uniformInline
@@ -2286,7 +2518,8 @@ function encodeFrame(
     options,
     positional: mode.positional,
     indexSignatures: undefined,
-    extraShape: undefined
+    extraShape: undefined,
+    intern: undefined
   }
   const w = pooledWriter ?? new Writer()
   const pooled = w === pooledWriter
@@ -2346,8 +2579,14 @@ function decodeSlot(layout: Layout, r: Reader): unknown {
   return value
 }
 
-function decodeExtraPair(layout: StructLayout, r: Reader, out: Record<string, unknown>, seen: Set<string>) {
-  const key = r.readUtf8(r.uvarint())
+function decodeExtraPair(
+  layout: StructLayout,
+  r: Reader,
+  out: Record<string, unknown>,
+  seen: Set<string>,
+  keys?: Array<unknown> | undefined
+) {
+  const key = keys === undefined ? r.readUtf8(r.uvarint()) : decodeExtraKey(keys, r)
   if (seen.has(key)) invalid("unique extra keys", undefined, r.options)
   seen.add(key)
   const saved = r.enter(r.uvarint())
@@ -2362,6 +2601,18 @@ function decodeExtraPair(layout: StructLayout, r: Reader, out: Record<string, un
   r.exit(saved)
 }
 
+function decodeExtraKey(keys: Array<unknown>, r: Reader): string {
+  const code = r.uvarint()
+  if ((code & 1) === 1) {
+    const ref = (code - 1) / 2
+    if (ref >= keys.length) invalid("a known back-reference", undefined, r.options)
+    return keys[ref] as string
+  }
+  const key = r.readUtf8(code / 2)
+  keys.push(key)
+  return key
+}
+
 function missingKeyIssue(field: Field): SchemaIssue.Issue {
   return new SchemaIssue.Pointer([field.name], new SchemaIssue.MissingKey(field.annotations))
 }
@@ -2373,6 +2624,12 @@ function throwMissingKeys(layout: StructLayout, issues: Array<SchemaIssue.Issue>
 }
 
 function decodeStruct(layout: StructLayout, r: Reader): unknown {
+  // Only a run field with index signatures hands over an intern table.
+  let keys: Array<unknown> | undefined
+  if (layout.extra.length > 0) {
+    keys = r.intern
+    r.intern = undefined
+  }
   const out: Record<string, unknown> = {}
   // Use bitmasks for common structs and allocate sets only when needed.
   let seenMask = 0
@@ -2391,7 +2648,7 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
     if (id === 0) {
       if (seenExtra) invalid("unique field ids", undefined, r.options)
       seenExtra = true
-      decodeExtraPairs(layout, r, out)
+      decodeExtraPairs(layout, r, out, keys)
       r.exit(saved)
       continue
     }
@@ -2486,9 +2743,167 @@ function decodeStructPositional(layout: StructLayout, r: Reader): unknown {
   return out
 }
 
-function decodeExtraPairs(layout: StructLayout, r: Reader, out: Record<string, unknown>) {
+function decodeExtraPairs(
+  layout: StructLayout,
+  r: Reader,
+  out: Record<string, unknown>,
+  keys?: Array<unknown> | undefined
+) {
   const seen = new Set<string>()
-  while (r.pos < r.end) decodeExtraPair(layout, r, out, seen)
+  while (r.pos < r.end) decodeExtraPair(layout, r, out, seen, keys)
+}
+
+// A row shape is the writer's tag order: a known field, `null` for the extra
+// block, or `undefined` for a field this reader does not have.
+type RunSlot = Field | null | undefined
+
+function decodeInterned(table: Array<unknown>, layout: Layout, r: Reader): unknown {
+  const code = r.uvarint()
+  if ((code & 1) === 1) {
+    const ref = (code - 1) / 2
+    if (ref >= table.length) invalid("a known back-reference", undefined, r.options)
+    return table[ref]
+  }
+  const saved = r.enter(code / 2)
+  const value = decodeChecked(layout, r)
+  r.exit(saved)
+  table.push(value)
+  return value
+}
+
+function decodeStructRun(plan: RunPlan, count: number, r: Reader): Array<unknown> {
+  const out: Array<unknown> = new Array(count)
+  const shapes: Array<Array<RunSlot>> = []
+  const tables: Array<Array<unknown> | undefined> = []
+  for (let i = 0; i < count; i++) {
+    issuePath[issuePathLen++] = i
+    const saved = r.enter(r.uvarint())
+    out[i] = decodeRunRow(plan, shapes, tables, r)
+    r.exit(saved)
+    issuePathLen--
+  }
+  return out
+}
+
+function decodeRunRow(
+  plan: RunPlan,
+  shapes: Array<Array<RunSlot>>,
+  tables: Array<Array<unknown> | undefined>,
+  r: Reader
+): unknown {
+  const struct = plan.struct
+  const out: Record<string, unknown> = {}
+  let presentMask = 0
+  let presentWide: Set<number> | undefined
+  const code = r.uvarint()
+  if (code === 0) {
+    const shape: Array<RunSlot> = []
+    let seenMask = 0
+    let seenWide: Set<number> | undefined
+    let seenIds: Set<number> | undefined
+    let seenExtra = false
+    while (r.pos < r.end) {
+      const id = r.uvarint()
+      let slot: RunSlot
+      if (id === 0) {
+        if (seenExtra) invalid("unique field ids", undefined, r.options)
+        seenExtra = true
+        slot = null
+      } else {
+        slot = struct.byId.get(id)
+        if (slot === undefined) {
+          if (seenIds === undefined) seenIds = new Set([id])
+          else if (seenIds.has(id)) invalid("unique field ids", undefined, r.options)
+          else seenIds.add(id)
+        } else if (slot.index < 32) {
+          if ((seenMask & (1 << slot.index)) !== 0) invalid("unique field ids", undefined, r.options)
+          seenMask |= 1 << slot.index
+        } else if (seenWide === undefined) {
+          seenWide = new Set([slot.index])
+        } else {
+          if (seenWide.has(slot.index)) invalid("unique field ids", undefined, r.options)
+          seenWide.add(slot.index)
+        }
+      }
+      shape.push(slot)
+      const filled = decodeRunSlot(plan, tables, slot, out, r)
+      if (filled >= 0) {
+        if (filled < 32) presentMask |= 1 << filled
+        else (presentWide ??= new Set()).add(filled)
+      }
+    }
+    if (plan.shapes) shapes.push(shape)
+  } else {
+    const shape = shapes[code - 1]
+    if (shape === undefined) invalid("a known row shape", undefined, r.options)
+    for (let i = 0; i < shape.length; i++) {
+      const filled = decodeRunSlot(plan, tables, shape[i], out, r)
+      if (filled >= 0) {
+        if (filled < 32) presentMask |= 1 << filled
+        else (presentWide ??= new Set()).add(filled)
+      }
+    }
+    if (r.pos !== r.end) invalid("no leftover bytes", undefined, r.options)
+  }
+  let issues: Array<SchemaIssue.Issue> | undefined
+  const fields = struct.fields
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i]
+    const index = field.index
+    const has = index < 32 ? (presentMask & (1 << index)) !== 0 : presentWide?.has(index) === true
+    if (!field.optional && !has) {
+      ;(issues ??= []).push(missingKeyIssue(field))
+      if (r.options.errors !== "all") break
+    }
+  }
+  if (issues !== undefined) throwMissingKeys(struct, issues)
+  return out
+}
+
+// Returns the field index this slot filled, or -1.
+function decodeRunSlot(
+  plan: RunPlan,
+  tables: Array<Array<unknown> | undefined>,
+  slot: RunSlot,
+  out: Record<string, unknown>,
+  r: Reader
+): number {
+  const code = r.uvarint()
+  if ((code & 1) === 1) {
+    if (slot === null || slot === undefined) return -1
+    const table = tables[slot.index]
+    const ref = (code - 1) / 2
+    if (table === undefined || ref >= table.length) {
+      invalid("a known back-reference", undefined, r.options)
+    }
+    const value = table[ref]
+    if (value === ABSENT) return -1
+    InternalRecord.assignProperty(out, slot.name, value)
+    return slot.index
+  }
+  const saved = r.enter(code / 2)
+  if (slot === null) {
+    decodeExtraPairs(plan.struct, r, out)
+    r.exit(saved)
+    return -1
+  }
+  if (slot === undefined) {
+    r.exit(saved)
+    return -1
+  }
+  const kind = plan.intern[slot.index]
+  if (kind === INTERN_ELEMENTS || kind === INTERN_KEYS) {
+    r.intern = tables[slot.index] ??= []
+  }
+  issuePath[issuePathLen++] = slot.name
+  const value = decodeChecked(slot.layout, r)
+  issuePathLen--
+  r.intern = undefined
+  r.exit(saved)
+  if (kind === INTERN_SELF) (tables[slot.index] ??= []).push(value)
+  if (value === ABSENT) return -1
+  InternalRecord.assignProperty(out, slot.name, value)
+  return slot.index
 }
 
 function decodeArray(layout: ArrayLayout, r: Reader): unknown {
@@ -2506,10 +2921,27 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
     issuePath[issuePathLen++] = count
     throw issueError(new SchemaIssue.MissingKey(undefined))
   }
+  if (!r.positional && count > 0) {
+    const plan = runPlan(layout)
+    if (plan !== null) return decodeStructRun(plan, count, r)
+  }
   const out: Array<unknown> = new Array(count)
   const uniform = layout.uniform
   if (uniform !== undefined) {
     if (layout.uniformNumbers) return decodeNumberRun(out, count, r)
+    // Only a run field holding an array of strings hands over an intern table.
+    const table = r.intern
+    r.intern = undefined
+    if (table !== undefined) {
+      for (let i = 0; i < count; i++) {
+        issuePath[issuePathLen++] = i
+        const value = decodeInterned(table, uniform, r)
+        if (value === ABSENT) throw issueError(new SchemaIssue.MissingKey(undefined))
+        issuePathLen--
+        out[i] = value
+      }
+      return out
+    }
     if (isSelfDelimiting(uniform)) {
       for (let i = 0; i < count; i++) {
         issuePath[issuePathLen++] = i

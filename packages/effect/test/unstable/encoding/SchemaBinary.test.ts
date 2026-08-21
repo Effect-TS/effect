@@ -552,6 +552,193 @@ describe("SchemaBinary", () => {
     })
   })
 
+  describe("struct row runs", () => {
+    const Row = Schema.Struct({
+      id: Schema.String,
+      label: Schema.String,
+      tags: Schema.Array(Schema.String),
+      attributes: Schema.Record(Schema.String, Schema.String)
+    })
+    const rows = Array.from({ length: 6 }, (_, index) => ({
+      id: `row-${index}`,
+      label: index % 2 === 0 ? "even" : "odd",
+      tags: index % 3 === 0 ? ["red", "blue"] : ["blue"],
+      attributes: { region: "eu", worker: `w${index}` }
+    }))
+    const nonEmptyRows = rows as [typeof rows[number], ...Array<typeof rows[number]>]
+
+    it("shares field ids and repeated strings across rows", () => {
+      assert.deepStrictEqual(roundtrip(Schema.Array(Row), rows), rows)
+      assert.deepStrictEqual(roundtrip(Schema.NonEmptyArray(Row), nonEmptyRows), nonEmptyRows)
+      const one = encode(Schema.Array(Row), rows.slice(0, 1)).length
+      const six = encode(Schema.Array(Row), rows).length
+      assert.isBelow(six, one * 6)
+    })
+
+    it("keeps evolution rules inside a run", () => {
+      const Reader = Schema.Struct({
+        tags: Schema.Array(Schema.String),
+        id: Schema.String,
+        later: Schema.optionalKey(Schema.Boolean)
+      })
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Array(Reader)))(encode(Schema.Array(Row), rows)),
+        rows.map(({ id, tags }) => ({ id, tags }))
+      )
+    })
+
+    it("declares a new shape whenever the present fields change", () => {
+      const Varying = Schema.Struct({
+        id: Schema.String,
+        a: Schema.optionalKey(Schema.String),
+        b: Schema.optionalKey(Schema.Number)
+      })
+      const varying = [
+        { id: "0", a: "x" },
+        { id: "1" },
+        { id: "2", a: "x", b: 1 },
+        { id: "3", a: "x" },
+        { id: "4", b: 2 }
+      ]
+      assert.deepStrictEqual(roundtrip(Schema.Array(Varying), varying), varying)
+    })
+
+    it("interns index signature keys on the row struct itself", () => {
+      const WithRest = Schema.StructWithRest(Schema.Struct({ id: Schema.String }), [
+        Schema.Record(Schema.String, Schema.String)
+      ])
+      const values = [{ id: "a", note: "1" }, { id: "b", note: "2" }, { id: "c" }]
+      assert.deepStrictEqual(roundtrip(Schema.Array(WithRest), values), values)
+    })
+
+    it("runs nested inside a run", () => {
+      const Inner = Schema.Struct({ k: Schema.String, v: Schema.String })
+      const Outer = Schema.Struct({ name: Schema.String, items: Schema.Array(Inner) })
+      const outers = Array.from({ length: 4 }, (_, index) => ({
+        name: `n${index}`,
+        items: [{ k: "a", v: "1" }, { k: "b", v: "1" }]
+      }))
+      assert.deepStrictEqual(roundtrip(Schema.Array(Outer), outers), outers)
+    })
+
+    it("keeps rows independent past the 30 field shape limit", () => {
+      const fields: Record<string, Schema.String> = {}
+      const value: Record<string, string> = {}
+      for (let i = 0; i < 35; i++) {
+        fields[`f${i}`] = Schema.String
+        value[`f${i}`] = `v${i}`
+      }
+      const Wide = Schema.Struct(fields)
+      assert.deepStrictEqual(roundtrip(Schema.Array(Wide), [value, value, value]), [value, value, value])
+    })
+
+    it("rejects an unknown row shape and an out of range back-reference", () => {
+      const Simple = Schema.Array(Schema.Struct({ a: Schema.String }))
+      const codec = SchemaBinary.toCodec(Simple)
+      // The second row reuses shape 0 and back-references the first `a`, so its
+      // last two bytes are the shape code and the region code.
+      const bytes = encode(Simple, [{ a: "x" }, { a: "x" }])
+      assert.deepStrictEqual([...bytes.subarray(bytes.length - 2)], [1, 1])
+
+      const unknownShape = bytes.slice()
+      unknownShape[unknownShape.length - 2] = 9
+      assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(unknownShape)).message, /row shape/)
+
+      const unknownRef = bytes.slice()
+      unknownRef[unknownRef.length - 1] = 5
+      assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(unknownRef)).message, /back-reference/)
+    })
+
+    it("keeps a skipped field's own run out of the reader's tables", () => {
+      const Writer = Schema.Struct({
+        keep: Schema.String,
+        gone: Schema.Array(Schema.Struct({ p: Schema.String, q: Schema.String }))
+      })
+      const Reader = Schema.Struct({ keep: Schema.String })
+      const values = Array.from({ length: 4 }, (_, index) => ({
+        keep: `k${index}`,
+        gone: [{ p: "z", q: "z" }, { p: "z", q: "z" }]
+      }))
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Array(Reader)))(encode(Schema.Array(Writer), values)),
+        values.map(({ keep }) => ({ keep }))
+      )
+    })
+
+    it("interns every index signature key, including ones it has no signature for", () => {
+      const Writer = Schema.Struct({ attrs: Schema.Record(Schema.String, Schema.String) })
+      const Reader = Schema.Struct({
+        attrs: Schema.Record(
+          Schema.String.check(Schema.makeFilter((key: string) => key.startsWith("keep"))),
+          Schema.String
+        )
+      })
+      // The reader drops `drop` but must still number it, or row 2's reference
+      // to `keep1` resolves to `keep2`.
+      const values = [
+        { attrs: { drop: "d", keep1: "a" } },
+        { attrs: { keep2: "b" } },
+        { attrs: { keep1: "c" } }
+      ]
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Array(Reader)))(encode(Schema.Array(Writer), values)),
+        [{ attrs: { keep1: "a" } }, { attrs: { keep2: "b" } }, { attrs: { keep1: "c" } }]
+      )
+    })
+
+    it("keeps two fields sharing one layout on separate tables", () => {
+      const Writer = Schema.Struct({ keep: Schema.String, gone: Schema.String })
+      const Reader = Schema.Struct({ keep: Schema.String })
+      const values = [
+        { keep: "first", gone: "other" },
+        { keep: "other", gone: "first" },
+        { keep: "first", gone: "first" }
+      ]
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Array(Reader)))(encode(Schema.Array(Writer), values)),
+        values.map(({ keep }) => ({ keep }))
+      )
+    })
+
+    it("holds references past the point a slot switches to a map", () => {
+      const Many = Schema.Struct({ v: Schema.String })
+      const many = Array.from({ length: 40 }, (_, index) => ({ v: `v${index % 13}` }))
+      assert.deepStrictEqual(roundtrip(Schema.Array(Many), many), many)
+    })
+
+    it("gives each recursive occurrence its own run", () => {
+      interface Node {
+        readonly name: string
+        readonly children: ReadonlyArray<Node>
+      }
+      const Node = Schema.Struct({
+        name: Schema.String,
+        children: Schema.Array(Schema.suspend((): Schema.Codec<Node> => Node))
+      })
+      const tree = [
+        { name: "a", children: [{ name: "x", children: [] }, { name: "x", children: [] }] },
+        { name: "a", children: [{ name: "y", children: [{ name: "x", children: [] }] }] }
+      ]
+      assert.deepStrictEqual(roundtrip(Schema.Array(Node), tree), tree)
+    })
+
+    it("reports the row index and field name for a missing key", () => {
+      const Required = Schema.Struct({ a: Schema.String, b: Schema.String })
+      assert.match(
+        schemaError(() =>
+          Schema.encodeUnknownSync(SchemaBinary.toCodec(Schema.Array(Required)))(
+            [{ a: "1", b: "2" }, { a: "1" } as never]
+          )
+        ).message,
+        /Missing key\n  at \[1\]\["b"\]/
+      )
+    })
+
+    it("leaves fingerprint mode positional", () => {
+      assert.deepStrictEqual(roundtripFingerprint(Schema.Array(Row), rows), rows)
+    })
+  })
+
   describe("parser", () => {
     it("parses concatenated frames split across chunks", () => {
       const schema = Schema.Struct({ a: Schema.Number })
