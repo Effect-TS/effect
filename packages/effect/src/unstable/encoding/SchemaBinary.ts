@@ -1475,8 +1475,10 @@ function isExact(root: SchemaAST.AST): boolean {
           )
       case "Union":
         return ast.mode === "anyOf" && ast.types.every(exact)
-      case "Declaration":
-        return representationId(ast) === "effect/schema/Uint8Array"
+      case "Declaration": {
+        const id = representationId(ast)
+        return id === "effect/schema/Uint8Array" || id === "effect/schema/Date"
+      }
       default:
         return false
     }
@@ -2646,7 +2648,10 @@ function decodeValue(layout: Layout, r: Reader): unknown {
     case "int64": {
       if (r.remaining !== 8) invalid("int64", undefined, r.options)
       const millis = Number(r.i64())
-      return layout.flavor === "date" ? new Date(millis) : DateTime.makeUnsafe(millis)
+      if (layout.flavor !== "date") return DateTime.makeUnsafe(millis)
+      const date = new Date(millis)
+      if (Number.isNaN(date.getTime())) invalid("a valid Date", millis, r.options)
+      return date
     }
     case "dateTimeZoned": {
       const millis = Number(r.i64())
@@ -2792,12 +2797,15 @@ function decodeOneShot(
 
 function makeTransformation(
   layout: Layout,
-  mode: Mode
+  mode: Mode,
+  trusted: WeakSet<object> | undefined
 ): SchemaTransformation.Transformation<unknown, Uint8Array<ArrayBuffer>> {
   return SchemaTransformation.transformOrFail({
     decode: (bytes: Uint8Array<ArrayBuffer>, options) => {
       try {
-        return Effect.succeed(decodeOneShot(layout, bytes, options, mode))
+        const value = decodeOneShot(layout, bytes, options, mode)
+        if (trusted !== undefined && Predicate.isObjectOrArray(value)) trusted.add(value)
+        return Effect.succeed(value)
       } catch (e) {
         return e instanceof IssueError ? Effect.fail(e.issue) : Effect.die(e)
       }
@@ -2843,6 +2851,21 @@ function compileTarget(
   const compiled = { target: recursive ? withCycleGuard(raw) : raw, layout, exact }
   compileTargetCache.set(schema.ast, compiled)
   return compiled
+}
+
+// The binary layer already validates an exact schema, so the schema pass around
+// it repeats that work. Values it just decoded pass straight through, while
+// every other input, `Schema.is` included, still runs the real check.
+function withTrustedDecode(target: Schema.Constraint, trusted: WeakSet<object>): Schema.Constraint {
+  const type = Schema.make(SchemaAST.toType(target.ast))
+  return Schema.declareConstructor<unknown>()(
+    [type],
+    ([type]) => (input, _ast, options) =>
+      Predicate.isObjectOrArray(input) && trusted.delete(input)
+        ? Effect.succeed(input)
+        : SchemaParser.decodeUnknownEffect(type)(input, options),
+    { identifier: "binary value" }
+  )
 }
 
 // Skip the cycle walk once for structurally decoded values.
@@ -2931,9 +2954,14 @@ export interface toCodec<S extends Schema.Constraint> extends
  * @since 4.0.0
  */
 export function toCodec<S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> {
-  const { layout, target } = compileTarget(schema)
+  const { exact, layout, target } = compileTarget(schema)
+  const mode = compileMode(layout, options?.fingerprint)
+  const trusted = exact ? new WeakSet<object>() : undefined
   return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
-    Schema.decodeTo(target, makeTransformation(layout, compileMode(layout, options?.fingerprint)))
+    Schema.decodeTo(
+      trusted === undefined ? target : withTrustedDecode(target, trusted),
+      makeTransformation(layout, mode, trusted)
+    )
   ) as unknown as toCodec<S>
 }
 
@@ -2958,6 +2986,7 @@ export function encodeUnknownSync<S extends Schema.Constraint>(
     ) as (value: unknown) => Uint8Array<ArrayBuffer>
   }
   const mode = compileMode(layout, options?.fingerprint)
+
   const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
   return (value) => {
     try {
