@@ -2031,6 +2031,31 @@ describe("SchemaBinary", () => {
       }
     })
 
+    it("rejects an inherited discriminator, like the schema pass", () => {
+      const schema = Schema.Union([
+        Schema.Struct({ _tag: Schema.Literal("A"), value: Schema.Number }),
+        Schema.Struct({ _tag: Schema.Literal("B"), value: Schema.String })
+      ])
+      const inherited = Object.assign(Object.create({ _tag: "A" }), { value: 1 })
+      for (const options of [undefined, { fingerprint: true }]) {
+        const encodeDirect = Schema.encodeUnknownSync(SchemaBinary.toCodecDirect(schema, options))
+        assert.isDefined(schemaError(() => encodeDirect(inherited)))
+      }
+    })
+
+    it("reports excess properties when the call site asks for it", () => {
+      const direct = SchemaBinary.toCodecDirect(Person)
+      const excess = { name: "Ada", age: 36, extra: true }
+      assert.deepStrictEqual(
+        Array.from(Schema.encodeUnknownSync(direct)(excess)),
+        Array.from(encode(Person, { name: "Ada", age: 36 }))
+      )
+      assert.include(
+        schemaError(() => Schema.encodeUnknownSync(direct, { onExcessProperty: "error" })(excess)).message,
+        "extra"
+      )
+    })
+
     it("falls back to toCodec when the binary layer cannot prove the schema", () => {
       const NonNegative = Schema.Number.check(Schema.isGreaterThanOrEqualTo(0))
       const direct = SchemaBinary.toCodecDirect(NonNegative)

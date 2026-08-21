@@ -2357,10 +2357,12 @@ function findDiscriminator(variants: ReadonlyArray<VariantRow>): Discriminator |
   return undefined
 }
 
+// An inherited sentinel does not select a variant, matching the schema pass.
 function hasSentinels(variant: VariantRow, value: Record<PropertyKey, unknown>): boolean {
   const sentinels = variant.sentinels
   for (let i = 0; i < sentinels.length; i++) {
-    if (value[sentinels[i].key] !== sentinels[i].literal) return false
+    const { key, literal } = sentinels[i]
+    if (value[key] !== literal || !Object.hasOwn(value, key)) return false
   }
   return true
 }
@@ -3450,12 +3452,16 @@ function withTrustedDecode(target: Schema.Constraint, trusted: WeakSet<object>):
 }
 
 // An exact schema is fully validated by the binary layer in both directions, so
-// this target adds nothing. It is not a sound `Schema.is` guard, which is why
-// only {@link toCodecDirect} uses it.
+// this target adds nothing, except under `onExcessProperty: "error"`: the binary
+// layer drops unknown keys instead of reporting them. It is not a sound
+// `Schema.is` guard, which is why only {@link toCodecDirect} uses it.
 function passThrough(target: Schema.Constraint): Schema.Constraint {
+  const type = Schema.make(SchemaAST.toType(target.ast))
+  const decodeType = SchemaParser.decodeUnknownEffect(type as Schema.ConstraintDecoder<unknown>)
   return Schema.declareConstructor<unknown>()(
-    [Schema.make(SchemaAST.toType(target.ast))],
-    () => Effect.succeed,
+    [type],
+    () => (input, _ast, options) =>
+      options.onExcessProperty === "error" ? decodeType(input, options) : Effect.succeed(input),
     { identifier: "binary value" }
   )
 }

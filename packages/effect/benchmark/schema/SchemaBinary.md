@@ -45,25 +45,25 @@ Streaming cells contain total raw / gzip -6 / zstd bytes for the complete stream
 
 Average encode operations per second:
 
-| Case                   | Default | Fingerprint |    JSON | Msgpack |
-| ---------------------- | ------: | ----------: | ------: | ------: |
-| small record           | 987,083 |   1,057,894 | 434,772 | 693,322 |
-| nested payload         | 340,043 |     388,632 | 258,224 | 280,441 |
-| collections            |  52,497 |      53,515 |  21,669 |  22,003 |
-| index signatures / 128 |  45,920 |      45,668 |  34,467 |  34,815 |
-| index signatures / 512 |   8,295 |       8,234 |   6,493 |   6,250 |
-| 200-row array payload  |   8,862 |       7,941 |   7,036 |   4,142 |
+| Case                   |   Default | Fingerprint |    JSON | Msgpack |
+| ---------------------- | --------: | ----------: | ------: | ------: |
+| small record           | 1,011,552 |   1,077,114 | 446,188 | 706,861 |
+| nested payload         |   349,822 |     396,800 | 259,586 | 283,297 |
+| collections            |    53,117 |      54,030 |  22,431 |  22,807 |
+| index signatures / 128 |    46,741 |      46,716 |  35,839 |  34,648 |
+| index signatures / 512 |     8,679 |       8,569 |   6,658 |   6,255 |
+| 200-row array payload  |     8,870 |       8,074 |   6,960 |   4,117 |
 
 Average decode operations per second:
 
 | Case                   |   Default | Fingerprint |    JSON | Msgpack |
 | ---------------------- | --------: | ----------: | ------: | ------: |
-| small record           | 1,138,760 |   1,220,001 | 395,051 | 687,043 |
-| nested payload         |   485,669 |     590,166 | 214,371 | 265,124 |
-| collections            |   115,283 |     117,103 |  20,841 |  21,984 |
-| index signatures / 128 |    63,905 |      64,299 |  27,683 |  29,426 |
-| index signatures / 512 |    16,881 |      16,896 |   5,339 |   4,405 |
-| 200-row array payload  |    21,327 |      14,130 |   5,671 |   4,769 |
+| small record           | 1,153,245 |   1,211,218 | 408,812 | 702,051 |
+| nested payload         |   493,924 |     594,944 | 217,904 | 268,354 |
+| collections            |   114,286 |     118,563 |  21,460 |  22,682 |
+| index signatures / 128 |    64,143 |      64,186 |  28,494 |  29,758 |
+| index signatures / 512 |    16,768 |      16,825 |   5,414 |   4,611 |
+| 200-row array payload  |    21,796 |      14,412 |   5,623 |   4,734 |
 
 ## Streaming decode throughput
 
@@ -71,25 +71,25 @@ Average decoded values per second for batched input:
 
 | Case                   |   Default | Fingerprint | Msgpack |  NDJSON |
 | ---------------------- | --------: | ----------: | ------: | ------: |
-| small record           | 4,456,048 |   5,548,628 | 898,346 | 859,955 |
-| nested payload         |   815,628 |   1,045,211 | 283,177 | 310,424 |
-| collections            |   125,527 |     126,655 |  21,691 |  20,743 |
-| index signatures / 128 |    67,711 |      67,884 |  27,862 |  28,125 |
-| index signatures / 512 |    16,665 |      16,502 |   4,078 |   4,961 |
-| 200-row array payload  |    21,338 |      13,808 |   6,474 |   4,925 |
-| 200 single-row frames  | 2,350,690 |   2,679,206 | 842,493 | 934,514 |
+| small record           | 4,426,179 |   5,388,646 | 766,173 | 818,260 |
+| nested payload         |   811,488 |   1,056,372 | 284,944 | 302,941 |
+| collections            |   124,300 |     126,566 |  22,013 |  20,884 |
+| index signatures / 128 |    65,585 |      64,306 |  27,277 |  27,592 |
+| index signatures / 512 |    15,596 |      15,186 |   4,110 |   5,052 |
+| 200-row array payload  |    21,733 |      14,028 |   6,428 |   4,802 |
+| 200 single-row frames  | 2,200,444 |   2,622,259 | 835,329 | 942,351 |
 
 Average decoded values per second for single and first-byte-fragmented input:
 
 | Case                   | Default single | Default fragmented | Fingerprint single | Fingerprint fragmented | NDJSON single | NDJSON fragmented |
 | ---------------------- | -------------: | -----------------: | -----------------: | ---------------------: | ------------: | ----------------: |
-| small record           |      2,640,444 |          2,386,118 |          3,273,254 |              2,847,462 |       137,766 |           140,172 |
-| nested payload         |        691,466 |            669,088 |            895,487 |                867,845 |       109,905 |           108,189 |
-| collections            |        121,150 |            122,453 |            109,056 |                122,698 |        18,981 |            18,843 |
-| index signatures / 128 |         65,398 |             66,875 |             67,436 |                 67,437 |        24,341 |            24,239 |
-| index signatures / 512 |         16,755 |             16,676 |             16,181 |                 16,807 |         4,968 |             5,006 |
-| 200-row array payload  |         21,773 |             21,219 |             14,064 |                 13,930 |         5,288 |             5,180 |
-| 200 single-row frames  |      1,458,546 |          1,327,697 |          1,645,932 |              1,398,527 |       126,531 |           124,882 |
+| small record           |      2,715,454 |          2,381,647 |          3,085,750 |              2,959,535 |       129,391 |           132,853 |
+| nested payload         |        708,896 |            680,227 |            900,923 |                903,819 |       104,936 |           103,205 |
+| collections            |        123,191 |            122,735 |            124,366 |                124,134 |        19,035 |            18,901 |
+| index signatures / 128 |         63,861 |             65,455 |             65,209 |                 64,575 |        24,281 |            23,620 |
+| index signatures / 512 |         16,305 |             15,889 |             16,118 |                 16,071 |         5,128 |             5,320 |
+| 200-row array payload  |         22,120 |             21,915 |             14,346 |                 14,276 |         5,277 |             5,170 |
+| 200 single-row frames  |      1,498,907 |          1,478,629 |          1,736,823 |              1,643,647 |       133,664 |           127,811 |
 
 ## Analysis
 
