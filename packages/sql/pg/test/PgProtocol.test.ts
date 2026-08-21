@@ -331,6 +331,55 @@ describe("PgProtocol", () => {
       assert.deepStrictEqual(parseOne(backend.readyForQuery), { _tag: "ReadyForQuery", status: "I" })
     })
 
+    // ParameterStatus is two C-strings and nothing else, so it is the cheapest
+    // way to drive the string decoder across the length its fast path covers.
+    const parameterStatus = (name: string, value: string): Uint8Array => {
+      const encoder = new TextEncoder()
+      const encode = (text: string) => encoder.encode(text)
+      return frame(encode(name), encode(value))
+    }
+
+    const frame = (name: Uint8Array, value: Uint8Array): Uint8Array => {
+      const length = 4 + name.length + 1 + value.length + 1
+      const message = new Uint8Array(1 + length)
+      message[0] = 0x53
+      new DataView(message.buffer).setInt32(1, length)
+      message.set(name, 5)
+      message.set(value, 6 + name.length)
+      return message
+    }
+
+    it("decodes parameter names of every length across the string fast path", () => {
+      for (let length = 0; length <= 16; length++) {
+        const name = "abcdefgh".repeat(2).slice(0, length)
+        assert.deepStrictEqual(PgProtocol.makeParser().push(parameterStatus(name, "v")), [
+          { _tag: "ParameterStatus", name, value: "v" }
+        ])
+      }
+    })
+
+    it("decodes a multi-byte character at every position of the string fast path", () => {
+      for (let prefix = 0; prefix <= 16; prefix++) {
+        const name = "a".repeat(prefix) + "é☃"
+        assert.deepStrictEqual(PgProtocol.makeParser().push(parameterStatus(name, "v")), [
+          { _tag: "ParameterStatus", name, value: "v" }
+        ])
+      }
+    })
+
+    it("rejects a stray high byte at every position of the string fast path", () => {
+      for (let length = 1; length <= 16; length++) {
+        for (let at = 0; at < length; at++) {
+          const name = new Uint8Array(length).fill(0x61)
+          name[at] = 0xc3
+          assertThrowsTagged(
+            "PgProtocolParseError",
+            () => PgProtocol.makeParser().push(frame(name, new Uint8Array([0x76])))
+          )
+        }
+      }
+    })
+
     it("decodes RowDescription", () => {
       assert.deepStrictEqual(parseOne(backend.rowDescription), {
         _tag: "RowDescription",

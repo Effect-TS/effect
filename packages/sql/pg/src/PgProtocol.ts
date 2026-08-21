@@ -285,15 +285,28 @@ class Reader {
     if (end === -1 || end >= this.limit) {
       throw new ParseError({ message: "Unterminated string" })
     }
-    const value = decodeUtf8(view(this.store, this.base + this.offset, end - this.offset))
+    const value = decodeUtf8(this.bytes, this.offset, end - this.offset)
     this.offset = end + 1
     return value
   }
 }
 
-const decodeUtf8 = (bytes: Uint8Array): string => {
+/** Below this length a per-character loop beats `TextDecoder.decode`. */
+const asciiDecodeLimit = 10
+
+const decodeUtf8 = (bytes: Uint8Array, offset: number, size: number): string => {
+  if (size <= asciiDecodeLimit) {
+    let text = ""
+    let index = 0
+    for (; index < size; index++) {
+      const code = bytes[offset + index]
+      if (code > 0x7f) break
+      text += String.fromCharCode(code)
+    }
+    if (index === size) return text
+  }
   try {
-    return textDecoder.decode(bytes)
+    return textDecoder.decode(view(bytes.buffer, bytes.byteOffset + offset, size))
   } catch {
     throw new ParseError({ message: "Invalid UTF-8 in message" })
   }
