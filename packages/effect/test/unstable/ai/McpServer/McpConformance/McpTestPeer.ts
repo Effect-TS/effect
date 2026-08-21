@@ -4,11 +4,13 @@ import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
+import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import type * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
 import type * as RpcClientError from "effect/unstable/rpc/RpcClientError"
 import type * as RpcGroup from "effect/unstable/rpc/RpcGroup"
+import type * as RpcSerialization from "effect/unstable/rpc/RpcSerialization"
 
 export type ReverseMethod = "roots/list" | "sampling/createMessage" | "elicitation/create"
 
@@ -105,7 +107,7 @@ export const makeMcpTestPeer = Effect.fn("McpTestPeer.make")(function*(
       },
       supportsAck: true,
       supportsTransferables: false,
-      supportsStructuredClone: false
+      codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
     })
   )
 

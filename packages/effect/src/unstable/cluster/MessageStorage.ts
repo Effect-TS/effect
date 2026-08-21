@@ -23,6 +23,7 @@ import * as Option from "../../Option.ts"
 import type { Predicate } from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
 import type * as Rpc from "../rpc/Rpc.ts"
+import type * as RpcSerialization from "../rpc/RpcSerialization.ts"
 import { EntityNotAssignedToRunner, MalformedMessage, type PersistenceError } from "./ClusterError.ts"
 import * as DeliverAt from "./DeliverAt.ts"
 import type { EntityAddress } from "./EntityAddress.ts"
@@ -32,6 +33,8 @@ import * as Reply from "./Reply.ts"
 import * as ShardId from "./ShardId.ts"
 import type { ShardingConfig } from "./ShardingConfig.ts"
 import * as Snowflake from "./Snowflake.ts"
+
+const codecForJson = Schema.toCodecJson as RpcSerialization.CodecFor
 
 /**
  * Service for cluster mailbox persistence and reply delivery.
@@ -607,7 +610,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
             return Effect.succeed(result as SaveResult<any>)
           }
           const duplicate = result
-          const schema = Reply.Reply(message.rpc)
+          const schema = Reply.Reply(message.rpc, codecForJson)
           return Schema.decodeEffect(schema)(result.lastReceivedReply.value).pipe(
             Effect.provideContext(message.context),
             MalformedMessage.refail,
@@ -631,7 +634,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         ),
         Effect.asVoid
       ),
-    saveReply: (reply) => Effect.flatMap(Reply.serializeOrDefect(reply), encoded.saveReply),
+    saveReply: (reply) => Effect.flatMap(Reply.serializeOrDefect(reply, codecForJson), encoded.saveReply),
     clearReplies: encoded.clearReplies,
     repliesFor: Effect.fnUntraced(function*(messages) {
       const requestIds = Arr.empty<string>()
@@ -726,7 +729,8 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
               ? new Message.IncomingRequest({
                 envelope: message.envelope,
                 lastSentReply: envelope.lastSentReply,
-                respond: storage.saveReply
+                respond: storage.saveReply,
+                codecFor: codecForJson
               })
               : new Message.IncomingEnvelope({
                 envelope: message.envelope
@@ -752,7 +756,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         if (ignoredRequests.has(reply.requestId)) return Effect.void
         const message = messages.get(reply.requestId)
         if (!message) return Effect.void
-        const schema = Reply.Reply(message.rpc)
+        const schema = Reply.Reply(message.rpc, codecForJson)
         return Schema.decodeEffect(schema)(reply).pipe(
           Effect.provideContext(message.context)
         ) as Effect.Effect<Reply.Reply<any>, Schema.SchemaError>

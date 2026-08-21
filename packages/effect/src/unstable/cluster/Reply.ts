@@ -24,7 +24,9 @@ import * as SchemaTransformation from "../../SchemaTransformation.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import type * as RpcMessage from "../rpc/RpcMessage.ts"
 import type * as RpcSchema from "../rpc/RpcSchema.ts"
+import type * as RpcSerialization from "../rpc/RpcSerialization.ts"
 import { MalformedMessage } from "./ClusterError.ts"
+import * as Envelope from "./Envelope.ts"
 import type { OutgoingRequest } from "./Message.ts"
 import { Snowflake, SnowflakeFromBigInt } from "./Snowflake.ts"
 
@@ -66,7 +68,7 @@ export type Encoded = WithExitEncoded | ChunkEncoded
  * @category schemas
  * @since 4.0.0
  */
-export const Encoded: Schema.Codec<Encoded> = Schema.Any as any
+export const Encoded: Schema.Codec<Encoded> = Envelope.OpaqueHole as any
 
 /**
  * Represents a cluster reply paired with the RPC definition and service context required to
@@ -161,7 +163,9 @@ export interface ChunkEncoded {
   readonly values: NonEmptyReadonlyArray<unknown>
 }
 
-const schemaCache = new WeakMap<Rpc.Any, Schema.Top>()
+// Keyed by codec first: the storage path and the transport path can compile
+// different codecs for the same RPC.
+const schemaCaches = new WeakMap<RpcSerialization.CodecFor, WeakMap<Rpc.Any, Schema.Top>>()
 
 /**
  * Represents a streaming RPC reply chunk for a request, carrying a non-empty
@@ -398,17 +402,24 @@ export class WithExit<R extends Rpc.Any> extends Data.TaggedClass("WithExit")<{
  * @since 4.0.0
  */
 export const Reply = <R extends Rpc.Any>(
-  rpc: R
+  rpc: R,
+  codecFor: RpcSerialization.CodecFor
 ): Schema.Codec<
   WithExit<R> | Chunk<R>,
   Encoded,
   Rpc.ServicesServer<R>,
   Rpc.ServicesClient<R>
 > => {
-  if (schemaCache.has(rpc)) {
-    return schemaCache.get(rpc) as any
+  let schemaCache = schemaCaches.get(codecFor)
+  if (schemaCache === undefined) {
+    schemaCache = new WeakMap()
+    schemaCaches.set(codecFor, schemaCache)
   }
-  const schema = Schema.toCodecJson(Schema.Union([WithExit.schema(rpc), Chunk.schema(rpc)]))
+  const cached = schemaCache.get(rpc)
+  if (cached !== undefined) {
+    return cached as any
+  }
+  const schema = codecFor(Schema.Union([WithExit.schema(rpc), Chunk.schema(rpc)]))
   schemaCache.set(rpc, schema)
   return schema as any
 }
@@ -422,9 +433,10 @@ export const Reply = <R extends Rpc.Any>(
  * @since 4.0.0
  */
 export const serialize = <R extends Rpc.Any>(
-  self: ReplyWithContext<R>
+  self: ReplyWithContext<R>,
+  codecFor: RpcSerialization.CodecFor
 ): Effect.Effect<Encoded, MalformedMessage> => {
-  const schema = Reply(self.rpc)
+  const schema = Reply(self.rpc, codecFor)
   return MalformedMessage.refail(
     Effect.provideContext(
       Schema.encodeEffect(schema)(self.reply),
@@ -441,17 +453,21 @@ export const serialize = <R extends Rpc.Any>(
  * @since 4.0.0
  */
 export const serializeOrDefect = <R extends Rpc.Any>(
-  self: ReplyWithContext<R>
+  self: ReplyWithContext<R>,
+  codecFor: RpcSerialization.CodecFor
 ): Effect.Effect<Encoded> =>
   Effect.catchTag(
-    serialize(self),
+    serialize(self, codecFor),
     "MalformedMessage",
     (error) =>
-      Effect.orDie(serialize(ReplyWithContext.fromDefect({
-        id: self.reply.id,
-        requestId: self.reply.requestId,
-        defect: error
-      })))
+      Effect.orDie(serialize(
+        ReplyWithContext.fromDefect({
+          id: self.reply.id,
+          requestId: self.reply.requestId,
+          defect: error
+        }),
+        codecFor
+      ))
   )
 
 /**
@@ -463,13 +479,14 @@ export const serializeOrDefect = <R extends Rpc.Any>(
  * @since 4.0.0
  */
 export const serializeLastReceived = <R extends Rpc.Any>(
-  self: OutgoingRequest<R>
+  self: OutgoingRequest<R>,
+  codecFor: RpcSerialization.CodecFor
 ): Effect.Effect<Option.Option<Encoded>, MalformedMessage> => {
   const lastReceivedReply = self.lastReceivedReply
   if (lastReceivedReply._tag === "None") {
     return Effect.succeedNone
   }
-  const schema = Reply(self.rpc)
+  const schema = Reply(self.rpc, codecFor)
   return MalformedMessage.refail(
     Effect.provideContext(Schema.encodeEffect(schema)(lastReceivedReply.value), self.context)
   ).pipe(
