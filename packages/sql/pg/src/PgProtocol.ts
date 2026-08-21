@@ -10,6 +10,11 @@
  * the type byte, and a payload. Integers are big-endian and strings are
  * NUL-terminated UTF-8 unless they are explicitly length-prefixed.
  *
+ * Encoded frames and decoded byte fields are views into pooled buffers that
+ * are written once and never rewritten. They stay valid for as long as they
+ * are held, but holding one keeps its whole pool buffer alive, so copy
+ * anything that has to outlive the message it came from.
+ *
  * @since 4.0.0
  */
 import * as Data from "effect/Data"
@@ -27,43 +32,73 @@ export class ParseError extends Data.TaggedError("PgProtocolParseError")<{
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder("utf-8", { fatal: true })
 
+/**
+ * Above this length `TextEncoder` beats a per-character loop, below it the
+ * call overhead dominates. Measured on V8; the crossover is around 100 chars.
+ */
+const asciiEncodeLimit = 96
+
+/**
+ * Writes messages back to back into a pooled buffer and hands out a view of
+ * each one, so encoding a message costs no allocation of its own. Bytes below
+ * `start` have already been handed out and are never rewritten; when the pool
+ * runs out it is replaced rather than reused.
+ */
 class Writer {
+  readonly poolSize: number
   bytes: Uint8Array
-  view: DataView
+  /** Where the message currently being written begins. */
+  start = 0
   offset = 0
 
-  constructor(capacity: number) {
-    this.bytes = new Uint8Array(capacity)
-    this.view = new DataView(this.bytes.buffer)
+  constructor(poolSize: number) {
+    this.poolSize = poolSize
+    this.bytes = new Uint8Array(poolSize)
   }
 
   reserve(size: number): void {
-    const required = this.offset + size
-    if (required <= this.bytes.length) return
-    let capacity = this.bytes.length
-    while (capacity < required) capacity *= 2
+    if (this.offset + size <= this.bytes.length) return
+    const pending = this.offset - this.start
+    let capacity = this.poolSize
+    while (capacity < pending + size) capacity *= 2
     const next = new Uint8Array(capacity)
-    next.set(this.bytes.subarray(0, this.offset))
+    next.set(this.bytes.subarray(this.start, this.offset))
     this.bytes = next
-    this.view = new DataView(next.buffer)
+    this.start = 0
+    this.offset = pending
+  }
+
+  /** Starts a message, dropping anything a failed write left behind. */
+  begin(): void {
+    this.start = this.offset
   }
 
   uint8(value: number): void {
     this.reserve(1)
-    this.view.setUint8(this.offset, value)
-    this.offset += 1
+    this.bytes[this.offset++] = value
   }
 
   int16(value: number): void {
     this.reserve(2)
-    this.view.setInt16(this.offset, value)
-    this.offset += 2
+    const bytes = this.bytes
+    const offset = this.offset
+    bytes[offset] = value >>> 8
+    bytes[offset + 1] = value
+    this.offset = offset + 2
   }
 
   int32(value: number): void {
     this.reserve(4)
-    this.view.setInt32(this.offset, value)
+    this.setInt32(this.offset, value)
     this.offset += 4
+  }
+
+  setInt32(offset: number, value: number): void {
+    const bytes = this.bytes
+    bytes[offset] = value >>> 24
+    bytes[offset + 1] = value >>> 16
+    bytes[offset + 2] = value >>> 8
+    bytes[offset + 3] = value
   }
 
   raw(value: Uint8Array): void {
@@ -72,77 +107,111 @@ class Writer {
     this.offset += value.length
   }
 
-  cString(value: string): void {
+  utf8(value: string): void {
+    const length = value.length
+    if (length <= asciiEncodeLimit) {
+      this.reserve(length)
+      const bytes = this.bytes
+      const start = this.offset
+      let i = 0
+      for (; i < length; i++) {
+        const code = value.charCodeAt(i)
+        if (code > 0x7f) break
+        bytes[start + i] = code
+      }
+      if (i === length) {
+        this.offset = start + length
+        return
+      }
+    }
     this.raw(textEncoder.encode(value))
+  }
+
+  cString(value: string): void {
+    this.utf8(value)
     this.uint8(0)
   }
 
   finish(): Uint8Array {
-    return this.bytes.slice(0, this.offset)
+    const value = this.bytes.subarray(this.start, this.offset)
+    if (this.bytes.length > this.poolSize) {
+      // An oversized message grew the pool; do not keep the rest of it around.
+      this.bytes = new Uint8Array(this.poolSize)
+      this.start = 0
+      this.offset = 0
+    } else {
+      this.start = this.offset
+    }
+    return value
   }
 }
 
-class Reader {
-  readonly bytes: Uint8Array
-  readonly view: DataView
-  offset = 0
+const emptyBytes = new Uint8Array(0)
 
-  constructor(bytes: Uint8Array) {
+/**
+ * A cursor over a message payload. The parser reuses one instance pointed at a
+ * window of its own buffer, so decoding a message allocates nothing beyond the
+ * message itself.
+ */
+class Reader {
+  bytes: Uint8Array = emptyBytes
+  offset = 0
+  limit = 0
+
+  reset(bytes: Uint8Array, offset: number, limit: number): void {
     this.bytes = bytes
-    this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    this.offset = offset
+    this.limit = limit
   }
 
   require(size: number): void {
     if (size < 0) {
       throw new ParseError({ message: `Invalid read of ${size} byte(s)` })
     }
-    if (this.offset + size > this.bytes.length) {
+    if (this.offset + size > this.limit) {
       throw new ParseError({ message: `Truncated message: expected ${size} more byte(s)` })
     }
   }
 
   uint8(): number {
     this.require(1)
-    const value = this.view.getUint8(this.offset)
-    this.offset += 1
-    return value
+    return this.bytes[this.offset++]
   }
 
   int16(): number {
     this.require(2)
-    const value = this.view.getInt16(this.offset)
-    this.offset += 2
-    return value
+    const bytes = this.bytes
+    const offset = this.offset
+    this.offset = offset + 2
+    return ((bytes[offset] << 8) | bytes[offset + 1]) << 16 >> 16
   }
 
   int32(): number {
     this.require(4)
-    const value = this.view.getInt32(this.offset)
-    this.offset += 4
-    return value
+    const bytes = this.bytes
+    const offset = this.offset
+    this.offset = offset + 4
+    return (bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]
   }
 
   uint32(): number {
-    this.require(4)
-    const value = this.view.getUint32(this.offset)
-    this.offset += 4
-    return value
+    return this.int32() >>> 0
   }
 
   raw(size: number): Uint8Array {
     this.require(size)
-    const value = this.bytes.slice(this.offset, this.offset + size)
+    const value = this.bytes.subarray(this.offset, this.offset + size)
     this.offset += size
     return value
   }
 
   rest(): Uint8Array {
-    return this.raw(this.bytes.length - this.offset)
+    return this.raw(this.limit - this.offset)
   }
 
   cString(): string {
     const end = this.bytes.indexOf(0, this.offset)
-    if (end === -1) {
+    if (end === -1 || end >= this.limit) {
       throw new ParseError({ message: "Unterminated string" })
     }
     const value = decodeUtf8(this.bytes.subarray(this.offset, end))
@@ -318,14 +387,17 @@ export type FrontendMessage =
   | SASLInitialResponse
   | SASLResponse
 
+const sharedWriter = new Writer(8192)
+
 const typed = (type: string, write: (writer: Writer) => void): Uint8Array => {
-  const writer = new Writer(64)
-  writer.uint8(type.charCodeAt(0))
-  const lengthOffset = writer.offset
-  writer.int32(0)
-  write(writer)
-  writer.view.setInt32(lengthOffset, writer.offset - lengthOffset)
-  return writer.finish()
+  sharedWriter.begin()
+  sharedWriter.uint8(type.charCodeAt(0))
+  sharedWriter.int32(0)
+  write(sharedWriter)
+  // Relative to `start`, because writing may have moved the message to a new
+  // pool buffer. The length counts itself but not the type byte.
+  sharedWriter.setInt32(sharedWriter.start + 1, sharedWriter.offset - sharedWriter.start - 1)
+  return sharedWriter.finish()
 }
 
 const targetByte = (target: DescribeTarget): number => target === "statement" ? 0x53 : 0x50
@@ -535,10 +607,10 @@ export interface StartupParameters {
  * @since 4.0.0
  */
 export const encodeSslRequest = (): Uint8Array => {
-  const writer = new Writer(8)
-  writer.int32(8)
-  writer.int32(SSL_REQUEST_CODE)
-  return writer.finish()
+  sharedWriter.begin()
+  sharedWriter.int32(8)
+  sharedWriter.int32(SSL_REQUEST_CODE)
+  return sharedWriter.finish()
 }
 
 /**
@@ -562,7 +634,8 @@ export const decodeSslResponse = (byte: number): "S" | "N" => {
  * @since 4.0.0
  */
 export const encodeStartupMessage = (parameters: StartupParameters): Uint8Array => {
-  const writer = new Writer(128)
+  const writer = sharedWriter
+  writer.begin()
   writer.int32(0)
   writer.int32(PROTOCOL_VERSION_3_0)
   for (const [key, value] of Object.entries(parameters)) {
@@ -575,7 +648,7 @@ export const encodeStartupMessage = (parameters: StartupParameters): Uint8Array 
     writer.cString("UTF8")
   }
   writer.uint8(0)
-  writer.view.setInt32(0, writer.offset)
+  writer.setInt32(writer.start, writer.offset - writer.start)
   return writer.finish()
 }
 
@@ -590,7 +663,8 @@ export const encodeCancelRequest = (options: {
   readonly pid: number
   readonly secret: number
 }): Uint8Array => {
-  const writer = new Writer(16)
+  const writer = sharedWriter
+  writer.begin()
   writer.int32(16)
   writer.int32(CANCEL_REQUEST_CODE)
   writer.int32(options.pid)
@@ -1126,8 +1200,7 @@ const decodeCopyResponse = (
   return { format, columnFormats }
 }
 
-const decodeBackend = (type: number, payload: Uint8Array): BackendMessage => {
-  const reader = new Reader(payload)
+const decodeBackend = (type: number, reader: Reader): BackendMessage => {
   switch (type) {
     case BackendType.Authentication:
       return decodeAuthentication(reader)
@@ -1248,6 +1321,12 @@ export interface Parser {
    * finish it arrive. A `ParseError` is terminal and the parser cannot be
    * reused afterward; any messages decoded earlier in the failing push are
    * discarded.
+   *
+   * Byte fields on the returned messages - `DataRow` values, `CopyData` and
+   * `Unknown` payloads - are views into an internal buffer that the parser
+   * never rewrites, so they stay valid for as long as they are held. They are
+   * meant to be consumed before the next `push`: holding one keeps its whole
+   * buffer alive, so copy it if it has to outlive the row.
    */
   readonly push: (chunk: Uint8Array) => ReadonlyArray<BackendMessage>
 }
@@ -1265,25 +1344,25 @@ export const makeParser = (options?: {
   readonly maxMessageSize?: number | undefined
 }): Parser => {
   const maxMessageSize = options?.maxMessageSize ?? defaultMaxMessageSize
-  let buffer = new Uint8Array(8192)
-  let view = new DataView(buffer.buffer)
+  const reader = new Reader()
+  const bufferSize = 8192
+  let buffer = new Uint8Array(bufferSize)
   let start = 0
   let end = 0
   let failed = false
 
+  // Bytes already handed to the caller are never overwritten, so a full buffer
+  // is replaced rather than compacted in place. That lets `DataRow` fields be
+  // views instead of copies, which is the difference between one allocation per
+  // buffer and one per column.
   const append = (chunk: Uint8Array): void => {
     if (end + chunk.length > buffer.length) {
       const pending = end - start
-      if (pending + chunk.length <= buffer.length) {
-        buffer.copyWithin(0, start, end)
-      } else {
-        let capacity = buffer.length
-        while (capacity < pending + chunk.length) capacity *= 2
-        const next = new Uint8Array(capacity)
-        next.set(buffer.subarray(start, end))
-        buffer = next
-        view = new DataView(next.buffer)
-      }
+      let capacity = bufferSize
+      while (capacity < pending + chunk.length) capacity *= 2
+      const next = new Uint8Array(capacity)
+      next.set(buffer.subarray(start, end))
+      buffer = next
       start = 0
       end = pending
     }
@@ -1300,7 +1379,8 @@ export const makeParser = (options?: {
         append(chunk)
         const messages: Array<BackendMessage> = []
         while (end - start >= 5) {
-          const length = view.getInt32(start + 1)
+          const length = (buffer[start + 1] << 24) | (buffer[start + 2] << 16) | (buffer[start + 3] << 8) |
+            buffer[start + 4]
           if (length < 4) {
             throw new ParseError({ message: `Invalid message length: ${length}` })
           }
@@ -1310,13 +1390,9 @@ export const makeParser = (options?: {
             })
           }
           if (end - start < length + 1) break
-          const type = buffer[start]
-          messages.push(decodeBackend(type, buffer.subarray(start + 5, start + 1 + length)))
+          reader.reset(buffer, start + 5, start + 1 + length)
+          messages.push(decodeBackend(buffer[start], reader))
           start += length + 1
-        }
-        if (start === end) {
-          start = 0
-          end = 0
         }
         return messages
       } catch (error) {

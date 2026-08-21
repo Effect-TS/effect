@@ -35,7 +35,76 @@ const fail = (message: string): never => {
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder("utf-8", { fatal: true })
 
-const viewOf = (bytes: Uint8Array): DataView => new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+const writeInt16 = (bytes: Uint8Array, offset: number, value: number): void => {
+  bytes[offset] = value >>> 8
+  bytes[offset + 1] = value
+}
+
+const readInt16 = (bytes: Uint8Array, offset: number): number => ((bytes[offset] << 8) | bytes[offset + 1]) << 16 >> 16
+
+const readUint16 = (bytes: Uint8Array, offset: number): number => (bytes[offset] << 8) | bytes[offset + 1]
+
+const writeInt32 = (bytes: Uint8Array, offset: number, value: number): void => {
+  bytes[offset] = value >>> 24
+  bytes[offset + 1] = value >>> 16
+  bytes[offset + 2] = value >>> 8
+  bytes[offset + 3] = value
+}
+
+const readInt32 = (bytes: Uint8Array, offset: number): number =>
+  (bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]
+
+/**
+ * Constructing a `DataView` costs more than the reads and writes it performs,
+ * so the fixed-width codecs stage values through these instead of wrapping
+ * every freshly allocated array.
+ */
+const scratch4 = new ArrayBuffer(4)
+const scratchView4 = new DataView(scratch4)
+const scratchBytes4 = new Uint8Array(scratch4)
+const scratch8 = new ArrayBuffer(8)
+const scratchView8 = new DataView(scratch8)
+const scratchBytes8 = new Uint8Array(scratch8)
+
+/**
+ * Above this length `TextEncoder` beats a per-character loop, below it the
+ * call overhead dominates. Measured on V8; the crossover is around 100 chars.
+ */
+const asciiEncodeLimit = 96
+
+const encodeUtf8 = (text: string): Uint8Array => {
+  const length = text.length
+  if (length > asciiEncodeLimit) return textEncoder.encode(text)
+  const bytes = new Uint8Array(length)
+  for (let i = 0; i < length; i++) {
+    const code = text.charCodeAt(i)
+    if (code > 0x7f) return textEncoder.encode(text)
+    bytes[i] = code
+  }
+  return bytes
+}
+
+/** As `encodeUtf8`, but leaves `prefix` bytes free at the front. */
+const encodeUtf8Prefixed = (text: string, prefix: number): Uint8Array => {
+  const length = text.length
+  if (length <= asciiEncodeLimit) {
+    const bytes = new Uint8Array(prefix + length)
+    let ascii = true
+    for (let i = 0; i < length; i++) {
+      const code = text.charCodeAt(i)
+      if (code > 0x7f) {
+        ascii = false
+        break
+      }
+      bytes[prefix + i] = code
+    }
+    if (ascii) return bytes
+  }
+  const body = textEncoder.encode(text)
+  const bytes = new Uint8Array(prefix + body.length)
+  bytes.set(body, prefix)
+  return bytes
+}
 
 const requireSize = (bytes: Uint8Array, size: number, name: string): void => {
   if (bytes.length !== size) {
@@ -332,30 +401,28 @@ const encodeNumeric = (value: unknown): Uint8Array => {
 
   const sign = groups.length > 0 && match[1] === "-" ? NUMERIC_NEG : NUMERIC_POS
   const bytes = new Uint8Array(8 + groups.length * 2)
-  const view = viewOf(bytes)
-  view.setInt16(0, groups.length)
-  view.setInt16(2, weight)
-  view.setUint16(4, sign)
-  view.setInt16(6, scale)
+  writeInt16(bytes, 0, groups.length)
+  writeInt16(bytes, 2, weight)
+  writeInt16(bytes, 4, sign)
+  writeInt16(bytes, 6, scale)
   for (let i = 0; i < groups.length; i++) {
-    view.setInt16(8 + i * 2, groups[i])
+    writeInt16(bytes, 8 + i * 2, groups[i])
   }
   return bytes
 }
 
 const numericSpecial = (sign: number): Uint8Array => {
   const bytes = new Uint8Array(8)
-  viewOf(bytes).setUint16(4, sign)
+  writeInt16(bytes, 4, sign)
   return bytes
 }
 
 const decodeNumeric = (bytes: Uint8Array): string => {
   if (bytes.length < 8) return fail("Truncated numeric value")
-  const view = viewOf(bytes)
-  const count = view.getInt16(0)
-  const weight = view.getInt16(2)
-  const sign = view.getUint16(4)
-  const scale = view.getInt16(6)
+  const count = readInt16(bytes, 0)
+  const weight = readInt16(bytes, 2)
+  const sign = readUint16(bytes, 4)
+  const scale = readInt16(bytes, 6)
   if (sign === NUMERIC_NAN) return "NaN"
   if (sign === NUMERIC_PINF) return "Infinity"
   if (sign === NUMERIC_NINF) return "-Infinity"
@@ -364,7 +431,7 @@ const decodeNumeric = (bytes: Uint8Array): string => {
   }
   requireSize(bytes, 8 + count * 2, "numeric")
 
-  const digitAt = (index: number): number => index >= 0 && index < count ? view.getInt16(8 + index * 2) : 0
+  const digitAt = (index: number): number => index >= 0 && index < count ? readInt16(bytes, 8 + index * 2) : 0
 
   let result = sign === NUMERIC_NEG ? "-" : ""
   if (weight < 0) {
@@ -443,12 +510,11 @@ const parseIPv6 = (text: string): Uint8Array | undefined => {
 const formatIPv4 = (bytes: Uint8Array): string => `${bytes[0]}.${bytes[1]}.${bytes[2]}.${bytes[3]}`
 
 const formatIPv6 = (bytes: Uint8Array): string => {
-  const view = viewOf(bytes)
   const isV4Mapped = bytes.subarray(0, 10).every((byte) => byte === 0) && bytes[10] === 0xff && bytes[11] === 0xff
   if (isV4Mapped) return `::ffff:${formatIPv4(bytes.subarray(12))}`
 
   const groups: Array<number> = []
-  for (let i = 0; i < 8; i++) groups.push(view.getUint16(i * 2))
+  for (let i = 0; i < 8; i++) groups.push(readUint16(bytes, i * 2))
 
   let bestStart = -1
   let bestLength = 0
@@ -528,27 +594,38 @@ const decodeInet = (bytes: Uint8Array): string => {
 const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
 const hexDigits = "0123456789abcdef"
 
+/** Byte value of each hex character code, `-1` for everything else. */
+const hexValues = new Int8Array(128).fill(-1)
+for (let i = 0; i < 16; i++) {
+  hexValues[hexDigits.charCodeAt(i)] = i
+  hexValues["0123456789ABCDEF".charCodeAt(i)] = i
+}
+
+/** Two-character hex text for each byte value. */
+const hexPairs = Array.from({ length: 256 }, (_, i) => hexDigits[i >> 4] + hexDigits[i & 0xf])
+
+/** Offsets of the 16 uuid bytes within the 36-character hyphenated text. */
+const uuidOffsets = [0, 2, 4, 6, 9, 11, 14, 16, 19, 21, 24, 26, 28, 30, 32, 34]
+
 const encodeUuid = (value: unknown): Uint8Array => {
   const text = requireString(value, "uuid")
-  if (!uuidRegex.test(text)) {
+  if (text.length !== 36 || !uuidRegex.test(text)) {
     return fail(`Expected a UUID, received "${text}"`)
   }
-  const hex = text.replaceAll("-", "")
   const bytes = new Uint8Array(16)
   for (let i = 0; i < 16; i++) {
-    bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+    const offset = uuidOffsets[i]
+    bytes[i] = (hexValues[text.charCodeAt(offset)] << 4) | hexValues[text.charCodeAt(offset + 1)]
   }
   return bytes
 }
 
 const decodeUuid = (bytes: Uint8Array): string => {
   requireSize(bytes, 16, "uuid")
-  let hex = ""
-  for (let i = 0; i < 16; i++) {
-    hex += hexDigits[bytes[i] >> 4] + hexDigits[bytes[i] & 0xf]
-    if (i === 3 || i === 5 || i === 7 || i === 9) hex += "-"
-  }
-  return hex
+  return hexPairs[bytes[0]] + hexPairs[bytes[1]] + hexPairs[bytes[2]] + hexPairs[bytes[3]] + "-" +
+    hexPairs[bytes[4]] + hexPairs[bytes[5]] + "-" + hexPairs[bytes[6]] + hexPairs[bytes[7]] + "-" +
+    hexPairs[bytes[8]] + hexPairs[bytes[9]] + "-" + hexPairs[bytes[10]] + hexPairs[bytes[11]] +
+    hexPairs[bytes[12]] + hexPairs[bytes[13]] + hexPairs[bytes[14]] + hexPairs[bytes[15]]
 }
 
 // -----------------------------------------------------------------------------
@@ -567,7 +644,7 @@ export interface Codec<A> {
 }
 
 const utf8Codec: Codec<any> = {
-  encode: (value) => textEncoder.encode(requireString(value, "text")),
+  encode: (value) => encodeUtf8(requireString(value, "text")),
   decode: (bytes) => {
     try {
       return textDecoder.decode(bytes)
@@ -577,34 +654,39 @@ const utf8Codec: Codec<any> = {
   }
 }
 
-const fixed = (
-  size: number,
+/** A 4- or 8-byte codec staged through the shared scratch views. */
+const staged = (
+  size: 4 | 8,
   name: string,
   write: (view: DataView, value: any) => void,
   read: (view: DataView) => any
-): Codec<any> => ({
-  encode: (value) => {
-    const bytes = new Uint8Array(size)
-    write(viewOf(bytes), value)
-    return bytes
-  },
-  decode: (bytes) => {
-    requireSize(bytes, size, name)
-    return read(viewOf(bytes))
+): Codec<any> => {
+  const view = size === 4 ? scratchView4 : scratchView8
+  const scratch = size === 4 ? scratchBytes4 : scratchBytes8
+  return {
+    encode: (value) => {
+      write(view, value)
+      const bytes = new Uint8Array(size)
+      bytes.set(scratch)
+      return bytes
+    },
+    decode: (bytes) => {
+      requireSize(bytes, size, name)
+      scratch.set(bytes)
+      return read(view)
+    }
   }
-})
+}
 
 const timestampCodec: Codec<any> = {
   encode: (value) => {
     const ms = requireNumber(value, "timestamp")
-    const bytes = new Uint8Array(8)
-    const view = viewOf(bytes)
     if (Number.isNaN(ms)) {
       fail("timestamp cannot be NaN")
     } else if (ms === Number.POSITIVE_INFINITY) {
-      view.setBigInt64(0, INT64_MAX)
+      scratchView8.setBigInt64(0, INT64_MAX)
     } else if (ms === Number.NEGATIVE_INFINITY) {
-      view.setBigInt64(0, INT64_MIN)
+      scratchView8.setBigInt64(0, INT64_MIN)
     } else {
       const unixMicros = Math.trunc(ms * 1000)
       if (!Number.isFinite(unixMicros)) {
@@ -614,13 +696,16 @@ const timestampCodec: Codec<any> = {
       if (micros < INT64_MIN || micros > INT64_MAX) {
         fail(`timestamp out of range: ${ms}`)
       }
-      view.setBigInt64(0, micros)
+      scratchView8.setBigInt64(0, micros)
     }
+    const bytes = new Uint8Array(8)
+    bytes.set(scratchBytes8)
     return bytes
   },
   decode: (bytes) => {
     requireSize(bytes, 8, "timestamp")
-    const micros = viewOf(bytes).getBigInt64(0)
+    scratchBytes8.set(bytes)
+    const micros = scratchView8.getBigInt64(0)
     if (micros === INT64_MAX) return Number.POSITIVE_INFINITY
     if (micros === INT64_MIN) return Number.NEGATIVE_INFINITY
     return Number(micros / THOUSAND) + PG_EPOCH_MS
@@ -631,19 +716,18 @@ const dateCodec: Codec<any> = {
   encode: (value) => {
     const text = requireString(value, "date")
     const bytes = new Uint8Array(4)
-    const view = viewOf(bytes)
     if (text === "infinity") {
-      view.setInt32(0, INT32_MAX)
+      writeInt32(bytes, 0, INT32_MAX)
     } else if (text === "-infinity") {
-      view.setInt32(0, INT32_MIN)
+      writeInt32(bytes, 0, INT32_MIN)
     } else {
-      view.setInt32(0, parseDate(text) - PG_EPOCH_DAYS)
+      writeInt32(bytes, 0, parseDate(text) - PG_EPOCH_DAYS)
     }
     return bytes
   },
   decode: (bytes) => {
     requireSize(bytes, 4, "date")
-    const days = viewOf(bytes).getInt32(0)
+    const days = readInt32(bytes, 0)
     if (days === INT32_MAX) return "infinity"
     if (days === INT32_MIN) return "-infinity"
     return formatDate(days + PG_EPOCH_DAYS)
@@ -657,16 +741,16 @@ const timetzCodec: Codec<any> = {
     if (split <= 0) {
       return fail(`Expected a timetz with a zone offset, received "${text}"`)
     }
+    scratchView8.setBigInt64(0, parseTimeOfDay(text.slice(0, split)))
     const bytes = new Uint8Array(12)
-    const view = viewOf(bytes)
-    view.setBigInt64(0, parseTimeOfDay(text.slice(0, split)))
-    view.setInt32(8, -parseZone(text.slice(split)))
+    bytes.set(scratchBytes8)
+    writeInt32(bytes, 8, -parseZone(text.slice(split)))
     return bytes
   },
   decode: (bytes) => {
     requireSize(bytes, 12, "timetz")
-    const view = viewOf(bytes)
-    return formatTimeOfDay(view.getBigInt64(0)) + formatZone(-view.getInt32(8))
+    scratchBytes8.set(bytes.subarray(0, 8))
+    return formatTimeOfDay(scratchView8.getBigInt64(0)) + formatZone(-readInt32(bytes, 8))
   }
 }
 
@@ -674,17 +758,17 @@ const jsonCodec: Codec<any> = {
   encode: (value) => {
     const text = JSON.stringify(value)
     if (text === undefined) return fail("Value cannot be serialised as JSON")
-    return textEncoder.encode(text)
+    return encodeUtf8(text)
   },
   decode: (bytes) => JSON.parse(utf8Codec.decode(bytes))
 }
 
 const jsonbCodec: Codec<any> = {
   encode: (value) => {
-    const body = jsonCodec.encode(value)
-    const bytes = new Uint8Array(body.length + 1)
+    const text = JSON.stringify(value)
+    if (text === undefined) return fail("Value cannot be serialised as JSON")
+    const bytes = encodeUtf8Prefixed(text, 1)
     bytes[0] = 1
-    bytes.set(body, 1)
     return bytes
   },
   decode: (bytes) => {
@@ -697,8 +781,12 @@ const jsonbCodec: Codec<any> = {
 
 const builtins = new Map<number, Codec<any>>([
   [OID.bool, {
-    encode: (value) =>
-      new Uint8Array([typeof value === "boolean" ? (value ? 1 : 0) : fail("Expected a boolean for bool")]),
+    encode: (value) => {
+      if (typeof value !== "boolean") fail("Expected a boolean for bool")
+      const bytes = new Uint8Array(1)
+      bytes[0] = value ? 1 : 0
+      return bytes
+    },
     decode: (bytes) => {
       requireSize(bytes, 1, "bool")
       return bytes[0] !== 0
@@ -708,36 +796,52 @@ const builtins = new Map<number, Codec<any>>([
     encode: (value) => value instanceof Uint8Array ? value.slice() : fail("Expected a Uint8Array for bytea"),
     decode: (bytes) => bytes
   }],
-  [
-    OID.int2,
-    fixed(
-      2,
-      "int2",
-      (view, value) => view.setInt16(0, requireInteger(value, "int2", -32768, 32767)),
-      (view) => view.getInt16(0)
-    )
-  ],
-  [
-    OID.int4,
-    fixed(
-      4,
-      "int4",
-      (view, value) => view.setInt32(0, requireInteger(value, "int4", INT32_MIN, INT32_MAX)),
-      (view) => view.getInt32(0)
-    )
-  ],
-  [
-    OID.oid,
-    fixed(
-      4,
-      "oid",
-      (view, value) => view.setUint32(0, requireInteger(value, "oid", 0, 4294967295)),
-      (view) => view.getUint32(0)
-    )
-  ],
+  [OID.int2, {
+    encode: (value) => {
+      const num = requireInteger(value, "int2", -32768, 32767)
+      const bytes = new Uint8Array(2)
+      bytes[0] = num >>> 8
+      bytes[1] = num
+      return bytes
+    },
+    decode: (bytes) => {
+      requireSize(bytes, 2, "int2")
+      return ((bytes[0] << 8) | bytes[1]) << 16 >> 16
+    }
+  }],
+  [OID.int4, {
+    encode: (value) => {
+      const num = requireInteger(value, "int4", INT32_MIN, INT32_MAX)
+      const bytes = new Uint8Array(4)
+      bytes[0] = num >>> 24
+      bytes[1] = num >>> 16
+      bytes[2] = num >>> 8
+      bytes[3] = num
+      return bytes
+    },
+    decode: (bytes) => {
+      requireSize(bytes, 4, "int4")
+      return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]
+    }
+  }],
+  [OID.oid, {
+    encode: (value) => {
+      const num = requireInteger(value, "oid", 0, 4294967295)
+      const bytes = new Uint8Array(4)
+      bytes[0] = num >>> 24
+      bytes[1] = num >>> 16
+      bytes[2] = num >>> 8
+      bytes[3] = num
+      return bytes
+    },
+    decode: (bytes) => {
+      requireSize(bytes, 4, "oid")
+      return ((bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]) >>> 0
+    }
+  }],
   [
     OID.int8,
-    fixed(8, "int8", (view, value) => {
+    staged(8, "int8", (view, value) => {
       const big = requireBigInt(value, "int8")
       if (big < INT64_MIN || big > INT64_MAX) fail(`int8 out of range: ${big}`)
       view.setBigInt64(0, big)
@@ -745,7 +849,7 @@ const builtins = new Map<number, Codec<any>>([
   ],
   [
     OID.float4,
-    fixed(
+    staged(
       4,
       "float4",
       (view, value) => view.setFloat32(0, requireNumber(value, "float4")),
@@ -754,7 +858,7 @@ const builtins = new Map<number, Codec<any>>([
   ],
   [
     OID.float8,
-    fixed(
+    staged(
       8,
       "float8",
       (view, value) => view.setFloat64(0, requireNumber(value, "float8")),
@@ -763,7 +867,7 @@ const builtins = new Map<number, Codec<any>>([
   ],
   [
     OID.time,
-    fixed(8, "time", (view, value) => {
+    staged(8, "time", (view, value) => {
       const micros = requireBigInt(value, "time")
       if (micros < ZERO || micros > BigInt(86_400_000_000)) fail(`time out of range: ${micros}`)
       view.setBigInt64(0, micros)
@@ -785,7 +889,18 @@ const builtins = new Map<number, Codec<any>>([
   [OID.timestamptz, timestampCodec]
 ])
 
-const registry = new Map<number, Codec<any>>()
+for (const [arrayOid, elementOid] of arrayToElement) {
+  builtins.set(arrayOid, {
+    encode: (value) => encodeArray(value, elementOid),
+    decode: (bytes) => decodeArray(bytes, elementOid)
+  })
+}
+
+/**
+ * Built-ins with registered codecs layered over them, so `encode` and `decode`
+ * resolve an OID with a single lookup.
+ */
+const codecs = new Map<number, Codec<any>>(builtins)
 
 /**
  * Registers a binary codec for an OID the built-in catalogue does not cover,
@@ -795,7 +910,7 @@ const registry = new Map<number, Codec<any>>()
  * @since 4.0.0
  */
 export const register = <A>(oid: number, codec: Codec<A>): void => {
-  registry.set(oid, codec)
+  codecs.set(oid, codec)
 }
 
 /**
@@ -805,10 +920,10 @@ export const register = <A>(oid: number, codec: Codec<A>): void => {
  * @since 4.0.0
  */
 export const unregister = (oid: number): void => {
-  registry.delete(oid)
+  const builtin = builtins.get(oid)
+  if (builtin === undefined) codecs.delete(oid)
+  else codecs.set(oid, builtin)
 }
-
-const codecFor = (oid: number): Codec<any> | undefined => registry.get(oid) ?? builtins.get(oid)
 
 // -----------------------------------------------------------------------------
 // arrays
@@ -818,29 +933,40 @@ const encodeArray = (value: unknown, elementOid: number): Uint8Array => {
   if (!Array.isArray(value)) {
     return fail("Expected an array")
   }
-  const elements: Array<Uint8Array | null> = value.map((element) =>
-    element === null ? null : encode(element, elementOid)
-  )
-  const hasNull = elements.includes(null)
-  const dimensions = elements.length === 0 ? 0 : 1
-  const size = 12 + dimensions * 8 + elements.reduce((total, element) => total + 4 + (element?.length ?? 0), 0)
-  const bytes = new Uint8Array(size)
-  const view = viewOf(bytes)
-  view.setInt32(0, dimensions)
-  view.setInt32(4, hasNull ? 1 : 0)
-  view.setUint32(8, elementOid)
+  const count = value.length
+  const elements: Array<Uint8Array | null> = new Array(count)
+  let hasNull = false
+  let payloadSize = 0
+  for (let i = 0; i < count; i++) {
+    const element = value[i]
+    if (element === null) {
+      elements[i] = null
+      hasNull = true
+      payloadSize += 4
+    } else {
+      const encoded = encode(element, elementOid)
+      elements[i] = encoded
+      payloadSize += 4 + encoded.length
+    }
+  }
+  const dimensions = count === 0 ? 0 : 1
+  const bytes = new Uint8Array(12 + dimensions * 8 + payloadSize)
+  writeInt32(bytes, 0, dimensions)
+  writeInt32(bytes, 4, hasNull ? 1 : 0)
+  writeInt32(bytes, 8, elementOid)
   let offset = 12
   if (dimensions === 1) {
-    view.setInt32(offset, elements.length)
-    view.setInt32(offset + 4, 1)
+    writeInt32(bytes, offset, count)
+    writeInt32(bytes, offset + 4, 1)
     offset += 8
   }
-  for (const element of elements) {
+  for (let i = 0; i < count; i++) {
+    const element = elements[i]
     if (element === null) {
-      view.setInt32(offset, -1)
+      writeInt32(bytes, offset, -1)
       offset += 4
     } else {
-      view.setInt32(offset, element.length)
+      writeInt32(bytes, offset, element.length)
       bytes.set(element, offset + 4)
       offset += 4 + element.length
     }
@@ -850,21 +976,20 @@ const encodeArray = (value: unknown, elementOid: number): Uint8Array => {
 
 const decodeArray = (bytes: Uint8Array, elementOid: number): ReadonlyArray<unknown> => {
   if (bytes.length < 12) return fail("Truncated array value")
-  const view = viewOf(bytes)
-  const dimensions = view.getInt32(0)
+  const dimensions = readInt32(bytes, 0)
   if (dimensions === 0) return []
   if (dimensions !== 1) {
     return fail(`Only 1-dimensional arrays are supported, received ${dimensions} dimensions`)
   }
   if (bytes.length < 20) return fail("Truncated array value")
-  const length = view.getInt32(12)
-  const lowerBound = view.getInt32(16)
+  const length = readInt32(bytes, 12)
+  const lowerBound = readInt32(bytes, 16)
   if (lowerBound !== 1) return fail(`Only arrays with a lower bound of 1 are supported, received ${lowerBound}`)
   const values: Array<unknown> = new Array(length)
   let offset = 20
   for (let i = 0; i < length; i++) {
     if (offset + 4 > bytes.length) return fail("Truncated array element")
-    const size = view.getInt32(offset)
+    const size = readInt32(bytes, offset)
     offset += 4
     if (size < -1) return fail(`Invalid array element length: ${size}`)
     if (size === -1) {
@@ -892,11 +1017,9 @@ const decodeArray = (bytes: Uint8Array, elementOid: number): ReadonlyArray<unkno
  * @since 4.0.0
  */
 export const encode = (value: unknown, oid: number): Uint8Array => {
-  const codec = codecFor(oid)
-  if (codec !== undefined) return codec.encode(value)
-  const elementOid = arrayToElement.get(oid)
-  if (elementOid !== undefined) return encodeArray(value, elementOid)
-  return fail(`No codec registered for OID ${oid}`)
+  const codec = codecs.get(oid)
+  if (codec === undefined) return fail(`No codec registered for OID ${oid}`)
+  return codec.encode(value)
 }
 
 /**
@@ -912,11 +1035,8 @@ export const decode = (bytes: Uint8Array, oid: number, format: number): unknown 
   if (format !== 1) {
     return fail(`Only the binary format is supported, received format ${format}`)
   }
-  const codec = codecFor(oid)
-  if (codec !== undefined) return codec.decode(bytes)
-  const elementOid = arrayToElement.get(oid)
-  if (elementOid !== undefined) return decodeArray(bytes, elementOid)
-  return bytes
+  const codec = codecs.get(oid)
+  return codec === undefined ? bytes : codec.decode(bytes)
 }
 
 // -----------------------------------------------------------------------------

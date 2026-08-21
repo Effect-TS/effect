@@ -5,6 +5,7 @@ import { Buffer } from "node:buffer"
 import { createRequire } from "node:module"
 import { types as pgTypes } from "pg"
 import { Parser as PgParser } from "pg-protocol/dist/parser.js"
+import { serialize as pgSerialize } from "pg-protocol/dist/serializer.js"
 import postgres from "postgres"
 import { Bench } from "tinybench"
 
@@ -45,8 +46,8 @@ const normalize = (values: ReadonlyArray<unknown>) =>
 assert.deepStrictEqual(normalize(decodeEffect()), normalize(decodePg()))
 assert.deepStrictEqual(normalize(decodeEffect()), normalize(decodePostgresJs()))
 
-const makeDataRow = (fields: ReadonlyArray<string>): Uint8Array => {
-  const encoded = fields.map((field) => Buffer.from(field))
+const makeDataRow = (fields: ReadonlyArray<string | Uint8Array>): Uint8Array => {
+  const encoded = fields.map((field) => typeof field === "string" ? Buffer.from(field, "utf8") : Buffer.from(field))
   const length = 4 + 2 + encoded.reduce((total, field) => total + 4 + field.length, 0)
   const frame = Buffer.allocUnsafe(1 + length)
   frame[0] = 0x44
@@ -106,6 +107,69 @@ assert.equal(parseEffectChunked(), rowsPerParserRun)
 assert.equal(parsePgSingle(), rowsPerParserRun)
 assert.equal(parsePgChunked(), rowsPerParserRun)
 
+// End to end: JavaScript values in, a complete Bind frame out. This is the
+// comparison the type-encode table cannot make, because `pg` splits the work
+// between `prepareValue` and its Bind serializer.
+const bindValues = payload.map(({ value }) => value)
+
+const bindEffect = () =>
+  PgProtocol.encodeBind({
+    portal: "",
+    statement: "s1",
+    parameters: payload.map(({ oid, value }) => PgTypes.encode(value, oid))
+  })
+
+const bindPg = () =>
+  pgSerialize.bind({
+    portal: "",
+    statement: "s1",
+    values: bindValues,
+    valueMapper: pgUtils.prepareValue as (value: unknown, index: number) => unknown
+  })
+
+// End to end: DataRow frames in, JavaScript values out. Each library reads its
+// own wire format, so the frames the binary codec sees carry binary fields.
+const binaryDataRow = makeDataRow(effectEncoded)
+const binaryRowsPayload = new Uint8Array(binaryDataRow.length * rowsPerParserRun)
+for (let index = 0; index < rowsPerParserRun; index++) {
+  binaryRowsPayload.set(binaryDataRow, index * binaryDataRow.length)
+}
+
+const effectRowParser = PgProtocol.makeParser()
+const pgRowParser = new PgParser()
+
+const decodeRowsEffect = () => {
+  let count = 0
+  for (const message of effectRowParser.push(binaryRowsPayload)) {
+    if (message._tag !== "DataRow") continue
+    for (let index = 0; index < message.values.length; index++) {
+      const field = message.values[index]
+      if (field !== null) PgTypes.decode(field, payload[index].oid, 1)
+    }
+    count++
+  }
+  return count
+}
+
+const decodeRowsPg = () => {
+  let count = 0
+  pgRowParser.parse(parserBuffer, (message) => {
+    if (message.name !== "dataRow") return
+    const fields = (message as { readonly fields: ReadonlyArray<string | null> }).fields
+    for (let index = 0; index < fields.length; index++) {
+      const field = fields[index]
+      if (field !== null) pgTextParsers[index](field)
+    }
+    count++
+  })
+  return count
+}
+
+assert.equal(decodeRowsEffect(), rowsPerParserRun)
+assert.equal(decodeRowsPg(), rowsPerParserRun)
+assert.ok(bindEffect().length > 0)
+assert.ok(bindPg().length > 0)
+
 const codecRowsPerRun = 100
 let sink: unknown
 
@@ -161,6 +225,16 @@ await runSuite("type decode", codecRowsPerRun, [
   ["@effect/sql-pg binary", batch(decodeEffect)],
   ["postgres.js text", batch(decodePostgresJs)],
   ["pg text", batch(decodePg)]
+])
+
+await runSuite("Bind frame from JavaScript values", codecRowsPerRun, [
+  ["@effect/sql-pg binary", batch(bindEffect)],
+  ["pg text", batch(bindPg)]
+])
+
+await runSuite("DataRow frames to JavaScript values", rowsPerParserRun, [
+  ["@effect/sql-pg binary", decodeRowsEffect],
+  ["pg text", decodeRowsPg]
 ])
 
 await runSuite("protocol DataRow parser, one chunk", rowsPerParserRun, [

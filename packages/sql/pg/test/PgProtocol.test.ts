@@ -435,5 +435,52 @@ describe("PgProtocol", () => {
         )
       }
     })
+
+    it("does not read a string past the end of its own message", () => {
+      // CommandComplete whose tag is not NUL-terminated, followed by a message
+      // whose length prefix contains NUL bytes
+      assertThrowsTagged(
+        "PgProtocolParseError",
+        () => PgProtocol.makeParser().push(bytes(`430000000a53454c454354${backend.parseComplete}`))
+      )
+    })
+  })
+
+  describe("buffer reuse", () => {
+    it("keeps DataRow field views valid across later pushes", () => {
+      const parser = PgProtocol.makeParser()
+      const frame = bytes(backend.dataRowTwoColumns)
+      const first = parser.push(frame)[0] as PgProtocol.DataRow
+      const snapshot = first.values.map((value) => value === null ? null : value.slice())
+      // enough to run past the parser's buffer and force a replacement
+      for (let index = 0; index < 2000; index++) parser.push(frame)
+      assert.deepStrictEqual(first.values, snapshot)
+    })
+
+    it("keeps an encoded frame valid after encoding more", () => {
+      const first = PgProtocol.encodeBind({
+        portal: "portal",
+        statement: "statement",
+        parameters: [bytes("0102030405")]
+      })
+      const snapshot = first.slice()
+      for (let index = 0; index < 100; index++) {
+        PgProtocol.encodeBind({ portal: "other", statement: "s", parameters: [new Uint8Array(64)] })
+      }
+      assert.deepStrictEqual(first, snapshot)
+    })
+
+    it("keeps an encoded frame valid after an oversized one", () => {
+      const first = PgProtocol.encodeSync()
+      const snapshot = first.slice()
+      const huge = PgProtocol.encodeBind({
+        portal: "",
+        statement: "",
+        parameters: [new Uint8Array(32 * 1024)]
+      })
+      assert.strictEqual(huge.length, 32 * 1024 + 21)
+      assert.deepStrictEqual(first, snapshot)
+      assert.deepStrictEqual(PgProtocol.encodeSync(), snapshot)
+    })
   })
 })
