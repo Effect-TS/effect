@@ -480,29 +480,16 @@ const EMPTY_READER_BUFFER = new Uint8Array(EMPTY_READER_ARRAY_BUFFER)
 const EMPTY_READER_VIEW = new DataView(EMPTY_READER_ARRAY_BUFFER)
 const EMPTY_PARSE_OPTIONS: SchemaAST.ParseOptions = {}
 
-let lastReaderBuffer: ArrayBufferLike = EMPTY_READER_ARRAY_BUFFER
-let lastReaderOffset = 0
-let lastReaderLength = 0
-let lastReaderView: DataView = EMPTY_READER_VIEW
-
-function readerView(buf: Uint8Array): DataView {
-  if (
-    buf.buffer !== lastReaderBuffer ||
-    buf.byteOffset !== lastReaderOffset ||
-    buf.byteLength !== lastReaderLength
-  ) {
-    lastReaderBuffer = buf.buffer
-    lastReaderOffset = buf.byteOffset
-    lastReaderLength = buf.byteLength
-    lastReaderView = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
-  }
-  return lastReaderView
-}
-
 class Reader {
   pos = 0
   buf: Uint8Array = EMPTY_READER_BUFFER
-  view: DataView = EMPTY_READER_VIEW
+  // Frames of varints and strings never need a view, so it is built on demand
+  // and reused while the reader stays on one buffer.
+  view: DataView | undefined
+  viewCache: DataView = EMPTY_READER_VIEW
+  viewBuffer: ArrayBufferLike = EMPTY_READER_ARRAY_BUFFER
+  viewOffset = 0
+  viewLength = 0
   end = 0
   options: SchemaAST.ParseOptions = EMPTY_PARSE_OPTIONS
   indexSignatures: IndexSignatureCache | undefined
@@ -515,7 +502,7 @@ class Reader {
     indexSignatures: IndexSignatureCache | undefined,
     positional: boolean
   ) {
-    this.view = readerView(buf)
+    this.view = undefined
     this.buf = buf
     this.pos = start
     this.end = end
@@ -526,13 +513,28 @@ class Reader {
   release() {
     this.pos = this.end = 0
     this.buf = EMPTY_READER_BUFFER
-    this.view = EMPTY_READER_VIEW
+    this.view = undefined
+    this.viewCache = EMPTY_READER_VIEW
+    this.viewBuffer = EMPTY_READER_ARRAY_BUFFER
+    this.viewOffset = this.viewLength = 0
     this.options = EMPTY_PARSE_OPTIONS
     this.indexSignatures = undefined
     this.positional = false
   }
   get remaining(): number {
     return this.end - this.pos
+  }
+  dataView(): DataView {
+    const buf = this.buf
+    if (
+      buf.buffer !== this.viewBuffer || buf.byteOffset !== this.viewOffset || buf.byteLength !== this.viewLength
+    ) {
+      this.viewBuffer = buf.buffer
+      this.viewOffset = buf.byteOffset
+      this.viewLength = buf.byteLength
+      this.viewCache = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
+    }
+    return this.view = this.viewCache
   }
   byte(): number {
     if (this.pos >= this.end) invalid("complete value", undefined, this.options)
@@ -659,25 +661,25 @@ class Reader {
   }
   f64(): number {
     if (this.pos + 8 > this.end) invalid("complete value", undefined, this.options)
-    const value = this.view.getFloat64(this.pos, true)
+    const value = (this.view ?? this.dataView()).getFloat64(this.pos, true)
     this.pos += 8
     return value
   }
   i64(): bigint {
     if (this.pos + 8 > this.end) invalid("complete value", undefined, this.options)
-    const value = this.view.getBigInt64(this.pos, true)
+    const value = (this.view ?? this.dataView()).getBigInt64(this.pos, true)
     this.pos += 8
     return value
   }
   u32le(): number {
     if (this.pos + 4 > this.end) invalid("complete value", undefined, this.options)
-    const value = this.view.getUint32(this.pos, true)
+    const value = (this.view ?? this.dataView()).getUint32(this.pos, true)
     this.pos += 4
     return value
   }
   i32le(): number {
     if (this.pos + 4 > this.end) invalid("complete value", undefined, this.options)
-    const value = this.view.getInt32(this.pos, true)
+    const value = (this.view ?? this.dataView()).getInt32(this.pos, true)
     this.pos += 4
     return value
   }
@@ -1641,12 +1643,24 @@ function layoutFingerprint(root: Layout): bigint {
   return go(root)
 }
 
+// A frame header the decoder can compare byte by byte, so frames that hold no
+// wide numbers never build a DataView.
+function fingerprintBytes(lo: number, hi: number): Uint8Array {
+  const out = new Uint8Array(8)
+  for (let i = 0; i < 4; i++) {
+    out[i] = (lo >>> (i * 8)) & 0xFF
+    out[i + 4] = (hi >>> (i * 8)) & 0xFF
+  }
+  return out
+}
+
 interface Mode {
   readonly positional: boolean
   readonly envelope: number
   readonly expectedEnvelope: string
   readonly fingerprintLo: number
   readonly fingerprintHi: number
+  readonly fingerprint: Uint8Array
 }
 
 const defaultMode: Mode = {
@@ -1654,17 +1668,21 @@ const defaultMode: Mode = {
   envelope: ENVELOPE,
   expectedEnvelope: "version 1 envelope, flags 0",
   fingerprintLo: 0,
-  fingerprintHi: 0
+  fingerprintHi: 0,
+  fingerprint: new Uint8Array(8)
 }
 
 function fingerprintMode(layout: Layout): Mode {
   const fingerprint = layoutFingerprint(layout)
+  const lo = Number(fingerprint & BIGINT_U32_MASK)
+  const hi = Number((fingerprint >> BIGINT_THIRTY_TWO) & BIGINT_U32_MASK)
   return {
     positional: true,
     envelope: ENVELOPE_FINGERPRINT,
     expectedEnvelope: "version 1 envelope, flags 1",
-    fingerprintLo: Number(fingerprint & BIGINT_U32_MASK),
-    fingerprintHi: Number((fingerprint >> BIGINT_THIRTY_TWO) & BIGINT_U32_MASK)
+    fingerprintLo: lo,
+    fingerprintHi: hi,
+    fingerprint: fingerprintBytes(lo, hi)
   }
 }
 
@@ -2729,9 +2747,13 @@ function decodeFrameBody(layout: Layout, r: Reader, mode: Mode): unknown {
   if (envelope !== mode.envelope) invalid(mode.expectedEnvelope, envelope, r.options)
   if (mode.positional) {
     if (r.remaining < 8) invalid("complete value", undefined, r.options)
-    if (r.u32le() !== mode.fingerprintLo || r.u32le() !== mode.fingerprintHi) {
-      invalid("matching layout fingerprint", undefined, r.options)
+    const buf = r.buf
+    const expected = mode.fingerprint
+    const pos = r.pos
+    for (let i = 0; i < 8; i++) {
+      if (buf[pos + i] !== expected[i]) invalid("matching layout fingerprint", undefined, r.options)
     }
+    r.pos = pos + 8
   }
   const value = decodeChecked(layout, r)
   if (value === ABSENT) throw issueError(new SchemaIssue.MissingKey(undefined))
