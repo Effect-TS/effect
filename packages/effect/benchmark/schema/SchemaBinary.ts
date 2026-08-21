@@ -1,5 +1,5 @@
-import { Schema } from "effect"
-import { Msgpack, SchemaBinary } from "effect/unstable/encoding"
+import { Effect, Schema, Stream } from "effect"
+import { Msgpack, Ndjson, SchemaBinary } from "effect/unstable/encoding"
 import { Packr, Unpackr } from "msgpackr"
 import assert from "node:assert/strict"
 import { gzipSync, zstdCompressSync } from "node:zlib"
@@ -158,7 +158,7 @@ interface Format {
 interface StreamFormat {
   readonly name: string
   readonly framesPerOp: number
-  readonly decode: () => ReadonlyArray<unknown>
+  readonly decode: () => ReadonlyArray<unknown> | Promise<ReadonlyArray<unknown>>
 }
 
 interface StreamSize {
@@ -258,10 +258,10 @@ const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
 
 const prepared = cases.map((testCase) => ({ name: testCase.name, ...prepare(testCase.schema, testCase.value) }))
 
-const prepareStream = <S extends Schema.ConstraintCodec<unknown, unknown>>(
+const prepareStream = async <S extends Schema.ConstraintCodec<unknown, unknown>>(
   schema: S,
   values: ReadonlyArray<S["Type"]>
-): { readonly formats: ReadonlyArray<StreamFormat>; readonly sizes: ReadonlyArray<StreamSize> } => {
+): Promise<{ readonly formats: ReadonlyArray<StreamFormat>; readonly sizes: ReadonlyArray<StreamSize> }> => {
   const binaryCodec = SchemaBinary.toCodec(schema)
   const binaryEncode = Schema.encodeUnknownSync(binaryCodec)
   const binaryFrames = values.map((value) => binaryEncode(value).slice())
@@ -283,6 +283,26 @@ const prepareStream = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   const msgpackPackr = new Packr()
   const msgpackStream = concatFrames(values.map((value) => msgpackPackr.pack(encodeMsgpackValue(value)).slice()))
   const msgpackUnpackr = new Unpackr()
+
+  const ndjsonFrames = values.map((value) => textEncoder.encode(`${JSON.stringify(encodeMsgpackValue(value))}\n`))
+  const ndjsonStream = concatFrames(ndjsonFrames)
+  const ndjsonFragments = ndjsonFrames.map((frame) => {
+    return [frame.subarray(0, 1), frame.subarray(1)] as const
+  })
+  const ndjsonDecoder = Ndjson.decodeSchema(jsonSchema)()
+  const runNdjson = (chunks: ReadonlyArray<Uint8Array>) =>
+    Effect.runPromise(
+      Stream.fromIterable(chunks).pipe(
+        Stream.pipeThroughChannel(ndjsonDecoder),
+        Stream.runCollect,
+        Effect.map((chunk) => Array.from(chunk))
+      )
+    )
+  let ndjsonSingleIndex = 0
+  let ndjsonFragmentedIndex = 0
+  const decodeNdjsonSingle = () => runNdjson([ndjsonFrames[ndjsonSingleIndex++ % ndjsonFrames.length]!])
+  const decodeNdjsonBatch = () => runNdjson([ndjsonStream])
+  const decodeNdjsonFragmented = () => runNdjson(ndjsonFragments[ndjsonFragmentedIndex++ % ndjsonFragments.length]!)
 
   const feedShapes = (options?: { readonly fingerprint: true }) => {
     const frames = options === undefined ? binaryFrames : fingerprintFrames
@@ -320,6 +340,9 @@ const prepareStream = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   assert.deepStrictEqual(fingerprintFeeds.fragmented(), [values[0]])
   assert.deepStrictEqual(fingerprintFeeds.batch(), values)
   assert.deepStrictEqual(decodeMsgpackStream(), values)
+  assert.deepStrictEqual(await decodeNdjsonSingle(), [values[0]])
+  assert.deepStrictEqual(await decodeNdjsonFragmented(), [values[0]])
+  assert.deepStrictEqual(await decodeNdjsonBatch(), values)
 
   return {
     formats: [
@@ -329,23 +352,27 @@ const prepareStream = <S extends Schema.ConstraintCodec<unknown, unknown>>(
       { name: "SchemaBinary fingerprint / single frame", framesPerOp: 1, decode: fingerprintFeeds.single },
       { name: "SchemaBinary fingerprint / batch", framesPerOp: values.length, decode: fingerprintFeeds.batch },
       { name: "SchemaBinary fingerprint / fragmented", framesPerOp: 1, decode: fingerprintFeeds.fragmented },
-      { name: "Msgpack unpackMultiple / batch", framesPerOp: values.length, decode: decodeMsgpackStream }
+      { name: "Msgpack unpackMultiple / batch", framesPerOp: values.length, decode: decodeMsgpackStream },
+      { name: "NDJSON Channel / single frame", framesPerOp: 1, decode: decodeNdjsonSingle },
+      { name: "NDJSON Channel / batch", framesPerOp: values.length, decode: decodeNdjsonBatch },
+      { name: "NDJSON Channel / fragmented", framesPerOp: 1, decode: decodeNdjsonFragmented }
     ],
     sizes: [
       { name: "SchemaBinary", frames: values.length, ...sizes(binaryStream) },
       { name: "SchemaBinary fingerprint", frames: values.length, ...sizes(fingerprintStream) },
-      { name: "Msgpack", frames: values.length, ...sizes(msgpackStream) }
+      { name: "Msgpack", frames: values.length, ...sizes(msgpackStream) },
+      { name: "NDJSON", frames: values.length, ...sizes(ndjsonStream) }
     ]
   }
 }
 
-const preparedStreams = [
+const preparedStreams = await Promise.all([
   ...cases.map((testCase) => ({
     name: testCase.name,
-    ...prepareStream(testCase.schema, Array.from({ length: streamBatchSize }, () => testCase.value))
+    prepared: prepareStream(testCase.schema, Array.from({ length: streamBatchSize }, () => testCase.value))
   })),
-  { name: "per-frame repeated records", ...prepareStream(LargeRow, largeRows) }
-]
+  { name: "per-frame repeated records", prepared: prepareStream(LargeRow, largeRows) }
+].map(async ({ name, prepared }) => ({ name, ...await prepared })))
 
 console.log(`Node ${process.version}; codec and schema construction excluded from timings.`)
 console.log("JSON and Msgpack use the same Schema.toCodecJson representation; JSON sizes are UTF-8 bytes.")
@@ -364,7 +391,7 @@ console.table(prepared.flatMap((testCase) =>
 ))
 
 console.log(
-  "Streaming decode reuses one parser per feed shape. Fragmented frames split after the first byte."
+  "SchemaBinary streaming reuses one parser per feed shape; NDJSON runs its Channel per operation. Fragmented frames split after the first byte."
 )
 console.table(preparedStreams.flatMap((testCase) =>
   testCase.sizes.map((format) => ({
@@ -458,7 +485,13 @@ for (const testCase of preparedStreams) {
       framesPerOp: format.framesPerOp
     })
     streamBench.add(name, () => {
-      sink = format.decode()
+      const decoded = format.decode()
+      if (decoded instanceof Promise) {
+        return decoded.then((value) => {
+          sink = value
+        })
+      }
+      sink = decoded
     })
   }
 }
