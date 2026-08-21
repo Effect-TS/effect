@@ -72,6 +72,25 @@ describe("PgProtocol", () => {
       assert.strictEqual(hex(encoded), frontend.bind)
     })
 
+    it("encodes strings past the ASCII fast path", () => {
+      const encoder = new TextEncoder()
+      for (
+        const query of [
+          "SELECT $1",
+          `SELECT ${"c".repeat(200)} FROM t WHERE id = $1`,
+          "SELECT 'héllo ☃' , '👋🏽' FROM t WHERE id = $1",
+          "é",
+          ""
+        ]
+      ) {
+        const encoded = PgProtocol.encodeParse({ name: "s1", query, parameterTypes: [23] })
+        const body = encoder.encode(query)
+        assert.deepStrictEqual(encoded.subarray(8, 8 + body.length), body)
+        assert.strictEqual(encoded[8 + body.length], 0)
+        assert.strictEqual(encoded.length, 8 + body.length + 1 + 2 + 4)
+      }
+    })
+
     it("encodes Bind through a value sink", () => {
       const encodeBind = PgProtocol.makeBindEncoder<Uint8Array | null>((sink, value) => {
         if (value === null) sink.sqlNull()

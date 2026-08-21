@@ -263,6 +263,18 @@ describe("PgTypes", () => {
       assert.deepStrictEqual(PgTypes.encodeParameter(PgTypes.int4(1)), bytes("00000001"))
     })
 
+    it("encodes strings past the ASCII fast path", () => {
+      const encoder = new TextEncoder()
+      // longer than the scratch buffer the encoder writes through
+      for (const value of ["abc", "é", "x".repeat(200), "héllo ☃ 👋🏽", "y".repeat(70_000)]) {
+        assert.deepStrictEqual(PgTypes.encode(value, PgTypes.OID.text), encoder.encode(value))
+        assert.strictEqual(PgTypes.decode(PgTypes.encode(value, PgTypes.OID.text), PgTypes.OID.text, 1), value)
+        const jsonb = PgTypes.encode(value, PgTypes.OID.jsonb)
+        assert.strictEqual(jsonb[0], 1)
+        assert.deepStrictEqual(jsonb.subarray(1), encoder.encode(JSON.stringify(value)))
+      }
+    })
+
     it("writes every builtin parameter as the bytes encode produces", () => {
       const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
       const parameters = [

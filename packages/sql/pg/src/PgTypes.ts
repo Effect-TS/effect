@@ -68,21 +68,45 @@ const scratchView8 = new DataView(scratch8)
 const scratchBytes8 = new Uint8Array(scratch8)
 
 /**
- * Above this length `TextEncoder` beats a per-character loop, below it the
- * call overhead dominates. Measured on V8; the crossover is around 100 chars.
+ * Above this length `TextEncoder.encodeInto` beats a per-character loop, below
+ * it the call overhead dominates. Measured on V8: the loop runs at about a
+ * nanosecond per character and `encodeInto` costs about 50 ns whatever the
+ * length, so the crossover is around 50 characters.
  */
-const asciiEncodeLimit = 96
+const asciiEncodeLimit = 48
+
+/**
+ * `encodeInto` needs somewhere to write. Encoding through this and copying out
+ * still beats `TextEncoder.encode`, which allocates inside the call. Strings
+ * that would need a larger one are rare enough to encode the slow way rather
+ * than keep that much memory alive.
+ */
+let scratchUtf8 = new Uint8Array(4096)
+
+const scratchUtf8Limit = 64 * 1024
+
+/** Encodes into `scratchUtf8`, returning how many bytes it holds, or -1. */
+const encodeUtf8Scratch = (text: string): number => {
+  const capacity = text.length * 3
+  if (capacity > scratchUtf8Limit) return -1
+  if (capacity > scratchUtf8.length) scratchUtf8 = new Uint8Array(capacity)
+  return textEncoder.encodeInto(text, scratchUtf8).written
+}
 
 const encodeUtf8 = (text: string): Uint8Array => {
   const length = text.length
-  if (length > asciiEncodeLimit) return textEncoder.encode(text)
-  const bytes = new Uint8Array(length)
-  for (let i = 0; i < length; i++) {
-    const code = text.charCodeAt(i)
-    if (code > 0x7f) return textEncoder.encode(text)
-    bytes[i] = code
+  if (length <= asciiEncodeLimit) {
+    const bytes = new Uint8Array(length)
+    let i = 0
+    for (; i < length; i++) {
+      const code = text.charCodeAt(i)
+      if (code > 0x7f) break
+      bytes[i] = code
+    }
+    if (i === length) return bytes
   }
-  return bytes
+  const written = encodeUtf8Scratch(text)
+  return written === -1 ? textEncoder.encode(text) : scratchUtf8.slice(0, written)
 }
 
 /** As `encodeUtf8`, but leaves `prefix` bytes free at the front. */
@@ -90,20 +114,23 @@ const encodeUtf8Prefixed = (text: string, prefix: number): Uint8Array => {
   const length = text.length
   if (length <= asciiEncodeLimit) {
     const bytes = new Uint8Array(prefix + length)
-    let ascii = true
-    for (let i = 0; i < length; i++) {
+    let i = 0
+    for (; i < length; i++) {
       const code = text.charCodeAt(i)
-      if (code > 0x7f) {
-        ascii = false
-        break
-      }
+      if (code > 0x7f) break
       bytes[prefix + i] = code
     }
-    if (ascii) return bytes
+    if (i === length) return bytes
   }
-  const body = textEncoder.encode(text)
-  const bytes = new Uint8Array(prefix + body.length)
-  bytes.set(body, prefix)
+  const written = encodeUtf8Scratch(text)
+  if (written === -1) {
+    const body = textEncoder.encode(text)
+    const bytes = new Uint8Array(prefix + body.length)
+    bytes.set(body, prefix)
+    return bytes
+  }
+  const bytes = new Uint8Array(prefix + written)
+  bytes.set(scratchUtf8.subarray(0, written), prefix)
   return bytes
 }
 
