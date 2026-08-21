@@ -6,11 +6,14 @@
  */
 import type { DurableObjectStorage } from "@cloudflare/workers-types"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as ClusterMetrics from "effect/unstable/cluster/ClusterMetrics"
 import * as EntityAddress from "effect/unstable/cluster/EntityAddress"
 import * as EntityId from "effect/unstable/cluster/EntityId"
 import * as EntityType from "effect/unstable/cluster/EntityType"
 import * as ShardId from "effect/unstable/cluster/ShardId"
+import * as WorkflowEngine from "effect/unstable/workflow/WorkflowEngine"
+import { makeWithRegistry } from "./CloudflareWorkflowEngine.ts"
 import { decodeName, encodeName } from "./internal/clusterName.ts"
 import { makeEntityKeepAlive } from "./internal/entityKeepAlive.ts"
 import { makeEntityManager } from "./internal/entityRuntime.ts"
@@ -20,7 +23,7 @@ import { earliestLeaseExpiry } from "./internal/queueStorage.ts"
 import { getSingletonRegistration } from "./internal/singletonRegistry.ts"
 import { makeSingletonRuntime } from "./internal/singletonRuntime.ts"
 import { ensureSingletonStorage, loadSingletonState, rememberSingletonName } from "./internal/singletonStorage.ts"
-import type { WorkflowStub } from "./internal/workflowRegistry.ts"
+import { makeWorkflowRegistry, type WorkflowStub } from "./internal/workflowRegistry.ts"
 import { makeWorkflowRuntime } from "./internal/workflowRuntime.ts"
 import { earliestClockWakeUp, ensureWorkflowStorage, loadExecution } from "./internal/workflowStorage.ts"
 
@@ -187,6 +190,23 @@ export interface ClusterWorkflowProgram {
 }
 
 /**
+ * Configuration for a workflow Durable Object program.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ClusterWorkflowProgramOptions<E = never, R = never> {
+  /** Workflow handlers built once for each Durable Object activation. */
+  readonly workflows: Layer.Layer<never, E, WorkflowEngine.WorkflowEngine | R>
+  /**
+   * Exported Durable Object class used for child and parent workflow delivery.
+   *
+   * @default "ClusterWorkflow"
+   */
+  readonly workflowClassName?: string | undefined
+}
+
+/**
  * Creates an Effect that initializes and returns the handlers for a workflow
  * execution Durable Object.
  *
@@ -194,17 +214,37 @@ export interface ClusterWorkflowProgram {
  *
  * Use when a framework creates the native Durable Object class and needs the
  * Effect Workflow journal, alarm, and RPC behavior without extending the
- * bundled `ClusterWorkflow` class.
+ * generated workflow Durable Object class.
  *
  * **Details**
  *
- * Run the returned Effect during Durable Object initialization. It restores
- * persisted alarms before returning the handler object.
+ * Run the returned Effect during Durable Object initialization. It installs
+ * the supplied workflow handlers in an activation-local registry, validates a
+ * persisted execution against that registry, and restores persisted alarms
+ * before returning the handler object.
  *
  * @category constructors
  * @since 4.0.0
  */
-export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: DurableObjectProgramState) {
+export const makeClusterWorkflowProgram = Effect.fnUntraced(function*<E, R>(
+  state: DurableObjectProgramState,
+  options: ClusterWorkflowProgramOptions<E, R>
+) {
+  const workflowClassName = options.workflowClassName ?? "ClusterWorkflow"
+  const namespace = exportedNamespace<WorkflowStub>(state, workflowClassName)
+  if (namespace === undefined) {
+    return yield* Effect.die(
+      `CloudflareCluster: ${workflowClassName} export is unavailable for workflow delivery`
+    )
+  }
+  const getWorkflowStub = (name: string) => namespace.getByName(name)
+  const registry = makeWorkflowRegistry()
+  const engine = yield* makeWithRegistry({ getByName: getWorkflowStub }, registry)
+  const scope = yield* Effect.scope
+  yield* options.workflows.pipe(
+    Layer.provide(Layer.succeed(WorkflowEngine.WorkflowEngine)(engine)),
+    Layer.buildWithScope(scope)
+  )
   ensureWorkflowStorage(state.storage.sql)
   let name: string | undefined
   if (state.id.name !== undefined) {
@@ -215,6 +255,12 @@ export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: Dur
   } else {
     const stored = loadExecution(state.storage.sql)
     name = stored === undefined ? undefined : encodeName(stored.workflowName, stored.executionId)
+  }
+  const workflowName = name === undefined ? undefined : decodeName(name)?.type
+  if (workflowName !== undefined && registry.get(workflowName) === undefined) {
+    return yield* Effect.die(
+      `ClusterWorkflow: workflow '${workflowName}' is not configured for this Durable Object class`
+    )
   }
   let runtime: ReturnType<typeof makeWorkflowRuntime> | undefined
   const getRuntime = () => {
@@ -228,13 +274,8 @@ export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: Dur
       alarm: state.storage,
       now: () => Date.now(),
       waitUntil: (promise) => state.waitUntil(promise),
-      getStub: (objectName) => {
-        const namespace = exportedNamespace<WorkflowStub>(state, "ClusterWorkflow")
-        if (namespace === undefined) {
-          throw new Error("CloudflareCluster: ClusterWorkflow export is unavailable for workflow delivery")
-        }
-        return namespace.getByName(objectName)
-      }
+      getStub: getWorkflowStub,
+      getRegistration: registry.get
     })
     return runtime
   }

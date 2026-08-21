@@ -28,9 +28,9 @@ import { encodeName } from "./internal/clusterName.ts"
 import {
   CurrentExecutionHandle,
   deferredState,
-  registerWorkflow,
-  unregisterWorkflow,
+  makeWorkflowRegistry,
   type WorkflowRegistration,
+  type WorkflowRegistry,
   type WorkflowStub
 } from "./internal/workflowRegistry.ts"
 import { decodeExit, decodeResult, encodeExit, encodePayload } from "./internal/workflowWire.ts"
@@ -72,21 +72,11 @@ export type LayerOptions = Types.Simplify<{
 const call = <A>(result: WorkflowCall<A>): Effect.Effect<A> =>
   Effect.isEffect(result) ? Effect.orDie(result) : Effect.promise(() => result)
 
-/**
- * Creates the `WorkflowEngine` service backed by the workflow Durable Object
- * namespace binding.
- *
- * **Details**
- *
- * Inside a workflow Durable Object the engine operates on the local execution
- * handle, so activities and deferred reads never leave the object. Everywhere
- * else it resolves the target execution's object with `getByName` and drives
- * it over the same-Worker binding.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const make = Effect.fnUntraced(function*(options: LayerOptions) {
+/** @internal */
+export const makeWithRegistry = Effect.fnUntraced(function*(
+  options: { readonly getByName: (name: string) => WorkflowClient },
+  registry: WorkflowRegistry
+) {
   const clock = yield* Clock
 
   // Inside a run the execution's own handle avoids a self-RPC; every other
@@ -96,7 +86,7 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
     if (Option.isSome(handle) && handle.value.executionId === executionId) {
       return handle.value as WorkflowStub
     }
-    return options.workflowNamespace.getByName(encodeName(workflowName, executionId)) as unknown as WorkflowClient
+    return options.getByName(encodeName(workflowName, executionId))
   })
 
   const localHandle = Effect.fnUntraced(function*(operation: string) {
@@ -114,10 +104,12 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
     register: Effect.fnUntraced(function*(workflow, execute) {
       const context = yield* Effect.context<never>()
       const registration: WorkflowRegistration = { workflow, execute, context }
-      if (!registerWorkflow(workflow._tag, registration)) return
+      if (!registry.register(workflow._tag, registration)) {
+        return yield* Effect.die(`Workflow '${workflow._tag}' is already registered`)
+      }
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
-          unregisterWorkflow(workflow._tag, registration)
+          registry.unregister(workflow._tag, registration)
         })
       )
     }),
@@ -191,6 +183,29 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
       yield* call(stub.scheduleClock(opts.clock.name, opts.clock.deferred.name, wakeUp))
     })
   })
+})
+
+/**
+ * Creates the `WorkflowEngine` service backed by the workflow Durable Object
+ * namespace binding.
+ *
+ * **Details**
+ *
+ * Inside a workflow Durable Object the engine operates on the local execution
+ * handle, so activities and deferred reads never leave the object. Everywhere
+ * else it resolves the target execution's object with `getByName` and drives
+ * it over the same-Worker binding.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make = Effect.fnUntraced(function*(options: LayerOptions) {
+  return yield* makeWithRegistry(
+    {
+      getByName: (name) => options.workflowNamespace.getByName(name) as unknown as WorkflowClient
+    },
+    makeWorkflowRegistry()
+  )
 })
 
 /**

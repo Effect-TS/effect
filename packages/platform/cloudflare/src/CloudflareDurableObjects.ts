@@ -11,11 +11,13 @@
  */
 import { DurableObject } from "cloudflare:workers"
 import * as Effect from "effect/Effect"
+import * as Scope from "effect/Scope"
 import {
   type ClusterDurableQueueProgram,
   type ClusterEntityProgram,
   type ClusterSingletonProgram,
   type ClusterWorkflowProgram,
+  type ClusterWorkflowProgramOptions,
   type ClusterWorkflowRunOptions,
   type DurableQueueItem,
   type EntityDeliveryOptions,
@@ -91,31 +93,73 @@ export class ClusterEntity extends DurableObject<unknown> {
 }
 
 /**
- * The workflow execution class behind `CloudflareWorkflowEngine`. One
- * instance holds one workflow execution: run state, activity results keyed
- * `${name}/${attempt}`, durable deferred exits, and the clock due table.
+ * Constructor for a configured `ClusterWorkflow` Durable Object class.
  *
- * **Details**
+ * @category models
+ * @since 4.0.0
+ */
+export interface ClusterWorkflowDurableObjectClass {
+  new(ctx: DurableObjectState, env: unknown): ClusterWorkflow
+}
+
+/**
+ * Durable Object class for workflow executions that installs configured
+ * handlers on every activation.
  *
- * The constructor stays cheap: it opens SQLite, ensures the workflow tables,
- * and re-arms the single alarm from the earliest pending clock. Workflow
- * handlers are looked up in the module-level registry and built once per
- * wake.
+ * **When to use**
+ *
+ * Use when exporting a native workflow Durable Object class from a Cloudflare
+ * Worker by extending the class returned by `ClusterWorkflow.make`.
+ *
+ * **Gotchas**
+ *
+ * Its protected constructor means it must be configured through `make` rather
+ * than bound directly. Provide all handler dependencies to `workflows` before
+ * calling `make`.
  *
  * @category durable objects
  * @since 4.0.0
  */
 export class ClusterWorkflow extends DurableObject<unknown> {
   readonly #program: Promise<ClusterWorkflowProgram>
+  readonly #workflowClassName: string
 
-  constructor(ctx: DurableObjectState, env: unknown) {
+  protected constructor(
+    ctx: DurableObjectState,
+    env: unknown,
+    options: ClusterWorkflowProgramOptions<unknown>
+  ) {
     super(ctx, env)
-    this.#program = ctx.blockConcurrencyWhile(() => Effect.runPromise(makeClusterWorkflowProgram(ctx)))
+    this.#workflowClassName = options.workflowClassName ?? "ClusterWorkflow"
+    const scope = Scope.makeUnsafe()
+    this.#program = ctx.blockConcurrencyWhile(() =>
+      Effect.runPromise(
+        makeClusterWorkflowProgram(ctx, options).pipe(Effect.provideService(Scope.Scope, scope))
+      )
+    )
+  }
+
+  /**
+   * Creates a configured workflow Durable Object class.
+   *
+   * **Gotchas**
+   *
+   * `workflowClassName` must match the name used to export and bind the
+   * returned class.
+   *
+   * @since 4.0.0
+   */
+  static make<E>(options: ClusterWorkflowProgramOptions<E>): ClusterWorkflowDurableObjectClass {
+    return class extends ClusterWorkflow {
+      constructor(ctx: DurableObjectState, env: unknown) {
+        super(ctx, env, options)
+      }
+    }
   }
 
   /** @internal Same-Worker RPC transport used by `CloudflareWorkflowEngine`. */
-  run(payload: string, options: ClusterWorkflowRunOptions): Promise<string> {
-    return this.#program.then((program) => Effect.runPromise(program.run(payload, options)))
+  run(payload: string, runOptions: ClusterWorkflowRunOptions): Promise<string> {
+    return this.#program.then((program) => Effect.runPromise(program.run(payload, runOptions)))
   }
 
   /** @internal */
@@ -152,7 +196,11 @@ export class ClusterWorkflow extends DurableObject<unknown> {
     return this.#program.then((program) => Effect.runPromise(program.alarm()))
   }
 
-  override fetch: () => never = notExposed("ClusterWorkflow")
+  override fetch(): never {
+    throw new Error(
+      `@effect/platform-cloudflare: ${this.#workflowClassName} is not exposed over fetch, use the same-Worker namespace binding`
+    )
+  }
 }
 
 /**

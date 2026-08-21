@@ -10,7 +10,9 @@ npm install effect@rc @effect/platform-cloudflare@rc
 
 ## Usage
 
-The package ships four Durable Object classes. Re-export them from your Worker entry module and bind each one as a SQLite-backed class:
+The package ships three fixed Durable Object classes and a configurable
+workflow Durable Object class. Export them from your Worker entry module and
+bind each one as a SQLite-backed class:
 
 ```jsonc
 // wrangler.jsonc
@@ -45,17 +47,29 @@ The package ships four Durable Object classes. Re-export them from your Worker e
 
 ```ts
 // src/worker.ts
-import { CloudflareCluster } from "@effect/platform-cloudflare"
+import { CloudflareCluster, CloudflareDurableObjects } from "@effect/platform-cloudflare"
 import { Effect, Layer, Schema } from "effect"
 import { Entity, Singleton } from "effect/unstable/cluster"
 import { Rpc } from "effect/unstable/rpc"
+import { Workflow } from "effect/unstable/workflow"
 
 export {
   ClusterDurableQueue,
   ClusterEntity,
-  ClusterSingleton,
-  ClusterWorkflow
+  ClusterSingleton
 } from "@effect/platform-cloudflare/CloudflareDurableObjects"
+
+const Greeting = Workflow.make("Greeting", {
+  payload: { name: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ name }) => name
+})
+
+const WorkflowLayer = Greeting.toLayer(({ name }) => Effect.succeed(`Hello, ${name}!`))
+
+export class ClusterWorkflow extends CloudflareDurableObjects.ClusterWorkflow.make({
+  workflows: WorkflowLayer
+}) {}
 
 // The same Entity + RpcGroup definitions as on every other cluster path
 const Counter = Entity.make("Counter", [

@@ -1,9 +1,6 @@
 /**
- * Module-level workflow state shared between the Worker layer and the workflow
- * Durable Object instances of the same isolate. Registrations are recorded at
- * Worker init; a running execution provides its own handle through
- * `CurrentExecutionHandle` so engine operations inside the run hit local
- * SQLite instead of a self-RPC.
+ * Workflow registration state. Each engine or Durable Object activation owns
+ * its registry so independently scoped handlers cannot interfere.
  *
  * @internal
  */
@@ -11,7 +8,7 @@ import * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Workflow from "effect/unstable/workflow/Workflow"
 import * as WorkflowEngine from "effect/unstable/workflow/WorkflowEngine"
-import { makeRegistry } from "./registry.ts"
+import { makeRegistry, type Registry } from "./registry.ts"
 
 /** @internal */
 export interface WorkflowRegistration {
@@ -23,16 +20,11 @@ export interface WorkflowRegistration {
   readonly context: Context.Context<never>
 }
 
-const registry = makeRegistry<WorkflowRegistration>()
+/** @internal */
+export type WorkflowRegistry = Registry<WorkflowRegistration>
 
 /** @internal */
-export const getWorkflowRegistration: (name: string) => WorkflowRegistration | undefined = registry.get
-
-/** @internal */
-export const registerWorkflow: (name: string, registration: WorkflowRegistration) => boolean = registry.register
-
-/** @internal */
-export const unregisterWorkflow: (name: string, registration: WorkflowRegistration) => void = registry.unregister
+export const makeWorkflowRegistry = (): WorkflowRegistry => makeRegistry()
 
 /** @internal */
 export interface WorkflowRunOptions {

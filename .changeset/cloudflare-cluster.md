@@ -13,4 +13,7 @@ service, the `WorkflowEngine`, and the `PersistedQueueFactory` from the
 same-Worker namespace bindings. The `Entity`, `Workflow`, `Activity`,
 `DurableClock`, `DurableQueue`, `Singleton`, and `ClusterCron` user APIs are
 unchanged on this path; every `DurableClock` is durable through the object's
-alarm.
+alarm. Workflow Durable Objects receive their `Workflow.toLayer` handlers when
+the program is configured or the class is created through
+`ClusterWorkflow.make`, so every activation can replay from SQLite without
+depending on isolate-global registration state.
