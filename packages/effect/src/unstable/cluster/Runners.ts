@@ -25,6 +25,7 @@ import * as RpcClient_ from "../rpc/RpcClient.ts"
 import type { RpcClientError } from "../rpc/RpcClientError.ts"
 import * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcSchema from "../rpc/RpcSchema.ts"
+import type * as RpcSerialization from "../rpc/RpcSerialization.ts"
 import type { MalformedMessage, PersistenceError } from "./ClusterError.ts"
 import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, RunnerUnavailable } from "./ClusterError.ts"
 import { Persisted } from "./ClusterSchema.ts"
@@ -147,7 +148,7 @@ export class Runners extends Context.Service<Runners, {
  *
  * `make` uses the supplied remote callbacks for runner communication and
  * derives `sendLocal` and `notifyLocal`. Local sends can optionally simulate
- * remote serialization, persisted notifications are saved through
+ * remote serialization with the supplied transport codec, persisted notifications are saved through
  * `MessageStorage`, duplicate requests are resumed from stored replies when
  * possible, and pending replies are polled according to
  * `ShardingConfig.entityReplyPollInterval`.
@@ -158,15 +159,20 @@ export class Runners extends Context.Service<Runners, {
  * @category constructors
  * @since 4.0.0
  */
-export const make: (options: Omit<Runners["Service"], "sendLocal" | "notifyLocal">) => Effect.Effect<
+export const make: (
+  options: Omit<Runners["Service"], "sendLocal" | "notifyLocal"> & {
+    readonly codecFor: RpcSerialization.CodecFor
+  }
+) => Effect.Effect<
   Runners["Service"],
   never,
   MessageStorage.MessageStorage | Snowflake.Generator | ShardingConfig | Scope
-> = Effect.fnUntraced(function*(options: Omit<Runners["Service"], "sendLocal" | "notifyLocal">) {
+> = Effect.fnUntraced(function*(options) {
   const storage = yield* MessageStorage.MessageStorage
   const runnersScope = yield* Effect.scope
   const snowflakeGen = yield* Snowflake.Generator
   const config = yield* ShardingConfig
+  const { codecFor, ...serviceOptions } = options
 
   const requestIdRewrites = new Map<Snowflake.Snowflake, Snowflake.Snowflake>()
 
@@ -357,14 +363,14 @@ export const make: (options: Omit<Runners["Service"], "sendLocal" | "notifyLocal
   }
 
   return Runners.of({
-    ...options,
+    ...serviceOptions,
     sendLocal(options) {
       const message = options.message
       if (!options.simulateRemoteSerialization) {
         return options.send(Message.incomingLocalFromOutgoing(message))
       }
-      return Message.serialize(message).pipe(
-        Effect.flatMap((encoded) => Message.deserializeLocal(message, encoded)),
+      return Message.serialize(message, codecFor).pipe(
+        Effect.flatMap((encoded) => Message.deserializeLocal(message, encoded, codecFor)),
         Effect.flatMap(options.send),
         Effect.catchTag("MalformedMessage", (error) => {
           if (message._tag === "OutgoingEnvelope") {
@@ -435,6 +441,7 @@ export const makeNoop: Effect.Effect<
   never,
   MessageStorage.MessageStorage | Snowflake.Generator | ShardingConfig | Scope
 > = make({
+  codecFor: Schema.toCodecJson as RpcSerialization.CodecFor,
   send: ({ message }) => Effect.fail(new EntityNotAssignedToRunner({ address: message.envelope.address })),
   notify: () => Effect.void,
   ping: () => Effect.void,
@@ -541,13 +548,13 @@ export const makeRpc: Effect.Effect<
   never,
   Scope | RpcClientProtocol | MessageStorage.MessageStorage | Snowflake.Generator | ShardingConfig
 > = Effect.gen(function*() {
-  const makeClientProtocol = yield* RpcClientProtocol
+  const clientProtocol = yield* RpcClientProtocol
   const snowflakeGen = yield* Snowflake.Generator
 
   const clients = yield* RcMap.make({
     lookup: (address: RunnerAddress) =>
       Effect.flatMap(
-        makeClientProtocol(address),
+        clientProtocol.make(address),
         (protocol) =>
           Effect.map(
             Effect.provideService(makeRpcClient, RpcClient_.Protocol, protocol),
@@ -558,6 +565,7 @@ export const makeRpc: Effect.Effect<
   })
 
   return yield* make({
+    codecFor: clientProtocol.codecFor,
     ping(address) {
       return RcMap.get(clients, address).pipe(
         Effect.flatMap(({ client }) => client.Ping()),
@@ -702,13 +710,16 @@ export const layerRpc: Layer.Layer<
 )
 
 /**
- * Service that creates an RPC client protocol for communicating with a runner at a
- * given address.
+ * Service that creates RPC client protocols for runner addresses and exposes
+ * the codec shared by those protocols.
  *
  * @category services
  * @since 4.0.0
  */
 export class RpcClientProtocol extends Context.Service<
   RpcClientProtocol,
-  (address: RunnerAddress) => Effect.Effect<RpcClient_.Protocol["Service"], never, Scope>
+  {
+    readonly make: (address: RunnerAddress) => Effect.Effect<RpcClient_.Protocol["Service"], never, Scope>
+    readonly codecFor: RpcSerialization.CodecFor
+  }
 >()("effect/cluster/Runners/RpcClientProtocol") {}

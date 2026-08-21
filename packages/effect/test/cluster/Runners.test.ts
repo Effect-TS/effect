@@ -218,23 +218,25 @@ describe.concurrent("Runners.makeRpc", () => {
     ) => Effect.Effect<void, RpcClientError>,
     codecFor: RpcSerialization.CodecFor = Schema.toCodecJson as RpcSerialization.CodecFor
   ) =>
-    Layer.succeed(Runners.RpcClientProtocol)(() =>
-      Effect.sync(() => {
-        let write!: (data: FromServerEncoded) => Effect.Effect<void>
-        return RpcClient.Protocol.of({
-          run(_clientId, f) {
-            write = f
-            return Effect.never
-          },
-          send(_clientId, request) {
-            return onRequest(request, write)
-          },
-          supportsAck: true,
-          supportsTransferables: false,
-          codecFor
+    Layer.succeed(Runners.RpcClientProtocol)({
+      codecFor,
+      make: () =>
+        Effect.sync(() => {
+          let write!: (data: FromServerEncoded) => Effect.Effect<void>
+          return RpcClient.Protocol.of({
+            run(_clientId, f) {
+              write = f
+              return Effect.never
+            },
+            send(_clientId, request) {
+              return onRequest(request, write)
+            },
+            supportsAck: true,
+            supportsTransferables: false,
+            codecFor
+          })
         })
-      })
-    )
+    })
 
   const layerRunners = (protocol: Layer.Layer<Runners.RpcClientProtocol>) =>
     Runners.layerRpc.pipe(
@@ -243,6 +245,43 @@ describe.concurrent("Runners.makeRpc", () => {
       Layer.provideMerge(MessageStorage.layerNoop),
       Layer.provide(TestShardingConfig)
     )
+
+  it.effect("uses the client protocol codec for simulated remote serialization", () => {
+    let codecCalls = 0
+    const codecFor = (<S extends Schema.Top>(schema: S) => {
+      codecCalls++
+      return Schema.fromJsonString(Schema.toCodecJson(schema as any))
+    }) as RpcSerialization.CodecFor
+    const codecForJson = Schema.toCodecJson as RpcSerialization.CodecFor
+    return Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const snowflake = yield* Snowflake.Generator
+      const message = makeOutgoingRequest(TestRpc, snowflake.nextUnsafe(), () => Effect.void)
+
+      yield* runners.sendLocal({
+        message,
+        simulateRemoteSerialization: true,
+        send: (incoming) =>
+          Effect.sync(() => {
+            assert.strictEqual(incoming._tag, "IncomingRequestLocal")
+            if (incoming._tag === "IncomingRequestLocal") {
+              assert.strictEqual((incoming.envelope.payload as { readonly id: number }).id, 1)
+            }
+          })
+      })
+
+      assert.strictEqual(codecCalls, 2)
+      assert.strictEqual(message.encodedCache?.codecFor, codecFor)
+      const encodedJson = yield* Message.serialize(message, codecForJson)
+      assert.strictEqual(encodedJson._tag, "Request")
+      if (encodedJson._tag === "Request") {
+        assert.deepStrictEqual(encodedJson.payload, { id: 1 })
+      }
+      assert.strictEqual(message.encodedCache?.codecFor, codecForJson)
+    }).pipe(
+      Effect.provide(layerRunners(layerFakeProtocol(() => Effect.void, codecFor)))
+    )
+  })
 
   const respondWithDefect = (request: FromClientEncoded, write: (data: FromServerEncoded) => Effect.Effect<void>) =>
     request._tag === "Request" ? write({ _tag: "Defect", defect: "boom" }) : Effect.void

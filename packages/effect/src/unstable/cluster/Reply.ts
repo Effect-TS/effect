@@ -163,8 +163,6 @@ export interface ChunkEncoded {
   readonly values: NonEmptyReadonlyArray<unknown>
 }
 
-const codecForJson = Schema.toCodecJson as RpcSerialization.CodecFor
-
 // Keyed by codec first: the storage path and the transport path can compile
 // different codecs for the same RPC.
 const schemaCaches = new WeakMap<RpcSerialization.CodecFor, WeakMap<Rpc.Any, Schema.Top>>()
@@ -405,7 +403,7 @@ export class WithExit<R extends Rpc.Any> extends Data.TaggedClass("WithExit")<{
  */
 export const Reply = <R extends Rpc.Any>(
   rpc: R,
-  codecFor: RpcSerialization.CodecFor = codecForJson
+  codecFor: RpcSerialization.CodecFor
 ): Schema.Codec<
   WithExit<R> | Chunk<R>,
   Encoded,
@@ -436,7 +434,7 @@ export const Reply = <R extends Rpc.Any>(
  */
 export const serialize = <R extends Rpc.Any>(
   self: ReplyWithContext<R>,
-  codecFor?: RpcSerialization.CodecFor
+  codecFor: RpcSerialization.CodecFor
 ): Effect.Effect<Encoded, MalformedMessage> => {
   const schema = Reply(self.rpc, codecFor)
   return MalformedMessage.refail(
@@ -456,7 +454,7 @@ export const serialize = <R extends Rpc.Any>(
  */
 export const serializeOrDefect = <R extends Rpc.Any>(
   self: ReplyWithContext<R>,
-  codecFor?: RpcSerialization.CodecFor
+  codecFor: RpcSerialization.CodecFor
 ): Effect.Effect<Encoded> =>
   Effect.catchTag(
     serialize(self, codecFor),
@@ -482,7 +480,7 @@ export const serializeOrDefect = <R extends Rpc.Any>(
  */
 export const serializeLastReceived = <R extends Rpc.Any>(
   self: OutgoingRequest<R>,
-  codecFor?: RpcSerialization.CodecFor
+  codecFor: RpcSerialization.CodecFor
 ): Effect.Effect<Option.Option<Encoded>, MalformedMessage> => {
   const lastReceivedReply = self.lastReceivedReply
   if (lastReceivedReply._tag === "None") {
