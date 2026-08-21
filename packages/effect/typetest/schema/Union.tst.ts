@@ -203,7 +203,7 @@ describe("Union", () => {
     })
 
     describe("matchOrElse", () => {
-      it("should type partial cases and narrow the fallback", () => {
+      it("should type partial cases with a shared output", () => {
         const schema = Schema.TaggedUnion({
           A: { a: Schema.String },
           B: { b: Schema.Number },
@@ -211,22 +211,23 @@ describe("Union", () => {
         })
         const value = hole<Schema.Schema.Type<typeof schema>>()
 
-        const result = schema.matchOrElse(value, {
+        const result = schema.matchOrElse<string>(value, {
           A: (value) => {
             expect(value).type.toBe<{ readonly _tag: "A"; readonly a: string }>()
-            return Effect.succeed(value.a)
+            return value.a
           }
         }, (value) => {
           expect(value).type.toBe<
+            | { readonly _tag: "A"; readonly a: string }
             | { readonly _tag: "B"; readonly b: number }
             | { readonly _tag: "C"; readonly c: boolean }
           >()
-          return Effect.fail(value._tag)
+          return value._tag
         })
 
-        expect(result).type.toBe<Effect.Effect<string, "B" | "C">>()
-        expect(schema.matchOrElse({ A: () => "A" as const }, (value) => value._tag)).type.toBeAssignableTo<
-          (value: Schema.Schema.Type<typeof schema>) => "A" | "B" | "C"
+        expect(result).type.toBe<string>()
+        expect(schema.matchOrElse<string>({ A: () => "A" }, (value) => value._tag)).type.toBe<
+          (value: Schema.Schema.Type<typeof schema>) => string
         >()
         expect(schema.matchOrElse).type.not.toBeCallableWith({ D: () => "D" }, () => "fallback")
       })
