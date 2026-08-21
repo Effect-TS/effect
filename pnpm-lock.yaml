@@ -615,6 +615,15 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../../effect
+      pg-protocol:
+        specifier: ^1.16.0
+        version: 1.16.0
+      postgres:
+        specifier: ^3.4.9
+        version: 3.4.9
+      tinybench:
+        specifier: ^6.1.3
+        version: 6.1.3
 
   packages/sql/pglite:
     dependencies:
@@ -5671,6 +5680,10 @@ packages:
 
   postgres-range@1.1.4:
     resolution: {integrity: sha512-i/hbxIE9803Alj/6ytL7UHQxRvZkI9O4Sy+J3HGc4F4oo/2eQAjTSNJ0bfxyse3bH0nuVesCk+3IRLaMtG3H6w==}
+
+  postgres@3.4.9:
+    resolution: {integrity: sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==}
+    engines: {node: '>=12'}
 
   powershell-utils@0.1.0:
     resolution: {integrity: sha512-dM0jVuXJPsDN6DvRpea484tCUaMiXWjuCn++HGTqUWzGDjv5tZkEZldAJ/UMlqRYGFrD/etByo4/xOuC/snX2A==}
@@ -11524,6 +11537,8 @@ snapshots:
   postgres-interval@3.0.0: {}
 
   postgres-range@1.1.4: {}
+
+  postgres@3.4.9: {}
 
   powershell-utils@0.1.0: {}
 
