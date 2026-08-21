@@ -292,6 +292,22 @@ describe("PgTypes", () => {
       )
     })
 
+    it("registers codecs outside the direct table", () => {
+      for (const oid of [-1, 4096, 99999]) {
+        PgTypes.register<string>(oid, {
+          encode: (value) => new TextEncoder().encode(value.toUpperCase()),
+          decode: (value) => new TextDecoder().decode(value).toLowerCase()
+        })
+        try {
+          assert.deepStrictEqual(PgTypes.encode("ab", oid), bytes("4142"))
+          assert.strictEqual(PgTypes.decode(bytes("4142"), oid, 1), "ab")
+        } finally {
+          PgTypes.unregister(oid)
+        }
+        assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("x", oid))
+      }
+    })
+
     it("writes a registered codec through encode when it has no writer", () => {
       const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
       const parameters = [{ oid: 99999, value: "ab" }]

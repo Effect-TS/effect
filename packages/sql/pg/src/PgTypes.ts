@@ -1009,7 +1009,7 @@ const tableSize = 4096
 const table = new Array<Codec<any> | undefined>(tableSize)
 for (const [oid, codec] of codecs) table[oid] = codec
 
-const lookup = (oid: number): Codec<any> | undefined => oid < tableSize ? table[oid] : codecs.get(oid)
+const lookup = (oid: number): Codec<any> | undefined => oid >= 0 && oid < tableSize ? table[oid] : codecs.get(oid)
 
 /**
  * Registers a binary codec for an OID the built-in catalogue does not cover,
