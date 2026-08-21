@@ -648,6 +648,75 @@ describe("SchemaBinary", () => {
       assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(unknownRef)).message, /back-reference/)
     })
 
+    it("keeps a skipped field's own run out of the reader's tables", () => {
+      const Writer = Schema.Struct({
+        keep: Schema.String,
+        gone: Schema.Array(Schema.Struct({ p: Schema.String, q: Schema.String }))
+      })
+      const Reader = Schema.Struct({ keep: Schema.String })
+      const values = Array.from({ length: 4 }, (_, index) => ({
+        keep: `k${index}`,
+        gone: [{ p: "z", q: "z" }, { p: "z", q: "z" }]
+      }))
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Array(Reader)))(encode(Schema.Array(Writer), values)),
+        values.map(({ keep }) => ({ keep }))
+      )
+    })
+
+    it("reads every index signature key the reader has no signature for", () => {
+      const Writer = Schema.Struct({ id: Schema.String, attrs: Schema.Record(Schema.String, Schema.String) })
+      const Reader = Schema.Struct({
+        id: Schema.String,
+        attrs: Schema.Record(
+          Schema.String.check(Schema.makeFilter((key: string) => key.startsWith("a"))),
+          Schema.String
+        )
+      })
+      const values = Array.from({ length: 4 }, (_, index) => ({
+        id: `r${index}`,
+        attrs: { alpha: "1", beta: "2", again: "3" }
+      }))
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Array(Reader)))(encode(Schema.Array(Writer), values)),
+        values.map(({ id }) => ({ id, attrs: { alpha: "1", again: "3" } }))
+      )
+    })
+
+    it("holds references past the point a slot switches to a map", () => {
+      const Many = Schema.Struct({ v: Schema.String })
+      const many = Array.from({ length: 40 }, (_, index) => ({ v: `v${index % 13}` }))
+      assert.deepStrictEqual(roundtrip(Schema.Array(Many), many), many)
+    })
+
+    it("gives each recursive occurrence its own run", () => {
+      interface Node {
+        readonly name: string
+        readonly children: ReadonlyArray<Node>
+      }
+      const Node = Schema.Struct({
+        name: Schema.String,
+        children: Schema.Array(Schema.suspend((): Schema.Codec<Node> => Node))
+      })
+      const tree = [
+        { name: "a", children: [{ name: "x", children: [] }, { name: "x", children: [] }] },
+        { name: "a", children: [{ name: "y", children: [{ name: "x", children: [] }] }] }
+      ]
+      assert.deepStrictEqual(roundtrip(Schema.Array(Node), tree), tree)
+    })
+
+    it("reports the row index and field name for a missing key", () => {
+      const Required = Schema.Struct({ a: Schema.String, b: Schema.String })
+      assert.match(
+        schemaError(() =>
+          Schema.encodeUnknownSync(SchemaBinary.toCodec(Schema.Array(Required)))(
+            [{ a: "1", b: "2" }, { a: "1" } as never]
+          )
+        ).message,
+        /Missing key\n  at \[1\]\["b"\]/
+      )
+    })
+
     it("leaves fingerprint mode positional", () => {
       assert.deepStrictEqual(roundtripFingerprint(Schema.Array(Row), rows), rows)
     })
