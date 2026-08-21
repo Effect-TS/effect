@@ -18,6 +18,7 @@ import * as Schema from "../../../Schema.ts"
 import * as SchemaIssue from "../../../SchemaIssue.ts"
 import * as Scope from "../../../Scope.ts"
 import type * as Rpc from "../../rpc/Rpc.ts"
+import type * as RpcSerialization from "../../rpc/RpcSerialization.ts"
 import * as RpcServer from "../../rpc/RpcServer.ts"
 import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, MalformedMessage } from "../ClusterError.ts"
 import * as ClusterMetrics from "../ClusterMetrics.ts"
@@ -677,15 +678,18 @@ const defaultRetryPolicy = Schedule.min([
   Schedule.spaced("10 seconds")
 ])
 
+const codecForJson = Schema.toCodecJson as RpcSerialization.HoleCodecFor
+
 const makeMessageDecode = <Rpcs extends Rpc.Any>(entityRpcs: Map<string, Rpcs>) => {
   const decodeRequest = Effect.fnUntracedEager(function*(
     message: Message.IncomingRequest<Rpcs>,
     rpc: Rpc.AnyWithProps
   ) {
-    const payload = yield* Schema.decodeEffect(Schema.toCodecJson(rpc.payloadSchema))(message.envelope.payload)
+    const codecFor = message.codecFor ?? codecForJson
+    const payload = yield* Schema.decodeEffect(codecFor(rpc.payloadSchema))(message.envelope.payload)
     const lastSentReply = Option.isNone(message.lastSentReply) ?
       message.lastSentReply :
-      Option.some(yield* Schema.decodeEffect(Reply.Reply(rpc))(message.lastSentReply.value))
+      Option.some(yield* Schema.decodeEffect(Reply.Reply(rpc, codecFor))(message.lastSentReply.value))
     return {
       _tag: "IncomingRequest",
       envelope: {

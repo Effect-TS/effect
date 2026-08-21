@@ -23,7 +23,7 @@ import {
   Snowflake
 } from "effect/unstable/cluster"
 import { Headers } from "effect/unstable/http"
-import { Rpc, RpcClient, RpcTest } from "effect/unstable/rpc"
+import { Rpc, RpcClient, RpcSerialization, RpcTest } from "effect/unstable/rpc"
 import { RpcClientError } from "effect/unstable/rpc/RpcClientError"
 import type { FromClientEncoded, FromServerEncoded } from "effect/unstable/rpc/RpcMessage"
 import { Socket } from "effect/unstable/socket"
@@ -57,6 +57,7 @@ const TestShardingConfig = ShardingConfig.layer({
 })
 
 const RunnerServerHandlers = RunnerServer.layerHandlers.pipe(
+  Layer.provide(RpcSerialization.layerNdjson),
   Layer.provideMerge(BadReplyEntityLayer),
   Layer.provideMerge(Sharding.layer),
   Layer.provideMerge(Snowflake.layerGenerator),
@@ -186,11 +187,18 @@ describe.concurrent("Runners.makeRpc", () => {
       annotations: Context.empty()
     })
 
+  // A hole codec that is observably different from `Schema.toCodecJson`: the
+  // entity payload becomes a JSON string inside the runner envelope.
+  const codecForJsonString =
+    (<S extends Schema.Top>(schema: S) =>
+      Schema.fromJsonString(Schema.toCodecJson(schema as any))) as RpcSerialization.HoleCodecFor
+
   const layerFakeProtocol = (
     onRequest: (
       request: FromClientEncoded,
       write: (data: FromServerEncoded) => Effect.Effect<void>
-    ) => Effect.Effect<void, RpcClientError>
+    ) => Effect.Effect<void, RpcClientError>,
+    codecFor: RpcSerialization.HoleCodecFor = Schema.toCodecJson as RpcSerialization.HoleCodecFor
   ) =>
     Layer.succeed(Runners.RpcClientProtocol)(() =>
       Effect.sync(() => {
@@ -204,7 +212,8 @@ describe.concurrent("Runners.makeRpc", () => {
             return onRequest(request, write)
           },
           supportsAck: true,
-          supportsTransferables: false
+          supportsTransferables: false,
+          codecFor
         })
       })
     )
@@ -306,4 +315,37 @@ describe.concurrent("Runners.makeRpc", () => {
       }
       assert.instanceOf(Cause.squash(exit.cause), ClusterError.RunnerUnavailable)
     }).pipe(Effect.provide(layerRunners(layerFakeProtocol(respondWithDefect)))))
+
+  it.effect("encodes the entity payload with the protocol codec and leaves the hole untouched", () => {
+    const sent: Array<FromClientEncoded> = []
+    const protocol = layerFakeProtocol(
+      (request, write) => {
+        sent.push(request)
+        // the defect hole is filled by the same codec
+        return request._tag === "Request"
+          ? write({ _tag: "Defect", defect: JSON.stringify("boom") })
+          : Effect.void
+      },
+      codecForJsonString
+    )
+    return Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const snowflakeGen = yield* Snowflake.Generator
+      const message = makeOutgoingRequest(TestRpc, snowflakeGen.nextUnsafe(), () => Effect.void)
+
+      yield* runners.send({ address: runnerAddress, message })
+
+      assert.strictEqual(sent.length, 1)
+      const request = sent[0]
+      if (request._tag !== "Request") {
+        return assert.fail("expected a runner Request")
+      }
+      // the outer runner payload is filled by the protocol codec
+      assert.strictEqual(typeof request.payload, "string")
+      const outer = JSON.parse(request.payload as string)
+      // the entity payload was encoded with the same codec and carried through
+      // the opaque hole without being re-encoded
+      assert.strictEqual(outer.request.payload, JSON.stringify({ id: 1 }))
+    }).pipe(Effect.provide(layerRunners(protocol)))
+  })
 })

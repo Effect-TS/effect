@@ -12,7 +12,6 @@
  */
 import type { NonEmptyReadonlyArray } from "../../Array.ts"
 import type { Branded } from "../../Brand.ts"
-import * as Schema from "../../Schema.ts"
 import type { Headers } from "../http/Headers.ts"
 import type * as Rpc from "./Rpc.ts"
 import type { RpcClientError } from "./RpcClientError.ts"
@@ -328,18 +327,21 @@ export interface ResponseDefectEncoded {
   readonly defect: unknown
 }
 
-const encodeDefect = Schema.encodeSync(Schema.Defect())
-
 /**
- * Creates an encoded terminal response for a request whose exit is a defect
- * encoded with `Schema.Defect()`.
+ * Creates an encoded terminal response for a request whose exit is a defect.
+ *
+ * **Details**
+ *
+ * The defect must already be encoded, because the codec that fills the defect
+ * hole belongs to the protocol. Encode it with
+ * `protocol.codecFor(Schema.Defect())` first.
  *
  * @category constructors
  * @since 4.0.0
  */
 export const ResponseExitDieEncoded = (options: {
   readonly requestId: RequestId
-  readonly defect: unknown
+  readonly encodedDefect: unknown
 }): ResponseExitEncoded => ({
   _tag: "Exit",
   requestId: options.requestId,
@@ -347,21 +349,25 @@ export const ResponseExitDieEncoded = (options: {
     _tag: "Failure",
     cause: [{
       _tag: "Die",
-      defect: encodeDefect(options.defect)
+      defect: options.encodedDefect
     }]
   }
 })
 
 /**
- * Creates a transport-encoded defect response by encoding the input with
- * `Schema.Defect()`.
+ * Creates a transport-encoded defect response around an already-encoded defect.
+ *
+ * **Details**
+ *
+ * Encode the defect with `protocol.codecFor(Schema.Defect())` before wrapping
+ * it, because the codec that fills the defect hole belongs to the protocol.
  *
  * @category constructors
  * @since 4.0.0
  */
-export const ResponseDefectEncoded = (input: unknown): ResponseDefectEncoded => ({
+export const ResponseDefectEncoded = (encodedDefect: unknown): ResponseDefectEncoded => ({
   _tag: "Defect",
-  defect: encodeDefect(input)
+  defect: encodedDefect
 })
 
 /**

@@ -25,7 +25,7 @@ import * as RpcClient_ from "../rpc/RpcClient.ts"
 import type { RpcClientError } from "../rpc/RpcClientError.ts"
 import * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcSchema from "../rpc/RpcSchema.ts"
-import type { PersistenceError } from "./ClusterError.ts"
+import type { MalformedMessage, PersistenceError } from "./ClusterError.ts"
 import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, RunnerUnavailable } from "./ClusterError.ts"
 import { Persisted } from "./ClusterSchema.ts"
 import * as Envelope from "./Envelope.ts"
@@ -548,7 +548,11 @@ export const makeRpc: Effect.Effect<
     lookup: (address: RunnerAddress) =>
       Effect.flatMap(
         makeClientProtocol(address),
-        (protocol) => Effect.provideService(makeRpcClient, RpcClient_.Protocol, protocol)
+        (protocol) =>
+          Effect.map(
+            Effect.provideService(makeRpcClient, RpcClient_.Protocol, protocol),
+            (client) => ({ client, codecFor: protocol.codecFor })
+          )
       ),
     idleTimeToLive: "3 minutes"
   })
@@ -556,7 +560,7 @@ export const makeRpc: Effect.Effect<
   return yield* make({
     ping(address) {
       return RcMap.get(clients, address).pipe(
-        Effect.flatMap((client) => client.Ping()),
+        Effect.flatMap(({ client }) => client.Ping()),
         Effect.catchCause(() =>
           Effect.andThen(
             RcMap.invalidate(clients, address),
@@ -571,7 +575,7 @@ export const makeRpc: Effect.Effect<
       const isPersisted = Context.get(rpc.annotations, Persisted)
       if (message._tag === "OutgoingEnvelope") {
         return RcMap.get(clients, address).pipe(
-          Effect.flatMap((client) =>
+          Effect.flatMap(({ client }) =>
             client.Envelope({
               envelope: message.envelope,
               persisted: isPersisted
@@ -593,70 +597,66 @@ export const makeRpc: Effect.Effect<
               exit: Exit.die(defect)
             })
           )
+      const respondMalformed = (error: MalformedMessage) =>
+        message.respond(
+          new Reply.WithExit({
+            id: snowflakeGen.nextUnsafe(),
+            requestId: message.envelope.requestId,
+            exit: Exit.die(error)
+          })
+        )
       const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
       if (!isStream) {
-        return Effect.matchEffect(Message.serializeRequest(message), {
-          onSuccess: (request) =>
-            RcMap.get(clients, address).pipe(
-              Effect.flatMap((client) =>
+        return RcMap.get(clients, address).pipe(
+          Effect.flatMap(({ client, codecFor }) =>
+            Effect.matchEffect(Message.serializeRequest(message, codecFor), {
+              onSuccess: (request) =>
                 client.Effect({
                   request,
                   persisted: isPersisted
-                })
-              ),
-              Effect.flatMap((reply) =>
-                Schema.decodeEffect(Reply.Reply(message.rpc))(reply).pipe(
-                  Effect.provideContext(message.context),
-                  Effect.orDie
-                )
-              ),
-              Effect.flatMap(message.respond),
-              Effect.scoped,
-              Effect.catchTag("RpcClientError", () => Effect.fail(new RunnerUnavailable({ address }))),
-              Effect.catchDefect(respondDefect)
-            ),
-          onFailure: (error) =>
-            message.respond(
-              new Reply.WithExit({
-                id: snowflakeGen.nextUnsafe(),
-                requestId: message.envelope.requestId,
-                exit: Exit.die(error)
-              })
-            )
-        })
+                }).pipe(
+                  Effect.flatMap((reply) =>
+                    Schema.decodeEffect(Reply.Reply(message.rpc, codecFor))(reply).pipe(
+                      Effect.provideContext(message.context),
+                      Effect.orDie
+                    )
+                  ),
+                  Effect.flatMap(message.respond),
+                  Effect.catchTag("RpcClientError", () => Effect.fail(new RunnerUnavailable({ address }))),
+                  Effect.catchDefect(respondDefect)
+                ),
+              onFailure: respondMalformed
+            })
+          ),
+          Effect.scoped
+        )
       }
-      return Effect.matchEffect(Message.serializeRequest(message), {
-        onSuccess: (request) =>
-          RcMap.get(clients, address).pipe(
-            Effect.flatMap((client) =>
+      return RcMap.get(clients, address).pipe(
+        Effect.flatMap(({ client, codecFor }) =>
+          Effect.matchEffect(Message.serializeRequest(message, codecFor), {
+            onSuccess: (request) =>
               client.Stream({
                 request,
                 persisted: isPersisted
-              }, { asQueue: true })
-            ),
-            Effect.flatMap((queue) => {
-              const decode = Schema.decodeEffect(Reply.Reply(message.rpc))
-              return Queue.take(queue).pipe(
-                Effect.flatMap((reply) => Effect.orDie(decode(reply))),
-                Effect.flatMap(message.respond),
-                Effect.forever,
-                Effect.provideContext(message.context),
-                Effect.catchTag("Done", (_) => Effect.void),
-                Effect.catchTag("RpcClientError", () => Effect.fail(new RunnerUnavailable({ address }))),
-                Effect.catchDefect(respondDefect)
-              )
-            }),
-            Effect.scoped
-          ),
-        onFailure: (error) =>
-          message.respond(
-            new Reply.WithExit({
-              id: snowflakeGen.nextUnsafe(),
-              requestId: message.envelope.requestId,
-              exit: Exit.die(error)
-            })
-          )
-      })
+              }, { asQueue: true }).pipe(
+                Effect.flatMap((queue) => {
+                  const decode = Schema.decodeEffect(Reply.Reply(message.rpc, codecFor))
+                  return Queue.take(queue).pipe(
+                    Effect.flatMap((reply) => Effect.orDie(decode(reply))),
+                    Effect.flatMap(message.respond),
+                    Effect.forever,
+                    Effect.provideContext(message.context),
+                    Effect.catchTag("Done", (_) => Effect.void),
+                    Effect.catchTag("RpcClientError", () => Effect.fail(new RunnerUnavailable({ address }))),
+                    Effect.catchDefect(respondDefect)
+                  )
+                })
+              ),
+            onFailure: respondMalformed
+          })
+        ),
+        Effect.scoped
+      )
     },
     notify({ address, message }) {
       if (Option.isNone(address)) {
@@ -665,19 +665,21 @@ export const makeRpc: Effect.Effect<
       const rpc = message.rpc as any as Rpc.AnyWithProps
       const isPersisted = Context.get(rpc.annotations, Persisted)
       const envelope = message.envelope
-      const encode: Effect.Effect<Envelope.AckChunk | Envelope.Interrupt | Envelope.PartialRequest> =
-        message._tag === "OutgoingRequest" ? Effect.orDie(Message.serializeRequest(message)) : Effect.succeed(envelope)
-      const notify = Effect.flatMap(encode, (envelope) =>
-        RcMap.get(clients, address.value).pipe(
-          Effect.flatMap((client) =>
+      const notify = RcMap.get(clients, address.value).pipe(
+        Effect.flatMap(({ client, codecFor }) => {
+          const encode: Effect.Effect<Envelope.AckChunk | Envelope.Interrupt | Envelope.PartialRequest> =
+            message._tag === "OutgoingRequest"
+              ? Effect.orDie(Message.serializeRequest(message, codecFor))
+              : Effect.succeed(envelope)
+          return Effect.flatMap(encode, (envelope) =>
             client.Notify({
               envelope,
               persisted: isPersisted
-            })
-          ),
-          Effect.scoped,
-          Effect.catchTag("RpcClientError", () => Effect.fail(new RunnerUnavailable({ address: address.value })))
-        ))
+            }))
+        }),
+        Effect.scoped,
+        Effect.catchTag("RpcClientError", () => Effect.fail(new RunnerUnavailable({ address: address.value })))
+      )
       return isPersisted ? Effect.ignore(notify) : notify
     },
     onRunnerUnavailable: (address) => RcMap.invalidate(clients, address)

@@ -15,6 +15,7 @@ import * as Effect from "../../Effect.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
 import * as Rpc from "../rpc/Rpc.ts"
+import type * as RpcSerialization from "../rpc/RpcSerialization.ts"
 import type { PersistenceError } from "./ClusterError.ts"
 import { MalformedMessage } from "./ClusterError.ts"
 import * as ClusterSchema from "./ClusterSchema.ts"
@@ -90,6 +91,13 @@ export class IncomingRequest<R extends Rpc.Any> extends Data.TaggedClass("Incomi
   readonly envelope: Envelope.PartialRequest
   readonly lastSentReply: Option.Option<Reply.Encoded>
   readonly respond: (reply: Reply.ReplyWithContext<R>) => Effect.Effect<void, MalformedMessage | PersistenceError>
+  /**
+   * Codec that filled the payload and reply holes of this message.
+   *
+   * Messages read from `MessageStorage` omit it, because storage is always
+   * JSON. The runner server sets it to the codec of its transport.
+   */
+  readonly codecFor?: RpcSerialization.HoleCodecFor | undefined
 }> {}
 
 /**
@@ -192,6 +200,8 @@ export class OutgoingEnvelope extends Data.TaggedClass("OutgoingEnvelope")<{
   }
 }
 
+const codecForJson = Schema.toCodecJson as RpcSerialization.HoleCodecFor
+
 const neverRpc = Rpc.make("Never", {
   success: Schema.Never as any,
   error: Schema.Never,
@@ -210,7 +220,8 @@ const neverRpc = Rpc.make("Never", {
  * @since 4.0.0
  */
 export const serialize = <Rpc extends Rpc.Any>(
-  message: Outgoing<Rpc>
+  message: Outgoing<Rpc>,
+  codecFor?: RpcSerialization.HoleCodecFor
 ): Effect.Effect<Envelope.Partial, MalformedMessage> => {
   if (message._tag !== "OutgoingRequest") {
     return Effect.succeed(message.envelope)
@@ -218,7 +229,7 @@ export const serialize = <Rpc extends Rpc.Any>(
   return Effect.suspend(() =>
     message.encodedCache
       ? Effect.succeed(message.encodedCache)
-      : serializeRequest(message)
+      : serializeRequest(message, codecFor)
   )
 }
 
@@ -252,10 +263,11 @@ export const serializeEnvelope = <Rpc extends Rpc.Any>(
  * @since 4.0.0
  */
 export const serializeRequest = <Rpc extends Rpc.Any>(
-  self: OutgoingRequest<Rpc>
+  self: OutgoingRequest<Rpc>,
+  codecFor: RpcSerialization.HoleCodecFor = codecForJson
 ): Effect.Effect<Envelope.PartialRequest, MalformedMessage> => {
   const rpc = self.rpc as any as Rpc.AnyWithProps
-  return Schema.encodeEffect(Schema.toCodecJson(rpc.payloadSchema))(self.envelope.payload).pipe(
+  return Schema.encodeEffect(codecFor(rpc.payloadSchema))(self.envelope.payload).pipe(
     Effect.provideContext(self.context),
     MalformedMessage.refail,
     Effect.map((payload) => ({
@@ -279,7 +291,8 @@ export const serializeRequest = <Rpc extends Rpc.Any>(
  */
 export const deserializeLocal = <Rpc extends Rpc.Any>(
   self: Outgoing<Rpc>,
-  encoded: Envelope.Partial
+  encoded: Envelope.Partial,
+  codecFor: RpcSerialization.HoleCodecFor = codecForJson
 ): Effect.Effect<
   IncomingLocal<Rpc>,
   MalformedMessage
@@ -292,7 +305,7 @@ export const deserializeLocal = <Rpc extends Rpc.Any>(
     )
   }
   const rpc = self.rpc as any as Rpc.AnyWithProps
-  return Schema.decodeEffect(Schema.toCodecJson(rpc.payloadSchema))(encoded.payload).pipe(
+  return Schema.decodeEffect(codecFor(rpc.payloadSchema))(encoded.payload).pipe(
     Effect.provideContext(self.context),
     MalformedMessage.refail,
     Effect.map((payload) => {
