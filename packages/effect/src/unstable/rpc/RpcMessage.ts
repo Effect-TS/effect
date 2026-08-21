@@ -12,9 +12,10 @@
  */
 import type { NonEmptyReadonlyArray } from "../../Array.ts"
 import type { Branded } from "../../Brand.ts"
+import * as Schema from "../../Schema.ts"
 import type { Headers } from "../http/Headers.ts"
 import type * as Rpc from "./Rpc.ts"
-import type { RpcClientError } from "./RpcClientError.ts"
+import { RpcClientError } from "./RpcClientError.ts"
 
 /**
  * Decoded messages that can be sent from an RPC client to a server.
@@ -402,6 +403,88 @@ export interface ClientEnd {
 export interface Pong {
   readonly _tag: "Pong"
 }
+
+const RequestIdSchema = Schema.Union([Schema.String, Schema.Number])
+
+/**
+ * Schema for transport-encoded RPC requests whose payload hole has already
+ * been filled by the active serialization.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const RequestEncodedSchema = Schema.Struct({
+  _tag: Schema.tag("Request"),
+  id: RequestIdSchema,
+  tag: Schema.String,
+  payload: Schema.Uint8Array,
+  headers: Schema.Array(Schema.Tuple([Schema.String, Schema.String])),
+  isNotification: Schema.optional(Schema.Literal(true)),
+  traceId: Schema.optional(Schema.String),
+  spanId: Schema.optional(Schema.String),
+  sampled: Schema.optional(Schema.Boolean)
+})
+
+/**
+ * Schema for transport-encoded RPC messages sent from clients to servers.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const FromClientEncodedSchema = Schema.Union([
+  RequestEncodedSchema,
+  Schema.Struct({
+    _tag: Schema.tag("Ack"),
+    requestId: RequestIdSchema
+  }),
+  Schema.Struct({
+    _tag: Schema.tag("Interrupt"),
+    requestId: RequestIdSchema
+  }),
+  Schema.Struct({ _tag: Schema.tag("Ping") }),
+  Schema.Struct({ _tag: Schema.tag("Eof") })
+])
+
+/**
+ * Schema for transport-encoded RPC messages sent from servers to clients.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const FromServerEncodedSchema = Schema.Union([
+  Schema.Struct({
+    _tag: Schema.tag("Chunk"),
+    requestId: RequestIdSchema,
+    values: Schema.Uint8Array
+  }),
+  Schema.Struct({
+    _tag: Schema.tag("Exit"),
+    requestId: RequestIdSchema,
+    exit: Schema.Uint8Array
+  }),
+  Schema.Struct({
+    _tag: Schema.tag("Defect"),
+    defect: Schema.Uint8Array
+  }),
+  Schema.Struct({ _tag: Schema.tag("Pong") }),
+  Schema.Struct({
+    _tag: Schema.tag("ClientProtocolError"),
+    error: RpcClientError
+  }),
+  RequestEncodedSchema
+])
+
+/**
+ * Schema for every transport-encoded RPC envelope. Binary serializers use it
+ * only after each schema-dependent hole has been encoded as bytes.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const EncodedSchema = Schema.Union([
+  FromClientEncodedSchema,
+  FromServerEncodedSchema
+])
 
 /**
  * Represents the reusable `Pong` message value.

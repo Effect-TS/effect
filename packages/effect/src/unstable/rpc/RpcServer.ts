@@ -591,7 +591,7 @@ export const make: <Rpcs extends Rpc.Any>(
   type Schemas = {
     readonly decode: (u: unknown) => Effect.Effect<Rpc.Payload<Rpcs>, Schema.SchemaError>
     readonly encodeChunk: (
-      u: ReadonlyArray<unknown>
+      u: NonEmptyReadonlyArray<unknown>
     ) => Effect.Effect<NonEmptyReadonlyArray<unknown>, Schema.SchemaError>
     readonly encodeExit: (u: unknown) => Effect.Effect<ResponseExitEncoded["exit"], Schema.SchemaError>
     readonly encodeDefect: (u: unknown) => Effect.Effect<unknown, Schema.SchemaError>
@@ -609,7 +609,7 @@ export const make: <Rpcs extends Rpc.Any>(
         decode: Schema.decodeUnknownEffect(codecFor(rpc.payloadSchema)) as any,
         encodeChunk: Schema.encodeUnknownEffect(
           codecFor(
-            Schema.Array(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
+            Schema.NonEmptyArray(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
           )
         ) as any,
         encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any))) as any,

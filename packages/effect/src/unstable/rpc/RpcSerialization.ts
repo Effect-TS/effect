@@ -3,9 +3,9 @@
  *
  * `RpcSerialization` is the boundary between `RpcMessage` envelopes and the
  * bytes or strings carried by a transport. This module provides built-in
- * serializers for JSON, newline-delimited JSON, JSON-RPC 2.0, and MessagePack,
- * including framed formats that can decode multiple messages from streaming
- * chunks.
+ * serializers for JSON, newline-delimited JSON, JSON-RPC 2.0, MessagePack, and
+ * SchemaBinary, including framed formats that can decode multiple messages
+ * from streaming chunks.
  *
  * @since 4.0.0
  */
@@ -16,7 +16,8 @@ import * as Layer from "../../Layer.ts"
 import * as Predicate from "../../Predicate.ts"
 import { hasProperty } from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
-import type * as RpcMessage from "./RpcMessage.ts"
+import * as SchemaBinary from "../encoding/SchemaBinary.ts"
+import * as RpcMessage from "./RpcMessage.ts"
 
 /**
  * Builds the codec used to fill the `unknown` holes of RPC protocol messages,
@@ -590,6 +591,77 @@ export const makeMsgPack = (
  */
 export const msgPack: RpcSerialization["Service"] = makeMsgPack({ useRecords: true })
 
+const defaultSchemaBinaryMaxFrameSize = 16 * 1024 * 1024
+
+const copySchemaBinaryEnvelopeHoles = (envelope: unknown): unknown => {
+  if (!Predicate.hasProperty(envelope, "_tag")) return envelope
+  const record = envelope as Record<PropertyKey, unknown>
+  switch (record._tag) {
+    case "Request":
+      return {
+        ...record,
+        payload: record.payload instanceof Uint8Array ? record.payload.slice() : record.payload
+      }
+    case "Chunk":
+      return {
+        ...record,
+        values: record.values instanceof Uint8Array ? record.values.slice() : record.values
+      }
+    case "Exit":
+      return {
+        ...record,
+        exit: record.exit instanceof Uint8Array ? record.exit.slice() : record.exit
+      }
+    case "Defect":
+      return {
+        ...record,
+        defect: record.defect instanceof Uint8Array ? record.defect.slice() : record.defect
+      }
+    default:
+      return envelope
+  }
+}
+
+const makeSchemaBinary = (options?: {
+  readonly maxFrameSize?: number | undefined
+}): RpcSerialization["Service"] => {
+  const maxFrameSize = options?.maxFrameSize ?? defaultSchemaBinaryMaxFrameSize
+  const envelopeCodec = SchemaBinary.toCodec(RpcMessage.EncodedSchema, { fingerprint: true })
+  const encodeEnvelope = Schema.encodeUnknownSync(envelopeCodec)
+  return RpcSerialization.of({
+    contentType: "application/vnd.effect.rpc+schema-binary",
+    includesFraming: true,
+    codecFor: SchemaBinary.toCodec as CodecFor,
+    makeUnsafe: () => {
+      const parser = SchemaBinary.parser(RpcMessage.EncodedSchema, { fingerprint: true, maxFrameSize })
+      const encoder = new TextEncoder()
+      return {
+        decode: (data) => parser.feedSync(typeof data === "string" ? encoder.encode(data) : data),
+        encode: (response) => {
+          if (!Array.isArray(response)) {
+            return encodeEnvelope(copySchemaBinaryEnvelopeHoles(response)).slice()
+          }
+          if (response.length === 0) return undefined
+          const frames = new Array<Uint8Array>(response.length)
+          let length = 0
+          for (let i = 0; i < response.length; i++) {
+            const frame = encodeEnvelope(copySchemaBinaryEnvelopeHoles(response[i])).slice()
+            frames[i] = frame
+            length += frame.length
+          }
+          const encoded = new Uint8Array(length)
+          let offset = 0
+          for (let i = 0; i < frames.length; i++) {
+            encoded.set(frames[i], offset)
+            offset += frames[i].length
+          }
+          return encoded
+        }
+      }
+    }
+  })
+}
+
 /**
  * RPC serialization layer that uses JSON for serialization.
  *
@@ -671,3 +743,23 @@ export const layerMsgPack: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSeri
 export const layerMsgPackWith = (
   options?: (Msgpackr.Options & StreamOptions) | undefined
 ): Layer.Layer<RpcSerialization> => Layer.succeed(RpcSerialization)(makeMsgPack(options))
+
+/**
+ * RPC serialization layer that uses SchemaBinary for payloads and fingerprinted
+ * RPC envelopes. It includes framing with a 16 MiB maximum frame size.
+ *
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerSchemaBinary: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSerialization)(makeSchemaBinary())
+
+/**
+ * RPC serialization layer that uses SchemaBinary with a custom maximum frame
+ * size. RPC envelope fingerprints are always enabled.
+ *
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerSchemaBinaryWith = (options: {
+  readonly maxFrameSize: number
+}): Layer.Layer<RpcSerialization> => Layer.succeed(RpcSerialization)(makeSchemaBinary(options))
