@@ -846,12 +846,13 @@ function toBinaryASTStep(ast: SchemaAST.AST): SchemaAST.AST {
         return ast.recur(toBinaryAST)
       }
       const getJson = ast.annotations?.toCodecJson
-      const getLink = Predicate.isFunction(getJson) ? getJson : ast.annotations?.toCodec
-      if (!Predicate.isFunction(getLink)) {
+      const getCodec = ast.annotations?.toCodec
+      if (!Predicate.isFunction(getJson) && !Predicate.isFunction(getCodec)) {
         return ast
       }
       const typeParameters = ast.typeParameters.map((tp) => Schema.make<Schema.Constraint>(SchemaAST.toEncoded(tp)))
-      const link = getLink(typeParameters)
+      const jsonLink = Predicate.isFunction(getJson) ? getJson(typeParameters) : undefined
+      const link = jsonLink === undefined && Predicate.isFunction(getCodec) ? getCodec(typeParameters) : jsonLink
       return link === undefined ? ast : SchemaAST.replaceEncoding(ast, [SchemaAST.mapLink(link, toBinaryAST)])
     }
     case "Arrays":

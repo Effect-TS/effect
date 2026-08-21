@@ -47,7 +47,15 @@ export const OpaqueHole: Schema.declare<any> = Schema.declare(
   (_: unknown): _ is any => true,
   {
     expected: "an already-encoded value",
-    toCodecJson: () => undefined
+    toCodecJson: () => undefined,
+    toCodec: () =>
+      Schema.link<any>()(
+        Schema.Uint8Array,
+        SchemaTransformation.transform({
+          decode: (bytes) => bytes,
+          encode: (value) => (value as Uint8Array).slice()
+        })
+      )
   }
 )
 
