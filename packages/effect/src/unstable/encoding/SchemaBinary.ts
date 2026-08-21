@@ -226,12 +226,14 @@ const PARSER_INDEX_SIGNATURE_CACHE_SIZE = 256
 
 interface OutputArena {
   readonly buf: Uint8Array<ArrayBuffer>
+  readonly view: DataView<ArrayBuffer>
   offset: number
   writing: boolean
 }
 
 function makeOutputArena(size: number): OutputArena {
-  return { buf: new Uint8Array(size), offset: 0, writing: false }
+  const buf: Uint8Array<ArrayBuffer> = new Uint8Array(size)
+  return { buf, view: new DataView(buf.buffer), offset: 0, writing: false }
 }
 
 let outputArena = makeOutputArena(OUTPUT_ARENA_SIZE)
@@ -251,7 +253,7 @@ class Writer {
     arena.writing = true
     this.arena = arena
     this.buf = arena.buf
-    this.view = new DataView(arena.buf.buffer)
+    this.view = arena.view
     this.start = arena.offset
     this.len = 0
   }
@@ -267,7 +269,7 @@ class Writer {
       previous.writing = false
       this.arena = outputArena = next
       this.buf = next.buf
-      this.view = new DataView(next.buf.buffer)
+      this.view = next.view
       this.start = 0
     }
   }
@@ -289,13 +291,6 @@ class Writer {
       n = n < 0x80000000 ? n >>> 7 : Math.floor(n / 128)
     }
     buf[p++] = n
-    this.len = p - this.start
-  }
-  raw(bytes: Uint8Array) {
-    this.ensure(bytes.length)
-    const buf = this.buf
-    let p = this.start + this.len
-    for (let i = 0; i < bytes.length; i++) buf[p++] = bytes[i]
     this.len = p - this.start
   }
   uvarintBig(n: bigint) {
@@ -336,6 +331,17 @@ class Writer {
     this.ensure(4)
     this.view.setInt32(this.start + this.len, n | 0, true)
     this.len += 4
+  }
+  // Writes a field id and reserves its length byte under one bounds check.
+  idAndMark(idBytes: Uint8Array): number {
+    const n = idBytes.length
+    this.ensure(n + 1)
+    const buf = this.buf
+    let p = this.start + this.len
+    for (let i = 0; i < n; i++) buf[p++] = idBytes[i]
+    const mark = p - this.start
+    this.len = mark + 1
+    return mark
   }
   // Reserve one byte, then expand and backfill the length prefix if needed.
   beginSized(): number {
@@ -468,6 +474,25 @@ const EMPTY_READER_BUFFER = new Uint8Array(EMPTY_READER_ARRAY_BUFFER)
 const EMPTY_READER_VIEW = new DataView(EMPTY_READER_ARRAY_BUFFER)
 const EMPTY_PARSE_OPTIONS: SchemaAST.ParseOptions = {}
 
+let lastReaderBuffer: ArrayBufferLike = EMPTY_READER_ARRAY_BUFFER
+let lastReaderOffset = 0
+let lastReaderLength = 0
+let lastReaderView: DataView = EMPTY_READER_VIEW
+
+function readerView(buf: Uint8Array): DataView {
+  if (
+    buf.buffer !== lastReaderBuffer ||
+    buf.byteOffset !== lastReaderOffset ||
+    buf.byteLength !== lastReaderLength
+  ) {
+    lastReaderBuffer = buf.buffer
+    lastReaderOffset = buf.byteOffset
+    lastReaderLength = buf.byteLength
+    lastReaderView = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
+  }
+  return lastReaderView
+}
+
 class Reader {
   pos = 0
   buf: Uint8Array = EMPTY_READER_BUFFER
@@ -481,16 +506,10 @@ class Reader {
     start: number,
     end: number,
     options: SchemaAST.ParseOptions,
-    indexSignatures: IndexSignatureCache,
+    indexSignatures: IndexSignatureCache | undefined,
     positional: boolean
   ) {
-    if (
-      this.buf.buffer !== buf.buffer ||
-      this.buf.byteOffset !== buf.byteOffset ||
-      this.buf.byteLength !== buf.byteLength
-    ) {
-      this.view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
-    }
+    this.view = readerView(buf)
     this.buf = buf
     this.pos = start
     this.end = end
@@ -1828,9 +1847,10 @@ function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: obj
       issuePath[issuePathLen++] = name
       throw issueError(new SchemaIssue.MissingKey(field.annotations))
     }
-    w.raw(field.idBytes)
+    const mark = w.idAndMark(field.idBytes)
     issuePath[issuePathLen++] = name
-    encodeSized(ctx, field.layout, obj[name], w)
+    encodeValue(ctx, field.layout, obj[name], w)
+    w.endSized(mark)
     issuePathLen--
   }
 }
@@ -2197,7 +2217,7 @@ function decodeExtraPair(layout: StructLayout, r: Reader, out: Record<string, un
   if (seen.has(key)) invalid("unique extra keys", undefined, r.options)
   seen.add(key)
   const saved = r.enter(r.uvarint())
-  const signature = r.indexSignatures!.find(layout, key)
+  const signature = (r.indexSignatures ??= new IndexSignatureCache(r.options)).find(layout, key)
   if (signature !== undefined) {
     issuePath[issuePathLen++] = key
     const value = decodeChecked(signature.layout, r)
@@ -2635,7 +2655,7 @@ function decodeOneShot(
   const r = pooledReader ?? new Reader()
   const pooled = r === pooledReader
   if (pooled) pooledReader = undefined
-  r.reset(bytes, 0, bytes.length, options, new IndexSignatureCache(options), mode.positional)
+  r.reset(bytes, 0, bytes.length, options, undefined, mode.positional)
   const savedPathLen = issuePathLen
   issuePathLen = 0
   try {
@@ -2658,24 +2678,20 @@ function makeTransformation(
   mode: Mode
 ): SchemaTransformation.Transformation<unknown, Uint8Array<ArrayBuffer>> {
   return SchemaTransformation.transformOrFail({
-    decode: (bytes: Uint8Array<ArrayBuffer>, options) =>
-      Effect.suspend(() => {
-        try {
-          return Effect.succeed(decodeOneShot(layout, bytes, options, mode))
-        } catch (e) {
-          if (e instanceof IssueError) return Effect.fail(e.issue)
-          throw e
-        }
-      }),
-    encode: (value: unknown, options) =>
-      Effect.suspend(() => {
-        try {
-          return Effect.succeed(encodeFrame(layout, value, options, mode))
-        } catch (e) {
-          if (e instanceof IssueError) return Effect.fail(e.issue)
-          throw e
-        }
-      })
+    decode: (bytes: Uint8Array<ArrayBuffer>, options) => {
+      try {
+        return Effect.succeed(decodeOneShot(layout, bytes, options, mode))
+      } catch (e) {
+        return e instanceof IssueError ? Effect.fail(e.issue) : Effect.die(e)
+      }
+    },
+    encode: (value: unknown, options) => {
+      try {
+        return Effect.succeed(encodeFrame(layout, value, options, mode))
+      } catch (e) {
+        return e instanceof IssueError ? Effect.fail(e.issue) : Effect.die(e)
+      }
+    }
   })
 }
 
