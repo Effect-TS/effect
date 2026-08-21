@@ -197,6 +197,25 @@ assert.deepStrictEqual(Array.from(bindEffectFused()), Array.from(bindEffect()))
 assert.deepStrictEqual(Array.from(bindArrayEffectFused()), Array.from(bindArrayEffect()))
 assert.ok(bindArrayPg().length > 0)
 
+// Arrays are the one place a value's cost is paid per element, so they get a
+// suite of their own.
+const int4ArrayLength = 16
+const int4ArrayValue = Array.from({ length: int4ArrayLength }, (_, index) => index * 1000)
+const int4ArrayText = `{${int4ArrayValue.join(",")}}`
+const int4ArrayEncoded = PgTypes.encode(int4ArrayValue, PgTypes.OID.int4Array)
+// `pg` types its parser lookup with a union that leaves the array OIDs out.
+const pgArrayParser = (pgTypes.getTypeParser as (oid: number, format: "text") => (value: string) => unknown)(
+  PgTypes.OID.int4Array,
+  "text"
+)
+// postgres.js has no array parser to compare against: it leaves array columns
+// as their text.
+const decodeArrayEffect = () => PgTypes.decode(int4ArrayEncoded, PgTypes.OID.int4Array, 1)
+const decodeArrayPg = () => pgArrayParser(int4ArrayText)
+
+assert.deepStrictEqual(decodeArrayEffect(), int4ArrayValue)
+assert.deepStrictEqual(decodeArrayPg(), int4ArrayValue)
+
 const codecRowsPerRun = 100
 let sink: unknown
 
@@ -254,6 +273,11 @@ await runSuite("type decode", codecRowsPerRun, [
   ["postgres.js text", batch(decodePostgresJs)],
   ["pg text", batch(decodePg)]
 ])
+
+await runSuite("int4[] decode", codecRowsPerRun, [
+  ["@effect/sql-pg binary", batch(decodeArrayEffect)],
+  ["pg text", batch(decodeArrayPg)]
+], `${int4ArrayLength} elements per array`)
 
 await runSuite("Bind frame from JavaScript values", codecRowsPerRun, [
   ["@effect/sql-pg binary, value sink", batch(bindEffectFused)],

@@ -14,6 +14,8 @@ Three new modules cover the client side of protocol 3.0 as pure functions, with 
 
 For the hot path, `PgProtocol.makeBindEncoder(PgTypes.writeParameter)` builds a `Bind` encoder that takes OID-typed parameters and writes their values straight into the frame, with no array per parameter and no copy out of one. `PgProtocol.encodeBind` still takes already-encoded parameters and produces the same bytes. A codec can supply the optional `Codec.write` to join that path; one without it falls back to `encode` and a copy. A value that contains other values frames them with the sink's `beginLength` and `endLength`, which is how array parameters write their elements in place.
 
+Decoding has the same opt-in. A codec can supply the optional `Codec.read`, which reads a value out of a region of a buffer without a view of its own; array elements go through it, so decoding an array costs one read per element rather than a view and a lookup as well. A codec without a `read` is handed a view and its `decode` runs.
+
 A parser's buffer starts at 8 KiB and doubles up to 64 KiB as it is refilled, so a busy connection spreads its allocations over more messages. A message larger than that gets a buffer of its own size, which the pool does not keep.
 
 `PgClient` is unchanged and still uses `pg` at runtime.

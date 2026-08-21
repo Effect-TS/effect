@@ -66,6 +66,40 @@ const roundTrips: Array<{
   { name: "timestamptzArray", oid: PgTypes.OID.timestamptzArray, value: [0, null, 1717171717000] }
 ]
 
+/** One value per element OID that has an array type. */
+const elementSamples: Record<number, unknown> = {
+  [PgTypes.OID.bool]: true,
+  [PgTypes.OID.bytea]: new Uint8Array([1, 2, 3]),
+  [PgTypes.OID.name]: "some_name",
+  [PgTypes.OID.int8]: BigInt("9007199254740993"),
+  [PgTypes.OID.int2]: -3,
+  [PgTypes.OID.int4]: 70000,
+  [PgTypes.OID.text]: "héllo ☃",
+  [PgTypes.OID.oid]: 4294967295,
+  [PgTypes.OID.json]: { a: [1, 2] },
+  [PgTypes.OID.jsonb]: { a: [1, 2] },
+  [PgTypes.OID.cidr]: "10.0.0.0/8",
+  [PgTypes.OID.float4]: 1.5,
+  [PgTypes.OID.float8]: -3.0625,
+  [PgTypes.OID.inet]: "192.168.0.1",
+  [PgTypes.OID.bpchar]: "xy",
+  [PgTypes.OID.varchar]: "abc",
+  [PgTypes.OID.date]: "2024-02-29",
+  [PgTypes.OID.time]: BigInt(45296000000),
+  [PgTypes.OID.timestamp]: 1717171717123,
+  [PgTypes.OID.timestamptz]: 0,
+  [PgTypes.OID.timetz]: "12:34:56+02:00",
+  [PgTypes.OID.numeric]: "-98765432109876543210",
+  [PgTypes.OID.uuid]: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+}
+
+/** The eight wire bytes of an int64. */
+const int64Bytes = (value: bigint): Uint8Array => {
+  const wire = new Uint8Array(8)
+  new DataView(wire.buffer).setBigInt64(0, value)
+  return wire
+}
+
 describe("PgTypes", () => {
   describe("round trips against captured PostgreSQL rows", () => {
     for (const { encoded, name, oid, value } of roundTrips) {
@@ -116,6 +150,29 @@ describe("PgTypes", () => {
       assertThrowsTagged(
         "PgTypesCodecError",
         () => PgTypes.decode(bytes("0000000100000000000000110000000100000001fffffffe"), PgTypes.OID.byteaArray, 1)
+      )
+    })
+
+    it("reads every array OID back through the element codecs", () => {
+      for (const [elementOid, sample] of Object.entries(elementSamples)) {
+        const arrayOid = PgTypes.arrayOidFor(Number(elementOid))!
+        for (const value of [[], [sample], [null], [sample, null, sample]]) {
+          assert.deepStrictEqual(
+            PgTypes.decode(PgTypes.encode(value, arrayOid), arrayOid, 1),
+            value,
+            `array of OID ${elementOid} with ${value.length} element(s)`
+          )
+        }
+      }
+    })
+
+    it("reads elements whose bytes are not at the front of the array", () => {
+      // The second element decodes from an offset, so a codec that ignored one
+      // would hand back the first element's value.
+      const value = ["2024-02-29", "1999-12-31", null, "0001-01-02"]
+      assert.deepStrictEqual(
+        PgTypes.decode(PgTypes.encode(value, PgTypes.OID.dateArray), PgTypes.OID.dateArray, 1),
+        value
       )
     })
 
@@ -177,6 +234,15 @@ describe("PgTypes", () => {
       }
     })
 
+    it("rejects years with more digits than a Number can hold", () => {
+      for (const sign of ["", "-"]) {
+        assertThrowsTagged(
+          "PgTypesCodecError",
+          () => PgTypes.encode(`${sign}${"9".repeat(320)}-01-01`, PgTypes.OID.date)
+        )
+      }
+    })
+
     it("rejects host bits outside a cidr netmask", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("10.1.2.3/8", PgTypes.OID.cidr))
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("2001:db8::1/32", PgTypes.OID.cidr))
@@ -219,6 +285,18 @@ describe("PgTypes", () => {
       }
     })
 
+    it("rejects a digit group that has no four-digit text", () => {
+      // one group, weight 0, positive, scale 0, digit 10000
+      assertThrowsTagged(
+        "PgTypesCodecError",
+        () => PgTypes.decode(bytes("00010000000000002710"), PgTypes.OID.numeric, 1)
+      )
+      assertThrowsTagged(
+        "PgTypesCodecError",
+        () => PgTypes.decode(bytes("0001000000000000ffff"), PgTypes.OID.numeric, 1)
+      )
+    })
+
     it("round trips the special values", () => {
       for (const value of ["NaN", "Infinity", "-Infinity"]) {
         assert.strictEqual(
@@ -230,6 +308,39 @@ describe("PgTypes", () => {
   })
 
   describe("timestamps", () => {
+    it("agrees with the exact 64-bit conversion either side of the Number boundary", () => {
+      const epochMs = BigInt(946684800000)
+      const boundary = BigInt("9007199254740992")
+      const micros = [
+        BigInt(0),
+        BigInt(1),
+        BigInt(-1),
+        BigInt("1717171717123000") - epochMs * BigInt(1000),
+        boundary - BigInt(1),
+        boundary,
+        // just past the boundary, and chosen so that rounding it into a double
+        // would move the millisecond it truncates to
+        boundary + BigInt(7),
+        -boundary,
+        -boundary - BigInt(7),
+        BigInt("9223372036854775806"),
+        BigInt("-9223372036854775807")
+      ]
+      for (const value of micros) {
+        assert.strictEqual(
+          PgTypes.decode(int64Bytes(value), PgTypes.OID.timestamptz, 1),
+          Number(value / BigInt(1000)) + 946684800000,
+          `${value} microseconds`
+        )
+      }
+    })
+
+    it("round trips milliseconds through both the float and the BigInt path", () => {
+      for (const ms of [0, 1, -1, 946684800000, 1717171717123, -62135596800000, 253402300799000, 9007199254740]) {
+        assert.strictEqual(PgTypes.decode(PgTypes.encode(ms, PgTypes.OID.timestamp), PgTypes.OID.timestamp, 1), ms)
+      }
+    })
+
     it("truncates sub-millisecond values toward zero on both sides of the PostgreSQL epoch", () => {
       const before = new Uint8Array(8)
       const after = new Uint8Array(8)
@@ -237,6 +348,62 @@ describe("PgTypes", () => {
       new DataView(after.buffer).setBigInt64(0, BigInt(1))
       assert.strictEqual(PgTypes.decode(before, PgTypes.OID.timestamp, 1), 946684800000)
       assert.strictEqual(PgTypes.decode(after, PgTypes.OID.timestamp, 1), 946684800000)
+    })
+  })
+
+  describe("dates", () => {
+    it("round trips years of every width, negative ones included", () => {
+      for (const value of ["0001-01-01", "0999-12-31", "2024-02-29", "2000-02-29", "10000-06-15", "-0044-03-15"]) {
+        assert.strictEqual(PgTypes.decode(PgTypes.encode(value, PgTypes.OID.date), PgTypes.OID.date, 1), value)
+      }
+    })
+
+    it("rejects days a month does not have", () => {
+      for (const value of ["2023-02-29", "1900-02-29", "2024-04-31", "2024-00-10", "2024-13-01", "2024-01-00"]) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(value, PgTypes.OID.date))
+      }
+    })
+
+    it("rejects text that is not a date", () => {
+      for (const value of ["", "2024", "2024-01-01 ", "2024/01/01", "202-01-01", "20x4-01-01", "2024-0a-01"]) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(value, PgTypes.OID.date))
+      }
+    })
+  })
+
+  describe("timetz", () => {
+    it("round trips fractional seconds and zone offsets", () => {
+      for (const value of ["00:00:00+00:00", "24:00:00+00:00", "12:34:56.5+02:00", "23:59:59.999999-05:30"]) {
+        assert.strictEqual(PgTypes.decode(PgTypes.encode(value, PgTypes.OID.timetz), PgTypes.OID.timetz, 1), value)
+      }
+    })
+
+    it("rejects times past midnight at both ends", () => {
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("24:00:01+00:00", PgTypes.OID.timetz))
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("25:00:00+00:00", PgTypes.OID.timetz))
+      const past = new Uint8Array(12)
+      new DataView(past.buffer).setBigInt64(0, BigInt("86400000001"))
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.decode(past, PgTypes.OID.timetz, 1))
+    })
+  })
+
+  describe("uuid", () => {
+    it("accepts either case and rejects anything else", () => {
+      assert.deepStrictEqual(
+        PgTypes.encode("6BA7B810-9DAD-11D1-80B4-00C04FD430C8", PgTypes.OID.uuid),
+        PgTypes.encode("6ba7b810-9dad-11d1-80b4-00c04fd430c8", PgTypes.OID.uuid)
+      )
+      for (
+        const value of [
+          "6ba7b810-9dad-11d1-80b4-00c04fd430c",
+          "6ba7b8109dad-11d1-80b4-00c04fd430c8",
+          "6ba7b810_9dad-11d1-80b4-00c04fd430c8",
+          "6ba7b81g-9dad-11d1-80b4-00c04fd430c8",
+          "6ba7b81☃-9dad-11d1-80b4-00c04fd430c8"
+        ]
+      ) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(value, PgTypes.OID.uuid))
+      }
     })
   })
 
@@ -309,33 +476,8 @@ describe("PgTypes", () => {
     })
 
     it("writes every array OID as the bytes encode produces", () => {
-      const samples: Record<number, unknown> = {
-        [PgTypes.OID.bool]: true,
-        [PgTypes.OID.bytea]: new Uint8Array([1, 2, 3]),
-        [PgTypes.OID.name]: "some_name",
-        [PgTypes.OID.int8]: BigInt("9007199254740993"),
-        [PgTypes.OID.int2]: -3,
-        [PgTypes.OID.int4]: 70000,
-        [PgTypes.OID.text]: "héllo ☃",
-        [PgTypes.OID.oid]: 4294967295,
-        [PgTypes.OID.json]: { a: [1, 2] },
-        [PgTypes.OID.jsonb]: { a: [1, 2] },
-        [PgTypes.OID.cidr]: "10.0.0.0/8",
-        [PgTypes.OID.float4]: 1.5,
-        [PgTypes.OID.float8]: -3.0625,
-        [PgTypes.OID.inet]: "192.168.0.1",
-        [PgTypes.OID.bpchar]: "xy",
-        [PgTypes.OID.varchar]: "abc",
-        [PgTypes.OID.date]: "2024-02-29",
-        [PgTypes.OID.time]: BigInt(45296000000),
-        [PgTypes.OID.timestamp]: 1717171717123,
-        [PgTypes.OID.timestamptz]: 0,
-        [PgTypes.OID.timetz]: "12:34:56+02:00",
-        [PgTypes.OID.numeric]: "-98765432109876543210",
-        [PgTypes.OID.uuid]: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
-      }
       const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
-      for (const [elementOid, sample] of Object.entries(samples)) {
+      for (const [elementOid, sample] of Object.entries(elementSamples)) {
         const arrayOid = PgTypes.arrayOidFor(Number(elementOid))!
         assert.notStrictEqual(arrayOid, undefined)
         for (const value of [[], [sample], [null], [sample, null, sample]]) {

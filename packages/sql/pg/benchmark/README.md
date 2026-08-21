@@ -10,8 +10,9 @@ Run it from the repository root:
 nix develop -c pnpm --filter @effect/sql-pg benchmark:codec
 ```
 
-Every suite uses the same six-column semantic row: `int4`, `bool`, `float8`, `text`, `jsonb`, and `bytea`. Each sample
-processes 100 rows. `@effect/sql-pg` uses its binary wire representation; `postgres.js` and `pg` use their normal
+Every suite but one uses the same six-column semantic row: `int4`, `bool`, `float8`, `text`, `jsonb`, and `bytea`;
+`int4[] decode` uses a 16-element `int4` array instead, because an array is where a value's cost is paid per element.
+Each sample processes 100 rows. `@effect/sql-pg` uses its binary wire representation; `postgres.js` and `pg` use their normal
 text-oriented codecs, so the byte layouts differ even where the values match.
 
 ## The end-to-end suites
@@ -33,12 +34,14 @@ so they are not comparable with the six-column suites.
 
 ## The component suites
 
-The four remaining suites split that work up, which is useful for finding hot spots but not for ranking the libraries:
+The five remaining suites split that work up, which is useful for finding hot spots but not for ranking the libraries:
 
 - `type encode` looks unfavourable to the binary codec because `pg`'s `prepareValue` mostly hands the value straight
   back. It produces no wire bytes at all; that work happens later, in its `Bind` serializer.
 - `type decode` is the mirror image: `pg`'s text parsers are handed strings its protocol parser already built, so the
   bytes-to-string step it charges to the parser is charged here for the binary codec.
+- `int4[] decode` is the one suite where both libraries do comparable work, because `pg` has to parse the array's
+  text. `postgres.js` is absent from it: it ships no array parser and leaves an array column as its text.
 - The two parser suites feed the same block of 100 `DataRow` frames to both parsers, first as one buffer and then in
   64-byte chunks. `postgres.js` is absent from those two tables because its protocol parser is private and fused to
   live connection and query state. Wrapping that state machine in a fake socket would measure client orchestration as
