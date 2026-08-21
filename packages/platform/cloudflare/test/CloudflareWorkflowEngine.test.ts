@@ -187,7 +187,7 @@ class FakeWorkflowNamespace {
 
   get effectLayer() {
     const workflowNamespace = {
-      getByName: (name) => {
+      getByName: (name: string) => {
         const stub = this.getByName(name)
         return {
           run: (payload, options) => Effect.promise(() => stub.run(payload, options)),
@@ -198,7 +198,7 @@ class FakeWorkflowNamespace {
           deferredDone: (deferredName, exit) => Effect.promise(() => stub.deferredDone(deferredName, exit)),
           scheduleClock: (clockName, deferredName, wakeUp) =>
             Effect.promise(() => stub.scheduleClock(clockName, deferredName, wakeUp))
-        }
+        } satisfies CloudflareWorkflowEngine.WorkflowClient
       }
     }
     return CloudflareWorkflowEngine.layer({ workflowNamespace: workflowNamespace as never })
