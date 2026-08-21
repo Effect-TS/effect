@@ -451,14 +451,101 @@ export const get = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
       }
       state.usage--
     }
-    return getSlow(self)
+    return getSlowWith(self, leaseItemWith)
   })
 
-const getSlow = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
+/**
+ * Borrows an item from the pool for the duration of a single effect, without
+ * requiring a `Scope`.
+ *
+ * **When to use**
+ *
+ * Use when an item is only needed to run one effect. Compared to wrapping
+ * {@link get} in `Effect.scoped`, this skips scope creation and finalizer
+ * bookkeeping, so it is the faster way to use a pooled item for a single
+ * operation.
+ *
+ * **Details**
+ *
+ * The item is returned to the pool as soon as the provided effect completes,
+ * whether it succeeds, fails, or is interrupted.
+ *
+ * **Example** (Running a single operation with a pooled item)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Pool } from "effect"
+ *
+ * const program = Effect.scoped(
+ *   Effect.flatMap(
+ *     Pool.make({ acquire: Effect.succeed("resource"), size: 2 }),
+ *     (pool) => Pool.use(pool, (item) => Effect.succeed(item.length))
+ *   )
+ * )
+ *
+ * await Effect.runPromise(program) // => 8
+ * ```
+ *
+ * @see {@link get} for borrowing an item for the lifetime of a scope
+ *
+ * @category combinators
+ * @since 4.0.0
+ */
+export const use: {
+  <A, B, E2, R2>(
+    f: (item: A) => Effect.Effect<B, E2, R2>
+  ): <E>(self: Pool<A, E>) => Effect.Effect<B, E | E2, R2>
+  <A, E, B, E2, R2>(
+    self: Pool<A, E>,
+    f: (item: A) => Effect.Effect<B, E2, R2>
+  ): Effect.Effect<B, E | E2, R2>
+} = dual(2, <A, E, B, E2, R2>(
+  self: Pool<A, E>,
+  f: (item: A) => Effect.Effect<B, E2, R2>
+): Effect.Effect<B, E | E2, R2> =>
+  internal.suspend(() => {
+    const state = self.state
+    if (state.isShuttingDown) return internal.interrupt
+    if (state.availableHead !== undefined) {
+      state.usage++
+      if (self.config.isFixed || targetSize(self) <= activeSize(self)) {
+        return useItem(self, state.availableHead, f)
+      }
+      state.usage--
+    }
+    return getSlowWith(self, (self, item, _fiber, restore) => useItem(self, item, f, restore))
+  }))
+
+const useItem = <A, E, B, E2, R2>(
+  self: Pool<A, E>,
+  item: PoolItem<A, E>,
+  f: (item: A) => Effect.Effect<B, E2, R2>,
+  restore?: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
+): Effect.Effect<B, E | E2, R2> => {
+  if (!leaseItemBookkeeping(self, item)) {
+    return item.exit as Exit.Exit<never, E>
+  }
+  let body: Effect.Effect<B, E2, R2>
+  try {
+    body = f((item.exit as Exit.Success<A, E>).value)
+  } catch (defect) {
+    return internal.flatMap(item.release(item.exit), () => core.exitDie(defect))
+  }
+  return internal.onExitPrimitive(restore !== undefined ? restore(body) : body, item.release)
+}
+
+const getSlowWith = <A, E, X, R>(
+  self: Pool<A, E>,
+  lease: (
+    self: Pool<A, E>,
+    item: PoolItem<A, E>,
+    fiber: Fiber.Fiber<unknown, unknown>,
+    restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
+  ) => Effect.Effect<X, any, R>
+): Effect.Effect<X, any, R> =>
   internal.uninterruptibleMask((restore) => {
     const state = self.state
     state.usage++
-    const wait: Effect.Effect<A, E, Scope.Scope> = internal.flatMap(
+    const wait: Effect.Effect<X, any, R> = internal.flatMap(
       internal.onInterrupt(
         restore(waitForItem(self)),
         () =>
@@ -468,17 +555,17 @@ const getSlow = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
       ),
       () => loop
     )
-    const step: Effect.Effect<A, E, Scope.Scope> = core.withFiber((fiber) => {
+    const step: Effect.Effect<X, any, R> = core.withFiber((fiber) => {
       if (state.isShuttingDown) {
         state.usage--
         return internal.interrupt
       }
       if (state.availableHead !== undefined) {
-        return leaseItem(self, state.availableHead, fiber)
+        return lease(self, state.availableHead, fiber, restore)
       }
       return wait
     })
-    const loop: Effect.Effect<A, E, Scope.Scope> = internal.suspend(() => {
+    const loop: Effect.Effect<X, any, R> = internal.suspend(() => {
       if (state.isShuttingDown) {
         state.usage--
         return internal.interrupt
@@ -495,22 +582,29 @@ const getSlow = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
     return loop
   })
 
-const leaseItem = <A, E>(
-  self: Pool<A, E>,
-  item: PoolItem<A, E>,
-  fiber: Fiber.Fiber<unknown, unknown>
-): Effect.Effect<A, E> => {
+const leaseItemBookkeeping = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): boolean => {
   const state = self.state
   if (item.exit._tag === "Failure") {
     state.usage--
     state.items.delete(item)
     state.invalidated.delete(item)
     removeAvailable(self, item)
-    return item.exit
+    return false
   }
   item.refCount++
   if (item.refCount >= self.config.concurrency) {
     removeAvailable(self, item)
+  }
+  return true
+}
+
+const leaseItem = <A, E>(
+  self: Pool<A, E>,
+  item: PoolItem<A, E>,
+  fiber: Fiber.Fiber<unknown, unknown>
+): Effect.Effect<A, E> => {
+  if (!leaseItemBookkeeping(self, item)) {
+    return item.exit
   }
   const scope = Context.getUnsafe(fiber.context, Scope.Scope)
   if (scope.state._tag === "Closed") {
@@ -519,6 +613,12 @@ const leaseItem = <A, E>(
   internal.scopeAddFinalizerUnsafe(scope, {}, item.release)
   return item.exit
 }
+
+const leaseItemWith = <A, E>(
+  self: Pool<A, E>,
+  item: PoolItem<A, E>,
+  fiber: Fiber.Fiber<unknown, unknown>
+): Effect.Effect<A, E, Scope.Scope> => leaseItem(self, item, fiber)
 
 const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effect<void> =>
   core.withFiber((fiber) => {
