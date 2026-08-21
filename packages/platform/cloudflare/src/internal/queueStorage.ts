@@ -47,6 +47,16 @@ export interface QueueItem {
   readonly attempts: number
 }
 
+type QueueItemRow = {
+  readonly id: string
+  readonly element: string
+  readonly attempts: number
+}
+
+type LeaseExpiryRow = {
+  readonly lease_until: number | null
+}
+
 /** @internal */
 export const offerItem = (sql: SqlStorage, id: string, element: string): void => {
   sql.exec(
@@ -64,7 +74,7 @@ export const leaseNextItem = (
   leaseUntil: number,
   maxAttempts: number
 ): QueueItem | undefined => {
-  const row = sql.exec(
+  const row = sql.exec<QueueItemRow>(
     `SELECT id, element, attempts FROM queue_items
      WHERE completed = 0 AND attempts < ? AND (lease_until IS NULL OR lease_until <= ?)
      ORDER BY position ASC LIMIT 1`,
@@ -73,7 +83,7 @@ export const leaseNextItem = (
   ).toArray()[0]
   if (row === undefined) return undefined
   sql.exec("UPDATE queue_items SET lease_until = ? WHERE id = ?", leaseUntil, row.id)
-  return { id: String(row.id), element: String(row.element), attempts: Number(row.attempts) }
+  return row
 }
 
 /** @internal */
@@ -110,9 +120,8 @@ export const expireLeases = (sql: SqlStorage, now: number): void => {
 
 /** @internal */
 export const earliestLeaseExpiry = (sql: SqlStorage): number | undefined => {
-  const row = sql.exec(
+  const row = sql.exec<LeaseExpiryRow>(
     "SELECT min(lease_until) AS lease_until FROM queue_items WHERE lease_until IS NOT NULL"
   ).toArray()[0]
-  const leaseUntil = row?.lease_until
-  return typeof leaseUntil === "number" ? leaseUntil : undefined
+  return row?.lease_until ?? undefined
 }
