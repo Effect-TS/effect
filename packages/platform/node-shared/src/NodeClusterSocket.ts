@@ -34,18 +34,21 @@ export const layerClientProtocol: Layer.Layer<
 > = Layer.effect(Runners.RpcClientProtocol)(
   Effect.gen(function*() {
     const serialization = yield* RpcSerialization.RpcSerialization
-    return Effect.fnUntraced(function*(address) {
-      const socket = yield* NodeSocket.makeNet({
-        openTimeout: 1000,
-        timeout: 5500,
-        host: address.host,
-        port: address.port
-      })
-      return yield* RpcClient.makeProtocolSocket().pipe(
-        Effect.provideService(Socket, socket),
-        Effect.provideService(RpcSerialization.RpcSerialization, serialization)
-      )
-    }, Effect.orDie)
+    return {
+      codecFor: serialization.codecFor,
+      make: Effect.fnUntraced(function*(address) {
+        const socket = yield* NodeSocket.makeNet({
+          openTimeout: 1000,
+          timeout: 5500,
+          host: address.host,
+          port: address.port
+        })
+        return yield* RpcClient.makeProtocolSocket().pipe(
+          Effect.provideService(Socket, socket),
+          Effect.provideService(RpcSerialization.RpcSerialization, serialization)
+        )
+      }, Effect.orDie)
+    }
   })
 )
 

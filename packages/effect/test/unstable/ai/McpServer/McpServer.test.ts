@@ -627,7 +627,8 @@ describe("McpServer", () => {
               supportsAck: false,
               supportsTransferables: false,
               supportsSpanPropagation: false,
-              supportsNotifications: true
+              supportsNotifications: true,
+              codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
             })
           )
         )
