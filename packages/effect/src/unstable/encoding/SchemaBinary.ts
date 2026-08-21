@@ -851,8 +851,8 @@ function toBinaryASTStep(ast: SchemaAST.AST): SchemaAST.AST {
         return ast
       }
       const typeParameters = ast.typeParameters.map((tp) => Schema.make<Schema.Constraint>(SchemaAST.toEncoded(tp)))
-      const jsonLink = Predicate.isFunction(getJson) ? getJson(typeParameters) : undefined
-      const link = jsonLink === undefined && Predicate.isFunction(getCodec) ? getCodec(typeParameters) : jsonLink
+      const link = (Predicate.isFunction(getJson) ? getJson(typeParameters) : undefined) ??
+        (Predicate.isFunction(getCodec) ? getCodec(typeParameters) : undefined)
       return link === undefined ? ast : SchemaAST.replaceEncoding(ast, [SchemaAST.mapLink(link, toBinaryAST)])
     }
     case "Arrays":
@@ -2696,17 +2696,37 @@ function makeTransformation(
   })
 }
 
+const fingerprintModeCache = new WeakMap<Layout, Mode>()
+
 function compileMode(layout: Layout, fingerprint: boolean | undefined): Mode {
-  return fingerprint === true ? fingerprintMode(layout) : defaultMode
+  if (fingerprint !== true) return defaultMode
+  let mode = fingerprintModeCache.get(layout)
+  if (mode === undefined) {
+    mode = fingerprintMode(layout)
+    fingerprintModeCache.set(layout, mode)
+  }
+  return mode
 }
+
+interface CompiledTarget {
+  readonly target: Schema.Constraint
+  readonly layout: Layout
+  readonly decodeExact: boolean
+}
+
+const compileTargetCache = new WeakMap<SchemaAST.AST, CompiledTarget>()
 
 function compileTarget(
   schema: Schema.Constraint
-): { target: Schema.Constraint; layout: Layout; decodeExact: boolean } {
+): CompiledTarget {
+  const cached = compileTargetCache.get(schema.ast)
+  if (cached !== undefined) return cached
   const raw = Schema.make<Schema.Constraint>(toBinaryAST(schema.ast))
   const { decodeExact, layout, recursive } = compileLayout(raw.ast)
   // Only recursive schemas need the cycle walk.
-  return { target: recursive ? withCycleGuard(raw) : raw, layout, decodeExact }
+  const compiled = { target: recursive ? withCycleGuard(raw) : raw, layout, decodeExact }
+  compileTargetCache.set(schema.ast, compiled)
+  return compiled
 }
 
 // Skip the cycle walk once for structurally decoded values.

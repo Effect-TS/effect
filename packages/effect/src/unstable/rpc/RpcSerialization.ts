@@ -593,35 +593,6 @@ export const msgPack: RpcSerialization["Service"] = makeMsgPack({ useRecords: tr
 
 const defaultSchemaBinaryMaxFrameSize = 16 * 1024 * 1024
 
-const copySchemaBinaryEnvelopeHoles = (envelope: unknown): unknown => {
-  if (!Predicate.hasProperty(envelope, "_tag")) return envelope
-  const record = envelope as Record<PropertyKey, unknown>
-  switch (record._tag) {
-    case "Request":
-      return {
-        ...record,
-        payload: record.payload instanceof Uint8Array ? record.payload.slice() : record.payload
-      }
-    case "Chunk":
-      return {
-        ...record,
-        values: record.values instanceof Uint8Array ? record.values.slice() : record.values
-      }
-    case "Exit":
-      return {
-        ...record,
-        exit: record.exit instanceof Uint8Array ? record.exit.slice() : record.exit
-      }
-    case "Defect":
-      return {
-        ...record,
-        defect: record.defect instanceof Uint8Array ? record.defect.slice() : record.defect
-      }
-    default:
-      return envelope
-  }
-}
-
 const makeSchemaBinary = (options?: {
   readonly maxFrameSize?: number | undefined
 }): RpcSerialization["Service"] => {
@@ -639,13 +610,13 @@ const makeSchemaBinary = (options?: {
         decode: (data) => parser.feedSync(typeof data === "string" ? encoder.encode(data) : data),
         encode: (response) => {
           if (!Array.isArray(response)) {
-            return encodeEnvelope(copySchemaBinaryEnvelopeHoles(response)).slice()
+            return encodeEnvelope(response)
           }
           if (response.length === 0) return undefined
           const frames = new Array<Uint8Array>(response.length)
           let length = 0
           for (let i = 0; i < response.length; i++) {
-            const frame = encodeEnvelope(copySchemaBinaryEnvelopeHoles(response[i])).slice()
+            const frame = encodeEnvelope(response[i])
             frames[i] = frame
             length += frame.length
           }

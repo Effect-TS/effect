@@ -530,6 +530,32 @@ describe("RpcSerialization", () => {
         assert.deepStrictEqual(parser.decode(frame), [request])
       }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary)))
 
+    it.effect("owns encoded frames without copying envelope holes", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        const encoder = serialization.makeUnsafe()
+        const payload = Uint8Array.of(1, 2, 3)
+        const request: RpcMessage.RequestEncoded = {
+          _tag: "Request",
+          id: 1,
+          tag: "Echo",
+          payload,
+          headers: []
+        }
+        const frame = encoder.encode(request)
+        assert(frame instanceof Uint8Array)
+        const expected = frame.slice()
+
+        payload.fill(9)
+        for (let i = 0; i < 1_000; i++) encoder.encode({ ...request, id: i })
+
+        assert.deepStrictEqual(frame, expected)
+        assert.deepStrictEqual(serialization.makeUnsafe().decode(frame), [{
+          ...request,
+          payload: Uint8Array.of(1, 2, 3)
+        }])
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary)))
+
     it.effect("defaults maxFrameSize to 16 MiB", () =>
       Effect.gen(function*() {
         const serialization = yield* RpcSerialization.RpcSerialization

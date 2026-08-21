@@ -51,10 +51,7 @@ export const OpaqueHole: Schema.declare<any> = Schema.declare(
     toCodec: () =>
       Schema.link<any>()(
         Schema.Uint8Array,
-        SchemaTransformation.transform({
-          decode: (bytes) => bytes,
-          encode: (value) => (value as Uint8Array).slice()
-        })
+        SchemaTransformation.passthrough()
       )
   }
 )
