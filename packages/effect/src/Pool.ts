@@ -100,8 +100,8 @@ export interface Config<A, E> {
  * inspection and implementation support; user code should prefer the
  * high-level pool operations.
  *
- * `usage` counts fibers currently getting or holding an item plus the total
- * reference count of leased items, and is what drives the pool's target size.
+ * `usage` counts fibers waiting for or currently holding an item, and is what
+ * drives the pool's target size.
  * `waiters` holds the wake-up callbacks of fibers waiting for an item to
  * become available.
  *
