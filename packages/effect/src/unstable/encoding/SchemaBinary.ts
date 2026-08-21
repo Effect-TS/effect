@@ -694,6 +694,7 @@ type LeafKind =
 
 type Layout =
   | { readonly _: LeafKind }
+  | LiteralLayout
   | { readonly _: "int64"; readonly flavor: "date" | "utc" }
   | { readonly _: "never"; readonly ast: SchemaAST.AST }
   | StructLayout
@@ -703,6 +704,22 @@ type Layout =
   | { readonly _: "result"; success: Layout; failure: Layout }
   | { readonly _: "exit"; value: Layout; cause: ReasonLayout }
   | ReasonLayout
+
+// Literal values are validated here rather than by a downstream schema pass.
+interface LiteralLayout {
+  readonly _: "literal"
+  readonly leaf: Layout
+  readonly values: ReadonlyArray<SchemaAST.LiteralValue>
+}
+
+function hasLiteral(layout: LiteralLayout, value: unknown): boolean {
+  const values = layout.values
+  return values.length === 1 ? value === values[0] : values.includes(value as SchemaAST.LiteralValue)
+}
+
+function literalExpected(layout: LiteralLayout): string {
+  return layout.values.map((value) => typeof value === "string" ? JSON.stringify(value) : String(value)).join(" | ")
+}
 
 interface ReasonLayout {
   readonly _: "cause" | "causeReason"
@@ -786,11 +803,13 @@ interface UnionLayout {
 }
 
 function isSelfDelimiting(layout: Layout): boolean {
-  return layout._ === "int"
+  return layout._ === "literal" ? isSelfDelimiting(layout.leaf) : layout._ === "int"
 }
 
 function packedSize(layout: Layout): number | undefined {
   switch (layout._) {
+    case "literal":
+      return packedSize(layout.leaf)
     case "bool":
       return 1
     case "int64":
@@ -1045,11 +1064,11 @@ function astKind(ast: SchemaAST.AST): number {
 interface CompiledLayout {
   readonly layout: Layout
   readonly recursive: boolean
-  readonly decodeExact: boolean
+  readonly exact: boolean
 }
 
 function compileLayout(root: SchemaAST.AST): CompiledLayout {
-  const decodeExact = isDecodeExact(root)
+  const exact = isExact(root)
   root = SchemaAST.toEncoded(root)
   const memo = new Map<SchemaAST.AST, Layout>()
   let recursive = false
@@ -1082,7 +1101,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       case "BigInt":
         return { _: "bigint" }
       case "Literal":
-        return { _: literalKind(ast.literal) }
+        return { _: "literal", leaf: { _: literalKind(ast.literal) }, values: [ast.literal] }
       case "Unknown":
       case "Any":
       case "ObjectKeyword":
@@ -1282,6 +1301,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
     const variantMembers: Array<{ member: SchemaAST.AST; sentinels: ReadonlyArray<SchemaAST.Sentinel> }> = []
     const rowMembers: Array<{ member: SchemaAST.AST; kind: number }> = []
     const literalRows = new Map<number, Layout>()
+    const literalValues = new Map<number, Array<SchemaAST.LiteralValue>>()
     const addLiteralRow = (kind: number, row: Layout) => {
       const existing = literalRows.get(kind)
       if (existing !== undefined && existing._ !== row._) {
@@ -1291,7 +1311,13 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
     }
     for (const member of members) {
       if (member._tag === "Literal") {
-        addLiteralRow(astKind(member), { _: literalKind(member.literal) })
+        const kind = astKind(member)
+        const values = literalValues.get(kind)
+        if (values === undefined) {
+          literalValues.set(kind, [member.literal])
+        } else if (!values.includes(member.literal)) {
+          values.push(member.literal)
+        }
         continue
       }
       if (member._tag === "UniqueSymbol") {
@@ -1312,6 +1338,9 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
         }
       }
       rowMembers.push({ member, kind: astKind(member) })
+    }
+    for (const [kind, values] of literalValues) {
+      addLiteralRow(kind, { _: "literal", leaf: { _: literalKind(values[0]) }, values })
     }
     if (variantMembers.length === 0 && rowMembers.length === 0 && literalRows.size === 1) {
       return literalRows.values().next().value!
@@ -1397,17 +1426,20 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
   }
 
   const layout = compile(root)
-  return { layout, recursive, decodeExact }
+  return { layout, recursive, exact }
 }
 
 // The parser may return the binary decoder's value directly only when that
 // decoder proves every predicate and no Schema parser behavior can change it.
-function isDecodeExact(root: SchemaAST.AST): boolean {
+// Schemas whose decoded values the binary layer already produces and validates
+// on its own, so the schema pass around it would only repeat work. Constructor
+// defaults are ignored because they only run during construction.
+function isExact(root: SchemaAST.AST): boolean {
   const exact = (ast: SchemaAST.AST): boolean => {
     if (
       ast.encoding !== undefined || ast.checks !== undefined ||
       (ast as { readonly encodingChecks?: SchemaAST.Checks }).encodingChecks !== undefined ||
-      ast.annotations?.parseOptions !== undefined || ast.context?.constructorDefault !== undefined
+      ast.annotations?.parseOptions !== undefined
     ) {
       return false
     }
@@ -1420,6 +1452,7 @@ function isDecodeExact(root: SchemaAST.AST): boolean {
       case "Void":
       case "Number":
       case "BigInt":
+      case "Literal":
         return true
       case "Arrays":
         return ast.elements.every(exact) && ast.rest.every(exact)
@@ -1428,6 +1461,10 @@ function isDecodeExact(root: SchemaAST.AST): boolean {
           ast.indexSignatures.every((signature) =>
             signature.parameter._tag === "String" && exact(signature.parameter) && exact(signature.type)
           )
+      case "Union":
+        return ast.mode === "anyOf" && ast.types.every(exact)
+      case "Declaration":
+        return representationId(ast) === "effect/schema/Uint8Array"
       default:
         return false
     }
@@ -1461,7 +1498,8 @@ const F = {
   result: 21,
   exit: 22,
   cause: 23,
-  causeReason: 24
+  causeReason: 24,
+  literal: 25
 } as const
 
 // Hash the compiled layout graph, including cycle back-edge distances.
@@ -1511,6 +1549,18 @@ function layoutFingerprint(root: Layout): bigint {
       case "dateTimeZoned":
         out.push(F[layout._])
         return out
+      case "literal": {
+        out.push(F.literal)
+        pushBytes(out, structure(layout.leaf))
+        pushUvarint(out, layout.values.length)
+        for (const value of layout.values) {
+          out.push(sentinelLiteralKind(value))
+          const bytes = utf8Encode.encode(sentinelLiteralString(value))
+          pushUvarint(out, bytes.length)
+          pushBytes(out, bytes)
+        }
+        return out
+      }
       case "int64":
         out.push(layout.flavor === "date" ? F.date : F.dateTimeUtc)
         return out
@@ -1621,6 +1671,8 @@ function matchRank(layout: Layout): number {
 
 function matchesLayout(layout: Layout, value: unknown): boolean {
   switch (layout._) {
+    case "literal":
+      return hasLiteral(layout, value)
     case "bool":
       return typeof value === "boolean"
     case "null":
@@ -1992,6 +2044,10 @@ function encodeUnion(ctx: EncodeContext, layout: UnionLayout, value: unknown, w:
 
 function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writer): void {
   switch (layout._) {
+    case "literal":
+      if (!hasLiteral(layout, value)) encodeFail(literalExpected(layout), value, ctx.options)
+      encodeValue(ctx, layout.leaf, value, w)
+      return
     case "bool":
       w.byte(value === true ? 1 : 0)
       return
@@ -2503,6 +2559,11 @@ function requirePresent(value: unknown): unknown {
 
 function decodeValue(layout: Layout, r: Reader): unknown {
   switch (layout._) {
+    case "literal": {
+      const value = decodeValue(layout.leaf, r)
+      if (!hasLiteral(layout, value)) invalid(literalExpected(layout), value, r.options)
+      return value
+    }
     case "bool": {
       if (r.remaining !== 1) invalid("bool", undefined, r.options)
       const b = r.byte()
@@ -2711,7 +2772,7 @@ function compileMode(layout: Layout, fingerprint: boolean | undefined): Mode {
 interface CompiledTarget {
   readonly target: Schema.Constraint
   readonly layout: Layout
-  readonly decodeExact: boolean
+  readonly exact: boolean
 }
 
 const compileTargetCache = new WeakMap<SchemaAST.AST, CompiledTarget>()
@@ -2722,9 +2783,9 @@ function compileTarget(
   const cached = compileTargetCache.get(schema.ast)
   if (cached !== undefined) return cached
   const raw = Schema.make<Schema.Constraint>(toBinaryAST(schema.ast))
-  const { decodeExact, layout, recursive } = compileLayout(raw.ast)
+  const { exact, layout, recursive } = compileLayout(raw.ast)
   // Only recursive schemas need the cycle walk.
-  const compiled = { target: recursive ? withCycleGuard(raw) : raw, layout, decodeExact }
+  const compiled = { target: recursive ? withCycleGuard(raw) : raw, layout, exact }
   compileTargetCache.set(schema.ast, compiled)
   return compiled
 }
@@ -2822,6 +2883,37 @@ export function toCodec<S extends Schema.Constraint>(schema: S, options?: Option
 }
 
 /**
+ * Encodes one frame without the schema pass {@link toCodec} wraps around it.
+ *
+ * Only schemas the binary layer already validates on its own take the direct
+ * path; anything else falls back to the codec, so checks and transformations
+ * still run.
+ *
+ * @internal
+ */
+export function encodeUnknownSync<S extends Schema.Constraint>(
+  schema: S,
+  options?: SchemaAST.ParseOptions & Options
+): (value: unknown) => Uint8Array<ArrayBuffer> {
+  const { exact, layout } = compileTarget(schema)
+  if (!exact) {
+    return Schema.encodeUnknownSync(
+      toCodec(schema, options) as unknown as Schema.ConstraintEncoder<unknown, never>,
+      options
+    ) as (value: unknown) => Uint8Array<ArrayBuffer>
+  }
+  const mode = compileMode(layout, options?.fingerprint)
+  const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
+  return (value) => {
+    try {
+      return encodeFrame(layout, value, parseOptions, mode)
+    } catch (e) {
+      throw e instanceof IssueError ? new Schema.SchemaError(e.issue) : e
+    }
+  }
+}
+
+/**
  * A stateful frame parser for concatenated {@link toCodec} outputs.
  *
  * @category models
@@ -2859,11 +2951,11 @@ export function parser<S extends Schema.Constraint>(
   schema: S,
   options?: SchemaAST.ParseOptions & Options & { readonly maxFrameSize?: number | undefined }
 ): Parser<S["Type"]> {
-  const { decodeExact, layout, target } = compileTarget(schema)
+  const { exact, layout, target } = compileTarget(schema)
   const mode = compileMode(layout, options?.fingerprint)
   const parseOptions: SchemaAST.ParseOptions = options ?? {}
   const maxFrameSize = options?.maxFrameSize
-  const decodeEncoded = decodeExact
+  const decodeEncoded = exact
     ? undefined
     : Schema.decodeUnknownSync(target as Schema.ConstraintDecoder<unknown>, parseOptions)
   let buffer = new Uint8Array(0)
