@@ -854,6 +854,97 @@ describe("Prompt.file", () => {
       assert.isFalse(narrowedFrame?.includes("basket.txt"))
       assert.isTrue(expandedFrame?.includes("basket.txt"))
     }).pipe(Effect.provide(FilePromptLayer)))
+
+  const JkFilePromptLayer = Layer.mergeAll(
+    FileSystem.layerNoop({
+      exists: () => Effect.succeed(true),
+      readDirectory: (directory) =>
+        Effect.succeed(
+          directory === "/workspace"
+            ? ["jest.config.ts", "package.json", "readme.md"]
+            : []
+        ),
+      stat: () => Effect.succeed({ type: "File" } as any)
+    }),
+    PathLayer,
+    TerminalLayer
+  )
+
+  it.effect("keeps `j` in the filter query instead of moving the cursor", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.file({
+        message: "Pick file",
+        startingPath: "/workspace"
+      })
+
+      yield* MockTerminal.inputText("jest")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(prompt)
+      assert.strictEqual(result, "/workspace/jest.config.ts")
+
+      const output = yield* MockTerminal.displayLines
+      const frames = toFrames(output)
+      const filteredFrame = findFrame(frames, "[filter: jest]")
+
+      assert.isTrue(filteredFrame !== undefined)
+      assert.isTrue(filteredFrame?.includes("jest.config.ts"))
+      assert.isFalse(filteredFrame?.includes("readme.md"))
+    }).pipe(Effect.provide(JkFilePromptLayer)))
+
+  it.effect("keeps `k` in the filter query instead of moving the cursor", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.file({
+        message: "Pick file",
+        startingPath: "/workspace"
+      })
+
+      yield* MockTerminal.inputText("package")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(prompt)
+      assert.strictEqual(result, "/workspace/package.json")
+
+      const output = yield* MockTerminal.displayLines
+      const frames = toFrames(output)
+      const filteredFrame = findFrame(frames, "[filter: package]")
+
+      assert.isTrue(filteredFrame !== undefined)
+      assert.isTrue(filteredFrame?.includes("package.json"))
+      assert.isFalse(filteredFrame?.includes("readme.md"))
+    }).pipe(Effect.provide(JkFilePromptLayer)))
+
+  it.effect("moves the cursor with ctrl-n and ctrl-p", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.file({
+        message: "Pick file",
+        startingPath: "/workspace"
+      })
+
+      yield* MockTerminal.inputKey("n", { ctrl: true })
+      yield* MockTerminal.inputKey("n", { ctrl: true })
+      yield* MockTerminal.inputKey("p", { ctrl: true })
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(prompt)
+      assert.strictEqual(result, "/workspace/alpha.txt")
+    }).pipe(Effect.provide(FilePromptLayer)))
+
+  it.effect("moves the cursor up with ctrl-k", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.file({
+        message: "Pick file",
+        startingPath: "/workspace"
+      })
+
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("k", { ctrl: true })
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(prompt)
+      assert.strictEqual(result, "/workspace/alpha.txt")
+    }).pipe(Effect.provide(FilePromptLayer)))
 })
 
 describe("Prompt.multiSelect", () => {

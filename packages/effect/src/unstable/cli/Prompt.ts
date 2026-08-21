@@ -963,6 +963,11 @@ export const date = (options: DateOptions): Prompt<Date> => {
  * The prompt can be configured to select files, directories, or either path
  * type.
  *
+ * You can also type to filter the listed entries. Every printable character is
+ * appended to the filter query, so navigation is bound to the arrow keys,
+ * `tab`, and the `Ctrl+P` / `Ctrl+N` chords used by `readline` and `fzf`
+ * (`Ctrl+K` also moves up). `Ctrl+U` clears the query.
+ *
  * @category constructors
  * @since 4.0.0
  */
@@ -2553,21 +2558,32 @@ const processSelection = Effect.fnUntraced(function*(state: FileState, options: 
 
 const handleFileProcess = (options: FileOptionsReq) => {
   return Effect.fnUntraced(function*(input: Terminal.UserInput, state: FileState) {
+    // Navigation is bound to ctrl chords rather than bare `j`/`k`, so that every
+    // printable character reaches the filter input.
     if (input.key.ctrl) {
-      if (input.key.name === "u") {
-        if (showConfirmation(state.confirm)) {
+      switch (input.key.name) {
+        case "u": {
+          if (showConfirmation(state.confirm)) {
+            return Action.Beep()
+          }
+          return yield* processFileClear(state)
+        }
+        case "p":
+        case "k": {
+          return yield* processFileCursorUp(state)
+        }
+        case "n": {
+          return yield* processFileCursorDown(state)
+        }
+        default: {
           return Action.Beep()
         }
-        return yield* processFileClear(state)
       }
-      return Action.Beep()
     }
     switch (input.key.name) {
-      case "k":
       case "up": {
         return yield* processFileCursorUp(state)
       }
-      case "j":
       case "down":
       case "tab": {
         return yield* processFileCursorDown(state)
