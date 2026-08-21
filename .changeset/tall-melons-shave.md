@@ -16,6 +16,8 @@ For the hot path, `PgProtocol.makeBindEncoder(PgTypes.writeParameter)` builds a 
 
 Decoding has the same opt-in. A codec can supply the optional `Codec.read`, which reads a value out of a region of a buffer without a view of its own; array elements go through it, so decoding an array costs one read per element rather than a view and a lookup as well. A codec without a `read` is handed a view and its `decode` runs.
 
+Result columns take the same route. `makeParser({ readField })` hands each `DataRow` field to a reader where it lies, so a client that decodes its columns never gets a view per column, and `PgTypes.makeFieldReader` builds that reader from a `RowDescription`'s columns - resolving each column's codec once for the result rather than once per row, and rejecting a text column there rather than on every row. `DataRow`, `BackendMessage`, and `Parser` take a type parameter for the field type that defaults to `Uint8Array | null`, so a parser built without a reader is unchanged. The reader is settable, because a result's columns are only known from its `RowDescription`.
+
 A parser's buffer starts at 8 KiB and doubles up to 64 KiB as it is refilled, so a busy connection spreads its allocations over more messages. A message larger than that gets a buffer of its own size, which the pool does not keep.
 
 `PgClient` is unchanged and still uses `pg` at runtime.
