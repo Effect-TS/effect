@@ -1,5 +1,5 @@
 ---
-"@effect/sql-pg": minor
+"@effect/sql-pg": patch
 ---
 
 Add a PostgreSQL wire protocol codec to `@effect/sql-pg`.
