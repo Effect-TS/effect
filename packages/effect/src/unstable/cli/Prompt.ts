@@ -627,28 +627,16 @@ const windowsTheme: Theme = {
   pointer: ">"
 }
 
-const mergeTheme = (base: Theme, overrides: Partial<Theme> | undefined): Theme => {
-  if (overrides === undefined) {
-    return base
-  }
-  const theme = { ...base }
-  for (const key of Object.keys(overrides) as Array<keyof Theme>) {
-    const value = overrides[key]
-    if (value !== undefined) {
-      Object.assign(theme, { [key]: value })
-    }
-  }
-  return theme
-}
-
 /**
  * Creates a prompt theme using the current platform defaults.
  *
  * @category constructors
  * @since 4.0.0
  */
-export const makeTheme = (options?: Partial<Theme>): Theme =>
-  mergeTheme(process.platform === "win32" ? windowsTheme : defaultTheme, options)
+export const makeTheme = (options?: Partial<Theme>): Theme => ({
+  ...(process.platform === "win32" ? windowsTheme : defaultTheme),
+  ...options
+})
 
 /**
  * Context reference for the theme used by built-in prompts.
@@ -664,7 +652,7 @@ export const Theme: Context.Reference<Theme> = Context.Reference("effect/unstabl
 })
 
 const getTheme = (options: ThemeOptions): Effect.Effect<Theme> =>
-  Effect.map(Theme, (theme) => mergeTheme(theme, options.theme))
+  Effect.map(Theme, (theme) => ({ ...theme, ...options.theme }))
 
 /**
  * Type alias for any `Prompt`, regardless of its output type.

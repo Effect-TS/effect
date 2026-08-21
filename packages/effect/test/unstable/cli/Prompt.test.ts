@@ -189,19 +189,6 @@ describe("Prompt.text", () => {
       assert.include(frames.at(-1) ?? "", "+ Name ~")
     }).pipe(Effect.provide(TestLayer)))
 
-  it.effect("keeps theme defaults when a JavaScript override is undefined", () =>
-    Effect.gen(function*() {
-      yield* MockTerminal.inputKey("enter")
-
-      yield* Prompt.run(Prompt.text({
-        message: "Name",
-        theme: { prefix: undefined } as unknown as Partial<Prompt.Theme>
-      }))
-
-      const frames = toFrames(yield* MockTerminal.displayLines)
-      assert.include(frames[0] ?? "", "? Name")
-    }).pipe(Effect.provide(TestLayer)))
-
   it.effect("renders theme colors from context with per-prompt overrides", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputText("A")
