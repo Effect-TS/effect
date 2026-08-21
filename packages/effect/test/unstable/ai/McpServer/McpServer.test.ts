@@ -80,6 +80,8 @@ const INTERNAL_TOOL_ERROR_MESSAGE = "Tool execution failed due to an internal se
 
 const TestServerLayer = makeServerLayer({ name: "TestServer" })
 
+const LatestProtocolServerLayer = makeServerLayer({ name: "TestServer", protocols: [McpProtocol.v2025_11_25] })
+
 const initializePayload = {
   protocolVersion: "2025-06-18",
   capabilities: {},
@@ -280,6 +282,22 @@ describe("McpServer", () => {
 
       strictEqual(response.status, 400)
     }))
+  it.effect("negotiates an initialize request from a client on an unsupported protocol version", () =>
+    Effect.gen(function*() {
+      const { httpClient } = yield* makeTestClientWith(LatestProtocolServerLayer)
+
+      const response = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "2025-06-18"),
+        HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", id: 1, method: "initialize", params: initializePayload }),
+        httpClient.execute
+      )
+
+      strictEqual(response.status, 200)
+      strictEqual(response.headers["mcp-protocol-version"], "2025-11-25")
+      assertTrue(response.headers["mcp-session-id"] !== undefined)
+    }))
+
   describe("registerToolkit", () => {
     it.effect("lists output schemas only for structured tool results", () =>
       Effect.gen(function*() {

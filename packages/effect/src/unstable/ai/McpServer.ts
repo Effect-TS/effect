@@ -1300,6 +1300,12 @@ const mcpStdioSerialization = (
  * remain valid. The surrounding HTTP server remains responsible for binding
  * to an appropriate interface and installing authentication.
  *
+ * The `MCP-Protocol-Version` header is never checked on an `initialize` request.
+ * The header reports the version negotiated by an earlier `initialize`, and
+ * clients read `400`, `404` and `405` on a POSTed `InitializeRequest` as a legacy
+ * HTTP+SSE endpoint and retry with a GET. The version offered in the request body
+ * is negotiated through the protocol registry instead.
+ *
  * `layerHttp` always implements the single-endpoint Streamable HTTP topology.
  * Using `v2024_11_05` here is a custom compatibility transport for that
  * revision's schema. It does not implement the historical two-endpoint
@@ -1377,18 +1383,15 @@ const layerMcpProtocolHttp = (options: {
       if (sessionId !== undefined && session === undefined) {
         return Effect.succeed(HttpServerResponse.empty({ status: 404 }))
       }
-      if (
-        protocolVersion !== undefined &&
-        !state.protocolRegistry.protocols.some((protocol) => protocol.protocolVersion === protocolVersion)
-      ) {
-        return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-      }
-      if (
-        session?.protocol.transport.requiresVersionHeader === true &&
-        protocolVersion !== session.protocol.protocolVersion
-      ) {
-        return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-      }
+      // Evaluated only once the body shows the request is not an `initialize`. The header
+      // reports the version negotiated by an earlier `initialize`, so it cannot gate the
+      // `initialize` itself, and a client reads 400 on a POSTed InitializeRequest as "this
+      // endpoint speaks the deprecated two-endpoint HTTP+SSE transport" and retries with a
+      // GET. An `initialize` negotiates from the version offered in the body instead.
+      const hasUnsupportedProtocolVersion = (protocolVersion !== undefined &&
+        !state.protocolRegistry.protocols.some((protocol) => protocol.protocolVersion === protocolVersion)) ||
+        (session?.protocol.transport.requiresVersionHeader === true &&
+          protocolVersion !== session.protocol.protocolVersion)
       return request.text.pipe(
         Effect.matchEffect({
           onFailure: () =>
@@ -1431,10 +1434,16 @@ const layerMcpProtocolHttp = (options: {
                   if (isInitialize && sessionId !== undefined) {
                     return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
                   }
+                  if (!isInitialize && hasUnsupportedProtocolVersion) {
+                    return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+                  }
                   if (!isInitialize && isRequest && sessionId === undefined) {
                     return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
                   }
                   return httpEffect
+                }
+                if (hasUnsupportedProtocolVersion) {
+                  return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
                 }
                 if (input.length === 0) {
                   return Effect.succeed(HttpServerResponse.jsonUnsafe({
