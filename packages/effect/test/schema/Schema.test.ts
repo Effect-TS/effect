@@ -112,6 +112,18 @@ describe("Schema", () => {
       strictEqual(error.message, "Expected string")
       strictEqual(String(error), "SchemaError(Expected string)")
     })
+
+    it("does not capture stack frames", () => {
+      const result = SchemaParser.decodeUnknownResult(Schema.String)(null)
+      assertTrue(Result.isFailure(result))
+      const ErrorWithLimit = Error as typeof Error & { stackTraceLimit?: number | undefined }
+      const stackTraceLimit = ErrorWithLimit.stackTraceLimit
+
+      const error = new Schema.SchemaError(result.failure)
+
+      strictEqual(error.stack, "SchemaError: Expected string")
+      strictEqual(ErrorWithLimit.stackTraceLimit, stackTraceLimit)
+    })
   })
 
   describe("parseOptions annotation", () => {

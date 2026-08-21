@@ -44,6 +44,7 @@ import * as InternalArbitrary from "./internal/schema/toArbitrary.ts"
 import * as InternalEquivalence from "./internal/schema/toEquivalence.ts"
 import * as InternalToJsonSchemaDocument from "./internal/schema/toJsonSchemaDocument.ts"
 import * as InternalToRepresentation from "./internal/schema/toRepresentation.ts"
+import { getStackTraceLimit, setStackTraceLimit } from "./internal/stackTraceLimit.ts"
 import * as JsonPatch from "./JsonPatch.ts"
 import * as JsonSchema from "./JsonSchema.ts"
 import { remainder } from "./Number.ts"
@@ -1181,7 +1182,13 @@ export class SchemaError extends Data.TaggedError("SchemaError")<{
 }> {
   readonly [SchemaErrorTypeId]: typeof SchemaErrorTypeId = SchemaErrorTypeId
   constructor(issue: SchemaIssue.Issue) {
-    super({ issue })
+    const stackTraceLimit = getStackTraceLimit()
+    setStackTraceLimit(0)
+    try {
+      super({ issue })
+    } finally {
+      setStackTraceLimit(stackTraceLimit)
+    }
   }
   override get message() {
     return SchemaIssue.defaultFormatter(this.issue)
