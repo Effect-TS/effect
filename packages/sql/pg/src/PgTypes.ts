@@ -459,9 +459,12 @@ const parseZone = (text: string): number => {
     return fail(`Expected a time zone offset, received "${text}"`)
   }
   if (match[1] === undefined) return 0
-  const seconds = Number(match[2]) * 3600 +
-    (match[3] === undefined ? 0 : Number(match[3]) * 60) +
-    (match[4] === undefined ? 0 : Number(match[4]))
+  const minutes = match[3] === undefined ? 0 : Number(match[3])
+  const trailingSeconds = match[4] === undefined ? 0 : Number(match[4])
+  const seconds = Number(match[2]) * 3600 + minutes * 60 + trailingSeconds
+  if (minutes > 59 || trailingSeconds > 59 || seconds >= TZDISP_LIMIT_SECONDS) {
+    return fail(`Time zone offset out of range, received "${text}"`)
+  }
   return match[1] === "-" ? -seconds : seconds
 }
 
@@ -676,6 +679,18 @@ const formatIPv6 = (bytes: Uint8Array, offset: number): string => {
   return `${head}::${tail}`
 }
 
+const hasHostBits = (bytes: Uint8Array, offset: number, length: number, bits: number): boolean => {
+  const wholeBytes = Math.floor(bits / 8)
+  const partialBits = bits % 8
+  if (partialBits !== 0 && (bytes[offset + wholeBytes] & ((1 << (8 - partialBits)) - 1)) !== 0) {
+    return true
+  }
+  for (let index = wholeBytes + (partialBits === 0 ? 0 : 1); index < length; index++) {
+    if (bytes[offset + index] !== 0) return true
+  }
+  return false
+}
+
 const encodeInet = (value: unknown, isCidr: boolean): Uint8Array => {
   const text = requireString(value, isCidr ? "cidr" : "inet")
   const slash = text.lastIndexOf("/")
@@ -690,15 +705,8 @@ const encodeInet = (value: unknown, isCidr: boolean): Uint8Array => {
   if (!Number.isInteger(bits) || bits < 0 || bits > fullBits) {
     return fail(`Invalid netmask length in "${text}"`)
   }
-  if (isCidr) {
-    const wholeBytes = Math.floor(bits / 8)
-    const partialBits = bits % 8
-    if (partialBits !== 0 && (bytes[wholeBytes] & ((1 << (8 - partialBits)) - 1)) !== 0) {
-      return fail(`CIDR address has host bits set in "${text}"`)
-    }
-    for (let index = wholeBytes + (partialBits === 0 ? 0 : 1); index < bytes.length; index++) {
-      if (bytes[index] !== 0) return fail(`CIDR address has host bits set in "${text}"`)
-    }
+  if (isCidr && hasHostBits(bytes, 0, bytes.length, bits)) {
+    return fail(`CIDR address has host bits set in "${text}"`)
   }
   const result = new Uint8Array(4 + bytes.length)
   result[0] = v4 === undefined ? PGSQL_AF_INET6 : PGSQL_AF_INET
@@ -713,13 +721,19 @@ const decodeInet = (bytes: Uint8Array, offset: number, size: number): string => 
   if (size < 4) return fail("Truncated inet value")
   const family = bytes[offset]
   const bits = bytes[offset + 1]
-  const isCidr = bytes[offset + 2] === 1
+  const cidrFlag = bytes[offset + 2]
+  if (cidrFlag > 1) return fail(`Invalid inet CIDR flag: ${cidrFlag}`)
+  const isCidr = cidrFlag === 1
   const addressSize = bytes[offset + 3]
   const expected = family === PGSQL_AF_INET ? 4 : family === PGSQL_AF_INET6 ? 16 : -1
   if (expected === -1 || addressSize !== expected) {
     return fail(`Invalid inet address family ${family} with ${addressSize} byte(s)`)
   }
   requireSize(size, 4 + addressSize, "inet")
+  if (bits > addressSize * 8) return fail(`Invalid inet netmask length: ${bits}`)
+  if (isCidr && hasHostBits(bytes, offset + 4, addressSize, bits)) {
+    return fail("CIDR address has host bits set")
+  }
   const text = family === PGSQL_AF_INET ? formatIPv4(bytes, offset + 4) : formatIPv6(bytes, offset + 4)
   return isCidr || bits !== addressSize * 8 ? `${text}/${bits}` : text
 }
@@ -1357,12 +1371,20 @@ const decodeArray = (
 ): ReadonlyArray<unknown> => {
   if (size < 12) return fail("Truncated array value")
   const dimensions = readInt32(bytes, start)
-  if (dimensions === 0) return []
+  const wireElementOid = readUint32(bytes, start + 8)
+  if (wireElementOid !== elementOid) {
+    return fail(`Array element OID ${wireElementOid} does not match expected OID ${elementOid}`)
+  }
+  if (dimensions === 0) {
+    if (size !== 12) return fail("Zero-dimensional array has trailing bytes")
+    return []
+  }
   if (dimensions !== 1) {
     return fail(`Only 1-dimensional arrays are supported, received ${dimensions} dimensions`)
   }
   if (size < 20) return fail("Truncated array value")
   const length = readInt32(bytes, start + 12)
+  if (length < 0) return fail(`Invalid array length: ${length}`)
   const lowerBound = readInt32(bytes, start + 16)
   if (lowerBound !== 1) return fail(`Only arrays with a lower bound of 1 are supported, received ${lowerBound}`)
   const codec = lookup(elementOid)
@@ -1387,6 +1409,7 @@ const decodeArray = (
       offset += elementSize
     }
   }
+  if (offset !== limit) return fail("Array value has trailing bytes")
   return values
 }
 

@@ -32,6 +32,12 @@ describe("PgAuth", () => {
       })
       assert.notStrictEqual(other, md5.expected)
     })
+
+    it("rejects a salt that is not exactly four bytes", () => {
+      for (const salt of [new Uint8Array(0), new Uint8Array(3), new Uint8Array(5)]) {
+        assertThrowsTagged("PgAuthError", () => PgAuth.md5Password({ user: "u", password: "p", salt }))
+      }
+    })
   })
 
   describe("SCRAM-SHA-256", () => {
@@ -73,6 +79,42 @@ describe("PgAuth", () => {
       )
     })
 
+    it("rejects duplicate server attributes", () => {
+      const started = PgAuth.scramInit({ password: scram.password, nonce: scram.clientNonce })
+      assertThrowsTagged(
+        "PgAuthError",
+        () =>
+          PgAuth.scramContinue(
+            started.state,
+            encoder.encode(`${scram.serverFirstMessage},r=${scram.clientNonce}replacement`)
+          )
+      )
+    })
+
+    it("rejects malformed salts and iteration counts", () => {
+      const started = PgAuth.scramInit({ password: scram.password, nonce: scram.clientNonce })
+      const nonce = `${scram.clientNonce}server`
+      for (
+        const challenge of [
+          `r=${nonce},s=,i=4096`,
+          `r=${nonce},s=*,i=4096`,
+          `r=${nonce},s=AA==,i=0`,
+          `r=${nonce},s=AA==,i=-1`,
+          `r=${nonce},s=AA==,i=1.5`,
+          `r=${nonce},s=AA==,i=1e3`,
+          `r=${nonce},s=AA==,i=2147483648`
+        ]
+      ) {
+        assertThrowsTagged("PgAuthError", () => PgAuth.scramContinue(started.state, encoder.encode(challenge)))
+      }
+    })
+
+    it("rejects malformed SCRAM text", () => {
+      const started = PgAuth.scramInit({ password: scram.password, nonce: scram.clientNonce })
+      assertThrowsTagged("PgAuthError", () => PgAuth.scramContinue(started.state, new Uint8Array([0xff])))
+      assertThrowsTagged("PgAuthError", () => PgAuth.scramContinue(started.state, encoder.encode("not-an-attribute")))
+    })
+
     it("rejects a tampered server signature", () => {
       const started = PgAuth.scramInit({ password: scram.password, nonce: scram.clientNonce })
       const continued = PgAuth.scramContinue(started.state, encoder.encode(scram.serverFirstMessage))
@@ -91,8 +133,25 @@ describe("PgAuth", () => {
       )
     })
 
-    it("rejects a nonce containing a comma", () => {
-      assertThrowsTagged("PgAuthError", () => PgAuth.scramInit({ password: "x", nonce: "a,b" }))
+    it("rejects malformed server-final messages", () => {
+      const started = PgAuth.scramInit({ password: scram.password, nonce: scram.clientNonce })
+      const continued = PgAuth.scramContinue(started.state, encoder.encode(scram.serverFirstMessage))
+      for (
+        const challenge of [
+          new Uint8Array([0xff]),
+          encoder.encode("x=missing-signature"),
+          encoder.encode("v=*"),
+          encoder.encode(`${scram.serverFinalMessage},${scram.serverFinalMessage}`)
+        ]
+      ) {
+        assertThrowsTagged("PgAuthError", () => PgAuth.scramFinish(continued.state, challenge))
+      }
+    })
+
+    it("rejects a nonce outside SCRAM's printable ASCII range", () => {
+      for (const nonce of ["", "a,b", "with space", "line\nbreak", "nönce"]) {
+        assertThrowsTagged("PgAuthError", () => PgAuth.scramInit({ password: "x", nonce }))
+      }
     })
 
     it("derives a different proof for a different password", () => {

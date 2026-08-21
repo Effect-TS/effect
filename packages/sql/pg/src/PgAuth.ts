@@ -82,6 +82,9 @@ export const md5Password = (options: {
   readonly password: string
   readonly salt: Uint8Array
 }): string => {
+  if (options.salt.length !== 4) {
+    return fail(`PostgreSQL MD5 salt must be exactly 4 bytes, received ${options.salt.length}`)
+  }
   const inner = createHash("md5").update(textEncoder.encode(options.password + options.user)).digest("hex")
   const outer = createHash("md5").update(textEncoder.encode(inner)).update(options.salt).digest("hex")
   return `md5${outer}`
@@ -138,7 +141,11 @@ const parseAttributes = (message: string): Map<string, string> => {
     if (separator < 1) {
       return fail(`Malformed SCRAM attribute: "${part}"`)
     }
-    attributes.set(part.slice(0, separator), part.slice(separator + 1))
+    const key = part.slice(0, separator)
+    if (attributes.has(key)) {
+      return fail(`Duplicate SCRAM attribute "${key}"`)
+    }
+    attributes.set(key, part.slice(separator + 1))
   }
   return attributes
 }
@@ -161,8 +168,8 @@ export const scramInit = (options: {
   readonly password: string
   readonly nonce: string
 }): { readonly state: ScramFirst; readonly response: Uint8Array } => {
-  if (options.nonce.length === 0 || options.nonce.includes(",")) {
-    return fail("SCRAM nonce must be a non-empty string that contains no comma")
+  if (!/^[\x21-\x2b\x2d-\x7e]+$/.test(options.nonce)) {
+    return fail("SCRAM nonce must contain only printable ASCII characters other than comma")
   }
   const clientFirstMessageBare = `n=,r=${options.nonce}`
   return {
@@ -194,10 +201,15 @@ export const scramContinue = (
   if (!nonce.startsWith(state.clientNonce) || nonce.length === state.clientNonce.length) {
     return fail("SCRAM server nonce does not extend the client nonce")
   }
-  const salt = fromBase64(attribute(attributes, "s"), "s")
-  const iterations = Number(attribute(attributes, "i"))
-  if (!Number.isInteger(iterations) || iterations < 1) {
-    return fail(`Invalid SCRAM iteration count: ${attribute(attributes, "i")}`)
+  const saltText = attribute(attributes, "s")
+  if (saltText.length === 0) {
+    return fail("SCRAM salt must not be empty")
+  }
+  const salt = fromBase64(saltText, "s")
+  const iterationText = attribute(attributes, "i")
+  const iterations = Number(iterationText)
+  if (!/^[1-9]\d*$/.test(iterationText) || !Number.isSafeInteger(iterations) || iterations > 0x7fffffff) {
+    return fail(`Invalid SCRAM iteration count: ${iterationText}`)
   }
 
   const saltedPassword = bytesOf(

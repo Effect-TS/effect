@@ -187,6 +187,34 @@ describe("PgTypes", () => {
           )
       )
     })
+
+    it("rejects an array whose element OID does not match its array type", () => {
+      assertThrowsTagged(
+        "PgTypesCodecError",
+        () =>
+          PgTypes.decode(
+            bytes("00000001000000000000001500000001000000010000000400000001"),
+            PgTypes.OID.int4Array,
+            1
+          )
+      )
+    })
+
+    it("rejects negative and mismatched declared array lengths", () => {
+      for (
+        const wire of [
+          "000000010000000000000017ffffffff00000001",
+          "00000001000000000000001700000000000000010000000400000001",
+          "000000010000000000000017000000010000000100000004000000010000000400000002",
+          "0000000000000000000000170000000100000001"
+        ]
+      ) {
+        assertThrowsTagged(
+          "PgTypesCodecError",
+          () => PgTypes.decode(bytes(wire), PgTypes.OID.int4Array, 1)
+        )
+      }
+    })
   })
 
   describe("errors", () => {
@@ -195,10 +223,26 @@ describe("PgTypes", () => {
     })
 
     it("rejects a value of the wrong JavaScript type", () => {
-      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("1", PgTypes.OID.int4))
-      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(1, PgTypes.OID.int8))
-      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(1, PgTypes.OID.text))
-      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode([1], PgTypes.OID.bytea))
+      for (
+        const [value, oid] of [
+          [1, PgTypes.OID.bool],
+          ["1", PgTypes.OID.int4],
+          [1, PgTypes.OID.int8],
+          ["1", PgTypes.OID.float8],
+          [1, PgTypes.OID.numeric],
+          [1, PgTypes.OID.text],
+          [[1], PgTypes.OID.bytea],
+          [1, PgTypes.OID.uuid],
+          [1, PgTypes.OID.inet],
+          [1, PgTypes.OID.date],
+          [1, PgTypes.OID.time],
+          [1, PgTypes.OID.timetz],
+          [BigInt(1), PgTypes.OID.timestamp],
+          ["not-an-array", PgTypes.OID.int4Array]
+        ] as const
+      ) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(value, oid))
+      }
     })
 
     it("rejects integers outside their range", () => {
@@ -248,8 +292,125 @@ describe("PgTypes", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("2001:db8::1/32", PgTypes.OID.cidr))
     })
 
+    it("rejects invalid network masks and CIDR host bits on decode", () => {
+      for (
+        const [wire, oid] of [
+          ["02210004c0a80001", PgTypes.OID.inet],
+          ["020801040a010203", PgTypes.OID.cidr],
+          ["0381011000000000000000000000000000000000", PgTypes.OID.cidr]
+        ] as const
+      ) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypes.decode(bytes(wire), oid, 1))
+      }
+    })
+
     it("rejects a value the wrong size for its OID", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.decode(bytes("0001"), PgTypes.OID.int4, 1))
+    })
+
+    it("rejects unsupported JSONB versions and unserialisable JSON values", () => {
+      for (const wire of ["", "007b7d", "027b7d"]) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypes.decode(bytes(wire), PgTypes.OID.jsonb, 1))
+      }
+      for (const oid of [PgTypes.OID.json, PgTypes.OID.jsonb]) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(undefined, oid))
+      }
+    })
+
+    it("rejects malformed text, numeric, time, and network values", () => {
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.decode(bytes("ff"), PgTypes.OID.text, 1))
+      for (const value of ["", ".", "+", "1.2.3", "not-a-number", `0.${"0".repeat(0x4000)}1`]) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(value, PgTypes.OID.numeric))
+      }
+      for (
+        const value of [
+          "12+00:00",
+          "12:xx:00+00:00",
+          "12:00:00",
+          "12:00:00+xx",
+          "12:00:00+02:60",
+          "12:00:00+02:00:60",
+          "12:00:00+16:00"
+        ]
+      ) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(value, PgTypes.OID.timetz))
+      }
+      for (
+        const value of [
+          "1.2.3.4.5",
+          "1.2.x.4",
+          "256.0.0.1",
+          "2001::db8::1",
+          "2001:db8:zz::1",
+          "192.168.0.1/-1",
+          "192.168.0.1/33",
+          "2001:db8::1/129"
+        ]
+      ) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(value, PgTypes.OID.inet))
+      }
+      for (const wire of ["", "020000", "04000004c0a80001", "02000010c0a80001", "02200204c0a80001"]) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypes.decode(bytes(wire), PgTypes.OID.inet, 1))
+      }
+    })
+  })
+
+  describe("scalar boundaries", () => {
+    it("round trips integer and time limits and rejects the adjacent values", () => {
+      const cases: ReadonlyArray<{
+        readonly oid: number
+        readonly accepted: ReadonlyArray<number | bigint>
+        readonly rejected: ReadonlyArray<number | bigint>
+      }> = [
+        { oid: PgTypes.OID.int2, accepted: [-32768, 32767], rejected: [-32769, 32768] },
+        { oid: PgTypes.OID.int4, accepted: [-2147483648, 2147483647], rejected: [-2147483649, 2147483648] },
+        { oid: PgTypes.OID.oid, accepted: [0, 4294967295], rejected: [-1, 4294967296] },
+        {
+          oid: PgTypes.OID.int8,
+          accepted: [BigInt("-9223372036854775808"), BigInt("9223372036854775807")],
+          rejected: [BigInt("-9223372036854775809"), BigInt("9223372036854775808")]
+        },
+        {
+          oid: PgTypes.OID.time,
+          accepted: [BigInt(0), BigInt("86400000000")],
+          rejected: [BigInt(-1), BigInt("86400000001")]
+        }
+      ]
+      for (const { accepted, oid, rejected } of cases) {
+        for (const value of accepted) {
+          assert.deepStrictEqual(PgTypes.decode(PgTypes.encode(value, oid), oid, 1), value)
+        }
+        for (const value of rejected) {
+          assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode(value, oid))
+        }
+      }
+    })
+
+    it("round trips scalar boundary values inside arrays", () => {
+      for (
+        const [oid, value] of [
+          [PgTypes.OID.int2Array, [-32768, null, 32767]],
+          [PgTypes.OID.int4Array, [-2147483648, null, 2147483647]],
+          [PgTypes.OID.int8Array, [BigInt("-9223372036854775808"), null, BigInt("9223372036854775807")]],
+          [PgTypes.OID.timeArray, [BigInt(0), null, BigInt("86400000000")]]
+        ] as const
+      ) {
+        assert.deepStrictEqual(PgTypes.decode(PgTypes.encode(value, oid), oid, 1), value)
+      }
+    })
+
+    it("round trips deterministic generated integer values", () => {
+      let state = 0x9e3779b9
+      const values: Array<number> = []
+      for (let index = 0; index < 512; index++) {
+        state = (Math.imul(state, 1664525) + 1013904223) | 0
+        values.push(state)
+        assert.strictEqual(PgTypes.decode(PgTypes.encode(state, PgTypes.OID.int4), PgTypes.OID.int4, 1), state)
+      }
+      assert.deepStrictEqual(
+        PgTypes.decode(PgTypes.encode(values, PgTypes.OID.int4Array), PgTypes.OID.int4Array, 1),
+        values
+      )
     })
   })
 
@@ -271,6 +432,20 @@ describe("PgTypes", () => {
         PgTypes.unregister(99999)
       }
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("x", 99999))
+    })
+
+    it("restores a builtin codec after an override is unregistered", () => {
+      PgTypes.register<string>(PgTypes.OID.text, {
+        encode: () => bytes("ff"),
+        decode: () => "overridden"
+      })
+      try {
+        assert.deepStrictEqual(PgTypes.encode("text", PgTypes.OID.text), bytes("ff"))
+        assert.strictEqual(PgTypes.decode(bytes("00"), PgTypes.OID.text, 1), "overridden")
+      } finally {
+        PgTypes.unregister(PgTypes.OID.text)
+      }
+      assert.deepStrictEqual(PgTypes.encode("text", PgTypes.OID.text), bytes("74657874"))
     })
   })
 
@@ -373,9 +548,20 @@ describe("PgTypes", () => {
 
   describe("timetz", () => {
     it("round trips fractional seconds and zone offsets", () => {
-      for (const value of ["00:00:00+00:00", "24:00:00+00:00", "12:34:56.5+02:00", "23:59:59.999999-05:30"]) {
+      for (
+        const value of [
+          "00:00:00+00:00",
+          "24:00:00+00:00",
+          "12:34:56.5+02:00",
+          "23:59:59.999999-05:30"
+        ]
+      ) {
         assert.strictEqual(PgTypes.decode(PgTypes.encode(value, PgTypes.OID.timetz), PgTypes.OID.timetz, 1), value)
       }
+      assert.strictEqual(
+        PgTypes.decode(PgTypes.encode("12:34:00Z", PgTypes.OID.timetz), PgTypes.OID.timetz, 1),
+        "12:34:00+00:00"
+      )
     })
 
     it("enforces PostgreSQL's wire time zone displacement range", () => {
@@ -472,6 +658,24 @@ describe("PgTypes", () => {
       )
     })
 
+    it("rejects wrong types through the direct Bind writer", () => {
+      const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
+      for (
+        const parameter of [
+          { oid: PgTypes.OID.bool, value: 1 },
+          { oid: PgTypes.OID.bytea, value: "bytes" },
+          { oid: PgTypes.OID.json, value: undefined },
+          { oid: PgTypes.OID.jsonb, value: undefined },
+          { oid: PgTypes.OID.int4Array, value: "not-an-array" }
+        ]
+      ) {
+        assertThrowsTagged(
+          "PgTypesCodecError",
+          () => encodeBind({ portal: "", statement: "", parameters: [parameter] })
+        )
+      }
+    })
+
     it("registers codecs outside the direct table", () => {
       for (const oid of [-1, 4096, 99999]) {
         PgTypes.register<string>(oid, {
@@ -548,6 +752,7 @@ describe("PgTypes", () => {
     it("maps element OIDs to array OIDs", () => {
       assert.strictEqual(PgTypes.arrayOidFor(PgTypes.OID.text), PgTypes.OID.textArray)
       assert.strictEqual(PgTypes.arrayOidFor(99999), undefined)
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.array([], 99999))
     })
   })
 })

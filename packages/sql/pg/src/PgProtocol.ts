@@ -491,6 +491,11 @@ const empty = (type: number): Uint8Array => {
 
 const targetByte = (target: DescribeTarget): number => target === "statement" ? 0x53 : 0x50
 
+const requireInt16Count = (count: number, name: string): number => {
+  if (count > 0x7fff) throw new RangeError(`${name} count exceeds 32767: ${count}`)
+  return count
+}
+
 /**
  * Encodes a `Parse` message.
  *
@@ -502,7 +507,7 @@ export const encodeParse = (options: Omit<Parse, "_tag">): Uint8Array => {
   writer.cString(options.name)
   writer.cString(options.query)
   const parameterTypes = options.parameterTypes
-  const count = parameterTypes.length
+  const count = requireInt16Count(parameterTypes.length, "Parse parameter type")
   writer.reserve(2 + count * 4)
   const bytes = writer.bytes
   let offset = writer.offset
@@ -533,7 +538,7 @@ export const encodeBind = (options: Omit<Bind, "_tag">): Uint8Array => {
   writer.cString(options.portal)
   writer.cString(options.statement)
   const parameters = options.parameters
-  const count = parameters.length
+  const count = requireInt16Count(parameters.length, "Bind parameter")
   // Sizing the rest of the frame up front turns every remaining write into a
   // plain store: one bounds check for the message instead of one per field.
   let size = 10 + count * 4
@@ -642,7 +647,7 @@ export const makeBindEncoder = <A>(
   writer.cString(options.portal)
   writer.cString(options.statement)
   const parameters = options.parameters
-  const count = parameters.length
+  const count = requireInt16Count(parameters.length, "Bind parameter")
   writer.reserve(6)
   const header = writer.bytes
   const headerOffset = writer.offset
@@ -1486,6 +1491,9 @@ const decodeDataRow = (
     values[i] = view(store, base + position, size)
     position = next
   }
+  if (position !== limit) {
+    throw new ParseError({ message: `DataRow has ${limit - position} trailing byte(s)` })
+  }
   return { _tag: "DataRow", values }
 }
 
@@ -1689,7 +1697,11 @@ export const makeParser = (options?: {
             messages.push(decodeDataRow(buffer, store, 0, body, limit))
           } else {
             reader.reset(buffer, body, limit)
-            messages.push(decodeBackend(type, reader))
+            const message = decodeBackend(type, reader)
+            if (reader.offset !== limit) {
+              throw new ParseError({ message: `Message has ${limit - reader.offset} trailing byte(s)` })
+            }
+            messages.push(message)
           }
         }
         return messages

@@ -171,11 +171,40 @@ describe("PgProtocol", () => {
     })
 
     it("dispatches encode over the tagged union", () => {
-      assert.strictEqual(
-        hex(PgProtocol.encode({ _tag: "Parse", name: "s1", query: "SELECT $1", parameterTypes: [23] })),
-        frontend.parse
-      )
-      assert.strictEqual(hex(PgProtocol.encode({ _tag: "Sync" })), frontend.sync)
+      const cases: ReadonlyArray<readonly [PgProtocol.FrontendMessage, Uint8Array]> = [
+        [
+          { _tag: "Parse", name: "s1", query: "SELECT $1", parameterTypes: [23] },
+          PgProtocol.encodeParse({ name: "s1", query: "SELECT $1", parameterTypes: [23] })
+        ],
+        [
+          { _tag: "Bind", portal: "p1", statement: "s1", parameters: [bytes("00000001"), null] },
+          PgProtocol.encodeBind({ portal: "p1", statement: "s1", parameters: [bytes("00000001"), null] })
+        ],
+        [{ _tag: "Execute", portal: "p1", maxRows: 5 }, PgProtocol.encodeExecute({ portal: "p1", maxRows: 5 })],
+        [
+          { _tag: "Describe", target: "statement", name: "s1" },
+          PgProtocol.encodeDescribe({ target: "statement", name: "s1" })
+        ],
+        [
+          { _tag: "Close", target: "portal", name: "p1" },
+          PgProtocol.encodeClose({ target: "portal", name: "p1" })
+        ],
+        [{ _tag: "Sync" }, PgProtocol.encodeSync()],
+        [{ _tag: "Flush" }, PgProtocol.encodeFlush()],
+        [{ _tag: "Terminate" }, PgProtocol.encodeTerminate()],
+        [
+          { _tag: "PasswordMessage", password: "md5abc" },
+          PgProtocol.encodePasswordMessage({ password: "md5abc" })
+        ],
+        [
+          { _tag: "SASLInitialResponse", mechanism: "SCRAM-SHA-256", initialResponse: bytes("6e2c2c") },
+          PgProtocol.encodeSASLInitialResponse({ mechanism: "SCRAM-SHA-256", initialResponse: bytes("6e2c2c") })
+        ],
+        [{ _tag: "SASLResponse", data: bytes("010203") }, PgProtocol.encodeSASLResponse({ data: bytes("010203") })]
+      ]
+      for (const [message, expected] of cases) {
+        assert.deepStrictEqual(PgProtocol.encode(message), expected)
+      }
     })
 
     it("writes the actual typed frame length into every message", () => {
@@ -198,6 +227,28 @@ describe("PgProtocol", () => {
           message.length - 1
         )
       }
+    })
+
+    it("accepts the maximum signed parameter count and rejects the next value", () => {
+      const maxOids = new Array<number>(0x7fff).fill(23)
+      const maxParameters = new Array<Uint8Array | null>(0x7fff).fill(null)
+      const parse = PgProtocol.encodeParse({ name: "", query: "", parameterTypes: maxOids })
+      const bind = PgProtocol.encodeBind({ portal: "", statement: "", parameters: maxParameters })
+      assert.strictEqual(new DataView(parse.buffer, parse.byteOffset, parse.byteLength).getInt16(7), 0x7fff)
+      assert.strictEqual(new DataView(bind.buffer, bind.byteOffset, bind.byteLength).getInt16(11), 0x7fff)
+
+      const tooManyOids = new Array<number>(0x8000).fill(23)
+      const tooManyParameters = new Array<Uint8Array | null>(0x8000).fill(null)
+      assert.throws(() => PgProtocol.encodeParse({ name: "", query: "", parameterTypes: tooManyOids }), RangeError)
+      assert.throws(
+        () => PgProtocol.encodeBind({ portal: "", statement: "", parameters: tooManyParameters }),
+        RangeError
+      )
+      const encodeBind = PgProtocol.makeBindEncoder<Uint8Array | null>((sink, value) => {
+        if (value === null) sink.sqlNull()
+        else sink.raw(value)
+      })
+      assert.throws(() => encodeBind({ portal: "", statement: "", parameters: tooManyParameters }), RangeError)
     })
   })
 
@@ -244,6 +295,18 @@ describe("PgProtocol", () => {
         method: 7,
         payload: new Uint8Array(0)
       })
+    })
+
+    it("rejects truncated authentication fields", () => {
+      for (
+        const frame of [
+          "5200000007000000", // truncated authentication method
+          "520000000b00000005010203", // three-byte MD5 salt
+          "520000000e0000000a534352414d00" // SASL mechanism list without its empty terminator
+        ]
+      ) {
+        assertThrowsTagged("PgProtocolParseError", () => parseOne(frame))
+      }
     })
   })
 
@@ -389,6 +452,7 @@ describe("PgProtocol", () => {
         data: bytes("010203ff")
       })
       assert.deepStrictEqual(parseOne("6300000004"), { _tag: "CopyDone" })
+      assert.deepStrictEqual(parseOne("6400000004"), { _tag: "CopyData", data: new Uint8Array(0) })
     })
 
     it("reports an unknown type byte instead of failing", () => {
@@ -396,6 +460,11 @@ describe("PgProtocol", () => {
         _tag: "Unknown",
         type: 0x5f,
         payload: bytes("deadbeef")
+      })
+      assert.deepStrictEqual(parseOne("5f00000004"), {
+        _tag: "Unknown",
+        type: 0x5f,
+        payload: new Uint8Array(0)
       })
     })
   })
@@ -414,6 +483,13 @@ describe("PgProtocol", () => {
       const parser = PgProtocol.makeParser()
       const chunk = bytes(backend.parseComplete + backend.bindComplete)
       assert.deepStrictEqual(parser.push(chunk), [{ _tag: "ParseComplete" }, { _tag: "BindComplete" }])
+    })
+
+    it("returns every message when one chunk holds many", () => {
+      const parser = PgProtocol.makeParser()
+      const messages = parser.push(bytes(backend.parseComplete.repeat(2_000)))
+      assert.strictEqual(messages.length, 2_000)
+      assert.strictEqual(messages.every((message) => message._tag === "ParseComplete"), true)
     })
 
     it("keeps the trailing partial message across pushes", () => {
@@ -468,11 +544,29 @@ describe("PgProtocol", () => {
     it("rejects a length prefix below the minimum", () => {
       const parser = PgProtocol.makeParser()
       assertThrowsTagged("PgProtocolParseError", () => parser.push(bytes("4400000003ff")))
+      assertThrowsTagged("PgProtocolParseError", () => PgProtocol.makeParser().push(bytes("4480000000")))
+    })
+
+    it("accepts a frame exactly at maxMessageSize", () => {
+      assert.deepStrictEqual(PgProtocol.makeParser({ maxMessageSize: 8 }).push(bytes("5f00000008deadbeef")), [
+        { _tag: "Unknown", type: 0x5f, payload: bytes("deadbeef") }
+      ])
     })
 
     it("rejects a truncated payload", () => {
       // CommandComplete whose command tag is never NUL-terminated
       assertThrowsTagged("PgProtocolParseError", () => parseOne("430000000953454c454354"))
+    })
+
+    it("rejects payload bytes beyond a message's declared fields", () => {
+      for (
+        const frame of [
+          "3100000005ff", // ParseComplete with a byte of payload
+          "44000000070000ff" // DataRow declares zero fields but carries a byte
+        ]
+      ) {
+        assertThrowsTagged("PgProtocolParseError", () => parseOne(frame))
+      }
     })
 
     it("rejects a DataRow field length below the NULL sentinel", () => {
@@ -500,6 +594,12 @@ describe("PgProtocol", () => {
 
     it("rejects a truncated DataRow field length", () => {
       assertThrowsTagged("PgProtocolParseError", () => parseOne("440000000800010000"))
+      assertThrowsTagged("PgProtocolParseError", () => parseOne("4400000004"))
+    })
+
+    it("rejects invalid statuses and UTF-8", () => {
+      assertThrowsTagged("PgProtocolParseError", () => parseOne("5a0000000558"))
+      assertThrowsTagged("PgProtocolParseError", () => parseOne("5300000008ff007800"))
     })
 
     it("does not read a DataRow field past the end of its own message", () => {
