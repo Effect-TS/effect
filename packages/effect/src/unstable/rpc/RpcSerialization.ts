@@ -598,10 +598,13 @@ const makeSchemaBinary = (options?: {
 }): RpcSerialization["Service"] => {
   const maxFrameSize = options?.maxFrameSize ?? defaultSchemaBinaryMaxFrameSize
   const encodeEnvelope = SchemaBinary.encodeUnknownSync(RpcMessage.EncodedSchema, { fingerprint: true })
+  const encodeEnvelopes = SchemaBinary.encodeManyUnknownSync(RpcMessage.EncodedSchema, { fingerprint: true })
   return RpcSerialization.of({
     contentType: "application/vnd.effect.rpc+schema-binary",
     includesFraming: true,
-    codecFor: SchemaBinary.toCodec as CodecFor,
+    // The hole codec is only ever encoded and decoded, never used as a type
+    // guard, so it can skip the schema pass the binary layer already covers.
+    codecFor: SchemaBinary.toCodecDirect as CodecFor,
     makeUnsafe: () => {
       const parser = SchemaBinary.parser(RpcMessage.EncodedSchema, { fingerprint: true, maxFrameSize })
       const encoder = new TextEncoder()
@@ -612,20 +615,7 @@ const makeSchemaBinary = (options?: {
             return encodeEnvelope(response)
           }
           if (response.length === 0) return undefined
-          const frames = new Array<Uint8Array>(response.length)
-          let length = 0
-          for (let i = 0; i < response.length; i++) {
-            const frame = encodeEnvelope(response[i])
-            frames[i] = frame
-            length += frame.length
-          }
-          const encoded = new Uint8Array(length)
-          let offset = 0
-          for (let i = 0; i < frames.length; i++) {
-            encoded.set(frames[i], offset)
-            offset += frames[i].length
-          }
-          return encoded
+          return encodeEnvelopes(response)
         }
       }
     }

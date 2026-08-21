@@ -1989,6 +1989,110 @@ describe("SchemaBinary", () => {
     })
   })
 
+  describe("direct codec", () => {
+    const Person = Schema.Struct({ name: Schema.String, age: Schema.Number })
+
+    it("matches toCodec on the wire and round-trips", () => {
+      const direct = SchemaBinary.toCodecDirect(Person)
+      const value = { name: "Ada", age: 36 }
+      const bytes = Schema.encodeUnknownSync(direct)(value)
+      assert.deepStrictEqual(Array.from(bytes), Array.from(encode(Person, value)))
+      assert.deepStrictEqual(Schema.decodeUnknownSync(direct)(bytes), value)
+    })
+
+    it("still rejects invalid input, through the binary layer", () => {
+      const direct = SchemaBinary.toCodecDirect(Person)
+      assert.include(schemaError(() => Schema.encodeUnknownSync(direct)({ name: "Ada", age: "old" })).message, "age")
+      assert.include(schemaError(() => Schema.encodeUnknownSync(direct)({ name: "Ada" })).message, "age")
+      assert.include(schemaError(() => Schema.encodeUnknownSync(direct)("Ada")).message, "Expected an object")
+    })
+
+    it("rejects a wrong runtime type for every leaf an exact schema can reach", () => {
+      const cases: ReadonlyArray<readonly [Schema.Top, unknown, string]> = [
+        [Schema.String, 1, "a string"],
+        [Schema.Number, "1", "a number"],
+        [Schema.Boolean, 1, "a boolean"],
+        [Schema.BigInt, 1, "a bigint"],
+        [Schema.Symbol, "s", "a symbol"],
+        [Schema.Null, 1, "null"],
+        [Schema.Undefined, 1, "undefined"],
+        [Schema.Uint8Array, [1, 2], "a Uint8Array"],
+        [Schema.Date, 0, "a Date"],
+        [Schema.Array(Schema.String), "ab", "an array"],
+        [Schema.Struct({ a: Schema.String }), "a", "an object"]
+      ]
+      for (const [schema, value, expected] of cases) {
+        const direct = SchemaBinary.toCodecDirect(schema as Schema.Codec<unknown>)
+        assert.include(
+          schemaError(() => Schema.encodeUnknownSync(direct)(value)).message,
+          `Expected ${expected}`,
+          `${expected} for ${globalThis.String(value)}`
+        )
+      }
+    })
+
+    it("rejects an inherited discriminator, like the schema pass", () => {
+      const schema = Schema.Union([
+        Schema.Struct({ _tag: Schema.Literal("A"), value: Schema.Number }),
+        Schema.Struct({ _tag: Schema.Literal("B"), value: Schema.String })
+      ])
+      const inherited = Object.assign(Object.create({ _tag: "A" }), { value: 1 })
+      for (const options of [undefined, { fingerprint: true }]) {
+        const encodeDirect = Schema.encodeUnknownSync(SchemaBinary.toCodecDirect(schema, options))
+        assert.isDefined(schemaError(() => encodeDirect(inherited)))
+      }
+    })
+
+    it("reports excess properties when the call site asks for it", () => {
+      const direct = SchemaBinary.toCodecDirect(Person)
+      const excess = { name: "Ada", age: 36, extra: true }
+      assert.deepStrictEqual(
+        Array.from(Schema.encodeUnknownSync(direct)(excess)),
+        Array.from(encode(Person, { name: "Ada", age: 36 }))
+      )
+      assert.include(
+        schemaError(() => Schema.encodeUnknownSync(direct, { onExcessProperty: "error" })(excess)).message,
+        "extra"
+      )
+    })
+
+    it("falls back to toCodec when the binary layer cannot prove the schema", () => {
+      const NonNegative = Schema.Number.check(Schema.isGreaterThanOrEqualTo(0))
+      const direct = SchemaBinary.toCodecDirect(NonNegative)
+      assert.isTrue(Schema.is(direct)(1))
+      assert.isFalse(Schema.is(direct)(-1))
+      assert.include(schemaError(() => Schema.encodeUnknownSync(direct)(-1)).message, "greater than or equal to 0")
+    })
+  })
+
+  describe("encodeManyUnknownSync", () => {
+    const Person = Schema.Struct({ name: Schema.String, age: Schema.Number })
+    const people = [{ name: "Ada", age: 36 }, { name: "Grace", age: 45 }]
+
+    it("writes the same bytes as concatenated single frames", () => {
+      const many = SchemaBinary.encodeManyUnknownSync(Person, { fingerprint: true })
+      assert.deepStrictEqual(
+        Array.from(many(people)),
+        Array.from(concat(...people.map((person) => encodeFingerprint(Person, person))))
+      )
+      assert.deepStrictEqual(SchemaBinary.parser(Person, { fingerprint: true }).feedSync(many(people)), people)
+      assert.deepStrictEqual(Array.from(many([])), [])
+    })
+
+    it("reports the failing frame and takes the fallback path for checked schemas", () => {
+      const many = SchemaBinary.encodeManyUnknownSync(Person)
+      assert.include(schemaError(() => many([people[0], { name: "Grace" }])).message, "age")
+
+      const Checked = Schema.Struct({ age: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)) })
+      const checked = SchemaBinary.encodeManyUnknownSync(Checked)
+      assert.deepStrictEqual(
+        Array.from(checked([{ age: 1 }, { age: 2 }])),
+        Array.from(concat(encode(Checked, { age: 1 }), encode(Checked, { age: 2 })))
+      )
+      assert.include(schemaError(() => checked([{ age: -1 }])).message, "greater than or equal to 0")
+    })
+  })
+
   describe("fingerprint mode parser", () => {
     const Person = Schema.Struct({ name: Schema.String, age: Schema.Number })
     const first = { name: "Ada", age: 36 }

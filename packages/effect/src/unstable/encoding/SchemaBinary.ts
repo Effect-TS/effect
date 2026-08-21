@@ -199,26 +199,33 @@ function decodeUtf8(
   const len = end - start
   if (len === 0) return ""
   if (len <= UTF8_INLINE_LIMIT) {
-    let ascii = true
-    for (let i = start; i < end; i++) {
-      if (buf[i] > 0x7F) {
-        ascii = false
-        break
-      }
-    }
-    if (ascii) {
-      let out = ""
-      let i = start
-      for (; i + 4 <= end; i += 4) out += String.fromCharCode(buf[i], buf[i + 1], buf[i + 2], buf[i + 3])
-      for (; i < end; i++) out += String.fromCharCode(buf[i])
-      return out
-    }
+    const ascii = decodeAscii(buf, start, end)
+    if (ascii !== undefined) return ascii
   }
   try {
     return utf8DecodeFatal.decode(buf.subarray(start, end))
   } catch {
     invalid("utf-8", undefined, options)
   }
+}
+
+// Eight code units per concatenation, checking their high bits together and
+// giving up on the first non-ASCII byte.
+function decodeAscii(buf: Uint8Array, start: number, end: number): string | undefined {
+  let out = ""
+  let i = start
+  for (; i + 8 <= end; i += 8) {
+    const a = buf[i], b = buf[i + 1], c = buf[i + 2], d = buf[i + 3]
+    const e = buf[i + 4], f = buf[i + 5], g = buf[i + 6], h = buf[i + 7]
+    if ((a | b | c | d | e | f | g | h) > 0x7F) return undefined
+    out += String.fromCharCode(a, b, c, d, e, f, g, h)
+  }
+  for (; i < end; i++) {
+    const c = buf[i]
+    if (c > 0x7F) return undefined
+    out += String.fromCharCode(c)
+  }
+  return out
 }
 
 const OUTPUT_ARENA_SIZE = 8 * 1024
@@ -558,6 +565,13 @@ class Reader {
     this.pos += n
     return out
   }
+  // Decoded bytes outlive the parser's buffer, so they are copied, not viewed.
+  takeCopy(n: number): Uint8Array<ArrayBuffer> {
+    if (this.pos + n > this.end) invalid("complete value", undefined, this.options)
+    const out = this.buf.slice(this.pos, this.pos + n) as Uint8Array<ArrayBuffer>
+    this.pos += n
+    return out
+  }
   // Decode a bounded child value without allocating another reader.
   enter(len: number): number {
     if (this.pos + len > this.end) invalid("complete value", undefined, this.options)
@@ -832,11 +846,19 @@ interface UnionPosition {
   readonly layout: Layout
 }
 
+// A key every variant pins to its own literal, so encoding picks the variant
+// with one lookup instead of scanning.
+interface Discriminator {
+  readonly key: PropertyKey
+  readonly rows: Map<unknown, VariantRow>
+}
+
 interface UnionLayout {
   readonly _: "union"
   readonly ast: SchemaAST.AST
   readonly variants: Array<VariantRow>
   readonly byTag: Map<number, VariantRow>
+  discriminator: Discriminator | undefined
   readonly others: Array<UnionMember>
   readonly byKind: Map<number, Layout>
   // Canonical order used by fingerprint mode.
@@ -1413,6 +1435,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       ast,
       variants: [],
       byTag: new Map(),
+      discriminator: undefined,
       others: [],
       byKind: new Map(),
       byPos: []
@@ -1466,6 +1489,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
     }
     // Probe specific runtime guards before `json`, which matches anything.
     layout.others.sort((a, b) => matchRank(a.layout) - matchRank(b.layout))
+    layout.discriminator = findDiscriminator(layout.variants)
     return layout
   }
 
@@ -2242,8 +2266,7 @@ function arraySlot(layout: ArrayLayout, index: number, count: number): Layout {
   return index >= tailThreshold ? layout.rest[index - tailThreshold + 1] : layout.rest[0]
 }
 
-function encodeArray(ctx: EncodeContext, layout: ArrayLayout, value: unknown, w: Writer) {
-  const arr = value as ReadonlyArray<unknown>
+function encodeArray(ctx: EncodeContext, layout: ArrayLayout, arr: ReadonlyArray<unknown>, w: Writer) {
   const count = arr.length
   if (layout.rest.length === 0 && count > layout.elements.length) {
     issuePath[issuePathLen++] = layout.elements.length
@@ -2319,24 +2342,67 @@ function encodeNumberRun(arr: ReadonlyArray<unknown>, count: number, w: Writer) 
   }
 }
 
+function findDiscriminator(variants: ReadonlyArray<VariantRow>): Discriminator | undefined {
+  if (variants.length < 2 || variants.some((variant) => variant.tuple)) return undefined
+  for (const candidate of variants[0].sentinels) {
+    const rows = new Map<unknown, VariantRow>()
+    for (const variant of variants) {
+      const sentinel = variant.sentinels.find((s) => s.key === candidate.key)
+      // `NaN` matches under `Map`'s key equality but not under `===`.
+      if (sentinel === undefined || rows.has(sentinel.literal) || Number.isNaN(sentinel.literal)) break
+      rows.set(sentinel.literal, variant)
+    }
+    if (rows.size === variants.length) return { key: candidate.key, rows }
+  }
+  return undefined
+}
+
+// An inherited sentinel does not select a variant, matching the schema pass.
+function hasSentinels(variant: VariantRow, value: Record<PropertyKey, unknown>): boolean {
+  const sentinels = variant.sentinels
+  for (let i = 0; i < sentinels.length; i++) {
+    const { key, literal } = sentinels[i]
+    if (value[key] !== literal || !Object.hasOwn(value, key)) return false
+  }
+  return true
+}
+
 function matchesVariant(variant: VariantRow, value: unknown): boolean {
   return variant.tuple
-    ? Array.isArray(value) && variant.sentinels.every((s) => value[s.key as number] === s.literal)
+    ? Array.isArray(value) && hasSentinels(variant, value as unknown as Record<PropertyKey, unknown>)
     : Predicate.isObject(value) && !Array.isArray(value) &&
-      variant.sentinels.every((s) => (value as Record<PropertyKey, unknown>)[s.key] === s.literal)
+      hasSentinels(variant, value as Record<PropertyKey, unknown>)
+}
+
+function encodeVariant(ctx: EncodeContext, variant: VariantRow, value: unknown, w: Writer) {
+  if (ctx.positional) {
+    w.uvarint(variant.position)
+  } else {
+    w.byte(K.variant)
+    w.u32le(variant.tag)
+  }
+  encodeValue(ctx, variant.payload, value, w)
 }
 
 function encodeUnion(ctx: EncodeContext, layout: UnionLayout, value: unknown, w: Writer) {
-  for (const variant of layout.variants) {
-    if (matchesVariant(variant, value)) {
-      if (ctx.positional) {
-        w.uvarint(variant.position)
-      } else {
-        w.byte(K.variant)
-        w.u32le(variant.tag)
+  const discriminator = layout.discriminator
+  if (discriminator !== undefined) {
+    // A miss rules out every variant, because each one pins this key to a
+    // literal no other variant uses.
+    if (Predicate.isObject(value) && !Array.isArray(value)) {
+      const record = value as Record<PropertyKey, unknown>
+      const variant = discriminator.rows.get(record[discriminator.key])
+      if (variant !== undefined && hasSentinels(variant, record)) {
+        encodeVariant(ctx, variant, value, w)
+        return
       }
-      encodeValue(ctx, variant.payload, value, w)
-      return
+    }
+  } else {
+    for (const variant of layout.variants) {
+      if (matchesVariant(variant, value)) {
+        encodeVariant(ctx, variant, value, w)
+        return
+      }
     }
   }
   for (const member of layout.others) {
@@ -2357,14 +2423,19 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       encodeValue(ctx, layout.leaf, value, w)
       return
     case "bool":
+      if (typeof value !== "boolean") encodeFail("a boolean", value, ctx.options)
       w.byte(value === true ? 1 : 0)
       return
     case "null":
+      if (value !== null) encodeFail("null", value, ctx.options)
+      return
     case "undefined":
+      if (value !== undefined) encodeFail("undefined", value, ctx.options)
       return
     case "number":
-      if (isVarintNumber(value)) w.numberVarint(value as number)
-      else w.f64(value as number)
+      if (typeof value !== "number") encodeFail("a number", value, ctx.options)
+      if (isVarintNumber(value)) w.numberVarint(value)
+      else w.f64(value)
       return
     case "int": {
       // `disableChecks` can bypass the integer check used to select this layout.
@@ -2373,24 +2444,32 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       return
     }
     case "string":
-      w.string(value as string)
+      if (typeof value !== "string") encodeFail("a string", value, ctx.options)
+      w.string(value)
       return
     case "symbol":
+      if (typeof value !== "symbol") encodeFail("a symbol", value, ctx.options)
       encodeSymbol(ctx, value, w)
       return
     case "bytes":
-      w.bytes(value as Uint8Array)
+      if (!(value instanceof Uint8Array)) encodeFail("a Uint8Array", value, ctx.options)
+      w.bytes(value)
       return
     case "bigint":
-      w.zigzag(value as bigint)
+      if (typeof value !== "bigint") encodeFail("a bigint", value, ctx.options)
+      w.zigzag(value)
       return
     case "int64": {
+      if (!matchesLayout(layout, value)) {
+        encodeFail(layout.flavor === "date" ? "a Date" : "a DateTime.Utc", value, ctx.options)
+      }
       const millis = layout.flavor === "date" ? (value as Date).getTime() : (value as DateTime.Utc).epochMilliseconds
       if (Number.isNaN(millis)) encodeFail("a valid Date", value, ctx.options)
       w.i64(BigInt(millis))
       return
     }
     case "dateTimeZoned": {
+      if (!matchesLayout(layout, value)) encodeFail("a DateTime.Zoned", value, ctx.options)
       const zoned = value as DateTime.Zoned
       w.i64(BigInt(zoned.epochMilliseconds))
       if (zoned.zone._tag === "Offset") {
@@ -2403,7 +2482,8 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       return
     }
     case "duration": {
-      const duration = (value as Duration.Duration).value
+      if (!Duration.isDuration(value)) encodeFail("a Duration", value, ctx.options)
+      const duration = value.value
       switch (duration._tag) {
         case "Infinity":
           w.byte(1)
@@ -2423,7 +2503,8 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       return
     }
     case "bigDecimal": {
-      const normalized = BigDecimal.normalize(value as BigDecimal.BigDecimal)
+      if (!BigDecimal.isBigDecimal(value)) encodeFail("a BigDecimal", value, ctx.options)
+      const normalized = BigDecimal.normalize(value)
       w.zigzag(normalized.value)
       w.zigzag(BigInt(normalized.scale))
       return
@@ -2443,7 +2524,8 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       return
     }
     case "option": {
-      const option = value as Option.Option<unknown>
+      if (!Option.isOption(value)) encodeFail("an Option", value, ctx.options)
+      const option = value
       if (option._tag === "None") {
         w.byte(0)
       } else {
@@ -2453,7 +2535,8 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       return
     }
     case "result": {
-      const result = value as Result.Result<unknown, unknown>
+      if (!Result.isResult(value)) encodeFail("a Result", value, ctx.options)
+      const result = value
       if (result._tag === "Success") {
         w.byte(0)
         encodeValue(ctx, layout.success, result.success, w)
@@ -2464,7 +2547,8 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       return
     }
     case "exit": {
-      const exit = value as Exit.Exit<unknown, unknown>
+      if (!Exit.isExit(value)) encodeFail("an Exit", value, ctx.options)
+      const exit = value
       if (exit._tag === "Success") {
         w.byte(0)
         encodeValue(ctx, layout.value, exit.value, w)
@@ -2475,7 +2559,8 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       return
     }
     case "cause": {
-      const reasons = (value as Cause.Cause<unknown>).reasons
+      if (!Cause.isCause(value)) encodeFail("a Cause", value, ctx.options)
+      const reasons = value.reasons
       w.uvarint(reasons.length)
       for (const reason of reasons) {
         const mark = w.beginSized()
@@ -2485,15 +2570,18 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       return
     }
     case "causeReason": {
+      if (!Cause.isReason(value)) encodeFail("a Cause.Reason", value, ctx.options)
       encodeReason(ctx, layout, value, w)
       return
     }
     case "struct": {
-      if (ctx.positional) encodeStructPositional(ctx, layout, value as object, w)
-      else encodeStructFields(ctx, layout, value as object, w)
+      if (!Predicate.isObject(value) || Array.isArray(value)) encodeFail("an object", value, ctx.options)
+      if (ctx.positional) encodeStructPositional(ctx, layout, value, w)
+      else encodeStructFields(ctx, layout, value, w)
       return
     }
     case "array": {
+      if (!Array.isArray(value)) encodeFail("an array", value, ctx.options)
       encodeArray(ctx, layout, value, w)
       return
     }
@@ -2507,6 +2595,50 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
 
 // Reuse one top-level writer while allowing nested codecs to allocate their own.
 let pooledWriter: Writer | undefined = new Writer()
+
+function writeFrame(ctx: EncodeContext, layout: Layout, value: unknown, mode: Mode, w: Writer) {
+  const mark = w.beginSized()
+  w.byte(mode.envelope)
+  if (mode.positional) {
+    w.u32le(mode.fingerprintLo)
+    w.u32le(mode.fingerprintHi)
+  }
+  encodeValue(ctx, layout, value, w)
+  w.endSized(mark)
+}
+
+function encodeFrames(
+  layout: Layout,
+  values: ReadonlyArray<unknown>,
+  options: SchemaAST.ParseOptions,
+  mode: Mode
+): Uint8Array<ArrayBuffer> {
+  // One context and one writer across the batch, so the caches built for the
+  // first frame serve the rest and the frames need no second pass to join.
+  const ctx: EncodeContext = {
+    options,
+    positional: mode.positional,
+    indexSignatures: undefined,
+    extraShape: undefined,
+    intern: undefined
+  }
+  const w = pooledWriter ?? new Writer()
+  const pooled = w === pooledWriter
+  if (pooled) pooledWriter = undefined
+  w.reset()
+  const savedPathLen = issuePathLen
+  try {
+    for (let i = 0; i < values.length; i++) {
+      issuePathLen = 0
+      writeFrame(ctx, layout, values[i], mode, w)
+    }
+    return w.out()
+  } finally {
+    w.abort()
+    issuePathLen = savedPathLen
+    if (pooled) pooledWriter = w
+  }
+}
 
 function encodeFrame(
   layout: Layout,
@@ -2528,14 +2660,7 @@ function encodeFrame(
   const savedPathLen = issuePathLen
   issuePathLen = 0
   try {
-    const mark = w.beginSized()
-    w.byte(mode.envelope)
-    if (mode.positional) {
-      w.u32le(mode.fingerprintLo)
-      w.u32le(mode.fingerprintHi)
-    }
-    encodeValue(ctx, layout, value, w)
-    w.endSized(mark)
+    writeFrame(ctx, layout, value, mode, w)
     return w.out()
   } finally {
     w.abort()
@@ -3099,7 +3224,7 @@ function decodeValue(layout: Layout, r: Reader): unknown {
     case "symbol":
       return globalThis.Symbol.for(r.readUtf8(r.end - r.pos))
     case "bytes":
-      return r.take(r.remaining).slice()
+      return r.takeCopy(r.end - r.pos)
     case "bigint":
       return r.zigzag()
     case "int64": {
@@ -3326,6 +3451,21 @@ function withTrustedDecode(target: Schema.Constraint, trusted: WeakSet<object>):
   )
 }
 
+// An exact schema is fully validated by the binary layer in both directions, so
+// this target adds nothing, except under `onExcessProperty: "error"`: the binary
+// layer drops unknown keys instead of reporting them. It is not a sound
+// `Schema.is` guard, which is why only {@link toCodecDirect} uses it.
+function passThrough(target: Schema.Constraint): Schema.Constraint {
+  const type = Schema.make(SchemaAST.toType(target.ast))
+  const decodeType = SchemaParser.decodeUnknownEffect(type as Schema.ConstraintDecoder<unknown>)
+  return Schema.declareConstructor<unknown>()(
+    [type],
+    () => (input, _ast, options) =>
+      options.onExcessProperty === "error" ? decodeType(input, options) : Effect.succeed(input),
+    { identifier: "binary value" }
+  )
+}
+
 // Skip the cycle walk once for structurally decoded values.
 function withCycleGuard(target: Schema.Constraint): Schema.Constraint {
   const type = Schema.make(SchemaAST.toType(target.ast))
@@ -3424,6 +3564,28 @@ export function toCodec<S extends Schema.Constraint>(schema: S, options?: Option
 }
 
 /**
+ * Derives the {@link toCodec} codec without the schema pass around the binary
+ * layer.
+ *
+ * Only schemas the binary layer already validates on its own take the direct
+ * path; anything else falls back to {@link toCodec}. A direct codec encodes and
+ * decodes the same values as {@link toCodec} but is not a sound `Schema.is`
+ * guard, so it is only for callers that never guard on it.
+ *
+ * @internal
+ */
+export function toCodecDirect<S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> {
+  const { exact, layout, target } = compileTarget(schema)
+  if (!exact) return toCodec(schema, options)
+  return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
+    Schema.decodeTo(
+      passThrough(target),
+      makeTransformation(layout, compileMode(layout, options?.fingerprint), undefined)
+    )
+  ) as unknown as toCodec<S>
+}
+
+/**
  * Encodes one frame without the schema pass {@link toCodec} wraps around it.
  *
  * Only schemas the binary layer already validates on its own take the direct
@@ -3449,6 +3611,45 @@ export function encodeUnknownSync<S extends Schema.Constraint>(
   return (value) => {
     try {
       return encodeFrame(layout, value, parseOptions, mode)
+    } catch (e) {
+      throw e instanceof IssueError ? new Schema.SchemaError(e.issue) : e
+    }
+  }
+}
+
+/**
+ * Encodes concatenated frames in one writer pass, so a batch costs no more
+ * allocations than a single frame.
+ *
+ * Shares {@link encodeUnknownSync}'s direct path and its fallback.
+ *
+ * @internal
+ */
+export function encodeManyUnknownSync<S extends Schema.Constraint>(
+  schema: S,
+  options?: SchemaAST.ParseOptions & Options
+): (values: ReadonlyArray<unknown>) => Uint8Array<ArrayBuffer> {
+  const { exact, layout } = compileTarget(schema)
+  if (!exact) {
+    const encode = encodeUnknownSync(schema, options)
+    return (values) => {
+      const frames = values.map(encode)
+      let length = 0
+      for (const frame of frames) length += frame.length
+      const out = new Uint8Array(length)
+      let offset = 0
+      for (const frame of frames) {
+        out.set(frame, offset)
+        offset += frame.length
+      }
+      return out
+    }
+  }
+  const mode = compileMode(layout, options?.fingerprint)
+  const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
+  return (values) => {
+    try {
+      return encodeFrames(layout, values, parseOptions, mode)
     } catch (e) {
       throw e instanceof IssueError ? new Schema.SchemaError(e.issue) : e
     }
