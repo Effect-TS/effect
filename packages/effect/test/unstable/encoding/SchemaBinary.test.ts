@@ -14,7 +14,8 @@ import {
   Result,
   Schema,
   SchemaIssue,
-  SchemaParser
+  SchemaParser,
+  SchemaTransformation
 } from "effect"
 import * as SchemaBinary from "effect/unstable/encoding/SchemaBinary"
 
@@ -987,6 +988,22 @@ describe("SchemaBinary", () => {
         { renamed: 123 }
       )
     })
+
+    it.effect("round-trips a yielding transformOrFail through SchemaParser Effect APIs", () =>
+      Effect.gen(function*() {
+        const schema = Schema.String.pipe(
+          Schema.decodeTo(
+            Schema.Number,
+            SchemaTransformation.transformOrFail({
+              decode: (s) => Effect.yieldNow.pipe(Effect.as(Number(s))),
+              encode: (n) => Effect.yieldNow.pipe(Effect.as(String(n)))
+            })
+          )
+        )
+        const codec = SchemaBinary.toCodec(schema)
+        const bytes = yield* SchemaParser.encodeUnknownEffect(codec)(123)
+        assert.strictEqual(yield* SchemaParser.decodeUnknownEffect(codec)(bytes), 123)
+      }))
 
     it("keeps a sound runtime type guard on the derived codec", () => {
       const codec = SchemaBinary.toCodec(Schema.Struct({ name: Schema.String, age: Schema.Number }))
