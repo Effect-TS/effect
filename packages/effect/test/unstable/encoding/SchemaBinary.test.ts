@@ -1561,6 +1561,18 @@ describe("SchemaBinary", () => {
       )
     })
 
+    it("does not depend on the order a literal union declares its members", () => {
+      assert.strictEqual(
+        fingerprintOf(Schema.Literals(["a", "b", "c"]), "a"),
+        fingerprintOf(Schema.Literals(["c", "a", "b"]), "a")
+      )
+      assert.notStrictEqual(
+        fingerprintOf(Schema.Literals(["a", "b"]), "a"),
+        fingerprintOf(Schema.Literals(["a", "c"]), "a")
+      )
+      assert.notStrictEqual(fingerprintOf(Schema.Literal("a"), "a"), fingerprintOf(Schema.String, "a"))
+    })
+
     it("does not depend on whether an acyclic sub-schema is shared or repeated", () => {
       const Point = Schema.Struct({ x: Schema.Number, y: Schema.Number })
       const pair = { a: { x: 1, y: 2 }, b: { x: 3, y: 4 } }

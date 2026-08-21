@@ -1567,9 +1567,13 @@ function layoutFingerprint(root: Layout): bigint {
         out.push(F.literal)
         pushBytes(out, structure(layout.leaf))
         pushUvarint(out, layout.values.length)
-        for (const value of layout.values) {
-          out.push(sentinelLiteralKind(value))
-          const bytes = utf8Encode.encode(sentinelLiteralString(value))
+        // Sorted, so a union hashes the same whatever order it declares.
+        const sorted = layout.values
+          .map((value) => [sentinelLiteralKind(value), sentinelLiteralString(value)] as const)
+          .sort((a, b) => a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : a[0] - b[0])
+        for (const [kind, text] of sorted) {
+          out.push(kind)
+          const bytes = utf8Encode.encode(text)
           pushUvarint(out, bytes.length)
           pushBytes(out, bytes)
         }
