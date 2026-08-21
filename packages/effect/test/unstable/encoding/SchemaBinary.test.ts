@@ -664,22 +664,38 @@ describe("SchemaBinary", () => {
       )
     })
 
-    it("reads every index signature key the reader has no signature for", () => {
-      const Writer = Schema.Struct({ id: Schema.String, attrs: Schema.Record(Schema.String, Schema.String) })
+    it("interns every index signature key, including ones it has no signature for", () => {
+      const Writer = Schema.Struct({ attrs: Schema.Record(Schema.String, Schema.String) })
       const Reader = Schema.Struct({
-        id: Schema.String,
         attrs: Schema.Record(
-          Schema.String.check(Schema.makeFilter((key: string) => key.startsWith("a"))),
+          Schema.String.check(Schema.makeFilter((key: string) => key.startsWith("keep"))),
           Schema.String
         )
       })
-      const values = Array.from({ length: 4 }, (_, index) => ({
-        id: `r${index}`,
-        attrs: { alpha: "1", beta: "2", again: "3" }
-      }))
+      // The reader drops `drop` but must still number it, or row 2's reference
+      // to `keep1` resolves to `keep2`.
+      const values = [
+        { attrs: { drop: "d", keep1: "a" } },
+        { attrs: { keep2: "b" } },
+        { attrs: { keep1: "c" } }
+      ]
       assert.deepStrictEqual(
         Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Array(Reader)))(encode(Schema.Array(Writer), values)),
-        values.map(({ id }) => ({ id, attrs: { alpha: "1", again: "3" } }))
+        [{ attrs: { keep1: "a" } }, { attrs: { keep2: "b" } }, { attrs: { keep1: "c" } }]
+      )
+    })
+
+    it("keeps two fields sharing one layout on separate tables", () => {
+      const Writer = Schema.Struct({ keep: Schema.String, gone: Schema.String })
+      const Reader = Schema.Struct({ keep: Schema.String })
+      const values = [
+        { keep: "first", gone: "other" },
+        { keep: "other", gone: "first" },
+        { keep: "first", gone: "first" }
+      ]
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Array(Reader)))(encode(Schema.Array(Writer), values)),
+        values.map(({ keep }) => ({ keep }))
       )
     })
 
