@@ -862,7 +862,7 @@ export class Protocol extends Context.Service<
      * Builds the codec that fills the `unknown` holes of the protocol messages,
      * re-passed from the `RpcSerialization` backing this transport.
      */
-    readonly codecFor: RpcSerialization.HoleCodecFor
+    readonly codecFor: RpcSerialization.CodecFor
   }
 >()("effect/rpc/RpcServer/Protocol") {
   /**
@@ -1410,7 +1410,7 @@ export const makeProtocolWorkerRunner: Effect.Effect<
     supportsNotifications: true,
     // Worker protocols use structured clone, so they do not depend on
     // `RpcSerialization`. A binary worker protocol is a separate protocol.
-    codecFor: Schema.toCodecJson as RpcSerialization.HoleCodecFor
+    codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
   }
 }))
 

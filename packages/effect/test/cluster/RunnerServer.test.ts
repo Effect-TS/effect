@@ -18,7 +18,7 @@ import {
   Snowflake
 } from "effect/unstable/cluster"
 import { Headers } from "effect/unstable/http"
-import { Rpc, RpcSerialization, RpcTest } from "effect/unstable/rpc"
+import { Rpc, type RpcSerialization, RpcServer, RpcTest } from "effect/unstable/rpc"
 
 const ReproEntity = Entity.make("ReproRunnerServer", [
   Rpc.make("ReproStream", { success: Schema.Int, payload: { id: Schema.Number }, stream: true })
@@ -32,14 +32,32 @@ const HoleCodecEntity = Entity.make("HoleCodecEntity", [
 // entity payload and the replies become JSON strings on the wire.
 const codecForJsonString =
   (<S extends Schema.Top>(schema: S) =>
-    Schema.fromJsonString(Schema.toCodecJson(schema as any))) as RpcSerialization.HoleCodecFor
+    Schema.fromJsonString(Schema.toCodecJson(schema as any))) as RpcSerialization.CodecFor
+
+const layerProtocol = (codecFor: RpcSerialization.CodecFor) =>
+  Layer.effect(RpcServer.Protocol)(
+    Effect.map(Queue.unbounded<number>(), (disconnects) =>
+      RpcServer.Protocol.of({
+        run: () => Effect.never,
+        disconnects,
+        send: () => Effect.void,
+        end: () => Effect.void,
+        clientIds: Effect.succeed(new Set()),
+        initialMessage: Effect.succeedNone,
+        supportsAck: false,
+        supportsTransferables: false,
+        supportsSpanPropagation: false,
+        supportsNotifications: false,
+        codecFor
+      }))
+  )
 
 const makeHandlers = (
   entities: Layer.Layer<never, never, any>,
-  serialization: Layer.Layer<RpcSerialization.RpcSerialization>
+  codecFor: RpcSerialization.CodecFor
 ) =>
   RunnerServer.layerHandlers.pipe(
-    Layer.provide(serialization),
+    Layer.provide(layerProtocol(codecFor)),
     Layer.provideMerge(entities),
     Layer.provideMerge(Sharding.layer),
     Layer.provideMerge(Snowflake.layerGenerator),
@@ -58,17 +76,12 @@ const makeHandlers = (
 
 const handlers = makeHandlers(
   ReproEntity.toLayer({ ReproStream: () => Stream.make(1) }),
-  RpcSerialization.layerNdjson
+  Schema.toCodecJson as RpcSerialization.CodecFor
 )
 
 const holeCodecHandlers = makeHandlers(
   HoleCodecEntity.toLayer({ Double: ({ payload }) => Effect.succeed(payload.id * 2) }),
-  Layer.succeed(RpcSerialization.RpcSerialization)(
-    RpcSerialization.RpcSerialization.of({
-      ...RpcSerialization.ndjson,
-      codecFor: codecForJsonString
-    })
-  )
+  codecForJsonString
 )
 
 it.effect("completes a successful runner stream", () =>

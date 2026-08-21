@@ -628,7 +628,7 @@ describe("McpServer", () => {
               supportsTransferables: false,
               supportsSpanPropagation: false,
               supportsNotifications: true,
-              codecFor: Schema.toCodecJson as RpcSerialization.HoleCodecFor
+              codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
             })
           )
         )

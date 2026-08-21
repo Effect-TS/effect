@@ -147,12 +147,20 @@ export const toHttpEffect: Effect.Effect<
   never,
   Scope | RpcSerialization.RpcSerialization | Sharding.Sharding | MessageStorage
 > = Effect.gen(function*() {
-  const handlers = yield* Layer.build(RunnerServer.layerHandlers)
-  return yield* RpcServer.toHttpEffect(Runners.Rpcs, {
+  const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect()
+  const handlers = yield* Layer.build(RunnerServer.layerHandlers).pipe(
+    Effect.provideService(RpcServer.Protocol, protocol)
+  )
+  yield* RpcServer.make(Runners.Rpcs, {
     spanPrefix: "RunnerServer",
     disableTracing: true,
     disableFatalDefects: true
-  }).pipe(Effect.provideContext(handlers))
+  }).pipe(
+    Effect.provideContext(handlers),
+    Effect.provideService(RpcServer.Protocol, protocol),
+    Effect.forkScoped
+  )
+  return httpEffect
 })
 
 /**
@@ -171,12 +179,20 @@ export const toHttpEffectWebsocket: Effect.Effect<
   never,
   Scope | RpcSerialization.RpcSerialization | Sharding.Sharding | MessageStorage
 > = Effect.gen(function*() {
-  const handlers = yield* Layer.build(RunnerServer.layerHandlers)
-  return yield* RpcServer.toHttpEffectWebsocket(Runners.Rpcs, {
+  const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffectWebsocket
+  const handlers = yield* Layer.build(RunnerServer.layerHandlers).pipe(
+    Effect.provideService(RpcServer.Protocol, protocol)
+  )
+  yield* RpcServer.make(Runners.Rpcs, {
     spanPrefix: "RunnerServer",
     disableTracing: true,
     disableFatalDefects: true
-  }).pipe(Effect.provideContext(handlers))
+  }).pipe(
+    Effect.provideContext(handlers),
+    Effect.provideService(RpcServer.Protocol, protocol),
+    Effect.forkScoped
+  )
+  return httpEffect
 })
 
 /**

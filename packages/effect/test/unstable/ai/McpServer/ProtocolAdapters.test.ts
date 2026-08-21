@@ -794,7 +794,7 @@ describe("McpServer protocol adapters", () => {
             }),
           supportsAck: true,
           supportsTransferables: false,
-          codecFor: Schema.toCodecJson as RpcSerialization.HoleCodecFor
+          codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
         })
       )
       for (

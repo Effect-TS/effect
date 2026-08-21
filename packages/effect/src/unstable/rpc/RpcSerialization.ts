@@ -32,11 +32,11 @@ import type * as RpcMessage from "./RpcMessage.ts"
  * @category serialization
  * @since 4.0.0
  */
-export type HoleCodecFor = <S extends Schema.Top>(
+export type CodecFor = <S extends Schema.Top>(
   schema: S
 ) => Schema.Codec<S["Type"], unknown, S["DecodingServices"], S["EncodingServices"]>
 
-const codecForJson = Schema.toCodecJson as HoleCodecFor
+const codecForJson = Schema.toCodecJson as CodecFor
 
 /**
  * Service that describes how RPC protocol messages are encoded and decoded,
@@ -55,7 +55,7 @@ export class RpcSerialization extends Context.Service<RpcSerialization, {
   makeUnsafe(): Parser
   readonly contentType: string
   readonly includesFraming: boolean
-  readonly codecFor: HoleCodecFor
+  readonly codecFor: CodecFor
 }>()("effect/rpc/RpcSerialization") {}
 
 /**

@@ -19,7 +19,6 @@ import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as Queue from "../../Queue.ts"
 import type * as Rpc from "../rpc/Rpc.ts"
-import * as RpcSerialization from "../rpc/RpcSerialization.ts"
 import * as RpcServer from "../rpc/RpcServer.ts"
 import type * as ClusterError from "./ClusterError.ts"
 import * as Message from "./Message.ts"
@@ -36,7 +35,7 @@ const constVoid = constant(Effect.void)
 const serializeDefectReply = <R extends Rpc.Any>(
   reply: Reply.ReplyWithContext<R>,
   defect: unknown,
-  codecFor: RpcSerialization.HoleCodecFor
+  codecFor: RpcServer.Protocol["Service"]["codecFor"]
 ): Effect.Effect<Reply.Encoded> =>
   Effect.orDie(Reply.serialize(
     Reply.ReplyWithContext.fromDefect({
@@ -57,9 +56,7 @@ const serializeDefectReply = <R extends Rpc.Any>(
 export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
   const sharding = yield* Sharding.Sharding
   const storage = yield* MessageStorage.MessageStorage
-  // The entity payload and the replies travel inside the runner envelope as
-  // already-encoded holes, so they use the wire format's codec, not JSON.
-  const { codecFor } = yield* RpcSerialization.RpcSerialization
+  const { codecFor } = yield* RpcServer.Protocol
 
   return {
     Ping: () => Effect.void,
@@ -203,7 +200,6 @@ export const layer: Layer.Layer<
   never,
   never,
   | RpcServer.Protocol
-  | RpcSerialization.RpcSerialization
   | Sharding.Sharding
   | MessageStorage.MessageStorage
 > = RpcServer.layer(Runners.Rpcs, {
@@ -223,7 +219,6 @@ export const layerWithClients: Layer.Layer<
   Sharding.Sharding | Runners.Runners,
   never,
   | RpcServer.Protocol
-  | RpcSerialization.RpcSerialization
   | ShardingConfig
   | Runners.RpcClientProtocol
   | MessageStorage.MessageStorage

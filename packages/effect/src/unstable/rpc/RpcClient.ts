@@ -786,7 +786,7 @@ interface RpcSchemas {
 }
 // Codecs are compiled per client, because two protocols can fill the message
 // holes with different codecs.
-const makeRpcSchemas = (codecFor: RpcSerialization.HoleCodecFor) => {
+const makeRpcSchemas = (codecFor: RpcSerialization.CodecFor) => {
   const cache = new WeakMap<Rpc.AnyWithProps, RpcSchemas>()
   return (rpc: Rpc.AnyWithProps): RpcSchemas => {
     let entry = cache.get(rpc)
@@ -867,7 +867,7 @@ export class Protocol extends Context.Service<Protocol, {
    * Builds the codec that fills the `unknown` holes of the protocol messages,
    * re-passed from the `RpcSerialization` backing this transport.
    */
-  readonly codecFor: RpcSerialization.HoleCodecFor
+  readonly codecFor: RpcSerialization.CodecFor
 }>()("effect/rpc/RpcClient/Protocol") {
   /**
    * Creates a client protocol service from the supplied RPC request runner.
@@ -1394,7 +1394,7 @@ export const makeProtocolWorker = (
       supportsTransferables: true,
       // Worker protocols use structured clone, so they do not depend on
       // `RpcSerialization`. A binary worker protocol is a separate protocol.
-      codecFor: Schema.toCodecJson as RpcSerialization.HoleCodecFor
+      codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
     }
   }))
 

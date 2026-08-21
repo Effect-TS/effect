@@ -23,7 +23,7 @@ import {
   Snowflake
 } from "effect/unstable/cluster"
 import { Headers } from "effect/unstable/http"
-import { Rpc, RpcClient, RpcSerialization, RpcTest } from "effect/unstable/rpc"
+import { Rpc, RpcClient, type RpcSerialization, RpcServer, RpcTest } from "effect/unstable/rpc"
 import { RpcClientError } from "effect/unstable/rpc/RpcClientError"
 import type { FromClientEncoded, FromServerEncoded } from "effect/unstable/rpc/RpcMessage"
 import { Socket } from "effect/unstable/socket"
@@ -56,8 +56,26 @@ const TestShardingConfig = ShardingConfig.layer({
   refreshAssignmentsInterval: 0
 })
 
+const layerServerProtocol = (codecFor: RpcSerialization.CodecFor) =>
+  Layer.effect(RpcServer.Protocol)(
+    Effect.map(Queue.unbounded<number>(), (disconnects) =>
+      RpcServer.Protocol.of({
+        run: () => Effect.never,
+        disconnects,
+        send: () => Effect.void,
+        end: () => Effect.void,
+        clientIds: Effect.succeed(new Set()),
+        initialMessage: Effect.succeedNone,
+        supportsAck: false,
+        supportsTransferables: false,
+        supportsSpanPropagation: false,
+        supportsNotifications: false,
+        codecFor
+      }))
+  )
+
 const RunnerServerHandlers = RunnerServer.layerHandlers.pipe(
-  Layer.provide(RpcSerialization.layerNdjson),
+  Layer.provide(layerServerProtocol(Schema.toCodecJson as RpcSerialization.CodecFor)),
   Layer.provideMerge(BadReplyEntityLayer),
   Layer.provideMerge(Sharding.layer),
   Layer.provideMerge(Snowflake.layerGenerator),
@@ -191,14 +209,14 @@ describe.concurrent("Runners.makeRpc", () => {
   // entity payload becomes a JSON string inside the runner envelope.
   const codecForJsonString =
     (<S extends Schema.Top>(schema: S) =>
-      Schema.fromJsonString(Schema.toCodecJson(schema as any))) as RpcSerialization.HoleCodecFor
+      Schema.fromJsonString(Schema.toCodecJson(schema as any))) as RpcSerialization.CodecFor
 
   const layerFakeProtocol = (
     onRequest: (
       request: FromClientEncoded,
       write: (data: FromServerEncoded) => Effect.Effect<void>
     ) => Effect.Effect<void, RpcClientError>,
-    codecFor: RpcSerialization.HoleCodecFor = Schema.toCodecJson as RpcSerialization.HoleCodecFor
+    codecFor: RpcSerialization.CodecFor = Schema.toCodecJson as RpcSerialization.CodecFor
   ) =>
     Layer.succeed(Runners.RpcClientProtocol)(() =>
       Effect.sync(() => {

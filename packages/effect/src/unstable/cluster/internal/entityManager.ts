@@ -678,7 +678,7 @@ const defaultRetryPolicy = Schedule.min([
   Schedule.spaced("10 seconds")
 ])
 
-const codecForJson = Schema.toCodecJson as RpcSerialization.HoleCodecFor
+const codecForJson = Schema.toCodecJson as RpcSerialization.CodecFor
 
 const makeMessageDecode = <Rpcs extends Rpc.Any>(entityRpcs: Map<string, Rpcs>) => {
   const decodeRequest = Effect.fnUntracedEager(function*(

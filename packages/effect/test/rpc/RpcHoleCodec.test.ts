@@ -10,7 +10,7 @@ import { Rpc, RpcClient, RpcGroup, RpcSchema, RpcSerialization, RpcServer } from
 // hardcodes `Schema.toCodecJson` fails to round-trip against it.
 const codecForJsonString =
   (<S extends Schema.Top>(schema: S) =>
-    Schema.fromJsonString(Schema.toCodecJson(schema as any))) as RpcSerialization.HoleCodecFor
+    Schema.fromJsonString(Schema.toCodecJson(schema as any))) as RpcSerialization.CodecFor
 
 const serialization: RpcSerialization.RpcSerialization["Service"] = RpcSerialization.RpcSerialization.of({
   ...RpcSerialization.ndjson,
