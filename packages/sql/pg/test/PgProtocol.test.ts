@@ -418,6 +418,23 @@ describe("PgProtocol", () => {
       assertThrowsTagged("PgProtocolParseError", () => parseOne("440000000a0001fffffffe"))
     })
 
+    it("rejects a negative DataRow field count", () => {
+      assertThrowsTagged("PgProtocolParseError", () => parseOne("4400000006ffff"))
+    })
+
+    it("rejects a truncated DataRow field length", () => {
+      assertThrowsTagged("PgProtocolParseError", () => parseOne("440000000800010000"))
+    })
+
+    it("does not read a DataRow field past the end of its own message", () => {
+      // One field that claims ten bytes in a message carrying two, followed by
+      // a complete message the field must not be allowed to reach into
+      assertThrowsTagged(
+        "PgProtocolParseError",
+        () => PgProtocol.makeParser().push(bytes(`440000000c00010000000a0102${backend.parseComplete}`))
+      )
+    })
+
     it("cannot be reused after a malformed frame", () => {
       const parser = PgProtocol.makeParser()
       assertThrowsTagged(
@@ -455,6 +472,22 @@ describe("PgProtocol", () => {
       // enough to run past the parser's buffer and force a replacement
       for (let index = 0; index < 2000; index++) parser.push(frame)
       assert.deepStrictEqual(first.values, snapshot)
+    })
+
+    it("keeps DataRow field views valid as the buffer pool grows", () => {
+      const parser = PgProtocol.makeParser()
+      const frame = bytes(backend.dataRowTwoColumns)
+      const retained: Array<{ readonly row: PgProtocol.DataRow; readonly snapshot: Array<Uint8Array | null> }> = []
+      // enough pushes to run the pool from its initial size up to its ceiling
+      for (let index = 0; index < 5000; index++) {
+        const row = parser.push(frame)[0] as PgProtocol.DataRow
+        if (index % 500 === 0) {
+          retained.push({ row, snapshot: row.values.map((value) => value === null ? null : value.slice()) })
+        }
+      }
+      for (const { row, snapshot } of retained) {
+        assert.deepStrictEqual(row.values, snapshot)
+      }
     })
 
     it("keeps an encoded frame valid after encoding more", () => {

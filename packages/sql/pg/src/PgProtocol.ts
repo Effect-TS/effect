@@ -39,6 +39,16 @@ const textDecoder = new TextDecoder("utf-8", { fatal: true })
 const asciiEncodeLimit = 96
 
 /**
+ * A view over part of a cached backing store. Slicing runs once per column of
+ * every row, and both obvious spellings are slower than this one: `subarray`
+ * consults the constructor's `Symbol.species` before it can allocate, and
+ * reading `.buffer` off a typed array is an accessor call rather than a field
+ * load. Callers hold the store and the array's byte offset instead.
+ */
+const view = (store: ArrayBufferLike, offset: number, length: number): Uint8Array =>
+  new Uint8Array(store, offset, length)
+
+/**
  * Writes messages back to back into a pooled buffer and hands out a view of
  * each one, so encoding a message costs no allocation of its own. Bytes below
  * `start` have already been handed out and are never rewritten; when the pool
@@ -133,7 +143,7 @@ class Writer {
   }
 
   finish(): Uint8Array {
-    const value = this.bytes.subarray(this.start, this.offset)
+    const value = view(this.bytes.buffer, this.bytes.byteOffset + this.start, this.offset - this.start)
     if (this.bytes.length > this.poolSize) {
       // An oversized message grew the pool; do not keep the rest of it around.
       this.bytes = new Uint8Array(this.poolSize)
@@ -155,11 +165,16 @@ const emptyBytes = new Uint8Array(0)
  */
 class Reader {
   bytes: Uint8Array = emptyBytes
+  /** The backing store of `bytes` and its offset into it, resolved per message. */
+  store: ArrayBufferLike = emptyBytes.buffer
+  base = 0
   offset = 0
   limit = 0
 
   reset(bytes: Uint8Array, offset: number, limit: number): void {
     this.bytes = bytes
+    this.store = bytes.buffer
+    this.base = bytes.byteOffset
     this.offset = offset
     this.limit = limit
   }
@@ -200,7 +215,7 @@ class Reader {
 
   raw(size: number): Uint8Array {
     this.require(size)
-    const value = this.bytes.subarray(this.offset, this.offset + size)
+    const value = view(this.store, this.base + this.offset, size)
     this.offset += size
     return value
   }
@@ -214,7 +229,7 @@ class Reader {
     if (end === -1 || end >= this.limit) {
       throw new ParseError({ message: "Unterminated string" })
     }
-    const value = decodeUtf8(this.bytes.subarray(this.offset, end))
+    const value = decodeUtf8(view(this.store, this.base + this.offset, end - this.offset))
     this.offset = end + 1
     return value
   }
@@ -1200,6 +1215,50 @@ const decodeCopyResponse = (
   return { format, columnFormats }
 }
 
+// The one message that arrives per result row, so it reads the frame directly
+// instead of going through `Reader`. Callers have already checked that the
+// whole frame is buffered, which turns every field read into one bounds check
+// against `limit`.
+const decodeDataRow = (
+  bytes: Uint8Array,
+  store: ArrayBufferLike,
+  base: number,
+  offset: number,
+  limit: number
+): DataRow => {
+  if (offset + 2 > limit) {
+    throw new ParseError({ message: "Truncated message: expected 2 more byte(s)" })
+  }
+  const count = ((bytes[offset] << 8) | bytes[offset + 1]) << 16 >> 16
+  if (count < 0) {
+    throw new ParseError({ message: `Invalid DataRow field count: ${count}` })
+  }
+  const values: Array<Uint8Array | null> = new Array(count)
+  let position = offset + 2
+  for (let i = 0; i < count; i++) {
+    if (position + 4 > limit) {
+      throw new ParseError({ message: "Truncated message: expected 4 more byte(s)" })
+    }
+    const size = (bytes[position] << 24) | (bytes[position + 1] << 16) | (bytes[position + 2] << 8) |
+      bytes[position + 3]
+    position += 4
+    if (size < 0) {
+      if (size < -1) {
+        throw new ParseError({ message: `Invalid DataRow field length: ${size}` })
+      }
+      values[i] = null
+      continue
+    }
+    const next = position + size
+    if (next > limit) {
+      throw new ParseError({ message: `Truncated message: expected ${size} more byte(s)` })
+    }
+    values[i] = view(store, base + position, size)
+    position = next
+  }
+  return { _tag: "DataRow", values }
+}
+
 const decodeBackend = (type: number, reader: Reader): BackendMessage => {
   switch (type) {
     case BackendType.Authentication:
@@ -1231,18 +1290,8 @@ const decodeBackend = (type: number, reader: Reader): BackendMessage => {
       }
       return { _tag: "RowDescription", fields }
     }
-    case BackendType.DataRow: {
-      const count = reader.int16()
-      const values: Array<Uint8Array | null> = new Array(count)
-      for (let i = 0; i < count; i++) {
-        const size = reader.int32()
-        if (size < -1) {
-          throw new ParseError({ message: `Invalid DataRow field length: ${size}` })
-        }
-        values[i] = size === -1 ? null : reader.raw(size)
-      }
-      return { _tag: "DataRow", values }
-    }
+    case BackendType.DataRow:
+      return decodeDataRow(reader.bytes, reader.store, reader.base, reader.offset, reader.limit)
     case BackendType.CommandComplete:
       return { _tag: "CommandComplete", commandTag: reader.cString() }
     case BackendType.EmptyQueryResponse:
@@ -1308,6 +1357,9 @@ const decodeBackend = (type: number, reader: Reader): BackendMessage => {
  */
 export const defaultMaxMessageSize = 16 * 1024 * 1024
 
+/** Where a parser stops growing its buffer pool. */
+const maxBufferSize = 64 * 1024
+
 /**
  * An incremental decoder for the post-startup backend message stream.
  *
@@ -1345,8 +1397,9 @@ export const makeParser = (options?: {
 }): Parser => {
   const maxMessageSize = options?.maxMessageSize ?? defaultMaxMessageSize
   const reader = new Reader()
-  const bufferSize = 8192
+  let bufferSize = 8192
   let buffer = new Uint8Array(bufferSize)
+  let store = buffer.buffer
   let start = 0
   let end = 0
   let failed = false
@@ -1355,14 +1408,21 @@ export const makeParser = (options?: {
   // is replaced rather than compacted in place. That lets `DataRow` fields be
   // views instead of copies, which is the difference between one allocation per
   // buffer and one per column.
+  //
+  // Every refill therefore allocates, so the pool doubles up to
+  // `maxBufferSize`: a busy connection spreads the allocation over more
+  // messages while a low-volume one stays small. A single oversized message
+  // grows its buffer beyond the pool without raising the pool itself.
   const append = (chunk: Uint8Array): void => {
     if (end + chunk.length > buffer.length) {
       const pending = end - start
+      if (bufferSize < maxBufferSize) bufferSize *= 2
       let capacity = bufferSize
       while (capacity < pending + chunk.length) capacity *= 2
       const next = new Uint8Array(capacity)
       next.set(buffer.subarray(start, end))
       buffer = next
+      store = next.buffer
       start = 0
       end = pending
     }
@@ -1390,9 +1450,17 @@ export const makeParser = (options?: {
             })
           }
           if (end - start < length + 1) break
-          reader.reset(buffer, start + 5, start + 1 + length)
-          messages.push(decodeBackend(buffer[start], reader))
-          start += length + 1
+          const type = buffer[start]
+          const body = start + 5
+          const limit = start + 1 + length
+          start = limit
+          if (type === BackendType.DataRow) {
+            // `buffer` always starts at byte 0 of `store`, so offsets index both.
+            messages.push(decodeDataRow(buffer, store, 0, body, limit))
+          } else {
+            reader.reset(buffer, body, limit)
+            messages.push(decodeBackend(type, reader))
+          }
         }
         return messages
       } catch (error) {
