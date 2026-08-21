@@ -1,14 +1,23 @@
-export {
-  ClusterDurableQueue,
-  ClusterSingleton,
-  ClusterWorkflow
+export { ClusterDurableQueue, ClusterSingleton } from "@effect/platform-cloudflare/CloudflareDurableObjects"
+import {
+  ClusterEntity as BaseClusterEntity,
+  ClusterWorkflow as BaseClusterWorkflow
 } from "@effect/platform-cloudflare/CloudflareDurableObjects"
-import { ClusterEntity as BaseClusterEntity } from "@effect/platform-cloudflare/CloudflareDurableObjects"
 import { encodeName } from "@effect/platform-cloudflare/internal/clusterName"
 import { registerEntity } from "@effect/platform-cloudflare/internal/entityRegistry"
-import { Context, Deferred, Effect, Schema, Stream } from "effect"
+import { decodeResult, encodePayload } from "@effect/platform-cloudflare/internal/workflowWire"
+import { Context, Deferred, Effect, Exit, Schema, Stream } from "effect"
 import { ClusterSchema, Entity } from "effect/unstable/cluster"
 import { Rpc, RpcSchema } from "effect/unstable/rpc"
+import { Workflow } from "effect/unstable/workflow"
+
+const FixtureWorkflow = Workflow.make("User", {
+  payload: {},
+  idempotencyKey: () => "fixture"
+})
+export class ClusterWorkflow extends BaseClusterWorkflow.make({
+  workflows: FixtureWorkflow.toLayer(() => Effect.void)
+}) {}
 
 const Add = Rpc.make("Add", {
   payload: { operationId: Schema.String },
@@ -202,6 +211,16 @@ registerEntity("Mailbox", {
 export default {
   async fetch(request: Request, env: Record<string, any>): Promise<Response> {
     const url = new URL(request.url)
+    if (url.pathname === "/workflow-run") {
+      const id = url.searchParams.get("id") ?? "fixture"
+      const payload = await Effect.runPromise(encodePayload(FixtureWorkflow, {}, Context.empty()))
+      const stub = env.CLUSTER_WORKFLOW.getByName(encodeName("User", id))
+      const text = await stub.run(payload, { discard: false })
+      const result = await Effect.runPromise(decodeResult(FixtureWorkflow, text, Context.empty()))
+      return result._tag === "Complete" && Exit.isSuccess(result.exit)
+        ? Response.json({ status: "complete" })
+        : Response.json({ status: "failed" })
+    }
     if (url.pathname === "/scheduled-rows") {
       const id = url.searchParams.get("id") ?? "scheduled"
       const stub = env.CLUSTER_ENTITY.getByName(`7:Mailbox${id}`)

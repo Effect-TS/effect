@@ -46,6 +46,20 @@ describe("CloudflareDurableObjects", () => {
       }
     }), 60_000)
 
+  it.effect("runs a configured workflow Durable Object class", () =>
+    Effect.gen(function*() {
+      const miniflare = yield* makeMiniflare
+      const response = yield* Effect.promise(() =>
+        Promise.race([
+          miniflare.dispatchFetch("http://placeholder/workflow-run?id=class-api"),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("workflow RPC did not return")), 2_000))
+        ])
+      )
+      const body = yield* Effect.promise(() => response.json())
+      assert.strictEqual(response.status, 200)
+      assert.deepStrictEqual(body, { status: "complete" })
+    }), 60_000)
+
   it.effect("journals only persisted RPCs and deduplicates primary keys", () =>
     Effect.gen(function*() {
       const miniflare = yield* makeMiniflare

@@ -20,44 +20,63 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import type * as Types from "effect/Types"
 import * as Workflow from "effect/unstable/workflow/Workflow"
 import * as WorkflowEngine from "effect/unstable/workflow/WorkflowEngine"
+import type { ClusterWorkflowRunOptions } from "./CloudflareDurableObjectPrograms.ts"
 import { encodeName } from "./internal/clusterName.ts"
 import {
   CurrentExecutionHandle,
   deferredState,
-  registerWorkflow,
-  unregisterWorkflow,
+  makeWorkflowRegistry,
   type WorkflowRegistration,
+  type WorkflowRegistry,
   type WorkflowStub
 } from "./internal/workflowRegistry.ts"
 import { decodeExit, decodeResult, encodeExit, encodePayload } from "./internal/workflowWire.ts"
 
 /**
- * The workflow Durable Object namespace binding the engine is built from.
+ * Result of invoking a workflow Durable Object through a framework namespace.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type WorkflowCall<A> = Promise<A> | Effect.Effect<A, unknown>
+
+/**
+ * Framework-neutral client for one workflow Durable Object.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface WorkflowClient {
+  readonly run: (payload: string, options: ClusterWorkflowRunOptions) => WorkflowCall<string>
+  readonly poll: () => WorkflowCall<string | undefined>
+  readonly resume: () => WorkflowCall<void>
+  readonly interrupt: () => WorkflowCall<void>
+  readonly interruptUnsafe: () => WorkflowCall<void>
+  readonly deferredDone: (name: string, exit: string) => WorkflowCall<void>
+  readonly scheduleClock: (name: string, deferredName: string, wakeUp: number) => WorkflowCall<void>
+}
+
+/**
+ * Workflow Durable Object namespace binding the engine is built from.
  *
  * @category layers
  * @since 4.0.0
  */
-export interface LayerOptions {
-  readonly workflowNamespace: DurableObjectNamespace
-}
+export type LayerOptions = Types.Simplify<{
+  readonly workflowNamespace: Pick<DurableObjectNamespace, "getByName">
+}>
 
-/**
- * Creates the `WorkflowEngine` service backed by the workflow Durable Object
- * namespace binding.
- *
- * **Details**
- *
- * Inside a workflow Durable Object the engine operates on the local execution
- * handle, so activities and deferred reads never leave the object. Everywhere
- * else it resolves the target execution's object with `getByName` and drives
- * it over the same-Worker binding.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const make = Effect.fnUntraced(function*(options: LayerOptions) {
+const call = <A>(result: WorkflowCall<A>): Effect.Effect<A> =>
+  Effect.isEffect(result) ? Effect.orDie(result) : Effect.promise(() => result)
+
+/** @internal */
+export const makeWithRegistry = Effect.fnUntraced(function*(
+  options: { readonly getByName: (name: string) => WorkflowClient },
+  registry: WorkflowRegistry
+) {
   const clock = yield* Clock
 
   // Inside a run the execution's own handle avoids a self-RPC; every other
@@ -67,7 +86,7 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
     if (Option.isSome(handle) && handle.value.executionId === executionId) {
       return handle.value as WorkflowStub
     }
-    return options.workflowNamespace.getByName(encodeName(workflowName, executionId)) as unknown as WorkflowStub
+    return options.getByName(encodeName(workflowName, executionId))
   })
 
   const localHandle = Effect.fnUntraced(function*(operation: string) {
@@ -85,10 +104,12 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
     register: Effect.fnUntraced(function*(workflow, execute) {
       const context = yield* Effect.context<never>()
       const registration: WorkflowRegistration = { workflow, execute, context }
-      if (!registerWorkflow(workflow._tag, registration)) return
+      if (!registry.register(workflow._tag, registration)) {
+        return yield* Effect.die(`Workflow '${workflow._tag}' is already registered`)
+      }
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
-          unregisterWorkflow(workflow._tag, registration)
+          registry.unregister(workflow._tag, registration)
         })
       )
     }),
@@ -100,7 +121,7 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
       const parent = opts.parent === undefined
         ? undefined
         : { workflowName: opts.parent.workflow._tag, executionId: opts.parent.executionId }
-      const text = yield* Effect.promise(() => stub.run(payload, { discard: opts.discard, parent }))
+      const text = yield* call(stub.run(payload, { discard: opts.discard, parent }))
       if (opts.discard) return undefined
       return yield* decodeResult(workflow, text, context)
     }) as WorkflowEngine.Encoded["execute"],
@@ -108,19 +129,19 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
     poll: Effect.fnUntraced(function*(workflow, executionId) {
       const context = yield* Effect.context<never>()
       const stub = yield* stubFor(workflow._tag, executionId)
-      const text = yield* Effect.promise(() => stub.poll())
+      const text = yield* call(stub.poll())
       if (text === undefined) return Option.none()
       return Option.some(yield* decodeResult(workflow, text, context))
     }),
 
     interrupt: (workflow, executionId) =>
-      Effect.flatMap(stubFor(workflow._tag, executionId), (stub) => Effect.promise(() => stub.interrupt())),
+      Effect.flatMap(stubFor(workflow._tag, executionId), (stub) => call(stub.interrupt())),
 
     interruptUnsafe: (workflow, executionId) =>
-      Effect.flatMap(stubFor(workflow._tag, executionId), (stub) => Effect.promise(() => stub.interruptUnsafe())),
+      Effect.flatMap(stubFor(workflow._tag, executionId), (stub) => call(stub.interruptUnsafe())),
 
     resume: (workflow, executionId) =>
-      Effect.flatMap(stubFor(workflow._tag, executionId), (stub) => Effect.promise(() => stub.resume())),
+      Effect.flatMap(stubFor(workflow._tag, executionId), (stub) => call(stub.resume())),
 
     activityExecute: Effect.fnUntraced(function*(activity, attempt) {
       const { handle, instance } = yield* localHandle("Activity execution")
@@ -153,15 +174,38 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
     deferredDone: Effect.fnUntraced(function*({ deferredName, executionId, exit, workflowName }) {
       const text = yield* encodeExit(exit, Context.empty())
       const stub = yield* stubFor(workflowName, executionId)
-      yield* Effect.promise(() => stub.deferredDone(deferredName, text))
+      yield* call(stub.deferredDone(deferredName, text))
     }),
 
     scheduleClock: Effect.fnUntraced(function*(workflow, opts) {
       const wakeUp = clock.currentTimeMillisUnsafe() + Math.ceil(Duration.toMillis(opts.clock.duration))
       const stub = yield* stubFor(workflow._tag, opts.executionId)
-      yield* Effect.promise(() => stub.scheduleClock(opts.clock.name, opts.clock.deferred.name, wakeUp))
+      yield* call(stub.scheduleClock(opts.clock.name, opts.clock.deferred.name, wakeUp))
     })
   })
+})
+
+/**
+ * Creates the `WorkflowEngine` service backed by the workflow Durable Object
+ * namespace binding.
+ *
+ * **Details**
+ *
+ * Inside a workflow Durable Object the engine operates on the local execution
+ * handle, so activities and deferred reads never leave the object. Everywhere
+ * else it resolves the target execution's object with `getByName` and drives
+ * it over the same-Worker binding.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make = Effect.fnUntraced(function*(options: LayerOptions) {
+  return yield* makeWithRegistry(
+    {
+      getByName: (name) => options.workflowNamespace.getByName(name) as unknown as WorkflowClient
+    },
+    makeWorkflowRegistry()
+  )
 })
 
 /**

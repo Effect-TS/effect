@@ -1,11 +1,18 @@
-import type { SqlStorage } from "@cloudflare/workers-types"
+import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
+import {
+  type ClusterWorkflowProgram,
+  type DurableObjectProgramState,
+  makeClusterWorkflowProgram
+} from "@effect/platform-cloudflare/CloudflareDurableObjectPrograms"
 import * as CloudflareWorkflowEngine from "@effect/platform-cloudflare/CloudflareWorkflowEngine"
 import { encodeName } from "@effect/platform-cloudflare/internal/clusterName"
 import type { EntityAlarm } from "@effect/platform-cloudflare/internal/entityStorage"
+import { makeWorkflowRegistry } from "@effect/platform-cloudflare/internal/workflowRegistry"
 import { makeWorkflowRuntime, type WorkflowRuntime } from "@effect/platform-cloudflare/internal/workflowRuntime"
 import { loadExecution } from "@effect/platform-cloudflare/internal/workflowStorage"
+import { decodeResult, encodeExit, encodePayload } from "@effect/platform-cloudflare/internal/workflowWire"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Layer, Option, Schema } from "effect"
+import { Cause, Context, Effect, Exit, Layer, Option, Schema, Scope } from "effect"
 import { RpcTest } from "effect/unstable/rpc"
 import {
   Activity,
@@ -131,6 +138,7 @@ class FakeAlarm {
 class FakeWorkflowNamespace {
   readonly stores = new Map<string, { readonly sql: FakeSql; readonly alarm: FakeAlarm }>()
   readonly runtimes = new Map<string, WorkflowRuntime>()
+  readonly registry = makeWorkflowRegistry()
   now = 0
 
   store(name: string) {
@@ -154,7 +162,8 @@ class FakeWorkflowNamespace {
         waitUntil: (promise) => {
           void promise
         },
-        getStub: (stubName) => this.getByName(stubName)
+        getStub: (stubName) => this.getByName(stubName),
+        getRegistration: this.registry.get
       })
       this.runtimes.set(name, runtime)
     }
@@ -178,7 +187,30 @@ class FakeWorkflowNamespace {
   }
 
   get layer() {
-    return CloudflareWorkflowEngine.layer({ workflowNamespace: this as never })
+    return Layer.effect(WorkflowEngine.WorkflowEngine)(
+      CloudflareWorkflowEngine.makeWithRegistry({ getByName: (name) => this.getByName(name) }, this.registry)
+    )
+  }
+
+  get effectLayer() {
+    const workflowNamespace = {
+      getByName: (name: string) => {
+        const stub = this.getByName(name)
+        return {
+          run: (payload, options) => Effect.promise(() => stub.run(payload, options)),
+          poll: () => Effect.promise(() => stub.poll()),
+          resume: () => Effect.promise(() => stub.resume()),
+          interrupt: () => Effect.promise(() => stub.interrupt()),
+          interruptUnsafe: () => Effect.promise(() => stub.interruptUnsafe()),
+          deferredDone: (deferredName, exit) => Effect.promise(() => stub.deferredDone(deferredName, exit)),
+          scheduleClock: (clockName, deferredName, wakeUp) =>
+            Effect.promise(() => stub.scheduleClock(clockName, deferredName, wakeUp))
+        } satisfies CloudflareWorkflowEngine.WorkflowClient
+      }
+    }
+    return Layer.effect(WorkflowEngine.WorkflowEngine)(
+      CloudflareWorkflowEngine.makeWithRegistry(workflowNamespace, this.registry)
+    )
   }
 }
 
@@ -192,7 +224,128 @@ const pollUntil = Effect.fnUntraced(function*<
   }
 })
 
+const pollProgramUntil = Effect.fnUntraced(function*(
+  program: ClusterWorkflowProgram,
+  workflow: Workflow.Any,
+  tag: "Complete" | "Suspended"
+) {
+  while (true) {
+    const text = yield* program.poll()
+    if (text !== undefined) {
+      const result = yield* decodeResult(workflow, text, Context.empty())
+      if (result._tag === tag) return result
+    }
+    yield* Effect.yieldNow
+  }
+})
+
 describe("CloudflareWorkflowEngine", () => {
+  it.effect("re-arms persisted clocks before exposing the workflow handlers", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      const alarm = new FakeAlarm()
+      sql.execution = {
+        workflow_name: "Restarted",
+        execution_id: "execution",
+        payload: "{}",
+        parent_name: null,
+        parent_execution_id: null,
+        result: null,
+        resume_pending: 0
+      }
+      sql.clocks.set("sleep", { deferredName: "DurableClock/sleep", wakeUp: 1_000, fired: false })
+      const storage = {
+        sql: sql.sql,
+        getAlarm: () => alarm.getAlarm(),
+        setAlarm: (scheduledTime: number) => alarm.setAlarm(scheduledTime)
+      } as unknown as DurableObjectStorage
+      const state: DurableObjectProgramState = {
+        id: {},
+        storage,
+        exports: {
+          CustomWorkflow: {
+            getByName: () => {
+              throw new Error("Unexpected workflow stub lookup")
+            }
+          }
+        },
+        waitUntil: () => undefined
+      }
+      const Restarted = Workflow.make("Restarted", {
+        payload: {},
+        idempotencyKey: () => "execution"
+      })
+
+      const program = yield* makeClusterWorkflowProgram(state, {
+        workflows: Restarted.toLayer(() => Effect.void),
+        workflowClassName: "CustomWorkflow"
+      })
+
+      assert.strictEqual(alarm.current, 1_000)
+      assert.isUndefined(yield* program.poll())
+    }))
+
+  it.effect("rebuilds workflow registrations after an isolate loss", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      const alarm = new FakeAlarm()
+      const state: DurableObjectProgramState = {
+        id: { name: encodeName("ProgramResumable", "execution") },
+        storage: {
+          sql: sql.sql,
+          getAlarm: () => alarm.getAlarm(),
+          setAlarm: (scheduledTime: number) => alarm.setAlarm(scheduledTime)
+        } as DurableObjectStorage,
+        exports: {
+          CustomWorkflow: {
+            getByName: () => {
+              throw new Error("Unexpected workflow stub lookup")
+            }
+          }
+        },
+        waitUntil: (promise) => {
+          void promise
+        }
+      }
+      const Gate = DurableDeferred.make("ProgramResumable/Gate", { success: Schema.String })
+      let runs = 0
+      const ProgramResumable = Workflow.make("ProgramResumable", {
+        payload: { id: Schema.String },
+        success: Schema.String,
+        idempotencyKey: ({ id }) => id
+      })
+      const workflows = ProgramResumable.toLayer(Effect.fnUntraced(function*({ id }) {
+        runs++
+        const value = yield* DurableDeferred.await(Gate)
+        return `${value}-${id}`
+      }))
+      const payload = yield* encodePayload(ProgramResumable, { id: "one" }, Context.empty())
+
+      const firstScope = Scope.makeUnsafe()
+      const first = yield* makeClusterWorkflowProgram(state, {
+        workflows,
+        workflowClassName: "CustomWorkflow"
+      }).pipe(Effect.provideService(Scope.Scope, firstScope))
+      yield* first.run(payload, { discard: true })
+      yield* pollProgramUntil(first, ProgramResumable, "Suspended")
+      assert.strictEqual(runs, 1)
+      yield* Scope.close(firstScope, Exit.void)
+
+      const secondScope = Scope.makeUnsafe()
+      const second = yield* makeClusterWorkflowProgram(state, {
+        workflows,
+        workflowClassName: "CustomWorkflow"
+      }).pipe(Effect.provideService(Scope.Scope, secondScope))
+      const exit = yield* encodeExit(Exit.succeed("world"), Context.empty())
+      yield* second.deferredDone(Gate.name, exit)
+      const result = yield* pollProgramUntil(second, ProgramResumable, "Complete")
+
+      assert(result._tag === "Complete" && Exit.isSuccess(result.exit))
+      assert.strictEqual(result.exit.value, "world-one")
+      assert.strictEqual(runs, 2)
+      yield* Scope.close(secondScope, Exit.void)
+    }))
+
   it.effect("routes generated workflow proxy handlers through the encoded Durable Object name", () => {
     const namespace = new FakeWorkflowNamespace()
     const Proxied = Workflow.make("Proxied", {
@@ -217,6 +370,24 @@ describe("CloudflareWorkflowEngine", () => {
       Effect.provide(WorkflowProxyServer.layerRpcHandlers(workflows)),
       Effect.provide(workflowLayer)
     )
+  })
+
+  it.effect("rejects duplicate workflow registrations", () => {
+    const namespace = new FakeWorkflowNamespace()
+    const Duplicate = Workflow.make("Duplicate", {
+      payload: {},
+      idempotencyKey: () => "duplicate"
+    })
+    const workflows = Layer.merge(
+      Duplicate.toLayer(() => Effect.void),
+      Duplicate.toLayer(() => Effect.void)
+    ).pipe(Layer.provideMerge(namespace.layer))
+
+    return Effect.gen(function*() {
+      const exit = yield* Effect.exit(Layer.build(workflows))
+      assert(Exit.isFailure(exit))
+      assert.include(Cause.pretty(exit.cause), "Workflow 'Duplicate' is already registered")
+    })
   })
 
   it.effect("persists a suspended execution and resumes it after an isolate loss", () => {
@@ -290,7 +461,7 @@ describe("CloudflareWorkflowEngine", () => {
           return Effect.succeed(42)
         })
       })
-    ).pipe(Layer.provideMerge(namespace.layer))
+    ).pipe(Layer.provideMerge(namespace.effectLayer))
 
     return Effect.gen(function*() {
       const executionId = yield* Crashing.executionId({ id: "one" })

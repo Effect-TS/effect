@@ -496,8 +496,8 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
  * unknown entity type or a bad encode fails at the Worker before any Durable
  * Object is contacted. Entity handlers registered with `Entity.toLayer` are
  * recorded per `EntityType` at Worker init and built once per Durable Object
- * wake; workflow handlers registered with `Workflow.toLayer` follow the same
- * pattern on the workflow class.
+ * wake. Workflow handlers are supplied to the workflow Durable Object program
+ * or `ClusterWorkflow.make` and rebuilt on each activation.
  *
  * @category layers
  * @since 4.0.0

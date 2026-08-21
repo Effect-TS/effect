@@ -2,9 +2,9 @@
  * The workflow Durable Object runtime. One object holds one workflow
  * execution: its payload, run result, activity results keyed
  * `${name}/${attempt}`, durable deferred exits, and the clock due table behind
- * the single alarm. Handlers are looked up in the module-level workflow
- * registry and built once per wake; a crash or hibernation wipes RAM and the
- * next contact replays the execution from SQLite.
+ * the single alarm. Handlers are looked up in the activation's workflow
+ * registry; a crash or hibernation wipes RAM and the next activation rebuilds
+ * that registry before replaying the execution from SQLite.
  *
  * @internal
  */
@@ -24,7 +24,7 @@ import { armAlarm, type EntityAlarm } from "./entityStorage.ts"
 import {
   CurrentExecutionHandle,
   deferredState,
-  getWorkflowRegistration,
+  type WorkflowRegistration,
   type WorkflowRunOptions,
   type WorkflowStub
 } from "./workflowRegistry.ts"
@@ -49,6 +49,7 @@ export interface WorkflowRuntimeOptions {
   readonly now: () => number
   readonly waitUntil: (promise: Promise<unknown>) => void
   readonly getStub: (name: string) => WorkflowStub
+  readonly getRegistration: (name: string) => WorkflowRegistration | undefined
 }
 
 /** @internal */
@@ -103,7 +104,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     )
 
   const startAttempt = (row: WorkflowStorage.ExecutionRow): Promise<string> => {
-    const registration = getWorkflowRegistration(workflowName)
+    const registration = options.getRegistration(workflowName)
     if (registration === undefined) {
       return Promise.reject(new Error(`No workflow registered for name: ${workflowName}`))
     }

@@ -11,64 +11,27 @@
  */
 import { DurableObject } from "cloudflare:workers"
 import * as Effect from "effect/Effect"
-import * as ClusterMetrics from "effect/unstable/cluster/ClusterMetrics"
-import * as EntityAddress from "effect/unstable/cluster/EntityAddress"
-import * as EntityId from "effect/unstable/cluster/EntityId"
-import * as EntityType from "effect/unstable/cluster/EntityType"
-import * as ShardId from "effect/unstable/cluster/ShardId"
-import { decodeName, encodeName } from "./internal/clusterName.ts"
-import { makeEntityKeepAlive } from "./internal/entityKeepAlive.ts"
-import { makeEntityManager } from "./internal/entityRuntime.ts"
-import { armAlarm, earliestDeliverAt, ensureEntityStorage } from "./internal/entityStorage.ts"
-import { makeQueueRuntime } from "./internal/queueRuntime.ts"
-import { earliestLeaseExpiry, type QueueItem } from "./internal/queueStorage.ts"
-import { getSingletonRegistration } from "./internal/singletonRegistry.ts"
-import { makeSingletonRuntime } from "./internal/singletonRuntime.ts"
-import { ensureSingletonStorage, loadSingletonState, rememberSingletonName } from "./internal/singletonStorage.ts"
-import type { WorkflowRunOptions, WorkflowStub } from "./internal/workflowRegistry.ts"
-import { makeWorkflowRuntime } from "./internal/workflowRuntime.ts"
-import { earliestClockWakeUp, ensureWorkflowStorage, loadExecution } from "./internal/workflowStorage.ts"
+import * as Scope from "effect/Scope"
+import {
+  type ClusterDurableQueueProgram,
+  type ClusterEntityProgram,
+  type ClusterSingletonProgram,
+  type ClusterWorkflowProgram,
+  type ClusterWorkflowProgramOptions,
+  type ClusterWorkflowRunOptions,
+  type DurableQueueItem,
+  type EntityDeliveryOptions,
+  type EntityInvokeResult,
+  makeClusterDurableQueueProgram,
+  makeClusterEntityProgram,
+  makeClusterSingletonProgram,
+  makeClusterWorkflowProgram
+} from "./CloudflareDurableObjectPrograms.ts"
 
 const notExposed = (className: string) => () => {
   throw new Error(
     `@effect/platform-cloudflare: ${className} is not exposed over fetch, use the same-Worker namespace binding`
   )
-}
-
-const exportedNamespace = <Stub>(
-  state: DurableObjectState,
-  className: string
-): { readonly getByName: (name: string) => Stub } | undefined =>
-  (state.exports as Record<string, unknown>)[className] as
-    | { readonly getByName: (name: string) => Stub }
-    | undefined
-
-type EntityManager = ReturnType<typeof makeEntityManager>
-
-type WorkflowRuntime = ReturnType<typeof makeWorkflowRuntime>
-
-type QueueRuntime = ReturnType<typeof makeQueueRuntime>
-
-type SingletonRuntime = ReturnType<typeof makeSingletonRuntime>
-
-// Mirrors entityWire's InvokeResult and entityRuntime's DeliveryOptions: the
-// exported class cannot reference an @internal type in its method signatures.
-type InvokeResult = {
-  readonly _tag: "Success"
-  readonly requestId: string
-  readonly replies: ReadonlyArray<string>
-} | {
-  readonly _tag: "MailboxFull"
-} | {
-  readonly _tag: "EncodedMessageTooLarge"
-} | {
-  readonly _tag: "AskDeduplicatedToTell"
-}
-
-interface DeliveryOptions {
-  readonly deliverAt?: number | undefined
-  readonly primaryKey?: string | null | undefined
-  readonly replyTo?: string | undefined
 }
 
 /**
@@ -85,189 +48,159 @@ interface DeliveryOptions {
  * @since 4.0.0
  */
 export class ClusterEntity extends DurableObject<unknown> {
-  readonly #keepAlive
-  readonly #manager: EntityManager
+  readonly #program: Promise<ClusterEntityProgram>
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
-    const entityName = ctx.id.name ?? ""
-    const name = decodeName(entityName)
-    if (name === undefined) throw new Error("ClusterEntity requires a canonical entity Durable Object name")
-    this.#keepAlive = makeEntityKeepAlive(() => {
-      const namespace = exportedNamespace<{ readonly hold: () => Promise<void> }>(ctx, "ClusterEntity")
-      if (namespace === undefined) {
-        return Promise.reject(
-          new Error("CloudflareCluster: ClusterEntity export is unavailable for keep-alive")
-        )
-      }
-      return namespace.getByName(entityName).hold()
-    })
-    this.#manager = makeEntityManager({
-      storage: ctx.storage,
-      address: EntityAddress.make({
-        shardId: ShardId.make("default", 1),
-        entityType: EntityType.make(name.type),
-        entityId: EntityId.make(name.id)
-      }),
-      entityName,
-      keepAlive: this.#keepAlive,
-      waitUntil: (effect) => ctx.waitUntil(Effect.runPromise(effect)),
-      getNamespace: () =>
-        exportedNamespace<{
-          readonly deliverReply: (requestId: string, reply: string) => Promise<boolean>
-        }>(ctx, "ClusterEntity")
-    })
-    const sql = ctx.storage.sql
-    ensureEntityStorage(sql)
-    const deliverAt = earliestDeliverAt(sql)
-    if (deliverAt !== undefined) {
-      void ctx.blockConcurrencyWhile(() => Effect.runPromise(armAlarm(ctx.storage, deliverAt)))
-    }
+    this.#program = ctx.blockConcurrencyWhile(() => Effect.runPromise(makeClusterEntityProgram(ctx)))
   }
 
   override alarm(): Promise<void> {
-    return Effect.runPromise(this.#manager.alarm)
+    return this.#program.then((program) => Effect.runPromise(program.alarm()))
   }
 
   /** @internal Keeps this object non-hibernateable while entity resources have holders. */
   hold(): Promise<void> {
-    return Effect.runPromise(this.#keepAlive.await)
+    return this.#program.then((program) => Effect.runPromise(program.hold()))
   }
 
   /** @internal Same-Worker RPC transport used by `CloudflareCluster.layer`. */
-  invoke(envelopeText: string, discard: boolean, delivery?: DeliveryOptions): Promise<InvokeResult> {
-    return Effect.runPromise(this.#manager.invoke(envelopeText, discard, delivery))
+  invoke(envelopeText: string, discard: boolean, delivery?: EntityDeliveryOptions): Promise<EntityInvokeResult> {
+    return this.#program.then((program) => Effect.runPromise(program.invoke(envelopeText, discard, delivery)))
   }
 
   /** @internal Acknowledges a streamed chunk. */
   acknowledge(requestId: string, replyId: string): Promise<ReadonlyArray<string>> {
-    return Effect.runPromise(this.#manager.acknowledge(requestId, replyId))
+    return this.#program.then((program) => Effect.runPromise(program.acknowledge(requestId, replyId)))
   }
 
   /** @internal Interrupts a handler execution and completes its persisted ask, if any. */
   interrupt(storageRequestId: string, clientRequestId = storageRequestId): Promise<void> {
-    return Effect.runPromise(this.#manager.interrupt(storageRequestId, clientRequestId))
+    return this.#program.then((program) => Effect.runPromise(program.interrupt(storageRequestId, clientRequestId)))
   }
 
   /** @internal Clears stored replies so a reset request replays from scratch. */
   reset(requestId: string): Promise<void> {
-    return Effect.runPromise(this.#manager.reset(requestId))
+    return this.#program.then((program) => Effect.runPromise(program.reset(requestId)))
   }
 
   /** @internal Completes an in-memory delayed ask owned by this entity object. */
   deliverReply(requestId: string, reply: string): Promise<boolean> {
-    return Effect.runPromise(this.#manager.deliverReply(requestId, reply))
+    return this.#program.then((program) => Effect.runPromise(program.deliverReply(requestId, reply)))
   }
 
   override fetch: () => never = notExposed("ClusterEntity")
 }
 
 /**
- * The workflow execution class behind `CloudflareWorkflowEngine`. One
- * instance holds one workflow execution: run state, activity results keyed
- * `${name}/${attempt}`, durable deferred exits, and the clock due table.
+ * Constructor for a configured `ClusterWorkflow` Durable Object class.
  *
- * **Details**
+ * @category models
+ * @since 4.0.0
+ */
+export interface ClusterWorkflowDurableObjectClass {
+  new(ctx: DurableObjectState, env: unknown): ClusterWorkflow
+}
+
+/**
+ * Durable Object class for workflow executions that installs configured
+ * handlers on every activation.
  *
- * The constructor stays cheap: it opens SQLite, ensures the workflow tables,
- * and re-arms the single alarm from the earliest pending clock. Workflow
- * handlers are looked up in the module-level registry and built once per
- * wake.
+ * **When to use**
+ *
+ * Use when exporting a native workflow Durable Object class from a Cloudflare
+ * Worker by extending the class returned by `ClusterWorkflow.make`.
+ *
+ * **Gotchas**
+ *
+ * Its protected constructor means it must be configured through `make` rather
+ * than bound directly. Provide all handler dependencies to `workflows` before
+ * calling `make`.
  *
  * @category durable objects
  * @since 4.0.0
  */
 export class ClusterWorkflow extends DurableObject<unknown> {
-  readonly #state: DurableObjectState
-  readonly #name: string | undefined
-  #runtime: WorkflowRuntime | undefined
+  readonly #program: Promise<ClusterWorkflowProgram>
+  readonly #workflowClassName: string
 
-  constructor(ctx: DurableObjectState, env: unknown) {
+  protected constructor(
+    ctx: DurableObjectState,
+    env: unknown,
+    options: ClusterWorkflowProgramOptions<unknown>
+  ) {
     super(ctx, env)
-    this.#state = ctx
-    ensureWorkflowStorage(ctx.storage.sql)
-    if (ctx.id.name !== undefined) {
-      if (decodeName(ctx.id.name) === undefined) {
-        throw new Error("ClusterWorkflow requires a canonical workflow Durable Object name")
-      }
-      this.#name = ctx.id.name
-    } else {
-      // An alarm wake carries no `id.name`; recover it from the stored
-      // execution so due clocks still fire after eviction.
-      const stored = loadExecution(ctx.storage.sql)
-      this.#name = stored === undefined ? undefined : encodeName(stored.workflowName, stored.executionId)
-    }
-    const wakeUp = earliestClockWakeUp(ctx.storage.sql)
-    if (wakeUp !== undefined) {
-      void ctx.blockConcurrencyWhile(() => Effect.runPromise(armAlarm(ctx.storage, wakeUp)))
-    }
+    this.#workflowClassName = options.workflowClassName ?? "ClusterWorkflow"
+    const scope = Scope.makeUnsafe()
+    this.#program = ctx.blockConcurrencyWhile(() =>
+      Effect.runPromise(
+        makeClusterWorkflowProgram(ctx, options).pipe(Effect.provideService(Scope.Scope, scope))
+      )
+    )
   }
 
-  #getRuntime(): WorkflowRuntime {
-    if (this.#runtime === undefined) {
-      if (this.#name === undefined) {
-        throw new Error("ClusterWorkflow requires a canonical workflow Durable Object name")
+  /**
+   * Creates a configured workflow Durable Object class.
+   *
+   * **Gotchas**
+   *
+   * `workflowClassName` must match the name used to export and bind the
+   * returned class.
+   *
+   * @since 4.0.0
+   */
+  static make<E>(options: ClusterWorkflowProgramOptions<E>): ClusterWorkflowDurableObjectClass {
+    return class extends ClusterWorkflow {
+      constructor(ctx: DurableObjectState, env: unknown) {
+        super(ctx, env, options)
       }
-      this.#runtime = makeWorkflowRuntime({
-        name: this.#name,
-        sql: this.#state.storage.sql,
-        alarm: this.#state.storage,
-        now: () => Date.now(),
-        waitUntil: (promise) => this.#state.waitUntil(promise),
-        getStub: (name) => {
-          const namespace = exportedNamespace<WorkflowStub>(this.#state, "ClusterWorkflow")
-          if (namespace === undefined) {
-            throw new Error("CloudflareCluster: ClusterWorkflow export is unavailable for workflow delivery")
-          }
-          return namespace.getByName(name)
-        }
-      })
     }
-    return this.#runtime
   }
 
   /** @internal Same-Worker RPC transport used by `CloudflareWorkflowEngine`. */
-  run(payload: string, options: WorkflowRunOptions): Promise<string> {
-    return this.#getRuntime().run(payload, options)
+  run(payload: string, runOptions: ClusterWorkflowRunOptions): Promise<string> {
+    return this.#program.then((program) => Effect.runPromise(program.run(payload, runOptions)))
   }
 
   /** @internal */
   poll(): Promise<string | undefined> {
-    return this.#getRuntime().poll()
+    return this.#program.then((program) => Effect.runPromise(program.poll()))
   }
 
   /** @internal */
   resume(): Promise<void> {
-    return this.#getRuntime().resume()
+    return this.#program.then((program) => Effect.runPromise(program.resume()))
   }
 
   /** @internal */
   interrupt(): Promise<void> {
-    return this.#getRuntime().interrupt()
+    return this.#program.then((program) => Effect.runPromise(program.interrupt()))
   }
 
   /** @internal */
   interruptUnsafe(): Promise<void> {
-    return this.#getRuntime().interruptUnsafe()
+    return this.#program.then((program) => Effect.runPromise(program.interruptUnsafe()))
   }
 
   /** @internal Records a durable deferred exit and resumes the execution. */
   deferredDone(name: string, exit: string): Promise<void> {
-    return this.#getRuntime().deferredDone(name, exit)
+    return this.#program.then((program) => Effect.runPromise(program.deferredDone(name, exit)))
   }
 
   /** @internal Persists a durable clock and arms the single alarm. */
   scheduleClock(name: string, deferredName: string, wakeUp: number): Promise<void> {
-    return this.#getRuntime().scheduleClock(name, deferredName, wakeUp)
+    return this.#program.then((program) => Effect.runPromise(program.scheduleClock(name, deferredName, wakeUp)))
   }
 
   override alarm(): Promise<void> {
-    // No stored execution means no clock could have armed this alarm.
-    if (this.#name === undefined) return Promise.resolve()
-    return this.#getRuntime().runAlarm()
+    return this.#program.then((program) => Effect.runPromise(program.alarm()))
   }
 
-  override fetch: () => never = notExposed("ClusterWorkflow")
+  override fetch(): never {
+    throw new Error(
+      `@effect/platform-cloudflare: ${this.#workflowClassName} is not exposed over fetch, use the same-Worker namespace binding`
+    )
+  }
 }
 
 /**
@@ -285,61 +218,50 @@ export class ClusterWorkflow extends DurableObject<unknown> {
  * @since 4.0.0
  */
 export class ClusterDurableQueue extends DurableObject<unknown> {
-  readonly #runtime: QueueRuntime
+  readonly #program: Promise<ClusterDurableQueueProgram>
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
-    if (ctx.id.name !== undefined && decodeName(ctx.id.name) === undefined) {
-      throw new Error("ClusterDurableQueue requires a canonical queue Durable Object name")
-    }
-    this.#runtime = makeQueueRuntime({
-      sql: ctx.storage.sql,
-      alarm: ctx.storage,
-      now: () => Date.now()
-    })
-    const expiry = earliestLeaseExpiry(ctx.storage.sql)
-    if (expiry !== undefined) {
-      void ctx.blockConcurrencyWhile(() => Effect.runPromise(armAlarm(ctx.storage, expiry)))
-    }
+    this.#program = ctx.blockConcurrencyWhile(() => Effect.runPromise(makeClusterDurableQueueProgram(ctx)))
   }
 
   /** @internal Same-Worker RPC transport used by `CloudflarePersistedQueue.layer`. */
   offer(id: string, element: string): Promise<void> {
-    return this.#runtime.offer(id, element)
+    return this.#program.then((program) => Effect.runPromise(program.offer(id, element)))
   }
 
   /** @internal Waits until an item is available, then leases it to the caller. */
-  take(takerId: string, maxAttempts: number, leaseMillis: number): Promise<QueueItem> {
-    return this.#runtime.take(takerId, maxAttempts, leaseMillis)
+  take(takerId: string, maxAttempts: number, leaseMillis: number): Promise<DurableQueueItem> {
+    return this.#program.then((program) => Effect.runPromise(program.take(takerId, maxAttempts, leaseMillis)))
   }
 
   /** @internal Cancels a waiting take, releasing an item already leased to it. */
   cancelTake(takerId: string): Promise<void> {
-    return this.#runtime.cancelTake(takerId)
+    return this.#program.then((program) => Effect.runPromise(program.cancelTake(takerId)))
   }
 
   /** @internal */
   complete(id: string): Promise<void> {
-    return this.#runtime.complete(id)
+    return this.#program.then((program) => Effect.runPromise(program.complete(id)))
   }
 
   /** @internal Records a failed attempt and requeues the item. */
   fail(id: string, lastFailure: string): Promise<void> {
-    return this.#runtime.fail(id, lastFailure)
+    return this.#program.then((program) => Effect.runPromise(program.fail(id, lastFailure)))
   }
 
   /** @internal Requeues the item without counting an attempt. */
   release(id: string): Promise<void> {
-    return this.#runtime.release(id)
+    return this.#program.then((program) => Effect.runPromise(program.release(id)))
   }
 
   /** @internal Extends the lease of an item still being processed. */
   extend(id: string, leaseMillis: number): Promise<void> {
-    return this.#runtime.extend(id, leaseMillis)
+    return this.#program.then((program) => Effect.runPromise(program.extend(id, leaseMillis)))
   }
 
   override alarm(): Promise<void> {
-    return this.#runtime.runAlarm()
+    return this.#program.then((program) => Effect.runPromise(program.alarm()))
   }
 
   override fetch: () => never = notExposed("ClusterDurableQueue")
@@ -360,66 +282,20 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
  * @since 4.0.0
  */
 export class ClusterSingleton extends DurableObject<unknown> {
-  readonly #state: DurableObjectState
-  readonly #name: string | undefined
-  #runtime: SingletonRuntime | undefined
+  readonly #program: Promise<ClusterSingletonProgram>
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
-    this.#state = ctx
-    const sql = ctx.storage.sql
-    ensureSingletonStorage(sql)
-    if (ctx.id.name !== undefined) {
-      if (!ctx.id.name.startsWith("Singleton/")) {
-        throw new Error("ClusterSingleton requires a Singleton/<name> Durable Object name")
-      }
-      rememberSingletonName(sql, ctx.id.name)
-    }
-    const stored = loadSingletonState(sql)
-    this.#name = ctx.id.name ?? stored.name
-    if (stored.wakeAt !== undefined) {
-      void ctx.blockConcurrencyWhile(() => Effect.runPromise(armAlarm(ctx.storage, stored.wakeAt!)))
-    }
-  }
-
-  #getRuntime(): SingletonRuntime {
-    if (this.#runtime !== undefined) return this.#runtime
-    if (this.#name === undefined) {
-      throw new Error("ClusterSingleton requires a Singleton/<name> Durable Object name")
-    }
-    const name = this.#name.slice("Singleton/".length)
-    const registration = getSingletonRegistration(name)
-    if (registration === undefined) {
-      throw new Error(`CloudflareCluster: no singleton registered under the name "${name}"`)
-    }
-    const run = Effect.sync(() => {
-      ClusterMetrics.singletons.modifyUnsafe(BigInt(1), registration.context)
-    }).pipe(
-      Effect.andThen(registration.run),
-      Effect.scoped,
-      Effect.ensuring(Effect.sync(() => {
-        ClusterMetrics.singletons.modifyUnsafe(BigInt(-1), registration.context)
-      })),
-      Effect.provideContext(registration.context),
-      Effect.orDie
-    )
-    this.#runtime = makeSingletonRuntime({
-      sql: this.#state.storage.sql,
-      alarm: this.#state.storage,
-      now: () => Date.now(),
-      run
-    })
-    return this.#runtime
+    this.#program = ctx.blockConcurrencyWhile(() => Effect.runPromise(makeClusterSingletonProgram(ctx)))
   }
 
   /** @internal Runs one Cron Trigger fire, coalescing a concurrent duplicate. */
   wake(): Promise<void> {
-    return this.#getRuntime().wake()
+    return this.#program.then((program) => Effect.runPromise(program.wake()))
   }
 
   override alarm(): Promise<void> {
-    if (loadSingletonState(this.#state.storage.sql).wakeAt === undefined) return Promise.resolve()
-    return this.#getRuntime().runAlarm()
+    return this.#program.then((program) => Effect.runPromise(program.alarm()))
   }
 
   override fetch: () => never = notExposed("ClusterSingleton")
