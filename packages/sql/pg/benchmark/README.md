@@ -21,6 +21,11 @@ measure the same job for both libraries: JavaScript values in, a complete `Bind`
 JavaScript values out. `pg` is represented by `pg-protocol`'s `serialize.bind` with `utils.prepareValue` as its value
 mapper, and by its `Parser` feeding `pg-types` text parsers - the same calls `pg` makes when it runs a query.
 
+The `Bind` suite runs `@effect/sql-pg` twice. `value sink` is `PgProtocol.makeBindEncoder(PgTypes.writeParameter)`,
+which writes each value straight into the frame; it is what a client should use. `encoded parameters` is
+`PgProtocol.encodeBind` over `PgTypes.encode` output, which allocates an array per parameter and copies it into the
+frame. Both produce the same bytes.
+
 ## The component suites
 
 The four remaining suites split that work up, which is useful for finding hot spots but not for ranking the libraries:

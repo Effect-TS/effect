@@ -17,6 +17,7 @@
  * @since 4.0.0
  */
 import * as Data from "effect/Data"
+import type { ValueSink } from "./PgProtocol.ts"
 
 /**
  * Error raised when a value cannot be encoded or decoded for its OID.
@@ -641,10 +642,16 @@ const decodeUuid = (bytes: Uint8Array): string => {
 export interface Codec<A> {
   readonly encode: (value: A) => Uint8Array
   readonly decode: (bytes: Uint8Array) => A
+  /**
+   * Writes the value straight into a `Bind` frame, with no array of its own.
+   * Optional: a codec without one falls back to `encode` and a copy.
+   */
+  readonly write?: (sink: ValueSink, value: A) => void
 }
 
 const utf8Codec: Codec<any> = {
   encode: (value) => encodeUtf8(requireString(value, "text")),
+  write: (sink, value) => sink.utf8(requireString(value, "text")),
   decode: (bytes) => {
     try {
       return textDecoder.decode(bytes)
@@ -654,22 +661,56 @@ const utf8Codec: Codec<any> = {
   }
 }
 
+const int8Value = (value: unknown): bigint => {
+  const big = requireBigInt(value, "int8")
+  if (big < INT64_MIN || big > INT64_MAX) fail(`int8 out of range: ${big}`)
+  return big
+}
+
+const MAX_TIME_MICROS = BigInt(86_400_000_000)
+
+const timeValue = (value: unknown): bigint => {
+  const micros = requireBigInt(value, "time")
+  if (micros < ZERO || micros > MAX_TIME_MICROS) fail(`time out of range: ${micros}`)
+  return micros
+}
+
 /** A 4- or 8-byte codec staged through the shared scratch views. */
 const staged = (
   size: 4 | 8,
   name: string,
   write: (view: DataView, value: any) => void,
-  read: (view: DataView) => any
+  read: (view: DataView) => any,
+  writeInto: (sink: ValueSink, value: any) => void
 ): Codec<any> => {
   const view = size === 4 ? scratchView4 : scratchView8
   const scratch = size === 4 ? scratchBytes4 : scratchBytes8
   return {
-    encode: (value) => {
-      write(view, value)
-      const bytes = new Uint8Array(size)
-      bytes.set(scratch)
-      return bytes
-    },
+    encode: size === 4
+      ? (value) => {
+        write(view, value)
+        const bytes = new Uint8Array(4)
+        // Unrolled: `set` on a four-byte array costs more than the stores.
+        bytes[0] = scratch[0]
+        bytes[1] = scratch[1]
+        bytes[2] = scratch[2]
+        bytes[3] = scratch[3]
+        return bytes
+      }
+      : (value) => {
+        write(view, value)
+        const bytes = new Uint8Array(8)
+        bytes[0] = scratch[0]
+        bytes[1] = scratch[1]
+        bytes[2] = scratch[2]
+        bytes[3] = scratch[3]
+        bytes[4] = scratch[4]
+        bytes[5] = scratch[5]
+        bytes[6] = scratch[6]
+        bytes[7] = scratch[7]
+        return bytes
+      },
+    write: writeInto,
     decode: (bytes) => {
       requireSize(bytes, size, name)
       scratch.set(bytes)
@@ -764,6 +805,11 @@ const jsonCodec: Codec<any> = {
     if (text === undefined) return fail("Value cannot be serialised as JSON")
     return encodeUtf8(text)
   },
+  write: (sink, value) => {
+    const text = JSON.stringify(value)
+    if (text === undefined) return fail("Value cannot be serialised as JSON")
+    sink.utf8(text)
+  },
   decode: (bytes) => JSON.parse(utf8Codec.decode(bytes))
 }
 
@@ -774,6 +820,12 @@ const jsonbCodec: Codec<any> = {
     const bytes = encodeUtf8Prefixed(text, 1)
     bytes[0] = 1
     return bytes
+  },
+  write: (sink, value) => {
+    const text = JSON.stringify(value)
+    if (text === undefined) return fail("Value cannot be serialised as JSON")
+    sink.uint8(1)
+    sink.utf8(text)
   },
   decode: (bytes) => {
     if (bytes.length === 0 || bytes[0] !== 1) {
@@ -791,6 +843,10 @@ const builtins = new Map<number, Codec<any>>([
       bytes[0] = value ? 1 : 0
       return bytes
     },
+    write: (sink, value) => {
+      if (typeof value !== "boolean") fail("Expected a boolean for bool")
+      sink.uint8(value ? 1 : 0)
+    },
     decode: (bytes) => {
       requireSize(bytes, 1, "bool")
       return bytes[0] !== 0
@@ -798,6 +854,7 @@ const builtins = new Map<number, Codec<any>>([
   }],
   [OID.bytea, {
     encode: (value) => value instanceof Uint8Array ? value.slice() : fail("Expected a Uint8Array for bytea"),
+    write: (sink, value) => value instanceof Uint8Array ? sink.raw(value) : fail("Expected a Uint8Array for bytea"),
     decode: (bytes) => bytes
   }],
   [OID.int2, {
@@ -808,6 +865,7 @@ const builtins = new Map<number, Codec<any>>([
       bytes[1] = num
       return bytes
     },
+    write: (sink, value) => sink.int16(requireInteger(value, "int2", -32768, 32767)),
     decode: (bytes) => {
       requireSize(bytes, 2, "int2")
       return ((bytes[0] << 8) | bytes[1]) << 16 >> 16
@@ -823,6 +881,7 @@ const builtins = new Map<number, Codec<any>>([
       bytes[3] = num
       return bytes
     },
+    write: (sink, value) => sink.int32(requireInteger(value, "int4", INT32_MIN, INT32_MAX)),
     decode: (bytes) => {
       requireSize(bytes, 4, "int4")
       return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]
@@ -838,6 +897,7 @@ const builtins = new Map<number, Codec<any>>([
       bytes[3] = num
       return bytes
     },
+    write: (sink, value) => sink.int32(requireInteger(value, "oid", 0, 4294967295)),
     decode: (bytes) => {
       requireSize(bytes, 4, "oid")
       return ((bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]) >>> 0
@@ -845,11 +905,13 @@ const builtins = new Map<number, Codec<any>>([
   }],
   [
     OID.int8,
-    staged(8, "int8", (view, value) => {
-      const big = requireBigInt(value, "int8")
-      if (big < INT64_MIN || big > INT64_MAX) fail(`int8 out of range: ${big}`)
-      view.setBigInt64(0, big)
-    }, (view) => view.getBigInt64(0))
+    staged(
+      8,
+      "int8",
+      (view, value) => view.setBigInt64(0, int8Value(value)),
+      (view) => view.getBigInt64(0),
+      (sink, value) => sink.bigInt64(int8Value(value))
+    )
   ],
   [
     OID.float4,
@@ -857,7 +919,8 @@ const builtins = new Map<number, Codec<any>>([
       4,
       "float4",
       (view, value) => view.setFloat32(0, requireNumber(value, "float4")),
-      (view) => view.getFloat32(0)
+      (view) => view.getFloat32(0),
+      (sink, value) => sink.float32(requireNumber(value, "float4"))
     )
   ],
   [
@@ -866,16 +929,19 @@ const builtins = new Map<number, Codec<any>>([
       8,
       "float8",
       (view, value) => view.setFloat64(0, requireNumber(value, "float8")),
-      (view) => view.getFloat64(0)
+      (view) => view.getFloat64(0),
+      (sink, value) => sink.float64(requireNumber(value, "float8"))
     )
   ],
   [
     OID.time,
-    staged(8, "time", (view, value) => {
-      const micros = requireBigInt(value, "time")
-      if (micros < ZERO || micros > BigInt(86_400_000_000)) fail(`time out of range: ${micros}`)
-      view.setBigInt64(0, micros)
-    }, (view) => view.getBigInt64(0))
+    staged(
+      8,
+      "time",
+      (view, value) => view.setBigInt64(0, timeValue(value)),
+      (view) => view.getBigInt64(0),
+      (sink, value) => sink.bigInt64(timeValue(value))
+    )
   ],
   [OID.numeric, { encode: encodeNumeric, decode: decodeNumeric }],
   [OID.text, utf8Codec],
@@ -907,6 +973,18 @@ for (const [arrayOid, elementOid] of arrayToElement) {
 const codecs = new Map<number, Codec<any>>(builtins)
 
 /**
+ * Every built-in OID is below this, and PostgreSQL hands user-defined types
+ * OIDs from 16384 up, so a direct table covers the common case and the map
+ * covers registered ones.
+ */
+const tableSize = 4096
+
+const table = new Array<Codec<any> | undefined>(tableSize)
+for (const [oid, codec] of codecs) table[oid] = codec
+
+const lookup = (oid: number): Codec<any> | undefined => oid < tableSize ? table[oid] : codecs.get(oid)
+
+/**
  * Registers a binary codec for an OID the built-in catalogue does not cover,
  * or overrides a built-in one. Registered codecs take precedence.
  *
@@ -915,6 +993,7 @@ const codecs = new Map<number, Codec<any>>(builtins)
  */
 export const register = <A>(oid: number, codec: Codec<A>): void => {
   codecs.set(oid, codec)
+  if (oid >= 0 && oid < tableSize) table[oid] = codec
 }
 
 /**
@@ -927,6 +1006,7 @@ export const unregister = (oid: number): void => {
   const builtin = builtins.get(oid)
   if (builtin === undefined) codecs.delete(oid)
   else codecs.set(oid, builtin)
+  if (oid >= 0 && oid < tableSize) table[oid] = builtin
 }
 
 // -----------------------------------------------------------------------------
@@ -1021,7 +1101,7 @@ const decodeArray = (bytes: Uint8Array, elementOid: number): ReadonlyArray<unkno
  * @since 4.0.0
  */
 export const encode = (value: unknown, oid: number): Uint8Array => {
-  const codec = codecs.get(oid)
+  const codec = lookup(oid)
   if (codec === undefined) return fail(`No codec registered for OID ${oid}`)
   return codec.encode(value)
 }
@@ -1039,7 +1119,7 @@ export const decode = (bytes: Uint8Array, oid: number, format: number): unknown 
   if (format !== 1) {
     return fail(`Only the binary format is supported, received format ${format}`)
   }
-  const codec = codecs.get(oid)
+  const codec = lookup(oid)
   return codec === undefined ? bytes : codec.decode(bytes)
 }
 
@@ -1066,6 +1146,23 @@ export interface Parameter {
  */
 export const encodeParameter = (parameter: Parameter): Uint8Array | null =>
   parameter.value === null ? null : encode(parameter.value, parameter.oid)
+
+/**
+ * Writes a parameter into a `Bind` frame, for `PgProtocol.makeBindEncoder`.
+ * Codecs that can write their bytes in place do; the rest fall back to
+ * `encode` and a copy.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const writeParameter = (sink: ValueSink, parameter: Parameter): void => {
+  const value = parameter.value
+  if (value === null) return sink.sqlNull()
+  const codec = lookup(parameter.oid)
+  if (codec === undefined) return fail(`No codec registered for OID ${parameter.oid}`)
+  if (codec.write === undefined) sink.raw(codec.encode(value))
+  else codec.write(sink, value)
+}
 
 const parameter = (oid: number) => (value: unknown): Parameter => ({ oid, value })
 

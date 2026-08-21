@@ -72,6 +72,48 @@ describe("PgProtocol", () => {
       assert.strictEqual(hex(encoded), frontend.bind)
     })
 
+    it("encodes Bind through a value sink", () => {
+      const encodeBind = PgProtocol.makeBindEncoder<Uint8Array | null>((sink, value) => {
+        if (value === null) sink.sqlNull()
+        else sink.raw(value)
+      })
+      assert.strictEqual(
+        hex(encodeBind({ portal: "p1", statement: "s1", parameters: [bytes("00000001"), null] })),
+        frontend.bind
+      )
+    })
+
+    it("frames each sink-written parameter with the bytes it wrote", () => {
+      const encodeBind = PgProtocol.makeBindEncoder<number>((sink, value) => {
+        sink.int16(value)
+        sink.utf8("é")
+        sink.float64(value)
+      })
+      const encoded = encodeBind({ portal: "", statement: "", parameters: [1, 2] })
+      // 1 type byte, 4 length, 2 empty cStrings, 3 int16 of format codes and
+      // count, then each parameter as its int32 length and 12 bytes of body
+      const view = new DataView(encoded.buffer, encoded.byteOffset, encoded.byteLength)
+      assert.strictEqual(view.getInt32(13), 12)
+      assert.strictEqual(view.getInt16(17), 1)
+      assert.strictEqual(view.getFloat64(21), 1)
+      assert.strictEqual(view.getInt32(29), 12)
+      assert.strictEqual(view.getFloat64(37), 2)
+    })
+
+    it("keeps sink-written parameters intact when the pool grows mid-message", () => {
+      const encodeBind = PgProtocol.makeBindEncoder<string>((sink, value) => sink.utf8(value))
+      const long = "x".repeat(16 * 1024)
+      const encoded = encodeBind({ portal: "", statement: "", parameters: ["ab", long, "cd"] })
+      assert.deepStrictEqual(
+        encoded,
+        PgProtocol.encodeBind({
+          portal: "",
+          statement: "",
+          parameters: ["ab", long, "cd"].map((value) => new TextEncoder().encode(value))
+        })
+      )
+    })
+
     it("encodes Execute", () => {
       assert.strictEqual(hex(PgProtocol.encodeExecute({ portal: "p1", maxRows: 5 })), frontend.execute)
     })

@@ -263,6 +263,50 @@ describe("PgTypes", () => {
       assert.deepStrictEqual(PgTypes.encodeParameter(PgTypes.int4(1)), bytes("00000001"))
     })
 
+    it("writes every builtin parameter as the bytes encode produces", () => {
+      const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
+      const parameters = [
+        ...roundTrips.map(({ oid, value }) => ({ oid, value })),
+        { oid: PgTypes.OID.int4, value: null },
+        { oid: PgTypes.OID.textArray, value: null }
+      ]
+      assert.deepStrictEqual(
+        encodeBind({ portal: "p1", statement: "s1", parameters }),
+        PgProtocol.encodeBind({
+          portal: "p1",
+          statement: "s1",
+          parameters: parameters.map(PgTypes.encodeParameter)
+        })
+      )
+    })
+
+    it("writes a registered codec through encode when it has no writer", () => {
+      const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
+      const parameters = [{ oid: 99999, value: "ab" }]
+      assertThrowsTagged("PgTypesCodecError", () => encodeBind({ portal: "", statement: "", parameters }))
+      PgTypes.register<string>(99999, {
+        encode: (value) => new TextEncoder().encode(value.toUpperCase()),
+        decode: (value) => new TextDecoder().decode(value).toLowerCase()
+      })
+      try {
+        assert.deepStrictEqual(
+          encodeBind({ portal: "", statement: "", parameters }),
+          PgProtocol.encodeBind({ portal: "", statement: "", parameters: parameters.map(PgTypes.encodeParameter) })
+        )
+      } finally {
+        PgTypes.unregister(99999)
+      }
+    })
+
+    it("keeps a bytea frame intact when the source is mutated afterwards", () => {
+      const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
+      const source = bytes("010203")
+      const encoded = encodeBind({ portal: "", statement: "", parameters: [PgTypes.bytea(source)] })
+      source[0] = 0xff
+      // the frame ends with the four bytes of the result format code
+      assert.deepStrictEqual(encoded.slice(-7, -4), bytes("010203"))
+    })
+
     it("maps element OIDs to array OIDs", () => {
       assert.strictEqual(PgTypes.arrayOidFor(PgTypes.OID.text), PgTypes.OID.textArray)
       assert.strictEqual(PgTypes.arrayOidFor(99999), undefined)

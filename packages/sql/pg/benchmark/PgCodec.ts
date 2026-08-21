@@ -120,6 +120,12 @@ const bindEffect = () =>
     parameters: payload.map(({ oid, value }) => PgTypes.encode(value, oid))
   })
 
+// The same job with the values written straight into the frame, which is what
+// a client should use: no array per parameter, no copy out of one.
+const bindParameters = payload.map(({ oid, value }) => ({ oid, value }))
+const encodeBindFused = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
+const bindEffectFused = () => encodeBindFused({ portal: "", statement: "s1", parameters: bindParameters })
+
 const bindPg = () =>
   pgSerialize.bind({
     portal: "",
@@ -169,6 +175,7 @@ assert.equal(decodeRowsEffect(), rowsPerParserRun)
 assert.equal(decodeRowsPg(), rowsPerParserRun)
 assert.ok(bindEffect().length > 0)
 assert.ok(bindPg().length > 0)
+assert.deepStrictEqual(Array.from(bindEffectFused()), Array.from(bindEffect()))
 
 const codecRowsPerRun = 100
 let sink: unknown
@@ -228,7 +235,8 @@ await runSuite("type decode", codecRowsPerRun, [
 ])
 
 await runSuite("Bind frame from JavaScript values", codecRowsPerRun, [
-  ["@effect/sql-pg binary", batch(bindEffect)],
+  ["@effect/sql-pg binary, value sink", batch(bindEffectFused)],
+  ["@effect/sql-pg binary, encoded parameters", batch(bindEffect)],
   ["pg text", batch(bindPg)]
 ])
 

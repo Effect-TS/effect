@@ -57,13 +57,17 @@ const view = (store: ArrayBufferLike, offset: number, length: number): Uint8Arra
 class Writer {
   readonly poolSize: number
   bytes: Uint8Array
+  view: DataView
   /** Where the message currently being written begins. */
   start = 0
   offset = 0
+  /** Set by `sqlNull`, read and cleared by the `makeBindEncoder` loop. */
+  isNull = false
 
   constructor(poolSize: number) {
     this.poolSize = poolSize
     this.bytes = new Uint8Array(poolSize)
+    this.view = new DataView(this.bytes.buffer)
   }
 
   reserve(size: number): void {
@@ -74,6 +78,7 @@ class Writer {
     const next = new Uint8Array(capacity)
     next.set(this.bytes.subarray(this.start, this.offset))
     this.bytes = next
+    this.view = new DataView(next.buffer)
     this.start = 0
     this.offset = pending
   }
@@ -111,10 +116,32 @@ class Writer {
     bytes[offset + 3] = value
   }
 
+  float32(value: number): void {
+    this.reserve(4)
+    this.view.setFloat32(this.offset, value)
+    this.offset += 4
+  }
+
+  float64(value: number): void {
+    this.reserve(8)
+    this.view.setFloat64(this.offset, value)
+    this.offset += 8
+  }
+
+  bigInt64(value: bigint): void {
+    this.reserve(8)
+    this.view.setBigInt64(this.offset, value)
+    this.offset += 8
+  }
+
   raw(value: Uint8Array): void {
     this.reserve(value.length)
     this.bytes.set(value, this.offset)
     this.offset += value.length
+  }
+
+  sqlNull(): void {
+    this.isNull = true
   }
 
   utf8(value: string): void {
@@ -147,6 +174,7 @@ class Writer {
     if (this.bytes.length > this.poolSize) {
       // An oversized message grew the pool; do not keep the rest of it around.
       this.bytes = new Uint8Array(this.poolSize)
+      this.view = new DataView(this.bytes.buffer)
       this.start = 0
       this.offset = 0
     } else {
@@ -404,15 +432,33 @@ export type FrontendMessage =
 
 const sharedWriter = new Writer(8192)
 
-const typed = (type: string, write: (writer: Writer) => void): Uint8Array => {
-  sharedWriter.begin()
-  sharedWriter.uint8(type.charCodeAt(0))
-  sharedWriter.int32(0)
-  write(sharedWriter)
+/**
+ * Opens a typed message and leaves room for its length. Paired with `end`,
+ * which backfills it. A pair rather than a `write` callback, because a
+ * callback allocates a closure over the caller's options on every message.
+ */
+const begin = (type: number): Writer => {
+  const writer = sharedWriter
+  writer.begin()
+  writer.reserve(5)
+  const bytes = writer.bytes
+  const offset = writer.offset
+  bytes[offset] = type
+  writer.offset = offset + 5
+  return writer
+}
+
+const end = (): Uint8Array => {
   // Relative to `start`, because writing may have moved the message to a new
   // pool buffer. The length counts itself but not the type byte.
   sharedWriter.setInt32(sharedWriter.start + 1, sharedWriter.offset - sharedWriter.start - 1)
   return sharedWriter.finish()
+}
+
+const empty = (type: number): Uint8Array => {
+  const writer = begin(type)
+  writer.setInt32(writer.start + 1, 4)
+  return writer.finish()
 }
 
 const targetByte = (target: DescribeTarget): number => target === "statement" ? 0x53 : 0x50
@@ -423,15 +469,29 @@ const targetByte = (target: DescribeTarget): number => target === "statement" ? 
  * @category encoding
  * @since 4.0.0
  */
-export const encodeParse = (options: Omit<Parse, "_tag">): Uint8Array =>
-  typed("P", (writer) => {
-    writer.cString(options.name)
-    writer.cString(options.query)
-    writer.int16(options.parameterTypes.length)
-    for (const oid of options.parameterTypes) {
-      writer.int32(oid)
-    }
-  })
+export const encodeParse = (options: Omit<Parse, "_tag">): Uint8Array => {
+  const writer = begin(0x50)
+  writer.cString(options.name)
+  writer.cString(options.query)
+  const parameterTypes = options.parameterTypes
+  const count = parameterTypes.length
+  writer.reserve(2 + count * 4)
+  const bytes = writer.bytes
+  let offset = writer.offset
+  bytes[offset] = count >>> 8
+  bytes[offset + 1] = count
+  offset += 2
+  for (let index = 0; index < count; index++) {
+    const oid = parameterTypes[index]
+    bytes[offset] = oid >>> 24
+    bytes[offset + 1] = oid >>> 16
+    bytes[offset + 2] = oid >>> 8
+    bytes[offset + 3] = oid
+    offset += 4
+  }
+  writer.offset = offset
+  return end()
+}
 
 /**
  * Encodes a `Bind` message using the binary format code for parameters and
@@ -440,24 +500,142 @@ export const encodeParse = (options: Omit<Parse, "_tag">): Uint8Array =>
  * @category encoding
  * @since 4.0.0
  */
-export const encodeBind = (options: Omit<Bind, "_tag">): Uint8Array =>
-  typed("B", (writer) => {
-    writer.cString(options.portal)
-    writer.cString(options.statement)
-    writer.int16(1)
-    writer.int16(1)
-    writer.int16(options.parameters.length)
-    for (const parameter of options.parameters) {
-      if (parameter === null) {
-        writer.int32(-1)
-      } else {
-        writer.int32(parameter.length)
-        writer.raw(parameter)
-      }
+export const encodeBind = (options: Omit<Bind, "_tag">): Uint8Array => {
+  const writer = begin(0x42)
+  writer.cString(options.portal)
+  writer.cString(options.statement)
+  const parameters = options.parameters
+  const count = parameters.length
+  // Sizing the rest of the frame up front turns every remaining write into a
+  // plain store: one bounds check for the message instead of one per field.
+  let size = 10 + count * 4
+  for (let index = 0; index < count; index++) {
+    const parameter = parameters[index]
+    if (parameter !== null) size += parameter.length
+  }
+  writer.reserve(size)
+  const bytes = writer.bytes
+  let offset = writer.offset
+  // One parameter format code, binary, for every parameter.
+  bytes[offset] = 0
+  bytes[offset + 1] = 1
+  bytes[offset + 2] = 0
+  bytes[offset + 3] = 1
+  bytes[offset + 4] = count >>> 8
+  bytes[offset + 5] = count
+  offset += 6
+  for (let index = 0; index < count; index++) {
+    const parameter = parameters[index]
+    if (parameter === null) {
+      bytes[offset] = 0xff
+      bytes[offset + 1] = 0xff
+      bytes[offset + 2] = 0xff
+      bytes[offset + 3] = 0xff
+      offset += 4
+    } else {
+      const length = parameter.length
+      bytes[offset] = length >>> 24
+      bytes[offset + 1] = length >>> 16
+      bytes[offset + 2] = length >>> 8
+      bytes[offset + 3] = length
+      bytes.set(parameter, offset + 4)
+      offset += 4 + length
     }
-    writer.int16(1)
-    writer.int16(1)
-  })
+  }
+  // One result format code, binary, for every column.
+  bytes[offset] = 0
+  bytes[offset + 1] = 1
+  bytes[offset + 2] = 0
+  bytes[offset + 3] = 1
+  writer.offset = offset + 4
+  return end()
+}
+
+/**
+ * Where a value writes its wire bytes. `Bind` frames a parameter by leaving
+ * room for its length, letting the sink fill in the body, and backfilling the
+ * length from what was written, so a value never needs an array of its own.
+ *
+ * `PgTypes.writeParameter` is the implementation for OID-typed values.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ValueSink {
+  readonly uint8: (value: number) => void
+  readonly int16: (value: number) => void
+  readonly int32: (value: number) => void
+  readonly float32: (value: number) => void
+  readonly float64: (value: number) => void
+  readonly bigInt64: (value: bigint) => void
+  readonly raw: (value: Uint8Array) => void
+  readonly utf8: (value: string) => void
+  /** Writes SQL NULL. The value must write nothing else. */
+  readonly sqlNull: () => void
+}
+
+/**
+ * Builds a `Bind` encoder that writes parameters straight into the frame,
+ * skipping the array per parameter that `encodeBind` has to copy from.
+ *
+ * ```ts
+ * import { PgProtocol, PgTypes } from "@effect/sql-pg"
+ *
+ * const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
+ * const frame = encodeBind({ portal: "", statement: "s1", parameters: [PgTypes.int4(1)] })
+ * ```
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const makeBindEncoder = <A>(
+  writeParameter: (sink: ValueSink, value: A) => void
+) =>
+(options: {
+  readonly portal: string
+  readonly statement: string
+  readonly parameters: ReadonlyArray<A>
+}): Uint8Array => {
+  const writer = begin(0x42)
+  writer.cString(options.portal)
+  writer.cString(options.statement)
+  const parameters = options.parameters
+  const count = parameters.length
+  writer.reserve(6)
+  const header = writer.bytes
+  const headerOffset = writer.offset
+  header[headerOffset] = 0
+  header[headerOffset + 1] = 1
+  header[headerOffset + 2] = 0
+  header[headerOffset + 3] = 1
+  header[headerOffset + 4] = count >>> 8
+  header[headerOffset + 5] = count
+  writer.offset = headerOffset + 6
+  for (let index = 0; index < count; index++) {
+    // Relative to `start`, because writing the value may move the message to a
+    // new pool buffer.
+    const at = writer.offset - writer.start
+    writer.int32(0)
+    writer.isNull = false
+    writeParameter(writer, parameters[index])
+    if (writer.isNull) {
+      writer.isNull = false
+      writer.offset = writer.start + at
+      writer.int32(-1)
+    } else {
+      writer.setInt32(writer.start + at, writer.offset - writer.start - at - 4)
+    }
+  }
+  writer.reserve(4)
+  const trailer = writer.bytes
+  const trailerOffset = writer.offset
+  trailer[trailerOffset] = 0
+  trailer[trailerOffset + 1] = 1
+  trailer[trailerOffset + 2] = 0
+  trailer[trailerOffset + 3] = 1
+  writer.offset = trailerOffset + 4
+  return end()
+}
 
 /**
  * Encodes an `Execute` message.
@@ -465,11 +643,12 @@ export const encodeBind = (options: Omit<Bind, "_tag">): Uint8Array =>
  * @category encoding
  * @since 4.0.0
  */
-export const encodeExecute = (options: Omit<Execute, "_tag">): Uint8Array =>
-  typed("E", (writer) => {
-    writer.cString(options.portal)
-    writer.int32(options.maxRows)
-  })
+export const encodeExecute = (options: Omit<Execute, "_tag">): Uint8Array => {
+  const writer = begin(0x45)
+  writer.cString(options.portal)
+  writer.int32(options.maxRows)
+  return end()
+}
 
 /**
  * Encodes a `Describe` message.
@@ -477,11 +656,12 @@ export const encodeExecute = (options: Omit<Execute, "_tag">): Uint8Array =>
  * @category encoding
  * @since 4.0.0
  */
-export const encodeDescribe = (options: Omit<Describe, "_tag">): Uint8Array =>
-  typed("D", (writer) => {
-    writer.uint8(targetByte(options.target))
-    writer.cString(options.name)
-  })
+export const encodeDescribe = (options: Omit<Describe, "_tag">): Uint8Array => {
+  const writer = begin(0x44)
+  writer.uint8(targetByte(options.target))
+  writer.cString(options.name)
+  return end()
+}
 
 /**
  * Encodes a `Close` message.
@@ -489,11 +669,12 @@ export const encodeDescribe = (options: Omit<Describe, "_tag">): Uint8Array =>
  * @category encoding
  * @since 4.0.0
  */
-export const encodeClose = (options: Omit<Close, "_tag">): Uint8Array =>
-  typed("C", (writer) => {
-    writer.uint8(targetByte(options.target))
-    writer.cString(options.name)
-  })
+export const encodeClose = (options: Omit<Close, "_tag">): Uint8Array => {
+  const writer = begin(0x43)
+  writer.uint8(targetByte(options.target))
+  writer.cString(options.name)
+  return end()
+}
 
 /**
  * Encodes a `Sync` message.
@@ -501,7 +682,7 @@ export const encodeClose = (options: Omit<Close, "_tag">): Uint8Array =>
  * @category encoding
  * @since 4.0.0
  */
-export const encodeSync = (): Uint8Array => typed("S", () => {})
+export const encodeSync = (): Uint8Array => empty(0x53)
 
 /**
  * Encodes a `Flush` message.
@@ -509,7 +690,7 @@ export const encodeSync = (): Uint8Array => typed("S", () => {})
  * @category encoding
  * @since 4.0.0
  */
-export const encodeFlush = (): Uint8Array => typed("H", () => {})
+export const encodeFlush = (): Uint8Array => empty(0x48)
 
 /**
  * Encodes a `Terminate` message.
@@ -517,7 +698,7 @@ export const encodeFlush = (): Uint8Array => typed("H", () => {})
  * @category encoding
  * @since 4.0.0
  */
-export const encodeTerminate = (): Uint8Array => typed("X", () => {})
+export const encodeTerminate = (): Uint8Array => empty(0x58)
 
 /**
  * Encodes a `PasswordMessage`. The password is sent verbatim, so MD5 hashing
@@ -526,10 +707,11 @@ export const encodeTerminate = (): Uint8Array => typed("X", () => {})
  * @category encoding
  * @since 4.0.0
  */
-export const encodePasswordMessage = (options: Omit<PasswordMessage, "_tag">): Uint8Array =>
-  typed("p", (writer) => {
-    writer.cString(options.password)
-  })
+export const encodePasswordMessage = (options: Omit<PasswordMessage, "_tag">): Uint8Array => {
+  const writer = begin(0x70)
+  writer.cString(options.password)
+  return end()
+}
 
 /**
  * Encodes a `SASLInitialResponse` message.
@@ -537,16 +719,17 @@ export const encodePasswordMessage = (options: Omit<PasswordMessage, "_tag">): U
  * @category encoding
  * @since 4.0.0
  */
-export const encodeSASLInitialResponse = (options: Omit<SASLInitialResponse, "_tag">): Uint8Array =>
-  typed("p", (writer) => {
-    writer.cString(options.mechanism)
-    if (options.initialResponse === null) {
-      writer.int32(-1)
-    } else {
-      writer.int32(options.initialResponse.length)
-      writer.raw(options.initialResponse)
-    }
-  })
+export const encodeSASLInitialResponse = (options: Omit<SASLInitialResponse, "_tag">): Uint8Array => {
+  const writer = begin(0x70)
+  writer.cString(options.mechanism)
+  if (options.initialResponse === null) {
+    writer.int32(-1)
+  } else {
+    writer.int32(options.initialResponse.length)
+    writer.raw(options.initialResponse)
+  }
+  return end()
+}
 
 /**
  * Encodes a `SASLResponse` message.
@@ -554,10 +737,11 @@ export const encodeSASLInitialResponse = (options: Omit<SASLInitialResponse, "_t
  * @category encoding
  * @since 4.0.0
  */
-export const encodeSASLResponse = (options: Omit<SASLResponse, "_tag">): Uint8Array =>
-  typed("p", (writer) => {
-    writer.raw(options.data)
-  })
+export const encodeSASLResponse = (options: Omit<SASLResponse, "_tag">): Uint8Array => {
+  const writer = begin(0x70)
+  writer.raw(options.data)
+  return end()
+}
 
 /**
  * Encodes any frontend message.
