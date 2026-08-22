@@ -132,7 +132,7 @@ const cases: ReadonlyArray<BenchmarkCase> = [
 ]
 
 const schemaBinary = Effect.runSync(
-  RpcSerialization.RpcSerialization.pipe(Effect.provide(RpcSerialization.layerSchemaBinary))
+  RpcSerialization.RpcSerialization.pipe(Effect.provide(RpcSerialization.layerSchemaBinary()))
 )
 
 const formats = [
