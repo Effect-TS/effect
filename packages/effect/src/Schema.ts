@@ -10036,6 +10036,10 @@ export function Result<A extends Constraint, E extends Constraint>(
         id: "effect/schema/Result",
         payload: null
       },
+      "~effect/encoding/SchemaBinary/native": {
+        succeed: Result_.succeed,
+        fail: Result_.fail
+      },
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.Result(${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
         Type: `Result.Result<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
@@ -10409,6 +10413,12 @@ export function CauseReason<E extends Constraint, D extends Constraint>(error: E
         id: "effect/schema/CauseReason",
         payload: null
       },
+      "~effect/encoding/SchemaBinary/native": {
+        makeFailReason: Cause_.makeFailReason,
+        makeDieReason: Cause_.makeDieReason,
+        makeInterruptReason: Cause_.makeInterruptReason,
+        fromReasons: Cause_.fromReasons
+      },
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.CauseReason(${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
         Type: `Cause.Failure<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
@@ -10584,6 +10594,12 @@ export function Cause<E extends Constraint, D extends Constraint>(error: E, defe
       representation: {
         id: "effect/schema/Cause",
         payload: null
+      },
+      "~effect/encoding/SchemaBinary/native": {
+        makeFailReason: Cause_.makeFailReason,
+        makeDieReason: Cause_.makeDieReason,
+        makeInterruptReason: Cause_.makeInterruptReason,
+        fromReasons: Cause_.fromReasons
       },
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.Cause(${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
@@ -10944,6 +10960,14 @@ export function Exit<A extends Constraint, E extends Constraint, D extends Const
       representation: {
         id: "effect/schema/Exit",
         payload: null
+      },
+      "~effect/encoding/SchemaBinary/native": {
+        succeed: Exit_.succeed,
+        failCause: Exit_.failCause,
+        makeFailReason: Cause_.makeFailReason,
+        makeDieReason: Cause_.makeDieReason,
+        makeInterruptReason: Cause_.makeInterruptReason,
+        fromReasons: Cause_.fromReasons
       },
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.Exit(${typeParameters[0].runtime}, ${typeParameters[1].runtime}, ${
@@ -12373,6 +12397,11 @@ export const Duration: Duration = declare(
       id: "effect/schema/Duration",
       payload: null
     },
+    "~effect/encoding/SchemaBinary/native": {
+      nanos: Duration_.nanos,
+      infinity: Duration_.infinity,
+      negativeInfinity: Duration_.negativeInfinity
+    },
     toCode: () => ({
       runtime: `Schema.Duration`,
       Type: `Duration.Duration`,
@@ -12650,6 +12679,10 @@ export const BigDecimal: BigDecimal = declare(
     representation: {
       id: "effect/schema/BigDecimal",
       payload: null
+    },
+    "~effect/encoding/SchemaBinary/native": {
+      make: BigDecimal_.make,
+      normalize: BigDecimal_.normalize
     },
     toCode: () => ({
       runtime: `Schema.BigDecimal`,
@@ -13772,6 +13805,9 @@ export const DateTimeUtc: DateTimeUtc = declare(
       id: "effect/schema/DateTimeUtc",
       payload: null
     },
+    "~effect/encoding/SchemaBinary/native": {
+      fromMillis: DateTime.makeUnsafe
+    },
     toCode: () => ({
       runtime: `Schema.DateTimeUtc`,
       Type: `DateTime.Utc`,
@@ -14229,6 +14265,9 @@ export const DateTimeZoned: DateTimeZoned = declare(
     representation: {
       id: "effect/schema/DateTimeZoned",
       payload: null
+    },
+    "~effect/encoding/SchemaBinary/native": {
+      make: (millis: number, timeZone: string | number) => DateTime.makeZonedUnsafe(millis, { timeZone })
     },
     toCode: () => ({
       runtime: `Schema.DateTimeZoned`,
