@@ -1,3 +1,6 @@
+/** @effect-diagnostics schemaStructWithTag:off */
+/** @effect-diagnostics schemaNumber:off */
+/** @effect-diagnostics preferTypedSchemaDecoder:off */
 import { assert, describe, it } from "@effect/vitest"
 import {
   BigDecimal,
@@ -1099,7 +1102,7 @@ describe("SchemaBinary", () => {
         const parser = SchemaBinary.parser(Schema.Number)
         const values = yield* parser.feed(encode(Schema.Number, 1))
         assert.deepStrictEqual(values, [1])
-        yield* parser.end()
+        yield* parser.end
       }))
 
     it.effect("fails malformed feed and truncated end through the Effect surface", () =>
@@ -1110,7 +1113,7 @@ describe("SchemaBinary", () => {
 
         const truncated = SchemaBinary.parser(Schema.String)
         yield* truncated.feed(Uint8Array.of(2, 0x10))
-        const endError = yield* truncated.end().pipe(Effect.flip)
+        const endError = yield* truncated.end.pipe(Effect.flip)
         assert.isTrue(Schema.isSchemaError(endError))
       }))
   })
