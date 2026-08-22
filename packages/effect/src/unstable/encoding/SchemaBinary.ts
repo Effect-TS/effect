@@ -150,7 +150,8 @@ export function encodeUnknownSync<S extends Schema.Constraint>(
       toCodec(schema, options) as unknown as Schema.ConstraintEncoder<unknown, never>,
       options
     ) as (value: unknown) => Uint8Array<ArrayBuffer>
-    if (!exitSuccess) return fallback
+    // The binary layer drops excess keys instead of reporting them.
+    if (!exitSuccess || parseOptions.onExcessProperty === "error") return fallback
     return (value) => {
       if (!Exit.isExit(value) || !Exit.isSuccess(value)) return fallback(value)
       try {
@@ -4085,8 +4086,10 @@ function withTrustedDecode(target: Schema.Constraint, trusted: WeakSet<object>):
 // layer, so only failure exits pay the schema pass for their cause's error and
 // defect encodings. The type parameter flips with the direction, so the same
 // fallback decodes binary failure exits and encodes failure exits back to the
-// wire representation. It is not a sound `Schema.is` guard, which is why only
-// {@link toCodecDirect} uses it.
+// wire representation. Under `onExcessProperty: "error"` only decoder-produced
+// values bypass the pass: the binary layer drops unknown keys instead of
+// reporting them, so other success exits keep the schema pass. It is not a
+// sound `Schema.is` guard, which is why only {@link toCodecDirect} uses it.
 function withExitSuccessDecode(target: Schema.Constraint, trusted: WeakSet<object>): Schema.Constraint {
   return Schema.declareConstructor<unknown>()(
     [target],
@@ -4094,7 +4097,7 @@ function withExitSuccessDecode(target: Schema.Constraint, trusted: WeakSet<objec
       const parse = SchemaParser.decodeUnknownEffect(codec as Schema.ConstraintDecoder<unknown>)
       return (input, _ast, options) =>
         (Predicate.isObjectOrArray(input) && trusted.delete(input)) ||
-          (Exit.isExit(input) && Exit.isSuccess(input))
+          (Exit.isExit(input) && Exit.isSuccess(input) && options.onExcessProperty !== "error")
           ? Effect.succeed(input)
           : parse(input, options)
     },

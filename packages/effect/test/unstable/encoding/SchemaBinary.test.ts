@@ -2298,6 +2298,25 @@ describe("SchemaBinary", () => {
 
       assert.isDefined(schemaError(() => Schema.encodeUnknownSync(direct)(Exit.succeed({ id: 42 }))))
       assert.isDefined(schemaError(() => Schema.encodeUnknownSync(direct)("not an exit")))
+
+      const excess = Exit.succeed({ id: "ok", extra: true })
+      assert.deepStrictEqual(
+        Array.from(Schema.encodeUnknownSync(direct)(excess)),
+        Array.from(Schema.encodeUnknownSync(sound)(excess))
+      )
+      assert.include(
+        schemaError(() => Schema.encodeUnknownSync(direct, { onExcessProperty: "error" })(excess)).message,
+        "extra"
+      )
+      assert.include(
+        schemaError(() =>
+          SchemaBinary.encodeUnknownSync(
+            ExitSchema as Schema.Codec<unknown, unknown>,
+            { onExcessProperty: "error" }
+          )(excess)
+        ).message,
+        "extra"
+      )
     })
 
     it("rejects an inherited discriminator, like the schema pass", () => {
