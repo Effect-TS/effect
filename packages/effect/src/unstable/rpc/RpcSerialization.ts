@@ -707,23 +707,14 @@ export const layerMsgPackWith = (
 ): Layer.Layer<RpcSerialization> => Layer.succeed(RpcSerialization)(makeMsgPack(options))
 
 /**
- * RPC serialization layer that uses SchemaBinary for payloads and fingerprinted
- * RPC envelopes. It includes framing with a 16 MiB maximum frame size.
+ * RPC serialization layer that uses SchemaBinary with fingerprinted RPC
+ * envelopes. Payload fingerprints are disabled by default to support compatible
+ * schema evolution. Frames default to a 16 MiB maximum size.
  *
  * @category layers
  * @since 4.0.0
  */
-export const layerSchemaBinary: Layer.Layer<RpcSerialization> = Layer.sync(RpcSerialization)(makeSchemaBinary)
-
-/**
- * RPC serialization layer that uses SchemaBinary with custom options.
- * RPC envelope fingerprints are always enabled; payload fingerprints default
- * to disabled to support compatible schema evolution.
- *
- * @category layers
- * @since 4.0.0
- */
-export const layerSchemaBinaryWith = (options: {
+export const layerSchemaBinary = (options?: {
   readonly maxFrameSize?: number | undefined
   readonly fingerprintPayloads?: boolean | undefined
 }): Layer.Layer<RpcSerialization> => Layer.sync(RpcSerialization)(() => makeSchemaBinary(options))

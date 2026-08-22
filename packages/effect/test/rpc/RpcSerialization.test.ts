@@ -122,7 +122,7 @@ const BinaryServer = RpcServer.layerHttp({
   protocol: "http"
 }).pipe(
   Layer.provide(Handlers),
-  Layer.provide(RpcSerialization.layerSchemaBinary)
+  Layer.provide(RpcSerialization.layerSchemaBinary())
 )
 
 const makeBinaryClient = Effect.fnUntraced(function*() {
@@ -142,7 +142,7 @@ const makeBinaryClient = Effect.fnUntraced(function*() {
   return yield* RpcClient.make(Rpcs).pipe(
     Effect.provide(
       RpcClient.layerProtocolHttp({ url: "http://test/rpc" }).pipe(
-        Layer.provide(RpcSerialization.layerSchemaBinary),
+        Layer.provide(RpcSerialization.layerSchemaBinary()),
         Layer.provide(Layer.succeed(HttpClient.HttpClient)(httpClient))
       )
     )
@@ -495,7 +495,7 @@ describe("RpcSerialization", () => {
         })
 
         assert.throws(() => parser.decode(frame), /matching layout fingerprint/)
-      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary)))
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
 
     it.effect("does not fingerprint payloads by default", () =>
       Effect.gen(function*() {
@@ -509,9 +509,9 @@ describe("RpcSerialization", () => {
 
         assert.instanceOf(encoded, Uint8Array)
         assert.deepStrictEqual(Schema.decodeSync(serialization.codecFor(Reader))(encoded), { value: "ok" })
-      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary)))
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
 
-    it.effect("layerSchemaBinaryWith fingerprints payloads when enabled", () =>
+    it.effect("layerSchemaBinary fingerprints payloads when enabled", () =>
       Effect.gen(function*() {
         const serialization = yield* RpcSerialization.RpcSerialization
         const Writer = Schema.Struct({ value: Schema.String })
@@ -523,7 +523,7 @@ describe("RpcSerialization", () => {
           () => Schema.decodeSync(serialization.codecFor(Reader))(encoded),
           /matching layout fingerprint/
         )
-      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinaryWith({ fingerprintPayloads: true }))))
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary({ fingerprintPayloads: true }))))
 
     it.effect("uses fingerprinted envelope framing and the binary content type", () =>
       Effect.gen(function*() {
@@ -542,7 +542,7 @@ describe("RpcSerialization", () => {
         assert.strictEqual(serialization.includesFraming, true)
         assert.instanceOf(frame, Uint8Array)
         assert.deepStrictEqual(parser.decode(frame), [request])
-      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary)))
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
 
     it.effect("owns encoded frames without copying envelope holes", () =>
       Effect.gen(function*() {
@@ -568,7 +568,7 @@ describe("RpcSerialization", () => {
           ...request,
           payload: Uint8Array.of(1, 2, 3)
         }])
-      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary)))
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
 
     it.effect("defaults maxFrameSize to 16 MiB", () =>
       Effect.gen(function*() {
@@ -578,14 +578,14 @@ describe("RpcSerialization", () => {
           () => serialization.makeUnsafe().decode(uvarint(16 * 1024 * 1024 + 1)),
           /frame within maxFrameSize/
         )
-      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary)))
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
 
-    it.effect("layerSchemaBinaryWith overrides maxFrameSize", () =>
+    it.effect("layerSchemaBinary overrides maxFrameSize", () =>
       Effect.gen(function*() {
         const serialization = yield* RpcSerialization.RpcSerialization
         assert.deepStrictEqual(serialization.makeUnsafe().decode(uvarint(4)), [])
         assert.throws(() => serialization.makeUnsafe().decode(uvarint(5)), /frame within maxFrameSize/)
-      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinaryWith({ maxFrameSize: 4 }))))
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary({ maxFrameSize: 4 }))))
   })
 
   describe("codecFor", () => {
