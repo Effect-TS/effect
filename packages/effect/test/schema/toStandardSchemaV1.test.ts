@@ -1,6 +1,6 @@
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import type { StandardSchemaV1 } from "@standard-schema/spec"
 import { Context, Effect, Option, Predicate, Schema, SchemaGetter, SchemaIssue } from "effect"
+import type { StandardSchemaV1 } from "effect/StandardSchema"
 import { describe, it } from "vitest"
 
 function validate<I, A>(
