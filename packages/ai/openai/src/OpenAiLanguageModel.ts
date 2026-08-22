@@ -142,6 +142,9 @@ declare module "effect/unstable/ai/Prompt" {
     readonly openai?: {
       /**
        * Marks the system input text as the end of a reusable prompt prefix.
+       *
+       * Requires GPT-5.6 or later. OpenAI may reject requests that use this
+       * option with earlier models.
        */
       readonly promptCacheBreakpoint?: PromptCacheBreakpoint | null
     } | null
@@ -266,6 +269,9 @@ declare module "effect/unstable/ai/Prompt" {
       readonly annotations?: ReadonlyArray<typeof OpenAiSchema.Annotation.Encoded> | null
       /**
        * Marks the input text as the end of a reusable prompt prefix.
+       *
+       * Requires GPT-5.6 or later. OpenAI may reject requests that use this
+       * option with earlier models.
        */
       readonly promptCacheBreakpoint?: PromptCacheBreakpoint | null
     } | null
