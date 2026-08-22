@@ -565,11 +565,11 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
         const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
           Effect.sync(() => {
             if (typeof chunk === "string") {
-              ws.sendText(chunk)
+              ws.sendText(chunk, true)
             } else if (Socket.isCloseEvent(chunk)) {
               ws.close(chunk.code, chunk.reason)
             } else {
-              ws.sendBinary(chunk)
+              ws.sendBinary(chunk, true)
             }
 
             return true
