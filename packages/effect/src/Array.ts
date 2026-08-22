@@ -3032,6 +3032,13 @@ export const group: <A>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<NonEmpt
  * Unlike `group` and `groupWith`, elements do not need to be adjacent to be
  * grouped together. The key function must return a `string` or `symbol`.
  *
+ * **Gotchas**
+ *
+ * When the key function returns a finite union of string literals or unique
+ * symbols, the result preserves those keys as optional properties because the
+ * input may not produce every key. Open `string` and `symbol` key types retain
+ * their record index signatures.
+ *
  * **Example** (Grouping by a property)
  *
  * ```ts import.meta.vitest
@@ -3055,15 +3062,15 @@ export const group: <A>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<NonEmpt
 export const groupBy: {
   <A, K extends string | symbol>(
     f: (a: A) => K
-  ): (self: Iterable<A>) => Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
+  ): (self: Iterable<A>) => Record.ReadonlyRecord.GroupByResult<K, NonEmptyArray<A>>
   <A, K extends string | symbol>(
     self: Iterable<A>,
     f: (a: A) => K
-  ): Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
+  ): Record.ReadonlyRecord.GroupByResult<K, NonEmptyArray<A>>
 } = dual(2, <A, K extends string | symbol>(
   self: Iterable<A>,
   f: (a: A) => K
-): Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>> => {
+): Record.ReadonlyRecord.GroupByResult<K, NonEmptyArray<A>> => {
   const out: Record<string | symbol, NonEmptyArray<A>> = {}
   for (const a of self) {
     const k = f(a)
