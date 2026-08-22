@@ -20,6 +20,29 @@ const MessageRole = Schema.Literals(["system", "developer", "user", "assistant"]
 const ImageDetail = Schema.Literals(["low", "high", "auto"])
 
 /**
+ * Schema for an explicit prompt-cache breakpoint on an OpenAI input content block.
+ *
+ * **Details**
+ *
+ * The breakpoint includes the marked block and all preceding prompt content in
+ * the candidate cached prefix. OpenAI currently accepts only `"explicit"`.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const PromptCacheBreakpoint = Schema.Struct({
+  mode: Schema.Literal("explicit")
+})
+
+/**
+ * Explicit prompt-cache breakpoint attached to an OpenAI input content block.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type PromptCacheBreakpoint = typeof PromptCacheBreakpoint.Type
+
+/**
  * Schema for optional `include` values supported by the local handwritten
  * Responses client schema.
  *
@@ -76,14 +99,16 @@ export type MessageStatus = typeof MessageStatus.Type
 
 const InputTextContent = Schema.Struct({
   type: Schema.Literal("input_text"),
-  text: Schema.String
+  text: Schema.String,
+  prompt_cache_breakpoint: Schema.optionalKey(PromptCacheBreakpoint)
 })
 
 const InputImageContent = Schema.Struct({
   type: Schema.Literal("input_image"),
   image_url: Schema.optionalKey(Schema.NullOr(Schema.String)),
   file_id: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  detail: Schema.optionalKey(Schema.NullOr(ImageDetail))
+  detail: Schema.optionalKey(Schema.NullOr(ImageDetail)),
+  prompt_cache_breakpoint: Schema.optionalKey(PromptCacheBreakpoint)
 })
 
 const InputFileContent = Schema.Struct({
@@ -91,7 +116,8 @@ const InputFileContent = Schema.Struct({
   file_id: Schema.optionalKey(Schema.NullOr(Schema.String)),
   filename: Schema.optionalKey(Schema.String),
   file_url: Schema.optionalKey(Schema.String),
-  file_data: Schema.optionalKey(Schema.String)
+  file_data: Schema.optionalKey(Schema.String),
+  prompt_cache_breakpoint: Schema.optionalKey(PromptCacheBreakpoint)
 })
 
 /**
@@ -100,6 +126,7 @@ const InputFileContent = Schema.Struct({
  * **Details**
  *
  * Accepted block variants are `input_text`, `input_image`, and `input_file`.
+ * Each variant can carry an explicit prompt-cache breakpoint.
  *
  * @see {@link InputItem} for request input item shapes that can contain these content blocks
  *
