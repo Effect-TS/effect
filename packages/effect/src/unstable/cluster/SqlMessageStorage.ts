@@ -492,6 +492,43 @@ export const makeEncoded: (options?: {
       ? Effect.succeed([])
       : getUnprocessedMessagesForDialect(shardIds, now, unprocessedFilters(options))
 
+  const getNextDeliverAt = sql.onDialectOrElse({
+    mysql: () => (shardIds: ReadonlyArray<string>, now: number) => {
+      const shards = sql.join(" UNION ALL ", false)(
+        shardIds.map((id, i) => i === 0 ? sql`SELECT ${id} AS shard_id` : sql`SELECT ${id}`)
+      )
+      return sql<{ readonly next_deliver_at: bigint | null }>`
+        SELECT MIN(t.next_at) AS next_deliver_at FROM (
+          SELECT (
+            SELECT MIN(deliver_at) FROM ${messagesTableSql}
+            WHERE shard_id = s.shard_id AND processed = ${sqlFalse} AND deliver_at > ${sql.literal(String(now))}
+          ) AS next_at
+          FROM (${shards}) AS s
+        ) AS t
+      `
+    },
+    // Keep the VALUES column as VARCHAR so SQL Server can seek the shard_id index.
+    mssql: () => (shardIds: ReadonlyArray<string>, now: number) =>
+      sql<{ readonly next_deliver_at: bigint | null }>`
+        SELECT MIN(l.next_at) AS next_deliver_at
+        FROM (VALUES ${sql.csv(shardIds.map((id) => sql`(CAST(${id} AS VARCHAR(50)))`))}) AS s(shard_id)
+        CROSS APPLY (
+          SELECT TOP 1 deliver_at AS next_at
+          FROM ${messagesTableSql}
+          WHERE shard_id = s.shard_id AND processed = ${sqlFalse} AND deliver_at > ${sql.literal(String(now))}
+          ORDER BY deliver_at
+        ) AS l
+      `,
+    orElse: () => (shardIds: ReadonlyArray<string>, now: number) =>
+      sql<{ readonly next_deliver_at: bigint | null }>`
+        SELECT MIN(deliver_at) AS next_deliver_at
+        FROM ${messagesTableSql}
+        WHERE ${sql.in("shard_id", shardIds)}
+        AND processed = ${sqlFalse}
+        AND deliver_at > ${sql.literal(String(now))}
+      `
+  })
+
   const encoded: MessageStorage.Encoded = {
     saveEnvelope: ({ deliverAt, envelope, primaryKey }) =>
       Effect.suspend(() => {
@@ -685,6 +722,17 @@ export const makeEncoded: (options?: {
         withTracerDisabled
       )
     },
+
+    nextDeliverAt: (shardIds, now) =>
+      getNextDeliverAt(shardIds, now).unprepared.pipe(
+        Effect.map((rows) => {
+          const next = rows[0]?.next_deliver_at
+          return next == null ? Option.none() : Option.some(Number(next))
+        }),
+        Effect.provideService(SqlClient.SafeIntegers, true),
+        PersistenceError.refail,
+        withTracerDisabled
+      ),
 
     resetAddresses: (addresses) =>
       addresses.length === 0
@@ -1128,6 +1176,47 @@ const migrations = (options?: {
             ON ${messagesTableSql} (rowid)
           `,
         orElse: () => Effect.void
+      })
+    }),
+    "0004_deliver_at_index": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const messagesTableSql = sql(messagesTable)
+      const deliverAtIndex = `${messagesTable}_deliver_at_idx`
+
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${deliverAtIndex})
+            CREATE INDEX ${sql(deliverAtIndex)}
+            ON ${messagesTableSql} (shard_id, processed, deliver_at, last_read)
+          `,
+        mysql: () =>
+          sql`
+            CREATE INDEX ${sql(deliverAtIndex)}
+            ON ${messagesTableSql} (shard_id, processed, deliver_at, last_read)
+          `.unprepared.pipe(Effect.ignore),
+        pg: () =>
+          sql`
+            CREATE INDEX IF NOT EXISTS ${sql(deliverAtIndex)}
+            ON ${messagesTableSql} (shard_id, deliver_at)
+            WHERE processed = FALSE AND deliver_at IS NOT NULL
+          `.pipe(
+            Effect.tapDefect((error) =>
+              Effect.annotateLogs(Effect.logDebug("Failed to create indexes", error), {
+                package: "@effect/cluster",
+                module: "SqlMessageStorage"
+              })
+            ),
+            Effect.retry({
+              schedule: Schedule.spaced(1000)
+            })
+          ),
+        orElse: () =>
+          sql`
+            CREATE INDEX IF NOT EXISTS ${sql(deliverAtIndex)}
+            ON ${messagesTableSql} (shard_id, deliver_at)
+            WHERE processed = FALSE AND deliver_at IS NOT NULL
+          `
       })
     })
   })

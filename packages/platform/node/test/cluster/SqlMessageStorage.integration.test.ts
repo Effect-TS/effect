@@ -1,7 +1,7 @@
 import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Effect, Fiber, FileSystem, Latch, Layer, Option } from "effect"
+import { Clock, DateTime, Duration, Effect, Fiber, FileSystem, Latch, Layer, Option } from "effect"
 import { TestClock } from "effect/testing"
 import {
   Entity,
@@ -31,6 +31,8 @@ import {
   makeReply,
   makeRequest,
   PrimaryKeyTest,
+  ScheduledPayload,
+  ScheduledRpc,
   StreamRpc
 } from "./MessageStorageTest.ts"
 
@@ -432,6 +434,62 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveReply(yield* makeReply(request))
           const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
           expect(messages).toHaveLength(0)
+        }))
+
+      it.effect("nextDeliverAt", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const shard1 = ShardId.make("default", 1)
+          const shard2 = ShardId.make("default", 2)
+          let next = yield* storage.nextDeliverAt([shard1, shard2])
+          assert.isTrue(Option.isNone(next))
+
+          const now = yield* Clock.currentTimeMillis
+          const earlier = now + 60_000
+          const later = now + 120_000
+          const earlierRequest = yield* makeRequest({
+            rpc: ScheduledRpc,
+            payload: new ScheduledPayload({ id: 1, deliverAt: DateTime.makeUnsafe(earlier) }),
+            shardId: shard1
+          })
+          const laterRequest = yield* makeRequest({
+            rpc: ScheduledRpc,
+            payload: new ScheduledPayload({ id: 2, deliverAt: DateTime.makeUnsafe(later) }),
+            shardId: shard2
+          })
+          yield* storage.saveRequest(earlierRequest)
+          yield* storage.saveRequest(laterRequest)
+
+          next = yield* storage.nextDeliverAt([shard1, shard2])
+          assert.deepStrictEqual(next, Option.some(Duration.minutes(1)))
+
+          next = yield* storage.nextDeliverAt([shard2])
+          assert.deepStrictEqual(next, Option.some(Duration.minutes(2)))
+
+          yield* storage.saveReply(yield* makeReply(earlierRequest))
+          next = yield* storage.nextDeliverAt([shard1, shard2])
+          assert.deepStrictEqual(next, Option.some(Duration.minutes(2)))
+        }))
+
+      it.effect("nextDeliverAt binds quote-bearing shard groups", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const shard = ShardId.make("quote's-group", 1)
+          const now = yield* Clock.currentTimeMillis
+          const deadline = now + 60_000
+          const request = yield* makeRequest({
+            rpc: ScheduledRpc,
+            payload: new ScheduledPayload({ id: 1, deliverAt: DateTime.makeUnsafe(deadline) }),
+            shardId: shard
+          })
+          yield* storage.saveRequest(request)
+
+          const next = yield* storage.nextDeliverAt([shard])
+          assert.deepStrictEqual(next, Option.some(Duration.minutes(1)))
         }))
 
       it.effect("repliesFor", () =>
