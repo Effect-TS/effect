@@ -475,8 +475,8 @@ export function fieldId(id: number) {
 const FIELD_ID_ANNOTATION_KEY = "~effect/encoding/SchemaBinary/fieldId"
 
 // Bit 0 selects fingerprint mode; all other flag bits are reserved.
-const ENVELOPE = 0x10 // version nibble 1, flags 0
-const ENVELOPE_FINGERPRINT = 0x11 // version nibble 1, flag bit 0
+const ENVELOPE = 0x20 // version nibble 2, flags 0
+const ENVELOPE_FINGERPRINT = 0x21 // version nibble 2, flag bit 0
 
 const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER)
 const BIGINT_ZERO = BigInt(0)
@@ -504,6 +504,19 @@ const EXACT_MAGNITUDE_MAX = 4_503_599_627_370_495 // 2 ** 52 - 1
 const NUMBER_RUN_F64 = 0
 const NUMBER_RUN_VARINT = 1
 const NUMBER_RUN_DECIMAL = 2
+
+// Struct field tags pack the field id with enough information to skip the
+// payload without consulting the schema. Decimal is a sign-magnitude mantissa
+// varint followed by an unsigned scale varint.
+const FIELD_WIRE_SIZED = 0
+const FIELD_WIRE_VARINT = 1
+const FIELD_WIRE_FIXED64 = 2
+const FIELD_WIRE_FALSE = 3
+const FIELD_WIRE_TRUE = 4
+const FIELD_WIRE_DECIMAL = 5
+const FIELD_WIRE_FIXED32 = 6
+const FIELD_WIRE_EMPTY = 7
+const FIELD_WIRE_FACTOR = 8
 
 function isVarintNumber(value: unknown): boolean {
   return typeof value === "number" && Number.isInteger(value) &&
@@ -1154,6 +1167,46 @@ class Reader {
     this.pos = pos
     invalid("uvarint", undefined, this.options)
   }
+  // Field tags are capped at 35 bits, so their common five-byte form can skip
+  // the general safe-integer loop in uvarint.
+  fieldTag(): number {
+    const buf = this.buf
+    const end = this.end
+    let pos = this.pos
+    if (pos >= end) invalid("complete value", undefined, this.options)
+    let b = buf[pos++]
+    if (b < 0x80) {
+      this.pos = pos
+      return b
+    }
+    let value = b & 0x7F
+    if (pos >= end) invalid("complete value", undefined, this.options)
+    b = buf[pos++]
+    value |= (b & 0x7F) << 7
+    if (b < 0x80) {
+      this.pos = pos
+      return value
+    }
+    if (pos >= end) invalid("complete value", undefined, this.options)
+    b = buf[pos++]
+    value |= (b & 0x7F) << 14
+    if (b < 0x80) {
+      this.pos = pos
+      return value
+    }
+    if (pos >= end) invalid("complete value", undefined, this.options)
+    b = buf[pos++]
+    value |= (b & 0x7F) << 21
+    if (b < 0x80) {
+      this.pos = pos
+      return value
+    }
+    if (pos >= end) invalid("complete value", undefined, this.options)
+    b = buf[pos++]
+    this.pos = pos
+    if (b >= 0x80) invalid("uvarint", undefined, this.options)
+    return value + b * 268435456
+  }
   uvarintBig(): bigint {
     let value = BIGINT_ZERO
     let shift = BIGINT_ZERO
@@ -1274,17 +1327,19 @@ interface ReasonLayout {
 interface Field {
   readonly name: string
   readonly id: number
-  readonly idBytes: Uint8Array
+  readonly tagBytes: Uint8Array
   index: number
   readonly optional: boolean
   readonly annotations: Schema.Annotations.Key<unknown> | undefined
   layout: Layout
+  wireMask: number
   inline: boolean
 }
 
 interface ExtraSignature {
   readonly parameter: SchemaAST.IndexSignature["parameter"]
   layout: Layout
+  wireMask: number
 }
 
 interface StructLayout {
@@ -1735,11 +1790,12 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       fields.push({
         name,
         id,
-        idBytes: uvarintBytes(id),
+        tagBytes: uvarintBytes(id * FIELD_WIRE_FACTOR + FIELD_WIRE_SIZED),
         index: 0,
         optional: ps.type.context?.isOptional === true,
         annotations,
         layout: undefined as unknown as Layout,
+        wireMask: 0,
         inline: false
       })
       types.push(ps.type)
@@ -1754,7 +1810,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       if (parameterHasSymbol(is.parameter)) {
         throw new Error("Binary layout: symbol property names are illegal")
       }
-      extra.push({ parameter: is.parameter, layout: undefined as unknown as Layout })
+      extra.push({ parameter: is.parameter, layout: undefined as unknown as Layout, wireMask: 0 })
     }
     const layout: StructLayout = {
       _: "struct",
@@ -1772,6 +1828,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
     for (let i = 0; i < fields.length; i++) {
       const field = fields[i]
       field.layout = compile(types[i])
+      field.wireMask = fieldWireMask(field.layout)
       // Recursive placeholders already have the discriminant used here.
       field.inline = isInlineSlot(field.layout)
       if (field.optional) layout.optionalCount++
@@ -1782,6 +1839,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
     computeRequired(layout)
     for (let i = 0; i < extra.length; i++) {
       extra[i].layout = compile(ast.indexSignatures[i].type)
+      extra[i].wireMask = fieldWireMask(extra[i].layout)
     }
     return layout
   }
@@ -2286,7 +2344,7 @@ interface Mode {
 const defaultMode: Mode = {
   positional: false,
   envelope: ENVELOPE,
-  expectedEnvelope: "version 1 envelope, flags 0",
+  expectedEnvelope: "version 2 envelope, flags 0",
   fingerprintLo: 0,
   fingerprintHi: 0,
   fingerprint: new Uint8Array(8)
@@ -2299,7 +2357,7 @@ function fingerprintMode(layout: Layout): Mode {
   return {
     positional: true,
     envelope: ENVELOPE_FINGERPRINT,
-    expectedEnvelope: "version 1 envelope, flags 1",
+    expectedEnvelope: "version 2 envelope, flags 1",
     fingerprintLo: lo,
     fingerprintHi: hi,
     fingerprint: fingerprintBytes(lo, hi)
@@ -2561,28 +2619,94 @@ function encodeExtraPairs(
 ) {
   for (const [key, signature, keyBytes] of pairs) {
     const keyLength = keyBytes === undefined ? key.length : keyBytes.length
+    const value = obj[key]
+    const wire = valueWireCode(signature.layout, value, ctx.options)
+    const kind = wire % FIELD_WIRE_FACTOR
     if (keys === undefined) {
-      w.uvarint(keyLength)
+      w.uvarint(keyLength * FIELD_WIRE_FACTOR + kind)
     } else {
       if (!keys.disabled) {
         const ref = internRef(keys, key)
         if (ref !== undefined) {
-          w.uvarint(ref * 2 + 1)
+          w.uvarint(ref * 16 + kind * 2 + 1)
           issuePath[issuePathLen++] = key
-          encodeSized(ctx, signature.layout, obj[key], w)
+          encodeWirePayload(ctx, signature.layout, value, wire, w)
           issuePathLen--
           continue
         }
         internAdd(keys, key)
       }
-      w.uvarint(keyLength * 2)
+      w.uvarint(keyLength * 16 + kind * 2)
     }
     if (keyBytes === undefined) w.string(key)
     else w.bytes(keyBytes)
     issuePath[issuePathLen++] = key
-    encodeSized(ctx, signature.layout, obj[key], w)
+    encodeWirePayload(ctx, signature.layout, value, wire, w)
     issuePathLen--
   }
+}
+
+// Decimal scale rides above the low three kind bits internally, avoiding a
+// second decimalScale scan when the payload is written.
+function valueWireCode(layout: Layout, value: unknown, options: SchemaAST.ParseOptions): number {
+  if (layout._ === "literal") {
+    if (!hasLiteral(layout, value)) encodeFail(literalExpected(layout), value, options)
+    return valueWireCode(layout.leaf, value, options)
+  }
+  switch (layout._) {
+    case "bool":
+      if (typeof value !== "boolean") encodeFail("a boolean", value, options)
+      return value ? FIELD_WIRE_TRUE : FIELD_WIRE_FALSE
+    case "number":
+      if (typeof value !== "number") encodeFail("a number", value, options)
+      if (isVarintNumber(value)) return FIELD_WIRE_VARINT
+      {
+        const scale = decimalScale(value)
+        return scale === 0 ? FIELD_WIRE_FIXED64 : scale * FIELD_WIRE_FACTOR + FIELD_WIRE_DECIMAL
+      }
+    case "int":
+      if (!Number.isSafeInteger(value)) encodeFail("an integer", value, options)
+      return FIELD_WIRE_VARINT
+    default:
+      return FIELD_WIRE_SIZED
+  }
+}
+
+function encodeWirePayload(ctx: EncodeContext, layout: Layout, value: unknown, wire: number, w: Writer) {
+  const kind = wire % FIELD_WIRE_FACTOR
+  switch (kind) {
+    case FIELD_WIRE_FALSE:
+    case FIELD_WIRE_TRUE:
+    case FIELD_WIRE_EMPTY:
+      return
+    case FIELD_WIRE_VARINT:
+      w.numberVarint(value as number)
+      return
+    case FIELD_WIRE_FIXED64:
+      w.f64(value as number)
+      return
+    case FIELD_WIRE_DECIMAL: {
+      const scale = Math.floor(wire / FIELD_WIRE_FACTOR)
+      w.numberVarint(Math.round((value as number) * POW10[scale]))
+      w.uvarint(scale)
+      return
+    }
+    default:
+      encodeSized(ctx, layout, value, w)
+  }
+}
+
+function encodeStructField(ctx: EncodeContext, field: Field, value: unknown, w: Writer) {
+  const wire = valueWireCode(field.layout, value, ctx.options)
+  const kind = wire % FIELD_WIRE_FACTOR
+  if (kind === FIELD_WIRE_SIZED) {
+    const mark = w.idAndMark(field.tagBytes)
+    encodeValue(ctx, field.layout, value, w)
+    w.endSized(mark)
+    return
+  }
+  w.uvarint(field.id * FIELD_WIRE_FACTOR + kind)
+  encodeWirePayload(ctx, field.layout, value, wire, w)
 }
 
 function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: object, w: Writer) {
@@ -2608,10 +2732,8 @@ function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: obj
       issuePath[issuePathLen++] = name
       throw issueError(new SchemaIssue.MissingKey(field.annotations))
     }
-    const mark = w.idAndMark(field.idBytes)
     issuePath[issuePathLen++] = name
-    encodeValue(ctx, field.layout, obj[name], w)
-    w.endSized(mark)
+    encodeStructField(ctx, field, obj[name], w)
     issuePathLen--
   }
 }
@@ -3359,38 +3481,31 @@ function decodeExtraPair(
   seen: SeenKeys,
   keys?: Array<unknown> | undefined
 ) {
-  const key = keys === undefined ? r.readUtf8(r.uvarint()) : decodeExtraKey(keys, r)
+  const code = r.uvarint()
+  const keyCode = keys === undefined ? Math.floor(code / FIELD_WIRE_FACTOR) : Math.floor(code / 16)
+  const kind = keys === undefined ? code - keyCode * FIELD_WIRE_FACTOR : Math.floor((code - keyCode * 16) / 2)
+  const key = keys === undefined
+    ? r.readUtf8(keyCode)
+    : decodeExtraKey(keys, code, keyCode, r)
   if (seenKey(seen, key)) invalid("unique extra keys", undefined, r.options)
-  const len = r.uvarint()
   const signature = layout.extraAll ??
     (r.indexSignatures ??= new IndexSignatureCache(r.options)).find(layout, key)
   if (signature === undefined) {
-    r.exit(r.enter(len))
+    skipFieldPayload(kind, r)
     return
   }
   issuePath[issuePathLen++] = key
-  // Strings consume their whole region, so they skip the reader window.
-  if (signature.layout._ === "string") {
-    const value = r.readUtf8(len)
-    issuePathLen--
-    assignProperty(out, key, value)
-    return
-  }
-  const saved = r.enter(len)
-  const value = decodeChecked(signature.layout, r)
+  const value = decodeFieldPayload(signature.layout, signature.wireMask, kind, r)
   issuePathLen--
   if (value !== ABSENT) assignProperty(out, key, value)
-  r.exit(saved)
 }
 
-function decodeExtraKey(keys: Array<unknown>, r: Reader): string {
-  const code = r.uvarint()
+function decodeExtraKey(keys: Array<unknown>, code: number, keyCode: number, r: Reader): string {
   if ((code & 1) === 1) {
-    const ref = (code - 1) / 2
-    if (ref >= keys.length) invalid("a known back-reference", undefined, r.options)
-    return keys[ref] as string
+    if (keyCode >= keys.length) invalid("a known back-reference", undefined, r.options)
+    return keys[keyCode] as string
   }
-  const key = r.readUtf8(code / 2)
+  const key = r.readUtf8(keyCode)
   keys.push(key)
   return key
 }
@@ -3403,6 +3518,89 @@ function throwMissingKeys(layout: StructLayout, issues: Array<SchemaIssue.Issue>
   throw issueError(
     new SchemaIssue.Composite(layout.ast, issues as [SchemaIssue.Issue, ...Array<SchemaIssue.Issue>])
   )
+}
+
+function skipFieldVarint(r: Reader) {
+  while ((r.byte() & 0x80) !== 0) {
+    // Scan without accumulating an attacker-controlled bigint.
+  }
+}
+
+function skipFieldPayload(kind: number, r: Reader) {
+  switch (kind) {
+    case FIELD_WIRE_SIZED:
+      r.take(r.uvarint())
+      return
+    case FIELD_WIRE_VARINT:
+      skipFieldVarint(r)
+      return
+    case FIELD_WIRE_FIXED64:
+      r.take(8)
+      return
+    case FIELD_WIRE_FALSE:
+    case FIELD_WIRE_TRUE:
+    case FIELD_WIRE_EMPTY:
+      return
+    case FIELD_WIRE_DECIMAL:
+      skipFieldVarint(r)
+      skipFieldVarint(r)
+      return
+    case FIELD_WIRE_FIXED32:
+      r.take(4)
+      return
+  }
+}
+
+function fieldWireMask(layout: Layout): number {
+  if (layout._ === "literal") return fieldWireMask(layout.leaf)
+  switch (layout._) {
+    case "bool":
+      return (1 << FIELD_WIRE_FALSE) | (1 << FIELD_WIRE_TRUE)
+    case "number":
+      return (1 << FIELD_WIRE_VARINT) | (1 << FIELD_WIRE_FIXED64) | (1 << FIELD_WIRE_DECIMAL)
+    case "int":
+      return 1 << FIELD_WIRE_VARINT
+    default:
+      return 1 << FIELD_WIRE_SIZED
+  }
+}
+
+function decodeScalarField(kind: number, r: Reader): unknown {
+  switch (kind) {
+    case FIELD_WIRE_FALSE:
+      return false
+    case FIELD_WIRE_TRUE:
+      return true
+    case FIELD_WIRE_VARINT:
+      return r.numberVarint()
+    case FIELD_WIRE_FIXED64:
+      return r.f64()
+    case FIELD_WIRE_DECIMAL: {
+      const mantissa = r.numberVarint()
+      const scale = r.uvarint()
+      if (scale === 0 || scale > DECIMAL_SCALE_MAX) invalid("a decimal scale in [1, 8]", scale, r.options)
+      return mantissa / POW10[scale]
+    }
+  }
+  return invalid("matching field wire kind", undefined, r.options)
+}
+
+function decodeFieldPayload(layout: Layout, wireMask: number, kind: number, r: Reader): unknown {
+  if ((wireMask & (1 << kind)) === 0) {
+    skipFieldPayload(kind, r)
+    return ABSENT
+  }
+  if (kind !== FIELD_WIRE_SIZED) {
+    const value = decodeScalarField(kind, r)
+    if (layout._ === "literal" && !hasLiteral(layout, value)) {
+      invalid(literalExpected(layout), value, r.options)
+    }
+    return value
+  }
+  const saved = r.enter(r.uvarint())
+  const value = decodeChecked(layout, r)
+  r.exit(saved)
+  return value
 }
 
 function decodeStruct(layout: StructLayout, r: Reader): unknown {
@@ -3424,12 +3622,14 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
   const fields = layout.fields
   let cursor = 0
   while (r.pos < r.end) {
-    const id = r.uvarint()
-    const len = r.uvarint()
-    const saved = r.enter(len)
+    const tag = r.fieldTag()
+    const id = Math.floor(tag / FIELD_WIRE_FACTOR)
+    const kind = tag - id * FIELD_WIRE_FACTOR
     if (id === 0) {
       if (seenExtra) invalid("unique field ids", undefined, r.options)
       seenExtra = true
+      if (kind !== FIELD_WIRE_SIZED) invalid("extra field map", undefined, r.options)
+      const saved = r.enter(r.uvarint())
       decodeExtraPairs(layout, r, out, keys)
       r.exit(saved)
       continue
@@ -3446,7 +3646,7 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
       if (seenUnknown === undefined) seenUnknown = new Set()
       else if (seenUnknown.has(id)) invalid("unique field ids", undefined, r.options)
       seenUnknown.add(id)
-      r.exit(saved)
+      skipFieldPayload(kind, r)
       continue
     }
     const index = field.index
@@ -3461,14 +3661,13 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
       seenWide.add(index)
     }
     issuePath[issuePathLen++] = field.name
-    const value = decodeChecked(field.layout, r)
+    const value = decodeFieldPayload(field.layout, field.wireMask, kind, r)
     issuePathLen--
     if (value !== ABSENT) {
       assignProperty(out, field.name, value)
       if (index < 32) presentMask |= 1 << index
       else (presentWide ??= new Set()).add(index)
     }
-    r.exit(saved)
   }
   if ((presentMask & layout.requiredMask) !== layout.requiredMask || layout.requiredWide) {
     let issues: Array<SchemaIssue.Issue> | undefined
@@ -3539,6 +3738,8 @@ function decodeExtraPairs(
 
 // A row shape is the writer's tag order: a known field, `null` for the extra
 // block, or `undefined` for a field this reader does not have.
+// A future shape version can retain scalar wire kinds here so reused rows can
+// omit their per-value extents too.
 type RunSlot = Field | null | undefined
 
 function decodeInterned(table: Array<unknown>, layout: Layout, r: Reader): unknown {
