@@ -2,11 +2,11 @@
  * A compact binary codec derived from the encoded side of a Schema.
  *
  * The default wire format supports compatible schema evolution. An array of
- * structs is written as a row run: rows declare their field ids once per
- * distinct shape and back-reference repeated strings, so both stay off the
- * wire on later rows. Fingerprint mode uses positional layouts and rejects
- * mismatches for smaller frames. Encoded results are arena-backed views; see
- * {@link toCodec} for ownership details.
+ * structs is written as a row run: rows declare their shape once and
+ * back-reference repeated strings, so both stay off the wire on later rows.
+ * Fingerprint mode uses positional layouts and rejects mismatches for smaller
+ * frames; its row shapes are presence masks instead of field id lists. Encoded
+ * results are arena-backed views; see {@link toCodec} for ownership details.
  *
  * @since 4.0.0
  */
@@ -2741,6 +2741,10 @@ function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: obj
 // Fingerprint structs use a presence bitmap followed by positional fields.
 function encodeStructPositional(ctx: EncodeContext, layout: StructLayout, value: object, w: Writer) {
   const obj = value as Record<string, unknown>
+  // Only a run field with index signatures hands over an intern table. Extras
+  // encode after the fields here, so claim it before a nested field can.
+  const keys = ctx.intern
+  ctx.intern = undefined
   const bitmapBytes = (layout.optionalCount + 7) >> 3
   let bitmap = 0
   if (bitmapBytes > 0) {
@@ -2770,7 +2774,7 @@ function encodeStructPositional(ctx: EncodeContext, layout: StructLayout, value:
   if (layout.extra.length > 0) {
     const pairs = extraPairs(ctx, layout, obj)
     w.uvarint(pairs.length)
-    encodeExtraPairs(ctx, pairs, obj, w)
+    encodeExtraPairs(ctx, pairs, obj, w, keys)
   }
 }
 
@@ -2936,8 +2940,12 @@ function encodeRunRow(
     if (!wide) shapes.push(mask)
   }
   const declare = shape < 0
+  // Fingerprint mode proves both layouts match, so a declared shape is the
+  // presence mask instead of a field id list.
+  const positionalShape = ctx.positional && !wide
+  if (declare && positionalShape) w.uvarint(mask)
   if (pairs !== undefined) {
-    if (declare) w.uvarint(0)
+    if (declare && !positionalShape) w.uvarint(0)
     const mark = w.beginSized()
     encodeExtraPairs(ctx, pairs, obj, w)
     w.endSizedRun(mark)
@@ -2945,7 +2953,7 @@ function encodeRunRow(
   for (let i = 0; i < fields.length; i++) {
     const field = fields[i]
     if (wide ? !Object.hasOwn(obj, field.name) : (mask & (1 << i)) === 0) continue
-    if (declare) w.uvarint(field.id)
+    if (declare && !positionalShape) w.uvarint(field.id)
     issuePath[issuePathLen++] = field.name
     const kind = plan.intern[i]
     if (kind === INTERN_SELF) {
@@ -2982,7 +2990,7 @@ function encodeArray(ctx: EncodeContext, layout: ArrayLayout, arr: ReadonlyArray
     throw issueError(new SchemaIssue.MissingKey(undefined))
   }
   if (layout.hasCount) w.uvarint(count)
-  if (!ctx.positional && count > 0) {
+  if (count > 0) {
     const plan = runPlan(layout)
     if (plan !== null) {
       encodeStructRun(ctx, plan, arr, count, w)
@@ -3686,6 +3694,13 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
 }
 
 function decodeStructPositional(layout: StructLayout, r: Reader): unknown {
+  // Only a run field with index signatures hands over an intern table. Extras
+  // decode after the fields here, so claim it before a nested field can.
+  let keys: Array<unknown> | undefined
+  if (layout.extra.length > 0) {
+    keys = r.intern
+    r.intern = undefined
+  }
   const out: Record<string, unknown> = {}
   const bitmapBytes = (layout.optionalCount + 7) >> 3
   let bitmap = 0
@@ -3720,7 +3735,7 @@ function decodeStructPositional(layout: StructLayout, r: Reader): unknown {
     if (count > r.remaining) invalid("complete value", undefined, r.options)
     if (count > 0) {
       const seen: SeenKeys = { list: [], set: undefined }
-      for (let i = 0; i < count; i++) decodeExtraPair(layout, r, out, seen)
+      for (let i = 0; i < count; i++) decodeExtraPair(layout, r, out, seen, keys)
     }
   }
   return out
@@ -3776,6 +3791,22 @@ function decodeStructRun(plan: RunPlan, count: number, r: Reader): Array<unknown
   return out
 }
 
+// A positional shape is the presence mask over layout field order.
+function positionalRunShape(struct: StructLayout, r: Reader): Array<RunSlot> {
+  const mask = r.uvarint()
+  const fields = struct.fields
+  const fieldBits = mask & ~RUN_EXTRA_BIT
+  if (mask > RUN_EXTRA_BIT * 2 - 1 || (fieldBits >>> fields.length) !== 0) {
+    invalid("a known row shape", undefined, r.options)
+  }
+  const shape: Array<RunSlot> = []
+  if ((mask & RUN_EXTRA_BIT) !== 0) shape.push(null)
+  for (let i = 0; i < fields.length; i++) {
+    if ((fieldBits & (1 << i)) !== 0) shape.push(fields[i])
+  }
+  return shape
+}
+
 function decodeRunRow(
   plan: RunPlan,
   shapes: Array<Array<RunSlot>>,
@@ -3787,8 +3818,27 @@ function decodeRunRow(
   let presentMask = 0
   let presentWide: Set<number> | undefined
   const code = r.uvarint()
+  let shape: Array<RunSlot> | undefined
   if (code === 0) {
-    const shape: Array<RunSlot> = []
+    if (r.positional && plan.shapes) {
+      shape = positionalRunShape(struct, r)
+      shapes.push(shape)
+    }
+  } else {
+    shape = shapes[code - 1]
+    if (shape === undefined) invalid("a known row shape", undefined, r.options)
+  }
+  if (shape !== undefined) {
+    for (let i = 0; i < shape.length; i++) {
+      const filled = decodeRunSlot(plan, tables, shape[i], out, r)
+      if (filled >= 0) {
+        if (filled < 32) presentMask |= 1 << filled
+        else (presentWide ??= new Set()).add(filled)
+      }
+    }
+    if (r.pos !== r.end) invalid("no leftover bytes", undefined, r.options)
+  } else {
+    const declared: Array<RunSlot> = []
     let seenMask = 0
     let seenWide: Set<number> | undefined
     let seenIds: Set<number> | undefined
@@ -3816,25 +3866,14 @@ function decodeRunRow(
           seenWide.add(slot.index)
         }
       }
-      shape.push(slot)
+      declared.push(slot)
       const filled = decodeRunSlot(plan, tables, slot, out, r)
       if (filled >= 0) {
         if (filled < 32) presentMask |= 1 << filled
         else (presentWide ??= new Set()).add(filled)
       }
     }
-    if (plan.shapes) shapes.push(shape)
-  } else {
-    const shape = shapes[code - 1]
-    if (shape === undefined) invalid("a known row shape", undefined, r.options)
-    for (let i = 0; i < shape.length; i++) {
-      const filled = decodeRunSlot(plan, tables, shape[i], out, r)
-      if (filled >= 0) {
-        if (filled < 32) presentMask |= 1 << filled
-        else (presentWide ??= new Set()).add(filled)
-      }
-    }
-    if (r.pos !== r.end) invalid("no leftover bytes", undefined, r.options)
+    if (plan.shapes) shapes.push(declared)
   }
   if ((presentMask & struct.requiredMask) !== struct.requiredMask || struct.requiredWide) {
     let issues: Array<SchemaIssue.Issue> | undefined
@@ -3914,7 +3953,7 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
     issuePath[issuePathLen++] = count
     throw issueError(new SchemaIssue.MissingKey(undefined))
   }
-  if (!r.positional && count > 0) {
+  if (count > 0) {
     const plan = runPlan(layout)
     if (plan !== null) return decodeStructRun(plan, count, r)
   }

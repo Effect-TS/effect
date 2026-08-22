@@ -897,8 +897,42 @@ describe("SchemaBinary", () => {
       )
     })
 
-    it("leaves fingerprint mode positional", () => {
+    it("runs rows in fingerprint mode with mask-declared shapes", () => {
       assert.deepStrictEqual(roundtripFingerprint(Schema.Array(Row), rows), rows)
+      // repeated strings are interned across rows
+      const one = encodeFingerprint(Schema.Array(Row), rows.slice(0, 1)).length
+      const six = encodeFingerprint(Schema.Array(Row), rows).length
+      assert.isBelow(six, one * 6)
+      // the mask shape has no id list, so fingerprint rows undercut default rows
+      assert.isBelow(six, encode(Schema.Array(Row), rows).length)
+    })
+
+    it("declares fingerprint shapes whenever the present fields change", () => {
+      const Varying = Schema.Struct({
+        id: Schema.String,
+        a: Schema.optionalKey(Schema.String),
+        b: Schema.optionalKey(Schema.Number)
+      })
+      const varying = [
+        { id: "0", a: "x" },
+        { id: "1" },
+        { id: "2", a: "x", b: 1 },
+        { id: "3", a: "x" },
+        { id: "4", b: 2 }
+      ]
+      assert.deepStrictEqual(roundtripFingerprint(Schema.Array(Varying), varying), varying)
+    })
+
+    it("rejects a fingerprint shape mask with unknown bits", () => {
+      const codec = SchemaBinary.toCodec(Schema.Array(Row), { fingerprint: true })
+      const bytes = Schema.encodeUnknownSync(codec)(rows.slice(0, 1)).slice()
+      // length | envelope | 8-byte fingerprint | count | row length | code 0 | mask
+      assert.strictEqual(bytes[12], 0)
+      bytes[13] = 0x7F
+      assert.match(
+        schemaError(() => Schema.decodeUnknownSync(codec)(bytes)).message,
+        /known row shape/
+      )
     })
   })
 
