@@ -799,7 +799,14 @@ const hexAt = (text: string, at: number): number => {
  * anything else in the 36 characters has to be a hex digit for the pairs to
  * come out, and `hexAt` reports the ones that are not.
  */
-const encodeUuid = (value: unknown): Uint8Array => {
+/** The four int32 words of the uuid `uuidWords` last parsed. */
+const uuidWord = new Int32Array(4)
+
+/**
+ * Parses the hyphenated text into `uuidWord`. Both encoding paths read the
+ * words from there rather than from a returned array, so neither allocates.
+ */
+const uuidWords = (value: unknown): void => {
   const text = requireString(value, "uuid")
   if (
     text.length !== 36 || text.charCodeAt(8) !== 45 || text.charCodeAt(13) !== 45 ||
@@ -807,17 +814,41 @@ const encodeUuid = (value: unknown): Uint8Array => {
   ) {
     return fail(`Expected a UUID, received "${text}"`)
   }
-  const bytes = new Uint8Array(16)
-  for (let i = 0; i < 16; i++) {
-    const at = uuidOffsets[i]
-    const high = hexAt(text, at)
-    const low = hexAt(text, at + 1)
-    if (high < 0 || low < 0) {
+  for (let word = 0; word < 4; word++) {
+    let bits = 0
+    let valid = 0
+    for (let i = word * 4; i < word * 4 + 4; i++) {
+      const at = uuidOffsets[i]
+      const high = hexAt(text, at)
+      const low = hexAt(text, at + 1)
+      valid |= high | low
+      bits = (bits << 8) | (high << 4) | low
+    }
+    if (valid < 0) {
       return fail(`Expected a UUID, received "${text}"`)
     }
-    bytes[i] = (high << 4) | low
+    uuidWord[word] = bits
   }
+}
+
+const encodeUuid = (value: unknown): Uint8Array => {
+  uuidWords(value)
+  const bytes = new Uint8Array(16)
+  writeInt32(bytes, 0, uuidWord[0])
+  writeInt32(bytes, 4, uuidWord[1])
+  writeInt32(bytes, 8, uuidWord[2])
+  writeInt32(bytes, 12, uuidWord[3])
   return bytes
+}
+
+// Four int32s are the sixteen bytes, so a uuid parameter needs no array of
+// its own on the way into a frame.
+const writeUuid = (sink: ValueSink, value: unknown): void => {
+  uuidWords(value)
+  sink.int32(uuidWord[0])
+  sink.int32(uuidWord[1])
+  sink.int32(uuidWord[2])
+  sink.int32(uuidWord[3])
 }
 
 // One `String.fromCharCode` call, so the result is a flat string rather than
@@ -1283,7 +1314,7 @@ const builtins = new Map<number, Codec<any>>([
   [OID.name, utf8Codec],
   [OID.json, jsonCodec],
   [OID.jsonb, jsonbCodec],
-  [OID.uuid, codecOf(decodeUuid, encodeUuid)],
+  [OID.uuid, codecOf(decodeUuid, encodeUuid, writeUuid)],
   [OID.inet, codecOf(decodeInet, (value) => encodeInet(value, false))],
   [OID.cidr, codecOf(decodeInet, (value) => encodeInet(value, true))],
   [OID.date, dateCodec],

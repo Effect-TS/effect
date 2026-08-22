@@ -807,6 +807,21 @@ describe("PgTypes", () => {
       }
     })
 
+    it("recovers from a parameter that fails mid-frame", () => {
+      const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
+      // The uuid writer fails after the frame is partly written, so the next
+      // frame proves the writer dropped what the failed one left behind.
+      assertThrowsTagged(
+        "PgTypesCodecError",
+        () => encodeBind({ portal: "", statement: "s", parameters: [PgTypes.int4(1), PgTypes.uuid("not-a-uuid")] })
+      )
+      const parameters = [PgTypes.uuid("6ba7b810-9dad-11d1-80b4-00c04fd430c8")]
+      assert.deepStrictEqual(
+        encodeBind({ portal: "", statement: "s", parameters }),
+        PgProtocol.encodeBind({ portal: "", statement: "s", parameters: parameters.map(PgTypes.encodeParameter) })
+      )
+    })
+
     it("keeps a bytea frame intact when the source is mutated afterwards", () => {
       const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
       const source = bytes("010203")
