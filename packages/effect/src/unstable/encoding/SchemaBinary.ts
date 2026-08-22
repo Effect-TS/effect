@@ -492,7 +492,8 @@ const BIGINT_THIRTY_TWO = BigInt(32)
 const utf8Encode = new TextEncoder()
 const utf8DecodeFatal = new TextDecoder("utf-8", { fatal: true })
 
-// General numbers use up to seven varint bytes or an eight-byte f64.
+// General numbers use up to seven varint bytes, a varint mantissa with a
+// decimal scale byte, or an eight-byte f64.
 const NUMBER_VARINT_MAX_BYTES = 7
 
 const NUMBER_VARINT_MAX_MAGNITUDE = 281_474_976_710_655 // 2 ** 48 - 1
@@ -502,10 +503,33 @@ const EXACT_MAGNITUDE_MAX = 4_503_599_627_370_495 // 2 ** 52 - 1
 
 const NUMBER_RUN_F64 = 0
 const NUMBER_RUN_VARINT = 1
+const NUMBER_RUN_DECIMAL = 2
 
 function isVarintNumber(value: unknown): boolean {
   return typeof value === "number" && Number.isInteger(value) &&
     value >= -NUMBER_VARINT_MAX_MAGNITUDE && value <= NUMBER_VARINT_MAX_MAGNITUDE
+}
+
+// Short decimals ride the varint path as mantissa + one scale byte. The
+// mantissa is capped at six varint bytes so the total stays under the
+// eight-byte f64 discriminator.
+const DECIMAL_SCALE_MAX = 8
+const DECIMAL_MANTISSA_MAX = 2_199_023_255_551 // 2 ** 41 - 1
+
+const POW10 = [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000]
+
+// The scale that makes `value` an exact short-decimal mantissa, or 0.
+function decimalScale(value: number): number {
+  for (let scale = 1; scale <= DECIMAL_SCALE_MAX; scale++) {
+    const mantissa = Math.round(value * POW10[scale])
+    if (
+      mantissa >= -DECIMAL_MANTISSA_MAX && mantissa <= DECIMAL_MANTISSA_MAX &&
+      mantissa / POW10[scale] === value
+    ) {
+      return scale
+    }
+  }
+  return 0
 }
 
 // Sign-magnitude preserves `-0`, unlike zigzag.
@@ -2881,18 +2905,34 @@ function encodeArray(ctx: EncodeContext, layout: ArrayLayout, arr: ReadonlyArray
   }
 }
 
-// Uniform number arrays share one varint-or-f64 mode byte.
+// Uniform number arrays share one mode byte: varint, packed decimal, or f64.
 function encodeNumberRun(arr: ReadonlyArray<unknown>, count: number, w: Writer) {
   let varint = true
+  let decimal = true
   for (let i = 0; i < count; i++) {
-    if (!isVarintNumber(arr[i])) {
+    const value = arr[i]
+    if (isVarintNumber(value)) {
+      const magnitude = (value as number) < 0 ? -(value as number) : value as number
+      if (magnitude > DECIMAL_MANTISSA_MAX) decimal = false
+    } else {
       varint = false
-      break
+      if (typeof value !== "number" || decimalScale(value) === 0) decimal = false
     }
+    if (!varint && !decimal) break
   }
   if (varint) {
     w.byte(NUMBER_RUN_VARINT)
     for (let i = 0; i < count; i++) w.numberVarint(arr[i] as number)
+  } else if (decimal) {
+    w.byte(NUMBER_RUN_DECIMAL)
+    for (let i = 0; i < count; i++) {
+      const value = arr[i] as number
+      const scale = Number.isInteger(value) ? 0 : decimalScale(value)
+      const mantissa = scale === 0 ? value : Math.round(value * POW10[scale])
+      const negative = mantissa < 0 || (mantissa === 0 && 1 / mantissa < 0)
+      const magnitude = negative ? -mantissa : mantissa
+      w.uvarint((magnitude * 2 + (negative ? 1 : 0)) * 16 + scale)
+    }
   } else {
     w.byte(NUMBER_RUN_F64)
     for (let i = 0; i < count; i++) w.f64(arr[i] as number)
@@ -2989,11 +3029,21 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
     case "undefined":
       if (value !== undefined) encodeFail("undefined", value, ctx.options)
       return
-    case "number":
+    case "number": {
       if (typeof value !== "number") encodeFail("a number", value, ctx.options)
-      if (isVarintNumber(value)) w.numberVarint(value)
-      else w.f64(value)
+      if (isVarintNumber(value)) {
+        w.numberVarint(value)
+        return
+      }
+      const scale = decimalScale(value)
+      if (scale > 0) {
+        w.numberVarint(Math.round(value * POW10[scale]))
+        w.byte(scale)
+      } else {
+        w.f64(value)
+      }
       return
+    }
     case "int": {
       // `disableChecks` can bypass the integer check used to select this layout.
       if (!Number.isSafeInteger(value)) encodeFail("an integer", value, ctx.options)
@@ -3744,6 +3794,18 @@ function decodeNumberRun(out: Array<unknown>, count: number, r: Reader): Array<u
     for (let i = 0; i < count; i++) out[i] = r.f64()
     return out
   }
+  if (mode === NUMBER_RUN_DECIMAL) {
+    for (let i = 0; i < count; i++) {
+      issuePath[issuePathLen++] = i
+      const code = r.uvarint()
+      const scale = code % 16
+      if (scale > DECIMAL_SCALE_MAX) invalid("decimal", undefined, r.options)
+      const value = decodeSignMagnitude((code - scale) / 16)
+      out[i] = scale === 0 ? value : value / POW10[scale]
+      issuePathLen--
+    }
+    return out
+  }
   if (mode !== NUMBER_RUN_VARINT) invalid("f64", undefined, r.options)
   for (let i = 0; i < count; i++) {
     issuePath[issuePathLen++] = i
@@ -3841,7 +3903,13 @@ function decodeValue(layout: Layout, r: Reader): unknown {
       const len = r.remaining
       if (len === 8) return r.f64()
       if (len === 0 || len > NUMBER_VARINT_MAX_BYTES) invalid("f64", undefined, r.options)
-      return r.numberVarint()
+      const value = r.numberVarint()
+      if (r.remaining === 0) return value
+      const scale = r.byte()
+      if (r.remaining !== 0 || scale === 0 || scale > DECIMAL_SCALE_MAX) {
+        invalid("decimal", undefined, r.options)
+      }
+      return value / POW10[scale]
     }
     case "int":
       return r.numberVarint()

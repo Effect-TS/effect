@@ -277,10 +277,25 @@ describe("SchemaBinary", () => {
       }
     })
 
-    it("keeps f64 for values no capped varint can hold", () => {
+    it("encodes short decimals as a mantissa varint plus one scale byte", () => {
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, 1.5)), [3, 0x10, 30, 1])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, -0.5)), [3, 0x10, 11, 1])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, 0.001)), [3, 0x10, 2, 3])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, 12.5)), [4, 0x10, 0xFA, 0x01, 1])
+      for (const value of [0.1, 1.3, 4.7, 98.5, -123.456, 12345678.5, 0.00000001]) {
+        sameNumber(roundtrip(Schema.Number, value), value)
+      }
+      // the widest mantissa a decimal may carry, and the first one past it
+      const inside = 219902325555.1 // (2 ** 41 - 1) / 10
+      assert.strictEqual(encode(Schema.Number, inside).length, 9)
+      sameNumber(roundtrip(Schema.Number, inside), inside)
+      const outside = 219902325555.3
+      assert.strictEqual(encode(Schema.Number, outside).length, 10)
+      sameNumber(roundtrip(Schema.Number, outside), outside)
+    })
+
+    it("keeps f64 for values neither a capped varint nor a decimal can hold", () => {
       const values = [
-        1.5,
-        -1.5,
         Number.EPSILON,
         Number.NaN,
         Number.POSITIVE_INFINITY,
@@ -288,6 +303,8 @@ describe("SchemaBinary", () => {
         Number.MAX_SAFE_INTEGER,
         Number.MIN_SAFE_INTEGER,
         Number.MAX_VALUE,
+        Math.PI,
+        1e-9,
         2 ** 48,
         -(2 ** 48)
       ]
@@ -297,13 +314,15 @@ describe("SchemaBinary", () => {
       }
     })
 
-    it("discriminates the two forms by the enclosing field length", () => {
+    it("discriminates the three forms by the enclosing field length", () => {
       const schema = Schema.Struct({ n: Schema.Number })
       // length, envelope, five-byte field id, field length, payload
       assert.strictEqual(encode(schema, { n: 7 }).length, 9)
-      assert.strictEqual(encode(schema, { n: 7.5 }).length, 16)
+      assert.strictEqual(encode(schema, { n: 7.5 }).length, 11)
+      assert.strictEqual(encode(schema, { n: Math.PI }).length, 16)
       assert.deepStrictEqual(roundtrip(schema, { n: 7 }), { n: 7 })
       assert.deepStrictEqual(roundtrip(schema, { n: 7.5 }), { n: 7.5 })
+      assert.deepStrictEqual(roundtrip(schema, { n: Math.PI }), { n: Math.PI })
       sameNumber(roundtrip(schema, { n: -0 }).n, -0)
     })
 
@@ -314,10 +333,19 @@ describe("SchemaBinary", () => {
       const decoded = roundtrip(Schema.Array(Schema.Number), integers)
       integers.forEach((value, index) => sameNumber(decoded[index], value))
 
-      // one value outside the varint form moves the whole run to f64
+      // one short decimal moves the run to the packed decimal mode
       const mixed = [1, 2.5]
-      assert.strictEqual(encode(Schema.Array(Schema.Number), mixed).length, 20)
+      // length, envelope, count, mode, a one-byte and a two-byte code
+      assert.strictEqual(encode(Schema.Array(Schema.Number), mixed).length, 7)
       assert.deepStrictEqual(roundtrip(Schema.Array(Schema.Number), mixed), mixed)
+      const decimals = [-0, 0.25, 1e6, -12.75]
+      const decoded2 = roundtrip(Schema.Array(Schema.Number), decimals)
+      decimals.forEach((value, index) => sameNumber(decoded2[index], value))
+
+      // one value outside both varint and decimal moves the whole run to f64
+      const wide = [1, Math.PI]
+      assert.strictEqual(encode(Schema.Array(Schema.Number), wide).length, 20)
+      assert.deepStrictEqual(roundtrip(Schema.Array(Schema.Number), wide), wide)
       assert.deepStrictEqual(roundtrip(Schema.Array(Schema.Number), []), [])
       assert.deepStrictEqual(
         roundtrip(Schema.Array(Schema.Array(Schema.Number)), [[1, 2], [], [3.5]]),
@@ -328,18 +356,22 @@ describe("SchemaBinary", () => {
     it("length-prefixes each number slot of a tuple", () => {
       const pair = Schema.Tuple([Schema.Number, Schema.Number])
       assert.strictEqual(encode(pair, [1, 2]).length, 6)
-      assert.strictEqual(encode(pair, [1, 2.5]).length, 13)
+      assert.strictEqual(encode(pair, [1, 2.5]).length, 7)
+      assert.strictEqual(encode(pair, [1, Math.PI]).length, 13)
       assert.deepStrictEqual(roundtrip(pair, [1, 2.5]), [1, 2.5])
+      assert.deepStrictEqual(roundtrip(pair, [1, Math.PI]), [1, Math.PI])
       const rest = Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number])
       assert.deepStrictEqual(roundtrip(rest, ["head", 1, 2.5, 3]), ["head", 1, 2.5, 3])
     })
 
-    it("carries both forms behind the union kind byte", () => {
+    it("carries every form behind the union kind byte", () => {
       const schema = Schema.Union([Schema.Number, Schema.String])
       assert.strictEqual(encode(schema, 5).length, 4)
-      assert.strictEqual(encode(schema, 5.5).length, 11)
+      assert.strictEqual(encode(schema, 5.5).length, 5)
+      assert.strictEqual(encode(schema, Math.PI).length, 11)
       assert.strictEqual(roundtrip(schema, 5), 5)
       assert.strictEqual(roundtrip(schema, 5.5), 5.5)
+      assert.strictEqual(roundtrip(schema, Math.PI), Math.PI)
       assert.strictEqual(roundtrip(schema, "x"), "x")
       sameNumber(roundtrip(schema, -0), -0)
 
@@ -400,11 +432,18 @@ describe("SchemaBinary", () => {
       // a varint that never terminates inside its extent
       const truncated = new Uint8Array([3, 0x10, 0x80, 0x80])
       assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(truncated)).message, /complete value/)
+      // a decimal tail whose scale byte is zero or out of range
+      const zeroScale = new Uint8Array([3, 0x10, 30, 0])
+      assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(zeroScale)).message, /Expected decimal/)
+      const wideScale = new Uint8Array([3, 0x10, 30, 9])
+      assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(wideScale)).message, /Expected decimal/)
+      const longTail = new Uint8Array([4, 0x10, 30, 1, 1])
+      assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(longTail)).message, /Expected decimal/)
 
       const arrayCodec = SchemaBinary.toCodec(Schema.Array(Schema.Number))
       const run = Schema.encodeUnknownSync(arrayCodec)([1, 2, 3])
       const unknownMode = run.slice()
-      unknownMode[3] = 2
+      unknownMode[3] = 3
       assert.match(schemaError(() => Schema.decodeUnknownSync(arrayCodec)(unknownMode)).message, /Expected f64/)
       const shortRun = run.slice(0, run.length - 1)
       shortRun[0] -= 1
