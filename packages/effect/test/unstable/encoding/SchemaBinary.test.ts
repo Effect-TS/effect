@@ -767,7 +767,7 @@ describe("SchemaBinary", () => {
 
     it("holds references past the point a slot switches to a map", () => {
       const Many = Schema.Struct({ v: Schema.String })
-      const many = Array.from({ length: 40 }, (_, index) => ({ v: `v${index % 13}` }))
+      const many = Array.from({ length: 60 }, (_, index) => ({ v: `v${index % 21}` }))
       assert.deepStrictEqual(roundtrip(Schema.Array(Many), many), many)
     })
 
@@ -775,11 +775,11 @@ describe("SchemaBinary", () => {
       const Many = Schema.Struct({ v: Schema.String })
       // All-distinct values disable the writer's table at the decide point;
       // repeats past it are written literally and must still round-trip.
-      const many = Array.from({ length: 40 }, (_, index) => ({ v: `value-${index % 20}` }))
+      const many = Array.from({ length: 160 }, (_, index) => ({ v: `value-${index % 80}` }))
       assert.deepStrictEqual(roundtrip(Schema.Array(Many), many), many)
       const keyed = Schema.Struct({ attributes: Schema.Record(Schema.String, Schema.String) })
-      const rows = Array.from({ length: 40 }, (_, index) => ({
-        attributes: { [`key-${index % 20}`]: `w${index}` }
+      const rows = Array.from({ length: 160 }, (_, index) => ({
+        attributes: { [`key-${index % 80}`]: `w${index}` }
       }))
       assert.deepStrictEqual(roundtrip(Schema.Array(keyed), rows), rows)
     })
@@ -2264,6 +2264,40 @@ describe("SchemaBinary", () => {
           `${expected} for ${globalThis.String(value)}`
         )
       }
+    })
+
+    it("keeps failure exits on the schema pass when only the success side is exact", () => {
+      const ExitSchema = Schema.Exit(
+        Schema.Struct({ id: Schema.String }),
+        Schema.String,
+        Schema.Defect()
+      )
+      const direct = SchemaBinary.toCodecDirect(ExitSchema as Schema.Codec<unknown, unknown>)
+      const sound = SchemaBinary.toCodec(ExitSchema as Schema.Codec<unknown, unknown>)
+      const exits = [
+        Exit.succeed({ id: "user-1" }),
+        Exit.fail("nope"),
+        Exit.die(new Error("boom")),
+        Exit.failCause(Cause.interrupt(7))
+      ]
+      for (const exit of exits) {
+        const bytes = Schema.encodeUnknownSync(direct)(exit)
+        assert.deepStrictEqual(Array.from(bytes), Array.from(Schema.encodeUnknownSync(sound)(exit)))
+        assert.deepStrictEqual(
+          Schema.decodeUnknownSync(direct)(bytes.slice()),
+          Schema.decodeUnknownSync(sound)(bytes.slice())
+        )
+      }
+      const decodedDie = Schema.decodeUnknownSync(direct)(
+        Schema.encodeUnknownSync(direct)(Exit.die(new Error("boom"))).slice()
+      ) as Exit.Exit<unknown, unknown>
+      assert.isTrue(Exit.isFailure(decodedDie))
+      const reason = (decodedDie as Exit.Failure<unknown, unknown>).cause.reasons[0] as Cause.Die
+      assert.instanceOf(reason.defect, Error)
+      assert.strictEqual((reason.defect as Error).message, "boom")
+
+      assert.isDefined(schemaError(() => Schema.encodeUnknownSync(direct)(Exit.succeed({ id: 42 }))))
+      assert.isDefined(schemaError(() => Schema.encodeUnknownSync(direct)("not an exit")))
     })
 
     it("rejects an inherited discriminator, like the schema pass", () => {

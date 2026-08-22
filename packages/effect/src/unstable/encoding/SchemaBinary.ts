@@ -110,8 +110,17 @@ export function toCodec<S extends Schema.Constraint>(schema: S, options?: Option
  * @internal
  */
 export function toCodecDirect<S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> {
-  const { exact, layout, target } = compileTarget(schema)
-  if (!exact) return toCodec(schema, options)
+  const { exact, exitSuccess, layout, target } = compileTarget(schema)
+  if (!exact) {
+    if (!exitSuccess) return toCodec(schema, options)
+    const trusted = new WeakSet<object>()
+    return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
+      Schema.decodeTo(
+        withExitSuccessDecode(target, trusted),
+        makeTransformation(layout, compileMode(layout, options?.fingerprint), trusted, true)
+      )
+    ) as unknown as toCodec<S>
+  }
   return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
     Schema.decodeTo(
       passThrough(target),
@@ -133,16 +142,24 @@ export function encodeUnknownSync<S extends Schema.Constraint>(
   schema: S,
   options?: SchemaAST.ParseOptions & Options
 ): (value: unknown) => Uint8Array<ArrayBuffer> {
-  const { exact, layout } = compileTarget(schema)
+  const { exact, exitSuccess, layout } = compileTarget(schema)
+  const mode = compileMode(layout, options?.fingerprint)
+  const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
   if (!exact) {
-    return Schema.encodeUnknownSync(
+    const fallback = Schema.encodeUnknownSync(
       toCodec(schema, options) as unknown as Schema.ConstraintEncoder<unknown, never>,
       options
     ) as (value: unknown) => Uint8Array<ArrayBuffer>
+    if (!exitSuccess) return fallback
+    return (value) => {
+      if (!Exit.isExit(value) || !Exit.isSuccess(value)) return fallback(value)
+      try {
+        return encodeFrame(layout, value, parseOptions, mode)
+      } catch (e) {
+        throw e instanceof IssueError ? new Schema.SchemaError(e.issue) : e
+      }
+    }
   }
-  const mode = compileMode(layout, options?.fingerprint)
-
-  const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
   return (value) => {
     try {
       return encodeFrame(layout, value, parseOptions, mode)
@@ -229,13 +246,16 @@ export function parser<S extends Schema.Constraint>(
   schema: S,
   options?: SchemaAST.ParseOptions & Options & { readonly maxFrameSize?: number | undefined }
 ): Parser<S["Type"]> {
-  const { exact, layout, target } = compileTarget(schema)
+  const { exact, exitSuccess, layout, target } = compileTarget(schema)
   const mode = compileMode(layout, options?.fingerprint)
   const parseOptions: SchemaAST.ParseOptions = options ?? {}
   const maxFrameSize = options?.maxFrameSize
-  const decodeEncoded = exact
+  const decodeTarget = exact
     ? undefined
     : Schema.decodeUnknownSync(target as Schema.ConstraintDecoder<unknown>, parseOptions)
+  const decodeEncoded = decodeTarget !== undefined && exitSuccess
+    ? (value: unknown) => Exit.isExit(value) && Exit.isSuccess(value) ? value : decodeTarget(value)
+    : decodeTarget
   let buffer = new Uint8Array(0)
   let bufferStart = 0
   let bufferEnd = 0
@@ -630,23 +650,67 @@ function decodeUtf8(
   }
 }
 
-// Eight code units per concatenation, checking their high bits together and
-// giving up on the first non-ASCII byte.
+// Sixteen and eight code unit blocks, checking their high bits together and
+// giving up on the first non-ASCII byte, then one call for the 0-7 tail.
 function decodeAscii(buf: Uint8Array, start: number, end: number): string | undefined {
   let out = ""
   let i = start
-  for (; i + 8 <= end; i += 8) {
+  for (; i + 16 <= end; i += 16) {
+    const a = buf[i], b = buf[i + 1], c = buf[i + 2], d = buf[i + 3]
+    const e = buf[i + 4], f = buf[i + 5], g = buf[i + 6], h = buf[i + 7]
+    const a2 = buf[i + 8], b2 = buf[i + 9], c2 = buf[i + 10], d2 = buf[i + 11]
+    const e2 = buf[i + 12], f2 = buf[i + 13], g2 = buf[i + 14], h2 = buf[i + 15]
+    if ((a | b | c | d | e | f | g | h | a2 | b2 | c2 | d2 | e2 | f2 | g2 | h2) > 0x7F) return undefined
+    out += String.fromCharCode(a, b, c, d, e, f, g, h, a2, b2, c2, d2, e2, f2, g2, h2)
+  }
+  if (i + 8 <= end) {
     const a = buf[i], b = buf[i + 1], c = buf[i + 2], d = buf[i + 3]
     const e = buf[i + 4], f = buf[i + 5], g = buf[i + 6], h = buf[i + 7]
     if ((a | b | c | d | e | f | g | h) > 0x7F) return undefined
     out += String.fromCharCode(a, b, c, d, e, f, g, h)
+    i += 8
   }
-  for (; i < end; i++) {
-    const c = buf[i]
-    if (c > 0x7F) return undefined
-    out += String.fromCharCode(c)
+  switch (end - i) {
+    case 0:
+      return out
+    case 1: {
+      const a = buf[i]
+      if (a > 0x7F) return undefined
+      return out + String.fromCharCode(a)
+    }
+    case 2: {
+      const a = buf[i], b = buf[i + 1]
+      if ((a | b) > 0x7F) return undefined
+      return out + String.fromCharCode(a, b)
+    }
+    case 3: {
+      const a = buf[i], b = buf[i + 1], c = buf[i + 2]
+      if ((a | b | c) > 0x7F) return undefined
+      return out + String.fromCharCode(a, b, c)
+    }
+    case 4: {
+      const a = buf[i], b = buf[i + 1], c = buf[i + 2], d = buf[i + 3]
+      if ((a | b | c | d) > 0x7F) return undefined
+      return out + String.fromCharCode(a, b, c, d)
+    }
+    case 5: {
+      const a = buf[i], b = buf[i + 1], c = buf[i + 2], d = buf[i + 3], e = buf[i + 4]
+      if ((a | b | c | d | e) > 0x7F) return undefined
+      return out + String.fromCharCode(a, b, c, d, e)
+    }
+    case 6: {
+      const a = buf[i], b = buf[i + 1], c = buf[i + 2], d = buf[i + 3]
+      const e = buf[i + 4], f = buf[i + 5]
+      if ((a | b | c | d | e | f) > 0x7F) return undefined
+      return out + String.fromCharCode(a, b, c, d, e, f)
+    }
+    default: {
+      const a = buf[i], b = buf[i + 1], c = buf[i + 2], d = buf[i + 3]
+      const e = buf[i + 4], f = buf[i + 5], g = buf[i + 6]
+      if ((a | b | c | d | e | f | g) > 0x7F) return undefined
+      return out + String.fromCharCode(a, b, c, d, e, f, g)
+    }
   }
-  return out
 }
 
 const OUTPUT_ARENA_SIZE = 64 * 1024
@@ -1208,6 +1272,10 @@ interface StructLayout {
   readonly extraAll: ExtraSignature | undefined
   readonly names: Set<string>
   optionalCount: number
+  // Required field indices below 32 as one comparison; wider structs with
+  // required fields past that keep the per-field check.
+  requiredMask: number
+  requiredWide: boolean
 }
 
 interface Slot {
@@ -1545,14 +1613,24 @@ function astKind(ast: SchemaAST.AST): number {
   }
 }
 
+function computeRequired(layout: StructLayout) {
+  for (const field of layout.fields) {
+    if (field.optional) continue
+    if (field.index < 32) layout.requiredMask |= 1 << field.index
+    else layout.requiredWide = true
+  }
+}
+
 interface CompiledLayout {
   readonly layout: Layout
   readonly recursive: boolean
   readonly exact: boolean
+  readonly exitSuccess: boolean
 }
 
 function compileLayout(root: SchemaAST.AST): CompiledLayout {
   const exact = isExact(root)
+  const exitSuccess = !exact && isExitWithExactSuccess(root)
   root = SchemaAST.toEncoded(root)
   const memo = new Map<SchemaAST.AST, Layout>()
   let recursive = false
@@ -1661,7 +1739,9 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       extra,
       extraAll: extra.length === 1 && matchesEveryKey(extra[0].parameter) ? extra[0] : undefined,
       names: new Set(fields.map((f) => f.name)),
-      optionalCount: 0
+      optionalCount: 0,
+      requiredMask: 0,
+      requiredWide: false
     }
     memo.set(ast, layout)
     for (let i = 0; i < fields.length; i++) {
@@ -1674,6 +1754,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
     }
     fields.sort((a, b) => a.id - b.id)
     for (let i = 0; i < fields.length; i++) fields[i].index = i
+    computeRequired(layout)
     for (let i = 0; i < extra.length; i++) {
       extra[i].layout = compile(ast.indexSignatures[i].type)
     }
@@ -1871,7 +1952,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
         const struct = full as StructLayout
         const sentinelNames = new Set(sentinels.map((s) => String(s.key)))
         const fields = struct.fields.filter((f) => !sentinelNames.has(f.name))
-        payload = {
+        const payloadStruct: StructLayout = {
           _: "struct",
           ast: struct.ast,
           fields,
@@ -1879,8 +1960,12 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
           extra: struct.extra,
           extraAll: struct.extraAll,
           names: struct.names,
-          optionalCount: fields.reduce((count, f) => f.optional ? count + 1 : count, 0)
+          optionalCount: fields.reduce((count, f) => f.optional ? count + 1 : count, 0),
+          requiredMask: 0,
+          requiredWide: false
         }
+        computeRequired(payloadStruct)
+        payload = payloadStruct
         tuple = false
       } else {
         payload = full
@@ -1915,7 +2000,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
   }
 
   const layout = compile(root)
-  return { layout, recursive, exact }
+  return { layout, recursive, exact, exitSuccess }
 }
 
 // The parser may return the binary decoder's value directly only when that
@@ -1976,6 +2061,18 @@ function isExact(root: SchemaAST.AST): boolean {
     }
   }
   return exact(root)
+}
+
+// A clean Exit whose success schema is exact: the binary layer fully produces
+// and validates success exits, so only failure exits need the schema pass for
+// their cause's error and defect encodings.
+function isExitWithExactSuccess(root: SchemaAST.AST): boolean {
+  return root._tag === "Declaration" &&
+    root.encoding === undefined && root.checks === undefined &&
+    (root as { readonly encodingChecks?: SchemaAST.Checks }).encodingChecks === undefined &&
+    root.annotations?.parseOptions === undefined &&
+    representationId(root) === "effect/schema/Exit" &&
+    isExact(root.typeParameters[0])
 }
 
 // Layouts sharing a wire kind can still require different fingerprints.
@@ -2572,10 +2669,11 @@ function runPlan(layout: ArrayLayout): RunPlan | null {
 
 // One table per field, so a field the reader skips can never shift another
 // field's references. Holds the values written literally so far, in reference
-// order. Short runs scan the array; at the decide point a table whose values
-// never repeated stops tracking (references are optional for writers, and the
-// reader keeps indexing literal values either way), while a mixed table
-// switches to a map.
+// order. Short runs scan the array and longer ones build a map, while a table
+// whose first `INTERN_DISABLE_AT` values never repeated stops tracking
+// entirely: references are optional for writers, and the reader keeps indexing
+// literal values either way, so only repeats with more than that many distinct
+// values between them lose their back-references.
 interface InternWrite {
   readonly values: Array<unknown>
   refs: Map<unknown, number> | undefined
@@ -2583,7 +2681,8 @@ interface InternWrite {
   disabled: boolean
 }
 
-const INTERN_DECIDE_AT = 16
+const INTERN_MAP_AT = 16
+const INTERN_DISABLE_AT = 64
 
 function internWrite(tables: Array<InternWrite | undefined>, index: number): InternWrite {
   return tables[index] ??= { values: [], refs: undefined, hits: 0, disabled: false }
@@ -2591,7 +2690,11 @@ function internWrite(tables: Array<InternWrite | undefined>, index: number): Int
 
 function internRef(table: InternWrite, value: unknown): number | undefined {
   const refs = table.refs
-  if (refs !== undefined) return refs.get(value)
+  if (refs !== undefined) {
+    const ref = refs.get(value)
+    if (ref !== undefined) table.hits++
+    return ref
+  }
   const values = table.values
   for (let i = 0; i < values.length; i++) {
     if (values[i] === value) {
@@ -2605,12 +2708,13 @@ function internRef(table: InternWrite, value: unknown): number | undefined {
 function internAdd(table: InternWrite, value: unknown) {
   const values = table.values
   if (table.refs !== undefined) {
-    table.refs.set(value, values.length)
-  } else if (values.length >= INTERN_DECIDE_AT) {
-    if (table.hits === 0) {
+    if (table.hits === 0 && values.length >= INTERN_DISABLE_AT) {
       table.disabled = true
+      table.refs = undefined
       return
     }
+    table.refs.set(value, values.length)
+  } else if (values.length >= INTERN_MAP_AT) {
     const refs = table.refs = new Map()
     for (let i = 0; i < values.length; i++) refs.set(values[i], i)
     refs.set(value, values.length)
@@ -3169,16 +3273,43 @@ function decodeSlot(layout: Layout, r: Reader): unknown {
   return value
 }
 
+// Records are usually small, so duplicate keys scan a list and only wide
+// records spill into a set.
+const SEEN_LIST_MAX = 8
+
+interface SeenKeys {
+  readonly list: Array<string>
+  set: Set<string> | undefined
+}
+
+function seenKey(seen: SeenKeys, key: string): boolean {
+  const set = seen.set
+  if (set !== undefined) {
+    if (set.has(key)) return true
+    set.add(key)
+    return false
+  }
+  const list = seen.list
+  if (list.includes(key)) return true
+  if (list.length >= SEEN_LIST_MAX) {
+    const set = seen.set = new Set<string>()
+    for (let i = 0; i < list.length; i++) set.add(list[i])
+    set.add(key)
+  } else {
+    list.push(key)
+  }
+  return false
+}
+
 function decodeExtraPair(
   layout: StructLayout,
   r: Reader,
   out: Record<string, unknown>,
-  seen: Set<string>,
+  seen: SeenKeys,
   keys?: Array<unknown> | undefined
 ) {
   const key = keys === undefined ? r.readUtf8(r.uvarint()) : decodeExtraKey(keys, r)
-  if (seen.has(key)) invalid("unique extra keys", undefined, r.options)
-  seen.add(key)
+  if (seenKey(seen, key)) invalid("unique extra keys", undefined, r.options)
   const len = r.uvarint()
   const signature = layout.extraAll ??
     (r.indexSignatures ??= new IndexSignatureCache(r.options)).find(layout, key)
@@ -3288,17 +3419,19 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
     }
     r.exit(saved)
   }
-  let issues: Array<SchemaIssue.Issue> | undefined
-  for (let i = 0; i < fields.length; i++) {
-    const field = fields[i]
-    const index = field.index
-    const present = index < 32 ? (presentMask & (1 << index)) !== 0 : presentWide?.has(index) === true
-    if (!field.optional && !present) {
-      ;(issues ??= []).push(missingKeyIssue(field))
-      if (r.options.errors !== "all") break
+  if ((presentMask & layout.requiredMask) !== layout.requiredMask || layout.requiredWide) {
+    let issues: Array<SchemaIssue.Issue> | undefined
+    for (let i = 0; i < fields.length; i++) {
+      const field = fields[i]
+      const index = field.index
+      const present = index < 32 ? (presentMask & (1 << index)) !== 0 : presentWide?.has(index) === true
+      if (!field.optional && !present) {
+        ;(issues ??= []).push(missingKeyIssue(field))
+        if (r.options.errors !== "all") break
+      }
     }
+    if (issues !== undefined) throwMissingKeys(layout, issues)
   }
-  if (issues !== undefined) throwMissingKeys(layout, issues)
   return out
 }
 
@@ -3336,7 +3469,7 @@ function decodeStructPositional(layout: StructLayout, r: Reader): unknown {
     const count = r.uvarint()
     if (count > r.remaining) invalid("complete value", undefined, r.options)
     if (count > 0) {
-      const seen = new Set<string>()
+      const seen: SeenKeys = { list: [], set: undefined }
       for (let i = 0; i < count; i++) decodeExtraPair(layout, r, out, seen)
     }
   }
@@ -3349,7 +3482,7 @@ function decodeExtraPairs(
   out: Record<string, unknown>,
   keys?: Array<unknown> | undefined
 ) {
-  const seen = new Set<string>()
+  const seen: SeenKeys = { list: [], set: undefined }
   while (r.pos < r.end) decodeExtraPair(layout, r, out, seen, keys)
 }
 
@@ -3451,18 +3584,20 @@ function decodeRunRow(
     }
     if (r.pos !== r.end) invalid("no leftover bytes", undefined, r.options)
   }
-  let issues: Array<SchemaIssue.Issue> | undefined
-  const fields = struct.fields
-  for (let i = 0; i < fields.length; i++) {
-    const field = fields[i]
-    const index = field.index
-    const has = index < 32 ? (presentMask & (1 << index)) !== 0 : presentWide?.has(index) === true
-    if (!field.optional && !has) {
-      ;(issues ??= []).push(missingKeyIssue(field))
-      if (r.options.errors !== "all") break
+  if ((presentMask & struct.requiredMask) !== struct.requiredMask || struct.requiredWide) {
+    let issues: Array<SchemaIssue.Issue> | undefined
+    const fields = struct.fields
+    for (let i = 0; i < fields.length; i++) {
+      const field = fields[i]
+      const index = field.index
+      const has = index < 32 ? (presentMask & (1 << index)) !== 0 : presentWide?.has(index) === true
+      if (!field.optional && !has) {
+        ;(issues ??= []).push(missingKeyIssue(field))
+        if (r.options.errors !== "all") break
+      }
     }
+    if (issues !== undefined) throwMissingKeys(struct, issues)
   }
-  if (issues !== undefined) throwMissingKeys(struct, issues)
   return out
 }
 
@@ -3870,13 +4005,17 @@ function decodeOneShot(
 function makeTransformation(
   layout: Layout,
   mode: Mode,
-  trusted: WeakSet<object> | undefined
+  trusted: WeakSet<object> | undefined,
+  successOnly = false
 ): SchemaTransformation.Transformation<unknown, Uint8Array<ArrayBuffer>> {
   return SchemaTransformation.transformOrFail({
     decode: (bytes: Uint8Array<ArrayBuffer>, options) => {
       try {
         const value = decodeOneShot(layout, bytes, options, mode)
-        if (trusted !== undefined && Predicate.isObjectOrArray(value)) trusted.add(value)
+        if (
+          trusted !== undefined && Predicate.isObjectOrArray(value) &&
+          (!successOnly || (Exit.isExit(value) && Exit.isSuccess(value)))
+        ) trusted.add(value)
         return Effect.succeed(value)
       } catch (e) {
         return e instanceof IssueError ? Effect.fail(e.issue) : Effect.die(e)
@@ -3908,6 +4047,7 @@ interface CompiledTarget {
   readonly target: Schema.Constraint
   readonly layout: Layout
   readonly exact: boolean
+  readonly exitSuccess: boolean
 }
 
 const compileTargetCache = new WeakMap<SchemaAST.AST, CompiledTarget>()
@@ -3918,9 +4058,9 @@ function compileTarget(
   const cached = compileTargetCache.get(schema.ast)
   if (cached !== undefined) return cached
   const raw = Schema.make<Schema.Constraint>(toBinaryAST(schema.ast))
-  const { exact, layout, recursive } = compileLayout(raw.ast)
+  const { exact, exitSuccess, layout, recursive } = compileLayout(raw.ast)
   // Only recursive schemas need the cycle walk.
-  const compiled = { target: recursive ? withCycleGuard(raw) : raw, layout, exact }
+  const compiled = { target: recursive ? withCycleGuard(raw) : raw, layout, exact, exitSuccess }
   compileTargetCache.set(schema.ast, compiled)
   return compiled
 }
@@ -3938,6 +4078,27 @@ function withTrustedDecode(target: Schema.Constraint, trusted: WeakSet<object>):
         ? Effect.succeed(input)
         : decodeType(input, options),
     { identifier: "binary value" }
+  )
+}
+
+// Success exits with an exact success schema are fully validated by the binary
+// layer, so only failure exits pay the schema pass for their cause's error and
+// defect encodings. The type parameter flips with the direction, so the same
+// fallback decodes binary failure exits and encodes failure exits back to the
+// wire representation. It is not a sound `Schema.is` guard, which is why only
+// {@link toCodecDirect} uses it.
+function withExitSuccessDecode(target: Schema.Constraint, trusted: WeakSet<object>): Schema.Constraint {
+  return Schema.declareConstructor<unknown>()(
+    [target],
+    ([codec]) => {
+      const parse = SchemaParser.decodeUnknownEffect(codec as Schema.ConstraintDecoder<unknown>)
+      return (input, _ast, options) =>
+        (Predicate.isObjectOrArray(input) && trusted.delete(input)) ||
+          (Exit.isExit(input) && Exit.isSuccess(input))
+          ? Effect.succeed(input)
+          : parse(input, options)
+    },
+    { identifier: "binary exit value" }
   )
 }
 
