@@ -30,6 +30,394 @@ import * as SchemaIssue from "../../SchemaIssue.ts"
 import * as SchemaParser from "../../SchemaParser.ts"
 import * as SchemaTransformation from "../../SchemaTransformation.ts"
 
+/**
+ * Selects the wire mode.
+ *
+ * The default mode supports compatible schema evolution. `fingerprint: true`
+ * uses positional layouts and an 8-byte layout hash for smaller frames, but
+ * requires peers to use the same schema definition.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Options {
+  /**
+   * @since 4.0.0
+   */
+  readonly fingerprint?: boolean | undefined
+}
+
+/**
+ * The codec type returned by {@link toCodec}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface toCodec<S extends Schema.Constraint> extends
+  Schema.Codec<
+    S["Type"],
+    Uint8Array<ArrayBuffer>,
+    S["DecodingServices"],
+    S["EncodingServices"]
+  >
+{}
+
+/**
+ * Derives a compact binary codec from a schema.
+ *
+ * The wire layout is compiled from the encoded side of the schema. Each
+ * encode/decode handles exactly one frame; use {@link parser} for streams.
+ *
+ * Encoded results are arena-backed views and may share a larger buffer. Use
+ * `bytes.slice()` when independent ownership is required.
+ *
+ * **Example**
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { SchemaBinary } from "effect/unstable/encoding"
+ *
+ * const Person = Schema.Struct({ name: Schema.String, age: Schema.Number })
+ * const codec = SchemaBinary.toCodec(Person)
+ *
+ * const bytes = Schema.encodeUnknownSync(codec)({ name: "Ada", age: 36 })
+ * const person = Schema.decodeUnknownSync(codec)(bytes)
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export function toCodec<S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> {
+  const { exact, layout, target } = compileTarget(schema)
+  const mode = compileMode(layout, options?.fingerprint)
+  const trusted = exact ? new WeakSet<object>() : undefined
+  return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
+    Schema.decodeTo(
+      trusted === undefined ? target : withTrustedDecode(target, trusted),
+      makeTransformation(layout, mode, trusted)
+    )
+  ) as unknown as toCodec<S>
+}
+
+/**
+ * Derives the {@link toCodec} codec without the schema pass around the binary
+ * layer.
+ *
+ * Only schemas the binary layer already validates on its own take the direct
+ * path; anything else falls back to {@link toCodec}. A direct codec encodes and
+ * decodes the same values as {@link toCodec} but is not a sound `Schema.is`
+ * guard, so it is only for callers that never guard on it.
+ *
+ * @internal
+ */
+export function toCodecDirect<S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> {
+  const { exact, layout, target } = compileTarget(schema)
+  if (!exact) return toCodec(schema, options)
+  return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
+    Schema.decodeTo(
+      passThrough(target),
+      makeTransformation(layout, compileMode(layout, options?.fingerprint), undefined)
+    )
+  ) as unknown as toCodec<S>
+}
+
+/**
+ * Encodes one frame without the schema pass {@link toCodec} wraps around it.
+ *
+ * Only schemas the binary layer already validates on its own take the direct
+ * path; anything else falls back to the codec, so checks and transformations
+ * still run.
+ *
+ * @internal
+ */
+export function encodeUnknownSync<S extends Schema.Constraint>(
+  schema: S,
+  options?: SchemaAST.ParseOptions & Options
+): (value: unknown) => Uint8Array<ArrayBuffer> {
+  const { exact, layout } = compileTarget(schema)
+  if (!exact) {
+    return Schema.encodeUnknownSync(
+      toCodec(schema, options) as unknown as Schema.ConstraintEncoder<unknown, never>,
+      options
+    ) as (value: unknown) => Uint8Array<ArrayBuffer>
+  }
+  const mode = compileMode(layout, options?.fingerprint)
+
+  const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
+  return (value) => {
+    try {
+      return encodeFrame(layout, value, parseOptions, mode)
+    } catch (e) {
+      throw e instanceof IssueError ? new Schema.SchemaError(e.issue) : e
+    }
+  }
+}
+
+/**
+ * Encodes concatenated frames in one writer pass, so a batch costs no more
+ * allocations than a single frame.
+ *
+ * Shares {@link encodeUnknownSync}'s direct path and its fallback.
+ *
+ * @internal
+ */
+export function encodeManyUnknownSync<S extends Schema.Constraint>(
+  schema: S,
+  options?: SchemaAST.ParseOptions & Options
+): (values: ReadonlyArray<unknown>) => Uint8Array<ArrayBuffer> {
+  const { exact, layout } = compileTarget(schema)
+  if (!exact) {
+    const encode = encodeUnknownSync(schema, options)
+    return (values) => {
+      const frames = values.map(encode)
+      let length = 0
+      for (const frame of frames) length += frame.length
+      const out = new Uint8Array(length)
+      let offset = 0
+      for (const frame of frames) {
+        out.set(frame, offset)
+        offset += frame.length
+      }
+      return out
+    }
+  }
+  const mode = compileMode(layout, options?.fingerprint)
+  const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
+  return (values) => {
+    try {
+      return encodeFrames(layout, values, parseOptions, mode)
+    } catch (e) {
+      throw e instanceof IssueError ? new Schema.SchemaError(e.issue) : e
+    }
+  }
+}
+
+/**
+ * A stateful frame parser for concatenated {@link toCodec} outputs.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Parser<T> {
+  /**
+   * @since 4.0.0
+   */
+  feed(chunk: Uint8Array): Effect.Effect<ReadonlyArray<T>, Schema.SchemaError>
+  /**
+   * @since 4.0.0
+   */
+  feedSync(chunk: Uint8Array): ReadonlyArray<T>
+  /**
+   * @since 4.0.0
+   */
+  end: Effect.Effect<void, Schema.SchemaError>
+  /**
+   * @since 4.0.0
+   */
+  endSync(): void
+}
+
+/**
+ * Creates a stateful parser for a stream of concatenated frames.
+ *
+ * Values completed before a failure remain observable. After a failure, the
+ * parser rejects further calls. Use `maxFrameSize` to limit buffered frames.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export function parser<S extends Schema.Constraint>(
+  schema: S,
+  options?: SchemaAST.ParseOptions & Options & { readonly maxFrameSize?: number | undefined }
+): Parser<S["Type"]> {
+  const { exact, layout, target } = compileTarget(schema)
+  const mode = compileMode(layout, options?.fingerprint)
+  const parseOptions: SchemaAST.ParseOptions = options ?? {}
+  const maxFrameSize = options?.maxFrameSize
+  const decodeEncoded = exact
+    ? undefined
+    : Schema.decodeUnknownSync(target as Schema.ConstraintDecoder<unknown>, parseOptions)
+  let buffer = new Uint8Array(0)
+  let bufferStart = 0
+  let bufferEnd = 0
+  let stashed: Schema.SchemaError | undefined
+  let spent = false
+  const body = new Reader()
+  const indexSignatures = new IndexSignatureCache(parseOptions, PARSER_INDEX_SIGNATURE_CACHE_SIZE)
+
+  const release = () => {
+    body.release()
+    indexSignatures.clear()
+    buffer = EMPTY_READER_BUFFER
+    bufferStart = bufferEnd = 0
+  }
+
+  const failSync = (expected: string, input?: unknown): never => {
+    throw new Schema.SchemaError(new SchemaIssue.InvalidValue({ expected }, input, parseOptions))
+  }
+
+  const takeStashed = (): never => {
+    const error = stashed!
+    stashed = undefined
+    throw error
+  }
+
+  const self: Parser<S["Type"]> = {
+    feedSync(chunk) {
+      if (stashed !== undefined) return takeStashed()
+      if (spent) return failSync("parser is spent")
+      if (chunk.length > 0) {
+        const remaining = bufferEnd - bufferStart
+        const required = remaining + chunk.length
+        if (required > buffer.length) {
+          const next = new Uint8Array(Math.max(256, buffer.length * 2, required))
+          next.set(buffer.subarray(bufferStart, bufferEnd))
+          buffer = next
+          bufferStart = 0
+          bufferEnd = remaining
+        } else if (bufferStart > 0) {
+          buffer.copyWithin(0, bufferStart, bufferEnd)
+          bufferStart = 0
+          bufferEnd = remaining
+        }
+        buffer.set(chunk, bufferEnd)
+        bufferEnd += chunk.length
+      }
+      const out: Array<S["Type"]> = []
+      const fail = (expected: string, input?: unknown): Array<S["Type"]> => {
+        spent = true
+        const error = new Schema.SchemaError(new SchemaIssue.InvalidValue({ expected }, input, parseOptions))
+        release()
+        if (out.length === 0) throw error
+        stashed = error
+        return out
+      }
+      while (true) {
+        // Use bigint only for frame lengths wider than six varint groups.
+        let frameLen = 0
+        let headerLen = -1
+        const buffered = bufferEnd - bufferStart
+        let scale = 1
+        for (let i = 0; i < Math.min(6, buffered); i++) {
+          const b = buffer[bufferStart + i]
+          frameLen += (b & 0x7F) * scale
+          if ((b & 0x80) === 0) {
+            headerLen = i + 1
+            break
+          }
+          scale *= 128
+        }
+        if (headerLen === -1) {
+          if (buffered < 6) return out
+          let n = BigInt(frameLen)
+          for (let i = 6; i < Math.min(10, buffered); i++) {
+            const b = buffer[bufferStart + i]
+            n |= BigInt(b & 0x7F) << BigInt(i * 7)
+            if ((b & 0x80) === 0) {
+              headerLen = i + 1
+              if (n > MAX_SAFE_BIGINT) return fail("safe integer length", n)
+              frameLen = Number(n)
+              break
+            }
+          }
+          if (headerLen === -1) {
+            if (buffered >= 10) return fail("uvarint", buffer.subarray(bufferStart, bufferStart + 10))
+            return out
+          }
+        }
+        if (frameLen === 0) return fail("nonzero frame length", frameLen)
+        if (maxFrameSize !== undefined && frameLen > maxFrameSize) {
+          return fail("frame within maxFrameSize", frameLen)
+        }
+        if (headerLen + frameLen > buffered) return out
+        const savedPathLen = issuePathLen
+        try {
+          issuePathLen = 0
+          const bodyStart = bufferStart + headerLen
+          indexSignatures.beginFrame()
+          body.reset(buffer, bodyStart, bodyStart + frameLen, parseOptions, indexSignatures, mode.positional)
+          const value = decodeFrameBody(layout, body, mode)
+          out.push((decodeEncoded === undefined ? value : decodeEncoded(value)) as S["Type"])
+        } catch (e) {
+          spent = true
+          release()
+          const error = e instanceof IssueError
+            ? new Schema.SchemaError(e.issue)
+            : Schema.isSchemaError(e)
+            ? e
+            : (() => {
+              throw e
+            })()
+          if (out.length === 0) throw error
+          stashed = error
+          return out
+        } finally {
+          issuePathLen = savedPathLen
+        }
+        bufferStart += headerLen + frameLen
+        if (bufferStart === bufferEnd) bufferStart = bufferEnd = 0
+      }
+    },
+    endSync() {
+      if (stashed !== undefined) return takeStashed()
+      if (spent) return failSync("parser is spent")
+      spent = true
+      const input = bufferStart < bufferEnd ? buffer.subarray(bufferStart, bufferEnd) : undefined
+      release()
+      if (input !== undefined) return failSync("complete value", input)
+    },
+    feed: (chunk) =>
+      Effect.suspend(() => {
+        try {
+          return Effect.succeed(self.feedSync(chunk))
+        } catch (e) {
+          if (Schema.isSchemaError(e)) return Effect.fail(e)
+          throw e
+        }
+      }),
+    end: Effect.suspend(() => {
+      try {
+        self.endSync()
+        return Effect.void
+      } catch (e) {
+        if (Schema.isSchemaError(e)) return Effect.fail(e)
+        throw e
+      }
+    })
+  }
+  return self
+}
+
+/**
+ * Assigns an explicit wire field id to a struct property.
+ *
+ * Use this to preserve the wire id across a rename or resolve a hash collision.
+ * Valid ids are integers from 1 through 4294967295.
+ *
+ * **Example**
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { SchemaBinary } from "effect/unstable/encoding"
+ *
+ * const Person = Schema.Struct({
+ *   id: Schema.String.pipe(SchemaBinary.fieldId(1))
+ * })
+ * ```
+ *
+ * @category annotations
+ * @since 4.0.0
+ */
+export function fieldId(id: number) {
+  if (!Number.isInteger(id) || id <= 0 || id > 0xFFFFFFFF) {
+    throw new Error(`Binary layout field id must be an integer in [1, 4294967295], got ${id}`)
+  }
+  const annotations = { [FIELD_ID_ANNOTATION_KEY]: id }
+  const annotateLastLink = SchemaAST.applyToLastLink((ast) => SchemaAST.annotateKey(ast, annotations))
+  return <S extends Schema.Top>(self: S): S["Rebuild"] =>
+    self.rebuild(annotateLastLink(SchemaAST.annotateKey(self.ast, annotations)))
+}
+
 const FIELD_ID_ANNOTATION_KEY = "~effect/encoding/SchemaBinary/fieldId"
 
 // Bit 0 selects fingerprint mode; all other flag bits are reserved.
@@ -2500,7 +2888,6 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
           w.zigzag(BigInt(duration.millis) * BIGINT_NANOS_PER_MILLI)
           return
       }
-      return
     }
     case "bigDecimal": {
       if (!BigDecimal.isBigDecimal(value)) encodeFail("a BigDecimal", value, ctx.options)
@@ -3492,393 +3879,4 @@ function withCycleGuard(target: Schema.Constraint): Schema.Constraint {
       encode: (value) => value
     })
   )(target)
-}
-
-/**
- * Selects the wire mode.
- *
- * The default mode supports compatible schema evolution. `fingerprint: true`
- * uses positional layouts and an 8-byte layout hash for smaller frames, but
- * requires peers to use the same schema definition.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Options {
-  /**
-   * @since 4.0.0
-   */
-  readonly fingerprint?: boolean | undefined
-}
-
-/**
- * The codec type returned by {@link toCodec}.
- *
- * @category models
- * @since 4.0.0
- */
-export interface toCodec<S extends Schema.Constraint> extends
-  Schema.Codec<
-    S["Type"],
-    Uint8Array<ArrayBuffer>,
-    S["DecodingServices"],
-    S["EncodingServices"]
-  >
-{}
-
-/**
- * Derives a compact binary codec from a schema.
- *
- * The wire layout is compiled from the encoded side of the schema. Each
- * encode/decode handles exactly one frame; use {@link parser} for streams.
- *
- * Encoded results are arena-backed views and may share a larger buffer. Use
- * `bytes.slice()` when independent ownership is required.
- *
- * **Example**
- *
- * ```ts
- * import { Schema } from "effect"
- * import { SchemaBinary } from "effect/unstable/encoding"
- *
- * const Person = Schema.Struct({ name: Schema.String, age: Schema.Number })
- * const codec = SchemaBinary.toCodec(Person)
- *
- * const bytes = Schema.encodeUnknownSync(codec)({ name: "Ada", age: 36 })
- * const person = Schema.decodeUnknownSync(codec)(bytes)
- * ```
- *
- * @category constructors
- * @since 4.0.0
- */
-export function toCodec<S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> {
-  const { exact, layout, target } = compileTarget(schema)
-  const mode = compileMode(layout, options?.fingerprint)
-  const trusted = exact ? new WeakSet<object>() : undefined
-  return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
-    Schema.decodeTo(
-      trusted === undefined ? target : withTrustedDecode(target, trusted),
-      makeTransformation(layout, mode, trusted)
-    )
-  ) as unknown as toCodec<S>
-}
-
-/**
- * Derives the {@link toCodec} codec without the schema pass around the binary
- * layer.
- *
- * Only schemas the binary layer already validates on its own take the direct
- * path; anything else falls back to {@link toCodec}. A direct codec encodes and
- * decodes the same values as {@link toCodec} but is not a sound `Schema.is`
- * guard, so it is only for callers that never guard on it.
- *
- * @internal
- */
-export function toCodecDirect<S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> {
-  const { exact, layout, target } = compileTarget(schema)
-  if (!exact) return toCodec(schema, options)
-  return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
-    Schema.decodeTo(
-      passThrough(target),
-      makeTransformation(layout, compileMode(layout, options?.fingerprint), undefined)
-    )
-  ) as unknown as toCodec<S>
-}
-
-/**
- * Encodes one frame without the schema pass {@link toCodec} wraps around it.
- *
- * Only schemas the binary layer already validates on its own take the direct
- * path; anything else falls back to the codec, so checks and transformations
- * still run.
- *
- * @internal
- */
-export function encodeUnknownSync<S extends Schema.Constraint>(
-  schema: S,
-  options?: SchemaAST.ParseOptions & Options
-): (value: unknown) => Uint8Array<ArrayBuffer> {
-  const { exact, layout } = compileTarget(schema)
-  if (!exact) {
-    return Schema.encodeUnknownSync(
-      toCodec(schema, options) as unknown as Schema.ConstraintEncoder<unknown, never>,
-      options
-    ) as (value: unknown) => Uint8Array<ArrayBuffer>
-  }
-  const mode = compileMode(layout, options?.fingerprint)
-
-  const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
-  return (value) => {
-    try {
-      return encodeFrame(layout, value, parseOptions, mode)
-    } catch (e) {
-      throw e instanceof IssueError ? new Schema.SchemaError(e.issue) : e
-    }
-  }
-}
-
-/**
- * Encodes concatenated frames in one writer pass, so a batch costs no more
- * allocations than a single frame.
- *
- * Shares {@link encodeUnknownSync}'s direct path and its fallback.
- *
- * @internal
- */
-export function encodeManyUnknownSync<S extends Schema.Constraint>(
-  schema: S,
-  options?: SchemaAST.ParseOptions & Options
-): (values: ReadonlyArray<unknown>) => Uint8Array<ArrayBuffer> {
-  const { exact, layout } = compileTarget(schema)
-  if (!exact) {
-    const encode = encodeUnknownSync(schema, options)
-    return (values) => {
-      const frames = values.map(encode)
-      let length = 0
-      for (const frame of frames) length += frame.length
-      const out = new Uint8Array(length)
-      let offset = 0
-      for (const frame of frames) {
-        out.set(frame, offset)
-        offset += frame.length
-      }
-      return out
-    }
-  }
-  const mode = compileMode(layout, options?.fingerprint)
-  const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
-  return (values) => {
-    try {
-      return encodeFrames(layout, values, parseOptions, mode)
-    } catch (e) {
-      throw e instanceof IssueError ? new Schema.SchemaError(e.issue) : e
-    }
-  }
-}
-
-/**
- * A stateful frame parser for concatenated {@link toCodec} outputs.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Parser<T> {
-  /**
-   * @since 4.0.0
-   */
-  feed(chunk: Uint8Array): Effect.Effect<ReadonlyArray<T>, Schema.SchemaError>
-  /**
-   * @since 4.0.0
-   */
-  feedSync(chunk: Uint8Array): ReadonlyArray<T>
-  /**
-   * @since 4.0.0
-   */
-  end(): Effect.Effect<void, Schema.SchemaError>
-  /**
-   * @since 4.0.0
-   */
-  endSync(): void
-}
-
-/**
- * Creates a stateful parser for a stream of concatenated frames.
- *
- * Values completed before a failure remain observable. After a failure, the
- * parser rejects further calls. Use `maxFrameSize` to limit buffered frames.
- *
- * @category constructors
- * @since 4.0.0
- */
-export function parser<S extends Schema.Constraint>(
-  schema: S,
-  options?: SchemaAST.ParseOptions & Options & { readonly maxFrameSize?: number | undefined }
-): Parser<S["Type"]> {
-  const { exact, layout, target } = compileTarget(schema)
-  const mode = compileMode(layout, options?.fingerprint)
-  const parseOptions: SchemaAST.ParseOptions = options ?? {}
-  const maxFrameSize = options?.maxFrameSize
-  const decodeEncoded = exact
-    ? undefined
-    : Schema.decodeUnknownSync(target as Schema.ConstraintDecoder<unknown>, parseOptions)
-  let buffer = new Uint8Array(0)
-  let bufferStart = 0
-  let bufferEnd = 0
-  let stashed: Schema.SchemaError | undefined
-  let spent = false
-  const body = new Reader()
-  const indexSignatures = new IndexSignatureCache(parseOptions, PARSER_INDEX_SIGNATURE_CACHE_SIZE)
-
-  const release = () => {
-    body.release()
-    indexSignatures.clear()
-    buffer = EMPTY_READER_BUFFER
-    bufferStart = bufferEnd = 0
-  }
-
-  const failSync = (expected: string, input?: unknown): never => {
-    throw new Schema.SchemaError(new SchemaIssue.InvalidValue({ expected }, input, parseOptions))
-  }
-
-  const takeStashed = (): never => {
-    const error = stashed!
-    stashed = undefined
-    throw error
-  }
-
-  const self: Parser<S["Type"]> = {
-    feedSync(chunk) {
-      if (stashed !== undefined) return takeStashed()
-      if (spent) return failSync("parser is spent")
-      if (chunk.length > 0) {
-        const remaining = bufferEnd - bufferStart
-        const required = remaining + chunk.length
-        if (required > buffer.length) {
-          const next = new Uint8Array(Math.max(256, buffer.length * 2, required))
-          next.set(buffer.subarray(bufferStart, bufferEnd))
-          buffer = next
-          bufferStart = 0
-          bufferEnd = remaining
-        } else if (bufferStart > 0) {
-          buffer.copyWithin(0, bufferStart, bufferEnd)
-          bufferStart = 0
-          bufferEnd = remaining
-        }
-        buffer.set(chunk, bufferEnd)
-        bufferEnd += chunk.length
-      }
-      const out: Array<S["Type"]> = []
-      const fail = (expected: string, input?: unknown): Array<S["Type"]> => {
-        spent = true
-        const error = new Schema.SchemaError(new SchemaIssue.InvalidValue({ expected }, input, parseOptions))
-        release()
-        if (out.length === 0) throw error
-        stashed = error
-        return out
-      }
-      while (true) {
-        // Use bigint only for frame lengths wider than six varint groups.
-        let frameLen = 0
-        let headerLen = -1
-        const buffered = bufferEnd - bufferStart
-        let scale = 1
-        for (let i = 0; i < Math.min(6, buffered); i++) {
-          const b = buffer[bufferStart + i]
-          frameLen += (b & 0x7F) * scale
-          if ((b & 0x80) === 0) {
-            headerLen = i + 1
-            break
-          }
-          scale *= 128
-        }
-        if (headerLen === -1) {
-          if (buffered < 6) return out
-          let n = BigInt(frameLen)
-          for (let i = 6; i < Math.min(10, buffered); i++) {
-            const b = buffer[bufferStart + i]
-            n |= BigInt(b & 0x7F) << BigInt(i * 7)
-            if ((b & 0x80) === 0) {
-              headerLen = i + 1
-              if (n > MAX_SAFE_BIGINT) return fail("safe integer length", n)
-              frameLen = Number(n)
-              break
-            }
-          }
-          if (headerLen === -1) {
-            if (buffered >= 10) return fail("uvarint", buffer.subarray(bufferStart, bufferStart + 10))
-            return out
-          }
-        }
-        if (frameLen === 0) return fail("nonzero frame length", frameLen)
-        if (maxFrameSize !== undefined && frameLen > maxFrameSize) {
-          return fail("frame within maxFrameSize", frameLen)
-        }
-        if (headerLen + frameLen > buffered) return out
-        const savedPathLen = issuePathLen
-        try {
-          issuePathLen = 0
-          const bodyStart = bufferStart + headerLen
-          indexSignatures.beginFrame()
-          body.reset(buffer, bodyStart, bodyStart + frameLen, parseOptions, indexSignatures, mode.positional)
-          const value = decodeFrameBody(layout, body, mode)
-          out.push((decodeEncoded === undefined ? value : decodeEncoded(value)) as S["Type"])
-        } catch (e) {
-          spent = true
-          release()
-          const error = e instanceof IssueError
-            ? new Schema.SchemaError(e.issue)
-            : Schema.isSchemaError(e)
-            ? e
-            : (() => {
-              throw e
-            })()
-          if (out.length === 0) throw error
-          stashed = error
-          return out
-        } finally {
-          issuePathLen = savedPathLen
-        }
-        bufferStart += headerLen + frameLen
-        if (bufferStart === bufferEnd) bufferStart = bufferEnd = 0
-      }
-    },
-    endSync() {
-      if (stashed !== undefined) return takeStashed()
-      if (spent) return failSync("parser is spent")
-      spent = true
-      const input = bufferStart < bufferEnd ? buffer.subarray(bufferStart, bufferEnd) : undefined
-      release()
-      if (input !== undefined) return failSync("complete value", input)
-    },
-    feed: (chunk) =>
-      Effect.suspend(() => {
-        try {
-          return Effect.succeed(self.feedSync(chunk))
-        } catch (e) {
-          if (Schema.isSchemaError(e)) return Effect.fail(e)
-          throw e
-        }
-      }),
-    end: () =>
-      Effect.suspend(() => {
-        try {
-          self.endSync()
-          return Effect.void
-        } catch (e) {
-          if (Schema.isSchemaError(e)) return Effect.fail(e)
-          throw e
-        }
-      })
-  }
-  return self
-}
-
-/**
- * Assigns an explicit wire field id to a struct property.
- *
- * Use this to preserve the wire id across a rename or resolve a hash collision.
- * Valid ids are integers from 1 through 4294967295.
- *
- * **Example**
- *
- * ```ts
- * import { Schema } from "effect"
- * import { SchemaBinary } from "effect/unstable/encoding"
- *
- * const Person = Schema.Struct({
- *   id: Schema.String.pipe(SchemaBinary.fieldId(1))
- * })
- * ```
- *
- * @category annotations
- * @since 4.0.0
- */
-export function fieldId(id: number) {
-  if (!Number.isInteger(id) || id <= 0 || id > 0xFFFFFFFF) {
-    throw new Error(`Binary layout field id must be an integer in [1, 4294967295], got ${id}`)
-  }
-  const annotations = { [FIELD_ID_ANNOTATION_KEY]: id }
-  const annotateLastLink = SchemaAST.applyToLastLink((ast) => SchemaAST.annotateKey(ast, annotations))
-  return <S extends Schema.Top>(self: S): S["Rebuild"] =>
-    self.rebuild(annotateLastLink(SchemaAST.annotateKey(self.ast, annotations)))
 }
