@@ -198,7 +198,7 @@ describe("SchemaBinary", () => {
       let rolledOver = false
 
       for (let i = 0; i < 500; i++) {
-        const later = encode(`later-${i}-${"x".repeat(32)}`)
+        const later = encode(`later-${i}-${"x".repeat(512)}`)
         if (later.buffer !== first.buffer) rolledOver = true
         assert.deepStrictEqual(first, expected)
       }
@@ -769,6 +769,19 @@ describe("SchemaBinary", () => {
       const Many = Schema.Struct({ v: Schema.String })
       const many = Array.from({ length: 40 }, (_, index) => ({ v: `v${index % 13}` }))
       assert.deepStrictEqual(roundtrip(Schema.Array(Many), many), many)
+    })
+
+    it("round-trips a slot that stops interning values that never repeat", () => {
+      const Many = Schema.Struct({ v: Schema.String })
+      // All-distinct values disable the writer's table at the decide point;
+      // repeats past it are written literally and must still round-trip.
+      const many = Array.from({ length: 40 }, (_, index) => ({ v: `value-${index % 20}` }))
+      assert.deepStrictEqual(roundtrip(Schema.Array(Many), many), many)
+      const keyed = Schema.Struct({ attributes: Schema.Record(Schema.String, Schema.String) })
+      const rows = Array.from({ length: 40 }, (_, index) => ({
+        attributes: { [`key-${index % 20}`]: `w${index}` }
+      }))
+      assert.deepStrictEqual(roundtrip(Schema.Array(keyed), rows), rows)
     })
 
     it("gives each recursive occurrence its own run", () => {

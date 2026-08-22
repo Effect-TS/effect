@@ -19,7 +19,6 @@ import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import * as HashMap from "../../HashMap.ts"
 import * as HashSet from "../../HashSet.ts"
-import * as InternalRecord from "../../internal/record.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Redacted from "../../Redacted.ts"
@@ -262,28 +261,63 @@ export function parser<S extends Schema.Constraint>(
     throw error
   }
 
+  // Copy the unconsumed tail of a directly parsed chunk into the buffer.
+  const stashTail = (chunk: Uint8Array, start: number) => {
+    const remaining = chunk.length - start
+    if (remaining > buffer.length) {
+      buffer = new Uint8Array(Math.max(256, remaining))
+    }
+    buffer.set(start === 0 ? chunk : chunk.subarray(start), 0)
+    bufferStart = 0
+    bufferEnd = remaining
+  }
+
   const self: Parser<S["Type"]> = {
     feedSync(chunk) {
       if (stashed !== undefined) return takeStashed()
       if (spent) return failSync("parser is spent")
-      if (chunk.length > 0) {
-        const remaining = bufferEnd - bufferStart
-        const required = remaining + chunk.length
-        if (required > buffer.length) {
-          const next = new Uint8Array(Math.max(256, buffer.length * 2, required))
-          next.set(buffer.subarray(bufferStart, bufferEnd))
-          buffer = next
-          bufferStart = 0
-          bufferEnd = remaining
-        } else if (bufferStart > 0) {
-          buffer.copyWithin(0, bufferStart, bufferEnd)
-          bufferStart = 0
-          bufferEnd = remaining
+      // Complete frames in a fresh chunk parse in place; only partial frames
+      // are ever copied into the buffer.
+      const direct = bufferEnd === bufferStart
+      let buf: Uint8Array
+      let pos: number
+      let end: number
+      if (direct) {
+        buf = chunk
+        pos = 0
+        end = chunk.length
+      } else {
+        if (chunk.length > 0) {
+          const remaining = bufferEnd - bufferStart
+          const required = remaining + chunk.length
+          if (required > buffer.length) {
+            const next = new Uint8Array(Math.max(256, buffer.length * 2, required))
+            next.set(buffer.subarray(bufferStart, bufferEnd))
+            buffer = next
+            bufferStart = 0
+            bufferEnd = remaining
+          } else if (bufferStart > 0) {
+            buffer.copyWithin(0, bufferStart, bufferEnd)
+            bufferStart = 0
+            bufferEnd = remaining
+          }
+          buffer.set(chunk, bufferEnd)
+          bufferEnd += chunk.length
         }
-        buffer.set(chunk, bufferEnd)
-        bufferEnd += chunk.length
+        buf = buffer
+        pos = bufferStart
+        end = bufferEnd
       }
       const out: Array<S["Type"]> = []
+      const done = (): Array<S["Type"]> => {
+        if (direct) {
+          if (pos < end) stashTail(chunk, pos)
+        } else {
+          bufferStart = pos
+          if (bufferStart === bufferEnd) bufferStart = bufferEnd = 0
+        }
+        return out
+      }
       const fail = (expected: string, input?: unknown): Array<S["Type"]> => {
         spent = true
         const error = new Schema.SchemaError(new SchemaIssue.InvalidValue({ expected }, input, parseOptions))
@@ -296,10 +330,10 @@ export function parser<S extends Schema.Constraint>(
         // Use bigint only for frame lengths wider than six varint groups.
         let frameLen = 0
         let headerLen = -1
-        const buffered = bufferEnd - bufferStart
+        const buffered = end - pos
         let scale = 1
         for (let i = 0; i < Math.min(6, buffered); i++) {
-          const b = buffer[bufferStart + i]
+          const b = buf[pos + i]
           frameLen += (b & 0x7F) * scale
           if ((b & 0x80) === 0) {
             headerLen = i + 1
@@ -308,10 +342,10 @@ export function parser<S extends Schema.Constraint>(
           scale *= 128
         }
         if (headerLen === -1) {
-          if (buffered < 6) return out
+          if (buffered < 6) return done()
           let n = BigInt(frameLen)
           for (let i = 6; i < Math.min(10, buffered); i++) {
-            const b = buffer[bufferStart + i]
+            const b = buf[pos + i]
             n |= BigInt(b & 0x7F) << BigInt(i * 7)
             if ((b & 0x80) === 0) {
               headerLen = i + 1
@@ -321,21 +355,21 @@ export function parser<S extends Schema.Constraint>(
             }
           }
           if (headerLen === -1) {
-            if (buffered >= 10) return fail("uvarint", buffer.subarray(bufferStart, bufferStart + 10))
-            return out
+            if (buffered >= 10) return fail("uvarint", buf.subarray(pos, pos + 10))
+            return done()
           }
         }
         if (frameLen === 0) return fail("nonzero frame length", frameLen)
         if (maxFrameSize !== undefined && frameLen > maxFrameSize) {
           return fail("frame within maxFrameSize", frameLen)
         }
-        if (headerLen + frameLen > buffered) return out
+        if (headerLen + frameLen > buffered) return done()
         const savedPathLen = issuePathLen
         try {
           issuePathLen = 0
-          const bodyStart = bufferStart + headerLen
+          const bodyStart = pos + headerLen
           indexSignatures.beginFrame()
-          body.reset(buffer, bodyStart, bodyStart + frameLen, parseOptions, indexSignatures, mode.positional)
+          body.reset(buf, bodyStart, bodyStart + frameLen, parseOptions, indexSignatures, mode.positional)
           const value = decodeFrameBody(layout, body, mode)
           out.push((decodeEncoded === undefined ? value : decodeEncoded(value)) as S["Type"])
         } catch (e) {
@@ -354,8 +388,7 @@ export function parser<S extends Schema.Constraint>(
         } finally {
           issuePathLen = savedPathLen
         }
-        bufferStart += headerLen + frameLen
-        if (bufferStart === bufferEnd) bufferStart = bufferEnd = 0
+        pos += headerLen + frameLen
       }
     },
     endSync() {
@@ -616,7 +649,7 @@ function decodeAscii(buf: Uint8Array, start: number, end: number): string | unde
   return out
 }
 
-const OUTPUT_ARENA_SIZE = 8 * 1024
+const OUTPUT_ARENA_SIZE = 64 * 1024
 
 // Bound attacker-controlled keys retained between parser feeds.
 const PARSER_INDEX_SIGNATURE_CACHE_SIZE = 256
@@ -1920,8 +1953,23 @@ function isExact(root: SchemaAST.AST): boolean {
       case "Union":
         return ast.mode === "anyOf" && ast.types.every(exact)
       case "Declaration": {
-        const id = representationId(ast)
-        return id === "effect/schema/Uint8Array" || id === "effect/schema/Date"
+        switch (representationId(ast)) {
+          case "effect/schema/Uint8Array":
+          case "effect/schema/Date":
+          case "effect/schema/DateTimeUtc":
+          case "effect/schema/DateTimeZoned":
+          case "effect/schema/Duration":
+          case "effect/schema/BigDecimal":
+            return true
+          case "effect/schema/Option":
+          case "effect/schema/Result":
+          case "effect/schema/Exit":
+          case "effect/schema/Cause":
+          case "effect/schema/CauseReason":
+            return ast.typeParameters.every(exact)
+          default:
+            return false
+        }
       }
       default:
         return false
@@ -2394,15 +2442,17 @@ function encodeExtraPairs(
     if (keys === undefined) {
       w.uvarint(keyLength)
     } else {
-      const ref = internRef(keys, key)
-      if (ref !== undefined) {
-        w.uvarint(ref * 2 + 1)
-        issuePath[issuePathLen++] = key
-        encodeSized(ctx, signature.layout, obj[key], w)
-        issuePathLen--
-        continue
+      if (!keys.disabled) {
+        const ref = internRef(keys, key)
+        if (ref !== undefined) {
+          w.uvarint(ref * 2 + 1)
+          issuePath[issuePathLen++] = key
+          encodeSized(ctx, signature.layout, obj[key], w)
+          issuePathLen--
+          continue
+        }
+        internAdd(keys, key)
       }
-      internAdd(keys, key)
       w.uvarint(keyLength * 2)
     }
     if (keyBytes === undefined) w.string(key)
@@ -2522,16 +2572,21 @@ function runPlan(layout: ArrayLayout): RunPlan | null {
 
 // One table per field, so a field the reader skips can never shift another
 // field's references. Holds the values written literally so far, in reference
-// order; short runs scan the array, longer ones build a map.
+// order. Short runs scan the array; at the decide point a table whose values
+// never repeated stops tracking (references are optional for writers, and the
+// reader keeps indexing literal values either way), while a mixed table
+// switches to a map.
 interface InternWrite {
   readonly values: Array<unknown>
   refs: Map<unknown, number> | undefined
+  hits: number
+  disabled: boolean
 }
 
-const INTERN_MAP_AT = 8
+const INTERN_DECIDE_AT = 16
 
 function internWrite(tables: Array<InternWrite | undefined>, index: number): InternWrite {
-  return tables[index] ??= { values: [], refs: undefined }
+  return tables[index] ??= { values: [], refs: undefined, hits: 0, disabled: false }
 }
 
 function internRef(table: InternWrite, value: unknown): number | undefined {
@@ -2539,7 +2594,10 @@ function internRef(table: InternWrite, value: unknown): number | undefined {
   if (refs !== undefined) return refs.get(value)
   const values = table.values
   for (let i = 0; i < values.length; i++) {
-    if (values[i] === value) return i
+    if (values[i] === value) {
+      table.hits++
+      return i
+    }
   }
   return undefined
 }
@@ -2548,7 +2606,11 @@ function internAdd(table: InternWrite, value: unknown) {
   const values = table.values
   if (table.refs !== undefined) {
     table.refs.set(value, values.length)
-  } else if (values.length >= INTERN_MAP_AT) {
+  } else if (values.length >= INTERN_DECIDE_AT) {
+    if (table.hits === 0) {
+      table.disabled = true
+      return
+    }
     const refs = table.refs = new Map()
     for (let i = 0; i < values.length; i++) refs.set(values[i], i)
     refs.set(value, values.length)
@@ -2557,12 +2619,14 @@ function internAdd(table: InternWrite, value: unknown) {
 }
 
 function encodeInterned(table: InternWrite, ctx: EncodeContext, layout: Layout, value: unknown, w: Writer) {
-  const ref = internRef(table, value)
-  if (ref !== undefined) {
-    w.uvarint(ref * 2 + 1)
-    return
+  if (!table.disabled) {
+    const ref = internRef(table, value)
+    if (ref !== undefined) {
+      w.uvarint(ref * 2 + 1)
+      return
+    }
+    internAdd(table, value)
   }
-  internAdd(table, value)
   const mark = w.beginSized()
   encodeValue(ctx, layout, value, w)
   w.endSizedRun(mark)
@@ -3056,6 +3120,20 @@ function encodeFrame(
   }
 }
 
+// A local copy of the record helper keeps this hot store inlineable.
+function assignProperty(out: object, key: PropertyKey, value: unknown): void {
+  if (key === "__proto__") {
+    Object.defineProperty(out, key, {
+      value,
+      writable: true,
+      enumerable: true,
+      configurable: true
+    })
+  } else {
+    ;(out as Record<PropertyKey, unknown>)[key] = value
+  }
+}
+
 // Unknown union members resolve to this sentinel.
 const ABSENT = globalThis.Symbol.for("~effect/encoding/SchemaBinary/absent")
 
@@ -3101,15 +3179,25 @@ function decodeExtraPair(
   const key = keys === undefined ? r.readUtf8(r.uvarint()) : decodeExtraKey(keys, r)
   if (seen.has(key)) invalid("unique extra keys", undefined, r.options)
   seen.add(key)
-  const saved = r.enter(r.uvarint())
+  const len = r.uvarint()
   const signature = layout.extraAll ??
     (r.indexSignatures ??= new IndexSignatureCache(r.options)).find(layout, key)
-  if (signature !== undefined) {
-    issuePath[issuePathLen++] = key
-    const value = decodeChecked(signature.layout, r)
-    issuePathLen--
-    if (value !== ABSENT) InternalRecord.assignProperty(out, key, value)
+  if (signature === undefined) {
+    r.exit(r.enter(len))
+    return
   }
+  issuePath[issuePathLen++] = key
+  // Strings consume their whole region, so they skip the reader window.
+  if (signature.layout._ === "string") {
+    const value = r.readUtf8(len)
+    issuePathLen--
+    assignProperty(out, key, value)
+    return
+  }
+  const saved = r.enter(len)
+  const value = decodeChecked(signature.layout, r)
+  issuePathLen--
+  if (value !== ABSENT) assignProperty(out, key, value)
   r.exit(saved)
 }
 
@@ -3194,7 +3282,7 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
     const value = decodeChecked(field.layout, r)
     issuePathLen--
     if (value !== ABSENT) {
-      InternalRecord.assignProperty(out, field.name, value)
+      assignProperty(out, field.name, value)
       if (index < 32) presentMask |= 1 << index
       else (presentWide ??= new Set()).add(index)
     }
@@ -3237,7 +3325,7 @@ function decodeStructPositional(layout: StructLayout, r: Reader): unknown {
     issuePath[issuePathLen++] = field.name
     const value = field.inline ? decodeInline(field.layout, r) : decodeSized(field.layout, r)
     issuePathLen--
-    if (value !== ABSENT) InternalRecord.assignProperty(out, field.name, value)
+    if (value !== ABSENT) assignProperty(out, field.name, value)
     else if (!field.optional) {
       ;(issues ??= []).push(missingKeyIssue(field))
       if (r.options.errors !== "all") break
@@ -3275,6 +3363,12 @@ function decodeInterned(table: Array<unknown>, layout: Layout, r: Reader): unkno
     const ref = (code - 1) / 2
     if (ref >= table.length) invalid("a known back-reference", undefined, r.options)
     return table[ref]
+  }
+  // Strings consume their whole region, so they skip the reader window.
+  if (layout._ === "string") {
+    const value = r.readUtf8(code / 2)
+    table.push(value)
+    return value
   }
   const saved = r.enter(code / 2)
   const value = decodeChecked(layout, r)
@@ -3390,7 +3484,7 @@ function decodeRunSlot(
     }
     const value = table[ref]
     if (value === ABSENT) return -1
-    InternalRecord.assignProperty(out, slot.name, value)
+    assignProperty(out, slot.name, value)
     return slot.index
   }
   const saved = r.enter(code / 2)
@@ -3414,7 +3508,7 @@ function decodeRunSlot(
   r.exit(saved)
   if (kind === INTERN_SELF) (tables[slot.index] ??= []).push(value)
   if (value === ABSENT) return -1
-  InternalRecord.assignProperty(out, slot.name, value)
+  assignProperty(out, slot.name, value)
   return slot.index
 }
 
@@ -3458,6 +3552,15 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
       for (let i = 0; i < count; i++) {
         issuePath[issuePathLen++] = i
         out[i] = decodeValue(uniform, r)
+        issuePathLen--
+      }
+      return out
+    }
+    // Strings consume their whole region, so they skip the reader window.
+    if (uniform._ === "string") {
+      for (let i = 0; i < count; i++) {
+        issuePath[issuePathLen++] = i
+        out[i] = r.readUtf8(r.uvarint())
         issuePathLen--
       }
       return out
@@ -3527,7 +3630,7 @@ function decodeUnion(layout: UnionLayout, r: Reader): unknown {
     if (payload === ABSENT) return ABSENT
     if (!variant.tuple) {
       for (const sentinel of variant.sentinels) {
-        InternalRecord.assignProperty(payload as object, sentinel.key, sentinel.literal)
+        assignProperty(payload as object, sentinel.key, sentinel.literal)
       }
     }
     return payload
@@ -3548,7 +3651,7 @@ function decodeUnionPositional(layout: UnionLayout, r: Reader): unknown {
   const variant = position.variant
   if (variant !== undefined && !variant.tuple && payload !== ABSENT) {
     for (const sentinel of variant.sentinels) {
-      InternalRecord.assignProperty(payload as object, sentinel.key, sentinel.literal)
+      assignProperty(payload as object, sentinel.key, sentinel.literal)
     }
   }
   return payload
