@@ -76,6 +76,24 @@ describe("OpenAiLanguageModel", () => {
           }])
         }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-5.6" as any } }))))
 
+      it.effect("forwards implicit prompt cache mode without text breakpoints", () =>
+        Effect.gen(function*() {
+          yield* LanguageModel.generateText({ prompt: "Stable context" }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-5.6", {
+              prompt_cache_options: { mode: "implicit" }
+            }))
+          )
+
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+
+          deepStrictEqual(body.prompt_cache_options, { mode: "implicit" })
+          deepStrictEqual(body.input, [{
+            role: "user",
+            content: [{ type: "input_text", text: "Stable context" }]
+          }])
+        }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-5.6" as any } }))))
+
       describe("system messages", () => {
         it.effect("uses system role for standard models", () =>
           Effect.gen(function*() {

@@ -3,4 +3,4 @@
 "effect": patch
 ---
 
-Support OpenAI prompt cache request options and GPT-5.6-or-later explicit breakpoints on system, developer, and user input text, and correct message constructor provider option types.
+Add support for explicit cache breakpoints on the OpenAI responses API for GPT-5.6-or-later.

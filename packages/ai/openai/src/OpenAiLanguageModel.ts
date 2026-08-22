@@ -847,15 +847,12 @@ const prepareMessages = Effect.fnUntraced(
     for (const message of prompt.content) {
       switch (message.role) {
         case "system": {
-          const promptCacheBreakpoint = getPromptCacheBreakpoint(message)
           messages.push({
             role: getSystemMessageMode(config.model as string),
             content: [{
               type: "input_text",
               text: message.content,
-              ...(Predicate.isNotNull(promptCacheBreakpoint)
-                ? { prompt_cache_breakpoint: promptCacheBreakpoint }
-                : undefined)
+              ...getPromptCacheBreakpoint(message)
             }]
           })
           break
@@ -869,13 +866,10 @@ const prepareMessages = Effect.fnUntraced(
 
             switch (part.type) {
               case "text": {
-                const promptCacheBreakpoint = getPromptCacheBreakpoint(part)
                 content.push({
                   type: "input_text",
                   text: part.text,
-                  ...(Predicate.isNotNull(promptCacheBreakpoint)
-                    ? { prompt_cache_breakpoint: promptCacheBreakpoint }
-                    : undefined)
+                  ...getPromptCacheBreakpoint(part)
                 })
                 break
               }
@@ -2956,7 +2950,10 @@ const getImageDetail = (part: Prompt.FilePart): ImageDetail => part.options.open
 
 const getPromptCacheBreakpoint = (
   input: Prompt.SystemMessage | Prompt.TextPart
-): PromptCacheBreakpoint | null => input.options.openai?.promptCacheBreakpoint ?? null
+) => {
+  const promptCacheBreakpoint = input.options.openai?.promptCacheBreakpoint
+  return Predicate.isNotNullish(promptCacheBreakpoint) ? { prompt_cache_breakpoint: promptCacheBreakpoint } : undefined
+}
 
 const makeItemIdMetadata = (itemId: string | undefined) => Predicate.isNotUndefined(itemId) ? { itemId } : {}
 
