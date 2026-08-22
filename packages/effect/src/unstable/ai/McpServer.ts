@@ -734,7 +734,8 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
           },
           supportsAck: true,
           supportsTransferables: false,
-          supportsStructuredClone: false
+          supportsStructuredClone: false,
+          codecFor: protocol.codecFor
         }
       }))
       const client = yield* selectedProtocol.makeReverseClient(key.profile).pipe(
@@ -1229,6 +1230,7 @@ const mcpStdioSerialization = (
   return RpcSerialization.RpcSerialization.of({
     contentType: serialization.contentType,
     includesFraming: true,
+    codecFor: serialization.codecFor,
     makeUnsafe: () => {
       const frames = RpcSerialization.ndjson.makeUnsafe()
       const parser = serialization.makeUnsafe()

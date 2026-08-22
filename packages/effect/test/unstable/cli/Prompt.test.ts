@@ -679,6 +679,98 @@ describe("Prompt.autoComplete", () => {
 
       assert.isTrue(findFrame(frames, "No matches") !== undefined)
     }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("keeps `j` and `k` in the filter query instead of moving the cursor", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.autoComplete({
+        message: "Pick a branch",
+        choices: [
+          { title: "feat/jira-fetch-tool", value: "feat/jira-fetch-tool" },
+          { title: "main", value: "main" },
+          { title: "feat/worktree-tool", value: "feat/worktree-tool" }
+        ]
+      })
+
+      yield* MockTerminal.inputText("jira")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(prompt)
+      assert.strictEqual(result, "feat/jira-fetch-tool")
+
+      const output = yield* MockTerminal.displayLines
+      const frames = toFrames(output)
+      const filteredFrame = findFrame(frames, "[filter: jira]")
+
+      assert.isTrue(filteredFrame !== undefined)
+      assert.isTrue(filteredFrame?.includes("feat/jira-fetch-tool"))
+      assert.isFalse(filteredFrame?.includes("main"))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("filters a query that merely contains a `k`", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.autoComplete({
+        message: "Pick a branch",
+        choices: [
+          { title: "main", value: "main" },
+          { title: "feat/jira-fetch-tool", value: "feat/jira-fetch-tool" },
+          { title: "feat/worktree-tool", value: "feat/worktree-tool" }
+        ]
+      })
+
+      yield* MockTerminal.inputText("worktree")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(prompt)
+      assert.strictEqual(result, "feat/worktree-tool")
+
+      const output = yield* MockTerminal.displayLines
+      const frames = toFrames(output)
+      const filteredFrame = findFrame(frames, "[filter: worktree]")
+
+      assert.isTrue(filteredFrame !== undefined)
+      assert.isTrue(filteredFrame?.includes("feat/worktree-tool"))
+      assert.isFalse(filteredFrame?.includes("feat/jira-fetch-tool"))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("moves the cursor with ctrl-n and ctrl-p", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.autoComplete({
+        message: "Pick item",
+        choices: [
+          { title: "Alpha", value: "alpha" },
+          { title: "Beta", value: "beta" },
+          { title: "Delta", value: "delta" }
+        ]
+      })
+
+      yield* MockTerminal.inputKey("n", { ctrl: true })
+      yield* MockTerminal.inputKey("n", { ctrl: true })
+      yield* MockTerminal.inputKey("p", { ctrl: true })
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(prompt)
+      assert.strictEqual(result, "beta")
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("moves the cursor up with ctrl-k", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.autoComplete({
+        message: "Pick item",
+        choices: [
+          { title: "Alpha", value: "alpha" },
+          { title: "Beta", value: "beta" },
+          { title: "Delta", value: "delta" }
+        ]
+      })
+
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("k", { ctrl: true })
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(prompt)
+      assert.strictEqual(result, "beta")
+    }).pipe(Effect.provide(TestLayer)))
 })
 
 describe("Prompt.file", () => {
@@ -761,6 +853,97 @@ describe("Prompt.file", () => {
       assert.isTrue(expandedFrame !== undefined)
       assert.isFalse(narrowedFrame?.includes("basket.txt"))
       assert.isTrue(expandedFrame?.includes("basket.txt"))
+    }).pipe(Effect.provide(FilePromptLayer)))
+
+  const JkFilePromptLayer = Layer.mergeAll(
+    FileSystem.layerNoop({
+      exists: () => Effect.succeed(true),
+      readDirectory: (directory) =>
+        Effect.succeed(
+          directory === "/workspace"
+            ? ["jest.config.ts", "package.json", "readme.md"]
+            : []
+        ),
+      stat: () => Effect.succeed({ type: "File" } as any)
+    }),
+    PathLayer,
+    TerminalLayer
+  )
+
+  it.effect("keeps `j` in the filter query instead of moving the cursor", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.file({
+        message: "Pick file",
+        startingPath: "/workspace"
+      })
+
+      yield* MockTerminal.inputText("jest")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(prompt)
+      assert.strictEqual(result, "/workspace/jest.config.ts")
+
+      const output = yield* MockTerminal.displayLines
+      const frames = toFrames(output)
+      const filteredFrame = findFrame(frames, "[filter: jest]")
+
+      assert.isTrue(filteredFrame !== undefined)
+      assert.isTrue(filteredFrame?.includes("jest.config.ts"))
+      assert.isFalse(filteredFrame?.includes("readme.md"))
+    }).pipe(Effect.provide(JkFilePromptLayer)))
+
+  it.effect("keeps `k` in the filter query instead of moving the cursor", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.file({
+        message: "Pick file",
+        startingPath: "/workspace"
+      })
+
+      yield* MockTerminal.inputText("package")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(prompt)
+      assert.strictEqual(result, "/workspace/package.json")
+
+      const output = yield* MockTerminal.displayLines
+      const frames = toFrames(output)
+      const filteredFrame = findFrame(frames, "[filter: package]")
+
+      assert.isTrue(filteredFrame !== undefined)
+      assert.isTrue(filteredFrame?.includes("package.json"))
+      assert.isFalse(filteredFrame?.includes("readme.md"))
+    }).pipe(Effect.provide(JkFilePromptLayer)))
+
+  it.effect("moves the cursor with ctrl-n and ctrl-p", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.file({
+        message: "Pick file",
+        startingPath: "/workspace"
+      })
+
+      yield* MockTerminal.inputKey("n", { ctrl: true })
+      yield* MockTerminal.inputKey("n", { ctrl: true })
+      yield* MockTerminal.inputKey("p", { ctrl: true })
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(prompt)
+      assert.strictEqual(result, "/workspace/alpha.txt")
+    }).pipe(Effect.provide(FilePromptLayer)))
+
+  it.effect("moves the cursor up with ctrl-k", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.file({
+        message: "Pick file",
+        startingPath: "/workspace"
+      })
+
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("k", { ctrl: true })
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(prompt)
+      assert.strictEqual(result, "/workspace/alpha.txt")
     }).pipe(Effect.provide(FilePromptLayer)))
 })
 

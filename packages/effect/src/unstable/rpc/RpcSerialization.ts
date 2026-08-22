@@ -15,7 +15,28 @@ import * as Data from "../../Data.ts"
 import * as Layer from "../../Layer.ts"
 import * as Predicate from "../../Predicate.ts"
 import { hasProperty } from "../../Predicate.ts"
+import * as Schema from "../../Schema.ts"
 import type * as RpcMessage from "./RpcMessage.ts"
+
+/**
+ * Builds the codec used to fill the `unknown` holes of RPC protocol messages,
+ * such as request payloads, stream chunks, exits, and defects.
+ *
+ * **Details**
+ *
+ * The envelope around the hole is framed by {@link Parser}, which never sees the
+ * schema. JSON based serializations return `Schema.toCodecJson`, so the encoded
+ * hole is JSON. Other serializations may encode the hole as bytes; both fit the
+ * `unknown` hole, so `RpcSerialization` has no type parameter.
+ *
+ * @category serialization
+ * @since 4.0.0
+ */
+export type CodecFor = <S extends Schema.Top>(
+  schema: S
+) => Schema.Codec<S["Type"], unknown, S["DecodingServices"], S["EncodingServices"]>
+
+const codecForJson = Schema.toCodecJson as CodecFor
 
 /**
  * Service that describes how RPC protocol messages are encoded and decoded,
@@ -34,6 +55,7 @@ export class RpcSerialization extends Context.Service<RpcSerialization, {
   makeUnsafe(): Parser
   readonly contentType: string
   readonly includesFraming: boolean
+  readonly codecFor: CodecFor
 }>()("effect/rpc/RpcSerialization") {}
 
 /**
@@ -95,6 +117,7 @@ const isBufferSizeExceeded = (
 export const json: RpcSerialization["Service"] = RpcSerialization.of({
   contentType: "application/json",
   includesFraming: false,
+  codecFor: codecForJson,
   makeUnsafe: () => {
     const decoder = new TextDecoder()
     return {
@@ -119,6 +142,7 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
   return RpcSerialization.of({
     contentType: "application/ndjson",
     includesFraming: true,
+    codecFor: codecForJson,
     makeUnsafe: () => {
       const decoder = new TextDecoder()
       let buffer = ""
@@ -184,6 +208,7 @@ export const jsonRpc = (options?: {
   RpcSerialization.of({
     contentType: options?.contentType ?? "application/json",
     includesFraming: false,
+    codecFor: codecForJson,
     makeUnsafe: () => {
       const decoder = new TextDecoder()
       const batches = new Map<string | number, {
@@ -219,6 +244,7 @@ export const ndJsonRpc = (options?: {
   RpcSerialization.of({
     contentType: options?.contentType ?? "application/json-rpc",
     includesFraming: true,
+    codecFor: codecForJson,
     makeUnsafe: () => {
       const parser = makeNdjson({ maxBufferSize: options?.maxBufferSize }).makeUnsafe()
       const batches = new Map<string, {
@@ -511,6 +537,7 @@ export const makeMsgPack = (
   return RpcSerialization.of({
     contentType: "application/msgpack",
     includesFraming: true,
+    codecFor: codecForJson,
     makeUnsafe: () => {
       const unpackr = new Msgpackr.Unpackr(msgpackOptions)
       const packr = new Msgpackr.Packr(msgpackOptions)
