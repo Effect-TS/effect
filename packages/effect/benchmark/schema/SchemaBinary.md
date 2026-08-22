@@ -47,23 +47,23 @@ Average encode operations per second:
 
 | Case                   |   Default | Fingerprint |    JSON | Msgpack |
 | ---------------------- | --------: | ----------: | ------: | ------: |
-| small record           | 1,011,552 |   1,077,114 | 446,188 | 706,861 |
-| nested payload         |   349,822 |     396,800 | 259,586 | 283,297 |
-| collections            |    53,117 |      54,030 |  22,431 |  22,807 |
-| index signatures / 128 |    46,741 |      46,716 |  35,839 |  34,648 |
-| index signatures / 512 |     8,679 |       8,569 |   6,658 |   6,255 |
-| 200-row array payload  |     8,870 |       8,074 |   6,960 |   4,117 |
+| small record           | 1,012,829 |   1,095,126 | 449,771 | 699,085 |
+| nested payload         |   356,991 |     404,617 | 268,238 | 289,113 |
+| collections            |    53,721 |      54,511 |  22,452 |  22,812 |
+| index signatures / 128 |    47,707 |      47,535 |  36,983 |  35,680 |
+| index signatures / 512 |     8,853 |       8,740 |   6,498 |   6,063 |
+| 200-row array payload  |     9,401 |       8,475 |   7,088 |   4,171 |
 
 Average decode operations per second:
 
 | Case                   |   Default | Fingerprint |    JSON | Msgpack |
 | ---------------------- | --------: | ----------: | ------: | ------: |
-| small record           | 1,153,245 |   1,211,218 | 408,812 | 702,051 |
-| nested payload         |   493,924 |     594,944 | 217,904 | 268,354 |
-| collections            |   114,286 |     118,563 |  21,460 |  22,682 |
-| index signatures / 128 |    64,143 |      64,186 |  28,494 |  29,758 |
-| index signatures / 512 |    16,768 |      16,825 |   5,414 |   4,611 |
-| 200-row array payload  |    21,796 |      14,412 |   5,623 |   4,734 |
+| small record           | 1,199,450 |   1,242,115 | 411,452 | 694,207 |
+| nested payload         |   526,625 |     618,778 | 223,117 | 270,551 |
+| collections            |   114,810 |     118,176 |  21,513 |  22,504 |
+| index signatures / 128 |    61,267 |      63,377 |  28,704 |  30,175 |
+| index signatures / 512 |    16,234 |      16,611 |   5,436 |   4,484 |
+| 200-row array payload  |    22,795 |      14,550 |   5,750 |   4,795 |
 
 ## Streaming decode throughput
 
@@ -71,25 +71,25 @@ Average decoded values per second for batched input:
 
 | Case                   |   Default | Fingerprint | Msgpack |  NDJSON |
 | ---------------------- | --------: | ----------: | ------: | ------: |
-| small record           | 4,426,179 |   5,388,646 | 766,173 | 818,260 |
-| nested payload         |   811,488 |   1,056,372 | 284,944 | 302,941 |
-| collections            |   124,300 |     126,566 |  22,013 |  20,884 |
-| index signatures / 128 |    65,585 |      64,306 |  27,277 |  27,592 |
-| index signatures / 512 |    15,596 |      15,186 |   4,110 |   5,052 |
-| 200-row array payload  |    21,733 |      14,028 |   6,428 |   4,802 |
-| 200 single-row frames  | 2,200,444 |   2,622,259 | 835,329 | 942,351 |
+| small record           | 4,586,437 |   5,668,788 | 935,468 | 882,479 |
+| nested payload         |   898,486 |   1,142,049 | 287,903 | 318,818 |
+| collections            |   125,557 |     127,645 |  21,770 |  21,039 |
+| index signatures / 128 |    63,458 |      64,900 |  28,481 |  28,854 |
+| index signatures / 512 |    15,766 |      16,112 |   4,064 |   4,996 |
+| 200-row array payload  |    23,522 |      14,542 |   6,429 |   4,981 |
+| 200 single-row frames  | 2,405,751 |   2,723,155 | 847,372 | 957,785 |
 
 Average decoded values per second for single and first-byte-fragmented input:
 
 | Case                   | Default single | Default fragmented | Fingerprint single | Fingerprint fragmented | NDJSON single | NDJSON fragmented |
 | ---------------------- | -------------: | -----------------: | -----------------: | ---------------------: | ------------: | ----------------: |
-| small record           |      2,715,454 |          2,381,647 |          3,085,750 |              2,959,535 |       129,391 |           132,853 |
-| nested payload         |        708,896 |            680,227 |            900,923 |                903,819 |       104,936 |           103,205 |
-| collections            |        123,191 |            122,735 |            124,366 |                124,134 |        19,035 |            18,901 |
-| index signatures / 128 |         63,861 |             65,455 |             65,209 |                 64,575 |        24,281 |            23,620 |
-| index signatures / 512 |         16,305 |             15,889 |             16,118 |                 16,071 |         5,128 |             5,320 |
-| 200-row array payload  |         22,120 |             21,915 |             14,346 |                 14,276 |         5,277 |             5,170 |
-| 200 single-row frames  |      1,498,907 |          1,478,629 |          1,736,823 |              1,643,647 |       133,664 |           127,811 |
+| small record           |      2,323,703 |          2,007,804 |          2,656,481 |              2,845,030 |       140,512 |           148,261 |
+| nested payload         |        703,048 |            702,568 |            889,906 |                923,998 |       113,426 |           112,095 |
+| collections            |        122,689 |            121,517 |            124,167 |                124,286 |        19,292 |            19,203 |
+| index signatures / 128 |         61,924 |             62,192 |             64,594 |                 63,716 |        25,135 |            24,652 |
+| index signatures / 512 |         15,892 |             15,938 |             16,635 |                 16,363 |         5,111 |             5,154 |
+| 200-row array payload  |         23,752 |             23,572 |             14,724 |                 14,493 |         5,374 |             5,291 |
+| 200 single-row frames  |      1,741,599 |          1,570,286 |          1,874,392 |              1,550,497 |       131,926 |           104,455 |
 
 ## Analysis
 
