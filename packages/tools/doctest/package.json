@@ -1,6 +1,6 @@
 {
   "name": "@effect/doctest",
-  "version": "4.0.0-rc.111",
+  "version": "4.0.0-rc.112",
   "type": "module",
   "license": "MIT",
   "description": "Runs TypeScript documentation examples as Vitest tests",
