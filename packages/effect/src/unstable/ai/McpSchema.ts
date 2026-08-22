@@ -24,7 +24,7 @@ import type * as Scope from "../../Scope.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcMiddleware from "../rpc/RpcMiddleware.ts"
-import type { ProtocolVersion } from "./McpProtocol.ts"
+import type { ProtocolVersion, StatefulProtocolVersion } from "./McpProtocol.ts"
 
 /**
  * Schema type returned by `optionalWithDefault`.
@@ -700,6 +700,14 @@ export const McpError = Schema.Union([
   McpErrorBase
 ])
 
+/**
+ * Type represented by the MCP protocol error schema.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type McpError = typeof McpError.Type
+
 // =============================================================================
 // Ping
 // =============================================================================
@@ -1358,6 +1366,14 @@ export const ContentBlock = Schema.Union([
 ])
 
 /**
+ * Type represented by the MCP content block schema.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type ContentBlock = typeof ContentBlock.Type
+
+/**
  * Describes a message returned as part of a prompt.
  *
  * **Details**
@@ -1519,7 +1535,7 @@ export class ToolAnnotations extends Schema.Opaque<ToolAnnotations>()(Schema.Str
 })) {}
 
 /**
- * Object-root JSON Schema used by MCP tool inputs and outputs.
+ * Object-root JSON Schema used by MCP tool inputs.
  *
  * **Details**
  *
@@ -1529,19 +1545,19 @@ export class ToolAnnotations extends Schema.Opaque<ToolAnnotations>()(Schema.Str
  * @category tools
  * @since 4.0.0
  */
-export type ToolJsonSchema = Schema.JsonObject & {
+export type ToolJson = Schema.JsonObject & {
   readonly type: "object"
   readonly properties?: Readonly<Record<string, Schema.JsonObject>> | undefined
   readonly required?: ReadonlyArray<string> | undefined
 }
 
 /**
- * Schema for {@link ToolJsonSchema}.
+ * Schema for {@link ToolJson}.
  *
  * @category tools
  * @since 4.0.0
  */
-export const ToolJsonSchema: Schema.Codec<ToolJsonSchema> = Schema.StructWithRest(
+export const ToolJson: Schema.Codec<ToolJson> = Schema.StructWithRest(
   Schema.Struct({
     type: Schema.Literal("object"),
     properties: optional(Schema.Record(Schema.String, Schema.JsonObject)),
@@ -1549,6 +1565,24 @@ export const ToolJsonSchema: Schema.Codec<ToolJsonSchema> = Schema.StructWithRes
   }),
   [Schema.JsonObject]
 )
+
+/**
+ * JSON Schema used by MCP tool outputs.
+ *
+ * Unlike tool inputs, tool outputs may use any JSON Schema root type.
+ *
+ * @category tools
+ * @since 4.0.0
+ */
+export type ToolOutputJson = Schema.JsonObject
+
+/**
+ * Schema for {@link ToolOutputJson}.
+ *
+ * @category tools
+ * @since 4.0.0
+ */
+export const ToolOutputJson: Schema.Codec<ToolOutputJson> = Schema.JsonObject
 
 /**
  * Schema for the definition of a tool the client can call.
@@ -1573,11 +1607,11 @@ export class Tool extends Schema.Class<Tool>(
   /**
    * A JSON Schema object defining the expected parameters for the tool.
    */
-  inputSchema: ToolJsonSchema,
+  inputSchema: ToolJson,
   /**
    * An optional JSON Schema object defining the structure of the tool output.
    */
-  outputSchema: optional(ToolJsonSchema),
+  outputSchema: optional(ToolOutputJson),
   /**
    * Optional additional tool information.
    */
@@ -1836,7 +1870,7 @@ export class ToolResultContent extends Schema.Class<ToolResultContent>("@effect/
   /**
    * Optional structured result returned by the tool.
    */
-  structuredContent: optional(Schema.Record(Schema.String, Schema.Unknown)),
+  structuredContent: optional(Schema.Json),
   /**
    * Whether tool execution ended in an error.
    */
@@ -1857,6 +1891,14 @@ export const SamplingMessageContentBlock = Schema.Union([
   ToolUseContent,
   ToolResultContent
 ])
+
+/**
+ * Type represented by the MCP sampling message content block schema.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type SamplingMessageContentBlock = typeof SamplingMessageContentBlock.Type
 
 /**
  * Describes a message issued to or received from an LLM API.
@@ -2264,7 +2306,7 @@ export class RootsListChangedNotification extends Rpc.make("notifications/roots/
  * @category elicitation
  * @since 4.0.0
  */
-export class StringSchema extends Schema.Class<StringSchema>("@effect/ai/McpSchema/StringSchema")({
+export class ElicitationString extends Schema.Class<ElicitationString>("@effect/ai/McpSchema/ElicitationString")({
   type: Schema.tag("string"),
   title: optional(Schema.String),
   description: optional(Schema.String),
@@ -2280,7 +2322,7 @@ export class StringSchema extends Schema.Class<StringSchema>("@effect/ai/McpSche
  * @category elicitation
  * @since 4.0.0
  */
-export class NumberSchema extends Schema.Class<NumberSchema>("@effect/ai/McpSchema/NumberSchema")({
+export class ElicitationNumber extends Schema.Class<ElicitationNumber>("@effect/ai/McpSchema/ElicitationNumber")({
   type: Schema.Literals(["number", "integer"]),
   title: optional(Schema.String),
   description: optional(Schema.String),
@@ -2295,7 +2337,7 @@ export class NumberSchema extends Schema.Class<NumberSchema>("@effect/ai/McpSche
  * @category elicitation
  * @since 4.0.0
  */
-export class BooleanSchema extends Schema.Class<BooleanSchema>("@effect/ai/McpSchema/BooleanSchema")({
+export class ElicitationBoolean extends Schema.Class<ElicitationBoolean>("@effect/ai/McpSchema/ElicitationBoolean")({
   type: Schema.tag("boolean"),
   title: optional(Schema.String),
   description: optional(Schema.String),
@@ -2308,8 +2350,8 @@ export class BooleanSchema extends Schema.Class<BooleanSchema>("@effect/ai/McpSc
  * @category elicitation
  * @since 4.0.0
  */
-export class UntitledSingleSelectEnumSchema extends Schema.Class<UntitledSingleSelectEnumSchema>(
-  "@effect/ai/McpSchema/UntitledSingleSelectEnumSchema"
+export class UntitledSingleSelectEnum extends Schema.Class<UntitledSingleSelectEnum>(
+  "@effect/ai/McpSchema/UntitledSingleSelectEnum"
 )({
   type: Schema.tag("string"),
   title: optional(Schema.String),
@@ -2324,8 +2366,8 @@ export class UntitledSingleSelectEnumSchema extends Schema.Class<UntitledSingleS
  * @category elicitation
  * @since 4.0.0
  */
-export class TitledSingleSelectEnumSchema extends Schema.Class<TitledSingleSelectEnumSchema>(
-  "@effect/ai/McpSchema/TitledSingleSelectEnumSchema"
+export class TitledSingleSelectEnum extends Schema.Class<TitledSingleSelectEnum>(
+  "@effect/ai/McpSchema/TitledSingleSelectEnum"
 )({
   type: Schema.tag("string"),
   title: optional(Schema.String),
@@ -2343,10 +2385,18 @@ export class TitledSingleSelectEnumSchema extends Schema.Class<TitledSingleSelec
  * @category elicitation
  * @since 4.0.0
  */
-export const SingleSelectEnumSchema = Schema.Union([
-  UntitledSingleSelectEnumSchema,
-  TitledSingleSelectEnumSchema
+export const SingleSelectEnum = Schema.Union([
+  UntitledSingleSelectEnum,
+  TitledSingleSelectEnum
 ])
+
+/**
+ * Type represented by the single-select elicitation field schema.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type SingleSelectEnum = typeof SingleSelectEnum.Type
 
 /**
  * Schema for an untitled multi-select field in an MCP elicitation form.
@@ -2354,8 +2404,8 @@ export const SingleSelectEnumSchema = Schema.Union([
  * @category elicitation
  * @since 4.0.0
  */
-export class UntitledMultiSelectEnumSchema extends Schema.Class<UntitledMultiSelectEnumSchema>(
-  "@effect/ai/McpSchema/UntitledMultiSelectEnumSchema"
+export class UntitledMultiSelectEnum extends Schema.Class<UntitledMultiSelectEnum>(
+  "@effect/ai/McpSchema/UntitledMultiSelectEnum"
 )({
   type: Schema.tag("array"),
   title: optional(Schema.String),
@@ -2375,8 +2425,8 @@ export class UntitledMultiSelectEnumSchema extends Schema.Class<UntitledMultiSel
  * @category elicitation
  * @since 4.0.0
  */
-export class TitledMultiSelectEnumSchema extends Schema.Class<TitledMultiSelectEnumSchema>(
-  "@effect/ai/McpSchema/TitledMultiSelectEnumSchema"
+export class TitledMultiSelectEnum extends Schema.Class<TitledMultiSelectEnum>(
+  "@effect/ai/McpSchema/TitledMultiSelectEnum"
 )({
   type: Schema.tag("array"),
   title: optional(Schema.String),
@@ -2398,20 +2448,28 @@ export class TitledMultiSelectEnumSchema extends Schema.Class<TitledMultiSelectE
  * @category elicitation
  * @since 4.0.0
  */
-export const MultiSelectEnumSchema = Schema.Union([
-  UntitledMultiSelectEnumSchema,
-  TitledMultiSelectEnumSchema
+export const MultiSelectEnum = Schema.Union([
+  UntitledMultiSelectEnum,
+  TitledMultiSelectEnum
 ])
+
+/**
+ * Type represented by the multi-select elicitation field schema.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type MultiSelectEnum = typeof MultiSelectEnum.Type
 
 /**
  * Schema for the legacy titled single-select elicitation field.
  *
- * @deprecated Use {@link TitledSingleSelectEnumSchema} instead.
+ * @deprecated Use {@link TitledSingleSelectEnum} instead.
  * @category elicitation
  * @since 4.0.0
  */
-export class LegacyTitledEnumSchema extends Schema.Class<LegacyTitledEnumSchema>(
-  "@effect/ai/McpSchema/LegacyTitledEnumSchema"
+export class LegacyTitledEnum extends Schema.Class<LegacyTitledEnum>(
+  "@effect/ai/McpSchema/LegacyTitledEnum"
 )({
   type: Schema.tag("string"),
   title: optional(Schema.String),
@@ -2427,11 +2485,19 @@ export class LegacyTitledEnumSchema extends Schema.Class<LegacyTitledEnumSchema>
  * @category elicitation
  * @since 4.0.0
  */
-export const EnumSchema = Schema.Union([
-  SingleSelectEnumSchema,
-  MultiSelectEnumSchema,
-  LegacyTitledEnumSchema
+export const ElicitationEnum = Schema.Union([
+  SingleSelectEnum,
+  MultiSelectEnum,
+  LegacyTitledEnum
 ])
+
+/**
+ * Type represented by the elicitation enumeration field schema.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type ElicitationEnum = typeof ElicitationEnum.Type
 
 /**
  * Schema for primitive field definitions accepted by MCP elicitation forms.
@@ -2440,13 +2506,21 @@ export const EnumSchema = Schema.Union([
  * @since 4.0.0
  */
 export const PrimitiveSchemaDefinition = Schema.Union([
-  StringSchema,
-  NumberSchema,
-  BooleanSchema,
-  EnumSchema
+  ElicitationString,
+  ElicitationNumber,
+  ElicitationBoolean,
+  ElicitationEnum
 ])
 
-const ElicitationFormSchema = Schema.Struct({
+/**
+ * Type represented by the primitive elicitation field schema.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type PrimitiveSchemaDefinition = typeof PrimitiveSchemaDefinition.Type
+
+const ElicitationForm = Schema.Struct({
   $schema: optional(Schema.String),
   type: Schema.tag("object"),
   properties: Schema.Record(Schema.String, PrimitiveSchemaDefinition),
@@ -2465,7 +2539,7 @@ export class ElicitRequestFormParams extends Schema.Class<ElicitRequestFormParam
   ...RequestMeta.fields,
   mode: optional(Schema.Literal("form")),
   message: Schema.String,
-  requestedSchema: ElicitationFormSchema
+  requestedSchema: ElicitationForm
 }) {}
 
 /**
@@ -2494,6 +2568,14 @@ export const ElicitRequestParams = Schema.Union([
   ElicitRequestFormParams,
   ElicitRequestURLParams
 ])
+
+/**
+ * Type represented by the MCP elicitation request parameters schema.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type ElicitRequestParams = typeof ElicitRequestParams.Type
 
 /**
  * Schema for an accepted client response to an elicitation request.
@@ -2551,6 +2633,54 @@ export const ElicitResult = Schema.Union([
   ElicitAcceptResult,
   ElicitDeclineResult
 ])
+
+/**
+ * Type represented by the MCP elicitation result schema.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type ElicitResult = typeof ElicitResult.Type
+
+/**
+ * Version-neutral request for additional MCP client input.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type McpInputRequest =
+  | { readonly method: "roots/list"; readonly params?: Schema.JsonObject | undefined }
+  | { readonly method: "sampling/createMessage"; readonly params: Schema.JsonObject }
+  | { readonly method: "elicitation/create"; readonly params: Schema.JsonObject }
+
+/**
+ * Version-neutral response supplied by an MCP client for a prior input request.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type McpInputResponse = Schema.JsonObject
+
+/**
+ * Indicates that an MCP operation requires additional keyed input from the client.
+ *
+ * **When to use**
+ *
+ * Use when a handler cannot complete until the client supplies roots, sampling,
+ * or elicitation input in a later request.
+ *
+ * **Details**
+ *
+ * `requestState` is opaque to the client and is returned unchanged with the
+ * keyed input responses.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export class InputRequired extends Data.TaggedClass("InputRequired")<{
+  readonly inputRequests: Readonly<Record<string, McpInputRequest>>
+  readonly requestState?: string | undefined
+}> {}
 
 /**
  * Sent from the server asking the client to collect structured input from the
@@ -2648,6 +2778,30 @@ export interface McpReverseClient {
 }
 
 /**
+ * Protocol-neutral context available while handling an MCP request.
+ *
+ * **Details**
+ *
+ * Unlike `McpServerClient`, this service does not imply an initialized session
+ * or support for server-initiated requests.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export class McpRequestContext extends Context.Service<McpRequestContext, {
+  readonly clientId: number
+  readonly protocolVersion: string
+  readonly clientCapabilities: ClientCapabilities
+  readonly clientInfo?: Implementation | undefined
+  readonly requestMetadata?:
+    | NonNullable<typeof Initialize.payloadSchema.Type["_meta"]>
+    | Schema.JsonObject
+    | undefined
+  readonly inputResponses?: Readonly<Record<string, McpInputResponse>> | undefined
+  readonly requestState?: string | undefined
+}>()("effect/ai/McpSchema/McpRequestContext") {}
+
+/**
  * Service available while handling an MCP client request.
  *
  * **Details**
@@ -2660,7 +2814,7 @@ export interface McpReverseClient {
  */
 export class McpServerClient extends Context.Service<McpServerClient, {
   readonly clientId: number
-  readonly protocolVersion: ProtocolVersion
+  readonly protocolVersion: StatefulProtocolVersion
   readonly clientCapabilities: ClientCapabilities
   readonly clientInfo: Implementation
   readonly initializePayload: typeof Initialize.payloadSchema["Type"]
@@ -3021,8 +3175,13 @@ export function param<const Name extends string, S extends Schema.Constraint>(
  * @category services
  * @since 4.0.0
  */
-export class EnabledWhen
-  extends Context.Service<EnabledWhen, Predicate.Predicate<typeof Initialize.payloadSchema.Type>>()(
-    "effect/unstable/ai/McpSchema/EnabledWhen"
-  )
-{}
+export class EnabledWhen extends Context.Service<
+  EnabledWhen,
+  Predicate.Predicate<{
+    readonly protocolVersion: string
+    readonly capabilities: ClientCapabilities
+    readonly clientInfo?: Implementation | undefined
+  }>
+>()(
+  "effect/unstable/ai/McpSchema/EnabledWhen"
+) {}

@@ -29,6 +29,11 @@ const SharedTool = Tool.make("shared", {
   success: Schema.String
 }).annotate(Tool.Title, "Shared tool title")
 
+const JsonArrayTool = Tool.make("json-array", {
+  parameters: Tool.EmptyParams,
+  success: Schema.Tuple([Schema.String, Schema.Null])
+})
+
 const StructuredOnlyTool = Tool.make("structured-only", {
   parameters: Tool.EmptyParams,
   success: Schema.Struct({ value: Schema.String })
@@ -47,7 +52,7 @@ const ValidatedTool = Tool.make("validated", {
 const CapabilityTool = Tool.make("capability", {
   parameters: Tool.EmptyParams,
   success: Schema.String,
-  dependencies: [McpSchema.McpServerClient]
+  dependencies: [McpSchema.McpRequestContext]
 })
 
 const InitializeMetadataTool = Tool.make("initialize-metadata", {
@@ -68,12 +73,13 @@ const CapabilityGatedTool = Tool.make("capability-gated", {
 }).annotate(
   McpSchema.EnabledWhen,
   (client) =>
-    client.clientInfo.name === "allowed-client" &&
+    client.clientInfo?.name === "allowed-client" &&
     client.capabilities.roots !== undefined
 )
 
 const TestToolkit = Toolkit.make(
   SharedTool,
+  JsonArrayTool,
   StructuredOnlyTool,
   ValidatedTool,
   CapabilityTool,
@@ -126,6 +132,12 @@ const ResourceLinkPrompt = McpServer.prompt({
     }])
 })
 
+const MrtrTool = new McpSchema.Tool({
+  name: "mrtr-elicitation",
+  description: "Requires client input before completing",
+  inputSchema: { type: "object" }
+})
+
 interface TestState {
   sharedInvocations: number
   structuredInvocations: number
@@ -145,6 +157,7 @@ const makeFixture = Effect.fnUntraced(function*() {
           state.sharedInvocations++
           return "shared-result"
         }),
+      "json-array": () => Effect.succeed(["array", null] as const),
       "structured-only": () =>
         Effect.sync(() => {
           state.structuredInvocations++
@@ -164,8 +177,24 @@ const makeFixture = Effect.fnUntraced(function*() {
       "capability-gated": () => Effect.succeed("visible")
     })))
   )
+  const mrtrToolLayer = Layer.effectDiscard(
+    Effect.gen(function*() {
+      const server = yield* McpServer.McpServer
+      yield* server.addTool({
+        tool: MrtrTool,
+        annotations: Context.empty(),
+        handle: () =>
+          Effect.succeed(
+            new McpSchema.InputRequired({
+              inputRequests: { roots: { method: "roots/list" } }
+            })
+          )
+      })
+    })
+  )
   const serverLayer = Layer.mergeAll(
     toolkitLayer,
+    mrtrToolLayer,
     FamilyResource,
     FamilyPrompt,
     AudioPrompt,
@@ -183,6 +212,7 @@ const makeFixture = Effect.fnUntraced(function*() {
       })],
       path: "/mcp",
       protocols: [
+        McpProtocol.v2026_07_28,
         McpProtocol.v2025_11_25,
         McpProtocol.v2025_06_18,
         McpProtocol.v2025_03_26,
@@ -491,6 +521,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
       icons: [ServerIcon],
       path: "/mcp",
       protocols: [
+        McpProtocol.v2026_07_28,
         McpProtocol.v2025_11_25,
         McpProtocol.v2025_06_18,
         McpProtocol.v2025_03_26,
@@ -513,13 +544,46 @@ const JsonRpcResponse = Schema.Union([
     id: Schema.NullOr(Schema.Number),
     error: Schema.Struct({
       code: Schema.Number,
-      message: Schema.String
+      message: Schema.String,
+      data: Schema.optionalKey(Schema.Unknown)
     })
   })
 ])
 type JsonRpcResponse = typeof JsonRpcResponse.Type
 
 const decodeJsonRpcResponse = Schema.decodeUnknownEffect(JsonRpcResponse)
+
+const modernMetadata = (
+  capabilities: Record<string, unknown> = {},
+  clientInfo: { readonly name: string; readonly version: string } = {
+    name: "ModernProtocolAdapterClient",
+    version: "1.0.0"
+  }
+) => ({
+  "io.modelcontextprotocol/protocolVersion": McpProtocol.v2026_07_28.protocolVersion,
+  "io.modelcontextprotocol/clientCapabilities": capabilities,
+  "io.modelcontextprotocol/clientInfo": clientInfo
+})
+
+const modernRequest = (
+  id: number,
+  method: string,
+  params: Record<string, unknown> = {},
+  metadata: Record<string, unknown> = modernMetadata()
+) => ({
+  jsonrpc: "2.0",
+  id,
+  method,
+  params: { ...params, _meta: metadata }
+})
+
+const modernHeaders = (
+  method: string,
+  protocolVersion: string = McpProtocol.v2026_07_28.protocolVersion
+): HeadersInit => ({
+  "MCP-Protocol-Version": protocolVersion,
+  "Mcp-Method": method
+})
 
 const initialize = Effect.fnUntraced(function*(
   post: Effect.Success<ReturnType<typeof makeFixture>>["post"],
@@ -607,6 +671,29 @@ const textResult = (message: JsonRpcResponse): string => {
 }
 
 describe("McpServer protocol adapters", () => {
+  it.effect("should discover the modern server without initialization or a session", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+      const response = yield* fixture.post(
+        modernRequest(19, "server/discover"),
+        modernHeaders("server/discover")
+      )
+      const message = yield* Effect.promise<unknown>(() => response.json()).pipe(
+        Effect.flatMap(decodeJsonRpcResponse)
+      )
+      const result = resultOf(message)
+
+      assert.strictEqual(response.status, 200)
+      assert.isNull(response.headers.get("Mcp-Session-Id"))
+      assert.deepStrictEqual(result.supportedVersions, [
+        "2026-07-28",
+        "2025-11-25",
+        "2025-06-18",
+        "2025-03-26",
+        "2024-11-05"
+      ])
+    }))
+
   it.effect("should keep log levels isolated when one session updates its level", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
@@ -623,6 +710,139 @@ describe("McpServer protocol adapters", () => {
         textResult(yield* second.request("tools/call", { name: "log-level" })),
         "Info"
       )
+    }))
+
+  it.effect("should isolate interleaved stateful and stateless request contexts", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+      const legacy = yield* initialize(fixture.post, "2025-11-25", {
+        capabilities: { roots: {} },
+        clientInfo: { name: "legacy-client", version: "1.0.0" }
+      })
+
+      assert.strictEqual(
+        textResult(yield* legacy.request("tools/call", { name: "capability" })),
+        JSON.stringify({ roots: {} })
+      )
+
+      const modernResponse = yield* fixture.post(
+        modernRequest(
+          20,
+          "tools/call",
+          { name: "capability", arguments: {} },
+          modernMetadata({ sampling: {} }, {
+            name: "modern-client",
+            version: "2.0.0"
+          })
+        ),
+        { ...modernHeaders("tools/call"), "Mcp-Name": "capability", "Mcp-Session-Id": "ignored-modern-session" }
+      )
+      const modern = yield* Effect.promise<unknown>(() => modernResponse.json()).pipe(
+        Effect.flatMap(decodeJsonRpcResponse)
+      )
+
+      assert.isNull(modernResponse.headers.get("Mcp-Session-Id"))
+      assert.strictEqual(textResult(modern), JSON.stringify({ sampling: {} }))
+      assert.strictEqual(
+        textResult(yield* legacy.request("tools/call", { name: "capability" })),
+        JSON.stringify({ roots: {} })
+      )
+    }))
+
+  it.effect("should keep malformed modern requests out of legacy routing", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+      const unsupportedVersion = "2099-01-01"
+      const cases = [
+        {
+          name: "missing request metadata",
+          body: { jsonrpc: "2.0", id: 30, method: "tools/list", params: {} },
+          headers: modernHeaders("tools/list"),
+          status: 400,
+          code: -32020
+        },
+        {
+          name: "missing protocol header",
+          body: modernRequest(31, "tools/list"),
+          headers: { "Mcp-Method": "tools/list" },
+          status: 400,
+          code: -32020
+        },
+        {
+          name: "malformed client identity",
+          body: modernRequest(32, "tools/list", {}, {
+            ...modernMetadata(),
+            "io.modelcontextprotocol/clientInfo": true
+          }),
+          headers: modernHeaders("tools/list"),
+          status: 200,
+          code: McpSchema.INVALID_PARAMS_ERROR_CODE
+        },
+        {
+          name: "unsupported protocol version",
+          body: modernRequest(33, "tools/list", {}, {
+            ...modernMetadata(),
+            "io.modelcontextprotocol/protocolVersion": unsupportedVersion
+          }),
+          headers: modernHeaders("tools/list", unsupportedVersion),
+          status: 400,
+          code: -32022,
+          supported: [
+            "2026-07-28",
+            "2025-11-25",
+            "2025-06-18",
+            "2025-03-26",
+            "2024-11-05"
+          ]
+        },
+        {
+          name: "modern metadata on initialize",
+          body: {
+            jsonrpc: "2.0",
+            id: 34,
+            method: "initialize",
+            params: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              clientInfo: { name: "legacy-shape", version: "1.0.0" },
+              _meta: modernMetadata()
+            }
+          },
+          headers: modernHeaders("initialize"),
+          status: 400,
+          code: -32020
+        }
+      ] as const
+
+      for (const testCase of cases) {
+        const response = yield* fixture.post(testCase.body, testCase.headers)
+        const message = yield* Effect.promise<unknown>(() => response.json()).pipe(
+          Effect.flatMap(decodeJsonRpcResponse)
+        )
+        if (!("error" in message)) {
+          assert.fail(`${testCase.name}: expected error, received result`)
+        }
+        const error = message.error
+
+        assert.strictEqual(response.status, testCase.status, testCase.name)
+        assert.strictEqual(error.code, testCase.code, testCase.name)
+        if ("supported" in testCase) {
+          assert.deepStrictEqual(
+            (error.data as { readonly supported?: ReadonlyArray<string> } | undefined)?.supported,
+            testCase.supported,
+            testCase.name
+          )
+        }
+      }
+    }))
+
+  it.effect("should reject client input when the selected protocol cannot encode it", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+      const legacy = yield* initialize(fixture.post, "2025-11-25")
+      const legacyError = errorOf(yield* legacy.request("tools/call", { name: MrtrTool.name, arguments: {} }))
+      assert.strictEqual(legacyError.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+      assert.match(legacyError.message, /Client input is not supported/)
     }))
 
   it.effect("should reject prompt content when the negotiated schema cannot represent it", () =>
@@ -822,6 +1042,63 @@ describe("McpServer protocol adapters", () => {
       assert.strictEqual(sends, 0)
     }).pipe(Effect.scoped))
 
+  it.effect("should reject direct reverse operations when the selected protocol is stateless", () =>
+    Effect.gen(function*() {
+      let sends = 0
+      const reverseProtocol = yield* RpcClient.Protocol.make(() =>
+        Effect.succeed({
+          send: () =>
+            Effect.sync(() => {
+              sends++
+            }),
+          supportsAck: true,
+          supportsTransferables: false,
+          supportsStructuredClone: false
+        })
+      )
+      const protocol = McpProtocol.v2026_07_28
+      const client = yield* protocol.makeReverseClient({
+        protocolVersion: protocol.protocolVersion,
+        clientCapabilities: {},
+        clientInfo: { name: "test", version: "1.0.0" }
+      }).pipe(
+        Effect.provideService(RpcClient.Protocol, reverseProtocol)
+      )
+      const operations: ReadonlyArray<
+        readonly [
+          string,
+          Effect.Effect<
+            unknown,
+            McpSchema.McpReverseOperationError | McpSchema.McpReverseOperationUnsupported
+          >
+        ]
+      > = [
+        ["roots/list", client.listRoots()],
+        [
+          "sampling/createMessage",
+          client.createMessage(McpSchema.CreateMessage.payloadSchema.make({
+            messages: [{ role: "user", content: { type: "text", text: "sample" } }],
+            maxTokens: 64
+          }))
+        ],
+        [
+          "elicitation/create",
+          client.elicit({
+            message: "test",
+            requestedSchema: { type: "object", properties: {} }
+          })
+        ]
+      ]
+
+      for (const [operation, effect] of operations) {
+        const error = yield* effect.pipe(Effect.flip)
+        assert.instanceOf(error, McpSchema.McpReverseOperationUnsupported)
+        assert.strictEqual(error.operation, operation)
+        assert.strictEqual(error.protocolVersion, protocol.protocolVersion)
+      }
+      assert.strictEqual(sends, 0)
+    }).pipe(Effect.scoped))
+
   it.effect("should omit June fields when projecting a March tool descriptor", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
@@ -971,6 +1248,65 @@ describe("McpServer protocol adapters", () => {
       assert.notProperty(oldSchemaOutput, "_meta")
     }))
 
+  it.effect("should project non-object JSON Toolkit outputs only for the July protocol", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+
+      for (const protocolVersion of ["2025-06-18", "2025-11-25"] as const) {
+        const client = yield* initialize(fixture.post, protocolVersion)
+        const tools = listedTools(yield* client.request("tools/list"))
+        for (const name of ["shared", "json-array"]) {
+          const tool = tools.find((tool) => tool.name === name)
+          assert.isDefined(tool)
+          assert.notProperty(tool, "outputSchema")
+        }
+
+        for (const name of ["shared", "json-array"]) {
+          const result = resultOf(yield* client.request("tools/call", { name }))
+          assert.notProperty(result, "structuredContent")
+        }
+      }
+
+      const listResponse = yield* fixture.post(
+        modernRequest(42, "tools/list"),
+        { ...modernHeaders("tools/list"), "Mcp-Name": "toolkit-output" }
+      )
+      const listResult = listedTools(
+        yield* Effect.promise<unknown>(() => listResponse.json()).pipe(
+          Effect.flatMap(decodeJsonRpcResponse)
+        )
+      )
+      assert.deepStrictEqual(listResult.find((tool) => tool.name === "shared")?.outputSchema, { type: "string" })
+      assert.deepStrictEqual(listResult.find((tool) => tool.name === "json-array")?.outputSchema, {
+        type: "array",
+        prefixItems: [{ type: "string" }, { type: "null" }],
+        minItems: 2,
+        maxItems: 2
+      })
+
+      const callResponse = yield* fixture.post(
+        modernRequest(43, "tools/call", { name: "shared", arguments: {} }),
+        { ...modernHeaders("tools/call"), "Mcp-Name": "shared" }
+      )
+      const callResult = resultOf(
+        yield* Effect.promise<unknown>(() => callResponse.json()).pipe(
+          Effect.flatMap(decodeJsonRpcResponse)
+        )
+      )
+      assert.strictEqual(callResult.structuredContent, "shared-result")
+
+      const arrayCallResponse = yield* fixture.post(
+        modernRequest(44, "tools/call", { name: "json-array", arguments: {} }),
+        { ...modernHeaders("tools/call"), "Mcp-Name": "json-array" }
+      )
+      const arrayCallResult = resultOf(
+        yield* Effect.promise<unknown>(() => arrayCallResponse.json()).pipe(
+          Effect.flatMap(decodeJsonRpcResponse)
+        )
+      )
+      assert.deepStrictEqual(arrayCallResult.structuredContent, ["array", null])
+    }))
+
   it.effect("should encode binary content for every revision that can represent it", () =>
     Effect.gen(function*() {
       const fixture = yield* makeLowLevelFixture()
@@ -1022,17 +1358,28 @@ describe("McpServer protocol adapters", () => {
         assert.notProperty(scalarResult, "structuredContent")
       }
 
-      const currentClient = yield* initialize(fixture.post, "2025-06-18")
-      const objectResult = resultOf(
-        yield* currentClient.request("tools/call", { name: "structured-object" })
-      )
-      assert.deepStrictEqual(objectResult.structuredContent, { value: "fixture" })
+      for (const protocolVersion of ["2025-06-18", "2025-11-25"] as const) {
+        const client = yield* initialize(fixture.post, protocolVersion)
+        const objectResult = resultOf(
+          yield* client.request("tools/call", { name: "structured-object" })
+        )
+        const scalarResult = resultOf(
+          yield* client.request("tools/call", { name: "structured-scalar" })
+        )
+        assert.deepStrictEqual(objectResult.structuredContent, { value: "fixture" })
+        assert.notProperty(scalarResult, "structuredContent")
+      }
 
-      const scalarError = errorOf(
-        yield* currentClient.request("tools/call", { name: "structured-scalar" })
+      const modernResponse = yield* fixture.post(
+        modernRequest(41, "tools/call", { name: "structured-scalar", arguments: {} }),
+        { ...modernHeaders("tools/call"), "Mcp-Name": "structured-scalar" }
       )
-      assert.strictEqual(scalarError.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
-      assert.match(scalarError.message, /non-object structured tool content is not supported by MCP 2025-06-18/)
+      const modernResult = resultOf(
+        yield* Effect.promise<unknown>(() => modernResponse.json()).pipe(
+          Effect.flatMap(decodeJsonRpcResponse)
+        )
+      )
+      assert.strictEqual(modernResult.structuredContent, "fixture")
     }))
 
   it.effect("should preserve only supported metadata when projecting embedded resource content", () =>

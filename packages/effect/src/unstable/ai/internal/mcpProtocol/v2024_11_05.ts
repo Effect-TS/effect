@@ -6,6 +6,7 @@ import * as Schema from "../../../../Schema.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
+import * as McpRuntime from "../mcpRuntime.ts"
 import * as McpSchema from "../mcpSchema/v2024_11_05.ts"
 
 const ClientRequestRpcs = McpSchema.ClientRequestRpcs.middleware(
@@ -106,10 +107,10 @@ const projectContent = Effect.fnUntraced(function*(content: typeof PublicMcpSche
 /** @internal */
 export const protocol = McpProtocol.make({
   protocolVersion: McpSchema.protocolVersion,
-  transport: {
-    acceptsJsonRpcBatches: false,
-    requiresVersionHeader: false
-  },
+  runtime: McpRuntime.stateful({
+    jsonRpc: { acceptsBatches: false },
+    http: { requiresVersionHeader: false }
+  }),
   clientRpcs: ClientRpcs,
   clientNotificationRpcs: McpSchema.ClientNotificationRpcs,
   serverRequestRpcs: McpSchema.ServerRequestRpcs,
@@ -254,6 +255,7 @@ export const protocol = McpProtocol.make({
           { ...call, arguments: call.arguments ?? {} },
           McpProtocol.invocationFromClient(request)
         ).pipe(
+          Effect.flatMap((outcome) => McpProtocol.requireCompleteOperation(McpSchema.protocolVersion, outcome)),
           Effect.mapError(McpProtocol.ProtocolError.fromTool)
         )
         const content = yield* Effect.forEach(result.content, projectContent).pipe(

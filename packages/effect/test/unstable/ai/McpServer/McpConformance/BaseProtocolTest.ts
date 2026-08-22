@@ -11,6 +11,198 @@ import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 
 export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
+    describe("Base Protocol > General fields", () => {
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic#general-fields
+      it.effect("should preserve additional result metadata fields when decoding a result", () =>
+        Effect.gen(function*() {
+          const result = yield* Schema.decodeUnknownEffect(McpSchema.ReadResourceResult)({
+            contents: [],
+            _meta: {
+              "example/conformance": {
+                enabled: true,
+                labels: ["one", "two"]
+              }
+            }
+          })
+
+          assert.deepStrictEqual(result._meta, {
+            "example/conformance": {
+              enabled: true,
+              labels: ["one", "two"]
+            }
+          })
+        }))
+    })
+  })
+
+export const statelessModernSuite = (
+  protocol: McpProtocol.ProtocolAdapter,
+  layer: McpConformanceLayer
+) =>
+  it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
+    const requestMetadata = {
+      "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion,
+      "io.modelcontextprotocol/clientCapabilities": {},
+      "io.modelcontextprotocol/clientInfo": { name: "stdio-client", version: "1.0.0" }
+    }
+
+    describe("Base Protocol > Stateless messages", () => {
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic#requests
+      it.effect("should preserve string and numeric identifiers when requests succeed", () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol)
+          for (const id of ["discover-1", 42] as const) {
+            const message = yield* fixture.sendRequest("server/discover", {}, id)
+            assert.strictEqual(message.id, id)
+          }
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic#requests
+      it.effect("should reject a request when its JSON-RPC version is invalid", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const discovered = yield* test.initialize()
+          const response = yield* test.send(discovered, {
+            jsonrpc: "1.0",
+            id: 2,
+            method: "server/discover",
+            params: {}
+          })
+          const message = yield* test.decodeError(response)
+
+          assert.strictEqual(message.id, 2)
+          assert.strictEqual(message.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic#requests
+      it.effect("should reject a request when its identifier is not a string or integer", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const discovered = yield* test.initialize()
+          const response = yield* test.send(discovered, {
+            jsonrpc: "2.0",
+            id: true,
+            method: "server/discover",
+            params: {}
+          })
+          const message = yield* test.decodeError(response)
+
+          assert.strictEqual(message.id, null)
+          assert.strictEqual(message.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic#requests
+      it.effect("should return method not found when the requested method is unknown", () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol)
+          const message = yield* fixture.sendRequest("unknown/method", {}, 3)
+
+          assert.strictEqual(message.id, 3)
+          const error = Schema.decodeUnknownSync(McpSchema.McpError)(message.error)
+          assert.strictEqual(error.code, McpSchema.METHOD_NOT_FOUND_ERROR_CODE)
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic#requests
+      it.effect("should return invalid params when request parameters do not match the method schema", () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol)
+          const message = yield* fixture.sendRequest("tools/list", { cursor: 1 }, 7)
+
+          assert.strictEqual(message.id, 7)
+          const error = Schema.decodeUnknownSync(McpSchema.McpError)(message.error)
+          assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic#notifications
+      it.effect("should send no response when an unknown notification is received", () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol)
+          yield* fixture.sendNotification("unknown/method", {})
+          const response = yield* fixture.takeMessage.pipe(Effect.timeoutOption("1 millis"), Effect.forkChild)
+          yield* TestClock.adjust("1 millis")
+
+          assert.isTrue(Option.isNone(yield* Fiber.join(response)))
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic#notifications
+      it.effect("should send no response when notification parameters are invalid", () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol)
+          yield* fixture.sendNotification("notifications/cancelled", { requestId: true })
+          const response = yield* fixture.takeMessage.pipe(Effect.timeoutOption("1 millis"), Effect.forkChild)
+          yield* TestClock.adjust("1 millis")
+
+          assert.isTrue(Option.isNone(yield* Fiber.join(response)))
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic#responses
+      it.effect("should send exactly one result response when a request succeeds", () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol)
+          yield* fixture.sendRaw({
+            jsonrpc: "2.0",
+            id: 4,
+            method: "server/discover",
+            params: { _meta: requestMetadata }
+          })
+          const message = yield* fixture.takeMessage
+          assert.strictEqual(message.id, 4)
+          assert.property(message, "result")
+          assert.notProperty(message, "error")
+
+          const duplicate = yield* fixture.takeMessage.pipe(Effect.timeoutOption("1 millis"), Effect.forkChild)
+          yield* TestClock.adjust("1 millis")
+          assert.isTrue(Option.isNone(yield* Fiber.join(duplicate)))
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic#responses
+      it.effect("should send exactly one error response when a request fails", () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol)
+          yield* fixture.sendRaw({
+            jsonrpc: "2.0",
+            id: 8,
+            method: "unknown/method",
+            params: { _meta: requestMetadata }
+          })
+          const message = yield* fixture.takeMessage
+          assert.strictEqual(message.id, 8)
+          assert.property(message, "error")
+          assert.notProperty(message, "result")
+
+          const duplicate = yield* fixture.takeMessage.pipe(Effect.timeoutOption("1 millis"), Effect.forkChild)
+          yield* TestClock.adjust("1 millis")
+          assert.isTrue(Option.isNone(yield* Fiber.join(duplicate)))
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic#messages
+      it.effect("should return a parse error when a JSON message is malformed", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const discovered = yield* test.initialize()
+          const response = yield* test.sendText(discovered, "{")
+          const message = yield* test.decodeError(response)
+
+          assert.strictEqual(message.id, null)
+          assert.strictEqual(message.error.code, McpSchema.PARSE_ERROR_CODE)
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic#messages
+      it.effect("should return invalid request when a JSON-RPC message omits its method", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const discovered = yield* test.initialize()
+          const response = yield* test.send(discovered, { jsonrpc: "2.0", id: 10, params: {} })
+          const message = yield* test.decodeError(response)
+
+          assert.strictEqual(message.id, 10)
+          assert.strictEqual(message.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+        }))
+    })
+  })
+
+export const statefulLegacySuite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
+  it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Base Protocol", () => {
       // https://modelcontextprotocol.io/specification/2025-06-18/basic
       describe("Messages", () => {
@@ -271,28 +463,6 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             assert.strictEqual(message.id, 10)
             assert.strictEqual(message.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
-          }))
-      })
-
-      describe("General fields", () => {
-        it.effect("SCHEMA preserves additional result metadata fields", () =>
-          Effect.gen(function*() {
-            const result = yield* Schema.decodeUnknownEffect(McpSchema.ReadResourceResult)({
-              contents: [],
-              _meta: {
-                "example/conformance": {
-                  enabled: true,
-                  labels: ["one", "two"]
-                }
-              }
-            })
-
-            assert.deepStrictEqual(result._meta, {
-              "example/conformance": {
-                enabled: true,
-                labels: ["one", "two"]
-              }
-            })
           }))
       })
     })

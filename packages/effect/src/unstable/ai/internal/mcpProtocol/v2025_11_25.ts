@@ -1,10 +1,12 @@
 import * as Effect from "../../../../Effect.ts"
 import * as Encoding from "../../../../Encoding.ts"
 import * as Match from "../../../../Match.ts"
+import * as Predicate from "../../../../Predicate.ts"
 import * as Schema from "../../../../Schema.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
+import * as McpRuntime from "../mcpRuntime.ts"
 import * as McpSchema from "../mcpSchema/v2025_11_25.ts"
 
 const ClientRequestRpcs = McpSchema.ClientRequestRpcs.middleware(
@@ -14,6 +16,21 @@ const ClientRequestRpcs = McpSchema.ClientRequestRpcs.middleware(
 const ClientRpcs = ClientRequestRpcs.merge(McpSchema.ClientNotificationRpcs)
 
 const AdapterRpcs = ClientRpcs.omit("ping")
+const isToolOutputSchema = (
+  schema: PublicMcpSchema.ToolOutputJson | undefined
+): schema is PublicMcpSchema.ToolJson => {
+  if (schema?.type !== "object") {
+    return false
+  }
+
+  const isPropertiesSupported = schema.properties === undefined ||
+    (Predicate.isReadonlyObject(schema.properties) &&
+      Object.values(schema.properties).every(Predicate.isReadonlyObject))
+  const isRequiredDefined = schema.required === undefined ||
+    (Array.isArray(schema.required) && schema.required.every(Predicate.isString))
+
+  return isPropertiesSupported && isRequiredDefined
+}
 
 const unsupported = (
   operation: PublicMcpSchema.McpReverseOperationUnsupported["operation"],
@@ -103,23 +120,19 @@ const projectContent = Effect.fnUntraced(function*(content: typeof PublicMcpSche
   )
 })
 
-const projectStructuredContent = Effect.fnUntraced(function*(content: Schema.Json | undefined) {
-  if (content === undefined || Schema.is(Schema.JsonObject)(content)) {
-    return content
-  }
-  return yield* new McpCore.UnsupportedByProtocol({
-    protocolVersion: McpSchema.protocolVersion,
-    feature: "non-object structured tool content"
-  })
-})
+const projectStructuredContent = (
+  content: Schema.Json | undefined
+): Schema.JsonObject | undefined => content === undefined || isJsonObject(content) ? content : undefined
+
+const isJsonObject = (value: Schema.Json): value is Schema.JsonObject => Predicate.isReadonlyObject(value)
 
 /** @internal */
 export const protocol = McpProtocol.make({
   protocolVersion: McpSchema.protocolVersion,
-  transport: {
-    acceptsJsonRpcBatches: false,
-    requiresVersionHeader: true
-  },
+  runtime: McpRuntime.stateful({
+    jsonRpc: { acceptsBatches: false },
+    http: { requiresVersionHeader: true }
+  }),
   clientRpcs: ClientRpcs,
   clientNotificationRpcs: McpSchema.ClientNotificationRpcs,
   serverRequestRpcs: McpSchema.ServerRequestRpcs,
@@ -278,7 +291,9 @@ export const protocol = McpProtocol.make({
               title: tool.title,
               description: tool.description,
               inputSchema: tool.inputSchema,
-              outputSchema: tool.outputSchema,
+              outputSchema: isToolOutputSchema(tool.outputSchema)
+                ? tool.outputSchema
+                : undefined,
               icons: tool.icons,
               annotations: tool.annotations === undefined
                 ? undefined
@@ -299,6 +314,7 @@ export const protocol = McpProtocol.make({
           { ...call, arguments: call.arguments ?? {} },
           McpProtocol.invocationFromClient(request)
         ).pipe(
+          Effect.flatMap((outcome) => McpProtocol.requireCompleteOperation(McpSchema.protocolVersion, outcome)),
           Effect.catchTag("InvalidToolInput", (error) =>
             Effect.succeed(PublicMcpSchema.CallToolResult.make({
               content: [PublicMcpSchema.TextContent.make({
@@ -312,9 +328,7 @@ export const protocol = McpProtocol.make({
         const content = yield* Effect.forEach(result.content, projectContent).pipe(
           Effect.mapError(McpProtocol.ProtocolError.fromTool)
         )
-        const structuredContent = yield* projectStructuredContent(result.structuredContent).pipe(
-          Effect.mapError(McpProtocol.ProtocolError.fromTool)
-        )
+        const structuredContent = projectStructuredContent(result.structuredContent)
         return McpSchema.CallToolResult.make({
           content,
           structuredContent,

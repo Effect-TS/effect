@@ -26,6 +26,7 @@ import type * as RpcMessage from "effect/unstable/rpc/RpcMessage"
 import * as RpcServer from "effect/unstable/rpc/RpcServer"
 import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
+import { makeMcpStdioHarness } from "./TestUtils/McpStdioHarness.ts"
 
 const OptionalStringTool = Tool.make("OptionalStringTool", {
   parameters: Schema.Struct({ signature: Schema.optional(Schema.String) }),
@@ -222,6 +223,32 @@ describe("McpServer", () => {
         )
 
         assert.isUndefined(received)
+      }))
+
+    it.effect("should provide neutral and legacy request services to legacy handlers", () =>
+      Effect.gen(function*() {
+        const server = yield* McpServer.McpServer.make
+        let received: string | undefined
+        yield* server.addTool({
+          tool: new McpSchema.Tool({
+            name: "request-services",
+            inputSchema: { type: "object" }
+          }),
+          annotations: Context.empty(),
+          handle: () =>
+            Effect.gen(function*() {
+              const request = yield* McpSchema.McpRequestContext
+              const client = yield* McpSchema.McpServerClient
+              received = `${request.protocolVersion}:${client.initializePayload.clientInfo.name}`
+              return new McpSchema.CallToolResult({ content: [] })
+            })
+        })
+
+        yield* server.callTool({ name: "request-services" }).pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient)
+        )
+
+        assert.strictEqual(received, "2025-06-18:TestClient")
       }))
   })
 
@@ -605,8 +632,54 @@ describe("McpServer", () => {
       }))
   })
 
+  describe("list-change notification scheduling", () => {
+    it.effect("should coalesce notifications when one registration kind changes repeatedly in a scheduling window", () =>
+      Effect.gen(function*() {
+        const fixture = yield* makeMcpStdioHarness(McpProtocol.v2026_07_28)
+        const makeTool = (name: string) => ({
+          tool: new McpSchema.Tool({ name, inputSchema: { type: "object", properties: {} } }),
+          annotations: Context.empty(),
+          handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
+        })
+        const makePrompt = (name: string) => ({
+          prompt: new McpSchema.Prompt({ name }),
+          annotations: Context.empty(),
+          completions: {},
+          handle: () =>
+            Effect.succeed(
+              new McpSchema.GetPromptResult({
+                messages: [{ role: "user", content: { type: "text", text: name } }]
+              })
+            )
+        })
+
+        yield* fixture.server.addTool(makeTool("baseline-tool"))
+        yield* fixture.server.addPrompt(makePrompt("baseline-prompt"))
+        yield* fixture.flushListChanged
+        yield* fixture.initialize()
+        const subscription = yield* fixture.startRequest("subscriptions/listen", {
+          notifications: { toolsListChanged: true, promptsListChanged: true }
+        }, "coalesced-list-change")
+        assert.strictEqual((yield* fixture.takeMessage).method, "notifications/subscriptions/acknowledged")
+
+        yield* fixture.server.addTool(makeTool("coalesced-tool-first"))
+        yield* fixture.server.addTool(makeTool("coalesced-tool-second"))
+        yield* fixture.server.addPrompt(makePrompt("coalescing-sentinel"))
+        yield* fixture.flushListChanged
+
+        assert.strictEqual((yield* fixture.takeMessage).method, "notifications/tools/list_changed")
+        assert.strictEqual((yield* fixture.takeMessage).method, "notifications/prompts/list_changed")
+
+        yield* fixture.server.addTool(makeTool("next-window-tool"))
+        yield* fixture.flushListChanged
+        assert.strictEqual((yield* fixture.takeMessage).method, "notifications/tools/list_changed")
+
+        yield* subscription.cancel()
+      }))
+  })
+
   describe("resource subscriptions", () => {
-    it.effect("should isolate resource update subscriptions between sessions", () =>
+    it.effect("should isolate resource subscriptions and clear disconnected sessions", () =>
       Effect.gen(function*() {
         const clientIds = new Set([1, 2])
         const client1Outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
@@ -708,6 +781,32 @@ describe("McpServer", () => {
         assert.strictEqual((yield* nextResourceUpdate(2)).uri, "file:///sentinel")
         assert.isTrue(Option.isNone(yield* Queue.poll(client1Outbound)))
         assert.isTrue(Option.isNone(yield* Queue.poll(client2Outbound)))
+
+        clientIds.delete(1)
+        yield* server.notifications["notifications/resources/updated"]({ uri: "file:///sentinel" })
+        assert.strictEqual((yield* nextResourceUpdate(2)).uri, "file:///sentinel")
+        clientIds.add(1)
+        yield* send(1, {
+          _tag: "Request",
+          id: 30,
+          tag: "ping",
+          payload: {},
+          headers: []
+        })
+        const afterSweep = yield* nextResponse(1, 30)
+        assert.strictEqual(afterSweep.exit._tag, "Failure")
+
+        yield* initialize(1)
+        yield* send(1, { _tag: "Eof" })
+        yield* send(1, {
+          _tag: "Request",
+          id: 31,
+          tag: "ping",
+          payload: {},
+          headers: []
+        })
+        const afterReconnect = yield* nextResponse(1, 31)
+        assert.strictEqual(afterReconnect.exit._tag, "Failure")
       }))
   })
 

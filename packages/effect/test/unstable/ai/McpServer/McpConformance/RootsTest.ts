@@ -2,7 +2,6 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
-import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 
 const rootsHandler = (roots: ReadonlyArray<{ readonly uri: string; readonly name?: string }>) => () =>
@@ -107,27 +106,6 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.isTrue("code" in error)
             if ("code" in error) assert.strictEqual(error.code, McpSchema.INTERNAL_ERROR_CODE)
             assert.strictEqual(error.message, "Roots unavailable")
-          }))
-      })
-
-      describe("Root List Changes", () => {
-        it.effect("SHOULD refresh roots after a capable client reports a list change", () =>
-          Effect.gen(function*() {
-            const fixture = yield* makeMcpStdioHarness(protocol)
-            yield* fixture.initialize({ roots: { listChanged: true } })
-
-            yield* fixture.sendNotification("notifications/roots/list_changed")
-
-            const request = yield* fixture.awaitOutboundMethod("roots/list")
-            assert.strictEqual(request.jsonrpc, "2.0")
-            assert.strictEqual(request.method, "roots/list")
-            if (typeof request.id !== "string" && typeof request.id !== "number") {
-              return assert.fail("roots/list request must include an identifier")
-            }
-
-            yield* fixture.respond(request.id, {
-              roots: [{ uri: "file:///updated", name: "Updated" }]
-            })
           }))
       })
     })
