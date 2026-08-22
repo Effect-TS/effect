@@ -13,7 +13,7 @@ import {
 import type { Predicate } from "effect"
 import { Array as Arr, Chunk, Equal, Equivalence, Option, Order, Result } from "effect"
 import { identity, pipe } from "effect/Function"
-import { FastCheck as fc } from "effect/testing"
+import * as fc from "fast-check"
 
 const assertTuple = <A, B>(
   actual: [Chunk.Chunk<A>, Chunk.Chunk<B>],
