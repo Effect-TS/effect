@@ -26,7 +26,7 @@ const terrains = {
 describe("Dijkstra", () => {
   it("should find paths using Dijkstra algorithm", () => {
     const parsed = parseTerrain(terrains.simple)
-    const result = Graph.dijkstra(parsed.graph, {
+    const result = Graph.dijkstraUnsafe(parsed.graph, {
       source: parsed.nodes.get("1:1")!,
       target: parsed.nodes.get("28:13")!,
       cost: (weight: number) => weight
@@ -39,7 +39,7 @@ describe("Dijkstra", () => {
 describe("Bellman-Ford", () => {
   it("should find paths using Bellman-Ford algorithm", () => {
     const parsed = parseTerrain(terrains.simple)
-    const result = Graph.bellmanFord(parsed.graph, {
+    const result = Graph.bellmanFordUnsafe(parsed.graph, {
       source: parsed.nodes.get("1:1")!,
       target: parsed.nodes.get("28:13")!,
       cost: (weight: number) => weight
@@ -52,7 +52,7 @@ describe("Bellman-Ford", () => {
 describe("A*", () => {
   it("should find paths using A* algorithm", () => {
     const parsed = parseTerrain(terrains.simple)
-    const result = Graph.astar(parsed.graph, {
+    const result = Graph.astarUnsafe(parsed.graph, {
       source: parsed.nodes.get("1:1")!,
       target: parsed.nodes.get("28:13")!,
       cost: (weight: number) => weight,
@@ -142,7 +142,7 @@ const pathFromSequence = (
     output.distance += node.weight
     output.costs.push(node.weight)
     const previousIndex = output.path[output.path.length - 1]
-    const edge = Graph.edgesBetween(terrain.graph, previousIndex, index)[0]
+    const edge = Graph.edgesBetweenUnsafe(terrain.graph, previousIndex, index)[0]
     if (edge === undefined) {
       throw new Error(`No edge from ${previousIndex} to ${index}`)
     }
@@ -310,7 +310,7 @@ const parseTerrain = (ascii: string): Terrain => {
 
           const adjacentNode = nodes.get(`${adjacentX}:${adjacentY}`)
           if (adjacentNode !== undefined) {
-            Graph.addEdge(mutable, node, adjacentNode, adjacentWeight)
+            Graph.addEdgeUnsafe(mutable, node, adjacentNode, adjacentWeight)
           }
         }
       }

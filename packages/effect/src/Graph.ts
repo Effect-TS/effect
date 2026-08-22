@@ -20,6 +20,7 @@ import * as MutableHashMap from "./MutableHashMap.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
+import * as Result from "./Result.ts"
 import type { Covariant, Invariant } from "./Types.ts"
 
 const TypeId = internal.TypeId
@@ -336,16 +337,14 @@ export type MutableUndirectedGraph<N, E> = MutableGraph<N, E, "undirected">
 // Errors
 // =============================================================================
 
-// TODO: Do we need safe variants for these?
-
 /**
- * Error thrown by graph operations when the requested graph structure is
+ * Error returned by safe graph operations when the requested graph structure is
  * invalid, such as referencing a missing node or using unsupported edge
  * weights.
  *
  * **When to use**
  *
- * Use when handling failures thrown by graph operations that reject invalid
+ * Use when handling failures from graph operations that reject invalid
  * graph structure or unsupported algorithm inputs.
  *
  * @category errors
@@ -359,12 +358,12 @@ export class GraphError extends Data.TaggedError("GraphError")<{
 const missingNode = (node: number) => new GraphError({ message: `Node ${node} does not exist` })
 
 /** @internal */
-const traversalRadius = (radius: number | undefined, defaultRadius: number): number => {
+const traversalRadius = (radius: number | undefined, defaultRadius: number): Result.Result<number, GraphError> => {
   const value = radius ?? defaultRadius
   if (value !== Infinity && (!Number.isInteger(value) || value < 0)) {
-    throw new GraphError({ message: "Traversal radius must be a non-negative integer or Infinity" })
+    return Result.fail(new GraphError({ message: "Traversal radius must be a non-negative integer or Infinity" }))
   }
-  return value
+  return Result.succeed(value)
 }
 
 /** @internal */
@@ -432,13 +431,13 @@ export const isGraph = <N = unknown, E = unknown, T extends Kind = Kind, U = nev
  *
  * The node and edge arrays must be ordered by strictly increasing,
  * non-negative safe integer indexes, and every edge endpoint must reference a
- * node in the snapshot. Invalid snapshots throw a `GraphError`. Historical
+ * node in the snapshot. Invalid snapshots return `Result.fail`. Historical
  * removed identifiers after the greatest active index are not retained.
  *
  * **Example** (Preserving graph indexes)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Result } from "effect"
  *
  * const graph = Graph.fromSnapshot({
  *   type: "directed",
@@ -446,16 +445,19 @@ export const isGraph = <N = unknown, E = unknown, T extends Kind = Kind, U = nev
  *   edges: [{ index: 3, source: 2, target: 5, data: 1 }]
  * })
  *
- * Graph.toSnapshot(graph).edges[0].index // => 3
+ * Result.map(graph, (graph) => Graph.toSnapshot(graph).edges[0].index) // => Result.succeed(3)
  * ```
  *
+ * @see {@link fromSnapshotUnsafe} for the throwing variant
  * @see {@link toSnapshot} for capturing a graph snapshot
  * @category constructors
  * @since 4.0.0
  */
-export const fromSnapshot = <N, E, T extends Kind>(snapshot: Snapshot<N, E, T>): Graph<N, E, T> => {
+export const fromSnapshot = <N, E, T extends Kind>(
+  snapshot: Snapshot<N, E, T>
+): Result.Result<Graph<N, E, T>, GraphError> => {
   if (snapshot.type !== "directed" && snapshot.type !== "undirected") {
-    throw new GraphError({ message: "Snapshot type must be directed or undirected" })
+    return Result.fail(new GraphError({ message: "Snapshot type must be directed or undirected" }))
   }
 
   let previous = -1
@@ -463,14 +465,14 @@ export const fromSnapshot = <N, E, T extends Kind>(snapshot: Snapshot<N, E, T>):
   for (let i = 0; i < snapshot.nodes.length; i++) {
     const node = snapshot.nodes[i]
     if (node === undefined || node === null) {
-      throw new GraphError({ message: `Node at position ${i} must be defined` })
+      return Result.fail(new GraphError({ message: `Node at position ${i} must be defined` }))
     }
     const index = node.index
     if (!Number.isSafeInteger(index) || index < 0) {
-      throw new GraphError({ message: `Node index at position ${i} must be a non-negative safe integer` })
+      return Result.fail(new GraphError({ message: `Node index at position ${i} must be a non-negative safe integer` }))
     }
     if (index <= previous) {
-      throw new GraphError({ message: "Node indexes must be strictly increasing" })
+      return Result.fail(new GraphError({ message: "Node indexes must be strictly increasing" }))
     }
     previous = index
     nodeIndexes.add(index)
@@ -480,31 +482,46 @@ export const fromSnapshot = <N, E, T extends Kind>(snapshot: Snapshot<N, E, T>):
   for (let i = 0; i < snapshot.edges.length; i++) {
     const edge = snapshot.edges[i]
     if (edge === undefined || edge === null) {
-      throw new GraphError({ message: `Edge at position ${i} must be defined` })
+      return Result.fail(new GraphError({ message: `Edge at position ${i} must be defined` }))
     }
     if (!Number.isSafeInteger(edge.index) || edge.index < 0) {
-      throw new GraphError({ message: `Edge index at position ${i} must be a non-negative safe integer` })
+      return Result.fail(new GraphError({ message: `Edge index at position ${i} must be a non-negative safe integer` }))
     }
     if (edge.index <= previous) {
-      throw new GraphError({ message: "Edge indexes must be strictly increasing" })
+      return Result.fail(new GraphError({ message: "Edge indexes must be strictly increasing" }))
     }
     previous = edge.index
     if (!Number.isSafeInteger(edge.source) || edge.source < 0) {
-      throw new GraphError({ message: `Edge source at position ${i} must be a non-negative safe integer` })
+      return Result.fail(
+        new GraphError({ message: `Edge source at position ${i} must be a non-negative safe integer` })
+      )
     }
     if (!nodeIndexes.has(edge.source)) {
-      throw new GraphError({ message: `Edge source ${edge.source} does not reference a node` })
+      return Result.fail(new GraphError({ message: `Edge source ${edge.source} does not reference a node` }))
     }
     if (!Number.isSafeInteger(edge.target) || edge.target < 0) {
-      throw new GraphError({ message: `Edge target at position ${i} must be a non-negative safe integer` })
+      return Result.fail(
+        new GraphError({ message: `Edge target at position ${i} must be a non-negative safe integer` })
+      )
     }
     if (!nodeIndexes.has(edge.target)) {
-      throw new GraphError({ message: `Edge target ${edge.target} does not reference a node` })
+      return Result.fail(new GraphError({ message: `Edge target ${edge.target} does not reference a node` }))
     }
   }
 
-  return internal.hydrate(snapshot)
+  return Result.succeed(internal.hydrate(snapshot))
 }
+
+/**
+ * Reconstructs an immutable graph from a snapshot, throwing a `GraphError` for
+ * invalid structure.
+ *
+ * @see {@link fromSnapshot} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const fromSnapshotUnsafe = <N, E, T extends Kind>(snapshot: Snapshot<N, E, T>): Graph<N, E, T> =>
+  Result.getOrThrow(fromSnapshot(snapshot))
 
 /**
  * Returns the active indexed structure of a graph.
@@ -528,7 +545,7 @@ export const fromSnapshot = <N, E, T extends Kind>(snapshot: Snapshot<N, E, T>):
  * **Example** (Round-tripping a graph snapshot)
  *
  * ```ts import.meta.vitest
- * import { Equal, Graph } from "effect"
+ * import { Equal, Graph, Result } from "effect"
  *
  * const graph = Graph.fromSnapshot({
  *   type: "undirected",
@@ -536,7 +553,9 @@ export const fromSnapshot = <N, E, T extends Kind>(snapshot: Snapshot<N, E, T>):
  *   edges: [{ index: 3, source: 5, target: 2, data: "A-B" }]
  * })
  *
- * Equal.equals(Graph.fromSnapshot(Graph.toSnapshot(graph)), graph) // => true
+ * const roundtrip = Result.map(graph, (graph) =>
+ *   Equal.equals(Graph.fromSnapshot(Graph.toSnapshot(graph)), Result.succeed(graph)))
+ * roundtrip // => Result.succeed(true)
  * ```
  *
  * @see {@link fromSnapshot} for reconstructing an immutable graph
@@ -570,7 +589,7 @@ export const toSnapshot = <N, E, T extends Kind = "directed">(
  * **Example** (Constructing by kind)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Result } from "effect"
  *
  * const makeGraph = Graph.make("directed")
  * const graph = makeGraph<string, number>((mutable) => {
@@ -622,8 +641,8 @@ export const make =
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, "A->B")
- *   Graph.addEdge(mutable, b, c, "B->C")
+ *   Graph.addEdgeUnsafe(mutable, a, b, "A->B")
+ *   Graph.addEdgeUnsafe(mutable, b, c, "B->C")
  * })
  * Array.of(Graph.nodeCount(graph), Graph.edgeCount(graph)) // => [3, 2]
  * ```
@@ -658,8 +677,8 @@ export const directed: <N, E>(
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, "A-B")
- *   Graph.addEdge(mutable, b, c, "B-C")
+ *   Graph.addEdgeUnsafe(mutable, a, b, "A-B")
+ *   Graph.addEdgeUnsafe(mutable, b, c, "B-C")
  * })
  * Array.of(Graph.nodeCount(graph), Graph.edgeCount(graph)) // => [3, 2]
  * ```
@@ -800,7 +819,7 @@ const mutateScoped = <N, E, T extends Kind>(
  * const newGraph = Graph.mutate(graph, (mutable) => {
  *   const nodeA = Graph.addNode(mutable, "A")
  *   const nodeB = Graph.addNode(mutable, "B")
- *   Graph.addEdge(mutable, nodeA, nodeB, 1)
+ *   Graph.addEdgeUnsafe(mutable, nodeA, nodeB, 1)
  * })
  *
  * Graph.nodeCount(newGraph) // => 2
@@ -971,7 +990,7 @@ const addEdgeByIdentity = <N, E, T extends Kind, NI, EI>(
   const sourceIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.source))
   const targetIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.target))
   if (sourceIndex !== undefined && targetIndex !== undefined) {
-    addEdge(mutable, sourceIndex, targetIndex, data)
+    addEdgeUnsafe(mutable, sourceIndex, targetIndex, data)
   }
 }
 
@@ -1014,13 +1033,13 @@ const assertSameKind = <N, E>(self: Graph<N, E, Kind>, that: Graph<N, E, Kind>):
  * const left = Graph.directed<{ id: string }, string>((mutable) => {
  *   const a = Graph.addNode(mutable, { id: "A" })
  *   const b = Graph.addNode(mutable, { id: "B" })
- *   Graph.addEdge(mutable, a, b, "A-B")
+ *   Graph.addEdgeUnsafe(mutable, a, b, "A-B")
  * })
  *
  * const right = Graph.directed<{ id: string }, string>((mutable) => {
  *   const b = Graph.addNode(mutable, { id: "B" })
  *   const c = Graph.addNode(mutable, { id: "C" })
- *   Graph.addEdge(mutable, b, c, "B-C")
+ *   Graph.addEdgeUnsafe(mutable, b, c, "B-C")
  * })
  *
  * const result = Graph.compose(left, right, {
@@ -1113,13 +1132,13 @@ export const compose: {
  * const left = Graph.directed<string, string>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
- *   Graph.addEdge(mutable, a, b, "shared")
+ *   Graph.addEdgeUnsafe(mutable, a, b, "shared")
  * })
  *
  * const right = Graph.directed<string, string>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
- *   Graph.addEdge(mutable, a, b, "shared")
+ *   Graph.addEdgeUnsafe(mutable, a, b, "shared")
  * })
  *
  * const result = Graph.intersection(left, right)
@@ -1216,14 +1235,14 @@ export const intersection: {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, "A-B")
- *   Graph.addEdge(mutable, b, c, "B-C")
+ *   Graph.addEdgeUnsafe(mutable, a, b, "A-B")
+ *   Graph.addEdgeUnsafe(mutable, b, c, "B-C")
  * })
  *
  * const right = Graph.directed<string, string>((mutable) => {
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, b, c, "B-C")
+ *   Graph.addEdgeUnsafe(mutable, b, c, "B-C")
  * })
  *
  * const result = Graph.difference(left, right)
@@ -1307,16 +1326,16 @@ export const difference: {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, "A-B")
- *   Graph.addEdge(mutable, b, c, "B-C")
+ *   Graph.addEdgeUnsafe(mutable, a, b, "A-B")
+ *   Graph.addEdgeUnsafe(mutable, b, c, "B-C")
  * })
  *
  * const right = Graph.directed<string, string>((mutable) => {
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
  *   const d = Graph.addNode(mutable, "D")
- *   Graph.addEdge(mutable, b, c, "B-C")
- *   Graph.addEdge(mutable, c, d, "C-D")
+ *   Graph.addEdgeUnsafe(mutable, b, c, "B-C")
+ *   Graph.addEdgeUnsafe(mutable, c, d, "C-D")
  * })
  *
  * const result = Graph.symmetricDifference(left, right)
@@ -1408,7 +1427,7 @@ export const symmetricDifference: {
  * const graph = Graph.directed<string, string>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
- *   Graph.addEdge(mutable, a, b, "A-B")
+ *   Graph.addEdgeUnsafe(mutable, a, b, "A-B")
  * })
  *
  * const result = Graph.complement(graph, (source, target) => `${source}-${target}`)
@@ -1454,7 +1473,7 @@ export const complement: {
         if (i === j || neighborMarks[j] === generation) {
           continue
         }
-        addEdge(mutable, newIndices[i], newIndices[j], createEdge(cache.nodeData[i] as N, cache.nodeData[j] as N))
+        addEdgeUnsafe(mutable, newIndices[i], newIndices[j], createEdge(cache.nodeData[i] as N, cache.nodeData[j] as N))
       }
     }
   })
@@ -1488,8 +1507,8 @@ export interface NeighborhoodConfig {
  * **Details**
  *
  * The `radius` option is the maximum edge distance from `nodeIndex`, accepts
- * non-negative integers and `Infinity`, and defaults to `1`. Invalid radii
- * throw a `GraphError`. The `direction` option controls directed graph
+ * non-negative integers and `Infinity`, and defaults to `1`. Invalid radii and
+ * missing center nodes return `Result.fail`. The `direction` option controls directed graph
  * traversal and defaults to `"outgoing"`. The result has the same graph kind
  * as `self` and keeps all original edges whose endpoints are both reached.
  * `"undirected"` ignores edge direction while finding reachable nodes.
@@ -1503,22 +1522,21 @@ export interface NeighborhoodConfig {
  * **Example** (Getting a local neighborhood)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Result } from "effect"
  *
  * const graph = Graph.directed<string, string>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, "A-B")
- *   Graph.addEdge(mutable, b, c, "B-C")
+ *   Graph.addEdgeUnsafe(mutable, a, b, "A-B")
+ *   Graph.addEdgeUnsafe(mutable, b, c, "B-C")
  * })
  *
- * const result = Graph.neighborhood(graph, 1, { radius: 1 })
- *
- * Graph.nodeCount(result) // => 2
+ * Result.map(Graph.neighborhood(graph, 1, { radius: 1 }), Graph.nodeCount) // => Result.succeed(2)
  * ```
  *
  * @see {@link inducedSubgraph} for selecting nodes while preserving identifiers
+ * @see {@link neighborhoodUnsafe} for the throwing variant
  * @category set operations
  * @since 4.0.0
  */
@@ -1526,7 +1544,66 @@ export const neighborhood: {
   (
     nodeIndex: NodeIndex,
     options?: NeighborhoodConfig
-  ): <N, E, T extends Kind = "directed">(self: Graph<N, E, T>) => Graph<N, E, T>
+  ): <N, E, T extends Kind = "directed">(self: Graph<N, E, T>) => Result.Result<Graph<N, E, T>, GraphError>
+  <N, E, T extends Kind = "directed">(
+    self: Graph<N, E, T>,
+    nodeIndex: NodeIndex,
+    options?: NeighborhoodConfig
+  ): Result.Result<Graph<N, E, T>, GraphError>
+} = dual((args) => isGraph(args[0]), <N, E, T extends Kind>(
+  self: Graph<N, E, T>,
+  nodeIndex: NodeIndex,
+  options?: NeighborhoodConfig
+): Result.Result<Graph<N, E, T>, GraphError> => {
+  const selfImpl = internal.toImpl(self)
+  const radiusResult = traversalRadius(options?.radius, 1)
+  if (Result.isFailure(radiusResult)) {
+    return Result.fail(radiusResult.failure)
+  }
+  const radius = radiusResult.success
+  const direction = options?.direction ?? "outgoing"
+  const reached = new Set<NodeIndex>()
+
+  const walker = bfs(self, { start: [nodeIndex], direction, radius })
+  if (Result.isFailure(walker)) {
+    return Result.fail(walker.failure)
+  }
+  for (const index of indices(walker.success)) {
+    reached.add(index)
+  }
+
+  return Result.succeed(
+    make(self.type)<N, E>((mutable) => {
+      const newIndexMap = new Map<NodeIndex, NodeIndex>()
+
+      for (const oldIndex of reached) {
+        newIndexMap.set(oldIndex, addNode(mutable, Option.getOrThrow(getNode(self, oldIndex))))
+      }
+
+      for (const edge of selfImpl.edges.values()) {
+        if (reached.has(edge.source) && reached.has(edge.target)) {
+          const sourceIndex = newIndexMap.get(edge.source)
+          const targetIndex = newIndexMap.get(edge.target)
+          if (sourceIndex !== undefined && targetIndex !== undefined) {
+            addEdgeUnsafe(mutable, sourceIndex, targetIndex, edge.data)
+          }
+        }
+      }
+    })
+  )
+})
+
+/**
+ * Returns a graph neighborhood, throwing a `GraphError` for invalid input.
+ *
+ * @see {@link neighborhood} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const neighborhoodUnsafe: {
+  (nodeIndex: NodeIndex, options?: NeighborhoodConfig): <N, E, T extends Kind = "directed">(
+    self: Graph<N, E, T>
+  ) => Graph<N, E, T>
   <N, E, T extends Kind = "directed">(
     self: Graph<N, E, T>,
     nodeIndex: NodeIndex,
@@ -1536,34 +1613,7 @@ export const neighborhood: {
   self: Graph<N, E, T>,
   nodeIndex: NodeIndex,
   options?: NeighborhoodConfig
-): Graph<N, E, T> => {
-  const selfImpl = internal.toImpl(self)
-  const radius = traversalRadius(options?.radius, 1)
-  const direction = options?.direction ?? "outgoing"
-  const reached = new Set<NodeIndex>()
-
-  for (const index of indices(bfs(self, { start: [nodeIndex], direction, radius }))) {
-    reached.add(index)
-  }
-
-  return make(self.type)<N, E>((mutable) => {
-    const newIndexMap = new Map<NodeIndex, NodeIndex>()
-
-    for (const oldIndex of reached) {
-      newIndexMap.set(oldIndex, addNode(mutable, Option.getOrThrow(getNode(self, oldIndex))))
-    }
-
-    for (const edge of selfImpl.edges.values()) {
-      if (reached.has(edge.source) && reached.has(edge.target)) {
-        const sourceIndex = newIndexMap.get(edge.source)
-        const targetIndex = newIndexMap.get(edge.target)
-        if (sourceIndex !== undefined && targetIndex !== undefined) {
-          addEdge(mutable, sourceIndex, targetIndex, edge.data)
-        }
-      }
-    }
-  })
-})
+): Graph<N, E, T> => Result.getOrThrow(neighborhood(self, nodeIndex, options)))
 
 /**
  * Returns the subgraph induced by a collection of node indices.
@@ -1581,28 +1631,31 @@ export const neighborhood: {
  *
  * **Gotchas**
  *
- * Throws a `GraphError` when a selected node does not exist.
+ * Returns `Result.fail` when a selected node does not exist.
  *
  * @see {@link neighborhood} for selecting nodes by traversal distance
+ * @see {@link inducedSubgraphUnsafe} for the throwing variant
  *
  * @category set operations
  * @since 4.0.0
  */
 export const inducedSubgraph: {
-  (nodeIndices: Iterable<NodeIndex>): <N, E, T extends Kind = "directed">(self: Graph<N, E, T>) => Graph<N, E, T>
+  (nodeIndices: Iterable<NodeIndex>): <N, E, T extends Kind = "directed">(
+    self: Graph<N, E, T>
+  ) => Result.Result<Graph<N, E, T>, GraphError>
   <N, E, T extends Kind = "directed">(
     self: Graph<N, E, T>,
     nodeIndices: Iterable<NodeIndex>
-  ): Graph<N, E, T>
+  ): Result.Result<Graph<N, E, T>, GraphError>
 } = dual(2, <N, E, T extends Kind>(
   self: Graph<N, E, T>,
   nodeIndices: Iterable<NodeIndex>
-): Graph<N, E, T> => {
+): Result.Result<Graph<N, E, T>, GraphError> => {
   const impl = internal.toImpl(self)
   const selected = new Set<NodeIndex>()
   for (const nodeIndex of nodeIndices) {
     if (!impl.nodes.has(nodeIndex)) {
-      throw missingNode(nodeIndex)
+      return Result.fail(missingNode(nodeIndex))
     }
     selected.add(nodeIndex)
   }
@@ -1621,6 +1674,22 @@ export const inducedSubgraph: {
   }
   return fromSnapshot({ type: self.type, nodes, edges })
 })
+
+/**
+ * Returns an induced subgraph, throwing a `GraphError` when a selected node is missing.
+ *
+ * @see {@link inducedSubgraph} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const inducedSubgraphUnsafe: {
+  (nodeIndices: Iterable<NodeIndex>): <N, E, T extends Kind = "directed">(self: Graph<N, E, T>) => Graph<N, E, T>
+  <N, E, T extends Kind = "directed">(self: Graph<N, E, T>, nodeIndices: Iterable<NodeIndex>): Graph<N, E, T>
+} = dual(
+  2,
+  <N, E, T extends Kind>(self: Graph<N, E, T>, nodeIndices: Iterable<NodeIndex>): Graph<N, E, T> =>
+    Result.getOrThrow(inducedSubgraph(self, nodeIndices))
+)
 
 /**
  * Returns the disjoint union of two graphs.
@@ -1665,7 +1734,7 @@ export const sum: {
         const sourceIndex = indexMap.get(edge.source)
         const targetIndex = indexMap.get(edge.target)
         if (sourceIndex !== undefined && targetIndex !== undefined) {
-          addEdge(mutable, sourceIndex, targetIndex, edge.data)
+          addEdgeUnsafe(mutable, sourceIndex, targetIndex, edge.data)
         }
       }
     }
@@ -1926,8 +1995,8 @@ export const findNodes: {
  *   const nodeA = Graph.addNode(mutable, "Node A")
  *   const nodeB = Graph.addNode(mutable, "Node B")
  *   const nodeC = Graph.addNode(mutable, "Node C")
- *   Graph.addEdge(mutable, nodeA, nodeB, 10)
- *   Graph.addEdge(mutable, nodeB, nodeC, 20)
+ *   Graph.addEdgeUnsafe(mutable, nodeA, nodeB, 10)
+ *   Graph.addEdgeUnsafe(mutable, nodeB, nodeC, 20)
  * })
  *
  * Graph.findEdge(graph, (data) => data > 15) // => Option.some(1)
@@ -1972,9 +2041,9 @@ export const findEdge: {
  *   const nodeA = Graph.addNode(mutable, "Node A")
  *   const nodeB = Graph.addNode(mutable, "Node B")
  *   const nodeC = Graph.addNode(mutable, "Node C")
- *   Graph.addEdge(mutable, nodeA, nodeB, 10)
- *   Graph.addEdge(mutable, nodeB, nodeC, 20)
- *   Graph.addEdge(mutable, nodeC, nodeA, 30)
+ *   Graph.addEdgeUnsafe(mutable, nodeA, nodeB, 10)
+ *   Graph.addEdgeUnsafe(mutable, nodeB, nodeC, 20)
+ *   Graph.addEdgeUnsafe(mutable, nodeC, nodeA, 30)
  * })
  *
  * Graph.findEdges(graph, (data) => data >= 20) // => [1, 2]
@@ -2076,7 +2145,7 @@ export const updateNode = <N, E, T extends Kind = "directed">(
  * const result = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
  *   const nodeA = Graph.addNode(mutable, "Node A")
  *   const nodeB = Graph.addNode(mutable, "Node B")
- *   const edgeIndex = Graph.addEdge(mutable, nodeA, nodeB, 10)
+ *   const edgeIndex = Graph.addEdgeUnsafe(mutable, nodeA, nodeB, 10)
  *   Graph.updateEdge(mutable, edgeIndex, (data) => data * 2)
  * })
  *
@@ -2185,8 +2254,8 @@ export const mapNodes = <N, E, T extends Kind = "directed">(
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, 10)
- *   Graph.addEdge(mutable, b, c, 20)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 10)
+ *   Graph.addEdgeUnsafe(mutable, b, c, 20)
  *   Graph.mapEdges(mutable, (data) => data * 2)
  * })
  *
@@ -2241,8 +2310,8 @@ export const mapEdges = <N, E, T extends Kind = "directed">(
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, 1) // A -> B
- *   Graph.addEdge(mutable, b, c, 2) // B -> C
+ *   Graph.addEdgeUnsafe(mutable, a, b, 1) // A -> B
+ *   Graph.addEdgeUnsafe(mutable, b, c, 2) // B -> C
  *   Graph.reverse(mutable) // Now B -> A, C -> B
  * })
  *
@@ -2295,8 +2364,8 @@ export const reverse = <N, E, T extends Kind = "directed">(
  *   const a = Graph.addNode(mutable, "active")
  *   const b = Graph.addNode(mutable, "inactive")
  *   const c = Graph.addNode(mutable, "active")
- *   Graph.addEdge(mutable, a, b, 1)
- *   Graph.addEdge(mutable, b, c, 2)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 1)
+ *   Graph.addEdgeUnsafe(mutable, b, c, 2)
  *
  *   // Keep only "active" nodes and transform to uppercase
  *   Graph.filterMapNodes(
@@ -2354,9 +2423,9 @@ export const filterMapNodes = <N, E, T extends Kind = "directed">(
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, 5)
- *   Graph.addEdge(mutable, b, c, 15)
- *   Graph.addEdge(mutable, c, a, 25)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 5)
+ *   Graph.addEdgeUnsafe(mutable, b, c, 15)
+ *   Graph.addEdgeUnsafe(mutable, c, a, 25)
  *
  *   // Keep only edges with weight >= 10 and double their weight
  *   Graph.filterMapEdges(
@@ -2471,9 +2540,9 @@ export const filterNodes = <N, E, T extends Kind = "directed">(
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
  *
- *   Graph.addEdge(mutable, a, b, 5)
- *   Graph.addEdge(mutable, b, c, 15)
- *   Graph.addEdge(mutable, c, a, 25)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 5)
+ *   Graph.addEdgeUnsafe(mutable, b, c, 15)
+ *   Graph.addEdgeUnsafe(mutable, c, a, 25)
  *
  *   // Keep only edges with weight >= 10
  *   Graph.filterEdges(mutable, (data) => data >= 10)
@@ -2550,20 +2619,21 @@ const invalidateCycleFlagOnAddition = <N, E, T extends Kind = "directed">(
  * **Gotchas**
  *
  * The source and target nodes must already exist in the mutable graph; missing
- * endpoints throw a `GraphError`.
+ * endpoints return `Result.fail`.
  *
  * **Example** (Adding edges)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Result } from "effect"
  *
  * Graph.mutate(Graph.directed<string, number>(), (mutable) => {
  *   const nodeA = Graph.addNode(mutable, "Node A")
  *   const nodeB = Graph.addNode(mutable, "Node B")
- *   Graph.addEdge(mutable, nodeA, nodeB, 42) // => 0
+ *   Graph.addEdge(mutable, nodeA, nodeB, 42) // => Result.succeed(0)
  * })
  * ```
  *
+ * @see {@link addEdgeUnsafe} for the throwing variant
  * @see {@link mutate} for obtaining a mutable graph from an immutable graph
  * @see {@link addNode} for creating node indexes before connecting them
  *
@@ -2575,15 +2645,15 @@ export const addEdge = <N, E, T extends Kind = "directed">(
   source: NodeIndex,
   target: NodeIndex,
   data: E
-): EdgeIndex => {
+): Result.Result<EdgeIndex, GraphError> => {
   const impl = getMutableImplForMutation(mutable)
 
   // Validate that both nodes exist
   if (!impl.nodes.has(source)) {
-    throw missingNode(source)
+    return Result.fail(missingNode(source))
   }
   if (!impl.nodes.has(target)) {
-    throw missingNode(target)
+    return Result.fail(missingNode(target))
   }
 
   const edgeIndex = impl.nextEdgeIndex
@@ -2626,8 +2696,23 @@ export const addEdge = <N, E, T extends Kind = "directed">(
   // Adding edges cannot remove cycles from cyclic graphs
   invalidateCycleFlagOnAddition(impl)
 
-  return edgeIndex
+  return Result.succeed(edgeIndex)
 }
+
+/**
+ * Adds an edge and returns its index, throwing a `GraphError` when an endpoint
+ * does not exist.
+ *
+ * @see {@link addEdge} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const addEdgeUnsafe = <N, E, T extends Kind = "directed">(
+  mutable: MutableGraph<N, E, T>,
+  source: NodeIndex,
+  target: NodeIndex,
+  data: E
+): EdgeIndex => Result.getOrThrow(addEdge(mutable, source, target, data))
 
 /**
  * Removes a node and all its incident edges from a mutable graph.
@@ -2644,7 +2729,7 @@ export const addEdge = <N, E, T extends Kind = "directed">(
  * const result = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
  *   const nodeA = Graph.addNode(mutable, "Node A")
  *   const nodeB = Graph.addNode(mutable, "Node B")
- *   Graph.addEdge(mutable, nodeA, nodeB, 42)
+ *   Graph.addEdgeUnsafe(mutable, nodeA, nodeB, 42)
  *
  *   // Remove nodeA and all edges connected to it
  *   Graph.removeNode(mutable, nodeA)
@@ -2769,7 +2854,7 @@ const removeNodeInternal = <N, E, T extends Kind = "directed">(
  * const result = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
  *   const nodeA = Graph.addNode(mutable, "Node A")
  *   const nodeB = Graph.addNode(mutable, "Node B")
- *   const edge = Graph.addEdge(mutable, nodeA, nodeB, 42)
+ *   const edge = Graph.addEdgeUnsafe(mutable, nodeA, nodeB, 42)
  *
  *   // Remove the edge
  *   Graph.removeEdge(mutable, edge)
@@ -2906,7 +2991,7 @@ const removeEdgeInternal = <N, E, T extends Kind = "directed">(
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
  *   const nodeA = Graph.addNode(mutable, "Node A")
  *   const nodeB = Graph.addNode(mutable, "Node B")
- *   Graph.addEdge(mutable, nodeA, nodeB, 42)
+ *   Graph.addEdgeUnsafe(mutable, nodeA, nodeB, 42)
  * })
  *
  * Graph.getEdge(graph, 0) // => Option.some({ source: 0, target: 1, data: 42 })
@@ -2952,7 +3037,7 @@ export const getEdge: {
  *   const nodeA = Graph.addNode(mutable, "Node A")
  *   const nodeB = Graph.addNode(mutable, "Node B")
  *   const nodeC = Graph.addNode(mutable, "Node C")
- *   Graph.addEdge(mutable, nodeA, nodeB, 42)
+ *   Graph.addEdgeUnsafe(mutable, nodeA, nodeB, 42)
  * })
  *
  * Graph.hasEdge(graph, 0, 1) // => true
@@ -3013,9 +3098,9 @@ export const hasEdge: {
  *   const nodeA = Graph.addNode(mutable, "Node A")
  *   const nodeB = Graph.addNode(mutable, "Node B")
  *   const nodeC = Graph.addNode(mutable, "Node C")
- *   Graph.addEdge(mutable, nodeA, nodeB, 1)
- *   Graph.addEdge(mutable, nodeB, nodeC, 2)
- *   Graph.addEdge(mutable, nodeC, nodeA, 3)
+ *   Graph.addEdgeUnsafe(mutable, nodeA, nodeB, 1)
+ *   Graph.addEdgeUnsafe(mutable, nodeB, nodeC, 2)
+ *   Graph.addEdgeUnsafe(mutable, nodeC, nodeA, 3)
  * })
  *
  * Graph.edgeCount(graphWithEdges) // => 3
@@ -3032,26 +3117,29 @@ export const edgeCount = <N, E, T extends Kind = "directed">(
  * Returns the indices of all edges incident to a node.
  *
  * Each edge is returned once in graph edge order, including self-loops.
- * Throws a `GraphError` when the node does not exist.
+ * Returns `Option.none` when the node does not exist.
  *
+ * @see {@link incidentEdgesUnsafe} for the throwing variant
  * @category getters
  * @since 4.0.0
  */
 export const incidentEdges: {
   (
     nodeIndex: NodeIndex
-  ): <N, E, T extends Kind = "directed">(graph: Graph<N, E, T> | MutableGraph<N, E, T>) => Array<EdgeIndex>
+  ): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Option.Option<Array<EdgeIndex>>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     nodeIndex: NodeIndex
-  ): Array<EdgeIndex>
+  ): Option.Option<Array<EdgeIndex>>
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
-): Array<EdgeIndex> => {
+): Option.Option<Array<EdgeIndex>> => {
   const impl = internal.toImpl(graph)
   if (!impl.nodes.has(nodeIndex)) {
-    throw missingNode(nodeIndex)
+    return Option.none()
   }
   const outgoing = impl.adjacency.get(nodeIndex)!
   if (graph.type === "undirected") {
@@ -3063,7 +3151,7 @@ export const incidentEdges: {
         previous = edgeIndex
       }
     }
-    return result
+    return Option.some(result)
   }
 
   const incoming = impl.reverseAdjacency.get(nodeIndex)!
@@ -3087,101 +3175,147 @@ export const incidentEdges: {
   }
   while (outgoingPosition < outgoing.length) result.push(outgoing[outgoingPosition++])
   while (incomingPosition < incoming.length) result.push(incoming[incomingPosition++])
-  return result
+  return Option.some(result)
 })
+
+/**
+ * @see {@link incidentEdges} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const incidentEdgesUnsafe: {
+  (nodeIndex: NodeIndex): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Array<EdgeIndex>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    nodeIndex: NodeIndex
+  ): Array<EdgeIndex>
+} = dual(
+  2,
+  <N, E, T extends Kind>(graph: Graph<N, E, T> | MutableGraph<N, E, T>, nodeIndex: NodeIndex) =>
+    Option.getOrThrowWith(incidentEdges(graph, nodeIndex), () => missingNode(nodeIndex))
+)
 
 /**
  * Returns the indices of outgoing edges for a node in a directed graph.
  *
  * Parallel edges and self-loops are returned separately in adjacency order.
- * Throws a `GraphError` for an undirected graph or missing node.
+ * Returns `Option.none` for a missing node. An undirected graph is a defect excluded by the signature.
  *
+ * @see {@link outgoingEdgesUnsafe} for the throwing variant
  * @category getters
  * @since 4.0.0
  */
 export const outgoingEdges: {
   (nodeIndex: NodeIndex): <N, E>(
     graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
-  ) => Array<EdgeIndex>
+  ) => Option.Option<Array<EdgeIndex>>
   <N, E>(
     graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
     nodeIndex: NodeIndex
-  ): Array<EdgeIndex>
+  ): Option.Option<Array<EdgeIndex>>
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
-): Array<EdgeIndex> => {
+): Option.Option<Array<EdgeIndex>> => {
   if (graph.type === "undirected") {
     throw new GraphError({ message: "Cannot get outgoing edges of undirected graph" })
   }
   const impl = internal.toImpl(graph)
   if (!impl.nodes.has(nodeIndex)) {
-    throw missingNode(nodeIndex)
+    return Option.none()
   }
-  return Array.from(impl.adjacency.get(nodeIndex)!)
+  return Option.some(Array.from(impl.adjacency.get(nodeIndex)!))
 })
+
+/**
+ * @see {@link outgoingEdges} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const outgoingEdgesUnsafe: {
+  (nodeIndex: NodeIndex): <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">) => Array<EdgeIndex>
+  <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex: NodeIndex): Array<EdgeIndex>
+} = dual(
+  2,
+  <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex: NodeIndex) =>
+    Option.getOrThrowWith(outgoingEdges(graph, nodeIndex), () => missingNode(nodeIndex))
+)
 
 /**
  * Returns the indices of incoming edges for a node in a directed graph.
  *
  * Parallel edges and self-loops are returned separately in reverse-adjacency
- * order. Throws a `GraphError` for an undirected graph or missing node.
+ * order. Returns `Option.none` for a missing node. An undirected graph is a defect excluded by the signature.
  *
+ * @see {@link incomingEdgesUnsafe} for the throwing variant
  * @category getters
  * @since 4.0.0
  */
 export const incomingEdges: {
   (nodeIndex: NodeIndex): <N, E>(
     graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
-  ) => Array<EdgeIndex>
+  ) => Option.Option<Array<EdgeIndex>>
   <N, E>(
     graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
     nodeIndex: NodeIndex
-  ): Array<EdgeIndex>
+  ): Option.Option<Array<EdgeIndex>>
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
-): Array<EdgeIndex> => {
+): Option.Option<Array<EdgeIndex>> => {
   if (graph.type === "undirected") {
     throw new GraphError({ message: "Cannot get incoming edges of undirected graph" })
   }
   const impl = internal.toImpl(graph)
   if (!impl.nodes.has(nodeIndex)) {
-    throw missingNode(nodeIndex)
+    return Option.none()
   }
-  return Array.from(impl.reverseAdjacency.get(nodeIndex)!)
+  return Option.some(Array.from(impl.reverseAdjacency.get(nodeIndex)!))
 })
+
+/**
+ * @see {@link incomingEdges} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const incomingEdgesUnsafe: typeof outgoingEdgesUnsafe = dual(2, <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+  nodeIndex: NodeIndex
+) => Option.getOrThrowWith(incomingEdges(graph, nodeIndex), () => missingNode(nodeIndex)))
 
 /**
  * Returns all edge indices connecting the supplied nodes.
  *
  * Directed graphs only include edges from `source` to `target`; undirected
  * graphs include either stored orientation. Parallel edges are retained.
- * Throws a `GraphError` when either node does not exist.
+ * Returns `Option.none` when either node does not exist.
  *
+ * @see {@link edgesBetweenUnsafe} for the throwing variant
  * @category getters
  * @since 4.0.0
  */
 export const edgesBetween: {
   (source: NodeIndex, target: NodeIndex): <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>
-  ) => Array<EdgeIndex>
+  ) => Option.Option<Array<EdgeIndex>>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     source: NodeIndex,
     target: NodeIndex
-  ): Array<EdgeIndex>
+  ): Option.Option<Array<EdgeIndex>>
 } = dual(3, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   source: NodeIndex,
   target: NodeIndex
-): Array<EdgeIndex> => {
+): Option.Option<Array<EdgeIndex>> => {
   const impl = internal.toImpl(graph)
   if (!impl.nodes.has(source)) {
-    throw missingNode(source)
+    return Option.none()
   }
   if (!impl.nodes.has(target)) {
-    throw missingNode(target)
+    return Option.none()
   }
   const result: Array<EdgeIndex> = []
   let previous = -1
@@ -3196,92 +3330,160 @@ export const edgesBetween: {
       result.push(edgeIndex)
     }
   }
-  return result
+  return Option.some(result)
 })
+
+/**
+ * @see {@link edgesBetween} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const edgesBetweenUnsafe: {
+  (source: NodeIndex, target: NodeIndex): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Array<EdgeIndex>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    source: NodeIndex,
+    target: NodeIndex
+  ): Array<EdgeIndex>
+} = dual(3, <N, E, T extends Kind>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  source: NodeIndex,
+  target: NodeIndex
+) =>
+  Option.getOrThrowWith(
+    edgesBetween(graph, source, target),
+    () => missingNode(hasNode(graph, source) ? target : source)
+  ))
 
 /**
  * Returns the degree of a node in an undirected graph.
  *
- * Parallel edges count separately and a self-loop contributes two. Throws a
- * `GraphError` for a directed graph or missing node.
+ * Parallel edges count separately and a self-loop contributes two. Returns
+ * `Option.none` for a missing node. A directed graph is a defect excluded by the signature.
  *
+ * @see {@link degreeUnsafe} for the throwing variant
  * @category getters
  * @since 4.0.0
  */
 export const degree: {
   (nodeIndex: NodeIndex): <N, E>(
     graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
-  ) => number
-  <N, E>(graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">, nodeIndex: NodeIndex): number
+  ) => Option.Option<number>
+  <N, E>(
+    graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">,
+    nodeIndex: NodeIndex
+  ): Option.Option<number>
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
-): number => {
+): Option.Option<number> => {
   if (graph.type === "directed") {
     throw new GraphError({ message: "Cannot get degree of directed graph" })
   }
   const impl = internal.toImpl(graph)
   if (!impl.nodes.has(nodeIndex)) {
-    throw missingNode(nodeIndex)
+    return Option.none()
   }
-  return impl.adjacency.get(nodeIndex)!.length
+  return Option.some(impl.adjacency.get(nodeIndex)!.length)
 })
+
+/**
+ * @see {@link degree} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const degreeUnsafe: {
+  (nodeIndex: NodeIndex): <N, E>(graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">) => number
+  <N, E>(graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">, nodeIndex: NodeIndex): number
+} = dual(
+  2,
+  <N, E>(graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">, nodeIndex: NodeIndex) =>
+    Option.getOrThrowWith(degree(graph, nodeIndex), () => missingNode(nodeIndex))
+)
 
 /**
  * Returns the out-degree of a node in a directed graph.
  *
- * Parallel edges count separately and a self-loop contributes one. Throws a
- * `GraphError` for an undirected graph or missing node.
+ * Parallel edges count separately and a self-loop contributes one. Returns
+ * `Option.none` for a missing node. An undirected graph is a defect excluded by the signature.
  *
+ * @see {@link outDegreeUnsafe} for the throwing variant
  * @category getters
  * @since 4.0.0
  */
 export const outDegree: {
   (nodeIndex: NodeIndex): <N, E>(
     graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
-  ) => number
-  <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex: NodeIndex): number
+  ) => Option.Option<number>
+  <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex: NodeIndex): Option.Option<number>
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
-): number => {
+): Option.Option<number> => {
   if (graph.type === "undirected") {
     throw new GraphError({ message: "Cannot get outgoing edges of undirected graph" })
   }
   const impl = internal.toImpl(graph)
   if (!impl.nodes.has(nodeIndex)) {
-    throw missingNode(nodeIndex)
+    return Option.none()
   }
-  return impl.adjacency.get(nodeIndex)!.length
+  return Option.some(impl.adjacency.get(nodeIndex)!.length)
 })
+
+/**
+ * @see {@link outDegree} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const outDegreeUnsafe: {
+  (nodeIndex: NodeIndex): <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">) => number
+  <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex: NodeIndex): number
+} = dual(
+  2,
+  <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex: NodeIndex) =>
+    Option.getOrThrowWith(outDegree(graph, nodeIndex), () => missingNode(nodeIndex))
+)
 
 /**
  * Returns the in-degree of a node in a directed graph.
  *
- * Parallel edges count separately and a self-loop contributes one. Throws a
- * `GraphError` for an undirected graph or missing node.
+ * Parallel edges count separately and a self-loop contributes one. Returns
+ * `Option.none` for a missing node. An undirected graph is a defect excluded by the signature.
  *
+ * @see {@link inDegreeUnsafe} for the throwing variant
  * @category getters
  * @since 4.0.0
  */
 export const inDegree: {
   (nodeIndex: NodeIndex): <N, E>(
     graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
-  ) => number
-  <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex: NodeIndex): number
+  ) => Option.Option<number>
+  <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex: NodeIndex): Option.Option<number>
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
-): number => {
+): Option.Option<number> => {
   if (graph.type === "undirected") {
     throw new GraphError({ message: "Cannot get incoming edges of undirected graph" })
   }
   const impl = internal.toImpl(graph)
   if (!impl.nodes.has(nodeIndex)) {
-    throw missingNode(nodeIndex)
+    return Option.none()
   }
-  return impl.reverseAdjacency.get(nodeIndex)!.length
+  return Option.some(impl.reverseAdjacency.get(nodeIndex)!.length)
 })
+
+/**
+ * @see {@link inDegree} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const inDegreeUnsafe: typeof outDegreeUnsafe = dual(2, <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+  nodeIndex: NodeIndex
+) => Option.getOrThrowWith(inDegree(graph, nodeIndex), () => missingNode(nodeIndex)))
 
 const getDirectedNeighbors = <N, E>(
   graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
@@ -3350,48 +3552,73 @@ const getUniqueDirectedNeighbors = <N, E>(
  *
  * **Gotchas**
  *
- * Returns an empty array when the node does not exist. For directed graphs,
+ * Returns `Option.none` when the node does not exist. For directed graphs,
  * use `predecessors` when incoming neighbors are required.
  *
  * **Example** (Getting outgoing neighbors)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Option } from "effect"
  *
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
  *   const nodeA = Graph.addNode(mutable, "Node A")
  *   const nodeB = Graph.addNode(mutable, "Node B")
  *   const nodeC = Graph.addNode(mutable, "Node C")
- *   Graph.addEdge(mutable, nodeA, nodeB, 1)
- *   Graph.addEdge(mutable, nodeA, nodeC, 2)
+ *   Graph.addEdgeUnsafe(mutable, nodeA, nodeB, 1)
+ *   Graph.addEdgeUnsafe(mutable, nodeA, nodeC, 2)
  * })
  *
- * Graph.neighbors(graph, 0) // => [1, 2]
- * Graph.neighbors(graph, 1) // => []
+ * Graph.neighbors(graph, 0) // => Option.some([1, 2])
+ * Graph.neighbors(graph, 1) // => Option.some([])
  * ```
  *
+ * @see {@link neighborsUnsafe} for the throwing variant
  * @category getters
  * @since 3.18.0
  */
 export const neighbors: {
   (
     nodeIndex: NodeIndex
-  ): <N, E, T extends Kind = "directed">(graph: Graph<N, E, T> | MutableGraph<N, E, T>) => Array<NodeIndex>
+  ): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Option.Option<Array<NodeIndex>>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    nodeIndex: NodeIndex
+  ): Option.Option<Array<NodeIndex>>
+} = dual(2, <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  nodeIndex: NodeIndex
+): Option.Option<Array<NodeIndex>> => {
+  if (!hasNode(graph, nodeIndex)) {
+    return Option.none()
+  }
+  // For undirected graphs, use the specialized helper that returns the other endpoint
+  if (graph.type === "undirected") {
+    return Option.some(getUndirectedNeighbors(graph as any, nodeIndex))
+  }
+
+  return Option.some(getUniqueDirectedNeighbors(graph as any, nodeIndex, "outgoing"))
+})
+
+/**
+ * @see {@link neighbors} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const neighborsUnsafe: {
+  (nodeIndex: NodeIndex): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Array<NodeIndex>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     nodeIndex: NodeIndex
   ): Array<NodeIndex>
-} = dual(2, <N, E, T extends Kind = "directed">(
-  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
-  nodeIndex: NodeIndex
-): Array<NodeIndex> => {
-  // For undirected graphs, use the specialized helper that returns the other endpoint
-  if (graph.type === "undirected") {
-    return getUndirectedNeighbors(graph as any, nodeIndex)
-  }
-
-  return getUniqueDirectedNeighbors(graph as any, nodeIndex, "outgoing")
-})
+} = dual(
+  2,
+  <N, E, T extends Kind>(graph: Graph<N, E, T> | MutableGraph<N, E, T>, nodeIndex: NodeIndex) =>
+    Option.getOrThrowWith(neighbors(graph, nodeIndex), () => missingNode(nodeIndex))
+)
 
 /**
  * Returns the outgoing neighbor node indices for a node in a directed graph.
@@ -3406,11 +3633,12 @@ export const neighbors: {
  *
  * **Gotchas**
  *
- * Throws a `GraphError` when used with an undirected graph. A missing node
- * returns an empty array.
+ * Returns `Option.none` for a missing node. An undirected graph is a defect
+ * excluded by the signature.
  *
  * @see {@link predecessors} for incoming neighbors in a directed graph
  * @see {@link neighbors} for generic neighbor lookup across graph kinds
+ * @see {@link successorsUnsafe} for the throwing variant
  *
  * @category getters
  * @since 4.0.0
@@ -3418,20 +3646,38 @@ export const neighbors: {
 export const successors: {
   (
     nodeIndex: NodeIndex
-  ): <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">) => Array<NodeIndex>
+  ): <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  ) => Option.Option<Array<NodeIndex>>
   <N, E>(
     graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
     nodeIndex: NodeIndex
-  ): Array<NodeIndex>
+  ): Option.Option<Array<NodeIndex>>
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
-): Array<NodeIndex> => {
+): Option.Option<Array<NodeIndex>> => {
   if (graph.type === "undirected") {
     throw new GraphError({ message: "Cannot get successors of undirected graph" })
   }
-  return getUniqueDirectedNeighbors(graph as any, nodeIndex, "outgoing")
+  return hasNode(graph, nodeIndex)
+    ? Option.some(getUniqueDirectedNeighbors(graph as any, nodeIndex, "outgoing"))
+    : Option.none()
 })
+
+/**
+ * @see {@link successors} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const successorsUnsafe: {
+  (nodeIndex: NodeIndex): <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">) => Array<NodeIndex>
+  <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex: NodeIndex): Array<NodeIndex>
+} = dual(
+  2,
+  <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex: NodeIndex) =>
+    Option.getOrThrowWith(successors(graph, nodeIndex), () => missingNode(nodeIndex))
+)
 
 /**
  * Returns the incoming neighbor node indices for a node in a directed graph.
@@ -3446,11 +3692,12 @@ export const successors: {
  *
  * **Gotchas**
  *
- * Throws a `GraphError` when used with an undirected graph. A missing node
- * returns an empty array.
+ * Returns `Option.none` for a missing node. An undirected graph is a defect
+ * excluded by the signature.
  *
  * @see {@link successors} for outgoing neighbors in a directed graph
  * @see {@link neighbors} for generic neighbor lookup across graph kinds
+ * @see {@link predecessorsUnsafe} for the throwing variant
  *
  * @category getters
  * @since 4.0.0
@@ -3458,20 +3705,34 @@ export const successors: {
 export const predecessors: {
   (
     nodeIndex: NodeIndex
-  ): <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">) => Array<NodeIndex>
+  ): <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  ) => Option.Option<Array<NodeIndex>>
   <N, E>(
     graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
     nodeIndex: NodeIndex
-  ): Array<NodeIndex>
+  ): Option.Option<Array<NodeIndex>>
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
-): Array<NodeIndex> => {
+): Option.Option<Array<NodeIndex>> => {
   if (graph.type === "undirected") {
     throw new GraphError({ message: "Cannot get predecessors of undirected graph" })
   }
-  return getUniqueDirectedNeighbors(graph as any, nodeIndex, "incoming")
+  return hasNode(graph, nodeIndex)
+    ? Option.some(getUniqueDirectedNeighbors(graph as any, nodeIndex, "incoming"))
+    : Option.none()
 })
+
+/**
+ * @see {@link predecessors} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const predecessorsUnsafe: typeof successorsUnsafe = dual(2, <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+  nodeIndex: NodeIndex
+) => Option.getOrThrowWith(predecessors(graph, nodeIndex), () => missingNode(nodeIndex)))
 
 /**
  * Gets directed neighbors of a node in a specific direction.
@@ -3490,28 +3751,28 @@ export const predecessors: {
  * **Example** (Traversing directed neighbors)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Option } from "effect"
  *
  * const graph = Graph.directed<string, string>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
- *   Graph.addEdge(mutable, a, b, "A->B")
+ *   Graph.addEdgeUnsafe(mutable, a, b, "A->B")
  * })
  *
  * const nodeA = 0
  * const nodeB = 1
  *
- * // Get outgoing neighbors (nodes that nodeA points to)
- * const outgoing = Graph.neighborsDirected(graph, nodeA, "outgoing")
- *
- * // Get incoming neighbors (nodes that point to nodeB)
- * const incoming = Graph.neighborsDirected(graph, nodeB, "incoming")
- * Array.of(outgoing, incoming) // => [[1], [0]]
+ * Option.zipWith(
+ *   Graph.neighborsDirected(graph, nodeA, "outgoing"),
+ *   Graph.neighborsDirected(graph, nodeB, "incoming"),
+ *   (outgoing, incoming) => [outgoing, incoming]
+ * ) // => Option.some([[1], [0]])
  * ```
  *
  * @deprecated Use {@link successors} for outgoing neighbors or {@link predecessors} for incoming neighbors.
  * @see {@link successors} for outgoing neighbors in a directed graph
  * @see {@link predecessors} for incoming neighbors in a directed graph
+ * @see {@link neighborsDirectedUnsafe} for the throwing variant
  * @category getters
  * @since 3.18.0
  */
@@ -3519,22 +3780,46 @@ export const neighborsDirected: {
   (
     nodeIndex: NodeIndex,
     direction: Direction
-  ): <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">) => Array<NodeIndex>
+  ): <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  ) => Option.Option<Array<NodeIndex>>
+  <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+    nodeIndex: NodeIndex,
+    direction: Direction
+  ): Option.Option<Array<NodeIndex>>
+} = dual(3, <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  nodeIndex: NodeIndex,
+  direction: Direction
+): Option.Option<Array<NodeIndex>> => {
+  if (graph.type === "undirected") {
+    throw new GraphError({ message: "Cannot get directed neighbors of undirected graph" })
+  }
+  return hasNode(graph, nodeIndex)
+    ? Option.some(getUniqueDirectedNeighbors(graph as any, nodeIndex, direction))
+    : Option.none()
+})
+
+/**
+ * @see {@link neighborsDirected} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const neighborsDirectedUnsafe: {
+  (nodeIndex: NodeIndex, direction: Direction): <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  ) => Array<NodeIndex>
   <N, E>(
     graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
     nodeIndex: NodeIndex,
     direction: Direction
   ): Array<NodeIndex>
-} = dual(3, <N, E, T extends Kind = "directed">(
-  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+} = dual(3, <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
   nodeIndex: NodeIndex,
   direction: Direction
-): Array<NodeIndex> => {
-  if (graph.type === "undirected") {
-    throw new GraphError({ message: "Cannot get directed neighbors of undirected graph" })
-  }
-  return getUniqueDirectedNeighbors(graph as any, nodeIndex, direction)
-})
+) => Option.getOrThrowWith(neighborsDirected(graph, nodeIndex, direction), () => missingNode(nodeIndex)))
 
 // =============================================================================
 // GraphViz Export
@@ -3616,9 +3901,9 @@ const escapeGraphVizString = (value: string): string =>
  *   const nodeA = Graph.addNode(mutable, "Node A")
  *   const nodeB = Graph.addNode(mutable, "Node B")
  *   const nodeC = Graph.addNode(mutable, "Node C")
- *   Graph.addEdge(mutable, nodeA, nodeB, 1)
- *   Graph.addEdge(mutable, nodeB, nodeC, 2)
- *   Graph.addEdge(mutable, nodeC, nodeA, 3)
+ *   Graph.addEdgeUnsafe(mutable, nodeA, nodeB, 1)
+ *   Graph.addEdgeUnsafe(mutable, nodeB, nodeC, 2)
+ *   Graph.addEdgeUnsafe(mutable, nodeC, nodeA, 3)
  * })
  *
  * Graph.toGraphViz(graph).split("\n") // => ['digraph "G" {', '  "0" [label="Node A"];', '  "1" [label="Node B"];', '  "2" [label="Node C"];', '  "0" -> "1" [label="1"];', '  "1" -> "2" [label="2"];', '  "2" -> "0" [label="3"];', "}"]
@@ -3954,7 +4239,7 @@ const formatMermaidNode = (
  * const graph = Graph.directed<string, string>((mutable) => {
  *   const app = Graph.addNode(mutable, "App")
  *   const database = Graph.addNode(mutable, "Database")
- *   Graph.addEdge(mutable, app, database, "queries")
+ *   Graph.addEdgeUnsafe(mutable, app, database, "queries")
  * })
  *
  * Graph.toMermaid(graph).split("\n") // => ["flowchart TD", '  0["App"]', '  1["Database"]', '  0 -->|"queries"| 1']
@@ -4057,13 +4342,13 @@ export type Direction = "outgoing" | "incoming"
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, "A-B")
- *   Graph.addEdge(mutable, a, c, "A-C")
+ *   Graph.addEdgeUnsafe(mutable, a, b, "A-B")
+ *   Graph.addEdgeUnsafe(mutable, a, c, "A-C")
  * })
  *
- * Array.from(Graph.indices(Graph.bfs(graph, { start: [0], direction: "outgoing" }))) // => [0, 1, 2]
- * Array.from(Graph.indices(Graph.bfs(graph, { start: [1], direction: "incoming" }))) // => [1, 0]
- * Array.from(Graph.indices(Graph.bfs(graph, { start: [1], direction: "undirected" }))) // => [1, 0, 2]
+ * Array.from(Graph.indices(Graph.bfsUnsafe(graph, { start: [0], direction: "outgoing" }))) // => [0, 1, 2]
+ * Array.from(Graph.indices(Graph.bfsUnsafe(graph, { start: [1], direction: "incoming" }))) // => [1, 0]
+ * Array.from(Graph.indices(Graph.bfsUnsafe(graph, { start: [1], direction: "undirected" }))) // => [1, 0, 2]
  * ```
  *
  * @category models
@@ -4191,8 +4476,8 @@ export const findCycle = <N, E, T extends Kind = "directed">(
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, "A->B")
- *   Graph.addEdge(mutable, b, c, "B->C")
+ *   Graph.addEdgeUnsafe(mutable, a, b, "A->B")
+ *   Graph.addEdgeUnsafe(mutable, b, c, "B->C")
  * })
  * Graph.isAcyclic(dag) // => true
  *
@@ -4200,8 +4485,8 @@ export const findCycle = <N, E, T extends Kind = "directed">(
  * const cyclic = Graph.directed<string, string>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
- *   Graph.addEdge(mutable, a, b, "A->B")
- *   Graph.addEdge(mutable, b, a, "B->A") // Creates cycle
+ *   Graph.addEdgeUnsafe(mutable, a, b, "A->B")
+ *   Graph.addEdgeUnsafe(mutable, b, a, "B->A") // Creates cycle
  * })
  * Graph.isAcyclic(cyclic) // => false
  * ```
@@ -4322,9 +4607,9 @@ export const isAcyclic = <N, E, T extends Kind = "directed">(
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
  *   const d = Graph.addNode(mutable, "D")
- *   Graph.addEdge(mutable, a, b, "edge") // Set 1: {A, C}, Set 2: {B, D}
- *   Graph.addEdge(mutable, b, c, "edge")
- *   Graph.addEdge(mutable, c, d, "edge")
+ *   Graph.addEdgeUnsafe(mutable, a, b, "edge") // Set 1: {A, C}, Set 2: {B, D}
+ *   Graph.addEdgeUnsafe(mutable, b, c, "edge")
+ *   Graph.addEdgeUnsafe(mutable, c, d, "edge")
  * })
  * Graph.isBipartite(bipartite) // => true
  *
@@ -4333,9 +4618,9 @@ export const isAcyclic = <N, E, T extends Kind = "directed">(
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, "edge")
- *   Graph.addEdge(mutable, b, c, "edge")
- *   Graph.addEdge(mutable, c, a, "edge") // Triangle (3-cycle)
+ *   Graph.addEdgeUnsafe(mutable, a, b, "edge")
+ *   Graph.addEdgeUnsafe(mutable, b, c, "edge")
+ *   Graph.addEdgeUnsafe(mutable, c, a, "edge") // Triangle (3-cycle)
  * })
  * Graph.isBipartite(triangle) // => false
  * ```
@@ -4404,7 +4689,7 @@ export interface BipartiteMatch {
 /** @internal */
 const bipartiteColors = <N, E>(
   graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
-): { readonly cache: csr.Csr; readonly colors: Int8Array } => {
+): Result.Result<{ readonly cache: csr.Csr; readonly colors: Int8Array }, GraphError> => {
   if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "directed") {
     throw new GraphError({ message: "Cannot find bipartite matching of directed graph" })
   }
@@ -4431,12 +4716,12 @@ const bipartiteColors = <N, E>(
           colors[neighbor] = color
           queue[tail++] = neighbor
         } else if (colors[neighbor] === colors[node]) {
-          throw new GraphError({ message: "Cannot find bipartite matching of non-bipartite graph" })
+          return Result.fail(new GraphError({ message: "Cannot find bipartite matching of non-bipartite graph" }))
         }
       }
     }
   }
-  return { cache, colors }
+  return Result.succeed({ cache, colors })
 }
 
 /**
@@ -4449,8 +4734,8 @@ const bipartiteColors = <N, E>(
  *
  * **Details**
  *
- * The bipartition is derived internally. Self-loops and odd cycles throw a
- * `GraphError`. Isolated nodes are allowed. Parallel edges do not change the
+ * The bipartition is derived internally. Self-loops and odd cycles return
+ * `Result.fail`. Isolated nodes are allowed. Parallel edges do not change the
  * matching cardinality, and the first edge in graph order between each matched
  * pair is reported. Results follow left-partition graph order. Hopcroft-Karp
  * runs in `O(E * sqrt(V))` time.
@@ -4463,26 +4748,31 @@ const bipartiteColors = <N, E>(
  * **Example** (Matching a bipartite graph)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Result } from "effect"
  *
  * const graph = Graph.undirected<string, string>((mutable) => {
  *   for (const node of ["A", "B", "X", "Y"]) Graph.addNode(mutable, node)
- *   Graph.addEdge(mutable, 0, 2, "A-X")
- *   Graph.addEdge(mutable, 0, 3, "A-Y")
- *   Graph.addEdge(mutable, 1, 2, "B-X")
+ *   Graph.addEdgeUnsafe(mutable, 0, 2, "A-X")
+ *   Graph.addEdgeUnsafe(mutable, 0, 3, "A-Y")
+ *   Graph.addEdgeUnsafe(mutable, 1, 2, "B-X")
  * })
  *
- * Graph.maximumBipartiteMatching(graph) // => [{ left: 0, right: 3, edge: 1 }, { left: 1, right: 2, edge: 2 }]
+ * Graph.maximumBipartiteMatching(graph) // => Result.succeed([{ left: 0, right: 3, edge: 1 }, { left: 1, right: 2, edge: 2 }])
  * ```
  *
  * @see {@link isBipartite} for validating the graph without computing a matching
+ * @see {@link maximumBipartiteMatchingUnsafe} for the throwing variant
  * @category algorithms
  * @since 4.0.0
  */
 export const maximumBipartiteMatching = <N, E>(
   graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
-): Array<BipartiteMatch> => {
-  const { cache, colors } = bipartiteColors(graph)
+): Result.Result<Array<BipartiteMatch>, GraphError> => {
+  const colorsResult = bipartiteColors(graph)
+  if (Result.isFailure(colorsResult)) {
+    return Result.fail(colorsResult.failure)
+  }
+  const { cache, colors } = colorsResult.success
   const endpoints = csr.getEdgeEndpoints(cache)
   const edgeIds = csr.getEdgeIds(cache)
   const adjacency: Array<Array<{ readonly right: number; readonly edge: number }>> = Array.from({
@@ -4604,8 +4894,17 @@ export const maximumBipartiteMatching = <N, E>(
       })
     }
   }
-  return matches
+  return Result.succeed(matches)
 }
+
+/**
+ * @see {@link maximumBipartiteMatching} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const maximumBipartiteMatchingUnsafe = <N, E>(
+  graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
+): Array<BipartiteMatch> => Result.getOrThrow(maximumBipartiteMatching(graph))
 
 /**
  * Get neighbors for undirected graphs by checking both adjacency and reverse adjacency.
@@ -4664,13 +4963,13 @@ const getUnweightedDistances = <N, E, T extends Kind>(
   source: NodeIndex,
   direction: TraversalDirection,
   target?: NodeIndex
-): Map<NodeIndex, number> => {
+): Result.Result<Map<NodeIndex, number>, GraphError> => {
   const impl = internal.toImpl(graph)
   if (!impl.nodes.has(source)) {
-    throw missingNode(source)
+    return Result.fail(missingNode(source))
   }
   if (target !== undefined && !impl.nodes.has(target)) {
-    throw missingNode(target)
+    return Result.fail(missingNode(target))
   }
 
   const cache = csr.get(graph)
@@ -4711,7 +5010,7 @@ const getUnweightedDistances = <N, E, T extends Kind>(
       result.set(cache.nodeIds[i], compactDistances[i])
     }
   }
-  return result
+  return Result.succeed(result)
 }
 
 /**
@@ -4729,16 +5028,38 @@ const getUnweightedDistances = <N, E, T extends Kind>(
  *
  * **Gotchas**
  *
- * Throws a `GraphError` when the source does not exist.
+ * Returns `Result.fail` when the source does not exist.
  *
  * @see {@link hasPath} when only a reachability boolean is needed
  * @see {@link bfs} for lazy traversal in increasing hop distance
  * @see {@link dijkstra} for weighted shortest paths
+ * @see {@link unweightedDistancesUnsafe} for the throwing variant
  *
  * @category algorithms
  * @since 4.0.0
  */
 export const unweightedDistances: {
+  (source: NodeIndex, options?: ReachabilityConfig): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Result.Result<Map<NodeIndex, number>, GraphError>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    source: NodeIndex,
+    options?: ReachabilityConfig
+  ): Result.Result<Map<NodeIndex, number>, GraphError>
+} = dual((args) => isGraph(args[0]), <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  source: NodeIndex,
+  options?: ReachabilityConfig
+): Result.Result<Map<NodeIndex, number>, GraphError> =>
+  getUnweightedDistances(graph, source, options?.direction ?? "outgoing"))
+
+/**
+ * @see {@link unweightedDistances} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const unweightedDistancesUnsafe: {
   (source: NodeIndex, options?: ReachabilityConfig): <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>
   ) => Map<NodeIndex, number>
@@ -4747,11 +5068,11 @@ export const unweightedDistances: {
     source: NodeIndex,
     options?: ReachabilityConfig
   ): Map<NodeIndex, number>
-} = dual((args) => isGraph(args[0]), <N, E, T extends Kind = "directed">(
+} = dual((args) => isGraph(args[0]), <N, E, T extends Kind>(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   source: NodeIndex,
   options?: ReachabilityConfig
-): Map<NodeIndex, number> => getUnweightedDistances(graph, source, options?.direction ?? "outgoing"))
+) => Result.getOrThrow(unweightedDistances(graph, source, options)))
 
 /**
  * Tests whether a target is reachable from a source.
@@ -4768,10 +5089,11 @@ export const unweightedDistances: {
  *
  * **Gotchas**
  *
- * Throws a `GraphError` when either endpoint does not exist.
+ * Returns `Result.fail` when either endpoint does not exist.
  *
  * @see {@link unweightedDistances} for hop distances to all reachable nodes
  * @see {@link dijkstra} for a minimum-cost path
+ * @see {@link hasPathUnsafe} for the throwing variant
  *
  * @category predicates
  * @since 4.0.0
@@ -4779,28 +5101,28 @@ export const unweightedDistances: {
 export const hasPath: {
   (source: NodeIndex, target: NodeIndex, options?: ReachabilityConfig): <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>
-  ) => boolean
+  ) => Result.Result<boolean, GraphError>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     source: NodeIndex,
     target: NodeIndex,
     options?: ReachabilityConfig
-  ): boolean
+  ): Result.Result<boolean, GraphError>
 } = dual((args) => isGraph(args[0]), <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   source: NodeIndex,
   target: NodeIndex,
   options?: ReachabilityConfig
-): boolean => {
+): Result.Result<boolean, GraphError> => {
   const impl = internal.toImpl(graph)
   if (!impl.nodes.has(source)) {
-    throw missingNode(source)
+    return Result.fail(missingNode(source))
   }
   if (!impl.nodes.has(target)) {
-    throw missingNode(target)
+    return Result.fail(missingNode(target))
   }
   if (source === target) {
-    return true
+    return Result.succeed(true)
   }
 
   const cache = csr.get(graph)
@@ -4823,7 +5145,7 @@ export const hasPath: {
     for (let i = primary.rowOffsets[current]; i < primary.rowOffsets[current + 1]; i++) {
       const neighbor = primary.columnIndices[i]
       if (neighbor === targetNode) {
-        return true
+        return Result.succeed(true)
       }
       if (visited[neighbor] === 0) {
         visited[neighbor] = 1
@@ -4835,7 +5157,7 @@ export const hasPath: {
       for (let i = secondary.rowOffsets[current]; i < secondary.rowOffsets[current + 1]; i++) {
         const neighbor = secondary.columnIndices[i]
         if (neighbor === targetNode) {
-          return true
+          return Result.succeed(true)
         }
         if (visited[neighbor] === 0) {
           visited[neighbor] = 1
@@ -4844,8 +5166,30 @@ export const hasPath: {
       }
     }
   }
-  return false
+  return Result.succeed(false)
 })
+
+/**
+ * @see {@link hasPath} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const hasPathUnsafe: {
+  (source: NodeIndex, target: NodeIndex, options?: ReachabilityConfig): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => boolean
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    source: NodeIndex,
+    target: NodeIndex,
+    options?: ReachabilityConfig
+  ): boolean
+} = dual((args) => isGraph(args[0]), <N, E, T extends Kind>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  source: NodeIndex,
+  target: NodeIndex,
+  options?: ReachabilityConfig
+) => Result.getOrThrow(hasPath(graph, source, target, options)))
 
 /**
  * Returns the connected components of an undirected graph.
@@ -4866,15 +5210,15 @@ export const hasPath: {
  * **Example** (Finding connected components)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Result } from "effect"
  *
  * const graph = Graph.undirected<string, string>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
  *   const d = Graph.addNode(mutable, "D")
- *   Graph.addEdge(mutable, a, b, "edge") // Component 1: A-B
- *   Graph.addEdge(mutable, c, d, "edge") // Component 2: C-D
+ *   Graph.addEdgeUnsafe(mutable, a, b, "edge") // Component 1: A-B
+ *   Graph.addEdgeUnsafe(mutable, c, d, "edge") // Component 2: C-D
  * })
  *
  * Graph.connectedComponents(graph) // => [[0, 1], [2, 3]]
@@ -5097,8 +5441,8 @@ const analyzeLowLinks = <N, E>(
  *
  * const graph = Graph.undirected<void, void>((mutable) => {
  *   for (let i = 0; i < 3; i++) Graph.addNode(mutable, undefined)
- *   Graph.addEdge(mutable, 0, 1, undefined)
- *   Graph.addEdge(mutable, 1, 2, undefined)
+ *   Graph.addEdgeUnsafe(mutable, 0, 1, undefined)
+ *   Graph.addEdgeUnsafe(mutable, 1, 2, undefined)
  * })
  *
  * Graph.bridges(graph) // => [0, 1]
@@ -5137,8 +5481,8 @@ export const bridges = <N, E>(
  *
  * const graph = Graph.undirected<void, void>((mutable) => {
  *   for (let i = 0; i < 3; i++) Graph.addNode(mutable, undefined)
- *   Graph.addEdge(mutable, 0, 1, undefined)
- *   Graph.addEdge(mutable, 1, 2, undefined)
+ *   Graph.addEdgeUnsafe(mutable, 0, 1, undefined)
+ *   Graph.addEdgeUnsafe(mutable, 1, 2, undefined)
  * })
  *
  * Graph.articulationPoints(graph) // => [1]
@@ -5180,12 +5524,12 @@ export const articulationPoints = <N, E>(
  *
  * const graph = Graph.undirected<void, void>((mutable) => {
  *   for (let i = 0; i < 5; i++) Graph.addNode(mutable, undefined)
- *   Graph.addEdge(mutable, 0, 1, undefined)
- *   Graph.addEdge(mutable, 1, 2, undefined)
- *   Graph.addEdge(mutable, 2, 0, undefined)
- *   Graph.addEdge(mutable, 2, 3, undefined)
- *   Graph.addEdge(mutable, 3, 4, undefined)
- *   Graph.addEdge(mutable, 4, 2, undefined)
+ *   Graph.addEdgeUnsafe(mutable, 0, 1, undefined)
+ *   Graph.addEdgeUnsafe(mutable, 1, 2, undefined)
+ *   Graph.addEdgeUnsafe(mutable, 2, 0, undefined)
+ *   Graph.addEdgeUnsafe(mutable, 2, 3, undefined)
+ *   Graph.addEdgeUnsafe(mutable, 3, 4, undefined)
+ *   Graph.addEdgeUnsafe(mutable, 4, 2, undefined)
  * })
  *
  * Graph.biconnectedComponents(graph) // => [[0, 1, 2], [2, 3, 4]]
@@ -5280,21 +5624,21 @@ interface ResidualArc {
 const solveMaximumFlow = <N, E>(
   graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
   config: MaximumFlowConfig<E>
-): FlowSolution => {
+): Result.Result<FlowSolution, GraphError> => {
   if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "undirected") {
     throw new GraphError({ message: "Cannot compute flow of undirected graph" })
   }
   const cache = csr.get(graph)
   const source = csr.getNodeIndex(cache, config.source)
   if (source === undefined) {
-    throw missingNode(config.source)
+    return Result.fail(missingNode(config.source))
   }
   const target = csr.getNodeIndex(cache, config.target)
   if (target === undefined) {
-    throw missingNode(config.target)
+    return Result.fail(missingNode(config.target))
   }
   if (source === target) {
-    throw new GraphError({ message: "Flow source and target must be different nodes" })
+    return Result.fail(new GraphError({ message: "Flow source and target must be different nodes" }))
   }
 
   const edges = csr.getEdges(cache) as Array<Edge<E>>
@@ -5306,11 +5650,13 @@ const solveMaximumFlow = <N, E>(
   const forwardArc = new Int32Array(edges.length)
   forwardArc.fill(-1)
 
-  withMutationGuard(graph, () => {
+  const capacitiesResult = withMutationGuard(graph, (): Result.Result<void, GraphError> => {
     for (let edge = 0; edge < edges.length; edge++) {
       const capacity = config.capacity(edges[edge].data)
       if (!Number.isFinite(capacity) || capacity < 0) {
-        throw new GraphError({ message: `Edge ${edgeIds[edge]} capacity must be a finite non-negative number` })
+        return Result.fail(
+          new GraphError({ message: `Edge ${edgeIds[edge]} capacity must be a finite non-negative number` })
+        )
       }
       capacities[edge] = capacity
       const from = endpoints.sources[edge]
@@ -5325,7 +5671,11 @@ const solveMaximumFlow = <N, E>(
       adjacency[to].push(index + 1)
       arcs.push({ from: to, to: from, capacity: 0, edge: -1, flow: 0 })
     }
+    return Result.succeed(undefined)
   })
+  if (Result.isFailure(capacitiesResult)) {
+    return Result.fail(capacitiesResult.failure)
+  }
 
   const parentArc = new Int32Array(cache.nodeIds.length)
   const visited = new Uint8Array(cache.nodeIds.length)
@@ -5363,7 +5713,7 @@ const solveMaximumFlow = <N, E>(
       node = arc.from
     }
     if (!Number.isFinite(value + amount)) {
-      throw new GraphError({ message: "Maximum flow exceeds the finite number range" })
+      return Result.fail(new GraphError({ message: "Maximum flow exceeds the finite number range" }))
     }
     for (let node = target; node !== source;) {
       const arcIndex = parentArc[node]
@@ -5407,7 +5757,7 @@ const solveMaximumFlow = <N, E>(
       cut.push(edgeIds[edge])
     }
   }
-  return { value, flows, cut, sourceSide: visited, nodeIds: cache.nodeIds }
+  return Result.succeed({ value, flows, cut, sourceSide: visited, nodeIds: cache.nodeIds })
 }
 
 /**
@@ -5428,28 +5778,56 @@ const solveMaximumFlow = <N, E>(
  *
  * The graph must be directed. Capacities must be finite and non-negative.
  * Missing or equal endpoints, invalid capacities, and a total flow outside the
- * finite number range throw a `GraphError`. Self-loops always carry zero flow.
+ * finite number range return `Result.fail`. Self-loops always carry zero flow.
+ * Exceptions thrown by the `capacity` callback propagate unchanged rather than
+ * becoming `Result.fail`.
  *
  * **Example** (Computing maximum flow)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Result } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   for (const node of ["source", "a", "target"]) Graph.addNode(mutable, node)
- *   Graph.addEdge(mutable, 0, 1, 3)
- *   Graph.addEdge(mutable, 1, 2, 2)
- *   Graph.addEdge(mutable, 0, 2, 1)
+ *   Graph.addEdgeUnsafe(mutable, 0, 1, 3)
+ *   Graph.addEdgeUnsafe(mutable, 1, 2, 2)
+ *   Graph.addEdgeUnsafe(mutable, 0, 2, 1)
  * })
  *
- * Graph.maximumFlow(graph, { source: 0, target: 2, capacity: (edge) => edge }).value // => 3
+ * Result.map(Graph.maximumFlow(graph, { source: 0, target: 2, capacity: (edge) => edge }), (result) => result.value) // => Result.succeed(3)
  * ```
  *
  * @see {@link minimumCut} for the residual-reachability partition
+ * @see {@link maximumFlowUnsafe} for the throwing variant
  * @category algorithms
  * @since 4.0.0
  */
 export const maximumFlow: {
+  <E>(config: MaximumFlowConfig<E>): <N>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  ) => Result.Result<MaximumFlowResult, GraphError>
+  <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+    config: MaximumFlowConfig<E>
+  ): Result.Result<MaximumFlowResult, GraphError>
+} = dual(2, <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+  config: MaximumFlowConfig<E>
+): Result.Result<MaximumFlowResult, GraphError> => {
+  const solution = solveMaximumFlow(graph, config)
+  if (Result.isFailure(solution)) {
+    return Result.fail(solution.failure)
+  }
+  const { cut, flows, value } = solution.success
+  return Result.succeed({ value, flows, cut })
+})
+
+/**
+ * @see {@link maximumFlow} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const maximumFlowUnsafe: {
   <E>(config: MaximumFlowConfig<E>): <N>(
     graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
   ) => MaximumFlowResult
@@ -5460,10 +5838,7 @@ export const maximumFlow: {
 } = dual(2, <N, E>(
   graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
   config: MaximumFlowConfig<E>
-): MaximumFlowResult => {
-  const { cut, flows, value } = solveMaximumFlow(graph, config)
-  return { value, flows, cut }
-})
+) => Result.getOrThrow(maximumFlow(graph, config)))
 
 /**
  * Returns a minimum cut and its node partitions for a directed graph.
@@ -5484,27 +5859,59 @@ export const maximumFlow: {
  * **Gotchas**
  *
  * The graph must be directed. Invalid capacities, missing endpoints, or equal
- * source and target nodes throw a `GraphError`.
+ * source and target nodes return `Result.fail`.
+ * Exceptions thrown by the `capacity` callback propagate unchanged rather than
+ * becoming `Result.fail`.
  *
  * **Example** (Partitioning a minimum cut)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Result } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   for (const node of ["source", "a", "target"]) Graph.addNode(mutable, node)
- *   Graph.addEdge(mutable, 0, 1, 2)
- *   Graph.addEdge(mutable, 1, 2, 1)
+ *   Graph.addEdgeUnsafe(mutable, 0, 1, 2)
+ *   Graph.addEdgeUnsafe(mutable, 1, 2, 1)
  * })
  *
- * Graph.minimumCut(graph, { source: 0, target: 2, capacity: (edge) => edge }).source // => [0, 1]
+ * Result.map(Graph.minimumCut(graph, { source: 0, target: 2, capacity: (edge) => edge }), (result) => result.source) // => Result.succeed([0, 1])
  * ```
  *
  * @see {@link maximumFlow} for per-edge flow values
+ * @see {@link minimumCutUnsafe} for the throwing variant
  * @category algorithms
  * @since 4.0.0
  */
 export const minimumCut: {
+  <E>(config: MaximumFlowConfig<E>): <N>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  ) => Result.Result<MinimumCutResult, GraphError>
+  <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+    config: MaximumFlowConfig<E>
+  ): Result.Result<MinimumCutResult, GraphError>
+} = dual(2, <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+  config: MaximumFlowConfig<E>
+): Result.Result<MinimumCutResult, GraphError> => {
+  const solution = solveMaximumFlow(graph, config)
+  if (Result.isFailure(solution)) {
+    return Result.fail(solution.failure)
+  }
+  const source: Array<NodeIndex> = []
+  const target: Array<NodeIndex> = []
+  for (let node = 0; node < solution.success.nodeIds.length; node++) {
+    ;(solution.success.sourceSide[node] === 0 ? target : source).push(solution.success.nodeIds[node])
+  }
+  return Result.succeed({ value: solution.success.value, edges: solution.success.cut, source, target })
+})
+
+/**
+ * @see {@link minimumCut} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const minimumCutUnsafe: {
   <E>(config: MaximumFlowConfig<E>): <N>(
     graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
   ) => MinimumCutResult
@@ -5515,15 +5922,7 @@ export const minimumCut: {
 } = dual(2, <N, E>(
   graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
   config: MaximumFlowConfig<E>
-): MinimumCutResult => {
-  const solution = solveMaximumFlow(graph, config)
-  const source: Array<NodeIndex> = []
-  const target: Array<NodeIndex> = []
-  for (let node = 0; node < solution.nodeIds.length; node++) {
-    ;(solution.sourceSide[node] === 0 ? target : source).push(solution.nodeIds[node])
-  }
-  return { value: solution.value, edges: solution.cut, source, target }
-})
+) => Result.getOrThrow(minimumCut(graph, config)))
 
 /**
  * Finds weakly connected components in a directed graph.
@@ -5620,9 +6019,9 @@ export const weaklyConnectedComponents = <N, E>(
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, "A->B")
- *   Graph.addEdge(mutable, b, c, "B->C")
- *   Graph.addEdge(mutable, c, a, "C->A") // Creates SCC: A-B-C
+ *   Graph.addEdgeUnsafe(mutable, a, b, "A->B")
+ *   Graph.addEdgeUnsafe(mutable, b, c, "B->C")
+ *   Graph.addEdgeUnsafe(mutable, c, a, "C->A") // Creates SCC: A-B-C
  * })
  *
  * Graph.stronglyConnectedComponents(graph) // => [[0, 2, 1]]
@@ -5877,24 +6276,27 @@ export const isTree = <N, E>(
  *
  * **Gotchas**
  *
- * Throws a `GraphError` for a directed graph or when a weight is `NaN` or
- * `-Infinity`. Edges weighted `Infinity` are omitted.
+ * A directed graph is runtime misuse excluded by the signature and throws a
+ * `GraphError`. A weight of `NaN` or `-Infinity` returns `Result.fail`. Edges
+ * weighted `Infinity` are omitted. Exceptions thrown by the `cost` callback
+ * propagate unchanged rather than becoming `Result.fail`.
  *
+ * @see {@link minimumSpanningForestUnsafe} for the throwing variant
  * @category algorithms
  * @since 4.0.0
  */
 export const minimumSpanningForest: {
   <E>(cost: (edgeData: E) => number): <N>(
     graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
-  ) => Graph<N, E, "undirected">
+  ) => Result.Result<Graph<N, E, "undirected">, GraphError>
   <N, E>(
     graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">,
     cost: (edgeData: E) => number
-  ): Graph<N, E, "undirected">
+  ): Result.Result<Graph<N, E, "undirected">, GraphError>
 } = dual(2, <N, E>(
   graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">,
   cost: (edgeData: E) => number
-): Graph<N, E, "undirected"> => {
+): Result.Result<Graph<N, E, "undirected">, GraphError> => {
   if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "directed") {
     throw new GraphError({ message: "Cannot find minimum spanning forest of directed graph" })
   }
@@ -5907,18 +6309,24 @@ export const minimumSpanningForest: {
   }
   const weightedEdges: Array<{ readonly index: EdgeIndex; readonly weight: number; readonly order: number }> = []
   let order = 0
-  withMutationGuard(graph, () => {
+  const weightsResult = withMutationGuard(graph, (): Result.Result<void, GraphError> => {
     for (const [index, edge] of impl.edges) {
       const weight = cost(edge.data)
       if (Number.isNaN(weight) || weight === -Infinity) {
-        throw new GraphError({ message: "Minimum spanning forest does not support NaN or -Infinity edge weights" })
+        return Result.fail(
+          new GraphError({ message: "Minimum spanning forest does not support NaN or -Infinity edge weights" })
+        )
       }
       if (weight !== Infinity) {
         weightedEdges.push({ index, weight, order })
       }
       order++
     }
+    return Result.succeed(undefined)
   })
+  if (Result.isFailure(weightsResult)) {
+    return Result.fail(weightsResult.failure)
+  }
   weightedEdges.sort((self, that) => self.weight - that.weight || self.order - that.order)
 
   const parents = new Uint32Array(nodes.length)
@@ -5968,6 +6376,24 @@ export const minimumSpanningForest: {
 })
 
 /**
+ * @see {@link minimumSpanningForest} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const minimumSpanningForestUnsafe: {
+  <E>(cost: (edgeData: E) => number): <N>(
+    graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
+  ) => Graph<N, E, "undirected">
+  <N, E>(
+    graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">,
+    cost: (edgeData: E) => number
+  ): Graph<N, E, "undirected">
+} = dual(2, <N, E>(
+  graph: Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">,
+  cost: (edgeData: E) => number
+) => Result.getOrThrow(minimumSpanningForest(graph, cost)))
+
+/**
  * Returns the transitive reduction of a directed acyclic graph.
  *
  * **When to use**
@@ -5983,20 +6409,22 @@ export const minimumSpanningForest: {
  * **Gotchas**
  *
  * This operation is structural and ignores edge costs. Parallel edges are
- * coalesced by retaining the first edge for each required pair. Throws a
- * `GraphError` for an undirected graph or cyclic input.
+ * coalesced by retaining the first edge for each required pair. An undirected
+ * graph is runtime misuse excluded by the signature and throws a `GraphError`;
+ * cyclic input returns `Result.fail`.
  *
+ * @see {@link transitiveReductionUnsafe} for the throwing variant
  * @category algorithms
  * @since 4.0.0
  */
 export const transitiveReduction = <N, E>(
   graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
-): Graph<N, E, "directed"> => {
+): Result.Result<Graph<N, E, "directed">, GraphError> => {
   if ((graph as Graph<N, E, Kind> | MutableGraph<N, E, Kind>).type === "undirected") {
     throw new GraphError({ message: "Cannot transitively reduce undirected graph" })
   }
   if (!isAcyclic(graph)) {
-    throw new GraphError({ message: "Cannot transitively reduce cyclic graph" })
+    return Result.fail(new GraphError({ message: "Cannot transitively reduce cyclic graph" }))
   }
 
   const impl = internal.toImpl(graph)
@@ -6053,6 +6481,15 @@ export const transitiveReduction = <N, E>(
   }
   return fromSnapshot({ type: "directed", nodes, edges })
 }
+
+/**
+ * @see {@link transitiveReduction} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const transitiveReductionUnsafe = <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+): Graph<N, E, "directed"> => Result.getOrThrow(transitiveReduction(graph))
 
 // =============================================================================
 // Path Finding Algorithms
@@ -6230,7 +6667,7 @@ const denseMinHeapPop = (heap: DenseMinHeap): boolean => {
  *
  * **Gotchas**
  *
- * `dijkstra` throws a `GraphError` when either endpoint does not exist or when
+ * `dijkstra` returns `Result.fail` when either endpoint does not exist or when
  * the cost function returns a negative weight or `NaN`.
  *
  * @category configuration
@@ -6259,21 +6696,23 @@ export interface DijkstraConfig<E> {
  *
  * **Gotchas**
  *
- * Throws a `GraphError` when either endpoint is missing or an edge cost is
+ * Returns `Result.fail` when either endpoint is missing or an edge cost is
  * negative or `NaN`, or when a path distance exceeds the finite number range.
+ * Exceptions thrown by the `cost` callback propagate unchanged rather than
+ * becoming `Result.fail`.
  *
  * **Example** (Finding shortest paths with Dijkstra)
  *
  * ```ts import.meta.vitest
- * import { Graph, Option } from "effect"
+ * import { Graph, Option, Result } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, 5)
- *   Graph.addEdge(mutable, a, c, 10)
- *   Graph.addEdge(mutable, b, c, 2)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 5)
+ *   Graph.addEdgeUnsafe(mutable, a, c, 10)
+ *   Graph.addEdgeUnsafe(mutable, b, c, 2)
  * })
  *
  * const result = Graph.dijkstra(graph, {
@@ -6282,9 +6721,10 @@ export interface DijkstraConfig<E> {
  *   cost: (edgeData) => edgeData
  * })
  *
- * Option.map(result, ({ distance, path }) => [distance, path] as const) // => Option.some([7, [0, 1, 2]])
+ * Result.map(result, Option.map(({ distance, path }) => [distance, path] as const)) // => Result.succeed(Option.some([7, [0, 1, 2]]))
  * ```
  *
+ * @see {@link dijkstraUnsafe} for the throwing variant
  * @see {@link astar} when a useful heuristic can guide the search
  * @see {@link bellmanFord} when edge costs may be negative
  * @see {@link floydWarshall} when shortest paths are needed for all pairs
@@ -6294,22 +6734,24 @@ export interface DijkstraConfig<E> {
 export const dijkstra: {
   <E>(
     config: DijkstraConfig<E>
-  ): <N, T extends Kind = "directed">(graph: Graph<N, E, T> | MutableGraph<N, E, T>) => Option.Option<PathResult<E>>
+  ): <N, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Result.Result<Option.Option<PathResult<E>>, GraphError>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     config: DijkstraConfig<E>
-  ): Option.Option<PathResult<E>>
+  ): Result.Result<Option.Option<PathResult<E>>, GraphError>
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: DijkstraConfig<E>
-): Option.Option<PathResult<E>> => {
+): Result.Result<Option.Option<PathResult<E>>, GraphError> => {
   const impl = internal.toImpl(graph)
   // Validate that source and target nodes exist
   if (!impl.nodes.has(config.source)) {
-    throw missingNode(config.source)
+    return Result.fail(missingNode(config.source))
   }
   if (!impl.nodes.has(config.target)) {
-    throw missingNode(config.target)
+    return Result.fail(missingNode(config.target))
   }
 
   const cache = csr.get(graph)
@@ -6319,24 +6761,28 @@ export const dijkstra: {
   const source = csr.getNodeIndex(cache, config.source)!
   const target = csr.getNodeIndex(cache, config.target)!
   const edgeWeights = new Float64Array(cachedEdges.length)
-  withMutationGuard(graph, () => {
+  const weightsResult = withMutationGuard(graph, (): Result.Result<void, GraphError> => {
     for (let i = 0; i < cachedEdges.length; i++) {
       const weight = config.cost(cachedEdges[i].data)
       if (Number.isNaN(weight) || weight < 0) {
-        throw new GraphError({ message: "Dijkstra's algorithm requires non-negative edge weights" })
+        return Result.fail(new GraphError({ message: "Dijkstra's algorithm requires non-negative edge weights" }))
       }
       edgeWeights[i] = weight
     }
+    return Result.succeed(undefined)
   })
+  if (Result.isFailure(weightsResult)) {
+    return Result.fail(weightsResult.failure)
+  }
 
   // Early return if source equals target
   if (config.source === config.target) {
-    return Option.some({
+    return Result.succeed(Option.some({
       path: [config.source],
       edges: [],
       distance: 0,
       costs: []
-    })
+    }))
   }
 
   const distances = new Float64Array(cache.nodeIds.length)
@@ -6369,7 +6815,9 @@ export const dijkstra: {
       const edge = outgoing.edgeIndices[i]
       const nextDistance = currentDistance + edgeWeights[edge]
       if (edgeWeights[edge] !== Infinity && !Number.isFinite(nextDistance)) {
-        throw new GraphError({ message: "Dijkstra distance calculation exceeded the finite number range" })
+        return Result.fail(
+          new GraphError({ message: "Dijkstra distance calculation exceeded the finite number range" })
+        )
       }
       if (nextDistance < distances[neighbor]) {
         distances[neighbor] = nextDistance
@@ -6383,7 +6831,7 @@ export const dijkstra: {
   }
 
   if (distances[target] === Infinity) {
-    return Option.none()
+    return Result.succeed(Option.none())
   }
 
   const path: Array<NodeIndex> = []
@@ -6403,8 +6851,26 @@ export const dijkstra: {
   edges.reverse()
   costs.reverse()
 
-  return Option.some({ path, edges, distance: distances[target], costs })
+  return Result.succeed(Option.some({ path, edges, distance: distances[target], costs }))
 })
+
+/**
+ * @see {@link dijkstra} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const dijkstraUnsafe: {
+  <E>(config: DijkstraConfig<E>): <N, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Option.Option<PathResult<E>>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    config: DijkstraConfig<E>
+  ): Option.Option<PathResult<E>>
+} = dual(2, <N, E, T extends Kind>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  config: DijkstraConfig<E>
+) => Result.getOrThrow(dijkstra(graph, config)))
 
 /**
  * Result of an all-pairs shortest path computation.
@@ -6448,46 +6914,52 @@ export interface AllPairsResult<E> {
  *
  * **Gotchas**
  *
- * A `GraphError` is thrown if any edge weight is `NaN` or `-Infinity`, or if
+ * Returns `Result.fail` if any edge weight is `NaN` or `-Infinity`, or if
  * finite arithmetic overflows or underflows, or if any negative cycle is
  * detected.
+ * Exceptions thrown by the `cost` callback propagate unchanged rather than
+ * becoming `Result.fail`.
  *
  * **Example** (Finding all-pairs shortest paths)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Result } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, 3)
- *   Graph.addEdge(mutable, b, c, 2)
- *   Graph.addEdge(mutable, a, c, 7)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 3)
+ *   Graph.addEdgeUnsafe(mutable, b, c, 2)
+ *   Graph.addEdgeUnsafe(mutable, a, c, 7)
  * })
  *
- * const result = Graph.floydWarshall(graph, (edgeData) => edgeData)
- * const shortest = { distance: result.distances.get(0)?.get(2), path: result.paths.get(0)?.get(2) }
- * shortest // => { distance: 5, path: [0, 1, 2] }
+ * Result.map(Graph.floydWarshall(graph, (edgeData) => edgeData), (result) => ({
+ *   distance: result.distances.get(0)?.get(2),
+ *   path: result.paths.get(0)?.get(2)
+ * })) // => Result.succeed({ distance: 5, path: [0, 1, 2] })
  * ```
  *
  * @see {@link dijkstra} for one query with non-negative edge costs
  * @see {@link bellmanFord} for one query that may include negative edge costs
+ * @see {@link floydWarshallUnsafe} for the throwing variant
  * @category algorithms
  * @since 3.18.0
  */
 export const floydWarshall: {
   <E>(
     cost: (edgeData: E) => number
-  ): <N, T extends Kind = "directed">(graph: Graph<N, E, T> | MutableGraph<N, E, T>) => AllPairsResult<E>
+  ): <N, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Result.Result<AllPairsResult<E>, GraphError>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     cost: (edgeData: E) => number
-  ): AllPairsResult<E>
+  ): Result.Result<AllPairsResult<E>, GraphError>
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   cost: (edgeData: E) => number
-): AllPairsResult<E> => {
+): Result.Result<AllPairsResult<E>, GraphError> => {
   const cache = csr.get(graph)
   const edges = csr.getEdges(cache)
   const edgeIds = csr.getEdgeIds(cache)
@@ -6504,11 +6976,13 @@ export const floydWarshall: {
     distancesMatrix[i * size + i] = 0
   }
 
-  withMutationGuard(graph, () => {
+  const weightsResult = withMutationGuard(graph, (): Result.Result<void, GraphError> => {
     for (let edge = 0; edge < edges.length; edge++) {
       const weight = cost(edges[edge].data)
       if (Number.isNaN(weight) || weight === -Infinity) {
-        throw new GraphError({ message: "Floyd-Warshall algorithm does not support NaN or -Infinity edge weights" })
+        return Result.fail(
+          new GraphError({ message: "Floyd-Warshall algorithm does not support NaN or -Infinity edge weights" })
+        )
       }
       const source = edgeCache.sources[edge]
       const target = edgeCache.targets[edge]
@@ -6527,7 +7001,11 @@ export const floydWarshall: {
         }
       }
     }
+    return Result.succeed(undefined)
   })
+  if (Result.isFailure(weightsResult)) {
+    return Result.fail(weightsResult.failure)
+  }
 
   for (let k = 0; k < size; k++) {
     const kRow = k * size
@@ -6545,7 +7023,9 @@ export const floydWarshall: {
         }
         const candidate = distanceIK + distanceKJ
         if (!Number.isFinite(candidate)) {
-          throw new GraphError({ message: "Floyd-Warshall distance calculation exceeded the finite number range" })
+          return Result.fail(
+            new GraphError({ message: "Floyd-Warshall distance calculation exceeded the finite number range" })
+          )
         }
         if (candidate < distancesMatrix[iRow + j] && nextIK !== -1) {
           distancesMatrix[iRow + j] = candidate
@@ -6557,7 +7037,7 @@ export const floydWarshall: {
 
   for (let i = 0; i < size; i++) {
     if (distancesMatrix[i * size + i] < 0) {
-      throw new GraphError({ message: `Negative cycle detected involving node ${cache.nodeIds[i]}` })
+      return Result.fail(new GraphError({ message: `Negative cycle detected involving node ${cache.nodeIds[i]}` }))
     }
   }
 
@@ -6613,8 +7093,26 @@ export const floydWarshall: {
     }
   }
 
-  return { distances, paths, edges: edgePaths, costs }
+  return Result.succeed({ distances, paths, edges: edgePaths, costs })
 })
+
+/**
+ * @see {@link floydWarshall} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const floydWarshallUnsafe: {
+  <E>(cost: (edgeData: E) => number): <N, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => AllPairsResult<E>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    cost: (edgeData: E) => number
+  ): AllPairsResult<E>
+} = dual(2, <N, E, T extends Kind>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  cost: (edgeData: E) => number
+) => Result.getOrThrow(floydWarshall(graph, cost)))
 
 /**
  * Configuration for finding a shortest path with the A* algorithm.
@@ -6664,19 +7162,21 @@ export interface AstarConfig<E, N> {
  *
  * The heuristic must be consistent for the shortest-path guarantee and must
  * return finite values. Missing endpoints, invalid edge costs, or non-finite
- * heuristic values or arithmetic results throw a `GraphError`.
+ * heuristic values or arithmetic results return `Result.fail`.
+ * Exceptions thrown by the `cost` or `heuristic` callbacks propagate unchanged
+ * rather than becoming `Result.fail`.
  *
  * **Example** (Finding shortest paths with A*)
  *
  * ```ts import.meta.vitest
- * import { Graph, Option } from "effect"
+ * import { Graph, Option, Result } from "effect"
  *
  * const graph = Graph.directed<{ x: number; y: number }, number>((mutable) => {
  *   const a = Graph.addNode(mutable, { x: 0, y: 0 })
  *   const b = Graph.addNode(mutable, { x: 1, y: 0 })
  *   const c = Graph.addNode(mutable, { x: 2, y: 0 })
- *   Graph.addEdge(mutable, a, b, 1)
- *   Graph.addEdge(mutable, b, c, 1)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 1)
+ *   Graph.addEdgeUnsafe(mutable, b, c, 1)
  * })
  *
  * // Manhattan distance heuristic
@@ -6692,33 +7192,36 @@ export interface AstarConfig<E, N> {
  *   heuristic
  * })
  *
- * Option.map(result, ({ distance, path }) => [distance, path] as const) // => Option.some([2, [0, 1, 2]])
+ * Result.map(result, Option.map(({ distance, path }) => [distance, path] as const)) // => Result.succeed(Option.some([2, [0, 1, 2]]))
  * ```
  *
  * @see {@link dijkstra} when no useful heuristic is available
  * @see {@link bellmanFord} when edge costs may be negative
+ * @see {@link astarUnsafe} for the throwing variant
  * @category algorithms
  * @since 3.18.0
  */
 export const astar: {
   <E, N>(
     config: AstarConfig<E, N>
-  ): <T extends Kind = "directed">(graph: Graph<N, E, T> | MutableGraph<N, E, T>) => Option.Option<PathResult<E>>
+  ): <T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Result.Result<Option.Option<PathResult<E>>, GraphError>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     config: AstarConfig<E, N>
-  ): Option.Option<PathResult<E>>
+  ): Result.Result<Option.Option<PathResult<E>>, GraphError>
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: AstarConfig<E, N>
-): Option.Option<PathResult<E>> => {
+): Result.Result<Option.Option<PathResult<E>>, GraphError> => {
   const impl = internal.toImpl(graph)
   // Validate that source and target nodes exist
   if (!impl.nodes.has(config.source)) {
-    throw missingNode(config.source)
+    return Result.fail(missingNode(config.source))
   }
   if (!impl.nodes.has(config.target)) {
-    throw missingNode(config.target)
+    return Result.fail(missingNode(config.target))
   }
 
   const cache = csr.get(graph)
@@ -6730,35 +7233,39 @@ export const astar: {
   const sourceNodeData = cache.nodeData[source] as N
   const targetNodeData = cache.nodeData[target] as N
   const edgeWeights = new Float64Array(cachedEdges.length)
-  withMutationGuard(graph, () => {
+  const weightsResult = withMutationGuard(graph, (): Result.Result<void, GraphError> => {
     for (let i = 0; i < cachedEdges.length; i++) {
       const weight = config.cost(cachedEdges[i].data)
       if (Number.isNaN(weight) || weight < 0) {
-        throw new GraphError({ message: "A* algorithm requires non-negative edge weights" })
+        return Result.fail(new GraphError({ message: "A* algorithm requires non-negative edge weights" }))
       }
       edgeWeights[i] = weight
     }
+    return Result.succeed(undefined)
   })
+  if (Result.isFailure(weightsResult)) {
+    return Result.fail(weightsResult.failure)
+  }
 
   // Early return if source equals target
   if (config.source === config.target) {
     if (!Number.isFinite(withMutationGuard(graph, () => config.heuristic(sourceNodeData, targetNodeData)))) {
-      throw new GraphError({ message: "A* algorithm requires finite heuristic values" })
+      return Result.fail(new GraphError({ message: "A* algorithm requires finite heuristic values" }))
     }
-    return Option.some({
+    return Result.succeed(Option.some({
       path: [config.source],
       edges: [],
       distance: 0,
       costs: []
-    })
+    }))
   }
 
-  const getHeuristic = (nodeData: N): number => {
+  const getHeuristic = (nodeData: N): Result.Result<number, GraphError> => {
     const value = withMutationGuard(graph, () => config.heuristic(nodeData, targetNodeData))
     if (!Number.isFinite(value)) {
-      throw new GraphError({ message: "A* algorithm requires finite heuristic values" })
+      return Result.fail(new GraphError({ message: "A* algorithm requires finite heuristic values" }))
     }
-    return value
+    return Result.succeed(value)
   }
 
   const scores = new Float64Array(cache.nodeIds.length)
@@ -6772,7 +7279,11 @@ export const astar: {
   const visited = new Uint8Array(cache.nodeIds.length)
   const openSet = denseMinHeapMake(cache.nodeIds.length)
   let sequence = 0
-  denseMinHeapPush(openSet, source, getHeuristic(sourceNodeData), sequence++)
+  const sourceHeuristic = getHeuristic(sourceNodeData)
+  if (Result.isFailure(sourceHeuristic)) {
+    return Result.fail(sourceHeuristic.failure)
+  }
+  denseMinHeapPush(openSet, source, sourceHeuristic.success, sequence++)
 
   while (openSet.size > 0) {
     denseMinHeapPop(openSet)
@@ -6794,15 +7305,19 @@ export const astar: {
       const edge = outgoing.edgeIndices[i]
       const tentativeScore = currentScore + edgeWeights[edge]
       if (edgeWeights[edge] !== Infinity && !Number.isFinite(tentativeScore)) {
-        throw new GraphError({ message: "A* distance calculation exceeded the finite number range" })
+        return Result.fail(new GraphError({ message: "A* distance calculation exceeded the finite number range" }))
       }
       if (tentativeScore < scores[neighbor]) {
         scores[neighbor] = tentativeScore
         previousNode[neighbor] = current
         previousEdge[neighbor] = edge
-        const priority = tentativeScore + getHeuristic(cache.nodeData[neighbor] as N)
+        const heuristic = getHeuristic(cache.nodeData[neighbor] as N)
+        if (Result.isFailure(heuristic)) {
+          return Result.fail(heuristic.failure)
+        }
+        const priority = tentativeScore + heuristic.success
         if (!Number.isFinite(priority)) {
-          throw new GraphError({ message: "A* priority calculation exceeded the finite number range" })
+          return Result.fail(new GraphError({ message: "A* priority calculation exceeded the finite number range" }))
         }
         denseMinHeapPush(openSet, neighbor, priority, sequence++)
       }
@@ -6810,7 +7325,7 @@ export const astar: {
   }
 
   if (scores[target] === Infinity) {
-    return Option.none()
+    return Result.succeed(Option.none())
   }
 
   const path: Array<NodeIndex> = []
@@ -6829,8 +7344,26 @@ export const astar: {
   path.reverse()
   edges.reverse()
   costs.reverse()
-  return Option.some({ path, edges, distance: scores[target], costs })
+  return Result.succeed(Option.some({ path, edges, distance: scores[target], costs }))
 })
+
+/**
+ * @see {@link astar} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const astarUnsafe: {
+  <E, N>(config: AstarConfig<E, N>): <T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Option.Option<PathResult<E>>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    config: AstarConfig<E, N>
+  ): Option.Option<PathResult<E>>
+} = dual(2, <N, E, T extends Kind>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  config: AstarConfig<E, N>
+) => Result.getOrThrow(astar(graph, config)))
 
 /**
  * Configuration for finding a shortest path with the Bellman-Ford algorithm.
@@ -6872,21 +7405,23 @@ export interface BellmanFordConfig<E> {
  * **Gotchas**
  *
  * Missing endpoints, unsupported weights, finite-range overflow, or a relevant
- * negative cycle throw a `GraphError`. In an undirected graph, any reachable
+ * negative cycle return `Result.fail`. In an undirected graph, any reachable
  * negative edge forms a negative cycle because it can be traversed both ways.
+ * Exceptions thrown by the `cost` callback propagate unchanged rather than
+ * becoming `Result.fail`.
  *
  * **Example** (Finding shortest paths with Bellman-Ford)
  *
  * ```ts import.meta.vitest
- * import { Graph, Option } from "effect"
+ * import { Graph, Option, Result } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, -1) // Negative weight allowed
- *   Graph.addEdge(mutable, b, c, 3)
- *   Graph.addEdge(mutable, a, c, 5)
+ *   Graph.addEdgeUnsafe(mutable, a, b, -1) // Negative weight allowed
+ *   Graph.addEdgeUnsafe(mutable, b, c, 3)
+ *   Graph.addEdgeUnsafe(mutable, a, c, 5)
  * })
  *
  * const result = Graph.bellmanFord(graph, {
@@ -6895,32 +7430,35 @@ export interface BellmanFordConfig<E> {
  *   cost: (edgeData) => edgeData
  * })
  *
- * Option.map(result, ({ distance, path }) => [distance, path] as const) // => Option.some([2, [0, 1, 2]])
+ * Result.map(result, Option.map(({ distance, path }) => [distance, path] as const)) // => Result.succeed(Option.some([2, [0, 1, 2]]))
  * ```
  *
  * @see {@link dijkstra} for non-negative edge costs
+ * @see {@link bellmanFordUnsafe} for the throwing variant
  * @category algorithms
  * @since 3.18.0
  */
 export const bellmanFord: {
   <E>(
     config: BellmanFordConfig<E>
-  ): <N, T extends Kind = "directed">(graph: Graph<N, E, T> | MutableGraph<N, E, T>) => Option.Option<PathResult<E>>
+  ): <N, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Result.Result<Option.Option<PathResult<E>>, GraphError>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     config: BellmanFordConfig<E>
-  ): Option.Option<PathResult<E>>
+  ): Result.Result<Option.Option<PathResult<E>>, GraphError>
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: BellmanFordConfig<E>
-): Option.Option<PathResult<E>> => {
+): Result.Result<Option.Option<PathResult<E>>, GraphError> => {
   const impl = internal.toImpl(graph)
   // Validate that source and target nodes exist
   if (!impl.nodes.has(config.source)) {
-    throw missingNode(config.source)
+    return Result.fail(missingNode(config.source))
   }
   if (!impl.nodes.has(config.target)) {
-    throw missingNode(config.target)
+    return Result.fail(missingNode(config.target))
   }
 
   const cache = csr.get(graph)
@@ -6931,23 +7469,30 @@ export const bellmanFord: {
   const source = csr.getNodeIndex(cache, config.source)!
   const target = csr.getNodeIndex(cache, config.target)!
   const weights = new Float64Array(edges.length)
-  withMutationGuard(graph, () => {
+  const weightsResult = withMutationGuard(graph, (): Result.Result<void, GraphError> => {
     for (let i = 0; i < edges.length; i++) {
       const weight = config.cost(edges[i].data)
       if (Number.isNaN(weight) || weight === -Infinity) {
-        throw new GraphError({ message: "Bellman-Ford algorithm does not support NaN or -Infinity edge weights" })
+        return Result.fail(
+          new GraphError({ message: "Bellman-Ford algorithm does not support NaN or -Infinity edge weights" })
+        )
       }
       weights[i] = weight
     }
+    return Result.succeed(undefined)
   })
+  if (Result.isFailure(weightsResult)) {
+    return Result.fail(weightsResult.failure)
+  }
 
+  let overflow = false
   const addWeight = (distance: number, weight: number): number => {
     if (distance === Infinity || weight === Infinity) {
       return Infinity
     }
     const candidate = distance + weight
     if (!Number.isFinite(candidate)) {
-      throw new GraphError({ message: "Bellman-Ford distance calculation exceeded the finite number range" })
+      overflow = true
     }
     return candidate
   }
@@ -6968,6 +7513,11 @@ export const bellmanFord: {
       const weight = weights[edge]
       const sourceDistance = distances[edgeSource]
       const candidate = addWeight(sourceDistance, weight)
+      if (overflow) {
+        return Result.fail(
+          new GraphError({ message: "Bellman-Ford distance calculation exceeded the finite number range" })
+        )
+      }
       if (candidate < distances[edgeTarget]) {
         distances[edgeTarget] = candidate
         previousNode[edgeTarget] = edgeSource
@@ -6977,6 +7527,11 @@ export const bellmanFord: {
       if (graph.type === "undirected" && edgeSource !== edgeTarget) {
         const targetDistance = distances[edgeTarget]
         const reverseCandidate = addWeight(targetDistance, weight)
+        if (overflow) {
+          return Result.fail(
+            new GraphError({ message: "Bellman-Ford distance calculation exceeded the finite number range" })
+          )
+        }
         if (reverseCandidate < distances[edgeSource]) {
           distances[edgeSource] = reverseCandidate
           previousNode[edgeSource] = edgeTarget
@@ -7005,15 +7560,29 @@ export const bellmanFord: {
     const edgeSource = edgeCache.sources[edge]
     const edgeTarget = edgeCache.targets[edge]
     const weight = weights[edge]
-    if (addWeight(distances[edgeSource], weight) < distances[edgeTarget]) {
+    const candidate = addWeight(distances[edgeSource], weight)
+    if (overflow) {
+      return Result.fail(
+        new GraphError({ message: "Bellman-Ford distance calculation exceeded the finite number range" })
+      )
+    }
+    if (candidate < distances[edgeTarget]) {
       markAffected(edgeTarget)
     }
     if (
       graph.type === "undirected" &&
       edgeSource !== edgeTarget &&
-      addWeight(distances[edgeTarget], weight) < distances[edgeSource]
+      (() => {
+        const candidate = addWeight(distances[edgeTarget], weight)
+        return candidate < distances[edgeSource]
+      })()
     ) {
       markAffected(edgeSource)
+    }
+    if (overflow) {
+      return Result.fail(
+        new GraphError({ message: "Bellman-Ford distance calculation exceeded the finite number range" })
+      )
     }
   }
   if (tail > 0) {
@@ -7025,10 +7594,10 @@ export const bellmanFord: {
     }
   }
   if (affected[target] !== 0) {
-    throw new GraphError({ message: `Negative cycle affects path to node ${config.target}` })
+    return Result.fail(new GraphError({ message: `Negative cycle affects path to node ${config.target}` }))
   }
   if (distances[target] === Infinity) {
-    return Option.none()
+    return Result.succeed(Option.none())
   }
 
   const path: Array<NodeIndex> = []
@@ -7038,7 +7607,7 @@ export const bellmanFord: {
   let remaining = cache.nodeIds.length
   while (current !== -1) {
     if (remaining-- === 0) {
-      throw new GraphError({ message: `Negative cycle affects path to node ${config.target}` })
+      return Result.fail(new GraphError({ message: `Negative cycle affects path to node ${config.target}` }))
     }
     path.push(cache.nodeIds[current])
     const edge = previousEdge[current]
@@ -7051,8 +7620,26 @@ export const bellmanFord: {
   path.reverse()
   pathEdges.reverse()
   costs.reverse()
-  return Option.some({ path, edges: pathEdges, distance: distances[target], costs })
+  return Result.succeed(Option.some({ path, edges: pathEdges, distance: distances[target], costs }))
 })
+
+/**
+ * @see {@link bellmanFord} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const bellmanFordUnsafe: {
+  <E>(config: BellmanFordConfig<E>): <N, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Option.Option<PathResult<E>>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    config: BellmanFordConfig<E>
+  ): Option.Option<PathResult<E>>
+} = dual(2, <N, E, T extends Kind>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  config: BellmanFordConfig<E>
+) => Result.getOrThrow(bellmanFord(graph, config)))
 
 /**
  * A repeatable lazy iterable of edge-aware graph paths.
@@ -7108,7 +7695,7 @@ export interface SimplePathsConfig {
  *
  * **Gotchas**
  *
- * Invalid costs and limits throw a `GraphError` when evaluated.
+ * Invalid costs and limits return `Result.fail` when the walker is constructed.
  *
  * @category configuration
  * @since 4.0.0
@@ -7117,12 +7704,12 @@ export interface AllShortestPathsConfig<E> extends DijkstraConfig<E> {
   readonly limit?: number
 }
 
-const pathEnumerationLimit = (limit: number | undefined): number => {
+const pathEnumerationLimit = (limit: number | undefined): Result.Result<number, GraphError> => {
   const value = limit ?? Infinity
   if (value !== Infinity && (!Number.isInteger(value) || value < 0)) {
-    throw new GraphError({ message: "Path enumeration limit must be a non-negative integer or Infinity" })
+    return Result.fail(new GraphError({ message: "Path enumeration limit must be a non-negative integer or Infinity" }))
   }
-  return value
+  return Result.succeed(value)
 }
 
 const pathWalker = <E>(iterator: () => Iterator<PathResult<E>>): PathWalker<E> => ({
@@ -7145,10 +7732,11 @@ const pathWalker = <E>(iterator: () => Iterator<PathResult<E>>): PathWalker<E> =
  * **Gotchas**
  *
  * The number of simple paths can be exponential. Missing endpoints or an
- * invalid `limit` throw a `GraphError`. Mutable graphs are snapshotted when
- * iteration begins.
+ * invalid `limit` return `Result.fail`. The graph is structurally snapshotted
+ * when this function is called, and every iterator repeats that snapshot.
  *
  * @see {@link allShortestPaths} for enumerating only minimum-cost routes
+ * @see {@link simplePathsUnsafe} for the throwing variant
  *
  * @category algorithms
  * @since 4.0.0
@@ -7156,41 +7744,39 @@ const pathWalker = <E>(iterator: () => Iterator<PathResult<E>>): PathWalker<E> =
 export const simplePaths: {
   <E>(config: SimplePathsConfig): <N, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>
-  ) => PathWalker<E>
+  ) => Result.Result<PathWalker<E>, GraphError>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     config: SimplePathsConfig
-  ): PathWalker<E>
+  ): Result.Result<PathWalker<E>, GraphError>
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: SimplePathsConfig
-): PathWalker<E> => {
-  const impl = internal.toImpl(graph)
-  if (!impl.nodes.has(config.source)) {
-    throw missingNode(config.source)
+): Result.Result<PathWalker<E>, GraphError> => {
+  const cache = csr.get(graph)
+  const sourceIndex = config.source
+  const source = csr.getNodeIndex(cache, sourceIndex)
+  if (source === undefined) {
+    return Result.fail(missingNode(sourceIndex))
   }
-  if (!impl.nodes.has(config.target)) {
-    throw missingNode(config.target)
+  const target = csr.getNodeIndex(cache, config.target)
+  if (target === undefined) {
+    return Result.fail(missingNode(config.target))
   }
-  const limit = pathEnumerationLimit(config.limit)
+  const limitResult = pathEnumerationLimit(config.limit)
+  if (Result.isFailure(limitResult)) {
+    return Result.fail(limitResult.failure)
+  }
+  const limit = limitResult.success
+  const outgoing = csr.getOutgoingWithEdges(cache)
+  const edgeIds = csr.getEdgeIds(cache)
+  const graphEdges = csr.getEdges(cache)
 
-  return pathWalker(function*() {
-    const cache = csr.get(graph)
-    const source = csr.getNodeIndex(cache, config.source)
-    if (source === undefined) {
-      throw missingNode(config.source)
-    }
-    const target = csr.getNodeIndex(cache, config.target)
-    if (target === undefined) {
-      throw missingNode(config.target)
-    }
+  return Result.succeed(pathWalker(function*() {
     if (limit === 0) {
       return
     }
-    const outgoing = csr.getOutgoingWithEdges(cache)
-    const edgeIds = csr.getEdgeIds(cache)
-    const graphEdges = csr.getEdges(cache)
-    const path = [config.source]
+    const path = [sourceIndex]
     const pathEdges: Array<EdgeIndex> = []
     const costs: Array<E> = []
     const visited = new Uint8Array(cache.nodeIds.length)
@@ -7240,8 +7826,26 @@ export const simplePaths: {
       costs.push(graphEdges[edge].data)
       stack.push({ node: neighbor, position: outgoing.rowOffsets[neighbor] })
     }
-  })
+  }))
 })
+
+/**
+ * @see {@link simplePaths} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const simplePathsUnsafe: {
+  <E>(config: SimplePathsConfig): <N, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => PathWalker<E>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    config: SimplePathsConfig
+  ): PathWalker<E>
+} = dual(2, <N, E, T extends Kind>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  config: SimplePathsConfig
+) => Result.getOrThrow(simplePaths(graph, config)))
 
 /**
  * Lazily enumerates all simple paths tied for minimum total cost.
@@ -7258,11 +7862,15 @@ export const simplePaths: {
  * **Gotchas**
  *
  * The number of tied paths can still be large. Missing endpoints, invalid
- * costs, arithmetic overflow, or an invalid `limit` throw a `GraphError`.
- * Mutable graphs are snapshotted when iteration begins.
+ * costs, arithmetic overflow, or an invalid `limit` return `Result.fail`.
+ * Costs and shortest-path preprocessing run eagerly. The graph is structurally
+ * snapshotted when this function is called, and every iterator repeats that snapshot.
+ * Exceptions thrown by the `cost` callback propagate unchanged rather than
+ * becoming `Result.fail`.
  *
  * @see {@link dijkstra} when one shortest path is sufficient
  * @see {@link simplePaths} for routes regardless of cost
+ * @see {@link allShortestPathsUnsafe} for the throwing variant
  *
  * @category algorithms
  * @since 4.0.0
@@ -7270,97 +7878,101 @@ export const simplePaths: {
 export const allShortestPaths: {
   <E>(config: AllShortestPathsConfig<E>): <N, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>
-  ) => PathWalker<E>
+  ) => Result.Result<PathWalker<E>, GraphError>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     config: AllShortestPathsConfig<E>
-  ): PathWalker<E>
+  ): Result.Result<PathWalker<E>, GraphError>
 } = dual(2, <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: AllShortestPathsConfig<E>
-): PathWalker<E> => {
-  const impl = internal.toImpl(graph)
-  if (!impl.nodes.has(config.source)) {
-    throw missingNode(config.source)
+): Result.Result<PathWalker<E>, GraphError> => {
+  const cache = csr.get(graph)
+  const sourceIndex = config.source
+  const source = csr.getNodeIndex(cache, sourceIndex)
+  if (source === undefined) {
+    return Result.fail(missingNode(sourceIndex))
   }
-  if (!impl.nodes.has(config.target)) {
-    throw missingNode(config.target)
+  const target = csr.getNodeIndex(cache, config.target)
+  if (target === undefined) {
+    return Result.fail(missingNode(config.target))
   }
-  const limit = pathEnumerationLimit(config.limit)
-
-  return pathWalker(function*() {
-    const cache = csr.get(graph)
-    const source = csr.getNodeIndex(cache, config.source)
-    if (source === undefined) {
-      throw missingNode(config.source)
-    }
-    const target = csr.getNodeIndex(cache, config.target)
-    if (target === undefined) {
-      throw missingNode(config.target)
-    }
-    const graphEdges = csr.getEdges(cache)
-    const edgeIds = csr.getEdgeIds(cache)
-    const outgoing = csr.getOutgoingWithEdges(cache)
-    const weights = new Float64Array(graphEdges.length)
-    withMutationGuard(graph, () => {
-      for (let edge = 0; edge < graphEdges.length; edge++) {
-        const weight = config.cost(graphEdges[edge].data)
-        if (Number.isNaN(weight) || weight < 0) {
-          throw new GraphError({ message: "All shortest paths requires non-negative edge weights" })
-        }
-        weights[edge] = weight
+  const limitResult = pathEnumerationLimit(config.limit)
+  if (Result.isFailure(limitResult)) {
+    return Result.fail(limitResult.failure)
+  }
+  const limit = limitResult.success
+  const graphEdges = csr.getEdges(cache)
+  const edgeIds = csr.getEdgeIds(cache)
+  const outgoing = csr.getOutgoingWithEdges(cache)
+  const weights = new Float64Array(graphEdges.length)
+  const weightsResult = withMutationGuard(graph, (): Result.Result<void, GraphError> => {
+    for (let edge = 0; edge < graphEdges.length; edge++) {
+      const weight = config.cost(graphEdges[edge].data)
+      if (Number.isNaN(weight) || weight < 0) {
+        return Result.fail(new GraphError({ message: "All shortest paths requires non-negative edge weights" }))
       }
-    })
+      weights[edge] = weight
+    }
+    return Result.succeed(undefined)
+  })
+  if (Result.isFailure(weightsResult)) {
+    return Result.fail(weightsResult.failure)
+  }
+
+  const distances = new Float64Array(cache.nodeIds.length)
+  distances.fill(Infinity)
+  distances[source] = 0
+  const previous: Array<Array<{ readonly node: number; readonly edge: number }> | undefined> = new Array(
+    cache.nodeIds.length
+  )
+  const queue = denseMinHeapMake(cache.nodeIds.length)
+  let sequence = 0
+  denseMinHeapPush(queue, source, 0, sequence++)
+  while (queue.size > 0) {
+    denseMinHeapPop(queue)
+    const currentNode = queue.poppedNode
+    const currentDistance = queue.poppedPriority
+    if (currentDistance !== distances[currentNode]) {
+      continue
+    }
+    for (let i = outgoing.rowOffsets[currentNode]; i < outgoing.rowOffsets[currentNode + 1]; i++) {
+      const edge = outgoing.edgeIndices[i]
+      const neighbor = outgoing.columnIndices[i]
+      const nextDistance = currentDistance + weights[edge]
+      if (weights[edge] !== Infinity && !Number.isFinite(nextDistance)) {
+        return Result.fail(
+          new GraphError({ message: "All shortest paths distance calculation exceeded the finite number range" })
+        )
+      }
+      const known = distances[neighbor]
+      const predecessor = { node: currentNode, edge }
+      if (nextDistance < known) {
+        distances[neighbor] = nextDistance
+        previous[neighbor] = [predecessor]
+        denseMinHeapPush(queue, neighbor, nextDistance, sequence++)
+      } else if (nextDistance === known && nextDistance !== Infinity) {
+        const predecessors = previous[neighbor]
+        if (predecessors === undefined) {
+          previous[neighbor] = [predecessor]
+        } else {
+          predecessors.push(predecessor)
+        }
+      }
+    }
+  }
+  const distance = distances[target]
+
+  return Result.succeed(pathWalker(function*() {
     if (limit === 0) {
       return
     }
 
-    const distances = new Float64Array(cache.nodeIds.length)
-    distances.fill(Infinity)
-    distances[source] = 0
-    const previous: Array<Array<{ readonly node: number; readonly edge: number }> | undefined> = new Array(
-      cache.nodeIds.length
-    )
-    const queue = denseMinHeapMake(cache.nodeIds.length)
-    let sequence = 0
-    denseMinHeapPush(queue, source, 0, sequence++)
-    while (queue.size > 0) {
-      denseMinHeapPop(queue)
-      const currentNode = queue.poppedNode
-      const currentDistance = queue.poppedPriority
-      if (currentDistance !== distances[currentNode]) {
-        continue
-      }
-      for (let i = outgoing.rowOffsets[currentNode]; i < outgoing.rowOffsets[currentNode + 1]; i++) {
-        const edge = outgoing.edgeIndices[i]
-        const neighbor = outgoing.columnIndices[i]
-        const nextDistance = currentDistance + weights[edge]
-        if (weights[edge] !== Infinity && !Number.isFinite(nextDistance)) {
-          throw new GraphError({ message: "All shortest paths distance calculation exceeded the finite number range" })
-        }
-        const known = distances[neighbor]
-        const predecessor = { node: currentNode, edge }
-        if (nextDistance < known) {
-          distances[neighbor] = nextDistance
-          previous[neighbor] = [predecessor]
-          denseMinHeapPush(queue, neighbor, nextDistance, sequence++)
-        } else if (nextDistance === known && nextDistance !== Infinity) {
-          const predecessors = previous[neighbor]
-          if (predecessors === undefined) {
-            previous[neighbor] = [predecessor]
-          } else {
-            predecessors.push(predecessor)
-          }
-        }
-      }
-    }
-
-    const distance = distances[target]
     if (distance === Infinity) {
       return
     }
     if (source === target) {
-      yield { path: [config.source], edges: [], distance: 0, costs: [] }
+      yield { path: [sourceIndex], edges: [], distance: 0, costs: [] }
       return
     }
     const reversePath = [target]
@@ -7406,8 +8018,26 @@ export const allShortestPaths: {
       reverseEdges.push(predecessor.edge)
       stack.push({ node: predecessor.node, position: 0 })
     }
-  })
+  }))
 })
+
+/**
+ * @see {@link allShortestPaths} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const allShortestPathsUnsafe: {
+  <E>(config: AllShortestPathsConfig<E>): <N, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => PathWalker<E>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    config: AllShortestPathsConfig<E>
+  ): PathWalker<E>
+} = dual(2, <N, E, T extends Kind>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  config: AllShortestPathsConfig<E>
+) => Result.getOrThrow(allShortestPaths(graph, config)))
 
 /**
  * Represents an iterable wrapper used by graph traversal and listing APIs.
@@ -7426,11 +8056,11 @@ export const allShortestPaths: {
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
- *   Graph.addEdge(mutable, a, b, 1)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 1)
  * })
  *
  * // Both traversal and element iterators return NodeWalker
- * const dfsNodes: Graph.NodeWalker<string> = Graph.dfs(graph, { start: [0] })
+ * const dfsNodes: Graph.NodeWalker<string> = Graph.dfsUnsafe(graph, { start: [0] })
  * const allNodes: Graph.NodeWalker<string> = Graph.nodes(graph)
  *
  * // Common interface for working with node iterables
@@ -7466,10 +8096,10 @@ export class Walker<T, N> implements Iterable<[T, N]> {
    * const graph = Graph.directed<string, number>((mutable) => {
    *   const a = Graph.addNode(mutable, "A")
    *   const b = Graph.addNode(mutable, "B")
-   *   Graph.addEdge(mutable, a, b, 1)
+   *   Graph.addEdgeUnsafe(mutable, a, b, 1)
    * })
    *
-   * const dfs = Graph.dfs(graph, { start: [0] })
+   * const dfs = Graph.dfsUnsafe(graph, { start: [0] })
    *
    * // Map to just the node data
    * Array.from(dfs.visit((index, data) => data)) // => ["A", "B"]
@@ -7492,28 +8122,27 @@ export class Walker<T, N> implements Iterable<[T, N]> {
 
 const makeCsrNodeWalker = <N, E, T extends Kind>(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  cache: csr.Csr,
   makeIterator: <U>(cache: csr.Csr, f: (index: NodeIndex, data: N) => U) => Iterator<U>
 ): Walker<NodeIndex, N> => {
   return new Walker((f) => ({
-    // Capture CSR at iterator creation so invalidation cannot change an in-flight mutable traversal.
-    [Symbol.iterator]: () =>
-      makeIterator(csr.get(graph), (index, data) => withMutationGuard(graph, () => f(index, data)))
+    [Symbol.iterator]: () => makeIterator(cache, (index, data) => withMutationGuard(graph, () => f(index, data)))
   }))
 }
 
 const traversalStarts = <N, E, T extends Kind>(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   start: ReadonlyArray<NodeIndex> | undefined
-): Array<NodeIndex> => {
+): Result.Result<Array<NodeIndex>, GraphError> => {
   if (start === undefined) {
-    return []
+    return Result.succeed([])
   }
   for (const nodeIndex of start) {
     if (!hasNode(graph, nodeIndex)) {
-      throw missingNode(nodeIndex)
+      return Result.fail(missingNode(nodeIndex))
     }
   }
-  return Array.from(start)
+  return Result.succeed(Array.from(start))
 }
 
 const traversalStartPositions = (cache: csr.Csr, start: ReadonlyArray<NodeIndex>): Array<number> => {
@@ -7575,10 +8204,10 @@ export type EdgeWalker<E> = Walker<EdgeIndex, Edge<E>>
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
- *   Graph.addEdge(mutable, a, b, 1)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 1)
  * })
  *
- * const dfs = Graph.dfs(graph, { start: [0] })
+ * const dfs = Graph.dfsUnsafe(graph, { start: [0] })
  * Array.from(Graph.indices(dfs)) // => [0, 1]
  * ```
  *
@@ -7598,10 +8227,10 @@ export const indices = <T, N>(walker: Walker<T, N>): Iterable<T> => walker.visit
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
- *   Graph.addEdge(mutable, a, b, 1)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 1)
  * })
  *
- * const dfs = Graph.dfs(graph, { start: [0] })
+ * const dfs = Graph.dfsUnsafe(graph, { start: [0] })
  * Array.from(Graph.values(dfs)) // => ["A", "B"]
  * ```
  *
@@ -7621,10 +8250,10 @@ export const values = <T, N>(walker: Walker<T, N>): Iterable<N> => walker.visit(
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
- *   Graph.addEdge(mutable, a, b, 1)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 1)
  * })
  *
- * const dfs = Graph.dfs(graph, { start: [0] })
+ * const dfs = Graph.dfsUnsafe(graph, { start: [0] })
  * Array.from(Graph.entries(dfs)) // => [[0, "A"], [1, "B"]]
  * ```
  *
@@ -7653,10 +8282,9 @@ export const entries = <T, N>(walker: Walker<T, N>): Iterable<[T, N]> =>
  *
  * **Gotchas**
  *
- * Traversal creation validates and copies `start`, and throws a `GraphError`
- * when a start node does not exist or `radius` is invalid. Each fresh iterator
- * revalidates those starts against the graph snapshot it captures. Later
- * mutations are not observed by an active iterator.
+ * Traversal creation validates and copies `start`, returning `Result.fail`
+ * when a start node does not exist or `radius` is invalid. It captures one
+ * structural snapshot, which every fresh iterator repeats.
  *
  * @category configuration
  * @since 3.18.0
@@ -7684,29 +8312,30 @@ export interface SearchConfig {
  *
  * **Gotchas**
  *
- * An invalid radius or missing start node throws a `GraphError`. Traversing a
- * mutable graph captures a snapshot when iteration begins; later mutations are
- * not observed by that iterator.
+ * An invalid radius or missing start node returns `Result.fail`. The graph is
+ * structurally snapshotted when this function is called, and every iterator
+ * repeats that snapshot.
  *
  * **Example** (Traversing depth-first)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Result } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, 1)
- *   Graph.addEdge(mutable, b, c, 1)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 1)
+ *   Graph.addEdgeUnsafe(mutable, b, c, 1)
  * })
  *
- * // Start from a specific node
- * Array.from(Graph.indices(Graph.dfs(graph, { start: [0] }))) // => [0, 1, 2]
+ * const fromA = Result.map(Graph.dfs(graph, { start: [0] }), (walker) => Array.from(Graph.indices(walker)))
+ * fromA // => Result.succeed([0, 1, 2])
  *
- * Array.from(Graph.indices(Graph.dfs(graph))) // => []
+ * Result.map(Graph.dfs(graph), (walker) => Array.from(Graph.indices(walker))) // => Result.succeed([])
  * ```
  *
+ * @see {@link dfsUnsafe} for the throwing variant
  * @see {@link bfs} for traversal in increasing hop distance
  * @see {@link dfsPostOrder} for emitting descendants before ancestors
  * @category iterators
@@ -7715,22 +8344,30 @@ export interface SearchConfig {
 export const dfs: {
   (
     config?: SearchConfig
-  ): <N, E, T extends Kind = "directed">(graph: Graph<N, E, T> | MutableGraph<N, E, T>) => NodeWalker<N>
+  ): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Result.Result<NodeWalker<N>, GraphError>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     config?: SearchConfig
-  ): NodeWalker<N>
+  ): Result.Result<NodeWalker<N>, GraphError>
 } = dual((args) => isGraph(args[0]), <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: SearchConfig = {}
-): NodeWalker<N> => {
-  const radius = traversalRadius(config.radius, Infinity)
-  const start = traversalStarts(graph, config.start)
+): Result.Result<NodeWalker<N>, GraphError> => {
+  const radiusResult = traversalRadius(config.radius, Infinity)
+  if (Result.isFailure(radiusResult)) return Result.fail(radiusResult.failure)
+  const startResult = traversalStarts(graph, config.start)
+  if (Result.isFailure(startResult)) return Result.fail(startResult.failure)
+  const radius = radiusResult.success
+  const start = startResult.success
   const direction = config.direction ?? "outgoing"
+  const cache = csr.get(graph)
+  traversalStartPositions(cache, start)
+  const view = csr.getAdjacencies(cache, direction)
 
-  return makeCsrNodeWalker(graph, (cache, f) => {
+  return Result.succeed(makeCsrNodeWalker(graph, cache, (cache, f) => {
     const startPositions = traversalStartPositions(cache, start)
-    const view = csr.getAdjacencies(cache, direction)
     const yielded = new Uint8Array(cache.nodeIds.length)
     const stack: Array<number> = []
 
@@ -7840,8 +8477,26 @@ export const dfs: {
         return { done: true, value: undefined } as const
       }
     }
-  })
+  }))
 })
+
+/**
+ * @see {@link dfs} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const dfsUnsafe: {
+  (config?: SearchConfig): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => NodeWalker<N>
+  <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+    config?: SearchConfig
+  ): NodeWalker<N>
+} = dual((args) => isGraph(args[0]), <N, E, T extends Kind>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  config?: SearchConfig
+) => Result.getOrThrow(dfs(graph, config)))
 
 /**
  * Creates a lazy breadth-first traversal iterator from the configured start
@@ -7861,53 +8516,62 @@ export const dfs: {
  *
  * **Gotchas**
  *
- * An invalid radius or missing start node throws a `GraphError`. Traversing a
- * mutable graph captures a snapshot when iteration begins; later mutations are
- * not observed by that iterator.
+ * An invalid radius or missing start node returns `Result.fail`. The graph is
+ * structurally snapshotted when this function is called, and every iterator
+ * repeats that snapshot.
  *
  * **Example** (Traversing breadth-first)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Result } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, 1)
- *   Graph.addEdge(mutable, b, c, 1)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 1)
+ *   Graph.addEdgeUnsafe(mutable, b, c, 1)
  * })
  *
- * // Start from a specific node
- * Array.from(Graph.indices(Graph.bfs(graph, { start: [0] }))) // => [0, 1, 2]
+ * const fromA = Result.map(Graph.bfs(graph, { start: [0] }), (walker) => Array.from(Graph.indices(walker)))
+ * fromA // => Result.succeed([0, 1, 2])
  *
- * Array.from(Graph.indices(Graph.bfs(graph))) // => []
+ * Result.map(Graph.bfs(graph), (walker) => Array.from(Graph.indices(walker))) // => Result.succeed([])
  * ```
  *
  * @see {@link dfs} for branch-first traversal
  * @see {@link unweightedDistances} for collecting hop counts
+ * @see {@link bfsUnsafe} for the throwing variant
  * @category iterators
  * @since 3.18.0
  */
 export const bfs: {
   (
     config?: SearchConfig
-  ): <N, E, T extends Kind = "directed">(graph: Graph<N, E, T> | MutableGraph<N, E, T>) => NodeWalker<N>
+  ): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Result.Result<NodeWalker<N>, GraphError>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     config?: SearchConfig
-  ): NodeWalker<N>
+  ): Result.Result<NodeWalker<N>, GraphError>
 } = dual((args) => isGraph(args[0]), <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: SearchConfig = {}
-): NodeWalker<N> => {
-  const radius = traversalRadius(config.radius, Infinity)
-  const start = traversalStarts(graph, config.start)
+): Result.Result<NodeWalker<N>, GraphError> => {
+  const radiusResult = traversalRadius(config.radius, Infinity)
+  if (Result.isFailure(radiusResult)) return Result.fail(radiusResult.failure)
+  const startResult = traversalStarts(graph, config.start)
+  if (Result.isFailure(startResult)) return Result.fail(startResult.failure)
+  const radius = radiusResult.success
+  const start = startResult.success
   const direction = config.direction ?? "outgoing"
+  const cache = csr.get(graph)
+  traversalStartPositions(cache, start)
+  const view = csr.getAdjacencies(cache, direction)
 
-  return makeCsrNodeWalker(graph, (cache, f) => {
+  return Result.succeed(makeCsrNodeWalker(graph, cache, (cache, f) => {
     const startPositions = traversalStartPositions(cache, start)
-    const view = csr.getAdjacencies(cache, direction)
     const discovered = new Uint8Array(cache.nodeIds.length)
     // Each compact node enters the queue once, so a fixed-size typed array is sufficient.
     const queue = new Uint32Array(cache.nodeIds.length)
@@ -7994,8 +8658,18 @@ export const bfs: {
         return { done: false, value: f(cache.nodeIds[current], cache.nodeData[current] as N) }
       }
     }
-  })
+  }))
 })
+
+/**
+ * @see {@link bfs} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const bfsUnsafe: typeof dfsUnsafe = dual((args) => isGraph(args[0]), <N, E, T extends Kind>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  config?: SearchConfig
+) => Result.getOrThrow(bfs(graph, config)))
 
 /**
  * Configuration for the topological sort iterator.
@@ -8012,7 +8686,8 @@ export const bfs: {
  *
  * **Gotchas**
  *
- * Throws a `GraphError` when any initial node has incoming edges.
+ * Topological sorting returns `Result.fail` when an initial node has incoming
+ * edges.
  *
  * @category configuration
  * @since 3.18.0
@@ -8037,63 +8712,71 @@ export interface TopoConfig {
  *
  * **Gotchas**
  *
- * Undirected or cyclic graphs, missing initial nodes, and initial nodes with
- * incoming edges throw a `GraphError`. Traversing a mutable graph captures a
- * snapshot when iteration begins; later mutations are not observed.
+ * Cyclic graphs, missing initial nodes, and initial nodes with incoming edges
+ * return `Result.fail`. An undirected graph is runtime misuse excluded by the
+ * signature and throws a `GraphError`. The graph is structurally snapshotted
+ * when this function is called, and every iterator repeats that snapshot.
  *
  * **Example** (Sorting topologically)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Result } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, 1)
- *   Graph.addEdge(mutable, b, c, 1)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 1)
+ *   Graph.addEdgeUnsafe(mutable, b, c, 1)
  * })
  *
- * Array.from(Graph.indices(Graph.topo(graph))) // => [0, 1, 2]
+ * Result.map(Graph.topo(graph), (walker) => Array.from(Graph.indices(walker))) // => Result.succeed([0, 1, 2])
  * ```
  *
  * @see {@link isAcyclic} for checking the required graph property
+ * @see {@link topoUnsafe} for the throwing variant
  * @category iterators
  * @since 3.18.0
  */
 export const topo: {
   (
     config?: TopoConfig
-  ): <N, E>(graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">) => NodeWalker<N>
+  ): <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  ) => Result.Result<NodeWalker<N>, GraphError>
   <N, E>(
     graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
     config?: TopoConfig
-  ): NodeWalker<N>
+  ): Result.Result<NodeWalker<N>, GraphError>
 } = dual((args) => isGraph(args[0]), <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: TopoConfig = {}
-): NodeWalker<N> => {
+): Result.Result<NodeWalker<N>, GraphError> => {
   if (graph.type === "undirected") {
     throw new GraphError({ message: "Cannot perform topological sort on undirected graph" })
   }
 
   // Check if graph is acyclic first
   if (!isAcyclic(graph)) {
-    throw new GraphError({ message: "Cannot perform topological sort on cyclic graph" })
+    return Result.fail(new GraphError({ message: "Cannot perform topological sort on cyclic graph" }))
   }
 
   const initials = Array.from(config.initials ?? [])
+  const cache = csr.get(graph)
+  const incoming = csr.getIncoming(cache)
+  const outgoing = csr.getOutgoing(cache)
 
-  // Validate that all initial nodes exist
   for (const nodeIndex of initials) {
-    if (!hasNode(graph, nodeIndex)) {
-      throw missingNode(nodeIndex)
+    const node = csr.getNodeIndex(cache, nodeIndex)
+    if (node === undefined) {
+      return Result.fail(missingNode(nodeIndex))
+    }
+    if (incoming.rowOffsets[node + 1] !== incoming.rowOffsets[node]) {
+      return Result.fail(new GraphError({ message: `Initial node ${nodeIndex} has incoming edges` }))
     }
   }
 
-  return makeCsrNodeWalker(graph, (cache, f) => {
-    const outgoing = csr.getOutgoing(cache)
-    const incoming = csr.getIncoming(cache)
+  return Result.succeed(makeCsrNodeWalker(graph, cache, (cache, f) => {
     // CSR row lengths are the initial in-degrees used by Kahn's algorithm.
     const inDegree = new Uint32Array(cache.nodeIds.length)
     const remaining = new Uint8Array(cache.nodeIds.length)
@@ -8107,13 +8790,7 @@ export const topo: {
       inDegree[node] = incoming.rowOffsets[node + 1] - incoming.rowOffsets[node]
     }
     for (const initial of initials) {
-      const node = csr.getNodeIndex(cache, initial)
-      if (node === undefined) {
-        throw missingNode(initial)
-      }
-      if (inDegree[node] !== 0) {
-        throw new GraphError({ message: `Initial node ${initial} has incoming edges` })
-      }
+      const node = csr.getNodeIndex(cache, initial)!
       initialSet[node] = 1
       queue.push(node)
     }
@@ -8152,8 +8829,26 @@ export const topo: {
         return { done: true, value: undefined } as const
       }
     }
-  })
+  }))
 })
+
+/**
+ * @see {@link topo} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const topoUnsafe: {
+  (config?: TopoConfig): <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  ) => NodeWalker<N>
+  <N, E>(
+    graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+    config?: TopoConfig
+  ): NodeWalker<N>
+} = dual((args) => isGraph(args[0]), <N, E>(
+  graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
+  config?: TopoConfig
+) => Result.getOrThrow(topo(graph, config)))
 
 /**
  * Creates a lazy depth-first postorder traversal iterator from the configured
@@ -8176,50 +8871,62 @@ export const topo: {
  *
  * **Gotchas**
  *
- * Invalid radii and missing start nodes throw a `GraphError`. Traversing a
- * mutable graph captures a snapshot when iteration begins; later mutations are
- * not observed by that iterator.
+ * Invalid radii and missing start nodes return `Result.fail`. The graph is
+ * structurally snapshotted when this function is called, and every iterator
+ * repeats that snapshot.
  *
  * **Example** (Traversing in postorder)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Result } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const root = Graph.addNode(mutable, "root")
  *   const child1 = Graph.addNode(mutable, "child1")
  *   const child2 = Graph.addNode(mutable, "child2")
- *   Graph.addEdge(mutable, root, child1, 1)
- *   Graph.addEdge(mutable, root, child2, 1)
+ *   Graph.addEdgeUnsafe(mutable, root, child1, 1)
+ *   Graph.addEdgeUnsafe(mutable, root, child2, 1)
  * })
  *
- * // Postorder: children before parents
- * Array.from(Graph.indices(Graph.dfsPostOrder(graph, { start: [0] }))) // => [1, 2, 0]
+ * const postorder = Result.map(
+ *   Graph.dfsPostOrder(graph, { start: [0] }),
+ *   (walker) => Array.from(Graph.indices(walker))
+ * )
+ * postorder // => Result.succeed([1, 2, 0])
  * ```
  *
  * @see {@link dfs} for emitting nodes when first visited
+ * @see {@link dfsPostOrderUnsafe} for the throwing variant
  * @category iterators
  * @since 3.18.0
  */
 export const dfsPostOrder: {
   (
     config?: SearchConfig
-  ): <N, E, T extends Kind = "directed">(graph: Graph<N, E, T> | MutableGraph<N, E, T>) => NodeWalker<N>
+  ): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Result.Result<NodeWalker<N>, GraphError>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     config?: SearchConfig
-  ): NodeWalker<N>
+  ): Result.Result<NodeWalker<N>, GraphError>
 } = dual((args) => isGraph(args[0]), <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   config: SearchConfig = {}
-): NodeWalker<N> => {
-  const radius = traversalRadius(config.radius, Infinity)
-  const start = traversalStarts(graph, config.start)
+): Result.Result<NodeWalker<N>, GraphError> => {
+  const radiusResult = traversalRadius(config.radius, Infinity)
+  if (Result.isFailure(radiusResult)) return Result.fail(radiusResult.failure)
+  const startResult = traversalStarts(graph, config.start)
+  if (Result.isFailure(startResult)) return Result.fail(startResult.failure)
+  const radius = radiusResult.success
+  const start = startResult.success
   const direction = config.direction ?? "outgoing"
+  const cache = csr.get(graph)
+  traversalStartPositions(cache, start)
+  const view = csr.getAdjacencies(cache, direction)
 
-  return makeCsrNodeWalker(graph, (cache, f) => {
+  return Result.succeed(makeCsrNodeWalker(graph, cache, (cache, f) => {
     const startPositions = traversalStartPositions(cache, start)
-    const view = csr.getAdjacencies(cache, direction)
     let reached: Uint8Array | undefined
     if (radius !== Infinity) {
       // Radius is shortest edge distance, so determine membership with BFS before imposing postorder.
@@ -8309,8 +9016,18 @@ export const dfsPostOrder: {
         }
       }
     }
-  })
+  }))
 })
+
+/**
+ * @see {@link dfsPostOrder} for the safe variant
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const dfsPostOrderUnsafe: typeof dfsUnsafe = dual((args) => isGraph(args[0]), <N, E, T extends Kind>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  config?: SearchConfig
+) => Result.getOrThrow(dfsPostOrder(graph, config)))
 
 /**
  * Creates a walker over all node index and payload entries in the graph.
@@ -8334,7 +9051,7 @@ export const dfsPostOrder: {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, 1)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 1)
  * })
  *
  * Array.from(Graph.indices(Graph.nodes(graph))) // => [0, 1, 2]
@@ -8386,8 +9103,8 @@ export const nodes = <N, E, T extends Kind = "directed">(
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, a, b, 1)
- *   Graph.addEdge(mutable, b, c, 2)
+ *   Graph.addEdgeUnsafe(mutable, a, b, 1)
+ *   Graph.addEdgeUnsafe(mutable, b, c, 2)
  * })
  *
  * Array.from(Graph.indices(Graph.edges(graph))) // => [0, 1]
@@ -8468,8 +9185,8 @@ export interface ExternalsConfig {
  *   const sink = Graph.addNode(mutable, "sink") // 2 - no outgoing
  *   const isolated = Graph.addNode(mutable, "isolated") // 3 - no edges
  *
- *   Graph.addEdge(mutable, source, middle, 1)
- *   Graph.addEdge(mutable, middle, sink, 2)
+ *   Graph.addEdgeUnsafe(mutable, source, middle, 1)
+ *   Graph.addEdgeUnsafe(mutable, middle, sink, 2)
  * })
  *
  * // Nodes with no outgoing edges (sinks + isolated)

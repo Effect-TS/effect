@@ -1,4 +1,4 @@
-import { Graph, hole, type Option, pipe } from "effect"
+import { Graph, hole, type Option, pipe, type Result } from "effect"
 import { describe, expect, it } from "tstyche"
 
 declare const directed: Graph.DirectedGraph<string, number>
@@ -50,13 +50,12 @@ describe("Graph", () => {
       type: "directed",
       nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }],
       edges: [{ index: 3, source: 2, target: 5, data: 1 }]
-    })).type.toBe<Graph.DirectedGraph<string, number>>()
-
+    })).type.toBe<Result.Result<Graph.DirectedGraph<string, number>, Graph.GraphError>>()
     expect(Graph.fromSnapshot({
       type: "undirected",
       nodes: [{ index: 0, data: "A" }],
       edges: [] as ReadonlyArray<Graph.IndexedEdge<number>>
-    })).type.toBe<Graph.UndirectedGraph<string, number>>()
+    })).type.toBe<Result.Result<Graph.UndirectedGraph<string, number>, Graph.GraphError>>()
   })
 
   it("mutation callbacks must be synchronous", () => {
@@ -237,26 +236,36 @@ describe("Graph", () => {
   })
 
   it("neighborhood", () => {
-    expect(Graph.neighborhood(directed, 0)).type.toBe<Graph.DirectedGraph<string, number>>()
+    expect(Graph.neighborhood(directed, 0)).type.toBe<
+      Result.Result<Graph.DirectedGraph<string, number>, Graph.GraphError>
+    >()
     expect(Graph.neighborhood(directed, 0, { radius: 2, direction: "undirected" })).type.toBe<
-      Graph.DirectedGraph<string, number>
+      Result.Result<Graph.DirectedGraph<string, number>, Graph.GraphError>
     >()
     expect(pipe(undirected, Graph.neighborhood(0, { radius: 2, direction: "outgoing" }))).type.toBe<
-      Graph.UndirectedGraph<string, number>
+      Result.Result<Graph.UndirectedGraph<string, number>, Graph.GraphError>
     >()
   })
 
   it("inducedSubgraph", () => {
-    expect(Graph.inducedSubgraph(directed, [0, 1])).type.toBe<Graph.DirectedGraph<string, number>>()
+    expect(Graph.inducedSubgraph(directed, [0, 1])).type.toBe<
+      Result.Result<Graph.DirectedGraph<string, number>, Graph.GraphError>
+    >()
     expect(pipe(undirected, Graph.inducedSubgraph(new Set([0, 1])))).type.toBe<
-      Graph.UndirectedGraph<string, number>
+      Result.Result<Graph.UndirectedGraph<string, number>, Graph.GraphError>
     >()
   })
 
   it("undirected traversal", () => {
-    expect(Graph.dfs(directed, { direction: "undirected", radius: 1 })).type.toBe<Graph.NodeWalker<string>>()
-    expect(Graph.bfs(directed, { direction: "undirected", radius: 1 })).type.toBe<Graph.NodeWalker<string>>()
-    expect(Graph.dfsPostOrder(directed, { direction: "undirected", radius: 1 })).type.toBe<Graph.NodeWalker<string>>()
+    expect(Graph.dfs(directed, { direction: "undirected", radius: 1 })).type.toBe<
+      Result.Result<Graph.NodeWalker<string>, Graph.GraphError>
+    >()
+    expect(Graph.bfs(directed, { direction: "undirected", radius: 1 })).type.toBe<
+      Result.Result<Graph.NodeWalker<string>, Graph.GraphError>
+    >()
+    expect(Graph.dfsPostOrder(directed, { direction: "undirected", radius: 1 })).type.toBe<
+      Result.Result<Graph.NodeWalker<string>, Graph.GraphError>
+    >()
   })
 
   it("path edge indexes", () => {
@@ -268,15 +277,15 @@ describe("Graph", () => {
   })
 
   it("edge and degree queries", () => {
-    expect(Graph.incidentEdges(directed, 0)).type.toBe<Array<Graph.EdgeIndex>>()
-    expect(pipe(undirected, Graph.incidentEdges(0))).type.toBe<Array<Graph.EdgeIndex>>()
-    expect(Graph.edgesBetween(directed, 0, 1)).type.toBe<Array<Graph.EdgeIndex>>()
-    expect(pipe(undirected, Graph.edgesBetween(0, 1))).type.toBe<Array<Graph.EdgeIndex>>()
-    expect(Graph.outgoingEdges(directed, 0)).type.toBe<Array<Graph.EdgeIndex>>()
-    expect(Graph.incomingEdges(mutableDirected, 0)).type.toBe<Array<Graph.EdgeIndex>>()
-    expect(Graph.degree(undirected, 0)).type.toBe<number>()
-    expect(Graph.outDegree(directed, 0)).type.toBe<number>()
-    expect(Graph.inDegree(mutableDirected, 0)).type.toBe<number>()
+    expect(Graph.incidentEdges(directed, 0)).type.toBe<Option.Option<Array<Graph.EdgeIndex>>>()
+    expect(pipe(undirected, Graph.incidentEdges(0))).type.toBe<Option.Option<Array<Graph.EdgeIndex>>>()
+    expect(Graph.edgesBetween(directed, 0, 1)).type.toBe<Option.Option<Array<Graph.EdgeIndex>>>()
+    expect(pipe(undirected, Graph.edgesBetween(0, 1))).type.toBe<Option.Option<Array<Graph.EdgeIndex>>>()
+    expect(Graph.outgoingEdges(directed, 0)).type.toBe<Option.Option<Array<Graph.EdgeIndex>>>()
+    expect(Graph.incomingEdges(mutableDirected, 0)).type.toBe<Option.Option<Array<Graph.EdgeIndex>>>()
+    expect(Graph.degree(undirected, 0)).type.toBe<Option.Option<number>>()
+    expect(Graph.outDegree(directed, 0)).type.toBe<Option.Option<number>>()
+    expect(Graph.inDegree(mutableDirected, 0)).type.toBe<Option.Option<number>>()
 
     // @ts-expect-error! Directed edge queries require a directed graph
     Graph.outgoingEdges(undirected, 0)
@@ -287,12 +296,14 @@ describe("Graph", () => {
   })
 
   it("reachability and connectivity", () => {
-    expect(Graph.unweightedDistances(directed, 0)).type.toBe<Map<Graph.NodeIndex, number>>()
-    expect(pipe(directed, Graph.unweightedDistances(0, { direction: "incoming" }))).type.toBe<
-      Map<Graph.NodeIndex, number>
+    expect(Graph.unweightedDistances(directed, 0)).type.toBe<
+      Result.Result<Map<Graph.NodeIndex, number>, Graph.GraphError>
     >()
-    expect(Graph.hasPath(directed, 0, 1)).type.toBe<boolean>()
-    expect(pipe(undirected, Graph.hasPath(0, 1))).type.toBe<boolean>()
+    expect(pipe(directed, Graph.unweightedDistances(0, { direction: "incoming" }))).type.toBe<
+      Result.Result<Map<Graph.NodeIndex, number>, Graph.GraphError>
+    >()
+    expect(Graph.hasPath(directed, 0, 1)).type.toBe<Result.Result<boolean, Graph.GraphError>>()
+    expect(pipe(undirected, Graph.hasPath(0, 1))).type.toBe<Result.Result<boolean, Graph.GraphError>>()
     expect(Graph.weaklyConnectedComponents(directed)).type.toBe<Array<Array<Graph.NodeIndex>>>()
     expect(Graph.isConnected(undirected)).type.toBe<boolean>()
     expect(Graph.isWeaklyConnected(directed)).type.toBe<boolean>()
@@ -314,31 +325,35 @@ describe("Graph", () => {
 
   it("minimumSpanningForest", () => {
     expect(Graph.minimumSpanningForest(undirected, (edge) => edge)).type.toBe<
-      Graph.UndirectedGraph<string, number>
+      Result.Result<Graph.UndirectedGraph<string, number>, Graph.GraphError>
     >()
     expect(pipe(mutableUndirected, Graph.minimumSpanningForest((edge) => edge))).type.toBe<
-      Graph.UndirectedGraph<string, number>
+      Result.Result<Graph.UndirectedGraph<string, number>, Graph.GraphError>
     >()
-
     // @ts-expect-error! Minimum spanning forests require an undirected graph
     Graph.minimumSpanningForest(directed, (edge) => edge)
   })
 
   it("transitiveReduction", () => {
-    expect(Graph.transitiveReduction(directed)).type.toBe<Graph.DirectedGraph<string, number>>()
-    expect(Graph.transitiveReduction(mutableDirected)).type.toBe<Graph.DirectedGraph<string, number>>()
-
+    expect(Graph.transitiveReduction(directed)).type.toBe<
+      Result.Result<Graph.DirectedGraph<string, number>, Graph.GraphError>
+    >()
+    expect(Graph.transitiveReduction(mutableDirected)).type.toBe<
+      Result.Result<Graph.DirectedGraph<string, number>, Graph.GraphError>
+    >()
     // @ts-expect-error! Transitive reduction requires a directed graph
     Graph.transitiveReduction(undirected)
   })
 
   it("lazy path enumeration", () => {
-    expect(Graph.simplePaths(directed, { source: 0, target: 1 })).type.toBe<Graph.PathWalker<number>>()
+    expect(Graph.simplePaths(directed, { source: 0, target: 1 })).type.toBe<
+      Result.Result<Graph.PathWalker<number>, Graph.GraphError>
+    >()
     expect(pipe(undirected, Graph.simplePaths({ source: 0, target: 1, limit: 10 }))).type.toBe<
-      Graph.PathWalker<number>
+      Result.Result<Graph.PathWalker<number>, Graph.GraphError>
     >()
     expect(Graph.allShortestPaths(directed, { source: 0, target: 1, cost: (edge) => edge })).type.toBe<
-      Graph.PathWalker<number>
+      Result.Result<Graph.PathWalker<number>, Graph.GraphError>
     >()
     expect(pipe(
       mutableDirected,
@@ -347,18 +362,20 @@ describe("Graph", () => {
         target: 1,
         cost: (edge) => edge
       })
-    )).type.toBe<Graph.PathWalker<number>>()
+    )).type.toBe<Result.Result<Graph.PathWalker<number>, Graph.GraphError>>()
   })
 
   it("topo", () => {
-    expect(Graph.topo(directed)).type.toBe<Graph.NodeWalker<string>>()
-    expect(Graph.topo(directed, { initials: [0] })).type.toBe<Graph.NodeWalker<string>>()
-    expect(Graph.topo(mutableDirected)).type.toBe<Graph.NodeWalker<string>>()
+    expect(Graph.topo(directed)).type.toBe<Result.Result<Graph.NodeWalker<string>, Graph.GraphError>>()
+    expect(Graph.topo(directed, { initials: [0] })).type.toBe<
+      Result.Result<Graph.NodeWalker<string>, Graph.GraphError>
+    >()
+    expect(Graph.topo(mutableDirected)).type.toBe<Result.Result<Graph.NodeWalker<string>, Graph.GraphError>>()
 
-    expect(pipe(directed, Graph.topo())).type.toBe<Graph.NodeWalker<string>>()
-    expect(pipe(directed, Graph.topo({ initials: [0] }))).type.toBe<Graph.NodeWalker<string>>()
-    expect(pipe(mutableDirected, Graph.topo())).type.toBe<Graph.NodeWalker<string>>()
-
+    expect(pipe(directed, Graph.topo())).type.toBe<Result.Result<Graph.NodeWalker<string>, Graph.GraphError>>()
+    expect(pipe(directed, Graph.topo({ initials: [0] }))).type.toBe<
+      Result.Result<Graph.NodeWalker<string>, Graph.GraphError>
+    >()
     // @ts-expect-error! Topological sorting requires a directed graph
     Graph.topo(undirected)
     // @ts-expect-error! Topological sorting requires a directed graph
@@ -371,7 +388,7 @@ describe("Graph", () => {
     Graph.topo(unknownKind)
 
     if (mixedKind.type === "directed") {
-      expect(Graph.topo(mixedKind)).type.toBe<Graph.NodeWalker<string>>()
+      expect(Graph.topo(mixedKind)).type.toBe<Result.Result<Graph.NodeWalker<string>, Graph.GraphError>>()
     }
   })
 

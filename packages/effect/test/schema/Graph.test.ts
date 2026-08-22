@@ -32,12 +32,12 @@ describe("Schema.Graph", () => {
     const left = Graph.directed<number, number>((mutable) => {
       const a = Graph.addNode(mutable, 0)
       const b = Graph.addNode(mutable, 1)
-      Graph.addEdge(mutable, a, b, 2)
+      Graph.addEdgeUnsafe(mutable, a, b, 2)
     })
     const right = Graph.directed<number, number>((mutable) => {
       const a = Graph.addNode(mutable, 2)
       const b = Graph.addNode(mutable, 3)
-      Graph.addEdge(mutable, a, b, 4)
+      Graph.addEdgeUnsafe(mutable, a, b, 4)
     })
 
     assert.strictEqual(equivalence(left, right), true)
@@ -46,12 +46,12 @@ describe("Schema.Graph", () => {
     const forward = Graph.undirected<number, number>((mutable) => {
       Graph.addNode(mutable, 0)
       Graph.addNode(mutable, 1)
-      Graph.addEdge(mutable, 0, 1, 2)
+      Graph.addEdgeUnsafe(mutable, 0, 1, 2)
     })
     const reversed = Graph.undirected<number, number>((mutable) => {
       Graph.addNode(mutable, 0)
       Graph.addNode(mutable, 1)
-      Graph.addEdge(mutable, 1, 0, 2)
+      Graph.addEdgeUnsafe(mutable, 1, 0, 2)
     })
     assert.strictEqual(undirectedEquivalence(forward, reversed), true)
   })
@@ -70,10 +70,10 @@ describe("Schema.Graph", () => {
       const target = Graph.addNode(mutable, "target")
       Graph.addNode(mutable, "isolated")
       Graph.removeNode(mutable, removed)
-      const removedEdge = Graph.addEdge(mutable, source, target, -1)
-      Graph.addEdge(mutable, source, source, 1)
-      Graph.addEdge(mutable, source, target, 2)
-      Graph.addEdge(mutable, source, target, 3)
+      const removedEdge = Graph.addEdgeUnsafe(mutable, source, target, -1)
+      Graph.addEdgeUnsafe(mutable, source, source, 1)
+      Graph.addEdgeUnsafe(mutable, source, target, 2)
+      Graph.addEdgeUnsafe(mutable, source, target, 3)
       Graph.removeEdge(mutable, removedEdge)
     })
     const encoded = {
@@ -104,7 +104,7 @@ describe("Schema.Graph", () => {
     const graph = Graph.undirected<string, number>((mutable) => {
       const a = Graph.addNode(mutable, "A")
       const b = Graph.addNode(mutable, "B")
-      Graph.addEdge(mutable, b, a, 1)
+      Graph.addEdgeUnsafe(mutable, b, a, 1)
     })
     const encoded = Schema.encodeSync(undirectedCodec)(graph)
 
@@ -129,7 +129,7 @@ describe("Schema.Graph", () => {
     let edgeIndex: Graph.EdgeIndex | undefined
     Graph.mutate(decoded, (mutable) => {
       nodeIndex = Graph.addNode(mutable, "C")
-      edgeIndex = Graph.addEdge(mutable, 5, nodeIndex, 2)
+      edgeIndex = Graph.addEdgeUnsafe(mutable, 5, nodeIndex, 2)
     })
 
     assert.strictEqual(nodeIndex, 6)
@@ -141,8 +141,8 @@ describe("Schema.Graph", () => {
       const a = Graph.addNode(mutable, "A")
       const b = Graph.addNode(mutable, "B")
       const trailing = Graph.addNode(mutable, "removed")
-      const active = Graph.addEdge(mutable, a, b, 1)
-      const removed = Graph.addEdge(mutable, a, b, 2)
+      const active = Graph.addEdgeUnsafe(mutable, a, b, 1)
+      const removed = Graph.addEdgeUnsafe(mutable, a, b, 2)
       Graph.removeEdge(mutable, removed)
       Graph.removeNode(mutable, trailing)
       assert.strictEqual(active, 0)
@@ -152,7 +152,7 @@ describe("Schema.Graph", () => {
     let edgeIndex: Graph.EdgeIndex | undefined
     Graph.mutate(decoded, (mutable) => {
       nodeIndex = Graph.addNode(mutable, "next")
-      edgeIndex = Graph.addEdge(mutable, 0, 1, 3)
+      edgeIndex = Graph.addEdgeUnsafe(mutable, 0, 1, 3)
     })
 
     assert.strictEqual(nodeIndex, 2)
@@ -170,8 +170,8 @@ describe("Schema.Graph", () => {
       ]
     })
 
-    assert.deepStrictEqual(Graph.neighbors(graph, 0), [2])
-    assert.deepStrictEqual(Graph.predecessors(graph, 0), [4])
+    assert.deepStrictEqual(Graph.neighborsUnsafe(graph, 0), [2])
+    assert.deepStrictEqual(Graph.predecessorsUnsafe(graph, 0), [4])
     assert.strictEqual(Graph.isAcyclic(graph), false)
   })
 
