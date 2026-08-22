@@ -579,6 +579,11 @@ export * as Sink from "./Sink.ts"
 /**
  * @since 4.0.0
  */
+export * as StandardSchema from "./StandardSchema.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as Stdio from "./Stdio.ts"
 
 /**
