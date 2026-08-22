@@ -65,7 +65,7 @@ const fingerprintFrame = <A, I>(
   let offset = 0
   while ((bytes[offset] & 0x80) !== 0) offset++
   offset++
-  assert.strictEqual(bytes[offset], 0x11)
+  assert.strictEqual(bytes[offset], 0x21)
   return {
     fingerprint: Array.from(bytes.subarray(offset + 1, offset + 9)).join(","),
     payload: Array.from(bytes.subarray(offset + 9)).join(",")
@@ -173,15 +173,15 @@ describe("SchemaBinary", () => {
     it("writes a length-first frame and rejects envelope or leftovers", () => {
       const codec = SchemaBinary.toCodec(Schema.Number)
       const bytes = Schema.encodeUnknownSync(codec)(1)
-      assert.deepStrictEqual(Array.from(bytes), [2, 0x10, 0x02])
+      assert.deepStrictEqual(Array.from(bytes), [2, 0x20, 0x02])
 
       const flags = bytes.slice()
-      flags[1] = 0x11
-      assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(flags)).message, /version 1 envelope, flags 0/)
+      flags[1] = 0x21
+      assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(flags)).message, /version 2 envelope, flags 0/)
 
       const version = bytes.slice()
-      version[1] = 0x20
-      assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(version)).message, /version 1 envelope, flags 0/)
+      version[1] = 0x30
+      assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(version)).message, /version 2 envelope, flags 0/)
       assert.match(
         schemaError(() => Schema.decodeUnknownSync(codec)(concat(bytes, bytes))).message,
         /no leftover bytes/
@@ -250,10 +250,10 @@ describe("SchemaBinary", () => {
 
   describe("numbers", () => {
     it("encodes integral values as sign-magnitude varints", () => {
-      assert.deepStrictEqual(Array.from(encode(Schema.Number, 0)), [2, 0x10, 0])
-      assert.deepStrictEqual(Array.from(encode(Schema.Number, -0)), [2, 0x10, 1])
-      assert.deepStrictEqual(Array.from(encode(Schema.Number, 1)), [2, 0x10, 2])
-      assert.deepStrictEqual(Array.from(encode(Schema.Number, -1)), [2, 0x10, 3])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, 0)), [2, 0x20, 0])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, -0)), [2, 0x20, 1])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, 1)), [2, 0x20, 2])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, -1)), [2, 0x20, 3])
       for (const value of [0, -0, 1, -1, 42, -42, 127, -128]) {
         sameNumber(roundtrip(Schema.Number, value), value)
       }
@@ -278,10 +278,10 @@ describe("SchemaBinary", () => {
     })
 
     it("encodes short decimals as a mantissa varint plus one scale byte", () => {
-      assert.deepStrictEqual(Array.from(encode(Schema.Number, 1.5)), [3, 0x10, 30, 1])
-      assert.deepStrictEqual(Array.from(encode(Schema.Number, -0.5)), [3, 0x10, 11, 1])
-      assert.deepStrictEqual(Array.from(encode(Schema.Number, 0.001)), [3, 0x10, 2, 3])
-      assert.deepStrictEqual(Array.from(encode(Schema.Number, 12.5)), [4, 0x10, 0xFA, 0x01, 1])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, 1.5)), [3, 0x20, 30, 1])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, -0.5)), [3, 0x20, 11, 1])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, 0.001)), [3, 0x20, 2, 3])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number, 12.5)), [4, 0x20, 0xFA, 0x01, 1])
       for (const value of [0.1, 1.3, 4.7, 98.5, -123.456, 12345678.5, 0.00000001]) {
         sameNumber(roundtrip(Schema.Number, value), value)
       }
@@ -314,16 +314,25 @@ describe("SchemaBinary", () => {
       }
     })
 
-    it("discriminates the three forms by the enclosing field length", () => {
+    it("discriminates struct number forms with the field wire kind", () => {
       const schema = Schema.Struct({ n: Schema.Number })
-      // length, envelope, five-byte field id, field length, payload
-      assert.strictEqual(encode(schema, { n: 7 }).length, 9)
-      assert.strictEqual(encode(schema, { n: 7.5 }).length, 11)
-      assert.strictEqual(encode(schema, { n: Math.PI }).length, 16)
+      // length, envelope, five-byte field tag, payload
+      assert.strictEqual(encode(schema, { n: 7 }).length, 8)
+      assert.strictEqual(encode(schema, { n: 7.5 }).length, 10)
+      assert.strictEqual(encode(schema, { n: Math.PI }).length, 15)
       assert.deepStrictEqual(roundtrip(schema, { n: 7 }), { n: 7 })
       assert.deepStrictEqual(roundtrip(schema, { n: 7.5 }), { n: 7.5 })
       assert.deepStrictEqual(roundtrip(schema, { n: Math.PI }), { n: Math.PI })
       sameNumber(roundtrip(schema, { n: -0 }).n, -0)
+    })
+
+    it("uses the decimal wire kind in struct fields and record pairs", () => {
+      const Field = Schema.Struct({ n: Schema.Number.pipe(SchemaBinary.fieldId(1)) })
+      assert.deepStrictEqual([...encode(Field, { n: 7.5 })], [5, 0x20, 13, 0x96, 1, 1])
+
+      const Record = Schema.Record(Schema.String, Schema.Number)
+      assert.deepStrictEqual([...encode(Record, { x: 7.5 })], [8, 0x20, 0, 5, 13, 120, 0x96, 1, 1])
+      assert.deepStrictEqual(roundtrip(Record, { x: 7.5 }), { x: 7.5 })
     })
 
     it("packs a uniform number array behind one mode byte", () => {
@@ -395,9 +404,9 @@ describe("SchemaBinary", () => {
     })
 
     it("emits a bare varint when the schema proves the value is an integer", () => {
-      assert.deepStrictEqual(Array.from(encode(Schema.Int, 1)), [2, 0x10, 2])
-      assert.deepStrictEqual(Array.from(encode(Schema.Natural, 1)), [2, 0x10, 2])
-      assert.deepStrictEqual(Array.from(encode(Schema.Number.check(Schema.isInt32()), 1)), [2, 0x10, 2])
+      assert.deepStrictEqual(Array.from(encode(Schema.Int, 1)), [2, 0x20, 2])
+      assert.deepStrictEqual(Array.from(encode(Schema.Natural, 1)), [2, 0x20, 2])
+      assert.deepStrictEqual(Array.from(encode(Schema.Number.check(Schema.isInt32()), 1)), [2, 0x20, 2])
 
       // no mode byte for an array, no length prefix for a tuple slot
       assert.strictEqual(encode(Schema.Array(Schema.Int), [1, 2, 3]).length, 6)
@@ -427,17 +436,17 @@ describe("SchemaBinary", () => {
     it("rejects malformed number payloads", () => {
       const codec = SchemaBinary.toCodec(Schema.Number)
       // nine payload bytes are neither the varint nor the f64 form
-      const wide = new Uint8Array([10, 0x10, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+      const wide = new Uint8Array([10, 0x20, 0, 0, 0, 0, 0, 0, 0, 0, 0])
       assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(wide)).message, /Expected f64/)
       // a varint that never terminates inside its extent
-      const truncated = new Uint8Array([3, 0x10, 0x80, 0x80])
+      const truncated = new Uint8Array([3, 0x20, 0x80, 0x80])
       assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(truncated)).message, /complete value/)
       // a decimal tail whose scale byte is zero or out of range
-      const zeroScale = new Uint8Array([3, 0x10, 30, 0])
+      const zeroScale = new Uint8Array([3, 0x20, 30, 0])
       assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(zeroScale)).message, /Expected decimal/)
-      const wideScale = new Uint8Array([3, 0x10, 30, 9])
+      const wideScale = new Uint8Array([3, 0x20, 30, 9])
       assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(wideScale)).message, /Expected decimal/)
-      const longTail = new Uint8Array([4, 0x10, 30, 1, 1])
+      const longTail = new Uint8Array([4, 0x20, 30, 1, 1])
       assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(longTail)).message, /Expected decimal/)
 
       const arrayCodec = SchemaBinary.toCodec(Schema.Array(Schema.Number))
@@ -498,11 +507,29 @@ describe("SchemaBinary", () => {
       assert.throws(() => SchemaBinary.fieldId(1.5))
     })
 
+    it("packs explicit field ids with scalar wire kinds", () => {
+      const schema = Schema.Struct({
+        n: Schema.Number.pipe(SchemaBinary.fieldId(1)),
+        flag: Schema.Boolean.pipe(SchemaBinary.fieldId(2)),
+        text: Schema.String.pipe(SchemaBinary.fieldId(3))
+      })
+      const value = { n: 7, flag: true, text: "x" }
+
+      assert.deepStrictEqual([...encode(schema, value)], [7, 0x20, 9, 14, 20, 24, 1, 120])
+      assert.deepStrictEqual(roundtrip(schema, value), value)
+    })
+
     it("validates the full fieldId range and ignores tuple annotations", () => {
       for (const id of [-1, Number.NaN, Number.POSITIVE_INFINITY, 0x1_0000_0000]) {
         assert.throws(() => SchemaBinary.fieldId(id), /integer in \[1, 4294967295\]/)
       }
       assert.doesNotThrow(() => SchemaBinary.fieldId(0xFFFFFFFF))
+
+      const Max = Schema.Struct({ flag: Schema.Boolean.pipe(SchemaBinary.fieldId(0xFFFFFFFF)) })
+      const maxBytes = encode(Max, { flag: true })
+      assert.strictEqual(maxBytes.length, 7)
+      assert.deepStrictEqual([...maxBytes.subarray(2)], [0xFC, 0xFF, 0xFF, 0xFF, 0x7F])
+      assert.deepStrictEqual(roundtrip(Max, { flag: true }), { flag: true })
 
       const plain = Schema.Tuple([Schema.String])
       const annotated = Schema.Tuple([Schema.String.pipe(SchemaBinary.fieldId(123))])
@@ -525,11 +552,30 @@ describe("SchemaBinary", () => {
       assert.deepStrictEqual(Schema.decodeUnknownSync(SchemaBinary.toCodec(Reader))(bytes), {})
 
       const field = bytes.slice(2)
-      const duplicate = concat(Uint8Array.of(1 + field.length * 2, 0x10), field, field)
+      const duplicate = concat(Uint8Array.of(1 + field.length * 2, 0x20), field, field)
       assert.match(
         schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Reader))(duplicate)).message,
         /unique field ids/
       )
+    })
+
+    it("skips every scalar wire shape for unknown fields", () => {
+      const Reader = Schema.Struct({})
+      const bytes = Uint8Array.of(
+        10,
+        0x20,
+        7 * 8 + 5,
+        0,
+        0,
+        8 * 8 + 6,
+        0,
+        0,
+        0,
+        0,
+        9 * 8 + 7
+      )
+
+      assert.deepStrictEqual(Schema.decodeUnknownSync(SchemaBinary.toCodec(Reader))(bytes), {})
     })
 
     it("skips an unknown union member on an optional struct field", () => {
@@ -1099,7 +1145,7 @@ describe("SchemaBinary", () => {
       const codec = SchemaBinary.toCodec(Schema.String)
       const decode = Schema.decodeUnknownSync(codec)
 
-      assert.match(schemaError(() => decode(Uint8Array.of(2, 0x10, 0xFF))).message, /utf-8/)
+      assert.match(schemaError(() => decode(Uint8Array.of(2, 0x20, 0xFF))).message, /utf-8/)
       assert.strictEqual(decode(encode(Schema.String, "after failure")), "after failure")
     })
 
@@ -1115,11 +1161,11 @@ describe("SchemaBinary", () => {
     it("stashes a malformed complete frame after returning earlier values", () => {
       const good = encode(Schema.Number, 1)
       const bad = encode(Schema.Number, 2).slice()
-      bad[1] = 0x20
+      bad[1] = 0x10
       const parser = SchemaBinary.parser(Schema.Number)
 
       assert.deepStrictEqual(parser.feedSync(concat(good, bad)), [1])
-      assert.match(schemaError(() => parser.feedSync(new Uint8Array())).message, /version 1 envelope, flags 0/)
+      assert.match(schemaError(() => parser.feedSync(new Uint8Array())).message, /version 2 envelope, flags 0/)
       assert.match(schemaError(() => parser.endSync()).message, /parser is spent/)
     })
 
@@ -1160,11 +1206,11 @@ describe("SchemaBinary", () => {
     it.effect("fails malformed feed and truncated end through the Effect surface", () =>
       Effect.gen(function*() {
         const malformed = SchemaBinary.parser(Schema.Boolean)
-        const feedError = yield* malformed.feed(Uint8Array.of(2, 0x10, 2)).pipe(Effect.flip)
+        const feedError = yield* malformed.feed(Uint8Array.of(2, 0x20, 2)).pipe(Effect.flip)
         assert.isTrue(Schema.isSchemaError(feedError))
 
         const truncated = SchemaBinary.parser(Schema.String)
-        yield* truncated.feed(Uint8Array.of(2, 0x10))
+        yield* truncated.feed(Uint8Array.of(2, 0x20))
         const endError = yield* truncated.end.pipe(Effect.flip)
         assert.isTrue(Schema.isSchemaError(endError))
       }))
@@ -1212,7 +1258,7 @@ describe("SchemaBinary", () => {
 
     it("skips future CauseReason tags inside Cause", () => {
       const schema = Schema.Cause(Schema.String, Schema.Unknown)
-      const bytes = Uint8Array.of(7, 0x10, 2, 1, 99, 2, 0, 0x78)
+      const bytes = Uint8Array.of(7, 0x20, 2, 1, 99, 2, 0, 0x78)
       const decoded = Schema.decodeUnknownSync(SchemaBinary.toCodec(schema))(bytes)
 
       assert.strictEqual(decoded.reasons.length, 1)
@@ -1221,7 +1267,7 @@ describe("SchemaBinary", () => {
       assert.match(
         schemaError(() =>
           Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.CauseReason(Schema.String, Schema.Unknown)))(
-            Uint8Array.of(2, 0x10, 99)
+            Uint8Array.of(2, 0x20, 99)
           )
         ).message,
         /Missing key/
@@ -1592,7 +1638,7 @@ describe("SchemaBinary", () => {
 
     it("uses SchemaIssue for binary failures", () => {
       const codec = SchemaBinary.toCodec(Schema.Boolean)
-      const error = schemaError(() => Schema.decodeUnknownSync(codec)(Uint8Array.of(2, 0x10, 2)))
+      const error = schemaError(() => Schema.decodeUnknownSync(codec)(Uint8Array.of(2, 0x20, 2)))
       assert.isTrue(SchemaIssue.isIssue(error.issue))
       assert.match(error.message, /bool/)
     })
@@ -1600,7 +1646,7 @@ describe("SchemaBinary", () => {
     it.effect("preserves the SchemaParser Issue and Schema SchemaError surfaces", () =>
       Effect.gen(function*() {
         const codec = SchemaBinary.toCodec(Schema.Boolean)
-        const bytes = Uint8Array.of(2, 0x10, 2)
+        const bytes = Uint8Array.of(2, 0x20, 2)
         const issue = yield* SchemaParser.decodeUnknownEffect(codec)(bytes).pipe(Effect.flip)
         assert.isTrue(SchemaIssue.isIssue(issue))
         const error = yield* Schema.decodeUnknownEffect(codec)(bytes).pipe(Effect.flip)
@@ -1628,22 +1674,22 @@ describe("SchemaBinary", () => {
         /safe integer length/
       )
       assert.match(
-        schemaError(() => Schema.decodeUnknownSync(string)(Uint8Array.of(2, 0x10, 0xFF))).message,
+        schemaError(() => Schema.decodeUnknownSync(string)(Uint8Array.of(2, 0x20, 0xFF))).message,
         /utf-8/
       )
       assert.match(
         schemaError(() =>
-          Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Date))(Uint8Array.of(8, 0x10, 0, 0, 0, 0, 0, 0, 0))
+          Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Date))(Uint8Array.of(8, 0x20, 0, 0, 0, 0, 0, 0, 0))
         ).message,
         /int64/
       )
       assert.match(
-        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Null))(Uint8Array.of(2, 0x10, 0)))
+        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Null))(Uint8Array.of(2, 0x20, 0)))
           .message,
         /empty/
       )
       assert.match(
-        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Unknown))(Uint8Array.of(2, 0x10, 0x7B)))
+        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Unknown))(Uint8Array.of(2, 0x20, 0x7B)))
           .message,
         /json/
       )
@@ -1653,18 +1699,18 @@ describe("SchemaBinary", () => {
       const rejects = <A, I>(schema: Schema.Codec<A, I>, bytes: Uint8Array, expected: RegExp) => {
         assert.match(schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(schema))(bytes)).message, expected)
       }
-      rejects(Schema.Duration, Uint8Array.of(2, 0x10, 3), /duration/)
-      rejects(Schema.Option(Schema.String), Uint8Array.of(2, 0x10, 2), /bool/)
-      rejects(Schema.Option(Schema.String), Uint8Array.of(3, 0x10, 0, 0), /empty/)
-      rejects(Schema.Result(Schema.String, Schema.String), Uint8Array.of(2, 0x10, 2), /bool/)
-      rejects(Schema.Exit(Schema.String, Schema.String, Schema.Unknown), Uint8Array.of(2, 0x10, 2), /bool/)
-      rejects(Schema.DateTimeZoned, Uint8Array.of(10, 0x10, 0, 0, 0, 0, 0, 0, 0, 0, 2), /time zone/)
-      rejects(Schema.DateTimeZoned, Uint8Array.of(10, 0x10, 0, 0, 0, 0, 0, 0, 0, 0, 0), /time zone/)
+      rejects(Schema.Duration, Uint8Array.of(2, 0x20, 3), /duration/)
+      rejects(Schema.Option(Schema.String), Uint8Array.of(2, 0x20, 2), /bool/)
+      rejects(Schema.Option(Schema.String), Uint8Array.of(3, 0x20, 0, 0), /empty/)
+      rejects(Schema.Result(Schema.String, Schema.String), Uint8Array.of(2, 0x20, 2), /bool/)
+      rejects(Schema.Exit(Schema.String, Schema.String, Schema.Unknown), Uint8Array.of(2, 0x20, 2), /bool/)
+      rejects(Schema.DateTimeZoned, Uint8Array.of(10, 0x20, 0, 0, 0, 0, 0, 0, 0, 0, 2), /time zone/)
+      rejects(Schema.DateTimeZoned, Uint8Array.of(10, 0x20, 0, 0, 0, 0, 0, 0, 0, 0, 0), /time zone/)
     })
 
     it("rejects attacker-sized zero-width array counts", () => {
       const codec = SchemaBinary.toCodec(Schema.Array(Schema.Null))
-      const bytes = Uint8Array.of(6, 0x10, 0x80, 0x80, 0x80, 0x80, 0x10)
+      const bytes = Uint8Array.of(6, 0x20, 0x80, 0x80, 0x80, 0x80, 0x10)
       assert.match(
         schemaError(() => Schema.decodeUnknownSync(codec)(bytes)).message,
         /array count within allocation limit/
@@ -1675,7 +1721,7 @@ describe("SchemaBinary", () => {
       const struct = Schema.Struct({ value: Schema.String })
       const encodedStruct = encode(struct, { value: "x" })
       const field = encodedStruct.slice(2)
-      const duplicateField = concat(Uint8Array.of(1 + field.length * 2, 0x10), field, field)
+      const duplicateField = concat(Uint8Array.of(1 + field.length * 2, 0x20), field, field)
       assert.match(
         schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(struct))(duplicateField)).message,
         /unique field ids/
@@ -1684,7 +1730,7 @@ describe("SchemaBinary", () => {
       const record = Schema.Record(Schema.String, Schema.Number)
       const encodedRecord = encode(record, { a: 1 })
       const pair = encodedRecord.slice(4)
-      const duplicateKey = concat(Uint8Array.of(3 + pair.length * 2, 0x10, 0, pair.length * 2), pair, pair)
+      const duplicateKey = concat(Uint8Array.of(3 + pair.length * 2, 0x20, 0, pair.length * 2), pair, pair)
       assert.match(
         schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(record))(duplicateKey)).message,
         /unique extra keys/
@@ -1698,7 +1744,7 @@ describe("SchemaBinary", () => {
       const Reader = Schema.Struct({ event: Schema.optionalKey(Schema.Union([A])) })
       const encoded = encode(Writer, { event: { _tag: "B", value: "new" } })
       const field = encoded.slice(2)
-      const duplicateField = concat(Uint8Array.of(1 + field.length * 2, 0x10), field, field)
+      const duplicateField = concat(Uint8Array.of(1 + field.length * 2, 0x20), field, field)
 
       assert.match(
         schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Reader))(duplicateField)).message,
@@ -1756,7 +1802,7 @@ describe("SchemaBinary", () => {
       assert.isTrue(Schema.isSchemaError(schemaError(() => encode(Schema.Never, undefined))))
       assert.isTrue(
         Schema.isSchemaError(
-          schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Never))(Uint8Array.of(1, 0x10)))
+          schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Never))(Uint8Array.of(1, 0x20)))
         )
       )
       assert.match(schemaError(() => encode(Schema.Symbol, Symbol("local"))).message, /registered symbol/)
@@ -1773,10 +1819,10 @@ describe("SchemaBinary", () => {
     const person = { name: "Ada", age: 36, active: true }
 
     it("writes a fingerprint envelope, a presence bitmap, and no field ids", () => {
-      // length | envelope 0x11 | fingerprint | bitmap | age varint | name | active
+      // length | envelope 0x21 | fingerprint | bitmap | age varint | name | active
       assert.deepStrictEqual([...encodeFingerprint(Person, person)], [
         16,
-        0x11,
+        0x21,
         184,
         213,
         85,
@@ -1797,7 +1843,7 @@ describe("SchemaBinary", () => {
       // moves ahead of `age`, which is where its wire id sorts it
       assert.deepStrictEqual([...encodeFingerprint(Person, { ...person, nickname: "A" })], [
         19,
-        0x11,
+        0x21,
         184,
         213,
         85,
@@ -1821,7 +1867,7 @@ describe("SchemaBinary", () => {
 
     it("leaves the default mode untouched", () => {
       const expected = [...encode(Person, person)]
-      assert.deepStrictEqual(expected[1], 0x10)
+      assert.deepStrictEqual(expected[1], 0x20)
       assert.deepStrictEqual([...Schema.encodeUnknownSync(SchemaBinary.toCodec(Person, {}))(person)], expected)
       assert.deepStrictEqual(
         [...Schema.encodeUnknownSync(SchemaBinary.toCodec(Person, { fingerprint: false }))(person)],
@@ -1835,7 +1881,7 @@ describe("SchemaBinary", () => {
       const Event = Schema.Union([Click, Key])
       assert.deepStrictEqual([...encodeFingerprint(Event, { _tag: "click", x: 3 })], [
         11,
-        0x11,
+        0x21,
         237,
         163,
         78,
@@ -1849,7 +1895,7 @@ describe("SchemaBinary", () => {
       ])
       const key = { _tag: "key", code: "Esc" } as const
       const keyFrame = [...encodeFingerprint(Event, key)]
-      assert.deepStrictEqual(keyFrame, [14, 0x11, 237, 163, 78, 151, 96, 43, 76, 0, 1, 3, 69, 115, 99])
+      assert.deepStrictEqual(keyFrame, [14, 0x21, 237, 163, 78, 151, 96, 43, 76, 0, 1, 3, 69, 115, 99])
       // declaration order never reaches the wire
       assert.deepStrictEqual([...encodeFingerprint(Schema.Union([Key, Click]), key)], keyFrame)
       assert.deepStrictEqual(roundtripFingerprint(Event, key), key)
@@ -1858,8 +1904,8 @@ describe("SchemaBinary", () => {
     it("counts the extra-key map instead of reserving field zero", () => {
       const schema = Schema.Record(Schema.String, Schema.Number)
       assert.deepStrictEqual([...encodeFingerprint(schema, { b: 2, a: 1 })], [
-        18,
-        0x11,
+        16,
+        0x21,
         189,
         249,
         115,
@@ -1869,13 +1915,11 @@ describe("SchemaBinary", () => {
         229,
         6,
         2,
-        1,
+        9,
         97,
-        1,
         2,
-        1,
+        9,
         98,
-        1,
         4
       ])
       assert.deepStrictEqual(roundtripFingerprint(schema, { z: 1, a: 2 }), { z: 1, a: 2 })
@@ -1885,7 +1929,7 @@ describe("SchemaBinary", () => {
     it("keeps the default tuple and array layout", () => {
       assert.deepStrictEqual([...encodeFingerprint(Schema.Tuple([Schema.Boolean, Schema.String]), [true, "x"])], [
         12,
-        0x11,
+        0x21,
         3,
         44,
         71,
@@ -1900,7 +1944,7 @@ describe("SchemaBinary", () => {
       ])
       assert.deepStrictEqual([...encodeFingerprint(Schema.Array(Schema.Number.check(Schema.isInt())), [1, -2, 3])], [
         13,
-        0x11,
+        0x21,
         206,
         94,
         13,
@@ -2188,12 +2232,12 @@ describe("SchemaBinary", () => {
       const defaultFrame = encode(Person, person)
       assert.include(
         schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Person))(fingerprintFrame)).message,
-        "Expected version 1 envelope, flags 0"
+        "Expected version 2 envelope, flags 0"
       )
       assert.include(
         schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Person, { fingerprint: true }))(defaultFrame))
           .message,
-        "Expected version 1 envelope, flags 1"
+        "Expected version 2 envelope, flags 1"
       )
     })
 
@@ -2201,7 +2245,7 @@ describe("SchemaBinary", () => {
       const codec = SchemaBinary.toCodec(Person, { fingerprint: true })
       const frame = encodeFingerprint(Person, person)
       // the fingerprint itself does not fit
-      const shortFrame = concat(new Uint8Array([5, 0x11]), frame.subarray(2, 6))
+      const shortFrame = concat(new Uint8Array([5, 0x21]), frame.subarray(2, 6))
       assert.include(
         schemaError(() => Schema.decodeUnknownSync(codec)(shortFrame)).message,
         "Expected complete value"
@@ -2254,7 +2298,7 @@ describe("SchemaBinary", () => {
       const frame = encodeFingerprint(schema, { a: 1, b: 2 })
       const duplicated = new Uint8Array(frame)
       // rewrite the second key so both pairs claim "a"
-      duplicated[duplicated.length - 3] = 97
+      duplicated[duplicated.length - 2] = 97
       assert.include(
         schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(schema, { fingerprint: true }))(duplicated))
           .message,
@@ -2450,7 +2494,7 @@ describe("SchemaBinary", () => {
       assert.deepStrictEqual(parser.feedSync(mixed), [first])
       assert.include(
         schemaError(() => parser.feedSync(new Uint8Array(0))).message,
-        "Expected version 1 envelope, flags 1"
+        "Expected version 2 envelope, flags 1"
       )
       assert.include(schemaError(() => parser.endSync()).message, "Expected parser is spent")
     })
