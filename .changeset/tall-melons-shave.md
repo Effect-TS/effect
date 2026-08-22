@@ -2,22 +2,8 @@
 "@effect/sql-pg": patch
 ---
 
-Add a PostgreSQL wire protocol codec to `@effect/sql-pg`.
+Add low-level PostgreSQL protocol, binary type, and authentication codecs to `@effect/sql-pg`.
 
-Three new modules cover the client side of protocol 3.0 as pure functions, with no `Effect`, `Schema`, or `Stream` in their signatures:
+`PgProtocol` encodes protocol 3.0 frontend messages and incrementally parses backend messages. `PgTypes` handles built-in binary scalar and one-dimensional array OIDs, supports custom codecs, and provides direct Bind and DataRow paths that avoid per-value copies. `PgAuth` implements MD5 and SCRAM-SHA-256 authentication.
 
-- `PgProtocol` encodes frontend messages, decodes backend messages, and exposes an incremental parser (`makeParser().push(chunk)`) that buffers partial messages and caps message size at 16 MiB by default. `DataRow` fields stay raw bytes.
-- `PgTypes` encodes and decodes binary values by OID, covering the built-in scalar types and their one-dimensional arrays, with a registry for additional OIDs.
-- `PgAuth` implements MD5 and SCRAM-SHA-256 password authentication.
-
-`PgProtocol` writes encoded frames into a pooled buffer and reads messages out of the parser's own buffer, so an encoded frame and the byte fields of a decoded message (`DataRow` values, `CopyData` and `Unknown` payloads) are views rather than copies. Those buffers are written once and never rewritten, so a view stays valid for as long as it is held, but holding one keeps its whole buffer alive - copy anything that has to outlive the message it came from.
-
-For the hot path, `PgProtocol.makeBindEncoder(PgTypes.writeParameter)` builds a `Bind` encoder that takes OID-typed parameters and writes their values straight into the frame, with no array per parameter and no copy out of one. `PgProtocol.encodeBind` still takes already-encoded parameters and produces the same bytes. A codec can supply the optional `Codec.write` to join that path; one without it falls back to `encode` and a copy. A value that contains other values frames them with the sink's `beginLength` and `endLength`, which is how array parameters write their elements in place.
-
-Decoding has the same opt-in. A codec can supply the optional `Codec.read`, which reads a value out of a region of a buffer without a view of its own; array elements go through it, so decoding an array costs one read per element rather than a view and a lookup as well. A codec without a `read` is handed a view and its `decode` runs.
-
-Result columns take the same route. `makeParser({ readField })` hands each `DataRow` field to a reader where it lies, so a client that decodes its columns never gets a view per column, and `PgTypes.makeFieldReader` builds that reader from a `RowDescription`'s columns - resolving each column's codec once for the result rather than once per row, and rejecting a text column there rather than on every row. `DataRow`, `BackendMessage`, and `Parser` take a type parameter for the field type that defaults to `Uint8Array | null`, so a parser built without a reader is unchanged. The reader is settable, because a result's columns are only known from its `RowDescription`.
-
-A parser's buffer starts at 8 KiB and doubles up to 64 KiB as it is refilled, so a busy connection spreads its allocations over more messages. A message larger than that gets a buffer of its own size, which the pool does not keep.
-
-`PgClient` is unchanged and still uses `pg` at runtime.
+Encoded frames and decoded byte fields are stable views over internal buffers. Copy data that must outlive its message. `PgClient` remains unchanged and still uses `pg` at runtime.
