@@ -1302,12 +1302,6 @@ const mcpStdioSerialization = (
  * remain valid. The surrounding HTTP server remains responsible for binding
  * to an appropriate interface and installing authentication.
  *
- * The `MCP-Protocol-Version` header is never checked on an `initialize` request.
- * The header reports the version negotiated by an earlier `initialize`, and
- * clients read `400`, `404` and `405` on a POSTed `InitializeRequest` as a legacy
- * HTTP+SSE endpoint and retry with a GET. The version offered in the request body
- * is negotiated through the protocol registry instead.
- *
  * `layerHttp` always implements the single-endpoint Streamable HTTP topology.
  * Using `v2024_11_05` here is a custom compatibility transport for that
  * revision's schema. It does not implement the historical two-endpoint
@@ -1385,32 +1379,39 @@ const layerMcpProtocolHttp = (options: {
       if (sessionId !== undefined && session === undefined) {
         return Effect.succeed(HttpServerResponse.empty({ status: 404 }))
       }
-      // Evaluated only once the body shows the request is not an `initialize`. The header
-      // reports the version negotiated by an earlier `initialize`, so it cannot gate the
-      // `initialize` itself, and a client reads 400 on a POSTed InitializeRequest as "this
-      // endpoint speaks the deprecated two-endpoint HTTP+SSE transport" and retries with a
-      // GET. An `initialize` negotiates from the version offered in the body instead.
-      const hasUnsupportedProtocolVersion = (protocolVersion !== undefined &&
+      const rejectsProtocolVersionHeader = (protocolVersion !== undefined &&
         !state.protocolRegistry.protocols.some((protocol) => protocol.protocolVersion === protocolVersion)) ||
         (session?.protocol.transport.requiresVersionHeader === true &&
           protocolVersion !== session.protocol.protocolVersion)
       return request.text.pipe(
         Effect.matchEffect({
           onFailure: () =>
-            Effect.succeed(HttpServerResponse.jsonUnsafe({
-              jsonrpc: "2.0",
-              id: null,
-              error: new McpSchema.ParseError({ message: "Parse error" })
-            })),
-          onSuccess: (body) =>
-            Effect.matchEffect(Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)(body), {
-              onFailure: () =>
-                Effect.succeed(HttpServerResponse.jsonUnsafe({
+            Effect.succeed(
+              rejectsProtocolVersionHeader
+                ? HttpServerResponse.empty({ status: 400 })
+                : HttpServerResponse.jsonUnsafe({
                   jsonrpc: "2.0",
                   id: null,
                   error: new McpSchema.ParseError({ message: "Parse error" })
-                })),
+                })
+            ),
+          onSuccess: (body) =>
+            Effect.matchEffect(Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)(body), {
+              onFailure: () =>
+                Effect.succeed(
+                  rejectsProtocolVersionHeader
+                    ? HttpServerResponse.empty({ status: 400 })
+                    : HttpServerResponse.jsonUnsafe({
+                      jsonrpc: "2.0",
+                      id: null,
+                      error: new McpSchema.ParseError({ message: "Parse error" })
+                    })
+                ),
               onSuccess: (input) => {
+                const isInitialize = isInitializeJsonRpcMessage(input)
+                if (!isInitialize && rejectsProtocolVersionHeader) {
+                  return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+                }
                 if (!Array.isArray(input)) {
                   const hasId = Predicate.hasProperty(input, "id")
                   const id = hasId && (typeof input.id === "string" || typeof input.id === "number")
@@ -1432,20 +1433,13 @@ const layerMcpProtocolHttp = (options: {
                       error: new InvalidRequest({ message: "Invalid Request" })
                     }))
                   }
-                  const isInitialize = isInitializeJsonRpcMessage(input)
                   if (isInitialize && sessionId !== undefined) {
-                    return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-                  }
-                  if (!isInitialize && hasUnsupportedProtocolVersion) {
                     return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
                   }
                   if (!isInitialize && isRequest && sessionId === undefined) {
                     return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
                   }
                   return httpEffect
-                }
-                if (hasUnsupportedProtocolVersion) {
-                  return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
                 }
                 if (input.length === 0) {
                   return Effect.succeed(HttpServerResponse.jsonUnsafe({

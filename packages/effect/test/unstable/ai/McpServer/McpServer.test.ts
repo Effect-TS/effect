@@ -570,6 +570,25 @@ describe("McpServer", () => {
       strictEqual(yield* unsupportedResponse.text, "")
       strictEqual(unsupportedResponse.headers["access-control-allow-origin"], "*")
 
+      const malformedResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        HttpClientRequest.bodyText("{"),
+        HttpClientRequest.setHeader("content-type", "application/json"),
+        httpClient.execute
+      )
+      strictEqual(malformedResponse.status, 400)
+      strictEqual(yield* malformedResponse.text, "")
+
+      const invalidRequestResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        HttpClientRequest.bodyJsonUnsafe({ hello: "world" }),
+        httpClient.execute
+      )
+      strictEqual(invalidRequestResponse.status, 400)
+      strictEqual(yield* invalidRequestResponse.text, "")
+
       const responseOnly = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
         HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", id: 1, result: {} }),
