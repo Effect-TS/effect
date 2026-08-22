@@ -497,7 +497,7 @@ describe("RpcSerialization", () => {
         assert.throws(() => parser.decode(frame), /matching layout fingerprint/)
       }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary)))
 
-    it.effect("keeps payload schemas evolution-friendly", () =>
+    it.effect("does not fingerprint payloads by default", () =>
       Effect.gen(function*() {
         const serialization = yield* RpcSerialization.RpcSerialization
         const Writer = Schema.Struct({
@@ -510,6 +510,20 @@ describe("RpcSerialization", () => {
         assert.instanceOf(encoded, Uint8Array)
         assert.deepStrictEqual(Schema.decodeSync(serialization.codecFor(Reader))(encoded), { value: "ok" })
       }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary)))
+
+    it.effect("layerSchemaBinaryWith fingerprints payloads when enabled", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        const Writer = Schema.Struct({ value: Schema.String })
+        const Reader = Schema.Struct({ value: Schema.Number })
+        const encoded = Schema.encodeSync(serialization.codecFor(Writer))({ value: "ok" })
+
+        assert.deepStrictEqual(Schema.decodeSync(serialization.codecFor(Writer))(encoded), { value: "ok" })
+        assert.throws(
+          () => Schema.decodeSync(serialization.codecFor(Reader))(encoded),
+          /matching layout fingerprint/
+        )
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinaryWith({ fingerprintPayloads: true }))))
 
     it.effect("uses fingerprinted envelope framing and the binary content type", () =>
       Effect.gen(function*() {

@@ -595,16 +595,18 @@ const defaultSchemaBinaryMaxFrameSize = 16 * 1024 * 1024
 
 const makeSchemaBinary = (options?: {
   readonly maxFrameSize?: number | undefined
+  readonly fingerprintPayloads?: boolean | undefined
 }): RpcSerialization["Service"] => {
   const maxFrameSize = options?.maxFrameSize ?? defaultSchemaBinaryMaxFrameSize
+  const codecFor: CodecFor = options?.fingerprintPayloads === true
+    ? (schema) => SchemaBinary.toCodecDirect(schema, { fingerprint: true })
+    : SchemaBinary.toCodecDirect
   const encodeEnvelope = SchemaBinary.encodeUnknownSync(RpcMessage.EncodedSchema, { fingerprint: true })
   const encodeEnvelopes = SchemaBinary.encodeManyUnknownSync(RpcMessage.EncodedSchema, { fingerprint: true })
   return RpcSerialization.of({
     contentType: "application/vnd.effect.rpc+schema-binary",
     includesFraming: true,
-    // The hole codec is only ever encoded and decoded, never used as a type
-    // guard, so it can skip the schema pass the binary layer already covers.
-    codecFor: SchemaBinary.toCodecDirect as CodecFor,
+    codecFor,
     makeUnsafe: () => {
       const parser = SchemaBinary.parser(RpcMessage.EncodedSchema, { fingerprint: true, maxFrameSize })
       const encoder = new TextEncoder()
@@ -714,12 +716,14 @@ export const layerMsgPackWith = (
 export const layerSchemaBinary: Layer.Layer<RpcSerialization> = Layer.sync(RpcSerialization)(makeSchemaBinary)
 
 /**
- * RPC serialization layer that uses SchemaBinary with a custom maximum frame
- * size. RPC envelope fingerprints are always enabled.
+ * RPC serialization layer that uses SchemaBinary with custom options.
+ * RPC envelope fingerprints are always enabled; payload fingerprints default
+ * to disabled to support compatible schema evolution.
  *
  * @category layers
  * @since 4.0.0
  */
 export const layerSchemaBinaryWith = (options: {
-  readonly maxFrameSize: number
+  readonly maxFrameSize?: number | undefined
+  readonly fingerprintPayloads?: boolean | undefined
 }): Layer.Layer<RpcSerialization> => Layer.sync(RpcSerialization)(() => makeSchemaBinary(options))
