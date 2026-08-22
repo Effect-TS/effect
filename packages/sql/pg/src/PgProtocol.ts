@@ -21,6 +21,305 @@ import * as Data from "effect/Data"
 import * as Result from "effect/Result"
 
 /**
+ * Default `maxMessageSize` for `makeParser`: 16 MiB.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const defaultMaxMessageSize = 16 * 1024 * 1024
+
+/** Where a parser stops growing its buffer pool. */
+const maxBufferSize = 64 * 1024
+
+/**
+ * An incremental decoder for the post-startup backend message stream.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Parser<A = Uint8Array | null> {
+  /**
+   * Reads each `DataRow` field, for a parser built with one. A result's
+   * columns are only known from its `RowDescription`, which arrives on the
+   * same stream, so this is settable: replace it when the columns change.
+   */
+  readField: FieldReader<A> | undefined
+
+  /**
+   * Feeds the next chunk of socket bytes and returns every message that is now
+   * complete. A partial trailing message is retained until the bytes that
+   * finish it arrive. A thrown parse or field-reader error is terminal and the
+   * parser cannot be reused afterward; any messages decoded earlier in the
+   * failing push are discarded.
+   *
+   * Byte fields on the returned messages - `DataRow` values, `CopyData` and
+   * `Unknown` payloads - are views into an internal buffer that the parser
+   * never rewrites, so they stay valid for as long as they are held. They are
+   * meant to be consumed before the next `push`: holding one keeps its whole
+   * buffer alive, so copy it if it has to outlive the row.
+   */
+  readonly push: (chunk: Uint8Array) => ReadonlyArray<BackendMessage<A>>
+}
+
+/**
+ * Creates a `Parser`.
+ *
+ * Special pre-startup replies have no type byte and are not handled here; use
+ * `decodeSslResponse` for those.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeParser = <A = Uint8Array | null>(options?: {
+  readonly maxMessageSize?: number | undefined
+  /**
+   * Reads each `DataRow` field as it is parsed, so a client that decodes its
+   * columns never needs a view per column. Without one every field is handed
+   * out as a view, which is the default.
+   */
+  readonly readField?: FieldReader<A> | undefined
+}): Parser<A> => {
+  const maxMessageSize = options?.maxMessageSize ?? defaultMaxMessageSize
+  const reader = new Reader()
+  let bufferSize = 8192
+  let buffer = new Uint8Array(bufferSize)
+  let store = buffer.buffer
+  let start = 0
+  let end = 0
+  let failed = false
+
+  // Bytes already handed to the caller are never overwritten, so a full buffer
+  // is replaced rather than compacted in place. That lets `DataRow` fields be
+  // views instead of copies, which is the difference between one allocation per
+  // buffer and one per column.
+  //
+  // Every refill therefore allocates, so the pool doubles up to
+  // `maxBufferSize`: a busy connection spreads the allocation over more
+  // messages while a low-volume one stays small. A single oversized message
+  // grows its buffer beyond the pool without raising the pool itself.
+  const append = (chunk: Uint8Array): void => {
+    if (end + chunk.length > buffer.length) {
+      const pending = end - start
+      if (bufferSize < maxBufferSize) bufferSize *= 2
+      let capacity = bufferSize
+      while (capacity < pending + chunk.length) capacity *= 2
+      const next = new Uint8Array(capacity)
+      next.set(buffer.subarray(start, end))
+      buffer = next
+      store = next.buffer
+      start = 0
+      end = pending
+    }
+    buffer.set(chunk, end)
+    end += chunk.length
+  }
+
+  return {
+    readField: options?.readField,
+    push(chunk) {
+      if (failed) {
+        throw new ParseError({ message: "Parser cannot be reused after a failure" })
+      }
+      try {
+        append(chunk)
+        const messages: Array<BackendMessage<A>> = []
+        while (end - start >= 5) {
+          const length = (buffer[start + 1] << 24) | (buffer[start + 2] << 16) | (buffer[start + 3] << 8) |
+            buffer[start + 4]
+          if (length < 4) {
+            throw new ParseError({ message: `Invalid message length: ${length}` })
+          }
+          if (length > maxMessageSize) {
+            throw new ParseError({
+              message: `Message length ${length} exceeds maxMessageSize ${maxMessageSize}`
+            })
+          }
+          if (end - start < length + 1) break
+          const type = buffer[start]
+          const body = start + 5
+          const limit = start + 1 + length
+          start = limit
+          if (type === BackendType.DataRow) {
+            // `buffer` always starts at byte 0 of `store`, so offsets index both.
+            messages.push(decodeDataRow<A>(buffer, store, 0, body, limit, this.readField))
+          } else {
+            reader.reset(buffer, body, limit)
+            const message = decodeBackend(type, reader)
+            if (reader.offset !== limit) {
+              throw new ParseError({ message: `Message has ${limit - reader.offset} trailing byte(s)` })
+            }
+            messages.push(message as BackendMessage<A>)
+          }
+        }
+        return messages
+      } catch (error) {
+        failed = true
+        throw error
+      }
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// frontend messages
+// -----------------------------------------------------------------------------
+
+/**
+ * Prepares a named or unnamed statement.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Parse {
+  readonly _tag: "Parse"
+  readonly name: string
+  readonly query: string
+  readonly parameterTypes: ReadonlyArray<number>
+}
+
+/**
+ * Binds parameter values to a prepared statement, creating a portal.
+ *
+ * Parameters and results always use the binary format code.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Bind {
+  readonly _tag: "Bind"
+  readonly portal: string
+  readonly statement: string
+  readonly parameters: ReadonlyArray<Uint8Array | null>
+}
+
+/**
+ * Runs a portal, optionally limiting the number of rows returned.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Execute {
+  readonly _tag: "Execute"
+  readonly portal: string
+  readonly maxRows: number
+}
+
+/**
+ * Which kind of object a `Describe` or `Close` message names.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type DescribeTarget = "statement" | "portal"
+
+/**
+ * Asks for the parameter and row shape of a statement or portal.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Describe {
+  readonly _tag: "Describe"
+  readonly target: DescribeTarget
+  readonly name: string
+}
+
+/**
+ * Drops a prepared statement or portal.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Close {
+  readonly _tag: "Close"
+  readonly target: DescribeTarget
+  readonly name: string
+}
+
+/**
+ * Closes the current transaction block and requests a `ReadyForQuery`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Sync {
+  readonly _tag: "Sync"
+}
+
+/**
+ * Asks the backend to deliver buffered output without ending the transaction.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Flush {
+  readonly _tag: "Flush"
+}
+
+/**
+ * Ends the session.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Terminate {
+  readonly _tag: "Terminate"
+}
+
+/**
+ * Answers a cleartext or MD5 password request.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface PasswordMessage {
+  readonly _tag: "PasswordMessage"
+  readonly password: string
+}
+
+/**
+ * Selects a SASL mechanism and carries its opaque initial response.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface SASLInitialResponse {
+  readonly _tag: "SASLInitialResponse"
+  readonly mechanism: string
+  readonly initialResponse: Uint8Array | null
+}
+
+/**
+ * Carries an opaque SASL continuation payload.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface SASLResponse {
+  readonly _tag: "SASLResponse"
+  readonly data: Uint8Array
+}
+
+/**
+ * Any message the client sends after startup.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type FrontendMessage =
+  | Parse
+  | Bind
+  | Execute
+  | Describe
+  | Close
+  | Sync
+  | Flush
+  | Terminate
+  | PasswordMessage
+  | SASLInitialResponse
+  | SASLResponse
+
+/**
  * Error produced when bytes cannot be interpreted as a protocol message.
  *
  * @category errors
@@ -336,165 +635,6 @@ const decodeUtf8 = (bytes: Uint8Array, offset: number, size: number): string => 
     throw new ParseError({ message: "Invalid UTF-8 in message" })
   }
 }
-
-// -----------------------------------------------------------------------------
-// frontend messages
-// -----------------------------------------------------------------------------
-
-/**
- * Prepares a named or unnamed statement.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Parse {
-  readonly _tag: "Parse"
-  readonly name: string
-  readonly query: string
-  readonly parameterTypes: ReadonlyArray<number>
-}
-
-/**
- * Binds parameter values to a prepared statement, creating a portal.
- *
- * Parameters and results always use the binary format code.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Bind {
-  readonly _tag: "Bind"
-  readonly portal: string
-  readonly statement: string
-  readonly parameters: ReadonlyArray<Uint8Array | null>
-}
-
-/**
- * Runs a portal, optionally limiting the number of rows returned.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Execute {
-  readonly _tag: "Execute"
-  readonly portal: string
-  readonly maxRows: number
-}
-
-/**
- * Which kind of object a `Describe` or `Close` message names.
- *
- * @category models
- * @since 4.0.0
- */
-export type DescribeTarget = "statement" | "portal"
-
-/**
- * Asks for the parameter and row shape of a statement or portal.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Describe {
-  readonly _tag: "Describe"
-  readonly target: DescribeTarget
-  readonly name: string
-}
-
-/**
- * Drops a prepared statement or portal.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Close {
-  readonly _tag: "Close"
-  readonly target: DescribeTarget
-  readonly name: string
-}
-
-/**
- * Closes the current transaction block and requests a `ReadyForQuery`.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Sync {
-  readonly _tag: "Sync"
-}
-
-/**
- * Asks the backend to deliver buffered output without ending the transaction.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Flush {
-  readonly _tag: "Flush"
-}
-
-/**
- * Ends the session.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Terminate {
-  readonly _tag: "Terminate"
-}
-
-/**
- * Answers a cleartext or MD5 password request.
- *
- * @category models
- * @since 4.0.0
- */
-export interface PasswordMessage {
-  readonly _tag: "PasswordMessage"
-  readonly password: string
-}
-
-/**
- * Selects a SASL mechanism and carries its opaque initial response.
- *
- * @category models
- * @since 4.0.0
- */
-export interface SASLInitialResponse {
-  readonly _tag: "SASLInitialResponse"
-  readonly mechanism: string
-  readonly initialResponse: Uint8Array | null
-}
-
-/**
- * Carries an opaque SASL continuation payload.
- *
- * @category models
- * @since 4.0.0
- */
-export interface SASLResponse {
-  readonly _tag: "SASLResponse"
-  readonly data: Uint8Array
-}
-
-/**
- * Any message the client sends after startup.
- *
- * @category models
- * @since 4.0.0
- */
-export type FrontendMessage =
-  | Parse
-  | Bind
-  | Execute
-  | Describe
-  | Close
-  | Sync
-  | Flush
-  | Terminate
-  | PasswordMessage
-  | SASLInitialResponse
-  | SASLResponse
 
 const sharedWriter = new Writer(8192)
 
@@ -1676,145 +1816,5 @@ const decodeBackend = (type: number, reader: Reader): BackendMessage => {
       return { _tag: "CopyDone" }
     default:
       return { _tag: "Unknown", type, payload: reader.rest() }
-  }
-}
-
-/**
- * Default `maxMessageSize` for `makeParser`: 16 MiB.
- *
- * @category constants
- * @since 4.0.0
- */
-export const defaultMaxMessageSize = 16 * 1024 * 1024
-
-/** Where a parser stops growing its buffer pool. */
-const maxBufferSize = 64 * 1024
-
-/**
- * An incremental decoder for the post-startup backend message stream.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Parser<A = Uint8Array | null> {
-  /**
-   * Reads each `DataRow` field, for a parser built with one. A result's
-   * columns are only known from its `RowDescription`, which arrives on the
-   * same stream, so this is settable: replace it when the columns change.
-   */
-  readField: FieldReader<A> | undefined
-
-  /**
-   * Feeds the next chunk of socket bytes and returns every message that is now
-   * complete. A partial trailing message is retained until the bytes that
-   * finish it arrive. A thrown parse or field-reader error is terminal and the
-   * parser cannot be reused afterward; any messages decoded earlier in the
-   * failing push are discarded.
-   *
-   * Byte fields on the returned messages - `DataRow` values, `CopyData` and
-   * `Unknown` payloads - are views into an internal buffer that the parser
-   * never rewrites, so they stay valid for as long as they are held. They are
-   * meant to be consumed before the next `push`: holding one keeps its whole
-   * buffer alive, so copy it if it has to outlive the row.
-   */
-  readonly push: (chunk: Uint8Array) => ReadonlyArray<BackendMessage<A>>
-}
-
-/**
- * Creates a `Parser`.
- *
- * Special pre-startup replies have no type byte and are not handled here; use
- * `decodeSslResponse` for those.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const makeParser = <A = Uint8Array | null>(options?: {
-  readonly maxMessageSize?: number | undefined
-  /**
-   * Reads each `DataRow` field as it is parsed, so a client that decodes its
-   * columns never needs a view per column. Without one every field is handed
-   * out as a view, which is the default.
-   */
-  readonly readField?: FieldReader<A> | undefined
-}): Parser<A> => {
-  const maxMessageSize = options?.maxMessageSize ?? defaultMaxMessageSize
-  const reader = new Reader()
-  let bufferSize = 8192
-  let buffer = new Uint8Array(bufferSize)
-  let store = buffer.buffer
-  let start = 0
-  let end = 0
-  let failed = false
-
-  // Bytes already handed to the caller are never overwritten, so a full buffer
-  // is replaced rather than compacted in place. That lets `DataRow` fields be
-  // views instead of copies, which is the difference between one allocation per
-  // buffer and one per column.
-  //
-  // Every refill therefore allocates, so the pool doubles up to
-  // `maxBufferSize`: a busy connection spreads the allocation over more
-  // messages while a low-volume one stays small. A single oversized message
-  // grows its buffer beyond the pool without raising the pool itself.
-  const append = (chunk: Uint8Array): void => {
-    if (end + chunk.length > buffer.length) {
-      const pending = end - start
-      if (bufferSize < maxBufferSize) bufferSize *= 2
-      let capacity = bufferSize
-      while (capacity < pending + chunk.length) capacity *= 2
-      const next = new Uint8Array(capacity)
-      next.set(buffer.subarray(start, end))
-      buffer = next
-      store = next.buffer
-      start = 0
-      end = pending
-    }
-    buffer.set(chunk, end)
-    end += chunk.length
-  }
-
-  return {
-    readField: options?.readField,
-    push(chunk) {
-      if (failed) {
-        throw new ParseError({ message: "Parser cannot be reused after a failure" })
-      }
-      try {
-        append(chunk)
-        const messages: Array<BackendMessage<A>> = []
-        while (end - start >= 5) {
-          const length = (buffer[start + 1] << 24) | (buffer[start + 2] << 16) | (buffer[start + 3] << 8) |
-            buffer[start + 4]
-          if (length < 4) {
-            throw new ParseError({ message: `Invalid message length: ${length}` })
-          }
-          if (length > maxMessageSize) {
-            throw new ParseError({
-              message: `Message length ${length} exceeds maxMessageSize ${maxMessageSize}`
-            })
-          }
-          if (end - start < length + 1) break
-          const type = buffer[start]
-          const body = start + 5
-          const limit = start + 1 + length
-          start = limit
-          if (type === BackendType.DataRow) {
-            // `buffer` always starts at byte 0 of `store`, so offsets index both.
-            messages.push(decodeDataRow<A>(buffer, store, 0, body, limit, this.readField))
-          } else {
-            reader.reset(buffer, body, limit)
-            const message = decodeBackend(type, reader)
-            if (reader.offset !== limit) {
-              throw new ParseError({ message: `Message has ${limit - reader.offset} trailing byte(s)` })
-            }
-            messages.push(message as BackendMessage<A>)
-          }
-        }
-        return messages
-      } catch (error) {
-        failed = true
-        throw error
-      }
-    }
   }
 }
