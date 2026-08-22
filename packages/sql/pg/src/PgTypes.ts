@@ -1591,26 +1591,27 @@ export interface Column {
  * can read in place does; the rest are handed a view. SQL NULL reads as `null`,
  * and a column whose OID has no codec reads as a copy of its bytes.
  *
- * Only the binary format is supported, and a text column fails here rather than
- * once per row.
+ * Only the binary format is supported, and a text column returns a
+ * `CodecError` failure here rather than once per row. A successful result
+ * contains the parser's internal throwing fast path; its failures are terminal
+ * for that parser. The standalone `encode` and `decode` APIs remain typed
+ * `Result` values.
  *
  * ```ts
  * import { PgProtocol, PgTypes } from "@effect/sql-pg"
  *
- * const parser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader([]) })
+ * const parser = PgProtocol.makeParser({ readField: Result.getOrThrow(PgTypes.makeFieldReader([])) })
  * // on each RowDescription
  * declare const description: PgProtocol.RowDescription
- * parser.readField = PgTypes.makeFieldReader(description.fields)
+ * parser.readField = Result.getOrThrow(PgTypes.makeFieldReader(description.fields))
  * ```
  *
  * @category decoding
  * @since 4.0.0
  */
-const fieldReaderUnsafe = Symbol.for("@effect/sql-pg/PgProtocol/FieldReader/unsafe")
-
 export const makeFieldReader = (
   columns: ReadonlyArray<Column>
-): Result.Result<PgProtocol.FieldReader<unknown, CodecError>, CodecError> =>
+): Result.Result<PgProtocol.FieldReader<unknown>, CodecError> =>
   result(() => {
     const codecs = columns.map((column, index) => {
       if (column.format !== 1) {
@@ -1618,17 +1619,13 @@ export const makeFieldReader = (
       }
       return lookup(column.dataTypeOid)
     })
-    const readUnsafe = (bytes: Uint8Array, offset: number, size: number, column: number): unknown => {
+    return (bytes: Uint8Array, offset: number, size: number, column: number): unknown => {
       if (size < 0) return null
       const codec = codecs[column]
       if (codec === undefined) return bytes.slice(offset, offset + size)
       const read = codec.read
       return read === undefined ? codec.decode(bytes.subarray(offset, offset + size)) : read(bytes, offset, size)
     }
-    const read: PgProtocol.FieldReader<unknown, CodecError> = (bytes, offset, size, column) =>
-      result(() => readUnsafe(bytes, offset, size, column))
-    Object.defineProperty(read, fieldReaderUnsafe, { value: readUnsafe })
-    return read
   })
 
 /**

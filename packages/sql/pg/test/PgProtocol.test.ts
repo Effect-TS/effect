@@ -11,18 +11,24 @@ const success = <A, E>(result: Result.Result<A, E>): A => {
 }
 
 const parseOne = (golden: string): PgProtocol.BackendMessage => {
-  const messages = success(PgProtocol.makeParser().push(bytes(golden)))
+  const messages = PgProtocol.makeParser().push(bytes(golden))
   assert.strictEqual(messages.length, 1)
   return messages[0]
 }
 
-const assertFailureTagged = (tag: string, result: Result.Result<unknown, { readonly _tag: string }>) => {
-  assert.isTrue(Result.isFailure(result))
-  if (Result.isFailure(result)) assert.strictEqual(result.failure._tag, tag)
+const assertThrowsTagged = (tag: string, run: () => unknown, message?: string): void => {
+  try {
+    run()
+  } catch (error) {
+    assert.strictEqual((error as { readonly _tag?: string })._tag, tag)
+    if (message !== undefined) assert.strictEqual((error as Error).message, message)
+    return
+  }
+  assert.fail(`Expected ${tag}`)
 }
 
 const assertParseFailure = (golden: string): void =>
-  assertFailureTagged("PgProtocolParseError", PgProtocol.makeParser().push(bytes(golden)))
+  assertThrowsTagged("PgProtocolParseError", () => PgProtocol.makeParser().push(bytes(golden)))
 
 describe("PgProtocol", () => {
   describe("special messages", () => {
@@ -364,7 +370,7 @@ describe("PgProtocol", () => {
     it("decodes parameter names of every length across the string fast path", () => {
       for (let length = 0; length <= 16; length++) {
         const name = "abcdefgh".repeat(2).slice(0, length)
-        assert.deepStrictEqual(success(PgProtocol.makeParser().push(parameterStatus(name, "v"))), [
+        assert.deepStrictEqual(PgProtocol.makeParser().push(parameterStatus(name, "v")), [
           { _tag: "ParameterStatus", name, value: "v" }
         ])
       }
@@ -373,7 +379,7 @@ describe("PgProtocol", () => {
     it("decodes a multi-byte character at every position of the string fast path", () => {
       for (let prefix = 0; prefix <= 16; prefix++) {
         const name = "a".repeat(prefix) + "é☃"
-        assert.deepStrictEqual(success(PgProtocol.makeParser().push(parameterStatus(name, "v"))), [
+        assert.deepStrictEqual(PgProtocol.makeParser().push(parameterStatus(name, "v")), [
           { _tag: "ParameterStatus", name, value: "v" }
         ])
       }
@@ -382,7 +388,7 @@ describe("PgProtocol", () => {
     it("decodes a parameter that really contains the replacement character", () => {
       const name = "status\ufffdmessage and some padding"
       assert.deepStrictEqual(
-        success(PgProtocol.makeParser().push(parameterStatus(name, "v"))),
+        PgProtocol.makeParser().push(parameterStatus(name, "v")),
         [{ _tag: "ParameterStatus", name, value: "v" }]
       )
     })
@@ -392,9 +398,9 @@ describe("PgProtocol", () => {
         for (let at = 0; at < length; at++) {
           const name = new Uint8Array(length).fill(0x61)
           name[at] = 0xc3
-          assertFailureTagged(
+          assertThrowsTagged(
             "PgProtocolParseError",
-            PgProtocol.makeParser().push(frame(name, new Uint8Array([0x76])))
+            () => PgProtocol.makeParser().push(frame(name, new Uint8Array([0x76])))
           )
         }
       }
@@ -542,8 +548,8 @@ describe("PgProtocol", () => {
     it("buffers a message split across two chunks", () => {
       const parser = PgProtocol.makeParser()
       const frame = bytes(backend.dataRowTwoColumns)
-      assert.deepStrictEqual(success(parser.push(frame.subarray(0, 7))), [])
-      const messages = success(parser.push(frame.subarray(7)))
+      assert.deepStrictEqual(parser.push(frame.subarray(0, 7)), [])
+      const messages = parser.push(frame.subarray(7))
       assert.strictEqual(messages.length, 1)
       assert.strictEqual(messages[0]._tag, "DataRow")
     })
@@ -551,12 +557,12 @@ describe("PgProtocol", () => {
     it("returns both messages when one chunk holds two", () => {
       const parser = PgProtocol.makeParser()
       const chunk = bytes(backend.parseComplete + backend.bindComplete)
-      assert.deepStrictEqual(success(parser.push(chunk)), [{ _tag: "ParseComplete" }, { _tag: "BindComplete" }])
+      assert.deepStrictEqual(parser.push(chunk), [{ _tag: "ParseComplete" }, { _tag: "BindComplete" }])
     })
 
     it("returns every message when one chunk holds many", () => {
       const parser = PgProtocol.makeParser()
-      const messages = success(parser.push(bytes(backend.parseComplete.repeat(2_000))))
+      const messages = parser.push(bytes(backend.parseComplete.repeat(2_000)))
       assert.strictEqual(messages.length, 2_000)
       assert.strictEqual(messages.every((message) => message._tag === "ParseComplete"), true)
     })
@@ -564,8 +570,8 @@ describe("PgProtocol", () => {
     it("keeps the trailing partial message across pushes", () => {
       const parser = PgProtocol.makeParser()
       const chunk = bytes(backend.parseComplete + backend.readyForQuery)
-      assert.deepStrictEqual(success(parser.push(chunk.subarray(0, 8))), [{ _tag: "ParseComplete" }])
-      assert.deepStrictEqual(success(parser.push(chunk.subarray(8))), [{ _tag: "ReadyForQuery", status: "I" }])
+      assert.deepStrictEqual(parser.push(chunk.subarray(0, 8)), [{ _tag: "ParseComplete" }])
+      assert.deepStrictEqual(parser.push(chunk.subarray(8)), [{ _tag: "ReadyForQuery", status: "I" }])
     })
 
     it("handles a byte-at-a-time stream", () => {
@@ -573,7 +579,7 @@ describe("PgProtocol", () => {
       const frame = bytes(backend.rowDescription)
       const messages: Array<PgProtocol.BackendMessage> = []
       for (let i = 0; i < frame.length; i++) {
-        messages.push(...success(parser.push(frame.subarray(i, i + 1))))
+        messages.push(...parser.push(frame.subarray(i, i + 1)))
       }
       assert.strictEqual(messages.length, 1)
       assert.strictEqual(messages[0]._tag, "RowDescription")
@@ -593,7 +599,7 @@ describe("PgProtocol", () => {
       const parser = PgProtocol.makeParser()
       const messages: Array<PgProtocol.BackendMessage> = []
       for (let offset = 0; offset < frame.length; offset += 1024) {
-        messages.push(...success(parser.push(frame.subarray(offset, offset + 1024))))
+        messages.push(...parser.push(frame.subarray(offset, offset + 1024)))
       }
       assert.strictEqual(messages.length, 1)
       assert.strictEqual(messages[0]._tag, "DataRow")
@@ -602,22 +608,22 @@ describe("PgProtocol", () => {
 
     it("rejects a length prefix above maxMessageSize", () => {
       const parser = PgProtocol.makeParser()
-      assertFailureTagged("PgProtocolParseError", parser.push(bytes("447fffffff0000")))
+      assertThrowsTagged("PgProtocolParseError", () => parser.push(bytes("447fffffff0000")))
     })
 
     it("honours a custom maxMessageSize", () => {
       const parser = PgProtocol.makeParser({ maxMessageSize: 8 })
-      assertFailureTagged("PgProtocolParseError", parser.push(bytes(backend.rowDescription)))
+      assertThrowsTagged("PgProtocolParseError", () => parser.push(bytes(backend.rowDescription)))
     })
 
     it("rejects a length prefix below the minimum", () => {
       const parser = PgProtocol.makeParser()
-      assertFailureTagged("PgProtocolParseError", parser.push(bytes("4400000003ff")))
-      assertFailureTagged("PgProtocolParseError", PgProtocol.makeParser().push(bytes("4480000000")))
+      assertThrowsTagged("PgProtocolParseError", () => parser.push(bytes("4400000003ff")))
+      assertThrowsTagged("PgProtocolParseError", () => PgProtocol.makeParser().push(bytes("4480000000")))
     })
 
     it("accepts a frame exactly at maxMessageSize", () => {
-      assert.deepStrictEqual(success(PgProtocol.makeParser({ maxMessageSize: 8 }).push(bytes("5f00000008deadbeef"))), [
+      assert.deepStrictEqual(PgProtocol.makeParser({ maxMessageSize: 8 }).push(bytes("5f00000008deadbeef")), [
         { _tag: "Unknown", type: 0x5f, payload: bytes("deadbeef") }
       ])
     })
@@ -674,32 +680,31 @@ describe("PgProtocol", () => {
     it("does not read a DataRow field past the end of its own message", () => {
       // One field that claims ten bytes in a message carrying two, followed by
       // a complete message the field must not be allowed to reach into
-      assertFailureTagged(
+      assertThrowsTagged(
         "PgProtocolParseError",
-        PgProtocol.makeParser().push(bytes(`440000000c00010000000a0102${backend.parseComplete}`))
+        () => PgProtocol.makeParser().push(bytes(`440000000c00010000000a0102${backend.parseComplete}`))
       )
     })
 
     it("cannot be reused after a malformed frame", () => {
       const parser = PgProtocol.makeParser()
-      assertFailureTagged(
+      assertThrowsTagged(
         "PgProtocolParseError",
-        parser.push(bytes(`${backend.parseComplete}430000000953454c454354`))
+        () => parser.push(bytes(`${backend.parseComplete}430000000953454c454354`))
       )
-      const reused = parser.push(bytes(backend.bindComplete))
-      assert.isTrue(Result.isFailure(reused))
-      if (Result.isFailure(reused)) {
-        assert.strictEqual(reused.failure._tag, "PgProtocolParseError")
-        assert.strictEqual(reused.failure.message, "Parser cannot be reused after a failure")
-      }
+      assertThrowsTagged(
+        "PgProtocolParseError",
+        () => parser.push(bytes(backend.bindComplete)),
+        "Parser cannot be reused after a failure"
+      )
     })
 
     it("does not read a string past the end of its own message", () => {
       // CommandComplete whose tag is not NUL-terminated, followed by a message
       // whose length prefix contains NUL bytes
-      assertFailureTagged(
+      assertThrowsTagged(
         "PgProtocolParseError",
-        PgProtocol.makeParser().push(bytes(`430000000a53454c454354${backend.parseComplete}`))
+        () => PgProtocol.makeParser().push(bytes(`430000000a53454c454354${backend.parseComplete}`))
       )
     })
   })
@@ -708,10 +713,10 @@ describe("PgProtocol", () => {
     it("keeps DataRow field views valid across later pushes", () => {
       const parser = PgProtocol.makeParser()
       const frame = bytes(backend.dataRowTwoColumns)
-      const first = success(parser.push(frame))[0] as PgProtocol.DataRow
+      const first = parser.push(frame)[0] as PgProtocol.DataRow
       const snapshot = first.values.map((value) => value === null ? null : value.slice())
       // enough to run past the parser's buffer and force a replacement
-      for (let index = 0; index < 2000; index++) success(parser.push(frame))
+      for (let index = 0; index < 2000; index++) parser.push(frame)
       assert.deepStrictEqual(first.values, snapshot)
     })
 
@@ -721,7 +726,7 @@ describe("PgProtocol", () => {
       const retained: Array<{ readonly row: PgProtocol.DataRow; readonly snapshot: Array<Uint8Array | null> }> = []
       // enough pushes to run the pool from its initial size up to its ceiling
       for (let index = 0; index < 5000; index++) {
-        const row = success(parser.push(frame))[0] as PgProtocol.DataRow
+        const row = parser.push(frame)[0] as PgProtocol.DataRow
         if (index % 500 === 0) {
           retained.push({ row, snapshot: row.values.map((value) => value === null ? null : value.slice()) })
         }

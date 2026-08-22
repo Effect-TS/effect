@@ -68,7 +68,7 @@ class Session {
       if (this.buffer.length < length + 1) break
       const frame = new Uint8Array(this.buffer.subarray(0, length + 1))
       this.buffer = this.buffer.subarray(length + 1)
-      for (const message of success(this.parser.push(frame))) {
+      for (const message of this.parser.push(frame)) {
         this.frames.push({ tag: message._tag, hex: toHex(frame) })
         this.pending.push(message)
       }

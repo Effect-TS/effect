@@ -21,7 +21,7 @@ import * as Data from "effect/Data"
 import * as Result from "effect/Result"
 
 /**
- * Failure returned when bytes cannot be interpreted as a protocol message.
+ * Error produced when bytes cannot be interpreted as a protocol message.
  *
  * @category errors
  * @since 4.0.0
@@ -1160,24 +1160,13 @@ export interface DataRow<out A = Uint8Array | null> {
  * that reads the rest of the stream. `PgTypes.makeFieldReader` is the
  * implementation for OID-typed columns.
  *
+ * A reader runs inside the stateful parser. If it throws, that failure is
+ * terminal just like a `ParseError`.
+ *
  * @category models
  * @since 4.0.0
  */
-export type FieldReader<A, E = never> = (
-  bytes: Uint8Array,
-  offset: number,
-  size: number,
-  column: number
-) => Result.Result<A, E>
-
-const fieldReaderUnsafe = Symbol.for("@effect/sql-pg/PgProtocol/FieldReader/unsafe")
-
-class FieldReaderFailure<E> {
-  readonly error: E
-  constructor(error: E) {
-    this.error = error
-  }
-}
+export type FieldReader<A> = (bytes: Uint8Array, offset: number, size: number, column: number) => A
 
 /**
  * A command finished, reporting its tag such as `SELECT 3`.
@@ -1554,13 +1543,13 @@ const decodeCopyResponse = (
 // instead of going through `Reader`. Callers have already checked that the
 // whole frame is buffered, which turns every field read into one bounds check
 // against `limit`.
-const decodeDataRow = <A, E>(
+const decodeDataRow = <A>(
   bytes: Uint8Array,
   store: ArrayBufferLike,
   base: number,
   offset: number,
   limit: number,
-  readField: FieldReader<A, E> | undefined
+  readField: FieldReader<A> | undefined
 ): DataRow<A> => {
   if (offset + 2 > limit) {
     throw new ParseError({ message: "Truncated message: expected 2 more byte(s)" })
@@ -1570,17 +1559,6 @@ const decodeDataRow = <A, E>(
     throw new ParseError({ message: `Invalid DataRow field count: ${count}` })
   }
   const values: Array<any> = new Array(count)
-  const readUnsafe = readField === undefined
-    ? undefined
-    : (readField as any)[fieldReaderUnsafe] as
-      | ((bytes: Uint8Array, offset: number, size: number, column: number) => A)
-      | undefined
-  const read = (size: number, column: number): A => {
-    if (readUnsafe !== undefined) return readUnsafe(bytes, position, size, column)
-    const result = readField!(bytes, position, size, column)
-    if (Result.isFailure(result)) throw new FieldReaderFailure(result.failure)
-    return result.success
-  }
   let position = offset + 2
   for (let i = 0; i < count; i++) {
     if (position + 4 > limit) {
@@ -1593,7 +1571,7 @@ const decodeDataRow = <A, E>(
       if (size < -1) {
         throw new ParseError({ message: `Invalid DataRow field length: ${size}` })
       }
-      values[i] = readField === undefined ? null : read(-1, i)
+      values[i] = readField === undefined ? null : readField(bytes, position, -1, i)
       continue
     }
     const next = position + size
@@ -1602,7 +1580,7 @@ const decodeDataRow = <A, E>(
     }
     values[i] = readField === undefined
       ? view(store, base + position, size)
-      : read(size, i)
+      : readField(bytes, position, size, i)
     position = next
   }
   if (position !== limit) {
@@ -1718,19 +1696,20 @@ const maxBufferSize = 64 * 1024
  * @category models
  * @since 4.0.0
  */
-export interface Parser<A = Uint8Array | null, E = never> {
+export interface Parser<A = Uint8Array | null> {
   /**
    * Reads each `DataRow` field, for a parser built with one. A result's
    * columns are only known from its `RowDescription`, which arrives on the
    * same stream, so this is settable: replace it when the columns change.
    */
-  readField: FieldReader<A, E> | undefined
+  readField: FieldReader<A> | undefined
 
   /**
    * Feeds the next chunk of socket bytes and returns every message that is now
-   * complete in a `Result`. A partial trailing message is retained until the bytes that
-   * finish it arrive. A failure is terminal and the parser cannot be reused
-   * afterward; any messages decoded earlier in the failing push are discarded.
+   * complete. A partial trailing message is retained until the bytes that
+   * finish it arrive. A thrown parse or field-reader error is terminal and the
+   * parser cannot be reused afterward; any messages decoded earlier in the
+   * failing push are discarded.
    *
    * Byte fields on the returned messages - `DataRow` values, `CopyData` and
    * `Unknown` payloads - are views into an internal buffer that the parser
@@ -1738,7 +1717,7 @@ export interface Parser<A = Uint8Array | null, E = never> {
    * meant to be consumed before the next `push`: holding one keeps its whole
    * buffer alive, so copy it if it has to outlive the row.
    */
-  readonly push: (chunk: Uint8Array) => Result.Result<ReadonlyArray<BackendMessage<A>>, ParseError | E>
+  readonly push: (chunk: Uint8Array) => ReadonlyArray<BackendMessage<A>>
 }
 
 /**
@@ -1750,15 +1729,15 @@ export interface Parser<A = Uint8Array | null, E = never> {
  * @category constructors
  * @since 4.0.0
  */
-export const makeParser = <A = Uint8Array | null, E = never>(options?: {
+export const makeParser = <A = Uint8Array | null>(options?: {
   readonly maxMessageSize?: number | undefined
   /**
    * Reads each `DataRow` field as it is parsed, so a client that decodes its
    * columns never needs a view per column. Without one every field is handed
    * out as a view, which is the default.
    */
-  readonly readField?: FieldReader<A, E> | undefined
-}): Parser<A, E> => {
+  readonly readField?: FieldReader<A> | undefined
+}): Parser<A> => {
   const maxMessageSize = options?.maxMessageSize ?? defaultMaxMessageSize
   const reader = new Reader()
   let bufferSize = 8192
@@ -1798,7 +1777,7 @@ export const makeParser = <A = Uint8Array | null, E = never>(options?: {
     readField: options?.readField,
     push(chunk) {
       if (failed) {
-        return Result.fail(new ParseError({ message: "Parser cannot be reused after a failure" }))
+        throw new ParseError({ message: "Parser cannot be reused after a failure" })
       }
       try {
         append(chunk)
@@ -1821,7 +1800,7 @@ export const makeParser = <A = Uint8Array | null, E = never>(options?: {
           start = limit
           if (type === BackendType.DataRow) {
             // `buffer` always starts at byte 0 of `store`, so offsets index both.
-            messages.push(decodeDataRow<A, E>(buffer, store, 0, body, limit, this.readField))
+            messages.push(decodeDataRow<A>(buffer, store, 0, body, limit, this.readField))
           } else {
             reader.reset(buffer, body, limit)
             const message = decodeBackend(type, reader)
@@ -1831,11 +1810,9 @@ export const makeParser = <A = Uint8Array | null, E = never>(options?: {
             messages.push(message as BackendMessage<A>)
           }
         }
-        return Result.succeed(messages)
+        return messages
       } catch (error) {
         failed = true
-        if (error instanceof ParseError) return Result.fail(error)
-        if (error instanceof FieldReaderFailure) return Result.fail(error.error as E)
         throw error
       }
     }

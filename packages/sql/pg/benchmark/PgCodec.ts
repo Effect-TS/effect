@@ -88,11 +88,11 @@ const effectChunkedParser = PgProtocol.makeParser()
 const pgSingleParser = new PgParser()
 const pgChunkedParser = new PgParser()
 
-const parseEffectSingle = () => success(effectSingleParser.push(parserPayload)).length
+const parseEffectSingle = () => effectSingleParser.push(parserPayload).length
 const parseEffectChunked = () => {
   let count = 0
   for (const chunk of parserChunks) {
-    count += success(effectChunkedParser.push(chunk)).length
+    count += effectChunkedParser.push(chunk).length
   }
   return count
 }
@@ -182,7 +182,7 @@ const fusedRowParser = PgProtocol.makeParser({ readField: success(PgTypes.makeFi
 
 const decodeRowsFused = () => {
   let count = 0
-  for (const message of success(fusedRowParser.push(binaryRowsPayload))) {
+  for (const message of fusedRowParser.push(binaryRowsPayload)) {
     if (message._tag !== "DataRow") continue
     for (let index = 0; index < message.values.length; index++) {
       fieldSink = message.values[index]
@@ -211,7 +211,7 @@ const wideFusedParser = PgProtocol.makeParser({
 
 const decodeWideRows = () => {
   let count = 0
-  for (const message of success(wideParser.push(wideRowsPayload))) {
+  for (const message of wideParser.push(wideRowsPayload)) {
     if (message._tag !== "DataRow") continue
     for (let index = 0; index < message.values.length; index++) {
       const field = message.values[index]
@@ -224,7 +224,7 @@ const decodeWideRows = () => {
 
 const decodeWideRowsFused = () => {
   let count = 0
-  for (const message of success(wideFusedParser.push(wideRowsPayload))) {
+  for (const message of wideFusedParser.push(wideRowsPayload)) {
     if (message._tag !== "DataRow") continue
     for (let index = 0; index < message.values.length; index++) {
       fieldSink = message.values[index]
@@ -239,7 +239,7 @@ const pgRowParser = new PgParser()
 
 const decodeRowsEffect = () => {
   let count = 0
-  for (const message of success(effectRowParser.push(binaryRowsPayload))) {
+  for (const message of effectRowParser.push(binaryRowsPayload)) {
     if (message._tag !== "DataRow") continue
     for (let index = 0; index < message.values.length; index++) {
       const field = message.values[index]
@@ -333,7 +333,7 @@ const descriptionBuffer = Buffer.from(
 
 const effectDescriptionParser = PgProtocol.makeParser()
 const pgDescriptionParser = new PgParser()
-const parseDescriptionEffect = () => success(effectDescriptionParser.push(descriptionPayload)).length
+const parseDescriptionEffect = () => effectDescriptionParser.push(descriptionPayload).length
 const parseDescriptionPg = () => {
   let count = 0
   pgDescriptionParser.parse(descriptionBuffer, () => count++)
