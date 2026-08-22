@@ -349,7 +349,8 @@ const UserIdSchema = Schema.instanceOf(UserId, {
 
 The compiler validates decoded candidates against the original declaration. A partial Link is allowed: unsuccessful
 decodes or values rejected by the declaration become bounded discards, and valid descendants remain available while
-shrinking.
+shrinking. Typed decode failures become bounded discards, while defects and interruption remain failures of the
+sampling or checking Effect.
 
 The callback also receives:
 
