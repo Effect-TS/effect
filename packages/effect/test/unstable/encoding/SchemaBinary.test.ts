@@ -119,6 +119,34 @@ describe("SchemaBinary", () => {
       )
     })
 
+    it("distinguishes absent optionals from present zero-width values", () => {
+      const schema = Schema.Struct({ value: Schema.optionalKey(Schema.Undefined) })
+      const absent = roundtrip(schema, {})
+      const present = roundtrip(schema, { value: undefined })
+
+      assert.isFalse(Object.hasOwn(absent, "value"))
+      assert.isTrue(Object.hasOwn(present, "value"))
+      assert.strictEqual(present.value, undefined)
+      assert.strictEqual(roundtrip(Schema.Null, null), null)
+      assert.strictEqual(roundtrip(Schema.Void, undefined), undefined)
+    })
+
+    it("round-trips every literal leaf kind and registered symbols", () => {
+      const literals = Schema.Union([
+        Schema.Literal("text"),
+        Schema.Literal(1),
+        Schema.Literal(true),
+        Schema.Literal(2n)
+      ])
+      for (const value of ["text", 1, true, 2n] as const) {
+        assert.strictEqual(roundtrip(literals, value), value)
+      }
+
+      const registered = Symbol.for("SchemaBinary/registered")
+      assert.strictEqual(roundtrip(Schema.Symbol, registered), registered)
+      assert.strictEqual(roundtrip(Schema.UniqueSymbol(registered), registered), registered)
+    })
+
     it("omits the count for fixed tuples and includes it for optional tuples", () => {
       const pair = Schema.Tuple([Schema.String, Schema.Number])
       // length, envelope, then a length-prefixed slot each: "key" and varint 42
@@ -426,6 +454,40 @@ describe("SchemaBinary", () => {
       assert.deepStrictEqual(Schema.decodeUnknownSync(SchemaBinary.toCodec(After))(bytes), { newName: "value" })
       assert.throws(() => SchemaBinary.fieldId(0))
       assert.throws(() => SchemaBinary.fieldId(1.5))
+    })
+
+    it("validates the full fieldId range and ignores tuple annotations", () => {
+      for (const id of [-1, Number.NaN, Number.POSITIVE_INFINITY, 0x1_0000_0000]) {
+        assert.throws(() => SchemaBinary.fieldId(id), /integer in \[1, 4294967295\]/)
+      }
+      assert.doesNotThrow(() => SchemaBinary.fieldId(0xFFFFFFFF))
+
+      const plain = Schema.Tuple([Schema.String])
+      const annotated = Schema.Tuple([Schema.String.pipe(SchemaBinary.fieldId(123))])
+      assert.deepStrictEqual([...encode(annotated, ["value"])], [...encode(plain, ["value"])])
+    })
+
+    it("keeps canonically distinct Unicode field names distinct", () => {
+      const composed = "\u00E9"
+      const decomposed = "e\u0301"
+      const schema = Schema.Struct({ [composed]: Schema.String, [decomposed]: Schema.String })
+      const value = { [composed]: "composed", [decomposed]: "decomposed" }
+
+      assert.deepStrictEqual(roundtrip(schema, value), value)
+    })
+
+    it("skips unknown fields as opaque bytes and still rejects repeated unknown ids", () => {
+      const Writer = Schema.Struct({ future: Schema.Uint8Array.pipe(SchemaBinary.fieldId(7)) })
+      const Reader = Schema.Struct({})
+      const bytes = encode(Writer, { future: Uint8Array.of(0x80, 0xFF, 0x10) })
+      assert.deepStrictEqual(Schema.decodeUnknownSync(SchemaBinary.toCodec(Reader))(bytes), {})
+
+      const field = bytes.slice(2)
+      const duplicate = concat(Uint8Array.of(1 + field.length * 2, 0x10), field, field)
+      assert.match(
+        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Reader))(duplicate)).message,
+        /unique field ids/
+      )
     })
 
     it("skips an unknown union member on an optional struct field", () => {
@@ -740,6 +802,13 @@ describe("SchemaBinary", () => {
   })
 
   describe("parser", () => {
+    it("accepts empty input and spends the parser after a successful end", () => {
+      const parser = SchemaBinary.parser(Schema.String)
+      assert.deepStrictEqual(parser.feedSync(new Uint8Array()), [])
+      parser.endSync()
+      assert.match(schemaError(() => parser.endSync()).message, /parser is spent/)
+    })
+
     it("parses concatenated frames split across chunks", () => {
       const schema = Schema.Struct({ a: Schema.Number })
       const first = encode(schema, { a: 1 })
@@ -988,10 +1057,25 @@ describe("SchemaBinary", () => {
       assert.match(schemaError(() => parser.feedSync(new Uint8Array())).message, /parser is spent/)
     })
 
+    it("stashes a malformed complete frame after returning earlier values", () => {
+      const good = encode(Schema.Number, 1)
+      const bad = encode(Schema.Number, 2).slice()
+      bad[1] = 0x20
+      const parser = SchemaBinary.parser(Schema.Number)
+
+      assert.deepStrictEqual(parser.feedSync(concat(good, bad)), [1])
+      assert.match(schemaError(() => parser.feedSync(new Uint8Array())).message, /version 1 envelope, flags 0/)
+      assert.match(schemaError(() => parser.endSync()).message, /parser is spent/)
+    })
+
     it("enforces maxFrameSize", () => {
       const bytes = encode(Schema.String, "too large")
       const parser = SchemaBinary.parser(Schema.String, { maxFrameSize: 2 })
       assert.match(schemaError(() => parser.feedSync(bytes)).message, /frame within maxFrameSize/)
+
+      const exact = SchemaBinary.parser(Schema.String, { maxFrameSize: bytes[0] })
+      assert.deepStrictEqual(exact.feedSync(bytes), ["too large"])
+      exact.endSync()
     })
 
     it("fails a ten-byte unterminated length immediately", () => {
@@ -1017,6 +1101,18 @@ describe("SchemaBinary", () => {
         assert.deepStrictEqual(values, [1])
         yield* parser.end()
       }))
+
+    it.effect("fails malformed feed and truncated end through the Effect surface", () =>
+      Effect.gen(function*() {
+        const malformed = SchemaBinary.parser(Schema.Boolean)
+        const feedError = yield* malformed.feed(Uint8Array.of(2, 0x10, 2)).pipe(Effect.flip)
+        assert.isTrue(Schema.isSchemaError(feedError))
+
+        const truncated = SchemaBinary.parser(Schema.String)
+        yield* truncated.feed(Uint8Array.of(2, 0x10))
+        const endError = yield* truncated.end().pipe(Effect.flip)
+        assert.isTrue(Schema.isSchemaError(endError))
+      }))
   })
 
   describe("native declarations", () => {
@@ -1038,10 +1134,43 @@ describe("SchemaBinary", () => {
       const duration = roundtrip(Schema.Duration, Duration.millis(1.5))
       assert.strictEqual(Duration.toNanosUnsafe(duration), 1_500_000n)
       assert.strictEqual(roundtrip(Schema.Duration, Duration.infinity), Duration.infinity)
+      assert.strictEqual(roundtrip(Schema.Duration, Duration.negativeInfinity), Duration.negativeInfinity)
+      assert.strictEqual(Duration.toNanosUnsafe(roundtrip(Schema.Duration, Duration.nanos(-7n))), -7n)
 
       const decimal = roundtrip(Schema.BigDecimal, BigDecimal.make(100n, 2))
       assert.strictEqual(decimal.value, 1n)
       assert.strictEqual(decimal.scale, 0)
+      assert.deepStrictEqual(roundtrip(Schema.BigDecimal, BigDecimal.make(-123n, -4)), BigDecimal.make(-123n, -4))
+    })
+
+    it("round-trips the empty and success branches of native sums", () => {
+      assert.isTrue(Option.isNone(roundtrip(Schema.Option(Schema.String), Option.none())))
+
+      const result = roundtrip(Schema.Result(Schema.Number, Schema.String), Result.succeed(42))
+      assert.isTrue(Result.isSuccess(result))
+      if (Result.isSuccess(result)) assert.strictEqual(result.success, 42)
+
+      const exit = roundtrip(Schema.Exit(Schema.Number, Schema.String, Schema.Unknown), Exit.succeed(42))
+      assert.isTrue(Exit.isSuccess(exit))
+      if (Exit.isSuccess(exit)) assert.strictEqual(exit.value, 42)
+    })
+
+    it("skips future CauseReason tags inside Cause", () => {
+      const schema = Schema.Cause(Schema.String, Schema.Unknown)
+      const bytes = Uint8Array.of(7, 0x10, 2, 1, 99, 2, 0, 0x78)
+      const decoded = Schema.decodeUnknownSync(SchemaBinary.toCodec(schema))(bytes)
+
+      assert.strictEqual(decoded.reasons.length, 1)
+      assert.strictEqual(decoded.reasons[0]._tag, "Fail")
+      assert.strictEqual((decoded.reasons[0] as Cause.Fail<string>).error, "x")
+      assert.match(
+        schemaError(() =>
+          Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.CauseReason(Schema.String, Schema.Unknown)))(
+            Uint8Array.of(2, 0x10, 99)
+          )
+        ).message,
+        /Missing key/
+      )
     })
 
     it("round-trips UTC and zoned DateTime values", () => {
@@ -1189,6 +1318,33 @@ describe("SchemaBinary", () => {
       assert.match(schemaError(() => encode(Schema.Unknown, unknown)).message, /acyclic value/)
     })
 
+    it("accepts shared recursive values that are DAGs rather than cycles", () => {
+      interface Node {
+        readonly value: number
+        readonly children: ReadonlyArray<Node>
+      }
+      let Node: Schema.Codec<Node>
+      Node = Schema.Struct({
+        value: Schema.Number,
+        children: Schema.Array(Schema.suspend(() => Node))
+      })
+      const leaf: Node = { value: 2, children: [] }
+      const value: Node = { value: 1, children: [leaf, leaf] }
+
+      assert.deepStrictEqual(roundtrip(Node, value), {
+        value: 1,
+        children: [{ value: 2, children: [] }, { value: 2, children: [] }]
+      })
+    })
+
+    it("rejects non-serializable JSON values without calling them cycles", () => {
+      for (const value of [undefined, 1n, Symbol.for("json"), () => 1]) {
+        const error = schemaError(() => encode(Schema.Unknown, value))
+        assert.match(error.message, /JSON-serializable value/)
+        assert.isFalse(error.message.includes("acyclic value"))
+      }
+    })
+
     it("runs user encoding links before the binary layer", () => {
       const bytes = encode(Schema.NumberFromString, 123)
       assert.strictEqual(bytes.length, 5)
@@ -1298,6 +1454,21 @@ describe("SchemaBinary", () => {
       const error = schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Reader), { errors: "all" })(bytes))
       assert.strictEqual(error.message.match(/Missing key/g)?.length, 2)
     })
+
+    it("ignores excess-property and property-order options at the binary boundary", () => {
+      const Writer = Schema.Struct({ extra: Schema.String, known: Schema.Number })
+      const Reader = Schema.Struct({ known: Schema.Number })
+      const bytes = encode(Writer, { extra: "drop", known: 1 })
+
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(SchemaBinary.toCodec(Reader), { onExcessProperty: "error" })(bytes),
+        { known: 1 }
+      )
+      assert.deepStrictEqual(
+        SchemaBinary.parser(Reader, { onExcessProperty: "preserve", propertyOrder: "original" }).feedSync(bytes),
+        [{ known: 1 }]
+      )
+    })
   })
 
   describe("layout and data errors", () => {
@@ -1325,6 +1496,14 @@ describe("SchemaBinary", () => {
       )
       assert.throws(
         () =>
+          SchemaBinary.toCodec(Schema.Struct({
+            hashed: Schema.String,
+            explicit: Schema.String.pipe(SchemaBinary.fieldId(1836165160))
+          })),
+        /Binary layout field id collision: 1836165160 \(hashed, explicit\)/
+      )
+      assert.throws(
+        () =>
           SchemaBinary.toCodec(Schema.Union([
             Schema.Literal("a"),
             Schema.UniqueSymbol(Symbol.for("SchemaBinary/symbol"))
@@ -1342,6 +1521,17 @@ describe("SchemaBinary", () => {
             Schema.Struct({ _tag: Schema.Literal("m7r4q02dm7") })
           ])),
         /Binary layout sentinel collision: 3370793117/
+      )
+      assert.throws(
+        () =>
+          SchemaBinary.toCodec(Schema.Union([
+            Schema.Struct({ _tag: Schema.UniqueSymbol(Symbol("local")) })
+          ])),
+        /unregistered unique symbol/
+      )
+      assert.throws(
+        () => SchemaBinary.toCodec(Schema.Union([Schema.Date, Schema.DateTimeUtc])),
+        /union members are not uniquely identifiable/
       )
     })
 
@@ -1386,6 +1576,35 @@ describe("SchemaBinary", () => {
         schemaError(() => Schema.decodeUnknownSync(string)(Uint8Array.of(2, 0x10, 0xFF))).message,
         /utf-8/
       )
+      assert.match(
+        schemaError(() =>
+          Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Date))(Uint8Array.of(8, 0x10, 0, 0, 0, 0, 0, 0, 0))
+        ).message,
+        /int64/
+      )
+      assert.match(
+        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Null))(Uint8Array.of(2, 0x10, 0)))
+          .message,
+        /empty/
+      )
+      assert.match(
+        schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Schema.Unknown))(Uint8Array.of(2, 0x10, 0x7B)))
+          .message,
+        /json/
+      )
+    })
+
+    it("rejects invalid native tags and payload shapes", () => {
+      const rejects = <A, I>(schema: Schema.Codec<A, I>, bytes: Uint8Array, expected: RegExp) => {
+        assert.match(schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(schema))(bytes)).message, expected)
+      }
+      rejects(Schema.Duration, Uint8Array.of(2, 0x10, 3), /duration/)
+      rejects(Schema.Option(Schema.String), Uint8Array.of(2, 0x10, 2), /bool/)
+      rejects(Schema.Option(Schema.String), Uint8Array.of(3, 0x10, 0, 0), /empty/)
+      rejects(Schema.Result(Schema.String, Schema.String), Uint8Array.of(2, 0x10, 2), /bool/)
+      rejects(Schema.Exit(Schema.String, Schema.String, Schema.Unknown), Uint8Array.of(2, 0x10, 2), /bool/)
+      rejects(Schema.DateTimeZoned, Uint8Array.of(10, 0x10, 0, 0, 0, 0, 0, 0, 0, 0, 2), /time zone/)
+      rejects(Schema.DateTimeZoned, Uint8Array.of(10, 0x10, 0, 0, 0, 0, 0, 0, 0, 0, 0), /time zone/)
     })
 
     it("rejects attacker-sized zero-width array counts", () => {
