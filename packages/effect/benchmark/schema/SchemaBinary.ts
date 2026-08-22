@@ -79,74 +79,6 @@ const largeRows = Array.from({ length: repeatedRecordStreamSize }, (_, index) =>
 const metrics = (count: number) =>
   Object.fromEntries(Array.from({ length: count }, (_, index) => [`metric-${index}`, index * 1.25]))
 
-const cases = [
-  {
-    name: "small record",
-    schema: SmallRecord,
-    value: {
-      id: 42,
-      active: true,
-      score: 98.5,
-      retryCount: 2,
-      region: "eu-west-1",
-      verified: false
-    }
-  },
-  {
-    name: "nested payload",
-    schema: NestedPayload,
-    value: {
-      orderId: "order-2026-000184",
-      customer: {
-        id: "customer-91",
-        name: "Ada Lovelace",
-        email: "ada@example.com"
-      },
-      shipping: {
-        street: "12 Analytical Engine Way",
-        city: "London",
-        postalCode: "SW1A 1AA",
-        country: "GB"
-      },
-      lines: [
-        { sku: "widget-blue", quantity: 2, unitPrice: 12.5 },
-        { sku: "adapter-pro", quantity: 1, unitPrice: 48 },
-        { sku: "cable-2m", quantity: 3, unitPrice: 8.25 }
-      ],
-      metadata: {
-        source: "partner-api",
-        campaign: "summer-2026",
-        priority: true
-      }
-    }
-  },
-  {
-    name: "collections",
-    schema: Collections,
-    value: {
-      tags: Array.from({ length: 24 }, (_, index) => `tag-${index}`),
-      metrics: Object.fromEntries(Array.from({ length: 24 }, (_, index) => [`metric-${index}`, index * 1.25])),
-      samples: Array.from({ length: 48 }, (_, index) => [index, index / 10, index % 3 === 0] as const),
-      buckets: Array.from({ length: 8 }, (_, bucket) => Array.from({ length: 16 }, (_, index) => bucket * 100 + index))
-    }
-  },
-  {
-    name: "index signatures / 128 keys",
-    schema: Schema.Record(Schema.String, Schema.Number),
-    value: metrics(128)
-  },
-  {
-    name: "index signatures / 512 keys",
-    schema: Schema.Record(Schema.String, Schema.Number),
-    value: metrics(512)
-  },
-  {
-    name: "200-row array payload",
-    schema: LargePayload,
-    value: largeRows
-  }
-] as const
-
 const protobufRoot = protobuf.parse(`
   syntax = "proto3";
 
@@ -251,51 +183,123 @@ const collectionsProtobufType = protobufRoot.lookupType("Collections")
 const numberMapProtobufType = protobufRoot.lookupType("NumberMap")
 const largePayloadProtobufType = protobufRoot.lookupType("LargePayload")
 
-const protobufFixtures: ReadonlyArray<ProtobufFixture> = [
-  directProtobufFixture("SmallRecord"),
-  directProtobufFixture("NestedPayload"),
-  {
-    type: collectionsProtobufType,
-    encodeInput: (value) => {
-      const collections = value as typeof cases[2]["value"]
-      return {
-        tags: collections.tags,
-        metrics: collections.metrics,
-        samples: collections.samples.map(([first, second, third]) => ({ first, second, third })),
-        buckets: collections.buckets.map((values) => ({ values }))
-      }
-    },
-    decodeOutput: (message) => {
-      const collections = protobufObject<{
-        readonly tags: ReadonlyArray<string>
-        readonly metrics: Readonly<Record<string, number>>
-        readonly samples: ReadonlyArray<{ readonly first: number; readonly second: number; readonly third: boolean }>
-        readonly buckets: ReadonlyArray<{ readonly values: ReadonlyArray<number> }>
-      }>(collectionsProtobufType, message)
-      return {
-        tags: collections.tags,
-        metrics: collections.metrics,
-        samples: collections.samples.map((sample) => [sample.first, sample.second, sample.third]),
-        buckets: collections.buckets.map((bucket) => bucket.values)
-      }
+const collectionsProtobufFixture: ProtobufFixture = {
+  type: collectionsProtobufType,
+  encodeInput: (value) => {
+    const collections = value as (typeof Collections)["Type"]
+    return {
+      tags: collections.tags,
+      metrics: collections.metrics,
+      samples: collections.samples.map(([first, second, third]) => ({ first, second, third })),
+      buckets: collections.buckets.map((values) => ({ values }))
     }
   },
-  ...Array.from({ length: 2 }, (): ProtobufFixture => ({
-    type: numberMapProtobufType,
-    encodeInput: (value) => ({ values: value }),
-    decodeOutput: (message) =>
-      protobufObject<{ readonly values: Readonly<Record<string, number>> }>(numberMapProtobufType, message).values
-  })),
-  {
-    type: largePayloadProtobufType,
-    encodeInput: (value) => ({ values: value }),
-    decodeOutput: (message) =>
-      protobufObject<{ readonly values: ReadonlyArray<(typeof largeRows)[number]> }>(largePayloadProtobufType, message)
-        .values
+  decodeOutput: (message) => {
+    const collections = protobufObject<{
+      readonly tags: ReadonlyArray<string>
+      readonly metrics: Readonly<Record<string, number>>
+      readonly samples: ReadonlyArray<{ readonly first: number; readonly second: number; readonly third: boolean }>
+      readonly buckets: ReadonlyArray<{ readonly values: ReadonlyArray<number> }>
+    }>(collectionsProtobufType, message)
+    return {
+      tags: collections.tags,
+      metrics: collections.metrics,
+      samples: collections.samples.map((sample) => [sample.first, sample.second, sample.third]),
+      buckets: collections.buckets.map((bucket) => bucket.values)
+    }
   }
-]
+}
+
+const numberMapProtobufFixture: ProtobufFixture = {
+  type: numberMapProtobufType,
+  encodeInput: (value) => ({ values: value }),
+  decodeOutput: (message) =>
+    protobufObject<{ readonly values: Readonly<Record<string, number>> }>(numberMapProtobufType, message).values
+}
+
+const largePayloadProtobufFixture: ProtobufFixture = {
+  type: largePayloadProtobufType,
+  encodeInput: (value) => ({ values: value }),
+  decodeOutput: (message) =>
+    protobufObject<{ readonly values: ReadonlyArray<(typeof LargeRow)["Type"]> }>(largePayloadProtobufType, message)
+      .values
+}
 
 const largeRowProtobufFixture = directProtobufFixture("LargeRow")
+
+const cases = [
+  {
+    name: "small record",
+    schema: SmallRecord,
+    value: {
+      id: 42,
+      active: true,
+      score: 98.5,
+      retryCount: 2,
+      region: "eu-west-1",
+      verified: false
+    },
+    protobuf: directProtobufFixture("SmallRecord")
+  },
+  {
+    name: "nested payload",
+    schema: NestedPayload,
+    value: {
+      orderId: "order-2026-000184",
+      customer: {
+        id: "customer-91",
+        name: "Ada Lovelace",
+        email: "ada@example.com"
+      },
+      shipping: {
+        street: "12 Analytical Engine Way",
+        city: "London",
+        postalCode: "SW1A 1AA",
+        country: "GB"
+      },
+      lines: [
+        { sku: "widget-blue", quantity: 2, unitPrice: 12.5 },
+        { sku: "adapter-pro", quantity: 1, unitPrice: 48 },
+        { sku: "cable-2m", quantity: 3, unitPrice: 8.25 }
+      ],
+      metadata: {
+        source: "partner-api",
+        campaign: "summer-2026",
+        priority: true
+      }
+    },
+    protobuf: directProtobufFixture("NestedPayload")
+  },
+  {
+    name: "collections",
+    schema: Collections,
+    value: {
+      tags: Array.from({ length: 24 }, (_, index) => `tag-${index}`),
+      metrics: Object.fromEntries(Array.from({ length: 24 }, (_, index) => [`metric-${index}`, index * 1.25])),
+      samples: Array.from({ length: 48 }, (_, index) => [index, index / 10, index % 3 === 0] as const),
+      buckets: Array.from({ length: 8 }, (_, bucket) => Array.from({ length: 16 }, (_, index) => bucket * 100 + index))
+    },
+    protobuf: collectionsProtobufFixture
+  },
+  {
+    name: "index signatures / 128 keys",
+    schema: Schema.Record(Schema.String, Schema.Number),
+    value: metrics(128),
+    protobuf: numberMapProtobufFixture
+  },
+  {
+    name: "index signatures / 512 keys",
+    schema: Schema.Record(Schema.String, Schema.Number),
+    value: metrics(512),
+    protobuf: numberMapProtobufFixture
+  },
+  {
+    name: "200-row array payload",
+    schema: LargePayload,
+    value: largeRows,
+    protobuf: largePayloadProtobufFixture
+  }
+] as const
 
 interface Format {
   readonly name: string
@@ -360,10 +364,6 @@ const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   const msgpackEncode = Schema.encodeUnknownSync(msgpackCodec)
   const msgpackDecode = Schema.decodeUnknownSync(msgpackCodec)
   const protobufValue = protobufFixture.encodeInput(value)
-  const protobufError = protobufFixture.type.verify(protobufValue)
-  if (protobufError !== null) {
-    throw new Error(protobufError)
-  }
 
   const binary = binaryEncode(value)
   const fingerprint = fingerprintEncode(value).slice()
@@ -371,13 +371,13 @@ const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   const jsonBytes = textEncoder.encode(json)
   const msgpack = msgpackEncode(value)
   const protobufBytes = protobufFixture.type.encode(protobufValue).finish()
-  const protobufDecode = () => protobufFixture.type.decode(protobufBytes)
+  const protobufDecode = () => protobufFixture.decodeOutput(protobufFixture.type.decode(protobufBytes))
 
   assert.deepStrictEqual(binaryDecode(binary), value)
   assert.deepStrictEqual(fingerprintDecode(fingerprint), value)
   assert.deepStrictEqual(jsonDecode(json), value)
   assert.deepStrictEqual(msgpackDecode(msgpack), value)
-  assert.deepStrictEqual(protobufFixture.decodeOutput(protobufDecode()), value)
+  assert.deepStrictEqual(protobufDecode(), value)
 
   return {
     formats: [
@@ -415,9 +415,9 @@ const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   }
 }
 
-const prepared = cases.map((testCase, index) => ({
+const prepared = cases.map((testCase) => ({
   name: testCase.name,
-  ...prepare(testCase.schema, testCase.value, protobufFixtures[index]!)
+  ...prepare(testCase.schema, testCase.value, testCase.protobuf)
 }))
 
 const prepareStream = async <S extends Schema.ConstraintCodec<unknown, unknown>>(
@@ -453,9 +453,9 @@ const prepareStream = async <S extends Schema.ConstraintCodec<unknown, unknown>>
   const protobufStream = concatFrames(protobufFrames)
   const decodeProtobufStream = () => {
     const reader = protobuf.Reader.create(protobufStream)
-    const decoded: Array<Message> = []
+    const decoded: Array<unknown> = []
     while (reader.pos < reader.len) {
-      decoded.push(protobufFixture.type.decodeDelimited(reader))
+      decoded.push(protobufFixture.decodeOutput(protobufFixture.type.decodeDelimited(reader)))
     }
     return decoded
   }
@@ -516,7 +516,7 @@ const prepareStream = async <S extends Schema.ConstraintCodec<unknown, unknown>>
   assert.deepStrictEqual(fingerprintFeeds.fragmented(), [values[0]])
   assert.deepStrictEqual(fingerprintFeeds.batch(), values)
   assert.deepStrictEqual(decodeMsgpackStream(), values)
-  assert.deepStrictEqual(decodeProtobufStream().map(protobufFixture.decodeOutput), values)
+  assert.deepStrictEqual(decodeProtobufStream(), values)
   assert.deepStrictEqual(await decodeNdjsonSingle(), [values[0]])
   assert.deepStrictEqual(await decodeNdjsonFragmented(), [values[0]])
   assert.deepStrictEqual(await decodeNdjsonBatch(), values)
@@ -546,12 +546,12 @@ const prepareStream = async <S extends Schema.ConstraintCodec<unknown, unknown>>
 }
 
 const preparedStreams = await Promise.all([
-  ...cases.map((testCase, index) => ({
+  ...cases.map((testCase) => ({
     name: testCase.name,
     prepared: prepareStream(
       testCase.schema,
       Array.from({ length: streamBatchSize }, () => testCase.value),
-      protobufFixtures[index]!
+      testCase.protobuf
     )
   })),
   { name: "200 single-row frames", prepared: prepareStream(LargeRow, largeRows, largeRowProtobufFixture) }
@@ -559,7 +559,7 @@ const preparedStreams = await Promise.all([
 
 console.log(`Node ${process.version}; codec and schema construction excluded from timings.`)
 console.log("JSON and Msgpack use the same Schema.toCodecJson representation; JSON sizes are UTF-8 bytes.")
-console.log("Protobuf uses prebuilt protobufjs descriptors; descriptor construction and case adapters are excluded.")
+console.log("Protobuf uses prebuilt protobufjs descriptors; descriptor construction and encode adapters are excluded.")
 console.log(
   "Compare formats within a case and direction in the same run; absolute rates vary with the machine and runtime."
 )
