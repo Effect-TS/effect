@@ -3,6 +3,7 @@ import { Msgpack, Ndjson, SchemaBinary } from "effect/unstable/encoding"
 import { Packr, Unpackr } from "msgpackr"
 import assert from "node:assert/strict"
 import { gzipSync, zstdCompressSync } from "node:zlib"
+import protobuf, { type Message, type Type } from "protobufjs"
 import { Bench } from "tinybench"
 
 const streamBatchSize = 32
@@ -146,6 +147,156 @@ const cases = [
   }
 ] as const
 
+const protobufRoot = protobuf.parse(`
+  syntax = "proto3";
+
+  message SmallRecord {
+    double id = 1;
+    bool active = 2;
+    double score = 3;
+    double retryCount = 4;
+    string region = 5;
+    bool verified = 6;
+  }
+
+  message LineItem {
+    string sku = 1;
+    double quantity = 2;
+    double unitPrice = 3;
+  }
+
+  message Customer {
+    string id = 1;
+    string name = 2;
+    string email = 3;
+  }
+
+  message Shipping {
+    string street = 1;
+    string city = 2;
+    string postalCode = 3;
+    string country = 4;
+  }
+
+  message Metadata {
+    string source = 1;
+    string campaign = 2;
+    bool priority = 3;
+  }
+
+  message NestedPayload {
+    string orderId = 1;
+    Customer customer = 2;
+    Shipping shipping = 3;
+    repeated LineItem lines = 4;
+    Metadata metadata = 5;
+  }
+
+  message Sample {
+    double first = 1;
+    double second = 2;
+    bool third = 3;
+  }
+
+  message Bucket {
+    repeated double values = 1;
+  }
+
+  message Collections {
+    repeated string tags = 1;
+    map<string, double> metrics = 2;
+    repeated Sample samples = 3;
+    repeated Bucket buckets = 4;
+  }
+
+  message NumberMap {
+    map<string, double> values = 1;
+  }
+
+  message LargeRow {
+    string transactionIdentifier = 1;
+    string customerIdentifier = 2;
+    string productDescription = 3;
+    string fulfillmentLocation = 4;
+    double quantityPurchased = 5;
+    double unitPriceInCents = 6;
+    double discountInBasisPoints = 7;
+    bool requiresManualReview = 8;
+  }
+
+  message LargePayload {
+    repeated LargeRow values = 1;
+  }
+`).root
+
+interface ProtobufFixture {
+  readonly type: Type
+  readonly encodeInput: (value: unknown) => object
+  readonly decodeOutput: (message: Message) => unknown
+}
+
+const protobufObject = <T extends object>(type: Type, message: Message): T =>
+  type.toObject(message, { arrays: true, defaults: true, objects: true }) as T
+
+const directProtobufFixture = (name: string): ProtobufFixture => {
+  const type = protobufRoot.lookupType(name)
+  return {
+    type,
+    encodeInput: (value) => value as object,
+    decodeOutput: (message) => protobufObject(type, message)
+  }
+}
+
+const collectionsProtobufType = protobufRoot.lookupType("Collections")
+const numberMapProtobufType = protobufRoot.lookupType("NumberMap")
+const largePayloadProtobufType = protobufRoot.lookupType("LargePayload")
+
+const protobufFixtures: ReadonlyArray<ProtobufFixture> = [
+  directProtobufFixture("SmallRecord"),
+  directProtobufFixture("NestedPayload"),
+  {
+    type: collectionsProtobufType,
+    encodeInput: (value) => {
+      const collections = value as typeof cases[2]["value"]
+      return {
+        tags: collections.tags,
+        metrics: collections.metrics,
+        samples: collections.samples.map(([first, second, third]) => ({ first, second, third })),
+        buckets: collections.buckets.map((values) => ({ values }))
+      }
+    },
+    decodeOutput: (message) => {
+      const collections = protobufObject<{
+        readonly tags: ReadonlyArray<string>
+        readonly metrics: Readonly<Record<string, number>>
+        readonly samples: ReadonlyArray<{ readonly first: number; readonly second: number; readonly third: boolean }>
+        readonly buckets: ReadonlyArray<{ readonly values: ReadonlyArray<number> }>
+      }>(collectionsProtobufType, message)
+      return {
+        tags: collections.tags,
+        metrics: collections.metrics,
+        samples: collections.samples.map((sample) => [sample.first, sample.second, sample.third]),
+        buckets: collections.buckets.map((bucket) => bucket.values)
+      }
+    }
+  },
+  ...Array.from({ length: 2 }, (): ProtobufFixture => ({
+    type: numberMapProtobufType,
+    encodeInput: (value) => ({ values: value }),
+    decodeOutput: (message) =>
+      protobufObject<{ readonly values: Readonly<Record<string, number>> }>(numberMapProtobufType, message).values
+  })),
+  {
+    type: largePayloadProtobufType,
+    encodeInput: (value) => ({ values: value }),
+    decodeOutput: (message) =>
+      protobufObject<{ readonly values: ReadonlyArray<(typeof largeRows)[number]> }>(largePayloadProtobufType, message)
+        .values
+  }
+]
+
+const largeRowProtobufFixture = directProtobufFixture("LargeRow")
+
 interface Format {
   readonly name: string
   readonly encodedSize: number
@@ -189,7 +340,8 @@ const sizes = (encoded: Uint8Array): Pick<Format, "encodedSize" | "gzipSize" | "
 
 const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   schema: S,
-  value: S["Type"]
+  value: S["Type"],
+  protobufFixture: ProtobufFixture
 ): {
   readonly formats: ReadonlyArray<Format>
 } => {
@@ -207,17 +359,25 @@ const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
   const jsonDecode = Schema.decodeUnknownSync(jsonCodec)
   const msgpackEncode = Schema.encodeUnknownSync(msgpackCodec)
   const msgpackDecode = Schema.decodeUnknownSync(msgpackCodec)
+  const protobufValue = protobufFixture.encodeInput(value)
+  const protobufError = protobufFixture.type.verify(protobufValue)
+  if (protobufError !== null) {
+    throw new Error(protobufError)
+  }
 
   const binary = binaryEncode(value)
   const fingerprint = fingerprintEncode(value).slice()
   const json = jsonEncode(value)
   const jsonBytes = textEncoder.encode(json)
   const msgpack = msgpackEncode(value)
+  const protobufBytes = protobufFixture.type.encode(protobufValue).finish()
+  const protobufDecode = () => protobufFixture.type.decode(protobufBytes)
 
   assert.deepStrictEqual(binaryDecode(binary), value)
   assert.deepStrictEqual(fingerprintDecode(fingerprint), value)
   assert.deepStrictEqual(jsonDecode(json), value)
   assert.deepStrictEqual(msgpackDecode(msgpack), value)
+  assert.deepStrictEqual(protobufFixture.decodeOutput(protobufDecode()), value)
 
   return {
     formats: [
@@ -244,16 +404,26 @@ const prepare = <S extends Schema.ConstraintCodec<unknown, unknown>>(
         ...sizes(msgpack),
         encode: () => msgpackEncode(value),
         decode: () => msgpackDecode(msgpack)
+      },
+      {
+        name: "Protobuf",
+        ...sizes(protobufBytes),
+        encode: () => protobufFixture.type.encode(protobufValue).finish(),
+        decode: protobufDecode
       }
     ]
   }
 }
 
-const prepared = cases.map((testCase) => ({ name: testCase.name, ...prepare(testCase.schema, testCase.value) }))
+const prepared = cases.map((testCase, index) => ({
+  name: testCase.name,
+  ...prepare(testCase.schema, testCase.value, protobufFixtures[index]!)
+}))
 
 const prepareStream = async <S extends Schema.ConstraintCodec<unknown, unknown>>(
   schema: S,
-  values: ReadonlyArray<S["Type"]>
+  values: ReadonlyArray<S["Type"]>,
+  protobufFixture: ProtobufFixture
 ): Promise<{ readonly formats: ReadonlyArray<StreamFormat>; readonly sizes: ReadonlyArray<StreamSize> }> => {
   const binaryCodec = SchemaBinary.toCodec(schema)
   const binaryEncode = Schema.encodeUnknownSync(binaryCodec)
@@ -276,6 +446,19 @@ const prepareStream = async <S extends Schema.ConstraintCodec<unknown, unknown>>
   const msgpackPackr = new Packr()
   const msgpackStream = concatFrames(values.map((value) => msgpackPackr.pack(encodeMsgpackValue(value)).slice()))
   const msgpackUnpackr = new Unpackr()
+
+  const protobufFrames = values.map((value) =>
+    protobufFixture.type.encodeDelimited(protobufFixture.encodeInput(value)).finish()
+  )
+  const protobufStream = concatFrames(protobufFrames)
+  const decodeProtobufStream = () => {
+    const reader = protobuf.Reader.create(protobufStream)
+    const decoded: Array<Message> = []
+    while (reader.pos < reader.len) {
+      decoded.push(protobufFixture.type.decodeDelimited(reader))
+    }
+    return decoded
+  }
 
   const ndjsonFrames = values.map((value) => textEncoder.encode(`${JSON.stringify(encodeMsgpackValue(value))}\n`))
   const ndjsonStream = concatFrames(ndjsonFrames)
@@ -333,6 +516,7 @@ const prepareStream = async <S extends Schema.ConstraintCodec<unknown, unknown>>
   assert.deepStrictEqual(fingerprintFeeds.fragmented(), [values[0]])
   assert.deepStrictEqual(fingerprintFeeds.batch(), values)
   assert.deepStrictEqual(decodeMsgpackStream(), values)
+  assert.deepStrictEqual(decodeProtobufStream().map(protobufFixture.decodeOutput), values)
   assert.deepStrictEqual(await decodeNdjsonSingle(), [values[0]])
   assert.deepStrictEqual(await decodeNdjsonFragmented(), [values[0]])
   assert.deepStrictEqual(await decodeNdjsonBatch(), values)
@@ -346,6 +530,7 @@ const prepareStream = async <S extends Schema.ConstraintCodec<unknown, unknown>>
       { name: "SchemaBinary fingerprint / batch", framesPerOp: values.length, decode: fingerprintFeeds.batch },
       { name: "SchemaBinary fingerprint / fragmented", framesPerOp: 1, decode: fingerprintFeeds.fragmented },
       { name: "Msgpack unpackMultiple / batch", framesPerOp: values.length, decode: decodeMsgpackStream },
+      { name: "Protobuf decodeDelimited / batch", framesPerOp: values.length, decode: decodeProtobufStream },
       { name: "NDJSON Channel / single frame", framesPerOp: 1, decode: decodeNdjsonSingle },
       { name: "NDJSON Channel / batch", framesPerOp: values.length, decode: decodeNdjsonBatch },
       { name: "NDJSON Channel / fragmented", framesPerOp: 1, decode: decodeNdjsonFragmented }
@@ -354,21 +539,27 @@ const prepareStream = async <S extends Schema.ConstraintCodec<unknown, unknown>>
       { name: "SchemaBinary", frames: values.length, ...sizes(binaryStream) },
       { name: "SchemaBinary fingerprint", frames: values.length, ...sizes(fingerprintStream) },
       { name: "Msgpack", frames: values.length, ...sizes(msgpackStream) },
+      { name: "Protobuf", frames: values.length, ...sizes(protobufStream) },
       { name: "NDJSON", frames: values.length, ...sizes(ndjsonStream) }
     ]
   }
 }
 
 const preparedStreams = await Promise.all([
-  ...cases.map((testCase) => ({
+  ...cases.map((testCase, index) => ({
     name: testCase.name,
-    prepared: prepareStream(testCase.schema, Array.from({ length: streamBatchSize }, () => testCase.value))
+    prepared: prepareStream(
+      testCase.schema,
+      Array.from({ length: streamBatchSize }, () => testCase.value),
+      protobufFixtures[index]!
+    )
   })),
-  { name: "200 single-row frames", prepared: prepareStream(LargeRow, largeRows) }
+  { name: "200 single-row frames", prepared: prepareStream(LargeRow, largeRows, largeRowProtobufFixture) }
 ].map(async ({ name, prepared }) => ({ name, ...await prepared })))
 
 console.log(`Node ${process.version}; codec and schema construction excluded from timings.`)
 console.log("JSON and Msgpack use the same Schema.toCodecJson representation; JSON sizes are UTF-8 bytes.")
+console.log("Protobuf uses prebuilt protobufjs descriptors; descriptor construction and case adapters are excluded.")
 console.log(
   "Compare formats within a case and direction in the same run; absolute rates vary with the machine and runtime."
 )
