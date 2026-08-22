@@ -169,10 +169,10 @@ class Writer {
     this.setInt32(this.start + token, this.offset - this.start - token - 4)
   }
 
-  utf8(value: string): void {
+  utf8(value: string, nul = false): void {
     const length = value.length
     if (length <= asciiEncodeLimit) {
-      this.reserve(length)
+      this.reserve(length + (nul ? 1 : 0))
       const bytes = this.bytes
       const start = this.offset
       let i = 0
@@ -182,19 +182,21 @@ class Writer {
         bytes[start + i] = code
       }
       if (i === length) {
-        this.offset = start + length
+        const offset = start + length
+        if (nul) bytes[offset] = 0
+        this.offset = offset + (nul ? 1 : 0)
         return
       }
     }
     // UTF-8 takes at most three bytes per UTF-16 code unit, and four for the
     // two units of a surrogate pair, so this covers any string.
-    this.reserve(length * 3)
+    this.reserve(length * 3 + (nul ? 1 : 0))
     this.offset += textEncoder.encodeInto(value, this.bytes.subarray(this.offset)).written
+    if (nul) this.bytes[this.offset++] = 0
   }
 
   cString(value: string): void {
-    this.utf8(value)
-    this.uint8(0)
+    this.utf8(value, true)
   }
 
   finish(): Uint8Array {
