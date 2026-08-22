@@ -12,6 +12,7 @@
  */
 import type { NonEmptyReadonlyArray } from "../../Array.ts"
 import type { Branded } from "../../Brand.ts"
+import * as Schema from "../../Schema.ts"
 import type { Headers } from "../http/Headers.ts"
 import type * as Rpc from "./Rpc.ts"
 import type { RpcClientError } from "./RpcClientError.ts"
@@ -336,6 +337,10 @@ export interface ResponseDefectEncoded {
  * hole belongs to the protocol. Encode it with
  * `protocol.codecFor(Schema.Defect())` first.
  *
+ * This constructor produces the structured exit used by JSON-compatible
+ * protocols. Serializations whose `codecFor` returns bytes must encode the
+ * complete RPC exit before placing it in the response envelope instead.
+ *
  * @category constructors
  * @since 4.0.0
  */
@@ -402,6 +407,65 @@ export interface ClientEnd {
 export interface Pong {
   readonly _tag: "Pong"
 }
+
+const RequestIdSchema = Schema.Union([Schema.String, Schema.Number])
+
+/**
+ * Schema for transport-encoded RPC requests whose payload hole has already
+ * been filled by the active serialization.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+const RequestEncodedSchema = Schema.Struct({
+  _tag: Schema.tag("Request"),
+  id: RequestIdSchema,
+  tag: Schema.String,
+  payload: Schema.Uint8Array,
+  headers: Schema.Array(Schema.Tuple([Schema.String, Schema.String])),
+  isNotification: Schema.optional(Schema.Literal(true)),
+  traceId: Schema.optional(Schema.String),
+  spanId: Schema.optional(Schema.String),
+  sampled: Schema.optional(Schema.Boolean)
+})
+
+/**
+ * Schema for every transport-encoded RPC envelope that crosses the wire.
+ * Binary serializers use it only after each schema-dependent hole has been
+ * encoded as bytes. `ClientProtocolError` is excluded because clients create
+ * it locally rather than receiving it from a server.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const EncodedSchema = Schema.Union([
+  RequestEncodedSchema,
+  Schema.Struct({
+    _tag: Schema.tag("Ack"),
+    requestId: RequestIdSchema
+  }),
+  Schema.Struct({
+    _tag: Schema.tag("Interrupt"),
+    requestId: RequestIdSchema
+  }),
+  Schema.Struct({ _tag: Schema.tag("Ping") }),
+  Schema.Struct({ _tag: Schema.tag("Eof") }),
+  Schema.Struct({
+    _tag: Schema.tag("Chunk"),
+    requestId: RequestIdSchema,
+    values: Schema.Uint8Array
+  }),
+  Schema.Struct({
+    _tag: Schema.tag("Exit"),
+    requestId: RequestIdSchema,
+    exit: Schema.Uint8Array
+  }),
+  Schema.Struct({
+    _tag: Schema.tag("Defect"),
+    defect: Schema.Uint8Array
+  }),
+  Schema.Struct({ _tag: Schema.tag("Pong") })
+])
 
 /**
  * Represents the reusable `Pong` message value.
