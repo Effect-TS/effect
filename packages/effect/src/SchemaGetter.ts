@@ -200,6 +200,36 @@ export function forbidden<T, E>(message: (oe: Option.Option<E>) => string): Gett
   })
 }
 
+/**
+ * Getter that always fails with a `Forbidden` issue indicating that encoding is unsupported.
+ *
+ * **When to use**
+ *
+ * Use as the encode side of a decode-only Schema transformation.
+ *
+ * **Details**
+ *
+ * Its `Getter<never, unknown>` type is assignable to every encoding getter because it accepts any input and never
+ * produces an output value.
+ *
+ * **Example** (Rejecting encoding)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Option, SchemaGetter } from "effect"
+ *
+ * const issue = await Effect.runPromise(
+ *   Effect.flip(SchemaGetter.forbiddenEncoding.run(Option.some("value"), {}))
+ * )
+ * issue._tag // => "Forbidden"
+ * ```
+ *
+ * @see {@link forbidden} for a forbidden getter with a custom message
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const forbiddenEncoding: Getter<never, unknown> = forbidden(() => "Encoding is not supported")
+
 const passthrough_ = new Getter<any, any>(Effect.succeed)
 
 function isPassthrough<T, E, R>(getter: Getter<T, E, R>): getter is typeof passthrough_ {
