@@ -474,54 +474,6 @@ export function fieldId(id: number) {
 
 const FIELD_ID_ANNOTATION_KEY = "~effect/encoding/SchemaBinary/fieldId"
 
-// Native declarations carry their constructors in this annotation, so schemas
-// that never use a native type keep its module out of the bundle.
-const NATIVE_ANNOTATION_KEY = "~effect/encoding/SchemaBinary/native"
-
-interface DateTimeUtcNative {
-  readonly fromMillis: (millis: number) => unknown
-}
-
-interface DateTimeZonedNative {
-  readonly make: (millis: number, timeZone: string | number) => unknown
-}
-
-interface DurationNative {
-  readonly nanos: (nanos: bigint) => unknown
-  readonly infinity: unknown
-  readonly negativeInfinity: unknown
-}
-
-interface BigDecimalNative {
-  readonly make: (value: bigint, scale: number) => unknown
-  readonly normalize: (value: BigDecimal.BigDecimal) => BigDecimal.BigDecimal
-}
-
-interface ResultNative {
-  readonly succeed: (success: unknown) => unknown
-  readonly fail: (failure: unknown) => unknown
-}
-
-interface ReasonNative {
-  readonly makeFailReason: (error: unknown) => unknown
-  readonly makeDieReason: (defect: unknown) => unknown
-  readonly makeInterruptReason: (fiberId?: number) => unknown
-  readonly fromReasons: (reasons: ReadonlyArray<unknown>) => unknown
-}
-
-interface ExitNative extends ReasonNative {
-  readonly succeed: (value: unknown) => unknown
-  readonly failCause: (cause: unknown) => unknown
-}
-
-function nativeSupport<T>(ast: SchemaAST.Declaration, id: string): T {
-  const support = ast.annotations?.[NATIVE_ANNOTATION_KEY]
-  if (support === undefined) {
-    throw new Error(`Binary layout: declaration ${id} is missing binary support`)
-  }
-  return support as T
-}
-
 // Bit 0 selects fingerprint mode; all other flag bits are reserved.
 const ENVELOPE = 0x10 // version nibble 1, flags 0
 const ENVELOPE_FINGERPRINT = 0x11 // version nibble 1, flag bit 0
@@ -1256,21 +1208,21 @@ type LeafKind =
   | "bytes"
   | "bigint"
   | "json"
+  | "duration"
+  | "bigDecimal"
+  | "dateTimeZoned"
 
 type Layout =
   | { readonly _: LeafKind }
   | LiteralLayout
-  | { readonly _: "int64"; readonly flavor: "date" | "utc"; readonly utc: DateTimeUtcNative | undefined }
-  | { readonly _: "dateTimeZoned"; readonly native: DateTimeZonedNative }
-  | { readonly _: "duration"; readonly native: DurationNative }
-  | { readonly _: "bigDecimal"; readonly native: BigDecimalNative }
+  | { readonly _: "int64"; readonly flavor: "date" | "utc" }
   | { readonly _: "never"; readonly ast: SchemaAST.AST }
   | StructLayout
   | ArrayLayout
   | UnionLayout
   | { readonly _: "option"; value: Layout }
-  | { readonly _: "result"; readonly native: ResultNative; success: Layout; failure: Layout }
-  | { readonly _: "exit"; readonly native: ExitNative; value: Layout; cause: ReasonLayout }
+  | { readonly _: "result"; success: Layout; failure: Layout }
+  | { readonly _: "exit"; value: Layout; cause: ReasonLayout }
   | ReasonLayout
 
 // Literal values are validated here rather than by a downstream schema pass.
@@ -1291,7 +1243,6 @@ function literalExpected(layout: LiteralLayout): string {
 
 interface ReasonLayout {
   readonly _: "cause" | "causeReason"
-  readonly native: ReasonNative
   error: Layout
   defect: Layout
 }
@@ -1852,15 +1803,15 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
     const id = representationId(ast)
     switch (id) {
       case "effect/schema/Date":
-        return { _: "int64", flavor: "date", utc: undefined }
+        return { _: "int64", flavor: "date" }
       case "effect/schema/DateTimeUtc":
-        return { _: "int64", flavor: "utc", utc: nativeSupport(ast, id) }
+        return { _: "int64", flavor: "utc" }
       case "effect/schema/DateTimeZoned":
-        return { _: "dateTimeZoned", native: nativeSupport(ast, id) }
+        return { _: "dateTimeZoned" }
       case "effect/schema/Duration":
-        return { _: "duration", native: nativeSupport(ast, id) }
+        return { _: "duration" }
       case "effect/schema/BigDecimal":
-        return { _: "bigDecimal", native: nativeSupport(ast, id) }
+        return { _: "bigDecimal" }
       case "effect/schema/Uint8Array":
         return { _: "bytes" }
     }
@@ -1875,7 +1826,6 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       case "effect/schema/Result": {
         const layout = {
           _: "result" as const,
-          native: nativeSupport<ResultNative>(ast, id),
           success: undefined as unknown as Layout,
           failure: undefined as unknown as Layout
         }
@@ -1885,14 +1835,12 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
         return layout
       }
       case "effect/schema/Exit": {
-        const native = nativeSupport<ExitNative>(ast, id)
         const cause: ReasonLayout = {
           _: "cause",
-          native,
           error: undefined as unknown as Layout,
           defect: undefined as unknown as Layout
         }
-        const layout = { _: "exit" as const, native, value: undefined as unknown as Layout, cause }
+        const layout = { _: "exit" as const, value: undefined as unknown as Layout, cause }
         memo.set(ast, layout)
         layout.value = compile(tps[0])
         cause.error = compile(tps[1])
@@ -1903,7 +1851,6 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       case "effect/schema/CauseReason": {
         const layout: ReasonLayout = {
           _: id === "effect/schema/Cause" ? "cause" : "causeReason",
-          native: nativeSupport(ast, id),
           error: undefined as unknown as Layout,
           defect: undefined as unknown as Layout
         }
@@ -3113,7 +3060,7 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
     }
     case "bigDecimal": {
       if (!BigDecimal.isBigDecimal(value)) encodeFail("a BigDecimal", value, ctx.options)
-      const normalized = layout.native.normalize(value)
+      const normalized = BigDecimal.normalize(value)
       w.zigzag(normalized.value)
       w.zigzag(BigInt(normalized.scale))
       return
@@ -3850,15 +3797,15 @@ function decodeReason(layout: ReasonLayout, r: Reader): unknown {
   const tag = r.byte()
   switch (tag) {
     case 0:
-      return layout.native.makeFailReason(requirePresent(decodeChecked(layout.error, r)))
+      return Cause.makeFailReason(requirePresent(decodeChecked(layout.error, r)))
     case 1:
-      return layout.native.makeDieReason(requirePresent(decodeChecked(layout.defect, r)))
+      return Cause.makeDieReason(requirePresent(decodeChecked(layout.defect, r)))
     case 2:
       if (r.remaining !== 0) invalid("empty", undefined, r.options)
-      return layout.native.makeInterruptReason()
+      return Cause.makeInterruptReason()
     case 3: {
       if (r.remaining !== 8) invalid("f64", undefined, r.options)
-      return layout.native.makeInterruptReason(r.f64())
+      return Cause.makeInterruptReason(r.f64())
     }
     default:
       r.take(r.remaining)
@@ -3909,8 +3856,7 @@ function decodeValue(layout: Layout, r: Reader): unknown {
     case "int64": {
       if (r.remaining !== 8) invalid("int64", undefined, r.options)
       const millis = Number(r.i64())
-      const utc = layout.utc
-      if (utc !== undefined) return utc.fromMillis(millis)
+      if (layout.flavor !== "date") return DateTime.makeUnsafe(millis)
       const date = new Date(millis)
       if (Number.isNaN(date.getTime())) invalid("a valid Date", millis, r.options)
       return date
@@ -3928,7 +3874,7 @@ function decodeValue(layout: Layout, r: Reader): unknown {
         return invalid("time zone", undefined, r.options)
       }
       try {
-        return layout.native.make(millis, timeZone)
+        return DateTime.makeZonedUnsafe(millis, { timeZone })
       } catch {
         return invalid("time zone", undefined, r.options)
       }
@@ -3937,11 +3883,11 @@ function decodeValue(layout: Layout, r: Reader): unknown {
       const tag = r.byte()
       switch (tag) {
         case 0:
-          return layout.native.nanos(r.zigzag())
+          return Duration.nanos(r.zigzag())
         case 1:
-          return layout.native.infinity
+          return Duration.infinity
         case 2:
-          return layout.native.negativeInfinity
+          return Duration.negativeInfinity
         default:
           return invalid("duration", undefined, r.options)
       }
@@ -3950,7 +3896,7 @@ function decodeValue(layout: Layout, r: Reader): unknown {
       const value = r.zigzag()
       const scale = r.zigzag()
       if (scale > MAX_SAFE_BIGINT || -scale > MAX_SAFE_BIGINT) invalid("safe integer length", undefined, r.options)
-      return layout.native.make(value, Number(scale))
+      return BigDecimal.make(value, Number(scale))
     }
     case "json": {
       const text = r.readUtf8(r.end - r.pos)
@@ -3971,29 +3917,30 @@ function decodeValue(layout: Layout, r: Reader): unknown {
     }
     case "result": {
       const tag = r.byte()
-      if (tag === 0) return layout.native.succeed(requirePresent(decodeChecked(layout.success, r)))
+      if (tag === 0) return Result.succeed(requirePresent(decodeChecked(layout.success, r)))
       if (tag !== 1) invalid("bool", undefined, r.options)
-      return layout.native.fail(requirePresent(decodeChecked(layout.failure, r)))
+      return Result.fail(requirePresent(decodeChecked(layout.failure, r)))
     }
     case "exit": {
       const tag = r.byte()
-      if (tag === 0) return layout.native.succeed(requirePresent(decodeChecked(layout.value, r)))
+      if (tag === 0) return Exit.succeed(requirePresent(decodeChecked(layout.value, r)))
       if (tag !== 1) invalid("bool", undefined, r.options)
-      return layout.native.failCause(decodeValue(layout.cause, r))
+      const cause = decodeValue(layout.cause, r)
+      return Exit.failCause(cause as Cause.Cause<unknown>)
     }
     case "cause": {
       const count = r.uvarint()
-      const reasons: Array<unknown> = []
+      const reasons: Array<Cause.Reason<unknown>> = []
       for (let i = 0; i < count; i++) {
         issuePath[issuePathLen++] = i
         const saved = r.enter(r.uvarint())
         const reason = decodeReason(layout, r)
         r.exit(saved)
         issuePathLen--
-        if (reason !== ABSENT) reasons.push(reason)
+        if (reason !== ABSENT) reasons.push(reason as Cause.Reason<unknown>)
       }
       if (r.pos !== r.end) invalid("no leftover bytes", undefined, r.options)
-      return layout.native.fromReasons(reasons)
+      return Cause.fromReasons(reasons)
     }
     case "causeReason":
       return decodeReason(layout, r)
