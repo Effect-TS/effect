@@ -1,5 +1,6 @@
 import * as PgProtocol from "@effect/sql-pg/PgProtocol"
 import * as PgTypes from "@effect/sql-pg/PgTypes"
+import * as Result from "effect/Result"
 import assert from "node:assert/strict"
 import { Buffer } from "node:buffer"
 import { createRequire } from "node:module"
@@ -17,6 +18,11 @@ const postgresSql = postgres({ max: 0 })
 const postgresSerializers = postgresSql.options.serializers
 const postgresParsers = postgresSql.options.parsers
 
+const success = <A, E>(result: Result.Result<A, E>): A => {
+  if (Result.isFailure(result)) throw result.failure
+  return result.success
+}
+
 const jsonValue = { active: true, tags: ["effect", "postgres"] }
 const byteaValue = Uint8Array.from({ length: 32 }, (_, index) => index)
 
@@ -29,15 +35,15 @@ const payload = [
   { oid: PgTypes.OID.bytea, value: byteaValue, text: `\\x${Buffer.from(byteaValue).toString("hex")}` }
 ] as const
 
-const effectEncoded = payload.map(({ oid, value }) => PgTypes.encode(value, oid))
+const effectEncoded = payload.map(({ oid, value }) => success(PgTypes.encode(value, oid)))
 const pgTextParsers = payload.map(({ oid }) => pgTypes.getTypeParser(oid, "text"))
 const postgresTextParsers = payload.map(({ oid }) => postgresParsers[oid] ?? ((value: string) => value))
 
-const encodeEffect = () => payload.map(({ oid, value }) => PgTypes.encode(value, oid))
+const encodeEffect = () => payload.map(({ oid, value }) => success(PgTypes.encode(value, oid)))
 const encodePg = () => payload.map(({ value }) => pgUtils.prepareValue(value))
 const encodePostgresJs = () => payload.map(({ oid, value }) => postgresSerializers[oid]?.(value) ?? String(value))
 
-const decodeEffect = () => payload.map(({ oid }, index) => PgTypes.decode(effectEncoded[index], oid, 1))
+const decodeEffect = () => payload.map(({ oid }, index) => success(PgTypes.decode(effectEncoded[index], oid, 1)))
 const decodePg = () => payload.map(({ text }, index) => pgTextParsers[index](text))
 const decodePostgresJs = () => payload.map(({ text }, index) => postgresTextParsers[index](text))
 
@@ -82,11 +88,11 @@ const effectChunkedParser = PgProtocol.makeParser()
 const pgSingleParser = new PgParser()
 const pgChunkedParser = new PgParser()
 
-const parseEffectSingle = () => effectSingleParser.push(parserPayload).length
+const parseEffectSingle = () => success(effectSingleParser.push(parserPayload)).length
 const parseEffectChunked = () => {
   let count = 0
   for (const chunk of parserChunks) {
-    count += effectChunkedParser.push(chunk).length
+    count += success(effectChunkedParser.push(chunk)).length
   }
   return count
 }
@@ -114,17 +120,17 @@ assert.equal(parsePgChunked(), rowsPerParserRun)
 const bindValues = payload.map(({ value }) => value)
 
 const bindEffect = () =>
-  PgProtocol.encodeBind({
+  success(PgProtocol.encodeBind({
     portal: "",
     statement: "s1",
-    parameters: payload.map(({ oid, value }) => PgTypes.encode(value, oid))
-  })
+    parameters: payload.map(({ oid, value }) => success(PgTypes.encode(value, oid)))
+  }))
 
 // The same job with the values written straight into the frame, which is what
 // a client should use: no array per parameter, no copy out of one.
 const bindParameters = payload.map(({ oid, value }) => ({ oid, value }))
 const encodeBindFused = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
-const bindEffectFused = () => encodeBindFused({ portal: "", statement: "s1", parameters: bindParameters })
+const bindEffectFused = () => success(encodeBindFused({ portal: "", statement: "s1", parameters: bindParameters }))
 
 const bindPg = () =>
   pgSerialize.bind({
@@ -141,9 +147,13 @@ const arrayRow = [
   { oid: PgTypes.OID.textArray, value: Array.from({ length: 8 }, (_, index) => `tag-${index}`) }
 ]
 const arrayValues = arrayRow.map(({ value }) => value)
-const bindArrayEffectFused = () => encodeBindFused({ portal: "", statement: "s2", parameters: arrayRow })
+const bindArrayEffectFused = () => success(encodeBindFused({ portal: "", statement: "s2", parameters: arrayRow }))
 const bindArrayEffect = () =>
-  PgProtocol.encodeBind({ portal: "", statement: "s2", parameters: arrayRow.map(PgTypes.encodeParameter) })
+  success(PgProtocol.encodeBind({
+    portal: "",
+    statement: "s2",
+    parameters: arrayRow.map((parameter) => success(PgTypes.encodeParameter(parameter)))
+  }))
 const bindArrayPg = () =>
   pgSerialize.bind({
     portal: "",
@@ -168,11 +178,11 @@ let fieldSink: unknown
 // with no view per column. This is what a client should use: the view is a
 // fixed cost per field, so it dominates exactly when the columns are cheap.
 const binaryColumns = payload.map(({ oid }) => ({ dataTypeOid: oid, format: 1 }))
-const fusedRowParser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader(binaryColumns) })
+const fusedRowParser = PgProtocol.makeParser({ readField: success(PgTypes.makeFieldReader(binaryColumns)) })
 
 const decodeRowsFused = () => {
   let count = 0
-  for (const message of fusedRowParser.push(binaryRowsPayload)) {
+  for (const message of success(fusedRowParser.push(binaryRowsPayload))) {
     if (message._tag !== "DataRow") continue
     for (let index = 0; index < message.values.length; index++) {
       fieldSink = message.values[index]
@@ -185,7 +195,10 @@ const decodeRowsFused = () => {
 // A wide row of cheap columns, where the view per field is most of the work.
 const wideColumnCount = 20
 const wideOid = PgTypes.OID.int4
-const wideEncoded = Array.from({ length: wideColumnCount }, (_, index) => PgTypes.encode(index * 7, wideOid))
+const wideEncoded = Array.from(
+  { length: wideColumnCount },
+  (_, index) => success(PgTypes.encode(index * 7, wideOid))
+)
 const wideRow = makeDataRow(wideEncoded)
 const wideRowsPayload = new Uint8Array(wideRow.length * rowsPerParserRun)
 for (let index = 0; index < rowsPerParserRun; index++) {
@@ -193,16 +206,16 @@ for (let index = 0; index < rowsPerParserRun; index++) {
 }
 const wideParser = PgProtocol.makeParser()
 const wideFusedParser = PgProtocol.makeParser({
-  readField: PgTypes.makeFieldReader(wideEncoded.map(() => ({ dataTypeOid: wideOid, format: 1 })))
+  readField: success(PgTypes.makeFieldReader(wideEncoded.map(() => ({ dataTypeOid: wideOid, format: 1 }))))
 })
 
 const decodeWideRows = () => {
   let count = 0
-  for (const message of wideParser.push(wideRowsPayload)) {
+  for (const message of success(wideParser.push(wideRowsPayload))) {
     if (message._tag !== "DataRow") continue
     for (let index = 0; index < message.values.length; index++) {
       const field = message.values[index]
-      if (field !== null) fieldSink = PgTypes.decode(field, wideOid, 1)
+      if (field !== null) fieldSink = success(PgTypes.decode(field, wideOid, 1))
     }
     count++
   }
@@ -211,7 +224,7 @@ const decodeWideRows = () => {
 
 const decodeWideRowsFused = () => {
   let count = 0
-  for (const message of wideFusedParser.push(wideRowsPayload)) {
+  for (const message of success(wideFusedParser.push(wideRowsPayload))) {
     if (message._tag !== "DataRow") continue
     for (let index = 0; index < message.values.length; index++) {
       fieldSink = message.values[index]
@@ -226,11 +239,11 @@ const pgRowParser = new PgParser()
 
 const decodeRowsEffect = () => {
   let count = 0
-  for (const message of effectRowParser.push(binaryRowsPayload)) {
+  for (const message of success(effectRowParser.push(binaryRowsPayload))) {
     if (message._tag !== "DataRow") continue
     for (let index = 0; index < message.values.length; index++) {
       const field = message.values[index]
-      if (field !== null) PgTypes.decode(field, payload[index].oid, 1)
+      if (field !== null) success(PgTypes.decode(field, payload[index].oid, 1))
     }
     count++
   }
@@ -266,7 +279,7 @@ assert.ok(bindArrayPg().length > 0)
 const int4ArrayLength = 16
 const int4ArrayValue = Array.from({ length: int4ArrayLength }, (_, index) => index * 1000)
 const int4ArrayText = `{${int4ArrayValue.join(",")}}`
-const int4ArrayEncoded = PgTypes.encode(int4ArrayValue, PgTypes.OID.int4Array)
+const int4ArrayEncoded = success(PgTypes.encode(int4ArrayValue, PgTypes.OID.int4Array))
 // `pg` types its parser lookup with a union that leaves the array OIDs out.
 const pgArrayParser = (pgTypes.getTypeParser as (oid: number, format: "text") => (value: string) => unknown)(
   PgTypes.OID.int4Array,
@@ -274,7 +287,7 @@ const pgArrayParser = (pgTypes.getTypeParser as (oid: number, format: "text") =>
 )
 // postgres.js has no array parser to compare against: it leaves array columns
 // as their text.
-const decodeArrayEffect = () => PgTypes.decode(int4ArrayEncoded, PgTypes.OID.int4Array, 1)
+const decodeArrayEffect = () => success(PgTypes.decode(int4ArrayEncoded, PgTypes.OID.int4Array, 1))
 const decodeArrayPg = () => pgArrayParser(int4ArrayText)
 
 assert.deepStrictEqual(decodeArrayEffect(), int4ArrayValue)
@@ -320,7 +333,7 @@ const descriptionBuffer = Buffer.from(
 
 const effectDescriptionParser = PgProtocol.makeParser()
 const pgDescriptionParser = new PgParser()
-const parseDescriptionEffect = () => effectDescriptionParser.push(descriptionPayload).length
+const parseDescriptionEffect = () => success(effectDescriptionParser.push(descriptionPayload)).length
 const parseDescriptionPg = () => {
   let count = 0
   pgDescriptionParser.parse(descriptionBuffer, () => count++)
@@ -336,8 +349,8 @@ assert.equal(parseDescriptionPg(), descriptionsPerRun)
 // back the text PostgreSQL sent without looking at it, while the binary codec
 // has to build that text out of base-10000 digit groups.
 const numericValues = ["0.00", "12345.6789", "-1", "9".repeat(20) + "." + "1".repeat(10), "NaN"]
-const numericEncoded = numericValues.map((value) => PgTypes.encode(value, PgTypes.OID.numeric))
-const decodeNumericEffect = () => numericEncoded.map((bytes) => PgTypes.decode(bytes, PgTypes.OID.numeric, 1))
+const numericEncoded = numericValues.map((value) => success(PgTypes.encode(value, PgTypes.OID.numeric)))
+const decodeNumericEffect = () => numericEncoded.map((bytes) => success(PgTypes.decode(bytes, PgTypes.OID.numeric, 1)))
 
 assert.deepStrictEqual(decodeNumericEffect(), numericValues)
 

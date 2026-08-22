@@ -18,14 +18,25 @@
  * @since 4.0.0
  */
 import * as Data from "effect/Data"
+import * as Result from "effect/Result"
 
 /**
- * Error raised when bytes cannot be interpreted as a protocol message.
+ * Failure returned when bytes cannot be interpreted as a protocol message.
  *
  * @category errors
  * @since 4.0.0
  */
 export class ParseError extends Data.TaggedError("PgProtocolParseError")<{
+  readonly message: string
+}> {}
+
+/**
+ * Error returned when a frontend message cannot be encoded.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class EncodeError extends Data.TaggedError("PgProtocolEncodeError")<{
   readonly message: string
 }> {}
 
@@ -519,17 +530,27 @@ const empty = (type: number): Uint8Array => {
 const targetByte = (target: DescribeTarget): number => target === "statement" ? 0x53 : 0x50
 
 const requireInt16Count = (count: number, name: string): number => {
-  if (count > 0x7fff) throw new RangeError(`${name} count exceeds 32767: ${count}`)
+  if (count > 0x7fff) throw new EncodeError({ message: `${name} count exceeds 32767: ${count}` })
   return count
 }
 
+const encodeResult = <A>(evaluate: () => A): Result.Result<A, EncodeError> => {
+  try {
+    return Result.succeed(evaluate())
+  } catch (error) {
+    if (error instanceof EncodeError) return Result.fail(error)
+    throw error
+  }
+}
+
 /**
- * Encodes a `Parse` message.
+ * Encodes a `Parse` message, returning `EncodeError` when its parameter count
+ * is outside the signed int16 wire range.
  *
  * @category encoding
  * @since 4.0.0
  */
-export const encodeParse = (options: Omit<Parse, "_tag">): Uint8Array => {
+const encodeParseUnsafe = (options: Omit<Parse, "_tag">): Uint8Array => {
   const writer = begin(0x50)
   writer.cString(options.name)
   writer.cString(options.query)
@@ -553,14 +574,18 @@ export const encodeParse = (options: Omit<Parse, "_tag">): Uint8Array => {
   return end()
 }
 
+export const encodeParse = (options: Omit<Parse, "_tag">): Result.Result<Uint8Array, EncodeError> =>
+  encodeResult(() => encodeParseUnsafe(options))
+
 /**
  * Encodes a `Bind` message using the binary format code for parameters and
- * results.
+ * results, returning `EncodeError` when its parameter count is outside the
+ * signed int16 wire range.
  *
  * @category encoding
  * @since 4.0.0
  */
-export const encodeBind = (options: Omit<Bind, "_tag">): Uint8Array => {
+const encodeBindUnsafe = (options: Omit<Bind, "_tag">): Uint8Array => {
   const writer = begin(0x42)
   writer.cString(options.portal)
   writer.cString(options.statement)
@@ -616,6 +641,9 @@ export const encodeBind = (options: Omit<Bind, "_tag">): Uint8Array => {
   return end()
 }
 
+export const encodeBind = (options: Omit<Bind, "_tag">): Result.Result<Uint8Array, EncodeError> =>
+  encodeResult(() => encodeBindUnsafe(options))
+
 /**
  * Where a value writes its wire bytes. `Bind` frames a parameter by leaving
  * room for its length, letting the sink fill in the body, and backfilling the
@@ -662,50 +690,65 @@ export interface ValueSink {
  * @category encoding
  * @since 4.0.0
  */
-export const makeBindEncoder = <A>(
-  writeParameter: (sink: ValueSink, value: A) => void
+const valueWriterUnsafe = Symbol.for("@effect/sql-pg/PgProtocol/ValueWriter/unsafe")
+
+export const makeBindEncoder = <A, E = never>(
+  writeParameter: (sink: ValueSink, value: A) => Result.Result<void, E>
 ) =>
 (options: {
   readonly portal: string
   readonly statement: string
   readonly parameters: ReadonlyArray<A>
-}): Uint8Array => {
-  const writer = begin(0x42)
-  writer.cString(options.portal)
-  writer.cString(options.statement)
-  const parameters = options.parameters
-  const count = requireInt16Count(parameters.length, "Bind parameter")
-  writer.reserve(6)
-  const header = writer.bytes
-  const headerOffset = writer.offset
-  header[headerOffset] = 0
-  header[headerOffset + 1] = 1
-  header[headerOffset + 2] = 0
-  header[headerOffset + 3] = 1
-  header[headerOffset + 4] = count >>> 8
-  header[headerOffset + 5] = count
-  writer.offset = headerOffset + 6
-  for (let index = 0; index < count; index++) {
-    const token = writer.beginLength()
-    writer.isNull = false
-    writeParameter(writer, parameters[index])
-    if (writer.isNull) {
+}): Result.Result<Uint8Array, EncodeError | E> => {
+  try {
+    const writer = begin(0x42)
+    writer.cString(options.portal)
+    writer.cString(options.statement)
+    const parameters = options.parameters
+    const count = requireInt16Count(parameters.length, "Bind parameter")
+    writer.reserve(6)
+    const header = writer.bytes
+    const headerOffset = writer.offset
+    header[headerOffset] = 0
+    header[headerOffset + 1] = 1
+    header[headerOffset + 2] = 0
+    header[headerOffset + 3] = 1
+    header[headerOffset + 4] = count >>> 8
+    header[headerOffset + 5] = count
+    writer.offset = headerOffset + 6
+    const writeUnsafe = (writeParameter as any)[valueWriterUnsafe] as
+      | ((sink: ValueSink, value: A) => void)
+      | undefined
+    for (let index = 0; index < count; index++) {
+      const token = writer.beginLength()
       writer.isNull = false
-      writer.offset = writer.start + token
-      writer.int32(-1)
-    } else {
-      writer.endLength(token)
+      if (writeUnsafe === undefined) {
+        const written = writeParameter(writer, parameters[index])
+        if (Result.isFailure(written)) return Result.fail(written.failure)
+      } else {
+        writeUnsafe(writer, parameters[index])
+      }
+      if (writer.isNull) {
+        writer.isNull = false
+        writer.offset = writer.start + token
+        writer.int32(-1)
+      } else {
+        writer.endLength(token)
+      }
     }
+    writer.reserve(4)
+    const trailer = writer.bytes
+    const trailerOffset = writer.offset
+    trailer[trailerOffset] = 0
+    trailer[trailerOffset + 1] = 1
+    trailer[trailerOffset + 2] = 0
+    trailer[trailerOffset + 3] = 1
+    writer.offset = trailerOffset + 4
+    return Result.succeed(end())
+  } catch (error) {
+    if (error instanceof EncodeError) return Result.fail(error)
+    throw error
   }
-  writer.reserve(4)
-  const trailer = writer.bytes
-  const trailerOffset = writer.offset
-  trailer[trailerOffset] = 0
-  trailer[trailerOffset + 1] = 1
-  trailer[trailerOffset + 2] = 0
-  trailer[trailerOffset + 3] = 1
-  writer.offset = trailerOffset + 4
-  return end()
 }
 
 /**
@@ -820,30 +863,30 @@ export const encodeSASLResponse = (options: Omit<SASLResponse, "_tag">): Uint8Ar
  * @category encoding
  * @since 4.0.0
  */
-export const encode = (message: FrontendMessage): Uint8Array => {
+export const encode = (message: FrontendMessage): Result.Result<Uint8Array, EncodeError> => {
   switch (message._tag) {
     case "Parse":
       return encodeParse(message)
     case "Bind":
       return encodeBind(message)
     case "Execute":
-      return encodeExecute(message)
+      return Result.succeed(encodeExecute(message))
     case "Describe":
-      return encodeDescribe(message)
+      return Result.succeed(encodeDescribe(message))
     case "Close":
-      return encodeClose(message)
+      return Result.succeed(encodeClose(message))
     case "Sync":
-      return encodeSync()
+      return Result.succeed(encodeSync())
     case "Flush":
-      return encodeFlush()
+      return Result.succeed(encodeFlush())
     case "Terminate":
-      return encodeTerminate()
+      return Result.succeed(encodeTerminate())
     case "PasswordMessage":
-      return encodePasswordMessage(message)
+      return Result.succeed(encodePasswordMessage(message))
     case "SASLInitialResponse":
-      return encodeSASLInitialResponse(message)
+      return Result.succeed(encodeSASLInitialResponse(message))
     case "SASLResponse":
-      return encodeSASLResponse(message)
+      return Result.succeed(encodeSASLResponse(message))
   }
 }
 
@@ -890,11 +933,12 @@ export const encodeSslRequest = (): Uint8Array => {
  * @category decoding
  * @since 4.0.0
  */
-export const decodeSslResponse = (byte: number): "S" | "N" => {
-  if (byte === 0x53) return "S"
-  if (byte === 0x4e) return "N"
-  throw new ParseError({ message: `Invalid SSLRequest response byte: ${byte}` })
-}
+export const decodeSslResponse = (byte: number): Result.Result<"S" | "N", ParseError> =>
+  byte === 0x53
+    ? Result.succeed("S")
+    : byte === 0x4e
+    ? Result.succeed("N")
+    : Result.fail(new ParseError({ message: `Invalid SSLRequest response byte: ${byte}` }))
 
 /**
  * Encodes a `StartupMessage` for protocol 3.0. It has no type byte.
@@ -1119,7 +1163,21 @@ export interface DataRow<out A = Uint8Array | null> {
  * @category models
  * @since 4.0.0
  */
-export type FieldReader<A> = (bytes: Uint8Array, offset: number, size: number, column: number) => A
+export type FieldReader<A, E = never> = (
+  bytes: Uint8Array,
+  offset: number,
+  size: number,
+  column: number
+) => Result.Result<A, E>
+
+const fieldReaderUnsafe = Symbol.for("@effect/sql-pg/PgProtocol/FieldReader/unsafe")
+
+class FieldReaderFailure<E> {
+  readonly error: E
+  constructor(error: E) {
+    this.error = error
+  }
+}
 
 /**
  * A command finished, reporting its tag such as `SELECT 3`.
@@ -1496,13 +1554,13 @@ const decodeCopyResponse = (
 // instead of going through `Reader`. Callers have already checked that the
 // whole frame is buffered, which turns every field read into one bounds check
 // against `limit`.
-const decodeDataRow = <A>(
+const decodeDataRow = <A, E>(
   bytes: Uint8Array,
   store: ArrayBufferLike,
   base: number,
   offset: number,
   limit: number,
-  readField: FieldReader<A> | undefined
+  readField: FieldReader<A, E> | undefined
 ): DataRow<A> => {
   if (offset + 2 > limit) {
     throw new ParseError({ message: "Truncated message: expected 2 more byte(s)" })
@@ -1512,6 +1570,17 @@ const decodeDataRow = <A>(
     throw new ParseError({ message: `Invalid DataRow field count: ${count}` })
   }
   const values: Array<any> = new Array(count)
+  const readUnsafe = readField === undefined
+    ? undefined
+    : (readField as any)[fieldReaderUnsafe] as
+      | ((bytes: Uint8Array, offset: number, size: number, column: number) => A)
+      | undefined
+  const read = (size: number, column: number): A => {
+    if (readUnsafe !== undefined) return readUnsafe(bytes, position, size, column)
+    const result = readField!(bytes, position, size, column)
+    if (Result.isFailure(result)) throw new FieldReaderFailure(result.failure)
+    return result.success
+  }
   let position = offset + 2
   for (let i = 0; i < count; i++) {
     if (position + 4 > limit) {
@@ -1524,7 +1593,7 @@ const decodeDataRow = <A>(
       if (size < -1) {
         throw new ParseError({ message: `Invalid DataRow field length: ${size}` })
       }
-      values[i] = readField === undefined ? null : readField(bytes, position, -1, i)
+      values[i] = readField === undefined ? null : read(-1, i)
       continue
     }
     const next = position + size
@@ -1533,7 +1602,7 @@ const decodeDataRow = <A>(
     }
     values[i] = readField === undefined
       ? view(store, base + position, size)
-      : readField(bytes, position, size, i)
+      : read(size, i)
     position = next
   }
   if (position !== limit) {
@@ -1649,20 +1718,19 @@ const maxBufferSize = 64 * 1024
  * @category models
  * @since 4.0.0
  */
-export interface Parser<A = Uint8Array | null> {
+export interface Parser<A = Uint8Array | null, E = never> {
   /**
    * Reads each `DataRow` field, for a parser built with one. A result's
    * columns are only known from its `RowDescription`, which arrives on the
    * same stream, so this is settable: replace it when the columns change.
    */
-  readField: FieldReader<A> | undefined
+  readField: FieldReader<A, E> | undefined
 
   /**
    * Feeds the next chunk of socket bytes and returns every message that is now
-   * complete. A partial trailing message is retained until the bytes that
-   * finish it arrive. A `ParseError` is terminal and the parser cannot be
-   * reused afterward; any messages decoded earlier in the failing push are
-   * discarded.
+   * complete in a `Result`. A partial trailing message is retained until the bytes that
+   * finish it arrive. A failure is terminal and the parser cannot be reused
+   * afterward; any messages decoded earlier in the failing push are discarded.
    *
    * Byte fields on the returned messages - `DataRow` values, `CopyData` and
    * `Unknown` payloads - are views into an internal buffer that the parser
@@ -1670,7 +1738,7 @@ export interface Parser<A = Uint8Array | null> {
    * meant to be consumed before the next `push`: holding one keeps its whole
    * buffer alive, so copy it if it has to outlive the row.
    */
-  readonly push: (chunk: Uint8Array) => ReadonlyArray<BackendMessage<A>>
+  readonly push: (chunk: Uint8Array) => Result.Result<ReadonlyArray<BackendMessage<A>>, ParseError | E>
 }
 
 /**
@@ -1682,15 +1750,15 @@ export interface Parser<A = Uint8Array | null> {
  * @category constructors
  * @since 4.0.0
  */
-export const makeParser = <A = Uint8Array | null>(options?: {
+export const makeParser = <A = Uint8Array | null, E = never>(options?: {
   readonly maxMessageSize?: number | undefined
   /**
    * Reads each `DataRow` field as it is parsed, so a client that decodes its
    * columns never needs a view per column. Without one every field is handed
    * out as a view, which is the default.
    */
-  readonly readField?: FieldReader<A> | undefined
-}): Parser<A> => {
+  readonly readField?: FieldReader<A, E> | undefined
+}): Parser<A, E> => {
   const maxMessageSize = options?.maxMessageSize ?? defaultMaxMessageSize
   const reader = new Reader()
   let bufferSize = 8192
@@ -1730,7 +1798,7 @@ export const makeParser = <A = Uint8Array | null>(options?: {
     readField: options?.readField,
     push(chunk) {
       if (failed) {
-        throw new ParseError({ message: "Parser cannot be reused after a ParseError" })
+        return Result.fail(new ParseError({ message: "Parser cannot be reused after a failure" }))
       }
       try {
         append(chunk)
@@ -1753,7 +1821,7 @@ export const makeParser = <A = Uint8Array | null>(options?: {
           start = limit
           if (type === BackendType.DataRow) {
             // `buffer` always starts at byte 0 of `store`, so offsets index both.
-            messages.push(decodeDataRow<A>(buffer, store, 0, body, limit, this.readField))
+            messages.push(decodeDataRow<A, E>(buffer, store, 0, body, limit, this.readField))
           } else {
             reader.reset(buffer, body, limit)
             const message = decodeBackend(type, reader)
@@ -1763,9 +1831,11 @@ export const makeParser = <A = Uint8Array | null>(options?: {
             messages.push(message as BackendMessage<A>)
           }
         }
-        return messages
+        return Result.succeed(messages)
       } catch (error) {
         failed = true
+        if (error instanceof ParseError) return Result.fail(error)
+        if (error instanceof FieldReaderFailure) return Result.fail(error.error as E)
         throw error
       }
     }

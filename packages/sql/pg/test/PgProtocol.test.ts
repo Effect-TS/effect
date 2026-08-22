@@ -1,24 +1,28 @@
 import { PgProtocol } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
+import * as Result from "effect/Result"
 import { backend, bytes, frontend } from "./fixtures/goldens.ts"
 
 const hex = (value: Uint8Array): string => Array.from(value, (byte) => byte.toString(16).padStart(2, "0")).join("")
 
+const success = <A, E>(result: Result.Result<A, E>): A => {
+  assert.isTrue(Result.isSuccess(result))
+  return (result as Result.Success<A, E>).success
+}
+
 const parseOne = (golden: string): PgProtocol.BackendMessage => {
-  const messages = PgProtocol.makeParser().push(bytes(golden))
+  const messages = success(PgProtocol.makeParser().push(bytes(golden)))
   assert.strictEqual(messages.length, 1)
   return messages[0]
 }
 
-const assertThrowsTagged = (tag: string, run: () => unknown) => {
-  try {
-    run()
-  } catch (error) {
-    assert.strictEqual((error as { _tag?: string })._tag, tag)
-    return
-  }
-  assert.fail(`Expected ${tag} to be thrown`)
+const assertFailureTagged = (tag: string, result: Result.Result<unknown, { readonly _tag: string }>) => {
+  assert.isTrue(Result.isFailure(result))
+  if (Result.isFailure(result)) assert.strictEqual(result.failure._tag, tag)
 }
+
+const assertParseFailure = (golden: string): void =>
+  assertFailureTagged("PgProtocolParseError", PgProtocol.makeParser().push(bytes(golden)))
 
 describe("PgProtocol", () => {
   describe("special messages", () => {
@@ -27,9 +31,11 @@ describe("PgProtocol", () => {
     })
 
     it("decodes the SSLRequest response byte", () => {
-      assert.strictEqual(PgProtocol.decodeSslResponse(0x53), "S")
-      assert.strictEqual(PgProtocol.decodeSslResponse(0x4e), "N")
-      assertThrowsTagged("PgProtocolParseError", () => PgProtocol.decodeSslResponse(0x41))
+      assert.strictEqual(success(PgProtocol.decodeSslResponse(0x53)), "S")
+      assert.strictEqual(success(PgProtocol.decodeSslResponse(0x4e)), "N")
+      const invalid = PgProtocol.decodeSslResponse(0x41)
+      assert.isTrue(Result.isFailure(invalid))
+      if (Result.isFailure(invalid)) assert.strictEqual(invalid.failure._tag, "PgProtocolParseError")
     })
 
     it("encodes a StartupMessage", () => {
@@ -58,17 +64,17 @@ describe("PgProtocol", () => {
   describe("frontend messages", () => {
     it("encodes Parse", () => {
       assert.strictEqual(
-        hex(PgProtocol.encodeParse({ name: "s1", query: "SELECT $1", parameterTypes: [23] })),
+        hex(success(PgProtocol.encodeParse({ name: "s1", query: "SELECT $1", parameterTypes: [23] }))),
         frontend.parse
       )
     })
 
     it("encodes Bind with binary parameter and result formats", () => {
-      const encoded = PgProtocol.encodeBind({
+      const encoded = success(PgProtocol.encodeBind({
         portal: "p1",
         statement: "s1",
         parameters: [bytes("00000001"), null]
-      })
+      }))
       assert.strictEqual(hex(encoded), frontend.bind)
     })
 
@@ -83,7 +89,7 @@ describe("PgProtocol", () => {
           ""
         ]
       ) {
-        const encoded = PgProtocol.encodeParse({ name: "s1", query, parameterTypes: [23] })
+        const encoded = success(PgProtocol.encodeParse({ name: "s1", query, parameterTypes: [23] }))
         const body = encoder.encode(query)
         assert.deepStrictEqual(encoded.subarray(8, 8 + body.length), body)
         assert.strictEqual(encoded[8 + body.length], 0)
@@ -95,9 +101,10 @@ describe("PgProtocol", () => {
       const encodeBind = PgProtocol.makeBindEncoder<Uint8Array | null>((sink, value) => {
         if (value === null) sink.sqlNull()
         else sink.raw(value)
+        return Result.void
       })
       assert.strictEqual(
-        hex(encodeBind({ portal: "p1", statement: "s1", parameters: [bytes("00000001"), null] })),
+        hex(success(encodeBind({ portal: "p1", statement: "s1", parameters: [bytes("00000001"), null] }))),
         frontend.bind
       )
     })
@@ -107,8 +114,9 @@ describe("PgProtocol", () => {
         sink.int16(value)
         sink.utf8("é")
         sink.float64(value)
+        return Result.void
       })
-      const encoded = encodeBind({ portal: "", statement: "", parameters: [1, 2] })
+      const encoded = success(encodeBind({ portal: "", statement: "", parameters: [1, 2] }))
       // 1 type byte, 4 length, 2 empty cStrings, 3 int16 of format codes and
       // count, then each parameter as its int32 length and 12 bytes of body
       const view = new DataView(encoded.buffer, encoded.byteOffset, encoded.byteLength)
@@ -120,16 +128,19 @@ describe("PgProtocol", () => {
     })
 
     it("keeps sink-written parameters intact when the pool grows mid-message", () => {
-      const encodeBind = PgProtocol.makeBindEncoder<string>((sink, value) => sink.utf8(value))
+      const encodeBind = PgProtocol.makeBindEncoder<string>((sink, value) => {
+        sink.utf8(value)
+        return Result.void
+      })
       const long = "x".repeat(16 * 1024)
-      const encoded = encodeBind({ portal: "", statement: "", parameters: ["ab", long, "cd"] })
+      const encoded = success(encodeBind({ portal: "", statement: "", parameters: ["ab", long, "cd"] }))
       assert.deepStrictEqual(
         encoded,
-        PgProtocol.encodeBind({
+        success(PgProtocol.encodeBind({
           portal: "",
           statement: "",
           parameters: ["ab", long, "cd"].map((value) => new TextEncoder().encode(value))
-        })
+        }))
       )
     })
 
@@ -174,11 +185,11 @@ describe("PgProtocol", () => {
       const cases: ReadonlyArray<readonly [PgProtocol.FrontendMessage, Uint8Array]> = [
         [
           { _tag: "Parse", name: "s1", query: "SELECT $1", parameterTypes: [23] },
-          PgProtocol.encodeParse({ name: "s1", query: "SELECT $1", parameterTypes: [23] })
+          success(PgProtocol.encodeParse({ name: "s1", query: "SELECT $1", parameterTypes: [23] }))
         ],
         [
           { _tag: "Bind", portal: "p1", statement: "s1", parameters: [bytes("00000001"), null] },
-          PgProtocol.encodeBind({ portal: "p1", statement: "s1", parameters: [bytes("00000001"), null] })
+          success(PgProtocol.encodeBind({ portal: "p1", statement: "s1", parameters: [bytes("00000001"), null] }))
         ],
         [{ _tag: "Execute", portal: "p1", maxRows: 5 }, PgProtocol.encodeExecute({ portal: "p1", maxRows: 5 })],
         [
@@ -203,14 +214,14 @@ describe("PgProtocol", () => {
         [{ _tag: "SASLResponse", data: bytes("010203") }, PgProtocol.encodeSASLResponse({ data: bytes("010203") })]
       ]
       for (const [message, expected] of cases) {
-        assert.deepStrictEqual(PgProtocol.encode(message), expected)
+        assert.deepStrictEqual(success(PgProtocol.encode(message)), expected)
       }
     })
 
     it("writes the actual typed frame length into every message", () => {
       const messages = [
-        PgProtocol.encodeParse({ name: "s1", query: "SELECT $1", parameterTypes: [23] }),
-        PgProtocol.encodeBind({ portal: "p1", statement: "s1", parameters: [bytes("00000001"), null] }),
+        success(PgProtocol.encodeParse({ name: "s1", query: "SELECT $1", parameterTypes: [23] })),
+        success(PgProtocol.encodeBind({ portal: "p1", statement: "s1", parameters: [bytes("00000001"), null] })),
         PgProtocol.encodeExecute({ portal: "p1", maxRows: 5 }),
         PgProtocol.encodeDescribe({ target: "statement", name: "s1" }),
         PgProtocol.encodeClose({ target: "portal", name: "p1" }),
@@ -232,23 +243,24 @@ describe("PgProtocol", () => {
     it("accepts the maximum signed parameter count and rejects the next value", () => {
       const maxOids = new Array<number>(0x7fff).fill(23)
       const maxParameters = new Array<Uint8Array | null>(0x7fff).fill(null)
-      const parse = PgProtocol.encodeParse({ name: "", query: "", parameterTypes: maxOids })
-      const bind = PgProtocol.encodeBind({ portal: "", statement: "", parameters: maxParameters })
+      const parse = success(PgProtocol.encodeParse({ name: "", query: "", parameterTypes: maxOids }))
+      const bind = success(PgProtocol.encodeBind({ portal: "", statement: "", parameters: maxParameters }))
       assert.strictEqual(new DataView(parse.buffer, parse.byteOffset, parse.byteLength).getInt16(7), 0x7fff)
       assert.strictEqual(new DataView(bind.buffer, bind.byteOffset, bind.byteLength).getInt16(11), 0x7fff)
 
       const tooManyOids = new Array<number>(0x8000).fill(23)
       const tooManyParameters = new Array<Uint8Array | null>(0x8000).fill(null)
-      assert.throws(() => PgProtocol.encodeParse({ name: "", query: "", parameterTypes: tooManyOids }), RangeError)
-      assert.throws(
-        () => PgProtocol.encodeBind({ portal: "", statement: "", parameters: tooManyParameters }),
-        RangeError
-      )
+      const parseFailure = PgProtocol.encodeParse({ name: "", query: "", parameterTypes: tooManyOids })
+      const bindFailure = PgProtocol.encodeBind({ portal: "", statement: "", parameters: tooManyParameters })
+      assert.isTrue(Result.isFailure(parseFailure))
+      assert.isTrue(Result.isFailure(bindFailure))
       const encodeBind = PgProtocol.makeBindEncoder<Uint8Array | null>((sink, value) => {
         if (value === null) sink.sqlNull()
         else sink.raw(value)
+        return Result.void
       })
-      assert.throws(() => encodeBind({ portal: "", statement: "", parameters: tooManyParameters }), RangeError)
+      const fusedFailure = encodeBind({ portal: "", statement: "", parameters: tooManyParameters })
+      assert.isTrue(Result.isFailure(fusedFailure))
     })
   })
 
@@ -305,7 +317,7 @@ describe("PgProtocol", () => {
           "520000000e0000000a534352414d00" // SASL mechanism list without its empty terminator
         ]
       ) {
-        assertThrowsTagged("PgProtocolParseError", () => parseOne(frame))
+        assertParseFailure(frame)
       }
     })
   })
@@ -352,7 +364,7 @@ describe("PgProtocol", () => {
     it("decodes parameter names of every length across the string fast path", () => {
       for (let length = 0; length <= 16; length++) {
         const name = "abcdefgh".repeat(2).slice(0, length)
-        assert.deepStrictEqual(PgProtocol.makeParser().push(parameterStatus(name, "v")), [
+        assert.deepStrictEqual(success(PgProtocol.makeParser().push(parameterStatus(name, "v"))), [
           { _tag: "ParameterStatus", name, value: "v" }
         ])
       }
@@ -361,7 +373,7 @@ describe("PgProtocol", () => {
     it("decodes a multi-byte character at every position of the string fast path", () => {
       for (let prefix = 0; prefix <= 16; prefix++) {
         const name = "a".repeat(prefix) + "é☃"
-        assert.deepStrictEqual(PgProtocol.makeParser().push(parameterStatus(name, "v")), [
+        assert.deepStrictEqual(success(PgProtocol.makeParser().push(parameterStatus(name, "v"))), [
           { _tag: "ParameterStatus", name, value: "v" }
         ])
       }
@@ -370,7 +382,7 @@ describe("PgProtocol", () => {
     it("decodes a parameter that really contains the replacement character", () => {
       const name = "status\ufffdmessage and some padding"
       assert.deepStrictEqual(
-        PgProtocol.makeParser().push(parameterStatus(name, "v")),
+        success(PgProtocol.makeParser().push(parameterStatus(name, "v"))),
         [{ _tag: "ParameterStatus", name, value: "v" }]
       )
     })
@@ -380,9 +392,9 @@ describe("PgProtocol", () => {
         for (let at = 0; at < length; at++) {
           const name = new Uint8Array(length).fill(0x61)
           name[at] = 0xc3
-          assertThrowsTagged(
+          assertFailureTagged(
             "PgProtocolParseError",
-            () => PgProtocol.makeParser().push(frame(name, new Uint8Array([0x76])))
+            PgProtocol.makeParser().push(frame(name, new Uint8Array([0x76])))
           )
         }
       }
@@ -530,8 +542,8 @@ describe("PgProtocol", () => {
     it("buffers a message split across two chunks", () => {
       const parser = PgProtocol.makeParser()
       const frame = bytes(backend.dataRowTwoColumns)
-      assert.deepStrictEqual(parser.push(frame.subarray(0, 7)), [])
-      const messages = parser.push(frame.subarray(7))
+      assert.deepStrictEqual(success(parser.push(frame.subarray(0, 7))), [])
+      const messages = success(parser.push(frame.subarray(7)))
       assert.strictEqual(messages.length, 1)
       assert.strictEqual(messages[0]._tag, "DataRow")
     })
@@ -539,12 +551,12 @@ describe("PgProtocol", () => {
     it("returns both messages when one chunk holds two", () => {
       const parser = PgProtocol.makeParser()
       const chunk = bytes(backend.parseComplete + backend.bindComplete)
-      assert.deepStrictEqual(parser.push(chunk), [{ _tag: "ParseComplete" }, { _tag: "BindComplete" }])
+      assert.deepStrictEqual(success(parser.push(chunk)), [{ _tag: "ParseComplete" }, { _tag: "BindComplete" }])
     })
 
     it("returns every message when one chunk holds many", () => {
       const parser = PgProtocol.makeParser()
-      const messages = parser.push(bytes(backend.parseComplete.repeat(2_000)))
+      const messages = success(parser.push(bytes(backend.parseComplete.repeat(2_000))))
       assert.strictEqual(messages.length, 2_000)
       assert.strictEqual(messages.every((message) => message._tag === "ParseComplete"), true)
     })
@@ -552,8 +564,8 @@ describe("PgProtocol", () => {
     it("keeps the trailing partial message across pushes", () => {
       const parser = PgProtocol.makeParser()
       const chunk = bytes(backend.parseComplete + backend.readyForQuery)
-      assert.deepStrictEqual(parser.push(chunk.subarray(0, 8)), [{ _tag: "ParseComplete" }])
-      assert.deepStrictEqual(parser.push(chunk.subarray(8)), [{ _tag: "ReadyForQuery", status: "I" }])
+      assert.deepStrictEqual(success(parser.push(chunk.subarray(0, 8))), [{ _tag: "ParseComplete" }])
+      assert.deepStrictEqual(success(parser.push(chunk.subarray(8))), [{ _tag: "ReadyForQuery", status: "I" }])
     })
 
     it("handles a byte-at-a-time stream", () => {
@@ -561,7 +573,7 @@ describe("PgProtocol", () => {
       const frame = bytes(backend.rowDescription)
       const messages: Array<PgProtocol.BackendMessage> = []
       for (let i = 0; i < frame.length; i++) {
-        messages.push(...parser.push(frame.subarray(i, i + 1)))
+        messages.push(...success(parser.push(frame.subarray(i, i + 1))))
       }
       assert.strictEqual(messages.length, 1)
       assert.strictEqual(messages[0]._tag, "RowDescription")
@@ -581,7 +593,7 @@ describe("PgProtocol", () => {
       const parser = PgProtocol.makeParser()
       const messages: Array<PgProtocol.BackendMessage> = []
       for (let offset = 0; offset < frame.length; offset += 1024) {
-        messages.push(...parser.push(frame.subarray(offset, offset + 1024)))
+        messages.push(...success(parser.push(frame.subarray(offset, offset + 1024))))
       }
       assert.strictEqual(messages.length, 1)
       assert.strictEqual(messages[0]._tag, "DataRow")
@@ -590,29 +602,29 @@ describe("PgProtocol", () => {
 
     it("rejects a length prefix above maxMessageSize", () => {
       const parser = PgProtocol.makeParser()
-      assertThrowsTagged("PgProtocolParseError", () => parser.push(bytes("447fffffff0000")))
+      assertFailureTagged("PgProtocolParseError", parser.push(bytes("447fffffff0000")))
     })
 
     it("honours a custom maxMessageSize", () => {
       const parser = PgProtocol.makeParser({ maxMessageSize: 8 })
-      assertThrowsTagged("PgProtocolParseError", () => parser.push(bytes(backend.rowDescription)))
+      assertFailureTagged("PgProtocolParseError", parser.push(bytes(backend.rowDescription)))
     })
 
     it("rejects a length prefix below the minimum", () => {
       const parser = PgProtocol.makeParser()
-      assertThrowsTagged("PgProtocolParseError", () => parser.push(bytes("4400000003ff")))
-      assertThrowsTagged("PgProtocolParseError", () => PgProtocol.makeParser().push(bytes("4480000000")))
+      assertFailureTagged("PgProtocolParseError", parser.push(bytes("4400000003ff")))
+      assertFailureTagged("PgProtocolParseError", PgProtocol.makeParser().push(bytes("4480000000")))
     })
 
     it("accepts a frame exactly at maxMessageSize", () => {
-      assert.deepStrictEqual(PgProtocol.makeParser({ maxMessageSize: 8 }).push(bytes("5f00000008deadbeef")), [
+      assert.deepStrictEqual(success(PgProtocol.makeParser({ maxMessageSize: 8 }).push(bytes("5f00000008deadbeef"))), [
         { _tag: "Unknown", type: 0x5f, payload: bytes("deadbeef") }
       ])
     })
 
     it("rejects a truncated payload", () => {
       // CommandComplete whose command tag is never NUL-terminated
-      assertThrowsTagged("PgProtocolParseError", () => parseOne("430000000953454c454354"))
+      assertParseFailure("430000000953454c454354")
     })
 
     it("rejects payload bytes beyond a message's declared fields", () => {
@@ -622,16 +634,16 @@ describe("PgProtocol", () => {
           "44000000070000ff" // DataRow declares zero fields but carries a byte
         ]
       ) {
-        assertThrowsTagged("PgProtocolParseError", () => parseOne(frame))
+        assertParseFailure(frame)
       }
     })
 
     it("rejects a DataRow field length below the NULL sentinel", () => {
-      assertThrowsTagged("PgProtocolParseError", () => parseOne("440000000a0001fffffffe"))
+      assertParseFailure("440000000a0001fffffffe")
     })
 
     it("rejects a negative DataRow field count", () => {
-      assertThrowsTagged("PgProtocolParseError", () => parseOne("4400000006ffff"))
+      assertParseFailure("4400000006ffff")
     })
 
     it("rejects negative collection counts", () => {
@@ -645,53 +657,49 @@ describe("PgProtocol", () => {
           "760000000c00000000ffffffff" // NegotiateProtocolVersion
         ]
       ) {
-        assertThrowsTagged("PgProtocolParseError", () => parseOne(frame))
+        assertParseFailure(frame)
       }
     })
 
     it("rejects a truncated DataRow field length", () => {
-      assertThrowsTagged("PgProtocolParseError", () => parseOne("440000000800010000"))
-      assertThrowsTagged("PgProtocolParseError", () => parseOne("4400000004"))
+      assertParseFailure("440000000800010000")
+      assertParseFailure("4400000004")
     })
 
     it("rejects invalid statuses and UTF-8", () => {
-      assertThrowsTagged("PgProtocolParseError", () => parseOne("5a0000000558"))
-      assertThrowsTagged("PgProtocolParseError", () => parseOne("5300000008ff007800"))
+      assertParseFailure("5a0000000558")
+      assertParseFailure("5300000008ff007800")
     })
 
     it("does not read a DataRow field past the end of its own message", () => {
       // One field that claims ten bytes in a message carrying two, followed by
       // a complete message the field must not be allowed to reach into
-      assertThrowsTagged(
+      assertFailureTagged(
         "PgProtocolParseError",
-        () => PgProtocol.makeParser().push(bytes(`440000000c00010000000a0102${backend.parseComplete}`))
+        PgProtocol.makeParser().push(bytes(`440000000c00010000000a0102${backend.parseComplete}`))
       )
     })
 
     it("cannot be reused after a malformed frame", () => {
       const parser = PgProtocol.makeParser()
-      assertThrowsTagged(
+      assertFailureTagged(
         "PgProtocolParseError",
-        () => parser.push(bytes(`${backend.parseComplete}430000000953454c454354`))
+        parser.push(bytes(`${backend.parseComplete}430000000953454c454354`))
       )
-      try {
-        parser.push(bytes(backend.bindComplete))
-        assert.fail("Expected the failed parser to reject another push")
-      } catch (error) {
-        assert.strictEqual((error as { readonly _tag?: string })._tag, "PgProtocolParseError")
-        assert.strictEqual(
-          (error as { readonly message?: string }).message,
-          "Parser cannot be reused after a ParseError"
-        )
+      const reused = parser.push(bytes(backend.bindComplete))
+      assert.isTrue(Result.isFailure(reused))
+      if (Result.isFailure(reused)) {
+        assert.strictEqual(reused.failure._tag, "PgProtocolParseError")
+        assert.strictEqual(reused.failure.message, "Parser cannot be reused after a failure")
       }
     })
 
     it("does not read a string past the end of its own message", () => {
       // CommandComplete whose tag is not NUL-terminated, followed by a message
       // whose length prefix contains NUL bytes
-      assertThrowsTagged(
+      assertFailureTagged(
         "PgProtocolParseError",
-        () => PgProtocol.makeParser().push(bytes(`430000000a53454c454354${backend.parseComplete}`))
+        PgProtocol.makeParser().push(bytes(`430000000a53454c454354${backend.parseComplete}`))
       )
     })
   })
@@ -700,10 +708,10 @@ describe("PgProtocol", () => {
     it("keeps DataRow field views valid across later pushes", () => {
       const parser = PgProtocol.makeParser()
       const frame = bytes(backend.dataRowTwoColumns)
-      const first = parser.push(frame)[0] as PgProtocol.DataRow
+      const first = success(parser.push(frame))[0] as PgProtocol.DataRow
       const snapshot = first.values.map((value) => value === null ? null : value.slice())
       // enough to run past the parser's buffer and force a replacement
-      for (let index = 0; index < 2000; index++) parser.push(frame)
+      for (let index = 0; index < 2000; index++) success(parser.push(frame))
       assert.deepStrictEqual(first.values, snapshot)
     })
 
@@ -713,7 +721,7 @@ describe("PgProtocol", () => {
       const retained: Array<{ readonly row: PgProtocol.DataRow; readonly snapshot: Array<Uint8Array | null> }> = []
       // enough pushes to run the pool from its initial size up to its ceiling
       for (let index = 0; index < 5000; index++) {
-        const row = parser.push(frame)[0] as PgProtocol.DataRow
+        const row = success(parser.push(frame))[0] as PgProtocol.DataRow
         if (index % 500 === 0) {
           retained.push({ row, snapshot: row.values.map((value) => value === null ? null : value.slice()) })
         }
@@ -724,14 +732,14 @@ describe("PgProtocol", () => {
     })
 
     it("keeps an encoded frame valid after encoding more", () => {
-      const first = PgProtocol.encodeBind({
+      const first = success(PgProtocol.encodeBind({
         portal: "portal",
         statement: "statement",
         parameters: [bytes("0102030405")]
-      })
+      }))
       const snapshot = first.slice()
       for (let index = 0; index < 100; index++) {
-        PgProtocol.encodeBind({ portal: "other", statement: "s", parameters: [new Uint8Array(64)] })
+        success(PgProtocol.encodeBind({ portal: "other", statement: "s", parameters: [new Uint8Array(64)] }))
       }
       assert.deepStrictEqual(first, snapshot)
     })
@@ -739,11 +747,11 @@ describe("PgProtocol", () => {
     it("keeps an encoded frame valid after an oversized one", () => {
       const first = PgProtocol.encodeSync()
       const snapshot = first.slice()
-      const huge = PgProtocol.encodeBind({
+      const huge = success(PgProtocol.encodeBind({
         portal: "",
         statement: "",
         parameters: [new Uint8Array(32 * 1024)]
-      })
+      }))
       assert.strictEqual(huge.length, 32 * 1024 + 21)
       assert.deepStrictEqual(first, snapshot)
       assert.deepStrictEqual(PgProtocol.encodeSync(), snapshot)

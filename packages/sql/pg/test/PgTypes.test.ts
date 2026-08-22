@@ -1,17 +1,36 @@
-import { PgProtocol, PgTypes } from "@effect/sql-pg"
+import { PgProtocol, PgTypes as PgTypesResult } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
+import * as Result from "effect/Result"
 import { bytes, rows } from "./fixtures/goldens.ts"
+
+const success = <A, E>(result: Result.Result<A, E>): A => {
+  if (Result.isFailure(result)) throw result.failure
+  return result.success
+}
+
+const PgTypes = {
+  ...PgTypesResult,
+  encode: (value: unknown, oid: number) => success(PgTypesResult.encode(value, oid)),
+  decode: (value: Uint8Array, oid: number, format: number) => success(PgTypesResult.decode(value, oid, format)),
+  encodeParameter: (parameter: PgTypesResult.Parameter) => success(PgTypesResult.encodeParameter(parameter)),
+  makeFieldReader: (columns: ReadonlyArray<PgTypesResult.Column>) => success(PgTypesResult.makeFieldReader(columns)),
+  array: (values: ReadonlyArray<unknown> | null, elementOid: number) => success(PgTypesResult.array(values, elementOid))
+}
 
 /** Extracts the single column of a captured `DataRow` golden. */
 const column = (golden: string): Uint8Array => {
-  const messages = PgProtocol.makeParser().push(bytes(golden))
+  const messages = success(PgProtocol.makeParser().push(bytes(golden)))
   const row = messages[0] as PgProtocol.DataRow
   return row.values[0]!
 }
 
 const assertThrowsTagged = (tag: string, run: () => unknown) => {
   try {
-    run()
+    const value = run()
+    if (Result.isResult(value) && Result.isFailure(value)) {
+      assert.strictEqual((value.failure as { readonly _tag?: string })._tag, tag)
+      return
+    }
   } catch (error) {
     assert.strictEqual((error as { _tag?: string })._tag, tag)
     return
@@ -120,10 +139,23 @@ const dataRow = (fields: ReadonlyArray<Uint8Array | null>): Uint8Array => {
   return frame
 }
 
-const binary = (oids: ReadonlyArray<number>): Array<PgTypes.Column> =>
+const binary = (oids: ReadonlyArray<number>): Array<PgTypesResult.Column> =>
   oids.map((dataTypeOid) => ({ dataTypeOid, format: 1 }))
 
 describe("PgTypes", () => {
+  it("returns codec failures as Result values", () => {
+    for (
+      const result of [
+        PgTypesResult.encode("x", 99999),
+        PgTypesResult.decode(bytes("31"), PgTypesResult.OID.int4, 0),
+        PgTypesResult.array([], 99999)
+      ]
+    ) {
+      assert.isTrue(Result.isFailure(result))
+      if (Result.isFailure(result)) assert.strictEqual(result.failure._tag, "PgTypesCodecError")
+    }
+  })
+
   describe("round trips against captured PostgreSQL rows", () => {
     for (const { encoded, name, oid, value } of roundTrips) {
       it(name, () => {
@@ -445,8 +477,8 @@ describe("PgTypes", () => {
     it("fails to encode until a codec is registered", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("x", 99999))
       PgTypes.register<string>(99999, {
-        encode: (value) => new TextEncoder().encode(value.toUpperCase()),
-        decode: (value) => new TextDecoder().decode(value).toLowerCase()
+        encode: (value) => Result.succeed(new TextEncoder().encode(value.toUpperCase())),
+        decode: (value) => Result.succeed(new TextDecoder().decode(value).toLowerCase())
       })
       try {
         assert.deepStrictEqual(PgTypes.encode("ab", 99999), bytes("4142"))
@@ -459,8 +491,8 @@ describe("PgTypes", () => {
 
     it("restores a builtin codec after an override is unregistered", () => {
       PgTypes.register<string>(PgTypes.OID.text, {
-        encode: () => bytes("ff"),
-        decode: () => "overridden"
+        encode: () => Result.succeed(bytes("ff")),
+        decode: () => Result.succeed("overridden")
       })
       try {
         assert.deepStrictEqual(PgTypes.encode("text", PgTypes.OID.text), bytes("ff"))
@@ -746,8 +778,8 @@ describe("PgTypes", () => {
     it("registers codecs outside the direct table", () => {
       for (const oid of [-1, 4096, 99999]) {
         PgTypes.register<string>(oid, {
-          encode: (value) => new TextEncoder().encode(value.toUpperCase()),
-          decode: (value) => new TextDecoder().decode(value).toLowerCase()
+          encode: (value) => Result.succeed(new TextEncoder().encode(value.toUpperCase())),
+          decode: (value) => Result.succeed(new TextDecoder().decode(value).toLowerCase())
         })
         try {
           assert.deepStrictEqual(PgTypes.encode("ab", oid), bytes("4142"))
@@ -794,8 +826,8 @@ describe("PgTypes", () => {
       const parameters = [{ oid: 99999, value: "ab" }]
       assertThrowsTagged("PgTypesCodecError", () => encodeBind({ portal: "", statement: "", parameters }))
       PgTypes.register<string>(99999, {
-        encode: (value) => new TextEncoder().encode(value.toUpperCase()),
-        decode: (value) => new TextDecoder().decode(value).toLowerCase()
+        encode: (value) => Result.succeed(new TextEncoder().encode(value.toUpperCase())),
+        decode: (value) => Result.succeed(new TextDecoder().decode(value).toLowerCase())
       })
       try {
         assert.deepStrictEqual(
@@ -825,7 +857,7 @@ describe("PgTypes", () => {
     it("keeps a bytea frame intact when the source is mutated afterwards", () => {
       const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
       const source = bytes("010203")
-      const encoded = encodeBind({ portal: "", statement: "", parameters: [PgTypes.bytea(source)] })
+      const encoded = success(encodeBind({ portal: "", statement: "", parameters: [PgTypes.bytea(source)] }))
       source[0] = 0xff
       // the frame ends with the four bytes of the result format code
       assert.deepStrictEqual(encoded.slice(-7, -4), bytes("010203"))
@@ -843,7 +875,7 @@ describe("PgTypes", () => {
       const columns = roundTrips.map(({ oid }) => oid)
       const fields = roundTrips.map(({ oid, value }) => PgTypes.encode(value, oid))
       const parser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader(binary(columns)) })
-      const messages = parser.push(dataRow(fields))
+      const messages = success(parser.push(dataRow(fields)))
       assert.strictEqual(messages.length, 1)
       const row = messages[0] as PgProtocol.DataRow<unknown>
       assert.deepStrictEqual(row.values, fields.map((field, index) => PgTypes.decode(field, columns[index], 1)))
@@ -853,14 +885,14 @@ describe("PgTypes", () => {
       const parser = PgProtocol.makeParser({
         readField: PgTypes.makeFieldReader(binary([PgTypes.OID.int4, PgTypes.OID.text]))
       })
-      const messages = parser.push(dataRow([null, PgTypes.encode("a", PgTypes.OID.text)]))
+      const messages = success(parser.push(dataRow([null, PgTypes.encode("a", PgTypes.OID.text)])))
       assert.deepStrictEqual((messages[0] as PgProtocol.DataRow<unknown>).values, [null, "a"])
     })
 
     it("copies the bytes of a column whose OID has no codec", () => {
       const parser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader(binary([99999])) })
       const payload = new Uint8Array([1, 2, 3])
-      const value = (parser.push(dataRow([payload]))[0] as PgProtocol.DataRow<unknown>).values[0]
+      const value = (success(parser.push(dataRow([payload])))[0] as PgProtocol.DataRow<unknown>).values[0]
       assert.deepStrictEqual(value, payload)
       // A copy, not a view into the parser's buffer, which is far larger and
       // holds the whole frame rather than just this field.
@@ -872,15 +904,17 @@ describe("PgTypes", () => {
       const oid = 90001
       let sawWholeField: Uint8Array | undefined
       PgTypes.register(oid, {
-        encode: (value) => value as Uint8Array,
+        encode: (value) => Result.succeed(value as Uint8Array),
         decode: (fieldBytes) => {
           sawWholeField = fieldBytes
-          return `saw ${fieldBytes.length}`
+          return Result.succeed(`saw ${fieldBytes.length}`)
         }
       })
       try {
         const parser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader(binary([PgTypes.OID.int4, oid])) })
-        const messages = parser.push(dataRow([PgTypes.encode(1, PgTypes.OID.int4), new Uint8Array([9, 8, 7])]))
+        const messages = success(
+          parser.push(dataRow([PgTypes.encode(1, PgTypes.OID.int4), new Uint8Array([9, 8, 7])]))
+        )
         assert.deepStrictEqual((messages[0] as PgProtocol.DataRow<unknown>).values, [1, "saw 3"])
         // The view covers the field and nothing else, though the buffer behind
         // it holds the whole frame.
@@ -904,7 +938,7 @@ describe("PgTypes", () => {
       const parser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader(binary(columns)) })
       const decoded: Array<unknown> = []
       for (let at = 0; at < frame.length; at += 3) {
-        for (const message of parser.push(frame.subarray(at, at + 3))) {
+        for (const message of success(parser.push(frame.subarray(at, at + 3)))) {
           decoded.push(...(message as PgProtocol.DataRow<unknown>).values)
         }
       }
@@ -912,15 +946,18 @@ describe("PgTypes", () => {
     })
 
     it("reads through a reader replaced mid-stream", () => {
-      const parser = PgProtocol.makeParser<unknown>({
+      const parser = PgProtocol.makeParser<unknown, PgTypesResult.CodecError>({
         readField: PgTypes.makeFieldReader(binary([PgTypes.OID.int4]))
       })
       const payload = PgTypes.encode(1, PgTypes.OID.int4)
-      assert.deepStrictEqual((parser.push(dataRow([payload]))[0] as PgProtocol.DataRow<unknown>).values, [1])
+      assert.deepStrictEqual((success(parser.push(dataRow([payload])))[0] as PgProtocol.DataRow<unknown>).values, [1])
       parser.readField = PgTypes.makeFieldReader(binary([PgTypes.OID.oid]))
-      assert.deepStrictEqual((parser.push(dataRow([payload]))[0] as PgProtocol.DataRow<unknown>).values, [1])
+      assert.deepStrictEqual((success(parser.push(dataRow([payload])))[0] as PgProtocol.DataRow<unknown>).values, [1])
       parser.readField = undefined
-      assert.deepStrictEqual((parser.push(dataRow([payload]))[0] as PgProtocol.DataRow<unknown>).values, [payload])
+      assert.deepStrictEqual(
+        (success(parser.push(dataRow([payload])))[0] as PgProtocol.DataRow<unknown>).values,
+        [payload]
+      )
     })
   })
 })

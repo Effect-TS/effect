@@ -20,7 +20,7 @@ import * as Result from "effect/Result"
 import { createHash, createHmac, pbkdf2Sync } from "node:crypto"
 
 /**
- * Error raised when an authentication exchange cannot be completed.
+ * Failure returned when an authentication exchange cannot be completed.
  *
  * @category errors
  * @since 4.0.0
@@ -31,6 +31,15 @@ export class AuthError extends Data.TaggedError("PgAuthError")<{
 
 const fail = (message: string): never => {
   throw new AuthError({ message })
+}
+
+const result = <A>(evaluate: () => A): Result.Result<A, AuthError> => {
+  try {
+    return Result.succeed(evaluate())
+  } catch (error) {
+    if (error instanceof AuthError) return Result.fail(error)
+    throw error
+  }
 }
 
 const textEncoder = new TextEncoder()
@@ -77,7 +86,7 @@ const decodeUtf8 = (bytes: Uint8Array, what: string): string => {
  * @category MD5
  * @since 4.0.0
  */
-export const md5Password = (options: {
+const md5PasswordUnsafe = (options: {
   readonly user: string
   readonly password: string
   readonly salt: Uint8Array
@@ -89,6 +98,12 @@ export const md5Password = (options: {
   const outer = createHash("md5").update(textEncoder.encode(inner)).update(options.salt).digest("hex")
   return `md5${outer}`
 }
+
+export const md5Password = (options: {
+  readonly user: string
+  readonly password: string
+  readonly salt: Uint8Array
+}): Result.Result<string, AuthError> => result(() => md5PasswordUnsafe(options))
 
 /**
  * The only SASL mechanism this module implements.
@@ -158,13 +173,13 @@ const attribute = (attributes: Map<string, string>, key: string): string =>
  * printable ASCII string chosen by the caller; this module never generates
  * randomness.
  *
- * The returned bytes are the `initialResponse` of a `SASLInitialResponse`
- * message with mechanism `SCRAM_SHA_256`.
+ * The successful result contains the `initialResponse` bytes for a
+ * `SASLInitialResponse` message with mechanism `SCRAM_SHA_256`.
  *
  * @category SCRAM
  * @since 4.0.0
  */
-export const scramInit = (options: {
+const scramInitUnsafe = (options: {
   readonly password: string
   readonly nonce: string
 }): { readonly state: ScramFirst; readonly response: Uint8Array } => {
@@ -183,15 +198,22 @@ export const scramInit = (options: {
   }
 }
 
+export const scramInit = (options: {
+  readonly password: string
+  readonly nonce: string
+}): Result.Result<{ readonly state: ScramFirst; readonly response: Uint8Array }, AuthError> =>
+  result(() => scramInitUnsafe(options))
+
 /**
  * Answers an `AuthenticationSASLContinue` challenge.
  *
- * The returned bytes are the payload of a `SASLResponse` message.
+ * The successful result contains the payload bytes for a `SASLResponse`
+ * message.
  *
  * @category SCRAM
  * @since 4.0.0
  */
-export const scramContinue = (
+const scramContinueUnsafe = (
   state: ScramFirst,
   challenge: Uint8Array
 ): { readonly state: ScramFinal; readonly response: Uint8Array } => {
@@ -233,15 +255,21 @@ export const scramContinue = (
   }
 }
 
+export const scramContinue = (
+  state: ScramFirst,
+  challenge: Uint8Array
+): Result.Result<{ readonly state: ScramFinal; readonly response: Uint8Array }, AuthError> =>
+  result(() => scramContinueUnsafe(state, challenge))
+
 /**
  * Verifies the server signature carried by `AuthenticationSASLFinal`. Returns
- * nothing on success and raises `AuthError` when the server could not prove
- * that it knows the stored key.
+ * `Result.void` on success and an `AuthError` failure when the server could
+ * not prove that it knows the stored key.
  *
  * @category SCRAM
  * @since 4.0.0
  */
-export const scramFinish = (state: ScramFinal, challenge: Uint8Array): void => {
+const scramFinishUnsafe = (state: ScramFinal, challenge: Uint8Array): void => {
   const attributes = parseAttributes(decodeUtf8(challenge, "the SCRAM server-final-message"))
   const error = attributes.get("e")
   if (error !== undefined) {
@@ -252,3 +280,8 @@ export const scramFinish = (state: ScramFinal, challenge: Uint8Array): void => {
     fail("SCRAM server signature mismatch")
   }
 }
+
+export const scramFinish = (
+  state: ScramFinal,
+  challenge: Uint8Array
+): Result.Result<void, AuthError> => result(() => scramFinishUnsafe(state, challenge))

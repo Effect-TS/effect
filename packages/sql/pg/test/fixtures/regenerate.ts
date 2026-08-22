@@ -18,7 +18,13 @@
  * server started with `POSTGRES_HOST_AUTH_METHOD=md5` or `=password`.
  */
 import { PgAuth, PgProtocol, PgTypes } from "@effect/sql-pg"
+import * as Result from "effect/Result"
 import * as net from "node:net"
+
+const success = <A, E>(result: Result.Result<A, E>): A => {
+  if (Result.isFailure(result)) throw result.failure
+  return result.success
+}
 
 const HOST = process.env.PGHOST ?? "127.0.0.1"
 const PORT = Number(process.env.PGPORT ?? 55432)
@@ -52,7 +58,7 @@ class Session {
     })
     socket.write(PgProtocol.encodeSslRequest())
     const byte = await new Promise<number>((resolve) => socket.once("data", (data) => resolve((data as Buffer)[0])))
-    return { session: new Session(socket), sslResponse: PgProtocol.decodeSslResponse(byte) }
+    return { session: new Session(socket), sslResponse: success(PgProtocol.decodeSslResponse(byte)) }
   }
 
   private onData(chunk: Buffer): void {
@@ -62,7 +68,7 @@ class Session {
       if (this.buffer.length < length + 1) break
       const frame = new Uint8Array(this.buffer.subarray(0, length + 1))
       this.buffer = this.buffer.subarray(length + 1)
-      for (const message of this.parser.push(frame)) {
+      for (const message of success(this.parser.push(frame))) {
         this.frames.push({ tag: message._tag, hex: toHex(frame) })
         this.pending.push(message)
       }
@@ -92,8 +98,8 @@ class Session {
     parameterTypes: ReadonlyArray<number> = [],
     parameters: ReadonlyArray<Uint8Array | null> = []
   ): Promise<Array<PgProtocol.BackendMessage>> {
-    this.write(PgProtocol.encodeParse({ name: "", query: sql, parameterTypes }))
-    this.write(PgProtocol.encodeBind({ portal: "", statement: "", parameters }))
+    this.write(success(PgProtocol.encodeParse({ name: "", query: sql, parameterTypes })))
+    this.write(success(PgProtocol.encodeBind({ portal: "", statement: "", parameters })))
     this.write(PgProtocol.encodeDescribe({ target: "portal", name: "" }))
     this.write(PgProtocol.encodeExecute({ portal: "", maxRows: 0 }))
     this.write(PgProtocol.encodeSync())
@@ -112,8 +118,8 @@ const authenticate = async (session: Session): Promise<void> => {
     database: DATABASE,
     application_name: "effect-pg-codec"
   }))
-  let started: ReturnType<typeof PgAuth.scramInit> | undefined
-  let continued: ReturnType<typeof PgAuth.scramContinue> | undefined
+  let started: { readonly state: PgAuth.ScramFirst; readonly response: Uint8Array } | undefined
+  let continued: { readonly state: PgAuth.ScramFinal; readonly response: Uint8Array } | undefined
   for (;;) {
     const message = await session.next()
     switch (message._tag) {
@@ -122,14 +128,14 @@ const authenticate = async (session: Session): Promise<void> => {
         break
       }
       case "AuthenticationMD5Password": {
-        const password = PgAuth.md5Password({ user: USER, password: PASSWORD, salt: message.salt })
+        const password = success(PgAuth.md5Password({ user: USER, password: PASSWORD, salt: message.salt }))
         console.log(`md5.salt        ${toHex(message.salt)}`)
         console.log(`md5.expected    ${password}`)
         session.write(PgProtocol.encodePasswordMessage({ password }))
         break
       }
       case "AuthenticationSASL": {
-        started = PgAuth.scramInit({ password: PASSWORD, nonce: CLIENT_NONCE })
+        started = success(PgAuth.scramInit({ password: PASSWORD, nonce: CLIENT_NONCE }))
         session.write(PgProtocol.encodeSASLInitialResponse({
           mechanism: PgAuth.SCRAM_SHA_256,
           initialResponse: started.response
@@ -137,14 +143,14 @@ const authenticate = async (session: Session): Promise<void> => {
         break
       }
       case "AuthenticationSASLContinue": {
-        continued = PgAuth.scramContinue(started!.state, message.data)
+        continued = success(PgAuth.scramContinue(started!.state, message.data))
         console.log(`scram.serverFirstMessage  ${new TextDecoder().decode(message.data)}`)
         console.log(`scram.clientFinalMessage  ${new TextDecoder().decode(continued.response)}`)
         session.write(PgProtocol.encodeSASLResponse({ data: continued.response }))
         break
       }
       case "AuthenticationSASLFinal": {
-        PgAuth.scramFinish(continued!.state, message.data)
+        success(PgAuth.scramFinish(continued!.state, message.data))
         console.log(`scram.serverFinalMessage  ${new TextDecoder().decode(message.data)}`)
         break
       }
@@ -214,13 +220,13 @@ const main = async () => {
     startupMessage: toHex(
       PgProtocol.encodeStartupMessage({ user: USER, database: DATABASE, application_name: "effect-pg-codec" })
     ),
-    parse: toHex(PgProtocol.encodeParse({ name: "s1", query: "SELECT $1", parameterTypes: [23] })),
+    parse: toHex(success(PgProtocol.encodeParse({ name: "s1", query: "SELECT $1", parameterTypes: [23] }))),
     bind: toHex(
-      PgProtocol.encodeBind({
+      success(PgProtocol.encodeBind({
         portal: "p1",
         statement: "s1",
         parameters: [new Uint8Array([0, 0, 0, 1]), null]
-      })
+      }))
     ),
     execute: toHex(PgProtocol.encodeExecute({ portal: "p1", maxRows: 5 })),
     describeStatement: toHex(PgProtocol.encodeDescribe({ target: "statement", name: "s1" })),
@@ -258,7 +264,7 @@ const main = async () => {
 
   for (const { name, oid, type, value } of rowCases) {
     const from = session.frames.length
-    const messages = await session.query(`SELECT $1::${type}`, [oid], [PgTypes.encode(value, oid)])
+    const messages = await session.query(`SELECT $1::${type}`, [oid], [success(PgTypes.encode(value, oid))])
     const error = messages.find((message) => message._tag === "ErrorResponse")
     if (error !== undefined) {
       throw new Error(`${name}: ${JSON.stringify((error as PgProtocol.ErrorResponse).fields)}`)
@@ -277,17 +283,17 @@ const main = async () => {
   }
   {
     const from = session.frames.length
-    session.write(PgProtocol.encodeParse({
+    session.write(success(PgProtocol.encodeParse({
       name: "",
       query: "SELECT $1::int8, NULL::text",
       parameterTypes: [PgTypes.OID.int8]
-    }))
+    })))
     session.write(PgProtocol.encodeDescribe({ target: "statement", name: "" }))
-    session.write(PgProtocol.encodeBind({
+    session.write(success(PgProtocol.encodeBind({
       portal: "",
       statement: "",
-      parameters: [PgTypes.encode(BigInt(7), PgTypes.OID.int8)]
-    }))
+      parameters: [success(PgTypes.encode(BigInt(7), PgTypes.OID.int8))]
+    })))
     session.write(PgProtocol.encodeExecute({ portal: "", maxRows: 0 }))
     session.write(PgProtocol.encodeSync())
     while ((await session.next())._tag !== "ReadyForQuery") { /* drain */ }
@@ -308,9 +314,13 @@ const main = async () => {
   {
     const from = session.frames.length
     session.write(
-      PgProtocol.encodeParse({ name: "", query: "SELECT g FROM generate_series(1,3) g", parameterTypes: [] })
+      success(PgProtocol.encodeParse({
+        name: "",
+        query: "SELECT g FROM generate_series(1,3) g",
+        parameterTypes: []
+      }))
     )
-    session.write(PgProtocol.encodeBind({ portal: "", statement: "", parameters: [] }))
+    session.write(success(PgProtocol.encodeBind({ portal: "", statement: "", parameters: [] })))
     session.write(PgProtocol.encodeExecute({ portal: "", maxRows: 1 }))
     session.write(PgProtocol.encodeSync())
     while ((await session.next())._tag !== "ReadyForQuery") { /* drain */ }
@@ -318,7 +328,7 @@ const main = async () => {
   }
   {
     const from = session.frames.length
-    session.write(PgProtocol.encodeParse({ name: "s1", query: "SELECT 1", parameterTypes: [] }))
+    session.write(success(PgProtocol.encodeParse({ name: "s1", query: "SELECT 1", parameterTypes: [] })))
     session.write(PgProtocol.encodeClose({ target: "statement", name: "s1" }))
     session.write(PgProtocol.encodeSync())
     while ((await session.next())._tag !== "ReadyForQuery") { /* drain */ }

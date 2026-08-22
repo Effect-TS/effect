@@ -17,11 +17,12 @@
  * @since 4.0.0
  */
 import * as Data from "effect/Data"
+import * as Result from "effect/Result"
 import type * as PgProtocol from "./PgProtocol.ts"
 import type { ValueSink } from "./PgProtocol.ts"
 
 /**
- * Error raised when a value cannot be encoded or decoded for its OID.
+ * Failure returned when a value cannot be encoded or decoded for its OID.
  *
  * @category errors
  * @since 4.0.0
@@ -32,6 +33,15 @@ export class CodecError extends Data.TaggedError("PgTypesCodecError")<{
 
 const fail = (message: string): never => {
   throw new CodecError({ message })
+}
+
+const result = <A>(evaluate: () => A): Result.Result<A, CodecError> => {
+  try {
+    return Result.succeed(evaluate())
+  } catch (error) {
+    if (error instanceof CodecError) return Result.fail(error)
+    throw error
+  }
 }
 
 const textEncoder = new TextEncoder()
@@ -923,19 +933,26 @@ const decodeUuid = (bytes: Uint8Array, offset: number, size: number): string => 
  * @since 4.0.0
  */
 export interface Codec<A> {
-  readonly encode: (value: A) => Uint8Array
-  readonly decode: (bytes: Uint8Array) => A
+  readonly encode: (value: A) => Result.Result<Uint8Array, CodecError>
+  readonly decode: (bytes: Uint8Array) => Result.Result<A, CodecError>
   /**
    * Writes the value straight into a `Bind` frame, with no array of its own.
    * Optional: a codec without one falls back to `encode` and a copy.
    */
-  readonly write?: (sink: ValueSink, value: A) => void
+  readonly write?: (sink: ValueSink, value: A) => Result.Result<void, CodecError>
   /**
    * Reads the value out of the `size` bytes at `offset`, with no view of its
    * own. Optional: a codec without one is handed a view. Array elements are
    * read through this, so it is what keeps decoding an array from allocating
    * a view per element.
    */
+  readonly read?: (bytes: Uint8Array, offset: number, size: number) => Result.Result<A, CodecError>
+}
+
+interface UnsafeCodec<A> {
+  readonly encode: (value: A) => Uint8Array
+  readonly decode: (bytes: Uint8Array) => A
+  readonly write?: (sink: ValueSink, value: A) => void
   readonly read?: (bytes: Uint8Array, offset: number, size: number) => A
 }
 
@@ -944,7 +961,7 @@ const codecOf = <A>(
   read: (bytes: Uint8Array, offset: number, size: number) => A,
   encode: (value: A) => Uint8Array,
   write?: (sink: ValueSink, value: A) => void
-): Codec<A> => {
+): UnsafeCodec<A> => {
   const decode = (bytes: Uint8Array): A => read(bytes, 0, bytes.length)
   return write === undefined ? { encode, decode, read } : { encode, decode, read, write }
 }
@@ -972,7 +989,7 @@ const takeScratch8 = (): Uint8Array => {
   return bytes
 }
 
-const utf8Codec: Codec<any> = codecOf(
+const utf8Codec: UnsafeCodec<any> = codecOf(
   decodeUtf8,
   (value) => encodeUtf8(requireString(value, "text")),
   (sink, value) => sink.utf8(requireString(value, "text"))
@@ -1046,7 +1063,7 @@ const timestampInt64 = (value: unknown): void => {
   }
 }
 
-const timestampCodec: Codec<any> = codecOf(
+const timestampCodec: UnsafeCodec<any> = codecOf(
   (bytes, offset, size) => {
     requireSize(size, 8, "timestamp")
     const high = readInt32(bytes, offset)
@@ -1090,7 +1107,7 @@ const dateDays = (value: unknown): number => {
   return days
 }
 
-const dateCodec: Codec<any> = codecOf(
+const dateCodec: UnsafeCodec<any> = codecOf(
   (bytes, offset, size) => {
     requireSize(size, 4, "date")
     const days = readInt32(bytes, offset)
@@ -1106,7 +1123,7 @@ const dateCodec: Codec<any> = codecOf(
   (sink, value) => sink.int32(dateDays(value))
 )
 
-const timetzCodec: Codec<any> = codecOf(
+const timetzCodec: UnsafeCodec<any> = codecOf(
   (bytes, offset, size) => {
     requireSize(size, 12, "timetz")
     const zone = readInt32(bytes, offset + 8)
@@ -1128,7 +1145,7 @@ const timetzCodec: Codec<any> = codecOf(
   }
 )
 
-const jsonCodec: Codec<any> = codecOf(
+const jsonCodec: UnsafeCodec<any> = codecOf(
   (bytes, offset, size) => JSON.parse(decodeUtf8(bytes, offset, size)),
   (value) => {
     const text = JSON.stringify(value)
@@ -1142,7 +1159,7 @@ const jsonCodec: Codec<any> = codecOf(
   }
 )
 
-const jsonbCodec: Codec<any> = codecOf(
+const jsonbCodec: UnsafeCodec<any> = codecOf(
   (bytes, offset, size) => {
     if (size === 0 || bytes[offset] !== 1) {
       return fail("Unsupported jsonb version byte")
@@ -1164,7 +1181,7 @@ const jsonbCodec: Codec<any> = codecOf(
   }
 )
 
-const builtins = new Map<number, Codec<any>>([
+const builtins = new Map<number, UnsafeCodec<any>>([
   [
     OID.bool,
     codecOf(
@@ -1338,7 +1355,7 @@ for (const [arrayOid, elementOid] of arrayToElement) {
  * Built-ins with registered codecs layered over them, so `encode` and `decode`
  * resolve an OID with a single lookup.
  */
-const codecs = new Map<number, Codec<any>>(builtins)
+const codecs = new Map<number, UnsafeCodec<any>>(builtins)
 
 /**
  * Every built-in OID is below this, and PostgreSQL hands user-defined types
@@ -1347,10 +1364,10 @@ const codecs = new Map<number, Codec<any>>(builtins)
  */
 const tableSize = 4096
 
-const table = new Array<Codec<any> | undefined>(tableSize)
+const table = new Array<UnsafeCodec<any> | undefined>(tableSize)
 for (const [oid, codec] of codecs) table[oid] = codec
 
-const lookup = (oid: number): Codec<any> | undefined => oid >= 0 && oid < tableSize ? table[oid] : codecs.get(oid)
+const lookup = (oid: number): UnsafeCodec<any> | undefined => oid >= 0 && oid < tableSize ? table[oid] : codecs.get(oid)
 
 /**
  * Registers a binary codec for an OID the built-in catalogue does not cover,
@@ -1360,8 +1377,33 @@ const lookup = (oid: number): Codec<any> | undefined => oid >= 0 && oid < tableS
  * @since 4.0.0
  */
 export const register = <A>(oid: number, codec: Codec<A>): void => {
-  codecs.set(oid, codec)
-  if (oid >= 0 && oid < tableSize) table[oid] = codec
+  const unsafe: UnsafeCodec<A> = {
+    encode(value) {
+      const encoded = codec.encode(value)
+      if (Result.isFailure(encoded)) throw encoded.failure
+      return encoded.success
+    },
+    decode(bytes) {
+      const decoded = codec.decode(bytes)
+      if (Result.isFailure(decoded)) throw decoded.failure
+      return decoded.success
+    },
+    ...(codec.write === undefined ? undefined : {
+      write(sink: ValueSink, value: A) {
+        const written = codec.write!(sink, value)
+        if (Result.isFailure(written)) throw written.failure
+      }
+    }),
+    ...(codec.read === undefined ? undefined : {
+      read(bytes: Uint8Array, offset: number, size: number) {
+        const decoded = codec.read!(bytes, offset, size)
+        if (Result.isFailure(decoded)) throw decoded.failure
+        return decoded.success
+      }
+    })
+  }
+  codecs.set(oid, unsafe)
+  if (oid >= 0 && oid < tableSize) table[oid] = unsafe
 }
 
 /**
@@ -1564,36 +1606,46 @@ export interface Column {
  * @category decoding
  * @since 4.0.0
  */
-export const makeFieldReader = (columns: ReadonlyArray<Column>): PgProtocol.FieldReader<unknown> => {
-  const codecs = columns.map((column, index) => {
-    if (column.format !== 1) {
-      return fail(`Only the binary format is supported, column ${index} has format ${column.format}`)
+const fieldReaderUnsafe = Symbol.for("@effect/sql-pg/PgProtocol/FieldReader/unsafe")
+
+export const makeFieldReader = (
+  columns: ReadonlyArray<Column>
+): Result.Result<PgProtocol.FieldReader<unknown, CodecError>, CodecError> =>
+  result(() => {
+    const codecs = columns.map((column, index) => {
+      if (column.format !== 1) {
+        return fail(`Only the binary format is supported, column ${index} has format ${column.format}`)
+      }
+      return lookup(column.dataTypeOid)
+    })
+    const readUnsafe = (bytes: Uint8Array, offset: number, size: number, column: number): unknown => {
+      if (size < 0) return null
+      const codec = codecs[column]
+      if (codec === undefined) return bytes.slice(offset, offset + size)
+      const read = codec.read
+      return read === undefined ? codec.decode(bytes.subarray(offset, offset + size)) : read(bytes, offset, size)
     }
-    return lookup(column.dataTypeOid)
+    const read: PgProtocol.FieldReader<unknown, CodecError> = (bytes, offset, size, column) =>
+      result(() => readUnsafe(bytes, offset, size, column))
+    Object.defineProperty(read, fieldReaderUnsafe, { value: readUnsafe })
+    return read
   })
-  return (bytes, offset, size, column) => {
-    if (size < 0) return null
-    const codec = codecs[column]
-    if (codec === undefined) return bytes.slice(offset, offset + size)
-    const read = codec.read
-    return read === undefined ? codec.decode(bytes.subarray(offset, offset + size)) : read(bytes, offset, size)
-  }
-}
 
 /**
  * Encodes a JavaScript value as the binary representation of the given OID.
  *
- * Fails when the value has the wrong JavaScript type, or when the OID is
- * neither built in nor registered.
+ * Returns a `CodecError` failure when the value has the wrong JavaScript type,
+ * or when the OID is neither built in nor registered.
  *
  * @category encoding
  * @since 4.0.0
  */
-export const encode = (value: unknown, oid: number): Uint8Array => {
-  const codec = lookup(oid)
-  if (codec === undefined) return fail(`No codec registered for OID ${oid}`)
-  return codec.encode(value)
-}
+export const encode = (value: unknown, oid: number): Result.Result<Uint8Array, CodecError> =>
+  result(() => {
+    const codec = lookup(oid)
+    if (codec === undefined) return fail(`No codec registered for OID ${oid}`)
+    return codec.encode(value)
+  })
 
 /**
  * Decodes the binary representation of the given OID.
@@ -1604,13 +1656,18 @@ export const encode = (value: unknown, oid: number): Uint8Array => {
  * @category decoding
  * @since 4.0.0
  */
-export const decode = (bytes: Uint8Array, oid: number, format: number): unknown => {
-  if (format !== 1) {
-    return fail(`Only the binary format is supported, received format ${format}`)
-  }
-  const codec = lookup(oid)
-  return codec === undefined ? bytes : codec.decode(bytes)
-}
+export const decode = (
+  bytes: Uint8Array,
+  oid: number,
+  format: number
+): Result.Result<unknown, CodecError> =>
+  result(() => {
+    if (format !== 1) {
+      return fail(`Only the binary format is supported, received format ${format}`)
+    }
+    const codec = lookup(oid)
+    return codec === undefined ? bytes : codec.decode(bytes)
+  })
 
 // -----------------------------------------------------------------------------
 // parameter constructors
@@ -1633,8 +1690,8 @@ export interface Parameter {
  * @category encoding
  * @since 4.0.0
  */
-export const encodeParameter = (parameter: Parameter): Uint8Array | null =>
-  parameter.value === null ? null : encode(parameter.value, parameter.oid)
+export const encodeParameter = (parameter: Parameter): Result.Result<Uint8Array | null, CodecError> =>
+  parameter.value === null ? Result.succeed(null) : encode(parameter.value, parameter.oid)
 
 const writeValue = (sink: ValueSink, value: unknown, oid: number): void => {
   const codec = lookup(oid)
@@ -1651,8 +1708,24 @@ const writeValue = (sink: ValueSink, value: unknown, oid: number): void => {
  * @category encoding
  * @since 4.0.0
  */
-export const writeParameter = (sink: ValueSink, parameter: Parameter): void =>
+const writeParameterUnsafe = (sink: ValueSink, parameter: Parameter): void =>
   parameter.value === null ? sink.sqlNull() : writeValue(sink, parameter.value, parameter.oid)
+
+export const writeParameter = (
+  sink: ValueSink,
+  parameter: Parameter
+): Result.Result<void, CodecError> => {
+  try {
+    writeParameterUnsafe(sink, parameter)
+    return Result.void
+  } catch (error) {
+    if (error instanceof CodecError) return Result.fail(error)
+    throw error
+  }
+}
+
+const valueWriterUnsafe = Symbol.for("@effect/sql-pg/PgProtocol/ValueWriter/unsafe")
+Object.defineProperty(writeParameter, valueWriterUnsafe, { value: writeParameterUnsafe })
 
 const parameter = (oid: number) => (value: unknown): Parameter => ({ oid, value })
 
@@ -1847,10 +1920,14 @@ export const timestamptz: (value: number | null) => Parameter = parameter(OID.ti
  * @category constructors
  * @since 4.0.0
  */
-export const array = (values: ReadonlyArray<unknown> | null, elementOid: number): Parameter => {
-  const arrayOid = elementToArray.get(elementOid)
-  if (arrayOid === undefined) {
-    return fail(`No array type known for element OID ${elementOid}`)
-  }
-  return { oid: arrayOid, value: values }
-}
+export const array = (
+  values: ReadonlyArray<unknown> | null,
+  elementOid: number
+): Result.Result<Parameter, CodecError> =>
+  result(() => {
+    const arrayOid = elementToArray.get(elementOid)
+    if (arrayOid === undefined) {
+      return fail(`No array type known for element OID ${elementOid}`)
+    }
+    return { oid: arrayOid, value: values }
+  })
