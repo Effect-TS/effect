@@ -294,6 +294,14 @@ class Reader {
 /** Below this length a per-character loop beats `TextDecoder.decode`. */
 const asciiDecodeLimit = 10
 
+/**
+ * Node's own UTF-8 decoder; see the note on its `PgTypes` counterpart. A
+ * result containing a replacement character goes to the strict decoder, so
+ * invalid bytes still fail exactly as they did.
+ */
+const utf8Slice: ((this: Uint8Array, start: number, end: number) => string) | undefined = (globalThis as any).Buffer
+  ?.prototype?.utf8Slice
+
 const decodeUtf8 = (bytes: Uint8Array, offset: number, size: number): string => {
   if (size <= asciiDecodeLimit) {
     let text = ""
@@ -304,6 +312,10 @@ const decodeUtf8 = (bytes: Uint8Array, offset: number, size: number): string => 
       text += String.fromCharCode(code)
     }
     if (index === size) return text
+  }
+  if (utf8Slice !== undefined) {
+    const text = utf8Slice.call(bytes, offset, offset + size)
+    if (text.indexOf("\ufffd") === -1) return text
   }
   try {
     return textDecoder.decode(view(bytes.buffer, bytes.byteOffset + offset, size))

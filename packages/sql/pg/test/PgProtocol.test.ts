@@ -367,6 +367,14 @@ describe("PgProtocol", () => {
       }
     })
 
+    it("decodes a parameter that really contains the replacement character", () => {
+      const name = "status\ufffdmessage and some padding"
+      assert.deepStrictEqual(
+        PgProtocol.makeParser().push(parameterStatus(name, "v")),
+        [{ _tag: "ParameterStatus", name, value: "v" }]
+      )
+    })
+
     it("rejects a stray high byte at every position of the string fast path", () => {
       for (let length = 1; length <= 16; length++) {
         for (let at = 0; at < length; at++) {

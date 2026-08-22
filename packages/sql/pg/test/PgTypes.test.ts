@@ -674,6 +674,14 @@ describe("PgTypes", () => {
       }
     })
 
+    it("decodes text that really contains the replacement character", () => {
+      // The fast decoder signals invalid bytes with U+FFFD, so text that holds
+      // a genuine one has to survive the strict re-decode that triggers.
+      for (const value of ["\ufffd", "abc\ufffddef and some padding", "\ufffd".repeat(20)]) {
+        assert.strictEqual(PgTypes.decode(PgTypes.encode(value, PgTypes.OID.text), PgTypes.OID.text, 1), value)
+      }
+    })
+
     it("rejects a stray high byte at every position of the fast path", () => {
       // A lone lead byte is not valid UTF-8, so the fast path has to hand it to
       // the decoder rather than read it as a character of its own.

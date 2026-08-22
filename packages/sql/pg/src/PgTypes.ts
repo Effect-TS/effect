@@ -173,6 +173,17 @@ const region = (bytes: Uint8Array, offset: number, size: number): Uint8Array =>
  */
 const asciiDecodeLimit = 10
 
+/**
+ * Node's own UTF-8 decoder, which reads straight out of the buffer with no
+ * view and about a quarter less overhead than `TextDecoder`. It swaps
+ * replacement characters in where `TextDecoder` would fail, so a result that
+ * contains one is handed to the strict decoder after all: either the
+ * character was really in the text and the same string comes back, or the
+ * bytes were invalid and the failure is the one `TextDecoder` always raised.
+ */
+const utf8Slice: ((this: Uint8Array, start: number, end: number) => string) | undefined = (globalThis as any).Buffer
+  ?.prototype?.utf8Slice
+
 const decodeUtf8 = (bytes: Uint8Array, offset: number, size: number): string => {
   if (size <= asciiDecodeLimit) {
     let text = ""
@@ -183,6 +194,10 @@ const decodeUtf8 = (bytes: Uint8Array, offset: number, size: number): string => 
       text += String.fromCharCode(code)
     }
     if (index === size) return text
+  }
+  if (utf8Slice !== undefined) {
+    const text = utf8Slice.call(bytes, offset, offset + size)
+    if (text.indexOf("\ufffd") === -1) return text
   }
   try {
     return textDecoder.decode(region(bytes, offset, size))
@@ -758,8 +773,17 @@ for (let i = 0; i < 16; i++) {
   hexValues["0123456789ABCDEF".charCodeAt(i)] = i
 }
 
-/** Two-character hex text for each byte value. */
-const hexPairs = Array.from({ length: 256 }, (_, i) => hexDigits[i >> 4] + hexDigits[i & 0xf])
+/** Character codes of each byte value's two hex digits. */
+const hexHigh = /* @__PURE__ */ (() => {
+  const codes = new Uint8Array(256)
+  for (let i = 0; i < 256; i++) codes[i] = hexDigits.charCodeAt(i >> 4)
+  return codes
+})()
+const hexLow = /* @__PURE__ */ (() => {
+  const codes = new Uint8Array(256)
+  for (let i = 0; i < 256; i++) codes[i] = hexDigits.charCodeAt(i & 0xf)
+  return codes
+})()
 
 /** Offsets of the 16 uuid bytes within the 36-character hyphenated text. */
 const uuidOffsets = [0, 2, 4, 6, 9, 11, 14, 16, 19, 21, 24, 26, 28, 30, 32, 34]
@@ -796,14 +820,65 @@ const encodeUuid = (value: unknown): Uint8Array => {
   return bytes
 }
 
+// One `String.fromCharCode` call, so the result is a flat string rather than
+// a rope of pair concatenations that its first reader has to flatten. 45 is
+// the hyphen.
 const decodeUuid = (bytes: Uint8Array, offset: number, size: number): string => {
   requireSize(size, 16, "uuid")
-  return hexPairs[bytes[offset]] + hexPairs[bytes[offset + 1]] + hexPairs[bytes[offset + 2]] +
-    hexPairs[bytes[offset + 3]] + "-" + hexPairs[bytes[offset + 4]] + hexPairs[bytes[offset + 5]] + "-" +
-    hexPairs[bytes[offset + 6]] + hexPairs[bytes[offset + 7]] + "-" + hexPairs[bytes[offset + 8]] +
-    hexPairs[bytes[offset + 9]] + "-" + hexPairs[bytes[offset + 10]] + hexPairs[bytes[offset + 11]] +
-    hexPairs[bytes[offset + 12]] + hexPairs[bytes[offset + 13]] + hexPairs[bytes[offset + 14]] +
-    hexPairs[bytes[offset + 15]]
+  const b0 = bytes[offset]
+  const b1 = bytes[offset + 1]
+  const b2 = bytes[offset + 2]
+  const b3 = bytes[offset + 3]
+  const b4 = bytes[offset + 4]
+  const b5 = bytes[offset + 5]
+  const b6 = bytes[offset + 6]
+  const b7 = bytes[offset + 7]
+  const b8 = bytes[offset + 8]
+  const b9 = bytes[offset + 9]
+  const b10 = bytes[offset + 10]
+  const b11 = bytes[offset + 11]
+  const b12 = bytes[offset + 12]
+  const b13 = bytes[offset + 13]
+  const b14 = bytes[offset + 14]
+  const b15 = bytes[offset + 15]
+  return String.fromCharCode(
+    hexHigh[b0],
+    hexLow[b0],
+    hexHigh[b1],
+    hexLow[b1],
+    hexHigh[b2],
+    hexLow[b2],
+    hexHigh[b3],
+    hexLow[b3],
+    45,
+    hexHigh[b4],
+    hexLow[b4],
+    hexHigh[b5],
+    hexLow[b5],
+    45,
+    hexHigh[b6],
+    hexLow[b6],
+    hexHigh[b7],
+    hexLow[b7],
+    45,
+    hexHigh[b8],
+    hexLow[b8],
+    hexHigh[b9],
+    hexLow[b9],
+    45,
+    hexHigh[b10],
+    hexLow[b10],
+    hexHigh[b11],
+    hexLow[b11],
+    hexHigh[b12],
+    hexLow[b12],
+    hexHigh[b13],
+    hexLow[b13],
+    hexHigh[b14],
+    hexLow[b14],
+    hexHigh[b15],
+    hexLow[b15]
+  )
 }
 
 // -----------------------------------------------------------------------------
