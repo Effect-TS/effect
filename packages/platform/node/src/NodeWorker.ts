@@ -58,7 +58,7 @@ export const layerPlatform: Layer.Layer<Worker.WorkerPlatform> = Layer.succeed(W
             return Deferred.await(exitDeferred)
           }).pipe(
             Effect.timeout(5000),
-            Effect.catchCause(() => Effect.sync(() => thing.kill()))
+            Effect.catchCause(() => Effect.promise(() => Promise.resolve(thing.kill())))
           )
         ),
         thing
