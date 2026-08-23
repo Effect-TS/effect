@@ -94,7 +94,7 @@ export interface toCodec<S extends Schema.Constraint> extends
 export function toCodec<S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> {
   const { exact, layout, target } = compileTarget(schema)
   const mode = compileMode(layout, options?.fingerprint)
-  const trusted = exact ? new WeakSet<object>() : undefined
+  const trusted: Trusted | undefined = exact ? { value: undefined } : undefined
   return assembleCodec(
     trusted === undefined ? target : withTrustedDecode(target, trusted),
     layout,
@@ -118,7 +118,7 @@ export function toCodecDirect<S extends Schema.Constraint>(schema: S, options?: 
   const { exact, exitSuccess, layout, target } = compileTarget(schema)
   if (!exact) {
     if (!exitSuccess) return toCodec(schema, options)
-    const trusted = new WeakSet<object>()
+    const trusted: Trusted = { value: undefined }
     return assembleCodec(
       withExitSuccessDecode(target, trusted),
       layout,
@@ -134,7 +134,7 @@ function assembleCodec<S extends Schema.Constraint>(
   target: Schema.Constraint,
   layout: Layout,
   mode: Mode,
-  trusted: WeakSet<object> | undefined,
+  trusted: Trusted | undefined,
   successOnly = false
 ): toCodec<S> {
   return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
@@ -1046,6 +1046,10 @@ const OUTPUT_ARENA_SIZE = 64 * 1024
 // Bound attacker-controlled keys retained between parser feeds.
 const PARSER_INDEX_SIGNATURE_CACHE_SIZE = 256
 
+// Bound the last universal record shape retained by a compiled layout.
+const ENCODE_INDEX_SIGNATURE_CACHE_KEYS = 512
+const ENCODE_INDEX_SIGNATURE_CACHE_CODE_UNITS = 16 * 1024
+
 interface OutputArena {
   readonly buf: Uint8Array<ArrayBuffer>
   readonly view: DataView<ArrayBuffer>
@@ -1108,11 +1112,22 @@ class Writer {
     this.ensure(10)
     const buf = this.buf
     let p = this.start + this.len
-    while (n > 0x7F) {
+    if (n < 0x80) {
+      buf[p++] = n
+    } else {
       buf[p++] = (n & 0x7F) | 0x80
-      n = n < 0x80000000 ? n >>> 7 : Math.floor(n / 128)
+      if (n < 0x4000) {
+        buf[p++] = n >>> 7
+      } else {
+        buf[p++] = ((n >>> 7) & 0x7F) | 0x80
+        n = Math.floor(n / 0x4000)
+        while (n > 0x7F) {
+          buf[p++] = (n & 0x7F) | 0x80
+          n = Math.floor(n / 128)
+        }
+        buf[p++] = n
+      }
     }
-    buf[p++] = n
     this.len = p - this.start
   }
   uvarintBig(n: bigint) {
@@ -1650,6 +1665,8 @@ interface StructLayout {
   // The lone signature every key matches, so lookups skip the cache.
   readonly extraAll: ExtraSignature | undefined
   readonly names: Set<string>
+  // Reuse the last universal index-signature shape across encode calls.
+  extraShape: ExtraShape | undefined
   optionalCount: number
   // Required field indices below 32 as one comparison; wider structs with
   // required fields past that keep the per-field check.
@@ -2123,6 +2140,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       extra,
       extraAll: extra.length === 1 && matchesEveryKey(extra[0].parameter) ? extra[0] : undefined,
       names: new Set(fields.map((f) => f.name)),
+      extraShape: undefined,
       optionalCount: 0,
       requiredMask: 0,
       requiredWide: false
@@ -2352,6 +2370,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
           extra: struct.extra,
           extraAll: struct.extraAll,
           names: struct.names,
+          extraShape: undefined,
           optionalCount: fields.reduce((count, f) => f.optional ? count + 1 : count, 0),
           requiredMask: 0,
           requiredWide: false
@@ -2875,10 +2894,23 @@ function sameShape(shape: ExtraShape, layout: StructLayout, keys: ReadonlyArray<
   return true
 }
 
+function canCacheExtraShape(layout: StructLayout, keys: ReadonlyArray<string>): boolean {
+  if (layout.extraAll === undefined || keys.length > ENCODE_INDEX_SIGNATURE_CACHE_KEYS) return false
+  let codeUnits = 0
+  for (let i = 0; i < keys.length; i++) {
+    codeUnits += keys[i].length
+    if (codeUnits > ENCODE_INDEX_SIGNATURE_CACHE_CODE_UNITS) return false
+  }
+  return true
+}
+
 // Sort extra keys by raw UTF-8 for deterministic output.
 function extraPairs(ctx: EncodeContext, layout: StructLayout, obj: Record<string, unknown>): Array<ExtraPair> {
   const keys = Object.keys(obj)
-  const shape = ctx.extraShape
+  const cached = layout.extraShape
+  if (cached !== undefined && sameShape(cached, layout, keys)) return cached.pairs
+  const persistent = canCacheExtraShape(layout, keys)
+  const shape = persistent ? undefined : ctx.extraShape
   if (shape !== undefined && sameShape(shape, layout, keys)) return shape.pairs
   const named = layout.names
   const every = layout.extraAll
@@ -2897,7 +2929,12 @@ function extraPairs(ctx: EncodeContext, layout: StructLayout, obj: Record<string
     for (const pair of pairs) pair[2] = utf8Encode.encode(pair[0])
     pairs.sort((a, b) => compareBytes(a[2]!, b[2]!))
   }
-  ctx.extraShape = { layout, keys, pairs }
+  if (persistent) {
+    for (const pair of pairs) pair[2] ??= utf8Encode.encode(pair[0])
+  }
+  const next = { layout, keys, pairs }
+  if (persistent) layout.extraShape = next
+  else ctx.extraShape = next
   return pairs
 }
 
@@ -4593,7 +4630,7 @@ function decodeOneShot(
 function makeTransformation(
   layout: Layout,
   mode: Mode,
-  trusted: WeakSet<object> | undefined,
+  trusted: Trusted | undefined,
   successOnly = false
 ): SchemaTransformation.Transformation<unknown, Uint8Array<ArrayBuffer>> {
   return SchemaTransformation.transformOrFail({
@@ -4603,7 +4640,7 @@ function makeTransformation(
         if (
           trusted !== undefined && Predicate.isObjectOrArray(value) &&
           (!successOnly || isSuccessExit(value))
-        ) trusted.add(value)
+        ) trusted.value = value
         return Effect.succeed(value)
       } catch (e) {
         return e instanceof IssueError ? Effect.fail(e.issue) : Effect.die(e)
@@ -4641,6 +4678,20 @@ const compileTargetFromAst = memoize((ast: SchemaAST.AST): CompiledTarget => {
 
 function compileTarget(schema: Schema.Constraint): CompiledTarget {
   return compileTargetFromAst(schema.ast)
+}
+
+// The value the binary decoder produced most recently. The schema pass around
+// the decode runs straight after it, so one slot is all the handoff needs, and
+// a value that misses the slot just pays the real check. The slot holds that
+// one value until the next decode replaces it.
+interface Trusted {
+  value: object | undefined
+}
+
+function takeTrusted(trusted: Trusted, input: unknown): boolean {
+  if (trusted.value === undefined || input !== trusted.value) return false
+  trusted.value = undefined
+  return true
 }
 
 // A target that bypasses the schema pass when `accept` takes the input, and
@@ -4683,10 +4734,10 @@ function reportsExcess(_input: unknown, options: SchemaAST.ParseOptions): boolea
 // schema pass around it repeats that work. Encoding skips it outright. Decoding
 // only lets values the binary layer just produced through, so every other
 // input, `Schema.is` included, still runs the real check.
-function withTrustedDecode(target: Schema.Constraint, trusted: WeakSet<object>): Schema.Constraint {
+function withTrustedDecode(target: Schema.Constraint, trusted: Trusted): Schema.Constraint {
   return bypassPass(
     target,
-    (input) => Predicate.isObjectOrArray(input) && trusted.delete(input),
+    (input) => takeTrusted(trusted, input),
     reportsExcess
   )
 }
@@ -4699,13 +4750,13 @@ function withTrustedDecode(target: Schema.Constraint, trusted: WeakSet<object>):
 // values bypass the pass: the binary layer drops unknown keys instead of
 // reporting them, so other success exits keep the schema pass. It is not a
 // sound `Schema.is` guard, which is why only {@link toCodecDirect} uses it.
-function withExitSuccessDecode(target: Schema.Constraint, trusted: WeakSet<object>): Schema.Constraint {
+function withExitSuccessDecode(target: Schema.Constraint, trusted: Trusted): Schema.Constraint {
   return Schema.declareConstructor<unknown>()(
     [target],
     ([codec]) => {
       const parse = SchemaParser.decodeUnknownEffect(codec as Schema.ConstraintDecoder<unknown>)
       return (input, _ast, options) =>
-        (Predicate.isObjectOrArray(input) && trusted.delete(input)) ||
+        takeTrusted(trusted, input) ||
           (isSuccessExit(input) && options.onExcessProperty !== "error")
           ? Effect.succeed(input)
           : parse(input, options)
