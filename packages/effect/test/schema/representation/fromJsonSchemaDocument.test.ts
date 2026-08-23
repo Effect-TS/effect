@@ -2688,6 +2688,30 @@ describe("fromJsonSchemaDocument", () => {
       assertFalse(is(1))
     })
 
+    it("decodes a direct definition reference", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/A%20B",
+        $defs: {
+          "A B": { type: "string" }
+        }
+      }))
+      const is = Schema.is(schema)
+      assertTrue(is("a"))
+      assertFalse(is(1))
+    })
+
+    it("resolves a direct reference to an empty definition key", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/",
+        $defs: {
+          "": { type: "string" }
+        }
+      }))
+      const is = Schema.is(schema)
+      assertTrue(is("a"))
+      assertFalse(is(1))
+    })
+
     it("should create a Reference and a definition", () => {
       assertFromJsonSchema(
         {
