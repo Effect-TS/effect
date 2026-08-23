@@ -9,6 +9,7 @@
  * @since 4.0.0
  */
 import * as Effect from "../../Effect.ts"
+import * as Function from "../../Function.ts"
 import type * as Layer from "../../Layer.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
@@ -144,10 +145,8 @@ const makeHandler = <Id extends string, Groups extends HttpApiGroup.Constraint>(
   readonly source: ScalarSource
   readonly scalar: ScalarConfig | undefined
 }) => {
-  let response: HttpServerResponse.HttpServerResponse | undefined
-  return Effect.sync(() => {
-    if (response !== undefined) return response
-    const spec = OpenApi.fromApi(options.api)
+  const makeResponse = Function.memoize((api: HttpApi.HttpApi<Id, Groups>) => {
+    const spec = OpenApi.fromApi(api)
     const { customFetch, ...scalar } = options.scalar ?? {}
     const scalarConfig = {
       _integration: "html",
@@ -162,7 +161,7 @@ const makeHandler = <Id extends string, Groups extends HttpApiGroup.Constraint>(
         )
       }" crossorigin></script>`
       : `<script>${options.source.source}</script>`
-    response = HttpServerResponse.html(`<!doctype html>
+    return HttpServerResponse.html(`<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -195,8 +194,8 @@ const makeHandler = <Id extends string, Groups extends HttpApiGroup.Constraint>(
     </script>
   </body>
 </html>`)
-    return response
   })
+  return Effect.sync(() => makeResponse(options.api))
 }
 
 /**
