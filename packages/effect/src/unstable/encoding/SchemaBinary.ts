@@ -478,11 +478,11 @@ function makeParser<T>(
  *
  * **Details**
  *
- * Each input chunk is emitted as one byte element holding concatenated frames.
- * Schemas the binary layer validates on its own encode a chunk in one writer
- * pass, so a batch costs no more allocations than a single frame; schemas with
- * transformations encode per value through the schema pass, which supports
- * async transformations and encoding services. Failures are
+ * Each input chunk is emitted as one byte element holding concatenated frames
+ * written in one writer pass, so a batch costs no more allocations than a
+ * single frame. Schemas with transformations first run one schema pass per
+ * chunk to the binary-adjusted encoded side — supporting async transformations
+ * and encoding services — before that writer pass. Failures are
  * `Schema.SchemaError`, matching {@link toCodec}. `maxFrameSize` only applies
  * to {@link decode} and is ignored here.
  *
@@ -504,49 +504,30 @@ export const encode = <S extends Schema.Constraint>(
 > => {
   // Everything here depends only on schema and options, so it is derived once
   // per channel rather than once per run.
-  const { exact, exitSuccess, layout } = compileTarget(schema)
-  if (exact) {
-    const encodeMany = encodeManyUnknownSync(schema, options)
-    return Channel.fromTransform((upstream, _scope) =>
-      Effect.sync(() =>
-        Effect.flatMap(upstream, (chunk) => {
-          try {
-            return Effect.succeed(Arr.of(encodeMany(chunk)))
-          } catch (e) {
-            if (Schema.isSchemaError(e)) return Effect.fail(e)
-            throw e
-          }
-        })
-      )
-    )
-  }
+  const { exact, layout, target } = compileTarget(schema)
   const parseOptions: SchemaAST.ParseOptions = options ?? SchemaAST.defaultParseOptions
   const mode = compileMode(layout, options?.fingerprint)
-  const fallback = Schema.encodeUnknownEffect(
-    toCodec(schema, options) as unknown as Schema.ConstraintEncoder<unknown, never>,
+  const write = (
+    values: ReadonlyArray<unknown>
+  ): Effect.Effect<Arr.NonEmptyReadonlyArray<Uint8Array<ArrayBuffer>>, Schema.SchemaError> => {
+    try {
+      return Effect.succeed(Arr.of(encodeFrames(layout, values, parseOptions, mode)))
+    } catch (e) {
+      if (e instanceof IssueError) return Effect.fail(new Schema.SchemaError(e.issue))
+      return Effect.die(e)
+    }
+  }
+  if (exact) {
+    return Channel.fromTransform((upstream, _scope) => Effect.sync(() => Effect.flatMap(upstream, write)))
+  }
+  // One schema pass per chunk brings the values to the binary-adjusted encoded
+  // side the writer expects, so the writer pass stays one sync batch.
+  const encodeValues = Schema.encodeUnknownEffect(
+    Schema.NonEmptyArray(target) as unknown as Schema.ConstraintEncoder<unknown, never>,
     options
-  ) as (value: unknown) => Effect.Effect<Uint8Array<ArrayBuffer>, Schema.SchemaError>
-  // The binary layer drops excess keys instead of reporting them.
-  const direct = exitSuccess && parseOptions.onExcessProperty !== "error"
-  const encodeValue = (value: unknown): Effect.Effect<Uint8Array<ArrayBuffer>, Schema.SchemaError> =>
-    direct && isSuccessExit(value)
-      ? Effect.suspend(() => {
-        try {
-          return Effect.succeed(encodeFrame(layout, value, parseOptions, mode))
-        } catch (e) {
-          if (e instanceof IssueError) return Effect.fail(new Schema.SchemaError(e.issue))
-          return Effect.die(e)
-        }
-      })
-      : fallback(value)
+  ) as (values: ReadonlyArray<unknown>) => Effect.Effect<ReadonlyArray<unknown>, Schema.SchemaError>
   return Channel.fromTransform((upstream, _scope) =>
-    Effect.sync(() =>
-      Effect.flatMap(upstream, (chunk) =>
-        Effect.map(
-          Effect.forEach(chunk, encodeValue),
-          (frames) => Arr.of(concatFrames(frames))
-        ))
-    )
+    Effect.sync(() => Effect.flatMap(upstream, (chunk) => Effect.flatMap(encodeValues(chunk), write)))
   )
 }
 
