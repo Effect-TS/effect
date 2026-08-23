@@ -535,7 +535,7 @@ export const encode = <S extends Schema.Constraint>(
           return Effect.succeed(encodeFrame(layout, value, parseOptions, mode))
         } catch (e) {
           if (e instanceof IssueError) return Effect.fail(new Schema.SchemaError(e.issue))
-          throw e
+          return Effect.die(e)
         }
       })
       : fallback(value)
