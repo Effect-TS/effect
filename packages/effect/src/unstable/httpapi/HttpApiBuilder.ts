@@ -100,8 +100,17 @@ export const layer = <Id extends string, Groups extends HttpApiGroup.Constraint>
     }
     yield* (router.addAll(routes) as Effect.Effect<void>)
     if (options?.openapiPath) {
-      const spec = OpenApi.fromApi(api)
-      yield* router.add("GET", options.openapiPath, Effect.succeed(Response.jsonUnsafe(spec)))
+      let response: HttpServerResponse | undefined
+      yield* router.add(
+        "GET",
+        options.openapiPath,
+        Effect.sync(() => {
+          if (response !== undefined) return response
+          const spec = OpenApi.fromApi(api)
+          response = Response.jsonUnsafe(spec)
+          return response
+        })
+      )
     }
   }))
 
