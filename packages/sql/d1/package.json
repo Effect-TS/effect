@@ -72,6 +72,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "^5.20260816.1"
+    "@cloudflare/workers-types": "^5.20260822.1"
   }
 }
