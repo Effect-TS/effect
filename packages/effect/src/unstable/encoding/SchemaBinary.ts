@@ -609,7 +609,7 @@ export const decode = <S extends Schema.Constraint>(
             for (let j = 0; j < values.length; j++) raw.push(values[j])
           }
         } catch (e) {
-          if (!Schema.isSchemaError(e)) throw e
+          if (!Schema.isSchemaError(e)) return Effect.die(e)
           if (raw.length === 0) return Effect.fail(e)
           // Emit the values framed before the failure, then fail on the next
           // pull.
