@@ -15,7 +15,7 @@ import * as Effect from "../../Effect.ts"
 import * as Encoding from "../../Encoding.ts"
 import * as Fiber from "../../Fiber.ts"
 import type { FileSystem } from "../../FileSystem.ts"
-import { identity } from "../../Function.ts"
+import * as Function from "../../Function.ts"
 import { stringOrRedacted } from "../../internal/redacted.ts"
 import * as Layer from "../../Layer.ts"
 import type { Path } from "../../Path.ts"
@@ -100,8 +100,14 @@ export const layer = <Id extends string, Groups extends HttpApiGroup.Constraint>
     }
     yield* (router.addAll(routes) as Effect.Effect<void>)
     if (options?.openapiPath) {
-      const spec = OpenApi.fromApi(api)
-      yield* router.add("GET", options.openapiPath, Effect.succeed(Response.jsonUnsafe(spec)))
+      const makeResponse = Function.memoize((api: HttpApi.HttpApi<Id, Groups>): HttpServerResponse =>
+        Response.jsonUnsafe(OpenApi.fromApi(api))
+      )
+      yield* router.add(
+        "GET",
+        options.openapiPath,
+        Effect.sync(() => makeResponse(api))
+      )
     }
   }))
 
@@ -884,7 +890,7 @@ const makeSecurityMiddleware = (
     middleware: service[securityKey]
   }))
   if (entries.length === 0) {
-    return identity
+    return Function.identity
   }
 
   const middleware = Effect.fnUntraced(function*(handler: Effect.Effect<any, any, any>, options: {
@@ -1058,7 +1064,7 @@ function encodeSseStream(
         event: "message",
         data: value
       })) :
-      identity,
+      Function.identity,
     Stream.mapArrayEffect((chunk) => Effect.orDie(encoder.encodeEvents(chunk))),
     Stream.catchCause((cause) => Stream.fromEffect(encodeFailureEvent(cause, encoder))),
     Stream.map(renderSseEvent),
