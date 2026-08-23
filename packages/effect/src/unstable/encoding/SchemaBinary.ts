@@ -189,18 +189,7 @@ export function encodeManyUnknownSync<S extends Schema.Constraint>(
   const { exact, layout } = compileTarget(schema)
   if (!exact) {
     const encode = encodeUnknownSync(schema, options)
-    return (values) => {
-      const frames = values.map(encode)
-      let length = 0
-      for (const frame of frames) length += frame.length
-      const out = new Uint8Array(length)
-      let offset = 0
-      for (const frame of frames) {
-        out.set(frame, offset)
-        offset += frame.length
-      }
-      return out
-    }
+    return (values) => concatFrames(values.map(encode))
   }
   const mode = compileMode(layout, options?.fingerprint)
   const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
@@ -211,6 +200,19 @@ export function encodeManyUnknownSync<S extends Schema.Constraint>(
       throw e instanceof IssueError ? new Schema.SchemaError(e.issue) : e
     }
   }
+}
+
+function concatFrames(frames: ReadonlyArray<Uint8Array<ArrayBuffer>>): Uint8Array<ArrayBuffer> {
+  if (frames.length === 1) return frames[0]
+  let length = 0
+  for (const frame of frames) length += frame.length
+  const out = new Uint8Array(length)
+  let offset = 0
+  for (const frame of frames) {
+    out.set(frame, offset)
+    offset += frame.length
+  }
+  return out
 }
 
 /**
@@ -252,15 +254,31 @@ export function parser<S extends Schema.Constraint>(
   options?: SchemaAST.ParseOptions & Options & { readonly maxFrameSize?: number | undefined }
 ): Parser<S["Type"]> {
   const { exact, exitSuccess, layout, target } = compileTarget(schema)
-  const mode = compileMode(layout, options?.fingerprint)
   const parseOptions: SchemaAST.ParseOptions = options ?? {}
-  const maxFrameSize = options?.maxFrameSize
   const decodeTarget = exact
     ? undefined
     : Schema.decodeUnknownSync(target as Schema.ConstraintDecoder<unknown>, parseOptions)
   const decodeEncoded = decodeTarget !== undefined && exitSuccess
     ? (value: unknown) => Exit.isExit(value) && Exit.isSuccess(value) ? value : decodeTarget(value)
     : decodeTarget
+  return makeParser(
+    layout,
+    compileMode(layout, options?.fingerprint),
+    parseOptions,
+    options?.maxFrameSize,
+    decodeEncoded
+  )
+}
+
+// Frame parser over a compiled layout. `decodeEncoded` runs the target schema
+// pass on each framed value; `undefined` yields the raw binary-decoded values.
+function makeParser<T>(
+  layout: Layout,
+  mode: Mode,
+  parseOptions: SchemaAST.ParseOptions,
+  maxFrameSize: number | undefined,
+  decodeEncoded: ((value: unknown) => unknown) | undefined
+): Parser<T> {
   let buffer = new Uint8Array(0)
   let bufferStart = 0
   let bufferEnd = 0
@@ -297,7 +315,7 @@ export function parser<S extends Schema.Constraint>(
     bufferEnd = remaining
   }
 
-  const self: Parser<S["Type"]> = {
+  const self: Parser<T> = {
     feedSync(chunk) {
       if (stashed !== undefined) return takeStashed()
       if (spent) return failSync("parser is spent")
@@ -333,8 +351,8 @@ export function parser<S extends Schema.Constraint>(
         pos = bufferStart
         end = bufferEnd
       }
-      const out: Array<S["Type"]> = []
-      const done = (): Array<S["Type"]> => {
+      const out: Array<T> = []
+      const done = (): Array<T> => {
         if (direct) {
           if (pos < end) stashTail(chunk, pos)
         } else {
@@ -343,7 +361,7 @@ export function parser<S extends Schema.Constraint>(
         }
         return out
       }
-      const fail = (expected: string, input?: unknown): Array<S["Type"]> => {
+      const fail = (expected: string, input?: unknown): Array<T> => {
         spent = true
         const error = new Schema.SchemaError(new SchemaIssue.InvalidValue({ expected }, input, parseOptions))
         release()
@@ -396,7 +414,7 @@ export function parser<S extends Schema.Constraint>(
           indexSignatures.beginFrame()
           body.reset(buf, bodyStart, bodyStart + frameLen, parseOptions, indexSignatures, mode.positional)
           const value = decodeFrameBody(layout, body, mode)
-          out.push((decodeEncoded === undefined ? value : decodeEncoded(value)) as S["Type"])
+          out.push((decodeEncoded === undefined ? value : decodeEncoded(value)) as T)
         } catch (e) {
           spent = true
           release()
@@ -451,11 +469,13 @@ export function parser<S extends Schema.Constraint>(
  *
  * **Details**
  *
- * Each input chunk is encoded in one writer pass, so a batch costs no more
- * allocations than a single frame; the resulting frames are emitted
- * concatenated as one byte chunk. Failures are `Schema.SchemaError`, matching
- * {@link toCodec}. `maxFrameSize` only applies to {@link decode} and is ignored
- * here.
+ * Each input chunk is emitted as one byte element holding concatenated frames.
+ * Schemas the binary layer validates on its own encode a chunk in one writer
+ * pass, so a batch costs no more allocations than a single frame; schemas with
+ * transformations encode per value through the schema pass, which supports
+ * async transformations and encoding services. Failures are
+ * `Schema.SchemaError`, matching {@link toCodec}. `maxFrameSize` only applies
+ * to {@link decode} and is ignored here.
  *
  * @category channels
  * @since 4.0.0
@@ -470,19 +490,47 @@ export const encode = <S extends Schema.Constraint>(
   Done,
   Arr.NonEmptyReadonlyArray<S["Type"]>,
   IE,
-  Done
+  Done,
+  S["EncodingServices"]
 > =>
   Channel.fromTransform((upstream, _scope) =>
     Effect.sync(() => {
-      const encodeMany = encodeManyUnknownSync(schema, options)
-      return Effect.flatMap(upstream, (chunk) => {
-        try {
-          return Effect.succeed(Arr.of(encodeMany(chunk)))
-        } catch (e) {
-          if (Schema.isSchemaError(e)) return Effect.fail(e)
-          throw e
-        }
-      })
+      const { exact, exitSuccess, layout } = compileTarget(schema)
+      if (exact) {
+        const encodeMany = encodeManyUnknownSync(schema, options)
+        return Effect.flatMap(upstream, (chunk) => {
+          try {
+            return Effect.succeed(Arr.of(encodeMany(chunk)))
+          } catch (e) {
+            if (Schema.isSchemaError(e)) return Effect.fail(e)
+            throw e
+          }
+        })
+      }
+      const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
+      const mode = compileMode(layout, options?.fingerprint)
+      const fallback = Schema.encodeUnknownEffect(
+        toCodec(schema, options) as unknown as Schema.ConstraintEncoder<unknown, never>,
+        options
+      ) as (value: unknown) => Effect.Effect<Uint8Array<ArrayBuffer>, Schema.SchemaError>
+      // The binary layer drops excess keys instead of reporting them.
+      const direct = exitSuccess && parseOptions.onExcessProperty !== "error"
+      const encodeValue = (value: unknown): Effect.Effect<Uint8Array<ArrayBuffer>, Schema.SchemaError> =>
+        direct && Exit.isExit(value) && Exit.isSuccess(value)
+          ? Effect.suspend(() => {
+            try {
+              return Effect.succeed(encodeFrame(layout, value, parseOptions, mode))
+            } catch (e) {
+              if (e instanceof IssueError) return Effect.fail(new Schema.SchemaError(e.issue))
+              throw e
+            }
+          })
+          : fallback(value)
+      return Effect.flatMap(upstream, (chunk) =>
+        Effect.map(
+          Effect.forEach(chunk, encodeValue),
+          (frames) => Arr.of(concatFrames(frames))
+        ))
     })
   )
 
@@ -491,10 +539,12 @@ export const encode = <S extends Schema.Constraint>(
  *
  * **Details**
  *
- * The channel keeps one {@link parser} for its lifetime: frames may be
+ * The channel keeps one frame parser for its lifetime: frames may be
  * fragmented across chunks or concatenated within one, values completed before
  * a failure remain observable, and a leftover incomplete frame fails when the
- * upstream is done. Failures are `Schema.SchemaError`, matching {@link toCodec}.
+ * upstream is done. Schemas with transformations run the schema pass per
+ * framed value, which supports async transformations and decoding services.
+ * Failures are `Schema.SchemaError`, matching {@link toCodec}.
  *
  * @category channels
  * @since 4.0.0
@@ -509,31 +559,72 @@ export const decode = <S extends Schema.Constraint>(
   Done,
   Arr.NonEmptyReadonlyArray<Uint8Array<ArrayBuffer>>,
   IE,
-  Done
+  Done,
+  S["DecodingServices"]
 > =>
   Channel.fromTransform((upstream, _scope) =>
     Effect.sync(() => {
-      const frames = parser(schema, options)
+      const { exact, exitSuccess, layout, target } = compileTarget(schema)
+      const parseOptions: SchemaAST.ParseOptions = options ?? {}
+      const frames = makeParser<unknown>(
+        layout,
+        compileMode(layout, options?.fingerprint),
+        parseOptions,
+        options?.maxFrameSize,
+        undefined
+      )
+      const decodeTarget = exact
+        ? undefined
+        : Schema.decodeUnknownEffect(target as Schema.ConstraintDecoder<unknown>, parseOptions)
+      const decodeEncoded = decodeTarget !== undefined && exitSuccess
+        ? (value: unknown) => Exit.isExit(value) && Exit.isSuccess(value) ? Effect.succeed(value) : decodeTarget(value)
+        : decodeTarget
       let stashed: Schema.SchemaError | undefined
+
+      // Decodes framed values in order. On a failure, values decoded before it
+      // are emitted first and the error fails the next pull.
+      const decodeAll = (
+        raw: ReadonlyArray<unknown>
+      ): Pull.Pull<Arr.NonEmptyReadonlyArray<S["Type"]>, Schema.SchemaError | IE, Done> => {
+        const out: Array<S["Type"]> = []
+        const loop: Effect.Effect<Arr.NonEmptyReadonlyArray<S["Type"]>, Schema.SchemaError> = Effect.suspend(() =>
+          out.length === raw.length
+            ? Effect.succeed(out as unknown as Arr.NonEmptyReadonlyArray<S["Type"]>)
+            : Effect.flatMap(decodeEncoded!(raw[out.length]), (value) => {
+              out.push(value as S["Type"])
+              return loop
+            })
+        )
+        return Effect.catch(loop, (error) => {
+          if (out.length === 0) {
+            stashed = undefined
+            return Effect.fail(error)
+          }
+          stashed = error
+          return Effect.succeed(out as unknown as Arr.NonEmptyReadonlyArray<S["Type"]>)
+        })
+      }
 
       const feed = (
         chunk: Arr.NonEmptyReadonlyArray<Uint8Array<ArrayBuffer>>
       ): Pull.Pull<Arr.NonEmptyReadonlyArray<S["Type"]>, Schema.SchemaError | IE, Done> => {
-        const out = Arr.empty<S["Type"]>()
+        const raw: Array<unknown> = []
         try {
           for (let i = 0; i < chunk.length; i++) {
             const values = frames.feedSync(chunk[i])
-            for (let j = 0; j < values.length; j++) out.push(values[j])
+            for (let j = 0; j < values.length; j++) raw.push(values[j])
           }
         } catch (e) {
           if (!Schema.isSchemaError(e)) throw e
-          if (!Arr.isReadonlyArrayNonEmpty(out)) return Effect.fail(e)
-          // Emit the values completed before the failure, then fail on the
-          // next pull.
+          if (raw.length === 0) return Effect.fail(e)
+          // Emit the values framed before the failure, then fail on the next
+          // pull.
           stashed = e
-          return Effect.succeed(out)
         }
-        return Arr.isReadonlyArrayNonEmpty(out) ? Effect.succeed(out) : pull
+        if (!Arr.isReadonlyArrayNonEmpty(raw)) return pull
+        return decodeEncoded === undefined
+          ? Effect.succeed(raw as Arr.NonEmptyReadonlyArray<S["Type"]>)
+          : decodeAll(raw)
       }
 
       const pull: Pull.Pull<Arr.NonEmptyReadonlyArray<S["Type"]>, Schema.SchemaError | IE, Done> = Effect.suspend(() =>
@@ -592,7 +683,7 @@ export const duplex: {
     Arr.NonEmptyReadonlyArray<In["Type"]>,
     InErr,
     InDone,
-    R
+    R | In["EncodingServices"] | Out["DecodingServices"]
   >
   <Out extends Schema.Constraint, In extends Schema.Constraint, OutErr, OutDone, InErr, InDone, R>(
     self: Channel.Channel<
@@ -616,7 +707,7 @@ export const duplex: {
     Arr.NonEmptyReadonlyArray<In["Type"]>,
     InErr,
     InDone,
-    R
+    R | In["EncodingServices"] | Out["DecodingServices"]
   >
 } = dual(2, <Out extends Schema.Constraint, In extends Schema.Constraint, OutErr, OutDone, InErr, InDone, R>(
   self: Channel.Channel<
@@ -640,7 +731,7 @@ export const duplex: {
   Arr.NonEmptyReadonlyArray<In["Type"]>,
   InErr,
   InDone,
-  R
+  R | In["EncodingServices"] | Out["DecodingServices"]
 > =>
   encode(options.inputSchema, options)<InErr, InDone>().pipe(
     Channel.pipeTo(self),

@@ -2705,5 +2705,87 @@ describe("SchemaBinary", () => {
         )
         assert.deepStrictEqual([...values], [ada, grace])
       }))
+
+    const AsyncName = Schema.String.pipe(
+      Schema.decodeTo(
+        Schema.String,
+        SchemaTransformation.transformOrFail({
+          decode: (value) => Effect.promise(() => Promise.resolve(value.toUpperCase())),
+          encode: (value) => Effect.promise(() => Promise.resolve(value.toLowerCase()))
+        })
+      )
+    )
+    const AsyncPerson = Schema.Struct({ name: AsyncName, age: Schema.Number })
+
+    it.effect("supports async transformations on encode and decode", () =>
+      Effect.gen(function*() {
+        const frames = yield* Stream.make(ada, grace).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.encode(AsyncPerson)()),
+          Stream.runCollect
+        )
+        // the async encode transformation ran before the bytes hit the wire
+        assert.deepStrictEqual(
+          [...frames],
+          [concat(encode(Person, { name: "ada", age: 36 }), encode(Person, { name: "grace", age: 45 }))]
+        )
+
+        const values = yield* Stream.fromArray([...frames]).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.decode(AsyncPerson)()),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual([...values], [{ name: "ADA", age: 36 }, { name: "GRACE", age: 45 }])
+      }))
+
+    it.effect("supports async transformations across a duplex channel", () =>
+      Effect.gen(function*() {
+        const echo = Channel.identity<
+          Arr.NonEmptyReadonlyArray<Uint8Array<ArrayBuffer>>,
+          Schema.SchemaError,
+          unknown
+        >()
+
+        const values = yield* Stream.make(ada).pipe(
+          Stream.pipeThroughChannel(
+            SchemaBinary.duplex(echo, { inputSchema: AsyncPerson, outputSchema: AsyncPerson })
+          ),
+          Stream.runCollect
+        )
+
+        assert.deepStrictEqual([...values], [{ name: "ADA", age: 36 }])
+      }))
+
+    it.effect("emits values decoded before an async transformation failure", () =>
+      Effect.gen(function*() {
+        const Wire = Schema.Struct({ name: Schema.String })
+        const Reader = Schema.Struct({
+          name: Schema.String.pipe(
+            Schema.decodeTo(
+              Schema.String,
+              SchemaTransformation.transformOrFail({
+                decode: (value, options) =>
+                  value === "bob"
+                    ? Effect.fail(new SchemaIssue.InvalidValue({ expected: "not bob" }, value, options))
+                    : Effect.promise(() => Promise.resolve(value)),
+                encode: (value) => Effect.succeed(value)
+              })
+            )
+          )
+        })
+        const bytes = concat(encode(Wire, { name: "ada" }), encode(Wire, { name: "bob" })) as Uint8Array<ArrayBuffer>
+        const seen: Array<{ name: string }> = []
+        const error = yield* Stream.make(bytes).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.decode(Reader)()),
+          Stream.tap((value) =>
+            Effect.sync(() => {
+              seen.push(value)
+            })
+          ),
+          Stream.runDrain,
+          Effect.flip
+        )
+
+        assert.deepStrictEqual(seen, [{ name: "ada" }])
+        assert.include(error.message, "not bob")
+      }))
   })
 })
