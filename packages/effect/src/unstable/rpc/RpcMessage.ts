@@ -410,13 +410,8 @@ export interface Pong {
 
 const RequestIdSchema = Schema.Union([Schema.String, Schema.Number])
 
-/**
- * Schema for transport-encoded RPC requests whose payload hole has already
- * been filled by the active serialization.
- *
- * @category schemas
- * @since 4.0.0
- */
+// Schema for transport-encoded RPC requests whose payload hole has already
+// been filled by the active serialization.
 const RequestEncodedSchema = Schema.Struct({
   _tag: Schema.tag("Request"),
   id: RequestIdSchema,

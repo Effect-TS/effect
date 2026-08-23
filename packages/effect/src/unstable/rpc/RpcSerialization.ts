@@ -593,6 +593,8 @@ export const msgPack: RpcSerialization["Service"] = makeMsgPack({ useRecords: tr
 
 const defaultSchemaBinaryMaxFrameSize = 16 * 1024 * 1024
 
+const schemaBinaryTextEncoder = new TextEncoder()
+
 const makeSchemaBinary = (options?: {
   readonly maxFrameSize?: number | undefined
   readonly fingerprintPayloads?: boolean | undefined
@@ -609,9 +611,8 @@ const makeSchemaBinary = (options?: {
     codecFor,
     makeUnsafe: () => {
       const parser = SchemaBinary.parser(RpcMessage.EncodedSchema, { fingerprint: true, maxFrameSize })
-      const encoder = new TextEncoder()
       return {
-        decode: (data) => parser.feedSync(typeof data === "string" ? encoder.encode(data) : data),
+        decode: (data) => parser.feedSync(typeof data === "string" ? schemaBinaryTextEncoder.encode(data) : data),
         encode: (response) => {
           if (!Array.isArray(response)) {
             return encodeEnvelope(response)

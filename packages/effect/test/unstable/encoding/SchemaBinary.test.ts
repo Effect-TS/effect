@@ -89,6 +89,21 @@ const schemaError = (f: () => unknown): Schema.SchemaError => {
 }
 
 describe("SchemaBinary", () => {
+  // Rows whose present optional fields differ, shared by the row-run shape
+  // tests in both wire modes.
+  const Varying = Schema.Struct({
+    id: Schema.String,
+    a: Schema.optionalKey(Schema.String),
+    b: Schema.optionalKey(Schema.Number)
+  })
+  const varying = [
+    { id: "0", a: "x" },
+    { id: "1" },
+    { id: "2", a: "x", b: 1 },
+    { id: "3", a: "x" },
+    { id: "4", b: 2 }
+  ]
+
   describe("wire layout", () => {
     it("packs fixed-size array elements", () => {
       const numbers = [1.5, Number.NaN, -0, Number.POSITIVE_INFINITY]
@@ -741,18 +756,6 @@ describe("SchemaBinary", () => {
     })
 
     it("declares a new shape whenever the present fields change", () => {
-      const Varying = Schema.Struct({
-        id: Schema.String,
-        a: Schema.optionalKey(Schema.String),
-        b: Schema.optionalKey(Schema.Number)
-      })
-      const varying = [
-        { id: "0", a: "x" },
-        { id: "1" },
-        { id: "2", a: "x", b: 1 },
-        { id: "3", a: "x" },
-        { id: "4", b: 2 }
-      ]
       assert.deepStrictEqual(roundtrip(Schema.Array(Varying), varying), varying)
     })
 
@@ -911,18 +914,6 @@ describe("SchemaBinary", () => {
     })
 
     it("declares fingerprint shapes whenever the present fields change", () => {
-      const Varying = Schema.Struct({
-        id: Schema.String,
-        a: Schema.optionalKey(Schema.String),
-        b: Schema.optionalKey(Schema.Number)
-      })
-      const varying = [
-        { id: "0", a: "x" },
-        { id: "1" },
-        { id: "2", a: "x", b: 1 },
-        { id: "3", a: "x" },
-        { id: "4", b: 2 }
-      ]
       assert.deepStrictEqual(roundtripFingerprint(Schema.Array(Varying), varying), varying)
     })
 
@@ -2076,6 +2067,18 @@ describe("SchemaBinary", () => {
   })
 
   describe("layout fingerprint", () => {
+    interface Tree {
+      readonly value: number
+      readonly children: ReadonlyArray<Tree>
+    }
+    const makeTree = (): Schema.Codec<Tree> => {
+      const self: Schema.Codec<Tree> = Schema.Struct({
+        value: Schema.Number,
+        children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => self))
+      })
+      return self
+    }
+
     const base = Schema.Struct({ name: Schema.String, age: Schema.Number })
     const value = { name: "a", age: 1 }
     const baseline = fingerprintOf(base, value)
@@ -2128,17 +2131,6 @@ describe("SchemaBinary", () => {
       )
       assert.strictEqual(shared, repeated)
 
-      interface Tree {
-        readonly value: number
-        readonly children: ReadonlyArray<Tree>
-      }
-      const makeTree = (): Schema.Codec<Tree> => {
-        const self: Schema.Codec<Tree> = Schema.Struct({
-          value: Schema.Number,
-          children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => self))
-        })
-        return self
-      }
       const leaf = { value: 1, children: [] }
       assert.strictEqual(fingerprintOf(makeTree(), leaf), fingerprintOf(makeTree(), leaf))
       // one recursive node reached from two fields, versus two of them. Both
@@ -2153,17 +2145,6 @@ describe("SchemaBinary", () => {
     })
 
     it("hashes the layout graph, so re-factoring a recursive schema moves it", () => {
-      interface Tree {
-        readonly value: number
-        readonly children: ReadonlyArray<Tree>
-      }
-      const makeTree = (): Schema.Codec<Tree> => {
-        const self: Schema.Codec<Tree> = Schema.Struct({
-          value: Schema.Number,
-          children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => self))
-        })
-        return self
-      }
       // Three finite graphs denoting the same infinite wire shape: the cycle
       // itself, the cycle behind one non-recursive alias, and a two-node
       // mutual recursion of the same shape.

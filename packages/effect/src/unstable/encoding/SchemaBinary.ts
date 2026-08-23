@@ -19,9 +19,10 @@ import * as DateTime from "../../DateTime.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
-import { dual } from "../../Function.ts"
+import { dual, memoize } from "../../Function.ts"
 import * as HashMap from "../../HashMap.ts"
 import * as HashSet from "../../HashSet.ts"
+import { assignProperty } from "../../internal/record.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Pull from "../../Pull.ts"
@@ -94,12 +95,12 @@ export function toCodec<S extends Schema.Constraint>(schema: S, options?: Option
   const { exact, layout, target } = compileTarget(schema)
   const mode = compileMode(layout, options?.fingerprint)
   const trusted = exact ? new WeakSet<object>() : undefined
-  return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
-    Schema.decodeTo(
-      trusted === undefined ? target : withTrustedDecode(target, trusted),
-      makeTransformation(layout, mode, trusted)
-    )
-  ) as unknown as toCodec<S>
+  return assembleCodec(
+    trusted === undefined ? target : withTrustedDecode(target, trusted),
+    layout,
+    mode,
+    trusted
+  )
 }
 
 /**
@@ -118,18 +119,26 @@ export function toCodecDirect<S extends Schema.Constraint>(schema: S, options?: 
   if (!exact) {
     if (!exitSuccess) return toCodec(schema, options)
     const trusted = new WeakSet<object>()
-    return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
-      Schema.decodeTo(
-        withExitSuccessDecode(target, trusted),
-        makeTransformation(layout, compileMode(layout, options?.fingerprint), trusted, true)
-      )
-    ) as unknown as toCodec<S>
-  }
-  return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
-    Schema.decodeTo(
-      passThrough(target),
-      makeTransformation(layout, compileMode(layout, options?.fingerprint), undefined)
+    return assembleCodec(
+      withExitSuccessDecode(target, trusted),
+      layout,
+      compileMode(layout, options?.fingerprint),
+      trusted,
+      true
     )
+  }
+  return assembleCodec(passThrough(target), layout, compileMode(layout, options?.fingerprint), undefined)
+}
+
+function assembleCodec<S extends Schema.Constraint>(
+  target: Schema.Constraint,
+  layout: Layout,
+  mode: Mode,
+  trusted: WeakSet<object> | undefined,
+  successOnly = false
+): toCodec<S> {
+  return (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
+    Schema.decodeTo(target, makeTransformation(layout, mode, trusted, successOnly))
   ) as unknown as toCodec<S>
 }
 
@@ -148,7 +157,7 @@ export function encodeUnknownSync<S extends Schema.Constraint>(
 ): (value: unknown) => Uint8Array<ArrayBuffer> {
   const { exact, exitSuccess, layout } = compileTarget(schema)
   const mode = compileMode(layout, options?.fingerprint)
-  const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
+  const parseOptions: SchemaAST.ParseOptions = options ?? SchemaAST.defaultParseOptions
   if (!exact) {
     const fallback = Schema.encodeUnknownSync(
       toCodec(schema, options) as unknown as Schema.ConstraintEncoder<unknown, never>,
@@ -157,7 +166,7 @@ export function encodeUnknownSync<S extends Schema.Constraint>(
     // The binary layer drops excess keys instead of reporting them.
     if (!exitSuccess || parseOptions.onExcessProperty === "error") return fallback
     return (value) => {
-      if (!Exit.isExit(value) || !Exit.isSuccess(value)) return fallback(value)
+      if (!isSuccessExit(value)) return fallback(value)
       try {
         return encodeFrame(layout, value, parseOptions, mode)
       } catch (e) {
@@ -192,7 +201,7 @@ export function encodeManyUnknownSync<S extends Schema.Constraint>(
     return (values) => concatFrames(values.map(encode))
   }
   const mode = compileMode(layout, options?.fingerprint)
-  const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
+  const parseOptions: SchemaAST.ParseOptions = options ?? SchemaAST.defaultParseOptions
   return (values) => {
     try {
       return encodeFrames(layout, values, parseOptions, mode)
@@ -254,12 +263,12 @@ export function parser<S extends Schema.Constraint>(
   options?: SchemaAST.ParseOptions & Options & { readonly maxFrameSize?: number | undefined }
 ): Parser<S["Type"]> {
   const { exact, exitSuccess, layout, target } = compileTarget(schema)
-  const parseOptions: SchemaAST.ParseOptions = options ?? {}
+  const parseOptions: SchemaAST.ParseOptions = options ?? SchemaAST.defaultParseOptions
   const decodeTarget = exact
     ? undefined
     : Schema.decodeUnknownSync(target as Schema.ConstraintDecoder<unknown>, parseOptions)
   const decodeEncoded = decodeTarget !== undefined && exitSuccess
-    ? (value: unknown) => Exit.isExit(value) && Exit.isSuccess(value) ? value : decodeTarget(value)
+    ? (value: unknown) => isSuccessExit(value) ? value : decodeTarget(value)
     : decodeTarget
   return makeParser(
     layout,
@@ -492,13 +501,15 @@ export const encode = <S extends Schema.Constraint>(
   IE,
   Done,
   S["EncodingServices"]
-> =>
-  Channel.fromTransform((upstream, _scope) =>
-    Effect.sync(() => {
-      const { exact, exitSuccess, layout } = compileTarget(schema)
-      if (exact) {
-        const encodeMany = encodeManyUnknownSync(schema, options)
-        return Effect.flatMap(upstream, (chunk) => {
+> => {
+  // Everything here depends only on schema and options, so it is derived once
+  // per channel rather than once per run.
+  const { exact, exitSuccess, layout } = compileTarget(schema)
+  if (exact) {
+    const encodeMany = encodeManyUnknownSync(schema, options)
+    return Channel.fromTransform((upstream, _scope) =>
+      Effect.sync(() =>
+        Effect.flatMap(upstream, (chunk) => {
           try {
             return Effect.succeed(Arr.of(encodeMany(chunk)))
           } catch (e) {
@@ -506,33 +517,38 @@ export const encode = <S extends Schema.Constraint>(
             throw e
           }
         })
-      }
-      const parseOptions: SchemaAST.ParseOptions = options ?? EMPTY_PARSE_OPTIONS
-      const mode = compileMode(layout, options?.fingerprint)
-      const fallback = Schema.encodeUnknownEffect(
-        toCodec(schema, options) as unknown as Schema.ConstraintEncoder<unknown, never>,
-        options
-      ) as (value: unknown) => Effect.Effect<Uint8Array<ArrayBuffer>, Schema.SchemaError>
-      // The binary layer drops excess keys instead of reporting them.
-      const direct = exitSuccess && parseOptions.onExcessProperty !== "error"
-      const encodeValue = (value: unknown): Effect.Effect<Uint8Array<ArrayBuffer>, Schema.SchemaError> =>
-        direct && Exit.isExit(value) && Exit.isSuccess(value)
-          ? Effect.suspend(() => {
-            try {
-              return Effect.succeed(encodeFrame(layout, value, parseOptions, mode))
-            } catch (e) {
-              if (e instanceof IssueError) return Effect.fail(new Schema.SchemaError(e.issue))
-              throw e
-            }
-          })
-          : fallback(value)
-      return Effect.flatMap(upstream, (chunk) =>
+      )
+    )
+  }
+  const parseOptions: SchemaAST.ParseOptions = options ?? SchemaAST.defaultParseOptions
+  const mode = compileMode(layout, options?.fingerprint)
+  const fallback = Schema.encodeUnknownEffect(
+    toCodec(schema, options) as unknown as Schema.ConstraintEncoder<unknown, never>,
+    options
+  ) as (value: unknown) => Effect.Effect<Uint8Array<ArrayBuffer>, Schema.SchemaError>
+  // The binary layer drops excess keys instead of reporting them.
+  const direct = exitSuccess && parseOptions.onExcessProperty !== "error"
+  const encodeValue = (value: unknown): Effect.Effect<Uint8Array<ArrayBuffer>, Schema.SchemaError> =>
+    direct && isSuccessExit(value)
+      ? Effect.suspend(() => {
+        try {
+          return Effect.succeed(encodeFrame(layout, value, parseOptions, mode))
+        } catch (e) {
+          if (e instanceof IssueError) return Effect.fail(new Schema.SchemaError(e.issue))
+          throw e
+        }
+      })
+      : fallback(value)
+  return Channel.fromTransform((upstream, _scope) =>
+    Effect.sync(() =>
+      Effect.flatMap(upstream, (chunk) =>
         Effect.map(
           Effect.forEach(chunk, encodeValue),
           (frames) => Arr.of(concatFrames(frames))
         ))
-    })
+    )
   )
+}
 
 /**
  * Creates a channel that decodes chunks of binary frames into schema values.
@@ -561,24 +577,21 @@ export const decode = <S extends Schema.Constraint>(
   IE,
   Done,
   S["DecodingServices"]
-> =>
-  Channel.fromTransform((upstream, _scope) =>
+> => {
+  // Everything here depends only on schema and options, so it is derived once
+  // per channel; the frame parser and failure stash below stay per run.
+  const { exact, exitSuccess, layout, target } = compileTarget(schema)
+  const parseOptions: SchemaAST.ParseOptions = options ?? SchemaAST.defaultParseOptions
+  const mode = compileMode(layout, options?.fingerprint)
+  const decodeTarget = exact
+    ? undefined
+    : Schema.decodeUnknownEffect(target as Schema.ConstraintDecoder<unknown>, parseOptions)
+  const decodeEncoded = decodeTarget !== undefined && exitSuccess
+    ? (value: unknown) => isSuccessExit(value) ? Effect.succeed(value) : decodeTarget(value)
+    : decodeTarget
+  return Channel.fromTransform((upstream, _scope) =>
     Effect.sync(() => {
-      const { exact, exitSuccess, layout, target } = compileTarget(schema)
-      const parseOptions: SchemaAST.ParseOptions = options ?? {}
-      const frames = makeParser<unknown>(
-        layout,
-        compileMode(layout, options?.fingerprint),
-        parseOptions,
-        options?.maxFrameSize,
-        undefined
-      )
-      const decodeTarget = exact
-        ? undefined
-        : Schema.decodeUnknownEffect(target as Schema.ConstraintDecoder<unknown>, parseOptions)
-      const decodeEncoded = decodeTarget !== undefined && exitSuccess
-        ? (value: unknown) => Exit.isExit(value) && Exit.isSuccess(value) ? Effect.succeed(value) : decodeTarget(value)
-        : decodeTarget
+      const frames = makeParser<unknown>(layout, mode, parseOptions, options?.maxFrameSize, undefined)
       let stashed: Schema.SchemaError | undefined
 
       // Decodes framed values in order. On a failure, values decoded before it
@@ -646,6 +659,7 @@ export const decode = <S extends Schema.Constraint>(
       return pull
     })
   )
+}
 
 /**
  * Wraps a bidirectional byte channel with schema-driven binary encoding and
@@ -831,12 +845,11 @@ const POW10 = [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000]
 function decimalScale(value: number): number {
   for (let scale = 1; scale <= DECIMAL_SCALE_MAX; scale++) {
     const mantissa = Math.round(value * POW10[scale])
-    if (
-      mantissa >= -DECIMAL_MANTISSA_MAX && mantissa <= DECIMAL_MANTISSA_MAX &&
-      mantissa / POW10[scale] === value
-    ) {
-      return scale
-    }
+    // The mantissa only grows with the scale, so once it leaves the range no
+    // later scale can fit; this also rejects NaN and the infinities in one
+    // comparison.
+    if (!(mantissa >= -DECIMAL_MANTISSA_MAX && mantissa <= DECIMAL_MANTISSA_MAX)) return 0
+    if (mantissa / POW10[scale] === value) return scale
   }
   return 0
 }
@@ -1312,7 +1325,6 @@ class IndexSignatureCache {
 const EMPTY_READER_ARRAY_BUFFER = new ArrayBuffer(0)
 const EMPTY_READER_BUFFER = new Uint8Array(EMPTY_READER_ARRAY_BUFFER)
 const EMPTY_READER_VIEW = new DataView(EMPTY_READER_ARRAY_BUFFER)
-const EMPTY_PARSE_OPTIONS: SchemaAST.ParseOptions = {}
 
 class Reader {
   pos = 0
@@ -1325,7 +1337,7 @@ class Reader {
   viewOffset = 0
   viewLength = 0
   end = 0
-  options: SchemaAST.ParseOptions = EMPTY_PARSE_OPTIONS
+  options: SchemaAST.ParseOptions = SchemaAST.defaultParseOptions
   indexSignatures: IndexSignatureCache | undefined
   positional = false
   // Handed to the row-run field's immediate consumer, then cleared.
@@ -1354,7 +1366,7 @@ class Reader {
     this.viewCache = EMPTY_READER_VIEW
     this.viewBuffer = EMPTY_READER_ARRAY_BUFFER
     this.viewOffset = this.viewLength = 0
-    this.options = EMPTY_PARSE_OPTIONS
+    this.options = SchemaAST.defaultParseOptions
     this.indexSignatures = undefined
     this.positional = false
     this.intern = undefined
@@ -1603,11 +1615,21 @@ interface LiteralLayout {
   readonly _: "literal"
   readonly leaf: Layout
   readonly values: ReadonlyArray<SchemaAST.LiteralValue>
+  // Larger literal sets (enums) check membership in a set instead of a scan.
+  readonly valueSet: ReadonlySet<SchemaAST.LiteralValue> | undefined
+}
+
+function literalLayout(leaf: Layout, values: ReadonlyArray<SchemaAST.LiteralValue>): LiteralLayout {
+  return { _: "literal", leaf, values, valueSet: values.length > 4 ? new Set(values) : undefined }
 }
 
 function hasLiteral(layout: LiteralLayout, value: unknown): boolean {
   const values = layout.values
-  return values.length === 1 ? value === values[0] : values.includes(value as SchemaAST.LiteralValue)
+  return layout.valueSet !== undefined
+    ? layout.valueSet.has(value as SchemaAST.LiteralValue)
+    : values.length === 1
+    ? value === values[0]
+    : values.includes(value as SchemaAST.LiteralValue)
 }
 
 function literalExpected(layout: LiteralLayout): string {
@@ -1752,18 +1774,22 @@ function isInlineSlot(layout: Layout): boolean {
     layout._ === "null" || layout._ === "undefined"
 }
 
-const nativeKinds: Record<string, number> = {
-  "effect/schema/Date": K.int64,
-  "effect/schema/DateTimeUtc": K.int64,
-  "effect/schema/DateTimeZoned": K.dateTimeZoned,
-  "effect/schema/Duration": K.duration,
-  "effect/schema/BigDecimal": K.bigDecimal,
-  "effect/schema/Uint8Array": K.bytes,
-  "effect/schema/Option": K.option,
-  "effect/schema/Result": K.result,
-  "effect/schema/Exit": K.exit,
-  "effect/schema/Cause": K.cause,
-  "effect/schema/CauseReason": K.causeReason
+// One registry row per natively supported declaration: its wire kind and
+// whether the binary layer validates it exactly on its own (`true`) or exactly
+// when its type parameters are ("parameters"). `compileDeclaration` holds the
+// matching layout constructors; its fallback asserts the two stay in sync.
+const natives: Record<string, { readonly kind: number; readonly exact: true | "parameters" }> = {
+  "effect/schema/Date": { kind: K.int64, exact: true },
+  "effect/schema/DateTimeUtc": { kind: K.int64, exact: true },
+  "effect/schema/DateTimeZoned": { kind: K.dateTimeZoned, exact: true },
+  "effect/schema/Duration": { kind: K.duration, exact: true },
+  "effect/schema/BigDecimal": { kind: K.bigDecimal, exact: true },
+  "effect/schema/Uint8Array": { kind: K.bytes, exact: true },
+  "effect/schema/Option": { kind: K.option, exact: "parameters" },
+  "effect/schema/Result": { kind: K.result, exact: "parameters" },
+  "effect/schema/Exit": { kind: K.exit, exact: "parameters" },
+  "effect/schema/Cause": { kind: K.cause, exact: "parameters" },
+  "effect/schema/CauseReason": { kind: K.causeReason, exact: "parameters" }
 }
 
 function representationId(ast: SchemaAST.AST): string | undefined {
@@ -1788,7 +1814,7 @@ function toBinaryASTStep(ast: SchemaAST.AST): SchemaAST.AST {
     case "Declaration": {
       const id = representationId(ast)
       if (
-        id !== undefined && (id in nativeKinds || id === "effect/schema/Json" || id === "effect/schema/MutableJson")
+        id !== undefined && (id in natives || id === "effect/schema/Json" || id === "effect/schema/MutableJson")
       ) {
         return ast.recur(toBinaryAST)
       }
@@ -1978,7 +2004,7 @@ function astKind(ast: SchemaAST.AST): number {
       return K.array
     case "Declaration": {
       const id = representationId(ast)
-      if (id !== undefined && id in nativeKinds) return nativeKinds[id]
+      if (id !== undefined && id in natives) return natives[id].kind
       if (isJsonDeclaration(ast)) return K.json
       throw new Error(`Binary layout: declaration ${id ?? "<anonymous>"} has no toCodecJson or toCodec`)
     }
@@ -2039,7 +2065,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       case "BigInt":
         return { _: "bigint" }
       case "Literal":
-        return { _: "literal", leaf: { _: literalKind(ast.literal) }, values: [ast.literal] }
+        return literalLayout({ _: literalKind(ast.literal) }, [ast.literal])
       case "Unknown":
       case "Any":
       case "ObjectKeyword":
@@ -2238,6 +2264,9 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
         return layout
       }
     }
+    if (id !== undefined && id in natives) {
+      throw new Error(`Binary layout: native declaration ${id} has no layout constructor`)
+    }
     if (isJsonDeclaration(ast)) return { _: "json" }
     throw new Error(`Binary layout: declaration ${id ?? "<anonymous>"} has no toCodecJson or toCodec`)
   }
@@ -2286,7 +2315,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       rowMembers.push({ member, kind: astKind(member) })
     }
     for (const [kind, values] of literalValues) {
-      addLiteralRow(kind, { _: "literal", leaf: { _: literalKind(values[0]) }, values })
+      addLiteralRow(kind, literalLayout({ _: literalKind(values[0]) }, values))
     }
     if (variantMembers.length === 0 && rowMembers.length === 0 && literalRows.size === 1) {
       return literalRows.values().next().value!
@@ -2304,12 +2333,14 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       return layout
     }
     const tags = new Map<number, ReadonlyArray<SchemaAST.Sentinel>>()
+    const variantTags: Array<number> = []
     for (const { sentinels } of variantMembers) {
       const tag = sentinelSetHash(sentinels)
       if (tags.has(tag)) {
         throw new Error(`Binary layout sentinel collision: ${tag}`)
       }
       tags.set(tag, sentinels)
+      variantTags.push(tag)
     }
     const layout: UnionLayout = {
       _: "union",
@@ -2322,8 +2353,9 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       byPos: []
     }
     memo.set(ast, layout)
-    for (const { member, sentinels } of variantMembers) {
-      const tag = sentinelSetHash(sentinels)
+    for (let v = 0; v < variantMembers.length; v++) {
+      const { member, sentinels } = variantMembers[v]
+      const tag = variantTags[v]
       const full = compile(member)
       let payload: Layout
       let tuple: boolean
@@ -2417,23 +2449,10 @@ function isExact(root: SchemaAST.AST): boolean {
       case "Union":
         return ast.mode === "anyOf" && ast.types.every(exact)
       case "Declaration": {
-        switch (representationId(ast)) {
-          case "effect/schema/Uint8Array":
-          case "effect/schema/Date":
-          case "effect/schema/DateTimeUtc":
-          case "effect/schema/DateTimeZoned":
-          case "effect/schema/Duration":
-          case "effect/schema/BigDecimal":
-            return true
-          case "effect/schema/Option":
-          case "effect/schema/Result":
-          case "effect/schema/Exit":
-          case "effect/schema/Cause":
-          case "effect/schema/CauseReason":
-            return ast.typeParameters.every(exact)
-          default:
-            return false
-        }
+        const id = representationId(ast)
+        const native = id !== undefined ? natives[id] : undefined
+        if (native === undefined) return false
+        return native.exact === true || ast.typeParameters.every(exact)
       }
       default:
         return false
@@ -2632,8 +2651,6 @@ interface Mode {
   readonly positional: boolean
   readonly envelope: number
   readonly expectedEnvelope: string
-  readonly fingerprintLo: number
-  readonly fingerprintHi: number
   readonly fingerprint: Uint8Array
 }
 
@@ -2641,22 +2658,19 @@ const defaultMode: Mode = {
   positional: false,
   envelope: ENVELOPE,
   expectedEnvelope: "version 2 envelope, flags 0",
-  fingerprintLo: 0,
-  fingerprintHi: 0,
   fingerprint: new Uint8Array(8)
 }
 
 function fingerprintMode(layout: Layout): Mode {
   const fingerprint = layoutFingerprint(layout)
-  const lo = Number(fingerprint & BIGINT_U32_MASK)
-  const hi = Number((fingerprint >> BIGINT_THIRTY_TWO) & BIGINT_U32_MASK)
   return {
     positional: true,
     envelope: ENVELOPE_FINGERPRINT,
     expectedEnvelope: "version 2 envelope, flags 1",
-    fingerprintLo: lo,
-    fingerprintHi: hi,
-    fingerprint: fingerprintBytes(lo, hi)
+    fingerprint: fingerprintBytes(
+      Number(fingerprint & BIGINT_U32_MASK),
+      Number((fingerprint >> BIGINT_THIRTY_TWO) & BIGINT_U32_MASK)
+    )
   }
 }
 
@@ -2971,9 +2985,10 @@ function valueWireCode(layout: Layout, value: unknown, options: SchemaAST.ParseO
 function encodeWirePayload(ctx: EncodeContext, layout: Layout, value: unknown, wire: number, w: Writer) {
   const kind = wire % FIELD_WIRE_FACTOR
   switch (kind) {
+    // EMPTY and FIXED32 are decoder-side skip support only; `valueWireCode`
+    // never produces them.
     case FIELD_WIRE_FALSE:
     case FIELD_WIRE_TRUE:
-    case FIELD_WIRE_EMPTY:
       return
     case FIELD_WIRE_VARINT:
       w.numberVarint(value as number)
@@ -3332,6 +3347,11 @@ function encodeArray(ctx: EncodeContext, layout: ArrayLayout, arr: ReadonlyArray
 }
 
 // Uniform number arrays share one mode byte: varint, packed decimal, or f64.
+// Scales found by the classification pass, reused by the decimal write pass so
+// each non-integer scans `decimalScale` once. Only written and read within one
+// synchronous `encodeNumberRun` call.
+const numberRunScales: Array<number> = []
+
 function encodeNumberRun(arr: ReadonlyArray<unknown>, count: number, w: Writer) {
   let varint = true
   let decimal = true
@@ -3342,7 +3362,12 @@ function encodeNumberRun(arr: ReadonlyArray<unknown>, count: number, w: Writer) 
       if (magnitude > DECIMAL_MANTISSA_MAX) decimal = false
     } else {
       varint = false
-      if (typeof value !== "number" || decimalScale(value) === 0) decimal = false
+      if (typeof value !== "number") decimal = false
+      else {
+        const scale = decimalScale(value)
+        if (scale === 0) decimal = false
+        else numberRunScales[i] = scale
+      }
     }
     if (!varint && !decimal) break
   }
@@ -3353,7 +3378,9 @@ function encodeNumberRun(arr: ReadonlyArray<unknown>, count: number, w: Writer) 
     w.byte(NUMBER_RUN_DECIMAL)
     for (let i = 0; i < count; i++) {
       const value = arr[i] as number
-      const scale = Number.isInteger(value) ? 0 : decimalScale(value)
+      // Integers take scale 0 even when a scale would fit, matching the
+      // classification pass writing scales only for non-integers.
+      const scale = Number.isInteger(value) ? 0 : numberRunScales[i]
       const mantissa = scale === 0 ? value : Math.round(value * POW10[scale])
       const negative = mantissa < 0 || (mantissa === 0 && 1 / mantissa < 0)
       const magnitude = negative ? -mantissa : mantissa
@@ -3631,22 +3658,22 @@ let pooledWriter: Writer | undefined = new Writer()
 function writeFrame(ctx: EncodeContext, layout: Layout, value: unknown, mode: Mode, w: Writer) {
   const mark = w.beginSized()
   w.byte(mode.envelope)
-  if (mode.positional) {
-    w.u32le(mode.fingerprintLo)
-    w.u32le(mode.fingerprintHi)
-  }
+  if (mode.positional) w.bytes(mode.fingerprint)
   encodeValue(ctx, layout, value, w)
   w.endSized(mark)
 }
 
-function encodeFrames(
+// One context and one writer across a batch, so the caches built for the
+// first frame serve the rest and the frames need no second pass to join. The
+// single-value and batch entry points share this wrapper: the pooled-writer
+// protocol (checkout, reset, abort, restore) must not drift between them.
+function runFrames(
   layout: Layout,
-  values: ReadonlyArray<unknown>,
+  value: unknown,
+  values: ReadonlyArray<unknown> | undefined,
   options: SchemaAST.ParseOptions,
   mode: Mode
 ): Uint8Array<ArrayBuffer> {
-  // One context and one writer across the batch, so the caches built for the
-  // first frame serve the rest and the frames need no second pass to join.
   const ctx: EncodeContext = {
     options,
     positional: mode.positional,
@@ -3660,9 +3687,14 @@ function encodeFrames(
   w.reset()
   const savedPathLen = issuePathLen
   try {
-    for (let i = 0; i < values.length; i++) {
+    if (values === undefined) {
       issuePathLen = 0
-      writeFrame(ctx, layout, values[i], mode, w)
+      writeFrame(ctx, layout, value, mode, w)
+    } else {
+      for (let i = 0; i < values.length; i++) {
+        issuePathLen = 0
+        writeFrame(ctx, layout, values[i], mode, w)
+      }
     }
     return w.out()
   } finally {
@@ -3672,47 +3704,28 @@ function encodeFrames(
   }
 }
 
+function encodeFrames(
+  layout: Layout,
+  values: ReadonlyArray<unknown>,
+  options: SchemaAST.ParseOptions,
+  mode: Mode
+): Uint8Array<ArrayBuffer> {
+  return runFrames(layout, undefined, values, options, mode)
+}
+
 function encodeFrame(
   layout: Layout,
   value: unknown,
   options: SchemaAST.ParseOptions,
   mode: Mode
 ): Uint8Array<ArrayBuffer> {
-  const ctx: EncodeContext = {
-    options,
-    positional: mode.positional,
-    indexSignatures: undefined,
-    extraShape: undefined,
-    intern: undefined
-  }
-  const w = pooledWriter ?? new Writer()
-  const pooled = w === pooledWriter
-  if (pooled) pooledWriter = undefined
-  w.reset()
-  const savedPathLen = issuePathLen
-  issuePathLen = 0
-  try {
-    writeFrame(ctx, layout, value, mode, w)
-    return w.out()
-  } finally {
-    w.abort()
-    issuePathLen = savedPathLen
-    if (pooled) pooledWriter = w
-  }
+  return runFrames(layout, value, undefined, options, mode)
 }
 
-// A local copy of the record helper keeps this hot store inlineable.
-function assignProperty(out: object, key: PropertyKey, value: unknown): void {
-  if (key === "__proto__") {
-    Object.defineProperty(out, key, {
-      value,
-      writable: true,
-      enumerable: true,
-      configurable: true
-    })
-  } else {
-    ;(out as Record<PropertyKey, unknown>)[key] = value
-  }
+// The direct paths bypass the schema pass for values the binary layer fully
+// validates on its own; success exits are that case for `exitSuccess` targets.
+function isSuccessExit(value: unknown): boolean {
+  return Exit.isExit(value) && Exit.isSuccess(value)
 }
 
 // Unknown union members resolve to this sentinel.
@@ -3726,14 +3739,6 @@ function decodeChecked(layout: Layout, r: Reader): unknown {
 
 function decodeSized(layout: Layout, r: Reader): unknown {
   const saved = r.enter(r.uvarint())
-  const value = decodeChecked(layout, r)
-  r.exit(saved)
-  return value
-}
-
-function decodeInline(layout: Layout, r: Reader): unknown {
-  if (isSelfDelimiting(layout)) return decodeValue(layout, r)
-  const saved = r.enter(packedSize(layout) ?? 0)
   const value = decodeChecked(layout, r)
   r.exit(saved)
   return value
@@ -3973,20 +3978,30 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
       else (presentWide ??= new Set()).add(index)
     }
   }
-  if ((presentMask & layout.requiredMask) !== layout.requiredMask || layout.requiredWide) {
-    let issues: Array<SchemaIssue.Issue> | undefined
-    for (let i = 0; i < fields.length; i++) {
-      const field = fields[i]
-      const index = field.index
-      const present = index < 32 ? (presentMask & (1 << index)) !== 0 : presentWide?.has(index) === true
-      if (!field.optional && !present) {
-        ;(issues ??= []).push(missingKeyIssue(field))
-        if (r.options.errors !== "all") break
-      }
-    }
-    if (issues !== undefined) throwMissingKeys(layout, issues)
-  }
+  checkRequiredFields(layout, presentMask, presentWide, r)
   return out
+}
+
+// Fails when a required field is absent, honoring `errors: "all"`.
+function checkRequiredFields(
+  struct: StructLayout,
+  presentMask: number,
+  presentWide: Set<number> | undefined,
+  r: Reader
+): void {
+  if ((presentMask & struct.requiredMask) === struct.requiredMask && !struct.requiredWide) return
+  const fields = struct.fields
+  let issues: Array<SchemaIssue.Issue> | undefined
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i]
+    const index = field.index
+    const present = index < 32 ? (presentMask & (1 << index)) !== 0 : presentWide?.has(index) === true
+    if (!field.optional && !present) {
+      ;(issues ??= []).push(missingKeyIssue(field))
+      if (r.options.errors !== "all") break
+    }
+  }
+  if (issues !== undefined) throwMissingKeys(struct, issues)
 }
 
 function decodeStructPositional(layout: StructLayout, r: Reader): unknown {
@@ -4017,7 +4032,7 @@ function decodeStructPositional(layout: StructLayout, r: Reader): unknown {
       if (!present) continue
     }
     issuePath[issuePathLen++] = field.name
-    const value = field.inline ? decodeInline(field.layout, r) : decodeSized(field.layout, r)
+    const value = field.inline ? decodeSlot(field.layout, r) : decodeSized(field.layout, r)
     issuePathLen--
     if (value !== ABSENT) assignProperty(out, field.name, value)
     else if (!field.optional) {
@@ -4134,7 +4149,7 @@ function decodeRunRow(
     }
     if (r.pos !== r.end) invalid("no leftover bytes", undefined, r.options)
   } else {
-    const declared: Array<RunSlot> = []
+    const declared: Array<RunSlot> | undefined = plan.shapes ? [] : undefined
     let seenMask = 0
     let seenWide: Set<number> | undefined
     let seenIds: Set<number> | undefined
@@ -4162,29 +4177,16 @@ function decodeRunRow(
           seenWide.add(slot.index)
         }
       }
-      declared.push(slot)
+      declared?.push(slot)
       const filled = decodeRunSlot(plan, tables, slot, out, r)
       if (filled >= 0) {
         if (filled < 32) presentMask |= 1 << filled
         else (presentWide ??= new Set()).add(filled)
       }
     }
-    if (plan.shapes) shapes.push(declared)
+    if (declared !== undefined) shapes.push(declared)
   }
-  if ((presentMask & struct.requiredMask) !== struct.requiredMask || struct.requiredWide) {
-    let issues: Array<SchemaIssue.Issue> | undefined
-    const fields = struct.fields
-    for (let i = 0; i < fields.length; i++) {
-      const field = fields[i]
-      const index = field.index
-      const has = index < 32 ? (presentMask & (1 << index)) !== 0 : presentWide?.has(index) === true
-      if (!field.optional && !has) {
-        ;(issues ??= []).push(missingKeyIssue(field))
-        if (r.options.errors !== "all") break
-      }
-    }
-    if (issues !== undefined) throwMissingKeys(struct, issues)
-  }
+  checkRequiredFields(struct, presentMask, presentWide, r)
   return out
 }
 
@@ -4619,7 +4621,7 @@ function makeTransformation(
         const value = decodeOneShot(layout, bytes, options, mode)
         if (
           trusted !== undefined && Predicate.isObjectOrArray(value) &&
-          (!successOnly || (Exit.isExit(value) && Exit.isSuccess(value)))
+          (!successOnly || isSuccessExit(value))
         ) trusted.add(value)
         return Effect.succeed(value)
       } catch (e) {
@@ -4636,16 +4638,10 @@ function makeTransformation(
   })
 }
 
-const fingerprintModeCache = new WeakMap<Layout, Mode>()
+const fingerprintModeMemo = memoize(fingerprintMode)
 
 function compileMode(layout: Layout, fingerprint: boolean | undefined): Mode {
-  if (fingerprint !== true) return defaultMode
-  let mode = fingerprintModeCache.get(layout)
-  if (mode === undefined) {
-    mode = fingerprintMode(layout)
-    fingerprintModeCache.set(layout, mode)
-  }
-  return mode
+  return fingerprint === true ? fingerprintModeMemo(layout) : defaultMode
 }
 
 interface CompiledTarget {
@@ -4655,35 +4651,37 @@ interface CompiledTarget {
   readonly exitSuccess: boolean
 }
 
-const compileTargetCache = new WeakMap<SchemaAST.AST, CompiledTarget>()
-
-function compileTarget(
-  schema: Schema.Constraint
-): CompiledTarget {
-  const cached = compileTargetCache.get(schema.ast)
-  if (cached !== undefined) return cached
-  const raw = Schema.make<Schema.Constraint>(toBinaryAST(schema.ast))
+const compileTargetFromAst = memoize((ast: SchemaAST.AST): CompiledTarget => {
+  const raw = Schema.make<Schema.Constraint>(toBinaryAST(ast))
   const { exact, exitSuccess, layout, recursive } = compileLayout(raw.ast)
   // Only recursive schemas need the cycle walk.
-  const compiled = { target: recursive ? withCycleGuard(raw) : raw, layout, exact, exitSuccess }
-  compileTargetCache.set(schema.ast, compiled)
-  return compiled
+  return { target: recursive ? withCycleGuard(raw) : raw, layout, exact, exitSuccess }
+})
+
+function compileTarget(schema: Schema.Constraint): CompiledTarget {
+  return compileTargetFromAst(schema.ast)
+}
+
+// A decode target that bypasses the schema pass when `bypass` accepts the
+// input, and otherwise runs the target's type schema.
+function bypassDecode(
+  target: Schema.Constraint,
+  bypass: (input: unknown, options: SchemaAST.ParseOptions) => boolean
+): Schema.Constraint {
+  const type = Schema.make(SchemaAST.toType(target.ast))
+  const decodeType = SchemaParser.decodeUnknownEffect(type as Schema.ConstraintDecoder<unknown>)
+  return Schema.declareConstructor<unknown>()(
+    [type],
+    () => (input, _ast, options) => bypass(input, options) ? Effect.succeed(input) : decodeType(input, options),
+    { identifier: "binary value" }
+  )
 }
 
 // The binary layer already validates an exact schema, so the schema pass around
 // it repeats that work. Values it just decoded pass straight through, while
 // every other input, `Schema.is` included, still runs the real check.
 function withTrustedDecode(target: Schema.Constraint, trusted: WeakSet<object>): Schema.Constraint {
-  const type = Schema.make(SchemaAST.toType(target.ast))
-  const decodeType = SchemaParser.decodeUnknownEffect(type as Schema.ConstraintDecoder<unknown>)
-  return Schema.declareConstructor<unknown>()(
-    [type],
-    () => (input, _ast, options) =>
-      Predicate.isObjectOrArray(input) && trusted.delete(input)
-        ? Effect.succeed(input)
-        : decodeType(input, options),
-    { identifier: "binary value" }
-  )
+  return bypassDecode(target, (input) => Predicate.isObjectOrArray(input) && trusted.delete(input))
 }
 
 // Success exits with an exact success schema are fully validated by the binary
@@ -4701,7 +4699,7 @@ function withExitSuccessDecode(target: Schema.Constraint, trusted: WeakSet<objec
       const parse = SchemaParser.decodeUnknownEffect(codec as Schema.ConstraintDecoder<unknown>)
       return (input, _ast, options) =>
         (Predicate.isObjectOrArray(input) && trusted.delete(input)) ||
-          (Exit.isExit(input) && Exit.isSuccess(input) && options.onExcessProperty !== "error")
+          (isSuccessExit(input) && options.onExcessProperty !== "error")
           ? Effect.succeed(input)
           : parse(input, options)
     },
@@ -4714,14 +4712,7 @@ function withExitSuccessDecode(target: Schema.Constraint, trusted: WeakSet<objec
 // layer drops unknown keys instead of reporting them. It is not a sound
 // `Schema.is` guard, which is why only {@link toCodecDirect} uses it.
 function passThrough(target: Schema.Constraint): Schema.Constraint {
-  const type = Schema.make(SchemaAST.toType(target.ast))
-  const decodeType = SchemaParser.decodeUnknownEffect(type as Schema.ConstraintDecoder<unknown>)
-  return Schema.declareConstructor<unknown>()(
-    [type],
-    () => (input, _ast, options) =>
-      options.onExcessProperty === "error" ? decodeType(input, options) : Effect.succeed(input),
-    { identifier: "binary value" }
-  )
+  return bypassDecode(target, (_input, options) => options.onExcessProperty !== "error")
 }
 
 // Skip the cycle walk once for structurally decoded values.
