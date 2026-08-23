@@ -3,8 +3,10 @@
 /** @effect-diagnostics preferTypedSchemaDecoder:off */
 import { assert, describe, it } from "@effect/vitest"
 import {
+  Array as Arr,
   BigDecimal,
   Cause,
+  Channel,
   Chunk,
   DateTime,
   Duration,
@@ -18,7 +20,8 @@ import {
   Schema,
   SchemaIssue,
   SchemaParser,
-  SchemaTransformation
+  SchemaTransformation,
+  Stream
 } from "effect"
 import * as SchemaBinary from "effect/unstable/encoding/SchemaBinary"
 
@@ -2544,5 +2547,163 @@ describe("SchemaBinary", () => {
       assert.deepStrictEqual(truncated.feedSync(frame.subarray(0, frame.length - 2)), [])
       assert.include(schemaError(() => truncated.endSync()).message, "Expected complete value")
     })
+  })
+
+  describe("channels", () => {
+    const Person = Schema.Struct({ name: Schema.String, age: Schema.Number })
+    const ada = { name: "Ada", age: 36 }
+    const grace = { name: "Grace", age: 45 }
+
+    it.effect("encode then decode round-trips a stream", () =>
+      Effect.gen(function*() {
+        const values = yield* Stream.make(ada, grace).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.encode(Person)()),
+          Stream.pipeThroughChannel(SchemaBinary.decode(Person)()),
+          Stream.runCollect
+        )
+
+        assert.deepStrictEqual([...values], [ada, grace])
+      }))
+
+    it.effect("encode batches a chunk into one concatenated byte element", () =>
+      Effect.gen(function*() {
+        const frames = yield* Stream.make(ada, grace).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.encode(Person)()),
+          Stream.runCollect
+        )
+
+        assert.deepStrictEqual([...frames], [concat(encode(Person, ada), encode(Person, grace))])
+      }))
+
+    it.effect("decodes a value split across byte chunks", () =>
+      Effect.gen(function*() {
+        const frame = encode(Person, ada)
+        const values = yield* Stream.make(frame.subarray(0, 3), frame.subarray(3)).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.decode(Person)()),
+          Stream.runCollect
+        )
+
+        assert.deepStrictEqual([...values], [ada])
+      }))
+
+    it.effect("decodes concatenated frames in one chunk", () =>
+      Effect.gen(function*() {
+        const bytes = concat(encode(Person, ada), encode(Person, grace)) as Uint8Array<ArrayBuffer>
+        const values = yield* Stream.make(bytes).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.decode(Person)()),
+          Stream.runCollect
+        )
+
+        assert.deepStrictEqual([...values], [ada, grace])
+      }))
+
+    it.effect("fails when the stream ends with an incomplete frame", () =>
+      Effect.gen(function*() {
+        const frame = encode(Person, ada)
+        const error = yield* Stream.make(frame.subarray(0, frame.length - 1)).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.decode(Person)()),
+          Stream.runCollect,
+          Effect.flip
+        )
+
+        assert.instanceOf(error, Schema.SchemaError)
+        assert.include(error.message, "Expected complete value")
+      }))
+
+    it.effect("emits completed values before reporting a later failure", () =>
+      Effect.gen(function*() {
+        const bad = encode(Person, grace).slice()
+        bad[1] = 0x10
+        const seen: Array<typeof ada> = []
+        const error = yield* Stream.make(
+          concat(encode(Person, ada), bad) as Uint8Array<ArrayBuffer>,
+          encode(Person, grace)
+        ).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.decode(Person)()),
+          Stream.tap((value) =>
+            Effect.sync(() => {
+              seen.push(value)
+            })
+          ),
+          Stream.runDrain,
+          Effect.flip
+        )
+
+        assert.deepStrictEqual(seen, [ada])
+        assert.include(error.message, "version 2 envelope, flags 0")
+      }))
+
+    it.effect("enforces maxFrameSize on decode and ignores it on encode", () =>
+      Effect.gen(function*() {
+        const values = yield* Stream.make(ada).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.encode(Person, { maxFrameSize: 1 })()),
+          Stream.pipeThroughChannel(SchemaBinary.decode(Person)()),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual([...values], [ada])
+
+        const error = yield* Stream.make(encode(Person, ada)).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.decode(Person, { maxFrameSize: 2 })()),
+          Stream.runCollect,
+          Effect.flip
+        )
+        assert.include(error.message, "Expected frame within maxFrameSize")
+      }))
+
+    it.effect("duplex encodes requests and decodes responses with different schemas", () =>
+      Effect.gen(function*() {
+        const Request = Schema.Struct({ id: Schema.Number })
+        const Response = Schema.Struct({ id: Schema.Number, name: Schema.String })
+        const socket = SchemaBinary.decode(Request)<Schema.SchemaError>().pipe(
+          Channel.map((chunk) => Arr.map(chunk, (request) => ({ id: request.id, name: `user-${request.id}` }))),
+          Channel.pipeTo(SchemaBinary.encode(Response)<Schema.SchemaError>())
+        )
+
+        const values = yield* Stream.make({ id: 1 }, { id: 2 }).pipe(
+          Stream.pipeThroughChannel(
+            SchemaBinary.duplex(socket, { inputSchema: Request, outputSchema: Response })
+          ),
+          Stream.runCollect
+        )
+
+        assert.deepStrictEqual([...values], [{ id: 1, name: "user-1" }, { id: 2, name: "user-2" }])
+      }))
+
+    it.effect("duplex supports the data-last call shape", () =>
+      Effect.gen(function*() {
+        const Request = Schema.Struct({ id: Schema.Number })
+        const Response = Schema.Struct({ ok: Schema.Boolean })
+        const socket = SchemaBinary.decode(Request)<Schema.SchemaError>().pipe(
+          Channel.map((chunk) => Arr.map(chunk, () => ({ ok: true }))),
+          Channel.pipeTo(SchemaBinary.encode(Response)<Schema.SchemaError>())
+        )
+
+        const values = yield* Stream.make({ id: 1 }).pipe(
+          Stream.pipeThroughChannel(
+            socket.pipe(SchemaBinary.duplex({ inputSchema: Request, outputSchema: Response }))
+          ),
+          Stream.runCollect
+        )
+
+        assert.deepStrictEqual([...values], [{ ok: true }])
+      }))
+
+    it.effect("round-trips fingerprint mode through the channel path", () =>
+      Effect.gen(function*() {
+        const frames = yield* Stream.make(ada, grace).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.encode(Person, { fingerprint: true })()),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(
+          [...frames],
+          [concat(encodeFingerprint(Person, ada), encodeFingerprint(Person, grace))]
+        )
+
+        const values = yield* Stream.fromArray([...frames]).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.decode(Person, { fingerprint: true })()),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual([...values], [ada, grace])
+      }))
   })
 })
