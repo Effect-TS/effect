@@ -1,5 +1,4 @@
-import { unescapeToken } from "../../JsonPointer.ts"
-import type * as JsonSchema from "../../JsonSchema.ts"
+import * as JsonSchema from "../../JsonSchema.ts"
 import { remainder } from "../../Number.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
@@ -86,11 +85,6 @@ function inferJsonSchemaType(schema: JsonSchema.JsonSchema): JsonSchema.Type | u
   if (jsonSchemaNumberKeys.some((key) => schema[key] !== undefined)) return "number"
   if (jsonSchemaObjectKeys.some((key) => schema[key] !== undefined)) return "object"
   if (jsonSchemaArrayKeys.some((key) => schema[key] !== undefined)) return "array"
-}
-
-function jsonSchemaReferenceKey($ref: string): string | undefined {
-  const token = $ref.slice($ref.lastIndexOf("/") + 1)
-  return token.length === 0 ? undefined : unescapeToken(token)
 }
 
 function jsonSchemaFilter(
@@ -755,11 +749,15 @@ function translateJsonSchemaMultiDocument(
 
   function on(schema: JsonSchema.JsonSchema, path: Path): ImportedJsonSchemaRepresentation {
     if (typeof schema.$ref === "string") {
-      const $ref = jsonSchemaReferenceKey(schema.$ref)
-      if ($ref !== undefined) {
-        if (!reachableDefinitions.has($ref)) reachableDefinitions.set($ref, path)
-        return { _tag: "Reference", $ref }
+      const $ref = JsonSchema.getReferenceKey(schema.$ref)
+      if ($ref === undefined) {
+        throw errorWithPath(`Unsupported reference ${JSON.stringify(schema.$ref)}`, [...path, "$ref"])
       }
+      if (!Object.hasOwn(document.definitions, $ref)) {
+        throw errorWithPath(`Invalid reference ${JSON.stringify(schema.$ref)}`, [...path, "$ref"])
+      }
+      if (!reachableDefinitions.has($ref)) reachableDefinitions.set($ref, path)
+      return { _tag: "Reference", $ref }
     }
     if (Object.hasOwn(schema, "const")) {
       if (schema.const === null) {
