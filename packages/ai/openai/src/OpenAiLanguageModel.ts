@@ -58,6 +58,8 @@ export type Model = typeof ResponseModelIds.Encoded | typeof SharedModelIds.Enco
  */
 type ImageDetail = "auto" | "low" | "high"
 
+type PromptCacheBreakpoint = { readonly mode: "explicit" }
+
 // =============================================================================
 // Configuration
 // =============================================================================
@@ -127,6 +129,27 @@ export class Config extends Context.Service<
 // =============================================================================
 
 declare module "effect/unstable/ai/Prompt" {
+  /**
+   * OpenAI-specific options for system messages.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface SystemMessageOptions extends ProviderOptions {
+    /**
+     * Provider-specific system message options for the OpenAI Responses API.
+     */
+    readonly openai?: {
+      /**
+       * Marks the system input text as the end of a reusable prompt prefix.
+       *
+       * Requires GPT-5.6 or later. OpenAI may reject requests that use this
+       * option with earlier models.
+       */
+      readonly promptCacheBreakpoint?: PromptCacheBreakpoint | null
+    } | null
+  }
+
   /**
    * OpenAI-specific options for file prompt parts.
    *
@@ -244,6 +267,13 @@ declare module "effect/unstable/ai/Prompt" {
        * A list of annotations that apply to the output text.
        */
       readonly annotations?: ReadonlyArray<typeof OpenAiSchema.Annotation.Encoded> | null
+      /**
+       * Marks the input text as the end of a reusable prompt prefix.
+       *
+       * Requires GPT-5.6 or later. OpenAI may reject requests that use this
+       * option with earlier models.
+       */
+      readonly promptCacheBreakpoint?: PromptCacheBreakpoint | null
     } | null
   }
 }
@@ -819,7 +849,11 @@ const prepareMessages = Effect.fnUntraced(
         case "system": {
           messages.push({
             role: getSystemMessageMode(config.model as string),
-            content: [{ type: "input_text", text: message.content }]
+            content: [{
+              type: "input_text",
+              text: message.content,
+              ...getPromptCacheBreakpoint(message)
+            }]
           })
           break
         }
@@ -832,7 +866,11 @@ const prepareMessages = Effect.fnUntraced(
 
             switch (part.type) {
               case "text": {
-                content.push({ type: "input_text", text: part.text })
+                content.push({
+                  type: "input_text",
+                  text: part.text,
+                  ...getPromptCacheBreakpoint(part)
+                })
                 break
               }
 
@@ -2909,6 +2947,13 @@ const getEncryptedContent = (
 ): string | null => part.options.openai?.encryptedContent ?? null
 
 const getImageDetail = (part: Prompt.FilePart): ImageDetail => part.options.openai?.imageDetail ?? "auto"
+
+const getPromptCacheBreakpoint = (
+  input: Prompt.SystemMessage | Prompt.TextPart
+) => {
+  const promptCacheBreakpoint = input.options.openai?.promptCacheBreakpoint
+  return Predicate.isNotNullish(promptCacheBreakpoint) ? { prompt_cache_breakpoint: promptCacheBreakpoint } : undefined
+}
 
 const makeItemIdMetadata = (itemId: string | undefined) => Predicate.isNotUndefined(itemId) ? { itemId } : {}
 
