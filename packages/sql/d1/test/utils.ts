@@ -1,7 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types"
 import { D1Client } from "@effect/sql-d1"
 import { Context, Data, Effect, Layer } from "effect"
-import { convertV4MiniflareOptions, Miniflare } from "miniflare"
+import { Miniflare } from "miniflare"
 
 export class MiniflareError extends Data.TaggedError("MiniflareError")<{
   cause: unknown
@@ -15,15 +15,13 @@ export class D1Miniflare extends Context.Service<
     Effect.acquireRelease(
       Effect.try({
         try: () =>
-          new Miniflare(
-            convertV4MiniflareOptions({
-              modules: true,
-              d1Databases: {
-                DB: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              },
-              script: ""
-            })
-          ),
+          new Miniflare({
+            modules: true,
+            d1Databases: {
+              DB: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            },
+            script: ""
+          }),
         catch: (cause) => new MiniflareError({ cause })
       }),
       (miniflare) => Effect.promise(() => miniflare.dispose())
