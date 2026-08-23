@@ -4643,26 +4643,52 @@ function compileTarget(schema: Schema.Constraint): CompiledTarget {
   return compileTargetFromAst(schema.ast)
 }
 
-// A decode target that bypasses the schema pass when `bypass` accepts the
-// input, and otherwise runs the target's type schema.
-function bypassDecode(
+// A target that bypasses the schema pass when `accept` takes the input, and
+// otherwise runs the target's type schema. The two directions get their own
+// predicate: `flip` swaps the declaration's encoding run in when encoding, the
+// way it already swaps `encodingChecks`.
+function bypassPass(
   target: Schema.Constraint,
-  bypass: (input: unknown, options: SchemaAST.ParseOptions) => boolean
+  decodeAccept: (input: unknown, options: SchemaAST.ParseOptions) => boolean,
+  encodeAccept: (input: unknown, options: SchemaAST.ParseOptions) => boolean
 ): Schema.Constraint {
   const type = Schema.make(SchemaAST.toType(target.ast))
-  const decodeType = SchemaParser.decodeUnknownEffect(type as Schema.ConstraintDecoder<unknown>)
-  return Schema.declareConstructor<unknown>()(
-    [type],
-    () => (input, _ast, options) => bypass(input, options) ? Effect.succeed(input) : decodeType(input, options),
-    { identifier: "binary value" }
+  const parse = SchemaParser.decodeUnknownEffect(type as Schema.ConstraintDecoder<unknown>)
+  const run = (
+    accept: (input: unknown, options: SchemaAST.ParseOptions) => boolean
+  ): SchemaAST.DeclarationRun =>
+  () =>
+  (input, _ast, options) => accept(input, options) ? Effect.succeed(input) : parse(input, options)
+  return Schema.make(
+    new SchemaAST.Declaration(
+      [type.ast],
+      run(decodeAccept),
+      { identifier: "binary value" },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      run(encodeAccept)
+    )
   )
 }
 
-// The binary layer already validates an exact schema, so the schema pass around
-// it repeats that work. Values it just decoded pass straight through, while
-// every other input, `Schema.is` included, still runs the real check.
+// The binary layer drops unknown keys instead of reporting them, so only
+// `onExcessProperty: "error"` needs the schema pass to see the input.
+function reportsExcess(_input: unknown, options: SchemaAST.ParseOptions): boolean {
+  return options.onExcessProperty !== "error"
+}
+
+// The binary layer already validates an exact schema in both directions, so the
+// schema pass around it repeats that work. Encoding skips it outright. Decoding
+// only lets values the binary layer just produced through, so every other
+// input, `Schema.is` included, still runs the real check.
 function withTrustedDecode(target: Schema.Constraint, trusted: WeakSet<object>): Schema.Constraint {
-  return bypassDecode(target, (input) => Predicate.isObjectOrArray(input) && trusted.delete(input))
+  return bypassPass(
+    target,
+    (input) => Predicate.isObjectOrArray(input) && trusted.delete(input),
+    reportsExcess
+  )
 }
 
 // Success exits with an exact success schema are fully validated by the binary
@@ -4689,11 +4715,10 @@ function withExitSuccessDecode(target: Schema.Constraint, trusted: WeakSet<objec
 }
 
 // An exact schema is fully validated by the binary layer in both directions, so
-// this target adds nothing, except under `onExcessProperty: "error"`: the binary
-// layer drops unknown keys instead of reporting them. It is not a sound
-// `Schema.is` guard, which is why only {@link toCodecDirect} uses it.
+// this target adds nothing, except under `onExcessProperty: "error"`. It is not
+// a sound `Schema.is` guard, which is why only {@link toCodecDirect} uses it.
 function passThrough(target: Schema.Constraint): Schema.Constraint {
-  return bypassDecode(target, (_input, options) => options.onExcessProperty !== "error")
+  return bypassPass(target, reportsExcess, reportsExcess)
 }
 
 // Skip the cycle walk once for structurally decoded values.
