@@ -1279,6 +1279,9 @@ export function fromRepresentations(
  *
  * - Import is best-effort outside the exactly translated subset. Unsupported or ignored keywords are not covered by the
  *   round-trip guarantee.
+ * - Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
+ *   references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
+ *   reference to a missing definition throws an `Invalid reference` error.
  * - Built-in declarations and checks are reconstructed with importer-owned revivers.
  * - Pattern constraints reached during translation cause an error by default. Use `patterns: "apply"` only for trusted
  *   documents, or `patterns: "ignore"` to weaken validation explicitly; ignored patterns are outside the round-trip
@@ -1309,9 +1312,13 @@ export function fromJsonSchemaDocument(
  *
  * **Gotchas**
  *
- * Only definitions reachable from a root are translated. Pattern constraints reached during translation cause an error
- * by default. Use `patterns: "apply"` only for trusted documents, or `patterns: "ignore"` to weaken validation explicitly.
- * Callback results are used directly, and exceptions raised by a callback pass through unchanged.
+ * - Only definitions reachable from a root are translated.
+ * - Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
+ *   references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
+ *   reference to a missing definition throws an `Invalid reference` error.
+ * - Pattern constraints reached during translation cause an error by default. Use `patterns: "apply"` only for trusted
+ *   documents, or `patterns: "ignore"` to weaken validation explicitly.
+ * - Callback results are used directly, and exceptions raised by a callback pass through unchanged.
  *
  * @see {@link fromJsonSchemaDocument} for a single root
  * @see {@link toRepresentations} for converting the returned schema ASTs to a representation document

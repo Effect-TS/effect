@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { describe, it } from "@effect/vitest"
 import { deepStrictEqual } from "@effect/vitest/utils"
 import * as JsonSchema from "effect/JsonSchema"
 import * as Schema from "effect/Schema"
@@ -33,80 +33,6 @@ describe("JsonSchema", () => {
       deepStrictEqual(JsonSchema.META_SCHEMA_URI_DRAFT_04, "http://json-schema.org/draft-04/schema#")
       deepStrictEqual(JsonSchema.META_SCHEMA_URI_DRAFT_07, "http://json-schema.org/draft-07/schema#")
       deepStrictEqual(JsonSchema.META_SCHEMA_URI_DRAFT_2020_12, "https://json-schema.org/draft/2020-12/schema")
-    })
-  })
-
-  describe("resolve$ref", () => {
-    it("resolves a definition", () => {
-      const definition: JsonSchema.JsonSchema = { type: "string" }
-      deepStrictEqual(JsonSchema.resolve$ref("#/$defs/A", { A: definition }), definition)
-    })
-
-    it("unescapes the referenced JSON Pointer token", () => {
-      const definition: JsonSchema.JsonSchema = { type: "string" }
-      deepStrictEqual(JsonSchema.resolve$ref("#/$defs/A~1B~0C", { "A/B~C": definition }), definition)
-    })
-
-    it("returns undefined for a missing definition", () => {
-      deepStrictEqual(JsonSchema.resolve$ref("#/$defs/Missing", {}), undefined)
-    })
-
-    it("ignores inherited definitions", () => {
-      deepStrictEqual(JsonSchema.resolve$ref("#/$defs/constructor", {}), undefined)
-    })
-
-    it("resolves __proto__ when it is an own definition", () => {
-      const definition: JsonSchema.JsonSchema = { type: "string" }
-      deepStrictEqual(
-        JsonSchema.resolve$ref("#/$defs/__proto__", { ["__proto__"]: definition }),
-        definition
-      )
-    })
-  })
-
-  describe("resolveTopLevel$ref", () => {
-    it("resolves a top-level ref without mutating the document definitions", () => {
-      const definition: JsonSchema.JsonSchema = { type: "string" }
-      const document: JsonSchema.Document<"draft-2020-12"> = {
-        dialect: "draft-2020-12",
-        schema: { $ref: "#/$defs/A" },
-        definitions: { A: definition }
-      }
-      const result = JsonSchema.resolveTopLevel$ref(document)
-
-      assert.notStrictEqual(result, document)
-      assert.strictEqual(result.definitions, document.definitions)
-      deepStrictEqual(result, {
-        dialect: "draft-2020-12",
-        schema: definition,
-        definitions: document.definitions
-      })
-    })
-
-    it("returns the same document when the top-level ref cannot be resolved", () => {
-      const document: JsonSchema.Document<"draft-2020-12"> = {
-        dialect: "draft-2020-12",
-        schema: { $ref: "#/$defs/Missing" },
-        definitions: {}
-      }
-
-      assert.strictEqual(JsonSchema.resolveTopLevel$ref(document), document)
-    })
-
-    it("returns the same document when there is no string top-level ref", () => {
-      const withoutRef: JsonSchema.Document<"draft-2020-12"> = {
-        dialect: "draft-2020-12",
-        schema: { type: "string" },
-        definitions: {}
-      }
-      const withNonStringRef: JsonSchema.Document<"draft-2020-12"> = {
-        dialect: "draft-2020-12",
-        schema: { $ref: 1 },
-        definitions: {}
-      }
-
-      assert.strictEqual(JsonSchema.resolveTopLevel$ref(withoutRef), withoutRef)
-      assert.strictEqual(JsonSchema.resolveTopLevel$ref(withNonStringRef), withNonStringRef)
     })
   })
 

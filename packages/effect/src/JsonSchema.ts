@@ -4,7 +4,7 @@
  * OpenAPI 3.0, and OpenAPI 3.1; conversions normalize through
  * `Document<"draft-2020-12">` before emitting another dialect, including
  * JSON Schema Draft-04. The module also defines document types, meta-schema
- * constants, OpenAPI component-key helpers, and `$ref` resolution utilities.
+ * constants, and OpenAPI component-key helpers.
  *
  * @since 4.0.0
  */
@@ -83,8 +83,6 @@ export type Type = "string" | "number" | "boolean" | "array" | "object" | "null"
  *
  * @see {@link Document} for a single root schema with definitions
  * @see {@link MultiDocument} for multiple root schemas sharing definitions
- * @see {@link resolve$ref} for resolving a `$ref` against definitions
- *
  * @category models
  * @since 4.0.0
  */
@@ -847,6 +845,15 @@ export function sanitizeOpenApiComponentsSchemasKey(s: string): string {
   return s.length === 0 ? "_" : s.replace(/[^a-zA-Z0-9._-]/gu, "_")
 }
 
+/** @internal */
+export function getReferenceKey($ref: string): string | undefined {
+  const prefix = "#/$defs/"
+  if (!$ref.startsWith(prefix)) return undefined
+  const token = $ref.slice(prefix.length)
+  if (token.length === 0 || token.includes("/")) return undefined
+  return unescapeToken(token)
+}
+
 function transformSchema(
   node: unknown,
   transform: (schema: Record<string, unknown>) => Record<string, unknown>
@@ -1015,91 +1022,4 @@ function widenType(node: Record<string, unknown>): Record<string, unknown> {
   if (typeof t === "string") return t === "null" ? node : { ...node, type: [t, "null"] }
   if (Array.isArray(t)) return t.includes("null") ? node : { ...node, type: [...t, "null"] }
   return node
-}
-
-/**
- * Resolves a `$ref` string by looking up the last path segment in a
- * definitions map.
- *
- * **When to use**
- *
- * Use when you need to dereference a `$ref` pointer to get the JSON Schema
- * object it points to.
- *
- * **Details**
- *
- * This only resolves the final segment of the ref path, such as `"User"` from
- * `"#/$defs/User"`. It returns `undefined` if the definition is not found.
- *
- * **Gotchas**
- *
- * This function does not follow arbitrary JSON Pointer paths.
- *
- * **Example** (Resolving a $ref)
- *
- * ```ts import.meta.vitest
- * import { JsonSchema } from "effect"
- *
- * const definitions: JsonSchema.Definitions = {
- *   User: { type: "object", properties: { name: { type: "string" } } }
- * }
- *
- * JsonSchema.resolve$ref("#/$defs/User", definitions) // => { type: "object", properties: { name: { type: "string" } } }
- * JsonSchema.resolve$ref("#/$defs/Unknown", definitions) // => undefined
- * ```
- *
- * @see {@link resolveTopLevel$ref}
- * @see {@link Definitions}
- * @category getters
- * @since 4.0.0
- */
-export function resolve$ref($ref: string, definitions: Definitions): JsonSchema | undefined {
-  const tokens = $ref.split("/")
-  const identifier = unescapeToken(tokens[tokens.length - 1])
-  if (Object.hasOwn(definitions, identifier)) return definitions[identifier]
-}
-
-/**
- * Resolves a document whose root schema is a top-level `$ref`.
- *
- * **When to use**
- *
- * Use when you need to dereference a top-level `$ref` before inspecting the
- * root JSON Schema object's properties directly.
- *
- * **Details**
- *
- * This returns the same object if no change is needed, or a shallow copy with
- * the resolved schema.
- *
- * **Example** (Resolving a top-level $ref)
- *
- * ```ts import.meta.vitest
- * import { JsonSchema } from "effect"
- *
- * const doc: JsonSchema.Document<"draft-2020-12"> = {
- *   dialect: "draft-2020-12",
- *   schema: { $ref: "#/$defs/User" },
- *   definitions: {
- *     User: { type: "object", properties: { name: { type: "string" } } }
- *   }
- * }
- *
- * const resolved = JsonSchema.resolveTopLevel$ref(doc)
- * resolved.schema // => { type: "object", properties: { name: { type: "string" } } }
- * ```
- *
- * @see {@link resolve$ref}
- * @see {@link Document}
- * @category transforming
- * @since 4.0.0
- */
-export function resolveTopLevel$ref(document: Document<"draft-2020-12">): Document<"draft-2020-12"> {
-  if (typeof document.schema.$ref === "string") {
-    const schema = resolve$ref(document.schema.$ref, document.definitions)
-    if (schema !== undefined) {
-      return { ...document, schema }
-    }
-  }
-  return document
 }

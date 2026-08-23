@@ -6444,6 +6444,10 @@ schema with revivers first.
 `SchemaRepresentation.fromJsonSchemaDocument` imports a JSON Schema Draft 2020-12 document as a runtime `Schema.Top`.
 It does not return a representation document.
 
+Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
+references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
+reference to a missing definition throws an `Invalid reference` error.
+
 `fromJsonSchemaMultiDocument` returns the ordered root schemas. It translates only definitions reachable from those
 roots. To pass the result to a representation compiler, call `toRepresentations` with the returned schemas' ASTs.
 
