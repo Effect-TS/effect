@@ -1,44 +1,8 @@
 ---
 "@effect/sql-pg": patch
+"effect": patch
 ---
 
-Add `PgConnection`, a native PostgreSQL session on the `PgProtocol` codec.
+Replace `@effect/sql-pg`'s `pg` runtime with a native PostgreSQL client. `PgConnection` and `PgPool` now handle connection setup, binary queries, prepared statements, pipelining, streaming, notifications, cancellation, and custom codecs. `PgClient` uses the native stack, and the legacy `fromPool`, `fromClient`, and `makeWith` constructors are removed.
 
-`PgConnection.make` connects over TCP, a unix socket, or a caller-supplied `Duplex` factory, optionally upgrades to TLS via `SSLRequest` (no silent downgrade), authenticates with trust, cleartext, MD5, or SCRAM-SHA-256, and resolves once the backend sends `ReadyForQuery`. SCRAM challenges above 1,000,000 iterations are rejected before password derivation. Releasing the scope sends `Terminate` and ends the socket after the frame flushes. libpq-style `postgres://` URLs are parsed, with explicit config fields taking precedence.
-
-`PgConnection.query` and `queryValues` run one unnamed extended-protocol cycle at a time with binary parameters and results. JavaScript parameters infer their PostgreSQL OIDs, while branded `PgTypes` parameters override inference. `PgTypes.makeRegistry()` provides isolated per-client custom codecs, including optional generic one-dimensional array codecs.
-
-`PgConnection.stream` emits rows as they arrive, `listen` subscribes to `LISTEN`/`NOTIFY` notifications, and `interrupt` cancels the in-flight statement through a `CancelRequest` side connection. `pin` grants exclusive ownership of a session for transactions; `stream` and `listen` pin themselves for their lifetime.
-
-`PgPool` pools `PgConnection` sessions with the familiar `maxConnections`, `minConnections`, `idleTimeout`, and `connectionTTL` settings: `get` checks a session out, `reserve` checks out and pins, and `invalidate` drops a dead session. Sessions that die from fatal protocol or socket errors are invalidated automatically.
-
-`PgClient` now runs on the native pool and connection while retaining its SQL facade, transforms, JSON helpers, and
-LISTEN/NOTIFY helpers. `makeClient` owns one native connection, while `make` uses `PgPool`. The old `fromPool`,
-`fromClient`, and `makeWith` constructors have been removed along with the `pg` runtime dependencies.
-
-A result set is decoded through a row constructor built once per `RowDescription`, which assigns its columns instead of
-defining them one property descriptor at a time. The frame tail and the bind encoder are built once rather than per
-statement, frames are assembled in a pooled buffer, and a pool checkout only runs its retry loop when a connection has
-to be replaced. On the `benchmark/PgClient.ts` workloads this puts the native client ahead of the `pg`-based one it
-replaces rather than behind it on row-heavy results.
-
-Statements a session has already run are kept prepared under a backend name, so a repeated statement costs
-`Bind`/`Execute`/`Sync` with no parsing, planning, or `RowDescription`. The cache is per connection, keyed on SQL text
-plus the inferred parameter OIDs, bounded by `preparedStatementCacheSize`, and recovers on its own when the backend has
-lost a name or a cached plan no longer matches its columns. Pass `prepare: false` for a pooler that cannot keep names
-between statements. Eviction waits for an in-flight `Parse`, and abandoning a pipeline entry before it is written
-leaves the statement eligible to be prepared by a later query.
-
-A `multiplex` session now pipelines the statements its fibers submit together into one write instead of sending them
-one at a time, which takes a single connection past what a ten-connection pool reaches without it. Pinned work still
-owns the session, and `pin` waits for the pipeline to drain. A multiplexed pool bounds how many statements share one
-connection, so it spreads them over the connections it may open rather than stacking every statement behind whatever
-is slowest on the first. A multiplexed pool removes reserved sessions from shared
-circulation, allowing transactions and listeners to stay exclusive while other work uses another connection.
-
-A statement the server refuses to parse - a typo, a missing table - no longer destroys the connection. It is an
-ordinary query error and fails only that statement.
-
-A statement's state machine is one object with its methods on the prototype rather than a set of closures rebuilt per
-statement, and a query only builds the result shape its caller asked for. On the concurrent workload that halves the
-share of the run spent collecting garbage.
+Add `Pool.reserve` for exclusive access to a concurrent pool item, and fix waiter wakeups and capacity replacement after invalidation.
