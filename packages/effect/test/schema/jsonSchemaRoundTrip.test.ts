@@ -81,6 +81,82 @@ function assertRepresentationRoundTrip(
 
 describe("JSON Schema round-trip laws", () => {
   describe("toJsonSchema(fromJsonSchema(A))", () => {
+    it("applies type-specific keywords only to matching instances", () => {
+      assertJsonSchemaImportRoundTrip(
+        { minLength: 2 },
+        ["", "a", "ab", 0, true, null, [], {}]
+      )
+      assertJsonSchemaImportRoundTrip(
+        { minimum: 1 },
+        [0, 1, "a", true, null, [], {}]
+      )
+      assertJsonSchemaImportRoundTrip(
+        { minItems: 1 },
+        [[], [1], "a", 0, true, null, {}]
+      )
+      assertJsonSchemaImportRoundTrip(
+        { required: ["a"] },
+        [{}, { a: 1 }, [], "a", 0, true, null]
+      )
+    })
+
+    it("conjoins enum with its sibling constraints", () => {
+      assertJsonSchemaImportRoundTrip(
+        { enum: ["a", "ab", 1], minLength: 2 },
+        ["a", "ab", 1, true]
+      )
+    })
+
+    it("conjoins const with its sibling constraints", () => {
+      assertJsonSchemaImportRoundTrip(
+        { const: "a", minLength: 2 },
+        ["a", "aa", 1, null]
+      )
+    })
+
+    it("intersects finite enums as sets", () => {
+      assertJsonSchemaImportRoundTrip(
+        { allOf: [{ enum: ["a", "b", 1] }, { enum: ["b", 1, true] }] },
+        ["a", "b", 1, true, null]
+      )
+    })
+
+    it("preserves oneOf branch multiplicity", () => {
+      assertJsonSchemaImportRoundTrip(
+        { oneOf: [{ const: "a" }, { const: "a" }] },
+        ["a", "b", 1]
+      )
+    })
+
+    it("preserves minItems after prefixItems", () => {
+      assertJsonSchemaImportRoundTrip(
+        {
+          type: "array",
+          prefixItems: [{ type: "string" }],
+          items: { type: "number" },
+          minItems: 2
+        },
+        [[], ["a"], ["a", 1], ["a", 1, 2], ["a", "b"]]
+      )
+    })
+
+    it("intersects one constraint with multiple alternatives linearly", () => {
+      assertJsonSchemaImportRoundTrip(
+        {
+          allOf: [
+            {
+              anyOf: [
+                { type: "string", minLength: 2, maxLength: 3 },
+                { type: "string", minLength: 5, maxLength: 6 }
+              ]
+            },
+            { type: "string", pattern: "^a" }
+          ]
+        },
+        ["a", "aa", "bb", "aaaa", "aaaaa", "bbbbb", 1]
+      )
+    })
+
     it("preserves empty closed objects", () => {
       assertJsonSchemaImportRoundTrip(
         { type: "object", additionalProperties: false },

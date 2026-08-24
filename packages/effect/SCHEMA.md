@@ -6464,6 +6464,10 @@ enforced. Objects and arrays used as `const` values or `enum` members throw an
 `Unsupported structured JSON Schema value` error. The optional `onEnter` callback can normalize each JSON Schema node
 before it is translated.
 
+Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf` literal
+sets. Other union intersections, including cases that would duplicate a nested choice, throw an
+`Unsupported intersection of overlapping unions` error.
+
 Regular expression constraints reached during translation are rejected by default because imported patterns use the
 runtime's native regular expression engine and may block validation for an unbounded amount of time. Set
 `patterns: "apply"` only for trusted documents. Set `patterns: "ignore"` to skip reached pattern constraints explicitly;
