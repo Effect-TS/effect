@@ -875,7 +875,7 @@ const make = Effect.gen(function*() {
 
       const write = journal.withRemoteUncommited(remote.id, (entries) => remote.write({ identity, entries, storeId }))
       const writeUntilSuccess = write.pipe(
-        Effect.tapError(Effect.logDebug),
+        Effect.tapCause(Effect.logDebug),
         Effect.retry(remoteRetrySchedule)
       )
       yield* Effect.addFinalizer(() => Effect.ignore(write))
