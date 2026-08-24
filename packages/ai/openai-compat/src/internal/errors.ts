@@ -9,7 +9,6 @@ import * as Schema from "effect/Schema"
 import * as SchemaTransformation from "effect/SchemaTransformation"
 import * as String from "effect/String"
 import * as AiError from "effect/unstable/ai/AiError"
-import { buildErrorDescription } from "effect/unstable/ai/internal/errorDescription"
 import type * as Response from "effect/unstable/ai/Response"
 import type * as Sse from "effect/unstable/encoding/Sse"
 import type * as HttpClientError from "effect/unstable/http/HttpClientError"
@@ -216,7 +215,7 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
   readonly metadata: OpenAiErrorMetadata
   readonly http: typeof AiError.HttpContext.Type
 }): AiError.AiErrorReason => {
-  const errorDescription = buildErrorDescription({
+  const errorDescription = AiError.buildErrorDescription({
     status,
     message,
     method: http.request.method,

@@ -7,7 +7,6 @@ import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
 import * as Schema from "effect/Schema"
 import * as AiError from "effect/unstable/ai/AiError"
-import { buildErrorDescription } from "effect/unstable/ai/internal/errorDescription"
 import type * as Response from "effect/unstable/ai/Response"
 import type * as Sse from "effect/unstable/encoding/Sse"
 import type * as HttpClientError from "effect/unstable/http/HttpClientError"
@@ -265,7 +264,7 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
   readonly metadata: OpenRouterErrorMetadata
   readonly http: typeof AiError.HttpContext.Type
 }): AiError.AiErrorReason => {
-  const errorDescription = buildErrorDescription({
+  const errorDescription = AiError.buildErrorDescription({
     status,
     message,
     method: http.request.method,
