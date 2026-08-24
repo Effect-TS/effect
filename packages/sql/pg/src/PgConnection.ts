@@ -704,6 +704,7 @@ const defaultPreparedStatements = 100
  */
 interface Prepared {
   readonly name: string
+  readonly key: string
   ready: boolean
   description: Description | undefined
 }
@@ -770,9 +771,11 @@ const encodeQuery = (
   const prepared = cache.get(sql, parameterTypes)
   const bind = encodeBind({ portal: "", statement: prepared.name, parameters })
   if (EffectResult.isFailure(bind)) throw bind.failure
+  const parse = prepared.ready ? undefined : PgProtocol.encodeParse({ name: prepared.name, query: sql, parameterTypes })
+  if (parse !== undefined && EffectResult.isFailure(parse)) throw parse.failure
   const closeFrames = cache.takeCloses()
 
-  if (prepared.ready) {
+  if (parse === undefined) {
     return {
       frame: closeFrames === undefined
         ? concat([bind.success, executeSync])
@@ -786,8 +789,6 @@ const encodeQuery = (
     }
   }
 
-  const parse = PgProtocol.encodeParse({ name: prepared.name, query: sql, parameterTypes })
-  if (EffectResult.isFailure(parse)) throw parse.failure
   return {
     frame: closeFrames === undefined
       ? concat([parse.success, bind.success, describeExecuteSync])
@@ -830,7 +831,7 @@ class PreparedCache {
       this.statements.set(key, found)
       return found
     }
-    const prepared: Prepared = { name: `effect${++this.counter}`, ready: false, description: undefined }
+    const prepared: Prepared = { name: `effect${++this.counter}`, key, ready: false, description: undefined }
     this.statements.set(key, prepared)
     if (this.statements.size > this.max) {
       const oldest = this.statements.keys().next()
@@ -843,14 +844,15 @@ class PreparedCache {
     return prepared
   }
 
-  /** Drops a statement the backend no longer holds, or whose plan went stale. */
+  /**
+   * Drops a statement the backend no longer holds, or whose plan went stale.
+   *
+   * The name is closed either way. A plan that went stale is still held under
+   * it, and re-parsing would collide; a name the backend has already lost
+   * ignores the `Close`, which Postgres treats as a success.
+   */
   evict(prepared: Prepared): void {
-    for (const [key, value] of this.statements) {
-      if (value === prepared) {
-        this.statements.delete(key)
-        break
-      }
-    }
+    if (this.statements.delete(prepared.key) && prepared.ready) this.close(prepared.name)
   }
 
   private close(name: string): void {

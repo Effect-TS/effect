@@ -228,4 +228,23 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       assert.strictEqual(syntax.reason._tag, "SqlSyntaxError")
       assert.deepStrictEqual((yield* connection.query("SELECT 42::int4 AS answer")).rows, [{ answer: 42 }])
     }))
+  it.effect("closes a statement whose plan it had to throw away", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const connection = yield* PgConnection.make({
+        url: Redacted.make(container.getConnectionUri())
+      })
+      yield* connection.query("CREATE TEMP TABLE churn (a int)")
+      for (let round = 0; round < 4; round++) {
+        yield* connection.query("SELECT * FROM churn")
+        yield* connection.query(`ALTER TABLE churn ADD COLUMN c${round} text`)
+      }
+      yield* connection.query("SELECT * FROM churn")
+      // Every re-parse after a stale plan has to close the name it replaced,
+      // or each DDL change strands a statement on the backend.
+      const held = yield* connection.query(
+        "SELECT count(*)::int4 AS n FROM pg_prepared_statements WHERE statement = 'SELECT * FROM churn'"
+      )
+      assert.deepStrictEqual(held.rows[0], { n: 1 })
+    }))
 })
