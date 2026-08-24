@@ -117,6 +117,11 @@ export const makeEncoded: (options?: {
   // digests were introduced; those legacy rows need a plaintext fallback read
   const mayHaveLegacyRow = (primaryKey: string): boolean => !messageIdEnforcesWidth && primaryKey.length > 255
 
+  const snowflakeParameter = sql.onDialectOrElse({
+    pg: () => (value: string | bigint) => BigInt(value),
+    orElse: () => (value: string | bigint) => value
+  })
+
   const envelopeToRow = (
     envelope: Envelope.Encoded,
     message_id: string | null,
@@ -125,7 +130,7 @@ export const makeEncoded: (options?: {
     switch (envelope._tag) {
       case "Request":
         return {
-          id: envelope.requestId,
+          id: snowflakeParameter(envelope.requestId),
           message_id,
           shard_id: ShardId.toString(envelope.address.shardId),
           entity_type: envelope.address.entityType,
@@ -143,13 +148,13 @@ export const makeEncoded: (options?: {
             : envelope.sampled
             ? 1
             : 0,
-          request_id: envelope.requestId,
+          request_id: snowflakeParameter(envelope.requestId),
           reply_id: null,
           deliver_at
         }
       case "AckChunk":
         return {
-          id: envelope.id,
+          id: snowflakeParameter(envelope.id),
           message_id,
           shard_id: ShardId.toString(envelope.address.shardId),
           entity_type: envelope.address.entityType,
@@ -161,13 +166,13 @@ export const makeEncoded: (options?: {
           trace_id: null,
           span_id: null,
           sampled: null,
-          request_id: envelope.requestId,
-          reply_id: envelope.replyId,
+          request_id: snowflakeParameter(envelope.requestId),
+          reply_id: snowflakeParameter(envelope.replyId),
           deliver_at
         }
       case "Interrupt":
         return {
-          id: envelope.id,
+          id: snowflakeParameter(envelope.id),
           message_id,
           shard_id: ShardId.toString(envelope.address.shardId),
           entity_type: envelope.address.entityType,
@@ -179,7 +184,7 @@ export const makeEncoded: (options?: {
           trace_id: null,
           span_id: null,
           sampled: null,
-          request_id: envelope.requestId,
+          request_id: snowflakeParameter(envelope.requestId),
           reply_id: null,
           deliver_at
         }
@@ -187,9 +192,9 @@ export const makeEncoded: (options?: {
   }
 
   const replyToRow = (reply: Reply.Encoded): ReplyRow => ({
-    id: reply.id,
+    id: snowflakeParameter(reply.id),
     kind: replyKind[reply._tag],
-    request_id: reply.requestId,
+    request_id: snowflakeParameter(reply.requestId),
     payload: reply._tag === "WithExit" ? JSON.stringify(reply.exit) : JSON.stringify(reply.values),
     sequence: reply._tag === "Chunk" ? reply.sequence : null
   })
@@ -511,9 +516,13 @@ export const makeEncoded: (options?: {
           const row = envelopeToRow(envelope, null, deliverAt)
           insert = Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
           if (envelope._tag === "AckChunk") {
-            insert = sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
+            insert = sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${
+              snowflakeParameter(envelope.replyId)
+            }`.pipe(
               Effect.andThen(
-                sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue} WHERE processed = ${sqlFalse} AND request_id = ${envelope.requestId} AND kind = ${messageKindAckChunk}`
+                sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue} WHERE processed = ${sqlFalse} AND request_id = ${
+                  snowflakeParameter(envelope.requestId)
+                } AND kind = ${messageKindAckChunk}`
               ),
               Effect.andThen(insert),
               sql.withTransaction
@@ -561,8 +570,12 @@ export const makeEncoded: (options?: {
       Effect.suspend(() => {
         const row = replyToRow(reply)
         const update = reply._tag === "Chunk" ?
-          sql`UPDATE ${messagesTableSql} SET last_reply_id = ${reply.id} WHERE id = ${reply.requestId}` :
-          sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue}, last_reply_id = ${reply.id} WHERE request_id = ${reply.requestId}`
+          sql`UPDATE ${messagesTableSql} SET last_reply_id = ${snowflakeParameter(reply.id)} WHERE id = ${
+            snowflakeParameter(reply.requestId)
+          }` :
+          sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue}, last_reply_id = ${
+            snowflakeParameter(reply.id)
+          } WHERE request_id = ${snowflakeParameter(reply.requestId)}`
         return update.unprepared.pipe(
           Effect.andThen(sql`INSERT INTO ${repliesTableSql} ${sql.insert(row)}`),
           sql.withTransaction
@@ -575,12 +588,12 @@ export const makeEncoded: (options?: {
 
     clearReplies: Effect.fnUntraced(
       function*(requestId) {
-        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)} AND kind = 0`
+        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${snowflakeParameter(requestId)} AND kind = 0`
         yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${
-          String(requestId)
+          snowflakeParameter(requestId)
         } AND kind = ${messageKindInterrupt}`
         yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL WHERE request_id = ${
-          String(requestId)
+          snowflakeParameter(requestId)
         }`
       },
       sql.withTransaction,
@@ -964,13 +977,17 @@ const migrations = (options?: {
             ON ${messagesTableSql} (request_id);
           `.unprepared.pipe(Effect.ignore),
         pg: () =>
-          sql`
-            CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
-            ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at);
-
-            CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
-            ON ${messagesTableSql} (request_id);
-          `.pipe(
+          Effect.all([
+            sql`
+              CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
+              ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at)
+            `,
+            sql`
+              CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
+              ON ${messagesTableSql} (request_id)
+            `
+          ]).pipe(
+            sql.withTransaction,
             Effect.tapDefect((error) =>
               Effect.annotateLogs(Effect.logDebug("Failed to create indexes", error), {
                 package: "@effect/cluster",
