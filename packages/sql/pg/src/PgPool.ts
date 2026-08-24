@@ -146,7 +146,13 @@ export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Sco
       Effect.sync(() => {
         createdAt.set(connection, clock.currentTimeMillisUnsafe())
         const internals = connectionInternals(connection)
-        internals.fatalHooks.add(() => deadConnections.add(connection))
+        internals.fatalHooks.add(() => {
+          deadConnections.add(connection)
+          // `deadConnections` is only read by the next checkout, and a checkout
+          // already waiting for this connection would never get that far. Tell
+          // the pool now so it can replace the connection and admit them.
+          Effect.runFork(Effect.scoped(Pool.invalidate(pool, connection)))
+        })
         // Pinning a shared session has to take it out of circulation, or a
         // second checkout lands on the connection its own stream is holding.
         if (multiplex) internals.reserve = reservePoolItem(pool, connection)

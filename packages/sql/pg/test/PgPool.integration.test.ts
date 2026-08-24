@@ -168,4 +168,21 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       )
       assert.deepStrictEqual(Array.from(doubled), [2, 4, 6, 8, 10])
     }))
+  it.effect("admits a waiting checkout when a reserved connection dies", () =>
+    Effect.gen(function*() {
+      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1, multiplex: true })
+      const reserved = yield* pool.reserve
+      const waiter = yield* Effect.forkScoped(
+        Effect.scoped(Effect.flatMap(pool.get, (connection) => connection.query("SELECT 1 AS ok")))
+      )
+      yield* realSleep
+
+      // The reservation is still held when its connection dies, so nothing
+      // returns the connection to the pool. The waiter behind it would queue
+      // for a connection that is never coming back.
+      yield* Effect.ignore(reserved.query("SELECT pg_terminate_backend(pg_backend_pid())"))
+
+      const result = yield* Fiber.join(waiter)
+      assert.deepStrictEqual(result.rows, [{ ok: 1 }])
+    }))
 })

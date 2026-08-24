@@ -752,7 +752,13 @@ const invalidatePoolItem = <A, E>(self: Pool<A, E>, poolItem: PoolItem<A, E>): E
     }
     self.state.invalidated.add(poolItem)
     removeAvailable(self, poolItem)
-    return Effect.void
+    // An invalidated item stops counting towards the pool's active size, so the
+    // pool is now below target and has to top itself back up. Waiting for the
+    // last lease to be returned would strand anybody already queued: the item
+    // they are waiting for is never coming back.
+    return Effect.asVoid(
+      Effect.forkIn(Effect.interruptible(resize(self)), self.state.scope, { startImmediately: true })
+    )
   })
 
 const resize = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
