@@ -232,6 +232,11 @@ interface WorkerWaiter {
   readonly deferred: Deferred.Deferred<InvokeResult>
 }
 
+interface ReplayFiber {
+  readonly discard: boolean
+  readonly fiber: Fiber.Fiber<void>
+}
+
 interface RunOptions {
   readonly scheduled?: boolean
   readonly replyTos?: ReadonlyArray<string> | undefined
@@ -481,11 +486,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           )
       )
       options.waitUntil(Fiber.await(fiber))
-      // A tell must not pin its caller: its invoke result is complete once
-      // the request is persisted and its handler forked. Scheduled ask runs
-      // keep the join so replay failure handling observes the handler
-      // outcome.
-      return discard ? Effect.succeed([]) : Effect.as(Fiber.join(fiber), [])
+      return Effect.as(Fiber.join(fiber), [])
     }
 
     const queue = yield* Queue.make<SessionReply, Cause.Done>()
@@ -598,7 +599,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     registration: EntityRegistration,
     entityRuntime: EntityRuntime,
     rows: ReadonlyArray<StoredMessage>
-  ): Effect.Effect<Array<Fiber.Fiber<void>>> =>
+  ): Effect.Effect<Array<ReplayFiber>> =>
     rows.length === 0 ? Effect.succeed([]) : Effect.forEach(
       rows,
       (row) =>
@@ -618,20 +619,23 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
             }
         ).pipe(
           Effect.flatMap((continuation) =>
-            Effect.forkDetach(
-              Effect.catchCause(
-                Effect.asVoid(continuation),
-                (cause) => completeReplayFailure(registration, row, cause)
-              )
+            Effect.map(
+              Effect.forkDetach(
+                Effect.catchCause(
+                  Effect.asVoid(continuation),
+                  (cause) => completeReplayFailure(registration, row, cause)
+                )
+              ),
+              (fiber): ReplayFiber => ({ discard: row.discard, fiber })
             )
           ),
           Effect.catchCause((cause) => Effect.as(completeReplayFailure(registration, row, cause), undefined))
         )
     ).pipe(
-      Effect.map((fibers) => fibers.filter((fiber) => fiber !== undefined)),
-      Effect.tap((fibers) =>
+      Effect.map((entries) => entries.filter((entry) => entry !== undefined)),
+      Effect.tap((entries) =>
         Effect.sync(() => {
-          if (fibers.length > 0) options.waitUntil(Fiber.awaitAll(fibers))
+          if (entries.length > 0) options.waitUntil(Fiber.awaitAll(entries.map((entry) => entry.fiber)))
         })
       )
     )
@@ -665,18 +669,36 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     }
     return Effect.gen(function*() {
       const entityRuntime = yield* getRuntime(registration)
-      const replayFibers = yield* Effect.flatMap(
+      const replayed = yield* Effect.flatMap(
         loadUnprocessed(sql),
         (rows) => replayRows(registration, entityRuntime, rows)
       )
-      // Preserves the pre-split ordering: the invoke result is delivered
-      // only after the replayed rows this entry kicked off have finished.
+      // Preserves the pre-split ordering for asks: the invoke result is
+      // delivered only after the replayed ask rows this entry kicked off
+      // have finished. Replayed tells complete through their own fibers and
+      // must not delay other callers.
+      const replayFibers = replayed.filter((entry) => !entry.discard).map((entry) => entry.fiber)
       const finish = (
         requestId: string,
         continuation: Effect.Effect<ReadonlyArray<string>>
       ): Effect.Effect<InvokeResult> =>
         Effect.andThen(Fiber.awaitAll(replayFibers), continuation).pipe(
           Effect.map((replies) => success(requestId, replies))
+        )
+      // A persisted tell must not pin its caller: the row is durable, so the
+      // invoke result is complete once the handler is forked. Failures of the
+      // forked machinery leave the row unprocessed for replay on a later
+      // wake, so they are only logged here.
+      const finishTell = (
+        requestId: string,
+        continuation: Effect.Effect<ReadonlyArray<string>>
+      ): Effect.Effect<Effect.Effect<InvokeResult>> =>
+        Effect.as(
+          Effect.forkDetach(Effect.catchCause(
+            Effect.asVoid(continuation),
+            (cause) => Effect.logError("Entity tell execution failed", cause)
+          )),
+          Effect.succeed(success(requestId, []))
         )
 
       const envelope = yield* decodeRequest(registration, envelopeText)
@@ -750,14 +772,18 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           original.lastSentChunk,
           original.discard
         )
-        return finish(persisted.originalId, continuation)
+        return original.discard
+          ? yield* finishTell(persisted.originalId, continuation)
+          : finish(persisted.originalId, continuation)
       }
       if (delivery?.deliverAt !== undefined) {
         yield* armEarliestAlarm
         return delayedOutcome(String(envelope.requestId), discard, delivery.replyTo)
       }
       const continuation = yield* run(registration, entityRuntime, envelope, undefined, discard, true)
-      return finish(String(envelope.requestId), continuation)
+      return discard
+        ? yield* finishTell(String(envelope.requestId), continuation)
+        : finish(String(envelope.requestId), continuation)
     })
   }
 
@@ -826,7 +852,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         (entityRuntime) => Effect.flatMap(loadDue(sql), (rows) => replayRows(registration, entityRuntime, rows))
       )
     ).pipe(
-      Effect.flatMap((fibers) => Effect.asVoid(Fiber.awaitAll(fibers))),
+      Effect.flatMap((entries) => Effect.asVoid(Fiber.awaitAll(entries.map((entry) => entry.fiber)))),
       Effect.andThen(Semaphore.withPermit(semaphore, armEarliestAlarm)),
       Effect.withSpan("CloudflareCluster.alarm", {
         attributes: {
