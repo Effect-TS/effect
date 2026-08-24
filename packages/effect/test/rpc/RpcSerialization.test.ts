@@ -586,6 +586,12 @@ describe("RpcSerialization", () => {
         assert.deepStrictEqual(serialization.makeUnsafe().decode(uvarint(4)), [])
         assert.throws(() => serialization.makeUnsafe().decode(uvarint(5)), /frame within maxFrameSize/)
       }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary({ maxFrameSize: 4 }))))
+
+    it.effect("layerSchemaBinary allows an unbounded maxFrameSize", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        assert.deepStrictEqual(serialization.makeUnsafe().decode(uvarint(16 * 1024 * 1024 + 1)), [])
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary({ maxFrameSize: "unbounded" }))))
   })
 
   describe("codecFor", () => {
