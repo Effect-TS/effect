@@ -1145,6 +1145,7 @@ class Writer {
   view = new DataView(this.buf.buffer)
   arena: OutputArena | undefined
   start = 0
+  limit = 0
   len = 0
   reset() {
     let arena = outputArena
@@ -1157,10 +1158,11 @@ class Writer {
     this.buf = arena.buf
     this.view = arena.view
     this.start = arena.offset
+    this.limit = arena.buf.length - arena.offset
     this.len = 0
   }
   ensure(n: number) {
-    if (this.start + this.len + n > this.buf.length) {
+    if (this.len + n > this.limit) {
       const previous = this.arena!
       const required = this.len + n
       let size = OUTPUT_ARENA_SIZE
@@ -1173,6 +1175,7 @@ class Writer {
       this.buf = next.buf
       this.view = next.view
       this.start = 0
+      this.limit = next.buf.length
     }
   }
   byte(b: number) {
@@ -1293,7 +1296,22 @@ class Writer {
     this.ensure(n * 3)
     const buf = this.buf
     let p = this.start + this.len
-    for (let i = 0; i < n; i++) {
+    let i = 0
+    for (; i + 4 <= n; i += 4) {
+      const a = s.charCodeAt(i)
+      const b = s.charCodeAt(i + 1)
+      const c = s.charCodeAt(i + 2)
+      const d = s.charCodeAt(i + 3)
+      if ((a | b | c | d) > 0x7F) {
+        this.len += utf8Encode.encodeInto(s, buf.subarray(this.start + this.len)).written
+        return
+      }
+      buf[p++] = a
+      buf[p++] = b
+      buf[p++] = c
+      buf[p++] = d
+    }
+    for (; i < n; i++) {
       const c = s.charCodeAt(i)
       if (c > 0x7F) {
         this.len += utf8Encode.encodeInto(s, buf.subarray(this.start + this.len)).written
