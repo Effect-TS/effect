@@ -467,6 +467,8 @@ let initializationOpen = true
 const initializationCallsStarted = new Set<string>()
 const initializationCallsCompleted = new Set<string>()
 const isInitializationOpen = () => initializationOpen
+const waitForInitializationControl = () =>
+  (scheduler as unknown as { readonly wait: (delay: number) => Promise<void> }).wait(1)
 
 const blockInitialization = () => {
   initializationStarted = false
@@ -479,7 +481,7 @@ const initializeApp = CloudflareDurableObjects.setInitializer(async (env) => {
     initializationFailed = true
     throw new Error("deliberate Cloudflare application initialization failure")
   }
-  while (!isInitializationOpen()) await scheduler.wait(1)
+  while (!isInitializationOpen()) await waitForInitializationControl()
   const context = await ensureApp(env)
   initializationCompleted = true
   return context
