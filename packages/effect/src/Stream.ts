@@ -1411,8 +1411,8 @@ export const fromEventListener = <A = unknown>(
     readonly once?: boolean
     readonly bufferSize?: number | undefined
   } | undefined
-): Stream<A> =>
-  callback<A>((queue) => {
+): Stream<A> => {
+  const stream = callback<A>((queue) => {
     function emit(event: A) {
       Queue.offerUnsafe(queue, event)
     }
@@ -1421,6 +1421,11 @@ export const fromEventListener = <A = unknown>(
       () => Effect.sync(() => target.removeEventListener(type, emit, options))
     )
   }, { bufferSize: typeof options === "object" ? options.bufferSize : undefined })
+
+  const once = typeof options === "object" && options.once
+
+  return once ? take(stream, 1) : stream
+}
 
 /**
  * Creates a stream by repeatedly applying an effectful step function to a

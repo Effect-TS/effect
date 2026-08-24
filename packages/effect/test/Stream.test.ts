@@ -5193,6 +5193,57 @@ describe("Stream", () => {
         assert.deepStrictEqual(result, [Exit.fail("boom"), Exit.fail("boom")])
       }))
   })
+
+  describe("fromEventListener", () => {
+    it.effect("subscribes and emits events", () =>
+      Effect.gen(function*() {
+        const target = new EventTarget()
+
+        const dispatchEvents = Effect.gen(function*() {
+          yield* Effect.yieldNow
+          target.dispatchEvent(new CustomEvent("test", { detail: 1 }))
+          target.dispatchEvent(new CustomEvent("test", { detail: 2 }))
+          target.dispatchEvent(new CustomEvent("test", { detail: 3 }))
+          target.dispatchEvent(new CustomEvent("test", { detail: 4 }))
+        })
+
+        const stream = Stream.fromEventListener(target, "test")
+
+        const [result] = yield* Effect.all([
+          stream.pipe(
+            Stream.map((event) => (event as CustomEvent).detail),
+            // take is required because the stream will never terminate on its own
+            Stream.take(4),
+            Stream.runCollect
+          ),
+          dispatchEvents
+        ], { concurrency: "unbounded" })
+
+        assert.deepStrictEqual(result, [1, 2, 3, 4])
+      }))
+    it.effect("ends after the first event with once: true", () =>
+      Effect.gen(function*() {
+        const target = new EventTarget()
+
+        const dispatchEvents = Effect.gen(function*() {
+          yield* Effect.yieldNow
+          target.dispatchEvent(new CustomEvent("test", { detail: 1 }))
+          target.dispatchEvent(new CustomEvent("test", { detail: 2 }))
+        })
+
+        const stream = Stream.fromEventListener(target, "test", { once: true })
+
+        const [result] = yield* Effect.all([
+          stream.pipe(
+            Stream.map((event) => (event as CustomEvent).detail),
+            Stream.runCollect
+          ),
+          dispatchEvents
+        ], { concurrency: "unbounded" })
+
+        assert.deepStrictEqual(result, [1])
+      }))
+  })
 })
 
 const grouped = <A>(arr: Array<A>, size: number): Array<NonEmptyArray<A>> => {
