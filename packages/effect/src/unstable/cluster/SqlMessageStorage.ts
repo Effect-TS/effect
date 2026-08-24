@@ -964,13 +964,17 @@ const migrations = (options?: {
             ON ${messagesTableSql} (request_id);
           `.unprepared.pipe(Effect.ignore),
         pg: () =>
-          sql`
-            CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
-            ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at);
-
-            CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
-            ON ${messagesTableSql} (request_id);
-          `.pipe(
+          Effect.gen(function*() {
+            yield* sql`
+              CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
+              ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at)
+            `
+            yield* sql`
+              CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
+              ON ${messagesTableSql} (request_id)
+            `
+          }).pipe(
+            sql.withTransaction,
             Effect.tapDefect((error) =>
               Effect.annotateLogs(Effect.logDebug("Failed to create indexes", error), {
                 package: "@effect/cluster",
