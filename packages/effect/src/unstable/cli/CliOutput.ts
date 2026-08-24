@@ -411,7 +411,7 @@ interface Row {
 const renderTable = (rows: ReadonlyArray<Row>, widthCap?: number) => {
   const maxColumn = Math.max(...rows.map((r) => visualLength(r.left))) + 4
   const col = widthCap === undefined ? maxColumn : Math.min(maxColumn, widthCap)
-  return rows.map(({ left, right }) => `  ${pad(left, col)}${right}`).join("\n")
+  return rows.map(({ left, right }) => `  ${pad(left, Math.max(col, visualLength(left) + 1))}${right}`).join("\n")
 }
 
 const formatSubcommandName = (name: string, alias: string | undefined): string => alias ? `${name}, ${alias}` : name
