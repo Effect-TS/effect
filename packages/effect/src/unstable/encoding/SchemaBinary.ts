@@ -1811,6 +1811,7 @@ interface RunPlan {
   // Per field index: INTERN_NONE / SELF / ELEMENTS / KEYS.
   readonly intern: Array<number>
   readonly shapes: boolean
+  readonly byName: Map<string, number> | undefined
 }
 
 const INTERN_NONE = 0
@@ -3180,6 +3181,29 @@ function encodeStructField(ctx: EncodeContext, field: Field, value: unknown, w: 
   encodeWirePayload(ctx, field.layout, value, wire, w)
 }
 
+function runPresenceMask(plan: RunPlan, obj: Record<string, unknown>): number | undefined {
+  const byName = plan.byName
+  if (byName === undefined) return undefined
+  const keys = Object.getOwnPropertyNames(obj)
+  let mask = 0
+  for (let i = 0; i < keys.length; i++) {
+    const index = byName.get(keys[i])
+    if (index !== undefined) mask |= 1 << index
+  }
+  const struct = plan.struct
+  if ((mask & struct.requiredMask) !== struct.requiredMask) {
+    const fields = struct.fields
+    for (let i = 0; i < fields.length; i++) {
+      const field = fields[i]
+      if (!field.optional && (mask & (1 << i)) === 0) {
+        issuePath[issuePathLen++] = field.name
+        throw issueError(new SchemaIssue.MissingKey(field.annotations))
+      }
+    }
+  }
+  return mask
+}
+
 function encodeStructFields(ctx: EncodeContext, layout: StructLayout, value: object, w: Writer) {
   const obj = value as Record<string, unknown>
   if (layout.extra.length > 0) {
@@ -3284,7 +3308,15 @@ function runPlan(layout: ArrayLayout): RunPlan | null {
     return plan
   }
   const intern = struct.fields.map((field) => internKind(field.layout))
-  plan = { struct, intern, shapes: struct.fields.length <= RUN_MAX_FIELDS }
+  const shapes = struct.fields.length <= RUN_MAX_FIELDS
+  plan = {
+    struct,
+    intern,
+    shapes,
+    byName: shapes && struct.extra.length === 0
+      ? new Map(struct.fields.map((field, index) => [field.name, index]))
+      : undefined
+  }
   layout.run = plan
   return plan
 }
@@ -3529,13 +3561,18 @@ function encodeRunRow(
   }
   const wide = !plan.shapes
   let mask = pairs === undefined ? 0 : RUN_EXTRA_BIT
-  for (let i = 0; i < fields.length; i++) {
-    const field = fields[i]
-    if (Object.hasOwn(obj, field.name)) {
-      if (!wide) mask |= 1 << i
-    } else if (!field.optional) {
-      issuePath[issuePathLen++] = field.name
-      throw issueError(new SchemaIssue.MissingKey(field.annotations))
+  const presenceMask = runPresenceMask(plan, obj)
+  if (presenceMask !== undefined) {
+    mask = presenceMask
+  } else {
+    for (let i = 0; i < fields.length; i++) {
+      const field = fields[i]
+      if (Object.hasOwn(obj, field.name)) {
+        if (!wide) mask |= 1 << i
+      } else if (!field.optional) {
+        issuePath[issuePathLen++] = field.name
+        throw issueError(new SchemaIssue.MissingKey(field.annotations))
+      }
     }
   }
   let shape = -1

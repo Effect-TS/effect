@@ -152,6 +152,14 @@ describe("SchemaBinary", () => {
       assert.strictEqual(roundtrip(Schema.Void, undefined), undefined)
     })
 
+    it("includes non-enumerable fields in row presence masks", () => {
+      const Row = Schema.Struct({ id: Schema.String, value: Schema.optionalKey(Schema.Undefined) })
+      const row = Object.defineProperty({ id: "1" }, "value", { value: undefined })
+      for (const decoded of [roundtrip(Schema.Array(Row), [row]), roundtripFingerprint(Schema.Array(Row), [row])]) {
+        assert.isTrue(Object.hasOwn(decoded[0], "value"))
+      }
+    })
+
     it("round-trips every literal leaf kind and registered symbols", () => {
       const literals = Schema.Union([
         Schema.Literal("text"),
