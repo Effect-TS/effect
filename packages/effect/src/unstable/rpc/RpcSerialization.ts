@@ -602,21 +602,9 @@ const makeSchemaBinary = (options?: {
   const maxFrameSize = options?.maxFrameSize === "unbounded"
     ? undefined
     : options?.maxFrameSize ?? defaultSchemaBinaryMaxFrameSize
-  const makeCodec: CodecFor = options?.fingerprintPayloads === true
+  const codecFor: CodecFor = options?.fingerprintPayloads === true
     ? (schema) => SchemaBinary.toCodecDirect(schema, { fingerprint: true })
     : SchemaBinary.toCodecDirect
-  // Deriving a binary codec compiles the schema layout, which is far more
-  // expensive than a per-message encode. Callers such as the cluster message
-  // paths request the codec per message, so memoize by schema identity.
-  const codecCache = new WeakMap<Schema.Top, ReturnType<CodecFor>>()
-  const codecFor: CodecFor = (schema) => {
-    let codec = codecCache.get(schema)
-    if (codec === undefined) {
-      codec = makeCodec(schema)
-      codecCache.set(schema, codec)
-    }
-    return codec as any
-  }
   const envelopeOptions = { fingerprint: true } as const
   return RpcSerialization.of({
     contentType: "application/vnd.effect.rpc+schema-binary",

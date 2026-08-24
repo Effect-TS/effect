@@ -67,11 +67,17 @@ export interface toCodec<S extends Schema.Constraint> extends
   >
 {}
 
+const codecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
+const fingerprintCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
+const directCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
+const directFingerprintCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
+
 /**
  * Derives a compact binary codec from a schema.
  *
  * The wire layout is compiled from the encoded side of the schema. Each
  * encode/decode handles exactly one frame; use {@link parser} for streams.
+ * Derived codecs are memoized by schema identity and wire mode.
  *
  * Encoded results are arena-backed views and may share a larger buffer. Use
  * `bytes.slice()` when independent ownership is required.
@@ -93,15 +99,20 @@ export interface toCodec<S extends Schema.Constraint> extends
  * @since 4.0.0
  */
 export function toCodec<S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> {
+  const cache = options?.fingerprint === true ? fingerprintCodecCache : codecCache
+  const cached = cache.get(schema)
+  if (cached !== undefined) return cached
   const { exact, layout, recursive, target } = compileTarget(schema)
   const mode = compileMode(layout, options?.fingerprint)
   const trusted: Trusted | undefined = exact ? { value: undefined } : undefined
-  return assembleCodec(
+  const codec = assembleCodec<S>(
     trusted === undefined ? target : withTrustedDecode(target, trusted, !recursive),
     layout,
     mode,
     trusted
   )
+  cache.set(schema, codec)
+  return codec
 }
 
 /**
@@ -111,24 +122,37 @@ export function toCodec<S extends Schema.Constraint>(schema: S, options?: Option
  * Only schemas the binary layer already validates on its own take the direct
  * path; anything else falls back to {@link toCodec}. A direct codec encodes and
  * decodes the same values as {@link toCodec} but is not a sound `Schema.is`
- * guard, so it is only for callers that never guard on it.
+ * guard, so it is only for callers that never guard on it. Derived codecs are
+ * memoized by schema identity and wire mode.
  *
  * @internal
  */
 export function toCodecDirect<S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> {
+  const cache = options?.fingerprint === true ? directFingerprintCodecCache : directCodecCache
+  const cached = cache.get(schema)
+  if (cached !== undefined) return cached
   const { exact, exitSuccess, layout, target } = compileTarget(schema)
   if (!exact) {
     if (!exitSuccess) return toCodec(schema, options)
     const trusted: Trusted = { value: undefined }
-    return assembleCodec(
+    const codec = assembleCodec<S>(
       withExitSuccessDecode(target, trusted),
       layout,
       compileMode(layout, options?.fingerprint),
       trusted,
       true
     )
+    cache.set(schema, codec)
+    return codec
   }
-  return assembleCodec(passThrough(target), layout, compileMode(layout, options?.fingerprint), undefined)
+  const codec = assembleCodec<S>(
+    passThrough(target),
+    layout,
+    compileMode(layout, options?.fingerprint),
+    undefined
+  )
+  cache.set(schema, codec)
+  return codec
 }
 
 function assembleCodec<S extends Schema.Constraint>(

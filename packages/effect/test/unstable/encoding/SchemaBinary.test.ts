@@ -2333,6 +2333,32 @@ describe("SchemaBinary", () => {
     })
   })
 
+  describe("codec memoization", () => {
+    it("memoizes by schema and wire mode", () => {
+      const schema = Schema.Struct({ id: Schema.Number, label: Schema.String })
+
+      const codec = SchemaBinary.toCodec(schema)
+      assert.strictEqual(SchemaBinary.toCodec(schema), codec)
+      assert.strictEqual(SchemaBinary.toCodec(schema, {}), codec)
+      assert.strictEqual(SchemaBinary.toCodec(schema, { fingerprint: false }), codec)
+
+      const fingerprintCodec = SchemaBinary.toCodec(schema, { fingerprint: true })
+      assert.strictEqual(SchemaBinary.toCodec(schema, { fingerprint: true }), fingerprintCodec)
+      assert.notStrictEqual(fingerprintCodec, codec)
+
+      const directCodec = SchemaBinary.toCodecDirect(schema)
+      assert.strictEqual(SchemaBinary.toCodecDirect(schema), directCodec)
+      assert.strictEqual(SchemaBinary.toCodecDirect(schema, { fingerprint: false }), directCodec)
+
+      const directFingerprintCodec = SchemaBinary.toCodecDirect(schema, { fingerprint: true })
+      assert.strictEqual(
+        SchemaBinary.toCodecDirect(schema, { fingerprint: true }),
+        directFingerprintCodec
+      )
+      assert.notStrictEqual(directFingerprintCodec, directCodec)
+    })
+  })
+
   describe("direct codec", () => {
     const Person = Schema.Struct({ name: Schema.String, age: Schema.Number })
 
