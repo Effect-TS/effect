@@ -1282,6 +1282,9 @@ export function fromRepresentations(
  *   conditional keywords and `minContains` / `maxContains` without `contains` have no validation effect and are ignored.
  * - Objects and arrays used as `const` values or `enum` members throw an `Unsupported structured JSON Schema value`
  *   error.
+ * - Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf`
+ *   literal sets. Other union intersections, including cases that would duplicate a nested choice, throw an
+ *   `Unsupported intersection of overlapping unions` error.
  * - Unknown extension keywords are ignored and their semantics are not enforced.
  * - Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
  *   references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
@@ -1321,6 +1324,9 @@ export function fromJsonSchemaDocument(
  *   extension keywords are ignored and their semantics are not enforced.
  * - Objects and arrays used as `const` values or `enum` members throw an `Unsupported structured JSON Schema value`
  *   error.
+ * - Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf`
+ *   literal sets. Other union intersections, including cases that would duplicate a nested choice, throw an
+ *   `Unsupported intersection of overlapping unions` error.
  * - Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
  *   references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
  *   reference to a missing definition throws an `Invalid reference` error.
