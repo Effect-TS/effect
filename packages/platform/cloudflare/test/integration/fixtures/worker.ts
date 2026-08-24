@@ -5,7 +5,6 @@ import {
   ClusterSingleton as BaseClusterSingleton,
   ClusterWorkflow as BaseClusterWorkflow
 } from "@effect/platform-cloudflare/CloudflareDurableObjects"
-import { env } from "cloudflare:workers"
 import type { Context } from "effect"
 import {
   Cause,
@@ -98,7 +97,7 @@ export class ClusterEntity extends BaseClusterEntity {
     super(ctx, environment)
     this.#name = ctx.id.name ?? ""
     this.#storage = ctx.storage
-    ctx.blockConcurrencyWhile(() => ensureApp().then(() => undefined))
+    ctx.blockConcurrencyWhile(() => ensureApp(environment).then(() => undefined))
   }
 
   mailboxRows(): Array<MailboxRow> {
@@ -124,21 +123,21 @@ export class ClusterEntity extends BaseClusterEntity {
 export class ClusterWorkflow extends BaseClusterWorkflow {
   constructor(...args: ConstructorParameters<typeof BaseClusterWorkflow>) {
     super(...args)
-    args[0].blockConcurrencyWhile(() => ensureApp().then(() => undefined))
+    args[0].blockConcurrencyWhile(() => ensureApp(args[1]).then(() => undefined))
   }
 }
 
 export class ClusterDurableQueue extends BaseClusterDurableQueue {
   constructor(...args: ConstructorParameters<typeof BaseClusterDurableQueue>) {
     super(...args)
-    args[0].blockConcurrencyWhile(() => ensureApp().then(() => undefined))
+    args[0].blockConcurrencyWhile(() => ensureApp(args[1]).then(() => undefined))
   }
 }
 
 export class ClusterSingleton extends BaseClusterSingleton {
   constructor(...args: ConstructorParameters<typeof BaseClusterSingleton>) {
     super(...args)
-    args[0].blockConcurrencyWhile(() => ensureApp().then(() => undefined))
+    args[0].blockConcurrencyWhile(() => ensureApp(args[1]).then(() => undefined))
   }
 }
 
@@ -316,7 +315,7 @@ const RelayLayer = Relay.toLayer(
   Effect.gen(function*() {
     const makeCounter = yield* Counter.client
     return Relay.of({
-      AskCounter: (request) => makeCounter(request.payload.target).Get(void 0)
+      AskCounter: (request) => Effect.orDie(makeCounter(request.payload.target).Get(void 0))
     })
   })
 )
@@ -447,42 +446,43 @@ const CronLayer = ClusterCron.make({
 // are populated before any invoke, alarm, or wake is served.
 // ---------------------------------------------------------------------------
 
-const bindings = env as Record<string, any>
+const makeAppLayer = (env: Record<string, any>) =>
+  Layer.mergeAll(
+    CounterLayer,
+    BlockerLayer,
+    SerialLayer,
+    FlakyLayer,
+    RelayLayer,
+    PinnedLayer,
+    HolderLayer,
+    EmailWorkflowLayer,
+    ClockWorkflowLayer,
+    DoorWorkflowLayer,
+    QueueWorkflowLayer,
+    SingletonLayer,
+    CronLayer
+  ).pipe(
+    Layer.provideMerge(CloudflareCluster.layer({
+      entities: [Counter, Blocker, Serial, Flaky, Relay, Pinned, Holder],
+      entityNamespace: env.CLUSTER_ENTITY,
+      workflowNamespace: env.CLUSTER_WORKFLOW,
+      queueNamespace: env.CLUSTER_QUEUE,
+      singletonNamespace: env.CLUSTER_SINGLETON
+    }))
+  ) as Layer.Layer<any>
 
-const AppLayer = Layer.mergeAll(
-  CounterLayer,
-  BlockerLayer,
-  SerialLayer,
-  FlakyLayer,
-  RelayLayer,
-  PinnedLayer,
-  HolderLayer,
-  EmailWorkflowLayer,
-  ClockWorkflowLayer,
-  DoorWorkflowLayer,
-  QueueWorkflowLayer,
-  SingletonLayer,
-  CronLayer
-).pipe(
-  Layer.provideMerge(CloudflareCluster.layer({
-    entities: [Counter, Blocker, Serial, Flaky, Relay, Pinned, Holder],
-    entityNamespace: bindings.CLUSTER_ENTITY,
-    workflowNamespace: bindings.CLUSTER_WORKFLOW,
-    queueNamespace: bindings.CLUSTER_QUEUE,
-    singletonNamespace: bindings.CLUSTER_SINGLETON
-  }))
-)
-
+let bindings: Record<string, any>
 let appContextPromise: Promise<Context.Context<any>> | undefined
-const ensureApp = () => {
+const ensureApp = (env: unknown) => {
+  bindings = env as Record<string, any>
   appContextPromise ??= Effect.runPromise(
-    Effect.flatMap(Scope.make(), (scope) => Layer.buildWithScope(AppLayer, scope))
+    Effect.flatMap(Scope.make(), (scope) => Layer.buildWithScope(makeAppLayer(bindings), scope))
   )
   return appContextPromise
 }
 
-const run = async <A, E>(effect: Effect.Effect<A, E, any>): Promise<A> =>
-  Effect.runPromise(Effect.provideContext(Effect.scoped(effect), await ensureApp()) as Effect.Effect<A, E>)
+const run = async <A, E>(effect: Effect.Effect<A, E, any>, env: unknown): Promise<A> =>
+  Effect.runPromise(Effect.provideContext(Effect.scoped(effect), await ensureApp(env)) as Effect.Effect<A, E>)
 
 // ---------------------------------------------------------------------------
 // HTTP surface for the tests.
@@ -517,7 +517,10 @@ const workflows = {
   clock: { workflow: ClockWorkflow, payload: (params: URLSearchParams) => ({ id: params.get("id")! }) },
   door: { workflow: DoorWorkflow, payload: (params: URLSearchParams) => ({ id: params.get("id")! }) },
   queue: { workflow: QueueWorkflow, payload: (params: URLSearchParams) => ({ id: params.get("id")! }) }
-} as const
+} as Record<string, {
+  readonly workflow: any
+  readonly payload: (params: URLSearchParams) => any
+}>
 
 const handle = Effect.fnUntraced(function*(url: URL) {
   const params = url.searchParams
@@ -712,7 +715,7 @@ const handle = Effect.fnUntraced(function*(url: URL) {
       const entry = workflows[params.get("name") as keyof typeof workflows]
       const executionId = yield* entry.workflow.executionId(entry.payload(params) as any)
       const result = yield* entry.workflow.poll(executionId)
-      return Option.match(result, {
+      return Option.match(result as Option.Option<{ _tag: string; exit: Exit.Exit<unknown, unknown> }>, {
         onNone: () => ({ _tag: "None" }),
         onSome: (value) =>
           value._tag === "Complete"
@@ -741,22 +744,22 @@ const handle = Effect.fnUntraced(function*(url: URL) {
 export default {
   async fetch(
     request: Request,
-    _env: unknown,
+    env: Record<string, any>,
     ctx: { waitUntil: (promise: Promise<unknown>) => void }
   ): Promise<Response> {
     const url = new URL(request.url)
     if (url.pathname === "/singleton/wake") {
       // Mirrors a Cron Trigger `scheduled` handler: fire the wake without
       // blocking the request, so gated singleton runs can be observed.
-      ctx.waitUntil(bindings.CLUSTER_SINGLETON.getByName("Singleton/integration-singleton").wake())
+      ctx.waitUntil(env.CLUSTER_SINGLETON.getByName("Singleton/integration-singleton").wake())
       return Response.json({ woken: true })
     }
     if (url.pathname === "/cron/wake") {
-      await bindings.CLUSTER_SINGLETON.getByName("Singleton/ClusterCron/integration-cron").wake()
+      await env.CLUSTER_SINGLETON.getByName("Singleton/ClusterCron/integration-cron").wake()
       return Response.json({ woken: true })
     }
     try {
-      return Response.json(await run(handle(url)))
+      return Response.json(await run(handle(url), env))
     } catch (error) {
       return new Response(
         error instanceof Error ? `${error.stack}\n${String((error as any).cause ?? "")}` : String(error),
