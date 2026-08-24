@@ -23,6 +23,7 @@ import { dual, memoize } from "../../Function.ts"
 import * as HashMap from "../../HashMap.ts"
 import * as HashSet from "../../HashSet.ts"
 import { assignProperty } from "../../internal/record.ts"
+import * as InternalParser from "../../internal/schema/parser.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Pull from "../../Pull.ts"
@@ -5008,11 +5009,13 @@ function bypassPass(
 ): Schema.Constraint {
   const type = Schema.make(SchemaAST.toType(target.ast))
   const parse = SchemaParser.decodeUnknownEffect(type as Schema.ConstraintDecoder<unknown>)
+  // A bypassed input comes back unchanged, which the shared "same value" exit
+  // says without allocating one per call.
   const run = (
     accept: (input: unknown, options: SchemaAST.ParseOptions) => boolean
   ): SchemaAST.DeclarationRun =>
   () =>
-  (input, _ast, options) => accept(input, options) ? Effect.succeed(input) : parse(input, options)
+  (input, _ast, options) => accept(input, options) ? InternalParser.sameExit : parse(input, options)
   return Schema.make(
     new SchemaAST.Declaration(
       [type.ast],
