@@ -1277,8 +1277,12 @@ export function fromRepresentations(
  *
  * **Gotchas**
  *
- * - Import is best-effort outside the exactly translated subset. Unsupported or ignored keywords are not covered by the
- *   round-trip guarantee.
+ * - `$dynamicRef`, `contains`, `dependentRequired`, `dependentSchemas`, `not`, active `if` / `then` / `else`,
+ *   `unevaluatedItems`, and `unevaluatedProperties` throw an `Unsupported JSON Schema keyword` error. Inactive
+ *   conditional keywords and `minContains` / `maxContains` without `contains` have no validation effect and are ignored.
+ * - Objects and arrays used as `const` values or `enum` members throw an `Unsupported structured JSON Schema value`
+ *   error.
+ * - Unknown extension keywords are ignored and their semantics are not enforced.
  * - Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
  *   references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
  *   reference to a missing definition throws an `Invalid reference` error.
@@ -1313,6 +1317,10 @@ export function fromJsonSchemaDocument(
  * **Gotchas**
  *
  * - Only definitions reachable from a root are translated.
+ * - Unsupported standard validation and applicator keywords throw an `Unsupported JSON Schema keyword` error. Unknown
+ *   extension keywords are ignored and their semantics are not enforced.
+ * - Objects and arrays used as `const` values or `enum` members throw an `Unsupported structured JSON Schema value`
+ *   error.
  * - Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
  *   references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
  *   reference to a missing definition throws an `Invalid reference` error.
