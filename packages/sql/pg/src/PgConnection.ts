@@ -80,6 +80,11 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
  * `search_path` in force when it was parsed, the usual caveat for prepared
  * statements anywhere.
  *
+ * Statements that never repeat get no benefit from it. Code that builds its
+ * SQL per call, rather than passing the varying part as a parameter, fills the
+ * cache with statements it will not run again and pays a `Close` for each one
+ * it evicts; parameterize those, or turn `prepare` off.
+ *
  * `multiplex` marks the session as shareable between fibers, and unpinned
  * statements submitted together are then written as one pipeline instead of
  * one at a time. Pinned work - transactions, `stream`, `listen` - still has
