@@ -1,9 +1,10 @@
 import * as CloudflareCluster from "@effect/platform-cloudflare/CloudflareCluster"
-import {
-  ClusterDurableQueue as BaseClusterDurableQueue,
-  ClusterEntity as BaseClusterEntity,
-  ClusterSingleton as BaseClusterSingleton,
-  ClusterWorkflow as BaseClusterWorkflow
+import * as CloudflareDurableObjects from "@effect/platform-cloudflare/CloudflareDurableObjects"
+import { ClusterEntity as BaseClusterEntity } from "@effect/platform-cloudflare/CloudflareDurableObjects"
+export {
+  ClusterDurableQueue,
+  ClusterSingleton,
+  ClusterWorkflow
 } from "@effect/platform-cloudflare/CloudflareDurableObjects"
 import type { Context } from "effect"
 import {
@@ -97,7 +98,6 @@ export class ClusterEntity extends BaseClusterEntity {
     super(ctx, environment)
     this.#name = ctx.id.name ?? ""
     this.#storage = ctx.storage
-    ctx.blockConcurrencyWhile(() => ensureApp(environment).then(() => undefined))
   }
 
   mailboxRows(): Array<MailboxRow> {
@@ -117,27 +117,6 @@ export class ClusterEntity extends BaseClusterEntity {
     } finally {
       counts.activeHolds.set(this.#name, (counts.activeHolds.get(this.#name) ?? 1) - 1)
     }
-  }
-}
-
-export class ClusterWorkflow extends BaseClusterWorkflow {
-  constructor(...args: ConstructorParameters<typeof BaseClusterWorkflow>) {
-    super(...args)
-    args[0].blockConcurrencyWhile(() => ensureApp(args[1]).then(() => undefined))
-  }
-}
-
-export class ClusterDurableQueue extends BaseClusterDurableQueue {
-  constructor(...args: ConstructorParameters<typeof BaseClusterDurableQueue>) {
-    super(...args)
-    args[0].blockConcurrencyWhile(() => ensureApp(args[1]).then(() => undefined))
-  }
-}
-
-export class ClusterSingleton extends BaseClusterSingleton {
-  constructor(...args: ConstructorParameters<typeof BaseClusterSingleton>) {
-    super(...args)
-    args[0].blockConcurrencyWhile(() => ensureApp(args[1]).then(() => undefined))
   }
 }
 
@@ -441,9 +420,8 @@ const CronLayer = ClusterCron.make({
 
 // ---------------------------------------------------------------------------
 // Layer assembly. workerd forbids timers and randomness in global scope, so
-// the layer is built lazily inside the first event. Every Durable Object
-// subclass blocks its events on the build, guaranteeing the module registries
-// are populated before any invoke, alarm, or wake is served.
+// the layer is built lazily inside the first event. The public Durable Object
+// initializer blocks every class on the same build promise.
 // ---------------------------------------------------------------------------
 
 const makeAppLayer = (env: Record<string, any>) =>
@@ -481,8 +459,34 @@ const ensureApp = (env: unknown) => {
   return appContextPromise
 }
 
+let initializationStarted = false
+let initializationCompleted = false
+let initializationFailure = false
+let initializationFailed = false
+let initializationOpen = true
+const initializationCallsStarted = new Set<string>()
+const initializationCallsCompleted = new Set<string>()
+const isInitializationOpen = () => initializationOpen
+
+const blockInitialization = () => {
+  initializationStarted = false
+  initializationOpen = false
+}
+
+const initializeApp = CloudflareDurableObjects.setInitializer(async (env) => {
+  initializationStarted = true
+  if (initializationFailure) {
+    initializationFailed = true
+    throw new Error("deliberate Cloudflare application initialization failure")
+  }
+  while (!isInitializationOpen()) await scheduler.wait(1)
+  const context = await ensureApp(env)
+  initializationCompleted = true
+  return context
+})
+
 const run = async <A, E>(effect: Effect.Effect<A, E, any>, env: unknown): Promise<A> =>
-  Effect.runPromise(Effect.provideContext(Effect.scoped(effect), await ensureApp(env)) as Effect.Effect<A, E>)
+  Effect.runPromise(Effect.provideContext(Effect.scoped(effect), await initializeApp(env)) as Effect.Effect<A, E>)
 
 // ---------------------------------------------------------------------------
 // HTTP surface for the tests.
@@ -505,6 +509,46 @@ const serializeExit = (exit: Exit.Exit<unknown, unknown>) =>
   Exit.isSuccess(exit)
     ? { _tag: "Success", value: exit.value }
     : { _tag: "Failure", cause: Cause.pretty(exit.cause) }
+
+const callColdDurableObject = async (kind: string, env: Record<string, any>): Promise<void> => {
+  switch (kind) {
+    case "entity": {
+      const id = "readiness"
+      const stub = env.CLUSTER_ENTITY.getByName(CloudflareCluster.encodeName("Counter", id))
+      await stub.invoke(
+        JSON.stringify({
+          _tag: "Request",
+          requestId: crypto.randomUUID(),
+          address: {
+            shardId: { group: "default", id: 1 },
+            entityType: "Counter",
+            entityId: id
+          },
+          tag: "Get",
+          payload: null,
+          headers: {}
+        }),
+        false
+      )
+      return
+    }
+    case "workflow":
+      await env.CLUSTER_WORKFLOW
+        .getByName(CloudflareCluster.encodeName("EmailWorkflow", "readiness"))
+        .run(JSON.stringify({ id: "readiness", value: 1 }), { discard: false })
+      return
+    case "queue":
+      await env.CLUSTER_QUEUE
+        .getByName(CloudflareCluster.encodeName("PersistedQueue", "readiness"))
+        .offer("readiness", JSON.stringify({ id: "readiness" }))
+      return
+    case "singleton":
+      await env.CLUSTER_SINGLETON.getByName("Singleton/integration-singleton").wake()
+      return
+    default:
+      throw new Error(`unknown Durable Object kind: ${kind}`)
+  }
+}
 
 const workflows = {
   email: {
@@ -748,6 +792,43 @@ export default {
     ctx: { waitUntil: (promise: Promise<unknown>) => void }
   ): Promise<Response> {
     const url = new URL(request.url)
+    if (url.pathname === "/initialization/block") {
+      blockInitialization()
+      return Response.json({ blocked: true })
+    }
+    if (url.pathname === "/initialization/fail") {
+      initializationFailure = true
+      return Response.json({ failing: true })
+    }
+    if (url.pathname === "/initialization/state") {
+      return Response.json({
+        started: initializationStarted,
+        completed: initializationCompleted,
+        failed: initializationFailed,
+        callsStarted: Array.from(initializationCallsStarted).sort(),
+        callsCompleted: Array.from(initializationCallsCompleted).sort()
+      })
+    }
+    if (url.pathname === "/initialization/open") {
+      gateFor("singleton").openUnsafe()
+      initializationOpen = true
+      return Response.json({ opened: true })
+    }
+    if (url.pathname === "/initialization/call") {
+      const kind = url.searchParams.get("kind") ?? "entity"
+      initializationCallsStarted.add(kind)
+      try {
+        await callColdDurableObject(kind, env)
+        initializationCallsCompleted.add(kind)
+        return Response.json({ ok: true })
+      } catch (error) {
+        initializationCallsCompleted.add(kind)
+        return Response.json({
+          ok: false,
+          error: error instanceof Error ? error.message : String(error)
+        })
+      }
+    }
     if (url.pathname === "/singleton/wake") {
       // Mirrors a Cron Trigger `scheduled` handler: fire the wake without
       // blocking the request, so gated singleton runs can be observed.
