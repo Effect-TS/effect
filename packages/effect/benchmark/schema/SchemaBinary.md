@@ -61,23 +61,23 @@ Average encode operations per second:
 
 | Case                   |   Default | Fingerprint |    JSON | Msgpack |  Protobuf |
 | ---------------------- | --------: | ----------: | ------: | ------: | --------: |
-| small record           | 1,345,190 |   1,489,531 | 439,896 | 711,111 | 2,037,611 |
-| nested payload         |   609,551 |     648,283 | 260,881 | 289,107 |   544,515 |
-| collections            |   145,017 |     152,320 |  22,127 |  22,481 |    76,926 |
-| index signatures / 128 |   134,261 |     135,712 |  36,545 |  35,507 |    63,900 |
-| index signatures / 512 |    35,118 |      35,456 |   6,984 |   6,384 |    15,889 |
-| 200-row array payload  |    18,824 |      18,703 |   7,167 |   4,183 |    11,739 |
+| small record           | 1,319,592 |   1,507,529 | 436,487 | 704,398 | 2,000,847 |
+| nested payload         |   588,799 |     641,251 | 259,634 | 285,917 |   562,044 |
+| collections            |   146,285 |     153,447 |  22,636 |  23,006 |    75,809 |
+| index signatures / 128 |   138,629 |     139,601 |  36,497 |  35,532 |    63,231 |
+| index signatures / 512 |    36,813 |      36,699 |   6,999 |   6,358 |    15,699 |
+| 200-row array payload  |    19,622 |      19,671 |   7,182 |   4,192 |    12,040 |
 
 Average decode operations per second:
 
 | Case                   |   Default | Fingerprint |    JSON | Msgpack |  Protobuf |
 | ---------------------- | --------: | ----------: | ------: | ------: | --------: |
-| small record           | 1,548,021 |   1,608,589 | 400,771 | 721,286 | 2,178,687 |
-| nested payload         |   580,295 |     682,043 | 216,879 | 274,680 |   556,542 |
-| collections            |   113,501 |     117,312 |  20,702 |  21,805 |    80,155 |
-| index signatures / 128 |    62,324 |      62,474 |  28,739 |  30,088 |    44,954 |
-| index signatures / 512 |    16,067 |      16,182 |   5,502 |   4,623 |     6,614 |
-| 200-row array payload  |    23,197 |      23,232 |   5,729 |   4,835 |    15,797 |
+| small record           | 1,560,001 |   1,613,600 | 398,999 | 733,207 | 2,281,446 |
+| nested payload         |   586,239 |     689,588 | 216,563 | 270,625 |   560,920 |
+| collections            |   113,511 |     116,816 |  21,138 |  22,045 |    77,912 |
+| index signatures / 128 |    63,122 |      63,161 |  28,565 |  30,062 |    44,545 |
+| index signatures / 512 |    16,412 |      16,338 |   5,432 |   4,593 |     6,029 |
+| 200-row array payload  |    23,071 |      23,094 |   5,624 |   4,809 |    15,663 |
 
 ## Raw serializer adversarial cases
 
@@ -96,29 +96,29 @@ Average operations per second with msgpackr native acceleration enabled:
 
 | Case                      | Direction | SchemaBinary | Fingerprint | Effect Msgpack schema | msgpackr shared | msgpackr plain |  JSON raw |
 | ------------------------- | --------- | -----------: | ----------: | --------------------: | --------------: | -------------: | --------: |
-| shallow record            | encode    |    1,675,346 |   1,828,074 |               787,043 |       2,472,925 |      2,856,625 | 3,009,015 |
-| shallow record            | decode    |    1,996,652 |   2,113,773 |               879,947 |       6,738,938 |      4,395,966 | 2,260,644 |
-| msgpackr clinical fixture | encode    |       49,750 |      55,942 |                17,398 |          68,625 |         63,611 |   125,505 |
-| msgpackr clinical fixture | decode    |       48,789 |      58,827 |                16,643 |         184,917 |         54,223 |    58,081 |
+| shallow record            | encode    |    1,704,527 |   1,842,472 |               798,150 |       2,463,086 |      2,806,880 | 2,928,575 |
+| shallow record            | decode    |    2,039,262 |   2,202,957 |               891,250 |       6,906,994 |      4,324,485 | 2,280,053 |
+| msgpackr clinical fixture | encode    |       52,186 |      58,306 |                17,531 |          67,371 |         61,381 |   131,325 |
+| msgpackr clinical fixture | decode    |       48,462 |      58,404 |                16,928 |         183,899 |         53,859 |    56,427 |
 
 Clinical-fixture decode operations per second with native acceleration toggled:
 
 | Format                | Enabled | Disabled |
 | --------------------- | ------: | -------: |
-| SchemaBinary          |  48,789 |   48,241 |
-| Fingerprint           |  58,827 |   57,518 |
-| Effect Msgpack schema |  16,643 |   15,231 |
-| msgpackr shared       | 184,917 |  118,683 |
-| msgpackr plain        |  54,223 |   40,660 |
-| JSON raw              |  58,081 |   57,720 |
+| SchemaBinary          |  48,462 |   48,476 |
+| Fingerprint           |  58,404 |   58,441 |
+| Effect Msgpack schema |  16,928 |   15,124 |
+| msgpackr shared       | 183,899 |  118,799 |
+| msgpackr plain        |  53,859 |   40,537 |
+| JSON raw              |  56,427 |   57,388 |
 
-Shared-structure msgpackr still leads the clinical fixture: 1.4x on encode and 3.8x on decode against default SchemaBinary with native extraction enabled, 2.5x on decode with it disabled. Fingerprint mode narrows that to 1.2x and 3.1x while staying 8% smaller than the shared-structure payload.
+Shared-structure msgpackr still leads the clinical fixture: 1.29x on encode and 3.79x on decode against default SchemaBinary with native extraction enabled, and 2.45x on decode with it disabled. Fingerprint mode narrows that to 1.16x and 3.15x while staying 8% smaller than the shared-structure payload.
 
-Against everything that does not generate code, SchemaBinary is at or ahead of the field on the clinical fixture. Fingerprint decode beats plain msgpackr by 1.09x with native extraction enabled and 1.41x with it disabled, and matches raw `JSON.parse`. Encode trails plain msgpackr by 1.14x and `JSON.stringify` by 2.2x, both of which drop straight into a C++ implementation. Against the schema-validating Effect Msgpack API, default SchemaBinary is 2.9x faster in both directions.
+Against everything that does not generate code, SchemaBinary is at or ahead of the field on the clinical fixture. Fingerprint decode beats plain msgpackr by 1.08x with native extraction enabled and 1.44x with it disabled, and beats raw `JSON.parse` by 1.03x. Fingerprint encode is within 5% of plain msgpackr, though `JSON.stringify` is 2.3x ahead of both. Against the schema-validating Effect Msgpack API, default SchemaBinary is 3.0x faster to encode and 2.9x faster to decode.
 
 The shallow record is where the remaining fixed cost shows. Both directions carry the parse pipeline around the codec, roughly a fifth of a shallow decode, which msgpackr does not pay because `unpack` is one function call.
 
-The rest of the shared-structure gap is code generation. msgpackr builds one reader per record structure with `new Function`, so a decoded object is an object literal: about 1 ns per property against 8 to 9 ns for the keyed store this codec has to use. That is worth roughly 2.3 us of the clinical fixture's 20 us decode. Removing the layout dispatch on top of it would leave around 13 us, still short of the 5.3 us shared-structure msgpackr reaches with its native string extractor. Closing that gap is a `new Function` decision, not a tuning one.
+The rest of the shared-structure gap is code generation. msgpackr builds one reader per record structure with `new Function`, so a decoded object is an object literal: about 1 ns per property against 8 to 9 ns for the keyed store this codec has to use. That is worth roughly 2.3 us of the clinical fixture's 20 us decode. Removing the layout dispatch on top of it would leave around 13 us, still short of the 5.4 us shared-structure msgpackr reaches with its native string extractor. Closing that gap is a `new Function` decision, not a tuning one.
 
 ## Streaming decode throughput
 
@@ -126,30 +126,30 @@ Average decoded values per second for batched input:
 
 | Case                   |   Default | Fingerprint | Msgpack |  Protobuf |  NDJSON |
 | ---------------------- | --------: | ----------: | ------: | --------: | ------: |
-| small record           | 4,660,192 |   5,851,861 | 914,235 | 4,234,523 | 804,341 |
-| nested payload         |   802,608 |   1,041,027 | 280,029 |   584,790 | 304,523 |
-| collections            |   121,996 |     123,726 |  21,049 |    74,017 |  20,571 |
-| index signatures / 128 |    63,707 |      63,924 |  28,068 |    38,560 |  28,588 |
-| index signatures / 512 |    15,880 |      15,705 |   4,137 |     4,887 |   4,849 |
-| 200-row array payload  |    22,827 |      22,966 |   6,330 |     7,420 |   4,927 |
-| 200 single-row frames  | 2,332,929 |   2,662,774 | 852,201 | 1,657,517 | 971,613 |
+| small record           | 5,116,343 |   5,956,797 | 967,638 | 4,170,440 | 831,994 |
+| nested payload         |   821,034 |   1,042,459 | 284,246 |   586,806 | 312,906 |
+| collections            |   121,413 |     123,472 |  21,071 |    77,768 |  20,555 |
+| index signatures / 128 |    65,080 |      65,325 |  28,163 |    38,953 |  28,743 |
+| index signatures / 512 |    15,774 |      16,146 |   4,117 |     5,135 |   5,071 |
+| 200-row array payload  |    23,238 |      23,247 |   6,573 |     7,455 |   4,988 |
+| 200 single-row frames  | 2,257,102 |   2,682,446 | 849,319 | 1,692,708 | 950,570 |
 
 Average decoded values per second for single and first-byte-fragmented input:
 
 | Case                   | Default single | Default fragmented | Fingerprint single | Fingerprint fragmented | NDJSON single | NDJSON fragmented |
 | ---------------------- | -------------: | -----------------: | -----------------: | ---------------------: | ------------: | ----------------: |
-| small record           |      1,536,443 |          1,208,453 |          3,463,460 |              2,537,780 |       130,067 |           131,466 |
-| nested payload         |        710,052 |            664,959 |            894,898 |                818,968 |       104,962 |           103,520 |
-| collections            |        116,682 |            119,130 |            122,528 |                120,766 |        18,651 |            18,599 |
-| index signatures / 128 |         63,189 |             63,181 |             63,576 |                 63,467 |        24,665 |            24,385 |
-| index signatures / 512 |         16,091 |             16,125 |             16,302 |                 15,696 |         4,971 |             4,976 |
-| 200-row array payload  |         23,094 |             22,829 |             23,146 |                 22,764 |         5,205 |             5,205 |
-| 200 single-row frames  |      1,655,894 |          1,410,210 |          1,858,777 |              1,547,992 |       139,570 |           128,969 |
+| small record           |      3,020,534 |          2,168,195 |          3,695,255 |              2,720,058 |       131,636 |           133,208 |
+| nested payload         |        721,200 |            677,292 |            890,654 |                833,766 |       104,947 |           103,084 |
+| collections            |        119,996 |            118,256 |            121,800 |                119,050 |        18,668 |            18,652 |
+| index signatures / 128 |         64,295 |             64,417 |             64,764 |                 64,364 |        24,908 |            24,547 |
+| index signatures / 512 |         16,424 |             16,396 |             16,581 |                 16,488 |         5,195 |             5,098 |
+| 200-row array payload  |         23,468 |             23,205 |             23,418 |                 23,052 |         5,251 |             5,218 |
+| 200 single-row frames  |      1,505,519 |          1,473,846 |          1,915,049 |              1,644,030 |       131,373 |           126,835 |
 
 ## Analysis
 
 - Fingerprint mode is now the smallest SchemaBinary format for every case except the two index-signature maps, where the two modes are within 7 bytes: row runs apply in both modes, and fingerprint shapes are presence masks with no id list, so the `200-row array payload` dropped from 19,454 to 7,741 bytes. Its decode rate rose from 14,905 to 23,321 ops/s, matching the default mode.
 - The default mode has the smallest raw payload of any non-fingerprint format in every case except the small record, where only Protobuf's one-byte field numbers beat its hashed five-byte field tags (42 vs 47 bytes). Fingerprint mode wins there too (30 bytes).
 - Compression still changes the map ranking: Protobuf has the smallest zstd output for both index-signature cases, and JSON wins gzip at 128 keys.
-- Protobuf keeps the small record in both directions, by 1.4x to 1.5x. SchemaBinary leads the other five one-shot cases in both directions, from 1.04x on nested-payload decode up to 2.2x on index-signature encode, while returning schema-validated application values. Against Msgpack through the same public API it leads every case, by 1.9x to 6.5x.
+- Protobuf keeps the small record in both directions, by about 1.5x. SchemaBinary leads the other five one-shot cases in both directions, from 1.05x on the nested payload up to 2.7x on index-signature decode, while returning schema-validated application values. Against Msgpack through the same public API it leads every case, by 1.9x to 6.4x.
 - Single-frame and fragmented streaming rates for the `200 single-row frames` case carry 20% or worse RME at 250 samples, so only their batch column is worth comparing across runs.
