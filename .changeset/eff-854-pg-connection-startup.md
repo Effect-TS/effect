@@ -21,3 +21,16 @@ defining them one property descriptor at a time. The frame tail and the bind enc
 statement, frames are assembled in a pooled buffer, and a pool checkout only runs its retry loop when a connection has
 to be replaced. On the `benchmark/PgClient.ts` workloads this puts the native client ahead of the `pg`-based one it
 replaces rather than behind it on row-heavy results.
+
+Statements a session has already run are kept prepared under a backend name, so a repeated statement costs
+`Bind`/`Execute`/`Sync` with no parsing, planning, or `RowDescription`. The cache is per connection, keyed on SQL text
+plus the inferred parameter OIDs, bounded by `preparedStatementCacheSize`, and recovers on its own when the backend has
+lost a name or a cached plan no longer matches its columns. Pass `prepare: false` for a pooler that cannot keep names
+between statements.
+
+A `multiplex` session now pipelines the statements its fibers submit together into one write instead of sending them
+one at a time, which takes a single connection past what a ten-connection pool reaches without it. Pinned work still
+owns the session, and `pin` waits for the pipeline to drain.
+
+A statement the server refuses to parse - a typo, a missing table - no longer destroys the connection. It is an
+ordinary query error and fails only that statement.

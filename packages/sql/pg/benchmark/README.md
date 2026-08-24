@@ -15,6 +15,10 @@ Run it from the repository root:
 nix develop -c pnpm --filter @effect/sql-pg benchmark:client
 ```
 
+Set `PGCLIENT_BENCHMARK_MULTIPLEX=1` to run the same workloads on a multiplexed pool, where concurrent statements are
+pipelined rather than sent one at a time. It only changes the concurrent workload; the sequential ones submit one
+statement at a time and have nothing to pipeline.
+
 To use an existing PostgreSQL server instead, set `PGCLIENT_BENCHMARK_URL` to its connection URI. Keep the same server,
 Node version, and machine load when comparing revisions.
 

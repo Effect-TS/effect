@@ -16,11 +16,14 @@ const { container, url } = resource
 
 let sink = 0
 
+const multiplex = process.env.PGCLIENT_BENCHMARK_MULTIPLEX === "1"
+
 const run = Effect.gen(function*() {
   const sql = yield* PgClient.make({
     url: Redacted.make(url),
     applicationName: "pgclient-benchmark",
-    maxConnections: 10
+    maxConnections: 10,
+    ...(multiplex ? { multiplex: true } : {})
   })
 
   const workloads = [
@@ -107,7 +110,9 @@ const run = Effect.gen(function*() {
 try {
   const revision = execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim()
   console.log(
-    `PgClient benchmark at ${revision} (${externalUrl === undefined ? "Testcontainers" : "external PostgreSQL"})`
+    `PgClient benchmark at ${revision} (${externalUrl === undefined ? "Testcontainers" : "external PostgreSQL"}${
+      multiplex ? ", multiplex" : ""
+    })`
   )
   await Effect.runPromise(run)
   if (sink === 0) throw new Error("Benchmark did not run")
