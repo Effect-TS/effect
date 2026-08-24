@@ -247,4 +247,25 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       )
       assert.deepStrictEqual(held.rows[0], { n: 1 })
     }))
+  it.effect("re-parses a statement first prepared in a rolled back transaction", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const connection = yield* PgConnection.make({
+        url: Redacted.make(container.getConnectionUri())
+      })
+      yield* connection.query("CREATE TEMP TABLE rolled_back (a int)")
+
+      // Postgres drops a statement prepared inside a transaction it rolls
+      // back, so the cached name is gone even though the session lives on.
+      yield* connection.query("BEGIN")
+      yield* connection.query("INSERT INTO rolled_back VALUES ($1::int4)", [1])
+      yield* connection.query("ROLLBACK")
+
+      yield* connection.query("INSERT INTO rolled_back VALUES ($1::int4)", [2])
+      yield* connection.query("INSERT INTO rolled_back VALUES ($1::int4)", [3])
+      assert.deepStrictEqual(
+        (yield* connection.query("SELECT a FROM rolled_back ORDER BY a")).rows,
+        [{ a: 2 }, { a: 3 }]
+      )
+    }))
 })
