@@ -95,6 +95,9 @@ importers:
       dprint:
         specifier: ^0.56.1
         version: 0.56.1
+      fast-check:
+        specifier: ^4.9.0
+        version: 4.9.0
       glob:
         specifier: ^13.0.6
         version: 13.0.6
@@ -330,9 +333,6 @@ importers:
 
   packages/effect:
     dependencies:
-      fast-check:
-        specifier: ^4.9.0
-        version: 4.9.0
       msgpackr:
         specifier: ^2.0.5
         version: 2.0.5

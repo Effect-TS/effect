@@ -30,8 +30,16 @@ This import enhances the standard `it` function from `vitest` with several power
 | `it.effect`    | Runs a scoped test with test services such as `TestClock` and `TestConsole`.                        |
 | `it.live`      | Runs a scoped test with the live Effect environment.                                                |
 | `it.layer`     | Shares a `Layer` between multiple tests.                                                            |
-| `it.prop`      | Runs property tests using Effect `Schema` values or FastCheck arbitraries.                          |
+| `it.prop`      | Runs property tests using Effect `Schema` and `Arbitrary` values.                                   |
 | `it.flakyTest` | Retries an Effect that might occasionally fail until it succeeds or reaches the configured timeout. |
+
+Property tests shrink callbacks that return `false`, throw, or complete with a non-interruption Effect failure. This
+includes failed assertions, typed failures, and defects. Effect interruption still interrupts the test. Returning
+normally with any value other than `false`, including `void`, passes for that generated input.
+
+The Vitest `timeout` interrupts the Effect fiber running property generation, evaluation, and shrinking. Effect
+finalizers run during the interruption, which is reported as a test timeout rather than a property falsification. As
+with other Effect programs, a timeout cannot preempt a synchronous JavaScript callback that does not return.
 
 ## Writing Tests with `it.effect`
 

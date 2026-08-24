@@ -61,6 +61,7 @@
     "ast-types": "^0.14.2",
     "babel-plugin-annotate-pure-calls": "^0.5.0",
     "dprint": "^0.56.1",
+    "fast-check": "^4.9.0",
     "glob": "^13.0.6",
     "happy-dom": "^20.11.6",
     "jscodeshift": "^17.4.0",
