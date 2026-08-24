@@ -1,9 +1,10 @@
 import { afterEach, assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Layer, Schema, Stream } from "effect"
+import { SchemaBinary } from "effect/unstable/encoding"
 import { HttpRouter } from "effect/unstable/http"
 import * as HttpClient from "effect/unstable/http/HttpClient"
 import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
-import { Rpc, RpcClient, RpcGroup, RpcSchema, RpcSerialization, RpcServer } from "effect/unstable/rpc"
+import { Rpc, RpcClient, RpcGroup, type RpcMessage, RpcSchema, RpcSerialization, RpcServer } from "effect/unstable/rpc"
 
 const responseExitSuccess = (requestId: string | number, value: unknown) => ({
   _tag: "Exit",
@@ -114,6 +115,49 @@ const makeClient = Effect.fnUntraced(function*() {
 
   return { client, requests } as const
 })
+
+const BinaryServer = RpcServer.layerHttp({
+  group: Rpcs,
+  path: "/rpc",
+  protocol: "http"
+}).pipe(
+  Layer.provide(Handlers),
+  Layer.provide(RpcSerialization.layerSchemaBinary())
+)
+
+const makeBinaryClient = Effect.fnUntraced(function*() {
+  const { dispose, handler } = HttpRouter.toWebHandler(BinaryServer)
+  yield* Effect.addFinalizer(() => Effect.promise(dispose))
+
+  const httpClient = HttpClient.make((request) => {
+    const body = (request.body as any).body as Uint8Array
+    return Effect.map(
+      Effect.promise(() =>
+        handler(new Request("http://test/rpc", { method: "POST", body: new Uint8Array(body).buffer }))
+      ),
+      (response) => HttpClientResponse.fromWeb(request, response)
+    )
+  })
+
+  return yield* RpcClient.make(Rpcs).pipe(
+    Effect.provide(
+      RpcClient.layerProtocolHttp({ url: "http://test/rpc" }).pipe(
+        Layer.provide(RpcSerialization.layerSchemaBinary()),
+        Layer.provide(Layer.succeed(HttpClient.HttpClient)(httpClient))
+      )
+    )
+  )
+})
+
+const uvarint = (value: number): Uint8Array => {
+  const bytes: Array<number> = []
+  while (value >= 0x80) {
+    bytes.push((value & 0x7f) | 0x80)
+    value = Math.floor(value / 0x80)
+  }
+  bytes.push(value)
+  return Uint8Array.from(bytes)
+}
 
 describe("RpcSerialization", () => {
   describe.sequential("jsonRpc inherited properties", () => {
@@ -412,6 +456,137 @@ describe("RpcSerialization", () => {
     }).pipe(
       Effect.provide(RpcSerialization.layerMsgPackWith({ maxBufferSize: 2 }))
     ))
+
+  describe("SchemaBinary", () => {
+    it.effect("roundtrips requests and streamed responses over HTTP", () =>
+      Effect.gen(function*() {
+        const client = yield* makeBinaryClient()
+
+        assert.strictEqual(yield* client.Echo({ value: "hi" }), "hi!")
+        assert.deepStrictEqual(yield* Stream.runCollect(client.Counts({ to: 3 })), [1, 2, 3])
+
+        const error = yield* Effect.flip(client.Fail({}))
+        assert.instanceOf(error, EchoError)
+        assert.strictEqual(error.at.getTime(), failedAt.getTime())
+
+        const exit = yield* Effect.exit(client.Boom({}))
+        assert(Exit.isFailure(exit))
+        assert.include(String(exit.cause), "boom")
+      }))
+
+    it.effect("fingerprints envelopes", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        const parser = serialization.makeUnsafe()
+        const incompatibleEnvelope = Schema.Struct({
+          _tag: Schema.tag("Request"),
+          id: Schema.Union([Schema.String, Schema.Number]),
+          tag: Schema.String,
+          payload: Schema.Uint8Array,
+          headers: Schema.Array(Schema.Tuple([Schema.String, Schema.String])),
+          added: Schema.optional(Schema.String)
+        })
+        const frame = Schema.encodeSync(SchemaBinary.toCodec(incompatibleEnvelope, { fingerprint: true }))({
+          _tag: "Request",
+          id: 1,
+          tag: "Echo",
+          payload: Uint8Array.of(1),
+          headers: []
+        })
+
+        assert.throws(() => parser.decode(frame), /matching layout fingerprint/)
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
+
+    it.effect("does not fingerprint payloads by default", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        const Writer = Schema.Struct({
+          value: Schema.String,
+          added: Schema.optional(Schema.String)
+        })
+        const Reader = Schema.Struct({ value: Schema.String })
+        const encoded = Schema.encodeSync(serialization.codecFor(Writer))({ value: "ok", added: "new" })
+
+        assert.instanceOf(encoded, Uint8Array)
+        assert.deepStrictEqual(Schema.decodeSync(serialization.codecFor(Reader))(encoded), { value: "ok" })
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
+
+    it.effect("layerSchemaBinary fingerprints payloads when enabled", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        const Writer = Schema.Struct({ value: Schema.String })
+        const Reader = Schema.Struct({ value: Schema.Number })
+        const encoded = Schema.encodeSync(serialization.codecFor(Writer))({ value: "ok" })
+
+        assert.deepStrictEqual(Schema.decodeSync(serialization.codecFor(Writer))(encoded), { value: "ok" })
+        assert.throws(
+          () => Schema.decodeSync(serialization.codecFor(Reader))(encoded),
+          /matching layout fingerprint/
+        )
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary({ fingerprintPayloads: true }))))
+
+    it.effect("uses fingerprinted envelope framing and the binary content type", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        const parser = serialization.makeUnsafe()
+        const request: RpcMessage.RequestEncoded = {
+          _tag: "Request",
+          id: 1,
+          tag: "Echo",
+          payload: Uint8Array.of(1, 2, 3),
+          headers: []
+        }
+        const frame = parser.encode(request)
+
+        assert.strictEqual(serialization.contentType, "application/vnd.effect.rpc+schema-binary")
+        assert.strictEqual(serialization.includesFraming, true)
+        assert.instanceOf(frame, Uint8Array)
+        assert.deepStrictEqual(parser.decode(frame), [request])
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
+
+    it.effect("owns encoded frames without copying envelope holes", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        const encoder = serialization.makeUnsafe()
+        const payload = Uint8Array.of(1, 2, 3)
+        const request: RpcMessage.RequestEncoded = {
+          _tag: "Request",
+          id: 1,
+          tag: "Echo",
+          payload,
+          headers: []
+        }
+        const frame = encoder.encode(request)
+        assert(frame instanceof Uint8Array)
+        const expected = frame.slice()
+
+        payload.fill(9)
+        for (let i = 0; i < 1_000; i++) encoder.encode({ ...request, id: i })
+
+        assert.deepStrictEqual(frame, expected)
+        assert.deepStrictEqual(serialization.makeUnsafe().decode(frame), [{
+          ...request,
+          payload: Uint8Array.of(1, 2, 3)
+        }])
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
+
+    it.effect("defaults maxFrameSize to 16 MiB", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        assert.deepStrictEqual(serialization.makeUnsafe().decode(uvarint(16 * 1024 * 1024)), [])
+        assert.throws(
+          () => serialization.makeUnsafe().decode(uvarint(16 * 1024 * 1024 + 1)),
+          /frame within maxFrameSize/
+        )
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
+
+    it.effect("layerSchemaBinary overrides maxFrameSize", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        assert.deepStrictEqual(serialization.makeUnsafe().decode(uvarint(4)), [])
+        assert.throws(() => serialization.makeUnsafe().decode(uvarint(5)), /frame within maxFrameSize/)
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary({ maxFrameSize: 4 }))))
+  })
 
   describe("codecFor", () => {
     it("built-in serializations JSON-lower the hole", () => {

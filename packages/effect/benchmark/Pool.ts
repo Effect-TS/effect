@@ -58,11 +58,15 @@ const invalidateAndReplace = Effect.scoped(
 
 const bench = new Bench()
 
+const useItem = (item: number) => Effect.succeed(item)
+
 bench
   .add("make fixed pool (10 items)", () => Effect.runPromise(makeFixed))
   .add("make TTL pool (10 items)", () => Effect.runPromise(makeWithTTL))
   .add("get and release (fixed pool)", () => Effect.runPromise(Effect.scoped(Pool.get(fixedPool))))
   .add("get and release (TTL pool)", () => Effect.runPromise(Effect.scoped(Pool.get(ttlPool))))
+  .add("use (fixed pool)", () => Effect.runPromise(Pool.use(fixedPool, useItem)))
+  .add("use (TTL pool)", () => Effect.runPromise(Pool.use(ttlPool, useItem)))
   .add("get and release (10 concurrent)", () => Effect.runPromise(Effect.scoped(getAll(fixedPool))))
   .add("invalidate and replace", () => Effect.runPromise(invalidateAndReplace))
 

@@ -126,6 +126,21 @@ export declare namespace ReadonlyRecord {
   export type IntersectKeys<K1 extends string, K2 extends string> = [string] extends [K1 | K2] ?
     NonLiteralKey<K1> & NonLiteralKey<K2>
     : K1 & K2
+
+  /**
+   * Represents a record produced by grouping values under keys of type `K`.
+   *
+   * **Details**
+   *
+   * Finite string or symbol key types become optional because an input may not
+   * produce every possible key. Open `string` and `symbol` key types retain their
+   * record index signatures.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type GroupByResult<K extends string | symbol, V> = [NonLiteralKey<K>] extends [K] ? Record<K, V>
+    : Partial<Record<K, V>>
 }
 
 /**

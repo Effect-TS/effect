@@ -75,7 +75,7 @@
     "effect": "workspace:^"
   },
   "devDependencies": {
-    "@std/assert": "jsr:^1.0.16",
+    "@std/assert": "jsr:^1.0.19",
     "@testcontainers/redis": "^12.1.0",
     "@types/deno": "^2.7.0",
     "effect": "workspace:^"

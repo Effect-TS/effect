@@ -3,9 +3,9 @@
  *
  * `RpcSerialization` is the boundary between `RpcMessage` envelopes and the
  * bytes or strings carried by a transport. This module provides built-in
- * serializers for JSON, newline-delimited JSON, JSON-RPC 2.0, and MessagePack,
- * including framed formats that can decode multiple messages from streaming
- * chunks.
+ * serializers for JSON, newline-delimited JSON, JSON-RPC 2.0, MessagePack, and
+ * SchemaBinary, including framed formats that can decode multiple messages
+ * from streaming chunks.
  *
  * @since 4.0.0
  */
@@ -16,7 +16,8 @@ import * as Layer from "../../Layer.ts"
 import * as Predicate from "../../Predicate.ts"
 import { hasProperty } from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
-import type * as RpcMessage from "./RpcMessage.ts"
+import * as SchemaBinary from "../encoding/SchemaBinary.ts"
+import * as RpcMessage from "./RpcMessage.ts"
 
 /**
  * Builds the codec used to fill the `unknown` holes of RPC protocol messages,
@@ -590,6 +591,45 @@ export const makeMsgPack = (
  */
 export const msgPack: RpcSerialization["Service"] = makeMsgPack({ useRecords: true })
 
+const defaultSchemaBinaryMaxFrameSize = 16 * 1024 * 1024
+
+const schemaBinaryTextEncoder = new TextEncoder()
+
+const makeSchemaBinary = (options?: {
+  readonly maxFrameSize?: number | undefined
+  readonly fingerprintPayloads?: boolean | undefined
+}): RpcSerialization["Service"] => {
+  const maxFrameSize = options?.maxFrameSize ?? defaultSchemaBinaryMaxFrameSize
+  const codecFor: CodecFor = options?.fingerprintPayloads === true
+    ? (schema) => SchemaBinary.toCodecDirect(schema, { fingerprint: true })
+    : SchemaBinary.toCodecDirect
+  // The envelope repeats itself: the same RPC tag, header names, and trace ids
+  // come back on message after message. A dictionary shared by every frame on
+  // the connection sends each of those once and references it afterwards, so
+  // the writer and the reader here are a matched pair and neither one works
+  // against a peer that was built without the other.
+  const envelopeOptions = { fingerprint: true, dictionary: true } as const
+  return RpcSerialization.of({
+    contentType: "application/vnd.effect.rpc+schema-binary",
+    includesFraming: true,
+    codecFor,
+    makeUnsafe: () => {
+      const parser = SchemaBinary.parser(RpcMessage.EncodedSchema, { ...envelopeOptions, maxFrameSize })
+      const encoder = SchemaBinary.encoder(RpcMessage.EncodedSchema, envelopeOptions)
+      return {
+        decode: (data) => parser.feedSync(typeof data === "string" ? schemaBinaryTextEncoder.encode(data) : data),
+        encode: (response) => {
+          if (!Array.isArray(response)) {
+            return encoder.encode(response)
+          }
+          if (response.length === 0) return undefined
+          return encoder.encodeMany(response)
+        }
+      }
+    }
+  })
+}
+
 /**
  * RPC serialization layer that uses JSON for serialization.
  *
@@ -671,3 +711,16 @@ export const layerMsgPack: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSeri
 export const layerMsgPackWith = (
   options?: (Msgpackr.Options & StreamOptions) | undefined
 ): Layer.Layer<RpcSerialization> => Layer.succeed(RpcSerialization)(makeMsgPack(options))
+
+/**
+ * RPC serialization layer that uses SchemaBinary with fingerprinted RPC
+ * envelopes. Payload fingerprints are disabled by default to support compatible
+ * schema evolution. Frames default to a 16 MiB maximum size.
+ *
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerSchemaBinary = (options?: {
+  readonly maxFrameSize?: number | undefined
+  readonly fingerprintPayloads?: boolean | undefined
+}): Layer.Layer<RpcSerialization> => Layer.sync(RpcSerialization)(() => makeSchemaBinary(options))

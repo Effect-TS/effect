@@ -5156,6 +5156,11 @@ Output:
 
 To generate a draft-07 JSON Schema, use `JsonSchema.toDocumentDraft07` to convert the draft-2020-12 JSON Schema.
 
+The dialect converters preserve unknown and custom keywords as opaque values. When a known keyword cannot be
+represented by the target dialect, or an opaque keyword would become active and change meaning in that dialect,
+conversion throws instead of silently changing its meaning. For example, Draft-07 cannot represent dynamic
+references, unevaluated constraints, or non-default `minContains` / `maxContains` cardinality.
+
 **Example** (Tuple to draft-7 JSON Schema)
 
 ```ts
@@ -6443,6 +6448,10 @@ schema with revivers first.
 
 `SchemaRepresentation.fromJsonSchemaDocument` imports a JSON Schema Draft 2020-12 document as a runtime `Schema.Top`.
 It does not return a representation document.
+
+Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
+references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
+reference to a missing definition throws an `Invalid reference` error.
 
 `fromJsonSchemaMultiDocument` returns the ordered root schemas. It translates only definitions reachable from those
 roots. To pass the result to a representation compiler, call `toRepresentations` with the returned schemas' ASTs.

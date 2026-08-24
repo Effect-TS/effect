@@ -19,6 +19,7 @@
     "**/docs",
     "**/coverage",
     "packages/**/CHANGELOG.md",
+    "packages/effect/src/StandardSchema.ts",
     "!scratchpad/**/*",
     ".changeset",
     ".agents",

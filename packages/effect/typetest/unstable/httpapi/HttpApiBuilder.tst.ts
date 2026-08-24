@@ -325,12 +325,10 @@ describe("HttpApiBuilder", () => {
             })
         )
 
-        type Requirements =
+        expect<Layer.Services<typeof handlers>>().type.toBe<
           | HttpRouterRequest<"Requires", UserRepository>
           | HttpRouterRequest<"Requires", UserPreferences>
-
-        expect<Layer.Services<typeof handlers>>().type.toBeAssignableTo<Requirements>()
-        expect<Layer.Services<typeof handlers>>().type.toBeAssignableFrom<Requirements>()
+        >()
       })
     })
 
