@@ -10,19 +10,22 @@
  *
  * @since 4.0.0
  */
+import * as Arr from "../../Array.ts"
 import * as BigDecimal from "../../BigDecimal.ts"
 import * as Cause from "../../Cause.ts"
+import * as Channel from "../../Channel.ts"
 import * as Chunk from "../../Chunk.ts"
 import * as DateTime from "../../DateTime.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
-import { memoize } from "../../Function.ts"
+import { dual, memoize } from "../../Function.ts"
 import * as HashMap from "../../HashMap.ts"
 import * as HashSet from "../../HashSet.ts"
 import { assignProperty } from "../../internal/record.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
+import * as Pull from "../../Pull.ts"
 import * as Redacted from "../../Redacted.ts"
 import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
@@ -469,6 +472,266 @@ function makeParser<T>(
   }
   return self
 }
+
+/**
+ * Creates a channel that encodes chunks of schema values into binary frames.
+ *
+ * **Details**
+ *
+ * Each input chunk is emitted as one byte element holding concatenated frames
+ * written in one writer pass, so a batch costs no more allocations than a
+ * single frame. Schemas with transformations first run one schema pass per
+ * chunk to the binary-adjusted encoded side — supporting async transformations
+ * and encoding services — before that writer pass. Failures are
+ * `Schema.SchemaError`, matching {@link toCodec}. `maxFrameSize` only applies
+ * to {@link decode} and is ignored here.
+ *
+ * @category channels
+ * @since 4.0.0
+ */
+export const encode = <S extends Schema.Constraint>(
+  schema: S,
+  options?: SchemaAST.ParseOptions & Options & { readonly maxFrameSize?: number | undefined }
+) =>
+<IE = never, Done = unknown>(): Channel.Channel<
+  Arr.NonEmptyReadonlyArray<Uint8Array<ArrayBuffer>>,
+  Schema.SchemaError | IE,
+  Done,
+  Arr.NonEmptyReadonlyArray<S["Type"]>,
+  IE,
+  Done,
+  S["EncodingServices"]
+> => {
+  // Everything here depends only on schema and options, so it is derived once
+  // per channel rather than once per run.
+  const { exact, layout, target } = compileTarget(schema)
+  const parseOptions: SchemaAST.ParseOptions = options ?? SchemaAST.defaultParseOptions
+  const mode = compileMode(layout, options?.fingerprint)
+  const write = (
+    values: ReadonlyArray<unknown>
+  ): Effect.Effect<Arr.NonEmptyReadonlyArray<Uint8Array<ArrayBuffer>>, Schema.SchemaError> => {
+    try {
+      return Effect.succeed(Arr.of(encodeFrames(layout, values, parseOptions, mode)))
+    } catch (e) {
+      if (e instanceof IssueError) return Effect.fail(new Schema.SchemaError(e.issue))
+      return Effect.die(e)
+    }
+  }
+  if (exact) {
+    return Channel.fromTransform((upstream, _scope) => Effect.sync(() => Effect.flatMap(upstream, write)))
+  }
+  // One schema pass per chunk brings the values to the binary-adjusted encoded
+  // side the writer expects, so the writer pass stays one sync batch.
+  const encodeValues = Schema.encodeUnknownEffect(
+    Schema.NonEmptyArray(target) as unknown as Schema.ConstraintEncoder<unknown, never>,
+    options
+  ) as (values: ReadonlyArray<unknown>) => Effect.Effect<ReadonlyArray<unknown>, Schema.SchemaError>
+  return Channel.fromTransform((upstream, _scope) =>
+    Effect.sync(() => Effect.flatMap(upstream, (chunk) => Effect.flatMap(encodeValues(chunk), write)))
+  )
+}
+
+/**
+ * Creates a channel that decodes chunks of binary frames into schema values.
+ *
+ * **Details**
+ *
+ * The channel keeps one frame parser for its lifetime: frames may be
+ * fragmented across chunks or concatenated within one, values completed before
+ * a failure remain observable, and a leftover incomplete frame fails when the
+ * upstream is done. Schemas with transformations run the schema pass per
+ * framed value, which supports async transformations and decoding services.
+ * Failures are `Schema.SchemaError`, matching {@link toCodec}.
+ *
+ * @category channels
+ * @since 4.0.0
+ */
+export const decode = <S extends Schema.Constraint>(
+  schema: S,
+  options?: SchemaAST.ParseOptions & Options & { readonly maxFrameSize?: number | undefined }
+) =>
+<IE = never, Done = unknown>(): Channel.Channel<
+  Arr.NonEmptyReadonlyArray<S["Type"]>,
+  Schema.SchemaError | IE,
+  Done,
+  Arr.NonEmptyReadonlyArray<Uint8Array<ArrayBuffer>>,
+  IE,
+  Done,
+  S["DecodingServices"]
+> => {
+  // Everything here depends only on schema and options, so it is derived once
+  // per channel; the frame parser and failure stash below stay per run.
+  const { exact, exitSuccess, layout, target } = compileTarget(schema)
+  const parseOptions: SchemaAST.ParseOptions = options ?? SchemaAST.defaultParseOptions
+  const mode = compileMode(layout, options?.fingerprint)
+  const decodeTarget = exact
+    ? undefined
+    : Schema.decodeUnknownEffect(target as Schema.ConstraintDecoder<unknown>, parseOptions)
+  const decodeEncoded = decodeTarget !== undefined && exitSuccess
+    ? (value: unknown) => isSuccessExit(value) ? Effect.succeed(value) : decodeTarget(value)
+    : decodeTarget
+  return Channel.fromTransform((upstream, _scope) =>
+    Effect.sync(() => {
+      const frames = makeParser<unknown>(layout, mode, parseOptions, options?.maxFrameSize, undefined)
+      let stashed: Schema.SchemaError | undefined
+
+      // Decodes framed values in order. On a failure, values decoded before it
+      // are emitted first and the error fails the next pull.
+      const decodeAll = (
+        raw: ReadonlyArray<unknown>
+      ): Pull.Pull<Arr.NonEmptyReadonlyArray<S["Type"]>, Schema.SchemaError | IE, Done> => {
+        const out: Array<S["Type"]> = []
+        const loop: Effect.Effect<Arr.NonEmptyReadonlyArray<S["Type"]>, Schema.SchemaError> = Effect.suspend(() =>
+          out.length === raw.length
+            ? Effect.succeed(out as unknown as Arr.NonEmptyReadonlyArray<S["Type"]>)
+            : Effect.flatMap(decodeEncoded!(raw[out.length]), (value) => {
+              out.push(value as S["Type"])
+              return loop
+            })
+        )
+        return Effect.catch(loop, (error) => {
+          if (out.length === 0) {
+            stashed = undefined
+            return Effect.fail(error)
+          }
+          stashed = error
+          return Effect.succeed(out as unknown as Arr.NonEmptyReadonlyArray<S["Type"]>)
+        })
+      }
+
+      const feed = (
+        chunk: Arr.NonEmptyReadonlyArray<Uint8Array<ArrayBuffer>>
+      ): Pull.Pull<Arr.NonEmptyReadonlyArray<S["Type"]>, Schema.SchemaError | IE, Done> => {
+        const raw: Array<unknown> = []
+        try {
+          for (let i = 0; i < chunk.length; i++) {
+            const values = frames.feedSync(chunk[i])
+            for (let j = 0; j < values.length; j++) raw.push(values[j])
+          }
+        } catch (e) {
+          if (!Schema.isSchemaError(e)) return Effect.die(e)
+          if (raw.length === 0) return Effect.fail(e)
+          // Emit the values framed before the failure, then fail on the next
+          // pull.
+          stashed = e
+        }
+        if (!Arr.isReadonlyArrayNonEmpty(raw)) return pull
+        return decodeEncoded === undefined
+          ? Effect.succeed(raw as Arr.NonEmptyReadonlyArray<S["Type"]>)
+          : decodeAll(raw)
+      }
+
+      const pull: Pull.Pull<Arr.NonEmptyReadonlyArray<S["Type"]>, Schema.SchemaError | IE, Done> = Effect.suspend(() =>
+        stashed !== undefined ? Effect.fail(stashed) : Pull.matchEffect(upstream, {
+          onSuccess: feed,
+          onFailure: Effect.failCause,
+          onDone: (done): Pull.Pull<never, Schema.SchemaError, Done> => {
+            try {
+              frames.endSync()
+              return Cause.done(done)
+            } catch (e) {
+              if (Schema.isSchemaError(e)) return Effect.fail(e)
+              throw e
+            }
+          }
+        })
+      )
+
+      return pull
+    })
+  )
+}
+
+/**
+ * Wraps a bidirectional byte channel with schema-driven binary encoding and
+ * decoding.
+ *
+ * **Details**
+ *
+ * Values sent to the wrapped channel are encoded with `inputSchema` as binary
+ * frames; bytes received from it are decoded with `outputSchema`.
+ *
+ * @category channels
+ * @since 4.0.0
+ */
+export const duplex: {
+  <In extends Schema.Constraint, Out extends Schema.Constraint>(
+    options: SchemaAST.ParseOptions & Options & {
+      readonly inputSchema: In
+      readonly outputSchema: Out
+      readonly maxFrameSize?: number | undefined
+    }
+  ): <OutErr, OutDone, InErr, InDone, R>(
+    self: Channel.Channel<
+      Arr.NonEmptyReadonlyArray<Uint8Array<ArrayBuffer>>,
+      OutErr,
+      OutDone,
+      Arr.NonEmptyReadonlyArray<Uint8Array<ArrayBuffer>>,
+      Schema.SchemaError | InErr,
+      InDone,
+      R
+    >
+  ) => Channel.Channel<
+    Arr.NonEmptyReadonlyArray<Out["Type"]>,
+    Schema.SchemaError | OutErr,
+    OutDone,
+    Arr.NonEmptyReadonlyArray<In["Type"]>,
+    InErr,
+    InDone,
+    R | In["EncodingServices"] | Out["DecodingServices"]
+  >
+  <Out extends Schema.Constraint, In extends Schema.Constraint, OutErr, OutDone, InErr, InDone, R>(
+    self: Channel.Channel<
+      Arr.NonEmptyReadonlyArray<Uint8Array<ArrayBuffer>>,
+      OutErr,
+      OutDone,
+      Arr.NonEmptyReadonlyArray<Uint8Array<ArrayBuffer>>,
+      Schema.SchemaError | InErr,
+      InDone,
+      R
+    >,
+    options: SchemaAST.ParseOptions & Options & {
+      readonly inputSchema: In
+      readonly outputSchema: Out
+      readonly maxFrameSize?: number | undefined
+    }
+  ): Channel.Channel<
+    Arr.NonEmptyReadonlyArray<Out["Type"]>,
+    Schema.SchemaError | OutErr,
+    OutDone,
+    Arr.NonEmptyReadonlyArray<In["Type"]>,
+    InErr,
+    InDone,
+    R | In["EncodingServices"] | Out["DecodingServices"]
+  >
+} = dual(2, <Out extends Schema.Constraint, In extends Schema.Constraint, OutErr, OutDone, InErr, InDone, R>(
+  self: Channel.Channel<
+    Arr.NonEmptyReadonlyArray<Uint8Array<ArrayBuffer>>,
+    OutErr,
+    OutDone,
+    Arr.NonEmptyReadonlyArray<Uint8Array<ArrayBuffer>>,
+    Schema.SchemaError | InErr,
+    InDone,
+    R
+  >,
+  options: SchemaAST.ParseOptions & Options & {
+    readonly inputSchema: In
+    readonly outputSchema: Out
+    readonly maxFrameSize?: number | undefined
+  }
+): Channel.Channel<
+  Arr.NonEmptyReadonlyArray<Out["Type"]>,
+  Schema.SchemaError | OutErr,
+  OutDone,
+  Arr.NonEmptyReadonlyArray<In["Type"]>,
+  InErr,
+  InDone,
+  R | In["EncodingServices"] | Out["DecodingServices"]
+> =>
+  encode(options.inputSchema, options)<InErr, InDone>().pipe(
+    Channel.pipeTo(self),
+    Channel.pipeTo(decode(options.outputSchema, options)())
+  ))
 
 /**
  * Assigns an explicit wire field id to a struct property.
