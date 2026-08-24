@@ -3,22 +3,25 @@ import { assert, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber, Redacted, Stream } from "effect"
 import { PgContainer } from "./utils.ts"
 
+const makeConnection = (options?: PgConnection.Config) =>
+  Effect.gen(function*() {
+    const container = yield* PgContainer
+    return yield* PgConnection.make({
+      url: Redacted.make(container.getConnectionUri()),
+      ...options
+    })
+  })
+
 it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
   it.effect("connects through ReadyForQuery", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri())
-      })
+      const connection = yield* makeConnection()
       assert.isAbove(connection.processId, 0)
     }))
 
   it.effect("runs unnamed extended queries with inferred binary parameters", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri())
-      })
+      const connection = yield* makeConnection()
       const instant = new Date("2024-05-06T07:08:09.123Z")
       const result = yield* connection.query(
         "SELECT $1::int4 AS i, $2::float8 AS f, $3::int8 AS b, $4::bool AS flag, " +
@@ -68,10 +71,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
 
   it.effect("returns queryValues in RowDescription order", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri())
-      })
+      const connection = yield* makeConnection()
       const rows = yield* connection.queryValues(
         "SELECT $1::int8 AS second, $2::text AS first",
         [PgTypes.int8(BigInt(7)), "value"]
@@ -81,10 +81,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
 
   it.effect("drains query errors and keeps the connection usable", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri())
-      })
+      const connection = yield* makeConnection()
       yield* connection.query("CREATE TEMP TABLE pg_connection_unique (value int4 UNIQUE)")
       yield* connection.query("INSERT INTO pg_connection_unique VALUES ($1)", [1])
       const error = yield* Effect.flip(connection.query("INSERT INTO pg_connection_unique VALUES ($1)", [1]))
@@ -126,10 +123,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
     }))
   it.effect("reuses a prepared statement and keeps its columns", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri())
-      })
+      const connection = yield* makeConnection()
       for (let index = 0; index < 3; index++) {
         const result = yield* connection.query("SELECT $1::int4 AS value, $2::text AS label", [index, "x"])
         assert.deepStrictEqual(result.rows, [{ value: index, label: "x" }])
@@ -144,10 +138,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
 
   it.effect("prepares the same text once per parameter signature", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri())
-      })
+      const connection = yield* makeConnection()
       assert.deepStrictEqual((yield* connection.query("SELECT $1 AS v", [1])).rows, [{ v: 1 }])
       assert.deepStrictEqual((yield* connection.query("SELECT $1 AS v", [BigInt(2)])).rows, [{ v: BigInt(2) }])
       const types = yield* connection.query(
@@ -158,10 +149,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
 
   it.effect("re-parses a statement whose result type changed", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri())
-      })
+      const connection = yield* makeConnection()
       yield* connection.query("CREATE TEMP TABLE shifting (a int)")
       yield* connection.query("INSERT INTO shifting VALUES (1)")
       assert.deepStrictEqual((yield* connection.query("SELECT * FROM shifting")).rows, [{ a: 1 }])
@@ -176,10 +164,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
 
   it.effect("re-parses a statement the backend no longer holds", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri())
-      })
+      const connection = yield* makeConnection()
       assert.deepStrictEqual((yield* connection.query("SELECT $1::int4 AS n", [7])).rows, [{ n: 7 }])
       yield* connection.query("DEALLOCATE ALL")
       assert.deepStrictEqual((yield* connection.query("SELECT $1::int4 AS n", [8])).rows, [{ n: 8 }])
@@ -187,11 +172,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
 
   it.effect("closes statements it evicts from a full cache", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri()),
-        preparedStatementCacheSize: 3
-      })
+      const connection = yield* makeConnection({ preparedStatementCacheSize: 3 })
       for (let round = 0; round < 2; round++) {
         for (let index = 0; index < 8; index++) {
           const result = yield* connection.query(`SELECT ${index}::int4 AS n, $1::text AS t`, ["v"])
@@ -204,11 +185,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
 
   it.effect("parses every statement when prepare is off", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri()),
-        prepare: false
-      })
+      const connection = yield* makeConnection({ prepare: false })
       for (let index = 0; index < 3; index++) {
         assert.deepStrictEqual((yield* connection.query("SELECT $1::int4 AS n", [index])).rows, [{ n: index }])
       }
@@ -218,10 +195,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
 
   it.effect("stays usable after a statement the server refuses to parse", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri())
-      })
+      const connection = yield* makeConnection()
       const missing = yield* Effect.flip(connection.query("SELECT * FROM does_not_exist"))
       assert.strictEqual(missing.reason._tag, "SqlSyntaxError")
       const syntax = yield* Effect.flip(connection.query("SELECT FROM WHERE ????"))
@@ -230,10 +204,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
     }))
   it.effect("closes a statement whose plan it had to throw away", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri())
-      })
+      const connection = yield* makeConnection()
       yield* connection.query("CREATE TEMP TABLE churn (a int)")
       for (let round = 0; round < 4; round++) {
         yield* connection.query("SELECT * FROM churn")
@@ -249,10 +220,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
     }))
   it.effect("re-parses a statement first prepared in a rolled back transaction", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri())
-      })
+      const connection = yield* makeConnection()
       yield* connection.query("CREATE TEMP TABLE rolled_back (a int)")
 
       // Postgres drops a statement prepared inside a transaction it rolls
@@ -270,11 +238,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
     }))
   it.effect("isolates errors between pipelined queries", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri()),
-        multiplex: true
-      })
+      const connection = yield* makeConnection({ multiplex: true })
       const exits = yield* Effect.all([
         Effect.exit(connection.query("SELECT $1::int4 AS first", [1])),
         Effect.exit(connection.query("SELECT missing_pipeline_column")),
@@ -290,11 +254,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
 
   it.effect("drains an interrupted pipelined query without cancelling its neighbors", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri()),
-        multiplex: true
-      })
+      const connection = yield* makeConnection({ multiplex: true })
       const first = yield* connection.query("SELECT pg_sleep(0.05), 1 AS first").pipe(Effect.forkScoped)
       const second = yield* connection.query("SELECT 2 AS second").pipe(Effect.forkScoped)
       yield* Effect.yieldNow
@@ -307,11 +267,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
 
   it.effect("places pin requests between earlier and later pipelined queries", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri()),
-        multiplex: true
-      })
+      const connection = yield* makeConnection({ multiplex: true })
       yield* connection.query(
         "CREATE TEMP TABLE pipeline_pin_order (position int GENERATED ALWAYS AS IDENTITY, value int4)"
       )
@@ -346,11 +302,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
 
   it.effect("reuses prepared statements across a pipeline", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri()),
-        multiplex: true
-      })
+      const connection = yield* makeConnection({ multiplex: true })
       for (let round = 0; round < 3; round++) {
         const results = yield* Effect.all(
           Array.from({ length: 8 }, (_, index) => connection.query("SELECT $1::int4 AS n", [index])),
@@ -365,10 +317,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
     }))
   it.effect("orders ordinary statements against a stream on the same session", () =>
     Effect.gen(function*() {
-      const container = yield* PgContainer
-      const connection = yield* PgConnection.make({
-        url: Redacted.make(container.getConnectionUri())
-      })
+      const connection = yield* makeConnection()
       // An ordinary statement holds `owner` rather than the wire permit, so
       // this is what says it still cannot interleave with a stream, which
       // reaches the session through a pin.

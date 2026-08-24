@@ -8,11 +8,11 @@ const success = <A, E>(result: Result.Result<A, E>): A => {
   return result.success
 }
 
-const makeParameter = (oid: number, value: unknown): PgTypesResult.Parameter => {
-  const parameter = { oid, value } as PgTypesResult.Parameter
-  Object.defineProperty(parameter, PgTypesResult.ParameterTypeId, { value: PgTypesResult.ParameterTypeId })
-  return parameter
-}
+const makeParameter = (oid: number, value: unknown): PgTypesResult.Parameter => ({
+  [PgTypesResult.ParameterTypeId]: PgTypesResult.ParameterTypeId,
+  oid,
+  value
+})
 
 const PgTypes = {
   ...PgTypesResult,

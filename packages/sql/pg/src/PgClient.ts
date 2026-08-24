@@ -8,6 +8,7 @@
  *
  * @since 4.0.0
  */
+import type * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
@@ -174,18 +175,17 @@ const makeImpl = Effect.fnUntraced(function*(
     readonly config: PgClientConfig
   }
 ): Effect.fn.Return<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> {
+  const config = options.config
   const compiler = makeCompiler(
-    options.config.transformQueryNames,
-    options.config.transformJson
+    config.transformQueryNames,
+    config.transformJson
   )
-  const transformRows = options.config.transformResultNames ?
+  const transformRows = config.transformResultNames ?
     Statement.defaultTransforms(
-      options.config.transformResultNames,
-      options.config.transformJson
+      config.transformResultNames,
+      config.transformJson
     ).array :
     undefined
-
-  const config = options.config
 
   return Object.assign(
     yield* Client.make({
@@ -203,7 +203,7 @@ const makeImpl = Effect.fnUntraced(function*(
     }),
     {
       [TypeId]: TypeId as TypeId,
-      config: options.config,
+      config,
       json: (_: unknown) => Statement.fragment([PgJson(_)]),
       listen: (channel: string) =>
         Stream.unwrap(
@@ -268,7 +268,7 @@ class ConnectionImpl implements Connection {
   ) {
     const stream = this.connection.stream(sql, params)
     return transformRows
-      ? Stream.map(stream, (row) => transformRows([row])[0])
+      ? Stream.mapArray(stream, (rows) => transformRows(rows) as Arr.NonEmptyReadonlyArray<PgConnection.Row>)
       : stream
   }
 }
@@ -297,9 +297,7 @@ export const layerFrom = <E, R>(
  * @category layers
  * @since 4.0.0
  */
-export const layerConfig: (
-  config: Config.Wrap<PgPoolConfig>
-) => Layer.Layer<PgClient | Client.SqlClient, Config.ConfigError | SqlError> = (
+export const layerConfig = (
   config: Config.Wrap<PgPoolConfig>
 ): Layer.Layer<PgClient | Client.SqlClient, Config.ConfigError | SqlError> =>
   layerFrom(Effect.flatMap(

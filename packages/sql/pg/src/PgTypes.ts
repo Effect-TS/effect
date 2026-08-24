@@ -1849,11 +1849,11 @@ Object.defineProperty(writeParameter, valueWriterUnsafe, {
   value: (sink: ValueSink, parameter: Parameter) => writeParameterUnsafe(sink, parameter, lookup)
 })
 
-const makeParameter = (oid: number, value: unknown): Parameter => {
-  const parameter = { oid, value } as Parameter
-  Object.defineProperty(parameter, ParameterTypeId, { value: ParameterTypeId })
-  return parameter
-}
+const makeParameter = (oid: number, value: unknown): Parameter => ({
+  [ParameterTypeId]: ParameterTypeId,
+  oid,
+  value
+})
 
 const parameter = (oid: number) => (value: unknown): Parameter => makeParameter(oid, value)
 

@@ -261,13 +261,17 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  */
 export const make = (options: Config): Effect.Effect<PgConnection, SqlError, Scope.Scope> =>
   Effect.suspend(() => {
-    const resolved = resolveConfig(options)
-    if (EffectResult.isFailure(resolved)) return Effect.fail(resolved.failure)
-    const config = resolved.success
+    let config: ResolvedConfig
+    try {
+      config = resolveConfigUnsafe(options)
+    } catch (error) {
+      if (error instanceof SqlError) return Effect.fail(error)
+      throw error
+    }
     return Effect.acquireRelease(
       Effect.map(
         connect(config),
-        (session) => new PgConnectionImpl(options, config, session, options.types ?? PgTypes.makeRegistry())
+        (session) => new PgConnectionImpl(options, config, session, options.types)
       ),
       (connection) => Effect.sync(() => connection.closeUnsafe()),
       { interruptible: true }
@@ -293,7 +297,6 @@ interface Session {
   readonly parser: PgProtocol.Parser<unknown>
   readonly processId: number
   readonly secretKey: number
-  readonly parameters: Map<string, string>
 }
 
 /**
@@ -325,7 +328,8 @@ class PgConnectionImpl implements PgConnection {
   readonly config: Config
   readonly processId: number
   readonly session: Session
-  readonly registry: PgTypes.Registry
+  /** The custom codec registry, or `undefined` for the builtin catalogue. */
+  readonly registry: PgTypes.Registry | undefined
   readonly bindEncoder: BindEncoder
   /** The statements this session has named, or `undefined` when disabled. */
   readonly prepared: PreparedCache | undefined
@@ -351,7 +355,7 @@ class PgConnectionImpl implements PgConnection {
   readonly pinnedView: PgConnection
   readonly [internalsKey]: ConnectionInternals
 
-  constructor(config: Config, resolved: ResolvedConfig, session: Session, registry: PgTypes.Registry) {
+  constructor(config: Config, resolved: ResolvedConfig, session: Session, registry: PgTypes.Registry | undefined) {
     this.config = config
     this.resolved = resolved
     this.session = session
@@ -409,8 +413,6 @@ class PgConnectionImpl implements PgConnection {
         return
       }
       case "ParameterStatus":
-        this.session.parameters.set(message.name, message.value)
-        return
       case "NoticeResponse":
         return
     }
@@ -629,11 +631,7 @@ class PgConnectionImpl implements PgConnection {
           )
         )
         if (cache === undefined || entry.plan.parses) return awaited
-        return Effect.catchCause(awaited, (cause) => {
-          if (!entry.plan.stale) return Effect.failCause(cause)
-          cache.evict(entry.plan.prepared!)
-          return this.pipelineCycle(sql, params, wantRows, undefined)
-        })
+        return retryStale(entry.plan, cache, awaited, () => this.pipelineCycle(sql, params, wantRows, undefined))
       }
     )
 
@@ -687,11 +685,7 @@ class PgConnectionImpl implements PgConnection {
     }
     const run = runQuery(this, plan, wantRows)
     if (cache === undefined || plan.parses) return run
-    return Effect.catchCause(run, (cause) => {
-      if (!plan.stale) return Effect.failCause(cause)
-      cache.evict(plan.prepared!)
-      return this.attempt(sql, params, wantRows, undefined)
-    })
+    return retryStale(plan, cache, run, () => this.attempt(sql, params, wantRows, undefined))
   }
 
   /** Sends a `CancelRequest` for this session on a side connection. */
@@ -726,24 +720,23 @@ class PgConnectionImpl implements PgConnection {
       })
   )
 
+  private readonly run = (
+    sql: string,
+    params: ReadonlyArray<unknown>,
+    wantRows: boolean
+  ): Effect.Effect<QueryOutput, SqlError> =>
+    this.multiplex
+      ? this.pipelineCycle(sql, params, wantRows, this.prepared)
+      : this.owner.withPermit(this.cycleOwned(sql, params, wantRows))
+
   readonly query = (sql: string, params?: ReadonlyArray<unknown>): Effect.Effect<Result, SqlError> =>
-    Effect.map(
-      this.multiplex
-        ? this.pipelineCycle(sql, params ?? emptyParams, true, this.prepared)
-        : this.owner.withPermit(this.cycleOwned(sql, params ?? emptyParams, true)),
-      takeResult
-    )
+    Effect.map(this.run(sql, params ?? emptyParams, true), takeResult)
 
   readonly queryValues = (
     sql: string,
     params?: ReadonlyArray<unknown>
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError> =>
-    Effect.map(
-      this.multiplex
-        ? this.pipelineCycle(sql, params ?? emptyParams, false, this.prepared)
-        : this.owner.withPermit(this.cycleOwned(sql, params ?? emptyParams, false)),
-      takeValues
-    )
+    Effect.map(this.run(sql, params ?? emptyParams, false), takeValues)
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this, this.pin, sql, params ?? emptyParams)
@@ -764,10 +757,14 @@ class PinnedPgConnection implements PgConnection {
   readonly [TypeId]: TypeId = TypeId
   readonly base: PgConnectionImpl
   readonly [internalsKey]: ConnectionInternals
+  readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
+  readonly interrupt: Effect.Effect<void>
 
   constructor(base: PgConnectionImpl) {
     this.base = base
     this[internalsKey] = base[internalsKey]
+    this.pin = Effect.succeed(this)
+    this.interrupt = base.cancel
   }
 
   get config(): Config {
@@ -777,8 +774,6 @@ class PinnedPgConnection implements PgConnection {
   get processId(): number {
     return this.base.processId
   }
-
-  readonly pin: Effect.Effect<PgConnection, never, Scope.Scope> = Effect.sync(() => this as PgConnection)
 
   readonly query = (sql: string, params?: ReadonlyArray<unknown>): Effect.Effect<Result, SqlError> =>
     Effect.map(this.base.cycle(sql, params ?? emptyParams, true), takeResult)
@@ -794,8 +789,6 @@ class PinnedPgConnection implements PgConnection {
 
   readonly listen = (channel: string): Stream.Stream<Notification, SqlError> =>
     listenChannel(this.base, this.pin, channel)
-
-  readonly interrupt: Effect.Effect<void> = Effect.suspend(() => this.base.cancel)
 }
 
 interface QueryOutput {
@@ -848,7 +841,7 @@ const inferScalar = (value: unknown): PgTypes.Parameter => {
   throw new PgTypes.CodecError({ message: `Cannot infer a PostgreSQL type for ${String(value)}` })
 }
 
-const inferParameter = (value: unknown, registry: PgTypes.Registry): PgTypes.Parameter => {
+const inferParameter = (value: unknown, registry: PgTypes.Registry | undefined): PgTypes.Parameter => {
   if (!Array.isArray(value)) return inferScalar(value)
   if (value.length === 0) {
     throw new PgTypes.CodecError({ message: "Cannot infer the type of an empty array; use PgTypes.array" })
@@ -963,6 +956,28 @@ interface Plan {
   stale: boolean
 }
 
+/** The unnamed path: `Parse` / `Bind` / `Describe` / `Execute` / `Sync`. */
+const encodeUnnamed = (
+  sql: string,
+  parameters: ReadonlyArray<PgTypes.Parameter>,
+  parameterTypes: ReadonlyArray<number>,
+  encodeBind: BindEncoder
+): Plan => {
+  const parse = PgProtocol.encodeParse({ name: "", query: sql, parameterTypes })
+  if (EffectResult.isFailure(parse)) throw parse.failure
+  const bind = encodeBind({ portal: "", statement: "", parameters })
+  if (EffectResult.isFailure(bind)) throw bind.failure
+  return {
+    frame: concat([parse.success, bind.success, describeExecuteSync]),
+    closes: 0,
+    parses: true,
+    describes: true,
+    prepared: undefined,
+    description: undefined,
+    stale: false
+  }
+}
+
 /**
  * Builds one extended-query cycle as a single buffer, so a statement costs one
  * socket write.
@@ -976,7 +991,7 @@ interface Plan {
 const encodeQuery = (
   sql: string,
   params: ReadonlyArray<unknown>,
-  registry: PgTypes.Registry,
+  registry: PgTypes.Registry | undefined,
   encodeBind: BindEncoder,
   cache: PreparedCache | undefined
 ): Plan => {
@@ -990,19 +1005,7 @@ const encodeQuery = (
   }
 
   if (cache === undefined) {
-    const parse = PgProtocol.encodeParse({ name: "", query: sql, parameterTypes })
-    if (EffectResult.isFailure(parse)) throw parse.failure
-    const bind = encodeBind({ portal: "", statement: "", parameters })
-    if (EffectResult.isFailure(bind)) throw bind.failure
-    return {
-      frame: concat([parse.success, bind.success, describeExecuteSync]),
-      closes: 0,
-      parses: true,
-      describes: true,
-      prepared: undefined,
-      description: undefined,
-      stale: false
-    }
+    return encodeUnnamed(sql, parameters, parameterTypes, encodeBind)
   }
 
   const prepared = cache.get(sql, parameterTypes)
@@ -1010,7 +1013,7 @@ const encodeQuery = (
     // Another cycle is already on the wire carrying this name's `Parse`.
     // Naming it again would collide, and reusing it would mean binding to
     // columns nobody has seen yet, so this execution goes unnamed.
-    return encodeQuery(sql, params, registry, encodeBind, undefined)
+    return encodeUnnamed(sql, parameters, parameterTypes, encodeBind)
   }
   const bind = encodeBind({ portal: "", statement: prepared.name, parameters })
   if (EffectResult.isFailure(bind)) throw bind.failure
@@ -1130,14 +1133,40 @@ type BindEncoder = (options: {
   readonly parameters: ReadonlyArray<PgTypes.Parameter>
 }) => EffectResult.Result<Uint8Array, PgProtocol.EncodeError | PgTypes.CodecError>
 
+/**
+ * The default builtin-catalogue encoder, shared by every connection without a
+ * custom registry. Passing `PgTypes.writeParameter` itself engages
+ * `makeBindEncoder`'s unsafe fast path.
+ */
+const defaultBindEncoder: BindEncoder = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
+
 /** One bind encoder per registry, since building one allocates a closure. */
-const makeBindEncoder = (registry: PgTypes.Registry): BindEncoder =>
-  PgProtocol.makeBindEncoder(
-    (sink: PgProtocol.ValueSink, parameter: PgTypes.Parameter) => PgTypes.writeParameter(sink, parameter, registry)
-  )
+const makeBindEncoder = (registry: PgTypes.Registry | undefined): BindEncoder =>
+  registry === undefined
+    ? defaultBindEncoder
+    : PgProtocol.makeBindEncoder(
+      (sink: PgProtocol.ValueSink, parameter: PgTypes.Parameter) => PgTypes.writeParameter(sink, parameter, registry)
+    )
 
 const queryError = (cause: unknown, message: string): SqlError =>
   new SqlError({ reason: new UnknownError({ cause, message, operation: "query" }) })
+
+/**
+ * Retries a cycle whose named statement the backend no longer honors: the
+ * statement is dropped from the cache and the retry runs unnamed, so it cannot
+ * loop.
+ */
+const retryStale = (
+  plan: Plan,
+  cache: PreparedCache,
+  run: Effect.Effect<QueryOutput, SqlError>,
+  rerun: () => Effect.Effect<QueryOutput, SqlError>
+): Effect.Effect<QueryOutput, SqlError> =>
+  Effect.catchCause(run, (cause) => {
+    if (!plan.stale) return Effect.failCause(cause)
+    cache.evict(plan.prepared!)
+    return rerun()
+  })
 
 const connectionQueryError = (cause: unknown, message: string): SqlError =>
   new SqlError({ reason: new ConnectionError({ cause, message, operation: "query" }) })
@@ -1176,12 +1205,6 @@ const isDigits = (value: string): boolean => {
   return true
 }
 
-/**
- * The per-statement half of a cycle: a state machine fed backend messages that
- * reports the result once. Splitting it out of `runQuery` is what lets several
- * cycles be in flight at once, each holding its own state while the connection
- * routes messages to whichever is at the head of the queue.
- */
 /**
  * The per-statement half of a cycle: a state machine fed backend messages that
  * reports the result once. Splitting it out of `runQuery` is what lets several
@@ -1449,7 +1472,7 @@ const emptyFields: ReadonlyArray<Field> = []
 /** Derives the per-column readers and the row constructor for a description. */
 const describe = (
   fields: ReadonlyArray<PgProtocol.FieldDescription>,
-  registry: PgTypes.Registry
+  registry: PgTypes.Registry | undefined
 ): EffectResult.Result<Description, PgTypes.CodecError> => {
   const reader = PgTypes.makeFieldReader(fields, registry)
   if (EffectResult.isFailure(reader)) return EffectResult.fail(reader.failure)
@@ -1821,7 +1844,6 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
     let scram: PgAuth.ScramState | undefined
     let processId = 0
     let secretKey = 0
-    const parameters = new Map<string, string>()
 
     const fail = (reason: SqlErrorReason): void => {
       if (done) return
@@ -1854,6 +1876,7 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
         case "AuthenticationOk":
         case "NoticeResponse":
         case "NegotiateProtocolVersion":
+        case "ParameterStatus":
           return
         case "AuthenticationCleartextPassword": {
           const secret = password()
@@ -1919,9 +1942,6 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
             new Error(`Authentication method ${message.method} is not supported`),
             "PgConnection: Unsupported authentication method"
           )
-        case "ParameterStatus":
-          parameters.set(message.name, message.value)
-          return
         case "BackendKeyData":
           processId = message.pid
           secretKey = message.secret
@@ -1940,7 +1960,7 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
           socket.off("error", onError)
           socket.off("close", onClose)
           socket.on("error", ignoreError)
-          resume(Effect.succeed({ socket, parser: parser!, processId, secretKey, parameters }))
+          resume(Effect.succeed({ socket, parser: parser!, processId, secretKey }))
           return
         default:
           return failConnect(
@@ -2079,15 +2099,6 @@ const configError = (message: string, cause?: unknown): SqlError =>
       operation: "connect"
     })
   })
-
-const resolveConfig = (options: Config): EffectResult.Result<ResolvedConfig, SqlError> => {
-  try {
-    return EffectResult.succeed(resolveConfigUnsafe(options))
-  } catch (error) {
-    if (error instanceof SqlError) return EffectResult.fail(error)
-    throw error
-  }
-}
 
 const resolveConfigUnsafe = (options: Config): ResolvedConfig => {
   const url = options.url !== undefined ? parseUrl(Redacted.value(options.url)) : {}
