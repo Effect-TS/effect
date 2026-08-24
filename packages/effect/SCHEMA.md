@@ -6456,12 +6456,16 @@ reference to a missing definition throws an `Invalid reference` error.
 `fromJsonSchemaMultiDocument` returns the ordered root schemas. It translates only definitions reachable from those
 roots. To pass the result to a representation compiler, call `toRepresentations` with the returned schemas' ASTs.
 
-Import is best-effort: JSON Schema constructs are translated to Effect schemas where possible, but the result is not a
-lossless reconstruction of an original Effect schema. The optional `onEnter` callback can normalize each JSON Schema node
+Import translates a Draft 2020-12 subset. `$dynamicRef`, `contains`, `dependentRequired`, `dependentSchemas`, `not`,
+active `if` / `then` / `else`, `unevaluatedItems`, and `unevaluatedProperties` throw an
+`Unsupported JSON Schema keyword` error. Inactive conditional keywords and `minContains` / `maxContains` without
+`contains` have no validation effect and are ignored. Unknown extension keywords are ignored and their semantics are not
+enforced. Objects and arrays used as `const` values or `enum` members throw an
+`Unsupported structured JSON Schema value` error. The optional `onEnter` callback can normalize each JSON Schema node
 before it is translated.
 
-Regular expression constraints reached during best-effort translation are rejected by default because imported patterns
-use the runtime's native regular expression engine and may block validation for an unbounded amount of time. Set
+Regular expression constraints reached during translation are rejected by default because imported patterns use the
+runtime's native regular expression engine and may block validation for an unbounded amount of time. Set
 `patterns: "apply"` only for trusted documents. Set `patterns: "ignore"` to skip reached pattern constraints explicitly;
 the resulting schema accepts values that the source document may reject. The policy includes `pattern`, the keys of
 `patternProperties`, and patterns nested in `propertyNames`. Ignoring `patternProperties` also skips its value constraints

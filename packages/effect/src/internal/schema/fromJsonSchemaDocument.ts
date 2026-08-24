@@ -697,6 +697,26 @@ function translateJsonSchemaMultiDocument(
     if (schema === undefined) {
       return unknown
     }
+    const enumIndex = Array.isArray(schema.enum)
+      ? schema.enum.findIndex((value) => typeof value === "object" && value !== null)
+      : -1
+    if (enumIndex !== -1) {
+      throw errorWithPath(`Unsupported structured JSON Schema value for "enum"`, [...path, "enum", enumIndex])
+    }
+    for (const keyword of Object.keys(schema)) {
+      if (keyword === "if" && !Object.hasOwn(schema, "then") && !Object.hasOwn(schema, "else")) continue
+      switch (keyword) {
+        case "if":
+        case "$dynamicRef":
+        case "contains":
+        case "dependentRequired":
+        case "dependentSchemas":
+        case "not":
+        case "unevaluatedItems":
+        case "unevaluatedProperties":
+          throw errorWithPath(`Unsupported JSON Schema keyword "${keyword}"`, [...path, keyword])
+      }
+    }
 
     let representation = on(schema, path)
     if (representation._tag === "Reference") {
@@ -765,6 +785,9 @@ function translateJsonSchemaMultiDocument(
       }
       if (typeof schema.const === "string" || typeof schema.const === "number" || typeof schema.const === "boolean") {
         return makeLiteral(schema.const)
+      }
+      if (typeof schema.const === "object") {
+        throw errorWithPath(`Unsupported structured JSON Schema value for "const"`, [...path, "const"])
       }
     }
     if (Array.isArray(schema.enum)) {
