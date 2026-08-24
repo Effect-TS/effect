@@ -1,6 +1,6 @@
 import { PgConnection, PgTypes } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Redacted } from "effect"
+import { Deferred, Effect, Fiber, Redacted, Stream } from "effect"
 import { PgContainer } from "./utils.ts"
 
 it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
@@ -362,5 +362,29 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
         "SELECT count(*)::int4 AS n FROM pg_prepared_statements WHERE statement = 'SELECT $1::int4 AS n'"
       )
       assert.deepStrictEqual(held.rows[0], { n: 1 })
+    }))
+  it.effect("orders ordinary statements against a stream on the same session", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const connection = yield* PgConnection.make({
+        url: Redacted.make(container.getConnectionUri())
+      })
+      // An ordinary statement holds `owner` rather than the wire permit, so
+      // this is what says it still cannot interleave with a stream, which
+      // reaches the session through a pin.
+      const streamed = yield* Effect.forkScoped(
+        Stream.runCollect(connection.stream("SELECT generate_series(1, 200) AS n"))
+      )
+      const queried = yield* Effect.forkScoped(
+        Effect.all(
+          Array.from({ length: 12 }, (_, index) => connection.query("SELECT $1::int4 AS n", [index])),
+          { concurrency: "unbounded" }
+        )
+      )
+      const rows = yield* Fiber.join(streamed)
+      assert.strictEqual(Array.from(rows).length, 200)
+      const results = yield* Fiber.join(queried)
+      results.forEach((result, index) => assert.deepStrictEqual(result.rows, [{ n: index }]))
+      assert.deepStrictEqual((yield* connection.query("SELECT 1 AS ok")).rows, [{ ok: 1 }])
     }))
 })

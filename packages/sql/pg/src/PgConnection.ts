@@ -637,13 +637,35 @@ class PgConnectionImpl implements PgConnection {
       }
     )
 
-  /** One extended-query cycle guarded by the wire permit. */
+  /**
+   * One extended-query cycle for a caller that shares the session with others:
+   * the fibers inside a transaction, and a stream running beside them. The
+   * wire permit is what serializes them.
+   */
   readonly cycle = (
     sql: string,
     params: ReadonlyArray<unknown>,
     wantRows: boolean
-  ): Effect.Effect<QueryOutput, SqlError> =>
-    this.wire.withPermit(Effect.suspend(() => this.attempt(sql, params, wantRows, this.prepared)))
+  ): Effect.Effect<QueryOutput, SqlError> => this.wire.withPermit(this.cycleOwned(sql, params, wantRows))
+
+  /**
+   * The same cycle for a caller that has taken the session to itself.
+   *
+   * The wire permit is redundant there. The only other holders of it are a
+   * pinned fiber and a stream, and both reach the session through `owner`,
+   * which this caller holds for the whole cycle. A stream releases the wire
+   * before its pin, because its scope acquires them in that order, so the wire
+   * is free whenever `owner` is. The multiplexed path already relies on the
+   * same invariant: it never takes the wire at all.
+   *
+   * Worth stating carefully because a statement's cost is dominated by how
+   * many Effect operations it performs, and a permit is a scoped acquisition.
+   */
+  readonly cycleOwned = (
+    sql: string,
+    params: ReadonlyArray<unknown>,
+    wantRows: boolean
+  ): Effect.Effect<QueryOutput, SqlError> => Effect.suspend(() => this.attempt(sql, params, wantRows, this.prepared))
 
   /**
    * Runs one cycle. A reused statement the backend has since dropped, or whose
@@ -708,7 +730,7 @@ class PgConnectionImpl implements PgConnection {
     Effect.map(
       this.multiplex
         ? this.pipelineCycle(sql, params ?? emptyParams, true, this.prepared)
-        : this.owner.withPermit(this.cycle(sql, params ?? emptyParams, true)),
+        : this.owner.withPermit(this.cycleOwned(sql, params ?? emptyParams, true)),
       takeResult
     )
 
@@ -719,7 +741,7 @@ class PgConnectionImpl implements PgConnection {
     Effect.map(
       this.multiplex
         ? this.pipelineCycle(sql, params ?? emptyParams, false, this.prepared)
-        : this.owner.withPermit(this.cycle(sql, params ?? emptyParams, false)),
+        : this.owner.withPermit(this.cycleOwned(sql, params ?? emptyParams, false)),
       takeValues
     )
 
