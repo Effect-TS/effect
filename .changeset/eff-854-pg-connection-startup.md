@@ -4,7 +4,7 @@
 
 Add `PgConnection`, a native PostgreSQL session on the `PgProtocol` codec.
 
-`PgConnection.make` connects over TCP, a unix socket, or a caller-supplied `Duplex` factory, optionally upgrades to TLS via `SSLRequest` (no silent downgrade), authenticates with trust, cleartext, MD5, or SCRAM-SHA-256, and resolves once the backend sends `ReadyForQuery`. Releasing the scope sends `Terminate` and destroys the socket. libpq-style `postgres://` URLs are parsed, with explicit config fields taking precedence.
+`PgConnection.make` connects over TCP, a unix socket, or a caller-supplied `Duplex` factory, optionally upgrades to TLS via `SSLRequest` (no silent downgrade), authenticates with trust, cleartext, MD5, or SCRAM-SHA-256, and resolves once the backend sends `ReadyForQuery`. SCRAM challenges above 1,000,000 iterations are rejected before password derivation. Releasing the scope sends `Terminate` and ends the socket after the frame flushes. libpq-style `postgres://` URLs are parsed, with explicit config fields taking precedence.
 
 `PgConnection.query` and `queryValues` run one unnamed extended-protocol cycle at a time with binary parameters and results. JavaScript parameters infer their PostgreSQL OIDs, while branded `PgTypes` parameters override inference. `PgTypes.makeRegistry()` provides isolated per-client custom codecs, including optional generic one-dimensional array codecs.
 
@@ -26,7 +26,8 @@ Statements a session has already run are kept prepared under a backend name, so 
 `Bind`/`Execute`/`Sync` with no parsing, planning, or `RowDescription`. The cache is per connection, keyed on SQL text
 plus the inferred parameter OIDs, bounded by `preparedStatementCacheSize`, and recovers on its own when the backend has
 lost a name or a cached plan no longer matches its columns. Pass `prepare: false` for a pooler that cannot keep names
-between statements.
+between statements. Eviction waits for an in-flight `Parse`, and abandoning a pipeline entry before it is written
+leaves the statement eligible to be prepared by a later query.
 
 A `multiplex` session now pipelines the statements its fibers submit together into one write instead of sending them
 one at a time, which takes a single connection past what a ten-connection pool reaches without it. Pinned work still

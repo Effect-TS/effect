@@ -10,7 +10,8 @@
  * `SCRAM-SHA-256-PLUS` is not implemented: channel binding needs the TLS
  * socket, which this codec does not own. Passwords are used as UTF-8 without
  * SASLprep normalisation, so non-ASCII passwords that require normalisation
- * are not supported.
+ * are not supported. Server iteration counts above 1,000,000 are rejected
+ * before password derivation.
  *
  * @since 4.0.0
  */
