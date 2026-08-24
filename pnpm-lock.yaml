@@ -439,8 +439,8 @@ importers:
   packages/platform/cloudflare:
     dependencies:
       '@cloudflare/workers-types':
-        specifier: ^5.20260816.1
-        version: 5.20260816.1
+        specifier: ^5.20260822.1
+        version: 5.20260822.1
     devDependencies:
       effect:
         specifier: workspace:^
