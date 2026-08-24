@@ -15,26 +15,13 @@ import * as Effect from "effect/Effect"
 import * as Redacted from "effect/Redacted"
 import * as Result from "effect/Result"
 import type * as Scope from "effect/Scope"
-import {
-  AuthenticationError,
-  AuthorizationError,
-  ConnectionError,
-  ConstraintError,
-  DeadlockError,
-  LockTimeoutError,
-  SerializationError,
-  SqlError,
-  type SqlErrorReason,
-  SqlSyntaxError,
-  StatementTimeoutError,
-  UniqueViolation,
-  UnknownError
-} from "effect/unstable/sql/SqlError"
+import { AuthenticationError, ConnectionError, SqlError, type SqlErrorReason } from "effect/unstable/sql/SqlError"
 import { randomBytes } from "node:crypto"
 import * as Net from "node:net"
 import type { Duplex } from "node:stream"
 import * as Tls from "node:tls"
 import type { ConnectionOptions } from "node:tls"
+import { classifySqlState } from "./internal/sqlError.ts"
 import * as PgAuth from "./PgAuth.ts"
 import * as PgProtocol from "./PgProtocol.ts"
 
@@ -114,7 +101,9 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  *
  * TLS is never downgraded: with `ssl` set, a server that answers `N` to
  * `SSLRequest` fails the connect. Certificate verification follows Node
- * defaults for `ssl: true` and the given `ConnectionOptions` otherwise.
+ * defaults for `ssl: true` and the given `ConnectionOptions` otherwise. Unix
+ * sockets and custom streams should set `ssl.servername` explicitly because
+ * they do not provide a usable TLS hostname.
  *
  * @category constructors
  * @since 4.0.0
@@ -178,6 +167,7 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
     let done = false
     let socket: Duplex
     let parser: PgProtocol.Parser | undefined
+    let sslErrorParser: PgProtocol.Parser | undefined
     let scram: PgAuth.ScramState | undefined
     let processId = 0
     let secretKey = 0
@@ -211,9 +201,16 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
 
     const handleMessage = (message: PgProtocol.BackendMessage): void => {
       switch (message._tag) {
-        case "AuthenticationOk":
         case "NoticeResponse":
         case "NegotiateProtocolVersion":
+          return
+        case "AuthenticationOk":
+          if (scram !== undefined) {
+            return failAuth(
+              new Error("The server completed authentication without proving its identity"),
+              "PgConnection: SCRAM exchange did not complete"
+            )
+          }
           return
         case "AuthenticationCleartextPassword": {
           const secret = password()
@@ -271,6 +268,7 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
           if (Result.isFailure(verified)) {
             return failAuth(verified.failure, "PgConnection: SCRAM server verification failed")
           }
+          scram = undefined
           return
         }
         case "AuthenticationUnsupported":
@@ -327,8 +325,27 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
     }
 
     const onSslResponse = (chunk: Uint8Array): void => {
-      socket.off("data", onSslResponse)
       if (done) return
+      if (sslErrorParser !== undefined || chunk[0] === 0x45) {
+        sslErrorParser ??= PgProtocol.makeParser()
+        let messages: ReadonlyArray<PgProtocol.BackendMessage>
+        try {
+          messages = sslErrorParser.push(chunk)
+        } catch (cause) {
+          return failConnect(cause, "PgConnection: Failed to parse SSLRequest error response")
+        }
+        if (messages.length === 0) return
+        socket.off("data", onSslResponse)
+        const message = messages[0]
+        if (messages.length !== 1 || message._tag !== "ErrorResponse") {
+          return failConnect(
+            new Error("Expected one ErrorResponse after SSLRequest"),
+            "PgConnection: Invalid SSLRequest response"
+          )
+        }
+        return fail(classifyFields(message.fields, "PgConnection: Failed to negotiate TLS", "connect"))
+      }
+      socket.off("data", onSslResponse)
       if (chunk.length !== 1) {
         return failConnect(
           new Error(`Received ${chunk.length} bytes in response to SSLRequest`),
@@ -484,6 +501,17 @@ const parseUrl = (raw: string): UrlConfig => {
   }
 
   const config: UrlConfig = {}
+  if (url.hostname !== "") {
+    config.host = url.hostname.startsWith("[") && url.hostname.endsWith("]")
+      ? url.hostname.slice(1, -1)
+      : decodeComponent(url.hostname, "host")
+  }
+  if (url.port !== "") config.port = parsePort(url.port, "authority")
+  if (url.username !== "") config.username = decodeComponent(url.username, "username")
+  if (url.password !== "") config.password = decodeComponent(url.password, "password")
+  const database = decodeComponent(url.pathname.replace(/^\//, ""), "database")
+  if (database !== "") config.database = database
+
   for (const [key, value] of url.searchParams) {
     switch (key) {
       case "host":
@@ -509,7 +537,7 @@ const parseUrl = (raw: string): UrlConfig => {
         if (!Number.isInteger(seconds) || seconds < 0) {
           throw configError(`Invalid connect_timeout in URL: "${value}"`)
         }
-        if (seconds > 0) config.connectTimeout = Duration.seconds(seconds)
+        config.connectTimeout = seconds === 0 ? Duration.infinity : Duration.seconds(seconds)
         break
       }
       case "sslmode":
@@ -532,17 +560,6 @@ const parseUrl = (raw: string): UrlConfig => {
         // Unknown query parameters are ignored, matching libpq.
     }
   }
-
-  if (url.hostname !== "") {
-    config.host = url.hostname.startsWith("[") && url.hostname.endsWith("]")
-      ? url.hostname.slice(1, -1)
-      : decodeComponent(url.hostname, "host")
-  }
-  if (url.port !== "") config.port = parsePort(url.port, "authority")
-  if (url.username !== "") config.username = decodeComponent(url.username, "username")
-  if (url.password !== "") config.password = decodeComponent(url.password, "password")
-  const database = decodeComponent(url.pathname.replace(/^\//, ""), "database")
-  if (database !== "") config.database = database
   return config
 }
 
@@ -552,43 +569,5 @@ const classifyFields = (
   operation: string
 ): SqlErrorReason => {
   const cause = Object.assign(new Error(fields.message ?? "Unknown PostgreSQL error"), fields)
-  const props = { cause, message, operation }
-  const code = fields.code
-  if (code !== undefined) {
-    if (code.startsWith("08")) {
-      return new ConnectionError(props)
-    }
-    if (code.startsWith("28")) {
-      return new AuthenticationError(props)
-    }
-    if (code === "42501") {
-      return new AuthorizationError(props)
-    }
-    if (code.startsWith("42")) {
-      return new SqlSyntaxError(props)
-    }
-    if (code === "23505") {
-      const constraint = fields.constraint?.trim()
-      return new UniqueViolation({
-        ...props,
-        constraint: constraint === undefined || constraint.length === 0 ? "unknown" : constraint
-      })
-    }
-    if (code.startsWith("23")) {
-      return new ConstraintError(props)
-    }
-    if (code === "40P01") {
-      return new DeadlockError(props)
-    }
-    if (code === "40001") {
-      return new SerializationError(props)
-    }
-    if (code === "55P03") {
-      return new LockTimeoutError(props)
-    }
-    if (code === "57014") {
-      return new StatementTimeoutError(props)
-    }
-  }
-  return new UnknownError(props)
+  return classifySqlState(fields.code, fields.constraint, { cause, message, operation })
 }
