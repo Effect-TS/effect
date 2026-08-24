@@ -525,6 +525,68 @@ describe("RpcSerialization", () => {
         )
       }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary({ fingerprintPayloads: true }))))
 
+    it.effect("reuses payload codecs for the same schema", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        const Payload = Schema.Struct({ value: Schema.String })
+
+        assert.strictEqual(serialization.codecFor(Payload), serialization.codecFor(Payload))
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
+
+    it.effect("does not carry a partial frame into a new connection", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        const request: RpcMessage.RequestEncoded = {
+          _tag: "Request",
+          id: 1,
+          tag: "Echo",
+          payload: Uint8Array.of(1, 2, 3),
+          headers: []
+        }
+        const staleSender = serialization.makeUnsafe()
+        const staleReceiver = serialization.makeUnsafe()
+        const staleFrame = staleSender.encode(request)
+        assert(staleFrame instanceof Uint8Array)
+        assert.deepStrictEqual(staleReceiver.decode(staleFrame.subarray(0, staleFrame.length - 1)), [])
+
+        const reconnectedSender = serialization.makeUnsafe()
+        const reconnectedReceiver = serialization.makeUnsafe()
+        const frame = reconnectedSender.encode(request)
+        assert(frame instanceof Uint8Array)
+        assert.deepStrictEqual(reconnectedReceiver.decode(frame), [request])
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
+
+    it.effect("does not reuse one connection's dictionary in another connection", () =>
+      Effect.gen(function*() {
+        const clientSerialization = yield* RpcSerialization.RpcSerialization.pipe(
+          Effect.provide(RpcSerialization.layerSchemaBinary())
+        )
+        const serverSerialization = yield* RpcSerialization.RpcSerialization.pipe(
+          Effect.provide(RpcSerialization.layerSchemaBinary())
+        )
+        const firstClient = clientSerialization.makeUnsafe()
+        const request = (id: number): RpcMessage.RequestEncoded => ({
+          _tag: "Request",
+          id,
+          tag: "OnlyEncodedOnTheFirstConnection",
+          payload: Uint8Array.of(1),
+          headers: []
+        })
+
+        // This frame never reaches the server, so only the client's abandoned
+        // connection knows the string.
+        firstClient.encode(request(1))
+
+        const reconnectedClient = clientSerialization.makeUnsafe()
+        const reconnectedServer = serverSerialization.makeUnsafe()
+        const frame = reconnectedClient.encode(request(2))
+        assert(frame instanceof Uint8Array)
+        assert.deepStrictEqual(reconnectedServer.decode(frame), [request(2)])
+        const repeatedFrame = reconnectedClient.encode(request(3))
+        assert(repeatedFrame instanceof Uint8Array)
+        assert.deepStrictEqual(reconnectedServer.decode(repeatedFrame), [request(3)])
+      }))
+
     it.effect("uses fingerprinted envelope framing and the binary content type", () =>
       Effect.gen(function*() {
         const serialization = yield* RpcSerialization.RpcSerialization

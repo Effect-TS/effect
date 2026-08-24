@@ -600,9 +600,17 @@ const makeSchemaBinary = (options?: {
   readonly fingerprintPayloads?: boolean | undefined
 }): RpcSerialization["Service"] => {
   const maxFrameSize = options?.maxFrameSize ?? defaultSchemaBinaryMaxFrameSize
-  const codecFor: CodecFor = options?.fingerprintPayloads === true
-    ? (schema) => SchemaBinary.toCodecDirect(schema, { fingerprint: true })
-    : SchemaBinary.toCodecDirect
+  const codecOptions = options?.fingerprintPayloads === true ? { fingerprint: true } as const : undefined
+  const codecCache = new WeakMap<Schema.Top, Schema.Top>()
+  const codecFor: CodecFor = <S extends Schema.Top>(schema: S) => {
+    const cached = codecCache.get(schema)
+    if (cached !== undefined) {
+      return cached as Schema.Codec<S["Type"], unknown, S["DecodingServices"], S["EncodingServices"]>
+    }
+    const codec = SchemaBinary.toCodecDirect(schema, codecOptions)
+    codecCache.set(schema, codec)
+    return codec
+  }
   // The envelope repeats itself: the same RPC tag, header names, and trace ids
   // come back on message after message. A dictionary shared by every frame on
   // the connection sends each of those once and references it afterwards, so

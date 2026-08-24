@@ -189,6 +189,70 @@ describe("RpcClient", () => {
       assert.strictEqual(error.reason.message, "HTTP response ended before RPC request completed")
     }))
 
+  it.effect("encodes keepalives with the current serializer after reconnecting", () =>
+    Effect.gen(function*() {
+      const firstOpened = yield* Deferred.make<void>()
+      const secondOpened = yield* Deferred.make<void>()
+      const firstClosed = yield* Deferred.make<never, Socket.SocketError>()
+      const secondClosed = yield* Deferred.make<never, Socket.SocketError>()
+      const writes: Array<{ readonly connection: number; readonly message: unknown }> = []
+      let connection = 0
+      const socketError = new Socket.SocketError({
+        reason: new Socket.SocketOpenError({
+          kind: "Unknown",
+          cause: new Error("connection lost")
+        })
+      })
+      const socket = Socket.make({
+        runRaw: (_handler, options) =>
+          Effect.gen(function*() {
+            const current = connection++
+            if (options?.onOpen !== undefined) yield* options.onOpen
+            yield* Deferred.succeed(current === 0 ? firstOpened : secondOpened, void 0)
+            return yield* Deferred.await(current === 0 ? firstClosed : secondClosed)
+          }),
+        writer: Effect.succeed((chunk) =>
+          Effect.sync(() => {
+            if (typeof chunk !== "string") return
+            writes.push(JSON.parse(chunk))
+          })
+        )
+      })
+      let serializer = 0
+      const serialization = RpcSerialization.RpcSerialization.of({
+        contentType: "application/test",
+        includesFraming: true,
+        codecFor: RpcSerialization.json.codecFor,
+        makeUnsafe: () => {
+          const current = serializer++
+          return {
+            decode: () => [],
+            encode: (message) => JSON.stringify({ connection: current, message })
+          }
+        }
+      })
+
+      yield* RpcClient.makeProtocolSocket({
+        retryTransientErrors: true,
+        retryPolicy: Schedule.spaced("1 millis")
+      }).pipe(
+        Effect.provideService(Socket.Socket, socket),
+        Effect.provideService(RpcSerialization.RpcSerialization, serialization)
+      )
+
+      yield* Deferred.await(firstOpened)
+      yield* TestClock.adjust("5 seconds")
+      yield* Deferred.fail(firstClosed, socketError)
+      yield* TestClock.adjust("1 millis")
+      yield* Deferred.await(secondOpened)
+      yield* TestClock.adjust("5 seconds")
+
+      assert.deepStrictEqual(writes, [
+        { connection: 1, message: { _tag: "Ping" } },
+        { connection: 2, message: { _tag: "Ping" } }
+      ])
+    }))
+
   it.effect("reports transient socket open errors without failing in-flight streams", () =>
     Effect.gen(function*() {
       const requestSent = yield* Deferred.make<void>()
