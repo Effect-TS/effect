@@ -2,7 +2,7 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Option } from "effect"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
 import * as Latch from "effect/Latch"
@@ -570,6 +570,43 @@ describe("HttpServer", () => {
       yield* completed.await
 
       assert.strictEqual(closeListenerRemovals, 1)
+    }))
+
+  it.effect("returns none when a late remoteAddress read finds no socket", () =>
+    Effect.gen(function*() {
+      const scope = yield* Effect.scope
+      let request: HttpServerRequest.HttpServerRequest | undefined
+      const handler = yield* NodeHttpServer.makeHandler(
+        Effect.gen(function*() {
+          request = yield* HttpServerRequest.HttpServerRequest
+          return HttpServerResponse.empty()
+        }),
+        { scope }
+      )
+      const completed = Latch.makeUnsafe()
+      let writableEnded = false
+      const nodeResponse = Object.defineProperty(new EventEmitter(), "writableEnded", {
+        get: () => writableEnded
+      }) as Http.ServerResponse
+      nodeResponse.writeHead = () => nodeResponse
+      nodeResponse.end = (() => {
+        writableEnded = true
+        completed.openUnsafe()
+        return nodeResponse
+      }) as Http.ServerResponse["end"]
+      const nodeRequest = {
+        method: "GET",
+        url: "/",
+        headers: {},
+        socket: { remoteAddress: "127.0.0.1" }
+      } as unknown as Http.IncomingMessage
+
+      handler(nodeRequest, nodeResponse)
+      yield* completed.await
+      assert(request !== undefined)
+      ;(nodeRequest as unknown as { socket: null }).socket = null
+
+      assert.deepStrictEqual(request.remoteAddress, Option.none())
     }))
 
   it.effect("coalesces streaming chunks from the same pull", () =>
