@@ -2482,6 +2482,120 @@ describe("SchemaBinary", () => {
     })
   })
 
+  describe("connection dictionary", () => {
+    const Message = Schema.Struct({
+      tag: Schema.String,
+      traceId: Schema.String,
+      body: Schema.String,
+      n: Schema.Number
+    })
+    const message = (index: number) => ({
+      tag: ["Search", "Get", "Delete"][index % 3],
+      traceId: "0123456789abcdef0123456789abcdef",
+      body: `body ${index}`,
+      n: index
+    })
+
+    it("round-trips a stream and shrinks repeated strings", () => {
+      for (const fingerprint of [false, true]) {
+        const options = { dictionary: true, fingerprint } as const
+        const encoder = SchemaBinary.encoder(Message, options)
+        const parser = SchemaBinary.parser(Message, options)
+        const plain = SchemaBinary.encoder(Message, { fingerprint })
+        const values = Array.from({ length: 30 }, (_, index) => message(index))
+        const decoded: Array<unknown> = []
+        const sizes: Array<number> = []
+        for (const value of values) {
+          const frame = encoder.encode(value)
+          sizes.push(frame.length)
+          decoded.push(...parser.feedSync(frame))
+        }
+        assert.deepStrictEqual(decoded, values)
+        // The first frame carries every string, so it costs what no dictionary
+        // would; later frames reference the ones that came back.
+        assert.strictEqual(sizes[0], plain.encode(values[0]).length)
+        assert.isBelow(sizes[sizes.length - 1], plain.encode(values[values.length - 1]).length * 0.6)
+      }
+    })
+
+    it("round-trips batched frames and fragmented feeds", () => {
+      const encoder = SchemaBinary.encoder(Message, { dictionary: true })
+      const parser = SchemaBinary.parser(Message, { dictionary: true })
+      const values = Array.from({ length: 12 }, (_, index) => message(index))
+      assert.deepStrictEqual(parser.feedSync(encoder.encodeMany(values)), values)
+
+      const fragmented = SchemaBinary.encoder(Message, { dictionary: true })
+      const fragmentedParser = SchemaBinary.parser(Message, { dictionary: true })
+      const decoded: Array<unknown> = []
+      for (const value of values) {
+        const frame = fragmented.encode(value).slice()
+        decoded.push(...fragmentedParser.feedSync(frame.subarray(0, 1)))
+        decoded.push(...fragmentedParser.feedSync(frame.subarray(1)))
+      }
+      assert.deepStrictEqual(decoded, values)
+    })
+
+    it("keeps the reader in step when a frame fails to encode", () => {
+      const encoder = SchemaBinary.encoder(Message, { dictionary: true })
+      const parser = SchemaBinary.parser(Message, { dictionary: true })
+      const first = message(0)
+      const decoded: Array<unknown> = [...parser.feedSync(encoder.encode(first))]
+      // Never reaches the reader, so its strings must not reach the writer's
+      // tables either.
+      assert.include(
+        schemaError(() => encoder.encode({ ...message(1), tag: "NeverSent", n: "not a number" })).message,
+        "number"
+      )
+      assert.include(
+        schemaError(() => encoder.encodeMany([message(2), { ...message(3), n: "not a number" }])).message,
+        "number"
+      )
+      const next = message(4)
+      decoded.push(...parser.feedSync(encoder.encode(next)))
+      assert.deepStrictEqual(decoded, [first, next])
+    })
+
+    it("costs nothing on a field whose strings never repeat", () => {
+      const Unique = Schema.Struct({ s: Schema.String })
+      const encoder = SchemaBinary.encoder(Unique, { dictionary: true })
+      const parser = SchemaBinary.parser(Unique, { dictionary: true })
+      const plain = SchemaBinary.encoder(Unique, {})
+      const values = Array.from({ length: 200 }, (_, index) => ({ s: `value-${index}` }))
+      const decoded: Array<unknown> = []
+      let dictionaryBytes = 0
+      let plainBytes = 0
+      for (const value of values) {
+        const frame = encoder.encode(value)
+        dictionaryBytes += frame.length
+        plainBytes += plain.encode(value).length
+        decoded.push(...parser.feedSync(frame))
+      }
+      assert.deepStrictEqual(decoded, values)
+      assert.strictEqual(dictionaryBytes, plainBytes)
+    })
+
+    it("rejects a schema the binary layer does not validate on its own", () => {
+      const Checked = Schema.Struct({ s: Schema.String.check(Schema.isMinLength(2)) })
+      assert.throws(() => SchemaBinary.encoder(Checked, { dictionary: true }), /dictionary/)
+      assert.throws(() => SchemaBinary.parser(Checked, { dictionary: true }), /dictionary/)
+    })
+
+    it("rejects a reference the stream never sent", () => {
+      const encoder = SchemaBinary.encoder(Message, { dictionary: true })
+      const parser = SchemaBinary.parser(Message, { dictionary: true })
+      for (let index = 0; index < 4; index++) parser.feedSync(encoder.encode(message(index)))
+      const frame = encoder.encode(message(4)).slice()
+      // Point the tag at a table entry past the end of what was sent.
+      const tagged = frame.map((byte) => byte === 1 ? 0xFF : byte)
+      assert.throws(() => parser.feedSync(tagged))
+    })
+
+    it("stays off by default", () => {
+      const encoder = SchemaBinary.encoder(Message, {})
+      assert.deepStrictEqual(Array.from(encoder.encode(message(0))), Array.from(encode(Message, message(0))))
+    })
+  })
+
   describe("fingerprint mode parser", () => {
     const Person = Schema.Struct({ name: Schema.String, age: Schema.Number })
     const first = { name: "Ada", age: 36 }

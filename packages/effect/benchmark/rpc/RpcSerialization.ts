@@ -142,6 +142,11 @@ const formats = [
 
 const warmupIterations = 500
 const iterations = 5_000
+// A serialization may carry state from one frame to the next, so the decode
+// task walks a stream in order and never feeds the same frame twice.
+const streamLength = warmupIterations + iterations + 1
+// Frames a connection sends before its serialization has settled.
+const warmupFrames = 8
 
 interface Prepared {
   readonly caseName: string
@@ -161,27 +166,42 @@ const prepared = cases.flatMap((testCase): ReadonlyArray<Prepared> =>
   formats.map(({ name, serialization }) => {
     const encodeHole = Schema.encodeUnknownSync(serialization.codecFor(testCase.schema))
     const decodeHole = Schema.decodeUnknownSync(serialization.codecFor(testCase.schema))
+    // A binary serialization fills the hole with bytes; a JSON-shaped one fills
+    // it with the value itself.
+    const encodedHole = encodeHole(testCase.value)
+    const hole = encodedHole instanceof Uint8Array ? encodedHole.slice() : encodedHole
     const encoder = serialization.makeUnsafe()
-    const firstFrame = toBytes(encoder.encode(testCase.envelope(encodeHole(testCase.value))))
-    const steadyFrame = toBytes(encoder.encode(testCase.envelope(encodeHole(testCase.value))))
-    const decoder = serialization.makeUnsafe()
+    const encode = () => encoder.encode(testCase.envelope(encodeHole(testCase.value)))
+    const firstFrame = toBytes(encode())
+    let steadyFrame = firstFrame
+    for (let i = 0; i < warmupFrames; i++) steadyFrame = toBytes(encode())
 
-    const decode = (frame: Uint8Array) => {
-      const envelopes = decoder.decode(frame)
+    const streamWriter = serialization.makeUnsafe()
+    const stream = Array.from(
+      { length: streamLength },
+      () => toBytes(streamWriter.encode(testCase.envelope(hole)) as Uint8Array)
+    )
+    let decoder = serialization.makeUnsafe()
+    let index = 0
+    const decode = () => {
+      if (index === stream.length) {
+        decoder = serialization.makeUnsafe()
+        index = 0
+      }
+      const envelopes = decoder.decode(stream[index++])
       assert.strictEqual(envelopes.length, 1)
       return decodeHole(testCase.hole(envelopes[0]))
     }
 
-    assert.deepStrictEqual(decode(firstFrame), testCase.value)
-    assert.deepStrictEqual(decode(steadyFrame), testCase.value)
+    assert.deepStrictEqual(decode(), testCase.value)
 
     return {
       caseName: testCase.name,
       formatName: name,
       firstFrameSize: firstFrame.length,
       steadyFrameSize: steadyFrame.length,
-      encode: () => encoder.encode(testCase.envelope(encodeHole(testCase.value))),
-      decode: () => decode(steadyFrame)
+      encode,
+      decode
     }
   })
 )
@@ -191,10 +211,10 @@ console.log(
   "End-to-end operations include the payload codec plus RPC envelope framing; codec construction is excluded."
 )
 console.log(
-  "Msgpack uses RpcSerialization.msgPack defaults, including records. SchemaBinary fingerprints envelopes only."
+  "Msgpack uses RpcSerialization.msgPack defaults, including records. SchemaBinary fingerprints envelopes only and shares one string dictionary across the frames of a connection."
 )
 console.log(
-  "First-frame sizes use a fresh parser; steady sizes and throughput reuse one parser as on a long-lived connection."
+  "First-frame sizes use a fresh serializer; steady sizes and throughput reuse one as on a long-lived connection, and decode walks a stream in frame order."
 )
 console.log(
   `${warmupIterations.toLocaleString()} warmup operations and ${iterations.toLocaleString()} measured operations per case, format, and direction.`

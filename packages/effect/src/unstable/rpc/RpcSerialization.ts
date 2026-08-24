@@ -603,22 +603,27 @@ const makeSchemaBinary = (options?: {
   const codecFor: CodecFor = options?.fingerprintPayloads === true
     ? (schema) => SchemaBinary.toCodecDirect(schema, { fingerprint: true })
     : SchemaBinary.toCodecDirect
-  const encodeEnvelope = SchemaBinary.encodeUnknownSync(RpcMessage.EncodedSchema, { fingerprint: true })
-  const encodeEnvelopes = SchemaBinary.encodeManyUnknownSync(RpcMessage.EncodedSchema, { fingerprint: true })
+  // The envelope repeats itself: the same RPC tag, header names, and trace ids
+  // come back on message after message. A dictionary shared by every frame on
+  // the connection sends each of those once and references it afterwards, so
+  // the writer and the reader here are a matched pair and neither one works
+  // against a peer that was built without the other.
+  const envelopeOptions = { fingerprint: true, dictionary: true } as const
   return RpcSerialization.of({
     contentType: "application/vnd.effect.rpc+schema-binary",
     includesFraming: true,
     codecFor,
     makeUnsafe: () => {
-      const parser = SchemaBinary.parser(RpcMessage.EncodedSchema, { fingerprint: true, maxFrameSize })
+      const parser = SchemaBinary.parser(RpcMessage.EncodedSchema, { ...envelopeOptions, maxFrameSize })
+      const encoder = SchemaBinary.encoder(RpcMessage.EncodedSchema, envelopeOptions)
       return {
         decode: (data) => parser.feedSync(typeof data === "string" ? schemaBinaryTextEncoder.encode(data) : data),
         encode: (response) => {
           if (!Array.isArray(response)) {
-            return encodeEnvelope(response)
+            return encoder.encode(response)
           }
           if (response.length === 0) return undefined
-          return encodeEnvelopes(response)
+          return encoder.encodeMany(response)
         }
       }
     }

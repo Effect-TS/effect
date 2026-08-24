@@ -1045,7 +1045,10 @@ export const makeProtocolSocket = (options?: {
 
     let parser = serialization.makeUnsafe()
 
-    const pinger = yield* makePinger(write(parser.encode(constPing)!))
+    // `parser` is replaced on every connect, and a stateful serialization
+    // encodes against the connection it is writing to, so the ping is encoded
+    // when it is sent rather than once up front.
+    const pinger = yield* makePinger(Effect.suspend(() => write(parser.encode(constPing)!)))
     let currentError: RpcClientError | undefined
     const onOpen = Effect.suspend(() => {
       currentError = undefined

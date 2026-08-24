@@ -260,7 +260,7 @@ export interface Parser<T> {
  */
 export function parser<S extends Schema.Constraint>(
   schema: S,
-  options?: SchemaAST.ParseOptions & Options & { readonly maxFrameSize?: number | undefined }
+  options?: SchemaAST.ParseOptions & Options & StreamOptions & { readonly maxFrameSize?: number | undefined }
 ): Parser<S["Type"]> {
   const { exact, exitSuccess, layout, target } = compileTarget(schema)
   const parseOptions: SchemaAST.ParseOptions = options ?? SchemaAST.defaultParseOptions
@@ -275,8 +275,82 @@ export function parser<S extends Schema.Constraint>(
     compileMode(layout, options?.fingerprint),
     parseOptions,
     options?.maxFrameSize,
-    decodeEncoded
+    decodeEncoded,
+    requireDictionary(exact, options)
   )
+}
+
+/**
+ * Options for the connection-scoped pair, {@link encoder} and {@link parser}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface StreamOptions {
+  /**
+   * Share one string dictionary across every frame on the connection, so a
+   * string that repeats costs a reference after the first frame that carries
+   * it. Frames stop standing alone: they only decode through the parser that
+   * saw the frames before them, in order.
+   *
+   * Both ends have to set it. A schema the binary layer does not fully
+   * validate on its own cannot use it, and asking for it throws.
+   *
+   * @since 4.0.0
+   */
+  readonly dictionary?: boolean | undefined
+}
+
+function requireDictionary(exact: boolean, options: StreamOptions | undefined): boolean {
+  if (options?.dictionary !== true) return false
+  if (!exact) {
+    throw new Error("Binary layout: dictionary needs a schema the binary layer validates on its own")
+  }
+  return true
+}
+
+/**
+ * A writer for one connection. Every frame it produces shares the string
+ * dictionary that the matching {@link parser} rebuilds as it reads them, so the
+ * two have to be created from the same schema and the same options.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export function encoder<S extends Schema.Constraint>(
+  schema: S,
+  options?: SchemaAST.ParseOptions & Options & StreamOptions
+): Encoder {
+  const { exact, layout } = compileTarget(schema)
+  const dictionary = requireDictionary(exact, options)
+  const encode = encodeUnknownSync(schema, options)
+  const encodeMany = encodeManyUnknownSync(schema, options)
+  if (!dictionary) return { encode, encodeMany }
+  const mode = compileMode(layout, options?.fingerprint)
+  const parseOptions: SchemaAST.ParseOptions = options ?? SchemaAST.defaultParseOptions
+  const dict = makeDictWrite()
+  const run = <A>(f: () => A): A => {
+    try {
+      return f()
+    } catch (e) {
+      throw e instanceof IssueError ? new Schema.SchemaError(e.issue) : e
+    }
+  }
+  return {
+    encode: (value) => run(() => encodeFrame(layout, value, parseOptions, mode, dict)),
+    encodeMany: (values) => run(() => encodeFrames(layout, values, parseOptions, mode, dict))
+  }
+}
+
+/**
+ * The writer returned by {@link encoder}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Encoder {
+  encode(value: unknown): Uint8Array<ArrayBuffer>
+  encodeMany(values: ReadonlyArray<unknown>): Uint8Array<ArrayBuffer>
 }
 
 // Frame parser over a compiled layout. `decodeEncoded` runs the target schema
@@ -286,8 +360,10 @@ function makeParser<T>(
   mode: Mode,
   parseOptions: SchemaAST.ParseOptions,
   maxFrameSize: number | undefined,
-  decodeEncoded: ((value: unknown) => unknown) | undefined
+  decodeEncoded: ((value: unknown) => unknown) | undefined,
+  dictionary: boolean
 ): Parser<T> {
+  const dict: DictRead | undefined = dictionary ? [] : undefined
   let buffer = new Uint8Array(0)
   let bufferStart = 0
   let bufferEnd = 0
@@ -421,7 +497,7 @@ function makeParser<T>(
           issuePathLen = 0
           const bodyStart = pos + headerLen
           indexSignatures.beginFrame()
-          body.reset(buf, bodyStart, bodyStart + frameLen, parseOptions, indexSignatures, mode.positional)
+          body.reset(buf, bodyStart, bodyStart + frameLen, parseOptions, indexSignatures, mode.positional, dict)
           const value = decodeFrameBody(layout, body, mode)
           out.push((decodeEncoded === undefined ? value : decodeEncoded(value)) as T)
         } catch (e) {
@@ -572,7 +648,7 @@ export const decode = <S extends Schema.Constraint>(
     : decodeTarget
   return Channel.fromTransform((upstream, _scope) =>
     Effect.sync(() => {
-      const frames = makeParser<unknown>(layout, mode, parseOptions, options?.maxFrameSize, undefined)
+      const frames = makeParser<unknown>(layout, mode, parseOptions, options?.maxFrameSize, undefined, false)
       let stashed: Schema.SchemaError | undefined
 
       // Decodes framed values in order. On a failure, values decoded before it
@@ -1338,13 +1414,17 @@ class Reader {
   positional = false
   // Handed to the row-run field's immediate consumer, then cleared.
   intern: Array<unknown> | undefined
+  // String tables shared by every frame on one connection; `undefined` for a
+  // one-shot decode, where each frame stands alone.
+  dict: DictRead | undefined
   reset(
     buf: Uint8Array,
     start: number,
     end: number,
     options: SchemaAST.ParseOptions,
     indexSignatures: IndexSignatureCache | undefined,
-    positional: boolean
+    positional: boolean,
+    dict: DictRead | undefined
   ) {
     this.view = undefined
     this.buf = buf
@@ -1354,6 +1434,7 @@ class Reader {
     this.indexSignatures = indexSignatures
     this.positional = positional
     this.intern = undefined
+    this.dict = dict
   }
   release() {
     this.pos = this.end = 0
@@ -1366,6 +1447,7 @@ class Reader {
     this.indexSignatures = undefined
     this.positional = false
     this.intern = undefined
+    this.dict = undefined
   }
   get remaining(): number {
     return this.end - this.pos
@@ -1594,7 +1676,7 @@ type LeafKind =
   | "dateTimeZoned"
 
 type Layout =
-  | { readonly _: LeafKind }
+  | LeafLayout
   | LiteralLayout
   | { readonly _: "int64"; readonly flavor: "date" | "utc" }
   | { readonly _: "never"; readonly ast: SchemaAST.AST }
@@ -1605,6 +1687,15 @@ type Layout =
   | { readonly _: "result"; success: Layout; failure: Layout }
   | { readonly _: "exit"; value: Layout; cause: ReasonLayout }
   | ReasonLayout
+
+// Every leaf carries a `slot`, so they all share one shape and the layout
+// switch stays monomorphic on them. Only strings use it: it indexes their table
+// in a connection dictionary, and both ends compile the same schema in the same
+// order, so they number the leaves the same way.
+interface LeafLayout {
+  readonly _: LeafKind
+  readonly slot: number
+}
 
 // Literal values are validated here rather than by a downstream schema pass.
 interface LiteralLayout {
@@ -2034,6 +2125,9 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
   root = SchemaAST.toEncoded(root)
   const memo = new Map<SchemaAST.AST, Layout>()
   let recursive = false
+  let stringSlots = 0
+
+  const leaf = (kind: LeafKind): LeafLayout => ({ _: kind, slot: kind === "string" ? stringSlots++ : 0 })
 
   function compile(ast: SchemaAST.AST): Layout {
     const hit = memo.get(ast)
@@ -2047,27 +2141,27 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
     switch (ast._tag) {
       case "String":
       case "TemplateLiteral":
-        return { _: "string" }
+        return leaf("string")
       case "Symbol":
       case "UniqueSymbol":
-        return { _: "symbol" }
+        return leaf("symbol")
       case "Boolean":
-        return { _: "bool" }
+        return leaf("bool")
       case "Null":
-        return { _: "null" }
+        return leaf("null")
       case "Undefined":
       case "Void":
-        return { _: "undefined" }
+        return leaf("undefined")
       case "Number":
-        return provesInteger(ast) ? { _: "int" } : { _: "number" }
+        return leaf(provesInteger(ast) ? "int" : "number")
       case "BigInt":
-        return { _: "bigint" }
+        return leaf("bigint")
       case "Literal":
-        return literalLayout({ _: literalKind(ast.literal) }, [ast.literal])
+        return literalLayout(leaf(literalKind(ast.literal)), [ast.literal])
       case "Unknown":
       case "Any":
       case "ObjectKeyword":
-        return { _: "json" }
+        return leaf("json")
       case "Never":
         return { _: "never", ast }
       case "Enum":
@@ -2210,13 +2304,13 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       case "effect/schema/DateTimeUtc":
         return { _: "int64", flavor: "utc" }
       case "effect/schema/DateTimeZoned":
-        return { _: "dateTimeZoned" }
+        return leaf("dateTimeZoned")
       case "effect/schema/Duration":
-        return { _: "duration" }
+        return leaf("duration")
       case "effect/schema/BigDecimal":
-        return { _: "bigDecimal" }
+        return leaf("bigDecimal")
       case "effect/schema/Uint8Array":
-        return { _: "bytes" }
+        return leaf("bytes")
     }
     const tps = ast.typeParameters
     switch (id) {
@@ -2266,7 +2360,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
     if (id !== undefined && id in natives) {
       throw new Error(`Binary layout: native declaration ${id} has no layout constructor`)
     }
-    if (isJsonDeclaration(ast)) return { _: "json" }
+    if (isJsonDeclaration(ast)) return leaf("json")
     throw new Error(`Binary layout: declaration ${id ?? "<anonymous>"} has no toCodecJson or toCodec`)
   }
 
@@ -2296,7 +2390,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       }
       if (member._tag === "UniqueSymbol") {
         astKind(member) // validates the symbol is registered
-        addLiteralRow(K.string, { _: "symbol" })
+        addLiteralRow(K.string, leaf("symbol"))
         continue
       }
       if (member._tag === "Objects" || member._tag === "Arrays") {
@@ -2314,7 +2408,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       rowMembers.push({ member, kind: astKind(member) })
     }
     for (const [kind, values] of literalValues) {
-      addLiteralRow(kind, literalLayout({ _: literalKind(values[0]) }, values))
+      addLiteralRow(kind, literalLayout(leaf(literalKind(values[0])), values))
     }
     if (variantMembers.length === 0 && rowMembers.length === 0 && literalRows.size === 1) {
       return literalRows.values().next().value!
@@ -2746,6 +2840,9 @@ interface EncodeContext {
   extraShape: ExtraShape | undefined
   // Handed to the row-run field's immediate consumer, then cleared.
   intern: InternWrite | undefined
+  // String tables shared by every frame on one connection; `undefined` for a
+  // one-shot encode, where each frame stands alone.
+  readonly dict: DictWrite | undefined
 }
 
 function encodeFail(expected: string, input: unknown, options: SchemaAST.ParseOptions): never {
@@ -3202,6 +3299,147 @@ function internAdd(table: InternWrite, value: unknown) {
   values.push(value)
 }
 
+// A connection dictionary: string tables that outlive a single frame. The
+// writer and the reader build the same tables from the same frames, so a
+// reference means the same string on both ends. Fields that share a schema
+// object share a table, which is why `Schema.String` fields all land in one:
+// splitting them costs every layout a few percent and buys the RPC envelope,
+// where every string repeats, nothing.
+//
+// A leaf starts out only watching. It writes plain strings and remembers them
+// until one comes back, and only then starts writing references. A leaf whose
+// strings never repeat gives up and goes back to writing plain strings for
+// good, so it never costs a byte more than no dictionary at all.
+const DICT_WATCHING = 0
+const DICT_REFERENCING = 1
+const DICT_GAVE_UP = 2
+
+// How many distinct strings a leaf watches before giving up on it.
+const DICT_WATCH_LIMIT = 64
+// How many strings one leaf keeps once it is referencing.
+const DICT_MAX_ENTRIES = 512
+
+interface DictSlot {
+  readonly values: Array<string>
+  readonly refs: Map<string, number>
+  state: number
+  // Frame that last touched this slot, so a frame records one mark per slot.
+  stamp: number
+}
+
+type DictRead = Array<DictSlot | undefined>
+
+interface DictWrite {
+  readonly slots: DictRead
+  // A frame that fails is never sent, so its additions have to come back out or
+  // the reader's tables drift from the writer's.
+  readonly marks: Array<DictMark>
+  frame: number
+}
+
+interface DictMark {
+  readonly slot: DictSlot
+  readonly length: number
+  readonly state: number
+}
+
+function makeDictWrite(): DictWrite {
+  return { slots: [], marks: [], frame: 0 }
+}
+
+function dictSlot(slots: DictRead, index: number): DictSlot {
+  return slots[index] ??= { values: [], refs: new Map(), state: DICT_WATCHING, stamp: -1 }
+}
+
+function dictWatch(slot: DictSlot, value: string) {
+  if (slot.refs.has(value)) {
+    slot.state = DICT_REFERENCING
+    return
+  }
+  slot.refs.set(value, slot.values.length)
+  slot.values.push(value)
+  if (slot.values.length >= DICT_WATCH_LIMIT) slot.state = DICT_GAVE_UP
+}
+
+function dictAdd(slot: DictSlot, value: string) {
+  const values = slot.values
+  if (values.length >= DICT_MAX_ENTRIES) return
+  slot.refs.set(value, values.length)
+  values.push(value)
+}
+
+function dictMark(dict: DictWrite, slot: DictSlot) {
+  if (slot.stamp === dict.frame) return
+  slot.stamp = dict.frame
+  dict.marks.push({ slot, length: slot.values.length, state: slot.state })
+}
+
+function dictCommit(dict: DictWrite) {
+  dict.marks.length = 0
+  dict.frame++
+}
+
+function dictRollback(dict: DictWrite) {
+  const marks = dict.marks
+  for (let i = marks.length - 1; i >= 0; i--) {
+    const { length, slot, state } = marks[i]
+    const values = slot.values
+    for (let j = length; j < values.length; j++) slot.refs.delete(values[j])
+    values.length = length
+    slot.state = state
+  }
+  marks.length = 0
+  dict.frame++
+}
+
+// A referencing leaf writes either a reference or a zero marker and the string.
+// A watching leaf writes the string alone, so watching costs nothing on the
+// wire.
+function encodeString(dict: DictWrite, layout: LeafLayout, value: string, w: Writer) {
+  const slot = dictSlot(dict.slots, layout.slot)
+  const state = slot.state
+  if (state === DICT_GAVE_UP) {
+    w.string(value)
+    return
+  }
+  dictMark(dict, slot)
+  if (state === DICT_WATCHING) {
+    w.string(value)
+    dictWatch(slot, value)
+    return
+  }
+  const ref = slot.refs.get(value)
+  if (ref !== undefined) {
+    w.uvarint(ref * 2 + 1)
+    return
+  }
+  w.byte(0)
+  dictAdd(slot, value)
+  w.string(value)
+}
+
+function decodeString(dict: DictRead, layout: LeafLayout, r: Reader): string {
+  const slot = dictSlot(dict, layout.slot)
+  const state = slot.state
+  if (state === DICT_GAVE_UP) return r.readUtf8(r.end - r.pos)
+  if (state === DICT_WATCHING) {
+    const value = r.readUtf8(r.end - r.pos)
+    dictWatch(slot, value)
+    return value
+  }
+  const marker = r.uvarint()
+  if ((marker & 1) === 1) {
+    const ref = (marker - 1) / 2
+    const values = slot.values
+    if (ref >= values.length) invalid("a dictionary reference", marker, r.options)
+    return values[ref]
+  }
+  if (marker !== 0) invalid("a dictionary marker", marker, r.options)
+  const value = r.readUtf8(r.end - r.pos)
+  dictAdd(slot, value)
+  return value
+}
+
 function encodeInterned(table: InternWrite, ctx: EncodeContext, layout: Layout, value: unknown, w: Writer) {
   if (!table.disabled) {
     const ref = internRef(table, value)
@@ -3521,10 +3759,13 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       w.numberVarint(value as number)
       return
     }
-    case "string":
+    case "string": {
       if (typeof value !== "string") encodeFail("a string", value, ctx.options)
-      w.string(value)
+      const dict = ctx.dict
+      if (dict === undefined) w.string(value)
+      else encodeString(dict, layout, value, w)
       return
+    }
     case "symbol":
       if (typeof value !== "symbol") encodeFail("a symbol", value, ctx.options)
       encodeSymbol(ctx, value, w)
@@ -3690,20 +3931,25 @@ function runFrames(
   value: unknown,
   values: ReadonlyArray<unknown> | undefined,
   options: SchemaAST.ParseOptions,
-  mode: Mode
+  mode: Mode,
+  dict: DictWrite | undefined
 ): Uint8Array<ArrayBuffer> {
   const ctx: EncodeContext = {
     options,
     positional: mode.positional,
     indexSignatures: undefined,
     extraShape: undefined,
-    intern: undefined
+    intern: undefined,
+    dict
   }
   const w = pooledWriter ?? new Writer()
   const pooled = w === pooledWriter
   if (pooled) pooledWriter = undefined
   w.reset()
   const savedPathLen = issuePathLen
+  // A batch is one output: a failure anywhere discards every frame in it, so
+  // the dictionary commits or rolls back once for the whole call.
+  let sent = false
   try {
     if (values === undefined) {
       issuePathLen = 0
@@ -3714,8 +3960,14 @@ function runFrames(
         writeFrame(ctx, layout, values[i], mode, w)
       }
     }
-    return w.out()
+    const out = w.out()
+    sent = true
+    return out
   } finally {
+    if (dict !== undefined) {
+      if (sent) dictCommit(dict)
+      else dictRollback(dict)
+    }
     w.abort()
     issuePathLen = savedPathLen
     if (pooled) pooledWriter = w
@@ -3726,18 +3978,20 @@ function encodeFrames(
   layout: Layout,
   values: ReadonlyArray<unknown>,
   options: SchemaAST.ParseOptions,
-  mode: Mode
+  mode: Mode,
+  dict?: DictWrite | undefined
 ): Uint8Array<ArrayBuffer> {
-  return runFrames(layout, undefined, values, options, mode)
+  return runFrames(layout, undefined, values, options, mode, dict)
 }
 
 function encodeFrame(
   layout: Layout,
   value: unknown,
   options: SchemaAST.ParseOptions,
-  mode: Mode
+  mode: Mode,
+  dict?: DictWrite | undefined
 ): Uint8Array<ArrayBuffer> {
-  return runFrames(layout, value, undefined, options, mode)
+  return runFrames(layout, value, undefined, options, mode, dict)
 }
 
 // The direct paths bypass the schema pass for values the binary layer fully
@@ -4469,8 +4723,10 @@ function decodeValue(layout: Layout, r: Reader): unknown {
     }
     case "int":
       return r.numberVarint()
-    case "string":
-      return r.readUtf8(r.end - r.pos)
+    case "string": {
+      const dict = r.dict
+      return dict === undefined ? r.readUtf8(r.end - r.pos) : decodeString(dict, layout, r)
+    }
     case "symbol":
       return globalThis.Symbol.for(r.readUtf8(r.end - r.pos))
     case "bytes":
@@ -4609,7 +4865,7 @@ function decodeOneShot(
   const r = pooledReader ?? new Reader()
   const pooled = r === pooledReader
   if (pooled) pooledReader = undefined
-  r.reset(bytes, 0, bytes.length, options, undefined, mode.positional)
+  r.reset(bytes, 0, bytes.length, options, undefined, mode.positional, undefined)
   const savedPathLen = issuePathLen
   issuePathLen = 0
   try {
