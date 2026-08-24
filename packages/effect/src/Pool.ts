@@ -623,7 +623,12 @@ const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effec
     if (state.invalidated.has(item)) {
       return invalidatePoolItem(self, item)
     }
-    if (item.refCount === self.config.concurrency - 1) {
+    // Every release frees one slot, so it can admit one waiter. Reacting only
+    // to the saturated-to-unsaturated transition strands the rest: several
+    // leases returning at once would wake a single waiter and leave the others
+    // asleep against an item that has capacity for them. `addAvailable` is
+    // idempotent, so re-adding an available item is free.
+    if (item.refCount < self.config.concurrency) {
       addAvailable(self, item)
       wakeWaiters(self, fiber, 1)
     }
