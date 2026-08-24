@@ -120,56 +120,57 @@ const hasWizardSteps = (command: Command.Command.Any): boolean => {
   return hasVisibleSubcommands || toImpl(command).config.orderedParams.length > 0
 }
 
-const promptParam: (
-  param: Param.Any
-) => Effect.Effect<Array<CommandLineArg>, CliError.CliError | Terminal.QuitError, Command.Environment> = Effect
-  .fnUntraced(
-    function*(param) {
-      const single = Param.getUnderlyingSingleOrThrow(param)
-      const metadata = Param.getParamMetadata(param)
+const promptParam = Effect.fnUntraced(
+  function*(param: Param.Any): Effect.fn.Return<
+    Array<CommandLineArg>,
+    CliError.CliError | Terminal.QuitError,
+    Command.Environment
+  > {
+    const single = Param.getUnderlyingSingleOrThrow(param)
+    const metadata = Param.getParamMetadata(param)
 
-      if (metadata.isOptional) {
-        const include = yield* Prompt.run(Prompt.confirm({
-          message: `Set ${renderParamLabel(single)}?`,
-          initial: false
-        }))
-        if (!include) {
-          yield* Console.log()
-          return []
-        }
+    if (metadata.isOptional) {
+      const include = yield* Prompt.run(Prompt.confirm({
+        message: `Set ${renderParamLabel(single)}?`,
+        initial: false
+      }))
+      if (!include) {
+        yield* Console.log()
+        return []
       }
-
-      const count = !metadata.isVariadic
-        ? 1
-        : yield* Prompt.run(Prompt.integer({
-          message: `${renderParamLabel(single)} count`,
-          default: Option.getOrElse(metadata.variadicMin, () => 0),
-          min: Option.getOrElse(metadata.variadicMin, () => 0),
-          ...(Option.isSome(metadata.variadicMax) ? { max: metadata.variadicMax.value } : {})
-        }))
-      const values: Array<CommandLineArg> = []
-      for (let i = 0; i < count; i++) {
-        values.push(yield* promptSingle(single))
-      }
-
-      const parsed = single.kind === Param.flagKind
-        ? {
-          flags: { [single.name]: values.map((arg) => arg.value) },
-          arguments: []
-        }
-        : {
-          flags: {},
-          arguments: values.map((arg) => arg.value)
-        }
-      yield* param.parse(parsed)
-      yield* Console.log()
-
-      if (single.kind === Param.argumentKind) {
-        return values
-      }
-      return values.flatMap((value) => [commandLineArg(`--${single.name}`), value])
     }
-  )
+
+    const count = !metadata.isVariadic
+      ? 1
+      : yield* Prompt.run(Prompt.integer({
+        message: `${renderParamLabel(single)} count`,
+        default: Option.getOrElse(metadata.variadicMin, () => 0),
+        min: Option.getOrElse(metadata.variadicMin, () => 0),
+        ...(Option.isSome(metadata.variadicMax) ? { max: metadata.variadicMax.value } : {})
+      }))
+    const values: Array<CommandLineArg> = []
+    for (let i = 0; i < count; i++) {
+      values.push(yield* promptSingle(single))
+    }
+
+    const parsed = single.kind === Param.flagKind
+      ? {
+        flags: { [single.name]: values.map((arg) => arg.value) },
+        arguments: []
+      }
+      : {
+        flags: {},
+        arguments: values.map((arg) => arg.value)
+      }
+    yield* param.parse(parsed)
+    yield* Console.log()
+
+    if (single.kind === Param.argumentKind) {
+      return values
+    }
+    return values.flatMap((value) => [commandLineArg(`--${single.name}`), value])
+  }
+)
 
 const promptSingle = (
   single: Param.Single<Param.ParamKind, unknown>
