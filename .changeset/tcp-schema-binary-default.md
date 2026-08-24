@@ -9,4 +9,4 @@ Use SchemaBinary as the default RPC serialization for TCP cluster connections, i
 
 Cluster payloads are encoded with the binary codec on the wire. When a persisted reply cannot be encoded for JSON storage, the defect fallback that storage records is now also the reply delivered to waiting callers, so live replies always match what was persisted.
 
-SchemaBinary payload codecs are memoized by schema, so per-message codec requests reuse the compiled layout instead of recompiling it.
+SchemaBinary codecs are memoized by schema identity and wire mode, so per-message codec requests reuse the derived codec instead of rebuilding it.
