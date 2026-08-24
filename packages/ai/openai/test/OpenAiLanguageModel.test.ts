@@ -31,6 +31,69 @@ describe("OpenAiLanguageModel", () => {
 
   describe("generateText", () => {
     describe("message preparation", () => {
+      it.effect("forwards prompt cache configuration and text breakpoints", () =>
+        Effect.gen(function*() {
+          const breakpoint = { mode: "explicit" } as const
+          yield* LanguageModel.generateText({
+            prompt: Prompt.make([
+              Prompt.systemMessage({
+                content: "Stable instructions",
+                options: { openai: { promptCacheBreakpoint: breakpoint } }
+              }),
+              Prompt.userMessage({
+                content: [Prompt.textPart({
+                  text: "Stable context",
+                  options: { openai: { promptCacheBreakpoint: breakpoint } }
+                })]
+              })
+            ])
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-5.6", {
+              prompt_cache_key: "assistant:v1",
+              prompt_cache_options: { mode: "explicit", ttl: "30m" }
+            }))
+          )
+
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+
+          strictEqual(body.prompt_cache_key, "assistant:v1")
+          deepStrictEqual(body.prompt_cache_options, { mode: "explicit", ttl: "30m" })
+          deepStrictEqual(body.input, [{
+            role: "developer",
+            content: [{
+              type: "input_text",
+              text: "Stable instructions",
+              prompt_cache_breakpoint: breakpoint
+            }]
+          }, {
+            role: "user",
+            content: [{
+              type: "input_text",
+              text: "Stable context",
+              prompt_cache_breakpoint: breakpoint
+            }]
+          }])
+        }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-5.6" as any } }))))
+
+      it.effect("forwards implicit prompt cache mode without text breakpoints", () =>
+        Effect.gen(function*() {
+          yield* LanguageModel.generateText({ prompt: "Stable context" }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-5.6", {
+              prompt_cache_options: { mode: "implicit" }
+            }))
+          )
+
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+
+          deepStrictEqual(body.prompt_cache_options, { mode: "implicit" })
+          deepStrictEqual(body.input, [{
+            role: "user",
+            content: [{ type: "input_text", text: "Stable context" }]
+          }])
+        }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-5.6" as any } }))))
+
       describe("system messages", () => {
         it.effect("uses system role for standard models", () =>
           Effect.gen(function*() {

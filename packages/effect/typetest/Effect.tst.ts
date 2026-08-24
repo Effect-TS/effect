@@ -175,8 +175,7 @@ describe("Effect.catchReason", () => {
     pipe(
       aiEffect,
       Effect.catchReason("AiError", "RateLimitError", (_reason, error) => {
-        expect(error.reason).type.toBeAssignableTo<RateLimitError>()
-        expect(error.reason).type.toBeAssignableFrom<RateLimitError>()
+        expect(error.reason).type.toBe<RateLimitError>()
         return Effect.succeed("ok")
       })
     )
@@ -190,8 +189,7 @@ describe("Effect.catchReason", () => {
         "RateLimitError",
         () => Effect.succeed("ok"),
         (_reason, error) => {
-          expect(error.reason).type.toBeAssignableTo<QuotaExceededError | UnknownAiModelError>()
-          expect(error.reason).type.toBeAssignableFrom<QuotaExceededError | UnknownAiModelError>()
+          expect(error.reason).type.toBe<QuotaExceededError | UnknownAiModelError>()
           return Effect.succeed("ok")
         }
       )
@@ -325,13 +323,11 @@ describe("Effect.catchReasons", () => {
       aiEffect,
       Effect.catchReasons("AiError", {
         RateLimitError: (_r, error) => {
-          expect(error.reason).type.toBeAssignableTo<RateLimitError>()
-          expect(error.reason).type.toBeAssignableFrom<RateLimitError>()
+          expect(error.reason).type.toBe<RateLimitError>()
           return Effect.succeed("")
         },
         QuotaExceededError: (_r, error) => {
-          expect(error.reason).type.toBeAssignableTo<QuotaExceededError>()
-          expect(error.reason).type.toBeAssignableFrom<QuotaExceededError>()
+          expect(error.reason).type.toBe<QuotaExceededError>()
           return Effect.succeed("")
         }
       })
@@ -381,8 +377,7 @@ describe("Effect.catchReasons", () => {
       Effect.catchReasons("AiError", {
         RateLimitError: () => Effect.succeed("")
       }, (_others, error) => {
-        expect(error.reason).type.toBeAssignableTo<QuotaExceededError | UnknownAiModelError>()
-        expect(error.reason).type.toBeAssignableFrom<QuotaExceededError | UnknownAiModelError>()
+        expect(error.reason).type.toBe<QuotaExceededError | UnknownAiModelError>()
         return Effect.succeed("")
       })
     )

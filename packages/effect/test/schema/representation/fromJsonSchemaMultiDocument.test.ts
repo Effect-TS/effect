@@ -233,7 +233,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
           schemas: [{ $ref: "#/$defs/Missing", description: "resolve" }],
           definitions: {}
         }),
-      "Invalid reference Missing\n  at [\"schemas\"][0][\"$ref\"]"
+      `Invalid reference "#/$defs/Missing"\n  at ["schemas"][0]["$ref"]`
     )
   })
 

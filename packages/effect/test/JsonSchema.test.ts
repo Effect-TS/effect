@@ -6,9 +6,12 @@ import * as Schema from "effect/Schema"
 // oxlint-disable-next-line @typescript-eslint/no-require-imports
 const AjvDraft07 = require("ajv")
 // oxlint-disable-next-line @typescript-eslint/no-require-imports
+const AjvDraft2020 = require("ajv/dist/2020")
+// oxlint-disable-next-line @typescript-eslint/no-require-imports
 const AjvDraft04 = require("ajv-draft-04")
 
 const ajvDraft07 = new AjvDraft07.default({ allErrors: true, strict: false })
+const ajvDraft2020 = new AjvDraft2020.default({ allErrors: true, strict: false })
 const ajvDraft04 = new AjvDraft04.default({ allErrors: true, strict: false })
 
 function makeSchema(document: JsonSchema.Document<"draft-04" | "draft-07">): JsonSchema.JsonSchema {
@@ -18,6 +21,14 @@ function makeSchema(document: JsonSchema.Document<"draft-04" | "draft-07">): Jso
       : JsonSchema.META_SCHEMA_URI_DRAFT_07,
     ...document.schema,
     ...(Object.keys(document.definitions).length > 0 ? { definitions: document.definitions } : {})
+  }
+}
+
+function makeCanonicalSchema(document: JsonSchema.Document<"draft-2020-12">): JsonSchema.JsonSchema {
+  return {
+    $schema: JsonSchema.META_SCHEMA_URI_DRAFT_2020_12,
+    ...document.schema,
+    ...(Object.keys(document.definitions).length > 0 ? { $defs: document.definitions } : {})
   }
 }
 
@@ -33,80 +44,6 @@ describe("JsonSchema", () => {
       deepStrictEqual(JsonSchema.META_SCHEMA_URI_DRAFT_04, "http://json-schema.org/draft-04/schema#")
       deepStrictEqual(JsonSchema.META_SCHEMA_URI_DRAFT_07, "http://json-schema.org/draft-07/schema#")
       deepStrictEqual(JsonSchema.META_SCHEMA_URI_DRAFT_2020_12, "https://json-schema.org/draft/2020-12/schema")
-    })
-  })
-
-  describe("resolve$ref", () => {
-    it("resolves a definition", () => {
-      const definition: JsonSchema.JsonSchema = { type: "string" }
-      deepStrictEqual(JsonSchema.resolve$ref("#/$defs/A", { A: definition }), definition)
-    })
-
-    it("unescapes the referenced JSON Pointer token", () => {
-      const definition: JsonSchema.JsonSchema = { type: "string" }
-      deepStrictEqual(JsonSchema.resolve$ref("#/$defs/A~1B~0C", { "A/B~C": definition }), definition)
-    })
-
-    it("returns undefined for a missing definition", () => {
-      deepStrictEqual(JsonSchema.resolve$ref("#/$defs/Missing", {}), undefined)
-    })
-
-    it("ignores inherited definitions", () => {
-      deepStrictEqual(JsonSchema.resolve$ref("#/$defs/constructor", {}), undefined)
-    })
-
-    it("resolves __proto__ when it is an own definition", () => {
-      const definition: JsonSchema.JsonSchema = { type: "string" }
-      deepStrictEqual(
-        JsonSchema.resolve$ref("#/$defs/__proto__", { ["__proto__"]: definition }),
-        definition
-      )
-    })
-  })
-
-  describe("resolveTopLevel$ref", () => {
-    it("resolves a top-level ref without mutating the document definitions", () => {
-      const definition: JsonSchema.JsonSchema = { type: "string" }
-      const document: JsonSchema.Document<"draft-2020-12"> = {
-        dialect: "draft-2020-12",
-        schema: { $ref: "#/$defs/A" },
-        definitions: { A: definition }
-      }
-      const result = JsonSchema.resolveTopLevel$ref(document)
-
-      assert.notStrictEqual(result, document)
-      assert.strictEqual(result.definitions, document.definitions)
-      deepStrictEqual(result, {
-        dialect: "draft-2020-12",
-        schema: definition,
-        definitions: document.definitions
-      })
-    })
-
-    it("returns the same document when the top-level ref cannot be resolved", () => {
-      const document: JsonSchema.Document<"draft-2020-12"> = {
-        dialect: "draft-2020-12",
-        schema: { $ref: "#/$defs/Missing" },
-        definitions: {}
-      }
-
-      assert.strictEqual(JsonSchema.resolveTopLevel$ref(document), document)
-    })
-
-    it("returns the same document when there is no string top-level ref", () => {
-      const withoutRef: JsonSchema.Document<"draft-2020-12"> = {
-        dialect: "draft-2020-12",
-        schema: { type: "string" },
-        definitions: {}
-      }
-      const withNonStringRef: JsonSchema.Document<"draft-2020-12"> = {
-        dialect: "draft-2020-12",
-        schema: { $ref: 1 },
-        definitions: {}
-      }
-
-      assert.strictEqual(JsonSchema.resolveTopLevel$ref(withoutRef), withoutRef)
-      assert.strictEqual(JsonSchema.resolveTopLevel$ref(withNonStringRef), withNonStringRef)
     })
   })
 
@@ -178,6 +115,167 @@ describe("JsonSchema", () => {
   })
 
   describe("fromSchemaDraft07", () => {
+    it("rewrites the Draft-07 meta-schema URI without an empty fragment", () => {
+      deepStrictEqual(
+        JsonSchema.fromSchemaDraft07({ $schema: "http://json-schema.org/draft-07/schema" }).schema,
+        { $schema: JsonSchema.META_SCHEMA_URI_DRAFT_2020_12 }
+      )
+    })
+
+    it("preserves all Draft-07 semantics and opaque custom keywords", () => {
+      const custom = { $ref: "#/definitions/Literal" }
+      const input: JsonSchema.JsonSchema = {
+        if: { properties: { kind: { const: "full" } } },
+        // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+        then: { required: ["value"] },
+        else: { not: { required: ["value"] } },
+        contains: { type: "number" },
+        dependencies: {
+          enabled: ["value"],
+          kind: { required: ["label"] }
+        },
+        "x-custom": custom
+      }
+
+      deepStrictEqual(JsonSchema.fromSchemaDraft07(input), {
+        dialect: "draft-2020-12",
+        schema: {
+          if: { properties: { kind: { const: "full" } } },
+          // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+          then: { required: ["value"] },
+          else: { not: { required: ["value"] } },
+          contains: { type: "number" },
+          dependentRequired: { enabled: ["value"] },
+          dependentSchemas: { kind: { required: ["label"] } },
+          "x-custom": custom
+        },
+        definitions: {}
+      })
+    })
+
+    it("preserves Draft-07 validation semantics in the canonical dialect", () => {
+      const source: JsonSchema.JsonSchema = {
+        type: "object",
+        properties: {
+          kind: { enum: ["full", "compact"] },
+          value: { type: "string" },
+          extra: true,
+          values: { type: "array", contains: { type: "number" } }
+        },
+        required: ["kind", "values"],
+        dependencies: { value: ["extra"] },
+        if: { properties: { kind: { const: "full" } } },
+        // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+        then: { required: ["value"] },
+        else: { not: { required: ["value"] } }
+      }
+      const canonical = makeCanonicalSchema(JsonSchema.fromSchemaDraft07(source))
+      deepStrictEqual(ajvDraft07.validateSchema(source), true)
+      deepStrictEqual(ajvDraft2020.validateSchema(canonical), true)
+
+      const validateSource = ajvDraft07.compile(source)
+      const validateCanonical = ajvDraft2020.compile(canonical)
+      for (
+        const value of [
+          { kind: "full", value: "ok", extra: true, values: [1] },
+          { kind: "full", values: [1] },
+          { kind: "full", value: "missing dependency", values: [1] },
+          { kind: "compact", values: [1] },
+          { kind: "compact", value: "forbidden", extra: true, values: [1] },
+          { kind: "full", value: "ok", extra: true, values: ["no"] }
+        ]
+      ) {
+        deepStrictEqual(validateCanonical(value), validateSource(value))
+      }
+    })
+
+    it("converts Draft-07 plain-name identifiers to canonical anchors", () => {
+      const document = JsonSchema.fromSchemaDraft07({
+        $id: "https://example.com/node#entry",
+        type: "string"
+      })
+
+      deepStrictEqual(document.schema, {
+        $id: "https://example.com/node",
+        $anchor: "entry",
+        type: "string"
+      })
+    })
+
+    it("converts canonical anchors without schema identifiers", () => {
+      const document: JsonSchema.Document<"draft-2020-12"> = {
+        dialect: "draft-2020-12",
+        schema: { $anchor: "entry" },
+        definitions: {}
+      }
+
+      deepStrictEqual(JsonSchema.toDocumentDraft07(document).schema, {
+        $id: "#entry"
+      })
+      deepStrictEqual(JsonSchema.toDocumentDraft04(document).schema, {
+        id: "#entry"
+      })
+    })
+
+    it("rejects canonical anchors combined with schema identifiers", () => {
+      for (const $id of ["https://example.com/node", "https://example.com/node#"]) {
+        const document: JsonSchema.Document<"draft-2020-12"> = {
+          dialect: "draft-2020-12",
+          schema: { $id, $anchor: "entry" },
+          definitions: {}
+        }
+
+        assert.throws(
+          () => JsonSchema.toDocumentDraft07(document),
+          /Cannot convert JSON Schema keyword "\$anchor" to Draft-07/
+        )
+        assert.throws(
+          () => JsonSchema.toDocumentDraft04(document),
+          /Cannot convert JSON Schema keyword "\$anchor" to Draft-04/
+        )
+      }
+    })
+
+    it("rejects canonical anchors that cannot become legacy plain-name identifiers", () => {
+      const document: JsonSchema.Document<"draft-2020-12"> = {
+        dialect: "draft-2020-12",
+        schema: { $anchor: "_node" },
+        definitions: {}
+      }
+
+      assert.throws(
+        () => JsonSchema.toDocumentDraft07(document),
+        /Cannot convert JSON Schema keyword "\$anchor" to Draft-07/
+      )
+      assert.throws(
+        () => JsonSchema.toDocumentDraft04(document),
+        /Cannot convert JSON Schema keyword "\$anchor" to Draft-04/
+      )
+    })
+
+    it("rejects Draft-07 identifiers with fragments that cannot become anchors", () => {
+      assert.throws(
+        () => JsonSchema.fromSchemaDraft07({ $id: "https://example.com/node#not/a/plain-name" }),
+        /Cannot convert JSON Schema keyword "\$id" to Draft 2020-12/
+      )
+    })
+
+    it("rejects Draft-07 custom keywords that would become active in the canonical dialect", () => {
+      for (
+        const schema of [
+          { dependentRequired: { value: ["other"] } },
+          { $vocabulary: { "https://example.com/vocabulary": true } },
+          { contentSchema: {} },
+          { deprecated: true }
+        ]
+      ) {
+        assert.throws(
+          () => JsonSchema.fromSchemaDraft07(schema),
+          /Cannot convert JSON Schema keyword .* to Draft 2020-12/
+        )
+      }
+    })
+
     it("preserves not", () => {
       const input: JsonSchema.JsonSchema = { not: { type: "string" } }
       const result = JsonSchema.fromSchemaDraft07(input)
@@ -231,7 +329,6 @@ describe("JsonSchema", () => {
         },
         definitions: {
           A: {
-            type: "string",
             $ref: "#/$defs/B"
           },
           B: {
@@ -239,6 +336,28 @@ describe("JsonSchema", () => {
           }
         }
       })
+
+      const validateCanonical = ajvDraft2020.compile(makeCanonicalSchema(result))
+      const values = [
+        { a: 1, b: 2 },
+        { a: "not a number", b: 2 },
+        { a: 1, b: "not a number" }
+      ]
+      deepStrictEqual(values.map(validateCanonical), [true, false, false])
+    })
+
+    it("ignores $id next to Draft-07 refs when tracking resources", () => {
+      const result = JsonSchema.fromSchemaDraft07({
+        definitions: {
+          Target: { type: "string" },
+          Reference: {
+            $id: "nested.json",
+            $ref: "#/definitions/Target"
+          }
+        }
+      })
+
+      deepStrictEqual(result.definitions.Reference, { $ref: "#/$defs/Target" })
     })
 
     it("converts Draft-07 tuple items to prefixItems", () => {
@@ -262,6 +381,30 @@ describe("JsonSchema", () => {
           items: { type: "boolean" }
         },
         definitions: {}
+      })
+    })
+
+    it("relocates refs into converted tuple items and schema dependencies", () => {
+      const result = JsonSchema.fromSchemaDraft07({
+        properties: {
+          container: {
+            items: [{ type: "string" }],
+            dependencies: { value: { type: "number" } }
+          },
+          tupleItem: { $ref: "#/properties/container/items/0" },
+          dependency: { $ref: "#/properties/container/dependencies/value" }
+        }
+      })
+
+      deepStrictEqual(result.schema, {
+        properties: {
+          container: {
+            prefixItems: [{ type: "string" }],
+            dependentSchemas: { value: { type: "number" } }
+          },
+          tupleItem: { $ref: "#/properties/container/prefixItems/0" },
+          dependency: { $ref: "#/properties/container/dependentSchemas/value" }
+        }
       })
     })
 
@@ -453,7 +596,7 @@ describe("JsonSchema", () => {
       })
     })
 
-    it("preserves nested definitions and local JSON Pointer refs", () => {
+    it("moves nested definitions to $defs and relocates local JSON Pointer refs", () => {
       const input: JsonSchema.JsonSchema = {
         type: "object",
         properties: {
@@ -474,12 +617,12 @@ describe("JsonSchema", () => {
           type: "object",
           properties: {
             nested: {
-              definitions: {
+              $defs: {
                 NestedType: {
                   type: "number"
                 }
               },
-              $ref: "#/properties/nested/definitions/NestedType"
+              $ref: "#/properties/nested/$defs/NestedType"
             }
           }
         },
@@ -487,7 +630,105 @@ describe("JsonSchema", () => {
       })
     })
 
-    it("drops non-standard properties in Draft-07 input", () => {
+    it("relocates fragment refs relative to nested schema resources", () => {
+      const result = JsonSchema.fromSchemaDraft07({
+        properties: {
+          nested: {
+            $id: "nested.json",
+            definitions: { Value: { type: "string" } },
+            allOf: [{ $ref: "#/definitions/Value" }]
+          }
+        }
+      })
+
+      deepStrictEqual(result.schema, {
+        properties: {
+          nested: {
+            $id: "nested.json",
+            $defs: { Value: { type: "string" } },
+            allOf: [{ $ref: "#/$defs/Value" }]
+          }
+        }
+      })
+    })
+
+    it("relocates URI refs to nested schema resources", () => {
+      const result = JsonSchema.fromSchemaDraft07({
+        $id: "https://example.com/root.json",
+        properties: {
+          value: { $ref: "nested.json#/definitions/Value" }
+        },
+        definitions: {
+          Nested: {
+            $id: "schemas/../nested.json",
+            definitions: { Value: { type: "string" } }
+          }
+        }
+      })
+
+      deepStrictEqual(result, {
+        dialect: "draft-2020-12",
+        schema: {
+          $id: "https://example.com/root.json",
+          properties: {
+            value: { $ref: "nested.json#/$defs/Value" }
+          }
+        },
+        definitions: {
+          Nested: {
+            $id: "schemas/../nested.json",
+            $defs: { Value: { type: "string" } }
+          }
+        }
+      })
+    })
+
+    it("relocates JSON Pointer URI fragments", () => {
+      const result = JsonSchema.fromSchemaDraft07({
+        properties: {
+          value: { $ref: "#/definitions/a%20b" },
+          equivalent: { $ref: "#/definitions/%56alue" },
+          encodedSeparators: { $ref: "#%2Fdefinitions%2FValue" },
+          percent: { $ref: "#/definitions/a%25b" },
+          escaped: { $ref: "#/definitions/a~1b" },
+          utf8: { $ref: "#/definitions/caf%C3%A9" },
+          invalid: { $ref: "#/%" },
+          invalidUtf8: { $ref: "#/%FF" }
+        },
+        definitions: {
+          "a b": { type: "string" },
+          Value: { type: "number" },
+          "a%b": { type: "boolean" },
+          "a/b": { type: "object" },
+          "café": { type: "array" }
+        }
+      })
+
+      deepStrictEqual(result, {
+        dialect: "draft-2020-12",
+        schema: {
+          properties: {
+            value: { $ref: "#/$defs/a%20b" },
+            equivalent: { $ref: "#/$defs/Value" },
+            encodedSeparators: { $ref: "#/$defs/Value" },
+            percent: { $ref: "#/$defs/a%25b" },
+            escaped: { $ref: "#/$defs/a~1b" },
+            utf8: { $ref: "#/$defs/caf%C3%A9" },
+            invalid: { $ref: "#/%" },
+            invalidUtf8: { $ref: "#/%FF" }
+          }
+        },
+        definitions: {
+          "a b": { type: "string" },
+          Value: { type: "number" },
+          "a%b": { type: "boolean" },
+          "a/b": { type: "object" },
+          "café": { type: "array" }
+        }
+      })
+    })
+
+    it("preserves custom properties in Draft-07 input", () => {
       const input: JsonSchema.JsonSchema = {
         type: "string",
         "x-custom": "value"
@@ -496,7 +737,8 @@ describe("JsonSchema", () => {
       deepStrictEqual(result, {
         dialect: "draft-2020-12",
         schema: {
-          type: "string"
+          type: "string",
+          "x-custom": "value"
         },
         definitions: {}
       })
@@ -524,7 +766,7 @@ describe("JsonSchema", () => {
           $ref: 1,
           properties: {
             nested: {
-              definitions: "invalid",
+              $defs: "invalid",
               not: [false, { type: "string" }]
             }
           },
@@ -658,6 +900,13 @@ describe("JsonSchema", () => {
   })
 
   describe("fromSchemaOpenApi3_1", () => {
+    it("normalizes the OpenAPI 3.1 base dialect URI", () => {
+      deepStrictEqual(
+        JsonSchema.fromSchemaOpenApi3_1({ $schema: "https://spec.openapis.org/oas/3.1/dialect/base" }).schema,
+        { $schema: JsonSchema.META_SCHEMA_URI_DRAFT_2020_12 }
+      )
+    })
+
     it("preserves non-string refs and malformed schema maps", () => {
       const input: JsonSchema.JsonSchema = {
         $ref: null,
@@ -677,7 +926,8 @@ describe("JsonSchema", () => {
         type: "object",
         properties: {
           a: { $ref: "#/components/schemas/A" },
-          b: { $ref: "#/components/schemas/B" }
+          b: { $ref: "#/components/schemas/B" },
+          dynamic: { $dynamicRef: "#/components/schemas/Dynamic" }
         }
       }
       const result = JsonSchema.fromSchemaOpenApi3_1(input)
@@ -687,11 +937,51 @@ describe("JsonSchema", () => {
           type: "object",
           properties: {
             a: { $ref: "#/$defs/A" },
-            b: { $ref: "#/$defs/B" }
+            b: { $ref: "#/$defs/B" },
+            dynamic: { $dynamicRef: "#/$defs/Dynamic" }
           }
         },
         definitions: {}
       })
+    })
+
+    it("rewrites percent-encoded OpenAPI component refs", () => {
+      deepStrictEqual(
+        JsonSchema.fromSchemaOpenApi3_1({ $ref: "#%2Fcomponents%2Fschemas%2FA%20B" }),
+        {
+          dialect: "draft-2020-12",
+          schema: { $ref: "#/$defs/A%20B" },
+          definitions: {}
+        }
+      )
+    })
+
+    it("normalizes singular examples throughout OpenAPI 3.1 schemas", () => {
+      deepStrictEqual(
+        JsonSchema.fromSchemaOpenApi3_1({
+          example: "root",
+          properties: {
+            value: { example: "nested" }
+          }
+        }),
+        {
+          dialect: "draft-2020-12",
+          schema: {
+            examples: ["root"],
+            properties: {
+              value: { examples: ["nested"] }
+            }
+          },
+          definitions: {}
+        }
+      )
+    })
+
+    it("merges singular and array examples in OpenAPI 3.1 schemas", () => {
+      deepStrictEqual(
+        JsonSchema.fromSchemaOpenApi3_1({ example: "singular", examples: ["first", "second"] }).schema,
+        { examples: ["singular", "first", "second"] }
+      )
     })
 
     it("rewrites refs only in schema positions", () => {
@@ -765,6 +1055,22 @@ describe("JsonSchema", () => {
           contentSchema: { $ref: "#/$defs/Value" }
         },
         definitions: { Alias: { $ref: "#/$defs/Value" } }
+      })
+    })
+
+    it("does not rewrite refs inside root schema resources", () => {
+      const input: JsonSchema.JsonSchema = {
+        $id: "inline.json",
+        allOf: [
+          { $ref: "#/components/schemas/Value" },
+          { $dynamicRef: "#/components/schemas/Value" }
+        ]
+      }
+
+      deepStrictEqual(JsonSchema.fromSchemaOpenApi3_1(input), {
+        dialect: "draft-2020-12",
+        schema: input,
+        definitions: {}
       })
     })
 
@@ -887,36 +1193,23 @@ describe("JsonSchema", () => {
       })
     })
 
-    it("extracts root definitions after rewriting OpenAPI component refs", () => {
-      const input: JsonSchema.JsonSchema = {
-        type: "object",
-        properties: {
-          a: {
-            $ref: "#/components/schemas/A"
-          }
-        },
-        definitions: {
-          MyType: {
-            type: "string"
-          }
+    it("rewrites percent-encoded OpenAPI 3.0 component refs", () => {
+      deepStrictEqual(
+        JsonSchema.fromSchemaOpenApi3_0({ $ref: "#%2Fcomponents%2Fschemas%2FA%20B" }),
+        {
+          dialect: "draft-2020-12",
+          schema: { $ref: "#/$defs/A%20B" },
+          definitions: {}
         }
-      }
-      const result = JsonSchema.fromSchemaOpenApi3_0(input)
-      deepStrictEqual(result, {
+      )
+    })
+
+    it("preserves definitions as an opaque OpenAPI 3.0 extension", () => {
+      const definitions = { Value: { type: "string" } }
+      deepStrictEqual(JsonSchema.fromSchemaOpenApi3_0({ definitions }), {
         dialect: "draft-2020-12",
-        schema: {
-          type: "object",
-          properties: {
-            a: {
-              $ref: "#/$defs/A"
-            }
-          }
-        },
-        definitions: {
-          MyType: {
-            type: "string"
-          }
-        }
+        schema: { definitions },
+        definitions: {}
       })
     })
 
@@ -936,17 +1229,44 @@ describe("JsonSchema", () => {
       })
     })
 
-    it("prefers examples over a singular example", () => {
+    it("preserves the OpenAPI 3.0 deprecated annotation", () => {
+      assertFromSchemaOpenApi3_0(
+        { type: "string", deprecated: true },
+        { schema: { type: "string", deprecated: true } }
+      )
+    })
+
+    it("rejects examples because it is not active in OpenAPI 3.0", () => {
+      assert.throws(
+        () => JsonSchema.fromSchemaOpenApi3_0({ examples: ["value"] }),
+        /Cannot convert JSON Schema keyword "examples" to Draft 2020-12/
+      )
+    })
+
+    it("rejects Draft 2020-12 keywords that are not supported by OpenAPI 3.0", () => {
+      assert.throws(
+        () => JsonSchema.fromSchemaOpenApi3_0({ unevaluatedProperties: false }),
+        /Cannot convert JSON Schema keyword "unevaluatedProperties" to Draft 2020-12/
+      )
+    })
+
+    it("does not traverse opaque OpenAPI values", () => {
+      const literal = { nullable: true, $ref: "#/components/schemas/Literal" }
       assertFromSchemaOpenApi3_0(
         {
-          type: "string",
-          example: "ignored",
-          examples: ["kept"]
+          type: "object",
+          default: literal,
+          example: literal,
+          discriminator: { mapping: { value: "#/components/schemas/Value" } },
+          "x-custom": literal
         },
         {
           schema: {
-            type: "string",
-            examples: ["kept"]
+            type: "object",
+            default: literal,
+            examples: [literal],
+            discriminator: { mapping: { value: "#/components/schemas/Value" } },
+            "x-custom": literal
           }
         }
       )
@@ -967,9 +1287,9 @@ describe("JsonSchema", () => {
     describe("nullable", () => {
       testOpenApi3_0Cases([
         {
-          name: "expands a schema without other keywords to anyOf",
+          name: "ignores nullable without an explicit type",
           input: { nullable: true },
-          expected: { anyOf: [{}, { type: "null" }] }
+          expected: {}
         },
         {
           name: "adds null to a string type",
@@ -977,44 +1297,9 @@ describe("JsonSchema", () => {
           expected: { type: ["string", "null"] }
         },
         {
-          name: "adds null to a type array",
-          input: { type: ["string", "number"], nullable: true },
-          expected: { type: ["string", "number", "null"] }
-        },
-        {
-          name: "does not widen the null type",
-          input: { type: "null", nullable: true },
-          expected: { type: "null" }
-        },
-        {
-          name: "does not duplicate null in a type array",
-          input: { type: ["string", "null"], nullable: true },
-          expected: { type: ["string", "null"] }
-        },
-        {
-          name: "leaves a malformed type unchanged",
-          input: { type: 1, nullable: true },
-          expected: { type: 1 }
-        },
-        {
-          name: "keeps a non-null const while adding null to the type",
-          input: { type: "string", const: "a", nullable: true },
-          expected: { type: ["string", "null"], const: "a" }
-        },
-        {
-          name: "wraps a non-null const in anyOf when type is absent",
-          input: { const: "a", nullable: true },
-          expected: { anyOf: [{ const: "a" }, { type: "null" }] }
-        },
-        {
-          name: "keeps a null const without adding anyOf",
-          input: { const: null, nullable: true },
-          expected: { const: null }
-        },
-        {
-          name: "adds null to enum values and type",
+          name: "does not widen enum values",
           input: { type: "string", enum: ["a", "b"], nullable: true },
-          expected: { type: ["string", "null"], enum: ["a", "b", null] }
+          expected: { type: ["string", "null"], enum: ["a", "b"] }
         },
         {
           name: "does not duplicate null in enum values",
@@ -1027,9 +1312,9 @@ describe("JsonSchema", () => {
           expected: { type: ["string", "null"], enum: [null] }
         },
         {
-          name: "uses anyOf for schemas without type",
+          name: "ignores nullable when another constraint is present without type",
           input: { nullable: true, minimum: 0 },
-          expected: { anyOf: [{ minimum: 0 }, { type: "null" }] }
+          expected: { minimum: 0 }
         },
         {
           name: "drops nullable false",
@@ -1041,7 +1326,7 @@ describe("JsonSchema", () => {
           input: { type: "string", allOf: [{ nullable: true }] },
           expected: {
             type: "string",
-            allOf: [{ anyOf: [{}, { type: "null" }] }]
+            allOf: [{}]
           }
         },
         {
@@ -1049,7 +1334,7 @@ describe("JsonSchema", () => {
           input: { type: "string", nullable: true, allOf: [{ nullable: true }] },
           expected: {
             type: ["string", "null"],
-            allOf: [{ anyOf: [{}, { type: "null" }] }]
+            allOf: [{}]
           }
         }
       ])
@@ -1092,6 +1377,207 @@ describe("JsonSchema", () => {
   })
 
   describe("toDocumentDraft07", () => {
+    it("rewrites the canonical meta-schema URI with an empty fragment", () => {
+      deepStrictEqual(
+        JsonSchema.toDocumentDraft07({
+          dialect: "draft-2020-12",
+          schema: { $schema: `${JsonSchema.META_SCHEMA_URI_DRAFT_2020_12}#` },
+          definitions: {}
+        }).schema,
+        { $schema: JsonSchema.META_SCHEMA_URI_DRAFT_07 }
+      )
+    })
+
+    it("omits the canonical meta-schema URI from embedded resources", () => {
+      const input: JsonSchema.Document<"draft-2020-12"> = {
+        dialect: "draft-2020-12",
+        schema: {},
+        definitions: {
+          Embedded: {
+            $id: "embedded.json",
+            $schema: JsonSchema.META_SCHEMA_URI_DRAFT_2020_12,
+            type: "string"
+          }
+        }
+      }
+
+      deepStrictEqual(JsonSchema.toDocumentDraft07(input).definitions.Embedded, {
+        $id: "embedded.json",
+        type: "string"
+      })
+    })
+
+    it("rejects custom dialects in embedded resources", () => {
+      assert.throws(
+        () =>
+          JsonSchema.toDocumentDraft07({
+            dialect: "draft-2020-12",
+            schema: {},
+            definitions: {
+              Embedded: {
+                $id: "embedded.json",
+                $schema: "https://example.com/dialect",
+                type: "string"
+              }
+            }
+          }),
+        /Cannot convert JSON Schema keyword "\$schema" to Draft-07/
+      )
+    })
+
+    it("lowers canonical keywords and preserves opaque custom keywords", () => {
+      const custom = { $ref: "#/$defs/Literal" }
+      const result = JsonSchema.toDocumentDraft07({
+        dialect: "draft-2020-12",
+        schema: {
+          if: { properties: { kind: { const: "full" } } },
+          // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+          then: { required: ["value"] },
+          else: { not: { required: ["value"] } },
+          contains: { type: "number" },
+          dependentRequired: {
+            enabled: ["value"],
+            kind: ["label"]
+          },
+          dependentSchemas: {
+            kind: { minProperties: 1 },
+            mode: { required: ["value"] }
+          },
+          "x-custom": custom
+        },
+        definitions: {}
+      })
+
+      deepStrictEqual(result.schema, {
+        if: { properties: { kind: { const: "full" } } },
+        // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+        then: { required: ["value"] },
+        else: { not: { required: ["value"] } },
+        contains: { type: "number" },
+        dependencies: {
+          enabled: ["value"],
+          kind: { allOf: [{ minProperties: 1 }, { required: ["label"] }] },
+          mode: { required: ["value"] }
+        },
+        "x-custom": custom
+      })
+    })
+
+    it("moves nested $defs to definitions and relocates local JSON Pointer refs", () => {
+      const result = JsonSchema.toDocumentDraft07({
+        dialect: "draft-2020-12",
+        schema: {
+          properties: {
+            nested: {
+              $defs: { Value: { type: "string" } },
+              $ref: "#/properties/nested/$defs/Value"
+            }
+          }
+        },
+        definitions: {}
+      })
+
+      deepStrictEqual(result.schema, {
+        properties: {
+          nested: {
+            definitions: { Value: { type: "string" } },
+            allOf: [{ $ref: "#/properties/nested/definitions/Value" }]
+          }
+        }
+      })
+    })
+
+    it("relocates fragment refs when emitting nested schema resources", () => {
+      const input: JsonSchema.Document<"draft-2020-12"> = {
+        dialect: "draft-2020-12",
+        schema: {
+          allOf: [
+            { $ref: "nested.json#/$defs/Value" },
+            { $ref: "external.json#/$defs/Value" }
+          ]
+        },
+        definitions: {
+          Nested: {
+            $id: "nested.json",
+            $defs: { Value: { type: "string" } },
+            allOf: [{ $ref: "#/$defs/Value" }]
+          }
+        }
+      }
+
+      deepStrictEqual(JsonSchema.toDocumentDraft07(input), {
+        dialect: "draft-07",
+        schema: {
+          allOf: [
+            { $ref: "nested.json#/definitions/Value" },
+            { $ref: "external.json#/$defs/Value" }
+          ]
+        },
+        definitions: {
+          Nested: {
+            $id: "nested.json",
+            definitions: { Value: { type: "string" } },
+            allOf: [{ $ref: "#/definitions/Value" }]
+          }
+        }
+      })
+      deepStrictEqual(JsonSchema.toDocumentDraft04(input), {
+        dialect: "draft-04",
+        schema: {
+          allOf: [
+            { $ref: "nested.json#/definitions/Value" },
+            { $ref: "external.json#/$defs/Value" }
+          ]
+        },
+        definitions: {
+          Nested: {
+            id: "nested.json",
+            definitions: { Value: { type: "string" } },
+            allOf: [{ $ref: "#/definitions/Value" }]
+          }
+        }
+      })
+    })
+
+    it("converts contentSchema bodies and references", () => {
+      const input: JsonSchema.Document<"draft-2020-12"> = {
+        dialect: "draft-2020-12",
+        schema: {
+          contentSchema: { $defs: { Value: { const: "value" } } },
+          allOf: [{ $ref: "#/contentSchema/$defs/Value" }]
+        },
+        definitions: {}
+      }
+
+      deepStrictEqual(JsonSchema.toDocumentDraft07(input).schema, {
+        contentSchema: { definitions: { Value: { const: "value" } } },
+        allOf: [{ $ref: "#/contentSchema/definitions/Value" }]
+      })
+      deepStrictEqual(JsonSchema.toDocumentDraft04(input).schema, {
+        contentSchema: { definitions: { Value: { enum: ["value"] } } },
+        allOf: [{ $ref: "#/contentSchema/definitions/Value" }]
+      })
+    })
+
+    it("rejects canonical constraints that Draft-07 cannot represent", () => {
+      for (
+        const schema of [
+          { contains: { type: "string" }, minContains: 2 },
+          { contains: { type: "string" }, maxContains: 3 },
+          { unevaluatedProperties: false },
+          { unevaluatedItems: false },
+          { $dynamicRef: "#node" },
+          { $vocabulary: { "https://example.com/vocabulary": true } },
+          { dependencies: { value: ["other"] } }
+        ]
+      ) {
+        assert.throws(
+          () => JsonSchema.toDocumentDraft07({ dialect: "draft-2020-12", schema, definitions: {} }),
+          /Cannot convert JSON Schema keyword .* to Draft-07/
+        )
+      }
+    })
+
     it("preserves Schema.Never", () => {
       const result = JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(Schema.Never))
       deepStrictEqual(result, {
@@ -1266,8 +1752,8 @@ describe("JsonSchema", () => {
       deepStrictEqual(document.schema, {
         minLength: 3,
         allOf: [
-          { $ref: "#/definitions/S" },
-          { maxLength: 5 }
+          { maxLength: 5 },
+          { $ref: "#/definitions/S" }
         ]
       })
 
@@ -1277,6 +1763,26 @@ describe("JsonSchema", () => {
       deepStrictEqual(validate("abc"), true)
       deepStrictEqual(validate("a"), false)
       deepStrictEqual(validate("abcdef"), false)
+    })
+
+    it("keeps existing allOf locations stable when wrapping ref siblings", () => {
+      const document = JsonSchema.toDocumentDraft07({
+        dialect: "draft-2020-12",
+        schema: {
+          $ref: "#/$defs/Base",
+          allOf: [{ type: "string" }],
+          properties: { copy: { $ref: "#/allOf/0" } }
+        },
+        definitions: { Base: { type: "object" } }
+      })
+
+      deepStrictEqual(document.schema, {
+        allOf: [
+          { type: "string" },
+          { $ref: "#/definitions/Base" }
+        ],
+        properties: { copy: { $ref: "#/allOf/0" } }
+      })
     })
 
     it("converts prefixItems to a Draft-07 items tuple", () => {
@@ -1327,7 +1833,7 @@ describe("JsonSchema", () => {
       })
     })
 
-    it("drops non-standard properties in Draft-07 output", () => {
+    it("preserves custom properties in Draft-07 output", () => {
       const input: JsonSchema.Document<"draft-2020-12"> = {
         dialect: "draft-2020-12",
         schema: {
@@ -1340,7 +1846,8 @@ describe("JsonSchema", () => {
       deepStrictEqual(result, {
         dialect: "draft-07",
         schema: {
-          type: "string"
+          type: "string",
+          "x-custom": "value"
         },
         definitions: {}
       })
@@ -1374,6 +1881,74 @@ describe("JsonSchema", () => {
   })
 
   describe("toDocumentDraft04", () => {
+    it("rewrites the canonical meta-schema URI with an empty fragment", () => {
+      deepStrictEqual(
+        JsonSchema.toDocumentDraft04({
+          dialect: "draft-2020-12",
+          schema: { $schema: `${JsonSchema.META_SCHEMA_URI_DRAFT_2020_12}#` },
+          definitions: {}
+        }).schema,
+        { $schema: JsonSchema.META_SCHEMA_URI_DRAFT_04 }
+      )
+    })
+
+    it("omits the canonical meta-schema URI from embedded resources", () => {
+      const input: JsonSchema.Document<"draft-2020-12"> = {
+        dialect: "draft-2020-12",
+        schema: {},
+        definitions: {
+          Embedded: {
+            $id: "embedded.json",
+            $schema: JsonSchema.META_SCHEMA_URI_DRAFT_2020_12,
+            type: "string"
+          }
+        }
+      }
+
+      deepStrictEqual(JsonSchema.toDocumentDraft04(input).definitions.Embedded, {
+        id: "embedded.json",
+        type: "string"
+      })
+    })
+
+    it("rejects custom dialects in embedded resources", () => {
+      assert.throws(
+        () =>
+          JsonSchema.toDocumentDraft04({
+            dialect: "draft-2020-12",
+            schema: {},
+            definitions: {
+              Embedded: {
+                $id: "embedded.json",
+                $schema: "https://example.com/dialect",
+                type: "string"
+              }
+            }
+          }),
+        /Cannot convert JSON Schema keyword "\$schema" to Draft-04/
+      )
+    })
+
+    it("lowers canonical dependencies directly and preserves custom keywords", () => {
+      const result = JsonSchema.toDocumentDraft04({
+        dialect: "draft-2020-12",
+        schema: {
+          dependentRequired: { enabled: ["value"] },
+          dependentSchemas: { mode: { required: ["value"] } },
+          "x-custom": { value: true }
+        },
+        definitions: {}
+      })
+
+      deepStrictEqual(result.schema, {
+        dependencies: {
+          enabled: ["value"],
+          mode: { required: ["value"] }
+        },
+        "x-custom": { value: true }
+      })
+    })
+
     it("rewrites $defs refs to Draft-04 definitions refs", () => {
       const input: JsonSchema.Document<"draft-2020-12"> = {
         dialect: "draft-2020-12",
@@ -1402,7 +1977,7 @@ describe("JsonSchema", () => {
       })
     })
 
-    it("preserves every supported Draft-04 keyword and drops newer annotations", () => {
+    it("preserves every supported Draft-04 keyword and newer annotations as extensions", () => {
       const input: JsonSchema.JsonSchema = {
         type: "object",
         required: ["value"],
@@ -1432,8 +2007,7 @@ describe("JsonSchema", () => {
         items: { type: "string" },
         examples: ["a"],
         readOnly: true,
-        writeOnly: true,
-        propertyNames: { minLength: 1 }
+        writeOnly: true
       }
       const expected: JsonSchema.JsonSchema = {
         type: "object",
@@ -1457,11 +2031,14 @@ describe("JsonSchema", () => {
         properties: { value: { type: "string" } },
         patternProperties: { "^x-": { type: "string" } },
         not: { type: "null" },
-        additionalProperties: false,
+        additionalProperties: { not: {} },
         allOf: [{ type: "object" }],
         anyOf: [{ type: "string" }],
         oneOf: [{ type: "number" }],
-        items: { type: "string" }
+        items: { type: "string" },
+        examples: ["a"],
+        readOnly: true,
+        writeOnly: true
       }
 
       deepStrictEqual(
@@ -1474,6 +2051,79 @@ describe("JsonSchema", () => {
       )
     })
 
+    it("rejects validation keywords that Draft-04 cannot represent", () => {
+      for (
+        const schema of [
+          { propertyNames: { minLength: 1 } },
+          { contains: { type: "string" }, minContains: 0 },
+          { contains: { type: "string" }, minContains: 2 },
+          {
+            if: { $id: "condition" },
+            // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+            then: {},
+            else: {}
+          },
+          { unevaluatedProperties: false },
+          { $dynamicRef: "#node" },
+          { $vocabulary: { "https://example.com/vocabulary": true } },
+          { id: "legacy-id" }
+        ]
+      ) {
+        assert.throws(
+          () => JsonSchema.toDocumentDraft04({ dialect: "draft-2020-12", schema, definitions: {} }),
+          /Cannot convert JSON Schema keyword .* to Draft-04/
+        )
+      }
+    })
+
+    it("converts inactive conditional schema bodies", () => {
+      for (const key of ["if", "then", "else"] as const) {
+        const result = JsonSchema.toDocumentDraft04({
+          dialect: "draft-2020-12",
+          schema: {
+            [key]: { $defs: { Value: { const: "value" } } },
+            allOf: [{ $ref: `#/${key}/$defs/Value` }]
+          },
+          definitions: {}
+        })
+
+        deepStrictEqual(result.schema, {
+          [key]: { definitions: { Value: { enum: ["value"] } } },
+          allOf: [{ $ref: `#/${key}/definitions/Value` }]
+        })
+      }
+    })
+
+    it("lowers conditionals and contains while preserving validation semantics", () => {
+      const document = JsonSchema.toDocumentDraft04({
+        dialect: "draft-2020-12",
+        schema: {
+          type: "object",
+          properties: {
+            mode: { enum: ["full", "compact"] },
+            value: { type: "string" },
+            values: { contains: { type: "number" } }
+          },
+          required: ["mode", "values"],
+          if: { properties: { mode: { const: "full" } } },
+          // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+          then: { required: ["value"] },
+          else: { not: { required: ["value"] } }
+        },
+        definitions: {}
+      })
+      const schema = makeSchema(document)
+      deepStrictEqual(ajvDraft04.validateSchema(schema), true)
+
+      const validate = ajvDraft04.compile(schema)
+      deepStrictEqual(validate({ mode: "full", value: "ok", values: [1] }), true)
+      deepStrictEqual(validate({ mode: "full", values: [1] }), false)
+      deepStrictEqual(validate({ mode: "compact", values: [1] }), true)
+      deepStrictEqual(validate({ mode: "compact", value: "unexpected", values: [1] }), false)
+      deepStrictEqual(validate({ mode: "full", value: "ok", values: ["no"] }), false)
+      deepStrictEqual(validate({ mode: "full", value: "ok", values: 1 }), true)
+    })
+
     it("omits an empty required array", () => {
       const document = JsonSchema.toDocumentDraft04({
         dialect: "draft-2020-12",
@@ -1483,6 +2133,27 @@ describe("JsonSchema", () => {
 
       deepStrictEqual(document.schema, { type: "object" })
       deepStrictEqual(ajvDraft04.validateSchema(makeSchema(document)), true)
+    })
+
+    it("omits empty dependentRequired arrays", () => {
+      const empty = JsonSchema.toDocumentDraft04({
+        dialect: "draft-2020-12",
+        schema: { dependentRequired: { value: [] } },
+        definitions: {}
+      })
+      deepStrictEqual(empty.schema, {})
+      deepStrictEqual(ajvDraft04.validateSchema(makeSchema(empty)), true)
+
+      const combined = JsonSchema.toDocumentDraft04({
+        dialect: "draft-2020-12",
+        schema: {
+          dependentRequired: { value: [] },
+          dependentSchemas: { value: { type: "string" } }
+        },
+        definitions: {}
+      })
+      deepStrictEqual(combined.schema, { dependencies: { value: { type: "string" } } })
+      deepStrictEqual(ajvDraft04.validateSchema(makeSchema(combined)), true)
     })
 
     it("converts const to enum", () => {
@@ -1590,13 +2261,13 @@ describe("JsonSchema", () => {
           denied: { not: {} },
           nested: { not: { not: {} } }
         },
-        additionalProperties: false,
+        additionalProperties: { not: {} },
         allOf: [{}],
         anyOf: [{ not: {} }]
       })
     })
 
-    it("converts tuple members while preserving additionalItems booleans", () => {
+    it("converts tuple members and their trailing boolean schema", () => {
       const input: JsonSchema.Document<"draft-2020-12"> = {
         dialect: "draft-2020-12",
         schema: {
@@ -1610,7 +2281,7 @@ describe("JsonSchema", () => {
       deepStrictEqual(result.schema, {
         type: "array",
         items: [{}, { not: {} }],
-        additionalItems: false
+        additionalItems: { not: {} }
       })
 
       deepStrictEqual(
@@ -1686,18 +2357,17 @@ describe("JsonSchema", () => {
       deepStrictEqual(result.schema, input.schema)
     })
 
-    it("drops keywords unavailable in Draft-04", () => {
+    it("preserves newer annotations as Draft-04 extensions", () => {
       const input: JsonSchema.Document<"draft-2020-12"> = {
         dialect: "draft-2020-12",
         schema: {
           type: "object",
-          propertyNames: { pattern: "^[a-z]+$" },
           examples: [{ value: 1 }]
         },
         definitions: {}
       }
       const result = JsonSchema.toDocumentDraft04(input)
-      deepStrictEqual(result.schema, { type: "object" })
+      deepStrictEqual(result.schema, { type: "object", examples: [{ value: 1 }] })
     })
 
     it("preserves constraints next to refs", () => {
@@ -1772,6 +2442,34 @@ describe("JsonSchema", () => {
   })
 
   describe("toMultiDocumentOpenApi3_1", () => {
+    it("rejects opaque keywords that OpenAPI 3.1 would activate", () => {
+      for (
+        const input of [
+          { schemas: [{ example: "value" }], definitions: {} },
+          { schemas: [{ properties: { value: { discriminator: {} } } }], definitions: {} },
+          { schemas: [{}], definitions: { Value: { xml: {} } } },
+          { schemas: [{ externalDocs: {} }], definitions: {} }
+        ] as const
+      ) {
+        assert.throws(
+          () => JsonSchema.toMultiDocumentOpenApi3_1({ dialect: "draft-2020-12", ...input }),
+          /Cannot convert JSON Schema keyword .* to OpenAPI 3.1/
+        )
+      }
+    })
+
+    it("does not inspect opaque values for OpenAPI 3.1 keyword collisions", () => {
+      const literal = { example: "value", discriminator: {}, xml: {}, externalDocs: {} }
+      deepStrictEqual(
+        JsonSchema.toMultiDocumentOpenApi3_1({
+          dialect: "draft-2020-12",
+          schemas: [{ const: literal }],
+          definitions: {}
+        }).schemas,
+        [{ const: literal }]
+      )
+    })
+
     it("rewrites `$defs` references to `components/schemas`", () => {
       const input: JsonSchema.MultiDocument<"draft-2020-12"> = {
         dialect: "draft-2020-12",
@@ -1895,6 +2593,122 @@ describe("JsonSchema", () => {
           A_B: { type: "string" }
         }
       })
+    })
+
+    it("decodes a definition key before sanitizing its ref", () => {
+      const result = JsonSchema.toMultiDocumentOpenApi3_1({
+        dialect: "draft-2020-12",
+        schemas: [{
+          allOf: [
+            { $ref: "#/$defs/A%20B" },
+            { $dynamicRef: "#/$defs/A%20B" }
+          ]
+        }],
+        definitions: {
+          "A B": { type: "string" }
+        }
+      })
+
+      deepStrictEqual(result, {
+        dialect: "openapi-3.1",
+        schemas: [{
+          allOf: [
+            { $ref: "#/components/schemas/A_B" },
+            { $dynamicRef: "#/components/schemas/A_B" }
+          ]
+        }],
+        definitions: {
+          A_B: { type: "string" }
+        }
+      })
+    })
+
+    it("does not rewrite local refs inside embedded schema resources", () => {
+      const result = JsonSchema.toMultiDocumentOpenApi3_1({
+        dialect: "draft-2020-12",
+        schemas: [{
+          allOf: [
+            { $dynamicRef: "#/$defs/Embedded" },
+            {
+              $id: "inline.json",
+              $defs: { Inner: { type: "string" } },
+              $dynamicRef: "#/$defs/Inner"
+            }
+          ]
+        }],
+        definitions: {
+          Embedded: {
+            $id: "embedded.json",
+            $defs: { Inner: { type: "number" } },
+            allOf: [
+              { $ref: "#/$defs/Inner" },
+              { $dynamicRef: "#/$defs/Inner" }
+            ]
+          }
+        }
+      })
+
+      deepStrictEqual(result, {
+        dialect: "openapi-3.1",
+        schemas: [{
+          allOf: [
+            { $dynamicRef: "#/components/schemas/Embedded" },
+            {
+              $id: "inline.json",
+              $defs: { Inner: { type: "string" } },
+              $dynamicRef: "#/$defs/Inner"
+            }
+          ]
+        }],
+        definitions: {
+          Embedded: {
+            $id: "embedded.json",
+            $defs: { Inner: { type: "number" } },
+            allOf: [
+              { $ref: "#/$defs/Inner" },
+              { $dynamicRef: "#/$defs/Inner" }
+            ]
+          }
+        }
+      })
+    })
+
+    it("does not rewrite local refs inside root schema resources", () => {
+      const schema = {
+        $id: "inline.json",
+        $defs: { Inner: { type: "string" } },
+        allOf: [
+          { $ref: "#/$defs/Inner" },
+          { $dynamicRef: "#/$defs/Inner" }
+        ]
+      }
+
+      deepStrictEqual(
+        JsonSchema.toMultiDocumentOpenApi3_1({
+          dialect: "draft-2020-12",
+          schemas: [schema],
+          definitions: {}
+        }),
+        {
+          dialect: "openapi-3.1",
+          schemas: [schema],
+          definitions: {}
+        }
+      )
+    })
+
+    it("rejects shared definition refs from root schema resources", () => {
+      for (const keyword of ["$ref", "$dynamicRef"] as const) {
+        assert.throws(
+          () =>
+            JsonSchema.toMultiDocumentOpenApi3_1({
+              dialect: "draft-2020-12",
+              schemas: [{ $id: "inline.json", [keyword]: "#/$defs/Value" }],
+              definitions: { Value: { type: "string" } }
+            }),
+          new RegExp(`Cannot convert JSON Schema keyword "\\${keyword}" to OpenAPI 3\\.1`)
+        )
+      }
     })
 
     it("suffixes a sanitized key that collides with a valid key", () => {
@@ -2067,31 +2881,40 @@ describe("JsonSchema", () => {
   })
 
   describe("input immutability", () => {
-    const schema: JsonSchema.JsonSchema = {
+    const canonicalSchema: JsonSchema.JsonSchema = {
       type: "object",
       properties: {
         value: {
           type: "array",
           prefixItems: [{ type: "string" }],
-          items: false,
-          nullable: true
+          items: false
         }
-      },
-      $defs: {
-        Value: { type: "string" }
       }
     }
 
     for (
-      const [name, convert] of [
-        ["fromSchemaDraft07", JsonSchema.fromSchemaDraft07],
-        ["fromSchemaDraft2020_12", JsonSchema.fromSchemaDraft2020_12],
-        ["fromSchemaOpenApi3_1", JsonSchema.fromSchemaOpenApi3_1],
-        ["fromSchemaOpenApi3_0", JsonSchema.fromSchemaOpenApi3_0]
+      const [name, convert, input] of [
+        [
+          "fromSchemaDraft07",
+          JsonSchema.fromSchemaDraft07,
+          {
+            type: "array",
+            items: [{ type: "string" }],
+            additionalItems: false,
+            definitions: { Value: { type: "string" } }
+          }
+        ],
+        ["fromSchemaDraft2020_12", JsonSchema.fromSchemaDraft2020_12, canonicalSchema],
+        ["fromSchemaOpenApi3_1", JsonSchema.fromSchemaOpenApi3_1, canonicalSchema],
+        [
+          "fromSchemaOpenApi3_0",
+          JsonSchema.fromSchemaOpenApi3_0,
+          { type: "array", items: { type: "string" }, nullable: true }
+        ]
       ] as const
     ) {
       it(`${name} does not mutate its input`, () => {
-        assertDoesNotMutate(structuredClone(schema), convert)
+        assertDoesNotMutate(structuredClone(input), convert)
       })
     }
 
@@ -2105,7 +2928,7 @@ describe("JsonSchema", () => {
         assertDoesNotMutate(
           {
             dialect: "draft-2020-12",
-            schema: structuredClone(schema),
+            schema: structuredClone(canonicalSchema),
             definitions: { Value: { type: "string" } }
           },
           convert
@@ -2117,7 +2940,7 @@ describe("JsonSchema", () => {
       assertDoesNotMutate(
         {
           dialect: "draft-2020-12",
-          schemas: [structuredClone(schema)] as const,
+          schemas: [structuredClone(canonicalSchema)] as const,
           definitions: { Value: { type: "string" } }
         },
         JsonSchema.toMultiDocumentOpenApi3_1

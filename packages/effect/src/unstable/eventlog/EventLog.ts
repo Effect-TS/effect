@@ -763,6 +763,11 @@ export const makeReplayFromRemote = (options: {
       })
   )
 
+const remoteRetrySchedule = Schedule.min([
+  Schedule.exponential(200, 1.5),
+  Schedule.spaced({ seconds: 10 })
+])
+
 const make = Effect.gen(function*() {
   const storeId = yield* CurrentStoreId
   const identity = yield* Identity
@@ -860,12 +865,7 @@ const make = Effect.gen(function*() {
       }).pipe(
         Effect.scoped,
         Effect.catchCause(Effect.logError),
-        Effect.repeat(
-          Schedule.min([
-            Schedule.exponential(200, 1.5),
-            Schedule.spaced({ seconds: 10 })
-          ])
-        ),
+        Effect.repeat(remoteRetrySchedule),
         Effect.annotateLogs({
           service: "EventLog",
           effect: "runRemote consume"
@@ -874,11 +874,21 @@ const make = Effect.gen(function*() {
       )
 
       const write = journal.withRemoteUncommited(remote.id, (entries) => remote.write({ identity, entries, storeId }))
+      const writeUntilSuccess = write.pipe(
+        Effect.tapCause(Effect.logDebug),
+        Effect.retry(remoteRetrySchedule)
+      )
       yield* Effect.addFinalizer(() => Effect.ignore(write))
-      yield* write
       const changesSub = yield* journal.changes
-      return yield* PubSub.takeAll(changesSub).pipe(
-        Effect.andThen(write),
+      const changes = yield* Queue.dropping<void>(1)
+      yield* PubSub.takeAll(changesSub).pipe(
+        Effect.andThen(Queue.offer(changes, undefined)),
+        Effect.forever,
+        Effect.forkScoped
+      )
+      yield* writeUntilSuccess
+      return yield* Queue.take(changes).pipe(
+        Effect.andThen(writeUntilSuccess),
         Effect.catchCause(Effect.logError),
         Effect.forever
       )

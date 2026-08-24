@@ -658,6 +658,16 @@ export abstract class Base {
 }
 
 /**
+ * Parser factory carried by a {@link Declaration}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type DeclarationRun = (
+  typeParameters: ReadonlyArray<AST>
+) => (input: unknown, self: Declaration, options: ParseOptions) => Effect.Effect<any, SchemaIssue.Issue, any>
+
+/**
  * AST node for user-defined opaque types with custom parsing logic.
  *
  * **When to use**
@@ -679,26 +689,29 @@ export abstract class Base {
 export class Declaration extends Base {
   readonly _tag = "Declaration"
   readonly typeParameters: ReadonlyArray<AST>
-  readonly run: (
-    typeParameters: ReadonlyArray<AST>
-  ) => (input: unknown, self: Declaration, options: ParseOptions) => Effect.Effect<any, SchemaIssue.Issue, any>
+  readonly run: DeclarationRun
   readonly encodingChecks: Checks | undefined
+  /**
+   * Parser factory {@link flip} swaps in, so a declaration can behave
+   * differently when encoding. `undefined` reuses {@link run}.
+   */
+  readonly encodingRun: DeclarationRun | undefined
 
   constructor(
     typeParameters: ReadonlyArray<AST>,
-    run: (
-      typeParameters: ReadonlyArray<AST>
-    ) => (input: unknown, self: Declaration, options: ParseOptions) => Effect.Effect<any, SchemaIssue.Issue, any>,
+    run: DeclarationRun,
     annotations?: Schema.Annotations.Annotations,
     checks?: Checks,
     encoding?: Encoding,
     context?: Context,
-    encodingChecks?: Checks
+    encodingChecks?: Checks,
+    encodingRun?: DeclarationRun
   ) {
     super(annotations, checks, encoding, context)
     this.typeParameters = typeParameters
     this.run = run
     this.encodingChecks = encodingChecks
+    this.encodingRun = encodingRun
   }
   /** @internal */
   getParser(): SchemaParser.Parser {
@@ -708,19 +721,26 @@ export class Declaration extends Base {
       return (run ??= this.run(this.typeParameters))(input, this, options)
     }
   }
-  private _rebuild(recur: (ast: AST) => AST, checks: Checks | undefined, encodingChecks: Checks | undefined) {
+  private _rebuild(
+    recur: (ast: AST) => AST,
+    checks: Checks | undefined,
+    encodingChecks: Checks | undefined,
+    run: DeclarationRun,
+    encodingRun: DeclarationRun | undefined
+  ) {
     const tps = mapOrSame(this.typeParameters, recur)
-    return tps === this.typeParameters && checks === this.checks && encodingChecks === this.encodingChecks ?
+    return tps === this.typeParameters && checks === this.checks && encodingChecks === this.encodingChecks &&
+        run === this.run && encodingRun === this.encodingRun ?
       this :
-      new Declaration(tps, this.run, this.annotations, checks, undefined, this.context, encodingChecks)
+      new Declaration(tps, run, this.annotations, checks, undefined, this.context, encodingChecks, encodingRun)
   }
   /** @internal */
   recur(recur: (ast: AST) => AST) {
-    return this._rebuild(recur, this.checks, this.encodingChecks)
+    return this._rebuild(recur, this.checks, this.encodingChecks, this.run, this.encodingRun)
   }
   /** @internal */
   flip(recur: (ast: AST) => AST) {
-    return this._rebuild(recur, this.encodingChecks, this.checks)
+    return this._rebuild(recur, this.encodingChecks, this.checks, this.encodingRun ?? this.run, this.run)
   }
   /** @internal */
   getExpected(): string {
