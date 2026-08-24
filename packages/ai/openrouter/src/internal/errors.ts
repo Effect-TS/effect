@@ -256,7 +256,7 @@ export const buildHttpContext = (params: {
 // HTTP Status Code
 // =============================================================================
 
-const buildInvalidRequestDescription = (params: {
+const buildErrorDescription = (params: {
   readonly status: number
   readonly message: string | undefined
   readonly method: string
@@ -304,7 +304,7 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
   readonly metadata: OpenRouterErrorMetadata
   readonly http: typeof AiError.HttpContext.Type
 }): AiError.AiErrorReason => {
-  const invalidRequestDescription = buildInvalidRequestDescription({
+  const errorDescription = buildErrorDescription({
     status,
     message,
     method: http.request.method,
@@ -318,19 +318,21 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
   switch (status) {
     case 400:
       return new AiError.InvalidRequestError({
-        description: invalidRequestDescription,
+        description: errorDescription,
         metadata: { openrouter: metadata },
         http
       })
     case 401:
       return new AiError.AuthenticationError({
         kind: "InvalidKey",
+        description: errorDescription,
         metadata: { openrouter: metadata },
         http
       })
     case 403:
       return new AiError.AuthenticationError({
         kind: "InsufficientPermissions",
+        description: errorDescription,
         metadata: { openrouter: metadata },
         http
       })
@@ -338,7 +340,7 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
     case 409:
     case 422:
       return new AiError.InvalidRequestError({
-        description: invalidRequestDescription,
+        description: errorDescription,
         metadata: { openrouter: metadata },
         http
       })

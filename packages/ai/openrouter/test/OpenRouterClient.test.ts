@@ -30,6 +30,60 @@ describe("OpenRouterClient", () => {
         }
       }
     }))))
+
+  it.effect("surfaces the provider message on 401 AuthenticationError", () =>
+    Effect.gen(function*() {
+      const client = yield* OpenRouterClient.OpenRouterClient
+
+      const result = yield* client.createChatCompletion({
+        model: "openai/gpt-4o-mini",
+        messages: [{ role: "user", content: "hello" }]
+      }).pipe(Effect.flip)
+
+      assert.strictEqual(result.reason._tag, "AuthenticationError")
+      if (result.reason._tag !== "AuthenticationError") {
+        return yield* Effect.die(new Error("Expected AuthenticationError"))
+      }
+      assert.strictEqual(result.reason.kind, "InvalidKey")
+      assert.include(result.reason.description ?? "", "No auth credentials found")
+      assert.include(result.reason.message, "No auth credentials found")
+    }).pipe(Effect.provide(makeTestLayer({
+      _tag: "Json",
+      status: 401,
+      body: {
+        error: {
+          code: 401,
+          message: "No auth credentials found"
+        }
+      }
+    }))))
+
+  it.effect("surfaces the provider message on 403 AuthenticationError", () =>
+    Effect.gen(function*() {
+      const client = yield* OpenRouterClient.OpenRouterClient
+
+      const result = yield* client.createChatCompletion({
+        model: "openai/gpt-4o-mini",
+        messages: [{ role: "user", content: "hello" }]
+      }).pipe(Effect.flip)
+
+      assert.strictEqual(result.reason._tag, "AuthenticationError")
+      if (result.reason._tag !== "AuthenticationError") {
+        return yield* Effect.die(new Error("Expected AuthenticationError"))
+      }
+      assert.strictEqual(result.reason.kind, "InsufficientPermissions")
+      assert.include(result.reason.description ?? "", "Key does not have permission")
+      assert.include(result.reason.message, "Key does not have permission")
+    }).pipe(Effect.provide(makeTestLayer({
+      _tag: "Json",
+      status: 403,
+      body: {
+        error: {
+          code: 403,
+          message: "Key does not have permission"
+        }
+      }
+    }))))
 })
 
 type MockResponse =

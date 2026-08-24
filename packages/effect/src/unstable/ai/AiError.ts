@@ -468,6 +468,13 @@ export class QuotaExhaustedError extends Schema.Error<QuotaExhaustedError>(
  * })
  *
  * const result = [authError.kind, authError.isRetryable] // => ["InvalidKey", false]
+ *
+ * const detailed = new AiError.AuthenticationError({
+ *   kind: "InsufficientPermissions",
+ *   description: "Token expired"
+ * })
+ *
+ * detailed.message // => "InsufficientPermissions: Your API key lacks required permissions. Token expired"
  * ```
  *
  * @category errors
@@ -478,6 +485,7 @@ export class AuthenticationError extends Schema.Error<AuthenticationError>(
 )({
   _tag: Schema.tag("AuthenticationError"),
   kind: Schema.Literals(["InvalidKey", "ExpiredKey", "MissingKey", "InsufficientPermissions", "Unknown"]),
+  description: Schema.optional(Schema.String),
   metadata: providerMetadataWithDefaults<AuthenticationErrorMetadata>(),
   http: Schema.optional(HttpContext)
 }) {
@@ -505,7 +513,9 @@ export class AuthenticationError extends Schema.Error<AuthenticationError>(
       InsufficientPermissions: "Your API key lacks required permissions",
       Unknown: "Authentication failed. Check your credentials"
     }
-    return `${this.kind}: ${suggestions[this.kind]}`
+    let msg = `${this.kind}: ${suggestions[this.kind]}`
+    if (this.description) msg += `. ${this.description}`
+    return msg
   }
 }
 
