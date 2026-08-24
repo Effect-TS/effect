@@ -78,11 +78,11 @@ const readWebSocketFrames = (port: number, perMessageDeflate: boolean) =>
     return Effect.sync(() => socket.destroy())
   })
 
-const makeWebSocketServer = Effect.fnUntraced(function*(payload: string) {
+const makeWebSocketServer = Effect.fnUntraced(function*(payload: string, compressionThreshold?: number) {
   const server = yield* BunHttpServer.make({
     hostname: "127.0.0.1",
     port: 0,
-    websocket: { perMessageDeflate: true }
+    websocket: { perMessageDeflate: true, compressionThreshold }
   })
   yield* server.serve(Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
@@ -146,6 +146,31 @@ describe("BunHttpServer", () => {
       const { frames, headers } = yield* readWebSocketFrames(port, true)
 
       assert.match(headers, /^sec-websocket-extensions:.*permessage-deflate/im)
+      assert.deepStrictEqual(frames.map((frame) => frame.opcode), [1, 2])
+      assert.isTrue(frames.every((frame) => frame.rsv1))
+      assert.isTrue(frames.every((frame) => frame.payloadLength < payload.length))
+    }))
+
+  it.effect("leaves small WebSocket messages uncompressed even when per-message deflate is negotiated", () =>
+    Effect.gen(function*() {
+      const payload = "a".repeat(64)
+      const server = yield* makeWebSocketServer(payload)
+      const port = (server.address as HttpServer.TcpAddress).port
+      const { frames, headers } = yield* readWebSocketFrames(port, true)
+
+      assert.match(headers, /^sec-websocket-extensions:.*permessage-deflate/im)
+      assert.deepStrictEqual(frames.map((frame) => frame.opcode), [1, 2])
+      assert.isFalse(frames.some((frame) => frame.rsv1))
+      assert.isTrue(frames.every((frame) => frame.payloadLength === payload.length))
+    }))
+
+  it.effect("compresses small WebSocket messages when below a custom compressionThreshold", () =>
+    Effect.gen(function*() {
+      const payload = "a".repeat(64)
+      const server = yield* makeWebSocketServer(payload, 32)
+      const port = (server.address as HttpServer.TcpAddress).port
+      const { frames } = yield* readWebSocketFrames(port, true)
+
       assert.deepStrictEqual(frames.map((frame) => frame.opcode), [1, 2])
       assert.isTrue(frames.every((frame) => frame.rsv1))
       assert.isTrue(frames.every((frame) => frame.payloadLength < payload.length))
