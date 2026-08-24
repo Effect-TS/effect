@@ -51,6 +51,84 @@ type QueueRuntime = ReturnType<typeof makeQueueRuntime>
 
 type SingletonRuntime = ReturnType<typeof makeSingletonRuntime>
 
+/**
+ * Initializes the Worker application before a Cloudflare cluster Durable
+ * Object handles requests or alarms. The initializer is shared by all four
+ * Durable Object classes and runs at most once per Worker isolate.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Initializer<Env = unknown, A = unknown> = (env: Env) => PromiseLike<A>
+
+let initializer: Initializer | undefined
+let initialization: {
+  readonly _tag: "Pending"
+} | {
+  readonly _tag: "Success"
+  readonly value: unknown
+} | {
+  readonly _tag: "Failure"
+  readonly error: unknown
+} | undefined
+
+/**
+ * Registers the Worker application initializer used by the Cloudflare cluster
+ * Durable Object classes.
+ *
+ * **Details**
+ *
+ * Call this once from the Worker entry module with the same lazy application
+ * build used by its request handlers. Every entity, workflow, queue, and
+ * singleton object blocks requests and alarms until that build completes. A
+ * failure is cached and propagated to every waiter in the isolate. The
+ * returned function joins the same readiness state from Worker handlers.
+ *
+ * @category initialization
+ * @since 4.0.0
+ */
+export const setInitializer = <Env, A>(handler: Initializer<Env, A>): (env: Env) => Promise<A> => {
+  if (initializer !== undefined) {
+    throw new Error("@effect/platform-cloudflare: the Durable Object initializer is already set")
+  }
+  initializer = handler as Initializer
+  return (env) => waitForInitialization(env) as Promise<A>
+}
+
+const waitForInitialization = async (env: unknown): Promise<unknown> => {
+  if (initializer === undefined) return
+  if (initialization === undefined) {
+    initialization = { _tag: "Pending" }
+    try {
+      const value = await initializer(env)
+      initialization = { _tag: "Success", value }
+      return value
+    } catch (error) {
+      initialization = { _tag: "Failure", error }
+      throw error
+    }
+  }
+  // Cloudflare promises belong to the request context that created them. A
+  // fresh wait in this context observes the shared plain-JavaScript state
+  // without awaiting the first Durable Object's promise from another event.
+  while (initialization._tag === "Pending") {
+    await scheduler.wait(1)
+  }
+  if (initialization._tag === "Failure") throw initialization.error
+  return initialization.value
+}
+
+const blockOnInitialization = (
+  ctx: DurableObjectState,
+  env: unknown,
+  after?: (() => Promise<unknown>) | undefined
+): void => {
+  void ctx.blockConcurrencyWhile(async () => {
+    await waitForInitialization(env)
+    if (after !== undefined) await after()
+  })
+}
+
 // Mirrors entityWire's InvokeResult and entityRuntime's DeliveryOptions: the
 // exported class cannot reference an @internal type in its method signatures.
 type InvokeResult = {
@@ -79,7 +157,9 @@ interface DeliveryOptions {
  *
  * The constructor stays cheap: it opens SQLite, ensures the mailbox tables,
  * and re-arms the single alarm from the earliest pending `deliver_at`. User
- * handlers are never built in the constructor; they are built once per wake.
+ * handlers are never built in the constructor; requests and alarms wait for
+ * the registered {@link setInitializer} callback, then handlers are built once
+ * per wake.
  *
  * @category durable objects
  * @since 4.0.0
@@ -120,9 +200,11 @@ export class ClusterEntity extends DurableObject<unknown> {
     const sql = ctx.storage.sql
     ensureEntityStorage(sql)
     const deliverAt = earliestDeliverAt(sql)
-    if (deliverAt !== undefined) {
-      void ctx.blockConcurrencyWhile(() => Effect.runPromise(armAlarm(ctx.storage, deliverAt)))
-    }
+    blockOnInitialization(
+      ctx,
+      env,
+      deliverAt === undefined ? undefined : () => Effect.runPromise(armAlarm(ctx.storage, deliverAt))
+    )
   }
 
   override alarm(): Promise<void> {
@@ -171,8 +253,9 @@ export class ClusterEntity extends DurableObject<unknown> {
  *
  * The constructor stays cheap: it opens SQLite, ensures the workflow tables,
  * and re-arms the single alarm from the earliest pending clock. Workflow
- * handlers are looked up in the module-level registry and built once per
- * wake.
+ * requests and alarms wait for the registered {@link setInitializer} callback
+ * before handlers are looked up in the module-level registry and built once
+ * per wake.
  *
  * @category durable objects
  * @since 4.0.0
@@ -198,9 +281,11 @@ export class ClusterWorkflow extends DurableObject<unknown> {
       this.#name = stored === undefined ? undefined : encodeName(stored.workflowName, stored.executionId)
     }
     const wakeUp = earliestClockWakeUp(ctx.storage.sql)
-    if (wakeUp !== undefined) {
-      void ctx.blockConcurrencyWhile(() => Effect.runPromise(armAlarm(ctx.storage, wakeUp)))
-    }
+    blockOnInitialization(
+      ctx,
+      env,
+      wakeUp === undefined ? undefined : () => Effect.runPromise(armAlarm(ctx.storage, wakeUp))
+    )
   }
 
   #getRuntime(): WorkflowRuntime {
@@ -279,7 +364,8 @@ export class ClusterWorkflow extends DurableObject<unknown> {
  * The constructor stays cheap: it opens SQLite, ensures the queue table, and
  * re-arms the single alarm from the earliest pending lease expiry. Items are
  * leased to takers for a bounded time; the alarm watchdog expires overdue
- * leases so an item whose worker died is redelivered.
+ * leases so an item whose worker died is redelivered. Requests and alarms wait
+ * for the registered {@link setInitializer} callback first.
  *
  * @category durable objects
  * @since 4.0.0
@@ -298,9 +384,11 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
       now: () => Date.now()
     })
     const expiry = earliestLeaseExpiry(ctx.storage.sql)
-    if (expiry !== undefined) {
-      void ctx.blockConcurrencyWhile(() => Effect.runPromise(armAlarm(ctx.storage, expiry)))
-    }
+    blockOnInitialization(
+      ctx,
+      env,
+      expiry === undefined ? undefined : () => Effect.runPromise(armAlarm(ctx.storage, expiry))
+    )
   }
 
   /** @internal Same-Worker RPC transport used by `CloudflarePersistedQueue.layer`. */
@@ -354,7 +442,9 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
  * The constructor opens SQLite, ensures the singleton state table, and
  * re-arms the watchdog alarm for a wake interrupted by isolate loss. `wake()`
  * runs the registered effect once and returns; it never appends
- * `Effect.never`, so Cloudflare may hibernate the object afterward.
+ * `Effect.never`, so Cloudflare may hibernate the object afterward. Requests
+ * and alarms wait for the registered {@link setInitializer} callback before
+ * consulting the singleton registry.
  *
  * @category durable objects
  * @since 4.0.0
@@ -377,9 +467,11 @@ export class ClusterSingleton extends DurableObject<unknown> {
     }
     const stored = loadSingletonState(sql)
     this.#name = ctx.id.name ?? stored.name
-    if (stored.wakeAt !== undefined) {
-      void ctx.blockConcurrencyWhile(() => Effect.runPromise(armAlarm(ctx.storage, stored.wakeAt!)))
-    }
+    blockOnInitialization(
+      ctx,
+      env,
+      stored.wakeAt === undefined ? undefined : () => Effect.runPromise(armAlarm(ctx.storage, stored.wakeAt!))
+    )
   }
 
   #getRuntime(): SingletonRuntime {
