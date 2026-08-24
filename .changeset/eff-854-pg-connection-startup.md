@@ -37,3 +37,7 @@ circulation, allowing transactions and listeners to stay exclusive while other w
 
 A statement the server refuses to parse - a typo, a missing table - no longer destroys the connection. It is an
 ordinary query error and fails only that statement.
+
+A statement's state machine is one object with its methods on the prototype rather than a set of closures rebuilt per
+statement, and a query only builds the result shape its caller asked for. On the concurrent workload that halves the
+share of the run spent collecting garbage.
