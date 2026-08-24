@@ -27,6 +27,11 @@ export * as PgMigrator from "./PgMigrator.ts"
 /**
  * @since 4.0.0
  */
+export * as PgPool from "./PgPool.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as PgProtocol from "./PgProtocol.ts"
 
 /**
