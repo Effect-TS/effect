@@ -110,6 +110,7 @@
     "ajv-draft-04": "^1.0.0",
     "ast-types": "^0.14.2",
     "immer": "^11.1.18",
+    "protobufjs": "^7.6.5",
     "tinybench": "^6.1.3",
     "valibot": "^1.4.2"
   },
