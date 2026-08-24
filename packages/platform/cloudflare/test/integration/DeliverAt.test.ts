@@ -9,7 +9,9 @@ describe("Cloudflare cluster integration | DeliverAt", () => {
       Effect.gen(function*() {
         const cluster = yield* makeCluster
 
-        const scheduled = yield* cluster.fetchJson("/counter/scheduled?id=delayed&op=one&offset=700&discard=true")
+        // The offset must comfortably cover the two observation roundtrips
+        // below, so the pre-deadline assertions cannot race the alarm.
+        const scheduled = yield* cluster.fetchJson("/counter/scheduled?id=delayed&op=one&offset=2000&discard=true")
 
         const pending = yield* cluster.fetchJson("/counter/rows?id=delayed")
         assert.strictEqual(pending.rows.length, 1, "The delayed tell was not persisted in the destination mailbox")
@@ -44,7 +46,9 @@ describe("Cloudflare cluster integration | DeliverAt", () => {
     Effect.gen(function*() {
       const cluster = yield* makeCluster
 
-      yield* cluster.fetchJson("/counter/scheduled?id=cold-alarm&op=one&offset=900&discard=true")
+      // The offset must comfortably exceed the restart duration, so the
+      // alarm cannot fire in the old isolate before it is torn down.
+      yield* cluster.fetchJson("/counter/scheduled?id=cold-alarm&op=one&offset=3000&discard=true")
       yield* cluster.restart
 
       // No fetch touches the entity after the restart: only the Durable
