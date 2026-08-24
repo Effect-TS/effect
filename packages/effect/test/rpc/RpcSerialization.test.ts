@@ -562,6 +562,12 @@ describe("RpcSerialization", () => {
         assert.deepStrictEqual(serialization.makeUnsafe().decode(frame!), [{ ...request, id: 2 }])
       }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
 
+    it.effect("memoizes codecFor by schema", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        assert.strictEqual(serialization.codecFor(Schema.Date), serialization.codecFor(Schema.Date))
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
+
     it.effect("owns encoded frames without copying envelope holes", () =>
       Effect.gen(function*() {
         const serialization = yield* RpcSerialization.RpcSerialization
