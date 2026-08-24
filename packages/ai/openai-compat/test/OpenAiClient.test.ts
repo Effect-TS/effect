@@ -376,6 +376,62 @@ describe("OpenAiClient", () => {
         }
       }))))
 
+    it.effect("surfaces the provider message on 401 AuthenticationError", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+
+        const error = yield* client.createResponse({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: "hello" }]
+        }).pipe(Effect.flip)
+
+        assert.strictEqual(error.reason._tag, "AuthenticationError")
+        if (error.reason._tag !== "AuthenticationError") {
+          return yield* Effect.die(new Error("Expected AuthenticationError"))
+        }
+        assert.strictEqual(error.reason.kind, "InvalidKey")
+        assert.include(error.reason.description ?? "", "Incorrect API key provided")
+        assert.include(error.reason.message, "Incorrect API key provided")
+      }).pipe(Effect.provide(makeTestLayer({
+        _tag: "Json",
+        status: 401,
+        body: {
+          error: {
+            message: "Incorrect API key provided",
+            type: "invalid_request_error",
+            code: "invalid_api_key"
+          }
+        }
+      }))))
+
+    it.effect("surfaces the provider message on 403 AuthenticationError", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+
+        const error = yield* client.createResponse({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: "hello" }]
+        }).pipe(Effect.flip)
+
+        assert.strictEqual(error.reason._tag, "AuthenticationError")
+        if (error.reason._tag !== "AuthenticationError") {
+          return yield* Effect.die(new Error("Expected AuthenticationError"))
+        }
+        assert.strictEqual(error.reason.kind, "InsufficientPermissions")
+        assert.include(error.reason.description ?? "", "Country, region, or territory not supported")
+        assert.include(error.reason.message, "Country, region, or territory not supported")
+      }).pipe(Effect.provide(makeTestLayer({
+        _tag: "Json",
+        status: 403,
+        body: {
+          error: {
+            message: "Country, region, or territory not supported",
+            type: "permission_error",
+            code: null
+          }
+        }
+      }))))
+
     it.effect("maps insufficient quota errors to QuotaExhaustedError", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient

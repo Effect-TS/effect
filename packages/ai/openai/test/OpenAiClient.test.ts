@@ -291,6 +291,8 @@ describe("OpenAiClient", () => {
         assert.strictEqual(result.reason._tag, "AuthenticationError")
         if (result.reason._tag === "AuthenticationError") {
           assert.strictEqual(result.reason.kind, "InvalidKey")
+          assert.include(result.reason.description ?? "", "Invalid API key")
+          assert.include(result.reason.message, "Invalid API key")
         }
       }).pipe(Effect.provide(makeTestLayer(undefined, {
         _tag: "Json",
@@ -307,6 +309,8 @@ describe("OpenAiClient", () => {
         assert.strictEqual(result.reason._tag, "AuthenticationError")
         if (result.reason._tag === "AuthenticationError") {
           assert.strictEqual(result.reason.kind, "InsufficientPermissions")
+          assert.include(result.reason.description ?? "", "Access denied")
+          assert.include(result.reason.message, "Access denied")
         }
       }).pipe(Effect.provide(makeTestLayer(undefined, {
         _tag: "Json",
