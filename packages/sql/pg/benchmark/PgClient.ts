@@ -6,10 +6,13 @@ import { execFileSync } from "node:child_process"
 import { Bench } from "tinybench"
 
 const externalUrl = process.env.PGCLIENT_BENCHMARK_URL
-const container = externalUrl === undefined
-  ? await new PostgreSqlContainer("postgres:alpine").start()
-  : undefined
-const url = externalUrl ?? container.getConnectionUri()
+const resource = externalUrl === undefined
+  ? await new PostgreSqlContainer("postgres:alpine").start().then((container) => ({
+    container,
+    url: container.getConnectionUri()
+  }))
+  : { container: undefined, url: externalUrl }
+const { container, url } = resource
 
 let sink = 0
 
@@ -25,7 +28,9 @@ const run = Effect.gen(function*() {
       name: "parameterized SELECT (1 row)",
       unitsPerOperation: 1,
       unit: "queries/s",
-      effect: sql.unsafe("SELECT $1::int4 AS value, $2::text AS label", [42, "effect"])
+      effect: sql.unsafe("SELECT $1::int4 AS value, $2::text AS label", [42, "effect"]).pipe(
+        Effect.map((rows) => rows.length)
+      )
     },
     {
       name: "generate_series (100 rows x 3 columns)",
@@ -33,7 +38,7 @@ const run = Effect.gen(function*() {
       unit: "rows/s",
       effect: sql.unsafe(
         "SELECT value, value * 2 AS doubled, value::text AS label FROM generate_series(1, 100) AS value"
-      )
+      ).pipe(Effect.map((rows) => rows.length))
     },
     {
       name: "20 concurrent parameterized SELECTs",
@@ -65,7 +70,7 @@ const run = Effect.gen(function*() {
 
     bench.add(workload.name, async () => {
       const result = await Effect.runPromise(workload.effect)
-      sink += Array.isArray(result) ? result.length : result
+      sink += result
     })
 
     yield* Effect.promise(() => bench.run())
