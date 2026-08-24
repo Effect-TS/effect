@@ -737,6 +737,68 @@ export const invalidate: {
     return Effect.void
   }))
 
+/**
+ * Reserves an item the caller has already leased, taking it out of shared
+ * circulation until the scope closes.
+ *
+ * **When to use**
+ *
+ * Use with a `concurrency` above `1`, when a fiber sharing a pooled item needs
+ * it exclusively for a while: a connection entering a transaction, or a
+ * resource whose protocol state cannot be interleaved. With `concurrency: 1`
+ * every lease is already exclusive and reserving is a no-op.
+ *
+ * **Details**
+ *
+ * The reservation consumes the item's remaining capacity, so no new lease
+ * lands on it, and the pool counts it as fully used, so other checkouts grow
+ * the pool when its size permits instead of queueing behind the reserved item.
+ * Existing co-leases are not waited for; the resource itself decides how to
+ * drain them. Closing the scope returns the capacity and admits waiters again.
+ *
+ * **Gotchas**
+ *
+ * The item is matched with strict equality, and reserving an item the pool no
+ * longer holds is a no-op: it is out of circulation by definition.
+ *
+ * @see {@link get} for acquiring the lease to escalate
+ *
+ * @category combinators
+ * @since 4.0.0
+ */
+export const reserve: {
+  <A>(item: A): <E>(self: Pool<A, E>) => Effect.Effect<void, never, Scope.Scope>
+  <A, E>(self: Pool<A, E>, item: A): Effect.Effect<void, never, Scope.Scope>
+} = dual(
+  2,
+  <A, E>(self: Pool<A, E>, item: A): Effect.Effect<void, never, Scope.Scope> =>
+    Effect.asVoid(Effect.acquireRelease(
+      Effect.sync(() => {
+        for (const poolItem of self.state.items) {
+          if (poolItem.exit._tag !== "Success" || poolItem.exit.value !== item) continue
+          self.state.usage += self.config.concurrency - 1
+          removeAvailable(self, poolItem)
+          return poolItem
+        }
+        return undefined
+      }),
+      (poolItem) =>
+        core.withFiber((fiber) => {
+          if (poolItem === undefined) return internal.void
+          self.state.usage -= self.config.concurrency - 1
+          if (
+            self.state.items.has(poolItem) &&
+            !self.state.invalidated.has(poolItem) &&
+            poolItem.refCount < self.config.concurrency
+          ) {
+            addAvailable(self, poolItem)
+          }
+          wakeWaiters(self, fiber, self.config.concurrency - 1)
+          return internal.void
+        })
+    ))
+)
+
 const invalidatePoolItem = <A, E>(self: Pool<A, E>, poolItem: PoolItem<A, E>): Effect.Effect<void> =>
   Effect.suspend(() => {
     if (!self.state.items.has(poolItem)) {

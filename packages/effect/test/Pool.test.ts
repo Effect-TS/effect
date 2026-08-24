@@ -273,6 +273,41 @@ describe("Pool", () => {
       strictEqual(yield* Ref.get(count), 2)
     }))
 
+  it.effect("reserve takes an item out of shared circulation", () =>
+    Effect.gen(function*() {
+      const count = yield* Ref.make(0)
+      const acquire = Effect.acquireRelease(
+        Ref.updateAndGet(count, (n) => n + 1),
+        () => Ref.update(count, (n) => n - 1)
+      )
+      const pool = yield* Pool.makeWithTTL({
+        acquire,
+        min: 0,
+        max: 2,
+        concurrency: 2,
+        timeToLive: Duration.seconds(60)
+      })
+
+      const scope1 = yield* Scope.make()
+      strictEqual(yield* Scope.provide(Pool.get(pool), scope1), 1)
+      const reservation = yield* Scope.make()
+      yield* Scope.provide(Pool.reserve(pool, 1), reservation)
+      // The reserved item counts as fully used, so the pool opens a second one
+      // and both checkouts share it.
+      strictEqual(yield* Scope.provide(Pool.get(pool), scope1), 2)
+      strictEqual(yield* Scope.provide(Pool.get(pool), scope1), 2)
+      // Everything is saturated, so this checkout has to wait for the
+      // reservation to release its capacity.
+      const fiber = yield* pipe(
+        Scope.provide(Pool.get(pool), scope1),
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Scope.close(reservation, Exit.void)
+      strictEqual(yield* Fiber.join(fiber), 1)
+      strictEqual(yield* Ref.get(count), 2)
+      yield* Scope.close(scope1, Exit.void)
+    }))
+
   it.effect("scale to zero", () =>
     Effect.gen(function*() {
       const deferred = yield* Deferred.make<void>()
