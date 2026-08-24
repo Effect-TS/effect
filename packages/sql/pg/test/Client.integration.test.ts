@@ -1,13 +1,10 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Option, Redacted, Stream, String } from "effect"
+import { Deferred, Effect, Fiber, Option, Stream, String } from "effect"
 import { TestClock } from "effect/testing"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import { SqlClient } from "effect/unstable/sql"
 import * as Statement from "effect/unstable/sql/Statement"
-import * as Pg from "pg"
-import { parse as parsePgConnectionString } from "pg-connection-string"
-import { vi } from "vitest"
 import { PgContainer } from "./utils.ts"
 
 const compilerTransform = PgClient.makeCompiler(String.camelToSnake)
@@ -237,7 +234,7 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
   it.effect("jsonb", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
-      const rows = yield* sql<{ json: unknown }>`select ${{ testValue: 123 }}::jsonb as json`
+      const rows = yield* sql<{ json: unknown }>`select ${sql.json({ testValue: 123 })}::jsonb as json`
       expect(rows[0].json).toEqual({ testValue: 123 })
     }))
 
@@ -295,35 +292,49 @@ it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeC
       const rows = yield* sql<{ value: number }>`SELECT 1 AS value`
       assert.deepStrictEqual(rows, [{ value: 1 }])
     }))
+
+  it.effect("serializes transactions on its single connection", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const firstBodyStarted = yield* Deferred.make<void>()
+      const releaseFirstBody = yield* Deferred.make<void>()
+      const secondBodyStarted = yield* Deferred.make<void>()
+
+      const first = yield* sql.withTransaction(Effect.gen(function*() {
+        yield* Deferred.succeed(firstBodyStarted, undefined)
+        yield* Deferred.await(releaseFirstBody)
+      })).pipe(Effect.forkScoped)
+      yield* Deferred.await(firstBodyStarted)
+      const second = yield* sql.withTransaction(
+        Deferred.succeed(secondBodyStarted, undefined)
+      ).pipe(Effect.forkScoped)
+
+      const overlap = yield* Deferred.await(secondBodyStarted).pipe(
+        Effect.timeoutOption("100 millis"),
+        TestClock.withLive
+      )
+      yield* Deferred.succeed(releaseFirstBody, undefined)
+      yield* Fiber.join(first)
+      yield* Fiber.join(second)
+
+      assert.isTrue(Option.isNone(overlap))
+    }))
 })
 
-it.effect("PgClient.makeClient handles errors emitted while connecting", () =>
-  Effect.acquireUseRelease(
-    Effect.sync(() => ({
-      connect: vi.spyOn(Pg.Client.prototype, "connect").mockImplementation(function(this: Pg.Client) {
-        return new Promise<void>((resolve, reject) => {
-          queueMicrotask(() => {
-            try {
-              this.emit("error", new Error("connection failed"))
-              resolve()
-            } catch (cause) {
-              reject(cause)
-            }
-          })
-        })
-      }),
-      end: vi.spyOn(Pg.Client.prototype, "end").mockResolvedValue(undefined)
-    })),
-    () =>
-      PgClient.makeClient({ host: "localhost" }).pipe(
-        Effect.scoped,
-        Effect.provide(Reactivity.layer)
-      ),
-    ({ connect, end }) =>
-      Effect.sync(() => {
-        connect.mockRestore()
-        end.mockRestore()
-      })
+it.effect("PgClient.makeClient surfaces transport creation failures", () =>
+  Effect.gen(function*() {
+    const error = yield* Effect.flip(PgClient.makeClient({
+      username: "test",
+      stream: () => {
+        throw new Error("connection failed")
+      }
+    }))
+
+    assert.strictEqual(error.reason._tag, "ConnectionError")
+    assert.strictEqual(error.reason.operation, "connect")
+  }).pipe(
+    Effect.scoped,
+    Effect.provide(Reactivity.layer)
   ))
 
 it.layer(PgContainer.layerClientWithTransforms, { timeout: "30 seconds" })("PgClient transforms", (it) => {
@@ -343,20 +354,16 @@ it.layer(PgContainer.layerClientWithTransforms, { timeout: "30 seconds" })("PgCl
       expect(params).toEqual(["Tim", 10])
     }))
 
-  it.effect("multi-statement queries", () =>
+  it.effect("rejects multi-statement queries", () =>
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
 
-      const result = yield* sql<{ id: string; name: string }>`
+      const error = yield* Effect.flip(sql`
         CREATE TABLE test_multi (id TEXT PRIMARY KEY, name TEXT);
-        INSERT INTO test_multi (id, name) VALUES ('id1', 'test1') RETURNING *;
-        INSERT INTO test_multi (id, name) VALUES ('id2', 'test2') RETURNING *;
-      `
+        SELECT 1;
+      `)
 
-      expect(result).toHaveLength(3)
-      expect(result[0]).toEqual([])
-      expect(result[1]).toEqual([{ id: "id1", name: "test1" }])
-      expect(result[2]).toEqual([{ id: "id2", name: "test2" }])
+      assert.strictEqual(error.reason._tag, "SqlSyntaxError")
     }))
 
   it.effect("interruption", () =>
@@ -371,27 +378,18 @@ it.layer(PgContainer.layerClientWithTransforms, { timeout: "30 seconds" })("PgCl
       expect(value).toEqual([[1]])
     }))
 
-  it.effect("Should populate config", () =>
+  it.effect("retains the supplied config", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
 
       assert.isDefined(sql.config.url)
-
-      const parsedConfig = parsePgConnectionString(Redacted.value(sql.config.url))
-
-      expect(sql.config.host).toEqual(parsedConfig.host)
-      assert.isNotNull(parsedConfig.port)
-      assert.isDefined(parsedConfig.port)
-      expect(sql.config.port).toEqual(parseInt(parsedConfig.port))
-      expect(sql.config.username).toEqual(parsedConfig.user)
-      assert.isDefined(sql.config.password)
-      expect(Redacted.value(sql.config.password)).toEqual(parsedConfig.password)
-      expect(sql.config.database).toEqual(parsedConfig.database)
+      expect(sql.config.transformResultNames).toEqual(String.snakeToCamel)
+      expect(sql.config.transformQueryNames).toEqual(String.camelToSnake)
     }))
 })
 
-it.layer(PgContainer.layerClientSingleConnection, { timeout: "30 seconds" })("PgClient listen", (it) => {
-  it.effect("listen does not reserve a pool connection", () =>
+it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds" })("PgClient listen", (it) => {
+  it.effect("keeps queries available while a listener reserves one connection", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
       const channel = "pool_connection_listen"
@@ -445,51 +443,3 @@ it.layer(PgContainer.layerClientSingleConnection, { timeout: "30 seconds" })("Pg
       expect(Array.from(payloads)).toEqual(["payload"])
     }).pipe(TestClock.withLive), 20_000)
 })
-
-it.effect("serializes transactions that share one pg.Client", () =>
-  Effect.gen(function*() {
-    const secondBegin = yield* Deferred.make<void>()
-    const firstBodyStarted = yield* Deferred.make<void>()
-    const releaseFirstBody = yield* Deferred.make<void>()
-    let beginCalls = 0
-    const pg = {
-      host: "localhost",
-      port: 5432,
-      database: "postgres",
-      user: "postgres",
-      password: undefined,
-      ssl: false,
-      on() {},
-      off() {},
-      query(sql: string, _params: ReadonlyArray<unknown>, callback: (error: null, result: unknown) => void) {
-        if (sql === "BEGIN" && ++beginCalls === 2) {
-          Deferred.doneUnsafe(secondBegin, Effect.void)
-        }
-        callback(null, { rows: [] })
-      }
-    }
-
-    const sql = yield* PgClient.fromClient({
-      acquire: Effect.succeed(pg as any),
-      acquireForStream: false
-    })
-    const first = yield* sql.withTransaction(Effect.gen(function*() {
-      yield* Deferred.succeed(firstBodyStarted, undefined)
-      yield* Deferred.await(releaseFirstBody)
-    })).pipe(Effect.forkScoped)
-    yield* Deferred.await(firstBodyStarted)
-    const second = yield* sql.withTransaction(Effect.void).pipe(Effect.forkScoped)
-
-    const overlap = yield* Deferred.await(secondBegin).pipe(
-      Effect.timeoutOption("100 millis"),
-      TestClock.withLive
-    )
-    yield* Deferred.succeed(releaseFirstBody, undefined)
-    yield* Fiber.join(first)
-    yield* Fiber.join(second)
-
-    assert.isTrue(Option.isNone(overlap))
-  }).pipe(
-    Effect.scoped,
-    Effect.provide(Reactivity.layer)
-  ))

@@ -301,6 +301,10 @@ export const layerBackingSqlMultiTable: Layer.Layer<
   SqlClient.SqlClient
 > = Layer.effect(BackingPersistence)(Effect.gen(function*() {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+  const timestampParameter = sql.onDialectOrElse({
+    pg: () => (value: number | null) => value === null ? null : BigInt(value),
+    orElse: () => (value: number | null) => value
+  })
   return BackingPersistence.of({
     make: Effect.fnUntraced(function*(storeId) {
       const clock = yield* Clock.Clock
@@ -345,7 +349,9 @@ export const layerBackingSqlMultiTable: Layer.Layer<
 
       // Cleanup expired entries on startup
       yield* Effect.ignore(
-        sql`DELETE FROM ${table} WHERE expires IS NOT NULL AND expires <= ${clock.currentTimeMillisUnsafe()}`
+        sql`DELETE FROM ${table} WHERE expires IS NOT NULL AND expires <= ${
+          timestampParameter(clock.currentTimeMillisUnsafe())
+        }`
       )
 
       type UpsertFn = (
@@ -355,7 +361,9 @@ export const layerBackingSqlMultiTable: Layer.Layer<
       const upsert = sql.onDialectOrElse({
         pg: (): UpsertFn => (entries) =>
           sql`
-            INSERT INTO ${table} ${sql.insert(entries)}
+            INSERT INTO ${table} ${
+            sql.insert(entries.map((entry) => ({ ...entry, expires: timestampParameter(entry.expires) })))
+          }
             ON CONFLICT (id) DO UPDATE SET value=EXCLUDED.value, expires=EXCLUDED.expires
           `.unprepared,
         mysql: (): UpsertFn => (entries) =>
@@ -394,7 +402,9 @@ export const layerBackingSqlMultiTable: Layer.Layer<
         get: (key) =>
           sql<
             { value: string }
-          >`SELECT value FROM ${table} WHERE id = ${key} AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`
+          >`SELECT value FROM ${table} WHERE id = ${key} AND (expires IS NULL OR expires > ${
+            timestampParameter(clock.currentTimeMillisUnsafe())
+          })`
             .pipe(
               Effect.mapError((cause) =>
                 new PersistenceError({
@@ -421,7 +431,7 @@ export const layerBackingSqlMultiTable: Layer.Layer<
         getMany: (keys) =>
           sql<{ id: string; value: string }>`SELECT id, value FROM ${table} WHERE id IN (${
             sql.literal(keys.map(wrapString).join(", "))
-          }) AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`.unprepared.pipe(
+          }) AND (expires IS NULL OR expires > ${timestampParameter(clock.currentTimeMillisUnsafe())})`.unprepared.pipe(
             Effect.mapError((cause) =>
               new PersistenceError({
                 message: `Failed to getMany from backing store`,
@@ -529,6 +539,10 @@ export const layerBackingSql: Layer.Layer<
   SqlClient.SqlClient
 > = Layer.effect(BackingPersistence)(Effect.gen(function*() {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+  const timestampParameter = sql.onDialectOrElse({
+    pg: () => (value: number | null) => value === null ? null : BigInt(value),
+    orElse: () => (value: number | null) => value
+  })
   const table = sql("effect_persistence")
   yield* sql.onDialectOrElse({
     mysql: () =>
@@ -624,7 +638,7 @@ export const layerBackingSql: Layer.Layer<
           DELETE FROM ${table}
           WHERE ctid IN (
             SELECT ctid FROM ${table}
-            WHERE expires IS NOT NULL AND expires <= ${expiresAtOrBefore}
+            WHERE expires IS NOT NULL AND expires <= ${timestampParameter(expiresAtOrBefore)}
             LIMIT ${sql.literal(String(sqlCleanupBatchSize))}
           )
           RETURNING 1
@@ -696,7 +710,9 @@ export const layerBackingSql: Layer.Layer<
   const upsert = sql.onDialectOrElse({
     pg: (): UpsertFn => (entries) =>
       sql`
-        INSERT INTO ${table} ${sql.insert(entries)}
+        INSERT INTO ${table} ${
+        sql.insert(entries.map((entry) => ({ ...entry, expires: timestampParameter(entry.expires) })))
+      }
         ON CONFLICT (store_id, id) DO UPDATE SET value=EXCLUDED.value, expires=EXCLUDED.expires
       `.unprepared,
     mysql: (): UpsertFn => (entries) =>
@@ -739,7 +755,9 @@ export const layerBackingSql: Layer.Layer<
         get: (key) =>
           sql<
             { value: string }
-          >`SELECT value FROM ${table} WHERE store_id = ${storeId} AND id = ${key} AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`
+          >`SELECT value FROM ${table} WHERE store_id = ${storeId} AND id = ${key} AND (expires IS NULL OR expires > ${
+            timestampParameter(clock.currentTimeMillisUnsafe())
+          })`
             .pipe(
               Effect.mapError((cause) =>
                 new PersistenceError({
@@ -766,7 +784,7 @@ export const layerBackingSql: Layer.Layer<
         getMany: (keys) =>
           sql<{ id: string; value: string }>`SELECT id, value FROM ${table} WHERE store_id = ${storeId} AND id IN (${
             sql.literal(keys.map(wrapString).join(", "))
-          }) AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`.unprepared.pipe(
+          }) AND (expires IS NULL OR expires > ${timestampParameter(clock.currentTimeMillisUnsafe())})`.unprepared.pipe(
             Effect.mapError((cause) =>
               new PersistenceError({
                 message: `Failed to getMany from backing store`,

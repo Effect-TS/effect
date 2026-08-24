@@ -12,4 +12,6 @@ Add `PgConnection`, a native PostgreSQL session on the `PgProtocol` codec.
 
 `PgPool` pools `PgConnection` sessions with the familiar `maxConnections`, `minConnections`, `idleTimeout`, and `connectionTTL` settings: `get` checks a session out, `reserve` checks out and pins, and `invalidate` drops a dead session. Sessions that die from fatal protocol or socket errors are invalidated automatically.
 
-The `PgClient` switchover lands separately. `PgClient` still uses `pg` at runtime.
+`PgClient` now runs on the native pool and connection while retaining its SQL facade, transforms, JSON helpers, and
+LISTEN/NOTIFY helpers. `makeClient` owns one native connection, while `make` uses `PgPool`. The old `fromPool`,
+`fromClient`, and `makeWith` constructors have been removed along with the `pg` runtime dependencies.
