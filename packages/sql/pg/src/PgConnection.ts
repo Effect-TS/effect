@@ -70,6 +70,15 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
  * socket path, while a `host` beginning with `/` is treated as a socket
  * directory and expands to `${host}/.s.PGSQL.${port}`.
  *
+ * `prepare` keeps statements the session has run under a backend name, so a
+ * repeated statement costs `Bind` / `Execute` / `Sync` and no planning. It is
+ * on by default, bounded by `preparedStatementCacheSize`, and applies to
+ * `query` and `queryValues`; `stream` always parses its statement. Turn it off
+ * for a backend that cannot keep named statements between statements, such as
+ * a connection pooler in statement mode. A cached plan is bound to the
+ * `search_path` in force when it was parsed, the usual caveat for prepared
+ * statements anywhere.
+ *
  * `multiplex` marks the session as shareable between fibers. It does not
  * change how statements run - the wire always carries one statement at a
  * time - but it makes `interrupt` a no-op unless the connection is pinned,
@@ -93,6 +102,18 @@ export interface Config {
   readonly stream?: (() => Duplex) | undefined
   readonly types?: PgTypes.Registry | undefined
   readonly multiplex?: boolean | undefined
+  readonly prepare?: boolean | undefined
+  readonly preparedStatementCacheSize?: number | undefined
+}
+
+/**
+ * Builds the prepared-statement cache a session should use, or `undefined`
+ * when `prepare` is off or the cache is sized to nothing.
+ */
+const preparedCacheFor = (config: Config): PreparedCache | undefined => {
+  if (config.prepare === false) return undefined
+  const max = config.preparedStatementCacheSize ?? defaultPreparedStatements
+  return max > 0 ? new PreparedCache(max) : undefined
 }
 
 /**
@@ -288,6 +309,8 @@ class PgConnectionImpl implements PgConnection {
   readonly session: Session
   readonly registry: PgTypes.Registry
   readonly bindEncoder: BindEncoder
+  /** The statements this session has named, or `undefined` when disabled. */
+  readonly prepared: PreparedCache | undefined
   readonly resolved: ResolvedConfig
   readonly multiplex: boolean
   /** Serializes statements: one in-flight extended-query cycle. */
@@ -310,6 +333,7 @@ class PgConnectionImpl implements PgConnection {
     this.processId = session.processId
     this.registry = registry
     this.bindEncoder = makeBindEncoder(registry)
+    this.prepared = preparedCacheFor(config)
     this.multiplex = config.multiplex ?? false
     this.pinnedView = new PinnedPgConnection(this)
     this[internalsKey] = {
@@ -417,8 +441,12 @@ class PgConnectionImpl implements PgConnection {
     )
   }
 
-  readonly encodeQuery = (sql: string, params: ReadonlyArray<unknown>): Uint8Array =>
-    encodeQuery(sql, params, this.registry, this.bindEncoder)
+  /** Plans one execution. `cache` is `undefined` to force the unnamed path. */
+  readonly encodeQuery = (
+    sql: string,
+    params: ReadonlyArray<unknown>,
+    cache: PreparedCache | undefined
+  ): Plan => encodeQuery(sql, params, this.registry, this.bindEncoder, cache)
 
   /** One extended-query cycle guarded by the wire permit. */
   readonly cycle = (
@@ -426,16 +454,34 @@ class PgConnectionImpl implements PgConnection {
     params: ReadonlyArray<unknown>,
     wantRows: boolean
   ): Effect.Effect<QueryOutput, SqlError> =>
-    this.wire.withPermit(Effect.suspend(() => {
-      if (this.deadWith !== undefined) return Effect.fail(this.deadWith)
-      let frame: Uint8Array
-      try {
-        frame = this.encodeQuery(sql, params)
-      } catch (cause) {
-        return Effect.fail(queryError(cause, "PgConnection: Failed to encode query"))
-      }
-      return runQuery(this, frame, wantRows)
-    }))
+    this.wire.withPermit(Effect.suspend(() => this.attempt(sql, params, wantRows, this.prepared)))
+
+  /**
+   * Runs one cycle. A reused statement the backend has since dropped, or whose
+   * plan no longer matches its columns, is parsed again on a second attempt;
+   * that attempt skips the cache, so it cannot loop.
+   */
+  private readonly attempt = (
+    sql: string,
+    params: ReadonlyArray<unknown>,
+    wantRows: boolean,
+    cache: PreparedCache | undefined
+  ): Effect.Effect<QueryOutput, SqlError> => {
+    if (this.deadWith !== undefined) return Effect.fail(this.deadWith)
+    let plan: Plan
+    try {
+      plan = this.encodeQuery(sql, params, cache)
+    } catch (cause) {
+      return Effect.fail(queryError(cause, "PgConnection: Failed to encode query"))
+    }
+    const run = runQuery(this, plan, wantRows)
+    if (cache === undefined || plan.parses) return run
+    return Effect.catchCause(run, (cause) => {
+      if (!plan.stale) return Effect.failCause(cause)
+      cache.evict(plan.prepared!)
+      return this.attempt(sql, params, wantRows, undefined)
+    })
+  }
 
   /** Sends a `CancelRequest` for this session on a side connection. */
   readonly cancel: Effect.Effect<void> = Effect.suspend(() => {
@@ -639,16 +685,63 @@ const describeExecuteSync: Uint8Array = concat([
   PgProtocol.encodeSync()
 ])
 
+/** The same tail for a statement whose columns are already known. */
+const executeSync: Uint8Array = concat([
+  PgProtocol.encodeExecute({ portal: "", maxRows: 0 }),
+  PgProtocol.encodeSync()
+])
+
+/** The default number of statements a connection keeps prepared. */
+const defaultPreparedStatements = 100
+
 /**
- * Builds `Parse` / `Bind` / `Describe` / `Execute` / `Sync` as one buffer, so
- * a statement costs one socket write.
+ * A statement the backend has parsed and holds under a name.
+ *
+ * `ready` turns true once `ParseComplete` confirms the backend has it and the
+ * first execution has reported its columns. Until then the entry is treated as
+ * a miss, which is safe because one cycle runs at a time. A `ready` entry with
+ * no `description` describes a statement that returns no rows.
+ */
+interface Prepared {
+  readonly name: string
+  ready: boolean
+  description: Description | undefined
+}
+
+/** One planned execution: the bytes to write and what to expect back. */
+interface Plan {
+  readonly frame: Uint8Array
+  /** `CloseComplete` messages to consume before the cycle proper. */
+  readonly closes: number
+  /** Whether the frame carries a `Parse`. */
+  readonly parses: boolean
+  /** Whether the frame carries a `Describe`, so the columns arrive on the wire. */
+  readonly describes: boolean
+  /** The statement being filled in or reused, if this execution names one. */
+  readonly prepared: Prepared | undefined
+  /** Set when the columns were already known, so no `RowDescription` is coming. */
+  readonly description: Description | undefined
+  /** Set by the cycle when the backend rejected the name or the cached plan. */
+  stale: boolean
+}
+
+/**
+ * Builds one extended-query cycle as a single buffer, so a statement costs one
+ * socket write.
+ *
+ * A statement the backend already holds under a name needs only
+ * `Bind` / `Execute` / `Sync`: no `Parse` for the backend to plan and no
+ * `Describe`, because the columns came back the first time and are cached with
+ * the name. Statements evicted from the cache ride along as `Close` messages
+ * rather than paying a round trip of their own.
  */
 const encodeQuery = (
   sql: string,
   params: ReadonlyArray<unknown>,
   registry: PgTypes.Registry,
-  encodeBind: BindEncoder
-): Uint8Array => {
+  encodeBind: BindEncoder,
+  cache: PreparedCache | undefined
+): Plan => {
   const count = params.length
   const parameters: Array<PgTypes.Parameter> = new Array(count)
   const parameterTypes: Array<number> = new Array(count)
@@ -657,12 +750,127 @@ const encodeQuery = (
     parameters[index] = parameter
     parameterTypes[index] = parameter.oid
   }
-  const parse = PgProtocol.encodeParse({ name: "", query: sql, parameterTypes })
-  if (EffectResult.isFailure(parse)) throw parse.failure
-  const bind = encodeBind({ portal: "", statement: "", parameters })
+
+  if (cache === undefined) {
+    const parse = PgProtocol.encodeParse({ name: "", query: sql, parameterTypes })
+    if (EffectResult.isFailure(parse)) throw parse.failure
+    const bind = encodeBind({ portal: "", statement: "", parameters })
+    if (EffectResult.isFailure(bind)) throw bind.failure
+    return {
+      frame: concat([parse.success, bind.success, describeExecuteSync]),
+      closes: 0,
+      parses: true,
+      describes: true,
+      prepared: undefined,
+      description: undefined,
+      stale: false
+    }
+  }
+
+  const prepared = cache.get(sql, parameterTypes)
+  const bind = encodeBind({ portal: "", statement: prepared.name, parameters })
   if (EffectResult.isFailure(bind)) throw bind.failure
-  return concat([parse.success, bind.success, describeExecuteSync])
+  const closeFrames = cache.takeCloses()
+
+  if (prepared.ready) {
+    return {
+      frame: closeFrames === undefined
+        ? concat([bind.success, executeSync])
+        : concat([closeFrames.frames, bind.success, executeSync]),
+      closes: closeFrames?.count ?? 0,
+      parses: false,
+      describes: false,
+      prepared,
+      description: prepared.description,
+      stale: false
+    }
+  }
+
+  const parse = PgProtocol.encodeParse({ name: prepared.name, query: sql, parameterTypes })
+  if (EffectResult.isFailure(parse)) throw parse.failure
+  return {
+    frame: closeFrames === undefined
+      ? concat([parse.success, bind.success, describeExecuteSync])
+      : concat([closeFrames.frames, parse.success, bind.success, describeExecuteSync]),
+    closes: closeFrames?.count ?? 0,
+    parses: true,
+    describes: true,
+    prepared,
+    description: undefined,
+    stale: false
+  }
 }
+
+/**
+ * The statements one connection has prepared, keyed by SQL text and the
+ * parameter OIDs inferred for it: the same text with differently typed
+ * parameters is a different statement to the backend.
+ *
+ * The cache is bounded and evicts least-recently-used. An evicted statement is
+ * closed on the backend, but its `Close` waits for the next statement to go
+ * out rather than taking a round trip of its own.
+ */
+class PreparedCache {
+  readonly max: number
+  private readonly statements = new Map<string, Prepared>()
+  private closes: Array<Uint8Array> | undefined
+  private counter = 0
+
+  constructor(max: number) {
+    this.max = max
+  }
+
+  get(sql: string, parameterTypes: ReadonlyArray<number>): Prepared {
+    const key = parameterTypes.length === 0 ? sql : `${sql}\u0000${parameterTypes.join(",")}`
+    const found = this.statements.get(key)
+    if (found !== undefined) {
+      // Re-insert to move it to the end: `Map` iterates in insertion order, so
+      // the first key is the least recently used one.
+      this.statements.delete(key)
+      this.statements.set(key, found)
+      return found
+    }
+    const prepared: Prepared = { name: `effect${++this.counter}`, ready: false, description: undefined }
+    this.statements.set(key, prepared)
+    if (this.statements.size > this.max) {
+      const oldest = this.statements.keys().next()
+      if (!oldest.done) {
+        const evicted = this.statements.get(oldest.value)!
+        this.statements.delete(oldest.value)
+        if (evicted.ready) this.close(evicted.name)
+      }
+    }
+    return prepared
+  }
+
+  /** Drops a statement the backend no longer holds, or whose plan went stale. */
+  evict(prepared: Prepared): void {
+    for (const [key, value] of this.statements) {
+      if (value === prepared) {
+        this.statements.delete(key)
+        break
+      }
+    }
+  }
+
+  private close(name: string): void {
+    ;(this.closes ??= []).push(PgProtocol.encodeClose({ target: "statement", name }))
+  }
+
+  takeCloses(): { readonly frames: Uint8Array; readonly count: number } | undefined {
+    const closes = this.closes
+    if (closes === undefined) return undefined
+    this.closes = undefined
+    return { frames: closes.length === 1 ? closes[0] : concat(closes), count: closes.length }
+  }
+}
+
+/**
+ * SQLSTATEs that mean "this name is no longer usable": the backend lost the
+ * statement, or the plan behind it no longer matches the columns it was
+ * prepared for. Both are recovered by parsing the statement again.
+ */
+const isStalePreparedStatement = (code: string | undefined): boolean => code === "26000" || code === "0A000"
 
 type BindEncoder = (options: {
   readonly portal: string
@@ -684,7 +892,7 @@ const connectionQueryError = (cause: unknown, message: string): SqlError =>
 
 const escapeIdentifier = (identifier: string): string => `"${identifier.replaceAll("\"", "\"\"")}"`
 
-type QueryPhase = "parse" | "bind" | "describe" | "rows" | "complete" | "error"
+type QueryPhase = "close" | "parse" | "bind" | "describe" | "rows" | "complete" | "error"
 
 /**
  * Splits a command tag such as `SELECT 3` or `INSERT 0 1`. Reading the two
@@ -718,7 +926,7 @@ const isDigits = (value: string): boolean => {
 
 const runQuery = (
   conn: PgConnectionImpl,
-  frame: Uint8Array,
+  plan: Plan,
   wantRows: boolean
 ): Effect.Effect<QueryOutput, SqlError> =>
   Effect.callback<QueryOutput, SqlError>((resume) => {
@@ -731,10 +939,11 @@ const runQuery = (
     let aborted = false
     let drainDone: (() => void) | undefined
     const parser = conn.session.parser
-    let phase: QueryPhase = "parse"
-    let fieldCount = 0
-    let resultFields: ReadonlyArray<Field> = emptyFields
-    let rowBuilder: RowBuilder | undefined
+    let closes = plan.closes
+    let phase: QueryPhase = closes > 0 ? "close" : plan.parses ? "parse" : "bind"
+    let fieldCount = plan.description?.resultFields.length ?? 0
+    let resultFields: ReadonlyArray<Field> = plan.description?.resultFields ?? emptyFields
+    let rowBuilder: RowBuilder | undefined = plan.description?.rowBuilder
     const rows: Array<Row> = []
     const values: Array<ReadonlyArray<unknown>> = []
     let command = ""
@@ -784,13 +993,17 @@ const runQuery = (
         }
       }
       switch (message._tag) {
+        case "CloseComplete":
+          if (phase !== "close") return failDesync(`Unexpected CloseComplete during ${phase}`)
+          if (--closes === 0) phase = plan.parses ? "parse" : "bind"
+          return
         case "ParseComplete":
           if (phase !== "parse") return failDesync(`Unexpected ParseComplete during ${phase}`)
           phase = "bind"
           return
         case "BindComplete":
           if (phase !== "bind") return failDesync(`Unexpected BindComplete during ${phase}`)
-          phase = "describe"
+          phase = plan.describes ? "describe" : "rows"
           return
         case "RowDescription": {
           if (phase !== "describe") return failDesync(`Unexpected RowDescription during ${phase}`)
@@ -804,11 +1017,19 @@ const runQuery = (
           // The parser hands this message over before it reads the rows behind
           // it, so the columns decode in place from here on.
           parser.readField = description.success.readField
+          if (plan.prepared !== undefined) {
+            plan.prepared.description = description.success
+            plan.prepared.ready = true
+          }
           phase = "rows"
           return
         }
         case "NoData":
           if (phase !== "describe") return failDesync(`Unexpected NoData during ${phase}`)
+          if (plan.prepared !== undefined) {
+            plan.prepared.description = undefined
+            plan.prepared.ready = true
+          }
           phase = "rows"
           return
         case "DataRow": {
@@ -837,6 +1058,7 @@ const runQuery = (
           phase = "complete"
           return
         case "ErrorResponse": {
+          if (isStalePreparedStatement(message.fields.code)) plan.stale = true
           // Every phase drains the same way: the backend skips the rest of the
           // cycle and sends `ReadyForQuery` after the `Sync` that closes it, so
           // a statement it refused to parse leaves the session usable.
@@ -865,9 +1087,11 @@ const runQuery = (
     }
 
     conn.consumer = { onMessage, onFatal }
-    parser.readField = undefined
+    // A reused statement has no `RowDescription` coming, so its reader has to
+    // be in place before the rows are.
+    parser.readField = plan.description?.readField
     try {
-      socket.write(frame)
+      socket.write(plan.frame)
     } catch (cause) {
       failFatal(connectionQueryError(cause, "PgConnection: Failed to write query"))
     }
@@ -978,10 +1202,14 @@ const streamRows = (
       scope
     )
     if (conn.deadWith !== undefined) return yield* Effect.fail(conn.deadWith)
-    const frame = yield* Effect.try({
-      try: () => conn.encodeQuery(sql, params),
+    // Streams stay on the unnamed path: a stream pays its setup once over the
+    // whole result, so naming the statement buys little and would need the
+    // stale-plan retry to unwind rows already delivered.
+    const plan = yield* Effect.try({
+      try: () => conn.encodeQuery(sql, params, undefined),
       catch: (cause) => queryError(cause, "PgConnection: Failed to encode query")
     })
+    const frame = plan.frame
 
     const socket = conn.session.socket
     const parser = conn.session.parser
@@ -1103,9 +1331,6 @@ const streamRows = (
           phase = "complete"
           return
         case "ErrorResponse": {
-          // Every phase drains the same way: the backend skips the rest of the
-          // cycle and sends `ReadyForQuery` after the `Sync` that closes it, so
-          // a statement it refused to parse leaves the session usable.
           failure = new SqlError({
             reason: classifyFields(message.fields, "PgConnection: Query failed", "query")
           })

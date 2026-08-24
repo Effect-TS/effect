@@ -124,6 +124,98 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       assert.strictEqual(error.reason._tag, "ConnectionError")
       assert.include(error.reason.message, "refused TLS")
     }))
+  it.effect("reuses a prepared statement and keeps its columns", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const connection = yield* PgConnection.make({
+        url: Redacted.make(container.getConnectionUri())
+      })
+      for (let index = 0; index < 3; index++) {
+        const result = yield* connection.query("SELECT $1::int4 AS value, $2::text AS label", [index, "x"])
+        assert.deepStrictEqual(result.rows, [{ value: index, label: "x" }])
+        assert.deepStrictEqual(result.fields, [
+          { name: "value", dataTypeId: 23 },
+          { name: "label", dataTypeId: 25 }
+        ])
+      }
+      const prepared = yield* connection.query("SELECT count(*)::int4 AS n FROM pg_prepared_statements")
+      assert.deepStrictEqual(prepared.rows[0], { n: 2 })
+    }))
+
+  it.effect("prepares the same text once per parameter signature", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const connection = yield* PgConnection.make({
+        url: Redacted.make(container.getConnectionUri())
+      })
+      assert.deepStrictEqual((yield* connection.query("SELECT $1 AS v", [1])).rows, [{ v: 1 }])
+      assert.deepStrictEqual((yield* connection.query("SELECT $1 AS v", [BigInt(2)])).rows, [{ v: BigInt(2) }])
+      const types = yield* connection.query(
+        "SELECT parameter_types::text AS t FROM pg_prepared_statements WHERE statement = 'SELECT $1 AS v' ORDER BY t"
+      )
+      assert.deepStrictEqual(types.rows, [{ t: "{bigint}" }, { t: "{integer}" }])
+    }))
+
+  it.effect("re-parses a statement whose result type changed", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const connection = yield* PgConnection.make({
+        url: Redacted.make(container.getConnectionUri())
+      })
+      yield* connection.query("CREATE TEMP TABLE shifting (a int)")
+      yield* connection.query("INSERT INTO shifting VALUES (1)")
+      assert.deepStrictEqual((yield* connection.query("SELECT * FROM shifting")).rows, [{ a: 1 }])
+      yield* connection.query("ALTER TABLE shifting ADD COLUMN b text DEFAULT 'added'")
+      const after = yield* connection.query("SELECT * FROM shifting")
+      assert.deepStrictEqual(after.rows, [{ a: 1, b: "added" }])
+      assert.deepStrictEqual(after.fields, [
+        { name: "a", dataTypeId: 23 },
+        { name: "b", dataTypeId: 25 }
+      ])
+    }))
+
+  it.effect("re-parses a statement the backend no longer holds", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const connection = yield* PgConnection.make({
+        url: Redacted.make(container.getConnectionUri())
+      })
+      assert.deepStrictEqual((yield* connection.query("SELECT $1::int4 AS n", [7])).rows, [{ n: 7 }])
+      yield* connection.query("DEALLOCATE ALL")
+      assert.deepStrictEqual((yield* connection.query("SELECT $1::int4 AS n", [8])).rows, [{ n: 8 }])
+    }))
+
+  it.effect("closes statements it evicts from a full cache", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const connection = yield* PgConnection.make({
+        url: Redacted.make(container.getConnectionUri()),
+        preparedStatementCacheSize: 3
+      })
+      for (let round = 0; round < 2; round++) {
+        for (let index = 0; index < 8; index++) {
+          const result = yield* connection.query(`SELECT ${index}::int4 AS n, $1::text AS t`, ["v"])
+          assert.deepStrictEqual(result.rows, [{ n: index, t: "v" }])
+        }
+      }
+      const held = yield* connection.query("SELECT count(*)::int4 AS n FROM pg_prepared_statements")
+      assert.deepStrictEqual(held.rows[0], { n: 3 })
+    }))
+
+  it.effect("parses every statement when prepare is off", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const connection = yield* PgConnection.make({
+        url: Redacted.make(container.getConnectionUri()),
+        prepare: false
+      })
+      for (let index = 0; index < 3; index++) {
+        assert.deepStrictEqual((yield* connection.query("SELECT $1::int4 AS n", [index])).rows, [{ n: index }])
+      }
+      const held = yield* connection.query("SELECT count(*)::int4 AS n FROM pg_prepared_statements")
+      assert.deepStrictEqual(held.rows[0], { n: 0 })
+    }))
+
   it.effect("stays usable after a statement the server refuses to parse", () =>
     Effect.gen(function*() {
       const container = yield* PgContainer

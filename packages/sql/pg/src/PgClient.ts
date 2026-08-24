@@ -100,6 +100,14 @@ export interface PgClientConfig {
   readonly types?: PgTypes.Registry | undefined
   /** Allows multiple fibers to share a pooled connection between pinned operations. */
   readonly multiplex?: boolean | undefined
+  /**
+   * Keeps statements prepared under a backend name, so a repeated statement
+   * skips parsing and planning. On by default. Turn it off for a connection
+   * pooler that cannot keep named statements between statements.
+   */
+  readonly prepare?: boolean | undefined
+  /** How many statements a connection keeps prepared. Defaults to `100`. */
+  readonly preparedStatementCacheSize?: number | undefined
 }
 
 /**
