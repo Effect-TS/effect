@@ -23,7 +23,6 @@ import {
   SchemaTransformation,
   Stream
 } from "effect"
-import * as FastCheck from "effect/testing/FastCheck"
 import * as SchemaBinary from "effect/unstable/encoding/SchemaBinary"
 
 const encode = <A, I>(schema: Schema.Codec<A, I>, value: A): Uint8Array<ArrayBuffer> =>
@@ -2390,11 +2389,11 @@ describe("SchemaBinary", () => {
       ),
       event: Event
     })
-    const generated = Schema.toArbitrary(Generated)(FastCheck)
-
-    it("keeps every encoding entry point equivalent for generated nested values", () => {
-      FastCheck.assert(
-        FastCheck.property(generated, (value) => {
+    it.live.prop(
+      "keeps every encoding entry point equivalent for generated nested values",
+      { value: Generated },
+      ({ value }) =>
+        Effect.sync(() => {
           for (const fingerprint of [false, true]) {
             const options = { fingerprint } as const
             const codec = SchemaBinary.toCodec(Generated, options)
@@ -2410,40 +2409,47 @@ describe("SchemaBinary", () => {
             assert.deepStrictEqual(SchemaBinary.parser(Generated, options).feedSync(frame), [value])
           }
         }),
-        { numRuns: 200 }
-      )
-    })
+      { fastCheck: { numRuns: 200 } }
+    )
 
-    it("parses generated batches across arbitrary chunk boundaries", () => {
-      FastCheck.assert(
-        FastCheck.property(
-          FastCheck.array(generated, { maxLength: 20 }),
-          FastCheck.array(FastCheck.integer({ min: 1, max: 64 }), { minLength: 1, maxLength: 30 }),
-          FastCheck.boolean(),
-          (values, chunkSizes, fingerprint) => {
-            const options = fingerprint ? { fingerprint: true } as const : undefined
-            const bytes = SchemaBinary.encodeManyUnknownSync(Generated, options)(values)
-            const parser = SchemaBinary.parser(Generated, options)
-            const decoded: Array<typeof Generated.Type> = []
-            let offset = 0
-            for (const size of chunkSizes) {
-              if (offset >= bytes.length) break
-              const end = Math.min(offset + size, bytes.length)
-              decoded.push(...parser.feedSync(bytes.subarray(offset, end)))
-              offset = end
-            }
-            if (offset < bytes.length) decoded.push(...parser.feedSync(bytes.subarray(offset)))
-            parser.endSync()
-            assert.deepStrictEqual(decoded, values)
+    it.live.prop(
+      "parses generated batches across arbitrary chunk boundaries",
+      {
+        values: Schema.Array(Generated).check(Schema.isMaxLength(20)),
+        chunkSizes: Schema.Array(
+          Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 64 }))
+        ).check(Schema.isMinLength(1), Schema.isMaxLength(30)),
+        fingerprint: Schema.Boolean
+      },
+      ({ chunkSizes, fingerprint, values }) =>
+        Effect.sync(() => {
+          const options = fingerprint ? { fingerprint: true } as const : undefined
+          const bytes = SchemaBinary.encodeManyUnknownSync(Generated, options)(values)
+          const parser = SchemaBinary.parser(Generated, options)
+          const decoded: Array<typeof Generated.Type> = []
+          let offset = 0
+          for (const size of chunkSizes) {
+            if (offset >= bytes.length) break
+            const end = Math.min(offset + size, bytes.length)
+            decoded.push(...parser.feedSync(bytes.subarray(offset, end)))
+            offset = end
           }
-        ),
-        { numRuns: 100 }
-      )
-    })
+          if (offset < bytes.length) decoded.push(...parser.feedSync(bytes.subarray(offset)))
+          parser.endSync()
+          assert.deepStrictEqual(decoded, values)
+        }),
+      { fastCheck: { numRuns: 100 } }
+    )
 
-    it("rejects every generated truncated frame", () => {
-      FastCheck.assert(
-        FastCheck.property(generated, FastCheck.nat(), FastCheck.boolean(), (value, offset, fingerprint) => {
+    it.live.prop(
+      "rejects every generated truncated frame",
+      {
+        value: Generated,
+        offset: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+        fingerprint: Schema.Boolean
+      },
+      ({ fingerprint, offset, value }) =>
+        Effect.sync(() => {
           const options = fingerprint ? { fingerprint: true } as const : undefined
           const bytes = SchemaBinary.encodeUnknownSync(Generated, options)(value)
           const cut = 1 + offset % (bytes.length - 1)
@@ -2452,9 +2458,8 @@ describe("SchemaBinary", () => {
           assert.deepStrictEqual(parser.feedSync(bytes.subarray(0, cut)), [])
           assert.match(schemaError(() => parser.endSync()).message, /complete value/)
         }),
-        { numRuns: 100 }
-      )
-    })
+      { fastCheck: { numRuns: 100 } }
+    )
 
     it("owns buffered and decoded bytes independently of caller buffers", () => {
       const schema = Schema.Struct({ label: Schema.String, bytes: Schema.Uint8Array })
