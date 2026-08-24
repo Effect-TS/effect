@@ -613,7 +613,7 @@ class PgConnectionImpl implements PgConnection {
         }
         const deferred = Deferred.makeUnsafe<QueryOutput, SqlError>()
         let entry: PipelineEntry
-        const machine = makeQueryMachine(this, plan, wantRows, (result) => this.finishPipelineEntry(entry, result))
+        const machine = new QueryMachine(this, plan, wantRows, (result) => this.finishPipelineEntry(entry, result))
         entry = { plan, deferred, machine, abandoned: false }
         this.pipelinePending.push(entry)
         this.consumer = this.pipelineConsumer
@@ -1160,171 +1160,209 @@ const isDigits = (value: string): boolean => {
  * cycles be in flight at once, each holding its own state while the connection
  * routes messages to whichever is at the head of the queue.
  */
-interface QueryMachine extends Consumer {
-  readonly isDone: () => boolean
-  readonly abort: (onDrained: () => void) => void
+/**
+ * The per-statement half of a cycle: a state machine fed backend messages that
+ * reports the result once. Splitting it out of `runQuery` is what lets several
+ * cycles be in flight at once, each holding its own state while the connection
+ * routes messages to whichever is at the head of the queue.
+ *
+ * It is a class rather than a closure over local state because a statement
+ * allocates one of these and the garbage collector is the largest remaining
+ * cost on the query path: the methods live on the prototype instead of being
+ * rebuilt per statement.
+ */
+class QueryMachine implements Consumer {
+  private readonly conn: PgConnectionImpl
+  private readonly plan: Plan
+  private readonly finish: (effect: Effect.Effect<QueryOutput, SqlError>) => void
   /** Installed on the parser while this machine is at the head of the queue. */
   readonly readField: PgProtocol.FieldReader<unknown> | undefined
-}
+  /** Object rows, or `undefined` when the caller asked for positional ones. */
+  private readonly rows: Array<Row> | undefined
+  private readonly values: Array<ReadonlyArray<unknown>> | undefined
 
-const makeQueryMachine = (
-  conn: PgConnectionImpl,
-  plan: Plan,
-  wantRows: boolean,
-  finish: (effect: Effect.Effect<QueryOutput, SqlError>) => void
-): QueryMachine => {
-  const parser = conn.session.parser
-  let closes = plan.closes
-  let phase: QueryPhase = closes > 0 ? "close" : plan.parses ? "parse" : "bind"
-  let fieldCount = plan.description?.resultFields.length ?? 0
-  let resultFields: ReadonlyArray<Field> = plan.description?.resultFields ?? emptyFields
-  let rowBuilder: RowBuilder | undefined = plan.description?.rowBuilder
-  const rows: Array<Row> = []
-  const values: Array<ReadonlyArray<unknown>> = []
-  let command = ""
-  let rowCount = 0
-  let oid: number | null = null
-  let failure: SqlError | undefined
-  let done = false
-  let aborted = false
-  let drainDone: (() => void) | undefined
+  private closes: number
+  private phase: QueryPhase
+  private fieldCount: number
+  private resultFields: ReadonlyArray<Field>
+  private rowBuilder: RowBuilder | undefined
+  private command = ""
+  private rowCount = 0
+  private oid: number | null = null
+  private failure: SqlError | undefined
+  private done = false
+  private aborted = false
+  private drainDone: (() => void) | undefined
 
-  const complete = (effect: Effect.Effect<QueryOutput, SqlError>): void => {
-    if (done) return
-    done = true
+  constructor(
+    conn: PgConnectionImpl,
+    plan: Plan,
+    wantRows: boolean,
+    finish: (effect: Effect.Effect<QueryOutput, SqlError>) => void
+  ) {
+    this.conn = conn
+    this.plan = plan
+    this.finish = finish
+    this.rows = wantRows ? [] : undefined
+    this.values = wantRows ? undefined : []
+    this.closes = plan.closes
+    this.phase = plan.closes > 0 ? "close" : plan.parses ? "parse" : "bind"
+    const description = plan.description
+    this.readField = description?.readField
+    this.fieldCount = description?.resultFields.length ?? 0
+    this.resultFields = description?.resultFields ?? emptyFields
+    this.rowBuilder = description?.rowBuilder
+  }
+
+  isDone(): boolean {
+    return this.done
+  }
+
+  abort(onDrained: () => void): void {
+    if (this.done) return onDrained()
+    this.aborted = true
+    this.drainDone = onDrained
+  }
+
+  private complete(effect: Effect.Effect<QueryOutput, SqlError>): void {
+    if (this.done) return
+    this.done = true
     // Whether it parsed or not, this cycle no longer holds the name: success
     // has already marked it ready, failure leaves it to be parsed again.
-    if (plan.prepared !== undefined) plan.prepared.parsing = false
-    finish(effect)
+    const prepared = this.plan.prepared
+    if (prepared !== undefined) prepared.parsing = false
+    this.finish(effect)
   }
-  const failFatal = (error: SqlError): void => conn.fatal(error)
-  const failDesync = (message: string): void =>
-    failFatal(connectionQueryError(new Error(message), `PgConnection: ${message}`))
 
-  return {
-    readField: plan.description?.readField,
-    isDone: () => done,
-    abort: (onDrained) => {
-      if (done) return onDrained()
-      aborted = true
-      drainDone = onDrained
-    },
-    onFatal: (error) => {
-      if (done) return
-      done = true
-      if (plan.prepared !== undefined) plan.prepared.parsing = false
-      if (aborted) drainDone?.()
-      else finish(Effect.fail(error))
-    },
-    onMessage: (message) => {
-      if (aborted) {
-        if (message._tag === "ReadyForQuery") {
-          done = true
-          drainDone?.()
+  private failDesync(message: string): void {
+    this.conn.fatal(connectionQueryError(new Error(message), `PgConnection: ${message}`))
+  }
+
+  onFatal(error: SqlError): void {
+    if (this.done) return
+    this.done = true
+    const prepared = this.plan.prepared
+    if (prepared !== undefined) prepared.parsing = false
+    if (this.aborted) this.drainDone?.()
+    else this.finish(Effect.fail(error))
+  }
+
+  onMessage(message: PgProtocol.BackendMessage<unknown>): void {
+    if (this.aborted) {
+      if (message._tag === "ReadyForQuery") {
+        this.done = true
+        this.drainDone?.()
+      }
+      return
+    }
+    if (this.phase === "error") {
+      if (message._tag === "ReadyForQuery") return this.complete(Effect.fail(this.failure!))
+      return this.failDesync(`Unexpected ${message._tag} after ErrorResponse`)
+    }
+    switch (message._tag) {
+      case "CloseComplete":
+        if (this.phase !== "close") return this.failDesync(`Unexpected CloseComplete during ${this.phase}`)
+        if (--this.closes === 0) this.phase = this.plan.parses ? "parse" : "bind"
+        return
+      case "ParseComplete":
+        if (this.phase !== "parse") return this.failDesync(`Unexpected ParseComplete during ${this.phase}`)
+        this.phase = "bind"
+        return
+      case "BindComplete":
+        if (this.phase !== "bind") return this.failDesync(`Unexpected BindComplete during ${this.phase}`)
+        this.phase = this.plan.describes ? "describe" : "rows"
+        return
+      case "RowDescription": {
+        if (this.phase !== "describe") return this.failDesync(`Unexpected RowDescription during ${this.phase}`)
+        const description = describe(message.fields, this.conn.registry)
+        if (EffectResult.isFailure(description)) {
+          return this.conn.fatal(queryError(description.failure, "PgConnection: Failed to decode row"))
         }
+        this.fieldCount = message.fields.length
+        this.resultFields = description.success.resultFields
+        this.rowBuilder = description.success.rowBuilder
+        // `pushEach` hands this description over before it reads the rows
+        // behind it, including rows that arrived in the same chunk.
+        this.conn.session.parser.readField = description.success.readField
+        const prepared = this.plan.prepared
+        if (prepared !== undefined) {
+          prepared.description = description.success
+          prepared.ready = true
+        }
+        this.phase = "rows"
         return
       }
-      if (phase === "error") {
-        switch (message._tag) {
-          case "ReadyForQuery":
-            return complete(Effect.fail(failure!))
-          default:
-            return failDesync(`Unexpected ${message._tag} after ErrorResponse`)
+      case "NoData": {
+        if (this.phase !== "describe") return this.failDesync(`Unexpected NoData during ${this.phase}`)
+        const prepared = this.plan.prepared
+        if (prepared !== undefined) {
+          prepared.description = undefined
+          prepared.ready = true
         }
+        this.phase = "rows"
+        return
       }
-      switch (message._tag) {
-        case "CloseComplete":
-          if (phase !== "close") return failDesync(`Unexpected CloseComplete during ${phase}`)
-          if (--closes === 0) phase = plan.parses ? "parse" : "bind"
-          return
-        case "ParseComplete":
-          if (phase !== "parse") return failDesync(`Unexpected ParseComplete during ${phase}`)
-          phase = "bind"
-          return
-        case "BindComplete":
-          if (phase !== "bind") return failDesync(`Unexpected BindComplete during ${phase}`)
-          phase = plan.describes ? "describe" : "rows"
-          return
-        case "RowDescription": {
-          if (phase !== "describe") return failDesync(`Unexpected RowDescription during ${phase}`)
-          const description = describe(message.fields, conn.registry)
-          if (EffectResult.isFailure(description)) {
-            return failFatal(queryError(description.failure, "PgConnection: Failed to decode row"))
-          }
-          fieldCount = message.fields.length
-          resultFields = description.success.resultFields
-          rowBuilder = description.success.rowBuilder
-          // `pushEach` hands this description over before it reads the rows
-          // behind it, including rows that arrived in the same chunk.
-          parser.readField = description.success.readField
-          if (plan.prepared !== undefined) {
-            plan.prepared.description = description.success
-            plan.prepared.ready = true
-          }
-          phase = "rows"
-          return
+      case "DataRow": {
+        if (this.phase !== "rows" || this.rowBuilder === undefined) {
+          return this.failDesync(`Unexpected DataRow during ${this.phase}`)
         }
-        case "NoData":
-          if (phase !== "describe") return failDesync(`Unexpected NoData during ${phase}`)
-          if (plan.prepared !== undefined) {
-            plan.prepared.description = undefined
-            plan.prepared.ready = true
-          }
-          phase = "rows"
-          return
-        case "DataRow": {
-          if (phase !== "rows" || rowBuilder === undefined) {
-            return failDesync(`Unexpected DataRow during ${phase}`)
-          }
-          const rowValues = message.values
-          if (rowValues.length !== fieldCount) {
-            return failDesync(`DataRow has ${rowValues.length} values for ${fieldCount} fields`)
-          }
-          if (wantRows) rows.push(rowBuilder(rowValues))
-          else values.push(rowValues)
-          return
+        const rowValues = message.values
+        if (rowValues.length !== this.fieldCount) {
+          return this.failDesync(`DataRow has ${rowValues.length} values for ${this.fieldCount} fields`)
         }
-        case "CommandComplete": {
-          if (phase !== "rows") return failDesync(`Unexpected CommandComplete during ${phase}`)
-          const parsed = parseCommandTag(message.commandTag)
-          command = parsed.command
-          rowCount = parsed.rowCount
-          oid = parsed.oid
-          phase = "complete"
-          return
-        }
-        case "EmptyQueryResponse":
-          if (phase !== "rows") return failDesync(`Unexpected EmptyQueryResponse during ${phase}`)
-          phase = "complete"
-          return
-        case "ErrorResponse":
-          if (isStalePreparedStatement(message.fields.code)) plan.stale = true
-          // Every phase drains the same way: the backend skips the rest of the
-          // cycle and sends `ReadyForQuery` after the `Sync` that closes it, so
-          // a statement it refused to parse leaves the session usable.
-          failure = new SqlError({
-            reason: classifyFields(message.fields, "PgConnection: Query failed", "query")
-          })
-          phase = "error"
-          return
-        case "ReadyForQuery":
-          if (phase !== "complete") return failDesync(`Unexpected ReadyForQuery during ${phase}`)
-          return complete(Effect.succeed({
-            result: { command, rowCount, oid, rows, fields: resultFields },
-            values
-          }))
-        case "CopyInResponse":
-        case "CopyOutResponse":
-        case "CopyBothResponse":
-        case "CopyData":
-        case "CopyDone":
-          return failDesync(`Unexpected ${message._tag}; COPY is not supported`)
-        default:
-          return failDesync(`Unexpected ${message._tag} during ${phase}`)
+        if (this.rows !== undefined) this.rows.push(this.rowBuilder(rowValues))
+        else this.values!.push(rowValues)
+        return
       }
+      case "CommandComplete": {
+        if (this.phase !== "rows") return this.failDesync(`Unexpected CommandComplete during ${this.phase}`)
+        const parsed = parseCommandTag(message.commandTag)
+        this.command = parsed.command
+        this.rowCount = parsed.rowCount
+        this.oid = parsed.oid
+        this.phase = "complete"
+        return
+      }
+      case "EmptyQueryResponse":
+        if (this.phase !== "rows") return this.failDesync(`Unexpected EmptyQueryResponse during ${this.phase}`)
+        this.phase = "complete"
+        return
+      case "ErrorResponse":
+        if (isStalePreparedStatement(message.fields.code)) this.plan.stale = true
+        // Every phase drains the same way: the backend skips the rest of the
+        // cycle and sends `ReadyForQuery` after the `Sync` that closes it, so
+        // a statement it refused to parse leaves the session usable.
+        this.failure = new SqlError({
+          reason: classifyFields(message.fields, "PgConnection: Query failed", "query")
+        })
+        this.phase = "error"
+        return
+      case "ReadyForQuery":
+        if (this.phase !== "complete") return this.failDesync(`Unexpected ReadyForQuery during ${this.phase}`)
+        return this.complete(Effect.succeed({
+          result: {
+            command: this.command,
+            rowCount: this.rowCount,
+            oid: this.oid,
+            rows: this.rows ?? emptyRows,
+            fields: this.resultFields
+          },
+          values: this.values ?? emptyValues
+        }))
+      case "CopyInResponse":
+      case "CopyOutResponse":
+      case "CopyBothResponse":
+      case "CopyData":
+      case "CopyDone":
+        return this.failDesync(`Unexpected ${message._tag}; COPY is not supported`)
+      default:
+        return this.failDesync(`Unexpected ${message._tag} during ${this.phase}`)
     }
   }
 }
+
+const emptyRows: ReadonlyArray<Row> = []
+const emptyValues: ReadonlyArray<ReadonlyArray<unknown>> = []
 
 /** One cycle on a connection that carries a single statement at a time. */
 const runQuery = (
@@ -1337,7 +1375,7 @@ const runQuery = (
       resume(Effect.fail(conn.deadWith))
       return
     }
-    const machine = makeQueryMachine(conn, plan, wantRows, (effect) => {
+    const machine = new QueryMachine(conn, plan, wantRows, (effect) => {
       conn.consumer = undefined
       resume(effect)
     })
