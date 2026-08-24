@@ -156,7 +156,7 @@ const ISOLATION_PORT = 50_124
 
 // BigDecimal.normalize creates a circular `normalized` self-reference.
 // When a persisted message is sent with discard: true, the notify path in Runners.makeRpc
-// passes the raw envelope (with circular BigDecimal payload) to the runner via msgpack,
+// passes the raw envelope (with circular BigDecimal payload) to the runner,
 // causing RangeError: Maximum call stack size exceeded.
 //
 // Volatile discard should complete after the request is sent, without waiting for the
@@ -164,7 +164,7 @@ const ISOLATION_PORT = 50_124
 describe("SocketRunner", () => {
   it.live(
     "uses SchemaBinary by default for TCP connections",
-    () => assertSerialization(50_120, RpcSerialization.layerSchemaBinary()),
+    () => assertSerialization(50_120, RpcSerialization.layerSchemaBinary({ payloadEncoding: "json" })),
     15_000
   )
 
@@ -179,7 +179,11 @@ describe("SocketRunner", () => {
     () =>
       Effect.gen(function*() {
         yield* Layer.launch(
-          makeRunnerLayer(50_122, SerializationEntityLayer, RpcSerialization.layerSchemaBinary())
+          makeRunnerLayer(
+            50_122,
+            SerializationEntityLayer,
+            RpcSerialization.layerSchemaBinary({ payloadEncoding: "json" })
+          )
         ).pipe(Effect.forkScoped)
         yield* Effect.sleep("2 seconds")
 

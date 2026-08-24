@@ -594,23 +594,22 @@ export const msgPack: RpcSerialization["Service"] = makeMsgPack({ useRecords: tr
 const defaultSchemaBinaryMaxFrameSize = 16 * 1024 * 1024
 
 const schemaBinaryTextEncoder = new TextEncoder()
+const codecForJsonBinary: CodecFor = (schema) => SchemaBinary.toCodec(Schema.toCodecJson(schema)) as any
 
 const makeSchemaBinary = (options?: {
   readonly maxFrameSize?: number | "unbounded" | undefined
   readonly fingerprintPayloads?: boolean | undefined
+  readonly payloadEncoding?: "schemaBinary" | "json" | undefined
 }): RpcSerialization["Service"] => {
   const maxFrameSize = options?.maxFrameSize === "unbounded"
     ? undefined
     : options?.maxFrameSize ?? defaultSchemaBinaryMaxFrameSize
-  const codecFor: CodecFor = options?.fingerprintPayloads === true
+  const codecFor: CodecFor = options?.payloadEncoding === "json"
+    ? codecForJsonBinary
+    : options?.fingerprintPayloads === true
     ? (schema) => SchemaBinary.toCodecDirect(schema, { fingerprint: true })
     : SchemaBinary.toCodecDirect
-  // The envelope repeats itself: the same RPC tag, header names, and trace ids
-  // come back on message after message. A dictionary shared by every frame on
-  // the connection sends each of those once and references it afterwards, so
-  // the writer and the reader here are a matched pair and neither one works
-  // against a peer that was built without the other.
-  const envelopeOptions = { fingerprint: true, dictionary: true } as const
+  const envelopeOptions = { fingerprint: true } as const
   return RpcSerialization.of({
     contentType: "application/vnd.effect.rpc+schema-binary",
     includesFraming: true,
@@ -718,7 +717,8 @@ export const layerMsgPackWith = (
  * RPC serialization layer that uses SchemaBinary with fingerprinted RPC
  * envelopes. Payload fingerprints are disabled by default to support compatible
  * schema evolution. Frames default to a 16 MiB maximum size. Use `"unbounded"`
- * to disable the frame-size limit.
+ * to disable the frame-size limit. Set `payloadEncoding` to `"json"` when the
+ * encoded payloads must remain compatible with JSON-only persistence.
  *
  * @category layers
  * @since 4.0.0
@@ -726,4 +726,5 @@ export const layerMsgPackWith = (
 export const layerSchemaBinary = (options?: {
   readonly maxFrameSize?: number | "unbounded" | undefined
   readonly fingerprintPayloads?: boolean | undefined
+  readonly payloadEncoding?: "schemaBinary" | "json" | undefined
 }): Layer.Layer<RpcSerialization> => Layer.sync(RpcSerialization)(() => makeSchemaBinary(options))
