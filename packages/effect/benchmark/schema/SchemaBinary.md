@@ -6,6 +6,12 @@ Run from the repository root:
 nix develop -c pnpm --dir packages/effect exec node benchmark/schema/SchemaBinary.ts
 ```
 
+To repeat the raw msgpackr cases without its native string extractor:
+
+```sh
+nix develop -c env MSGPACKR_NATIVE_ACCELERATION_DISABLED=true pnpm --dir packages/effect exec node benchmark/schema/SchemaBinary.ts
+```
+
 These results are from one full run with fingerprint-mode row runs on Linux x86_64 (AMD EPYC 4344P) with Node 26.7.0. Codec and schema construction are excluded. One-shot tasks use 100 warmups and 1,000 measured samples; streaming tasks use 25 warmups and 250 measured samples. Throughput is machine-local and should only be compared within this run.
 
 Both modes pack each field id with a wire kind, so varint numbers, decimals, and booleans skip the per-field length prefix and booleans ride in the tag itself. Short decimals such as `12.5` encode as a varint mantissa plus a scale instead of an eight-byte f64, and index-signature record pairs pack the value kind into the key-length varint. An array of structs is written as a row run: each distinct set of present fields declares its shape once, and later rows reference that shape and any string already written in the same slot. Fingerprint mode omits field identifiers entirely: single frames use positional layouts and its row shapes are presence masks instead of field id lists. JSON, Msgpack, and NDJSON use the same `Schema.toCodecJson` representation.
@@ -13,6 +19,8 @@ Both modes pack each field id with a wire kind, so varint numbers, decimals, and
 Protobuf uses `protobufjs` reflection types parsed once before timing. `Schema.Number` maps to proto3 `double`, records map to `map<string, double>`, and top-level arrays and records use wrapper messages. Tuple samples and nested arrays use messages because protobuf does not support either shape directly. The timed decode paths include `toObject` and the case adapters, so every format produces its final application value. Descriptor construction and Protobuf encode adapters are excluded.
 
 Every format is timed through its public API, so the SchemaBinary and JSON / Msgpack numbers include the Schema pass that produces or validates the application value. Where the binary layer already validates a schema on its own, `toCodec` skips that pass in both directions rather than repeating the work: encoding runs the binary encoder directly, and decoding hands the value it just produced straight through. Any input the binary layer did not produce, `Schema.is` included, still runs the real check.
+
+The raw serializer section deliberately relaxes that rule. It compares the public SchemaBinary codec with raw msgpackr and JSON calls that do not validate the application value. `Effect Msgpack schema` remains in those tables as the public-API comparison. The benchmark prints whether msgpackr's native string extractor is active.
 
 A static `.proto` must pick one numeric type for `Schema.Number`, so integral values pay eight bytes where SchemaBinary picks a varint per value. Typing the known-integer fields as `uint32` would reduce the 200-row Protobuf payload from 24,480 to 20,600 bytes and the small record from 42 to 35, but would no longer cover the full `Schema.Number` domain. The reported sizes also reflect `protobufjs` 7.6.5 encoding default-valued scalars such as `verified: false`; an encoder that applies proto3 implicit presence would omit them.
 
@@ -70,6 +78,41 @@ Average decode operations per second:
 | index signatures / 128 |    63,797 |      64,700 |  28,763 |  30,295 |    44,576 |
 | index signatures / 512 |    16,685 |      16,900 |   5,507 |   4,620 |     6,593 |
 | 200-row array payload  |    23,291 |      23,321 |   5,781 |   4,910 |    15,711 |
+
+## Raw serializer adversarial cases
+
+These cases show where SchemaBinary loses. The shallow record makes fixed per-call costs visible. The clinical fixture is msgpackr's [`tests/example4.json`](https://github.com/kriszyp/msgpackr/blob/e3c852df383059b9ea8a8d3e5517d6e5527bf756/tests/example4.json), the input used by its own general benchmark. It has many nested, heterogeneous object shapes, which suit msgpackr's dynamic record cache.
+
+The clinical Schema is inferred once before timing. Objects at the same array path are merged, missing fields become optional, and mixed leaf types become unions. Schema inference and codec construction are excluded. The shared-structure Packr is primed once, matching msgpackr's steady-state benchmark setup.
+
+Raw / gzip -6 / zstd bytes:
+
+| Case                      |       SchemaBinary |        Fingerprint | Effect Msgpack schema |    msgpackr shared |     msgpackr plain |           JSON raw |
+| ------------------------- | -----------------: | -----------------: | --------------------: | -----------------: | -----------------: | -----------------: |
+| shallow record            |       47 / 70 / 56 |       30 / 50 / 39 |          69 / 88 / 78 |       24 / 42 / 33 |       69 / 88 / 78 |      89 / 100 / 92 |
+| msgpackr clinical fixture | 4433 / 2282 / 2317 | 3513 / 1623 / 1672 |    6357 / 2364 / 2438 | 3821 / 1604 / 1681 | 6357 / 2364 / 2435 | 7569 / 2201 / 2288 |
+
+Average operations per second with msgpackr native acceleration enabled:
+
+| Case                      | Direction | SchemaBinary | Fingerprint | Effect Msgpack schema | msgpackr shared | msgpackr plain |  JSON raw |
+| ------------------------- | --------- | -----------: | ----------: | --------------------: | --------------: | -------------: | --------: |
+| shallow record            | encode    |    1,665,955 |   1,780,094 |               771,589 |       2,517,330 |      2,895,458 | 2,931,596 |
+| shallow record            | decode    |    1,990,151 |   2,146,703 |               880,648 |       6,714,387 |      4,138,383 | 2,287,382 |
+| msgpackr clinical fixture | encode    |       22,129 |      23,332 |                17,530 |          68,875 |         63,188 |   121,972 |
+| msgpackr clinical fixture | decode    |       22,182 |      24,159 |                16,844 |         186,353 |         54,090 |    57,419 |
+
+Clinical-fixture decode operations per second with native acceleration toggled:
+
+| Format                     | Enabled | Disabled |
+| -------------------------- | ------: | -------: |
+| SchemaBinary               |  22,182 |   21,754 |
+| SchemaBinary fingerprint   |  24,159 |   24,142 |
+| Effect Msgpack schema      |  16,844 |   15,214 |
+| msgpackr shared structures | 186,353 |  118,988 |
+| msgpackr plain             |  54,090 |   41,050 |
+| JSON raw                   |  57,419 |   57,320 |
+
+The result is intentionally unflattering. On the clinical fixture, shared-structure msgpackr is 3.1x faster to encode and 8.4x faster to decode than default SchemaBinary when native extraction is enabled. Disabling it narrows the decode gap to 5.5x. Fingerprint SchemaBinary is 8% smaller than shared-structure msgpackr, but does not recover the throughput gap. Against the schema-validating Effect Msgpack API, default SchemaBinary is 1.3x faster in both directions in the native-enabled run.
 
 ## Streaming decode throughput
 
