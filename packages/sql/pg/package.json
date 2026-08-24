@@ -55,6 +55,7 @@
     }
   },
   "scripts": {
+    "benchmark:client": "node benchmark/PgClient.ts",
     "benchmark:codec": "node benchmark/PgCodec.ts",
     "codegen": "effect-utils codegen",
     "build": "tsc -b tsconfig.json && pnpm babel",

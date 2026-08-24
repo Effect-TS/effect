@@ -1,4 +1,33 @@
-# PostgreSQL codec benchmark
+# PostgreSQL benchmarks
+
+## PgClient
+
+`PgClient.ts` measures complete queries through `PgClient`, including Effect execution, pool checkout, the PostgreSQL
+wire protocol, and result decoding. It covers a parameterized one-row query, a 100-row result, and 20 concurrent
+queries through a ten-connection pool. A PostgreSQL Testcontainer starts automatically, so Docker is the only external
+requirement.
+
+Run it from the repository root:
+
+```sh
+nix develop -c pnpm --filter @effect/sql-pg benchmark:client
+```
+
+To use an existing PostgreSQL server instead, set `PGCLIENT_BENCHMARK_URL` to its connection URI. Keep the same server,
+Node version, and machine load when comparing revisions.
+
+The benchmark file is deliberately valid against both the working branch and `main`. Since `main` does not contain the
+new file yet, pipe it from the benchmark branch while checked out on `main`:
+
+```sh
+BENCHMARK_REF=origin/eff-854/pg-connection-startup
+git show "$BENCHMARK_REF:packages/sql/pg/benchmark/PgClient.ts" \
+  | nix develop -c pnpm --dir packages/sql/pg exec node --input-type=module
+```
+
+This runs the benchmark source from `BENCHMARK_REF`, but resolves `@effect/sql-pg` from the current checkout.
+
+## PgCodec
 
 This benchmark compares the `@effect/sql-pg` binary codecs with the native codec paths used by `postgres.js`. It runs
 entirely in one Node process. It does not open a database connection or include socket, TLS, query, or server latency.
