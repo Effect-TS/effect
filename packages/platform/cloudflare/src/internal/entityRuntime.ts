@@ -481,7 +481,11 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           )
       )
       options.waitUntil(Fiber.await(fiber))
-      return Effect.as(Fiber.join(fiber), [])
+      // A tell must not pin its caller: its invoke result is complete once
+      // the request is persisted and its handler forked. Scheduled ask runs
+      // keep the join so replay failure handling observes the handler
+      // outcome.
+      return discard ? Effect.succeed([]) : Effect.as(Fiber.join(fiber), [])
     }
 
     const queue = yield* Queue.make<SessionReply, Cause.Done>()
