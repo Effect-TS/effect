@@ -837,11 +837,12 @@ const runQuery = (
           phase = "complete"
           return
         case "ErrorResponse": {
-          const error = new SqlError({
+          // Every phase drains the same way: the backend skips the rest of the
+          // cycle and sends `ReadyForQuery` after the `Sync` that closes it, so
+          // a statement it refused to parse leaves the session usable.
+          failure = new SqlError({
             reason: classifyFields(message.fields, "PgConnection: Query failed", "query")
           })
-          if (phase === "parse") return failFatal(error)
-          failure = error
           phase = "error"
           return
         }
@@ -1102,11 +1103,12 @@ const streamRows = (
           phase = "complete"
           return
         case "ErrorResponse": {
-          const error = new SqlError({
+          // Every phase drains the same way: the backend skips the rest of the
+          // cycle and sends `ReadyForQuery` after the `Sync` that closes it, so
+          // a statement it refused to parse leaves the session usable.
+          failure = new SqlError({
             reason: classifyFields(message.fields, "PgConnection: Query failed", "query")
           })
-          if (phase === "parse") return failFatal(error)
-          failure = error
           phase = "error"
           return
         }

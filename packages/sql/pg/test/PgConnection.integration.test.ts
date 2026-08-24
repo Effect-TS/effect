@@ -124,4 +124,16 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       assert.strictEqual(error.reason._tag, "ConnectionError")
       assert.include(error.reason.message, "refused TLS")
     }))
+  it.effect("stays usable after a statement the server refuses to parse", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const connection = yield* PgConnection.make({
+        url: Redacted.make(container.getConnectionUri())
+      })
+      const missing = yield* Effect.flip(connection.query("SELECT * FROM does_not_exist"))
+      assert.strictEqual(missing.reason._tag, "SqlSyntaxError")
+      const syntax = yield* Effect.flip(connection.query("SELECT FROM WHERE ????"))
+      assert.strictEqual(syntax.reason._tag, "SqlSyntaxError")
+      assert.deepStrictEqual((yield* connection.query("SELECT 42::int4 AS answer")).rows, [{ answer: 42 }])
+    }))
 })
