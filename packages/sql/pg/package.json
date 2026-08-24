@@ -63,7 +63,7 @@
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^12.1.0",
-    "@types/pg": "^8.21.0",
+    "@types/pg": "^8.23.1",
     "@types/pg-cursor": "^2.7.2",
     "effect": "workspace:^",
     "pg-protocol": "^1.16.0",

@@ -19,6 +19,10 @@ const MessageRole = Schema.Literals(["system", "developer", "user", "assistant"]
 
 const ImageDetail = Schema.Literals(["low", "high", "auto"])
 
+const PromptCacheBreakpoint = Schema.Struct({
+  mode: Schema.Literal("explicit")
+})
+
 /**
  * Schema for optional `include` values supported by the local handwritten
  * Responses client schema.
@@ -76,7 +80,8 @@ export type MessageStatus = typeof MessageStatus.Type
 
 const InputTextContent = Schema.Struct({
   type: Schema.Literal("input_text"),
-  text: Schema.String
+  text: Schema.String,
+  prompt_cache_breakpoint: Schema.optional(PromptCacheBreakpoint)
 })
 
 const InputImageContent = Schema.Struct({
@@ -640,7 +645,7 @@ export type TextResponseFormatConfiguration = typeof TextResponseFormatConfigura
  * Validates the Responses API request payload, including input content, model
  * selection, instructions, reasoning options, text output format, tools,
  * `tool_choice`, streaming, storage, response continuation, sampling options,
- * and optional response fields requested through `include`.
+ * prompt caching, and optional response fields requested through `include`.
  *
  * **Gotchas**
  *
@@ -659,6 +664,11 @@ export const CreateResponse = Schema.Struct({
   temperature: Schema.optional(Schema.Finite),
   top_p: Schema.optional(Schema.Finite),
   user: Schema.optional(Schema.String),
+  prompt_cache_key: Schema.optional(Schema.String),
+  prompt_cache_options: Schema.optional(Schema.Struct({
+    mode: Schema.optional(Schema.Literals(["implicit", "explicit"])),
+    ttl: Schema.optional(Schema.Literal("30m"))
+  })),
   service_tier: Schema.optional(Schema.String),
   previous_response_id: Schema.optional(Schema.String),
   model: Schema.optional(Schema.String),

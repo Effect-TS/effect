@@ -1,5 +1,4 @@
-import { unescapeToken } from "../../JsonPointer.ts"
-import type * as JsonSchema from "../../JsonSchema.ts"
+import * as JsonSchema from "../../JsonSchema.ts"
 import { remainder } from "../../Number.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
@@ -86,11 +85,6 @@ function inferJsonSchemaType(schema: JsonSchema.JsonSchema): JsonSchema.Type | u
   if (jsonSchemaNumberKeys.some((key) => schema[key] !== undefined)) return "number"
   if (jsonSchemaObjectKeys.some((key) => schema[key] !== undefined)) return "object"
   if (jsonSchemaArrayKeys.some((key) => schema[key] !== undefined)) return "array"
-}
-
-function jsonSchemaReferenceKey($ref: string): string | undefined {
-  const token = $ref.slice($ref.lastIndexOf("/") + 1)
-  return token.length === 0 ? undefined : unescapeToken(token)
 }
 
 function jsonSchemaFilter(
@@ -703,6 +697,26 @@ function translateJsonSchemaMultiDocument(
     if (schema === undefined) {
       return unknown
     }
+    const enumIndex = Array.isArray(schema.enum)
+      ? schema.enum.findIndex((value) => typeof value === "object" && value !== null)
+      : -1
+    if (enumIndex !== -1) {
+      throw errorWithPath(`Unsupported structured JSON Schema value for "enum"`, [...path, "enum", enumIndex])
+    }
+    for (const keyword of Object.keys(schema)) {
+      if (keyword === "if" && !Object.hasOwn(schema, "then") && !Object.hasOwn(schema, "else")) continue
+      switch (keyword) {
+        case "if":
+        case "$dynamicRef":
+        case "contains":
+        case "dependentRequired":
+        case "dependentSchemas":
+        case "not":
+        case "unevaluatedItems":
+        case "unevaluatedProperties":
+          throw errorWithPath(`Unsupported JSON Schema keyword "${keyword}"`, [...path, keyword])
+      }
+    }
 
     let representation = on(schema, path)
     if (representation._tag === "Reference") {
@@ -755,11 +769,15 @@ function translateJsonSchemaMultiDocument(
 
   function on(schema: JsonSchema.JsonSchema, path: Path): ImportedJsonSchemaRepresentation {
     if (typeof schema.$ref === "string") {
-      const $ref = jsonSchemaReferenceKey(schema.$ref)
-      if ($ref !== undefined) {
-        if (!reachableDefinitions.has($ref)) reachableDefinitions.set($ref, path)
-        return { _tag: "Reference", $ref }
+      const $ref = JsonSchema.getReferenceKey(schema.$ref)
+      if ($ref === undefined) {
+        throw errorWithPath(`Unsupported reference ${JSON.stringify(schema.$ref)}`, [...path, "$ref"])
       }
+      if (!Object.hasOwn(document.definitions, $ref)) {
+        throw errorWithPath(`Invalid reference ${JSON.stringify(schema.$ref)}`, [...path, "$ref"])
+      }
+      if (!reachableDefinitions.has($ref)) reachableDefinitions.set($ref, path)
+      return { _tag: "Reference", $ref }
     }
     if (Object.hasOwn(schema, "const")) {
       if (schema.const === null) {
@@ -767,6 +785,9 @@ function translateJsonSchemaMultiDocument(
       }
       if (typeof schema.const === "string" || typeof schema.const === "number" || typeof schema.const === "boolean") {
         return makeLiteral(schema.const)
+      }
+      if (typeof schema.const === "object") {
+        throw errorWithPath(`Unsupported structured JSON Schema value for "const"`, [...path, "const"])
       }
     }
     if (Array.isArray(schema.enum)) {

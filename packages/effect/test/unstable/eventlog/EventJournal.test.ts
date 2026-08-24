@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Option } from "effect"
 import * as EventJournal from "effect/unstable/eventlog/EventJournal"
 
 const entry = (msecs: number) =>
@@ -28,10 +28,24 @@ describe("EventJournal", () => {
         entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })],
         effect: () => Effect.void
       })
-      const missing = yield* journal.withRemoteUncommited(target, Effect.succeed)
-      assert.deepStrictEqual(missing.map((item) => item.idString), [entry.idString])
-      const sourceMissing = yield* journal.withRemoteUncommited(source, Effect.succeed)
-      assert.deepStrictEqual(sourceMissing, [])
+      let targetCalls = 0
+      const missing = yield* journal.withRemoteUncommited(target, (entries) =>
+        Effect.sync(() => {
+          targetCalls++
+          return entries
+        }))
+      if (Option.isNone(missing)) assert.fail("Expected the callback result")
+      assert.deepStrictEqual(missing.value.map((item) => item.idString), [entry.idString])
+      assert.strictEqual(targetCalls, 1)
+
+      let sourceCalls = 0
+      const sourceMissing = yield* journal.withRemoteUncommited(source, () =>
+        Effect.sync(() => {
+          sourceCalls++
+          return "called"
+        }))
+      assert.isTrue(Option.isNone(sourceMissing))
+      assert.strictEqual(sourceCalls, 0)
     }))
 
   it.effect("returns the next unused remote sequence", () =>

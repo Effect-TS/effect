@@ -182,25 +182,13 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
-    it("const: non-literal", () => {
-      assertFromJsonSchema(
-        { schema: { const: {} } },
-        {
-          "representation": {
-            "_tag": "Declaration",
-            "representation": {
-              "id": "effect/schema/Json",
-              "payload": null
-            },
-            "annotations": {
-              "expected": "JSON value"
-            },
-            "typeParameters": [],
-            "checks": []
-          },
-          "references": {}
-        }
-      )
+    it("rejects structured values", () => {
+      for (const value of [{}, []]) {
+        throws(
+          () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ const: value })),
+          `Unsupported structured JSON Schema value for "const"\n  at ["schema"]["const"]`
+        )
+      }
     })
   })
 
@@ -2557,43 +2545,16 @@ describe("fromJsonSchemaDocument", () => {
     )
   })
 
-  it("imports structured enum members as JSON", () => {
-    assertFromJsonSchema(
-      { schema: { enum: [[], {}] } },
-      {
-        "representation": {
-          "_tag": "Union",
-          "checks": [],
-          "types": [
-            {
-              "_tag": "Declaration",
-              "representation": {
-                "id": "effect/schema/Json",
-                "payload": null
-              },
-              "annotations": {
-                "expected": "JSON value"
-              },
-              "typeParameters": [],
-              "checks": []
-            },
-            {
-              "_tag": "Declaration",
-              "representation": {
-                "id": "effect/schema/Json",
-                "payload": null
-              },
-              "annotations": {
-                "expected": "JSON value"
-              },
-              "typeParameters": [],
-              "checks": []
-            }
-          ],
-          "mode": "anyOf"
-        },
-        "references": {}
-      }
+  it("rejects structured enum members", () => {
+    for (const value of [[], {}, { not: "data" }]) {
+      throws(
+        () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ enum: ["a", value] })),
+        `Unsupported structured JSON Schema value for "enum"\n  at ["schema"]["enum"][1]`
+      )
+    }
+    throws(
+      () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ const: "a", enum: [{}] })),
+      `Unsupported structured JSON Schema value for "enum"\n  at ["schema"]["enum"][0]`
     )
   })
 
@@ -2625,25 +2586,91 @@ describe("fromJsonSchemaDocument", () => {
   })
 
   describe("$ref", () => {
-    it("treats a reference with an empty token as unconstrained", () => {
-      assertFromJsonSchema(
-        { schema: { $ref: "" } },
-        {
-          "representation": {
-            "_tag": "Declaration",
-            "representation": {
-              "id": "effect/schema/Json",
-              "payload": null
-            },
-            "annotations": {
-              "expected": "JSON value"
-            },
-            "typeParameters": [],
-            "checks": []
-          },
-          "references": {}
-        }
+    it("rejects a reference below a definition instead of resolving its final token", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(
+            JsonSchema.fromSchemaDraft07({
+              definitions: {
+                inner: { type: "number" },
+                outer: {
+                  type: "object",
+                  properties: {
+                    inner: { type: "string" }
+                  }
+                }
+              },
+              type: "object",
+              properties: {
+                copy: { $ref: "#/definitions/outer/properties/inner" }
+              }
+            })
+          ),
+        `Unsupported reference "#/$defs/outer/properties/inner"\n  at ["schema"]["properties"]["copy"]["$ref"]`
       )
+    })
+
+    it("rejects an empty reference", () => {
+      throws(
+        () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ $ref: "" })),
+        `Unsupported reference ""\n  at ["schema"]["$ref"]`
+      )
+    })
+
+    it("rejects an external reference instead of aliasing a local definition", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+            $ref: "https://example.com/schema#/$defs/A",
+            $defs: {
+              A: { type: "string" }
+            }
+          })),
+        `Unsupported reference "https://example.com/schema#/$defs/A"\n  at ["schema"]["$ref"]`
+      )
+    })
+
+    it("reports the full reference when a direct definition is missing", () => {
+      throws(
+        () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ $ref: "#/$defs/Missing" })),
+        `Invalid reference "#/$defs/Missing"\n  at ["schema"]["$ref"]`
+      )
+    })
+
+    it("unescapes a direct definition reference", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/A~1B~0C",
+        $defs: {
+          "A/B~C": { type: "string" }
+        }
+      }))
+      const is = Schema.is(schema)
+      assertTrue(is("a"))
+      assertFalse(is(1))
+    })
+
+    it("decodes a direct definition reference", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/A%20B",
+        $defs: {
+          "A B": { type: "string" }
+        }
+      }))
+      const is = Schema.is(schema)
+      assertTrue(is("a"))
+      assertFalse(is(1))
+    })
+
+    it("resolves a direct reference to an empty definition key", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/",
+        $defs: {
+          "": { type: "string" }
+        }
+      }))
+      const is = Schema.is(schema)
+      assertTrue(is("a"))
+      assertFalse(is(1))
     })
 
     it("should create a Reference and a definition", () => {
@@ -5470,6 +5497,71 @@ describe("fromJsonSchemaDocument", () => {
           }
         )
       })
+    })
+  })
+
+  describe("unsupported validation keywords", () => {
+    it("not", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft07({
+            type: "object",
+            properties: {
+              value: { not: { type: "string" } }
+            }
+          })),
+        `Unsupported JSON Schema keyword "not"\n  at ["schema"]["properties"]["value"]["not"]`
+      )
+    })
+
+    for (
+      const [keyword, value] of [
+        ["$dynamicRef", "#node"],
+        ["contains", { type: "string" }],
+        ["dependentRequired", { a: ["b"] }],
+        ["dependentSchemas", { a: { required: ["b"] } }],
+        ["unevaluatedItems", false],
+        ["unevaluatedProperties", false]
+      ] as const
+    ) {
+      it(keyword, () => {
+        throws(
+          () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ [keyword]: value })),
+          `Unsupported JSON Schema keyword "${keyword}"\n  at ["schema"][${JSON.stringify(keyword)}]`
+        )
+      })
+    }
+
+    for (const branch of ["then", "else"] as const) {
+      it(`if/${branch}`, () => {
+        throws(
+          () =>
+            toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+              if: { type: "string" },
+              [branch]: false
+            })),
+          `Unsupported JSON Schema keyword "if"\n  at ["schema"]["if"]`
+        )
+      })
+    }
+
+    it("ignores inactive conditional and contains cardinality keywords", () => {
+      for (
+        const [keyword, value] of [
+          ["if", false],
+          ["then", false],
+          ["else", false],
+          ["minContains", 1],
+          ["maxContains", 2]
+        ] as const
+      ) {
+        const document = JsonSchema.fromSchemaDraft2020_12({ [keyword]: value })
+        assertTrue(Schema.is(toSchemaFromJsonSchemaDocument(document))({}))
+      }
+    })
+
+    it("ignores custom keywords", () => {
+      assertTrue(Schema.is(toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ custom: false })))({}))
     })
   })
 
