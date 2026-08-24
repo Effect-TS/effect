@@ -544,22 +544,29 @@ describe("RpcSerialization", () => {
         assert.deepStrictEqual(parser.decode(frame), [request])
       }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
 
-    it.effect("keeps frames decodable across parser replacement", () =>
+    it.effect("keeps varied frames decodable across parser replacement", () =>
       Effect.gen(function*() {
         const serialization = yield* RpcSerialization.RpcSerialization
         const encoder = serialization.makeUnsafe()
-        const request: RpcMessage.RequestEncoded = {
+        const requests: Array<RpcMessage.RequestEncoded> = Array.from({ length: 200 }, (_, index) => ({
           _tag: "Request",
-          id: 1,
-          tag: "Echo",
-          payload: Uint8Array.of(1, 2, 3),
-          headers: []
+          id: index % 2 === 0 ? index : `request-${index}`,
+          tag: `Echo${index % 7}`,
+          payload: Uint8Array.from({ length: index % 17 }, (_, offset) => (index + offset) & 0xFF),
+          headers: Array.from({ length: index % 4 }, (_, offset) => [`x-${offset}`, `${index}`]),
+          ...(index % 3 === 0
+            ? { traceId: `trace-${index}`, spanId: `span-${index}`, sampled: index % 2 === 0 }
+            : undefined)
+        }))
+
+        for (const request of requests) {
+          const frame = encoder.encode(request)
+          assert.instanceOf(frame, Uint8Array)
+          const split = 1 + request.tag.length % (frame.length - 1)
+          const parser = serialization.makeUnsafe()
+          assert.deepStrictEqual(parser.decode(frame.subarray(0, split)), [])
+          assert.deepStrictEqual(parser.decode(frame.subarray(split)), [request])
         }
-
-        encoder.encode(request)
-        const frame = encoder.encode({ ...request, id: 2 })
-
-        assert.deepStrictEqual(serialization.makeUnsafe().decode(frame!), [{ ...request, id: 2 }])
       }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
 
     it.effect("owns encoded frames without copying envelope holes", () =>
