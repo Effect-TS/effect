@@ -15,6 +15,7 @@ import * as Effect from "./Effect.ts"
 import { identity } from "./Function.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "./internal/stackTraceLimit.ts"
 import * as Layer from "./Layer.ts"
+import type * as Option from "./Option.ts"
 import * as RcMap from "./RcMap.ts"
 import * as Scope from "./Scope.ts"
 import type { Mutable, NoExcessProperties } from "./Types.ts"
@@ -91,6 +92,18 @@ export interface LayerMap<in out K, in out I, in out E = never> {
    * Retrieves the context associated with the key.
    */
   contextEffect(key: K): Effect.Effect<Context.Context<I>, E, Scope.Scope>
+
+  /**
+   * Retains and returns the context for a key only when it is currently cached.
+   *
+   * **Details**
+   *
+   * `Option.none` means no entry is currently cached or the `LayerMap` is closed;
+   * no layer is built for a missing key. An existing in-flight entry is awaited.
+   *
+   * @since 4.0.0
+   */
+  contextEffectOption(key: K): Effect.Effect<Option.Option<Context.Context<I>>, E, Scope.Scope>
 
   /**
    * Invalidates the resource associated with the key.
@@ -183,6 +196,7 @@ export const make: <
     rcMap,
     get: (key) => Layer.effectContext(RcMap.get(rcMap, key)),
     contextEffect: (key) => RcMap.get(rcMap, key),
+    contextEffectOption: (key) => RcMap.getOption(rcMap, key),
     invalidate: (key) => RcMap.invalidate(rcMap, key)
   })
 })
@@ -317,6 +331,20 @@ export interface TagClass<
   readonly contextEffect: (key: K) => Effect.Effect<Context.Context<I>, E, Scope.Scope | Self>
 
   /**
+   * Retains and returns the context for a key only when it is currently cached.
+   *
+   * **Details**
+   *
+   * `Option.none` means no entry is currently cached or the `LayerMap` is closed;
+   * no layer is built for a missing key. An existing in-flight entry is awaited.
+   *
+   * @since 4.0.0
+   */
+  readonly contextEffectOption: (
+    key: K
+  ) => Effect.Effect<Option.Option<Context.Context<I>>, E, Scope.Scope | Self>
+
+  /**
    * Invalidates the resource associated with the key.
    */
   readonly invalidate: (key: K) => Effect.Effect<void, never, Self>
@@ -430,6 +458,8 @@ export const Service = <Self>() =>
 
   TagClass_.get = (key: string) => Layer.unwrap(Effect.map(TagClass_, (layerMap) => layerMap.get(key)))
   TagClass_.contextEffect = (key: string) => Effect.flatMap(TagClass_, (layerMap) => layerMap.contextEffect(key))
+  TagClass_.contextEffectOption = (key: string) =>
+    Effect.flatMap(TagClass_, (layerMap) => layerMap.contextEffectOption(key))
   TagClass_.invalidate = (key: string) => Effect.flatMap(TagClass_, (layerMap) => layerMap.invalidate(key))
 
   return TagClass as any
