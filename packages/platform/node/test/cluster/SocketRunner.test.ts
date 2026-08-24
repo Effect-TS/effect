@@ -46,7 +46,11 @@ const SharedStorage = Layer.mergeAll(
   Layer.provide(ShardingConfig.layerDefaults)
 )
 
-const makeRunnerLayer = (port: number, entities: Layer.Layer<never, never, Sharding.Sharding>) =>
+const makeRunnerLayer = (
+  port: number,
+  entities: Layer.Layer<never, never, Sharding.Sharding>,
+  serialization: Layer.Layer<RpcSerialization.RpcSerialization> = RpcSerialization.layerMsgPack
+) =>
   entities.pipe(
     Layer.provideMerge(SocketRunner.layer),
     Layer.provide(RunnerHealth.layerNoop),
@@ -58,7 +62,7 @@ const makeRunnerLayer = (port: number, entities: Layer.Layer<never, never, Shard
       entityMessagePollInterval: 5000,
       sendRetryInterval: 100
     })),
-    Layer.provide(RpcSerialization.layerMsgPack)
+    Layer.provide(serialization)
   )
 
 const makeClientLayer = (port: number) =>
@@ -73,6 +77,53 @@ const makeClientLayer = (port: number) =>
     })),
     Layer.provide(RpcSerialization.layerMsgPack)
   )
+
+const makeConfiguredClientLayer = (port: number, serialization?: "msgpack" | "ndjson") =>
+  NodeClusterSocket.layer({
+    clientOnly: true,
+    storage: "byo",
+    ...(serialization === undefined ? undefined : { serialization }),
+    shardingConfig: {
+      runnerAddress: Option.some(RunnerAddress.make("localhost", port)),
+      runnerListenAddress: Option.some(RunnerAddress.make("localhost", port)),
+      entityTerminationTimeout: 0,
+      entityMessagePollInterval: 5000,
+      sendRetryInterval: 100
+    }
+  })
+
+const SerializationEntity = Entity
+  .make("SerializationEntity", [
+    Rpc.make("Ping", {
+      success: Schema.String
+    })
+  ])
+  .annotateRpcs(ClusterSchema.Persisted, false)
+
+const SerializationEntityLayer = SerializationEntity.toLayer(
+  Effect.succeed({ Ping: () => Effect.succeed("pong") })
+)
+
+const assertSerialization = (
+  port: number,
+  serverSerialization: Layer.Layer<RpcSerialization.RpcSerialization>,
+  clientSerialization?: "msgpack" | "ndjson"
+) =>
+  Effect.gen(function*() {
+    yield* Layer.launch(makeRunnerLayer(port, SerializationEntityLayer, serverSerialization)).pipe(Effect.forkScoped)
+    yield* Effect.sleep("2 seconds")
+
+    const result = yield* Effect.gen(function*() {
+      const makeClient = yield* SerializationEntity.client
+      yield* Effect.sleep("3 seconds")
+      return yield* makeClient("serialization-entity").Ping()
+    }).pipe(
+      Effect.provide(makeConfiguredClientLayer(port, clientSerialization)),
+      Effect.scoped
+    )
+
+    assert.strictEqual(result, "pong")
+  }).pipe(Effect.provide(SharedStorage))
 
 // An entity whose reply cannot be serialized: the handler returns a
 // non-integer for a `Schema.Int` success schema, so `Reply.serialize` fails
@@ -106,6 +157,18 @@ const ISOLATION_PORT = 50_124
 // Volatile discard should complete after the request is sent, without waiting for the
 // host runner to finish handling it.
 describe("SocketRunner", () => {
+  it.live(
+    "uses SchemaBinary by default for TCP connections",
+    () => assertSerialization(50_120, RpcSerialization.layerSchemaBinary()),
+    15_000
+  )
+
+  it.live(
+    "preserves an explicit MessagePack selection",
+    () => assertSerialization(50_121, RpcSerialization.layerMsgPack, "msgpack"),
+    15_000
+  )
+
   it.live(
     "discarded persisted requests serialize circular values and volatile requests do not wait for replies",
     () =>
