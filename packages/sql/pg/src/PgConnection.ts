@@ -261,7 +261,7 @@ export const make = (options: Config): Effect.Effect<PgConnection, SqlError, Sco
 
 interface Session {
   readonly socket: Duplex
-  readonly parser: PgProtocol.Parser
+  readonly parser: PgProtocol.Parser<unknown>
   readonly processId: number
   readonly secretKey: number
   readonly parameters: Map<string, string>
@@ -272,7 +272,7 @@ interface Session {
  * on the wire. Messages the pump does not handle itself are forwarded here.
  */
 interface Consumer {
-  readonly onMessage: (message: PgProtocol.BackendMessage) => void
+  readonly onMessage: (message: PgProtocol.BackendMessage<unknown>) => void
   readonly onBatchEnd?: (() => void) | undefined
   readonly onFatal: (error: SqlError) => void
 }
@@ -323,15 +323,16 @@ class PgConnectionImpl implements PgConnection {
   }
 
   private readonly onData = (chunk: Uint8Array): void => {
-    let messages: ReadonlyArray<PgProtocol.BackendMessage>
     try {
-      messages = this.session.parser.push(chunk)
+      this.session.parser.pushEach(chunk, this.dispatch)
     } catch (cause) {
-      return this.fatal(connectionQueryError(cause, "PgConnection: Failed to parse server messages"))
-    }
-    for (const message of messages) {
-      if (this.deadWith !== undefined) return
-      this.dispatch(message)
+      // A field reader that threw reports the row it could not decode; anything
+      // else came out of the framing itself.
+      return this.fatal(
+        cause instanceof PgProtocol.ParseError
+          ? connectionQueryError(cause, "PgConnection: Failed to parse server messages")
+          : queryError(cause, "PgConnection: Failed to decode row")
+      )
     }
     if (this.deadWith === undefined) this.consumer?.onBatchEnd?.()
   }
@@ -342,7 +343,8 @@ class PgConnectionImpl implements PgConnection {
   private readonly onSocketClose = (): void =>
     this.fatal(connectionQueryError(new Error("Connection closed"), "PgConnection: Connection closed"))
 
-  private dispatch(message: PgProtocol.BackendMessage): void {
+  private readonly dispatch = (message: PgProtocol.BackendMessage<unknown>): void => {
+    if (this.deadWith !== undefined) return
     switch (message._tag) {
       case "NotificationResponse": {
         const queues = this.channels.get(message.channel)
@@ -463,7 +465,7 @@ class PgConnectionImpl implements PgConnection {
     Effect.map(this.owner.withPermit(this.cycle(sql, params ?? emptyParams, false)), takeValues)
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
-    streamRows(this, this.pin, sql, params ?? [])
+    streamRows(this, this.pin, sql, params ?? emptyParams)
 
   readonly listen = (channel: string): Stream.Stream<Notification, SqlError> => listenChannel(this, this.pin, channel)
 
@@ -507,7 +509,7 @@ class PinnedPgConnection implements PgConnection {
     Effect.map(this.base.cycle(sql, params ?? emptyParams, false), takeValues)
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
-    streamRows(this.base, this.pin, sql, params ?? [])
+    streamRows(this.base, this.pin, sql, params ?? emptyParams)
 
   readonly listen = (channel: string): Stream.Stream<Notification, SqlError> =>
     listenChannel(this.base, this.pin, channel)
@@ -674,7 +676,6 @@ const makeBindEncoder = (registry: PgTypes.Registry): BindEncoder =>
     (sink: PgProtocol.ValueSink, parameter: PgTypes.Parameter) => PgTypes.writeParameter(sink, parameter, registry)
   )
 
-
 const queryError = (cause: unknown, message: string): SqlError =>
   new SqlError({ reason: new UnknownError({ cause, message, operation: "query" }) })
 
@@ -729,10 +730,10 @@ const runQuery = (
     let done = false
     let aborted = false
     let drainDone: (() => void) | undefined
+    const parser = conn.session.parser
     let phase: QueryPhase = "parse"
     let fieldCount = 0
     let resultFields: ReadonlyArray<Field> = emptyFields
-    let readField: PgProtocol.FieldReader<unknown> | undefined
     let rowBuilder: RowBuilder | undefined
     const rows: Array<Row> = []
     const values: Array<ReadonlyArray<unknown>> = []
@@ -765,7 +766,7 @@ const runQuery = (
     const failDesync = (message: string): void =>
       failFatal(connectionQueryError(new Error(message), `PgConnection: ${message}`))
 
-    const onMessage = (message: PgProtocol.BackendMessage): void => {
+    const onMessage = (message: PgProtocol.BackendMessage<unknown>): void => {
       if (aborted) {
         if (message._tag === "ReadyForQuery") {
           done = true
@@ -800,7 +801,9 @@ const runQuery = (
           fieldCount = message.fields.length
           resultFields = description.success.resultFields
           rowBuilder = description.success.rowBuilder
-          readField = description.success.readField
+          // The parser hands this message over before it reads the rows behind
+          // it, so the columns decode in place from here on.
+          parser.readField = description.success.readField
           phase = "rows"
           return
         }
@@ -809,21 +812,12 @@ const runQuery = (
           phase = "rows"
           return
         case "DataRow": {
-          if (phase !== "rows" || readField === undefined || rowBuilder === undefined) {
+          if (phase !== "rows" || rowBuilder === undefined) {
             return failDesync(`Unexpected DataRow during ${phase}`)
           }
-          const raw = message.values
-          if (raw.length !== fieldCount) {
-            return failDesync(`DataRow has ${raw.length} values for ${fieldCount} fields`)
-          }
-          const rowValues: Array<unknown> = new Array(fieldCount)
-          try {
-            for (let index = 0; index < fieldCount; index++) {
-              const value = raw[index]
-              rowValues[index] = value === null ? null : readField(value, 0, value.length, index)
-            }
-          } catch (cause) {
-            return failFatal(queryError(cause, "PgConnection: Failed to decode row"))
+          const rowValues = message.values
+          if (rowValues.length !== fieldCount) {
+            return failDesync(`DataRow has ${rowValues.length} values for ${fieldCount} fields`)
           }
           if (wantRows) rows.push(rowBuilder(rowValues))
           else values.push(rowValues)
@@ -870,6 +864,7 @@ const runQuery = (
     }
 
     conn.consumer = { onMessage, onFatal }
+    parser.readField = undefined
     try {
       socket.write(frame)
     } catch (cause) {
@@ -988,9 +983,9 @@ const streamRows = (
     })
 
     const socket = conn.session.socket
+    const parser = conn.session.parser
     let phase: QueryPhase = "parse"
     let fieldCount = 0
-    let readField: PgProtocol.FieldReader<unknown> | undefined
     let rowBuilder: RowBuilder | undefined
     let buffer: Array<Row> = []
     let failure: SqlError | undefined
@@ -1041,7 +1036,7 @@ const streamRows = (
     const failDesync = (message: string): void =>
       failFatal(connectionQueryError(new Error(message), `PgConnection: ${message}`))
 
-    const onMessage = (message: PgProtocol.BackendMessage): void => {
+    const onMessage = (message: PgProtocol.BackendMessage<unknown>): void => {
       if (aborted) {
         if (message._tag === "ReadyForQuery") {
           done = true
@@ -1079,7 +1074,7 @@ const streamRows = (
           }
           fieldCount = message.fields.length
           rowBuilder = description.success.rowBuilder
-          readField = description.success.readField
+          parser.readField = description.success.readField
           phase = "rows"
           return
         }
@@ -1088,21 +1083,12 @@ const streamRows = (
           phase = "rows"
           return
         case "DataRow": {
-          if (phase !== "rows" || readField === undefined || rowBuilder === undefined) {
+          if (phase !== "rows" || rowBuilder === undefined) {
             return failDesync(`Unexpected DataRow during ${phase}`)
           }
-          const raw = message.values
-          if (raw.length !== fieldCount) {
-            return failDesync(`DataRow has ${raw.length} values for ${fieldCount} fields`)
-          }
-          const rowValues: Array<unknown> = new Array(fieldCount)
-          try {
-            for (let index = 0; index < fieldCount; index++) {
-              const value = raw[index]
-              rowValues[index] = value === null ? null : readField(value, 0, value.length, index)
-            }
-          } catch (cause) {
-            return failFatal(queryError(cause, "PgConnection: Failed to decode row"))
+          const rowValues = message.values
+          if (rowValues.length !== fieldCount) {
+            return failDesync(`DataRow has ${rowValues.length} values for ${fieldCount} fields`)
           }
           buffer.push(rowBuilder(rowValues))
           return
@@ -1176,6 +1162,7 @@ const streamRows = (
     )
 
     conn.consumer = { onMessage, onBatchEnd, onFatal }
+    parser.readField = undefined
     try {
       socket.write(frame)
     } catch (cause) {
@@ -1288,7 +1275,7 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
   Effect.callback<Session, SqlError>((resume) => {
     let done = false
     let socket: Duplex
-    let parser: PgProtocol.Parser | undefined
+    let parser: PgProtocol.Parser<unknown> | undefined
     let sslErrorParser: PgProtocol.Parser | undefined
     let scram: PgAuth.ScramState | undefined
     let processId = 0
@@ -1321,7 +1308,7 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
       return config.password
     }
 
-    const handleMessage = (message: PgProtocol.BackendMessage): void => {
+    const handleMessage = (message: PgProtocol.BackendMessage<unknown>): void => {
       switch (message._tag) {
         case "AuthenticationOk":
         case "NoticeResponse":
@@ -1423,7 +1410,7 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
     }
 
     const onData = (chunk: Uint8Array): void => {
-      let messages: ReadonlyArray<PgProtocol.BackendMessage>
+      let messages: ReadonlyArray<PgProtocol.BackendMessage<unknown>>
       try {
         messages = parser!.push(chunk)
       } catch (cause) {
@@ -1436,7 +1423,7 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
     }
 
     const startup = (): void => {
-      parser = PgProtocol.makeParser()
+      parser = PgProtocol.makeParser<unknown>()
       socket.on("data", onData)
       socket.write(PgProtocol.encodeStartupMessage({
         user: config.username,

@@ -15,3 +15,9 @@ Add `PgConnection`, a native PostgreSQL session on the `PgProtocol` codec.
 `PgClient` now runs on the native pool and connection while retaining its SQL facade, transforms, JSON helpers, and
 LISTEN/NOTIFY helpers. `makeClient` owns one native connection, while `make` uses `PgPool`. The old `fromPool`,
 `fromClient`, and `makeWith` constructors have been removed along with the `pg` runtime dependencies.
+
+A result set is decoded through a row constructor built once per `RowDescription`, which assigns its columns instead of
+defining them one property descriptor at a time. The frame tail and the bind encoder are built once rather than per
+statement, frames are assembled in a pooled buffer, and a pool checkout only runs its retry loop when a connection has
+to be replaced. On the `benchmark/PgClient.ts` workloads this puts the native client ahead of the `pg`-based one it
+replaces rather than behind it on row-heavy results.

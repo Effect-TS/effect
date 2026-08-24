@@ -59,6 +59,21 @@ export interface Parser<A = Uint8Array | null> {
    * buffer alive, so copy it if it has to outlive the row.
    */
   readonly push: (chunk: Uint8Array) => ReadonlyArray<BackendMessage<A>>
+
+  /**
+   * Feeds the next chunk of socket bytes and hands each completed message to
+   * `onMessage` as it is decoded, without collecting them into an array.
+   *
+   * Unlike `push`, a message is delivered before the bytes after it are read,
+   * so a handler can act on one message while it decodes the next. That is
+   * what lets a `RowDescription` install the `readField` its own `DataRow`
+   * messages are decoded with, even when they arrive in the same chunk.
+   *
+   * The same terminal-failure and buffer-lifetime rules as `push` apply, with
+   * one difference: messages delivered before the failing one have already
+   * been handed over rather than discarded.
+   */
+  readonly pushEach: (chunk: Uint8Array, onMessage: (message: BackendMessage<A>) => void) => void
 }
 
 /**
@@ -114,15 +129,21 @@ export const makeParser = <A = Uint8Array | null>(options?: {
     end += chunk.length
   }
 
-  return {
+  const parser: Parser<A> = {
     readField: options?.readField,
     push(chunk) {
+      const messages: Array<BackendMessage<A>> = []
+      parser.pushEach(chunk, (message) => {
+        messages.push(message)
+      })
+      return messages
+    },
+    pushEach(chunk, onMessage) {
       if (failed) {
         throw new ParseError({ message: "Parser cannot be reused after a failure" })
       }
       try {
         append(chunk)
-        const messages: Array<BackendMessage<A>> = []
         while (end - start >= 5) {
           const length = (buffer[start + 1] << 24) | (buffer[start + 2] << 16) | (buffer[start + 3] << 8) |
             buffer[start + 4]
@@ -141,23 +162,23 @@ export const makeParser = <A = Uint8Array | null>(options?: {
           start = limit
           if (type === BackendType.DataRow) {
             // `buffer` always starts at byte 0 of `store`, so offsets index both.
-            messages.push(decodeDataRow<A>(buffer, store, 0, body, limit, this.readField))
+            onMessage(decodeDataRow<A>(buffer, store, 0, body, limit, parser.readField))
           } else {
             reader.reset(buffer, body, limit)
             const message = decodeBackend(type, reader)
             if (reader.offset !== limit) {
               throw new ParseError({ message: `Message has ${limit - reader.offset} trailing byte(s)` })
             }
-            messages.push(message as BackendMessage<A>)
+            onMessage(message as BackendMessage<A>)
           }
         }
-        return messages
       } catch (error) {
         failed = true
         throw error
       }
     }
   }
+  return parser
 }
 
 // -----------------------------------------------------------------------------
