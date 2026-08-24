@@ -1,6 +1,6 @@
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Option } from "effect"
 import * as EventJournal from "effect/unstable/eventlog/EventJournal"
 import * as SqlEventJournal from "effect/unstable/eventlog/SqlEventJournal"
 import { Reactivity } from "effect/unstable/reactivity"
@@ -87,7 +87,7 @@ describe("SqlEventJournal", () => {
           emptyCalls++
           return "called"
         }))
-      assert.strictEqual(emptyResult, undefined)
+      assert.isTrue(Option.isNone(emptyResult))
       assert.strictEqual(emptyCalls, 0)
 
       yield* journal.write({
@@ -102,9 +102,9 @@ describe("SqlEventJournal", () => {
           uncommittedCalls++
           return entries
         }))
-      if (uncommitted === undefined) assert.fail("Expected the callback result")
-      assert.strictEqual(uncommitted.length, 1)
-      assert.strictEqual(uncommitted[0].event, "LocalCreated")
+      if (Option.isNone(uncommitted)) assert.fail("Expected the callback result")
+      assert.strictEqual(uncommitted.value.length, 1)
+      assert.strictEqual(uncommitted.value[0].event, "LocalCreated")
       assert.strictEqual(uncommittedCalls, 1)
       assert.strictEqual(seenConflicts.length, 2)
       assert.strictEqual(seenConflicts[0][0]?.idString, entryA.idString)

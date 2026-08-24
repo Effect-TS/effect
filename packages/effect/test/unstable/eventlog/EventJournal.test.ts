@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Option } from "effect"
 import * as EventJournal from "effect/unstable/eventlog/EventJournal"
 
 const entry = (msecs: number) =>
@@ -34,8 +34,8 @@ describe("EventJournal", () => {
           targetCalls++
           return entries
         }))
-      if (missing === undefined) assert.fail("Expected the callback result")
-      assert.deepStrictEqual(missing.map((item) => item.idString), [entry.idString])
+      if (Option.isNone(missing)) assert.fail("Expected the callback result")
+      assert.deepStrictEqual(missing.value.map((item) => item.idString), [entry.idString])
       assert.strictEqual(targetCalls, 1)
 
       let sourceCalls = 0
@@ -44,7 +44,7 @@ describe("EventJournal", () => {
           sourceCalls++
           return "called"
         }))
-      assert.strictEqual(sourceMissing, undefined)
+      assert.isTrue(Option.isNone(sourceMissing))
       assert.strictEqual(sourceCalls, 0)
     }))
 
