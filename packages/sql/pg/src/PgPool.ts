@@ -112,6 +112,7 @@ export const PgPool = Context.Service<PgPool>("@effect/sql-pg/PgPool")
  */
 export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Scope> =>
   Effect.gen(function*() {
+    const clock = yield* Clock.Clock
     const multiplex = options.multiplex ?? false
     const connectionTTL = options.connectionTTL !== undefined
       ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionTTL))
@@ -120,8 +121,8 @@ export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Sco
     const createdAt = new WeakMap<PgConnection.PgConnection, number>()
 
     const acquire = Effect.tap(PgConnection.make(options), (connection) =>
-      Effect.map(Clock.currentTimeMillis, (now) => {
-        createdAt.set(connection, now)
+      Effect.sync(() => {
+        createdAt.set(connection, clock.currentTimeMillisUnsafe())
         connectionInternals(connection).fatalHooks.add(() => deadConnections.add(connection))
       }))
 
@@ -148,7 +149,7 @@ export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Sco
         }
         if (connectionTTL !== undefined) {
           const openedAt = createdAt.get(connection)
-          const now = yield* Clock.currentTimeMillis
+          const now = clock.currentTimeMillisUnsafe()
           if (openedAt !== undefined && now - openedAt >= connectionTTL) {
             yield* Pool.invalidate(pool, connection)
             continue
