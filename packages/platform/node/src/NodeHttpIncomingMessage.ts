@@ -68,7 +68,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
   }
 
   get remoteAddress() {
-    return this.remoteAddressOverride ?? Option.fromNullishOr(this.source.socket.remoteAddress)
+    return this.remoteAddressOverride ?? Option.fromNullishOr(this.source.socket?.remoteAddress)
   }
 
   private textEffect: Effect.Effect<string, E> | undefined
