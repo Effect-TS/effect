@@ -23,6 +23,12 @@ const success = <A, E>(result: Result.Result<A, E>): A => {
   return result.success
 }
 
+const makeParameter = (oid: number, value: unknown): PgTypes.Parameter => {
+  const parameter = { oid, value } as PgTypes.Parameter
+  Object.defineProperty(parameter, PgTypes.ParameterTypeId, { value: PgTypes.ParameterTypeId })
+  return parameter
+}
+
 const jsonValue = { active: true, tags: ["effect", "postgres"] }
 const byteaValue = Uint8Array.from({ length: 32 }, (_, index) => index)
 
@@ -128,7 +134,7 @@ const bindEffect = () =>
 
 // The same job with the values written straight into the frame, which is what
 // a client should use: no array per parameter, no copy out of one.
-const bindParameters = payload.map(({ oid, value }) => ({ oid, value }))
+const bindParameters = payload.map(({ oid, value }) => makeParameter(oid, value))
 const encodeBindFused = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
 const bindEffectFused = () => success(encodeBindFused({ portal: "", statement: "s1", parameters: bindParameters }))
 
@@ -143,8 +149,8 @@ const bindPg = () =>
 // Array parameters, where the win is much larger: every element used to be
 // encoded into an array of its own before being copied into the frame.
 const arrayRow = [
-  { oid: PgTypes.OID.int4Array, value: Array.from({ length: 16 }, (_, index) => index) },
-  { oid: PgTypes.OID.textArray, value: Array.from({ length: 8 }, (_, index) => `tag-${index}`) }
+  makeParameter(PgTypes.OID.int4Array, Array.from({ length: 16 }, (_, index) => index)),
+  makeParameter(PgTypes.OID.textArray, Array.from({ length: 8 }, (_, index) => `tag-${index}`))
 ]
 const arrayValues = arrayRow.map(({ value }) => value)
 const bindArrayEffectFused = () => success(encodeBindFused({ portal: "", statement: "s2", parameters: arrayRow }))

@@ -32,7 +32,7 @@ const consumeFrontend = (
 ): void => {
   let startup = true
   let buffered = Buffer.alloc(0)
-  socket.on("data", (chunk) => {
+  socket.on("data", (chunk: Buffer) => {
     buffered = Buffer.concat([buffered, chunk])
     while (true) {
       const lengthOffset = startup ? 0 : 1
@@ -157,6 +157,29 @@ describe("PgConnection in-process server", () => {
             socket.write(authentication(10, Buffer.from("SCRAM-SHA-256\0\0")))
           } else if (tag === "p") {
             socket.write(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+          }
+        })
+      })
+
+      const error = yield* Effect.flip(PgConnection.make({
+        host: "127.0.0.1",
+        port,
+        username: "test",
+        password: Redacted.make("secret")
+      }))
+
+      assert.strictEqual(error.reason._tag, "AuthenticationError")
+      assert.strictEqual(error.reason.message, "PgConnection: SCRAM exchange did not complete")
+    })))
+
+  it.live("rejects incomplete SCRAM when AuthenticationOk is omitted", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { port } = yield* withTcpServer((socket) => {
+        consumeFrontend(socket, (tag) => {
+          if (tag === undefined) {
+            socket.write(authentication(10, Buffer.from("SCRAM-SHA-256\0\0")))
+          } else if (tag === "p") {
+            socket.write(Buffer.concat([backendKeyData, readyForQuery]))
           }
         })
       })

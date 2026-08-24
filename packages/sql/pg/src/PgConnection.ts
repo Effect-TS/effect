@@ -605,16 +605,9 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
 
     const handleMessage = (message: PgProtocol.BackendMessage): void => {
       switch (message._tag) {
+        case "AuthenticationOk":
         case "NoticeResponse":
         case "NegotiateProtocolVersion":
-          return
-        case "AuthenticationOk":
-          if (scram !== undefined) {
-            return failAuth(
-              new Error("The server completed authentication without proving its identity"),
-              "PgConnection: SCRAM exchange did not complete"
-            )
-          }
           return
         case "AuthenticationCleartextPassword": {
           const secret = password()
@@ -690,6 +683,12 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
         case "ErrorResponse":
           return fail(classifyFields(message.fields, "PgConnection: Failed to connect", "connect"))
         case "ReadyForQuery":
+          if (scram !== undefined) {
+            return failAuth(
+              new Error("The server completed authentication without proving its identity"),
+              "PgConnection: SCRAM exchange did not complete"
+            )
+          }
           done = true
           socket.off("data", onData)
           socket.off("error", onError)

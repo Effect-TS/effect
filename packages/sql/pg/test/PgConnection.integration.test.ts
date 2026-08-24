@@ -89,7 +89,9 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       yield* connection.query("INSERT INTO pg_connection_unique VALUES ($1)", [1])
       const error = yield* Effect.flip(connection.query("INSERT INTO pg_connection_unique VALUES ($1)", [1]))
       assert.strictEqual(error.reason._tag, "UniqueViolation")
-      assert.include(error.reason.constraint, "pg_connection_unique")
+      if (error.reason._tag === "UniqueViolation") {
+        assert.include(error.reason.constraint, "pg_connection_unique")
+      }
       const result = yield* connection.query("SELECT count(*)::int8 AS count FROM pg_connection_unique")
       assert.deepStrictEqual(result.rows, [{ count: BigInt(1) }])
     }))
