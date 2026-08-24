@@ -20,10 +20,22 @@ import type { SqlError } from "effect/unstable/sql/SqlError"
 import { connectionInternals } from "./internal/connection.ts"
 import * as PgConnection from "./PgConnection.ts"
 
-// This needs to stay beyond any practical number of simultaneous statement
-// leases. Effect Pool currently wakes one waiter when a saturated shared item
-// becomes available, even if many concurrency slots reopen at once.
-const multiplexPoolConcurrency = 1_048_576
+/**
+ * How many statements a multiplexed pool lets share one connection.
+ *
+ * The backend runs a connection's pipelined statements in the order it received
+ * them, so everything queued behind a slow statement waits for it. Letting an
+ * unlimited number share a connection means the pool never has a reason to open
+ * a second one, and a single slow statement then holds up every other statement
+ * in flight.
+ *
+ * Spreading instead across the connections the pool is allowed to open costs
+ * nothing: the statements that do share a connection still leave in one write.
+ * The product with `maxConnections` is what keeps the pipeline deep enough to
+ * be worth batching, so a pool of one still stacks statements while a pool of
+ * ten spreads them four to a connection.
+ */
+const multiplexPoolConcurrency = (maxConnections: number): number => Math.max(4, Math.ceil(32 / maxConnections))
 
 /**
  * Runtime type identifier used to mark `PgPool` values.
@@ -50,10 +62,11 @@ export type TypeId = "~@effect/sql-pg/PgPool"
  * `connectionTTL` is set, connections older than the TTL are discarded at
  * checkout and replaced.
  *
- * With `multiplex` enabled a pool item may be checked out by many fibers at
- * once and their statements are pipelined together. A reserved connection is
- * removed from shared circulation until its scope closes. With multiplexing
- * disabled (the default) every checkout is exclusive.
+ * With `multiplex` enabled a pool item may be checked out by several fibers at
+ * once and their statements are pipelined together, spread across the
+ * connections the pool is allowed to open. A reserved connection is removed
+ * from shared circulation until its scope closes. With multiplexing disabled
+ * (the default) every checkout is exclusive.
  *
  * @category models
  * @since 4.0.0
@@ -132,11 +145,12 @@ export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Sco
         connectionInternals(connection).fatalHooks.add(() => deadConnections.add(connection))
       }))
 
+    const maxConnections = options.maxConnections ?? 10
     const pool = yield* Pool.makeWithTTL({
       acquire,
       min: options.minConnections ?? 0,
-      max: options.maxConnections ?? 10,
-      concurrency: multiplex ? multiplexPoolConcurrency : 1,
+      max: maxConnections,
+      concurrency: multiplex ? multiplexPoolConcurrency(maxConnections) : 1,
       timeToLive: options.idleTimeout ?? Duration.seconds(10),
       timeToLiveStrategy: "usage"
     })
