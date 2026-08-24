@@ -677,6 +677,8 @@ describe("PgTypes", () => {
         oid: PgTypes.OID.int4Array,
         value: [1, null]
       })
+      assert.isTrue(PgTypesResult.isParameter(PgTypes.int4(1)))
+      assert.isFalse(PgTypesResult.isParameter({ oid: PgTypes.OID.int4, value: 1 }))
     })
 
     it("encodes SQL NULL as null", () => {
@@ -789,6 +791,28 @@ describe("PgTypes", () => {
         }
         assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("x", oid))
       }
+    })
+
+    it("isolates registry codecs and installs their generic array codec", () => {
+      const oid = 90_001
+      const arrayOid = 90_002
+      const registry = PgTypesResult.makeRegistry()
+      registry.register<string>(oid, {
+        encode: (value) => Result.succeed(new TextEncoder().encode(value.toUpperCase())),
+        decode: (value) => Result.succeed(new TextDecoder().decode(value).toLowerCase())
+      }, { arrayOid })
+
+      assert.strictEqual(PgTypesResult.arrayOidFor(oid), undefined)
+      assert.strictEqual(PgTypesResult.arrayOidFor(oid, registry), arrayOid)
+      assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.encode("ab", oid))
+
+      const scalar = success(PgTypesResult.encode("ab", oid, registry))
+      assert.deepStrictEqual(scalar, bytes("4142"))
+      assert.strictEqual(success(PgTypesResult.decode(scalar, oid, 1, registry)), "ab")
+
+      const array = success(PgTypesResult.encode(["ab", null], arrayOid, registry))
+      assert.deepStrictEqual(success(PgTypesResult.decode(array, arrayOid, 1, registry)), ["ab", null])
+      assert.deepStrictEqual(success(PgTypesResult.array([], oid, registry)), { oid: arrayOid, value: [] })
     })
 
     it("writes every array OID as the bytes encode produces", () => {
