@@ -249,6 +249,7 @@ export const make = (options?: {
             Effect.flatMap(decodeEntryRows),
             Effect.map(toEntries)
           )
+          if (entries.length === 0) return
           return yield* f(entries)
         },
         withTracerDisabled,

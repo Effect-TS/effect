@@ -81,15 +81,31 @@ describe("SqlEventJournal", () => {
       const next = yield* journal.nextRemoteSequence(remoteId)
       assert.strictEqual(next, 2)
 
+      let emptyCalls = 0
+      const emptyResult = yield* journal.withRemoteUncommited(remoteId, () =>
+        Effect.sync(() => {
+          emptyCalls++
+          return "called"
+        }))
+      assert.strictEqual(emptyResult, undefined)
+      assert.strictEqual(emptyCalls, 0)
+
       yield* journal.write({
         event: "LocalCreated",
         primaryKey: "local-1",
         payload: new Uint8Array([4]),
         effect: () => Effect.void
       })
-      const uncommitted = yield* journal.withRemoteUncommited(remoteId, (entries) => Effect.succeed(entries))
+      let uncommittedCalls = 0
+      const uncommitted = yield* journal.withRemoteUncommited(remoteId, (entries) =>
+        Effect.sync(() => {
+          uncommittedCalls++
+          return entries
+        }))
+      if (uncommitted === undefined) assert.fail("Expected the callback result")
       assert.strictEqual(uncommitted.length, 1)
       assert.strictEqual(uncommitted[0].event, "LocalCreated")
+      assert.strictEqual(uncommittedCalls, 1)
       assert.strictEqual(seenConflicts.length, 2)
       assert.strictEqual(seenConflicts[0][0]?.idString, entryA.idString)
       assert.strictEqual(seenConflicts[1][0]?.idString, entryB.idString)

@@ -28,10 +28,24 @@ describe("EventJournal", () => {
         entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })],
         effect: () => Effect.void
       })
-      const missing = yield* journal.withRemoteUncommited(target, Effect.succeed)
+      let targetCalls = 0
+      const missing = yield* journal.withRemoteUncommited(target, (entries) =>
+        Effect.sync(() => {
+          targetCalls++
+          return entries
+        }))
+      if (missing === undefined) assert.fail("Expected the callback result")
       assert.deepStrictEqual(missing.map((item) => item.idString), [entry.idString])
-      const sourceMissing = yield* journal.withRemoteUncommited(source, Effect.succeed)
-      assert.deepStrictEqual(sourceMissing, [])
+      assert.strictEqual(targetCalls, 1)
+
+      let sourceCalls = 0
+      const sourceMissing = yield* journal.withRemoteUncommited(source, () =>
+        Effect.sync(() => {
+          sourceCalls++
+          return "called"
+        }))
+      assert.strictEqual(sourceMissing, undefined)
+      assert.strictEqual(sourceCalls, 0)
     }))
 
   it.effect("returns the next unused remote sequence", () =>

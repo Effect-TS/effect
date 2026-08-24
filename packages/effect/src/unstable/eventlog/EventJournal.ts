@@ -78,12 +78,14 @@ export class EventJournal extends Context.Service<EventJournal, {
   }, EventJournalError>
 
   /**
-   * Return the uncommitted entries for a remote source.
+   * Run an effect with the uncommitted entries for a remote source.
+   *
+   * The effect is not run when there are no uncommitted entries.
    */
   readonly withRemoteUncommited: <A, E, R>(
     remoteId: RemoteId,
     f: (entries: ReadonlyArray<Entry>) => Effect.Effect<A, E, R>
-  ) => Effect.Effect<A, EventJournalError | E, R>
+  ) => Effect.Effect<A | void, EventJournalError | E, R>
 
   /**
    * Retrieve the first unused sequence number for a remote source.
@@ -471,7 +473,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
     withRemoteUncommited: (remoteId, f) =>
       Effect.acquireUseRelease(
         Effect.sync(() => ensureRemote(remoteId).missing.slice()),
-        f,
+        (entries) => entries.length === 0 ? Effect.void : f(entries),
         (entries, exit) =>
           Effect.sync(() => {
             if (exit._tag === "Failure") return
@@ -705,7 +707,7 @@ export const makeIndexedDb = (options?: {
           return Effect.sync(() => tx.abort())
         }).pipe(
           Effect.flatMap((entries) => {
-            if (entries.length === 0) return f(entries)
+            if (entries.length === 0) return Effect.void
             const entryId = entries[entries.length - 1].id
             return Effect.uninterruptibleMask((restore) =>
               restore(f(entries)).pipe(
