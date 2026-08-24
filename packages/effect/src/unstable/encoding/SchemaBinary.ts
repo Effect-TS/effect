@@ -1217,7 +1217,24 @@ class Writer {
     this.ensure(n * 3)
     const buf = this.buf
     let p = this.start + this.len
-    for (let i = 0; i < n; i++) {
+    let i = 0
+    for (; i + 8 <= n; i += 8) {
+      const a = s.charCodeAt(i), b = s.charCodeAt(i + 1), c = s.charCodeAt(i + 2), d = s.charCodeAt(i + 3)
+      const e = s.charCodeAt(i + 4), f = s.charCodeAt(i + 5), g = s.charCodeAt(i + 6), h = s.charCodeAt(i + 7)
+      if ((a | b | c | d | e | f | g | h) > 0x7F) {
+        this.len += utf8Encode.encodeInto(s, buf.subarray(this.start + this.len)).written
+        return
+      }
+      buf[p++] = a
+      buf[p++] = b
+      buf[p++] = c
+      buf[p++] = d
+      buf[p++] = e
+      buf[p++] = f
+      buf[p++] = g
+      buf[p++] = h
+    }
+    for (; i < n; i++) {
       const c = s.charCodeAt(i)
       if (c > 0x7F) {
         this.len += utf8Encode.encodeInto(s, buf.subarray(this.start + this.len)).written
@@ -3217,6 +3234,11 @@ function encodeInterned(table: InternWrite, ctx: EncodeContext, layout: Layout, 
 }
 
 function encodeStructRun(ctx: EncodeContext, plan: RunPlan, arr: ReadonlyArray<unknown>, count: number, w: Writer) {
+  const struct = plan.struct
+  if (plan.shapes && struct.optionalCount === 0 && struct.extra.length === 0) {
+    encodeRequiredStructRun(ctx, plan, arr, count, w)
+    return
+  }
   const shapes: Array<number> = []
   const tables: Array<InternWrite | undefined> = []
   for (let i = 0; i < count; i++) {
@@ -3224,6 +3246,39 @@ function encodeStructRun(ctx: EncodeContext, plan: RunPlan, arr: ReadonlyArray<u
     const mark = w.beginSized()
     encodeRunRow(ctx, plan, shapes, tables, arr[i], w)
     w.endSized(mark)
+    issuePathLen--
+  }
+}
+
+function encodeRequiredStructRun(
+  ctx: EncodeContext,
+  plan: RunPlan,
+  arr: ReadonlyArray<unknown>,
+  count: number,
+  w: Writer
+) {
+  const fields = plan.struct.fields
+  const positional = ctx.positional
+  const tables: Array<InternWrite | undefined> = []
+  for (let i = 0; i < count; i++) {
+    issuePath[issuePathLen++] = i
+    const rowMark = w.beginSized()
+    const declare = i === 0
+    w.byte(declare ? 0 : 1)
+    if (declare && positional) w.uvarint((1 << fields.length) - 1)
+    const obj = arr[i] as Record<string, unknown>
+    for (let j = 0; j < fields.length; j++) {
+      const field = fields[j]
+      if (!Object.hasOwn(obj, field.name)) {
+        issuePath[issuePathLen++] = field.name
+        throw issueError(new SchemaIssue.MissingKey(field.annotations))
+      }
+    }
+    for (let j = 0; j < fields.length; j++) {
+      if (declare && !positional) w.uvarint(fields[j].id)
+      encodeRunField(ctx, plan, tables, j, obj, w)
+    }
+    w.endSized(rowMark)
     issuePathLen--
   }
 }
@@ -3280,22 +3335,34 @@ function encodeRunRow(
     w.endSizedRun(mark)
   }
   for (let i = 0; i < fields.length; i++) {
-    const field = fields[i]
-    if (wide ? !Object.hasOwn(obj, field.name) : (mask & (1 << i)) === 0) continue
-    if (declare && !positionalShape) w.uvarint(field.id)
-    issuePath[issuePathLen++] = field.name
-    const kind = plan.intern[i]
-    if (kind === INTERN_SELF) {
-      encodeInterned(internWrite(tables, i), ctx, field.layout, obj[field.name], w)
-    } else {
-      if (kind !== INTERN_NONE) ctx.intern = internWrite(tables, i)
-      const mark = w.beginSized()
-      encodeValue(ctx, field.layout, obj[field.name], w)
-      w.endSizedRun(mark)
-      ctx.intern = undefined
-    }
-    issuePathLen--
+    if (wide ? !Object.hasOwn(obj, fields[i].name) : (mask & (1 << i)) === 0) continue
+    if (declare && !positionalShape) w.uvarint(fields[i].id)
+    encodeRunField(ctx, plan, tables, i, obj, w)
   }
+}
+
+// One row field, shared by the general and required-only row loops.
+function encodeRunField(
+  ctx: EncodeContext,
+  plan: RunPlan,
+  tables: Array<InternWrite | undefined>,
+  index: number,
+  obj: Record<string, unknown>,
+  w: Writer
+) {
+  const field = plan.struct.fields[index]
+  issuePath[issuePathLen++] = field.name
+  const kind = plan.intern[index]
+  if (kind === INTERN_SELF) {
+    encodeInterned(internWrite(tables, index), ctx, field.layout, obj[field.name], w)
+  } else {
+    if (kind !== INTERN_NONE) ctx.intern = internWrite(tables, index)
+    const mark = w.beginSized()
+    encodeValue(ctx, field.layout, obj[field.name], w)
+    w.endSizedRun(mark)
+    ctx.intern = undefined
+  }
+  issuePathLen--
 }
 
 function arraySlot(layout: ArrayLayout, index: number, count: number): Layout {

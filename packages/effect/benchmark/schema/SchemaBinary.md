@@ -12,6 +12,8 @@ Both modes pack each field id with a wire kind, so varint numbers, decimals, and
 
 Protobuf uses `protobufjs` reflection types parsed once before timing. `Schema.Number` maps to proto3 `double`, records map to `map<string, double>`, and top-level arrays and records use wrapper messages. Tuple samples and nested arrays use messages because protobuf does not support either shape directly. The timed decode paths include `toObject` and the case adapters, so every format produces its final application value. Descriptor construction and Protobuf encode adapters are excluded.
 
+Every format is timed through its public API, so the SchemaBinary and JSON / Msgpack numbers include the Schema pass that produces or validates the application value. Where the binary layer already validates a schema on its own, `toCodec` skips that pass in both directions rather than repeating the work: encoding runs the binary encoder directly, and decoding hands the value it just produced straight through. Any input the binary layer did not produce, `Schema.is` included, still runs the real check.
+
 A static `.proto` must pick one numeric type for `Schema.Number`, so integral values pay eight bytes where SchemaBinary picks a varint per value. Typing the known-integer fields as `uint32` would reduce the 200-row Protobuf payload from 24,480 to 20,600 bytes and the small record from 42 to 35, but would no longer cover the full `Schema.Number` domain. The reported sizes also reflect `protobufjs` 7.6.5 encoding default-valued scalars such as `verified: false`; an encoder that applies proto3 implicit presence would omit them.
 
 The streaming setup compares the closest public decode paths. SchemaBinary reuses one synchronous parser for each feed shape. Protobuf calls `decodeDelimited` across the batch and materializes every message with `toObject` plus the case adapter. Msgpack synchronously calls `unpackMultiple` on the batch, then validates each value. NDJSON runs `Ndjson.decodeSchema` through Effect Stream and Channel for every operation, including UTF-8 decoding, line splitting, `JSON.parse`, schema validation, and runtime scheduling. A batch is one Channel run over 32 lines, or 200 lines for the per-frame case. Single and fragmented measurements each run a complete Channel for one line, so their scheduling cost is not amortized. This makes batch the closest throughput comparison while preserving the cost of each public API.
@@ -49,25 +51,25 @@ Streaming cells contain total raw / gzip -6 / zstd bytes for the complete stream
 
 Average encode operations per second:
 
-| Case                   | Default | Fingerprint |    JSON | Msgpack |  Protobuf |
-| ---------------------- | ------: | ----------: | ------: | ------: | --------: |
-| small record           | 966,909 |   1,025,662 | 456,789 | 705,702 | 2,031,720 |
-| nested payload         | 332,118 |     361,661 | 268,086 | 283,483 |   531,076 |
-| collections            |  50,912 |      51,366 |  20,900 |  21,168 |    75,973 |
-| index signatures / 128 |  45,134 |      45,301 |  35,299 |  33,912 |    61,956 |
-| index signatures / 512 |   8,555 |       8,497 |   6,825 |   6,278 |    15,400 |
-| 200-row array payload  |   9,330 |       9,336 |   6,974 |   4,149 |    11,695 |
+| Case                   |   Default | Fingerprint |    JSON | Msgpack |  Protobuf |
+| ---------------------- | --------: | ----------: | ------: | ------: | --------: |
+| small record           | 1,294,775 |   1,414,123 | 442,684 | 711,039 | 1,969,671 |
+| nested payload         |   516,369 |     612,016 | 261,661 | 282,885 |   533,606 |
+| collections            |   130,898 |     141,076 |  21,624 |  22,036 |    76,693 |
+| index signatures / 128 |   135,145 |     137,571 |  35,697 |  35,187 |    62,967 |
+| index signatures / 512 |    35,729 |      35,783 |   6,959 |   6,334 |    15,883 |
+| 200-row array payload  |    18,088 |      18,099 |   7,125 |   4,155 |    11,577 |
 
 Average decode operations per second:
 
 | Case                   |   Default | Fingerprint |    JSON | Msgpack |  Protobuf |
 | ---------------------- | --------: | ----------: | ------: | ------: | --------: |
-| small record           | 1,302,549 |   1,340,914 | 418,860 | 708,839 | 2,096,960 |
-| nested payload         |   526,226 |     614,737 | 221,310 | 270,899 |   566,844 |
-| collections            |   113,235 |     115,019 |  20,227 |  21,337 |    81,153 |
-| index signatures / 128 |    63,523 |      63,713 |  28,109 |  29,522 |    44,576 |
-| index signatures / 512 |    16,827 |      16,935 |   5,394 |   4,545 |     6,558 |
-| 200-row array payload  |    23,326 |      23,319 |   5,504 |   4,772 |    15,709 |
+| small record           | 1,545,128 |   1,589,123 | 393,578 | 720,162 | 2,178,606 |
+| nested payload         |   547,631 |     651,364 | 208,296 | 271,014 |   541,331 |
+| collections            |   114,728 |     119,077 |  21,394 |  22,529 |    79,570 |
+| index signatures / 128 |    63,797 |      64,700 |  28,763 |  30,295 |    44,576 |
+| index signatures / 512 |    16,685 |      16,900 |   5,507 |   4,620 |     6,593 |
+| 200-row array payload  |    23,291 |      23,321 |   5,781 |   4,910 |    15,711 |
 
 ## Streaming decode throughput
 
@@ -75,29 +77,30 @@ Average decoded values per second for batched input:
 
 | Case                   |   Default | Fingerprint | Msgpack |  Protobuf |  NDJSON |
 | ---------------------- | --------: | ----------: | ------: | --------: | ------: |
-| small record           | 5,284,162 |   5,896,558 | 730,581 | 4,190,615 | 852,733 |
-| nested payload         |   849,895 |   1,035,689 | 283,905 |   589,495 | 312,386 |
-| collections            |   123,275 |     124,340 |  21,090 |    77,345 |  20,462 |
-| index signatures / 128 |    65,370 |      65,004 |  28,256 |    36,497 |  28,542 |
-| index signatures / 512 |    16,574 |      16,559 |   4,127 |     5,033 |   4,957 |
-| 200-row array payload  |    23,268 |      23,166 |   6,495 |     7,465 |   4,936 |
-| 200 single-row frames  | 2,390,207 |   2,710,150 | 853,669 | 1,649,680 | 958,335 |
+| small record           | 5,332,136 |   5,864,242 | 911,829 | 4,201,602 | 889,747 |
+| nested payload         |   817,482 |   1,032,259 | 289,010 |   583,420 | 316,486 |
+| collections            |   118,979 |     112,143 |  21,827 |    76,903 |  21,225 |
+| index signatures / 128 |    66,009 |      66,348 |  28,354 |    38,243 |  29,145 |
+| index signatures / 512 |    16,389 |      16,548 |   4,138 |     5,030 |   5,102 |
+| 200-row array payload  |    22,918 |      23,216 |   6,586 |     7,424 |   5,046 |
+| 200 single-row frames  | 2,396,303 |   2,626,116 | 843,520 | 1,708,313 | 970,786 |
 
 Average decoded values per second for single and first-byte-fragmented input:
 
 | Case                   | Default single | Default fragmented | Fingerprint single | Fingerprint fragmented | NDJSON single | NDJSON fragmented |
 | ---------------------- | -------------: | -----------------: | -----------------: | ---------------------: | ------------: | ----------------: |
-| small record           |      2,392,104 |          1,102,154 |          2,406,329 |              2,786,152 |       129,723 |           145,445 |
-| nested payload         |        708,638 |            680,269 |            883,656 |                826,836 |       112,131 |           110,844 |
-| collections            |        123,116 |            119,567 |            121,932 |                120,746 |        18,533 |            18,989 |
-| index signatures / 128 |         64,177 |             64,013 |             64,878 |                 64,007 |        24,654 |            24,662 |
-| index signatures / 512 |         16,624 |             16,573 |             16,644 |                 16,708 |         5,050 |             5,181 |
-| 200-row array payload  |         23,676 |             23,012 |             23,220 |                 23,027 |         5,212 |             5,192 |
-| 200 single-row frames  |      1,685,056 |          1,525,809 |          1,911,231 |              1,548,760 |       128,287 |           126,265 |
+| small record           |      3,156,741 |          2,190,974 |          3,486,677 |              2,587,360 |       140,660 |           145,012 |
+| nested payload         |        714,633 |            675,546 |            885,001 |                835,659 |       111,441 |           111,650 |
+| collections            |        117,543 |            115,501 |            113,138 |                112,947 |        19,385 |            19,353 |
+| index signatures / 128 |         64,860 |             64,854 |             66,254 |                 65,540 |        25,461 |            24,993 |
+| index signatures / 512 |         16,438 |             16,525 |             16,680 |                 16,747 |         5,227 |             5,101 |
+| 200-row array payload  |         23,221 |             22,748 |             23,048 |                 22,564 |         5,423 |             5,196 |
+| 200 single-row frames  |      1,157,928 |          1,504,118 |          1,314,232 |              1,429,748 |       131,342 |           103,885 |
 
 ## Analysis
 
-- Fingerprint mode is now the smallest SchemaBinary format for every case except the two index-signature maps, where the two modes are within 7 bytes: row runs apply in both modes, and fingerprint shapes are presence masks with no id list, so the `200-row array payload` dropped from 19,454 to 7,741 bytes. Its decode rate rose from 14,905 to 23,319 ops/s, matching the default mode.
+- Fingerprint mode is now the smallest SchemaBinary format for every case except the two index-signature maps, where the two modes are within 7 bytes: row runs apply in both modes, and fingerprint shapes are presence masks with no id list, so the `200-row array payload` dropped from 19,454 to 7,741 bytes. Its decode rate rose from 14,905 to 23,321 ops/s, matching the default mode.
 - The default mode has the smallest raw payload of any non-fingerprint format in every case except the small record, where only Protobuf's one-byte field numbers beat its hashed five-byte field tags (42 vs 47 bytes). Fingerprint mode wins there too (30 bytes).
 - Compression still changes the map ranking: Protobuf has the smallest zstd output for both index-signature cases, and JSON wins gzip at 128 keys.
-- Protobuf keeps the fastest one-shot encode in every case and the fastest small-record decode; SchemaBinary leads the other five decode cases while returning schema-validated application values.
+- Protobuf keeps the small record in both directions, by 1.4x to 1.5x. The nested payload is a tie: the two are within 3% either way, and Protobuf's higher encode average comes with the higher median. SchemaBinary leads the other four one-shot cases in both directions, by 1.6x to 2.3x on encode and 1.4x to 2.5x on decode, while returning schema-validated application values.
+- Single-frame and fragmented streaming rates for the `200 single-row frames` case carry 20% or worse RME at 250 samples, so only their batch column is worth comparing across runs.
