@@ -207,11 +207,55 @@ describe("MessageStorage", () => {
         yield* latch.await
         yield* Fiber.await(fiber)
       }).pipe(Effect.provide(MemoryLayer)))
+
+    it.effect("reply handlers receive the persisted defect fallback for unencodable replies", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const snowflake = yield* Snowflake.Generator
+        const latch = yield* Latch.make()
+        const request = yield* makeRequest({ rpc: UnknownSuccessRpc })
+        yield* storage.saveRequest(request)
+        let received: Reply.Reply<any> | undefined
+        const fiber = yield* storage.registerReplyHandler(
+          new Message.OutgoingRequest({
+            ...request,
+            respond: (reply) => {
+              received = reply
+              return latch.open
+            }
+          })
+        ).pipe(Effect.forkChild)
+        yield* TestClock.adjust(1)
+        yield* storage.saveReply(
+          new Reply.ReplyWithContext({
+            reply: new Reply.WithExit({
+              id: snowflake.nextUnsafe(),
+              requestId: request.envelope.requestId,
+              exit: Exit.succeed(new Error("not json encodable")) as any
+            }),
+            context: request.context,
+            rpc: request.rpc
+          })
+        )
+        yield* latch.await
+        yield* Fiber.await(fiber)
+        expect(received?._tag).toEqual("WithExit")
+        const exit = (received as Reply.WithExit<any>).exit
+        expect(Exit.isFailure(exit)).toBe(true)
+        expect(JSON.stringify(exit)).toContain("MalformedMessage")
+        const stored = yield* storage.repliesForUnfiltered([request.envelope.requestId])
+        expect(JSON.stringify(stored)).toContain("MalformedMessage")
+      }).pipe(Effect.provide(MemoryLayer)))
   })
 })
 
 export const GetUserRpc = Rpc.make("GetUser", {
   payload: { id: Schema.Number }
+})
+
+const UnknownSuccessRpc = Rpc.make("UnknownSuccess", {
+  payload: { id: Schema.Number },
+  success: Schema.Unknown
 })
 
 export const makeRequest = Effect.fnUntraced(function*(options?: {

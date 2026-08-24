@@ -164,7 +164,7 @@ const ISOLATION_PORT = 50_124
 describe("SocketRunner", () => {
   it.live(
     "uses SchemaBinary by default for TCP connections",
-    () => assertSerialization(50_120, RpcSerialization.layerSchemaBinary({ payloadEncoding: "json" })),
+    () => assertSerialization(50_120, RpcSerialization.layerSchemaBinary()),
     15_000
   )
 
@@ -182,7 +182,7 @@ describe("SocketRunner", () => {
           makeRunnerLayer(
             50_122,
             SerializationEntityLayer,
-            RpcSerialization.layerSchemaBinary({ payloadEncoding: "json" })
+            RpcSerialization.layerSchemaBinary()
           )
         ).pipe(Effect.forkScoped)
         yield* Effect.sleep("2 seconds")

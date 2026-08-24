@@ -56,7 +56,7 @@ const makeRunnerLayer = (port: number, entities: Layer.Layer<never, never, Shard
       entityMessagePollInterval: 5000,
       sendRetryInterval: 100
     })),
-    Layer.provide(RpcSerialization.layerSchemaBinary({ payloadEncoding: "json" }))
+    Layer.provide(RpcSerialization.layerSchemaBinary())
   )
 
 const makeClientLayer = (port: number) =>
@@ -69,7 +69,7 @@ const makeClientLayer = (port: number) =>
       entityMessagePollInterval: 5000,
       sendRetryInterval: 100
     })),
-    Layer.provide(RpcSerialization.layerSchemaBinary({ payloadEncoding: "json" }))
+    Layer.provide(RpcSerialization.layerSchemaBinary())
   )
 
 const IsolationEntity = Entity

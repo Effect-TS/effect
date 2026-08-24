@@ -164,8 +164,7 @@ export const layer = <
         : options?.serialization === "msgpack"
         ? RpcSerialization.layerMsgPackWith({ maxBufferSize: options?.serializationMaxBufferSize })
         : RpcSerialization.layerSchemaBinary({
-          maxFrameSize: options?.serializationMaxBufferSize,
-          payloadEncoding: "json"
+          maxFrameSize: options?.serializationMaxBufferSize
         })
     )
   ) as any
