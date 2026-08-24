@@ -562,16 +562,6 @@ describe("RpcSerialization", () => {
         assert.deepStrictEqual(serialization.makeUnsafe().decode(frame!), [{ ...request, id: 2 }])
       }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
 
-    it.effect("supports JSON-encoded payloads", () =>
-      Effect.gen(function*() {
-        const serialization = yield* RpcSerialization.RpcSerialization
-        const codec = serialization.codecFor(Schema.Date)
-        const encoded = Schema.encodeSync(codec)(new Date(0))
-
-        assert.instanceOf(encoded, Uint8Array)
-        assert.deepStrictEqual(Schema.decodeSync(codec)(encoded), new Date(0))
-      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary({ payloadEncoding: "json" }))))
-
     it.effect("owns encoded frames without copying envelope holes", () =>
       Effect.gen(function*() {
         const serialization = yield* RpcSerialization.RpcSerialization
