@@ -286,6 +286,7 @@ class PgConnectionImpl implements PgConnection {
   readonly processId: number
   readonly session: Session
   readonly registry: PgTypes.Registry
+  readonly bindEncoder: BindEncoder
   readonly resolved: ResolvedConfig
   readonly multiplex: boolean
   /** Serializes statements: one in-flight extended-query cycle. */
@@ -307,6 +308,7 @@ class PgConnectionImpl implements PgConnection {
     this.session = session
     this.processId = session.processId
     this.registry = registry
+    this.bindEncoder = makeBindEncoder(registry)
     this.multiplex = config.multiplex ?? false
     this.pinnedView = new PinnedPgConnection(this)
     this[internalsKey] = {
@@ -412,14 +414,24 @@ class PgConnectionImpl implements PgConnection {
     )
   }
 
+  readonly encodeQuery = (sql: string, params: ReadonlyArray<unknown>): Uint8Array =>
+    encodeQuery(sql, params, this.registry, this.bindEncoder)
+
   /** One extended-query cycle guarded by the wire permit. */
-  readonly cycle = (sql: string, params: ReadonlyArray<unknown>): Effect.Effect<QueryOutput, SqlError> =>
+  readonly cycle = (
+    sql: string,
+    params: ReadonlyArray<unknown>,
+    wantRows: boolean
+  ): Effect.Effect<QueryOutput, SqlError> =>
     this.wire.withPermit(Effect.suspend(() => {
       if (this.deadWith !== undefined) return Effect.fail(this.deadWith)
-      return Effect.try({
-        try: () => encodeQuery(sql, params, this.registry),
-        catch: (cause) => queryError(cause, "PgConnection: Failed to encode query")
-      }).pipe(Effect.flatMap((frame) => runQuery(this, frame)))
+      let frame: Uint8Array
+      try {
+        frame = this.encodeQuery(sql, params)
+      } catch (cause) {
+        return Effect.fail(queryError(cause, "PgConnection: Failed to encode query"))
+      }
+      return runQuery(this, frame, wantRows)
     }))
 
   /** Sends a `CancelRequest` for this session on a side connection. */
@@ -441,13 +453,13 @@ class PgConnectionImpl implements PgConnection {
   )
 
   readonly query = (sql: string, params?: ReadonlyArray<unknown>): Effect.Effect<Result, SqlError> =>
-    this.owner.withPermit(this.cycle(sql, params ?? [])).pipe(Effect.map((output) => output.result))
+    Effect.map(this.owner.withPermit(this.cycle(sql, params ?? emptyParams, true)), takeResult)
 
   readonly queryValues = (
     sql: string,
     params?: ReadonlyArray<unknown>
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError> =>
-    this.owner.withPermit(this.cycle(sql, params ?? [])).pipe(Effect.map((output) => output.values))
+    Effect.map(this.owner.withPermit(this.cycle(sql, params ?? emptyParams, false)), takeValues)
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this, this.pin, sql, params ?? [])
@@ -485,13 +497,13 @@ class PinnedPgConnection implements PgConnection {
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope> = Effect.sync(() => this as PgConnection)
 
   readonly query = (sql: string, params?: ReadonlyArray<unknown>): Effect.Effect<Result, SqlError> =>
-    this.base.cycle(sql, params ?? []).pipe(Effect.map((output) => output.result))
+    Effect.map(this.base.cycle(sql, params ?? emptyParams, true), takeResult)
 
   readonly queryValues = (
     sql: string,
     params?: ReadonlyArray<unknown>
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError> =>
-    this.base.cycle(sql, params ?? []).pipe(Effect.map((output) => output.values))
+    Effect.map(this.base.cycle(sql, params ?? emptyParams, false), takeValues)
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this.base, this.pin, sql, params ?? [])
@@ -588,43 +600,71 @@ const inferParameter = (value: unknown, registry: PgTypes.Registry): PgTypes.Par
   return inferredParameter(arrayOid, values)
 }
 
-const encodeQuery = (
-  sql: string,
-  params: ReadonlyArray<unknown>,
-  registry: PgTypes.Registry
-): Uint8Array => {
-  const parameters = params.map((value) => inferParameter(value, registry))
-  const parse = PgProtocol.encodeParse({
-    name: "",
-    query: sql,
-    parameterTypes: parameters.map((parameter) => parameter.oid)
-  })
-  if (EffectResult.isFailure(parse)) throw parse.failure
-  const encodeBind = PgProtocol.makeBindEncoder(
-    (sink: PgProtocol.ValueSink, parameter: PgTypes.Parameter) => PgTypes.writeParameter(sink, parameter, registry)
-  )
-  const bind = encodeBind({ portal: "", statement: "", parameters })
-  if (EffectResult.isFailure(bind)) throw bind.failure
-  return concat([
-    parse.success,
-    bind.success,
-    PgProtocol.encodeDescribe({ target: "portal", name: "" }),
-    PgProtocol.encodeExecute({ portal: "", maxRows: 0 }),
-    PgProtocol.encodeSync()
-  ])
-}
-
 const concat = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
   let length = 0
-  for (const chunk of chunks) length += chunk.length
+  for (let index = 0; index < chunks.length; index++) length += chunks[index].length
   const output = new Uint8Array(length)
   let offset = 0
-  for (const chunk of chunks) {
-    output.set(chunk, offset)
-    offset += chunk.length
+  for (let index = 0; index < chunks.length; index++) {
+    output.set(chunks[index], offset)
+    offset += chunks[index].length
   }
   return output
 }
+
+const emptyParams: ReadonlyArray<unknown> = []
+
+const takeResult = (output: QueryOutput): Result => output.result
+const takeValues = (output: QueryOutput): ReadonlyArray<ReadonlyArray<unknown>> => output.values
+
+/**
+ * The tail of every extended-query frame. `Describe` names the unnamed portal,
+ * `Execute` runs it without a row limit, and `Sync` closes the cycle; none of
+ * the three carries per-query state, so the bytes are encoded once.
+ */
+const describeExecuteSync: Uint8Array = concat([
+  PgProtocol.encodeDescribe({ target: "portal", name: "" }),
+  PgProtocol.encodeExecute({ portal: "", maxRows: 0 }),
+  PgProtocol.encodeSync()
+])
+
+/**
+ * Builds `Parse` / `Bind` / `Describe` / `Execute` / `Sync` as one buffer, so
+ * a statement costs one socket write.
+ */
+const encodeQuery = (
+  sql: string,
+  params: ReadonlyArray<unknown>,
+  registry: PgTypes.Registry,
+  encodeBind: BindEncoder
+): Uint8Array => {
+  const count = params.length
+  const parameters: Array<PgTypes.Parameter> = new Array(count)
+  const parameterTypes: Array<number> = new Array(count)
+  for (let index = 0; index < count; index++) {
+    const parameter = inferParameter(params[index], registry)
+    parameters[index] = parameter
+    parameterTypes[index] = parameter.oid
+  }
+  const parse = PgProtocol.encodeParse({ name: "", query: sql, parameterTypes })
+  if (EffectResult.isFailure(parse)) throw parse.failure
+  const bind = encodeBind({ portal: "", statement: "", parameters })
+  if (EffectResult.isFailure(bind)) throw bind.failure
+  return concat([parse.success, bind.success, describeExecuteSync])
+}
+
+type BindEncoder = (options: {
+  readonly portal: string
+  readonly statement: string
+  readonly parameters: ReadonlyArray<PgTypes.Parameter>
+}) => EffectResult.Result<Uint8Array, PgProtocol.EncodeError | PgTypes.CodecError>
+
+/** One bind encoder per registry, since building one allocates a closure. */
+const makeBindEncoder = (registry: PgTypes.Registry): BindEncoder =>
+  PgProtocol.makeBindEncoder(
+    (sink: PgProtocol.ValueSink, parameter: PgTypes.Parameter) => PgTypes.writeParameter(sink, parameter, registry)
+  )
+
 
 const queryError = (cause: unknown, message: string): SqlError =>
   new SqlError({ reason: new UnknownError({ cause, message, operation: "query" }) })
@@ -649,7 +689,8 @@ const parseCommandTag = (tag: string): { command: string; rowCount: number; oid:
 
 const runQuery = (
   conn: PgConnectionImpl,
-  frame: Uint8Array
+  frame: Uint8Array,
+  wantRows: boolean
 ): Effect.Effect<QueryOutput, SqlError> =>
   Effect.callback<QueryOutput, SqlError>((resume) => {
     if (conn.deadWith !== undefined) {
@@ -661,8 +702,10 @@ const runQuery = (
     let aborted = false
     let drainDone: (() => void) | undefined
     let phase: QueryPhase = "parse"
-    let fields: ReadonlyArray<PgProtocol.FieldDescription> = []
+    let fieldCount = 0
+    let resultFields: ReadonlyArray<Field> = emptyFields
     let readField: PgProtocol.FieldReader<unknown> | undefined
+    let rowBuilder: RowBuilder | undefined
     const rows: Array<Row> = []
     const values: Array<ReadonlyArray<unknown>> = []
     let command = ""
@@ -722,12 +765,14 @@ const runQuery = (
           return
         case "RowDescription": {
           if (phase !== "describe") return failDesync(`Unexpected RowDescription during ${phase}`)
-          fields = message.fields
-          const reader = PgTypes.makeFieldReader(fields, conn.registry)
-          if (EffectResult.isFailure(reader)) {
-            return failFatal(queryError(reader.failure, "PgConnection: Failed to decode row"))
+          const description = describe(message.fields, conn.registry)
+          if (EffectResult.isFailure(description)) {
+            return failFatal(queryError(description.failure, "PgConnection: Failed to decode row"))
           }
-          readField = reader.success
+          fieldCount = message.fields.length
+          resultFields = description.success.resultFields
+          rowBuilder = description.success.rowBuilder
+          readField = description.success.readField
           phase = "rows"
           return
         }
@@ -736,21 +781,24 @@ const runQuery = (
           phase = "rows"
           return
         case "DataRow": {
-          if (phase !== "rows" || readField === undefined) {
+          if (phase !== "rows" || readField === undefined || rowBuilder === undefined) {
             return failDesync(`Unexpected DataRow during ${phase}`)
           }
-          if (message.values.length !== fields.length) {
-            return failDesync(`DataRow has ${message.values.length} values for ${fields.length} fields`)
+          const raw = message.values
+          if (raw.length !== fieldCount) {
+            return failDesync(`DataRow has ${raw.length} values for ${fieldCount} fields`)
           }
+          const rowValues: Array<unknown> = new Array(fieldCount)
           try {
-            const rowValues = message.values.map((value, index) =>
-              value === null ? null : readField!(value, 0, value.length, index)
-            )
-            values.push(rowValues)
-            rows.push(makeRow(fields, rowValues))
+            for (let index = 0; index < fieldCount; index++) {
+              const value = raw[index]
+              rowValues[index] = value === null ? null : readField(value, 0, value.length, index)
+            }
           } catch (cause) {
             return failFatal(queryError(cause, "PgConnection: Failed to decode row"))
           }
+          if (wantRows) rows.push(rowBuilder(rowValues))
+          else values.push(rowValues)
           return
         }
         case "CommandComplete": {
@@ -777,14 +825,10 @@ const runQuery = (
         }
         case "ReadyForQuery": {
           if (phase !== "complete") return failDesync(`Unexpected ReadyForQuery during ${phase}`)
-          const result: Result = {
-            command,
-            rowCount,
-            oid,
-            rows,
-            fields: fields.map((field) => ({ name: field.name, dataTypeId: field.dataTypeOid }))
-          }
-          return finish(Effect.succeed({ result, values }))
+          return finish(Effect.succeed({
+            result: { command, rowCount, oid, rows, fields: resultFields },
+            values
+          }))
         }
         case "CopyInResponse":
         case "CopyOutResponse":
@@ -828,20 +872,73 @@ const runQuery = (
     })
   })
 
-const makeRow = (
+/** Turns one decoded row into an object keyed by column name. */
+type RowBuilder = (rowValues: ReadonlyArray<unknown>) => Row
+
+/** Everything a query needs from one `RowDescription`. */
+interface Description {
+  readonly readField: PgProtocol.FieldReader<unknown>
+  readonly rowBuilder: RowBuilder
+  readonly resultFields: ReadonlyArray<Field>
+}
+
+const emptyFields: ReadonlyArray<Field> = []
+
+/** Derives the per-column readers and the row constructor for a description. */
+const describe = (
   fields: ReadonlyArray<PgProtocol.FieldDescription>,
-  rowValues: ReadonlyArray<unknown>
-): Row => {
-  const row: Record<string, unknown> = {}
+  registry: PgTypes.Registry
+): EffectResult.Result<Description, PgTypes.CodecError> => {
+  const reader = PgTypes.makeFieldReader(fields, registry)
+  if (EffectResult.isFailure(reader)) return EffectResult.fail(reader.failure)
+  const resultFields: Array<Field> = new Array(fields.length)
   for (let index = 0; index < fields.length; index++) {
-    Object.defineProperty(row, fields[index].name, {
-      value: rowValues[index],
-      enumerable: true,
-      configurable: true,
-      writable: true
-    })
+    resultFields[index] = { name: fields[index].name, dataTypeId: fields[index].dataTypeOid }
   }
-  return row
+  return EffectResult.succeed({
+    readField: reader.success,
+    rowBuilder: makeRowBuilder(fields),
+    resultFields
+  })
+}
+
+/**
+ * Builds the row constructor for one `RowDescription`.
+ *
+ * Assignment is an order of magnitude faster than `Object.defineProperty` and
+ * stores the same own, enumerable, writable, configurable property - except
+ * for `__proto__`, which assignment routes to the prototype setter instead. A
+ * description carrying that column name falls back to the slow spelling.
+ */
+const makeRowBuilder = (fields: ReadonlyArray<PgProtocol.FieldDescription>): RowBuilder => {
+  const names: Array<string> = new Array(fields.length)
+  let hasProto = false
+  for (let index = 0; index < fields.length; index++) {
+    const name = fields[index].name
+    names[index] = name
+    if (name === "__proto__") hasProto = true
+  }
+  if (hasProto) {
+    return (rowValues) => {
+      const row: Record<string, unknown> = {}
+      for (let index = 0; index < names.length; index++) {
+        Object.defineProperty(row, names[index], {
+          value: rowValues[index],
+          enumerable: true,
+          configurable: true,
+          writable: true
+        })
+      }
+      return row
+    }
+  }
+  return (rowValues) => {
+    const row: Record<string, unknown> = {}
+    for (let index = 0; index < names.length; index++) {
+      row[names[index]] = rowValues[index]
+    }
+    return row
+  }
 }
 
 const streamRows = (
@@ -858,14 +955,15 @@ const streamRows = (
     )
     if (conn.deadWith !== undefined) return yield* Effect.fail(conn.deadWith)
     const frame = yield* Effect.try({
-      try: () => encodeQuery(sql, params, conn.registry),
+      try: () => conn.encodeQuery(sql, params),
       catch: (cause) => queryError(cause, "PgConnection: Failed to encode query")
     })
 
     const socket = conn.session.socket
     let phase: QueryPhase = "parse"
-    let fields: ReadonlyArray<PgProtocol.FieldDescription> = []
+    let fieldCount = 0
     let readField: PgProtocol.FieldReader<unknown> | undefined
+    let rowBuilder: RowBuilder | undefined
     let buffer: Array<Row> = []
     let failure: SqlError | undefined
     let finished = false
@@ -947,12 +1045,13 @@ const streamRows = (
           return
         case "RowDescription": {
           if (phase !== "describe") return failDesync(`Unexpected RowDescription during ${phase}`)
-          fields = message.fields
-          const reader = PgTypes.makeFieldReader(fields, conn.registry)
-          if (EffectResult.isFailure(reader)) {
-            return failFatal(queryError(reader.failure, "PgConnection: Failed to decode row"))
+          const description = describe(message.fields, conn.registry)
+          if (EffectResult.isFailure(description)) {
+            return failFatal(queryError(description.failure, "PgConnection: Failed to decode row"))
           }
-          readField = reader.success
+          fieldCount = message.fields.length
+          rowBuilder = description.success.rowBuilder
+          readField = description.success.readField
           phase = "rows"
           return
         }
@@ -961,20 +1060,23 @@ const streamRows = (
           phase = "rows"
           return
         case "DataRow": {
-          if (phase !== "rows" || readField === undefined) {
+          if (phase !== "rows" || readField === undefined || rowBuilder === undefined) {
             return failDesync(`Unexpected DataRow during ${phase}`)
           }
-          if (message.values.length !== fields.length) {
-            return failDesync(`DataRow has ${message.values.length} values for ${fields.length} fields`)
+          const raw = message.values
+          if (raw.length !== fieldCount) {
+            return failDesync(`DataRow has ${raw.length} values for ${fieldCount} fields`)
           }
+          const rowValues: Array<unknown> = new Array(fieldCount)
           try {
-            const rowValues = message.values.map((value, index) =>
-              value === null ? null : readField!(value, 0, value.length, index)
-            )
-            buffer.push(makeRow(fields, rowValues))
+            for (let index = 0; index < fieldCount; index++) {
+              const value = raw[index]
+              rowValues[index] = value === null ? null : readField(value, 0, value.length, index)
+            }
           } catch (cause) {
             return failFatal(queryError(cause, "PgConnection: Failed to decode row"))
           }
+          buffer.push(rowBuilder(rowValues))
           return
         }
         case "CommandComplete":
@@ -1141,7 +1243,7 @@ const sendCancelRequest = (config: ResolvedConfig, pid: number, secret: number):
         ? config.stream()
         : config.path !== undefined
         ? Net.connect({ path: config.path })
-        : Net.connect({ host: config.host, port: config.port })
+        : Net.connect({ host: config.host, port: config.port, noDelay: true })
     } catch {
       resume(Effect.void)
       return
