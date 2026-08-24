@@ -227,7 +227,8 @@ export declare namespace IndexedDbQuery {
     Index extends keyof Table["indexes"],
     KeyPath = [Index] extends [never] ? Table["keyPath"] : Table["indexes"][Index],
     Type = Table["tableSchema"]["Encoded"]
-  > = KeyPath extends keyof Type ? Type[KeyPath]
+  > = [KeyPath] extends [undefined] ? IDBValidKey
+    : KeyPath extends keyof Type ? Type[KeyPath]
     : { [I in keyof KeyPath]: KeyPath[I] extends keyof Type ? Type[KeyPath[I]] | [] : never }
 
   /**
