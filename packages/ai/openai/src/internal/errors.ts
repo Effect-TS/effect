@@ -241,51 +241,6 @@ export const buildHttpContext = (params: {
 // HTTP Status Code
 // =============================================================================
 
-const buildErrorDescription = (params: {
-  readonly status: number
-  readonly message: string | undefined
-  readonly method: string
-  readonly url: string
-  readonly errorCode: string | null
-  readonly errorType: string | null
-  readonly requestId: string | null
-  readonly body: string | undefined
-}): string => {
-  const parts: Array<string> = []
-
-  // Primary message or status description
-  if (params.message) {
-    parts.push(params.message)
-  } else {
-    parts.push(`HTTP ${params.status}`)
-  }
-
-  // Request context
-  parts.push(`(${params.method} ${params.url})`)
-
-  // Error code/type if available
-  if (params.errorCode) {
-    parts.push(`[code: ${params.errorCode}]`)
-  } else if (params.errorType) {
-    parts.push(`[type: ${params.errorType}]`)
-  }
-
-  // Request ID for debugging
-  if (params.requestId) {
-    parts.push(`[requestId: ${params.requestId}]`)
-  }
-
-  // If no message and we have body, show truncated body
-  if (!params.message && params.body) {
-    const truncated = params.body.length > 200
-      ? params.body.slice(0, 200) + "..."
-      : params.body
-    parts.push(`Response: ${truncated}`)
-  }
-
-  return parts.join(" ")
-}
-
 /** @internal */
 export const mapStatusCodeToReason = ({ status, headers, message, metadata, http }: {
   readonly status: number
@@ -294,7 +249,7 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
   readonly metadata: OpenAiErrorMetadata
   readonly http: typeof AiError.HttpContext.Type
 }): AiError.AiErrorReason => {
-  const errorDescription = buildErrorDescription({
+  const errorDescription = AiError.buildErrorDescription({
     status,
     message,
     method: http.request.method,
