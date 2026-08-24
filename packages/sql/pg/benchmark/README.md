@@ -3,8 +3,10 @@
 ## PgClient
 
 `PgClient.ts` measures complete queries through `PgClient`, including Effect execution, pool checkout, the PostgreSQL
-wire protocol, and result decoding. It covers a parameterized one-row query, a 100-row result, and 20 concurrent
-queries through a ten-connection pool. A PostgreSQL Testcontainer starts automatically, so Docker is the only external
+wire protocol, and result decoding. It covers a parameterized one-row query, a 100-row result at three and at twenty
+columns, and 20 concurrent queries through a ten-connection pool. The two row-count-matched widths are there because
+per-column work and per-row work scale differently: a change that barely moves a three-column result can dominate a
+twenty-column one. A PostgreSQL Testcontainer starts automatically, so Docker is the only external
 requirement.
 
 Run it from the repository root:

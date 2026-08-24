@@ -41,6 +41,16 @@ const run = Effect.gen(function*() {
       ).pipe(Effect.map((rows) => rows.length))
     },
     {
+      name: "generate_series (100 rows x 20 columns)",
+      unitsPerOperation: 100,
+      unit: "rows/s",
+      effect: sql.unsafe(
+        `SELECT ${
+          Array.from({ length: 20 }, (_, index) => `value + ${index} AS column_${index}`).join(", ")
+        } FROM generate_series(1, 100) AS value`
+      ).pipe(Effect.map((rows) => rows.length))
+    },
+    {
       name: "20 concurrent parameterized SELECTs",
       unitsPerOperation: 20,
       unit: "queries/s",
