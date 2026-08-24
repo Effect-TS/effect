@@ -564,6 +564,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     this._observers.push(cb)
     return () => {
+      if (this._exit) return
       const index = this._observers.indexOf(cb)
       if (index >= 0) {
         this._observers.splice(index, 1)
@@ -3782,9 +3783,13 @@ export const scopeCloseUnsafe = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>
     self.state = closed
     return
   }
-  const { finalizers } = self.state
+  const state = self.state
   self.state = closed
-  if (finalizers.size === 0) {
+  if (state.finalizer !== undefined) {
+    return state.finalizer(exit_)
+  }
+  const finalizers = state.finalizers
+  if (finalizers === undefined || finalizers.size === 0) {
     return
   } else if (finalizers.size === 1) {
     return finalizers.values().next().value!(exit_)
@@ -3792,9 +3797,15 @@ export const scopeCloseUnsafe = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>
   return scopeCloseFinalizers(self, finalizers, exit_)
 }
 
+const combineFinalizerCause = <A, E, XE, XR>(
+  exit_: Exit.Exit<A, E>,
+  finalizer: Effect.Effect<void, XE, XR>
+): Effect.Effect<void, E | XE, XR> =>
+  exitIsSuccess(exit_) ? finalizer : catchCause(finalizer, (cause) => failCause(causeCombine(exit_.cause, cause)))
+
 const scopeCloseFinalizers = fnUntraced(function*<A, E>(
   self: Scope.Scope,
-  finalizers: Scope.State.Open["finalizers"],
+  finalizers: NonNullable<Scope.State.Open["finalizers"]>,
   exit_: Exit.Exit<A, E>
 ) {
   let exits: Array<Exit.Exit<any, never>> = []
@@ -3859,9 +3870,20 @@ export const scopeAddFinalizerUnsafe = (
   finalizer: (exit: Exit.Exit<any, any>) => Effect.Effect<unknown>
 ): void => {
   if (scope.state._tag === "Empty") {
-    scope.state = { _tag: "Open", finalizers: new Map([[key, finalizer]]) }
+    scope.state = { _tag: "Open", finalizerKey: key, finalizer, finalizers: undefined }
   } else if (scope.state._tag === "Open") {
-    scope.state.finalizers.set(key, finalizer)
+    const state = scope.state
+    if (state.finalizer !== undefined) {
+      state.finalizers = new Map([[state.finalizerKey!, state.finalizer]])
+      state.finalizerKey = undefined
+      state.finalizer = undefined
+      state.finalizers.set(key, finalizer)
+    } else if (state.finalizers === undefined) {
+      state.finalizerKey = key
+      state.finalizer = finalizer
+    } else {
+      state.finalizers.set(key, finalizer)
+    }
   }
 }
 
@@ -3871,9 +3893,23 @@ export const scopeRemoveFinalizerUnsafe = (
   key: {}
 ): void => {
   if (scope.state._tag === "Open") {
-    scope.state.finalizers.delete(key)
+    const state = scope.state
+    if (state.finalizerKey === key) {
+      state.finalizerKey = undefined
+      state.finalizer = undefined
+    } else if (state.finalizers !== undefined) {
+      state.finalizers.delete(key)
+    }
   }
 }
+
+/** @internal */
+export const scopeFinalizerCountUnsafe = (scope: Scope.Scope): number =>
+  scope.state._tag !== "Open"
+    ? 0
+    : scope.state.finalizer !== undefined
+    ? 1
+    : (scope.state.finalizers?.size ?? 0)
 
 /** @internal */
 export const scopeMakeUnsafe = (finalizerStrategy: "sequential" | "parallel" = "sequential"): Scope.Closeable => ({
@@ -3988,7 +4024,7 @@ export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
   [contE](cause, _, exit) {
     exit ??= exitFailCause(cause)
     const eff = this[args][1](exit)
-    return eff ? flatMap(eff, (_) => exit) : exit
+    return eff ? flatMap(combineFinalizerCause(exit, eff), (_) => exit) : exit
   }
 })
 
@@ -4740,7 +4776,7 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
     if (concurrency === 1) {
       return runSequential(state, items, 0, end)
     }
-    const orderedStep = opts?.orderedStep === true && concurrency > 1
+    const orderedStep = opts?.orderedStep === true
     let done = false
     let parentFiber: Fiber.Fiber<any, any> | undefined
     let fibers: Set<Fiber.Fiber<any, any>> | undefined

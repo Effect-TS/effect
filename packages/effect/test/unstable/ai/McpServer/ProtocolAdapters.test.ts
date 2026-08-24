@@ -11,6 +11,7 @@ import * as McpServer from "effect/unstable/ai/McpServer"
 import * as Tool from "effect/unstable/ai/Tool"
 import * as Toolkit from "effect/unstable/ai/Toolkit"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
+import type * as RpcSerialization from "effect/unstable/rpc/RpcSerialization"
 import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 
 const ServerIcon = McpSchema.Icon.make({
@@ -793,7 +794,7 @@ describe("McpServer protocol adapters", () => {
             }),
           supportsAck: true,
           supportsTransferables: false,
-          supportsStructuredClone: false
+          codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
         })
       )
       for (

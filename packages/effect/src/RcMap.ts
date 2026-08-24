@@ -21,6 +21,7 @@ import * as Exit from "./Exit.ts"
 import * as Fiber from "./Fiber.ts"
 import { constant, dual, flow } from "./Function.ts"
 import * as MutableHashMap from "./MutableHashMap.ts"
+import type * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { pipeArguments } from "./Pipeable.ts"
 import * as Scope from "./Scope.ts"
@@ -377,6 +378,73 @@ export const get: {
       const scope = Context.getUnsafe(parent.context, Scope.Scope)
       return Scope.addFinalizer(scope, entry.finalizer).pipe(
         Effect.andThen(restore(Deferred.await(entry.deferred)))
+      )
+    })
+)
+
+/**
+ * Retains and returns an existing resource without invoking the map's lookup
+ * function when the key is missing.
+ *
+ * **When to use**
+ *
+ * Use when you only want to acquire a reference to a resource that is currently
+ * cached.
+ *
+ * **Details**
+ *
+ * Returns `Option.none` when the key is not currently stored or the map is
+ * closed. If an entry exists, its reference count is incremented for the current
+ * `Scope` before awaiting its result. A successful entry returns
+ * `Option.some(value)`, while an in-flight or cached failure fails with the same
+ * error as `get`.
+ *
+ * **Example** (Retaining only cached resources)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Option, RcMap } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   const map = yield* RcMap.make({
+ *     lookup: (key: string) => Effect.succeed(`Resource: ${key}`),
+ *     idleTimeToLive: "1 minute"
+ *   })
+ *
+ *   const missing = yield* RcMap.getOption(map, "database")
+ *   yield* Effect.scoped(RcMap.get(map, "database"))
+ *   const cached = yield* Effect.scoped(RcMap.getOption("database")(map))
+ *
+ *   return [missing, cached] as const
+ * })
+ *
+ * await Effect.runPromise(Effect.scoped(program)) // => [Option.none(), Option.some("Resource: database")]
+ * ```
+ *
+ * @see {@link get} for acquiring a resource when the key is missing
+ * @see {@link has} for checking presence without retaining or awaiting the entry
+ *
+ * @category combinators
+ * @since 4.0.0
+ */
+export const getOption: {
+  <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<Option.Option<A>, E, Scope.Scope>
+  <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<Option.Option<A>, E, Scope.Scope>
+} = dual(
+  2,
+  <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<Option.Option<A>, E, Scope.Scope> =>
+    Effect.uninterruptibleMask((restore) => {
+      if (self.state._tag === "Closed") {
+        return Effect.succeedNone
+      }
+      const o = MutableHashMap.get(self.state.map, key)
+      if (o._tag === "None") {
+        return Effect.succeedNone
+      }
+      const entry = o.value
+      entry.refCount++
+      const scope = Context.getUnsafe(Fiber.getCurrent()!.context, Scope.Scope)
+      return Scope.addFinalizer(scope, entry.finalizer).pipe(
+        Effect.andThen(Effect.asSome(restore(Deferred.await(entry.deferred))))
       )
     })
 )

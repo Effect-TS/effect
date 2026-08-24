@@ -316,40 +316,43 @@ const trackedClientProtocolLayer = (
   Layer.effect(Runners.RpcClientProtocol)(
     Effect.gen(function*() {
       const serialization = yield* RpcSerialization.RpcSerialization
-      return Effect.fnUntraced(function*(address) {
-        const socket = yield* NodeSocket.fromDuplex(
-          Effect.acquireRelease(
-            Effect.callback<Net.Socket, Socket.SocketError>((resume) => {
-              const connection = Net.createConnection({
-                host: address.host,
-                port: address.port
-              })
-              connection.once("connect", () => {
-                controller.add(source, address, connection)
-                resume(Effect.succeed(connection))
-              })
-              connection.on("error", (cause) => {
-                resume(Effect.fail(
-                  new Socket.SocketError({
-                    reason: new Socket.SocketOpenError({ kind: "Unknown", cause })
-                  })
-                ))
-              })
-              return Effect.sync(() => connection.destroy())
-            }),
-            (connection) =>
-              Effect.sync(() => {
-                controller.remove(source, address, connection)
-                if (!connection.closed) connection.destroySoon()
-              })
-          ),
-          { openTimeout: 1_000 }
-        )
-        return yield* RpcClient.makeProtocolSocket().pipe(
-          Effect.provideService(Socket.Socket, socket),
-          Effect.provideService(RpcSerialization.RpcSerialization, serialization)
-        )
-      }, Effect.orDie)
+      return {
+        codecFor: serialization.codecFor,
+        make: Effect.fnUntraced(function*(address) {
+          const socket = yield* NodeSocket.fromDuplex(
+            Effect.acquireRelease(
+              Effect.callback<Net.Socket, Socket.SocketError>((resume) => {
+                const connection = Net.createConnection({
+                  host: address.host,
+                  port: address.port
+                })
+                connection.once("connect", () => {
+                  controller.add(source, address, connection)
+                  resume(Effect.succeed(connection))
+                })
+                connection.on("error", (cause) => {
+                  resume(Effect.fail(
+                    new Socket.SocketError({
+                      reason: new Socket.SocketOpenError({ kind: "Unknown", cause })
+                    })
+                  ))
+                })
+                return Effect.sync(() => connection.destroy())
+              }),
+              (connection) =>
+                Effect.sync(() => {
+                  controller.remove(source, address, connection)
+                  if (!connection.closed) connection.destroySoon()
+                })
+            ),
+            { openTimeout: 1_000 }
+          )
+          return yield* RpcClient.makeProtocolSocket().pipe(
+            Effect.provideService(Socket.Socket, socket),
+            Effect.provideService(RpcSerialization.RpcSerialization, serialization)
+          )
+        }, Effect.orDie)
+      }
     })
   )
 

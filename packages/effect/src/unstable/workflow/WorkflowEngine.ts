@@ -681,6 +681,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       ) => Effect.Effect<unknown, unknown, WorkflowInstance | WorkflowEngine>
       readonly parent: string | undefined
       instance: WorkflowInstance["Service"]
+      interrupted: boolean
       fiber: Fiber.Fiber<Workflow.Result<unknown, unknown>> | undefined
     }
     const executions = new Map<string, ExecutionState>()
@@ -708,13 +709,13 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         state.instance.executionId,
         state.instance.scope
       )
-      instance.interrupted = state.instance.interrupted
       state.instance = instance
       state.fiber = yield* state.execute(state.payload, state.instance.executionId).pipe(
         Effect.onExit(() => {
-          if (!instance.interrupted) {
+          if (!state.interrupted) {
             return Effect.void
           }
+          instance.interrupted = true
           instance.suspended = false
           return Effect.withFiber((fiber) => Effect.interruptible(Fiber.interrupt(fiber)))
         }),
@@ -755,6 +756,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
             payload: options.payload,
             execute: entry.execute,
             instance: WorkflowInstance.initial(workflow, options.executionId),
+            interrupted: false,
             fiber: undefined,
             parent: options.parent?.executionId
           }
@@ -774,13 +776,13 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       interrupt: Effect.fnUntraced(function*(_workflow, executionId) {
         const state = executions.get(executionId)
         if (!state) return
-        state.instance.interrupted = true
+        state.interrupted = true
         yield* resume(executionId)
       }),
       interruptUnsafe: Effect.fnUntraced(function*(_workflow, executionId) {
         const state = executions.get(executionId)
         if (!state) return
-        state.instance.interrupted = true
+        state.interrupted = true
         if (state.fiber) {
           yield* Fiber.interrupt(state.fiber)
         }

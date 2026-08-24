@@ -8,6 +8,7 @@
  *
  * @since 4.0.0
  */
+import * as Arr from "../../Array.ts"
 import * as Effect from "../../Effect.ts"
 import * as Uuid from "../../internal/uuid.ts"
 import * as Layer from "../../Layer.ts"
@@ -249,7 +250,8 @@ export const make = (options?: {
             Effect.flatMap(decodeEntryRows),
             Effect.map(toEntries)
           )
-          return yield* f(entries)
+          if (!Arr.isReadonlyArrayNonEmpty(entries)) return yield* Effect.succeedNone
+          return yield* Effect.asSome(f(entries))
         },
         withTracerDisabled,
         Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "withRemoteUncommited" }))

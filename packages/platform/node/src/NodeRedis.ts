@@ -12,6 +12,7 @@
  */
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fn from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -87,6 +88,58 @@ const make = Effect.fnUntraced(function*(
       Effect.tryPromise({
         try: () => client.sendCommand([command, ...args]) as Promise<A>,
         catch: (cause) => new Redis.RedisError({ cause })
+      }),
+    subscribe: (channel, onMessage) =>
+      Effect.gen(function*() {
+        const terminal = yield* Deferred.make<void, Redis.RedisError>()
+        yield* Effect.acquireRelease(
+          Effect.tryPromise({
+            try: async () => {
+              let subscriberReady = false
+              const subscriber = client.duplicate(
+                socket?.reconnectStrategy === undefined
+                  ? {
+                    socket: {
+                      ...socket,
+                      reconnectStrategy: (retries, cause) => {
+                        if (!subscriberReady) return cause
+                        if (cause instanceof SocketTimeoutError) return false
+                        const jitter = Math.floor(Math.random() * 200)
+                        const delay = Math.min(2 ** retries * 50, 2000)
+                        return delay + jitter
+                      }
+                    }
+                  }
+                  : {}
+              )
+              subscriber.once("ready", () => {
+                subscriberReady = true
+              })
+              subscriber.on("error", (cause) => {
+                runSync(Effect.logWarning("NodeRedis subscriber error", cause))
+                if (!subscriber.isOpen) {
+                  runSync(Deferred.fail(terminal, new Redis.RedisError({ cause })))
+                }
+              })
+              try {
+                await subscriber.connect()
+                await subscriber.subscribe(channel, (message, channel) => {
+                  onMessage({ channel, message })
+                })
+                return subscriber
+              } catch (cause) {
+                if (subscriber.isOpen) subscriber.destroy()
+                throw cause
+              }
+            },
+            catch: (cause) => new Redis.RedisError({ cause })
+          }),
+          (subscriber) =>
+            Effect.sync(() => {
+              if (subscriber.isOpen) subscriber.destroy()
+            })
+        )
+        return Deferred.await(terminal)
       })
   })
 

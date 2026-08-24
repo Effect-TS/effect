@@ -231,6 +231,27 @@ describe.sequential("IndexedDbQueryBuilder", () => {
       }).pipe(provideDb(Db))
     })
 
+    it.effect("select equals in no keypath table", () => {
+      class Db extends IndexedDbDatabase.make(
+        V1,
+        Effect.fn(function*(api) {
+          yield* api.createObjectStore("no-keypath")
+          yield* api
+            .from("no-keypath")
+            .insert({ username: "user", index: 1, key: 5 })
+        })
+      ) {}
+
+      return Effect.gen(function*() {
+        const api = yield* Db
+        const data = yield* api.from("no-keypath").select().equals(5)
+
+        assert.deepStrictEqual(data, [
+          { username: "user", index: 1, key: 5 }
+        ])
+      }).pipe(provideDb(Db))
+    })
+
     it.effect("select equals with index", () => {
       class Db extends IndexedDbDatabase.make(
         V1,

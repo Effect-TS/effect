@@ -699,33 +699,114 @@ export interface CodeDocument {
 }
 
 /**
- * Lowers the encoded side of an AST to a live representation document.
+ * Information supplied to a reference policy for one representation candidate.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ReferencePolicyInput {
+  /** The encoded-side AST owner for the candidate. Contextual copies can share the same owner. */
+  readonly ast: SchemaAST.AST
+  /** The number of times this candidate was encountered. Structurally equal ASTs remain distinct candidates. */
+  readonly occurrences: number
+  /** The resolved encoded-side identifier, including an inherited `Encoded` suffix when applicable. */
+  readonly identifier: string | undefined
+}
+
+/**
+ * Function that chooses whether a representation candidate is emitted as a named reference.
+ *
+ * **When to use**
+ *
+ * Use when you need reference allocation based on schema identity, occurrence counts, identifiers, or another
+ * application-specific rule.
  *
  * **Details**
  *
- * Apply `SchemaAST.toType` to the AST first to lower its type side instead.
+ * Return a reference name to extract the candidate, or `undefined` to keep it inline. The policy is called once per
+ * candidate after all occurrences have been counted. The `identifier` is the resolved identifier for the encoded AST,
+ * including an `Encoded` suffix when an identifier is inherited from the source side of an encoding. If different
+ * candidates request the same name, later names receive numeric suffixes in encounter order.
+ *
+ * **Gotchas**
+ *
+ * Recursive candidates always require a reference. When the policy returns `undefined` for one, the generator assigns
+ * a synthetic name. Treat the input AST as immutable and keep the policy deterministic.
+ *
+ * @see {@link ToRepresentationOptions} for configuring representation generation
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type ReferencePolicy = (input: ReferencePolicyInput) => string | undefined
+
+/**
+ * Options for generating schema representations.
+ *
+ * @category configuration
+ * @since 4.0.0
+ */
+export interface ToRepresentationOptions {
+  /**
+   * Chooses which representation candidates are extracted as named references.
+   *
+   * **Details**
+   *
+   * The default policy returns the resolved `identifier`, so anonymous non-recursive candidates remain inline even when
+   * they occur more than once.
+   *
+   * **Gotchas**
+   *
+   * Recursive candidates always require a reference and receive a synthetic name when the policy returns `undefined`.
+   *
+   * @default ({ identifier }) => identifier
+   */
+  readonly referencePolicy?: ReferencePolicy | undefined
+}
+
+/**
+ * Lowers the encoded side of an AST to a live representation document.
+ *
+ * **When to use**
+ *
+ * Use when you have one `SchemaAST.AST` and need a live `Document` for inspection, persistence, or compilation.
+ *
+ * **Details**
+ *
+ * Apply `SchemaAST.toType` to the AST first to lower its type side instead. The optional reference policy controls which
+ * candidates are moved into the document's shared reference table.
+ *
+ * @see {@link toRepresentations} for multiple roots sharing one reference table
  *
  * @category constructors
  * @since 4.0.0
  */
-export function toRepresentation(ast: SchemaAST.AST): Document {
-  return InternalToRepresentation.toRepresentation(ast)
+export function toRepresentation(ast: SchemaAST.AST, options?: ToRepresentationOptions): Document {
+  return InternalToRepresentation.toRepresentation(ast, options)
 }
 
 /**
  * Lowers one or more AST encoded sides in a shared reference environment.
  *
+ * **When to use**
+ *
+ * Use when several AST roots must share identifiers, occurrence counts, recursion, and allocated reference names.
+ *
  * **Details**
  *
- * Apply `SchemaAST.toType` to an AST first to lower its type side instead.
+ * Apply `SchemaAST.toType` to an AST first to lower its type side instead. The reference policy observes candidates from
+ * every root before any representation is emitted.
+ *
+ * @see {@link toRepresentation} for a single AST root
  *
  * @category constructors
  * @since 4.0.0
  */
 export function toRepresentations(
-  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
+  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>],
+  options?: ToRepresentationOptions
 ): MultiDocument {
-  return InternalToRepresentation.toRepresentations(asts)
+  return InternalToRepresentation.toRepresentations(asts, options)
 }
 
 /**
@@ -760,6 +841,8 @@ export function toMultiDocument(document: Document): MultiDocument {
  *
  * **Gotchas**
  *
+ * - Reference allocation is already fixed in the input `Document`. The inherited `referencePolicy` option has no effect
+ *   here; pass it to {@link toRepresentation} when creating the document.
  * - Opaque declarations are represented by an unconstrained JSON Schema and are outside the exact round-trip subset.
  * - Check callback results are used directly, and exceptions raised by a callback pass through unchanged. Callbacks
  *   must treat their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must
@@ -789,10 +872,12 @@ export function toJsonSchemaDocument(
  *
  * **Gotchas**
  *
- * Every definition is compiled, including definitions that are not reachable from a root. Check callbacks must treat
- * their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must not be
- * mutated after the callback returns. Local definition references returned by callbacks are resolved together with
- * compiler-generated references.
+ * - Reference allocation is already fixed in the input `MultiDocument`. The inherited `referencePolicy` option has no
+ *   effect here; pass it to {@link toRepresentations} when creating the document.
+ * - Every definition is compiled, including definitions that are not reachable from a root. Check callbacks must treat
+ *   their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must not be
+ *   mutated after the callback returns. Local definition references returned by callbacks are resolved together with
+ *   compiler-generated references.
  *
  * @see {@link toJsonSchemaDocument} for a single root
  *
@@ -1192,8 +1277,18 @@ export function fromRepresentations(
  *
  * **Gotchas**
  *
- * - Import is best-effort outside the exactly translated subset. Unsupported or ignored keywords are not covered by the
- *   round-trip guarantee.
+ * - `$dynamicRef`, `contains`, `dependentRequired`, `dependentSchemas`, `not`, active `if` / `then` / `else`,
+ *   `unevaluatedItems`, and `unevaluatedProperties` throw an `Unsupported JSON Schema keyword` error. Inactive
+ *   conditional keywords and `minContains` / `maxContains` without `contains` have no validation effect and are ignored.
+ * - Objects and arrays used as `const` values or `enum` members throw an `Unsupported structured JSON Schema value`
+ *   error.
+ * - Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf`
+ *   literal sets. Other union intersections, including cases that would duplicate a nested choice, throw an
+ *   `Unsupported intersection of overlapping unions` error.
+ * - Unknown extension keywords are ignored and their semantics are not enforced.
+ * - Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
+ *   references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
+ *   reference to a missing definition throws an `Invalid reference` error.
  * - Built-in declarations and checks are reconstructed with importer-owned revivers.
  * - Pattern constraints reached during translation cause an error by default. Use `patterns: "apply"` only for trusted
  *   documents, or `patterns: "ignore"` to weaken validation explicitly; ignored patterns are outside the round-trip
@@ -1224,9 +1319,20 @@ export function fromJsonSchemaDocument(
  *
  * **Gotchas**
  *
- * Only definitions reachable from a root are translated. Pattern constraints reached during translation cause an error
- * by default. Use `patterns: "apply"` only for trusted documents, or `patterns: "ignore"` to weaken validation explicitly.
- * Callback results are used directly, and exceptions raised by a callback pass through unchanged.
+ * - Only definitions reachable from a root are translated.
+ * - Unsupported standard validation and applicator keywords throw an `Unsupported JSON Schema keyword` error. Unknown
+ *   extension keywords are ignored and their semantics are not enforced.
+ * - Objects and arrays used as `const` values or `enum` members throw an `Unsupported structured JSON Schema value`
+ *   error.
+ * - Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf`
+ *   literal sets. Other union intersections, including cases that would duplicate a nested choice, throw an
+ *   `Unsupported intersection of overlapping unions` error.
+ * - Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
+ *   references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
+ *   reference to a missing definition throws an `Invalid reference` error.
+ * - Pattern constraints reached during translation cause an error by default. Use `patterns: "apply"` only for trusted
+ *   documents, or `patterns: "ignore"` to weaken validation explicitly.
+ * - Callback results are used directly, and exceptions raised by a callback pass through unchanged.
  *
  * @see {@link fromJsonSchemaDocument} for a single root
  * @see {@link toRepresentations} for converting the returned schema ASTs to a representation document

@@ -1,12 +1,10 @@
-import { unescapeToken } from "../../JsonPointer.ts"
-import type * as JsonSchema from "../../JsonSchema.ts"
+import * as JsonSchema from "../../JsonSchema.ts"
 import { remainder } from "../../Number.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
-import * as InternalAnnotations from "./annotations.ts"
 import { fromRepresentation, fromRepresentations } from "./fromRepresentation.ts"
 
 type Path = ReadonlyArray<string | number>
@@ -51,46 +49,43 @@ const never: ImportedJsonSchemaRepresentation = { _tag: "Never", checks: [] }
 const unknown: ImportedJsonSchemaRepresentation = { _tag: "Unknown", checks: [] }
 const string: ImportedJsonSchemaRepresentation = { _tag: "String", checks: [] }
 
-function makeLiteral(literal: string | number | boolean): SchemaRepresentation.Literal {
-  return { _tag: "Literal", literal, checks: [] }
+function makeJsonLiteral(input: unknown): ImportedJsonSchemaRepresentation | undefined {
+  if (input === null) return { _tag: "Null", checks: [] }
+  return typeof input === "string" || typeof input === "number" || typeof input === "boolean"
+    ? { _tag: "Literal", literal: input, checks: [] }
+    : undefined
 }
 
-const jsonSchemaTypes = new Set([
-  "null",
-  "string",
-  "number",
-  "integer",
-  "boolean",
-  "object",
-  "array"
-])
+const jsonSchemaValueTypes = ["null", "string", "number", "boolean", "object", "array"] as const
 
-const jsonSchemaStringKeys = ["minLength", "maxLength", "pattern", "format", "contentMediaType", "contentSchema"]
-const jsonSchemaNumberKeys = ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"]
-const jsonSchemaObjectKeys = [
+const jsonSchemaTypeSpecificKeys = [
+  "minLength",
+  "maxLength",
+  "pattern",
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
+  "multipleOf",
   "properties",
   "required",
   "additionalProperties",
   "patternProperties",
   "propertyNames",
   "minProperties",
-  "maxProperties"
+  "maxProperties",
+  "items",
+  "prefixItems",
+  "minItems",
+  "maxItems",
+  "uniqueItems"
 ]
-const jsonSchemaArrayKeys = ["items", "prefixItems", "additionalItems", "minItems", "maxItems", "uniqueItems"]
 function isImportedJsonSchemaType(input: unknown): input is JsonSchema.Type {
-  return typeof input === "string" && jsonSchemaTypes.has(input)
+  return input === "integer" || typeof input === "string" && jsonSchemaValueTypes.some((type) => type === input)
 }
 
-function inferJsonSchemaType(schema: JsonSchema.JsonSchema): JsonSchema.Type | undefined {
-  if (jsonSchemaStringKeys.some((key) => schema[key] !== undefined)) return "string"
-  if (jsonSchemaNumberKeys.some((key) => schema[key] !== undefined)) return "number"
-  if (jsonSchemaObjectKeys.some((key) => schema[key] !== undefined)) return "object"
-  if (jsonSchemaArrayKeys.some((key) => schema[key] !== undefined)) return "array"
-}
-
-function jsonSchemaReferenceKey($ref: string): string | undefined {
-  const token = $ref.slice($ref.lastIndexOf("/") + 1)
-  return token.length === 0 ? undefined : unescapeToken(token)
+function hasTypeSpecificKeywords(schema: JsonSchema.JsonSchema): boolean {
+  return jsonSchemaTypeSpecificKeys.some((key) => schema[key] !== undefined)
 }
 
 function jsonSchemaFilter(
@@ -220,14 +215,7 @@ function translateJsonSchemaMultiDocument(
     readonly reference: SchemaRepresentation.Reference
     readonly path: Path
   }> = []
-
-  function getObjectScopes(
-    representation: SchemaRepresentation.Objects
-  ): ReadonlyArray<ImportedObjectScope> {
-    const scopes = objectScopesByProperties.get(representation.propertySignatures)
-    if (scopes === undefined) throw new Error("Missing imported object scopes")
-    return scopes
-  }
+  const resolvingChoices = new Set<string>()
 
   function annotate(
     representation: ImportedJsonSchemaRepresentation,
@@ -268,29 +256,23 @@ function translateJsonSchemaMultiDocument(
     reference: SchemaRepresentation.Reference,
     path: Path,
     options?: { readonly recursiveReferenceError?: string },
-    seen: ReadonlySet<string> = new Set()
+    seen: Set<string> = new Set()
   ): ImportedJsonSchemaRepresentation {
     if (seen.has(reference.$ref)) {
       throw errorWithPath(`Invalid reference ${reference.$ref}`, [...path, "$ref"])
     }
-    const nextSeen = new Set(seen).add(reference.$ref)
+    seen.add(reference.$ref)
     const representation = translateDefinition(reference.$ref, path, options?.recursiveReferenceError)
     if (representation._tag === "Reference") {
-      return resolveReference(representation, path, options, nextSeen)
+      return resolveReference(representation, path, options, seen)
     }
     if (representation._tag === "Suspend" && representation.thunk._tag === "Reference") {
       return annotate(
-        resolveReference(representation.thunk, path, options, nextSeen),
+        resolveReference(representation.thunk, path, options, seen),
         representation.annotations
       )
     }
     return representation
-  }
-
-  function annotationsOf(
-    representation: ImportedJsonSchemaRepresentation
-  ): Schema.Annotations.Annotations | undefined {
-    return representation._tag === "Reference" ? undefined : representation.annotations
   }
 
   function mergeAnnotations(
@@ -309,7 +291,10 @@ function translateJsonSchemaMultiDocument(
   ): ImportedJsonSchemaRepresentation {
     return annotate(
       representation,
-      mergeAnnotations(annotationsOf(left), annotationsOf(right))
+      mergeAnnotations(
+        left._tag === "Reference" ? undefined : left.annotations,
+        right._tag === "Reference" ? undefined : right.annotations
+      )
     )
   }
 
@@ -550,6 +535,207 @@ function translateJsonSchemaMultiDocument(
     }
   }
 
+  const jsonRootTags = ["Null", "String", "Number", "Boolean", "Objects", "Arrays"] as const
+  const allMasks = (1 << jsonRootTags.length) - 1
+
+  function rootMask(representation: ImportedJsonSchemaRepresentation): number {
+    switch (representation._tag) {
+      case "Never":
+        return 0
+      case "Unknown":
+      case "Reference":
+        return allMasks
+      case "Literal":
+        switch (typeof representation.literal) {
+          case "string":
+            return 2
+          case "number":
+            return 4
+          case "boolean":
+            return 8
+          default:
+            return 0
+        }
+      case "Suspend":
+        return rootMask(representation.thunk as ImportedJsonSchemaRepresentation)
+      case "Union": {
+        let out = 0
+        for (const type of representation.types) {
+          out |= rootMask(type as ImportedJsonSchemaRepresentation)
+        }
+        return out
+      }
+      default:
+        return 1 << jsonRootTags.indexOf(representation._tag)
+    }
+  }
+
+  function hasChoices(representation: ImportedJsonSchemaRepresentation): boolean {
+    switch (representation._tag) {
+      case "Reference": {
+        const key = representation.$ref
+        const cached = definitionCache.get(key)
+        if (cached === null || resolvingChoices.has(key)) return true
+        resolvingChoices.add(key)
+        const out = hasChoices(cached ?? translateDefinition(key, reachableDefinitions.get(key)!))
+        resolvingChoices.delete(key)
+        return out
+      }
+      case "Suspend":
+        return hasChoices(representation.thunk as ImportedJsonSchemaRepresentation)
+      case "Union":
+        return representation.types.length > 1 ||
+          representation.types.some((type) => hasChoices(type as ImportedJsonSchemaRepresentation))
+      case "Arrays":
+        return representation.elements.some((element) =>
+          hasChoices(element.type as ImportedJsonSchemaRepresentation)
+        ) || representation.rest.some((type) => hasChoices(type as ImportedJsonSchemaRepresentation))
+      case "Objects":
+        return representation.propertySignatures.some((property) =>
+          hasChoices(property.type as ImportedJsonSchemaRepresentation)
+        ) ||
+          representation.indexSignatures.some((indexSignature) =>
+            hasChoices(indexSignature.parameter as ImportedJsonSchemaRepresentation) ||
+            hasChoices(indexSignature.type as ImportedJsonSchemaRepresentation)
+          ) || representation.checks.some(checkHasChoices)
+      default:
+        return false
+    }
+  }
+
+  function checkHasChoices(check: Check): boolean {
+    return check._tag === "FilterGroup"
+      ? check.checks.some(checkHasChoices)
+      : check.representation?.schemas?.some((schema) => hasChoices(schema as ImportedJsonSchemaRepresentation)) === true
+  }
+
+  function makeUnion(
+    source: SchemaRepresentation.Union,
+    types: ReadonlyArray<ImportedJsonSchemaRepresentation>
+  ): ImportedJsonSchemaRepresentation {
+    if (types.length === 0) return never
+    if (types.length === 1 && source.checks.length === 0) return annotate(types[0], source.annotations)
+    return { ...source, types }
+  }
+
+  function literalValue(
+    representation: ImportedJsonSchemaRepresentation
+  ): string | number | boolean | null | undefined {
+    if (representation._tag === "Null") return null
+    if (representation._tag !== "Literal") return undefined
+    const literal = representation.literal
+    return typeof literal === "string" || typeof literal === "number" || typeof literal === "boolean"
+      ? literal
+      : undefined
+  }
+
+  function combineLiteralUnions(
+    left: SchemaRepresentation.Union,
+    right: SchemaRepresentation.Union,
+    path: Path
+  ): ImportedJsonSchemaRepresentation | undefined {
+    if (left.mode !== "anyOf" || right.mode !== "anyOf") return undefined
+    const rightByValue = new Map<string | number | boolean | null, ImportedJsonSchemaRepresentation>()
+    for (const type of right.types) {
+      const representation = type as ImportedJsonSchemaRepresentation
+      const value = literalValue(representation)
+      if (value === undefined) return undefined
+      rightByValue.set(value, representation)
+    }
+    const types: Array<ImportedJsonSchemaRepresentation> = []
+    for (const type of left.types) {
+      const representation = type as ImportedJsonSchemaRepresentation
+      const value = literalValue(representation)
+      if (value === undefined) return undefined
+      const match = rightByValue.get(value)
+      if (match !== undefined) types.push(combine(representation, annotate(match, right.annotations), path))
+    }
+    return makeUnion(left, types)
+  }
+
+  function combineUnionWithType(
+    union: SchemaRepresentation.Union,
+    type: ImportedJsonSchemaRepresentation,
+    path: Path,
+    unionOnLeft: boolean
+  ): ImportedJsonSchemaRepresentation {
+    const mask = rootMask(type)
+    const members = union.types
+      .map((member, index) => ({
+        index,
+        type: member as ImportedJsonSchemaRepresentation
+      }))
+      .filter((member) => (rootMask(member.type) & mask) !== 0)
+    if (members.length > 1 && hasChoices(type)) {
+      return unsupportedIntersection(path)
+    }
+    if (members.length === 1 && union.checks.length === 0) {
+      const member = annotate(members[0].type, union.annotations)
+      return unionOnLeft
+        ? combine(member, type, [...path, "types", members[0].index])
+        : combine(type, member, [...path, "types", members[0].index])
+    }
+    return makeUnion(
+      union,
+      members
+        .map((member) =>
+          unionOnLeft
+            ? combine(member.type, type, [...path, "types", member.index])
+            : combine(type, member.type, [...path, "types", member.index])
+        )
+        .filter((type) => type._tag !== "Never")
+    )
+  }
+
+  function isTypePartition(union: SchemaRepresentation.Union): boolean {
+    let mask = 0
+    for (const type of union.types) {
+      const memberMask = rootMask(type as ImportedJsonSchemaRepresentation)
+      if ((mask & memberMask) !== 0) return false
+      mask |= memberMask
+    }
+    return true
+  }
+
+  function unsupportedIntersection(path: Path): never {
+    throw errorWithPath("Unsupported intersection of overlapping unions", path)
+  }
+
+  function combinePartition(
+    partition: SchemaRepresentation.Union,
+    other: SchemaRepresentation.Union,
+    path: Path,
+    partitionOnLeft: boolean
+  ): ImportedJsonSchemaRepresentation {
+    const partitionTypes = partition.types as ReadonlyArray<ImportedJsonSchemaRepresentation>
+    const otherTypes = other.types as ReadonlyArray<ImportedJsonSchemaRepresentation>
+    for (const type of otherTypes) {
+      const mask = rootMask(type)
+      if (partitionTypes.filter((member) => (rootMask(member) & mask) !== 0).length > 1 && hasChoices(type)) {
+        return unsupportedIntersection(path)
+      }
+    }
+    const types: Array<ImportedJsonSchemaRepresentation> = []
+    for (let index = 0; index < partitionTypes.length; index++) {
+      const member = partitionTypes[index]
+      const type = combineUnionWithType(other, member, [...path, "types", index], !partitionOnLeft)
+      if (type._tag !== "Never") types.push(type)
+    }
+    return makeUnion(partition, types)
+  }
+
+  function combineUnions(
+    left: SchemaRepresentation.Union,
+    right: SchemaRepresentation.Union,
+    path: Path
+  ): ImportedJsonSchemaRepresentation {
+    const literals = combineLiteralUnions(left, right, path)
+    if (literals !== undefined) return literals
+    if (isTypePartition(left)) return combinePartition(left, right, path, true)
+    if (isTypePartition(right)) return combinePartition(right, left, path, false)
+    return unsupportedIntersection(path)
+  }
+
   function combine(
     left: ImportedJsonSchemaRepresentation,
     right: ImportedJsonSchemaRepresentation,
@@ -573,19 +759,9 @@ function translateJsonSchemaMultiDocument(
         right.annotations
       )
     }
-    if (left._tag === "Union") {
-      const types = left.types
-        .map((type, index) => combine(type as ImportedJsonSchemaRepresentation, right, [...path, "types", index]))
-        .filter((type) => type._tag !== "Never")
-      if (types.length === 0) return never
-      return annotate({
-        _tag: "Union",
-        types,
-        mode: left.mode,
-        checks: left.checks
-      }, left.annotations)
-    }
-    if (right._tag === "Union") return combine(right, left, path)
+    if (left._tag === "Union" && right._tag === "Union") return combineUnions(left, right, path)
+    if (left._tag === "Union") return combineUnionWithType(left, right, path, true)
+    if (right._tag === "Union") return combineUnionWithType(right, left, path, false)
 
     switch (left._tag) {
       case "Null":
@@ -674,8 +850,8 @@ function translateJsonSchemaMultiDocument(
         if (right._tag !== "Objects") return never
         const objectChecks = combineChecks(left.checks, right.checks, right.annotations)
         const scopes = [
-          ...getObjectScopes(left),
-          ...getObjectScopes(right)
+          ...objectScopesByProperties.get(left.propertySignatures)!,
+          ...objectScopesByProperties.get(right.propertySignatures)!
         ]
         return lowerObject(
           scopes,
@@ -687,40 +863,77 @@ function translateJsonSchemaMultiDocument(
     }
   }
 
-  function enter(input: unknown): JsonSchema.JsonSchema | undefined {
-    if (typeof input !== "object" || input === null || Array.isArray(input)) {
-      return undefined
-    }
-    const schema = input as JsonSchema.JsonSchema
-    return options?.onEnter === undefined ? schema : options.onEnter(schema)
-  }
-
   function recur(input: unknown, path: Path): ImportedJsonSchemaRepresentation {
     if (input === false) {
       return never
     }
-    const schema = enter(input)
+    if (typeof input !== "object" || input === null || Array.isArray(input)) return unknown
+    const schema = options?.onEnter === undefined
+      ? input as JsonSchema.JsonSchema
+      : options.onEnter(input as JsonSchema.JsonSchema)
     if (schema === undefined) {
       return unknown
     }
+    const enumIndex = Array.isArray(schema.enum)
+      ? schema.enum.findIndex((value) => typeof value === "object" && value !== null)
+      : -1
+    if (enumIndex !== -1) {
+      throw errorWithPath(`Unsupported structured JSON Schema value for "enum"`, [...path, "enum", enumIndex])
+    }
+    for (const keyword of Object.keys(schema)) {
+      if (keyword === "if" && !Object.hasOwn(schema, "then") && !Object.hasOwn(schema, "else")) continue
+      switch (keyword) {
+        case "if":
+        case "$dynamicRef":
+        case "contains":
+        case "dependentRequired":
+        case "dependentSchemas":
+        case "not":
+        case "unevaluatedItems":
+        case "unevaluatedProperties":
+          throw errorWithPath(`Unsupported JSON Schema keyword "${keyword}"`, [...path, keyword])
+      }
+    }
 
     let representation = on(schema, path)
-    if (representation._tag === "Reference") {
-      const siblingSchema: JsonSchema.JsonSchema = { ...schema, $ref: undefined }
-      for (const key of InternalAnnotations.jsonSchemaAnnotationKeys) {
-        delete siblingSchema[key]
+    if (Object.hasOwn(schema, "const")) {
+      const literal = makeJsonLiteral(schema.const)
+      if (literal === undefined && typeof schema.const === "object") {
+        throw errorWithPath(`Unsupported structured JSON Schema value for "const"`, [...path, "const"])
       }
-      const sibling = on(siblingSchema, path)
-      if (sibling._tag !== "Unknown") {
-        const reference = representation
-        representation = combine(
+      if (literal !== undefined) representation = combine(representation, literal, [...path, "const"])
+    }
+    if (Array.isArray(schema.enum)) {
+      const types = schema.enum.map((value) => makeJsonLiteral(value) ?? unknown)
+      representation = combine(
+        representation,
+        types.length === 1
+          ? types[0]
+          : { _tag: "Union", types, mode: "anyOf", checks: [] },
+        [...path, "enum"]
+      )
+    }
+    if (typeof schema.$ref === "string") {
+      const $ref = JsonSchema.getReferenceKey(schema.$ref)
+      if ($ref === undefined) {
+        throw errorWithPath(`Unsupported reference ${JSON.stringify(schema.$ref)}`, [...path, "$ref"])
+      }
+      if (!Object.hasOwn(document.definitions, $ref)) {
+        throw errorWithPath(`Invalid reference ${JSON.stringify(schema.$ref)}`, [...path, "$ref"])
+      }
+      if (!reachableDefinitions.has($ref)) reachableDefinitions.set($ref, path)
+      const reference: SchemaRepresentation.Reference = { _tag: "Reference", $ref }
+      representation = representation._tag === "Unknown"
+        ? reference
+        : representation._tag === "Never"
+        ? never
+        : combine(
           resolveReference(reference, path, {
             recursiveReferenceError: `Unsupported assertion siblings on recursive reference ${reference.$ref}`
           }),
-          sibling,
+          representation,
           path
         )
-      }
     }
     const annotations = jsonSchemaAnnotations(schema)
     if (annotations !== undefined && representation._tag === "Reference") {
@@ -754,49 +967,21 @@ function translateJsonSchemaMultiDocument(
   }
 
   function on(schema: JsonSchema.JsonSchema, path: Path): ImportedJsonSchemaRepresentation {
-    if (typeof schema.$ref === "string") {
-      const $ref = jsonSchemaReferenceKey(schema.$ref)
-      if ($ref !== undefined) {
-        if (!reachableDefinitions.has($ref)) reachableDefinitions.set($ref, path)
-        return { _tag: "Reference", $ref }
-      }
-    }
-    if (Object.hasOwn(schema, "const")) {
-      if (schema.const === null) {
-        return { _tag: "Null", checks: [] }
-      }
-      if (typeof schema.const === "string" || typeof schema.const === "number" || typeof schema.const === "boolean") {
-        return makeLiteral(schema.const)
-      }
-    }
-    if (Array.isArray(schema.enum)) {
-      const types: Array<ImportedJsonSchemaRepresentation> = []
-      for (let index = 0; index < schema.enum.length; index++) {
-        const value = schema.enum[index]
-        if (value === null) {
-          types.push({ _tag: "Null", checks: [] })
-        } else if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-          types.push(makeLiteral(value))
-        } else {
-          types.push(recur(value, [...path, "enum", index]))
-        }
-      }
-      if (types.length === 1) {
-        return types[0]
-      }
-      return { _tag: "Union", types, mode: "anyOf", checks: [] }
-    }
-
-    if (Array.isArray(schema.type) && schema.type.every(isImportedJsonSchemaType)) {
+    const types = Array.isArray(schema.type) && schema.type.every(isImportedJsonSchemaType)
+      ? schema.type
+      : !isImportedJsonSchemaType(schema.type) && hasTypeSpecificKeywords(schema)
+      ? jsonSchemaValueTypes
+      : undefined
+    if (types !== undefined) {
       return {
         _tag: "Union",
-        types: schema.type.map((type) => on({ ...schema, type }, path)),
+        types: types.map((type) => on({ ...schema, type }, path)),
         mode: "anyOf",
         checks: []
       }
     }
 
-    const type = isImportedJsonSchemaType(schema.type) ? schema.type : inferJsonSchemaType(schema)
+    const type = isImportedJsonSchemaType(schema.type) ? schema.type : undefined
     switch (type) {
       case "null":
         return { _tag: "Null", checks: [] }
@@ -881,7 +1066,10 @@ function translateJsonSchemaMultiDocument(
 
   function collectArrayChecks(schema: JsonSchema.JsonSchema, isMaxItemsRedundant: boolean): Array<Check> {
     const checks: Array<Check> = []
-    if (schema.prefixItems === undefined) {
+    if (
+      !Array.isArray(schema.prefixItems) ||
+      typeof schema.minItems === "number" && schema.minItems > schema.prefixItems.length
+    ) {
       addNumberCheck(checks, schema.minItems, "effect/schema/isMinLength", "minLength")
     }
     if (!isMaxItemsRedundant) {
@@ -948,10 +1136,11 @@ function translateJsonSchemaMultiDocument(
     addNumberCheck(checks, schema.minProperties, "effect/schema/isMinProperties", "minProperties")
     addNumberCheck(checks, schema.maxProperties, "effect/schema/isMaxProperties", "maxProperties")
     if (schema.propertyNames !== undefined) {
+      const propertyNamesPath = [...path, "propertyNames"]
       checks.push(jsonSchemaFilter(
         "effect/schema/isPropertyNames",
         null,
-        [recur(schema.propertyNames, [...path, "propertyNames"])]
+        [combine(string, recur(schema.propertyNames, propertyNamesPath), propertyNamesPath)]
       ))
     }
     return checks
@@ -968,26 +1157,6 @@ function translateJsonSchemaMultiDocument(
     resolveReference(reference, path)
   }
   return { representations, references }
-}
-
-/** @internal */
-function toRepresentation(
-  document: JsonSchema.Document<"draft-2020-12">,
-  options?: SchemaRepresentation.FromJsonSchemaOptions
-): SchemaRepresentation.Document {
-  const translated = translateJsonSchemaMultiDocument(
-    {
-      dialect: document.dialect,
-      schemas: [document.schema],
-      definitions: document.definitions
-    },
-    options,
-    true
-  )
-  return {
-    representation: translated.representations[0],
-    references: translated.references
-  }
 }
 
 const jsonSchemaRevivers: ReadonlyArray<SchemaRepresentation.AnyReviver> = [
@@ -1013,7 +1182,19 @@ export function fromJsonSchemaDocument(
   document: JsonSchema.Document<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions
 ): Schema.Top {
-  return fromRepresentation(toRepresentation(document, options), jsonSchemaRevivers)
+  const translated = translateJsonSchemaMultiDocument(
+    {
+      dialect: document.dialect,
+      schemas: [document.schema],
+      definitions: document.definitions
+    },
+    options,
+    true
+  )
+  return fromRepresentation({
+    representation: translated.representations[0],
+    references: translated.references
+  }, jsonSchemaRevivers)
 }
 
 /** @internal */

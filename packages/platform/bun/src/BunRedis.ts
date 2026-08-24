@@ -12,6 +12,7 @@
 import { RedisClient, type RedisOptions } from "bun"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fn from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -49,6 +50,40 @@ const make = Effect.fnUntraced(function*(
       Effect.tryPromise({
         try: () => client.send(command, args as Array<string>) as Promise<A>,
         catch: (cause) => new Redis.RedisError({ cause })
+      }),
+    subscribe: (channel, onMessage) =>
+      Effect.gen(function*() {
+        const terminal = yield* Deferred.make<void, Redis.RedisError>()
+        yield* Effect.acquireRelease(
+          Effect.tryPromise({
+            try: async () => {
+              const subscriber = new RedisClient(options?.url, {
+                ...options,
+                autoReconnect: false
+              })
+              subscriber.onclose = (cause) => {
+                Deferred.doneUnsafe(terminal, new Redis.RedisError({ cause }))
+              }
+              try {
+                await subscriber.subscribe(channel, (message, channel) => {
+                  onMessage({ channel, message })
+                })
+                return subscriber
+              } catch (cause) {
+                subscriber.onclose = null
+                subscriber.close()
+                throw cause
+              }
+            },
+            catch: (cause) => new Redis.RedisError({ cause })
+          }),
+          (subscriber) =>
+            Effect.sync(() => {
+              subscriber.onclose = null
+              subscriber.close()
+            })
+        )
+        return Deferred.await(terminal)
       })
   })
 

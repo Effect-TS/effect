@@ -22,6 +22,11 @@ export * as Ndjson from "./Ndjson.ts"
 /**
  * @since 4.0.0
  */
+export * as SchemaBinary from "./SchemaBinary.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as Sse from "./Sse.ts"
 
 /**

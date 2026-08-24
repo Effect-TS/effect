@@ -3,9 +3,85 @@ import { describe, expect, it } from "tstyche"
 
 type Closed = { readonly _tag: "Closed" }
 
+type Todo = { readonly completed: boolean }
+type Todos = Array<Todo>
+type Filter = "All" | "Active" | "Completed"
+
 declare const stringOrNumber: string | number
 
 describe("Match", () => {
+  it("fn infers the selected value and original arguments", () => {
+    const filterTodos = Match.fn((_todos: Todos, filter: Filter) => filter).pipe(
+      Match.when("All", (_filter, todos) => todos),
+      Match.when("Active", (_filter, todos) => todos.filter((todo) => !todo.completed)),
+      Match.when("Completed", (_filter, todos) => todos.filter((todo) => todo.completed)),
+      Match.exhaustive
+    )
+
+    expect(filterTodos).type.toBe<
+      (
+        todos: Todos,
+        filter: Filter
+      ) => Todos
+    >()
+
+    const withoutExtraParameters = Match.fn((_todos: Todos, filter: Filter) => filter).pipe(
+      Match.when("All", () => "all" as const),
+      Match.orElse(() => "filtered" as const)
+    )
+    expect(withoutExtraParameters).type.toBe<(todos: Todos, filter: Filter) => "all" | "filtered">()
+
+    Match.fn((_todos: Todos, filter: Filter) => filter).pipe(
+      // @ts-expect-error Argument of type
+      Match.when("All", (_filter, _todos: Array<string>) => "all")
+    )
+  })
+
+  it("fn threads arguments through handlers and terminals", () => {
+    const whenOr = Match.fn((_prefix: string, value: "a" | "b" | "c") => value).pipe(
+      Match.whenOr("a", "b", (_value, prefix) => prefix.length),
+      Match.when("c", (_value, prefix) => prefix.length),
+      Match.exhaustive
+    )
+    expect(whenOr).type.toBe<(prefix: string, value: "a" | "b" | "c") => number>()
+
+    const whenAnd = Match.fn((_context: boolean, value: { readonly kind: "a"; readonly active: boolean }) => value)
+      .pipe(
+        Match.whenAnd({ kind: "a" }, { active: true }, (_value, context) => context),
+        Match.orElse((_value, context) => context)
+      )
+    expect(whenAnd).type.toBe<
+      (
+        context: boolean,
+        value: { readonly kind: "a"; readonly active: boolean }
+      ) => boolean
+    >()
+
+    const not = Match.fn((_context: boolean, value: "a" | "b") => value).pipe(
+      Match.not("a", (_value, context) => context),
+      Match.orElse((_value, context) => context)
+    )
+    expect(not).type.toBe<(context: boolean, value: "a" | "b") => boolean>()
+
+    type Event = { readonly _tag: "A" } | { readonly _tag: "B" }
+    const tag = Match.fn((_context: boolean, event: Event) => event).pipe(
+      Match.tag("A", (_event, context) => context),
+      Match.tag("B", (_event, context) => context),
+      Match.exhaustive
+    )
+    expect(tag).type.toBe<(context: boolean, event: Event) => boolean>()
+
+    const partial = Match.fn((_prefix: string, value: string | number) => value).pipe(
+      Match.when(Match.string, (value, prefix) => prefix + value)
+    )
+    expect(partial.pipe(Match.option)).type.toBe<
+      (prefix: string, value: string | number) => Option.Option<string>
+    >()
+    expect(partial.pipe(Match.result)).type.toBe<
+      (prefix: string, value: string | number) => Result.Result<string, number>
+    >()
+  })
+
   it("value matchers resolve terminals for generic inputs", () => {
     // https://github.com/Effect-TS/effect/issues/7315
     const orElse = <Open extends { readonly _tag: "Open" }>(

@@ -9,7 +9,6 @@
  *
  * @since 4.0.0
  */
-import type { StandardSchemaV1 } from "@standard-schema/spec"
 import * as Arr from "./Array.ts"
 import { format, formatPath, type Formatter as FormatterI } from "./Formatter.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
@@ -17,6 +16,7 @@ import * as InternalParser from "./internal/schema/parser.ts"
 import { hasProperty } from "./Predicate.ts"
 import type * as Schema from "./Schema.ts"
 import type * as SchemaAST from "./SchemaAST.ts"
+import type { StandardSchemaV1 } from "./StandardSchema.ts"
 
 const TypeId = "~effect/SchemaIssue/Issue"
 

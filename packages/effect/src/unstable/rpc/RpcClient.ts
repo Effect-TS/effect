@@ -652,7 +652,9 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
   } | undefined
 ) {
   const clientId = clientIdCounter++
-  const { run, send, supportsAck, supportsTransferables } = yield* Protocol
+  const { codecFor, run, send, supportsAck, supportsTransferables } = yield* Protocol
+  const rpcSchemas = makeRpcSchemas(codecFor)
+  const decodeDefect = Schema.decodeSync(codecFor(Schema.Defect()))
 
   type ClientEntry = {
     readonly rpc: Rpc.AnyWithProps
@@ -782,23 +784,27 @@ interface RpcSchemas {
   readonly encodePayload: (payload: any) => Effect.Effect<any, Schema.SchemaError, unknown>
   readonly decodeExit: (encoded: unknown) => Effect.Effect<Exit.Exit<any, any>, Schema.SchemaError, unknown>
 }
-const rpcSchemasCache = new WeakMap<Rpc.AnyWithProps, RpcSchemas>()
-const rpcSchemas = (rpc: Rpc.AnyWithProps) => {
-  let entry = rpcSchemasCache.get(rpc)
-  if (entry !== undefined) {
+// Codecs are compiled per client, because two protocols can fill the message
+// holes with different codecs.
+const makeRpcSchemas = (codecFor: RpcSerialization.CodecFor) => {
+  const cache = new WeakMap<Rpc.AnyWithProps, RpcSchemas>()
+  return (rpc: Rpc.AnyWithProps): RpcSchemas => {
+    let entry = cache.get(rpc)
+    if (entry !== undefined) {
+      return entry
+    }
+    const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
+    entry = {
+      decodeChunk: Option.map(
+        streamSchemas,
+        (streamSchemas) => Schema.decodeUnknownEffect(codecFor(Schema.NonEmptyArray(streamSchemas.success)))
+      ),
+      encodePayload: Schema.encodeEffect(codecFor(rpc.payloadSchema)),
+      decodeExit: Schema.decodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any)))
+    }
+    cache.set(rpc, entry)
     return entry
   }
-  const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
-  entry = {
-    decodeChunk: Option.map(
-      streamSchemas,
-      (streamSchemas) => Schema.decodeUnknownEffect(Schema.toCodecJson(Schema.NonEmptyArray(streamSchemas.success)))
-    ),
-    encodePayload: Schema.encodeEffect(Schema.toCodecJson(rpc.payloadSchema)),
-    decodeExit: Schema.decodeUnknownEffect(Schema.toCodecJson(Rpc.exitSchema(rpc as any)))
-  }
-  rpcSchemasCache.set(rpc, entry)
-  return entry
 }
 
 /**
@@ -857,6 +863,11 @@ export class Protocol extends Context.Service<Protocol, {
   ) => Effect.Effect<void, RpcClientError>
   readonly supportsAck: boolean
   readonly supportsTransferables: boolean
+  /**
+   * Builds the codec that fills the `unknown` holes of the protocol messages,
+   * re-passed from the `RpcSerialization` backing this transport.
+   */
+  readonly codecFor: RpcSerialization.CodecFor
 }>()("effect/rpc/RpcClient/Protocol") {
   /**
    * Creates a client protocol service from the supplied RPC request runner.
@@ -975,7 +986,8 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
     return {
       send,
       supportsAck: false,
-      supportsTransferables: false
+      supportsTransferables: false,
+      codecFor: serialization.codecFor
     }
   }))
 
@@ -1033,7 +1045,10 @@ export const makeProtocolSocket = (options?: {
 
     let parser = serialization.makeUnsafe()
 
-    const pinger = yield* makePinger(write(parser.encode(constPing)!))
+    // `parser` is replaced on every connect, and a stateful serialization
+    // encodes against the connection it is writing to, so the ping is encoded
+    // when it is sent rather than once up front.
+    const pinger = yield* makePinger(Effect.suspend(() => write(parser.encode(constPing)!)))
     let currentError: RpcClientError | undefined
     const onOpen = Effect.suspend(() => {
       currentError = undefined
@@ -1156,7 +1171,8 @@ export const makeProtocolSocket = (options?: {
         return Effect.orDie(write(encoded))
       },
       supportsAck: true,
-      supportsTransferables: false
+      supportsTransferables: false,
+      codecFor: serialization.codecFor
     }
   }))
 
@@ -1378,7 +1394,10 @@ export const makeProtocolWorker = (
     return {
       send,
       supportsAck: true,
-      supportsTransferables: true
+      supportsTransferables: true,
+      // Worker protocols use structured clone, so they do not depend on
+      // `RpcSerialization`. A binary worker protocol is a separate protocol.
+      codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
     }
   }))
 
@@ -1423,7 +1442,3 @@ export class ConnectionHooks extends Context.Service<ConnectionHooks, {
   readonly onConnect: Effect.Effect<void>
   readonly onDisconnect: Effect.Effect<void>
 }>()("effect/rpc/RpcClient/ConnectionHooks") {}
-
-// internal
-
-const decodeDefect = Schema.decodeSync(Schema.Defect())

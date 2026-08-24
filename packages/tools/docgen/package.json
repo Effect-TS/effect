@@ -1,6 +1,6 @@
 {
   "name": "@effect/docgen",
-  "version": "4.0.0-rc.110",
+  "version": "4.0.0-rc.111",
   "type": "module",
   "license": "MIT",
   "description": "An opinionated documentation generator for Effect projects",
@@ -64,7 +64,7 @@
     "doctrine": "^3.0.0",
     "effect": "workspace:^",
     "glob": "^13.0.6",
-    "prettier": "^3.6.2",
+    "prettier": "^3.9.6",
     "ts-morph": "^28.0.0",
     "tsconfck": "^3.1.6"
   },
@@ -74,11 +74,11 @@
   },
   "devDependencies": {
     "@effect/vitest": "workspace:^",
-    "@types/babel__code-frame": "^7.0.6",
+    "@types/babel__code-frame": "^7.27.0",
     "@types/doctrine": "^0.0.9",
     "@types/node": "^26.2.0",
     "tsx": "^4.23.12",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

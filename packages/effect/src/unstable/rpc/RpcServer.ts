@@ -517,6 +517,7 @@ export const make: <Rpcs extends Rpc.Any>(
   }
 ) {
   const {
+    codecFor,
     disconnects,
     end,
     run,
@@ -525,6 +526,7 @@ export const make: <Rpcs extends Rpc.Any>(
     supportsSpanPropagation,
     supportsTransferables
   } = yield* Protocol
+  const encodeDefectUnsafe = Schema.encodeSync(codecFor(Schema.Defect()))
   const services = yield* Effect.context<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>>()
   const scope = yield* Scope.make()
 
@@ -589,7 +591,7 @@ export const make: <Rpcs extends Rpc.Any>(
   type Schemas = {
     readonly decode: (u: unknown) => Effect.Effect<Rpc.Payload<Rpcs>, Schema.SchemaError>
     readonly encodeChunk: (
-      u: ReadonlyArray<unknown>
+      u: NonEmptyReadonlyArray<unknown>
     ) => Effect.Effect<NonEmptyReadonlyArray<unknown>, Schema.SchemaError>
     readonly encodeExit: (u: unknown) => Effect.Effect<ResponseExitEncoded["exit"], Schema.SchemaError>
     readonly encodeDefect: (u: unknown) => Effect.Effect<unknown, Schema.SchemaError>
@@ -604,14 +606,14 @@ export const make: <Rpcs extends Rpc.Any>(
       const entry = Context.getOrUndefinedUnsafe(services, rpc.key) as Rpc.Handler<Rpcs["_tag"]>
       const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
       schemas = {
-        decode: Schema.decodeUnknownEffect(Schema.toCodecJson(rpc.payloadSchema)) as any,
+        decode: Schema.decodeUnknownEffect(codecFor(rpc.payloadSchema)) as any,
         encodeChunk: Schema.encodeUnknownEffect(
-          Schema.toCodecJson(
-            Schema.Array(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
+          codecFor(
+            Schema.NonEmptyArray(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
           )
         ) as any,
-        encodeExit: Schema.encodeUnknownEffect(Schema.toCodecJson(Rpc.exitSchema(rpc as any))) as any,
-        encodeDefect: Schema.encodeUnknownEffect(Schema.toCodecJson(rpc.defectSchema)) as any,
+        encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any))) as any,
+        encodeDefect: Schema.encodeUnknownEffect(codecFor(rpc.defectSchema)) as any,
         context: entry.context
       }
       schemasCache.set(rpc, schemas)
@@ -669,7 +671,7 @@ export const make: <Rpcs extends Rpc.Any>(
 
   const sendDefect = (client: Client, defect: unknown) =>
     Effect.catchCause(
-      send(client.id, ResponseDefectEncoded(defect)),
+      send(client.id, ResponseDefectEncoded(encodeDefectUnsafe(defect))),
       (cause) =>
         Effect.annotateLogs(Effect.logDebug(cause), {
           module: "RpcServer",
@@ -806,6 +808,7 @@ export const layerHttp = <Rpcs extends Rpc.Any>(options: {
   readonly spanAttributes?: Record<string, unknown> | undefined
   readonly concurrency?: number | "unbounded" | undefined
   readonly disableFatalDefects?: boolean | undefined
+  readonly streamBufferSize?: number | "unbounded" | undefined
 }): Layer.Layer<
   never,
   never,
@@ -854,6 +857,12 @@ export class Protocol extends Context.Service<
     readonly supportsAck: boolean
     readonly supportsTransferables: boolean
     readonly supportsSpanPropagation: boolean
+    readonly supportsNotifications: boolean
+    /**
+     * Builds the codec that fills the `unknown` holes of the protocol messages,
+     * re-passed from the `RpcSerialization` backing this transport.
+     */
+    readonly codecFor: RpcSerialization.CodecFor
   }
 >()("effect/rpc/RpcServer/Protocol") {
   /**
@@ -971,7 +980,11 @@ export const layerProtocolWebsocket = (options: {
  * @category protocols
  * @since 4.0.0
  */
-export const makeProtocolWithHttpEffect: Effect.Effect<
+export const makeProtocolWithHttpEffect: (
+  options?: {
+    readonly streamBufferSize?: number | "unbounded" | undefined
+  } | undefined
+) => Effect.Effect<
   {
     readonly protocol: Protocol["Service"]
     readonly httpEffect: Effect.Effect<
@@ -982,8 +995,9 @@ export const makeProtocolWithHttpEffect: Effect.Effect<
   },
   never,
   RpcSerialization.RpcSerialization
-> = Effect.gen(function*() {
+> = Effect.fnUntraced(function*(options = {}) {
   const serialization = yield* RpcSerialization.RpcSerialization
+  const encodeDefectUnsafe = Schema.encodeSync(serialization.codecFor(Schema.Defect()))
   const includesFraming = serialization.includesFraming
   const isBinary = !serialization.contentType.includes("json")
 
@@ -1017,7 +1031,11 @@ export const makeProtocolWithHttpEffect: Effect.Effect<
       isBinary ? Effect.map(request.arrayBuffer, (buf) => new Uint8Array(buf)) : request.text
     )
     const id = clientId++
-    const queue = yield* Queue.make<Uint8Array | FromServerEncoded, Cause.Done>()
+    const queue = yield* Queue.make<Uint8Array | FromServerEncoded, Cause.Done>({
+      capacity: includesFraming && options.streamBufferSize !== "unbounded"
+        ? options.streamBufferSize ?? 16
+        : undefined
+    })
     const parser = serialization.makeUnsafe()
     const requestIds: Array<RequestId> = []
 
@@ -1025,14 +1043,18 @@ export const makeProtocolWithHttpEffect: Effect.Effect<
       typeof data === "string" ? Queue.offer(queue, encoder.encode(data)) : Queue.offer(queue, data)
     const client: Client = {
       write: !includesFraming
-        ? (response) => Queue.offer(queue, response)
+        ? (response) =>
+          // buffered responses cannot carry notifications, so they are dropped
+          response._tag === "Request" && response.isNotification === true
+            ? Effect.void
+            : Queue.offer(queue, response)
         : (response) => {
           try {
             const encoded = parser.encode(response)
             if (encoded === undefined) return Effect.void
             return offer(encoded)
           } catch (cause) {
-            return offer(parser.encode(ResponseDefectEncoded(cause))!)
+            return offer(parser.encode(ResponseDefectEncoded(encodeDefectUnsafe(cause)))!)
           }
         },
       end: Queue.end(queue)
@@ -1064,7 +1086,7 @@ export const makeProtocolWithHttpEffect: Effect.Effect<
         yield* writeRequest(id, message)
       }
     } catch (cause) {
-      yield* client.write(ResponseDefectEncoded(cause))
+      yield* client.write(ResponseDefectEncoded(encodeDefectUnsafe(cause)))
     }
 
     yield* writeRequest(id, constEof)
@@ -1111,7 +1133,9 @@ export const makeProtocolWithHttpEffect: Effect.Effect<
       initialMessage: Effect.succeedNone,
       supportsAck: false,
       supportsTransferables: false,
-      supportsSpanPropagation: false
+      supportsSpanPropagation: false,
+      supportsNotifications: includesFraming,
+      codecFor: serialization.codecFor
     })
   })
 
@@ -1140,12 +1164,13 @@ const mergeUint8Arrays = (arrays: ReadonlyArray<Uint8Array>) => {
  */
 export const makeProtocolHttp: (options: {
   readonly path: HttpRouter.PathInput
+  readonly streamBufferSize?: number | "unbounded" | undefined
 }) => Effect.Effect<
   Protocol["Service"],
   never,
   RpcSerialization.RpcSerialization | HttpRouter.HttpRouter
 > = Effect.fnUntraced(function*(options) {
-  const { httpEffect, protocol } = yield* makeProtocolWithHttpEffect
+  const { httpEffect, protocol } = yield* makeProtocolWithHttpEffect(options)
   const router = yield* HttpRouter.HttpRouter
   yield* router.add("POST", options.path, httpEffect)
   return protocol
@@ -1160,6 +1185,7 @@ export const makeProtocolHttp: (options: {
  */
 export const layerProtocolHttp = (options: {
   readonly path: HttpRouter.PathInput
+  readonly streamBufferSize?: number | "unbounded" | undefined
 }): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | HttpRouter.HttpRouter> => {
   return Layer.effect(Protocol)(makeProtocolHttp(options))
 }
@@ -1178,6 +1204,7 @@ export const toHttpEffect: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly streamBufferSize?: number | "unbounded" | undefined
   } | undefined
 ) => Effect.Effect<
   Effect.Effect<HttpServerResponse.HttpServerResponse, never, Scope.Scope | HttpServerRequest.HttpServerRequest>,
@@ -1194,9 +1221,10 @@ export const toHttpEffect: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly streamBufferSize?: number | "unbounded" | undefined
   }
 ) {
-  const { httpEffect, protocol } = yield* makeProtocolWithHttpEffect
+  const { httpEffect, protocol } = yield* makeProtocolWithHttpEffect(options)
   yield* make(group, options).pipe(
     Effect.provideService(Protocol, protocol),
     Effect.forkScoped
@@ -1302,7 +1330,9 @@ export const makeProtocolStdio = Effect.gen(function*() {
       initialMessage: Effect.succeedNone,
       supportsAck: true,
       supportsTransferables: false,
-      supportsSpanPropagation: true
+      supportsSpanPropagation: true,
+      supportsNotifications: true,
+      codecFor: serialization.codecFor
     }
   }))
 })
@@ -1361,6 +1391,7 @@ export const makeProtocolWorkerRunner: Effect.Effect<
         clientIds.delete(clientId)
         return Queue.offer(disconnects, clientId)
       }),
+      Effect.forever,
       Effect.forkScoped
     )
   }
@@ -1375,7 +1406,11 @@ export const makeProtocolWorkerRunner: Effect.Effect<
     initialMessage: Effect.asSome(Deferred.await(initialMessage)),
     supportsAck: true,
     supportsTransferables: true,
-    supportsSpanPropagation: true
+    supportsSpanPropagation: true,
+    supportsNotifications: true,
+    // Worker protocols use structured clone, so they do not depend on
+    // `RpcSerialization`. A binary worker protocol is a separate protocol.
+    codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
   }
 }))
 
@@ -1415,6 +1450,7 @@ const makeSocketProtocol: Effect.Effect<
   RpcSerialization.RpcSerialization
 > = Effect.gen(function*() {
   const serialization = yield* RpcSerialization.RpcSerialization
+  const encodeDefectUnsafe = Schema.encodeSync(serialization.codecFor(Schema.Defect()))
   const disconnects = yield* Queue.make<number>()
 
   let clientId = 0
@@ -1445,7 +1481,7 @@ const makeSocketProtocol: Effect.Effect<
         return Effect.orDie(writeRaw(encoded))
       } catch (cause) {
         return Effect.orDie(
-          writeRaw(parser.encode(ResponseDefectEncoded(cause))!)
+          writeRaw(parser.encode(ResponseDefectEncoded(encodeDefectUnsafe(cause)))!)
         )
       }
     }
@@ -1472,7 +1508,7 @@ const makeSocketProtocol: Effect.Effect<
         if (Predicate.isTagged(cause, "MaxBufferSizeExceeded")) {
           return writeRaw(new Socket.CloseEvent(1009, String(cause)))
         }
-        return writeRaw(parser.encode(ResponseDefectEncoded(cause))!)
+        return writeRaw(parser.encode(ResponseDefectEncoded(encodeDefectUnsafe(cause)))!)
       }
     }).pipe(
       Effect.catchReason("SocketError", "SocketCloseError", (_) => Effect.void),
@@ -1496,7 +1532,9 @@ const makeSocketProtocol: Effect.Effect<
       initialMessage: Effect.succeedNone,
       supportsAck: true,
       supportsTransferables: false,
-      supportsSpanPropagation: true
+      supportsSpanPropagation: true,
+      supportsNotifications: true,
+      codecFor: serialization.codecFor
     })
   })
 

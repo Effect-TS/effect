@@ -1,6 +1,6 @@
 import * as Arr from "../../../Array.ts"
 import * as InternalRecord from "../../../internal/record.ts"
-import type * as JsonSchema from "../../../JsonSchema.ts"
+import * as JsonSchema from "../../../JsonSchema.ts"
 import * as Option from "../../../Option.ts"
 import * as Predicate from "../../../Predicate.ts"
 import * as Schema from "../../../Schema.ts"
@@ -17,6 +17,29 @@ const RECORD_DESCRIPTION =
 const TUPLE_DESCRIPTION =
   "Tuple encoded as an object with numeric string keys ('0', '1', ...). If present, '__rest__' contains remaining elements"
 const TUPLE_TAIL_DESCRIPTION = `${TUPLE_DESCRIPTION}. Post-rest elements use '__tail_0__', '__tail_1__', and so on`
+
+/** @internal */
+export function resolveReference($ref: string, definitions: JsonSchema.Definitions): JsonSchema.JsonSchema {
+  const key = JsonSchema.getReferenceKey($ref)
+  if (key === undefined) {
+    throw new Error(`Unsupported reference ${JSON.stringify($ref)}`)
+  }
+  if (!Object.hasOwn(definitions, key)) {
+    throw new Error(`Invalid reference ${JSON.stringify($ref)}`)
+  }
+  return definitions[key]
+}
+
+/** @internal */
+export function resolveTopLevelReference(
+  document: JsonSchema.Document<"draft-2020-12">
+): JsonSchema.Document<"draft-2020-12"> {
+  if (typeof document.schema.$ref !== "string") return document
+  return {
+    ...document,
+    schema: resolveReference(document.schema.$ref, document.definitions)
+  }
+}
 
 /** @internal */
 export function toCodec<T, E, RD, RE>(

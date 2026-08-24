@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-deno",
   "type": "module",
-  "version": "4.0.0-rc.110",
+  "version": "4.0.0-rc.111",
   "license": "MIT",
   "description": "Platform specific implementations for the Deno runtime",
   "homepage": "https://effect.website",
@@ -75,7 +75,7 @@
     "effect": "workspace:^"
   },
   "devDependencies": {
-    "@std/assert": "jsr:^1.0.16",
+    "@std/assert": "jsr:^1.0.19",
     "@testcontainers/redis": "^12.1.0",
     "@types/deno": "^2.7.0",
     "effect": "workspace:^"

@@ -22,6 +22,7 @@ import * as JsonSchema from "../../JsonSchema.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
+import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import * as HttpMethod from "../http/HttpMethod.ts"
 import * as HttpApi from "./HttpApi.ts"
 import * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
@@ -211,27 +212,17 @@ export const annotations: (
   transform: Transform
 })
 
-const apiCache = new WeakMap<HttpApi.Constraint, OpenAPISpec>()
-
-type CompileSchemas = (
-  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
-) => JsonSchema.MultiDocument<"openapi-3.1">
-
-const compileSchemas: CompileSchemas = (asts) =>
-  JsonSchema.toMultiDocumentOpenApi3_1(
-    InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(
-      InternalToRepresentation.toRepresentations(
-        Arr.map(asts, Schema.toCodecJsonAST),
-        InternalToJsonSchemaDocument.toRepresentationOptions
-      )
-    )
-  )
+const defaultOptions: SchemaRepresentation.ToRepresentationOptions = {}
+const apiCache = new WeakMap<
+  SchemaRepresentation.ToRepresentationOptions,
+  WeakMap<HttpApi.Constraint, OpenAPISpec>
+>()
 
 const cloneOpenAPISpec = <A>(value: A): A => {
   if (Array.isArray(value)) {
     return value.map(cloneOpenAPISpec) as A
   }
-  if (value !== null && typeof value === "object") {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
     const out: Record<string, unknown> = {}
     for (const key of Object.keys(value)) {
       InternalRecord.assignProperty(out, key, cloneOpenAPISpec((value as Record<string, unknown>)[key]))
@@ -258,7 +249,11 @@ function processAnnotation<Services, S, I>(
 }
 
 /**
- * Converts an `HttpApi` instance into an OpenAPI Specification object.
+ * Generates an OpenAPI 3.1 specification from an `HttpApi`.
+ *
+ * **When to use**
+ *
+ * Use when you need a programmatic OpenAPI document for an API definition.
  *
  * **Details**
  *
@@ -271,27 +266,40 @@ function processAnnotation<Services, S, I>(
  *
  * The function also deduplicates schemas, applies transformations, and
  * integrates annotations like descriptions, summaries, external documentation,
- * and overrides. Cached results are used for better performance when the same
- * `HttpApi` instance is processed multiple times.
+ * and overrides. The optional reference policy receives canonical JSON encoded
+ * ASTs and controls which schemas are extracted into components. By default, only candidates with resolved identifiers
+ * become references; anonymous non-recursive schemas remain inline.
+ *
+ * **Gotchas**
+ *
+ * Cached results are keyed by both the `HttpApi` instance and the identity of the options object. Reuse the same immutable
+ * options object to reuse a cached result; mutating an options object after its first use does not invalidate the cached
+ * specification. Each call returns a copy of the cached specification.
  *
  * @category constructors
  * @since 4.0.0
  */
 export function fromApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
-  api: HttpApi.HttpApi<Id, Groups>
+  api: HttpApi.HttpApi<Id, Groups>,
+  options?: SchemaRepresentation.ToRepresentationOptions
 ): OpenAPISpec {
-  return fromApiWith(api, apiCache, compileSchemas)
+  const resolvedOptions = options ?? defaultOptions
+  let cache = apiCache.get(resolvedOptions)
+  if (cache === undefined) {
+    cache = new WeakMap()
+    apiCache.set(resolvedOptions, cache)
+  }
+  const cached = cache.get(api)
+  if (cached !== undefined) return cloneOpenAPISpec(cached)
+  const spec = makeOpenApi(api, resolvedOptions)
+  cache.set(api, cloneOpenAPISpec(spec))
+  return spec
 }
 
-function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
+function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
   api: HttpApi.HttpApi<Id, Groups>,
-  cache: WeakMap<HttpApi.Constraint, OpenAPISpec>,
-  compileSchemas: CompileSchemas
+  options: SchemaRepresentation.ToRepresentationOptions
 ): OpenAPISpec {
-  const cached = cache.get(api)
-  if (cached !== undefined) {
-    return cloneOpenAPISpec(cached)
-  }
   let spec: OpenAPISpec = {
     openapi: "3.1.0",
     info: {
@@ -661,7 +669,14 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
   }
 
   if (Arr.isArrayNonEmpty(pathOps)) {
-    const jsonSchemaMultiDocument = compileSchemas(Arr.map(pathOps, (op) => op.ast))
+    const jsonSchemaMultiDocument = JsonSchema.toMultiDocumentOpenApi3_1(
+      InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(
+        InternalToRepresentation.toRepresentations(
+          Arr.map(pathOps, (op) => Schema.toCodecJsonAST(op.ast)),
+          options
+        )
+      )
+    )
     const patchOps: Array<JsonPatch.JsonPatchOperation> = pathOps.map((op, i) => {
       const oppath = escapePath(op.path)
       const value = jsonSchemaMultiDocument.schemas[i]
@@ -698,8 +713,6 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
   processAnnotation(api.annotations, Transform, (transformFn) => {
     spec = transformFn(spec) as OpenAPISpec
   })
-
-  cache.set(api, cloneOpenAPISpec(spec))
 
   return spec
 }

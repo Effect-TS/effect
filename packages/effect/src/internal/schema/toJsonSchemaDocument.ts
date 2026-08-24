@@ -22,11 +22,6 @@ const jsonSchemaAnnotationExcludedKeys = new Set([
   ...InternalAnnotations.jsonSchemaAnnotationKeys
 ])
 
-/** @internal */
-export const toRepresentationOptions = {
-  isAnonymousReferenceAllowed: (ast: SchemaAST.AST): boolean => !SchemaAST.isDeclaration(ast)
-}
-
 function collectJsonSchemaAnnotations(
   annotations: Schema.Annotations.Annotations | undefined,
   options: Schema.ToJsonSchemaOptions | undefined
@@ -478,7 +473,7 @@ function compileJsonSchema(
       case "Union": {
         const types = representation.types.map((type, index) => recur(type, [...path, "types", index]))
         if (types.length === 0) return { not: {} }
-        if (types.length > 1) {
+        if (representation.mode === "anyOf" && types.length > 1) {
           const compacted = compactEnums(types)
           if (compacted !== undefined) return compacted
         }

@@ -135,30 +135,66 @@ describe("SchemaRepresentation.toRepresentations", () => {
       })
       assert.deepStrictEqual(reversed.references, forward.references)
     })
+  })
 
-    it("shares an anonymous non-trivial schema between roots", () => {
+  describe("reference policies", () => {
+    it("supports policies based on occurrence counts", () => {
       const shared = Schema.Struct({ value: Schema.String })
-      const document = SchemaRepresentation.toRepresentations([shared.ast, shared.ast])
+      const equivalent = Schema.Struct({ value: Schema.String })
+      const referencePolicy: SchemaRepresentation.ReferencePolicy = ({ ast, occurrences }) =>
+        occurrences > 1 ? `${ast._tag}_` : undefined
 
-      assert.deepStrictEqual(document, {
-        representations: [
-          { _tag: "Reference", $ref: "Objects_" },
-          { _tag: "Reference", $ref: "Objects_" }
-        ],
-        references: {
-          Objects_: {
-            _tag: "Objects",
-            propertySignatures: [{
-              name: "value",
-              type: { _tag: "String", checks: [] },
-              isOptional: false,
-              isMutable: false
-            }],
-            indexSignatures: [],
-            checks: []
-          }
+      const single = SchemaRepresentation.toRepresentations([shared.ast], { referencePolicy })
+      const distinct = SchemaRepresentation.toRepresentations([shared.ast, equivalent.ast], {
+        referencePolicy: ({ ast, occurrences }) =>
+          ast._tag === "Objects" && occurrences > 1 ? `${ast._tag}_` : undefined
+      })
+      const repeated = SchemaRepresentation.toRepresentations([shared.ast, shared.ast], { referencePolicy })
+
+      assert.deepStrictEqual(single.references, {})
+      assert.deepStrictEqual(distinct.references, {})
+      assert.deepStrictEqual(repeated.representations, [
+        { _tag: "Reference", $ref: "Objects_" },
+        { _tag: "Reference", $ref: "Objects_" }
+      ])
+      assert.deepStrictEqual(Object.keys(repeated.references), ["Objects_"])
+    })
+
+    it("suffixes policy name collisions", () => {
+      const first = Schema.Struct({ first: Schema.String })
+      const second = Schema.Struct({ second: Schema.String })
+      const document = SchemaRepresentation.toRepresentations([first.ast, second.ast], {
+        referencePolicy: ({ ast }) => ast._tag === "Objects" ? "Model" : undefined
+      })
+
+      assert.deepStrictEqual(document.representations, [
+        { _tag: "Reference", $ref: "Model" },
+        { _tag: "Reference", $ref: "Model_1" }
+      ])
+      assert.deepStrictEqual(Object.keys(document.references), ["Model", "Model_1"])
+    })
+
+    it("distinguishes identifiers that share the same encoded AST owner", () => {
+      const first = Schema.NumberFromString.annotate({ identifier: "First" })
+      const second = Schema.NumberFromString.annotate({ identifier: "Second" })
+      const inputs: Array<SchemaRepresentation.ReferencePolicyInput> = []
+      const document = SchemaRepresentation.toRepresentations([first.ast, second.ast], {
+        referencePolicy: (input) => {
+          inputs.push(input)
+          return input.identifier
         }
       })
+
+      assert.deepStrictEqual(document.representations, [
+        { _tag: "Reference", $ref: "FirstEncoded" },
+        { _tag: "Reference", $ref: "SecondEncoded" }
+      ])
+      assert.deepStrictEqual(Object.keys(document.references), ["FirstEncoded", "SecondEncoded"])
+      assert.deepStrictEqual(inputs.map(({ identifier, occurrences }) => ({ identifier, occurrences })), [
+        { identifier: "FirstEncoded", occurrences: 1 },
+        { identifier: "SecondEncoded", occurrences: 1 }
+      ])
+      assert.strictEqual(inputs[0].ast, inputs[1].ast)
     })
   })
 

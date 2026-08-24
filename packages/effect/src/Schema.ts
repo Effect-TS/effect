@@ -13,7 +13,6 @@
  */
 
 /** @effect-diagnostics schemaStructWithTag:skip-file */
-import type { StandardJSONSchemaV1, StandardSchemaV1 } from "@standard-schema/spec"
 import * as Arr from "./Array.ts"
 import * as BigDecimal_ from "./BigDecimal.ts"
 import type * as Brand from "./Brand.ts"
@@ -35,6 +34,7 @@ import * as Graph_ from "./Graph.ts"
 import * as HashMap_ from "./HashMap.ts"
 import * as HashSet_ from "./HashSet.ts"
 import * as core from "./internal/core.ts"
+import { effectIsExit } from "./internal/effect.ts"
 import * as InternalGraph from "./internal/graph.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
@@ -43,6 +43,7 @@ import * as InternalArbitrary from "./internal/schema/toArbitrary.ts"
 import * as InternalEquivalence from "./internal/schema/toEquivalence.ts"
 import * as InternalToJsonSchemaDocument from "./internal/schema/toJsonSchemaDocument.ts"
 import * as InternalToRepresentation from "./internal/schema/toRepresentation.ts"
+import { getStackTraceLimit, setStackTraceLimit } from "./internal/stackTraceLimit.ts"
 import * as JsonPatch from "./JsonPatch.ts"
 import * as JsonSchema from "./JsonSchema.ts"
 import { remainder } from "./Number.ts"
@@ -62,6 +63,7 @@ import * as SchemaIssue from "./SchemaIssue.ts"
 import * as SchemaParser from "./SchemaParser.ts"
 import type * as SchemaRepresentation from "./SchemaRepresentation.ts"
 import * as SchemaTransformation from "./SchemaTransformation.ts"
+import type { StandardJSONSchemaV1, StandardSchemaV1 } from "./StandardSchema.ts"
 import type { Assign, Lambda, Mutable, Simplify } from "./Struct.ts"
 import * as Struct_ from "./Struct.ts"
 import type * as FastCheck from "./testing/FastCheck.ts"
@@ -1180,7 +1182,13 @@ export class SchemaError extends Data.TaggedError("SchemaError")<{
 }> {
   readonly [SchemaErrorTypeId]: typeof SchemaErrorTypeId = SchemaErrorTypeId
   constructor(issue: SchemaIssue.Issue) {
-    super({ issue })
+    const stackTraceLimit = getStackTraceLimit()
+    setStackTraceLimit(0)
+    try {
+      super({ issue })
+    } finally {
+      setStackTraceLimit(stackTraceLimit)
+    }
   }
   override get message() {
     return SchemaIssue.defaultFormatter(this.issue)
@@ -1518,6 +1526,9 @@ export function decodeUnknownEffect<S extends Constraint>(schema: S, options?: S
 function fromIssueEffect<A, R>(
   self: Effect.Effect<A, SchemaIssue.Issue, R>
 ): Effect.Effect<A, SchemaError, R> {
+  if (effectIsExit(self)) {
+    return fromIssueExit(self as Exit_.Exit<A, SchemaIssue.Issue>)
+  }
   return Effect.catchCause(
     self,
     (cause) => Effect.failCauseSync(() => Cause_.map(cause, (issue) => new SchemaError(issue)))
@@ -6197,6 +6208,14 @@ type Flatten<Schemas> = Schemas extends readonly [infer Head, ...infer Tail]
   : [Head, ...Flatten<Tail>]
   : []
 
+type MatchCasesResult<Cases> = {
+  [K in keyof Cases]-?: NonNullable<Cases[K]> extends (...args: Array<any>) => infer R ? R : never
+}[keyof Cases]
+
+type MatchOrElseResult<Cases, OrElse extends (...args: Array<any>) => any> = Unify<
+  MatchCasesResult<Cases> | ReturnType<OrElse>
+>
+
 type TaggedUnionUtils<
   Tag extends PropertyKey,
   Members extends ReadonlyArray<Constraint & { readonly Type: { readonly [K in Tag]: PropertyKey } }>,
@@ -6227,6 +6246,31 @@ type TaggedUnionUtils<
       cases: Cases
     ): (value: Members[number]["Type"]) => Cases[keyof Cases] extends (value: any) => infer R ? Unify<R>
       : never
+  }
+  readonly matchOrElse: {
+    <
+      Cases extends
+        & { [M in Flattened[number] as M["Type"][Tag]]+?: (value: M["Type"]) => any }
+        & { [K in Exclude<keyof Cases, Flattened[number]["Type"][Tag]>]: never },
+      OrElse extends (
+        value: Exclude<Members[number]["Type"], { readonly [K in Tag]: keyof Cases }>
+      ) => any
+    >(
+      value: Members[number]["Type"],
+      cases: Cases,
+      orElse: OrElse
+    ): MatchOrElseResult<Cases, OrElse>
+    <
+      Cases extends
+        & { [M in Flattened[number] as M["Type"][Tag]]+?: (value: M["Type"]) => any }
+        & { [K in Exclude<keyof Cases, Flattened[number]["Type"][Tag]>]: never },
+      OrElse extends (
+        value: Exclude<Members[number]["Type"], { readonly [K in Tag]: keyof Cases }>
+      ) => any
+    >(
+      cases: Cases,
+      orElse: OrElse
+    ): (value: Members[number]["Type"]) => MatchOrElseResult<Cases, OrElse>
   }
 }
 
@@ -6283,7 +6327,7 @@ export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
 
     walk(self)
 
-    return Object.assign(self, { cases, discriminants, isAnyOf, guards, match }) as any
+    return Object.assign(self, { cases, discriminants, isAnyOf, guards, match, matchOrElse }) as any
 
     function walk(schema: Constraint) {
       const ast = schema.ast
@@ -6329,6 +6373,24 @@ export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
       const handler = Object.hasOwn(cases, key) ? cases[key] : undefined
       return handler(value)
     }
+
+    function matchOrElse() {
+      if (arguments.length === 2) {
+        const cases = arguments[0]
+        const orElse = arguments[1]
+        return function(value: any) {
+          const key = value[tag]
+          const handler = Object.hasOwn(cases, key) ? cases[key] ?? orElse : orElse
+          return handler(value)
+        }
+      }
+      const value = arguments[0]
+      const cases = arguments[1]
+      const orElse = arguments[2]
+      const key = value[tag]
+      const handler = Object.hasOwn(cases, key) ? cases[key] ?? orElse : orElse
+      return handler(value)
+    }
   }
 }
 
@@ -6365,12 +6427,23 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
       cases: { [K in keyof Cases]: (value: Cases[K]["Type"]) => Output }
     ): Output
   }
+  readonly matchOrElse: {
+    <Output>(
+      value: Cases[keyof Cases]["Type"],
+      cases: { [K in keyof Cases]?: (value: Cases[K]["Type"]) => Output },
+      orElse: (value: Cases[keyof Cases]["Type"]) => Output
+    ): Output
+    <Output>(
+      cases: { [K in keyof Cases]?: (value: Cases[K]["Type"]) => Output },
+      orElse: (value: Cases[keyof Cases]["Type"]) => Output
+    ): (value: Cases[keyof Cases]["Type"]) => Output
+  }
 }
 
 /**
  * Builds a discriminated union from a record of field sets, one per variant.
  * Each key becomes the `_tag` literal and the value is passed to {@link TaggedStruct}.
- * The result includes `cases`, `guards`, `isAnyOf`, and `match` utilities.
+ * The result includes `cases`, `guards`, `isAnyOf`, `match`, and `matchOrElse` utilities.
  *
  * **Example** (Pattern matching a discriminated union)
  *
@@ -6405,8 +6478,8 @@ export function TaggedUnion<const CasesByTag extends Record<string, Struct.Field
     members.push(member)
   }
   const union = Union(members)
-  const { guards, isAnyOf, match } = toTaggedUnion("_tag")(union)
-  return make(union.ast, { cases, isAnyOf, guards, match })
+  const { guards, isAnyOf, match, matchOrElse } = toTaggedUnion("_tag")(union)
+  return make(union.ast, { cases, isAnyOf, guards, match, matchOrElse })
 }
 
 /**
@@ -15079,15 +15152,26 @@ export function toEquivalence<T>(schema: Schema<T>): Equivalence.Equivalence<T> 
  * Derives an intermediate `SchemaRepresentation.Document` from the encoded
  * side of a schema.
  *
+ * **When to use**
+ *
+ * Use when you have a `Schema` and need its live structural representation for inspection, persistence, or compilation.
+ *
  * **Details**
  *
  * Use {@link toType} before this function to represent the type side instead.
+ * The optional reference policy controls which candidates are extracted into the document's reference table. By
+ * default, only candidates with a resolved identifier become references; recursive candidates always require one.
+ *
+ * @see {@link SchemaRepresentation.toRepresentation} for converting a `SchemaAST.AST` directly
  *
  * @category converting
  * @since 4.0.0
  */
-export function toRepresentation(schema: Constraint): SchemaRepresentation.Document {
-  return InternalToRepresentation.toRepresentation(schema.ast)
+export function toRepresentation(
+  schema: Constraint,
+  options?: SchemaRepresentation.ToRepresentationOptions
+): SchemaRepresentation.Document {
+  return InternalToRepresentation.toRepresentation(schema.ast, options)
 }
 
 // -----------------------------------------------------------------------------
@@ -15095,12 +15179,23 @@ export function toRepresentation(schema: Constraint): SchemaRepresentation.Docum
 // -----------------------------------------------------------------------------
 
 /**
- * Options for {@link toJsonSchemaDocument}.
+ * Options for reference allocation and JSON Schema generation in {@link toJsonSchemaDocument}.
+ *
+ * **Details**
+ *
+ * The inherited `referencePolicy` runs after the input schema is converted to its canonical JSON codec, so it receives
+ * canonical JSON-encoded ASTs. The remaining options control compilation of the resulting live representation.
+ *
+ * **Gotchas**
+ *
+ * When these options are passed directly to `SchemaRepresentation.toJsonSchemaDocument` or
+ * `SchemaRepresentation.toJsonSchemaMultiDocument`, reference allocation has already happened and `referencePolicy`
+ * has no effect.
  *
  * @category options
  * @since 4.0.0
  */
-export interface ToJsonSchemaOptions {
+export interface ToJsonSchemaOptions extends SchemaRepresentation.ToRepresentationOptions {
   /**
    * Controls how additional properties are handled while resolving the JSON
    * schema.
@@ -15166,23 +15261,37 @@ export interface ToJsonSchemaOptions {
 /**
  * Returns a JSON Schema document using draft 2020-12.
  *
+ * **When to use**
+ *
+ * Use when you need a draft-2020-12 description of the canonical JSON form of a runtime schema.
+ *
  * **Details**
  *
- * The `options` parameter controls generation details such as additional
- * properties and synthesized check descriptions; it does not change the draft
- * target. Declarations are lowered through their `toCodecJson` or `toCodec`
- * annotation when available before the representation document is compiled. For schemas whose codec JSON AST can be
- * represented exactly in JSON Schema, importing the emitted document reconstructs a schema that accepts the same JSON
- * values. This is a semantic round-trip guarantee; the reconstructed AST may have a different shape.
+ * The `options` parameter controls reference extraction and generation details
+ * such as additional properties and synthesized check descriptions; it does
+ * not change the draft target. The reference policy receives canonical JSON
+ * encoded ASTs. By default, anonymous non-recursive candidates remain inline, while candidates with resolved identifiers
+ * become definitions. Declarations are lowered through their `toCodecJson` or `toCodec`
+ * annotation when available before the representation document is compiled.
+ * For schemas whose codec JSON AST can be represented exactly in JSON Schema,
+ * importing the emitted document reconstructs a schema that accepts the same
+ * JSON values. This is a semantic round-trip guarantee; the reconstructed AST
+ * may have a different shape.
  *
  * **Gotchas**
  *
  * JSON Schema generation is best-effort. Some Effect schema semantics cannot
  * be represented exactly in JSON Schema, and importing an emitted JSON Schema
  * may produce an equivalent approximation rather than the original schema
- * shape. Such schemas are outside the exact round-trip subset. Opaque declarations without a structural codec are
- * represented by an unconstrained JSON Schema. Effect decoding may discard excess object properties by default; use
- * `onExcessProperty: "error"` when comparing validation semantics with an emitted JSON Schema.
+ * shape. Such schemas are outside the exact round-trip subset. When canonical
+ * JSON derivation adds an artificial transformation, checks and annotations on
+ * its source node are not copied to the JSON target, so they do not appear in
+ * the emitted document. Opaque declarations without a structural codec are
+ * represented by an unconstrained JSON Schema. Effect decoding may discard
+ * excess object properties by default; use `onExcessProperty: "error"` when
+ * comparing validation semantics with an emitted JSON Schema.
+ *
+ * @see {@link SchemaRepresentation.toJsonSchemaDocument} for compiling an existing live representation document
  *
  * @category converting
  * @since 4.0.0
@@ -15193,7 +15302,7 @@ export function toJsonSchemaDocument(
 ): JsonSchema.Document<"draft-2020-12"> {
   const document = InternalToRepresentation.toRepresentation(
     toCodecJsonAST(schema.ast),
-    InternalToJsonSchemaDocument.toRepresentationOptions
+    options
   )
   return InternalToJsonSchemaDocument.toJsonSchemaDocument(document, options)
 }
@@ -15234,13 +15343,22 @@ export interface toCodecJson<S extends Constraint> extends
  * Derives a canonical JSON codec from a schema. The encoded form is `Json`, and
  * decoding produces the schema's `Type`.
  *
+ * **Details**
+ *
+ * Derivation does not run transformations. Annotation links may be asynchronous,
+ * may fail, and may use optional services; the consuming parser chooses the
+ * execution and failure handling. Because hooks do not widen the returned
+ * service types, links cannot require services not declared by the input schema.
+ *
  * **Gotchas**
  *
  * Declarations without a `toCodecJson` or `toCodec` annotation use `Json` as
  * their encoded schema. This keeps codec construction total, but encoding or
  * decoding can still fail when declaration values are not JSON values. A
  * `toCodecJson` callback can return `undefined` when the declaration is already
- * in canonical JSON form.
+ * in canonical JSON form. When derivation adds an artificial transformation,
+ * checks and annotations remain on its source node rather than being copied to
+ * the JSON target. Source checks still run after the transformation.
  *
  * @category converting
  * @since 4.0.0
@@ -15359,8 +15477,18 @@ function toCodecJsonASTStep(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => S
 }
 
 /**
- * Derives an isomorphism codec from a schema. The encoded form is the
- * schema's `Iso` type — the intermediate representation used for round-tripping.
+ * Derives an isomorphism codec from a schema. The encoded form is the schema's
+ * `Iso` type — the intermediate representation used for round-tripping.
+ *
+ * **Details**
+ *
+ * Annotation links may be asynchronous, may fail, and may use optional services;
+ * the consuming parser chooses the execution and failure handling.
+ *
+ * **Gotchas**
+ *
+ * Links cannot require services because the returned `Codec` does not expose
+ * service requirements.
  *
  * @category converting
  * @since 4.0.0
@@ -15435,6 +15563,13 @@ export interface toCodecStringTree<S extends Constraint> extends
 /**
  * Converts a schema to the StringTree canonical codec, where every leaf value
  * becomes a string while preserving the original structure.
+ *
+ * **Details**
+ *
+ * Derivation does not run transformations. Annotation links may be asynchronous,
+ * may fail, and may use optional services; the consuming parser chooses the
+ * execution and failure handling. Links cannot require services not declared by
+ * the input schema because hooks do not widen the returned service types.
  *
  * **Gotchas**
  *
@@ -15993,10 +16128,11 @@ export const isBetweenBigIntReviver: SchemaRepresentation.FilterReviver<{
  *
  * **Gotchas**
  *
- * Either direction can throw an `Error` with the generic message
- * `"Schema validation failed"` and a `SchemaIssue.Issue` in its `cause`. Format
- * the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
- * human-readable details are needed.
+ * This API runs synchronously, so failing, asynchronous, or service-dependent
+ * transformations can throw. Schema failures use `"Schema validation failed"`
+ * with a `SchemaIssue.Issue` in `cause`; format it with
+ * `SchemaIssue.makeFormatterDefault()`. Consume {@link toCodecIso} with an
+ * effectful parser for asynchronous execution or explicit failure handling.
  *
  * @category converting
  * @since 4.0.0
@@ -16104,11 +16240,11 @@ export function overrideToCodecIso<S extends Constraint, Iso>(
  *
  * **Gotchas**
  *
- * Schema encoding or decoding failures throw an `Error` with the generic message
- * `"Schema validation failed"` and a `SchemaIssue.Issue` in its `cause`. Format
- * the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
- * human-readable details are needed. Errors produced by {@link JsonPatch.apply}
- * for invalid patch operations are separate from schema validation failures.
+ * This API runs synchronously, so failing, asynchronous, or service-dependent
+ * transformations can throw. Schema failures use `"Schema validation failed"`
+ * with a `SchemaIssue.Issue` in `cause`; format it with
+ * `SchemaIssue.makeFormatterDefault()`. Invalid patch operations instead produce
+ * {@link JsonPatch.apply} errors.
  *
  * @category converting
  * @since 4.0.0
@@ -16568,15 +16704,41 @@ export declare namespace Annotations {
     readonly representation?:
       | SchemaRepresentation.RepresentationAnnotation
       | undefined
+    /**
+     * Returns the fallback link used by canonical codec derivations.
+     *
+     * Transformations may be asynchronous, may fail, and may use optional
+     * services, but cannot require services absent from the derived codec type.
+     */
     readonly toCodec?:
       | ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link)
       | undefined
+    /**
+     * Returns the link used to derive the declaration's JSON representation, or
+     * `undefined` when the declaration is already in canonical JSON form.
+     *
+     * Transformations follow the execution and service constraints of `toCodec`.
+     */
     readonly toCodecJson?:
       | ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link | undefined)
       | undefined
+    /**
+     * Returns the link used to derive the declaration's StringTree
+     * representation, or `undefined` when it is already canonical.
+     *
+     * Transformations follow the execution and service constraints of `toCodec`.
+     */
     readonly toCodecStringTree?:
       | ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link | undefined)
       | undefined
+    /**
+     * Returns the link used to derive the declaration's isomorphism
+     * representation.
+     *
+     * Transformations may be asynchronous, may fail, and may use optional
+     * services, but cannot require services because the derived `Codec` exposes
+     * none.
+     */
     readonly toCodecIso?:
       | ((typeParameters: TypeParameters.Type<TypeParameters>) => SchemaAST.Link)
       | undefined

@@ -857,10 +857,14 @@ export const doneUnsafe = <A, E>(self: Deferred<A, E>, effect: Effect<A, E>): bo
   if (self.effect) return false
   self.effect = effect
   if (self.resumes) {
-    for (let i = 0; i < self.resumes.length; i++) {
-      self.resumes[i](effect)
-    }
+    // Clear `resumes` before resuming: a waiter resumed with an interrupt
+    // cause dies synchronously inside `resume`, and its await cleanup would
+    // otherwise splice this array mid-iteration and skip the next waiter.
+    const resumes = self.resumes
     self.resumes = undefined
+    for (let i = 0; i < resumes.length; i++) {
+      resumes[i](effect)
+    }
   }
   return true
 }

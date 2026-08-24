@@ -1,8 +1,8 @@
 import * as DenoRedis from "@effect/platform-deno/DenoRedis"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
-import { Deferred, Effect, Fiber, Layer, Schema } from "effect"
-import { PersistedQueue, Persistence } from "effect/unstable/persistence"
+import { Deferred, Effect, Fiber, Layer, Queue, Schema } from "effect"
+import { PersistedQueue, Persistence, Redis } from "effect/unstable/persistence"
 import * as PersistedCacheTest from "../../../effect/test/unstable/persistence/PersistedCacheTest.ts"
 import * as PersistedQueueTest from "../../../effect/test/unstable/persistence/PersistedQueueTest.ts"
 
@@ -47,6 +47,20 @@ const PersistedQueueRedisLayer = Layer.mergeAll(
 it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
   "PersistedQueue (DenoRedis)",
   (it) => {
+    it.effect("receives published messages", () =>
+      Effect.gen(function*() {
+        const redis = yield* Redis.Redis
+        const subscription = yield* redis.subscribe("effect-test")
+
+        const subscribers = yield* redis.send<number>("PUBLISH", "effect-test", "hello")
+        assert.strictEqual(subscribers, 1)
+
+        assert.deepStrictEqual(yield* Queue.take(subscription), {
+          channel: "effect-test",
+          message: "hello"
+        })
+      }))
+
     it.effect("moves exhausted elements to the failed list", () =>
       Effect.gen(function*() {
         const redis = yield* DenoRedis.DenoRedis
