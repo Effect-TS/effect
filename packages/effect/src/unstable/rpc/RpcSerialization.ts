@@ -596,10 +596,12 @@ const defaultSchemaBinaryMaxFrameSize = 16 * 1024 * 1024
 const schemaBinaryTextEncoder = new TextEncoder()
 
 const makeSchemaBinary = (options?: {
-  readonly maxFrameSize?: number | undefined
+  readonly maxFrameSize?: number | "unbounded" | undefined
   readonly fingerprintPayloads?: boolean | undefined
 }): RpcSerialization["Service"] => {
-  const maxFrameSize = options?.maxFrameSize ?? defaultSchemaBinaryMaxFrameSize
+  const maxFrameSize = options?.maxFrameSize === "unbounded"
+    ? undefined
+    : options?.maxFrameSize ?? defaultSchemaBinaryMaxFrameSize
   const codecFor: CodecFor = options?.fingerprintPayloads === true
     ? (schema) => SchemaBinary.toCodecDirect(schema, { fingerprint: true })
     : SchemaBinary.toCodecDirect
@@ -715,12 +717,13 @@ export const layerMsgPackWith = (
 /**
  * RPC serialization layer that uses SchemaBinary with fingerprinted RPC
  * envelopes. Payload fingerprints are disabled by default to support compatible
- * schema evolution. Frames default to a 16 MiB maximum size.
+ * schema evolution. Frames default to a 16 MiB maximum size. Use `"unbounded"`
+ * to disable the frame-size limit.
  *
  * @category layers
  * @since 4.0.0
  */
 export const layerSchemaBinary = (options?: {
-  readonly maxFrameSize?: number | undefined
+  readonly maxFrameSize?: number | "unbounded" | undefined
   readonly fingerprintPayloads?: boolean | undefined
 }): Layer.Layer<RpcSerialization> => Layer.sync(RpcSerialization)(() => makeSchemaBinary(options))

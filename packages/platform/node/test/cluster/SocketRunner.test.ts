@@ -78,11 +78,16 @@ const makeClientLayer = (port: number) =>
     Layer.provide(RpcSerialization.layerMsgPack)
   )
 
-const makeConfiguredClientLayer = (port: number, serialization?: "msgpack" | "ndjson") =>
+const makeConfiguredClientLayer = (
+  port: number,
+  serialization?: "msgpack" | "ndjson",
+  serializationMaxBufferSize?: number | "unbounded"
+) =>
   NodeClusterSocket.layer({
     clientOnly: true,
     storage: "byo",
     ...(serialization === undefined ? undefined : { serialization }),
+    ...(serializationMaxBufferSize === undefined ? undefined : { serializationMaxBufferSize }),
     shardingConfig: {
       runnerAddress: Option.some(RunnerAddress.make("localhost", port)),
       runnerListenAddress: Option.some(RunnerAddress.make("localhost", port)),
@@ -166,6 +171,30 @@ describe("SocketRunner", () => {
   it.live(
     "preserves an explicit MessagePack selection",
     () => assertSerialization(50_121, RpcSerialization.layerMsgPack, "msgpack"),
+    15_000
+  )
+
+  it.live(
+    "applies serializationMaxBufferSize to the default SchemaBinary parser",
+    () =>
+      Effect.gen(function*() {
+        yield* Layer.launch(
+          makeRunnerLayer(50_122, SerializationEntityLayer, RpcSerialization.layerSchemaBinary())
+        ).pipe(Effect.forkScoped)
+        yield* Effect.sleep("2 seconds")
+
+        const exit = yield* Effect.gen(function*() {
+          const makeClient = yield* SerializationEntity.client
+          yield* Effect.sleep("3 seconds")
+          return yield* makeClient("serialization-limit-entity").Ping().pipe(Effect.timeout("1 second"))
+        }).pipe(
+          Effect.provide(makeConfiguredClientLayer(50_122, undefined, 1)),
+          Effect.scoped,
+          Effect.exit
+        )
+
+        assert.isTrue(Exit.isFailure(exit), "the configured frame limit must reject the response")
+      }).pipe(Effect.provide(SharedStorage)),
     15_000
   )
 
