@@ -135,7 +135,17 @@ export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Sco
       timeToLiveStrategy: "usage"
     })
 
-    const get: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = Effect.gen(function*() {
+    const expired = (connection: PgConnection.PgConnection): boolean => {
+      if (connectionInternals(connection).deadError() !== undefined) return true
+      if (connectionTTL === undefined) return false
+      const openedAt = createdAt.get(connection)
+      return openedAt !== undefined && clock.currentTimeMillisUnsafe() - openedAt >= connectionTTL
+    }
+
+    // A checkout runs per statement, so the case where nothing has died and the
+    // first connection is usable stays a plain flatMap; retrying is the
+    // exception and pays for the loop.
+    const retry: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = Effect.gen(function*() {
       while (true) {
         if (deadConnections.size > 0) {
           const dead = Array.from(deadConnections)
@@ -143,21 +153,20 @@ export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Sco
           yield* Effect.forEach(dead, (connection) => Pool.invalidate(pool, connection), { discard: true })
         }
         const connection = yield* Pool.get(pool)
-        if (connectionInternals(connection).deadError() !== undefined) {
+        if (expired(connection)) {
           yield* Pool.invalidate(pool, connection)
           continue
-        }
-        if (connectionTTL !== undefined) {
-          const openedAt = createdAt.get(connection)
-          const now = clock.currentTimeMillisUnsafe()
-          if (openedAt !== undefined && now - openedAt >= connectionTTL) {
-            yield* Pool.invalidate(pool, connection)
-            continue
-          }
         }
         return connection
       }
     })
+
+    const get: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = Effect.suspend(() =>
+      deadConnections.size > 0 ? retry : Effect.flatMap(Pool.get(pool), (connection) =>
+        expired(connection)
+          ? Effect.andThen(Pool.invalidate(pool, connection), retry)
+          : Effect.succeed(connection))
+    )
 
     const pgPool: PgPool = {
       [TypeId]: TypeId,

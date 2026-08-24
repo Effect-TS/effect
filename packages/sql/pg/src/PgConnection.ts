@@ -676,15 +676,34 @@ const escapeIdentifier = (identifier: string): string => `"${identifier.replaceA
 
 type QueryPhase = "parse" | "bind" | "describe" | "rows" | "complete" | "error"
 
+/**
+ * Splits a command tag such as `SELECT 3` or `INSERT 0 1`. Reading the two
+ * spaces directly keeps a completed statement from allocating the parts array
+ * that splitting on every space would.
+ */
 const parseCommandTag = (tag: string): { command: string; rowCount: number; oid: number | null } => {
-  const parts = tag.split(" ")
-  const command = parts[0] ?? ""
-  if (command === "INSERT" && parts.length >= 3) {
-    return { command, oid: Number(parts[1]), rowCount: Number(parts[2]) }
+  const firstSpace = tag.indexOf(" ")
+  if (firstSpace < 0) return { command: tag, oid: null, rowCount: 0 }
+  const command = tag.slice(0, firstSpace)
+  const secondSpace = tag.indexOf(" ", firstSpace + 1)
+  if (command === "INSERT" && secondSpace > 0) {
+    return {
+      command,
+      oid: Number(tag.slice(firstSpace + 1, secondSpace)),
+      rowCount: Number(tag.slice(secondSpace + 1))
+    }
   }
-  const last = parts[parts.length - 1]
-  const rowCount = last !== undefined && /^\d+$/.test(last) ? Number(last) : 0
-  return { command, oid: null, rowCount }
+  const last = tag.slice((secondSpace < 0 ? firstSpace : secondSpace) + 1)
+  return { command, oid: null, rowCount: isDigits(last) ? Number(last) : 0 }
+}
+
+const isDigits = (value: string): boolean => {
+  if (value.length === 0) return false
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index)
+    if (code < 48 || code > 57) return false
+  }
+  return true
 }
 
 const runQuery = (
