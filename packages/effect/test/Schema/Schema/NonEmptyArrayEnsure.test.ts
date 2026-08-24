@@ -58,6 +58,11 @@ describe("NonEmptyArrayEnsure", () => {
     )
   })
 
+  it("decode array value", async () => {
+    const schema = S.NonEmptyArrayEnsure(S.Array(S.String))
+    await Util.assertions.decoding.succeed(schema, [], [[]])
+  })
+
   it("encode", async () => {
     const schema = S.NonEmptyArrayEnsure(S.NumberFromString)
     await Util.assertions.encoding.succeed(schema, [123], "123")

@@ -1664,7 +1664,7 @@ export interface NonEmptyArrayEnsure<Value extends Schema.Any>
 export function NonEmptyArrayEnsure<Value extends Schema.Any>(value: Value): NonEmptyArrayEnsure<Value> {
   return transform(Union(value, NonEmptyArray(value)), NonEmptyArray(typeSchema(asSchema(value))), {
     strict: true,
-    decode: (i) => array_.ensure(i) as never,
+    decode: (i) => Array.isArray(i) && array_.isNonEmptyReadonlyArray(i) ? i : (array_.of(i) as never),
     encode: (a) => a.length === 1 ? a[0] : a
   })
 }
