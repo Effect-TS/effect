@@ -33,6 +33,7 @@ import {
   type SqlErrorReason,
   UnknownError
 } from "effect/unstable/sql/SqlError"
+import { Buffer } from "node:buffer"
 import { randomBytes } from "node:crypto"
 import * as Net from "node:net"
 import type { Duplex } from "node:stream"
@@ -600,10 +601,18 @@ const inferParameter = (value: unknown, registry: PgTypes.Registry): PgTypes.Par
   return inferredParameter(arrayOid, values)
 }
 
+/**
+ * Joins the parts of a frame into the buffer that goes on the wire.
+ *
+ * `Buffer.allocUnsafe` hands out a slice of Node's pool, which costs a
+ * fraction of a fresh `Uint8Array` of the same size and saves `socket.write`
+ * the conversion it does for a plain view. Every byte is written before the
+ * buffer is handed on, so the uninitialized memory never escapes.
+ */
 const concat = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
   let length = 0
   for (let index = 0; index < chunks.length; index++) length += chunks[index].length
-  const output = new Uint8Array(length)
+  const output = Buffer.allocUnsafe(length)
   let offset = 0
   for (let index = 0; index < chunks.length; index++) {
     output.set(chunks[index], offset)
