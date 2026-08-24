@@ -144,4 +144,28 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       )
       assert.strictEqual(new Set(processIds).size, 4)
     }))
+  it.effect("invalidates a reserved connection", () =>
+    Effect.gen(function*() {
+      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 2, multiplex: true })
+      const reserved = yield* pool.reserve
+      yield* pool.invalidate(reserved)
+      const replacement = yield* pool.get
+      assert.notStrictEqual(replacement.processId, reserved.processId)
+    }))
+
+  it.effect("keeps a multiplexed stream's connection to itself", () =>
+    Effect.gen(function*() {
+      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 2, multiplex: true })
+      const connection = yield* pool.get
+      // A stream pins its connection for its lifetime. A checkout that landed
+      // on the same one would wait behind a stream only it could drain.
+      const doubled = yield* connection.stream("SELECT generate_series(1, 5) AS n").pipe(
+        Stream.mapEffect((row) =>
+          Effect.flatMap(pool.get, (other) => other.query("SELECT $1::int4 AS d", [(row as any).n * 2]))
+        ),
+        Stream.map((result) => (result.rows[0] as any).d),
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(Array.from(doubled), [2, 4, 6, 8, 10])
+    }))
 })

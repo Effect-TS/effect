@@ -1,3 +1,5 @@
+import type * as Effect from "effect/Effect"
+import type * as Scope from "effect/Scope"
 import type { SqlError } from "effect/unstable/sql/SqlError"
 
 /** @internal */
@@ -10,6 +12,13 @@ export interface ConnectionInternals {
   readonly deadError: () => SqlError | undefined
   /** Fired once when the connection dies outside its own scope release. */
   readonly fatalHooks: Set<() => void>
+  /**
+   * Installed by a multiplexed pool so that pinning the session also takes it
+   * out of shared circulation for as long as the pin lasts. Every route to an
+   * exclusive session goes through `pin`, including `stream` and `listen`, so
+   * this is the one place that covers them all.
+   */
+  reserve?: Effect.Effect<void, never, Scope.Scope> | undefined
 }
 
 /** @internal */

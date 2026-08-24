@@ -360,12 +360,13 @@ class PgConnectionImpl implements PgConnection {
     this.bindEncoder = makeBindEncoder(registry)
     this.prepared = preparedCacheFor(config)
     this.multiplex = config.multiplex ?? false
-    this.pinnedView = new PinnedPgConnection(this)
+    // Before the pinned view, which copies it.
     this[internalsKey] = {
       base: this,
       deadError: () => this.deadWith,
       fatalHooks: this.fatalHooks
     }
+    this.pinnedView = new PinnedPgConnection(this)
     session.socket.on("data", this.onData)
     session.socket.on("error", this.onSocketError)
     session.socket.on("close", this.onSocketClose)
@@ -677,7 +678,12 @@ class PgConnectionImpl implements PgConnection {
     return sendCancelRequest(this.resolved, this.session.processId, this.session.secretKey)
   })
 
-  readonly pin: Effect.Effect<PgConnection, never, Scope.Scope> = Effect.acquireRelease(
+  readonly pin: Effect.Effect<PgConnection, never, Scope.Scope> = Effect.suspend(() => {
+    const reserve = this[internalsKey].reserve
+    return reserve === undefined ? this.pinExclusive : Effect.andThen(reserve, this.pinExclusive)
+  })
+
+  private readonly pinExclusive: Effect.Effect<PgConnection, never, Scope.Scope> = Effect.acquireRelease(
     Effect.flatMap(this.owner.take(1), () =>
       // Holding `owner` stops new submissions; a pipeline already on the wire
       // still has to drain before this fiber owns the connection.

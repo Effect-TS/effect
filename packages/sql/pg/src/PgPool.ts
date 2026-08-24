@@ -139,14 +139,21 @@ export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Sco
     const deadConnections = new Set<PgConnection.PgConnection>()
     const createdAt = new WeakMap<PgConnection.PgConnection, number>()
 
+    // Assigned below, once the pool exists. `acquire` only runs when the pool
+    // opens a connection, which is always after that.
+    let pool: Pool.Pool<PgConnection.PgConnection, SqlError>
     const acquire = Effect.tap(PgConnection.make(options), (connection) =>
       Effect.sync(() => {
         createdAt.set(connection, clock.currentTimeMillisUnsafe())
-        connectionInternals(connection).fatalHooks.add(() => deadConnections.add(connection))
+        const internals = connectionInternals(connection)
+        internals.fatalHooks.add(() => deadConnections.add(connection))
+        // Pinning a shared session has to take it out of circulation, or a
+        // second checkout lands on the connection its own stream is holding.
+        if (multiplex) internals.reserve = reservePoolItem(pool, connection)
       }))
 
     const maxConnections = options.maxConnections ?? 10
-    const pool = yield* Pool.makeWithTTL({
+    pool = yield* Pool.makeWithTTL({
       acquire,
       min: options.minConnections ?? 0,
       max: maxConnections,
@@ -188,13 +195,8 @@ export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Sco
           : Effect.succeed(connection))
     )
 
-    const reserve = multiplex
-      ? Effect.flatMap(get, (connection) =>
-        Effect.andThen(
-          reservePoolItem(pool, connectionInternals(connection).base),
-          connection.pin
-        ))
-      : Effect.flatMap(get, (connection) => connection.pin)
+    // `pin` reserves the pool item itself, so this needs no help.
+    const reserve = Effect.flatMap(get, (connection) => connection.pin)
 
     const pgPool: PgPool = {
       [TypeId]: TypeId,
@@ -214,6 +216,9 @@ export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Sco
  * removes it from the availability list. The ordinary `Pool.get` lease counts
  * as one unit; the synthetic usage makes the reservation count as a full item,
  * so another checkout grows the pool when `maxConnections` permits it.
+ *
+ * Reserving a connection the pool has already dropped is a no-op: it is out of
+ * circulation by definition, and its checkout fails on its own.
  */
 const reservePoolItem = <A, E>(pool: Pool.Pool<A, E>, value: object): Effect.Effect<void, never, Scope.Scope> =>
   Effect.acquireRelease(
@@ -224,10 +229,11 @@ const reservePoolItem = <A, E>(pool: Pool.Pool<A, E>, value: object): Effect.Eff
         removeAvailable(pool, item)
         return item
       }
-      throw new Error("PgPool invariant violated: reserved connection is not in its pool")
+      return undefined
     }),
     (item) =>
       Effect.sync(() => {
+        if (item === undefined) return
         pool.state.usage -= pool.config.concurrency - 1
         if (
           pool.state.items.has(item) &&
