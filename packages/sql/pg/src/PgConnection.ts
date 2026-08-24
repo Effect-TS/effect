@@ -18,6 +18,7 @@ import type * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Queue from "effect/Queue"
@@ -79,11 +80,19 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
  * `search_path` in force when it was parsed, the usual caveat for prepared
  * statements anywhere.
  *
- * `multiplex` marks the session as shareable between fibers. It does not
- * change how statements run - the wire always carries one statement at a
- * time - but it makes `interrupt` a no-op unless the connection is pinned,
- * because on a shared connection a `CancelRequest` could hit an unrelated
- * fiber's statement.
+ * `multiplex` marks the session as shareable between fibers, and unpinned
+ * statements submitted together are then written as one pipeline instead of
+ * one at a time. Pinned work - transactions, `stream`, `listen` - still has
+ * the session to itself, and `pin` waits for the pipeline to drain before it
+ * takes over. It also makes `interrupt` a no-op unless the connection is
+ * pinned, because on a shared connection a `CancelRequest` could hit an
+ * unrelated fiber's statement.
+ *
+ * Note that a multiplexed pool can hand the same session to a fiber that pins
+ * it for a `listen` stream and to a fiber that wants to query, and the second
+ * then waits for a subscription that never ends. Keep `listen` on its own
+ * client, or leave `multiplex` off, until the pool learns to allocate around
+ * a pinned session.
  *
  * @category models
  * @since 4.0.0
@@ -298,8 +307,18 @@ interface Consumer {
   readonly onFatal: (error: SqlError) => void
 }
 
+/** One statement waiting in, or travelling through, a multiplexed pipeline. */
+interface PipelineEntry {
+  readonly plan: Plan
+  readonly deferred: Deferred.Deferred<QueryOutput, SqlError>
+  readonly machine: QueryMachine
+  abandoned: boolean
+}
+
 const abortDrainTimeoutMillis = 5000
 const cancelRequestTimeoutMillis = 5000
+/** How many statements a multiplexed session keeps on the wire at once. */
+const maxPipelineDepth = 64
 const streamPauseThreshold = 512
 
 class PgConnectionImpl implements PgConnection {
@@ -323,6 +342,13 @@ class PgConnectionImpl implements PgConnection {
   closed = false
   readonly channels = new Map<string, Set<Queue.Queue<Notification, SqlError | Cause.Done>>>()
   readonly fatalHooks = new Set<() => void>()
+  /** Queued but not yet written; drained into `pipelineInFlight` on flush. */
+  readonly pipelinePending: Array<PipelineEntry> = []
+  /** Written and awaiting their `ReadyForQuery`, oldest first. */
+  readonly pipelineInFlight: Array<PipelineEntry> = []
+  pipelineHead = 0
+  pipelineFlushScheduled = false
+  readonly pipelineIdleWaiters = new Set<() => void>()
   readonly pinnedView: PgConnection
   readonly [internalsKey]: ConnectionInternals
 
@@ -448,6 +474,169 @@ class PgConnectionImpl implements PgConnection {
     cache: PreparedCache | undefined
   ): Plan => encodeQuery(sql, params, this.registry, this.bindEncoder, cache)
 
+  /**
+   * Routes backend messages to the oldest statement still on the wire.
+   *
+   * Every cycle carries its own `Sync`, so the backend answers them in order
+   * and finishes each with a `ReadyForQuery`. That boundary is what advances
+   * the queue, and it is also why a statement the backend rejects only skips
+   * the rest of its own cycle: the ones queued behind it still run.
+   */
+  private readonly pipelineConsumer: Consumer = {
+    onMessage: (message) => {
+      const entry = this.pipelineInFlight[this.pipelineHead]
+      if (entry === undefined) {
+        return this.fatal(connectionQueryError(
+          new Error(`Unexpected ${message._tag} without an in-flight query`),
+          `PgConnection: Unexpected ${message._tag} without an in-flight query`
+        ))
+      }
+      entry.machine.onMessage(message)
+    },
+    onBatchEnd: () => this.flushPipeline(),
+    onFatal: (error) => {
+      const entries = [
+        ...this.pipelineInFlight.slice(this.pipelineHead),
+        ...this.pipelinePending
+      ]
+      this.pipelineInFlight.length = 0
+      this.pipelineHead = 0
+      this.pipelinePending.length = 0
+      this.pipelineFlushScheduled = false
+      for (const entry of entries) {
+        if (!entry.abandoned) Deferred.doneUnsafe(entry.deferred, Effect.fail(error))
+      }
+      this.notifyPipelineIdle()
+    }
+  }
+
+  private readonly pipelineDepth = (): number => this.pipelineInFlight.length - this.pipelineHead
+
+  private readonly pipelineIsIdle = (): boolean => this.pipelineDepth() === 0 && this.pipelinePending.length === 0
+
+  private readonly notifyPipelineIdle = (): void => {
+    if (!this.pipelineIsIdle()) return
+    this.consumer = undefined
+    this.session.parser.readField = undefined
+    const waiters = Array.from(this.pipelineIdleWaiters)
+    this.pipelineIdleWaiters.clear()
+    for (const waiter of waiters) waiter()
+  }
+
+  /** Resolves once nothing is on the wire, so `pin` can take the connection. */
+  readonly waitPipelineIdle: Effect.Effect<void> = Effect.callback((resume) => {
+    if (this.pipelineIsIdle()) return resume(Effect.void)
+    const waiter = () => resume(Effect.void)
+    this.pipelineIdleWaiters.add(waiter)
+    return Effect.sync(() => this.pipelineIdleWaiters.delete(waiter))
+  })
+
+  private readonly finishPipelineEntry = (
+    entry: PipelineEntry,
+    result: Effect.Effect<QueryOutput, SqlError>
+  ): void => {
+    if (this.pipelineInFlight[this.pipelineHead] !== entry) {
+      return this.fatal(connectionQueryError(
+        new Error("A pipelined query completed out of order"),
+        "PgConnection: A pipelined query completed out of order"
+      ))
+    }
+    this.pipelineHead++
+    // The next statement's rows can be in this same chunk, so its reader has to
+    // be in place before the parser reads on.
+    this.session.parser.readField = this.pipelineInFlight[this.pipelineHead]?.machine.readField
+    if (!entry.abandoned) Deferred.doneUnsafe(entry.deferred, result)
+    if (this.pipelineHead === this.pipelineInFlight.length) {
+      this.pipelineInFlight.length = 0
+      this.pipelineHead = 0
+    }
+  }
+
+  /** Writes everything queued since the last flush as one batch. */
+  private readonly flushPipeline = (): void => {
+    this.pipelineFlushScheduled = false
+    if (this.deadWith !== undefined) return
+    let capacity = maxPipelineDepth - this.pipelineDepth()
+    if (capacity <= 0) return
+    const wasEmpty = this.pipelineDepth() === 0
+    const batch: Array<PipelineEntry> = []
+    let index = 0
+    while (capacity > 0 && index < this.pipelinePending.length) {
+      const entry = this.pipelinePending[index++]
+      if (entry.abandoned) continue
+      batch.push(entry)
+      this.pipelineInFlight.push(entry)
+      capacity--
+    }
+    this.pipelinePending.splice(0, index)
+    if (batch.length === 0) {
+      this.notifyPipelineIdle()
+      return
+    }
+    if (wasEmpty) this.session.parser.readField = batch[0].machine.readField
+    const frame = batch.length === 1
+      ? batch[0].plan.frame
+      : concat(batch.map((entry) => entry.plan.frame))
+    try {
+      this.session.socket.write(frame)
+    } catch (cause) {
+      this.fatal(connectionQueryError(cause, "PgConnection: Failed to write query batch"))
+    }
+  }
+
+  private readonly schedulePipelineFlush = (): void => {
+    if (this.pipelineFlushScheduled || this.pipelineDepth() >= maxPipelineDepth) return
+    this.pipelineFlushScheduled = true
+    // A microtask is what lets fibers submitted in the same tick share a write.
+    queueMicrotask(this.flushPipeline)
+  }
+
+  /**
+   * One cycle on a multiplexed connection. The `owner` permit is only taken to
+   * queue the statement, so a pin still orders against submissions without
+   * serializing them.
+   */
+  private readonly pipelineCycle = (
+    sql: string,
+    params: ReadonlyArray<unknown>,
+    wantRows: boolean,
+    cache: PreparedCache | undefined
+  ): Effect.Effect<QueryOutput, SqlError> =>
+    Effect.flatMap(
+      this.owner.withPermit(Effect.suspend(() => {
+        if (this.deadWith !== undefined) return Effect.fail(this.deadWith)
+        let plan: Plan
+        try {
+          plan = this.encodeQuery(sql, params, cache)
+        } catch (cause) {
+          return Effect.fail(queryError(cause, "PgConnection: Failed to encode query"))
+        }
+        const deferred = Deferred.makeUnsafe<QueryOutput, SqlError>()
+        let entry: PipelineEntry
+        const machine = makeQueryMachine(this, plan, wantRows, (result) => this.finishPipelineEntry(entry, result))
+        entry = { plan, deferred, machine, abandoned: false }
+        this.pipelinePending.push(entry)
+        this.consumer = this.pipelineConsumer
+        this.schedulePipelineFlush()
+        return Effect.succeed(entry)
+      })),
+      (entry) => {
+        const awaited = Deferred.await(entry.deferred).pipe(
+          Effect.onInterrupt(() =>
+            Effect.sync(() => {
+              entry.abandoned = true
+            })
+          )
+        )
+        if (cache === undefined || entry.plan.parses) return awaited
+        return Effect.catchCause(awaited, (cause) => {
+          if (!entry.plan.stale) return Effect.failCause(cause)
+          cache.evict(entry.plan.prepared!)
+          return this.pipelineCycle(sql, params, wantRows, undefined)
+        })
+      }
+    )
+
   /** One extended-query cycle guarded by the wire permit. */
   readonly cycle = (
     sql: string,
@@ -490,10 +679,19 @@ class PgConnectionImpl implements PgConnection {
   })
 
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope> = Effect.acquireRelease(
-    Effect.map(this.owner.take(1), () => {
-      this.pinned = true
-      return this.pinnedView
-    }),
+    Effect.flatMap(this.owner.take(1), () =>
+      // Holding `owner` stops new submissions; a pipeline already on the wire
+      // still has to drain before this fiber owns the connection.
+      Effect.as(
+        Effect.tap(
+          Effect.onInterrupt(this.waitPipelineIdle, () => this.owner.release(1)),
+          () =>
+            Effect.sync(() => {
+              this.pinned = true
+            })
+        ),
+        this.pinnedView
+      )),
     () =>
       Effect.suspend(() => {
         this.pinned = false
@@ -502,13 +700,23 @@ class PgConnectionImpl implements PgConnection {
   )
 
   readonly query = (sql: string, params?: ReadonlyArray<unknown>): Effect.Effect<Result, SqlError> =>
-    Effect.map(this.owner.withPermit(this.cycle(sql, params ?? emptyParams, true)), takeResult)
+    Effect.map(
+      this.multiplex
+        ? this.pipelineCycle(sql, params ?? emptyParams, true, this.prepared)
+        : this.owner.withPermit(this.cycle(sql, params ?? emptyParams, true)),
+      takeResult
+    )
 
   readonly queryValues = (
     sql: string,
     params?: ReadonlyArray<unknown>
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError> =>
-    Effect.map(this.owner.withPermit(this.cycle(sql, params ?? emptyParams, false)), takeValues)
+    Effect.map(
+      this.multiplex
+        ? this.pipelineCycle(sql, params ?? emptyParams, false, this.prepared)
+        : this.owner.withPermit(this.cycle(sql, params ?? emptyParams, false)),
+      takeValues
+    )
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this, this.pin, sql, params ?? emptyParams)
@@ -706,6 +914,8 @@ interface Prepared {
   readonly name: string
   readonly key: string
   ready: boolean
+  /** A cycle carrying this statement's `Parse` is on the wire. */
+  parsing: boolean
   description: Description | undefined
 }
 
@@ -769,6 +979,12 @@ const encodeQuery = (
   }
 
   const prepared = cache.get(sql, parameterTypes)
+  if (!prepared.ready && prepared.parsing) {
+    // Another cycle is already on the wire carrying this name's `Parse`.
+    // Naming it again would collide, and reusing it would mean binding to
+    // columns nobody has seen yet, so this execution goes unnamed.
+    return encodeQuery(sql, params, registry, encodeBind, undefined)
+  }
   const bind = encodeBind({ portal: "", statement: prepared.name, parameters })
   if (EffectResult.isFailure(bind)) throw bind.failure
   const parse = prepared.ready ? undefined : PgProtocol.encodeParse({ name: prepared.name, query: sql, parameterTypes })
@@ -789,6 +1005,7 @@ const encodeQuery = (
     }
   }
 
+  prepared.parsing = true
   return {
     frame: closeFrames === undefined
       ? concat([parse.success, bind.success, describeExecuteSync])
@@ -831,7 +1048,13 @@ class PreparedCache {
       this.statements.set(key, found)
       return found
     }
-    const prepared: Prepared = { name: `effect${++this.counter}`, key, ready: false, description: undefined }
+    const prepared: Prepared = {
+      name: `effect${++this.counter}`,
+      key,
+      ready: false,
+      parsing: false,
+      description: undefined
+    }
     this.statements.set(key, prepared)
     if (this.statements.size > this.max) {
       const oldest = this.statements.keys().next()
@@ -926,62 +1149,72 @@ const isDigits = (value: string): boolean => {
   return true
 }
 
-const runQuery = (
+/**
+ * The per-statement half of a cycle: a state machine fed backend messages that
+ * reports the result once. Splitting it out of `runQuery` is what lets several
+ * cycles be in flight at once, each holding its own state while the connection
+ * routes messages to whichever is at the head of the queue.
+ */
+interface QueryMachine extends Consumer {
+  readonly isDone: () => boolean
+  readonly abort: (onDrained: () => void) => void
+  /** Installed on the parser while this machine is at the head of the queue. */
+  readonly readField: PgProtocol.FieldReader<unknown> | undefined
+}
+
+const makeQueryMachine = (
   conn: PgConnectionImpl,
   plan: Plan,
-  wantRows: boolean
-): Effect.Effect<QueryOutput, SqlError> =>
-  Effect.callback<QueryOutput, SqlError>((resume) => {
-    if (conn.deadWith !== undefined) {
-      resume(Effect.fail(conn.deadWith))
-      return
-    }
-    const socket = conn.session.socket
-    let done = false
-    let aborted = false
-    let drainDone: (() => void) | undefined
-    const parser = conn.session.parser
-    let closes = plan.closes
-    let phase: QueryPhase = closes > 0 ? "close" : plan.parses ? "parse" : "bind"
-    let fieldCount = plan.description?.resultFields.length ?? 0
-    let resultFields: ReadonlyArray<Field> = plan.description?.resultFields ?? emptyFields
-    let rowBuilder: RowBuilder | undefined = plan.description?.rowBuilder
-    const rows: Array<Row> = []
-    const values: Array<ReadonlyArray<unknown>> = []
-    let command = ""
-    let rowCount = 0
-    let oid: number | null = null
-    let failure: SqlError | undefined
+  wantRows: boolean,
+  finish: (effect: Effect.Effect<QueryOutput, SqlError>) => void
+): QueryMachine => {
+  const parser = conn.session.parser
+  let closes = plan.closes
+  let phase: QueryPhase = closes > 0 ? "close" : plan.parses ? "parse" : "bind"
+  let fieldCount = plan.description?.resultFields.length ?? 0
+  let resultFields: ReadonlyArray<Field> = plan.description?.resultFields ?? emptyFields
+  let rowBuilder: RowBuilder | undefined = plan.description?.rowBuilder
+  const rows: Array<Row> = []
+  const values: Array<ReadonlyArray<unknown>> = []
+  let command = ""
+  let rowCount = 0
+  let oid: number | null = null
+  let failure: SqlError | undefined
+  let done = false
+  let aborted = false
+  let drainDone: (() => void) | undefined
 
-    const finish = (effect: Effect.Effect<QueryOutput, SqlError>): void => {
+  const complete = (effect: Effect.Effect<QueryOutput, SqlError>): void => {
+    if (done) return
+    done = true
+    // Whether it parsed or not, this cycle no longer holds the name: success
+    // has already marked it ready, failure leaves it to be parsed again.
+    if (plan.prepared !== undefined) plan.prepared.parsing = false
+    finish(effect)
+  }
+  const failFatal = (error: SqlError): void => conn.fatal(error)
+  const failDesync = (message: string): void =>
+    failFatal(connectionQueryError(new Error(message), `PgConnection: ${message}`))
+
+  return {
+    readField: plan.description?.readField,
+    isDone: () => done,
+    abort: (onDrained) => {
+      if (done) return onDrained()
+      aborted = true
+      drainDone = onDrained
+    },
+    onFatal: (error) => {
       if (done) return
       done = true
-      conn.consumer = undefined
-      resume(effect)
-    }
-    const onFatal = (error: SqlError): void => {
-      if (done) return
-      done = true
-      if (aborted) {
-        drainDone?.()
-      } else {
-        resume(Effect.fail(error))
-      }
-    }
-    // `conn.fatal` notifies the registered consumer; the direct `onFatal` call
-    // covers the case where the connection was already dead.
-    const failFatal = (error: SqlError): void => {
-      conn.fatal(error)
-      onFatal(error)
-    }
-    const failDesync = (message: string): void =>
-      failFatal(connectionQueryError(new Error(message), `PgConnection: ${message}`))
-
-    const onMessage = (message: PgProtocol.BackendMessage<unknown>): void => {
+      if (plan.prepared !== undefined) plan.prepared.parsing = false
+      if (aborted) drainDone?.()
+      else finish(Effect.fail(error))
+    },
+    onMessage: (message) => {
       if (aborted) {
         if (message._tag === "ReadyForQuery") {
           done = true
-          conn.consumer = undefined
           drainDone?.()
         }
         return
@@ -989,7 +1222,7 @@ const runQuery = (
       if (phase === "error") {
         switch (message._tag) {
           case "ReadyForQuery":
-            return finish(Effect.fail(failure!))
+            return complete(Effect.fail(failure!))
           default:
             return failDesync(`Unexpected ${message._tag} after ErrorResponse`)
         }
@@ -1016,8 +1249,8 @@ const runQuery = (
           fieldCount = message.fields.length
           resultFields = description.success.resultFields
           rowBuilder = description.success.rowBuilder
-          // The parser hands this message over before it reads the rows behind
-          // it, so the columns decode in place from here on.
+          // `pushEach` hands this description over before it reads the rows
+          // behind it, including rows that arrived in the same chunk.
           parser.readField = description.success.readField
           if (plan.prepared !== undefined) {
             plan.prepared.description = description.success
@@ -1059,7 +1292,7 @@ const runQuery = (
           if (phase !== "rows") return failDesync(`Unexpected EmptyQueryResponse during ${phase}`)
           phase = "complete"
           return
-        case "ErrorResponse": {
+        case "ErrorResponse":
           if (isStalePreparedStatement(message.fields.code)) plan.stale = true
           // Every phase drains the same way: the backend skips the rest of the
           // cycle and sends `ReadyForQuery` after the `Sync` that closes it, so
@@ -1069,14 +1302,12 @@ const runQuery = (
           })
           phase = "error"
           return
-        }
-        case "ReadyForQuery": {
+        case "ReadyForQuery":
           if (phase !== "complete") return failDesync(`Unexpected ReadyForQuery during ${phase}`)
-          return finish(Effect.succeed({
+          return complete(Effect.succeed({
             result: { command, rowCount, oid, rows, fields: resultFields },
             values
           }))
-        }
         case "CopyInResponse":
         case "CopyOutResponse":
         case "CopyBothResponse":
@@ -1087,24 +1318,39 @@ const runQuery = (
           return failDesync(`Unexpected ${message._tag} during ${phase}`)
       }
     }
+  }
+}
 
-    conn.consumer = { onMessage, onFatal }
+/** One cycle on a connection that carries a single statement at a time. */
+const runQuery = (
+  conn: PgConnectionImpl,
+  plan: Plan,
+  wantRows: boolean
+): Effect.Effect<QueryOutput, SqlError> =>
+  Effect.callback<QueryOutput, SqlError>((resume) => {
+    if (conn.deadWith !== undefined) {
+      resume(Effect.fail(conn.deadWith))
+      return
+    }
+    const machine = makeQueryMachine(conn, plan, wantRows, (effect) => {
+      conn.consumer = undefined
+      resume(effect)
+    })
+    conn.consumer = machine
     // A reused statement has no `RowDescription` coming, so its reader has to
     // be in place before the rows are.
-    parser.readField = plan.description?.readField
+    conn.session.parser.readField = machine.readField
     try {
-      socket.write(plan.frame)
+      conn.session.socket.write(plan.frame)
     } catch (cause) {
-      failFatal(connectionQueryError(cause, "PgConnection: Failed to write query"))
+      conn.fatal(connectionQueryError(cause, "PgConnection: Failed to write query"))
     }
 
     // On interruption: cancel the statement and drain the connection back to
     // ReadyForQuery so it stays usable, destroying it when the drain stalls.
     return Effect.suspend(() => {
-      if (done) return Effect.void
-      aborted = true
+      if (machine.isDone()) return Effect.void
       const wait = Effect.callback<void>((resumeWait) => {
-        if (done) return resumeWait(Effect.void)
         const timer = setTimeout(
           () =>
             conn.fatal(connectionQueryError(
@@ -1113,10 +1359,11 @@ const runQuery = (
             )),
           abortDrainTimeoutMillis
         )
-        drainDone = () => {
+        machine.abort(() => {
           clearTimeout(timer)
+          conn.consumer = undefined
           resumeWait(Effect.void)
-        }
+        })
       })
       return Effect.andThen(conn.cancel, wait)
     })

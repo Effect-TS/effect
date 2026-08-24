@@ -6,6 +6,7 @@ import { mkdtemp, rm } from "node:fs/promises"
 import * as Net from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { Duplex } from "node:stream"
 
 const backendMessage = (tag: string, payload: Uint8Array): Buffer => {
   const length = Buffer.allocUnsafe(4)
@@ -25,6 +26,23 @@ const authentication = (method: number, payload: Uint8Array = Buffer.alloc(0)): 
 const authenticationOk = authentication(0)
 const backendKeyData = backendMessage("K", Buffer.concat([int32(1234), int32(5678)]))
 const readyForQuery = backendMessage("Z", Buffer.from("I"))
+const emptyQueryResult = Buffer.concat([
+  backendMessage("1", Buffer.alloc(0)),
+  backendMessage("2", Buffer.alloc(0)),
+  backendMessage("n", Buffer.alloc(0)),
+  backendMessage("C", Buffer.from("SELECT 0\0")),
+  readyForQuery
+])
+
+const frontendTags = (message: Buffer): ReadonlyArray<string> => {
+  const tags: Array<string> = []
+  let offset = 0
+  while (offset < message.length) {
+    tags.push(String.fromCharCode(message[offset]))
+    offset += 1 + message.readInt32BE(offset + 1)
+  }
+  return tags
+}
 
 const consumeFrontend = (
   socket: Net.Socket,
@@ -124,6 +142,39 @@ const withUnixServer = (
   )
 
 describe("PgConnection in-process server", () => {
+  it.effect("flushes concurrently submitted multiplexed queries in one write", () =>
+    Effect.gen(function*() {
+      const writes: Array<Buffer> = []
+      const socket: Duplex = new Duplex({
+        read() {},
+        write(chunk: Buffer, _encoding, callback) {
+          const message = Buffer.from(chunk)
+          writes.push(message)
+          if (writes.length === 1) {
+            queueMicrotask(() => socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery])))
+          } else {
+            const syncs = frontendTags(message).filter((tag) => tag === "S").length
+            queueMicrotask(() => socket.push(Buffer.concat(Array.from({ length: syncs }, () => emptyQueryResult))))
+          }
+          callback()
+        }
+      })
+      const connection = yield* PgConnection.make({
+        username: "test",
+        stream: () => socket,
+        multiplex: true
+      })
+
+      yield* Effect.all([
+        connection.query("SELECT 1"),
+        connection.query("SELECT 2")
+      ], { concurrency: "unbounded" })
+
+      // Both cycles left in one write, each keeping its own Sync.
+      assert.strictEqual(writes.length, 2)
+      assert.deepStrictEqual(frontendTags(writes[1]), ["P", "B", "D", "E", "S", "P", "B", "D", "E", "S"])
+    }))
+
   it.live("preserves an ErrorResponse returned for SSLRequest", () =>
     Effect.scoped(Effect.gen(function*() {
       const { port } = yield* withTcpServer((socket) => {

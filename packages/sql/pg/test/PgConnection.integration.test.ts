@@ -1,6 +1,6 @@
 import { PgConnection, PgTypes } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
-import { Effect, Redacted } from "effect"
+import { Deferred, Effect, Fiber, Redacted } from "effect"
 import { PgContainer } from "./utils.ts"
 
 it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
@@ -267,5 +267,100 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
         (yield* connection.query("SELECT a FROM rolled_back ORDER BY a")).rows,
         [{ a: 2 }, { a: 3 }]
       )
+    }))
+  it.effect("isolates errors between pipelined queries", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const connection = yield* PgConnection.make({
+        url: Redacted.make(container.getConnectionUri()),
+        multiplex: true
+      })
+      const exits = yield* Effect.all([
+        Effect.exit(connection.query("SELECT $1::int4 AS first", [1])),
+        Effect.exit(connection.query("SELECT missing_pipeline_column")),
+        Effect.exit(connection.query("SELECT $1::int4 AS third", [3]))
+      ], { concurrency: "unbounded" })
+
+      assert.strictEqual(exits[0]._tag, "Success")
+      assert.strictEqual(exits[1]._tag, "Failure")
+      assert.strictEqual(exits[2]._tag, "Success")
+      if (exits[0]._tag === "Success") assert.deepStrictEqual(exits[0].value.rows, [{ first: 1 }])
+      if (exits[2]._tag === "Success") assert.deepStrictEqual(exits[2].value.rows, [{ third: 3 }])
+    }))
+
+  it.effect("drains an interrupted pipelined query without cancelling its neighbors", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const connection = yield* PgConnection.make({
+        url: Redacted.make(container.getConnectionUri()),
+        multiplex: true
+      })
+      const first = yield* connection.query("SELECT pg_sleep(0.05), 1 AS first").pipe(Effect.forkScoped)
+      const second = yield* connection.query("SELECT 2 AS second").pipe(Effect.forkScoped)
+      yield* Effect.yieldNow
+      yield* Fiber.interrupt(first)
+
+      const result = yield* Fiber.join(second)
+      assert.deepStrictEqual(result.rows, [{ second: 2 }])
+      assert.deepStrictEqual((yield* connection.query("SELECT 3 AS after")).rows, [{ after: 3 }])
+    }))
+
+  it.effect("places pin requests between earlier and later pipelined queries", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const connection = yield* PgConnection.make({
+        url: Redacted.make(container.getConnectionUri()),
+        multiplex: true
+      })
+      yield* connection.query(
+        "CREATE TEMP TABLE pipeline_pin_order (position int GENERATED ALWAYS AS IDENTITY, value int4)"
+      )
+      const first = yield* connection.query(
+        "INSERT INTO pipeline_pin_order (value) SELECT 1 FROM pg_sleep(0.05)"
+      ).pipe(Effect.forkScoped)
+      yield* Effect.yieldNow
+
+      const pinned = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const pinFiber = yield* Effect.scoped(Effect.gen(function*() {
+        const exclusive = yield* connection.pin
+        yield* exclusive.query("INSERT INTO pipeline_pin_order (value) VALUES (2)")
+        yield* Deferred.succeed(pinned, undefined)
+        yield* Deferred.await(release)
+      })).pipe(Effect.forkScoped)
+      yield* Effect.yieldNow
+      const third = yield* connection.query("INSERT INTO pipeline_pin_order (value) VALUES (3)").pipe(
+        Effect.forkScoped
+      )
+
+      yield* Deferred.await(pinned)
+      assert.isUndefined(third.pollUnsafe())
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(first)
+      yield* Fiber.join(pinFiber)
+      yield* Fiber.join(third)
+
+      const result = yield* connection.query("SELECT value FROM pipeline_pin_order ORDER BY position")
+      assert.deepStrictEqual(result.rows, [{ value: 1 }, { value: 2 }, { value: 3 }])
+    }))
+
+  it.effect("reuses prepared statements across a pipeline", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const connection = yield* PgConnection.make({
+        url: Redacted.make(container.getConnectionUri()),
+        multiplex: true
+      })
+      for (let round = 0; round < 3; round++) {
+        const results = yield* Effect.all(
+          Array.from({ length: 8 }, (_, index) => connection.query("SELECT $1::int4 AS n", [index])),
+          { concurrency: "unbounded" }
+        )
+        results.forEach((result, index) => assert.deepStrictEqual(result.rows, [{ n: index }]))
+      }
+      const held = yield* connection.query(
+        "SELECT count(*)::int4 AS n FROM pg_prepared_statements WHERE statement = 'SELECT $1::int4 AS n'"
+      )
+      assert.deepStrictEqual(held.rows[0], { n: 1 })
     }))
 })

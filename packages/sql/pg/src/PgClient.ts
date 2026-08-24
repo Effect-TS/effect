@@ -98,7 +98,14 @@ export interface PgClientConfig {
   readonly transformQueryNames?: ((str: string) => string) | undefined
   readonly transformJson?: boolean | undefined
   readonly types?: PgTypes.Registry | undefined
-  /** Allows multiple fibers to share a pooled connection between pinned operations. */
+  /**
+   * Allows multiple fibers to share a pooled connection between pinned
+   * operations, and pipelines the statements they submit together.
+   *
+   * A single pipelined connection outruns a ten-connection pool without it.
+   * Keep `listen` on its own client when this is on: a multiplexed pool can
+   * hand the connection a listener has pinned to a fiber that wants to query.
+   */
   readonly multiplex?: boolean | undefined
   /**
    * Keeps statements prepared under a backend name, so a repeated statement
