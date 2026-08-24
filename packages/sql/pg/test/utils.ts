@@ -51,7 +51,8 @@ export class PgContainer extends Context.Service<PgContainer>()("test/PgContaine
       const container = yield* PgContainer
       return PgClient.layer({
         url: Redacted.make(container.getConnectionUri()),
-        maxConnections: 2
+        maxConnections: 2,
+        multiplex: true
       })
     })
   ).pipe(Layer.provide(this.layer))

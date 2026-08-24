@@ -30,7 +30,8 @@ between statements.
 
 A `multiplex` session now pipelines the statements its fibers submit together into one write instead of sending them
 one at a time, which takes a single connection past what a ten-connection pool reaches without it. Pinned work still
-owns the session, and `pin` waits for the pipeline to drain.
+owns the session, and `pin` waits for the pipeline to drain. A multiplexed pool removes reserved sessions from shared
+circulation, allowing transactions and listeners to stay exclusive while other work uses another connection.
 
 A statement the server refuses to parse - a typo, a missing table - no longer destroys the connection. It is an
 ordinary query error and fails only that statement.

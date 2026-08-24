@@ -93,12 +93,6 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
  * pinned, because on a shared connection a `CancelRequest` could hit an
  * unrelated fiber's statement.
  *
- * Note that a multiplexed pool can hand the same session to a fiber that pins
- * it for a `listen` stream and to a fiber that wants to query, and the second
- * then waits for a subscription that never ends. Keep `listen` on its own
- * client, or leave `multiplex` off, until the pool learns to allocate around
- * a pinned session.
- *
  * @category models
  * @since 4.0.0
  */
@@ -323,7 +317,7 @@ interface PipelineEntry {
 const abortDrainTimeoutMillis = 5000
 const cancelRequestTimeoutMillis = 5000
 /** How many statements a multiplexed session keeps on the wire at once. */
-const maxPipelineDepth = 64
+const maxPipelineDepth = 128
 const streamPauseThreshold = 512
 
 class PgConnectionImpl implements PgConnection {

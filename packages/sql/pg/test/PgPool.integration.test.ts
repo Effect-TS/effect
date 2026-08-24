@@ -47,9 +47,9 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       assert.deepStrictEqual(result.rows, [{ after: "ok" }])
     }))
 
-  it.effect("delivers notifications while listening", () =>
+  it.effect("keeps a multiplexed listener exclusive", () =>
     Effect.gen(function*() {
-      const pool = yield* PgPool.make(yield* poolConfig)
+      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 2, multiplex: true })
       const listener = yield* pool.reserve
       const fiber = yield* Effect.forkScoped(Stream.runCollect(listener.listen("test_channel").pipe(Stream.take(1))))
       // Wait for LISTEN to be registered before notifying from another session.
@@ -59,12 +59,25 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
         yield* realSleep
       }
       const notifier = yield* pool.get
+      assert.notStrictEqual(listener.processId, notifier.processId)
       yield* notifier.query("SELECT pg_notify($1, $2)", ["test_channel", "hello"])
       const notifications = yield* Fiber.join(fiber)
       assert.strictEqual(notifications.length, 1)
       assert.strictEqual(notifications[0].channel, "test_channel")
       assert.strictEqual(notifications[0].payload, "hello")
       assert.strictEqual(notifications[0].processId, notifier.processId)
+    }))
+
+  it.effect("returns a multiplexed reservation to shared circulation", () =>
+    Effect.gen(function*() {
+      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1, multiplex: true })
+      const reserve = Effect.scoped(Effect.map(pool.reserve, (connection) => connection.processId))
+      const get = Effect.scoped(Effect.map(pool.get, (connection) => connection.processId))
+
+      const first = yield* reserve
+      assert.strictEqual(yield* get, first)
+      assert.strictEqual(yield* reserve, first)
+      assert.strictEqual(yield* get, first)
     }))
 
   it.effect("interrupt cancels an in-flight query", () =>

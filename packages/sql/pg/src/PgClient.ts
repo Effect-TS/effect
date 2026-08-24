@@ -103,8 +103,8 @@ export interface PgClientConfig {
    * operations, and pipelines the statements they submit together.
    *
    * A single pipelined connection outruns a ten-connection pool without it.
-   * Keep `listen` on its own client when this is on: a multiplexed pool can
-   * hand the connection a listener has pinned to a fiber that wants to query.
+   * Pinned operations such as transactions and `listen` are kept exclusive;
+   * the pool allocates another connection for shared work when capacity allows.
    */
   readonly multiplex?: boolean | undefined
   /**

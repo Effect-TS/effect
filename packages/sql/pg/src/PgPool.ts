@@ -20,6 +20,11 @@ import type { SqlError } from "effect/unstable/sql/SqlError"
 import { connectionInternals } from "./internal/connection.ts"
 import * as PgConnection from "./PgConnection.ts"
 
+// This needs to stay beyond any practical number of simultaneous statement
+// leases. Effect Pool currently wakes one waiter when a saturated shared item
+// becomes available, even if many concurrency slots reopen at once.
+const multiplexPoolConcurrency = 1_048_576
+
 /**
  * Runtime type identifier used to mark `PgPool` values.
  *
@@ -46,8 +51,9 @@ export type TypeId = "~@effect/sql-pg/PgPool"
  * checkout and replaced.
  *
  * With `multiplex` enabled a pool item may be checked out by many fibers at
- * once; statements still run one at a time per connection. With it disabled
- * (the default) every checkout is exclusive.
+ * once and their statements are pipelined together. A reserved connection is
+ * removed from shared circulation until its scope closes. With multiplexing
+ * disabled (the default) every checkout is exclusive.
  *
  * @category models
  * @since 4.0.0
@@ -130,7 +136,7 @@ export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Sco
       acquire,
       min: options.minConnections ?? 0,
       max: options.maxConnections ?? 10,
-      concurrency: multiplex ? Number.MAX_SAFE_INTEGER : 1,
+      concurrency: multiplex ? multiplexPoolConcurrency : 1,
       timeToLive: options.idleTimeout ?? Duration.seconds(10),
       timeToLiveStrategy: "usage"
     })
@@ -168,11 +174,19 @@ export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Sco
           : Effect.succeed(connection))
     )
 
+    const reserve = multiplex
+      ? Effect.flatMap(get, (connection) =>
+        Effect.andThen(
+          reservePoolItem(pool, connectionInternals(connection).base),
+          connection.pin
+        ))
+      : Effect.flatMap(get, (connection) => connection.pin)
+
     const pgPool: PgPool = {
       [TypeId]: TypeId,
       config: options,
       get,
-      reserve: Effect.flatMap(get, (connection) => connection.pin),
+      reserve,
       invalidate: (connection) =>
         Effect.scoped(
           Pool.invalidate(pool, connectionInternals(connection).base as PgConnection.PgConnection)
@@ -180,3 +194,64 @@ export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Sco
     }
     return pgPool
   })
+
+/**
+ * Temporarily consumes the rest of a multiplexed pool item's capacity and
+ * removes it from the availability list. The ordinary `Pool.get` lease counts
+ * as one unit; the synthetic usage makes the reservation count as a full item,
+ * so another checkout grows the pool when `maxConnections` permits it.
+ */
+const reservePoolItem = <A, E>(pool: Pool.Pool<A, E>, value: object): Effect.Effect<void, never, Scope.Scope> =>
+  Effect.acquireRelease(
+    Effect.sync(() => {
+      for (const item of pool.state.items) {
+        if (item.exit._tag !== "Success" || item.exit.value !== value) continue
+        pool.state.usage += pool.config.concurrency - 1
+        removeAvailable(pool, item)
+        return item
+      }
+      throw new Error("PgPool invariant violated: reserved connection is not in its pool")
+    }),
+    (item) =>
+      Effect.sync(() => {
+        pool.state.usage -= pool.config.concurrency - 1
+        if (
+          pool.state.items.has(item) &&
+          !pool.state.invalidated.has(item) &&
+          item.refCount < pool.config.concurrency
+        ) {
+          addAvailable(pool, item)
+        }
+        for (const notify of Array.from(pool.state.waiters)) notify()
+      })
+  ).pipe(Effect.asVoid)
+
+const addAvailable = <A, E>(pool: Pool.Pool<A, E>, item: Pool.PoolItem<A, E>): void => {
+  if (item.isAvailable) return
+  item.isAvailable = true
+  item.availablePrevious = pool.state.availableTail
+  item.availableNext = undefined
+  if (pool.state.availableTail !== undefined) {
+    pool.state.availableTail.availableNext = item
+  } else {
+    pool.state.availableHead = item
+  }
+  pool.state.availableTail = item
+}
+
+const removeAvailable = <A, E>(pool: Pool.Pool<A, E>, item: Pool.PoolItem<A, E>): void => {
+  if (!item.isAvailable) return
+  item.isAvailable = false
+  if (item.availablePrevious !== undefined) {
+    item.availablePrevious.availableNext = item.availableNext
+  } else {
+    pool.state.availableHead = item.availableNext
+  }
+  if (item.availableNext !== undefined) {
+    item.availableNext.availablePrevious = item.availablePrevious
+  } else {
+    pool.state.availableTail = item.availablePrevious
+  }
+  item.availablePrevious = undefined
+  item.availableNext = undefined
+}
