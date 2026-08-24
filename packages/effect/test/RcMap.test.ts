@@ -161,7 +161,7 @@ describe("RcMap", () => {
         assert.strictEqual(yield* Ref.get(released), 1)
       }))
 
-    it.effect("interrupts when the map is closed", () =>
+    it.effect("returns None when the map is closed", () =>
       Effect.gen(function*() {
         const mapScope = yield* Scope.make()
         const map = yield* RcMap.make({
@@ -169,8 +169,7 @@ describe("RcMap", () => {
         }).pipe(Scope.provide(mapScope))
         yield* Scope.close(mapScope, Exit.void)
 
-        const exit = yield* RcMap.getOption(map, "key").pipe(Effect.exit)
-        assert.isTrue(Exit.hasInterrupts(exit))
+        assert.deepStrictEqual(yield* RcMap.getOption(map, "key"), Option.none())
       }))
   })
 

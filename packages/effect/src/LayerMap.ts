@@ -98,12 +98,8 @@ export interface LayerMap<in out K, in out I, in out E = never> {
    *
    * **Details**
    *
-   * For an open `LayerMap`, `Option.none` means no entry is currently cached; no
-   * layer is built for a missing key. An existing in-flight entry is awaited.
-   *
-   * **Gotchas**
-   *
-   * A closed `LayerMap` interrupts instead of returning `Option.none`.
+   * `Option.none` means no entry is currently cached or the `LayerMap` is closed;
+   * no layer is built for a missing key. An existing in-flight entry is awaited.
    *
    * @since 4.0.0
    */
@@ -339,12 +335,8 @@ export interface TagClass<
    *
    * **Details**
    *
-   * For an open `LayerMap`, `Option.none` means no entry is currently cached; no
-   * layer is built for a missing key. An existing in-flight entry is awaited.
-   *
-   * **Gotchas**
-   *
-   * A closed `LayerMap` interrupts instead of returning `Option.none`.
+   * `Option.none` means no entry is currently cached or the `LayerMap` is closed;
+   * no layer is built for a missing key. An existing in-flight entry is awaited.
    *
    * @since 4.0.0
    */

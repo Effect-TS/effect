@@ -393,14 +393,11 @@ export const get: {
  *
  * **Details**
  *
- * On an open map, returns `Option.none` when the key is not currently stored. If
- * an entry exists, its reference count is incremented for the current `Scope`
- * before awaiting its result. A successful entry returns `Option.some(value)`,
- * while an in-flight or cached failure fails with the same error as `get`.
- *
- * **Gotchas**
- *
- * A closed map interrupts instead of returning `Option.none`.
+ * Returns `Option.none` when the key is not currently stored or the map is
+ * closed. If an entry exists, its reference count is incremented for the current
+ * `Scope` before awaiting its result. A successful entry returns
+ * `Option.some(value)`, while an in-flight or cached failure fails with the same
+ * error as `get`.
  *
  * **Example** (Retaining only cached resources)
  *
@@ -437,7 +434,7 @@ export const getOption: {
   <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<Option.Option<A>, E, Scope.Scope> =>
     Effect.uninterruptibleMask((restore) => {
       if (self.state._tag === "Closed") {
-        return Effect.interrupt
+        return Effect.succeedNone
       }
       const o = MutableHashMap.get(self.state.map, key)
       if (o._tag === "None") {
