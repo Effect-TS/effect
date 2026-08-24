@@ -723,9 +723,9 @@ const removeAvailable = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => 
  * @since 2.0.0
  */
 export const invalidate: {
-  <A>(item: A): <E>(self: Pool<A, E>) => Effect.Effect<void, never, Scope.Scope>
-  <A, E>(self: Pool<A, E>, item: A): Effect.Effect<void, never, Scope.Scope>
-} = dual(2, <A, E>(self: Pool<A, E>, item: A): Effect.Effect<void, never, Scope.Scope> =>
+  <A>(item: A): <E>(self: Pool<A, E>) => Effect.Effect<void>
+  <A, E>(self: Pool<A, E>, item: A): Effect.Effect<void>
+} = dual(2, <A, E>(self: Pool<A, E>, item: A): Effect.Effect<void> =>
   Effect.suspend(() => {
     if (self.state.isShuttingDown) return Effect.void
     for (const poolItem of self.state.items) {
