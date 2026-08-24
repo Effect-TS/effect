@@ -183,6 +183,17 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       assert.deepStrictEqual(held.rows[0], { n: 3 })
     }))
 
+  it.effect("closes statements parsed while a pipeline overfills the cache", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection({ preparedStatementCacheSize: 1, multiplex: true })
+      yield* Effect.all(
+        Array.from({ length: 4 }, (_, index) => connection.query(`SELECT ${index}::int4 AS n`)),
+        { concurrency: "unbounded" }
+      )
+      const held = yield* connection.query("SELECT count(*)::int4 AS n FROM pg_prepared_statements")
+      assert.deepStrictEqual(held.rows[0], { n: 1 })
+    }))
+
   it.effect("parses every statement when prepare is off", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection({ prepare: false })

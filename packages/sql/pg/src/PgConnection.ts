@@ -248,7 +248,7 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  * The connect exchange - transport, optional `SSLRequest`, startup, and
  * authentication - runs under `connectTimeout` (default 5 seconds) and
  * resolves once the backend sends `ReadyForQuery`. When the scope closes the
- * session sends `Terminate` and destroys the socket.
+ * session sends `Terminate` and ends the socket.
  *
  * TLS is never downgraded: with `ssl` set, a server that answers `N` to
  * `SSLRequest` fails the connect. Certificate verification follows Node
@@ -432,13 +432,13 @@ class PgConnectionImpl implements PgConnection {
     )
   }
 
-  /** Marks the session dead: destroys the socket, fails the active statement
+  /** Marks the session dead: optionally destroys the socket, fails the active statement
    * and every listen queue, and notifies pool hooks unless the session's own
    * scope is being released. */
-  fatal(error: SqlError): void {
+  fatal(error: SqlError, destroySocket = true): void {
     if (this.deadWith !== undefined) return
     this.deadWith = error
-    this.session.socket.destroy()
+    if (destroySocket) this.session.socket.destroy()
     const consumer = this.consumer
     this.consumer = undefined
     consumer?.onFatal(error)
@@ -455,8 +455,14 @@ class PgConnectionImpl implements PgConnection {
 
   closeUnsafe(): void {
     this.closed = true
+    let destroySocket = true
     if (this.deadWith === undefined && this.session.socket.writable) {
-      this.session.socket.write(PgProtocol.encodeTerminate())
+      try {
+        this.session.socket.end(PgProtocol.encodeTerminate())
+        destroySocket = false
+      } catch {
+        // Fall back to the fatal path's immediate destroy below.
+      }
     }
     this.fatal(
       new SqlError({
@@ -465,7 +471,8 @@ class PgConnectionImpl implements PgConnection {
           message: "PgConnection: Connection is closed",
           operation: "query"
         })
-      })
+      }),
+      destroySocket
     )
   }
 
@@ -565,7 +572,12 @@ class PgConnectionImpl implements PgConnection {
     let index = 0
     while (capacity > 0 && index < this.pipelinePending.length) {
       const entry = this.pipelinePending[index++]
-      if (entry.abandoned) continue
+      if (entry.abandoned) {
+        if (entry.plan.parses && entry.plan.prepared !== undefined) {
+          entry.plan.prepared.parsing = false
+        }
+        continue
+      }
       batch.push(entry)
       this.pipelineInFlight.push(entry)
       capacity--
@@ -1076,6 +1088,7 @@ class PreparedCache {
       // the first key is the least recently used one.
       this.statements.delete(key)
       this.statements.set(key, found)
+      this.trim(found)
       return found
     }
     const prepared: Prepared = {
@@ -1086,15 +1099,28 @@ class PreparedCache {
       description: undefined
     }
     this.statements.set(key, prepared)
-    if (this.statements.size > this.max) {
-      const oldest = this.statements.keys().next()
-      if (!oldest.done) {
-        const evicted = this.statements.get(oldest.value)!
-        this.statements.delete(oldest.value)
-        if (evicted.ready) this.close(evicted.name)
-      }
-    }
+    this.trim(prepared)
     return prepared
+  }
+
+  /**
+   * A statement still being parsed cannot be closed yet: its `Parse` may not
+   * have reached the socket. Let the cache exceed its bound temporarily, then
+   * discard abandoned entries and close excess ready statements on access.
+   */
+  private trim(protectedStatement?: Prepared): void {
+    while (this.statements.size > this.max) {
+      let evicted: Prepared | undefined
+      for (const prepared of this.statements.values()) {
+        if (prepared !== protectedStatement && (prepared.ready || !prepared.parsing)) {
+          evicted = prepared
+          break
+        }
+      }
+      if (evicted === undefined) return
+      this.statements.delete(evicted.key)
+      if (evicted.ready) this.close(evicted.name)
+    }
   }
 
   /**
@@ -1105,6 +1131,7 @@ class PreparedCache {
    * ignores the `Close`, which Postgres treats as a success.
    */
   evict(prepared: Prepared): void {
+    if (prepared.parsing) return
     if (this.statements.delete(prepared.key) && prepared.ready) this.close(prepared.name)
   }
 

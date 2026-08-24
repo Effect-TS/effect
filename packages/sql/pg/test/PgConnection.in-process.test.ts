@@ -175,6 +175,59 @@ describe("PgConnection in-process server", () => {
       assert.deepStrictEqual(frontendTags(writes[1]), ["P", "B", "D", "E", "S", "P", "B", "D", "E", "S"])
     }))
 
+  it.effect("reuses a prepared name after a pending pipeline query is interrupted", () =>
+    Effect.gen(function*() {
+      const writes: Array<Buffer> = []
+      const socket: Duplex = new Duplex({
+        read() {},
+        write(chunk: Buffer, _encoding, callback) {
+          const message = Buffer.from(chunk)
+          writes.push(message)
+          if (writes.length === 1) {
+            queueMicrotask(() => socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery])))
+          } else {
+            queueMicrotask(() => socket.push(emptyQueryResult))
+          }
+          callback()
+        }
+      })
+      const connection = yield* PgConnection.make({
+        username: "test",
+        stream: () => socket,
+        multiplex: true
+      })
+
+      const interrupted = Effect.runFork(connection.query("SELECT 1"))
+      interrupted.interruptUnsafe()
+      yield* Effect.promise(() => new Promise<void>((resolve) => queueMicrotask(resolve)))
+      yield* connection.query("SELECT 1")
+
+      assert.strictEqual(writes.length, 2)
+      const nameEnd = writes[1].indexOf(0, 5)
+      assert.strictEqual(writes[1].subarray(5, nameEnd).toString(), "effect1")
+    }))
+
+  it.effect("ends a custom stream after writing Terminate", () =>
+    Effect.gen(function*() {
+      const writes: Array<Buffer> = []
+      const socket: Duplex = new Duplex({
+        read() {},
+        write(chunk: Buffer, _encoding, callback) {
+          writes.push(Buffer.from(chunk))
+          if (writes.length === 1) {
+            queueMicrotask(() => socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery])))
+          }
+          callback()
+        }
+      })
+
+      yield* Effect.scoped(PgConnection.make({ username: "test", stream: () => socket }))
+
+      assert.strictEqual(writes.at(-1)?.toString("hex"), "5800000004")
+      assert.isTrue(socket.writableEnded)
+      assert.isFalse(socket.destroyed)
+    }))
+
   it.live("preserves an ErrorResponse returned for SSLRequest", () =>
     Effect.scoped(Effect.gen(function*() {
       const { port } = yield* withTcpServer((socket) => {

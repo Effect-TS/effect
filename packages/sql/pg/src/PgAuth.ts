@@ -44,6 +44,8 @@ const result = <A>(evaluate: () => A): Result.Result<A, AuthError> => {
 
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder("utf-8", { fatal: true })
+/** Bounds synchronous PBKDF2 work requested by an untrusted server. */
+const maxScramIterations = 1_000_000
 
 const bytesOf = (value: Uint8Array): Uint8Array => Uint8Array.from(value)
 
@@ -230,7 +232,11 @@ const scramContinueUnsafe = (
   const salt = fromBase64(saltText, "s")
   const iterationText = attribute(attributes, "i")
   const iterations = Number(iterationText)
-  if (!/^[1-9]\d*$/.test(iterationText) || !Number.isSafeInteger(iterations) || iterations > 0x7fffffff) {
+  if (
+    !/^[1-9]\d*$/.test(iterationText) ||
+    !Number.isSafeInteger(iterations) ||
+    iterations > maxScramIterations
+  ) {
     return fail(`Invalid SCRAM iteration count: ${iterationText}`)
   }
 
