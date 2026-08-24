@@ -2482,6 +2482,65 @@ describe("SchemaBinary", () => {
     })
   })
 
+  describe("schemas the binary layer validates on its own", () => {
+    // `dictionary: true` is refused for anything the binary layer does not
+    // fully validate, so it doubles as an assertion that the schema pass
+    // around the codec is redundant and gets skipped.
+    const validatesItself = (schema: Schema.Codec<any, any>): boolean => {
+      try {
+        SchemaBinary.encoder(schema, { dictionary: true })
+        return true
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("dictionary")) return false
+        throw error
+      }
+    }
+
+    it("covers never, which an inferred schema reaches through an empty array", () => {
+      assert.isTrue(validatesItself(Schema.Never))
+      const Row = Schema.Struct({ id: Schema.String, tags: Schema.Array(Schema.Never) })
+      assert.isTrue(validatesItself(Row))
+      const value = { id: "a", tags: [] as ReadonlyArray<never> }
+      assert.deepStrictEqual(roundtrip(Row, value), value)
+      assert.include(schemaError(() => encode(Row, { id: "a", tags: ["x"] } as any)).message, "never")
+      assert.isFalse(Schema.is(SchemaBinary.toCodec(Row))({ id: 1, tags: [] } as any))
+    })
+
+    it("covers unknown and any, which the JSON layer already rejects or accepts", () => {
+      assert.isTrue(validatesItself(Schema.Unknown))
+      assert.isTrue(validatesItself(Schema.Any))
+      // A JSON payload can be a string, so an object keyword still needs the pass.
+      assert.isFalse(validatesItself(Schema.ObjectKeyword))
+      const Row = Schema.Struct({ id: Schema.String, payload: Schema.Unknown })
+      assert.isTrue(validatesItself(Row))
+      const value = { id: "a", payload: { nested: [1, "two", true, null] } }
+      assert.deepStrictEqual(roundtrip(Row, value), value)
+      assert.isFalse(Schema.is(SchemaBinary.toCodec(Row))({ id: 1, payload: 1 } as any))
+      const cyclic: any = { id: "a", payload: {} }
+      cyclic.payload.self = cyclic.payload
+      assert.include(schemaError(() => encode(Row, cyclic)).message, "acyclic value")
+    })
+
+    it("covers recursion on decode while encode keeps the cycle walk", () => {
+      interface TreeType {
+        readonly value: string
+        readonly children: ReadonlyArray<TreeType>
+      }
+      const Tree = Schema.Struct({
+        value: Schema.String,
+        children: Schema.Array(Schema.suspend((): Schema.Codec<TreeType> => Tree as any))
+      })
+      assert.isTrue(validatesItself(Tree))
+      const tree = { value: "root", children: [{ value: "leaf", children: [] }] }
+      assert.deepStrictEqual(roundtrip(Tree, tree), tree)
+      assert.isFalse(Schema.is(SchemaBinary.toCodec(Tree))({ value: 1, children: [] } as any))
+      assert.include(schemaError(() => encode(Tree, { value: "root", children: [1] } as any)).message, "object")
+      const cyclic: any = { value: "root", children: [] }
+      cyclic.children.push(cyclic)
+      assert.include(schemaError(() => encode(Tree, cyclic)).message, "acyclic value")
+    })
+  })
+
   describe("connection dictionary", () => {
     const Message = Schema.Struct({
       tag: Schema.String,

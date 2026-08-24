@@ -92,11 +92,11 @@ export interface toCodec<S extends Schema.Constraint> extends
  * @since 4.0.0
  */
 export function toCodec<S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> {
-  const { exact, layout, target } = compileTarget(schema)
+  const { exact, layout, recursive, target } = compileTarget(schema)
   const mode = compileMode(layout, options?.fingerprint)
   const trusted: Trusted | undefined = exact ? { value: undefined } : undefined
   return assembleCodec(
-    trusted === undefined ? target : withTrustedDecode(target, trusted),
+    trusted === undefined ? target : withTrustedDecode(target, trusted, !recursive),
     layout,
     mode,
     trusted
@@ -2532,6 +2532,9 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
 // on its own, so the schema pass around it would only repeat work. Constructor
 // defaults are ignored because they only run during construction.
 function isExact(root: SchemaAST.AST): boolean {
+  // A suspend that is still being walked counts as exact: if nothing else in
+  // the cycle disqualifies it, the whole cycle is exact.
+  const walked = new Map<SchemaAST.AST, boolean>()
   const exact = (ast: SchemaAST.AST): boolean => {
     if (
       ast.encoding !== undefined || ast.checks !== undefined ||
@@ -2551,6 +2554,17 @@ function isExact(root: SchemaAST.AST): boolean {
       case "BigInt":
       case "Literal":
         return true
+      // The binary layer rejects every value for a never layout, in both
+      // directions, so the schema pass has nothing left to say about it.
+      // Inferred schemas hit this through the element type of an empty array.
+      case "Never":
+        return true
+      // Every decoded JSON value is a valid `unknown`, and the encoder already
+      // reports the values it cannot represent, so the pass adds nothing.
+      // `ObjectKeyword` is not here: the JSON layout can hand it a string.
+      case "Unknown":
+      case "Any":
+        return true
       case "Arrays":
         return ast.elements.every(exact) && ast.rest.every(exact)
       case "Objects":
@@ -2560,6 +2574,18 @@ function isExact(root: SchemaAST.AST): boolean {
           )
       case "Union":
         return ast.mode === "anyOf" && ast.types.every(exact)
+      // The layout compiles straight through a suspend, so the binary layer
+      // validates whatever the thunk returns. Only decoding gets to act on
+      // this: encoding a recursive schema still needs the cycle walk, which is
+      // why {@link toCodec} keeps the schema pass on that side.
+      case "Suspend": {
+        const seen = walked.get(ast)
+        if (seen !== undefined) return seen
+        walked.set(ast, true)
+        const result = exact(ast.thunk())
+        walked.set(ast, result)
+        return result
+      }
       case "Declaration": {
         const id = representationId(ast)
         const native = id !== undefined ? natives[id] : undefined
@@ -4941,13 +4967,16 @@ interface CompiledTarget {
   readonly layout: Layout
   readonly exact: boolean
   readonly exitSuccess: boolean
+  // A recursive schema can hold a cyclic value, which only the schema pass
+  // detects, so encoding one keeps that pass even when the layout is exact.
+  readonly recursive: boolean
 }
 
 const compileTargetFromAst = memoize((ast: SchemaAST.AST): CompiledTarget => {
   const raw = Schema.make<Schema.Constraint>(toBinaryAST(ast))
   const { exact, exitSuccess, layout, recursive } = compileLayout(raw.ast)
   // Only recursive schemas need the cycle walk.
-  return { target: recursive ? withCycleGuard(raw) : raw, layout, exact, exitSuccess }
+  return { target: recursive ? withCycleGuard(raw) : raw, layout, exact, exitSuccess, recursive }
 })
 
 function compileTarget(schema: Schema.Constraint): CompiledTarget {
@@ -5008,12 +5037,22 @@ function reportsExcess(_input: unknown, options: SchemaAST.ParseOptions): boolea
 // schema pass around it repeats that work. Encoding skips it outright. Decoding
 // only lets values the binary layer just produced through, so every other
 // input, `Schema.is` included, still runs the real check.
-function withTrustedDecode(target: Schema.Constraint, trusted: Trusted): Schema.Constraint {
+function withTrustedDecode(
+  target: Schema.Constraint,
+  trusted: Trusted,
+  bypassEncode: boolean
+): Schema.Constraint {
   return bypassPass(
     target,
     (input) => takeTrusted(trusted, input),
-    reportsExcess
+    // A recursive schema keeps the pass on encode: decoding cannot build a
+    // cycle, but a caller can hand one in, and the cycle walk lives there.
+    bypassEncode ? reportsExcess : constFalse
   )
+}
+
+function constFalse(): boolean {
+  return false
 }
 
 // Success exits with an exact success schema are fully validated by the binary
