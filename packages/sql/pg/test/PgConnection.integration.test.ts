@@ -93,6 +93,29 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       assert.deepStrictEqual(result.rows, [{ count: BigInt(1) }])
     }))
 
+  it.effect("binds untyped strings and integers beyond int4", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      yield* connection.query("CREATE TEMP TABLE inference_widening (id bigint, at timestamptz)")
+      yield* connection.query(
+        "INSERT INTO inference_widening (id, at) VALUES ($1, $2)",
+        ["12345678901234", "2024-05-06T07:08:09Z"]
+      )
+      yield* connection.query("INSERT INTO inference_widening (id) VALUES ($1)", [1755000000000])
+      const rows = yield* connection.queryValues("SELECT id FROM inference_widening ORDER BY id")
+      assert.deepStrictEqual(rows.map((row) => row[0]), [BigInt(1755000000000), BigInt("12345678901234")])
+    }))
+
+  it.effect("reparses a statement whose first execution failed at bind", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const missing = yield* Effect.flip(connection.query("select $1::regclass", ["prepared_bind_failure"]))
+      assert.strictEqual(missing.reason._tag, "SqlSyntaxError")
+      yield* connection.query("CREATE TEMP TABLE prepared_bind_failure (id int)")
+      const found = yield* connection.query("select $1::regclass AS rel", ["prepared_bind_failure"])
+      assert.strictEqual(found.rows.length, 1)
+    }))
+
   it.effect("fails with AuthenticationError on a bad password", () =>
     Effect.gen(function*() {
       const container = yield* PgContainer

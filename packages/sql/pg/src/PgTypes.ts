@@ -1820,6 +1820,18 @@ const writeValue = (sink: ValueSink, value: unknown, oid: number, lookup: Lookup
 }
 
 /**
+ * Whether a parameter's `Bind` bytes are in the text format.
+ *
+ * A parameter bound with no concrete type (OID `0`) carries the value's text
+ * representation and lets the backend derive the type from the statement, so
+ * its format code is text. Every typed parameter is binary.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const isTextFormat = (parameter: Parameter): boolean => parameter.oid === 0
+
+/**
  * Writes a parameter into a `Bind` frame, for `PgProtocol.makeBindEncoder`.
  * Codecs that can write their bytes in place do; the rest fall back to
  * `encode` and a copy.
@@ -1828,7 +1840,13 @@ const writeValue = (sink: ValueSink, value: unknown, oid: number, lookup: Lookup
  * @since 4.0.0
  */
 const writeParameterUnsafe = (sink: ValueSink, parameter: Parameter, lookup: Lookup): void =>
-  parameter.value === null ? sink.sqlNull() : writeValue(sink, parameter.value, parameter.oid, lookup)
+  parameter.value === null
+    ? sink.sqlNull()
+    // An untyped parameter is the value's text representation; see
+    // `isTextFormat`.
+    : parameter.oid === 0
+    ? sink.utf8(String(parameter.value))
+    : writeValue(sink, parameter.value, parameter.oid, lookup)
 
 export const writeParameter = (
   sink: ValueSink,

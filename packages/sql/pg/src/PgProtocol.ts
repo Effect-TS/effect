@@ -841,10 +841,15 @@ export interface ValueSink {
  * Builds a `Bind` encoder that writes parameters straight into the frame,
  * skipping the array per parameter that `encodeBind` has to copy from.
  *
+ * `textFormat` marks the parameters whose bytes are a text-format literal
+ * rather than the binary encoding, such as values bound with no concrete type
+ * for the backend to derive one; without it every parameter is declared
+ * binary.
+ *
  * ```ts
  * import { PgProtocol, PgTypes } from "@effect/sql-pg"
  *
- * const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
+ * const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter, PgTypes.isTextFormat)
  * const frame = encodeBind({ portal: "", statement: "s1", parameters: [PgTypes.int4(1)] })
  * ```
  *
@@ -854,7 +859,8 @@ export interface ValueSink {
 const valueWriterUnsafe = Symbol.for("@effect/sql-pg/PgProtocol/ValueWriter/unsafe")
 
 export const makeBindEncoder = <A, E = never>(
-  writeParameter: (sink: ValueSink, value: A) => Result.Result<void, E>
+  writeParameter: (sink: ValueSink, value: A) => Result.Result<void, E>,
+  textFormat?: (value: A) => boolean
 ) =>
 (options: {
   readonly portal: string
@@ -867,16 +873,32 @@ export const makeBindEncoder = <A, E = never>(
     writer.cString(options.statement)
     const parameters = options.parameters
     const count = requireInt16Count(parameters.length, "Bind parameter")
-    writer.reserve(6)
-    const header = writer.bytes
-    const headerOffset = writer.offset
-    header[headerOffset] = 0
-    header[headerOffset + 1] = 1
-    header[headerOffset + 2] = 0
-    header[headerOffset + 3] = 1
-    header[headerOffset + 4] = count >>> 8
-    header[headerOffset + 5] = count
-    writer.offset = headerOffset + 6
+    let textCount = 0
+    if (textFormat !== undefined) {
+      for (let index = 0; index < count; index++) {
+        if (textFormat(parameters[index])) textCount++
+      }
+    }
+    if (textCount === 0 || textCount === count) {
+      // One format code covering every parameter: binary, or all-text.
+      const code = textCount === 0 ? 1 : 0
+      writer.reserve(6)
+      const header = writer.bytes
+      const headerOffset = writer.offset
+      header[headerOffset] = 0
+      header[headerOffset + 1] = 1
+      header[headerOffset + 2] = 0
+      header[headerOffset + 3] = code
+      header[headerOffset + 4] = count >>> 8
+      header[headerOffset + 5] = count
+      writer.offset = headerOffset + 6
+    } else {
+      writer.int16(count)
+      for (let index = 0; index < count; index++) {
+        writer.int16(textFormat!(parameters[index]) ? 0 : 1)
+      }
+      writer.int16(count)
+    }
     const writeUnsafe = (writeParameter as any)[valueWriterUnsafe] as
       | ((sink: ValueSink, value: A) => void)
       | undefined

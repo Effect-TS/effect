@@ -129,8 +129,8 @@ export const PgPool = Context.Service<PgPool>("@effect/sql-pg/PgPool")
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Scope> =>
-  Effect.gen(function*() {
+export const make: (options: Config) => Effect.Effect<PgPool, SqlError, Scope.Scope> = Effect.fnUntraced(
+  function*(options: Config) {
     const clock = yield* Clock.Clock
     const multiplex = options.multiplex ?? false
     const connectionTTL = options.connectionTTL !== undefined
@@ -215,4 +215,5 @@ export const make = (options: Config): Effect.Effect<PgPool, SqlError, Scope.Sco
         )
     }
     return pgPool
-  })
+  }
+)

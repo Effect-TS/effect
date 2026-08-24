@@ -260,15 +260,8 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  * @since 4.0.0
  */
 export const make = (options: Config): Effect.Effect<PgConnection, SqlError, Scope.Scope> =>
-  Effect.suspend(() => {
-    let config: ResolvedConfig
-    try {
-      config = resolveConfigUnsafe(options)
-    } catch (error) {
-      if (error instanceof SqlError) return Effect.fail(error)
-      throw error
-    }
-    return Effect.acquireRelease(
+  Effect.flatMap(resolveConfig(options), (config) =>
+    Effect.acquireRelease(
       Effect.map(
         connect(config),
         (session) => new PgConnectionImpl(options, config, session, options.types)
@@ -289,8 +282,7 @@ export const make = (options: Config): Effect.Effect<PgConnection, SqlError, Sco
             })
           )
       })
-    )
-  })
+    ))
 
 interface Session {
   readonly socket: Duplex
@@ -827,16 +819,19 @@ const inferScalar = (value: unknown): PgTypes.Parameter => {
       return inferredParameter(PgTypes.OID.int8, value)
     case "number":
       if (Number.isInteger(value)) {
-        if (value < INT32_MIN || value > INT32_MAX) {
-          throw new PgTypes.CodecError({
-            message: `Integer parameter ${value} is outside the int4 range; use bigint or PgTypes.int8`
-          })
+        if (value >= INT32_MIN && value <= INT32_MAX) {
+          return inferredParameter(PgTypes.OID.int4, value)
         }
-        return inferredParameter(PgTypes.OID.int4, value)
+        if (Number.isSafeInteger(value)) {
+          return inferredParameter(PgTypes.OID.int8, BigInt(value))
+        }
       }
       return inferredParameter(PgTypes.OID.float8, value)
     case "string":
-      return inferredParameter(PgTypes.OID.text, value)
+      // Bound with no concrete type, as a text-format literal, so the backend
+      // derives the type from the statement: a string works against a bigint
+      // or timestamp column the way it did with the text-protocol drivers.
+      return inferredParameter(0, value)
   }
   if (value instanceof Date) {
     const time = value.getTime()
@@ -866,15 +861,20 @@ const inferParameter = (value: unknown, registry: PgTypes.Registry | undefined):
       throw new PgTypes.CodecError({ message: "Nested array parameters are not supported" })
     }
     const parameter = inferScalar(element)
-    if (parameter.oid === 0) {
-      values[index] = null
-      continue
+    // A scalar string binds untyped, but an array names its element type.
+    let oid = parameter.oid
+    if (oid === 0) {
+      if (parameter.value === null) {
+        values[index] = null
+        continue
+      }
+      oid = PgTypes.OID.text
     }
     if (Array.isArray(parameter.value)) {
       throw new PgTypes.CodecError({ message: "Nested array parameters are not supported" })
     }
-    if (elementOid === undefined) elementOid = parameter.oid
-    else if (elementOid !== parameter.oid) {
+    if (elementOid === undefined) elementOid = oid
+    else if (elementOid !== oid) {
       throw new PgTypes.CodecError({ message: "Array parameter elements must have the same inferred OID" })
     }
     values[index] = parameter.value
@@ -1135,6 +1135,19 @@ class PreparedCache {
     if (this.statements.delete(prepared.key) && prepared.ready) this.close(prepared.name)
   }
 
+  /**
+   * Drops a statement whose parsing cycle failed before its columns arrived.
+   *
+   * A `Parse` that completed before the error outlives the failed cycle, so
+   * the backend may hold the name while the entry can never become ready. The
+   * name is closed either way: closing one the backend never registered is a
+   * no-op.
+   */
+  evictFailed(prepared: Prepared): void {
+    this.statements.delete(prepared.key)
+    this.close(prepared.name)
+  }
+
   private close(name: string): void {
     ;(this.closes ??= []).push(PgProtocol.encodeClose({ target: "statement", name }))
   }
@@ -1165,14 +1178,15 @@ type BindEncoder = (options: {
  * custom registry. Passing `PgTypes.writeParameter` itself engages
  * `makeBindEncoder`'s unsafe fast path.
  */
-const defaultBindEncoder: BindEncoder = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
+const defaultBindEncoder: BindEncoder = PgProtocol.makeBindEncoder(PgTypes.writeParameter, PgTypes.isTextFormat)
 
 /** One bind encoder per registry, since building one allocates a closure. */
 const makeBindEncoder = (registry: PgTypes.Registry | undefined): BindEncoder =>
   registry === undefined
     ? defaultBindEncoder
     : PgProtocol.makeBindEncoder(
-      (sink: PgProtocol.ValueSink, parameter: PgTypes.Parameter) => PgTypes.writeParameter(sink, parameter, registry)
+      (sink: PgProtocol.ValueSink, parameter: PgTypes.Parameter) => PgTypes.writeParameter(sink, parameter, registry),
+      PgTypes.isTextFormat
     )
 
 const queryError = (cause: unknown, message: string): SqlError =>
@@ -1399,8 +1413,17 @@ class QueryMachine implements Consumer {
         if (this.phase !== "rows") return this.failDesync(`Unexpected EmptyQueryResponse during ${this.phase}`)
         this.phase = "complete"
         return
-      case "ErrorResponse":
+      case "ErrorResponse": {
         if (isStalePreparedStatement(message.fields.code)) this.plan.stale = true
+        // A cycle that carried this statement's `Parse` but failed before its
+        // columns arrived leaves an entry that can never become ready while
+        // the backend may still hold the name: the `Parse` outlives the
+        // failed cycle. Drop the entry and close the name, so the next
+        // execution parses fresh under a new one.
+        const prepared = this.plan.prepared
+        if (this.plan.parses && prepared !== undefined && !prepared.ready) {
+          this.conn.prepared?.evictFailed(prepared)
+        }
         // Every phase drains the same way: the backend skips the rest of the
         // cycle and sends `ReadyForQuery` after the `Sync` that closes it, so
         // a statement it refused to parse leaves the session usable.
@@ -1409,6 +1432,7 @@ class QueryMachine implements Consumer {
         })
         this.phase = "error"
         return
+      }
       case "ReadyForQuery":
         if (this.phase !== "complete") return this.failDesync(`Unexpected ReadyForQuery during ${this.phase}`)
         return this.complete(Effect.succeed({
@@ -2127,27 +2151,32 @@ const configError = (message: string, cause?: unknown): SqlError =>
     })
   })
 
-const resolveConfigUnsafe = (options: Config): ResolvedConfig => {
-  const url = options.url !== undefined ? parseUrl(Redacted.value(options.url)) : {}
-  const host = options.host ?? url.host ?? "localhost"
-  const port = options.port ?? url.port ?? 5432
-  const username = options.username ?? url.username ?? process.env.USER ?? process.env.USERNAME
-  if (username === undefined) {
-    throw configError("No username configured")
-  }
-  return {
-    host,
-    port,
-    path: options.path ?? (host.startsWith("/") ? `${host}/.s.PGSQL.${port}` : undefined),
-    ssl: options.ssl ?? url.ssl ?? false,
-    database: options.database ?? url.database,
-    username,
-    password: options.password !== undefined ? Redacted.value(options.password) : url.password,
-    connectTimeout: Duration.fromInputUnsafe(options.connectTimeout ?? url.connectTimeout ?? Duration.seconds(5)),
-    applicationName: options.applicationName ?? url.applicationName ?? "@effect/sql-pg",
-    stream: options.stream
-  }
-}
+const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError> =>
+  Effect.suspend(() => {
+    const parsed: EffectResult.Result<UrlConfig, SqlError> = options.url !== undefined
+      ? parseUrl(Redacted.value(options.url))
+      : EffectResult.succeed({})
+    if (EffectResult.isFailure(parsed)) return Effect.fail(parsed.failure)
+    const url = parsed.success
+    const host = options.host ?? url.host ?? "localhost"
+    const port = options.port ?? url.port ?? 5432
+    const username = options.username ?? url.username ?? process.env.USER ?? process.env.USERNAME
+    if (username === undefined) {
+      return Effect.fail(configError("No username configured"))
+    }
+    return Effect.succeed<ResolvedConfig>({
+      host,
+      port,
+      path: options.path ?? (host.startsWith("/") ? `${host}/.s.PGSQL.${port}` : undefined),
+      ssl: options.ssl ?? url.ssl ?? false,
+      database: options.database ?? url.database,
+      username,
+      password: options.password !== undefined ? Redacted.value(options.password) : url.password,
+      connectTimeout: Duration.fromInputUnsafe(options.connectTimeout ?? url.connectTimeout ?? Duration.seconds(5)),
+      applicationName: options.applicationName ?? url.applicationName ?? "@effect/sql-pg",
+      stream: options.stream
+    })
+  })
 
 interface UrlConfig {
   host?: string | undefined
@@ -2160,53 +2189,72 @@ interface UrlConfig {
   ssl?: boolean | undefined
 }
 
-const decodeComponent = (value: string, what: string): string => {
+const decodeComponent = (value: string, what: string): EffectResult.Result<string, SqlError> => {
   try {
-    return decodeURIComponent(value)
+    return EffectResult.succeed(decodeURIComponent(value))
   } catch {
-    throw configError(`Invalid percent-encoding in URL ${what}`)
+    return EffectResult.fail(configError(`Invalid percent-encoding in URL ${what}`))
   }
 }
 
-const parsePort = (value: string, what: string): number => {
+const parsePort = (value: string, what: string): EffectResult.Result<number, SqlError> => {
   const port = Number(value)
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw configError(`Invalid port in URL ${what}: "${value}"`)
-  }
-  return port
+  return !Number.isInteger(port) || port < 1 || port > 65535
+    ? EffectResult.fail(configError(`Invalid port in URL ${what}: "${value}"`))
+    : EffectResult.succeed(port)
 }
 
-const parseUrl = (raw: string): UrlConfig => {
+const parseUrl = (raw: string): EffectResult.Result<UrlConfig, SqlError> => {
   let url: URL
   try {
     url = new URL(raw)
   } catch (cause) {
-    throw configError("Invalid connection URL", cause)
+    return EffectResult.fail(configError("Invalid connection URL", cause))
   }
   if (url.protocol !== "postgres:" && url.protocol !== "postgresql:") {
-    throw configError(`Unsupported connection URL protocol: "${url.protocol}"`)
+    return EffectResult.fail(configError(`Unsupported connection URL protocol: "${url.protocol}"`))
   }
 
   const config: UrlConfig = {}
   if (url.hostname !== "") {
-    config.host = url.hostname.startsWith("[") && url.hostname.endsWith("]")
-      ? url.hostname.slice(1, -1)
-      : decodeComponent(url.hostname, "host")
+    if (url.hostname.startsWith("[") && url.hostname.endsWith("]")) {
+      config.host = url.hostname.slice(1, -1)
+    } else {
+      const host = decodeComponent(url.hostname, "host")
+      if (EffectResult.isFailure(host)) return EffectResult.fail(host.failure)
+      config.host = host.success
+    }
   }
-  if (url.port !== "") config.port = parsePort(url.port, "authority")
-  if (url.username !== "") config.username = decodeComponent(url.username, "username")
-  if (url.password !== "") config.password = decodeComponent(url.password, "password")
+  if (url.port !== "") {
+    const port = parsePort(url.port, "authority")
+    if (EffectResult.isFailure(port)) return EffectResult.fail(port.failure)
+    config.port = port.success
+  }
+  if (url.username !== "") {
+    const username = decodeComponent(url.username, "username")
+    if (EffectResult.isFailure(username)) return EffectResult.fail(username.failure)
+    config.username = username.success
+  }
+  if (url.password !== "") {
+    const password = decodeComponent(url.password, "password")
+    if (EffectResult.isFailure(password)) return EffectResult.fail(password.failure)
+    config.password = password.success
+  }
   const database = decodeComponent(url.pathname.replace(/^\//, ""), "database")
-  if (database !== "") config.database = database
+  if (EffectResult.isFailure(database)) return EffectResult.fail(database.failure)
+  if (database.success !== "") config.database = database.success
 
   for (const [key, value] of url.searchParams) {
     switch (key) {
       case "host":
         config.host = value
         break
-      case "port":
-        config.port = parsePort(value, "port parameter")
+      case "port": {
+        const port = parsePort(value, "port parameter")
+        if (EffectResult.isFailure(port)) return EffectResult.fail(port.failure)
+        config.port = port.success
         break
+      }
       case "user":
         config.username = value
         break
@@ -2222,7 +2270,7 @@ const parseUrl = (raw: string): UrlConfig => {
       case "connect_timeout": {
         const seconds = Number(value)
         if (!Number.isInteger(seconds) || seconds < 0) {
-          throw configError(`Invalid connect_timeout in URL: "${value}"`)
+          return EffectResult.fail(configError(`Invalid connect_timeout in URL: "${value}"`))
         }
         config.connectTimeout = seconds === 0 ? Duration.infinity : Duration.seconds(seconds)
         break
@@ -2239,15 +2287,17 @@ const parseUrl = (raw: string): UrlConfig => {
             break
           case "prefer":
           case "allow":
-            throw configError(`sslmode "${value}" is not supported: set ssl explicitly to true or false`)
+            return EffectResult.fail(
+              configError(`sslmode "${value}" is not supported: set ssl explicitly to true or false`)
+            )
           default:
-            throw configError(`Unrecognized sslmode in URL: "${value}"`)
+            return EffectResult.fail(configError(`Unrecognized sslmode in URL: "${value}"`))
         }
         break
         // Unknown query parameters are ignored, matching libpq.
     }
   }
-  return config
+  return EffectResult.succeed(config)
 }
 
 const classifyFields = (
