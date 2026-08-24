@@ -21,6 +21,7 @@ new file yet, pipe it from the benchmark branch while checked out on `main`:
 
 ```sh
 BENCHMARK_REF=origin/eff-854/pg-connection-startup
+nix develop -c pnpm install
 git show "$BENCHMARK_REF:packages/sql/pg/benchmark/PgClient.ts" \
   | nix develop -c pnpm --dir packages/sql/pg exec node --input-type=module
 ```
