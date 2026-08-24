@@ -1626,7 +1626,8 @@ export const wizard = <Name extends string, Input, E, R, ContextInput>(
   options?: {
     readonly prefix?: ReadonlyArray<string> | undefined
   } | undefined
-): Effect.Effect<Array<string>, CliError.CliError | Terminal.QuitError, Environment> => Wizard.run(command, options)
+): Effect.Effect<Array<string>, CliError.CliError | Terminal.QuitError, Environment> =>
+  Effect.map(Wizard.run(command, options), (result) => result.args)
 
 const getOutOfScopeGlobalFlagErrors = (
   allFlags: ReadonlyArray<GlobalFlag.GlobalFlag<any>>,
@@ -1901,8 +1902,8 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
               command.name,
               ...args.filter((arg) => arg !== "--wizard" && !arg.startsWith("--wizard="))
             ]
-            const wizardArgs = yield* Wizard.run(command, { commandPath, prefix })
-            yield* Console.log(Wizard.renderCompletion(wizardArgs))
+            const wizardResult = yield* Wizard.run(command, { commandPath, prefix })
+            yield* Console.log(Wizard.renderCompletion(wizardResult.displayArgs))
             const shouldRun = yield* Prompt.run(Prompt.toggle({
               message: "Run this command?",
               initial: true,
@@ -1911,7 +1912,7 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
             }))
             if (shouldRun) {
               yield* Console.log()
-              yield* runWith(command, { ...config, renderErrors: false })(wizardArgs.slice(1))
+              yield* runWith(command, { ...config, renderErrors: false })(wizardResult.args.slice(1))
             }
           }).pipe(
             Effect.catchTag("QuitError", () => Console.log(Wizard.renderQuit()))
