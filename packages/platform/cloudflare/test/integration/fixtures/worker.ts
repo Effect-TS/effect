@@ -1,0 +1,767 @@
+import * as CloudflareCluster from "@effect/platform-cloudflare/CloudflareCluster"
+import {
+  ClusterDurableQueue as BaseClusterDurableQueue,
+  ClusterEntity as BaseClusterEntity,
+  ClusterSingleton as BaseClusterSingleton,
+  ClusterWorkflow as BaseClusterWorkflow
+} from "@effect/platform-cloudflare/CloudflareDurableObjects"
+import { env } from "cloudflare:workers"
+import type { Context } from "effect"
+import {
+  Cause,
+  Cron,
+  DateTime,
+  Effect,
+  Exit,
+  Fiber,
+  Latch,
+  Layer,
+  Option,
+  PrimaryKey,
+  Schedule,
+  Schema,
+  Scope,
+  Stream
+} from "effect"
+import { ClusterCron, ClusterSchema, DeliverAt, Entity, EntityResource, Singleton } from "effect/unstable/cluster"
+import { Rpc, RpcSchema } from "effect/unstable/rpc"
+import { Activity, DurableClock, DurableDeferred, DurableQueue, Workflow } from "effect/unstable/workflow"
+
+// ---------------------------------------------------------------------------
+// Observable module state. It lives in the Worker isolate, is shared with the
+// Durable Objects (same isolate), and is wiped by a Miniflare restart.
+// ---------------------------------------------------------------------------
+
+const counts = {
+  builds: new Map<string, number>(),
+  values: new Map<string, number>(),
+  entered: new Map<string, number>(),
+  completed: new Map<string, number>(),
+  interrupted: new Map<string, number>(),
+  attempts: new Map<string, number>(),
+  activeHolds: new Map<string, number>(),
+  workflowRuns: new Map<string, number>(),
+  activityRuns: new Map<string, number>(),
+  queueRuns: new Map<string, number>()
+}
+const deliveries = new Map<string, Array<{ readonly deliverAt: number; readonly deliveredAt: number }>>()
+const singleton = { starts: 0, active: 0, maxActive: 0, done: 0 }
+const resource = { acquired: 0, released: 0 }
+const ticks: Array<{ readonly at: number; readonly scheduled: string }> = []
+
+const bump = (map: Map<string, number>, key: string) => map.set(key, (map.get(key) ?? 0) + 1)
+
+const gates = new Map<string, Latch.Latch>()
+const gateFor = (key: string) => {
+  let gate = gates.get(key)
+  if (gate === undefined) {
+    gate = Latch.makeUnsafe(false)
+    gates.set(key, gate)
+  }
+  return gate
+}
+
+const serializeState = () => ({
+  builds: Object.fromEntries(counts.builds),
+  values: Object.fromEntries(counts.values),
+  entered: Object.fromEntries(counts.entered),
+  completed: Object.fromEntries(counts.completed),
+  interrupted: Object.fromEntries(counts.interrupted),
+  attempts: Object.fromEntries(counts.attempts),
+  activeHolds: Object.fromEntries(counts.activeHolds),
+  workflowRuns: Object.fromEntries(counts.workflowRuns),
+  activityRuns: Object.fromEntries(counts.activityRuns),
+  queueRuns: Object.fromEntries(counts.queueRuns),
+  deliveries: Object.fromEntries(deliveries),
+  singleton,
+  resource,
+  ticks
+})
+
+// ---------------------------------------------------------------------------
+// Test observation seam on the entity Durable Object: expose mailbox rows, the
+// armed alarm, and active keep-alive holds without touching handler code.
+// ---------------------------------------------------------------------------
+
+type EntityCtor = ConstructorParameters<typeof BaseClusterEntity>
+type MailboxRow = {
+  readonly message_id: string | null
+  readonly processed: number
+  readonly deliver_at: number | null
+}
+
+export class ClusterEntity extends BaseClusterEntity {
+  readonly #name: string
+  readonly #storage: EntityCtor[0]["storage"]
+
+  constructor(ctx: EntityCtor[0], environment: EntityCtor[1]) {
+    super(ctx, environment)
+    this.#name = ctx.id.name ?? ""
+    this.#storage = ctx.storage
+    ctx.blockConcurrencyWhile(() => ensureApp().then(() => undefined))
+  }
+
+  mailboxRows(): Array<MailboxRow> {
+    return this.#storage.sql.exec<MailboxRow>(
+      "SELECT message_id, processed, deliver_at FROM cluster_messages ORDER BY rowid ASC"
+    ).toArray()
+  }
+
+  getAlarm(): Promise<number | null> {
+    return this.#storage.getAlarm()
+  }
+
+  override async hold(): Promise<void> {
+    bump(counts.activeHolds, this.#name)
+    try {
+      await super.hold()
+    } finally {
+      counts.activeHolds.set(this.#name, (counts.activeHolds.get(this.#name) ?? 1) - 1)
+    }
+  }
+}
+
+export class ClusterWorkflow extends BaseClusterWorkflow {
+  constructor(...args: ConstructorParameters<typeof BaseClusterWorkflow>) {
+    super(...args)
+    args[0].blockConcurrencyWhile(() => ensureApp().then(() => undefined))
+  }
+}
+
+export class ClusterDurableQueue extends BaseClusterDurableQueue {
+  constructor(...args: ConstructorParameters<typeof BaseClusterDurableQueue>) {
+    super(...args)
+    args[0].blockConcurrencyWhile(() => ensureApp().then(() => undefined))
+  }
+}
+
+export class ClusterSingleton extends BaseClusterSingleton {
+  constructor(...args: ConstructorParameters<typeof BaseClusterSingleton>) {
+    super(...args)
+    args[0].blockConcurrencyWhile(() => ensureApp().then(() => undefined))
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Entities, defined and registered through the public API only.
+// ---------------------------------------------------------------------------
+
+class ScheduledPayload extends Schema.Class<ScheduledPayload>("ScheduledPayload")({
+  deliverAt: Schema.Number,
+  op: Schema.String
+}) {
+  [PrimaryKey.symbol]() {
+    return this.op
+  }
+
+  [DeliverAt.symbol]() {
+    return DateTime.makeUnsafe(this.deliverAt)
+  }
+}
+
+const Counter = Entity.make("Counter", [
+  Rpc.make("Increment", {
+    payload: { op: Schema.String },
+    primaryKey: ({ op }) => op,
+    success: Schema.Number
+  }).annotate(ClusterSchema.Persisted, true),
+  Rpc.make("IncrementVolatile", { success: Schema.Number }),
+  Rpc.make("Get", { success: Schema.Number }),
+  Rpc.make("FailTyped", { error: Schema.String, success: Schema.String }).annotate(ClusterSchema.Persisted, true),
+  Rpc.make("Defect", { success: Schema.String }).annotate(ClusterSchema.Persisted, true),
+  Rpc.make("Watch", { success: RpcSchema.Stream(Schema.Number, Schema.Never) }).annotate(ClusterSchema.Persisted, true),
+  Rpc.make("ScheduledIncrement", { payload: ScheduledPayload, success: Schema.Number }).annotate(
+    ClusterSchema.Persisted,
+    true
+  ),
+  Rpc.make("StoreBig", {
+    payload: { data: Schema.String },
+    primaryKey: ({ data }) => String(data.length),
+    success: Schema.Number
+  }).annotate(ClusterSchema.Persisted, true)
+])
+
+const increment = (entityId: string) => {
+  const value = (counts.values.get(entityId) ?? 0) + 1
+  counts.values.set(entityId, value)
+  return value
+}
+
+const CounterLayer = Counter.toLayer(
+  Effect.sync(() => {
+    bump(counts.builds, "Counter")
+    return Counter.of({
+      Increment: (request) => Effect.sync(() => increment(request.address.entityId)),
+      IncrementVolatile: (request) => Effect.sync(() => increment(request.address.entityId)),
+      Get: (request) => Effect.sync(() => counts.values.get(request.address.entityId) ?? 0),
+      FailTyped: (request) => Effect.fail(`typed:${request.address.entityId}`),
+      Defect: (request) => Effect.die(`defect:${request.address.entityId}`),
+      Watch: () => Stream.fromIterable([1, 2, 3]).pipe(Stream.rechunk(1)),
+      ScheduledIncrement: (request) =>
+        Effect.sync(() => {
+          const entityId = request.address.entityId
+          const entries = deliveries.get(entityId) ?? []
+          deliveries.set(entityId, [
+            ...entries,
+            { deliverAt: request.payload.deliverAt, deliveredAt: Date.now() }
+          ])
+          return increment(entityId)
+        }),
+      StoreBig: (request) => Effect.sync(() => request.payload.data.length)
+    })
+  })
+)
+
+// Persisted requests that block on a gate, for restart/replay scenarios. The
+// concurrency of 2 lets a Get interleave while a replayed Hold is blocked.
+const Blocker = Entity.make("Blocker", [
+  Rpc.make("Hold", {
+    payload: { op: Schema.String },
+    primaryKey: ({ op }) => op,
+    success: Schema.Number
+  }).annotate(ClusterSchema.Persisted, true),
+  Rpc.make("Get", { success: Schema.Number }),
+  // Opens the gate from inside the entity Durable Object, so the resumed
+  // handler continues in a request context that may touch this object's
+  // storage (a Worker-side open would resume it in a foreign context).
+  Rpc.make("Open", { payload: { op: Schema.String }, success: Schema.String })
+])
+
+const BlockerLayer = Blocker.toLayer(
+  Effect.sync(() => {
+    bump(counts.builds, "Blocker")
+    return Blocker.of({
+      Hold: (request) =>
+        Effect.gen(function*() {
+          const key = `${request.address.entityId}/${request.payload.op}`
+          bump(counts.entered, key)
+          yield* gateFor(key).await
+          bump(counts.completed, key)
+          return increment(request.address.entityId)
+        }),
+      Get: (request) => Effect.sync(() => counts.values.get(request.address.entityId) ?? 0),
+      Open: (request) =>
+        Effect.sync(() => {
+          gateFor(`${request.address.entityId}/${request.payload.op}`).openUnsafe()
+          return "opened"
+        })
+    })
+  }),
+  { concurrency: 2 }
+)
+
+// Serialized entity for cancellation and permit-cleanup scenarios.
+const Serial = Entity.make("Serial", [
+  Rpc.make("HoldVolatile", { payload: { key: Schema.String }, success: Schema.String }),
+  Rpc.make("HoldUninterruptible", { payload: { key: Schema.String }, success: Schema.String }).annotate(
+    ClusterSchema.Uninterruptible,
+    true
+  ),
+  Rpc.make("Quick", { success: Schema.String })
+])
+
+const SerialLayer = Serial.toLayer({
+  HoldVolatile: (request) =>
+    Effect.gen(function*() {
+      const key = request.payload.key
+      bump(counts.entered, key)
+      yield* gateFor(key).await.pipe(
+        Effect.onInterrupt(() => Effect.sync(() => bump(counts.interrupted, key)))
+      )
+      bump(counts.completed, key)
+      return "done"
+    }),
+  HoldUninterruptible: (request) =>
+    Effect.gen(function*() {
+      const key = request.payload.key
+      bump(counts.entered, key)
+      yield* gateFor(key).await
+      bump(counts.completed, key)
+      return "done"
+    }),
+  Quick: () => Effect.succeed("ok")
+})
+
+// Entity whose handler always dies, with a bounded defect retry policy.
+const Flaky = Entity.make("Flaky", [
+  Rpc.make("Boom", {
+    payload: { op: Schema.String },
+    primaryKey: ({ op }) => op,
+    success: Schema.String
+  }).annotate(ClusterSchema.Persisted, true),
+  Rpc.make("Ping", { success: Schema.String })
+])
+
+const FlakyLayer = Flaky.toLayer(
+  Effect.sync(() => {
+    bump(counts.builds, "Flaky")
+    return Flaky.of({
+      Boom: (request) =>
+        Effect.suspend(() => {
+          bump(counts.attempts, `${request.address.entityId}/${request.payload.op}`)
+          return Effect.die(`boom:${request.address.entityId}`)
+        }),
+      Ping: () => Effect.succeed("pong")
+    })
+  }),
+  { defectRetryPolicy: Schedule.recurs(2) }
+)
+
+// Entity whose handler asks another entity through the public client.
+const Relay = Entity.make("Relay", [
+  Rpc.make("AskCounter", { payload: { target: Schema.String }, success: Schema.Number })
+])
+
+const RelayLayer = Relay.toLayer(
+  Effect.gen(function*() {
+    const makeCounter = yield* Counter.client
+    return Relay.of({
+      AskCounter: (request) => makeCounter(request.payload.target).Get(void 0)
+    })
+  })
+)
+
+// Keep-alive pinning driven from inside handlers via the public API.
+const Pinned = Entity.make("Pinned", [
+  Rpc.make("Pin", { success: Schema.String }),
+  Rpc.make("Unpin", { success: Schema.String })
+])
+
+const PinnedLayer = Pinned.toLayer({
+  Pin: () => Effect.as(Entity.keepAlive(true), "pinned"),
+  Unpin: () => Effect.as(Entity.keepAlive(false), "unpinned")
+})
+
+const Holder = Entity.make("Holder", [
+  Rpc.make("Get", { success: Schema.Number }),
+  Rpc.make("Close", { success: Schema.String })
+])
+
+const HolderLayer = Holder.toLayer(
+  Effect.gen(function*() {
+    const held = yield* EntityResource.make({
+      acquire: Effect.acquireRelease(
+        Effect.sync(() => ++resource.acquired),
+        () => Effect.sync(() => void resource.released++)
+      ),
+      idleTimeToLive: "400 millis"
+    })
+    return Holder.of({
+      Get: () => Effect.scoped(held.get),
+      Close: () => Effect.as(held.close, "closed")
+    })
+  })
+)
+
+// ---------------------------------------------------------------------------
+// Workflows, durable clock/deferred, durable queue.
+// ---------------------------------------------------------------------------
+
+const EmailWorkflow = Workflow.make("EmailWorkflow", {
+  payload: { id: Schema.String, value: Schema.Number },
+  success: Schema.Number,
+  idempotencyKey: ({ id }) => id
+})
+
+const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fnUntraced(function*({ id, value }) {
+  bump(counts.workflowRuns, id)
+  return yield* Activity.make({
+    name: "Send",
+    success: Schema.Number,
+    execute: Effect.sync(() => {
+      bump(counts.activityRuns, id)
+      return value + 1
+    })
+  })
+}))
+
+const ClockWorkflow = Workflow.make("ClockWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.Number,
+  idempotencyKey: ({ id }) => id
+})
+
+const ClockWorkflowLayer = ClockWorkflow.toLayer(Effect.fnUntraced(function*({ id }) {
+  bump(counts.workflowRuns, id)
+  yield* DurableClock.sleep({ name: "wake", duration: "600 millis" })
+  return Date.now()
+}))
+
+const Door = DurableDeferred.make("Door", { success: Schema.String })
+
+const DoorWorkflow = Workflow.make("DoorWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const DoorWorkflowLayer = DoorWorkflow.toLayer(Effect.fnUntraced(function*({ id }) {
+  bump(counts.workflowRuns, id)
+  return yield* DurableDeferred.await(Door)
+}))
+
+const Queue = DurableQueue.make({
+  name: "IntegrationQueue",
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const QueueWorkflow = Workflow.make("QueueWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const QueueWorkflowLayer = QueueWorkflow.toLayer(({ id }) => DurableQueue.process(Queue, { id }))
+
+// ---------------------------------------------------------------------------
+// Singleton and ClusterCron.
+// ---------------------------------------------------------------------------
+
+const SingletonLayer = Singleton.make(
+  "integration-singleton",
+  Effect.gen(function*() {
+    singleton.starts++
+    singleton.active++
+    singleton.maxActive = Math.max(singleton.maxActive, singleton.active)
+    yield* gateFor("singleton").await
+    singleton.active--
+    singleton.done++
+  })
+)
+
+const CronLayer = ClusterCron.make({
+  name: "integration-cron",
+  cron: Cron.parseUnsafe("* * * * * *", "UTC"),
+  execute: Effect.gen(function*() {
+    const address = yield* Entity.CurrentAddress
+    ticks.push({ at: Date.now(), scheduled: address.entityId })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Layer assembly. workerd forbids timers and randomness in global scope, so
+// the layer is built lazily inside the first event. Every Durable Object
+// subclass blocks its events on the build, guaranteeing the module registries
+// are populated before any invoke, alarm, or wake is served.
+// ---------------------------------------------------------------------------
+
+const bindings = env as Record<string, any>
+
+const AppLayer = Layer.mergeAll(
+  CounterLayer,
+  BlockerLayer,
+  SerialLayer,
+  FlakyLayer,
+  RelayLayer,
+  PinnedLayer,
+  HolderLayer,
+  EmailWorkflowLayer,
+  ClockWorkflowLayer,
+  DoorWorkflowLayer,
+  QueueWorkflowLayer,
+  SingletonLayer,
+  CronLayer
+).pipe(
+  Layer.provideMerge(CloudflareCluster.layer({
+    entities: [Counter, Blocker, Serial, Flaky, Relay, Pinned, Holder],
+    entityNamespace: bindings.CLUSTER_ENTITY,
+    workflowNamespace: bindings.CLUSTER_WORKFLOW,
+    queueNamespace: bindings.CLUSTER_QUEUE,
+    singletonNamespace: bindings.CLUSTER_SINGLETON
+  }))
+)
+
+let appContextPromise: Promise<Context.Context<any>> | undefined
+const ensureApp = () => {
+  appContextPromise ??= Effect.runPromise(
+    Effect.flatMap(Scope.make(), (scope) => Layer.buildWithScope(AppLayer, scope))
+  )
+  return appContextPromise
+}
+
+const run = async <A, E>(effect: Effect.Effect<A, E, any>): Promise<A> =>
+  Effect.runPromise(Effect.provideContext(Effect.scoped(effect), await ensureApp()) as Effect.Effect<A, E>)
+
+// ---------------------------------------------------------------------------
+// HTTP surface for the tests.
+// ---------------------------------------------------------------------------
+
+const waitFor = (check: () => boolean, timeoutMillis: number): Effect.Effect<boolean> =>
+  Effect.promise(async () => {
+    const deadline = Date.now() + timeoutMillis
+    while (!check()) {
+      if (Date.now() > deadline) return false
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+    return true
+  })
+
+const until = (description: string, check: () => boolean, timeoutMillis = 5000): Effect.Effect<void> =>
+  Effect.flatMap(waitFor(check, timeoutMillis), (settled) => settled ? Effect.void : Effect.die(new Error(description)))
+
+const serializeExit = (exit: Exit.Exit<unknown, unknown>) =>
+  Exit.isSuccess(exit)
+    ? { _tag: "Success", value: exit.value }
+    : { _tag: "Failure", cause: Cause.pretty(exit.cause) }
+
+const workflows = {
+  email: {
+    workflow: EmailWorkflow,
+    payload: (params: URLSearchParams) => ({
+      id: params.get("id")!,
+      value: Number(params.get("value") ?? 1)
+    })
+  },
+  clock: { workflow: ClockWorkflow, payload: (params: URLSearchParams) => ({ id: params.get("id")! }) },
+  door: { workflow: DoorWorkflow, payload: (params: URLSearchParams) => ({ id: params.get("id")! }) },
+  queue: { workflow: QueueWorkflow, payload: (params: URLSearchParams) => ({ id: params.get("id")! }) }
+} as const
+
+const handle = Effect.fnUntraced(function*(url: URL) {
+  const params = url.searchParams
+  const id = params.get("id") ?? "default"
+  switch (url.pathname) {
+    case "/state":
+      return serializeState()
+    case "/gate/open": {
+      gateFor(params.get("key")!).openUnsafe()
+      return { opened: params.get("key") }
+    }
+
+    case "/counter/increment": {
+      const makeClient = yield* Counter.client
+      const client = makeClient(id)
+      const op = params.get("op") ?? "op"
+      if (params.get("discard") === "true") {
+        yield* client.Increment({ op }, { discard: true })
+        return { discarded: true }
+      }
+      return { value: yield* client.Increment({ op }) }
+    }
+    case "/counter/increment-volatile": {
+      const makeClient = yield* Counter.client
+      return { value: yield* makeClient(id).IncrementVolatile(void 0) }
+    }
+    case "/counter/get": {
+      const makeClient = yield* Counter.client
+      return { value: yield* makeClient(id).Get(void 0) }
+    }
+    case "/counter/fail": {
+      const makeClient = yield* Counter.client
+      return serializeExit(yield* Effect.exit(makeClient(id).FailTyped(void 0)))
+    }
+    case "/counter/defect": {
+      const makeClient = yield* Counter.client
+      return serializeExit(yield* Effect.exit(makeClient(id).Defect(void 0)))
+    }
+    case "/counter/watch": {
+      const makeClient = yield* Counter.client
+      const values = yield* Stream.runCollect(makeClient(id).Watch(void 0))
+      return { values: Array.from(values) }
+    }
+    case "/counter/scheduled": {
+      const makeClient = yield* Counter.client
+      const payload = new ScheduledPayload({
+        deliverAt: Date.now() + Number(params.get("offset") ?? 500),
+        op: params.get("op") ?? "op"
+      })
+      if (params.get("discard") === "true") {
+        yield* makeClient(id).ScheduledIncrement(payload, { discard: true })
+        return { deliverAt: payload.deliverAt }
+      }
+      return { deliverAt: payload.deliverAt, value: yield* makeClient(id).ScheduledIncrement(payload) }
+    }
+    case "/counter/big": {
+      const makeClient = yield* Counter.client
+      const data = "x".repeat(Number(params.get("bytes") ?? 2_500_000))
+      return serializeExit(yield* Effect.exit(makeClient(id).StoreBig({ data })))
+    }
+    case "/counter/first-contact": {
+      const makeClient = yield* Counter.client
+      const client = makeClient(id)
+      const n = Number(params.get("n") ?? 8)
+      const values = yield* Effect.all(
+        Array.from({ length: n }, (_, index) => client.Increment({ op: `first-${index}` })),
+        { concurrency: "unbounded" }
+      )
+      return { values: [...values].sort((a, b) => a - b) }
+    }
+    case "/counter/rows": {
+      const stub = bindings.CLUSTER_ENTITY.getByName(CloudflareCluster.encodeName("Counter", id))
+      return {
+        rows: yield* Effect.promise(() => stub.mailboxRows()),
+        alarm: yield* Effect.promise(() => stub.getAlarm())
+      }
+    }
+
+    case "/blocker/hold": {
+      const makeClient = yield* Blocker.client
+      yield* makeClient(id).Hold({ op: params.get("op") ?? "op" }, { discard: true })
+      return { discarded: true }
+    }
+    case "/blocker/get": {
+      const makeClient = yield* Blocker.client
+      return { value: yield* makeClient(id).Get(void 0) }
+    }
+    case "/blocker/open": {
+      const makeClient = yield* Blocker.client
+      return { value: yield* makeClient(id).Open({ op: params.get("op") ?? "op" }) }
+    }
+
+    case "/serial/cancel": {
+      const makeClient = yield* Serial.client
+      const client = makeClient(id)
+      const key = `cancel/${id}`
+      const fiber = yield* Effect.forkChild(client.HoldVolatile({ key }))
+      yield* until(`The HoldVolatile handler for ${key} did not start`, () => (counts.entered.get(key) ?? 0) > 0)
+      yield* Fiber.interrupt(fiber)
+      yield* until(
+        `The HoldVolatile handler for ${key} was not interrupted`,
+        () => (counts.interrupted.get(key) ?? 0) > 0
+      )
+      const quick = yield* client.Quick(void 0)
+      return {
+        interrupted: counts.interrupted.get(key) ?? 0,
+        completed: counts.completed.get(key) ?? 0,
+        quick
+      }
+    }
+    case "/serial/uninterruptible": {
+      const makeClient = yield* Serial.client
+      const client = makeClient(id)
+      const key = `uninterruptible/${id}`
+      const fiber = yield* Effect.forkChild(client.HoldUninterruptible({ key }))
+      yield* until(`The HoldUninterruptible handler for ${key} did not start`, () => (counts.entered.get(key) ?? 0) > 0)
+      yield* Fiber.interrupt(fiber)
+      gateFor(key).openUnsafe()
+      yield* until(
+        `The HoldUninterruptible handler for ${key} did not run to completion after the client interrupt`,
+        () => (counts.completed.get(key) ?? 0) > 0
+      )
+      const quick = yield* client.Quick(void 0)
+      return { completed: counts.completed.get(key) ?? 0, quick }
+    }
+
+    case "/flaky/boom": {
+      const makeClient = yield* Flaky.client
+      return serializeExit(yield* Effect.exit(makeClient(id).Boom({ op: params.get("op") ?? "op" })))
+    }
+    case "/flaky/ping": {
+      const makeClient = yield* Flaky.client
+      return { value: yield* makeClient(id).Ping(void 0) }
+    }
+
+    case "/relay/ask": {
+      const makeClient = yield* Relay.client
+      return { value: yield* makeClient(id).AskCounter({ target: params.get("target")! }) }
+    }
+
+    case "/pinned/pin": {
+      const makeClient = yield* Pinned.client
+      return { value: yield* makeClient(id).Pin(void 0) }
+    }
+    case "/pinned/unpin": {
+      const makeClient = yield* Pinned.client
+      return { value: yield* makeClient(id).Unpin(void 0) }
+    }
+    case "/holds": {
+      const name = CloudflareCluster.encodeName(params.get("type") ?? "Pinned", id)
+      return { holds: counts.activeHolds.get(name) ?? 0 }
+    }
+
+    case "/holder/get": {
+      const makeClient = yield* Holder.client
+      return { value: yield* makeClient(id).Get(void 0) }
+    }
+    case "/holder/close": {
+      const makeClient = yield* Holder.client
+      return { value: yield* makeClient(id).Close(void 0) }
+    }
+
+    case "/queue/drain": {
+      // Workers cannot run background consumers across requests, so the queue
+      // worker runs inside this request until the target item is processed.
+      const target = params.get("id")!
+      const fiber = yield* Effect.forkChild(DurableQueue.makeWorker(Queue, ({ id: itemId }) =>
+        Effect.sync(() => {
+          bump(counts.queueRuns, itemId)
+          return `processed:${itemId}`
+        })))
+      yield* until(
+        `The queue worker did not process item ${target}`,
+        () => (counts.queueRuns.get(target) ?? 0) >= 1,
+        8000
+      )
+      yield* Fiber.interrupt(fiber)
+      return { processed: counts.queueRuns.get(target) ?? 0 }
+    }
+
+    case "/workflow/execute": {
+      const entry = workflows[params.get("name") as keyof typeof workflows]
+      const payload = entry.payload(params) as any
+      const executionId = yield* entry.workflow.executionId(payload)
+      if (params.get("discard") === "true") {
+        yield* entry.workflow.execute(payload, { discard: true })
+        return { executionId }
+      }
+      return { executionId, result: yield* entry.workflow.execute(payload) }
+    }
+    case "/workflow/poll": {
+      const entry = workflows[params.get("name") as keyof typeof workflows]
+      const executionId = yield* entry.workflow.executionId(entry.payload(params) as any)
+      const result = yield* entry.workflow.poll(executionId)
+      return Option.match(result, {
+        onNone: () => ({ _tag: "None" }),
+        onSome: (value) =>
+          value._tag === "Complete"
+            ? { _tag: "Complete", exit: serializeExit(value.exit) }
+            : { _tag: value._tag }
+      })
+    }
+    case "/workflow/door-open": {
+      const executionId = yield* DoorWorkflow.executionId({ id })
+      const token = DurableDeferred.tokenFromExecutionId(Door, { workflow: DoorWorkflow, executionId })
+      yield* DurableDeferred.succeed(Door, { token, value: params.get("value") ?? "opened" })
+      return { completed: true }
+    }
+    case "/workflow/interrupt": {
+      const entry = workflows[params.get("name") as keyof typeof workflows]
+      const executionId = yield* entry.workflow.executionId(entry.payload(params) as any)
+      yield* entry.workflow.interrupt(executionId)
+      return { interrupted: true }
+    }
+
+    default:
+      return yield* Effect.fail(`unknown path: ${url.pathname}`)
+  }
+})
+
+export default {
+  async fetch(
+    request: Request,
+    _env: unknown,
+    ctx: { waitUntil: (promise: Promise<unknown>) => void }
+  ): Promise<Response> {
+    const url = new URL(request.url)
+    if (url.pathname === "/singleton/wake") {
+      // Mirrors a Cron Trigger `scheduled` handler: fire the wake without
+      // blocking the request, so gated singleton runs can be observed.
+      ctx.waitUntil(bindings.CLUSTER_SINGLETON.getByName("Singleton/integration-singleton").wake())
+      return Response.json({ woken: true })
+    }
+    if (url.pathname === "/cron/wake") {
+      await bindings.CLUSTER_SINGLETON.getByName("Singleton/ClusterCron/integration-cron").wake()
+      return Response.json({ woken: true })
+    }
+    try {
+      return Response.json(await run(handle(url)))
+    } catch (error) {
+      return new Response(
+        error instanceof Error ? `${error.stack}\n${String((error as any).cause ?? "")}` : String(error),
+        { status: 599 }
+      )
+    }
+  }
+}
