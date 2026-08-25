@@ -5207,11 +5207,11 @@ describe("Stream", () => {
           target.dispatchEvent(new CustomEvent("test", { detail: 4 }))
         })
 
-        const stream = Stream.fromEventListener(target, "test")
+        const stream = Stream.fromEventListener<CustomEvent>(target, "test")
 
         const [result] = yield* Effect.all([
           stream.pipe(
-            Stream.map((event) => (event as CustomEvent).detail),
+            Stream.map((event) => event.detail),
             // take is required because the stream will never terminate on its own
             Stream.take(4),
             Stream.runCollect
@@ -5221,6 +5221,7 @@ describe("Stream", () => {
 
         assert.deepStrictEqual(result, [1, 2, 3, 4])
       }))
+
     it.effect("ends after the first event with once: true", () =>
       Effect.gen(function*() {
         const target = new EventTarget()
@@ -5231,11 +5232,11 @@ describe("Stream", () => {
           target.dispatchEvent(new CustomEvent("test", { detail: 2 }))
         })
 
-        const stream = Stream.fromEventListener(target, "test", { once: true })
+        const stream = Stream.fromEventListener<CustomEvent>(target, "test", { once: true })
 
         const [result] = yield* Effect.all([
           stream.pipe(
-            Stream.map((event) => (event as CustomEvent).detail),
+            Stream.map((event) => event.detail),
             Stream.runCollect
           ),
           dispatchEvents
