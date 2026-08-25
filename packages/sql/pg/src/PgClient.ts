@@ -9,7 +9,7 @@ import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Queue from "effect/Queue"
+import type * as Queue from "effect/Queue"
 import type * as Redacted from "effect/Redacted"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -58,7 +58,7 @@ export interface PgClient extends Client.SqlClient {
    */
   readonly listen: (
     channel: string
-  ) => Effect.Effect<Queue.Dequeue<string>, SqlError, Scope.Scope>
+  ) => Effect.Effect<Queue.Dequeue<PgConnection.Notification>, SqlError, Scope.Scope>
   readonly notify: (channel: string, payload: string) => Effect.Effect<void, SqlError>
 }
 
@@ -200,22 +200,10 @@ const makeImpl = Effect.fnUntraced(function*(
     ).array :
     undefined
 
-  const listen = (channel: string): Effect.Effect<Queue.Dequeue<string>, SqlError, Scope.Scope> =>
-    Effect.gen(function*() {
-      const connection = yield* options.listenAcquirer
-      const notifications = yield* connection.listen(channel)
-      const payloads = yield* Queue.unbounded<string>()
-      yield* Effect.addFinalizer(() => Queue.shutdown(payloads))
-      yield* Effect.forkScoped(
-        Effect.forever(
-          Effect.flatMap(Queue.take(notifications), (notification) =>
-            notification.payload.length > 0
-              ? Queue.offer(payloads, notification.payload)
-              : Effect.void)
-        ).pipe(Effect.ensuring(Queue.shutdown(payloads)))
-      )
-      return payloads
-    })
+  const listen = (
+    channel: string
+  ): Effect.Effect<Queue.Dequeue<PgConnection.Notification>, SqlError, Scope.Scope> =>
+    Effect.flatMap(options.listenAcquirer, (connection) => connection.listen(channel))
 
   return Object.assign(
     yield* Client.make({
