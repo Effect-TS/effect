@@ -18,6 +18,7 @@ import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Number from "effect/Number"
@@ -80,7 +81,18 @@ export interface PgClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: PgClientConfig
   readonly json: (_: unknown) => Fragment
-  readonly listen: (channel: string) => Stream.Stream<string, SqlError>
+  /**
+   * Subscribes to a PostgreSQL notification channel.
+   *
+   * The effect completes after PostgreSQL acknowledges `LISTEN`. Notifications
+   * are buffered in the returned dequeue, and the subscription remains active
+   * until the required scope closes. Subscriptions sharing a connection and
+   * channel are reference counted, so `UNLISTEN` runs only after the final
+   * subscription closes.
+   */
+  readonly listen: (
+    channel: string
+  ) => Effect.Effect<Queue.Dequeue<string, SqlError>, SqlError, Scope.Scope>
   readonly notify: (channel: string, payload: string) => Effect.Effect<void, SqlError>
 }
 
@@ -412,26 +424,26 @@ export const fromPool = Effect.fnUntraced(function*(
 
   const listenAcquirer = yield* RcRef.make({
     acquire: Effect.acquireRelease(
-      Effect.tryPromise({
-        try: async () => {
-          const client = new Pg.Client(pool.options)
-          await client.connect()
-          client.on("error", onListenClientError)
-          return client
-        },
-        catch: (cause) =>
-          new SqlError({
-            reason: classifyError(cause, "Failed to acquire connection for listen", "acquireConnection")
-          })
+      Effect.sync(() => {
+        const client = new Pg.Client(pool.options)
+        client.on("error", onListenClientError)
+        return client
       }),
       (client) =>
-        Effect.promise(() => {
-          client.off("error", onListenClientError)
-          return client.end()
-        }).pipe(
-          Effect.timeoutOption(1000)
-        ),
-      { interruptible: true }
+        Effect.promise(() => client.end()).pipe(
+          Effect.timeoutOption(1000),
+          Effect.ensuring(Effect.sync(() => client.off("error", onListenClientError)))
+        )
+    ).pipe(
+      Effect.tap((client) =>
+        Effect.tryPromise({
+          try: () => client.connect(),
+          catch: (cause) =>
+            new SqlError({
+              reason: classifyError(cause, "Failed to acquire connection for listen", "acquireConnection")
+            })
+        })
+      )
     )
   })
 
@@ -562,6 +574,143 @@ export const fromClient = Effect.fnUntraced(function*(
   })
 })
 
+type ListenClientState = {
+  readonly channels: Map<string, Set<Queue.Queue<string, SqlError>>>
+  readonly onNotification: (message: Pg.Notification) => void
+  readonly onError: (cause: Error) => void
+  readonly onEnd: () => void
+  terminalError: SqlError | undefined
+}
+
+const makeListen = (
+  acquireClient: Effect.Effect<Pg.ClientBase, SqlError, Scope.Scope>
+) => {
+  const lock = Semaphore.makeUnsafe(1)
+  const states = new WeakMap<Pg.ClientBase, ListenClientState>()
+
+  const fail = (state: ListenClientState, error: SqlError) => {
+    if (state.terminalError !== undefined) return
+    state.terminalError = error
+    const cause = Cause.fail(error)
+    for (const subscriptions of state.channels.values()) {
+      for (const queue of subscriptions) {
+        Queue.failCauseUnsafe(queue, cause)
+      }
+    }
+  }
+
+  const makeState = (client: Pg.ClientBase): ListenClientState => {
+    const state: ListenClientState = {
+      channels: new Map(),
+      terminalError: undefined,
+      onNotification(message) {
+        if (state.terminalError !== undefined) return
+        for (const queue of state.channels.get(message.channel) ?? []) {
+          Queue.offerUnsafe(queue, message.payload ?? "")
+        }
+      },
+      onError(cause) {
+        fail(
+          state,
+          new SqlError({
+            reason: new ConnectionError({
+              cause,
+              message: "Postgres listener connection failed",
+              operation: "listen"
+            })
+          })
+        )
+      },
+      onEnd() {
+        fail(
+          state,
+          new SqlError({
+            reason: new ConnectionError({
+              cause: new Error("Postgres listener connection ended"),
+              message: "Postgres listener connection ended",
+              operation: "listen"
+            })
+          })
+        )
+      }
+    }
+    client.on("notification", state.onNotification)
+    client.on("error", state.onError)
+    client.on("end", state.onEnd)
+    states.set(client, state)
+    return state
+  }
+
+  const release = (
+    client: Pg.ClientBase,
+    state: ListenClientState,
+    channel: string,
+    queue: Queue.Queue<string, SqlError>
+  ) =>
+    lock.withPermit(Effect.gen(function*() {
+      const subscriptions = state.channels.get(channel)
+      if (subscriptions?.delete(queue) && subscriptions.size === 0) {
+        if (state.terminalError === undefined) {
+          yield* Effect.tryPromise({
+            try: () => client.query(`UNLISTEN ${Pg.escapeIdentifier(channel)}`),
+            catch: () => undefined
+          }).pipe(
+            Effect.timeoutOption(1000),
+            Effect.ignore
+          )
+        }
+        state.channels.delete(channel)
+      }
+      if (state.channels.size === 0) {
+        client.off("notification", state.onNotification)
+        client.off("error", state.onError)
+        client.off("end", state.onEnd)
+        states.delete(client)
+      }
+      yield* Queue.shutdown(queue)
+    }))
+
+  return Effect.fnUntraced(function*(channel: string) {
+    const parentScope = yield* Scope.Scope
+    const subscriptionScope = Scope.forkUnsafe(parentScope)
+
+    return yield* Effect.gen(function*() {
+      const client = yield* acquireClient
+      const queue = yield* Queue.unbounded<string, SqlError>()
+
+      yield* lock.withPermit(Effect.uninterruptibleMask((restore) =>
+        Effect.gen(function*() {
+          const state = states.get(client) ?? makeState(client)
+          if (state.terminalError !== undefined) {
+            return yield* Effect.fail(state.terminalError)
+          }
+          let subscriptions = state.channels.get(channel)
+          const first = subscriptions === undefined
+          if (subscriptions === undefined) {
+            subscriptions = new Set()
+            state.channels.set(channel, subscriptions)
+          }
+          subscriptions.add(queue)
+          yield* Effect.addFinalizer(() => release(client, state, channel, queue))
+          if (first) {
+            yield* restore(Effect.tryPromise({
+              try: () => client.query(`LISTEN ${Pg.escapeIdentifier(channel)}`),
+              catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to listen", "listen") })
+            }))
+          }
+          if (state.terminalError !== undefined) {
+            return yield* Effect.fail(state.terminalError)
+          }
+        })
+      ))
+      return queue
+    }).pipe(
+      Effect.provideService(Scope.Scope, subscriptionScope),
+      Effect.tapCause((cause) => Scope.close(subscriptionScope, Exit.failCause(cause)))
+    )
+  })
+}
+
 /**
  * Creates a `PgClient` from SQL connection acquirers, a LISTEN acquirer, client configuration, and transformation options.
  *
@@ -599,6 +748,7 @@ export const makeWith = Effect.fnUntraced(function*(
     undefined
 
   const config = options.config
+  const listen = makeListen(options.listenAcquirer)
 
   return Object.assign(
     yield* Client.make({
@@ -618,26 +768,7 @@ export const makeWith = Effect.fnUntraced(function*(
       [TypeId]: TypeId as TypeId,
       config: options.config,
       json: (_: unknown) => Statement.fragment([PgJson(_)]),
-      listen: (channel: string) =>
-        Stream.callback<string, SqlError>(Effect.fnUntraced(function*(queue) {
-          const client = yield* options.listenAcquirer
-          function onNotification(msg: Pg.Notification) {
-            if (msg.channel === channel && msg.payload) {
-              Queue.offerUnsafe(queue, msg.payload)
-            }
-          }
-          yield* Effect.addFinalizer(() =>
-            Effect.promise(() => {
-              client.off("notification", onNotification)
-              return client.query(`UNLISTEN ${Pg.escapeIdentifier(channel)}`)
-            })
-          )
-          yield* Effect.tryPromise({
-            try: () => client.query(`LISTEN ${Pg.escapeIdentifier(channel)}`),
-            catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to listen", "listen") })
-          })
-          client.on("notification", onNotification)
-        })),
+      listen,
       notify: (channel: string, payload: string) =>
         Effect.asVoid(Effect.scoped(Effect.flatMap(
           options.acquirer,

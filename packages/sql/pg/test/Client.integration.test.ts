@@ -1,6 +1,6 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Option, Redacted, Stream, String } from "effect"
+import { Deferred, Effect, Exit, Fiber, Option, Queue, Redacted, Scope, Stream, String } from "effect"
 import { TestClock } from "effect/testing"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import { SqlClient } from "effect/unstable/sql"
@@ -396,13 +396,7 @@ it.layer(PgContainer.layerClientSingleConnection, { timeout: "30 seconds" })("Pg
       const sql = yield* PgClient.PgClient
       const channel = "pool_connection_listen"
 
-      const listenFiber = yield* sql.listen(channel).pipe(
-        Stream.take(1),
-        Stream.runCollect,
-        Effect.forkScoped
-      )
-
-      yield* Effect.sleep("250 millis")
+      const notifications = yield* sql.listen(channel)
 
       const rows = yield* sql<{ value: number }>`SELECT 1 as value`.pipe(
         Effect.timeoutOrElse({
@@ -413,13 +407,13 @@ it.layer(PgContainer.layerClientSingleConnection, { timeout: "30 seconds" })("Pg
       expect(rows).toEqual([{ value: 1 }])
 
       yield* sql.notify(channel, "payload")
-      const payloads = yield* Fiber.join(listenFiber).pipe(
+      const payload = yield* Queue.take(notifications).pipe(
         Effect.timeoutOrElse({
           duration: "3 seconds",
           orElse: () => Effect.fail(new Error("listener did not receive notification in time"))
         })
       )
-      expect(Array.from(payloads)).toEqual(["payload"])
+      assert.strictEqual(payload, "payload")
     }).pipe(TestClock.withLive), 20_000)
 
   it.effect("notify sends payload", () =>
@@ -427,22 +421,83 @@ it.layer(PgContainer.layerClientSingleConnection, { timeout: "30 seconds" })("Pg
       const sql = yield* PgClient.PgClient
       const channel = "pool_connection_notify"
 
-      const listenFiber = yield* sql.listen(channel).pipe(
-        Stream.take(1),
-        Stream.runCollect,
-        Effect.forkScoped
-      )
+      const notifications = yield* sql.listen(channel)
 
-      yield* Effect.sleep("250 millis")
       yield* sql.notify(channel, "payload")
 
-      const payloads = yield* Fiber.join(listenFiber).pipe(
+      const payload = yield* Queue.take(notifications).pipe(
         Effect.timeoutOrElse({
           duration: "3 seconds",
           orElse: () => Effect.fail(new Error("listener did not receive notification in time"))
         })
       )
-      expect(Array.from(payloads)).toEqual(["payload"])
+      assert.strictEqual(payload, "payload")
+    }).pipe(TestClock.withLive), 20_000)
+
+  it.effect("notify sends an empty payload", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const channel = "pool_connection_notify_empty"
+
+      const notifications = yield* sql.listen(channel)
+
+      yield* sql.notify(channel, "")
+
+      const payload = yield* Queue.take(notifications).pipe(
+        Effect.timeoutOrElse({
+          duration: "3 seconds",
+          orElse: () => Effect.fail(new Error("listener did not receive empty notification in time"))
+        })
+      )
+      assert.strictEqual(payload, "")
+    }).pipe(TestClock.withLive), 20_000)
+
+  it.effect("one subscription closing does not affect another on the same channel", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const channel = "pool_connection_same_channel"
+      const firstScope = yield* Scope.make()
+
+      yield* sql.listen(channel).pipe(Effect.provideService(Scope.Scope, firstScope))
+      const second = yield* sql.listen(channel)
+      yield* Scope.close(firstScope, Exit.void)
+
+      yield* sql.notify(channel, "payload")
+      const payload = yield* Queue.take(second).pipe(
+        Effect.timeoutOrElse({
+          duration: "3 seconds",
+          orElse: () => Effect.fail(new Error("remaining listener did not receive notification in time"))
+        })
+      )
+
+      assert.strictEqual(payload, "payload")
+    }).pipe(TestClock.withLive), 20_000)
+
+  it.effect("listener connection termination fails the subscription", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const channel = "pool_connection_termination"
+      const notifications = yield* sql.listen(channel)
+      const rows = yield* sql.unsafe<{ pid: number }>(
+        `SELECT pid FROM pg_stat_activity
+         WHERE datname = current_database()
+           AND query = $1
+         ORDER BY backend_start DESC LIMIT 1`,
+        [`LISTEN "${channel}"`]
+      )
+      const listener = rows[0]
+      assert.isDefined(listener)
+
+      yield* sql.unsafe("SELECT pg_terminate_backend($1)", [listener.pid])
+      const result = yield* Queue.take(notifications).pipe(
+        Effect.result,
+        Effect.timeoutOrElse({
+          duration: "3 seconds",
+          orElse: () => Effect.fail(new Error("terminated listener did not fail in time"))
+        })
+      )
+
+      assert.strictEqual(result._tag, "Failure")
     }).pipe(TestClock.withLive), 20_000)
 })
 
