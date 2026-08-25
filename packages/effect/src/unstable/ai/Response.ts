@@ -411,13 +411,17 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
 export type ToolCallParts<
   Tools extends Record<string, Tool.Any>,
   EncodedParameters extends boolean = false
-> = {
-  [Name in keyof Tools]: Name extends string ? ToolCallPart<
-      Name,
-      EncodedParameters extends true ? Tool.ParametersEncoded<Tools[Name]> : Tool.Parameters<Tools[Name]>
-    >
-    : never
-}[keyof Tools]
+> = ToolCallPartForName<Tools, EncodedParameters, keyof Tools>
+
+type ToolCallPartForName<
+  Tools extends Record<string, Tool.Any>,
+  EncodedParameters extends boolean,
+  Name extends keyof Tools
+> = Name extends string ? ToolCallPart<
+    Name,
+    EncodedParameters extends true ? Tool.ParametersEncoded<Tools[Name]> : Tool.Parameters<Tools[Name]>
+  >
+  : never
 
 /**
  * Utility type that extracts tool result parts from a set of tools.
@@ -425,11 +429,12 @@ export type ToolCallParts<
  * @category utility types
  * @since 4.0.0
  */
-export type ToolResultParts<Tools extends Record<string, Tool.Any>> = {
-  [Name in keyof Tools]: Name extends string
-    ? ToolResultPart<Name, Tool.Success<Tools[Name]>, Tool.FailureResult<Tools[Name]>>
-    : never
-}[keyof Tools]
+export type ToolResultParts<Tools extends Record<string, Tool.Any>> = ToolResultPartForName<Tools, keyof Tools>
+
+type ToolResultPartForName<
+  Tools extends Record<string, Tool.Any>,
+  Name extends keyof Tools
+> = Name extends string ? ToolResultPart<Name, Tool.Success<Tools[Name]>, Tool.FailureResult<Tools[Name]>> : never
 
 // =============================================================================
 // Base Part
