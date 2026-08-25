@@ -492,7 +492,10 @@ describe("Pool", () => {
           })),
         { times: 9 }
       )
-      deepStrictEqual(results, [1, 2, 1, 2, 1, 2, 1, 2, 1, 2])
+      // A borrow takes the item used most recently, so a sequence of them
+      // stays on one item and leaves the other free to be reclaimed. Spreading
+      // over both would leave neither warm and neither ever idle.
+      deepStrictEqual(results, [1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
       strictEqual(yield* Ref.get(count), 2)
     }))
 

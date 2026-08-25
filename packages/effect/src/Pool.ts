@@ -629,7 +629,7 @@ const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effec
     // asleep against an item that has capacity for them. `addAvailable` is
     // idempotent, so re-adding an available item is free.
     if (item.refCount < self.config.concurrency) {
-      addAvailable(self, item)
+      addAvailableFront(self, item)
       wakeWaiters(self, fiber, 1)
     }
     return internal.void
@@ -673,6 +673,7 @@ const wakeAll = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
     return internal.void
   })
 
+/** Adds a freshly acquired item, which has no use behind it, at the back. */
 const addAvailable = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
   if (item.isAvailable) return
   item.isAvailable = true
@@ -684,6 +685,32 @@ const addAvailable = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
     self.state.availableHead = item
   }
   self.state.availableTail = item
+}
+
+/**
+ * Returns a released item at the front, so the next borrow gets the one used
+ * most recently. Borrowers take from the front, so the list runs warmest
+ * first.
+ *
+ * Sending it to the back instead spreads a sequence of borrows evenly over
+ * every item the pool has open. For a pool of connections that means none of
+ * them is ever the hot one - each borrow lands on a peer that has been sitting
+ * idle, losing whatever warmth it had - and it means `timeToLive` never
+ * reclaims anything, because a pool that grew for one burst keeps every item
+ * equally fresh forever. Under saturation the two orders agree, since every
+ * item is checked out either way.
+ */
+const addAvailableFront = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
+  if (item.isAvailable) return
+  item.isAvailable = true
+  item.availablePrevious = undefined
+  item.availableNext = self.state.availableHead
+  if (self.state.availableHead !== undefined) {
+    self.state.availableHead.availablePrevious = item
+  } else {
+    self.state.availableTail = item
+  }
+  self.state.availableHead = item
 }
 
 const removeAvailable = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
