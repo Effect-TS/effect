@@ -9,6 +9,7 @@ import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Queue from "effect/Queue"
 import type * as Redacted from "effect/Redacted"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -50,7 +51,14 @@ export interface PgClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: PgClientConfig
   readonly json: (_: unknown) => Fragment
-  readonly listen: (channel: string) => Stream.Stream<string, SqlError>
+  /**
+   * Registers a channel listener and returns its non-empty payload queue after
+   * PostgreSQL confirms `LISTEN`. The listener holds a connection until the
+   * scope closes.
+   */
+  readonly listen: (
+    channel: string
+  ) => Effect.Effect<Queue.Dequeue<string>, SqlError, Scope.Scope>
   readonly notify: (channel: string, payload: string) => Effect.Effect<void, SqlError>
 }
 
@@ -192,6 +200,23 @@ const makeImpl = Effect.fnUntraced(function*(
     ).array :
     undefined
 
+  const listen = (channel: string): Effect.Effect<Queue.Dequeue<string>, SqlError, Scope.Scope> =>
+    Effect.gen(function*() {
+      const connection = yield* options.listenAcquirer
+      const notifications = yield* connection.listen(channel)
+      const payloads = yield* Queue.unbounded<string>()
+      yield* Effect.addFinalizer(() => Queue.shutdown(payloads))
+      yield* Effect.forkScoped(
+        Effect.forever(
+          Effect.flatMap(Queue.take(notifications), (notification) =>
+            notification.payload.length > 0
+              ? Queue.offer(payloads, notification.payload)
+              : Effect.void)
+        ).pipe(Effect.ensuring(Queue.shutdown(payloads)))
+      )
+      return payloads
+    })
+
   return Object.assign(
     yield* Client.make({
       acquirer: options.acquirer,
@@ -214,17 +239,7 @@ const makeImpl = Effect.fnUntraced(function*(
       [TypeId]: TypeId as TypeId,
       config,
       json: (_: unknown) => Statement.fragment([PgJson(_)]),
-      listen: (channel: string) =>
-        Stream.unwrap(
-          Effect.flatMap(options.listenAcquirer, (connection) =>
-            Effect.map(connection.listen(channel), (notifications) =>
-              Stream.fromQueue(notifications).pipe(
-                Stream.map((notification) =>
-                  notification.payload
-                ),
-                Stream.filter((payload) => payload.length > 0)
-              )))
-        ),
+      listen,
       notify: (channel: string, payload: string) =>
         Effect.asVoid(Effect.scoped(Effect.flatMap(
           options.acquirer,

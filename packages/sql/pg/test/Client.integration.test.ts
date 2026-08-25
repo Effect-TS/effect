@@ -1,6 +1,6 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Option, Stream, String } from "effect"
+import { Deferred, Effect, Fiber, Option, Queue, Stream, String } from "effect"
 import { TestClock } from "effect/testing"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import { SqlClient } from "effect/unstable/sql"
@@ -492,13 +492,7 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds" })("PgClient 
       const sql = yield* PgClient.PgClient
       const channel = "pool_connection_listen"
 
-      const listenFiber = yield* sql.listen(channel).pipe(
-        Stream.take(1),
-        Stream.runCollect,
-        Effect.forkScoped
-      )
-
-      yield* Effect.sleep("250 millis")
+      const payloads = yield* sql.listen(channel)
 
       const rows = yield* sql<{ value: number }>`SELECT 1 as value`.pipe(
         Effect.timeoutOrElse({
@@ -509,13 +503,13 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds" })("PgClient 
       expect(rows).toEqual([{ value: 1 }])
 
       yield* sql.notify(channel, "payload")
-      const payloads = yield* Fiber.join(listenFiber).pipe(
+      const payload = yield* Queue.take(payloads).pipe(
         Effect.timeoutOrElse({
           duration: "3 seconds",
           orElse: () => Effect.fail(new Error("listener did not receive notification in time"))
         })
       )
-      expect(Array.from(payloads)).toEqual(["payload"])
+      expect(payload).toEqual("payload")
     }).pipe(TestClock.withLive), 20_000)
 
   it.effect("notify sends payload", () =>
@@ -523,21 +517,15 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds" })("PgClient 
       const sql = yield* PgClient.PgClient
       const channel = "pool_connection_notify"
 
-      const listenFiber = yield* sql.listen(channel).pipe(
-        Stream.take(1),
-        Stream.runCollect,
-        Effect.forkScoped
-      )
-
-      yield* Effect.sleep("250 millis")
+      const payloads = yield* sql.listen(channel)
       yield* sql.notify(channel, "payload")
 
-      const payloads = yield* Fiber.join(listenFiber).pipe(
+      const payload = yield* Queue.take(payloads).pipe(
         Effect.timeoutOrElse({
           duration: "3 seconds",
           orElse: () => Effect.fail(new Error("listener did not receive notification in time"))
         })
       )
-      expect(Array.from(payloads)).toEqual(["payload"])
+      expect(payload).toEqual("payload")
     }).pipe(TestClock.withLive), 20_000)
 })
