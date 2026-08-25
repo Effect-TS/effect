@@ -370,10 +370,8 @@ export interface RegisterOptions {
 }
 
 /**
- * A client-specific set of PostgreSQL binary codecs.
- *
- * Each registry starts with the built-in codecs. Changes do not affect the
- * module-level registry.
+ * A client-specific set of PostgreSQL binary codecs. Each registry starts with
+ * the built-in codecs and does not affect the module-level registry.
  *
  * @category models
  * @since 4.0.0
@@ -1674,18 +1672,15 @@ export interface Column {
 }
 
 /**
- * Builds a field reader for `PgProtocol.makeParser`, so a result's rows decode
- * as they are parsed rather than through a view per column.
+ * Creates a field reader for `PgProtocol.makeParser`.
  *
- * Every column is resolved once here rather than once per row, and a codec that
- * can read in place does; the rest are handed a view. SQL NULL reads as `null`,
- * and a column whose OID has no codec reads as a copy of its bytes.
+ * **Details**
  *
- * Only the binary format is supported, and a text column returns a
- * `CodecError` failure here rather than once per row. A successful result
- * contains the parser's internal throwing fast path; its failures are terminal
- * for that parser. The standalone `encode` and `decode` APIs remain typed
- * `Result` values.
+ * Codecs are resolved once per column. SQL `NULL` becomes `null`, and columns
+ * without a registered codec return a copy of their bytes. Text-format columns
+ * fail with `CodecError`.
+ *
+ * **Example** (Updating the reader after `RowDescription`)
  *
  * ```ts
  * import { PgProtocol, PgTypes } from "@effect/sql-pg"
@@ -1723,6 +1718,8 @@ export const makeFieldReader = (
 /**
  * Encodes a JavaScript value as the binary representation of the given OID.
  *
+ * **Details**
+ *
  * Returns a `CodecError` failure when the value has the wrong JavaScript type,
  * or when the OID is neither built in nor registered.
  *
@@ -1738,6 +1735,8 @@ export const encode = (value: unknown, oid: number, registry?: Registry): Result
 
 /**
  * Decodes the binary representation of the given OID.
+ *
+ * **Details**
  *
  * `format` must be `1`; the text format is not implemented. An OID that is
  * neither built in nor registered decodes to the raw bytes.
@@ -1821,9 +1820,8 @@ const writeValue = (sink: ValueSink, value: unknown, oid: number, lookup: Lookup
 
 /**
  * Returns whether a parameter uses the text format in a `Bind` message.
- *
- * Untyped parameters (OID `0`) use text so PostgreSQL can infer their type.
- * Typed parameters use the binary format.
+ * Untyped parameters (OID `0`) use text so PostgreSQL can infer their type;
+ * typed parameters use the binary format.
  *
  * @category encoding
  * @since 4.0.0
@@ -1847,6 +1845,12 @@ const writeParameterUnsafe = (sink: ValueSink, parameter: Parameter, lookup: Loo
     ? sink.utf8(String(parameter.value))
     : writeValue(sink, parameter.value, parameter.oid, lookup)
 
+/**
+ * Writes a parameter into a `Bind` frame.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
 export const writeParameter = (
   sink: ValueSink,
   parameter: Parameter,

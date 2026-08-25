@@ -38,6 +38,8 @@ export type TypeId = "~@effect/sql-pg/PgPool"
 /**
  * Connection and sizing settings for a PostgreSQL session pool.
  *
+ * **Details**
+ *
  * The defaults are 0 to 10 connections and a 10-second idle timeout.
  * `connectionTTL` replaces connections that exceed the configured lifetime.
  *
@@ -65,23 +67,20 @@ export interface PgPool {
   readonly [TypeId]: TypeId
   readonly config: Config
   /**
-   * Checks out a session until the scope closes.
-   *
-   * With `multiplex` disabled the checkout is exclusive. With it enabled the
+   * Checks out a session until the scope closes. Without multiplexing the
+   * checkout is exclusive. With multiplexing the
    * session may be shared with other fibers, so multi-statement work should
    * use `reserve` instead.
    */
   readonly get: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope>
   /**
-   * Checks out a session for exclusive use until the scope closes.
-   *
-   * Use this for transactions and listeners on a multiplexed pool.
+   * Checks out a session for exclusive use until the scope closes. Use this for
+   * transactions and listeners on a multiplexed pool.
    */
   readonly reserve: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope>
   /**
-   * Removes a session so the pool can replace it.
-   *
-   * Fatal protocol and socket errors invalidate sessions automatically.
+   * Removes a session so the pool can replace it. Fatal protocol and socket
+   * errors invalidate sessions automatically.
    */
   readonly invalidate: (connection: PgConnection.PgConnection) => Effect.Effect<void>
 }
@@ -96,6 +95,8 @@ export const PgPool = Context.Service<PgPool>("@effect/sql-pg/PgPool")
 
 /**
  * Creates a scoped PostgreSQL session pool.
+ *
+ * **Details**
  *
  * Connections are opened lazily up to `maxConnections` and released down to
  * `minConnections` after `idleTimeout` without use. Closing the scope shuts

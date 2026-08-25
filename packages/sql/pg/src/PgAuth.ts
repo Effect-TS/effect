@@ -102,6 +102,12 @@ const md5PasswordUnsafe = (options: {
   return `md5${outer}`
 }
 
+/**
+ * Computes the legacy PostgreSQL MD5 password response.
+ *
+ * @category authentication
+ * @since 4.0.0
+ */
 export const md5Password = (options: {
   readonly user: string
   readonly password: string
@@ -201,6 +207,12 @@ const scramInitUnsafe = (options: {
   }
 }
 
+/**
+ * Creates the first SCRAM-SHA-256 client message.
+ *
+ * @category SCRAM
+ * @since 4.0.0
+ */
 export const scramInit = (options: {
   readonly password: string
   readonly nonce: string
@@ -262,6 +274,12 @@ const scramContinueUnsafe = (
   }
 }
 
+/**
+ * Processes the server's SCRAM challenge and creates the client proof.
+ *
+ * @category SCRAM
+ * @since 4.0.0
+ */
 export const scramContinue = (
   state: ScramFirst,
   challenge: Uint8Array
@@ -288,6 +306,12 @@ const scramFinishUnsafe = (state: ScramFinal, challenge: Uint8Array): void => {
   }
 }
 
+/**
+ * Verifies the server's final SCRAM message.
+ *
+ * @category SCRAM
+ * @since 4.0.0
+ */
 export const scramFinish = (
   state: ScramFinal,
   challenge: Uint8Array

@@ -57,6 +57,8 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
 /**
  * Connection settings for a PostgreSQL session.
  *
+ * **Details**
+ *
  * A `url` is parsed as a libpq URI (`postgres://` or `postgresql://`);
  * explicit fields win over anything the URL carries. A `stream` factory wins
  * over `host`, `port`, and `path`. A `path` is used verbatim as the unix
@@ -161,9 +163,8 @@ export interface PgConnection {
   readonly config: Config
   readonly processId: number
   /**
-   * Reserves the session for exclusive use until the scope closes.
-   *
-   * Pinning is reentrant. Calls through the returned connection skip the
+   * Reserves the session for exclusive use until the scope closes. Pinning is
+   * reentrant. Calls through the returned connection skip the
    * ownership queue, while calls through the original connection wait.
    */
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
@@ -180,9 +181,8 @@ export interface PgConnection {
     prepare?: boolean
   ) => Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
   /**
-   * Streams rows without collecting the full result.
-   *
-   * The session is pinned for the lifetime of the stream. Aborting the stream
+   * Streams rows without collecting the full result. The session is pinned for
+   * the lifetime of the stream. Aborting the stream
    * before the result completes cancels the statement with a `CancelRequest`
    * and drains the connection back to `ReadyForQuery`.
    */
@@ -191,17 +191,15 @@ export interface PgConnection {
     params?: ReadonlyArray<unknown>
   ) => Stream.Stream<Row, SqlError>
   /**
-   * Listens on a channel and emits each notification.
-   *
-   * The session is pinned for the lifetime of the stream, and the finalizer
+   * Listens on a channel and emits each notification. The session is pinned for
+   * the lifetime of the stream, and the finalizer
    * issues `UNLISTEN` before releasing the pin. Notifications are only
    * delivered while a listen stream is active.
    */
   readonly listen: (channel: string) => Stream.Stream<Notification, SqlError>
   /**
-   * Attempts to cancel the active query through a side connection.
-   *
-   * This is a no-op for an unpinned multiplexed connection because the active
+   * Attempts to cancel the active query through a side connection. This is a
+   * no-op for an unpinned multiplexed connection because the active
    * query may belong to another fiber. The effect never fails.
    */
   readonly interrupt: Effect.Effect<void>
@@ -218,9 +216,11 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
 /**
  * Connects and authenticates a single PostgreSQL session.
  *
+ * **Details**
+ *
  * The transport, optional `SSLRequest`, startup, and authentication steps run
- * under `connectTimeout` (5 seconds by default). The effect
- * resolves once the backend sends `ReadyForQuery`. When the scope closes the
+ * under `connectTimeout` (5 seconds by default). The effect resolves once the
+ * backend sends `ReadyForQuery`. When the scope closes, the
  * session sends `Terminate` and ends the socket.
  *
  * When `ssl` is enabled, a server that rejects `SSLRequest` fails the

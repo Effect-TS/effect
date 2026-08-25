@@ -738,9 +738,8 @@ export const invalidate: {
   }))
 
 /**
- * Reserves a leased item for exclusive use until the scope closes.
- *
- * This removes the item's remaining capacity from the pool but does not wait
+ * Reserves a leased item for exclusive use until the scope closes. This
+ * removes the item's remaining capacity from the pool but does not wait
  * for existing leases to finish. It has no effect when per-item concurrency is
  * `1` or the pool does not contain the item.
  *
