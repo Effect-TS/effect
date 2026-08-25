@@ -187,6 +187,9 @@ const makeImpl = Effect.fnUntraced(function*(
     yield* Client.make({
       acquirer: options.acquirer,
       borrower: options.borrower,
+      // Postgres prepares transaction control like anything else, and a client
+      // with preparation turned off falls back to the unnamed path anyway.
+      prepareTransactionControls: true,
       transactionAcquirer: options.transactionAcquirer,
       compiler,
       spanAttributes: [
