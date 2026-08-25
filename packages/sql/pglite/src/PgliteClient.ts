@@ -68,7 +68,16 @@ export interface PgliteClient extends Client.SqlClient {
   readonly config: PgliteClientConfig
   readonly pglite: PGliteInterface
   readonly json: (_: unknown) => Fragment
-  readonly listen: (channel: string) => Stream.Stream<string, SqlError>
+  /**
+   * Subscribes to a PGlite notification channel.
+   *
+   * The effect completes after the listener is installed. Notifications are
+   * buffered in the returned dequeue, and the subscription remains active
+   * until the required scope closes.
+   */
+  readonly listen: (
+    channel: string
+  ) => Effect.Effect<Queue.Dequeue<string>, SqlError, Scope.Scope>
   readonly notify: (channel: string, payload: string) => Effect.Effect<void, SqlError>
   readonly dumpDataDir: (compression?: "none" | "gzip" | "auto") => Effect.Effect<File | Blob, SqlError>
   readonly refreshArrayTypes: Effect.Effect<void, SqlError>
@@ -229,20 +238,22 @@ export const fromClient = (
         config,
         pglite,
         json: (_: unknown) => Statement.fragment([PgJson(_)]),
-        listen: (channel: string) =>
-          Stream.callback<string, SqlError>((queue) =>
-            Effect.acquireRelease(
-              Effect.tryPromise({
-                try: () =>
-                  pglite.listen(channel, (payload) => {
-                    Queue.offerUnsafe(queue, payload)
-                  }),
-                catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to listen", "listen") })
-              }),
-              (unlisten) => Effect.promise(() => unlisten()),
-              { interruptible: true }
-            )
-          ),
+        listen: Effect.fnUntraced(function*(channel: string) {
+          const queue = yield* Queue.unbounded<string>()
+          yield* Effect.acquireRelease(
+            Effect.tryPromise({
+              try: () =>
+                pglite.listen(channel, (payload) => {
+                  Queue.offerUnsafe(queue, payload)
+                }),
+              catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to listen", "listen") })
+            }),
+            (unlisten) => Effect.promise(() => unlisten()),
+            { interruptible: true }
+          )
+          yield* Effect.addFinalizer(() => Queue.shutdown(queue))
+          return queue
+        }),
         notify: (channel: string, payload: string) =>
           Effect.tryPromise({
             try: () => pglite.exec(`NOTIFY ${escape(channel)}, ${escapeLiteral(payload)}`),
