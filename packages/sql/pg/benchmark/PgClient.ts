@@ -3,6 +3,7 @@ import { PostgreSqlContainer } from "@testcontainers/postgresql"
 import { Effect, Redacted } from "effect"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import { execFileSync } from "node:child_process"
+import { cpus } from "node:os"
 import { Bench } from "tinybench"
 
 const externalUrl = process.env.PGCLIENT_BENCHMARK_URL
@@ -124,10 +125,15 @@ const run = Effect.gen(function*() {
 
 try {
   const revision = execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim()
+  // Results get compared across machines, and the container makes that
+  // especially misleading off Linux, so every run says where it came from.
   console.log(
     `PgClient benchmark at ${revision} (${externalUrl === undefined ? "Testcontainers" : "external PostgreSQL"}${
       multiplex ? ", multiplex" : ""
     })`
+  )
+  console.log(
+    `  ${process.platform}/${process.arch}, node ${process.versions.node}, ${cpus()[0]?.model ?? "unknown CPU"}`
   )
   await Effect.runPromise(run)
   if (sink === 0) throw new Error("Benchmark did not run")
