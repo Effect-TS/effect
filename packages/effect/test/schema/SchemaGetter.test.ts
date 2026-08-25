@@ -17,6 +17,15 @@ function makeAsserts<T, E>(getter: SchemaGetter.Getter<T, E>) {
 }
 
 describe("SchemaGetter", () => {
+  it.effect("forbiddenEncoding", () =>
+    Effect.gen(function*() {
+      const getter: SchemaGetter.Getter<string, number> = SchemaGetter.forbiddenEncoding
+      const issue = yield* getter.run(Option.some(1), {}).pipe(Effect.flip)
+
+      assert.strictEqual(issue._tag, "Forbidden")
+      assert.strictEqual(formatIssue(issue), "Encoding is not supported")
+    }))
+
   it.effect("stringifyJson fails when JSON.stringify returns undefined", () =>
     SchemaGetter.stringifyJson().run(Option.some(undefined), {}).pipe(
       Effect.flip,

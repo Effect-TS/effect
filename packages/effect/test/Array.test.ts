@@ -13,7 +13,7 @@ import {
   String as Str
 } from "effect"
 import { identity, pipe } from "effect/Function"
-import { FastCheck as fc } from "effect/testing"
+import * as fc from "fast-check"
 
 const symA = Symbol.for("a")
 const symB = Symbol.for("b")

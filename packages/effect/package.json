@@ -31,6 +31,7 @@
     ".": "./src/index.ts",
     "./testing": "./src/testing/index.ts",
     "./unstable/ai": "./src/unstable/ai/index.ts",
+    "./unstable/arbitrary/Arbitrary": "./src/unstable/arbitrary/Arbitrary.ts",
     "./unstable/cli": "./src/unstable/cli/index.ts",
     "./unstable/cluster": "./src/unstable/cluster/index.ts",
     "./unstable/devtools": "./src/unstable/devtools/index.ts",
@@ -73,6 +74,7 @@
       ".": "./dist/index.js",
       "./testing": "./dist/testing/index.js",
       "./unstable/ai": "./dist/unstable/ai/index.js",
+      "./unstable/arbitrary/Arbitrary": "./dist/unstable/arbitrary/Arbitrary.js",
       "./unstable/cli": "./dist/unstable/cli/index.js",
       "./unstable/cluster": "./dist/unstable/cluster/index.js",
       "./unstable/devtools": "./dist/unstable/devtools/index.js",
@@ -115,7 +117,6 @@
     "valibot": "^1.4.2"
   },
   "dependencies": {
-    "fast-check": "^4.9.0",
     "msgpackr": "^2.0.5"
   }
 }

@@ -661,6 +661,18 @@ describe("SchemaRepresentation built-in collection revivers", () => {
     })
   })
 
+  it("revives isUniqueKey", () => {
+    assertFilterReviver({
+      schema: Schema.Any.check(Schema.isUniqueKey()),
+      id: "effect/schema/isUniqueKey",
+      payload: null,
+      reviver: Schema.isUniqueKeyReviver,
+      valid: [["a", 1], ["b", 1]],
+      invalid: [["a", 1], ["a", 2]],
+      hasToJsonSchema: false
+    })
+  })
+
   it("normalizes isMinSize", () => {
     assert.deepStrictEqual(Schema.isMinSize(-1).annotations?.representation, {
       id: "effect/schema/isMinSize",
