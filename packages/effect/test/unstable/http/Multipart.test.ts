@@ -81,6 +81,41 @@ describe("Multipart", () => {
       deepStrictEqual(contents, [encoder.encode("abcdef")])
     }))
 
+  it.effect("parses a field after a file when the body is split across chunks", () =>
+    Effect.gen(function*() {
+      const boundary = "----testboundary"
+      const encoder = new TextEncoder()
+      const body = encoder.encode(
+        `--${boundary}\r\n` +
+          `Content-Disposition: form-data; name="file"; filename="file.txt"\r\n` +
+          `Content-Type: text/plain\r\n\r\n` +
+          "file contents\r\n" +
+          `--${boundary}\r\n` +
+          `Content-Disposition: form-data; name="description"\r\n\r\n` +
+          "test file\r\n" +
+          `--${boundary}--\r\n`
+      )
+      const chunks = [body.subarray(0, 64), body.subarray(64, 128), body.subarray(128)]
+
+      const parts = yield* Stream.fromArray(chunks).pipe(
+        Stream.rechunk(1),
+        Stream.pipeThroughChannel(
+          Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+        ),
+        Stream.mapEffect((part) =>
+          part._tag === "File"
+            ? part.contentEffect.pipe(Effect.map((content) => [part.key, new TextDecoder().decode(content)] as const))
+            : Effect.succeed([part.key, part.value] as const)
+        ),
+        Stream.runCollect
+      )
+
+      deepStrictEqual(parts, [
+        ["file", "file contents"],
+        ["description", "test file"]
+      ])
+    }))
+
   it.effect("parses non-Latin-1 filenames", () =>
     Effect.gen(function*() {
       const data = new globalThis.FormData()
