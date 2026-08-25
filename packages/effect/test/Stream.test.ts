@@ -23,6 +23,7 @@ import {
   References,
   Result,
   Schedule,
+  Schema,
   Scope,
   Sink,
   Stream,
@@ -31,7 +32,7 @@ import {
 import { isReadonlyArrayNonEmpty, type NonEmptyArray } from "effect/Array"
 import { constTrue, constVoid, pipe } from "effect/Function"
 import { TestClock } from "effect/testing"
-import * as fc from "effect/testing/FastCheck"
+import * as fc from "fast-check"
 import { assertCauseFail, assertFailure } from "./utils/assert.ts"
 import { chunkCoordination } from "./utils/chunkCoordination.ts"
 
@@ -632,10 +633,9 @@ describe("Stream", () => {
       it.effect.prop(
         "matches String.linesIterator regardless of chunk boundaries",
         {
-          chunks: fc.array(
-            fc.array(fc.constantFrom("a", "b", "\n", "\r"), { maxLength: 8 }).map((chars) => chars.join("")),
-            { maxLength: 8 }
-          )
+          chunks: Schema.Array(
+            Schema.String.check(Schema.isPattern(/^[ab\n\r]*$/), Schema.isMaxLength(8))
+          ).check(Schema.isMaxLength(8))
         },
         Effect.fnUntraced(function*({ chunks }) {
           const result = yield* splitLines(chunks)
@@ -1464,8 +1464,8 @@ describe("Stream", () => {
   it.effect.prop(
     "rechunk",
     {
-      chunks: fc.array(fc.array(fc.integer()), { minLength: 1 }),
-      size: fc.integer({ min: 1, max: 100 })
+      chunks: Schema.Array(Schema.Array(Schema.Int)).check(Schema.isMinLength(1)),
+      size: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))
     },
     Effect.fnUntraced(function*({ chunks, size }) {
       const actual = yield* Stream.fromArray(chunks).pipe(
@@ -2889,8 +2889,8 @@ describe("Stream", () => {
     it.effect.prop(
       "zipWith - equivalence with array operations",
       {
-        left: fc.array(fc.integer()),
-        right: fc.array(fc.integer())
+        left: Schema.Array(Schema.Int),
+        right: Schema.Array(Schema.Int)
       },
       Effect.fnUntraced(function*({ left, right }) {
         const stream = Stream.zipWith(
@@ -5191,6 +5191,58 @@ describe("Stream", () => {
         ], { concurrency: "unbounded" })
 
         assert.deepStrictEqual(result, [Exit.fail("boom"), Exit.fail("boom")])
+      }))
+  })
+
+  describe("fromEventListener", () => {
+    it.effect("subscribes and emits events", () =>
+      Effect.gen(function*() {
+        const target = new EventTarget()
+
+        const dispatchEvents = Effect.gen(function*() {
+          yield* Effect.yieldNow
+          target.dispatchEvent(new CustomEvent("test", { detail: 1 }))
+          target.dispatchEvent(new CustomEvent("test", { detail: 2 }))
+          target.dispatchEvent(new CustomEvent("test", { detail: 3 }))
+          target.dispatchEvent(new CustomEvent("test", { detail: 4 }))
+        })
+
+        const stream = Stream.fromEventListener<CustomEvent>(target, "test")
+
+        const [result] = yield* Effect.all([
+          stream.pipe(
+            Stream.map((event) => event.detail),
+            // take is required because the stream will never terminate on its own
+            Stream.take(4),
+            Stream.runCollect
+          ),
+          dispatchEvents
+        ], { concurrency: "unbounded" })
+
+        assert.deepStrictEqual(result, [1, 2, 3, 4])
+      }))
+
+    it.effect("ends after the first event with once: true", () =>
+      Effect.gen(function*() {
+        const target = new EventTarget()
+
+        const dispatchEvents = Effect.gen(function*() {
+          yield* Effect.yieldNow
+          target.dispatchEvent(new CustomEvent("test", { detail: 1 }))
+          target.dispatchEvent(new CustomEvent("test", { detail: 2 }))
+        })
+
+        const stream = Stream.fromEventListener<CustomEvent>(target, "test", { once: true })
+
+        const [result] = yield* Effect.all([
+          stream.pipe(
+            Stream.map((event) => event.detail),
+            Stream.runCollect
+          ),
+          dispatchEvents
+        ], { concurrency: "unbounded" })
+
+        assert.deepStrictEqual(result, [1])
       }))
   })
 })

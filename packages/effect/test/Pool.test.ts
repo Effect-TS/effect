@@ -273,6 +273,41 @@ describe("Pool", () => {
       strictEqual(yield* Ref.get(count), 2)
     }))
 
+  it.effect("reserve takes an item out of shared circulation", () =>
+    Effect.gen(function*() {
+      const count = yield* Ref.make(0)
+      const acquire = Effect.acquireRelease(
+        Ref.updateAndGet(count, (n) => n + 1),
+        () => Ref.update(count, (n) => n - 1)
+      )
+      const pool = yield* Pool.makeWithTTL({
+        acquire,
+        min: 0,
+        max: 2,
+        concurrency: 2,
+        timeToLive: Duration.seconds(60)
+      })
+
+      const scope1 = yield* Scope.make()
+      strictEqual(yield* Scope.provide(Pool.get(pool), scope1), 1)
+      const reservation = yield* Scope.make()
+      yield* Scope.provide(Pool.reserve(pool, 1), reservation)
+      // The reserved item counts as fully used, so the pool opens a second one
+      // and both checkouts share it.
+      strictEqual(yield* Scope.provide(Pool.get(pool), scope1), 2)
+      strictEqual(yield* Scope.provide(Pool.get(pool), scope1), 2)
+      // Everything is saturated, so this checkout has to wait for the
+      // reservation to release its capacity.
+      const fiber = yield* pipe(
+        Scope.provide(Pool.get(pool), scope1),
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Scope.close(reservation, Exit.void)
+      strictEqual(yield* Fiber.join(fiber), 1)
+      strictEqual(yield* Ref.get(count), 2)
+      yield* Scope.close(scope1, Exit.void)
+    }))
+
   it.effect("scale to zero", () =>
     Effect.gen(function*() {
       const deferred = yield* Deferred.make<void>()
@@ -457,7 +492,10 @@ describe("Pool", () => {
           })),
         { times: 9 }
       )
-      deepStrictEqual(results, [1, 2, 1, 2, 1, 2, 1, 2, 1, 2])
+      // A borrow takes the item used most recently, so a sequence of them
+      // stays on one item and leaves the other free to be reclaimed. Spreading
+      // over both would leave neither warm and neither ever idle.
+      deepStrictEqual(results, [1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
       strictEqual(yield* Ref.get(count), 2)
     }))
 
@@ -529,5 +567,35 @@ describe("Pool", () => {
       )
       strictEqual(yield* Ref.get(allocations), 10)
       strictEqual(yield* Ref.get(released), 10)
+    }))
+  it.effect("admits one waiter per released lease", () =>
+    Effect.gen(function*() {
+      const acquired = yield* Ref.make(0)
+      const pool = yield* Pool.makeWithTTL({
+        acquire: Effect.succeed("item"),
+        min: 0,
+        max: 1,
+        concurrency: 4,
+        timeToLive: Duration.seconds(60)
+      })
+      const release = yield* Deferred.make<void>()
+      const lease = Effect.scoped(Effect.andThen(
+        Pool.get(pool),
+        Effect.andThen(Ref.update(acquired, (n) => n + 1), Deferred.await(release))
+      ))
+
+      // Four leases saturate the only item; four more have to wait.
+      const fibers = yield* Effect.all(
+        Array.from({ length: 8 }, () => Effect.forkChild(lease, { startImmediately: true }))
+      )
+      yield* Effect.repeat(Ref.get(acquired), { until: (n) => n === 4 })
+
+      // Releasing all four at once has to admit all four waiters. Reacting only
+      // to the transition out of saturation wakes one and leaves three asleep
+      // against an item that has room for them.
+      yield* Deferred.succeed(release, undefined)
+      yield* Effect.all(fibers.map(Fiber.join))
+      strictEqual(yield* Ref.get(acquired), 8)
+      strictEqual(pool.state.usage, 0)
     }))
 })

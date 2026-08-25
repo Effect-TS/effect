@@ -80,6 +80,8 @@ const INTERNAL_TOOL_ERROR_MESSAGE = "Tool execution failed due to an internal se
 
 const TestServerLayer = makeServerLayer({ name: "TestServer" })
 
+const LatestProtocolServerLayer = makeServerLayer({ name: "TestServer", protocols: [McpProtocol.v2025_11_25] })
+
 const initializePayload = {
   protocolVersion: "2025-06-18",
   capabilities: {},
@@ -280,6 +282,22 @@ describe("McpServer", () => {
 
       strictEqual(response.status, 400)
     }))
+  it.effect("negotiates an initialize request from a client on an unsupported protocol version", () =>
+    Effect.gen(function*() {
+      const { httpClient } = yield* makeTestClientWith(LatestProtocolServerLayer)
+
+      const response = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "2025-06-18"),
+        HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", id: 1, method: "initialize", params: initializePayload }),
+        httpClient.execute
+      )
+
+      strictEqual(response.status, 200)
+      strictEqual(response.headers["mcp-protocol-version"], "2025-11-25")
+      assertTrue(response.headers["mcp-session-id"] !== undefined)
+    }))
+
   describe("registerToolkit", () => {
     it.effect("lists output schemas only for structured tool results", () =>
       Effect.gen(function*() {
@@ -551,6 +569,55 @@ describe("McpServer", () => {
       strictEqual(unsupportedResponse.status, 400)
       strictEqual(yield* unsupportedResponse.text, "")
       strictEqual(unsupportedResponse.headers["access-control-allow-origin"], "*")
+
+      const malformedResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        HttpClientRequest.bodyText("{"),
+        HttpClientRequest.setHeader("content-type", "application/json"),
+        httpClient.execute
+      )
+      strictEqual(malformedResponse.status, 400)
+      strictEqual(yield* malformedResponse.text, "")
+
+      const malformedNoVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.bodyText("{"),
+        HttpClientRequest.setHeader("content-type", "application/json"),
+        httpClient.execute
+      )
+      strictEqual(malformedNoVersionResponse.status, 200)
+      const malformedNoVersionBody = JSON.parse(yield* malformedNoVersionResponse.text)
+      strictEqual(malformedNoVersionBody.id, null)
+      strictEqual(malformedNoVersionBody.error.code, McpSchema.PARSE_ERROR_CODE)
+
+      const invalidRequestResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        HttpClientRequest.bodyJsonUnsafe({ hello: "world" }),
+        httpClient.execute
+      )
+      strictEqual(invalidRequestResponse.status, 400)
+      strictEqual(yield* invalidRequestResponse.text, "")
+
+      const invalidRequestNoVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.bodyJsonUnsafe({ hello: "world" }),
+        httpClient.execute
+      )
+      strictEqual(invalidRequestNoVersionResponse.status, 200)
+      const invalidRequestNoVersionBody = JSON.parse(yield* invalidRequestNoVersionResponse.text)
+      strictEqual(invalidRequestNoVersionBody.id, null)
+      strictEqual(invalidRequestNoVersionBody.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+
+      const invalidInitializeResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        HttpClientRequest.bodyJsonUnsafe({ method: "initialize", id: 7 }),
+        httpClient.execute
+      )
+      strictEqual(invalidInitializeResponse.status, 400)
+      strictEqual(yield* invalidInitializeResponse.text, "")
 
       const responseOnly = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),

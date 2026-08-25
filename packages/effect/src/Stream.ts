@@ -1350,7 +1350,7 @@ export const fromSubscription = <A>(pubsub: PubSub.Subscription<A>): Stream<A> =
  * @category models
  * @since 3.4.0
  */
-export interface EventListener<A> {
+export interface EventListener<A = unknown> {
   addEventListener(
     event: string,
     f: (event: A) => void,
@@ -1403,7 +1403,7 @@ export interface EventListener<A> {
  * @since 3.1.0
  */
 export const fromEventListener = <A = unknown>(
-  target: EventListener<A>,
+  target: EventListener,
   type: string,
   options?: boolean | {
     readonly capture?: boolean
@@ -1413,8 +1413,11 @@ export const fromEventListener = <A = unknown>(
   } | undefined
 ): Stream<A> =>
   callback<A>((queue) => {
-    function emit(event: A) {
+    const once = typeof options === "object" && options.once
+
+    function emit(event: any) {
       Queue.offerUnsafe(queue, event)
+      if (once) Queue.endUnsafe(queue)
     }
     return Effect.acquireRelease(
       Effect.sync(() => target.addEventListener(type, emit, options)),

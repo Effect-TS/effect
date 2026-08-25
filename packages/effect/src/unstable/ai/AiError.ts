@@ -341,6 +341,52 @@ export const HttpContext = Schema.Struct({
   body: Schema.optional(Schema.String)
 }).annotate({ identifier: "HttpContext" })
 
+/**
+ * Builds a description for an HTTP error returned by an AI provider.
+ *
+ * @category utilities
+ * @since 4.0.0
+ */
+export const buildErrorDescription = (params: {
+  readonly status: number
+  readonly message: string | undefined
+  readonly method: string
+  readonly url: string
+  readonly errorCode?: string | number | null | undefined
+  readonly errorType?: string | null | undefined
+  readonly requestId?: string | null | undefined
+  readonly body: string | undefined
+}): string => {
+  const parts: Array<string> = []
+
+  if (params.message) {
+    parts.push(params.message)
+  } else {
+    parts.push(`HTTP ${params.status}`)
+  }
+
+  parts.push(`(${params.method} ${params.url})`)
+
+  if (params.errorCode) {
+    parts.push(`[code: ${params.errorCode}]`)
+  } else if (params.errorType) {
+    parts.push(`[type: ${params.errorType}]`)
+  }
+
+  if (params.requestId) {
+    parts.push(`[requestId: ${params.requestId}]`)
+  }
+
+  if (!params.message && params.body) {
+    const truncated = params.body.length > 200
+      ? params.body.slice(0, 200) + "..."
+      : params.body
+    parts.push(`Response: ${truncated}`)
+  }
+
+  return parts.join(" ")
+}
+
 // =============================================================================
 // Reason Classes
 // =============================================================================
@@ -468,6 +514,13 @@ export class QuotaExhaustedError extends Schema.Error<QuotaExhaustedError>(
  * })
  *
  * const result = [authError.kind, authError.isRetryable] // => ["InvalidKey", false]
+ *
+ * const detailed = new AiError.AuthenticationError({
+ *   kind: "InsufficientPermissions",
+ *   description: "Token expired"
+ * })
+ *
+ * detailed.message // => "InsufficientPermissions: Your API key lacks required permissions. Token expired"
  * ```
  *
  * @category errors
@@ -478,6 +531,7 @@ export class AuthenticationError extends Schema.Error<AuthenticationError>(
 )({
   _tag: Schema.tag("AuthenticationError"),
   kind: Schema.Literals(["InvalidKey", "ExpiredKey", "MissingKey", "InsufficientPermissions", "Unknown"]),
+  description: Schema.optional(Schema.String),
   metadata: providerMetadataWithDefaults<AuthenticationErrorMetadata>(),
   http: Schema.optional(HttpContext)
 }) {
@@ -505,7 +559,9 @@ export class AuthenticationError extends Schema.Error<AuthenticationError>(
       InsufficientPermissions: "Your API key lacks required permissions",
       Unknown: "Authentication failed. Check your credentials"
     }
-    return `${this.kind}: ${suggestions[this.kind]}`
+    let msg = `${this.kind}: ${suggestions[this.kind]}`
+    if (this.description) msg += `. ${this.description}`
+    return msg
   }
 }
 

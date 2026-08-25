@@ -130,6 +130,29 @@ describe("Command help output", () => {
       expect(shortLine!.indexOf("Short flag description")).toBe(longLine!.indexOf("Long flag description"))
     }).pipe(Effect.provide(TestLayer)))
 
+  it.effect("separates long subcommand and argument names from their descriptions", () =>
+    Effect.gen(function*() {
+      const child = Command.make("account:set-password", {
+        account: Argument.string("existing-account-identifier").pipe(
+          Argument.withDescription("Account to update")
+        )
+      }).pipe(Command.withDescription("Rewrite the credential hash"))
+      const command = Command.make("demo").pipe(Command.withSubcommands([child]))
+      const run = Command.runWith(command, { version: "1.0.0" })
+
+      yield* run(["--help"])
+      const rootHelp = yield* TestConsole.logLines
+
+      yield* run(["account:set-password", "--help"])
+      const allHelp = yield* TestConsole.logLines
+      const childHelp = allHelp.slice(rootHelp.length)
+
+      assert.isTrue(rootHelp.some((line) => String(line).includes("account:set-password Rewrite the credential hash")))
+      assert.isTrue(
+        childHelp.some((line) => String(line).includes("existing-account-identifier string Account to update"))
+      )
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("hides flags marked with withHidden from help output", () =>
     Effect.gen(function*() {
       const command = Command.make("tool", {

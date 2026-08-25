@@ -382,7 +382,7 @@ describe("Param", () => {
 
       return Effect.gen(function*() {
         const flag = Flag.boolean("verbose").pipe(
-          Flag.withFallbackConfig(Config.boolean("VERBOSE"))
+          Flag.withFallbackConfig(Config.Boolean("VERBOSE"))
         )
 
         const [, value] = yield* flag.parse({
@@ -406,7 +406,7 @@ describe("Param", () => {
 
       return Effect.gen(function*() {
         const flag = Flag.boolean("verbose").pipe(
-          Flag.withFallbackConfig(Config.boolean("VERBOSE"))
+          Flag.withFallbackConfig(Config.Boolean("VERBOSE"))
         )
 
         const [, value] = yield* flag.parse({
@@ -430,7 +430,7 @@ describe("Param", () => {
 
       return Effect.gen(function*() {
         const flag = Flag.string("name").pipe(
-          Flag.withFallbackConfig(Config.string("NAME"))
+          Flag.withFallbackConfig(Config.String("NAME"))
         )
 
         const [, value] = yield* flag.parse({
@@ -454,7 +454,7 @@ describe("Param", () => {
 
       return Effect.gen(function*() {
         const flag = Flag.string("name").pipe(
-          Flag.withFallbackConfig(Config.string("NAME"))
+          Flag.withFallbackConfig(Config.String("NAME"))
         )
 
         const [, value] = yield* flag.parse({
@@ -478,7 +478,7 @@ describe("Param", () => {
 
       return Effect.gen(function*() {
         const argument = Argument.string("repository").pipe(
-          Argument.withFallbackConfig(Config.string("REPOSITORY"))
+          Argument.withFallbackConfig(Config.String("REPOSITORY"))
         )
 
         const [, value] = yield* argument.parse({
@@ -498,7 +498,7 @@ describe("Param", () => {
 
       return Effect.gen(function*() {
         const flag = Flag.string("name").pipe(
-          Flag.withFallbackConfig(Config.string("NAME"))
+          Flag.withFallbackConfig(Config.String("NAME"))
         )
 
         const error = yield* Effect.flip(
@@ -524,7 +524,7 @@ describe("Param", () => {
 
       return Effect.gen(function*() {
         const flag = Flag.integer("count").pipe(
-          Flag.withFallbackConfig(Config.int("COUNT"))
+          Flag.withFallbackConfig(Config.Int("COUNT"))
         )
 
         const error = yield* Effect.flip(

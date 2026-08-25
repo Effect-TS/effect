@@ -77,13 +77,27 @@ export type ServeOptions<R extends string> =
  * through, e.g.
  * `BunHttpServer.layer({ port: 3000, websocket: { perMessageDeflate: true } })`.
  *
+ * The `compressionThreshold` option controls the minimum message size in bytes
+ * that is compressed when per-message deflate is negotiated. It defaults to
+ * 1024, matching the default threshold of Node's `ws` server.
+ *
  * @category options
  * @since 4.0.0
  */
-export type WebSocketOptions = Omit<
-  Bun.WebSocketHandler<WebSocketContext>,
-  "open" | "message" | "close" | "drain" | "ping" | "pong" | "data" | "binaryType"
->
+export type WebSocketOptions =
+  & Omit<
+    Bun.WebSocketHandler<WebSocketContext>,
+    "open" | "message" | "close" | "drain" | "ping" | "pong" | "data" | "binaryType"
+  >
+  & {
+    /**
+     * The minimum message size in bytes that is compressed when per-message
+     * deflate is negotiated.
+     *
+     * @default 1024
+     */
+    readonly compressionThreshold?: number | undefined
+  }
 
 /**
  * Creates a scoped Bun `HttpServer` from `Bun.serve` options, stopping the server on scope finalization with optional graceful shutdown settings.
@@ -100,6 +114,7 @@ export const make = Effect.fnUntraced(
     }
   ) {
     const scope = yield* Effect.scope
+    const { compressionThreshold = MIN_COMPRESSIBLE_SIZE, ...websocket } = options.websocket ?? {}
     const handlerStack: Array<(request: Request, server: BunServer<WebSocketContext>) => Response | Promise<Response>> =
       [
         function(_request, _server) {
@@ -110,7 +125,7 @@ export const make = Effect.fnUntraced(
       ...options as ServeOptions<R>,
       fetch: handlerStack[0],
       websocket: {
-        ...options.websocket,
+        ...websocket,
         open(ws) {
           Deferred.doneUnsafe(ws.data.deferred, Exit.succeed(ws))
         },
@@ -161,7 +176,7 @@ export const make = Effect.fnUntraced(
             const context = Context.add(
               services,
               ServerRequest.HttpServerRequest,
-              new BunServerRequest(request, resolve, removeHost(request.url), server)
+              new BunServerRequest(request, resolve, removeHost(request.url), server, compressionThreshold)
             )
             const fiber = Fiber.runIn(Effect.runForkWith(context)(httpEffect), scope)
             request.signal.addEventListener("abort", () => {
@@ -182,6 +197,8 @@ export const make = Effect.fnUntraced(
     })
   }
 )
+
+const MIN_COMPRESSIBLE_SIZE = 1024
 
 const makeResponse = (
   request: ServerRequest.HttpServerRequest,
@@ -354,6 +371,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   public resolve: (response: Response) => void
   readonly url: string
   private bunServer: BunServer<WebSocketContext>
+  private compressionThreshold: number
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
 
@@ -362,6 +380,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     resolve: (response: Response) => void,
     url: string,
     bunServer: BunServer<WebSocketContext>,
+    compressionThreshold: number,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>
   ) {
@@ -372,6 +391,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     this.resolve = resolve
     this.url = url
     this.bunServer = bunServer
+    this.compressionThreshold = compressionThreshold
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
   }
@@ -394,6 +414,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       this.resolve,
       options.url ?? this.url,
       this.bunServer,
+      this.compressionThreshold,
       options.headers ?? this.headersOverride,
       "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
     )
@@ -565,11 +586,11 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
         const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
           Effect.sync(() => {
             if (typeof chunk === "string") {
-              ws.sendText(chunk)
+              ws.sendText(chunk, chunk.length >= this.compressionThreshold)
             } else if (Socket.isCloseEvent(chunk)) {
               ws.close(chunk.code, chunk.reason)
             } else {
-              ws.sendBinary(chunk)
+              ws.sendBinary(chunk, chunk.byteLength >= this.compressionThreshold)
             }
 
             return true

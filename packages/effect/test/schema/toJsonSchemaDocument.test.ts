@@ -1,6 +1,5 @@
 import type { Options as AjvOptions } from "ajv"
 import { Effect, JsonSchema, Option, Predicate, Schema, SchemaGetter } from "effect"
-// import { FastCheck } from "effect/testing"
 import { describe, it } from "vitest"
 import { assertTrue, deepStrictEqual, throws } from "../utils/assert.ts"
 
@@ -42,14 +41,6 @@ function assertJsonSchemaDocument<T, E, RD>(
   }
   const valid = ajvDraft2020_12.validateSchema(jsonSchema)
   assertTrue(valid)
-  // const validate = ajvDraft2020_12.compile(jsonSchema)
-  // const arb = Schema.toArbitrary(schema)(FastCheck)
-  // const codec = Schema.toCodecJson(schema)
-  // const encode = Schema.encodeSync(codec)
-  // FastCheck.assert(FastCheck.property(arb, (t) => {
-  //   const e = encode(t)
-  //   return validate(e)
-  // }))
 }
 
 describe("toJsonSchemaDocument", () => {

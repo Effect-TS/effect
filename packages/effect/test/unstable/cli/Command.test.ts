@@ -1,5 +1,5 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Context, Effect, Fiber, FileSystem, Layer, Option, Path, Runtime, Stdio } from "effect"
+import { Context, Effect, Fiber, FileSystem, Layer, Option, Path, Redacted, Runtime, Stdio } from "effect"
 import { TestConsole } from "effect/testing"
 import { Argument, CliConfig, CliError, CliOutput, Command, Flag, GlobalFlag } from "effect/unstable/cli"
 import { toImpl } from "effect/unstable/cli/internal/command"
@@ -163,6 +163,38 @@ describe("Command", () => {
         assert.include(output, "Command ready")
         assert.include(output, "$ greet --name 'Alice Smith'")
         assert.include(output, "Run this command?")
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should redact values in wizard command output", () =>
+      Effect.gen(function*() {
+        const secret = "hunter2-secret"
+        const captured: Array<readonly [string, string]> = []
+        const command = Command.make("login", {
+          password: Flag.redacted("password"),
+          account: Argument.string("account")
+        }, ({ account, password }) =>
+          Effect.sync(() => {
+            captured.push([Redacted.value(password), account])
+          }))
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })(["--wizard"]).pipe(Effect.forkChild)
+        yield* MockTerminal.inputText(secret)
+        yield* MockTerminal.inputKey("enter")
+        yield* MockTerminal.inputText("alice")
+        yield* MockTerminal.inputKey("enter")
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        const output = [...yield* TestConsole.logLines, ...yield* MockTerminal.displayLines].join("\n")
+        const currentCommand = output.slice(output.indexOf("Current command"), output.indexOf("Command ready"))
+        const commandReady = output.slice(output.indexOf("Command ready"))
+
+        assert.deepStrictEqual(captured, [[secret, "alice"]])
+        assert.include(currentCommand, "--password")
+        assert.include(currentCommand, "<redacted>")
+        assert.include(commandReady, "--password")
+        assert.include(commandReady, "<redacted>")
+        assert.notInclude(output, secret)
       }).pipe(Effect.provide(TestLayer)))
 
     it.effect("should print a message when wizard mode is cancelled", () =>

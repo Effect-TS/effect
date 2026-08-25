@@ -2,9 +2,10 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Option } from "effect"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
+import { constVoid } from "effect/Function"
 import * as Latch from "effect/Latch"
 import * as Layer from "effect/Layer"
 import * as ManagedRuntime from "effect/ManagedRuntime"
@@ -28,7 +29,9 @@ import {
   UrlParams
 } from "effect/unstable/http"
 import * as HttpApiError from "effect/unstable/httpapi/HttpApiError"
+import { Socket } from "effect/unstable/socket"
 import * as Buffer from "node:buffer"
+import { randomBytes } from "node:crypto"
 import { EventEmitter } from "node:events"
 import * as Http from "node:http"
 import * as Net from "node:net"
@@ -572,6 +575,43 @@ describe("HttpServer", () => {
       assert.strictEqual(closeListenerRemovals, 1)
     }))
 
+  it.effect("returns none when a late remoteAddress read finds no socket", () =>
+    Effect.gen(function*() {
+      const scope = yield* Effect.scope
+      let request: HttpServerRequest.HttpServerRequest | undefined
+      const handler = yield* NodeHttpServer.makeHandler(
+        Effect.gen(function*() {
+          request = yield* HttpServerRequest.HttpServerRequest
+          return HttpServerResponse.empty()
+        }),
+        { scope }
+      )
+      const completed = Latch.makeUnsafe()
+      let writableEnded = false
+      const nodeResponse = Object.defineProperty(new EventEmitter(), "writableEnded", {
+        get: () => writableEnded
+      }) as Http.ServerResponse
+      nodeResponse.writeHead = () => nodeResponse
+      nodeResponse.end = (() => {
+        writableEnded = true
+        completed.openUnsafe()
+        return nodeResponse
+      }) as Http.ServerResponse["end"]
+      const nodeRequest = {
+        method: "GET",
+        url: "/",
+        headers: {},
+        socket: { remoteAddress: "127.0.0.1" }
+      } as unknown as Http.IncomingMessage
+
+      handler(nodeRequest, nodeResponse)
+      yield* completed.await
+      assert(request !== undefined)
+      ;(nodeRequest as unknown as { socket: null }).socket = null
+
+      assert.deepStrictEqual(request.remoteAddress, Option.none())
+    }))
+
   it.effect("coalesces streaming chunks from the same pull", () =>
     Effect.gen(function*() {
       const scope = yield* Effect.scope
@@ -889,6 +929,52 @@ describe("HttpServer", () => {
       const response = yield* HttpClient.get("/")
       expect(response.status).toEqual(200)
     }).pipe(Effect.provide(layerTestWebsocket)))
+
+  it.effect("does not write the HTTP response to an upgraded connection", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "GET",
+        "/ws",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const socket = yield* Effect.orDie(request.upgrade)
+          yield* Effect.forkScoped(socket.runRaw(constVoid))
+          const write = yield* socket.writer
+          yield* write("refused")
+          yield* write(new Socket.CloseEvent(4400, "refused"))
+          return HttpServerResponse.empty()
+        }).pipe(Effect.scoped)
+      ).pipe(
+        HttpRouter.serve,
+        Layer.build
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as HttpServer.TcpAddress).port
+      const { frames, trailing } = yield* Effect.promise(() => rawWebSocket(port, "/ws"))
+      assert.strictEqual(frames.length, 2)
+      assert.strictEqual(frames[0].opcode, 1)
+      assert.strictEqual(frames[0].payload.toString(), "refused")
+      assert.strictEqual(frames[1].opcode, 8)
+      assert.strictEqual(frames[1].payload.readUInt16BE(0), 4400)
+      assert.strictEqual(trailing.toString(), "")
+    }).pipe(Effect.provide(layerTestWebsocket)))
+
+  it.effect("writes the HTTP response when the upgrade is not consumed", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "GET",
+        "/no-ws",
+        HttpServerResponse.text("upgrade refused", { status: 426 })
+      ).pipe(
+        HttpRouter.serve,
+        Layer.build
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as HttpServer.TcpAddress).port
+      const response = yield* Effect.promise(() => rawUpgradeRequest(port, "/no-ws"))
+      assert.match(response, /^HTTP\/1\.1 426/)
+      assert.match(response, /upgrade refused/)
+    }).pipe(Effect.provide(layerTestWebsocket)))
 })
 
 const layerTestWebsocket = HttpServer.layerTestClient.pipe(
@@ -908,3 +994,126 @@ const tcpPort = (server: Http.Server): number => {
   assert(address !== null && typeof address !== "string")
   return address.port
 }
+
+interface WebSocketFrame {
+  readonly opcode: number
+  readonly payload: Buffer.Buffer
+}
+
+const parseWebSocketFrames = (
+  stream: Buffer.Buffer
+): { readonly frames: ReadonlyArray<WebSocketFrame>; readonly trailing: Buffer.Buffer } => {
+  const frames: Array<WebSocketFrame> = []
+  let offset = 0
+  while (stream.length - offset >= 2) {
+    const first = stream[offset]
+    const second = stream[offset + 1]
+    const opcode = first & 0x0f
+    let length = second & 0x7f
+    let headerSize = 2
+    if (length === 126) {
+      if (stream.length - offset < 4) break
+      length = stream.readUInt16BE(offset + 2)
+      headerSize = 4
+    } else if (length === 127) {
+      break
+    }
+    const controlFrame = (opcode & 0x8) !== 0
+    if (
+      (first & 0x70) !== 0 || (second & 0x80) !== 0 ||
+      ![0x0, 0x1, 0x2, 0x8, 0x9, 0xa].includes(opcode) ||
+      (controlFrame && length > 125)
+    ) {
+      break
+    }
+    if (stream.length - offset < headerSize + length) break
+    frames.push({ opcode, payload: stream.subarray(offset + headerSize, offset + headerSize + length) })
+    offset += headerSize + length
+  }
+  return { frames, trailing: stream.subarray(offset) }
+}
+
+const upgradeRequest = (path: string): string =>
+  [
+    `GET ${path} HTTP/1.1`,
+    "Host: 127.0.0.1",
+    "Upgrade: websocket",
+    "Connection: Upgrade",
+    `Sec-WebSocket-Key: ${randomBytes(16).toString("base64")}`,
+    "Sec-WebSocket-Version: 13",
+    "",
+    ""
+  ].join("\r\n")
+
+const closeFrame = (code: number): Buffer.Buffer => {
+  const payload = Buffer.Buffer.alloc(2)
+  payload.writeUInt16BE(code, 0)
+  const mask = randomBytes(4)
+  const masked = Buffer.Buffer.from(payload)
+  for (let index = 0; index < masked.length; index++) {
+    masked[index] = masked[index] ^ mask[index % 4]
+  }
+  return Buffer.Buffer.concat([Buffer.Buffer.from([0x88, 0x80 | payload.length]), mask, masked])
+}
+
+const rawWebSocket = (
+  port: number,
+  path: string
+): Promise<{ readonly frames: ReadonlyArray<WebSocketFrame>; readonly trailing: Buffer.Buffer }> =>
+  new Promise((resolve, reject) => {
+    const socket = Net.createConnection({ host: "127.0.0.1", port })
+    const timer = setTimeout(() => {
+      socket.destroy()
+      reject(new Error("the websocket conversation did not finish in time"))
+    }, 5000)
+    let upgraded = false
+    let stream = Buffer.Buffer.alloc(0)
+    let closeEchoed = false
+    socket.on("connect", () => socket.write(upgradeRequest(path)))
+    socket.on("data", (data) => {
+      stream = Buffer.Buffer.concat([stream, Buffer.Buffer.from(data)])
+      if (!upgraded) {
+        const headerEnd = stream.indexOf("\r\n\r\n")
+        if (headerEnd === -1) return
+        if (!stream.subarray(0, headerEnd).toString().includes("101")) {
+          clearTimeout(timer)
+          socket.destroy()
+          reject(new Error("the upgrade was refused"))
+          return
+        }
+        upgraded = true
+        stream = Buffer.Buffer.from(stream.subarray(headerEnd + 4))
+      }
+      if (!closeEchoed) {
+        const close = parseWebSocketFrames(stream).frames.find((frame) => frame.opcode === 8)
+        if (close !== undefined) {
+          closeEchoed = true
+          socket.write(closeFrame(close.payload.length >= 2 ? close.payload.readUInt16BE(0) : 1000))
+        }
+      }
+    })
+    socket.on("error", constVoid)
+    socket.on("close", () => {
+      clearTimeout(timer)
+      resolve(parseWebSocketFrames(stream))
+    })
+  })
+
+const rawUpgradeRequest = (port: number, path: string): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const socket = Net.createConnection({ host: "127.0.0.1", port })
+    const timer = setTimeout(() => {
+      socket.destroy()
+      reject(new Error("the upgrade request was not answered in time"))
+    }, 5000)
+    let stream = Buffer.Buffer.alloc(0)
+    socket.on("connect", () => socket.write(upgradeRequest(path)))
+    socket.on("data", (data) => {
+      stream = Buffer.Buffer.concat([stream, Buffer.Buffer.from(data)])
+    })
+    socket.on("error", constVoid)
+    socket.on("close", () => {
+      clearTimeout(timer)
+      resolve(stream.toString())
+    })
+  })

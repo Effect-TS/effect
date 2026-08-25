@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-deno",
   "type": "module",
-  "version": "4.0.0-rc.111",
+  "version": "4.0.0-rc.112",
   "license": "MIT",
   "description": "Platform specific implementations for the Deno runtime",
   "homepage": "https://effect.website",

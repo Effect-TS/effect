@@ -207,46 +207,6 @@ export const buildHttpContext = (params: {
   body: params.body
 })
 
-const buildInvalidRequestDescription = (params: {
-  readonly status: number
-  readonly message: string | undefined
-  readonly method: string
-  readonly url: string
-  readonly errorCode: string | null
-  readonly errorType: string | null
-  readonly requestId: string | null
-  readonly body: string | undefined
-}): string => {
-  const parts: Array<string> = []
-
-  if (params.message) {
-    parts.push(params.message)
-  } else {
-    parts.push(`HTTP ${params.status}`)
-  }
-
-  parts.push(`(${params.method} ${params.url})`)
-
-  if (params.errorCode) {
-    parts.push(`[code: ${params.errorCode}]`)
-  } else if (params.errorType) {
-    parts.push(`[type: ${params.errorType}]`)
-  }
-
-  if (params.requestId) {
-    parts.push(`[requestId: ${params.requestId}]`)
-  }
-
-  if (!params.message && params.body) {
-    const truncated = params.body.length > 200
-      ? params.body.slice(0, 200) + "..."
-      : params.body
-    parts.push(`Response: ${truncated}`)
-  }
-
-  return parts.join(" ")
-}
-
 /** @internal */
 export const mapStatusCodeToReason = ({ status, headers, message, metadata, http }: {
   readonly status: number
@@ -255,7 +215,7 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
   readonly metadata: OpenAiErrorMetadata
   readonly http: typeof AiError.HttpContext.Type
 }): AiError.AiErrorReason => {
-  const invalidRequestDescription = buildInvalidRequestDescription({
+  const errorDescription = AiError.buildErrorDescription({
     status,
     message,
     method: http.request.method,
@@ -269,32 +229,34 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
   switch (status) {
     case 400:
       return new AiError.InvalidRequestError({
-        description: invalidRequestDescription,
+        description: errorDescription,
         metadata: { openai: metadata },
         http
       })
     case 401:
       return new AiError.AuthenticationError({
         kind: "InvalidKey",
+        description: errorDescription,
         metadata,
         http
       })
     case 403:
       return new AiError.AuthenticationError({
         kind: "InsufficientPermissions",
+        description: errorDescription,
         metadata,
         http
       })
     case 404:
       return new AiError.InvalidRequestError({
-        description: invalidRequestDescription,
+        description: errorDescription,
         metadata: { openai: metadata },
         http
       })
     case 409:
     case 422:
       return new AiError.InvalidRequestError({
-        description: invalidRequestDescription,
+        description: errorDescription,
         metadata: { openai: metadata },
         http
       })

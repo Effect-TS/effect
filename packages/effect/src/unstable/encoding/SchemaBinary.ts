@@ -2032,6 +2032,13 @@ function resolveSuspend(ast: SchemaAST.AST): SchemaAST.AST {
   return ast
 }
 
+function enumsToLiterals(ast: SchemaAST.Enum): SchemaAST.Union<SchemaAST.Literal> {
+  return new SchemaAST.Union(
+    ast.enums.map((e) => new SchemaAST.Literal(e[1], { title: e[0] })),
+    "anyOf"
+  )
+}
+
 function flattenMembers(union: SchemaAST.Union): Array<SchemaAST.AST> {
   const out: Array<SchemaAST.AST> = []
   const seen = new Set<SchemaAST.AST>()
@@ -2046,7 +2053,7 @@ function flattenMembers(union: SchemaAST.Union): Array<SchemaAST.AST> {
         resolved.types.forEach(go)
         return
       case "Enum":
-        SchemaAST.enumsToLiterals(resolved).types.forEach(go)
+        enumsToLiterals(resolved).types.forEach(go)
         return
       default:
         out.push(resolved)
@@ -2185,7 +2192,7 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       case "Never":
         return { _: "never", ast }
       case "Enum":
-        return compileUnion(ast, flattenMembers(SchemaAST.enumsToLiterals(ast)))
+        return compileUnion(ast, flattenMembers(enumsToLiterals(ast)))
       case "Suspend": {
         recursive = true
         const layout = compile(ast.thunk())

@@ -1,5 +1,5 @@
 import { Equal, Hash, HashMap, Option, Result } from "effect"
-import { FastCheck as fc } from "effect/testing"
+import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 describe("HashMap", () => {

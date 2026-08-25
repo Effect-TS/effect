@@ -291,12 +291,38 @@ describe("OpenAiClient", () => {
         assert.strictEqual(result.reason._tag, "AuthenticationError")
         if (result.reason._tag === "AuthenticationError") {
           assert.strictEqual(result.reason.kind, "InvalidKey")
+          assert.strictEqual(
+            result.reason.description,
+            "Invalid API key (POST https://api.openai.com/v1/responses) [code: invalid_api_key] [requestId: req_openai]"
+          )
+          assert.include(result.reason.message, "Invalid API key")
         }
       }).pipe(Effect.provide(makeTestLayer(undefined, {
         _tag: "Json",
         status: 401,
-        body: { error: { message: "Invalid API key" } }
+        body: { error: { message: "Invalid API key", type: "invalid_request_error", code: "invalid_api_key" } },
+        headers: { "x-request-id": "req_openai" }
       }))))
+
+    it("preserves and truncates a fallback HTTP response", () => {
+      const body = `${"a".repeat(200)}b`
+      const reason = Errors.mapStatusCodeToReason({
+        status: 400,
+        headers: {},
+        message: undefined,
+        metadata: { errorCode: null, errorType: null, requestId: null },
+        http: makeHttpContext("https://api.openai.com/v1/responses", body)
+      })
+
+      assert.strictEqual(reason._tag, "InvalidRequestError")
+      if (reason._tag !== "InvalidRequestError") {
+        throw new Error("Expected InvalidRequestError")
+      }
+      assert.strictEqual(
+        reason.description,
+        `HTTP 400 (POST https://api.openai.com/v1/responses) Response: ${"a".repeat(200)}...`
+      )
+    })
 
     it.effect("maps 403 status to AuthenticationError with InsufficientPermissions", () =>
       Effect.gen(function*() {
@@ -307,6 +333,8 @@ describe("OpenAiClient", () => {
         assert.strictEqual(result.reason._tag, "AuthenticationError")
         if (result.reason._tag === "AuthenticationError") {
           assert.strictEqual(result.reason.kind, "InsufficientPermissions")
+          assert.include(result.reason.description ?? "", "Access denied")
+          assert.include(result.reason.message, "Access denied")
         }
       }).pipe(Effect.provide(makeTestLayer(undefined, {
         _tag: "Json",
@@ -687,8 +715,8 @@ const makeGeneratedTestLayer = (
 
 const makeConfigTestLayer = (configProvider: ConfigProvider.ConfigProvider) =>
   OpenAiClient.layerConfig({
-    apiKey: Config.redacted("MY_API_KEY"),
-    apiUrl: Config.string("MY_API_URL")
+    apiKey: Config.Redacted("MY_API_KEY"),
+    apiUrl: Config.String("MY_API_URL")
   }).pipe(
     Layer.provideMerge(HttpClientLayer),
     Layer.provide(Layer.succeed(MockOpenAiResponse, { response: defaultResponse })),
@@ -769,3 +797,14 @@ const makeResponse = (
     }
   })
 }
+
+const makeHttpContext = (url: string, body: string) => ({
+  request: {
+    method: "POST" as const,
+    url,
+    urlParams: [],
+    hash: undefined,
+    headers: {}
+  },
+  body
+})

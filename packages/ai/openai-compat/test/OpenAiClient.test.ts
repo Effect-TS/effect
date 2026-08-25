@@ -1,4 +1,5 @@
 import { OpenAiClient } from "@effect/ai-openai-compat"
+import * as Errors from "@effect/ai-openai-compat/internal/errors"
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Layer, Redacted, type Schema, Stream } from "effect"
 import {
@@ -376,6 +377,86 @@ describe("OpenAiClient", () => {
         }
       }))))
 
+    it.effect("surfaces the provider message on 401 AuthenticationError", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+
+        const error = yield* client.createResponse({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: "hello" }]
+        }).pipe(Effect.flip)
+
+        assert.strictEqual(error.reason._tag, "AuthenticationError")
+        if (error.reason._tag !== "AuthenticationError") {
+          return yield* Effect.die(new Error("Expected AuthenticationError"))
+        }
+        assert.strictEqual(error.reason.kind, "InvalidKey")
+        assert.strictEqual(
+          error.reason.description,
+          "Incorrect API key provided (POST https://compat.example.test/v1/chat/completions) [code: invalid_api_key] [requestId: req_openai_compat]"
+        )
+        assert.include(error.reason.message, "Incorrect API key provided")
+      }).pipe(Effect.provide(makeTestLayer({
+        _tag: "Json",
+        status: 401,
+        body: {
+          error: {
+            message: "Incorrect API key provided",
+            type: "invalid_request_error",
+            code: "invalid_api_key"
+          }
+        },
+        headers: { "x-request-id": "req_openai_compat" }
+      }))))
+
+    it("preserves and truncates a fallback HTTP response", () => {
+      const body = `${"a".repeat(200)}b`
+      const reason = Errors.mapStatusCodeToReason({
+        status: 400,
+        headers: {},
+        message: undefined,
+        metadata: { errorCode: null, errorType: null, requestId: null },
+        http: makeHttpContext("https://compat.example.test/v1/chat/completions", body)
+      })
+
+      assert.strictEqual(reason._tag, "InvalidRequestError")
+      if (reason._tag !== "InvalidRequestError") {
+        throw new Error("Expected InvalidRequestError")
+      }
+      assert.strictEqual(
+        reason.description,
+        `HTTP 400 (POST https://compat.example.test/v1/chat/completions) Response: ${"a".repeat(200)}...`
+      )
+    })
+
+    it.effect("surfaces the provider message on 403 AuthenticationError", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+
+        const error = yield* client.createResponse({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: "hello" }]
+        }).pipe(Effect.flip)
+
+        assert.strictEqual(error.reason._tag, "AuthenticationError")
+        if (error.reason._tag !== "AuthenticationError") {
+          return yield* Effect.die(new Error("Expected AuthenticationError"))
+        }
+        assert.strictEqual(error.reason.kind, "InsufficientPermissions")
+        assert.include(error.reason.description ?? "", "Country, region, or territory not supported")
+        assert.include(error.reason.message, "Country, region, or territory not supported")
+      }).pipe(Effect.provide(makeTestLayer({
+        _tag: "Json",
+        status: 403,
+        body: {
+          error: {
+            message: "Country, region, or territory not supported",
+            type: "permission_error",
+            code: null
+          }
+        }
+      }))))
+
     it.effect("maps insufficient quota errors to QuotaExhaustedError", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
@@ -535,3 +616,14 @@ const toSseBody = (events: ReadonlyArray<Schema.Json>): string =>
     const data = event === "[DONE]" ? event : JSON.stringify(event)
     return `data: ${data}\n\n`
   }).join("")
+
+const makeHttpContext = (url: string, body: string) => ({
+  request: {
+    method: "POST" as const,
+    url,
+    urlParams: [],
+    hash: undefined,
+    headers: {}
+  },
+  body
+})
