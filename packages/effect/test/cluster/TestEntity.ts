@@ -1,6 +1,6 @@
 import { type Cause, Context, Effect, Latch, Layer, MutableRef, Option, Queue, Schedule, Schema, Stream } from "effect"
 import type { Envelope } from "effect/unstable/cluster"
-import { ClusterSchema, Entity } from "effect/unstable/cluster"
+import { ClusterSchema, DeliverAt, Entity } from "effect/unstable/cluster"
 import { MemoryTransaction } from "effect/unstable/cluster/MessageStorage"
 import type { RpcGroup } from "effect/unstable/rpc"
 import { Rpc, RpcSchema } from "effect/unstable/rpc"
@@ -13,6 +13,15 @@ export class User extends Schema.Class<User>("User")({
 export class BoomError extends Schema.TaggedError<BoomError>()("BoomError", {
   cause: Schema.Unknown
 }) {}
+
+export class ScheduledPayload extends Schema.Class<ScheduledPayload>("ScheduledPayload")({
+  id: Schema.Number,
+  deliverAt: Schema.DateTimeUtcFromMillis
+}) {
+  [DeliverAt.symbol]() {
+    return this.deliverAt
+  }
+}
 
 export class StreamWithKey extends Rpc.make("StreamWithKey", {
   success: RpcSchema.Stream(Schema.Number, Schema.Never),
@@ -29,6 +38,10 @@ export const TestEntity = Entity.make("TestEntity", [
     success: User,
     payload: { id: Schema.Number }
   }).annotate(ClusterSchema.Persisted, false),
+  Rpc.make("GetUserScheduled", {
+    success: User,
+    payload: ScheduledPayload
+  }),
   Rpc.make("Never"),
   Rpc.make("Fail", { error: BoomError }),
   Rpc.make("NeverFork"),
@@ -105,6 +118,11 @@ export const TestEntityNoState = TestEntity.toLayer(
           return new User({ id: envelope.payload.id, name: `User ${envelope.payload.id}` })
         }),
       GetUserVolatile: (envelope) =>
+        Effect.sync(() => {
+          Queue.offerUnsafe(state.envelopes, envelope)
+          return new User({ id: envelope.payload.id, name: `User ${envelope.payload.id}` })
+        }),
+      GetUserScheduled: (envelope) =>
         Effect.sync(() => {
           Queue.offerUnsafe(state.envelopes, envelope)
           return new User({ id: envelope.payload.id, name: `User ${envelope.payload.id}` })

@@ -140,6 +140,13 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    */
   readonly entityMessagePollInterval: Duration.Input
   /**
+   * Wake storage reads when scheduled messages become deliverable instead of
+   * waiting for the next message poll.
+   *
+   * Defaults to `false`.
+   */
+  readonly timelyScheduledMessageDelivery: boolean
+  /**
    * The interval at which to poll for client replies from storage.
    */
   readonly entityReplyPollInterval: Duration.Input
@@ -191,6 +198,7 @@ export const defaults: ShardingConfig["Service"] = {
   entityRegistrationTimeout: Duration.minutes(1),
   entityTerminationTimeout: Duration.seconds(15),
   entityMessagePollInterval: Duration.seconds(10),
+  timelyScheduledMessageDelivery: false,
   entityReplyPollInterval: Duration.millis(200),
   sendRetryInterval: Duration.millis(100),
   refreshAssignmentsInterval: Duration.seconds(3),
@@ -332,6 +340,9 @@ export const config: Config.Config<ShardingConfig["Service"]> = Config.all({
   entityMessagePollInterval: Config.duration("entityMessagePollInterval").pipe(
     Config.withDefault(defaults.entityMessagePollInterval)
     // Config.withDescription("The interval at which to poll for unprocessed messages from storage.")
+  ),
+  timelyScheduledMessageDelivery: Config.boolean("timelyScheduledMessageDelivery").pipe(
+    Config.withDefault(defaults.timelyScheduledMessageDelivery)
   ),
   entityReplyPollInterval: Config.duration("entityReplyPollInterval").pipe(
     Config.withDefault(defaults.entityReplyPollInterval)
