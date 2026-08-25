@@ -509,7 +509,7 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds" })("PgClient 
           orElse: () => Effect.fail(new Error("listener did not receive notification in time"))
         })
       )
-      expect(payload).toEqual("payload")
+      expect(payload.payload).toEqual("payload")
     }).pipe(TestClock.withLive), 20_000)
 
   it.effect("notify sends payload", () =>
@@ -526,6 +526,6 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds" })("PgClient 
           orElse: () => Effect.fail(new Error("listener did not receive notification in time"))
         })
       )
-      expect(payload).toEqual("payload")
+      expect(payload.payload).toEqual("payload")
     }).pipe(TestClock.withLive), 20_000)
 })
