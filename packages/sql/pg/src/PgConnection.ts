@@ -2064,7 +2064,9 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
         ? config.stream()
         : config.path !== undefined
         ? Net.connect({ path: config.path })
-        : Net.connect({ host: config.host, port: config.port })
+        // A statement is one write and then a wait for its answer, so Nagle has
+        // nothing to coalesce and only holds the write back.
+        : Net.connect({ host: config.host, port: config.port, noDelay: true })
     } catch (cause) {
       resume(Effect.fail(
         new SqlError({
