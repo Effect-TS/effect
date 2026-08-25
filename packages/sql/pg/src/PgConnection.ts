@@ -1598,7 +1598,7 @@ const streamRows = (
       Effect.acquireRelease(conn.wire.take(1), () => conn.wire.release(1)),
       scope
     )
-    if (conn.deadWith !== undefined) return yield* Effect.fail(conn.deadWith)
+    if (conn.deadWith !== undefined) return yield* conn.deadWith
     // Streams stay on the unnamed path: a stream pays its setup once over the
     // whole result, so naming the statement buys little and would need the
     // stale-plan retry to unwind rows already delivered.
@@ -1787,6 +1787,7 @@ const streamRows = (
 
     conn.consumer = { onMessage, onBatchEnd, onFatal }
     parser.readField = undefined
+    // @effect-diagnostics-next-line tryCatchInEffectGen:off
     try {
       socket.write(frame)
     } catch (cause) {
@@ -1813,7 +1814,7 @@ const listenChannel = (
   Stream.callback<Notification, SqlError>(
     Effect.fnUntraced(function*(queue) {
       const pinned = yield* pin
-      if (conn.deadWith !== undefined) return yield* Effect.fail(conn.deadWith)
+      if (conn.deadWith !== undefined) return yield* conn.deadWith
       const identifier = escapeIdentifier(channel)
       let queues = conn.channels.get(channel)
       if (queues === undefined) {
