@@ -11,7 +11,7 @@ Replace `@effect/sql-pg`'s `pg` runtime with a native PostgreSQL client. `PgConn
 - `PgClientConfig.types` now accepts a `PgTypes.Registry` instead of `pg.CustomTypesConfig`. Plain object parameters are no longer inferred as JSON; wrap them with `sql.json`.
 - Query strings must contain one statement. PostgreSQL's extended protocol rejects multi-statement strings.
 - Results use the native binary codecs. In particular, `int8` decodes to `bigint`, `date` to a string, timestamps to Unix epoch milliseconds, and `bytea` or unknown OIDs to `Uint8Array`. `executeRaw` returns the native `PgConnection.Result` shape rather than `pg.Result`.
-- Named prepared statements are enabled by default. Set `prepare: false` when using a pooler that cannot preserve prepared statements between queries.
+- Named prepared statements are enabled by default. Set `prepare: false` when using a pooler that cannot preserve prepared statements between queries. `Statement.unprepared` and `Statement.valuesUnprepared` use unnamed extended queries without adding entries to the prepared-statement cache.
 
 Inferred parameters stay permissive: strings bind untyped so the backend derives the type from the statement, and safe integers beyond the `int4` range bind as `int8`.
 

@@ -229,8 +229,8 @@ class ConnectionImpl implements Connection {
     this.connection = connection
   }
 
-  private run(query: string, params: ReadonlyArray<unknown>) {
-    return Effect.map(this.connection.query(query, params), (result) => result.rows)
+  private run(query: string, params: ReadonlyArray<unknown>, prepare = true) {
+    return Effect.map(this.connection.query(query, params, prepare), (result) => result.rows)
   }
 
   execute(
@@ -252,14 +252,17 @@ class ConnectionImpl implements Connection {
     return this.connection.queryValues(sql, params)
   }
   executeValuesUnprepared(sql: string, params: ReadonlyArray<unknown>) {
-    return this.executeValues(sql, params)
+    return this.connection.queryValues(sql, params, false)
   }
   executeUnprepared(
     sql: string,
     params: ReadonlyArray<unknown>,
     transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   ) {
-    return this.execute(sql, params, transformRows)
+    const operation = this.run(sql, params, false)
+    return transformRows
+      ? Effect.map(operation, transformRows)
+      : operation
   }
   executeStream(
     sql: string,

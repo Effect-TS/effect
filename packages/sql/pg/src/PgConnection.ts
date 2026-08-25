@@ -194,15 +194,17 @@ export interface PgConnection {
    * until the pin is released.
    */
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
-  /** Runs one unnamed extended query and returns object rows. */
+  /** Runs one extended query and returns object rows. Set `prepare` to `false` to use the unnamed path. */
   readonly query: (
     sql: string,
-    params?: ReadonlyArray<unknown>
+    params?: ReadonlyArray<unknown>,
+    prepare?: boolean
   ) => Effect.Effect<Result, SqlError>
-  /** Runs one unnamed extended query and returns positional rows. */
+  /** Runs one extended query and returns positional rows. Set `prepare` to `false` to use the unnamed path. */
   readonly queryValues: (
     sql: string,
-    params?: ReadonlyArray<unknown>
+    params?: ReadonlyArray<unknown>,
+    prepare?: boolean
   ) => Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
   /**
    * Runs one unnamed extended query, emitting object rows as they arrive
@@ -647,8 +649,9 @@ class PgConnectionImpl implements PgConnection {
   readonly cycle = (
     sql: string,
     params: ReadonlyArray<unknown>,
-    wantRows: boolean
-  ): Effect.Effect<QueryOutput, SqlError> => this.wire.withPermit(this.cycleOwned(sql, params, wantRows))
+    wantRows: boolean,
+    cache: PreparedCache | undefined
+  ): Effect.Effect<QueryOutput, SqlError> => this.wire.withPermit(this.cycleOwned(sql, params, wantRows, cache))
 
   /**
    * The same cycle for a caller that has taken the session to itself.
@@ -666,8 +669,9 @@ class PgConnectionImpl implements PgConnection {
   readonly cycleOwned = (
     sql: string,
     params: ReadonlyArray<unknown>,
-    wantRows: boolean
-  ): Effect.Effect<QueryOutput, SqlError> => Effect.suspend(() => this.attempt(sql, params, wantRows, this.prepared))
+    wantRows: boolean,
+    cache: PreparedCache | undefined
+  ): Effect.Effect<QueryOutput, SqlError> => Effect.suspend(() => this.attempt(sql, params, wantRows, cache))
 
   /**
    * Runs one cycle. A reused statement the backend has since dropped, or whose
@@ -727,20 +731,24 @@ class PgConnectionImpl implements PgConnection {
   private readonly run = (
     sql: string,
     params: ReadonlyArray<unknown>,
-    wantRows: boolean
-  ): Effect.Effect<QueryOutput, SqlError> =>
-    this.multiplex
-      ? this.pipelineCycle(sql, params, wantRows, this.prepared)
-      : this.owner.withPermit(this.cycleOwned(sql, params, wantRows))
+    wantRows: boolean,
+    prepare: boolean
+  ): Effect.Effect<QueryOutput, SqlError> => {
+    const cache = prepare ? this.prepared : undefined
+    return this.multiplex
+      ? this.pipelineCycle(sql, params, wantRows, cache)
+      : this.owner.withPermit(this.cycleOwned(sql, params, wantRows, cache))
+  }
 
-  readonly query = (sql: string, params?: ReadonlyArray<unknown>): Effect.Effect<Result, SqlError> =>
-    Effect.map(this.run(sql, params ?? emptyParams, true), takeResult)
+  readonly query = (sql: string, params?: ReadonlyArray<unknown>, prepare = true): Effect.Effect<Result, SqlError> =>
+    Effect.map(this.run(sql, params ?? emptyParams, true, prepare), takeResult)
 
   readonly queryValues = (
     sql: string,
-    params?: ReadonlyArray<unknown>
+    params?: ReadonlyArray<unknown>,
+    prepare = true
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError> =>
-    Effect.map(this.run(sql, params ?? emptyParams, false), takeValues)
+    Effect.map(this.run(sql, params ?? emptyParams, false, prepare), takeValues)
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this, this.pin, sql, params ?? emptyParams)
@@ -779,14 +787,15 @@ class PinnedPgConnection implements PgConnection {
     return this.base.processId
   }
 
-  readonly query = (sql: string, params?: ReadonlyArray<unknown>): Effect.Effect<Result, SqlError> =>
-    Effect.map(this.base.cycle(sql, params ?? emptyParams, true), takeResult)
+  readonly query = (sql: string, params?: ReadonlyArray<unknown>, prepare = true): Effect.Effect<Result, SqlError> =>
+    Effect.map(this.base.cycle(sql, params ?? emptyParams, true, prepare ? this.base.prepared : undefined), takeResult)
 
   readonly queryValues = (
     sql: string,
-    params?: ReadonlyArray<unknown>
+    params?: ReadonlyArray<unknown>,
+    prepare = true
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError> =>
-    Effect.map(this.base.cycle(sql, params ?? emptyParams, false), takeValues)
+    Effect.map(this.base.cycle(sql, params ?? emptyParams, false, prepare ? this.base.prepared : undefined), takeValues)
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this.base, this.pin, sql, params ?? emptyParams)

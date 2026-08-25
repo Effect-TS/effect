@@ -293,6 +293,32 @@ it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeC
       assert.deepStrictEqual(rows, [{ value: 1 }])
     }))
 
+  it.effect("skips prepared statements for unprepared executions only", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const rows = sql<{ value: number }>`SELECT ${1}::int4 AS unprepared_row`
+      const values = sql`SELECT ${2}::int4 AS unprepared_values`
+      const preparedStatements = sql<{ statement: string }>`
+        SELECT statement FROM pg_prepared_statements
+        WHERE statement IN (
+          'SELECT $1::int4 AS unprepared_row',
+          'SELECT $1::int4 AS unprepared_values'
+        )
+        ORDER BY statement
+      `
+
+      assert.deepStrictEqual(yield* rows.unprepared, [{ unprepared_row: 1 }])
+      assert.deepStrictEqual(yield* values.valuesUnprepared, [[2]])
+      assert.deepStrictEqual(yield* preparedStatements, [])
+
+      assert.deepStrictEqual(yield* rows, [{ unprepared_row: 1 }])
+      assert.deepStrictEqual(yield* values.values, [[2]])
+      assert.deepStrictEqual(yield* preparedStatements, [
+        { statement: "SELECT $1::int4 AS unprepared_row" },
+        { statement: "SELECT $1::int4 AS unprepared_values" }
+      ])
+    }))
+
   it.effect("serializes transactions on its single connection", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
