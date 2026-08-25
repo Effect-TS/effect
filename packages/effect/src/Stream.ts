@@ -1411,21 +1411,19 @@ export const fromEventListener = <A = unknown>(
     readonly once?: boolean
     readonly bufferSize?: number | undefined
   } | undefined
-): Stream<A> => {
-  const stream = callback<A>((queue) => {
+): Stream<A> =>
+  callback<A>((queue) => {
+    const once = typeof options === "object" && options.once
+
     function emit(event: A) {
       Queue.offerUnsafe(queue, event)
+      if (once) Queue.endUnsafe(queue)
     }
     return Effect.acquireRelease(
       Effect.sync(() => target.addEventListener(type, emit, options)),
       () => Effect.sync(() => target.removeEventListener(type, emit, options))
     )
   }, { bufferSize: typeof options === "object" ? options.bufferSize : undefined })
-
-  const once = typeof options === "object" && options.once
-
-  return once ? take(stream, 1) : stream
-}
 
 /**
  * Creates a stream by repeatedly applying an effectful step function to a
