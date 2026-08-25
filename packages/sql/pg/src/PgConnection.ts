@@ -1,16 +1,8 @@
 /**
- * A native PostgreSQL session built on the `PgProtocol` wire codec.
+ * Native PostgreSQL sessions built on the `PgProtocol` wire codec.
  *
- * `make` opens the transport (`node:net`, `node:tls`, a unix socket, or a
- * caller-supplied `Duplex` factory), performs the startup and authentication
- * exchange (trust, cleartext, MD5, and SCRAM-SHA-256), and resolves once the
- * backend sends `ReadyForQuery`. Releasing the scope sends `Terminate` and
- * destroys the socket. This module never imports `pg`.
- *
- * Beyond one-shot queries the session supports incremental result streaming,
- * `LISTEN`/`NOTIFY` subscriptions, best-effort query cancellation through a
- * `CancelRequest` side connection, and `pin` for exclusive ownership during
- * transactions.
+ * Sessions support queries, streaming, `LISTEN`/`NOTIFY`, cancellation, and
+ * exclusive ownership for transactions.
  *
  * @since 4.0.0
  */
@@ -47,7 +39,7 @@ import * as PgProtocol from "./PgProtocol.ts"
 import * as PgTypes from "./PgTypes.ts"
 
 /**
- * Runtime type identifier used to mark `PgConnection` values.
+ * The runtime type identifier for `PgConnection`.
  *
  * @category type IDs
  * @since 4.0.0
@@ -55,7 +47,7 @@ import * as PgTypes from "./PgTypes.ts"
 export const TypeId: TypeId = "~@effect/sql-pg/PgConnection"
 
 /**
- * Type-level identifier used to mark `PgConnection` values.
+ * The type-level identifier for `PgConnection`.
  *
  * @category type IDs
  * @since 4.0.0
@@ -63,7 +55,7 @@ export const TypeId: TypeId = "~@effect/sql-pg/PgConnection"
 export type TypeId = "~@effect/sql-pg/PgConnection"
 
 /**
- * Configuration for a single PostgreSQL session.
+ * Connection settings for a PostgreSQL session.
  *
  * A `url` is parsed as a libpq URI (`postgres://` or `postgresql://`);
  * explicit fields win over anything the URL carries. A `stream` factory wins
@@ -71,27 +63,14 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
  * socket path, while a `host` beginning with `/` is treated as a socket
  * directory and expands to `${host}/.s.PGSQL.${port}`.
  *
- * `prepare` keeps statements the session has run under a backend name, so a
- * repeated statement costs `Bind` / `Execute` / `Sync` and no planning. It is
- * on by default, bounded by `preparedStatementCacheSize`, and applies to
- * `query` and `queryValues`; `stream` always parses its statement. Turn it off
- * for a backend that cannot keep named statements between statements, such as
- * a connection pooler in statement mode. A cached plan is bound to the
- * `search_path` in force when it was parsed, the usual caveat for prepared
- * statements anywhere.
+ * Prepared statements are enabled by default and limited by
+ * `preparedStatementCacheSize`. Disable them for statement-mode poolers or
+ * workloads that generate unique SQL. Streams always use unnamed statements.
  *
- * Statements that never repeat get no benefit from it. Code that builds its
- * SQL per call, rather than passing the varying part as a parameter, fills the
- * cache with statements it will not run again and pays a `Close` for each one
- * it evicts; parameterize those, or turn `prepare` off.
- *
- * `multiplex` marks the session as shareable between fibers, and unpinned
- * statements submitted together are then written as one pipeline instead of
- * one at a time. Pinned work - transactions, `stream`, `listen` - still has
- * the session to itself, and `pin` waits for the pipeline to drain before it
- * takes over. It also makes `interrupt` a no-op unless the connection is
- * pinned, because on a shared connection a `CancelRequest` could hit an
- * unrelated fiber's statement.
+ * With `multiplex` enabled, unpinned queries from multiple fibers are
+ * pipelined. Transactions, streams, and listeners remain exclusive. An
+ * unpinned multiplexed connection cannot be interrupted because cancellation
+ * could affect another fiber's query.
  *
  * @category models
  * @since 4.0.0
@@ -146,7 +125,7 @@ export interface Field {
 }
 
 /**
- * The result of an unnamed extended query.
+ * The result of a query.
  *
  * @category models
  * @since 4.0.0
@@ -172,10 +151,7 @@ export interface Notification {
 }
 
 /**
- * A single PostgreSQL session, connected and authenticated.
- *
- * Statements use the unnamed extended protocol and run one at a time. The
- * `CancelRequest` secret stays private.
+ * A connected and authenticated PostgreSQL session.
  *
  * @category models
  * @since 4.0.0
@@ -185,30 +161,26 @@ export interface PgConnection {
   readonly config: Config
   readonly processId: number
   /**
-   * Exclusive ownership of the session until the scope closes.
+   * Reserves the session for exclusive use until the scope closes.
    *
-   * The returned `PgConnection` is a pinned view of the same session:
-   * statements on it skip the ownership queue, and pinning it again is a
-   * no-op, so `stream` and `listen` - which pin themselves - compose with an
-   * enclosing transaction pin. Statements on the unpinned connection wait
-   * until the pin is released.
+   * Pinning is reentrant. Calls through the returned connection skip the
+   * ownership queue, while calls through the original connection wait.
    */
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
-  /** Runs one extended query and returns object rows. Set `prepare` to `false` to use the unnamed path. */
+  /** Runs a query and returns rows keyed by column name. Pass `false` to skip the prepared statement cache. */
   readonly query: (
     sql: string,
     params?: ReadonlyArray<unknown>,
     prepare?: boolean
   ) => Effect.Effect<Result, SqlError>
-  /** Runs one extended query and returns positional rows. Set `prepare` to `false` to use the unnamed path. */
+  /** Runs a query and returns positional rows. Pass `false` to skip the prepared statement cache. */
   readonly queryValues: (
     sql: string,
     params?: ReadonlyArray<unknown>,
     prepare?: boolean
   ) => Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
   /**
-   * Runs one unnamed extended query, emitting object rows as they arrive
-   * instead of collecting the full result.
+   * Streams rows without collecting the full result.
    *
    * The session is pinned for the lifetime of the stream. Aborting the stream
    * before the result completes cancels the statement with a `CancelRequest`
@@ -219,7 +191,7 @@ export interface PgConnection {
     params?: ReadonlyArray<unknown>
   ) => Stream.Stream<Row, SqlError>
   /**
-   * `LISTEN` on a channel and emit each `Notification`.
+   * Listens on a channel and emits each notification.
    *
    * The session is pinned for the lifetime of the stream, and the finalizer
    * issues `UNLISTEN` before releasing the pin. Notifications are only
@@ -227,17 +199,16 @@ export interface PgConnection {
    */
   readonly listen: (channel: string) => Stream.Stream<Notification, SqlError>
   /**
-   * Best-effort cancellation of the statement currently running on this
-   * session, via a `CancelRequest` on a side connection using the same
-   * transport and TLS configuration. A no-op when `multiplex` is enabled and
-   * the connection is not pinned, since the in-flight statement could belong
-   * to another fiber. Never fails.
+   * Attempts to cancel the active query through a side connection.
+   *
+   * This is a no-op for an unpinned multiplexed connection because the active
+   * query may belong to another fiber. The effect never fails.
    */
   readonly interrupt: Effect.Effect<void>
 }
 
 /**
- * Service tag for a PostgreSQL session.
+ * The service tag for `PgConnection`.
  *
  * @category services
  * @since 4.0.0
@@ -247,16 +218,14 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
 /**
  * Connects and authenticates a single PostgreSQL session.
  *
- * The connect exchange - transport, optional `SSLRequest`, startup, and
- * authentication - runs under `connectTimeout` (default 5 seconds) and
+ * The transport, optional `SSLRequest`, startup, and authentication steps run
+ * under `connectTimeout` (5 seconds by default). The effect
  * resolves once the backend sends `ReadyForQuery`. When the scope closes the
  * session sends `Terminate` and ends the socket.
  *
- * TLS is never downgraded: with `ssl` set, a server that answers `N` to
- * `SSLRequest` fails the connect. Certificate verification follows Node
- * defaults for `ssl: true` and the given `ConnectionOptions` otherwise. Unix
- * sockets and custom streams should set `ssl.servername` explicitly because
- * they do not provide a usable TLS hostname.
+ * When `ssl` is enabled, a server that rejects `SSLRequest` fails the
+ * connection. Unix sockets and custom streams should set `ssl.servername`
+ * explicitly.
  *
  * @category constructors
  * @since 4.0.0
@@ -654,17 +623,8 @@ class PgConnectionImpl implements PgConnection {
   ): Effect.Effect<QueryOutput, SqlError> => this.wire.withPermit(this.cycleOwned(sql, params, wantRows, cache))
 
   /**
-   * The same cycle for a caller that has taken the session to itself.
-   *
-   * The wire permit is redundant there. The only other holders of it are a
-   * pinned fiber and a stream, and both reach the session through `owner`,
-   * which this caller holds for the whole cycle. A stream releases the wire
-   * before its pin, because its scope acquires them in that order, so the wire
-   * is free whenever `owner` is. The multiplexed path already relies on the
-   * same invariant: it never takes the wire at all.
-   *
-   * Worth stating carefully because a statement's cost is dominated by how
-   * many Effect operations it performs, and a permit is a scoped acquisition.
+   * Runs one cycle for a caller that owns the session. No wire permit is needed
+   * because competing pinned work and streams must acquire `owner` first.
    */
   readonly cycleOwned = (
     sql: string,
@@ -901,10 +861,8 @@ const inferParameter = (value: unknown, registry: PgTypes.Registry | undefined):
 /**
  * Joins the parts of a frame into the buffer that goes on the wire.
  *
- * `Buffer.allocUnsafe` hands out a slice of Node's pool, which costs a
- * fraction of a fresh `Uint8Array` of the same size and saves `socket.write`
- * the conversion it does for a plain view. Every byte is written before the
- * buffer is handed on, so the uninitialized memory never escapes.
+ * The buffer comes from Node's pool and can be passed directly to
+ * `socket.write`. Every byte is initialized before the buffer is returned.
  */
 const concat = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
   let length = 0
@@ -1256,15 +1214,8 @@ const isDigits = (value: string): boolean => {
 }
 
 /**
- * The per-statement half of a cycle: a state machine fed backend messages that
- * reports the result once. Splitting it out of `runQuery` is what lets several
- * cycles be in flight at once, each holding its own state while the connection
- * routes messages to whichever is at the head of the queue.
- *
- * It is a class rather than a closure over local state because a statement
- * allocates one of these and the garbage collector is the largest remaining
- * cost on the query path: the methods live on the prototype instead of being
- * rebuilt per statement.
+ * Tracks one query cycle while the connection routes backend messages to it.
+ * Each pipelined cycle keeps its own parser state and completes once.
  */
 class QueryMachine implements Consumer {
   private readonly conn: PgConnectionImpl

@@ -1,10 +1,5 @@
 /**
- * Connects Effect SQL to PostgreSQL using the native wire protocol client.
- *
- * This module provides constructors and layers for building a PostgreSQL
- * client from pool settings or one managed connection. The client runs Effect
- * SQL queries against PostgreSQL, including transactions and streamed results,
- * and adds helpers for JSON values and LISTEN/NOTIFY messages.
+ * PostgreSQL support for Effect SQL, backed by the native wire protocol client.
  *
  * @since 4.0.0
  */
@@ -30,7 +25,7 @@ import * as PgPool from "./PgPool.ts"
 import * as PgTypes from "./PgTypes.ts"
 
 /**
- * Runtime type identifier used to mark `PgClient` values.
+ * The runtime type identifier for `PgClient`.
  *
  * @category type IDs
  * @since 4.0.0
@@ -38,7 +33,7 @@ import * as PgTypes from "./PgTypes.ts"
 export const TypeId: TypeId = "~@effect/sql-pg/PgClient"
 
 /**
- * Type-level identifier used to mark `PgClient` values.
+ * The type-level identifier for `PgClient`.
  *
  * @category type IDs
  * @since 4.0.0
@@ -46,7 +41,7 @@ export const TypeId: TypeId = "~@effect/sql-pg/PgClient"
 export type TypeId = "~@effect/sql-pg/PgClient"
 
 /**
- * PostgreSQL client service, extending `SqlClient` with JSON parameter fragments and LISTEN/NOTIFY helpers.
+ * A PostgreSQL `SqlClient` with JSON and `LISTEN`/`NOTIFY` helpers.
  *
  * @category services
  * @since 4.0.0
@@ -60,11 +55,7 @@ export interface PgClient extends Client.SqlClient {
 }
 
 /**
- * Service tag for the PostgreSQL client service.
- *
- * **When to use**
- *
- * Use to access or provide a PostgreSQL client through the Effect context.
+ * The service tag for `PgClient`.
  *
  * @category services
  * @since 4.0.0
@@ -72,7 +63,7 @@ export interface PgClient extends Client.SqlClient {
 export const PgClient = Context.Service<PgClient>("@effect/sql-pg/PgClient")
 
 /**
- * Configuration for a PostgreSQL client, including connection, TLS, custom stream, application name, type parser, JSON transform, and query/result name transform options.
+ * Connection and query settings for a PostgreSQL client.
  *
  * @category models
  * @since 4.0.0
@@ -100,18 +91,13 @@ export interface PgClientConfig {
   readonly transformJson?: boolean | undefined
   readonly types?: PgTypes.Registry | undefined
   /**
-   * Allows multiple fibers to share a pooled connection between pinned
-   * operations, and pipelines the statements they submit together.
-   *
-   * A single pipelined connection outruns a ten-connection pool without it.
-   * Pinned operations such as transactions and `listen` are kept exclusive;
-   * the pool allocates another connection for shared work when capacity allows.
+   * Pipelines queries from multiple fibers on each pooled connection.
+   * Transactions, streams, and listeners still reserve a connection.
    */
   readonly multiplex?: boolean | undefined
   /**
-   * Keeps statements prepared under a backend name, so a repeated statement
-   * skips parsing and planning. On by default. Turn it off for a connection
-   * pooler that cannot keep named statements between statements.
+   * Caches prepared statements by name. Enabled by default. Disable it for
+   * poolers that cannot preserve named statements between queries.
    */
   readonly prepare?: boolean | undefined
   /** How many statements a connection keeps prepared. Defaults to `100`. */
@@ -119,7 +105,7 @@ export interface PgClientConfig {
 }
 
 /**
- * PostgreSQL pool configuration, extending `PgClientConfig` with idle timeout, pool size, and connection lifetime settings.
+ * PostgreSQL client settings with connection pool limits and timeouts.
  *
  * @category models
  * @since 4.0.0
@@ -133,7 +119,7 @@ export interface PgPoolConfig extends PgClientConfig {
 }
 
 /**
- * Creates a scoped PostgreSQL client backed by a native connection pool.
+ * Creates a scoped PostgreSQL client backed by a connection pool.
  *
  * @category constructors
  * @since 4.0.0
@@ -148,7 +134,7 @@ export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, S
     }))
 
 /**
- * Creates a scoped PostgreSQL client backed by one native connection.
+ * Creates a scoped PostgreSQL client backed by one connection.
  *
  * @category constructors
  * @since 4.0.0
@@ -156,7 +142,7 @@ export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, S
 export const makeClient = (
   options: PgClientConfig & {
     /**
-     * Whether to acquire a separate connection for each sql.stream / sql.listen
+     * Opens a separate connection for each stream and listener when enabled.
      */
     readonly acquireForStream?: boolean | undefined
   }
@@ -297,7 +283,7 @@ const makeConnection = (
 ): Connection => new ConnectionImpl(connection, streamAcquirer)
 
 /**
- * Creates a layer from an effect that acquires a `PgClient`, providing both `PgClient` and `SqlClient`.
+ * Provides both `PgClient` and `SqlClient` from an acquisition effect.
  *
  * @category layers
  * @since 4.0.0
@@ -313,7 +299,7 @@ export const layerFrom = <E, R>(
   ).pipe(Layer.provide(Reactivity.layer)) as any
 
 /**
- * Creates a layer from a `Config`-wrapped PostgreSQL pool configuration, providing both `PgClient` and `SqlClient`.
+ * Creates a client layer from wrapped pool configuration.
  *
  * @category layers
  * @since 4.0.0
@@ -327,7 +313,7 @@ export const layerConfig = (
   ))
 
 /**
- * Creates a layer from a concrete PostgreSQL pool configuration, providing both `PgClient` and `SqlClient`.
+ * Creates a client layer from pool configuration.
  *
  * @category layers
  * @since 4.0.0
@@ -337,7 +323,7 @@ export const layer = (
 ): Layer.Layer<PgClient | Client.SqlClient, SqlError> => layerFrom(make(config))
 
 /**
- * Creates the PostgreSQL statement compiler, using `$1` placeholders, double-quoted identifiers, PostgreSQL returning clauses, and optional JSON value transformation.
+ * Creates the PostgreSQL statement compiler.
  *
  * @category constructors
  * @since 4.0.0
@@ -387,7 +373,7 @@ export const makeCompiler = (
 const escape = Statement.defaultEscape("\"")
 
 /**
- * PostgreSQL-specific custom statement fragments supported by the compiler, currently JSON parameter fragments.
+ * PostgreSQL-specific statement fragments.
  *
  * @category models
  * @since 4.0.0

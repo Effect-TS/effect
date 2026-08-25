@@ -61,17 +61,14 @@ export interface Parser<A = Uint8Array | null> {
   readonly push: (chunk: Uint8Array) => ReadonlyArray<BackendMessage<A>>
 
   /**
-   * Feeds the next chunk of socket bytes and hands each completed message to
-   * `onMessage` as it is decoded, without collecting them into an array.
+   * Decodes a chunk and passes each complete message to `onMessage`
+   * immediately.
    *
-   * Unlike `push`, a message is delivered before the bytes after it are read,
-   * so a handler can act on one message while it decodes the next. That is
-   * what lets a `RowDescription` install the `readField` its own `DataRow`
-   * messages are decoded with, even when they arrive in the same chunk.
+   * Immediate delivery lets a `RowDescription` update `readField` before a
+   * `DataRow` later in the same chunk is decoded.
    *
-   * The same terminal-failure and buffer-lifetime rules as `push` apply, with
-   * one difference: messages delivered before the failing one have already
-   * been handed over rather than discarded.
+   * The failure and buffer-lifetime rules match `push`, except messages
+   * delivered before a failure are not discarded.
    */
   readonly pushEach: (chunk: Uint8Array, onMessage: (message: BackendMessage<A>) => void) => void
 }
@@ -838,13 +835,10 @@ export interface ValueSink {
 }
 
 /**
- * Builds a `Bind` encoder that writes parameters straight into the frame,
- * skipping the array per parameter that `encodeBind` has to copy from.
+ * Creates a `Bind` encoder that writes parameters directly into the frame.
  *
- * `textFormat` marks the parameters whose bytes are a text-format literal
- * rather than the binary encoding, such as values bound with no concrete type
- * for the backend to derive one; without it every parameter is declared
- * binary.
+ * `textFormat` identifies parameters encoded as text. All other parameters
+ * use the binary format.
  *
  * ```ts
  * import { PgProtocol, PgTypes } from "@effect/sql-pg"

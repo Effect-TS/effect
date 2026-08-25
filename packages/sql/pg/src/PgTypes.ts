@@ -356,24 +356,24 @@ const elementToArray = new Map<number, number>(
 )
 
 /**
- * Options used when adding a codec to a {@link Registry}.
+ * Options for registering a codec.
  *
  * @category models
  * @since 4.0.0
  */
 export interface RegisterOptions {
   /**
-   * Installs the generic one-dimensional array codec at this OID and allows
-   * JavaScript arrays of the registered scalar type to be inferred.
+   * Registers a one-dimensional array codec at this OID and enables array type
+   * inference for the scalar codec.
    */
   readonly arrayOid?: number | undefined
 }
 
 /**
- * An isolated set of PostgreSQL binary codecs.
+ * A client-specific set of PostgreSQL binary codecs.
  *
- * Registries start with the built-in codecs and can be customized per client
- * without changing the module-level codec table.
+ * Each registry starts with the built-in codecs. Changes do not affect the
+ * module-level registry.
  *
  * @category models
  * @since 4.0.0
@@ -1457,7 +1457,7 @@ const registerInState = <A>(
 }
 
 /**
- * Creates an isolated registry containing all built-in codecs.
+ * Creates a client-specific registry containing the built-in codecs.
  *
  * @category constructors
  * @since 4.0.0
@@ -1764,7 +1764,7 @@ export const decode = (
 // -----------------------------------------------------------------------------
 
 /**
- * Runtime type identifier used to mark PostgreSQL parameters.
+ * The runtime type identifier for PostgreSQL parameters.
  *
  * @category type IDs
  * @since 4.0.0
@@ -1772,7 +1772,7 @@ export const decode = (
 export const ParameterTypeId: ParameterTypeId = "~@effect/sql-pg/PgTypes/Parameter"
 
 /**
- * Type-level identifier used to mark PostgreSQL parameters.
+ * The type-level identifier for PostgreSQL parameters.
  *
  * @category type IDs
  * @since 4.0.0
@@ -1820,11 +1820,10 @@ const writeValue = (sink: ValueSink, value: unknown, oid: number, lookup: Lookup
 }
 
 /**
- * Whether a parameter's `Bind` bytes are in the text format.
+ * Returns whether a parameter uses the text format in a `Bind` message.
  *
- * A parameter bound with no concrete type (OID `0`) carries the value's text
- * representation and lets the backend derive the type from the statement, so
- * its format code is text. Every typed parameter is binary.
+ * Untyped parameters (OID `0`) use text so PostgreSQL can infer their type.
+ * Typed parameters use the binary format.
  *
  * @category encoding
  * @since 4.0.0

@@ -1,12 +1,5 @@
 /**
- * A pool of native `PgConnection` sessions.
- *
- * `make` wraps `PgConnection.make` in an Effect `Pool`: `get` checks a session
- * out for the lifetime of a scope, `reserve` additionally pins it for
- * exclusive use (transactions, `listen`), and `invalidate` drops a dead
- * session so the pool can replace it. Sessions that die from a fatal protocol
- * or socket error are invalidated automatically. This module never imports
- * `pg`.
+ * Pools of native `PgConnection` sessions.
  *
  * @since 4.0.0
  */
@@ -21,24 +14,13 @@ import { connectionInternals } from "./internal/connection.ts"
 import * as PgConnection from "./PgConnection.ts"
 
 /**
- * How many statements a multiplexed pool lets share one connection.
- *
- * The backend runs a connection's pipelined statements in the order it received
- * them, so everything queued behind a slow statement waits for it. Letting an
- * unlimited number share a connection means the pool never has a reason to open
- * a second one, and a single slow statement then holds up every other statement
- * in flight.
- *
- * Spreading instead across the connections the pool is allowed to open costs
- * nothing: the statements that do share a connection still leave in one write.
- * The product with `maxConnections` is what keeps the pipeline deep enough to
- * be worth batching, so a pool of one still stacks statements while a pool of
- * ten spreads them four to a connection.
+ * Limits concurrent leases per multiplexed connection. The target keeps
+ * pipelines useful while allowing larger pools to distribute slow queries.
  */
 const multiplexPoolConcurrency = (maxConnections: number): number => Math.max(4, Math.ceil(32 / maxConnections))
 
 /**
- * Runtime type identifier used to mark `PgPool` values.
+ * The runtime type identifier for `PgPool`.
  *
  * @category type IDs
  * @since 4.0.0
@@ -46,7 +28,7 @@ const multiplexPoolConcurrency = (maxConnections: number): number => Math.max(4,
 export const TypeId: TypeId = "~@effect/sql-pg/PgPool"
 
 /**
- * Type-level identifier used to mark `PgPool` values.
+ * The type-level identifier for `PgPool`.
  *
  * @category type IDs
  * @since 4.0.0
@@ -54,19 +36,14 @@ export const TypeId: TypeId = "~@effect/sql-pg/PgPool"
 export type TypeId = "~@effect/sql-pg/PgPool"
 
 /**
- * Configuration for a pool of PostgreSQL sessions.
+ * Connection and sizing settings for a PostgreSQL session pool.
  *
- * Every `PgConnection.Config` field is accepted and applied to each session
- * the pool opens. Unspecified pool sizes match the `pg.Pool` defaults: at most
- * `10` connections, no minimum, and a `10` second idle timeout. When
- * `connectionTTL` is set, connections older than the TTL are discarded at
- * checkout and replaced.
+ * The defaults are 0 to 10 connections and a 10-second idle timeout.
+ * `connectionTTL` replaces connections that exceed the configured lifetime.
  *
- * With `multiplex` enabled a pool item may be checked out by several fibers at
- * once and their statements are pipelined together, spread across the
- * connections the pool is allowed to open. A reserved connection is removed
- * from shared circulation until its scope closes. With multiplexing disabled
- * (the default) every checkout is exclusive.
+ * With `multiplex` enabled, fibers may share pooled connections for pipelined
+ * queries. Reserved connections remain exclusive. Without multiplexing, every
+ * checkout is exclusive.
  *
  * @category models
  * @since 4.0.0
@@ -79,7 +56,7 @@ export interface Config extends PgConnection.Config {
 }
 
 /**
- * A pool of PostgreSQL sessions.
+ * A PostgreSQL session pool.
  *
  * @category models
  * @since 4.0.0
@@ -88,7 +65,7 @@ export interface PgPool {
   readonly [TypeId]: TypeId
   readonly config: Config
   /**
-   * Checks a session out until the scope closes.
+   * Checks out a session until the scope closes.
    *
    * With `multiplex` disabled the checkout is exclusive. With it enabled the
    * session may be shared with other fibers, so multi-statement work should
@@ -96,23 +73,21 @@ export interface PgPool {
    */
   readonly get: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope>
   /**
-   * Checks a session out and pins it: `get` plus `PgConnection.pin`.
+   * Checks out a session for exclusive use until the scope closes.
    *
-   * The returned connection is exclusively owned until the scope closes,
-   * making it safe for transactions and `listen` even on a multiplexed pool.
+   * Use this for transactions and listeners on a multiplexed pool.
    */
   readonly reserve: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope>
   /**
-   * Drops a dead session so the pool can replace it. Sessions that die from a
-   * fatal protocol or socket error are invalidated automatically; call this
-   * when application code detects a broken connection the session machine
-   * could not see.
+   * Removes a session so the pool can replace it.
+   *
+   * Fatal protocol and socket errors invalidate sessions automatically.
    */
   readonly invalidate: (connection: PgConnection.PgConnection) => Effect.Effect<void>
 }
 
 /**
- * Service tag for a pool of PostgreSQL sessions.
+ * The service tag for `PgPool`.
  *
  * @category services
  * @since 4.0.0
@@ -120,7 +95,7 @@ export interface PgPool {
 export const PgPool = Context.Service<PgPool>("@effect/sql-pg/PgPool")
 
 /**
- * Creates a pool of PostgreSQL sessions.
+ * Creates a scoped PostgreSQL session pool.
  *
  * Connections are opened lazily up to `maxConnections` and released down to
  * `minConnections` after `idleTimeout` without use. Closing the scope shuts

@@ -738,30 +738,13 @@ export const invalidate: {
   }))
 
 /**
- * Reserves an item the caller has already leased, taking it out of shared
- * circulation until the scope closes.
+ * Reserves a leased item for exclusive use until the scope closes.
  *
- * **When to use**
+ * This removes the item's remaining capacity from the pool but does not wait
+ * for existing leases to finish. It has no effect when per-item concurrency is
+ * `1` or the pool does not contain the item.
  *
- * Use with a `concurrency` above `1`, when a fiber sharing a pooled item needs
- * it exclusively for a while: a connection entering a transaction, or a
- * resource whose protocol state cannot be interleaved. With `concurrency: 1`
- * every lease is already exclusive and reserving is a no-op.
- *
- * **Details**
- *
- * The reservation consumes the item's remaining capacity, so no new lease
- * lands on it, and the pool counts it as fully used, so other checkouts grow
- * the pool when its size permits instead of queueing behind the reserved item.
- * Existing co-leases are not waited for; the resource itself decides how to
- * drain them. Closing the scope returns the capacity and admits waiters again.
- *
- * **Gotchas**
- *
- * The item is matched with strict equality, and reserving an item the pool no
- * longer holds is a no-op: it is out of circulation by definition.
- *
- * @see {@link get} for acquiring the lease to escalate
+ * @see {@link get} for acquiring an item
  *
  * @category combinators
  * @since 4.0.0
