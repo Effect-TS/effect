@@ -13,6 +13,7 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Queue from "effect/Queue"
 import * as Redacted from "effect/Redacted"
 import * as EffectResult from "effect/Result"
@@ -191,12 +192,14 @@ export interface PgConnection {
     params?: ReadonlyArray<unknown>
   ) => Stream.Stream<Row, SqlError>
   /**
-   * Listens on a channel and emits each notification. The session is pinned for
-   * the lifetime of the stream, and the finalizer
-   * issues `UNLISTEN` before releasing the pin. Notifications are only
-   * delivered while a listen stream is active.
+   * Registers a channel listener and returns its notification queue after
+   * PostgreSQL confirms `LISTEN`. The session stays pinned until the scope
+   * closes, when it runs `UNLISTEN` and shuts down the queue. PostgreSQL
+   * registration errors fail the acquiring effect.
    */
-  readonly listen: (channel: string) => Stream.Stream<Notification, SqlError>
+  readonly listen: (
+    channel: string
+  ) => Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope>
   /**
    * Attempts to cancel the active query through a side connection. This is a
    * no-op for an unpinned multiplexed connection because the active
@@ -306,7 +309,7 @@ class PgConnectionImpl implements PgConnection {
   consumer: Consumer | undefined
   deadWith: SqlError | undefined
   closed = false
-  readonly channels = new Map<string, Set<Queue.Queue<Notification, SqlError | Cause.Done>>>()
+  readonly channels = new Map<string, Set<Queue.Queue<Notification>>>()
   readonly fatalHooks = new Set<() => void>()
   /** Queued but not yet written; drained into `pipelineInFlight` on flush. */
   readonly pipelinePending: Array<PipelineEntry> = []
@@ -407,9 +410,8 @@ class PgConnectionImpl implements PgConnection {
     consumer?.onFatal(error)
     const sets = Array.from(this.channels.values())
     this.channels.clear()
-    const cause = Cause.fail(error)
     for (const set of sets) {
-      for (const queue of set) Queue.failCauseUnsafe(queue, cause)
+      for (const queue of set) Queue.failCauseUnsafe(queue, Cause.interrupt())
     }
     if (!this.closed) {
       for (const hook of this.fatalHooks) hook()
@@ -713,7 +715,9 @@ class PgConnectionImpl implements PgConnection {
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this, this.pin, sql, params ?? emptyParams)
 
-  readonly listen = (channel: string): Stream.Stream<Notification, SqlError> => listenChannel(this, this.pin, channel)
+  readonly listen = (
+    channel: string
+  ): Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope> => listenChannel(this, this.pin, channel)
 
   readonly interrupt: Effect.Effect<void> = Effect.suspend(() =>
     this.multiplex && !this.pinned ? Effect.void : this.cancel
@@ -760,8 +764,9 @@ class PinnedPgConnection implements PgConnection {
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this.base, this.pin, sql, params ?? emptyParams)
 
-  readonly listen = (channel: string): Stream.Stream<Notification, SqlError> =>
-    listenChannel(this.base, this.pin, channel)
+  readonly listen = (
+    channel: string
+  ): Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope> => listenChannel(this.base, this.pin, channel)
 }
 
 interface QueryOutput {
@@ -1761,33 +1766,42 @@ const listenChannel = (
   conn: PgConnectionImpl,
   pin: Effect.Effect<PgConnection, never, Scope.Scope>,
   channel: string
-): Stream.Stream<Notification, SqlError> =>
-  Stream.callback<Notification, SqlError>(
-    Effect.fnUntraced(function*(queue) {
-      const pinned = yield* pin
-      if (conn.deadWith !== undefined) return yield* conn.deadWith
-      const identifier = escapeIdentifier(channel)
-      let queues = conn.channels.get(channel)
-      if (queues === undefined) {
-        queues = new Set()
-        conn.channels.set(channel, queues)
-      }
-      queues.add(queue)
-      yield* Effect.addFinalizer(() =>
-        Effect.suspend(() => {
-          const current = conn.channels.get(channel)
-          // Cleaned up by a fatal error, or another stream still listens.
-          if (current === undefined) return Effect.void
-          current.delete(queue)
-          if (current.size > 0) return Effect.void
-          conn.channels.delete(channel)
-          if (conn.deadWith !== undefined) return Effect.void
-          return Effect.ignore(pinned.query(`UNLISTEN ${identifier}`))
-        })
+): Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope> =>
+  Effect.uninterruptibleMask((restore) =>
+    Effect.gen(function*() {
+      const parentScope = yield* Scope.Scope
+      const scope = yield* Scope.fork(parentScope)
+      return yield* restore(Effect.gen(function*() {
+        const pinned = yield* Scope.provide(pin, scope)
+        if (conn.deadWith !== undefined) return yield* conn.deadWith
+        const queue = yield* Queue.unbounded<Notification>()
+        const identifier = escapeIdentifier(channel)
+        let queues = conn.channels.get(channel)
+        if (queues === undefined) {
+          queues = new Set()
+          conn.channels.set(channel, queues)
+        }
+        queues.add(queue)
+        yield* Scope.addFinalizer(
+          scope,
+          Effect.suspend(() => {
+            const current = conn.channels.get(channel)
+            if (current === undefined) return Queue.shutdown(queue)
+            current.delete(queue)
+            if (current.size > 0) return Queue.shutdown(queue)
+            conn.channels.delete(channel)
+            const unlisten = conn.deadWith === undefined
+              ? Effect.ignore(pinned.query(`UNLISTEN ${identifier}`))
+              : Effect.void
+            return Effect.andThen(unlisten, Queue.shutdown(queue))
+          })
+        )
+        yield* pinned.query(`LISTEN ${identifier}`)
+        return queue
+      })).pipe(
+        Effect.tapCause((cause) => Scope.close(scope, Exit.failCause(cause)))
       )
-      yield* pinned.query(`LISTEN ${identifier}`)
-    }),
-    { bufferSize: Number.MAX_SAFE_INTEGER }
+    })
   )
 
 const sendCancelRequest = (config: ResolvedConfig, pid: number, secret: number): Effect.Effect<void> =>

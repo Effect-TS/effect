@@ -1,6 +1,6 @@
 import { PgConnection, PgPool } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
-import { Effect, Fiber, Redacted, Stream } from "effect"
+import { Effect, Fiber, Queue, Redacted, Stream } from "effect"
 import { PgContainer } from "./utils.ts"
 
 // `it.effect` runs under the TestClock, so poll loops sleep in real time.
@@ -47,25 +47,34 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       assert.deepStrictEqual(result.rows, [{ after: "ok" }])
     }))
 
-  it.effect("keeps a multiplexed listener exclusive", () =>
+  it.effect("acquires a multiplexed listener after registration", () =>
     Effect.gen(function*() {
       const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 2, multiplex: true })
       const listener = yield* pool.reserve
-      const fiber = yield* Effect.forkScoped(Stream.runCollect(listener.listen("test_channel").pipe(Stream.take(1))))
-      // Wait for LISTEN to be registered before notifying from another session.
-      while (true) {
-        const channels = yield* listener.query("SELECT pg_listening_channels() AS channel")
-        if (channels.rows.some((row) => row.channel === "test_channel")) break
-        yield* realSleep
-      }
+      const notifications = yield* listener.listen("test_channel")
       const notifier = yield* pool.get
       assert.notStrictEqual(listener.processId, notifier.processId)
       yield* notifier.query("SELECT pg_notify($1, $2)", ["test_channel", "hello"])
-      const notifications = yield* Fiber.join(fiber)
-      assert.strictEqual(notifications.length, 1)
-      assert.strictEqual(notifications[0].channel, "test_channel")
-      assert.strictEqual(notifications[0].payload, "hello")
-      assert.strictEqual(notifications[0].processId, notifier.processId)
+      const notification = yield* Queue.take(notifications)
+      assert.strictEqual(notification.channel, "test_channel")
+      assert.strictEqual(notification.payload, "hello")
+      assert.strictEqual(notification.processId, notifier.processId)
+    }))
+
+  it.effect("reports listener registration failure during acquisition", () =>
+    Effect.gen(function*() {
+      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1 })
+      const connection = yield* pool.get
+      yield* connection.query("BEGIN")
+      yield* Effect.flip(connection.query("SELECT * FROM effect_missing_relation"))
+
+      const error = yield* Effect.flip(connection.listen("test_channel"))
+      assert.strictEqual(error._tag, "SqlError")
+
+      // A failed acquisition must release the connection pin.
+      yield* connection.query("ROLLBACK")
+      const result = yield* connection.query("SELECT 1 AS one")
+      assert.deepStrictEqual(result.rows, [{ one: 1 }])
     }))
 
   it.effect("returns a multiplexed reservation to shared circulation", () =>

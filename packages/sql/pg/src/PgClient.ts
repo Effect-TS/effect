@@ -216,11 +216,14 @@ const makeImpl = Effect.fnUntraced(function*(
       json: (_: unknown) => Statement.fragment([PgJson(_)]),
       listen: (channel: string) =>
         Stream.unwrap(
-          Effect.map(options.listenAcquirer, (connection) =>
-            connection.listen(channel).pipe(
-              Stream.map((notification) => notification.payload),
-              Stream.filter((payload) => payload.length > 0)
-            ))
+          Effect.flatMap(options.listenAcquirer, (connection) =>
+            Effect.map(connection.listen(channel), (notifications) =>
+              Stream.fromQueue(notifications).pipe(
+                Stream.map((notification) =>
+                  notification.payload
+                ),
+                Stream.filter((payload) => payload.length > 0)
+              )))
         ),
       notify: (channel: string, payload: string) =>
         Effect.asVoid(Effect.scoped(Effect.flatMap(
