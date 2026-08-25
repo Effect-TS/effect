@@ -296,7 +296,7 @@ it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeC
   it.effect("skips prepared statements for unprepared executions only", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
-      const rows = sql<{ value: number }>`SELECT ${1}::int4 AS unprepared_row`
+      const rows = sql<{ unprepared_row: number }>`SELECT ${1}::int4 AS unprepared_row`
       const values = sql`SELECT ${2}::int4 AS unprepared_values`
       const preparedStatements = sql<{ statement: string }>`
         SELECT statement FROM pg_prepared_statements
@@ -318,6 +318,32 @@ it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeC
         { statement: "SELECT $1::int4 AS unprepared_values" }
       ])
     }))
+
+  it.effect("pins the primary connection for streams by default", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const streamStarted = yield* Deferred.make<void>()
+      const releaseStream = yield* Deferred.make<void>()
+      const streamFiber = yield* sql<{ value: number }>`SELECT generate_series(1, 2) AS value`.stream.pipe(
+        Stream.tap(() =>
+          Effect.andThen(
+            Deferred.succeed(streamStarted, undefined),
+            Deferred.await(releaseStream)
+          )
+        ),
+        Stream.runCollect,
+        Effect.forkScoped
+      )
+
+      yield* Deferred.await(streamStarted)
+      const rows = yield* sql<{ value: number }>`SELECT 1 AS value`.pipe(
+        Effect.timeoutOption("100 millis")
+      )
+      yield* Deferred.succeed(releaseStream, undefined)
+      yield* Fiber.join(streamFiber)
+
+      assert.isTrue(Option.isNone(rows))
+    }).pipe(TestClock.withLive))
 
   it.effect("serializes transactions on its single connection", () =>
     Effect.gen(function*() {
@@ -346,6 +372,52 @@ it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeC
       assert.isTrue(Option.isNone(overlap))
     }))
 })
+
+it.layer(PgContainer.layerMakeClientAcquireForStream, { timeout: "30 seconds" })(
+  "PgClient.makeClient acquireForStream",
+  (it) => {
+    it.effect("runs queries while a stream is active", () =>
+      Effect.gen(function*() {
+        const sql = yield* PgClient.PgClient
+        const streamStarted = yield* Deferred.make<void>()
+        const releaseStream = yield* Deferred.make<void>()
+        const streamFiber = yield* sql<{ value: number }>`SELECT generate_series(1, 2) AS value`.stream.pipe(
+          Stream.tap(() =>
+            Effect.andThen(
+              Deferred.succeed(streamStarted, undefined),
+              Deferred.await(releaseStream)
+            )
+          ),
+          Stream.runCollect,
+          Effect.forkScoped
+        )
+
+        yield* Deferred.await(streamStarted)
+        const rows = yield* sql<{ value: number }>`SELECT 1 AS value`.pipe(
+          Effect.timeoutOrElse({
+            duration: "3 seconds",
+            orElse: () => Effect.fail(new Error("query timed out while stream was active"))
+          })
+        )
+        yield* Deferred.succeed(releaseStream, undefined)
+        yield* Fiber.join(streamFiber)
+
+        assert.deepStrictEqual(rows, [{ value: 1 }])
+      }).pipe(TestClock.withLive))
+
+    it.effect("uses a new session for streams", () =>
+      Effect.gen(function*() {
+        const sql = yield* PgClient.PgClient
+        yield* sql`SET application_name = 'sticky-primary'`
+
+        const rows = yield* sql<{ applicationName: string }>`
+          SELECT current_setting('application_name') AS "applicationName"
+        `.stream.pipe(Stream.runCollect)
+
+        assert.deepStrictEqual(Array.from(rows), [{ applicationName: "side-default" }])
+      }))
+  }
+)
 
 it.effect("PgClient.makeClient surfaces transport creation failures", () =>
   Effect.gen(function*() {

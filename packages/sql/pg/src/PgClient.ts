@@ -154,13 +154,21 @@ export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, S
  * @since 4.0.0
  */
 export const makeClient = (
-  options: PgClientConfig
+  options: PgClientConfig & {
+    /**
+     * Whether to acquire a separate connection for each sql.stream / sql.listen
+     */
+    readonly acquireForStream?: boolean | undefined
+  }
 ): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.flatMap(PgConnection.make(options), (connection) =>
     makeImpl({
-      acquirer: Effect.succeed(makeConnection(connection)),
+      acquirer: Effect.succeed(makeConnection(
+        connection,
+        options.acquireForStream ? PgConnection.make(options) : undefined
+      )),
       transactionAcquirer: Effect.map(connection.pin, makeConnection),
-      listenAcquirer: connection.pin,
+      listenAcquirer: options.acquireForStream ? PgConnection.make(options) : connection.pin,
       config: options
     }))
 
@@ -224,9 +232,14 @@ const makeImpl = Effect.fnUntraced(function*(
 
 class ConnectionImpl implements Connection {
   readonly connection: PgConnection.PgConnection
+  readonly streamAcquirer: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> | undefined
 
-  constructor(connection: PgConnection.PgConnection) {
+  constructor(
+    connection: PgConnection.PgConnection,
+    streamAcquirer?: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> | undefined
+  ) {
     this.connection = connection
+    this.streamAcquirer = streamAcquirer
   }
 
   private run(query: string, params: ReadonlyArray<unknown>, prepare = true) {
@@ -269,14 +282,19 @@ class ConnectionImpl implements Connection {
     params: ReadonlyArray<unknown>,
     transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   ) {
-    const stream = this.connection.stream(sql, params)
+    const stream = this.streamAcquirer === undefined
+      ? this.connection.stream(sql, params)
+      : Stream.unwrap(Effect.map(this.streamAcquirer, (connection) => connection.stream(sql, params)))
     return transformRows
       ? Stream.mapArray(stream, (rows) => transformRows(rows) as Arr.NonEmptyReadonlyArray<PgConnection.Row>)
       : stream
   }
 }
 
-const makeConnection = (connection: PgConnection.PgConnection): Connection => new ConnectionImpl(connection)
+const makeConnection = (
+  connection: PgConnection.PgConnection,
+  streamAcquirer?: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> | undefined
+): Connection => new ConnectionImpl(connection, streamAcquirer)
 
 /**
  * Creates a layer from an effect that acquires a `PgClient`, providing both `PgClient` and `SqlClient`.

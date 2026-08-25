@@ -7,7 +7,7 @@ Replace `@effect/sql-pg`'s `pg` runtime with a native PostgreSQL client. `PgConn
 
 ### Breaking changes
 
-- `fromPool`, `fromClient`, `makeWith`, and the `acquireForStream` option are removed. Use `make` for a pool or `makeClient` for one connection.
+- `fromPool`, `fromClient`, and `makeWith` are removed. Use `make` for a pool or `makeClient` for one connection.
 - `PgClientConfig.types` now accepts a `PgTypes.Registry` instead of `pg.CustomTypesConfig`. Plain object parameters are no longer inferred as JSON; wrap them with `sql.json`.
 - Query strings must contain one statement. PostgreSQL's extended protocol rejects multi-statement strings.
 - Results use the native binary codecs. In particular, `int8` decodes to `bigint`, `date` to a string, timestamps to Unix epoch milliseconds, and `bytea` or unknown OIDs to `Uint8Array`. `executeRaw` returns the native `PgConnection.Result` shape rather than `pg.Result`.
