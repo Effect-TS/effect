@@ -14,7 +14,6 @@
 import type * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
-import * as FiberSet from "../../FiberSet.ts"
 import { constFalse, identity, pipe } from "../../Function.ts"
 import type * as JsonSchema from "../../JsonSchema.ts"
 import * as Option from "../../Option.ts"
@@ -22,7 +21,6 @@ import * as Predicate from "../../Predicate.ts"
 import * as Queue from "../../Queue.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
-import * as Semaphore from "../../Semaphore.ts"
 import * as Sink from "../../Sink.ts"
 import * as Stream from "../../Stream.ts"
 import type { Span } from "../../Tracer.ts"
@@ -1203,20 +1201,29 @@ export const make: (params: {
 
     const rawContent = yield* generateWithNonIncrementalFallback()
 
+    // Validate the complete response before tool handlers can perform side
+    // effects. Tool parameters remain opaque here so their validation keeps
+    // using Toolkit's more specific ToolParameterValidationError.
+    yield* Schema.decodeEffect(
+      Schema.mutable(Schema.Array(Response.Part(makeToolkitWithOpaqueParameters(toolkit))))
+    )(rawContent)
+
     // Resolve the generated tool calls
-    const toolResults = yield* resolveToolCalls(
-      rawContent,
-      toolkit,
-      providerOptions.prompt.content,
-      concurrency
-    ).pipe(
-      Stream.filter(
-        (result) =>
-          result.type === "tool-approval-request" ||
-          result.preliminary === false
-      ),
-      Stream.runCollect
-    )
+    const toolResults = hasIncompleteFinish(rawContent)
+      ? []
+      : yield* resolveToolCalls(
+        rawContent,
+        toolkit,
+        providerOptions.prompt.content,
+        concurrency
+      ).pipe(
+        Stream.filter(
+          (result) =>
+            result.type === "tool-approval-request" ||
+            result.preliminary === false
+        ),
+        Stream.runCollect
+      )
 
     const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
 
@@ -1272,9 +1279,14 @@ export const make: (params: {
         incrementalPrompt: undefined,
         previousResponseId: undefined
       }
+      let emitted = false
       return requestOptions.incrementalPrompt
         ? params.streamText(requestOptions).pipe(
-          Stream.catchReason("AiError", "InvalidRequestError", (_) => params.streamText(fallbackOptions))
+          Stream.tap(() => Effect.sync(() => emitted = true)),
+          Stream.catchTag("AiError", (error) =>
+            error.reason._tag === "InvalidRequestError" && !emitted
+              ? params.streamText(fallbackOptions)
+              : Stream.fail(error))
         )
         : params.streamText(requestOptions)
     }
@@ -1499,6 +1511,7 @@ export const make: (params: {
       | Schema.SchemaError
     >()
     const deferredFinishParts: Array<Response.StreamPart<Tools>> = []
+    const deferredToolCalls: Array<Response.ToolCallPartEncoded> = []
 
     // Emit pre-resolved tool results so Chat.streamText persists them to
     // history. This ensures collectToolApprovals({ excludeResolved }) can
@@ -1506,12 +1519,6 @@ export const make: (params: {
     if (preResolvedStreamParts.length > 0) {
       yield* Queue.offerAll(queue, preResolvedStreamParts)
     }
-
-    // FiberSet to track concurrent tool call handlers
-    const toolCallFibers = yield* FiberSet.make<void, AiError.AiError>()
-    const toolCallSemaphore = concurrency === "unbounded"
-      ? undefined
-      : yield* Semaphore.make(concurrency)
 
     // Helper function to handle tool calls with approval logic
     const handleToolCall = Effect.fnUntraced(function*(part: Response.ToolCallPartEncoded) {
@@ -1573,25 +1580,24 @@ export const make: (params: {
           if (immediateParts.length > 0) {
             yield* Queue.offerAll(queue, immediateParts)
           }
-          // Fork tool call handlers - use the raw chunk for encoded params
+          // Defer tool call handlers until the provider has completed so an
+          // incomplete finish cannot trigger side effects.
           for (const part of chunk) {
             if (part.type === "tool-call" && part.providerExecuted !== true) {
-              const effect = handleToolCall(part)
-              yield* FiberSet.run(
-                toolCallFibers,
-                toolCallSemaphore ? toolCallSemaphore.withPermit(effect) : effect
-              )
+              deferredToolCalls.push(part)
             }
           }
         })
       ),
-      // Wait for all tool calls to either:
-      // - complete (FiberSet.awaitEmpty)
-      // - fail (FiberSet.join)
       Effect.andThen(
-        Effect.raceFirst(
-          FiberSet.join(toolCallFibers),
-          FiberSet.awaitEmpty(toolCallFibers)
+        Effect.suspend(() =>
+          hasIncompleteFinish(deferredFinishParts)
+            ? Effect.void
+            : Effect.forEach(
+              deferredToolCalls,
+              handleToolCall,
+              { concurrency, discard: true }
+            )
         )
       ),
       Effect.andThen(
@@ -2112,6 +2118,15 @@ const createDenialResults = (
 // Tool Call Resolution
 // =============================================================================
 
+const hasIncompleteFinish = (
+  content: ReadonlyArray<{ readonly type: string; readonly reason?: unknown }>
+): boolean =>
+  content.some(
+    (part) =>
+      part.type === "finish" &&
+      (part.reason === "length" || part.reason === "content-filter" || part.reason === "error")
+  )
+
 type ToolResolutionResult<Tools extends Record<string, Tool.Any>> =
   | Response.ToolResultPart<
     Tool.Name<Tools[keyof Tools]>,
@@ -2225,6 +2240,13 @@ const makeToolkitWithEncodedParameters = <Tools extends Record<string, Tool.Any>
 ): Toolkit.Any =>
   Toolkit.make(
     ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.toEncoded(tool.parametersSchema)))
+  )
+
+const makeToolkitWithOpaqueParameters = <Tools extends Record<string, Tool.Any>>(
+  toolkit: Toolkit.WithHandler<Tools>
+): Toolkit.Any =>
+  Toolkit.make(
+    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.Unknown))
   )
 
 const resolveToolkit = <Tools extends Record<string, Tool.Any>, E, R>(
