@@ -2369,23 +2369,39 @@ describe("SchemaBinary", () => {
   })
 
   describe("generated regressions", () => {
+    const isWellFormedString = (value: string): boolean => {
+      for (let index = 0; index < value.length; index++) {
+        const code = value.charCodeAt(index)
+        if (code >= 0xD800 && code <= 0xDBFF) {
+          if (index + 1 >= value.length) return false
+          const trailing = value.charCodeAt(++index)
+          if (trailing < 0xDC00 || trailing > 0xDFFF) return false
+        } else if (code >= 0xDC00 && code <= 0xDFFF) {
+          return false
+        }
+      }
+      return true
+    }
+    const WellFormedString = Schema.String.check(
+      Schema.makeFilter(isWellFormedString, { expected: "a well-formed Unicode string" })
+    )
     const Event = Schema.Union([
-      Schema.Struct({ _tag: Schema.tag("Text"), value: Schema.String }),
+      Schema.Struct({ _tag: Schema.tag("Text"), value: WellFormedString }),
       Schema.Struct({ _tag: Schema.tag("Count"), value: Schema.Number })
     ])
     const Generated = Schema.Struct({
       flag: Schema.Boolean,
       count: Schema.Int,
       ratio: Schema.Number,
-      label: Schema.String,
+      label: WellFormedString,
       bytes: Schema.Uint8Array,
       big: Schema.BigInt,
-      optional: Schema.optionalKey(Schema.String),
-      tuple: Schema.Tuple([Schema.String, Schema.Number, Schema.Boolean]),
-      items: Schema.Array(Schema.Struct({ id: Schema.Int, name: Schema.String })),
+      optional: Schema.optionalKey(WellFormedString),
+      tuple: Schema.Tuple([WellFormedString, Schema.Number, Schema.Boolean]),
+      items: Schema.Array(Schema.Struct({ id: Schema.Int, name: WellFormedString })),
       attributes: Schema.Record(
-        Schema.String,
-        Schema.Union([Schema.String, Schema.Number, Schema.Boolean, Schema.Null])
+        WellFormedString,
+        Schema.Union([WellFormedString, Schema.Number, Schema.Boolean, Schema.Null])
       ),
       event: Event
     })
@@ -2409,7 +2425,7 @@ describe("SchemaBinary", () => {
             assert.deepStrictEqual(SchemaBinary.parser(Generated, options).feedSync(frame), [value])
           }
         }),
-      { fastCheck: { numRuns: 200 } }
+      { arbitrary: { runs: 200 } }
     )
 
     it.live.prop(
@@ -2438,7 +2454,7 @@ describe("SchemaBinary", () => {
           parser.endSync()
           assert.deepStrictEqual(decoded, values)
         }),
-      { fastCheck: { numRuns: 100 } }
+      { arbitrary: { runs: 100 } }
     )
 
     it.live.prop(
@@ -2458,7 +2474,7 @@ describe("SchemaBinary", () => {
           assert.deepStrictEqual(parser.feedSync(bytes.subarray(0, cut)), [])
           assert.match(schemaError(() => parser.endSync()).message, /complete value/)
         }),
-      { fastCheck: { numRuns: 100 } }
+      { arbitrary: { runs: 100 } }
     )
 
     it("owns buffered and decoded bytes independently of caller buffers", () => {
