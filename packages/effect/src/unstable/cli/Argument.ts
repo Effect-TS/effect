@@ -374,7 +374,7 @@ export const withDefault: {
  * import { Argument } from "effect/unstable/cli"
  *
  * const repository = Argument.string("repository").pipe(
- *   Argument.withFallbackConfig(Config.string("REPOSITORY"))
+ *   Argument.withFallbackConfig(Config.String("REPOSITORY"))
  * )
  * repository.kind // => "argument"
  * ```

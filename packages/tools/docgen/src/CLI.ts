@@ -19,7 +19,7 @@ import * as Core from "./Core.ts"
 import * as Domain from "./Domain.ts"
 
 const projectHomepage = Flag.string("homepage").pipe(
-  Flag.withFallbackConfig(Config.string("projectHomepage")),
+  Flag.withFallbackConfig(Config.String("projectHomepage")),
   Flag.withDescription(
     "The link to the project homepage (will be shown in the Auxiliary Links of the generated documentation)"
   ),
@@ -27,23 +27,23 @@ const projectHomepage = Flag.string("homepage").pipe(
 )
 
 const srcLink = Flag.string("srcLink").pipe(
-  Flag.withFallbackConfig(Config.string("srcLink")),
+  Flag.withFallbackConfig(Config.String("srcLink")),
   Flag.withDescription("The link to the project source code"),
   Flag.optional
 )
 
 const srcDir = Flag.directory("src", { mustExist: true }).pipe(
-  Flag.withFallbackConfig(Config.string("src").pipe(Config.withDefault("src"))),
+  Flag.withFallbackConfig(Config.String("src").pipe(Config.withDefault("src"))),
   Flag.withDescription("The directory in which docgen will search for TypeScript files to parse")
 )
 
 const outDir = Flag.directory("out").pipe(
-  Flag.withFallbackConfig(Config.string("out").pipe(Config.withDefault("docs"))),
+  Flag.withFallbackConfig(Config.String("out").pipe(Config.withDefault("docs"))),
   Flag.withDescription("The directory to which docgen will generate its output markdown documents")
 )
 
 const theme = Flag.string("theme").pipe(
-  Flag.withFallbackConfig(Config.string("theme").pipe(Config.withDefault(Configuration.DEFAULT_THEME))),
+  Flag.withFallbackConfig(Config.String("theme").pipe(Config.withDefault(Configuration.DEFAULT_THEME))),
   Flag.withDescription("The Jekyll theme that should be used for the generated documentation")
 )
 
@@ -88,7 +88,7 @@ const runExamples = Flag.boolean("run-examples").pipe(
 const exclude = Flag.string("exclude").pipe(
   Flag.between(0, Infinity),
   Flag.withFallbackConfig(
-    Config.schema(Config.Array(Schema.String), "exclude").pipe(
+    Config.Array(Schema.String, "exclude").pipe(
       Config.withDefault(Array.empty<string>())
     )
   ),
@@ -193,15 +193,15 @@ export const loadConfiguration = Effect.fnUntraced(function*(
       kind: "flag"
     })
   }
-  const configuredEnableSearch = yield* Config.boolean("enableSearch").pipe(Effect.orElseSucceed(() => true))
-  const configuredEnforceDescriptions = yield* Config.boolean("enforceDescriptions").pipe(
+  const configuredEnableSearch = yield* Config.Boolean("enableSearch").pipe(Effect.orElseSucceed(() => true))
+  const configuredEnforceDescriptions = yield* Config.Boolean("enforceDescriptions").pipe(
     Effect.orElseSucceed(() => false)
   )
-  const configuredEnforceExamples = yield* Config.boolean("enforceExamples").pipe(
+  const configuredEnforceExamples = yield* Config.Boolean("enforceExamples").pipe(
     Effect.orElseSucceed(() => false)
   )
-  const configuredEnforceVersion = yield* Config.boolean("enforceVersion").pipe(Effect.orElseSucceed(() => true))
-  const configuredRunExamples = yield* Config.boolean("runExamples").pipe(Effect.orElseSucceed(() => false))
+  const configuredEnforceVersion = yield* Config.Boolean("enforceVersion").pipe(Effect.orElseSucceed(() => true))
+  const configuredRunExamples = yield* Config.Boolean("runExamples").pipe(Effect.orElseSucceed(() => false))
   return yield* Configuration.load({
     ...config,
     enableSearch: Option.match(disableSearch, {

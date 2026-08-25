@@ -651,7 +651,7 @@ export const nested: {
  * )
  *
  * const program = Effect.gen(function*() {
- *   const port = yield* Config.number("port")
+ *   const port = yield* Config.Number("port")
  *   return port
  * })
  *
@@ -697,7 +697,7 @@ export const layer = <E = never, R = never>(
  * // The current env provider is tried first; `defaults` is the fallback
  * const DefaultsLayer = ConfigProvider.layerAdd(defaults)
  * const BaseLayer = ConfigProvider.layer(ConfigProvider.fromUnknown({}))
- * const program = Config.string("HOST")
+ * const program = Config.String("HOST")
  *
  * const layer = Layer.provide(DefaultsLayer, BaseLayer)
  * Effect.runSync(Effect.provide(program, layer)) // => "localhost"
@@ -763,7 +763,7 @@ export const layerAdd = <E = never, R = never>(
  *   }
  * })
  *
- * const host = Config.string("host").parse(
+ * const host = Config.String("host").parse(
  *   provider.pipe(ConfigProvider.nested("database"))
  * )
  *
@@ -908,7 +908,7 @@ export function fromEnvRecord(
  *   }
  * })
  *
- * const host = Config.string("HOST").parse(
+ * const host = Config.String("HOST").parse(
  *   provider.pipe(ConfigProvider.nested("DATABASE"))
  * )
  *

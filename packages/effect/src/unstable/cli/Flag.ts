@@ -648,7 +648,7 @@ export const withDefault: {
  * import { Flag } from "effect/unstable/cli"
  *
  * const verbose = Flag.boolean("verbose").pipe(
- *   Flag.withFallbackConfig(Config.boolean("VERBOSE"))
+ *   Flag.withFallbackConfig(Config.Boolean("VERBOSE"))
  * )
  * verbose.kind // => "flag"
  * ```

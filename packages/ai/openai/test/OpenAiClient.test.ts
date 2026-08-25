@@ -715,8 +715,8 @@ const makeGeneratedTestLayer = (
 
 const makeConfigTestLayer = (configProvider: ConfigProvider.ConfigProvider) =>
   OpenAiClient.layerConfig({
-    apiKey: Config.redacted("MY_API_KEY"),
-    apiUrl: Config.string("MY_API_URL")
+    apiKey: Config.Redacted("MY_API_KEY"),
+    apiUrl: Config.String("MY_API_URL")
   }).pipe(
     Layer.provideMerge(HttpClientLayer),
     Layer.provide(Layer.succeed(MockOpenAiResponse, { response: defaultResponse })),
