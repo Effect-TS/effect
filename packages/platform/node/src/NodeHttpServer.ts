@@ -249,14 +249,22 @@ export const makeUpgradeHandler = <
       socket: Duplex,
       head: Buffer
     ) {
+      let upgraded = false
       let nodeResponse_: Http.ServerResponse | undefined = undefined
       const nodeResponse = () => {
         if (nodeResponse_ === undefined) {
           nodeResponse_ = new Http.ServerResponse(nodeRequest)
-          nodeResponse_.assignSocket(socket as any)
-          nodeResponse_.on("finish", () => {
-            socket.end()
-          })
+          if (upgraded) {
+            // the connection now carries WebSocket frames, so end the response
+            // before a socket is assigned to it to make handleResponse skip the
+            // write (writableEnded check)
+            nodeResponse_.end()
+          } else {
+            nodeResponse_.assignSocket(socket as any)
+            nodeResponse_.on("finish", () => {
+              socket.end()
+            })
+          }
         }
         return nodeResponse_
       }
@@ -266,6 +274,7 @@ export const makeUpgradeHandler = <
           Effect.acquireRelease(
             Effect.callback<globalThis.WebSocket>((resume) =>
               wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
+                upgraded = true
                 resume(Effect.succeed(ws as any))
               })
             ),
