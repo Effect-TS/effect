@@ -26,6 +26,20 @@ import * as AiError from "./AiError.ts"
 import type * as Tool from "./Tool.ts"
 
 const TypeId = "~effect/ai/Toolkit" as const
+const WithHandlerTypeId = "~effect/ai/Toolkit/WithHandler" as const
+
+/**
+ * Property used to execute a tool whose parameters have already been decoded
+ * and validated against its parameter schema.
+ *
+ * This lower-level boundary is useful when composing resolved toolkits. Most
+ * callers should use {@link WithHandler.handle}, which accepts encoded model
+ * output and performs parameter decoding first.
+ *
+ * @category symbols
+ * @since 4.0.0
+ */
+export const Execute = "~effect/ai/Toolkit/execute" as const
 
 /**
  * Represents a collection of tools which can be used to enhance the
@@ -179,6 +193,32 @@ export type HandlersFrom<Tools extends Record<string, Tool.Any>> = {
   >
 }
 
+type HandlerExecutionServices<T> = T extends Tool.Tool<
+  infer _Name,
+  infer _Config,
+  infer Requirements
+> ? Tool.ResultEncodingServices<T> | Requirements
+  : never
+
+/**
+ * Handler for tool parameters which have already been decoded and validated.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type DecodedHandle<Tools extends Record<string, Tool.Any>> = <Name extends keyof Tools>(
+  name: Name,
+  params: Tool.Parameters<Tools[Name]>,
+  toolCallId?: string
+) => Effect.Effect<
+  Stream.Stream<
+    Tool.HandlerResult<Tools[Name]>,
+    Tool.HandlerError<Tools[Name]>,
+    HandlerExecutionServices<Tools[Name]>
+  >,
+  AiError.AiError
+>
+
 /**
  * A toolkit instance with registered handlers ready for tool execution.
  *
@@ -186,6 +226,8 @@ export type HandlersFrom<Tools extends Record<string, Tool.Any>> = {
  * @since 4.0.0
  */
 export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
+  readonly [WithHandlerTypeId]: typeof WithHandlerTypeId
+
   /**
    * The tools available in this toolkit instance.
    */
@@ -221,6 +263,9 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
     >,
     AiError.AiError
   >
+
+  /** Executes a tool call whose parameters have already been decoded. */
+  readonly [Execute]: DecodedHandle<Tools>
 }
 
 /**
@@ -231,6 +276,41 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
  * @since 4.0.0
  */
 export type WithHandlerTools<T> = T extends WithHandler<infer Tools> ? Tools : never
+
+type ErasedHandle = (
+  name: string,
+  params: unknown,
+  toolCallId?: string
+) => Effect.Effect<Stream.Stream<unknown, unknown, unknown>, AiError.AiError, unknown>
+
+const makeWithHandlerErased = <Tools extends Record<string, Tool.Any>>(
+  tools: Tools,
+  handle: ErasedHandle,
+  execute: ErasedHandle
+): WithHandler<Tools> => ({
+  [WithHandlerTypeId]: WithHandlerTypeId,
+  tools,
+  handle,
+  [Execute]: execute
+} as WithHandler<Tools>)
+
+/**
+ * Creates a resolved toolkit from encoded and decoded handler boundaries.
+ *
+ * This is intended for integrations which compose, route, or decorate an
+ * existing resolved toolkit. Application toolkits should normally be created
+ * with {@link make} and provided with handlers through {@link Toolkit.toLayer}.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeWithHandler = <Tools extends Record<string, Tool.Any>>(
+  tools: Tools,
+  handle: WithHandler<Tools>["handle"],
+  execute: DecodedHandle<Tools>
+): WithHandler<Tools> => {
+  return makeWithHandlerErased(tools, handle as ErasedHandle, execute as ErasedHandle)
+}
 
 const Proto = {
   ...Effectable.Prototype({
@@ -270,50 +350,27 @@ const Proto = {
         return schemas
       }
 
-      const handle = Effect.fnUntraced(function*(name: string, params: unknown, toolCallId?: string) {
-        const tool = Object.hasOwn(tools, name) ? tools[name] : undefined
-
-        yield* Effect.annotateCurrentSpan({
-          tool: name,
-          parameters: params
-        })
-
-        // If the tool is not found, return an error
-        if (Predicate.isUndefined(tool)) {
-          return yield* AiError.make({
-            module: "Toolkit",
-            method: `${name}.handle`,
-            reason: new AiError.ToolNotFoundError({
-              toolName: name,
-              availableTools: Object.keys(tools)
-            })
-          })
-        }
-
-        // Fetch cached schemas / handlers for the tool
-        const schemas = getSchemas(tool)
-
-        // Decode the tool call parameters which will be passed to the handler
-        const decodedParams = yield* schemas.decodeParameters(params).pipe(
-          Effect.mapError((cause) =>
-            AiError.make({
-              module: "Toolkit",
-              method: `${name}.handle`,
-              reason: new AiError.ToolParameterValidationError({
-                toolName: name,
-                toolParams: params,
-                description: cause.message
-              })
-            })
-          )
-        )
-
+      const execute = Effect.fnUntraced(function*(
+        tool: Tool.Any,
+        schemas: ReturnType<typeof getSchemas>,
+        name: string,
+        decodedParams: unknown,
+        toolCallId?: string
+      ) {
         // Setup the handler context
-        const queue = yield* Queue.make<{
-          readonly result: any
-          readonly isFailure: boolean
-          readonly preliminary: boolean
-        }, Cause.Done>()
+        const queue = yield* Queue.make<
+          | {
+            readonly result: any
+            readonly isFailure: false
+            readonly preliminary: boolean
+          }
+          | {
+            readonly result: any
+            readonly isFailure: true
+            readonly preliminary: false
+          },
+          Cause.Done
+        >()
         const context: HandlerContext<any> = {
           toolCallId,
           preliminary: (result) =>
@@ -377,7 +434,11 @@ const Proto = {
             const normalizedError = normalizeError(error)
             return tool.failureMode === "error"
               ? Stream.fail(normalizedError)
-              : Stream.succeed({ result: normalizedError, isFailure: true, preliminary: false })
+              : Stream.succeed({
+                result: normalizedError,
+                isFailure: true as const,
+                preliminary: false as const
+              })
           }),
           Stream.mapEffect(Effect.fnUntraced(function*(output) {
             const encodedResult = yield* encodeResult(output.result)
@@ -387,10 +448,58 @@ const Proto = {
         ) satisfies Stream.Stream<Tool.HandlerResult<any>, any>
       })
 
-      return {
-        tools,
-        handle: handle as any
-      } satisfies WithHandler<Record<string, any>>
+      const getTool = (name: string) => Object.hasOwn(tools, name) ? tools[name] : undefined
+
+      const toolNotFound = (name: string) =>
+        AiError.make({
+          module: "Toolkit",
+          method: `${name}.handle`,
+          reason: new AiError.ToolNotFoundError({
+            toolName: name,
+            availableTools: Object.keys(tools)
+          })
+        })
+
+      const handle = Effect.fnUntraced(function*(name: string, params: unknown, toolCallId?: string) {
+        const tool = getTool(name)
+
+        yield* Effect.annotateCurrentSpan({ tool: name, parameters: params })
+
+        if (Predicate.isUndefined(tool)) {
+          return yield* toolNotFound(name)
+        }
+
+        const schemas = getSchemas(tool)
+        const decodedParams = yield* schemas.decodeParameters(params).pipe(
+          Effect.mapError((cause) =>
+            AiError.make({
+              module: "Toolkit",
+              method: `${name}.handle`,
+              reason: new AiError.ToolParameterValidationError({
+                toolName: name,
+                toolParams: params,
+                description: cause.message
+              })
+            })
+          )
+        )
+
+        return yield* execute(tool, schemas, name, decodedParams, toolCallId)
+      })
+
+      const executeDecoded = Effect.fnUntraced(function*(name: string, params: unknown, toolCallId?: string) {
+        const tool = getTool(name)
+
+        yield* Effect.annotateCurrentSpan({ tool: name, parameters: params })
+
+        if (Predicate.isUndefined(tool)) {
+          return yield* toolNotFound(name)
+        }
+
+        return yield* execute(tool, getSchemas(tool), name, params, toolCallId)
+      })
+
+      return makeWithHandlerErased(tools, handle, executeDecoded)
     })
   }),
   [TypeId]: TypeId,

@@ -2137,6 +2137,27 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
         break
       }
 
+      // Tool Call Error Parts
+      case "tool-call-error": {
+        assistantParts.push(makePart("tool-call", {
+          id: part.id,
+          name: part.name,
+          params: part.params,
+          providerExecuted: part.providerExecuted,
+          options: part.metadata
+        }))
+        const target = part.providerExecuted === true ? assistantParts : toolParts
+        target.push(makePart("tool-result", {
+          id: part.id,
+          name: part.name,
+          isFailure: true,
+          result: part.error,
+          providerExecuted: part.providerExecuted,
+          options: part.metadata
+        }))
+        break
+      }
+
       // Tool Result Parts (skip preliminary results)
       case "tool-result": {
         if (part.preliminary !== true) {

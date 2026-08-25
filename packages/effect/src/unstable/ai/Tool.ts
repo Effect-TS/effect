@@ -715,12 +715,7 @@ export type Name<T> = T extends Tool<
  * @category utility types
  * @since 4.0.0
  */
-export type Parameters<T> = T extends Tool<
-  infer _Name,
-  infer _Config,
-  infer _Requirements
-> ? _Config["parameters"]["Type"]
-  : never
+export type Parameters<T> = ParametersSchema<T>["Type"]
 
 /**
  * A utility type to extract the encoded type of the tool call parameters.
@@ -728,12 +723,7 @@ export type Parameters<T> = T extends Tool<
  * @category utility types
  * @since 4.0.0
  */
-export type ParametersEncoded<T> = T extends Tool<
-  infer _Name,
-  infer _Config,
-  infer _Requirements
-> ? _Config["parameters"]["Encoded"]
-  : never
+export type ParametersEncoded<T> = ParametersSchema<T>["Encoded"]
 
 /**
  * A utility type to extract the schema for the parameters which an `Tool`
@@ -951,28 +941,25 @@ export interface Handler<Name extends string> {
  * @category models
  * @since 4.0.0
  */
-export interface HandlerResult<Tool extends Any> {
-  /**
-   * The result of executing the handler for a particular tool.
-   */
-  readonly result: Result<Tool>
-  /**
-   * The pre-encoded tool call result of executing the handler for a particular
-   * tool as a JSON-serializable value. The encoded result can be incorporated
-   * into subsequent requests to the large language model.
-   */
-  readonly encodedResult: unknown
-  /**
-   * Whether the result of executing the tool call handler was an error or not.
-   */
-  readonly isFailure: boolean
-  /**
-   * Whether this is a preliminary (intermediate) result or the final result.
-   * Preliminary results represent progress updates; only the final result
-   * should be used as the authoritative output.
-   */
-  readonly preliminary: boolean
-}
+export type HandlerResult<Tool extends Any> =
+  | {
+    /** The successful result of executing the handler. */
+    readonly result: Success<Tool>
+    /** The pre-encoded tool result that can be sent to a language model. */
+    readonly encodedResult: unknown
+    readonly isFailure: false
+    /** Whether this is an intermediate result rather than the final result. */
+    readonly preliminary: boolean
+  }
+  | {
+    /** The declared or framework-generated failure from executing the handler. */
+    readonly result: FailureResult<Tool>
+    /** The pre-encoded tool failure that can be sent to a language model. */
+    readonly encodedResult: unknown
+    readonly isFailure: true
+    /** Failures are always terminal. */
+    readonly preliminary: false
+  }
 
 /**
  * Tagged union for incremental handler output.

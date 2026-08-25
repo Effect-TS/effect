@@ -19,7 +19,6 @@ import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import * as SchemaIssue from "effect/SchemaIssue"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { DeepMutable, Mutable, Simplify } from "effect/Types"
@@ -29,7 +28,7 @@ import * as LanguageModel from "effect/unstable/ai/LanguageModel"
 import * as AiModel from "effect/unstable/ai/Model"
 import { toCodecOpenAI } from "effect/unstable/ai/OpenAiStructuredOutput"
 import type * as Prompt from "effect/unstable/ai/Prompt"
-import type * as Response from "effect/unstable/ai/Response"
+import * as Response from "effect/unstable/ai/Response"
 import * as Tool from "effect/unstable/ai/Tool"
 import type * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
@@ -39,8 +38,6 @@ import { OpenAiClient } from "./OpenAiClient.ts"
 import type * as OpenAiSchema from "./OpenAiSchema.ts"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.ts"
 import type * as OpenAiTool from "./OpenAiTool.ts"
-
-const formatIssue = SchemaIssue.makeFormatterDefault()
 
 const ResponseModelIds = Generated.ModelIdsResponses.members[1]
 const SharedModelIds = Generated.ModelIdsShared.members[1]
@@ -1387,32 +1384,12 @@ const makeResponse = Effect.fnUntraced(
 
         case "function_call": {
           hasToolCalls = true
-
-          const toolName = part.name
-
-          const toolParams = yield* Effect.try({
-            try: () => Tool.unsafeSecureJsonParse(part.arguments),
-            catch: (cause) =>
-              AiError.make({
-                module: "OpenAiLanguageModel",
-                method: "makeResponse",
-                reason: new AiError.ToolParameterValidationError({
-                  toolName,
-                  toolParams: {},
-                  description: `Faled to securely JSON parse tool parameters: ${cause}`
-                })
-              })
-          })
-
-          const params = yield* transformToolCallParams(options.tools, part.name, toolParams)
-
-          parts.push({
-            type: "tool-call",
+          parts.push(Response.toolCallPartFromJson({
             id: part.call_id,
-            name: toolName,
-            params,
+            name: part.name,
+            params: part.arguments,
             metadata: { openai: makeItemIdMetadata(part.id) }
-          })
+          }))
           break
         }
 
@@ -1452,24 +1429,21 @@ const makeResponse = Effect.fnUntraced(
             ? (approvalRequests.get(part.approval_request_id) ?? part.id)
             : part.id
 
-          const { toolName, params } = yield* normalizeMcpToolCall({
+          const toolCall = makeMcpToolCallPart({
+            id: toolId,
             toolNameMapper,
-            toolParams: part.arguments,
-            method: "makeResponse"
+            params: part.arguments
           })
 
-          parts.push({
-            type: "tool-call",
-            id: toolId,
-            name: toolName,
-            params,
-            providerExecuted: true
-          })
+          parts.push(toolCall)
+          if (toolCall.type === "tool-call-error") {
+            break
+          }
 
           parts.push({
             type: "tool-result",
             id: toolId,
-            name: toolName,
+            name: toolCall.name,
             isFailure: false,
             providerExecuted: true,
             result: {
@@ -1495,19 +1469,16 @@ const makeResponse = Effect.fnUntraced(
           const approvalRequestId = (part as any).approval_request_id ?? part.id
           const toolId = yield* idGenerator.generateId()
 
-          const { toolName, params } = yield* normalizeMcpToolCall({
+          const toolCall = makeMcpToolCallPart({
+            id: toolId,
             toolNameMapper,
-            toolParams: part.arguments,
-            method: "makeResponse"
+            params: part.arguments
           })
 
-          parts.push({
-            type: "tool-call",
-            id: toolId,
-            name: toolName,
-            params,
-            providerExecuted: true
-          })
+          parts.push(toolCall)
+          if (toolCall.type === "tool-call-error") {
+            break
+          }
 
           parts.push({
             type: "tool-approval-request",
@@ -2136,37 +2107,17 @@ const makeStreamResponse = Effect.fnUntraced(
 
                 hasToolCalls = true
 
-                const toolName = event.item.name
-                const toolArgs = event.item.arguments
-
-                const toolParams = yield* Effect.try({
-                  try: () => Tool.unsafeSecureJsonParse(toolArgs),
-                  catch: (cause) =>
-                    AiError.make({
-                      module: "OpenAiLanguageModel",
-                      method: "makeStreamResponse",
-                      reason: new AiError.ToolParameterValidationError({
-                        toolName,
-                        toolParams: {},
-                        description: `Failed securely JSON parse tool parameters: ${cause}`
-                      })
-                    })
-                })
-
-                const params = yield* transformToolCallParams(options.tools, toolName, toolParams)
-
                 parts.push({
                   type: "tool-params-end",
                   id: event.item.call_id
                 })
 
-                parts.push({
-                  type: "tool-call",
+                parts.push(Response.toolCallPartFromJson({
                   id: event.item.call_id,
-                  name: toolName,
-                  params,
+                  name: event.item.name,
+                  params: event.item.arguments,
                   metadata: { openai: makeItemIdMetadata(event.item.id) }
-                })
+                }))
 
                 break
               }
@@ -2205,24 +2156,21 @@ const makeStreamResponse = Effect.fnUntraced(
                     event.item.id)
                   : event.item.id
 
-                const { toolName, params } = yield* normalizeMcpToolCall({
+                const toolCall = makeMcpToolCallPart({
+                  id: toolId,
                   toolNameMapper,
-                  toolParams: event.item.arguments,
-                  method: "makeStreamResponse"
+                  params: event.item.arguments
                 })
 
-                parts.push({
-                  type: "tool-call",
-                  id: toolId,
-                  name: toolName,
-                  params,
-                  providerExecuted: true
-                })
+                parts.push(toolCall)
+                if (toolCall.type === "tool-call-error") {
+                  break
+                }
 
                 parts.push({
                   type: "tool-result",
                   id: toolId,
-                  name: toolName,
+                  name: toolCall.name,
                   isFailure: false,
                   providerExecuted: true,
                   result: {
@@ -2248,18 +2196,15 @@ const makeStreamResponse = Effect.fnUntraced(
                 const toolId = yield* idGenerator.generateId()
                 const approvalRequestId = (event.item as any).approval_request_id ?? event.item.id
                 streamApprovalRequests.set(approvalRequestId, toolId)
-                const { toolName, params } = yield* normalizeMcpToolCall({
-                  toolNameMapper,
-                  toolParams: event.item.arguments,
-                  method: "makeStreamResponse"
-                })
-                parts.push({
-                  type: "tool-call",
+                const toolCall = makeMcpToolCallPart({
                   id: toolId,
-                  name: toolName,
-                  params,
-                  providerExecuted: true
+                  toolNameMapper,
+                  params: event.item.arguments
                 })
+                parts.push(toolCall)
+                if (toolCall.type === "tool-call-error") {
+                  break
+                }
                 parts.push({
                   type: "tool-approval-request",
                   approvalId: approvalRequestId,
@@ -2442,34 +2387,17 @@ const makeStreamResponse = Effect.fnUntraced(
             ) {
               hasToolCalls = true
 
-              const toolParams = yield* Effect.try({
-                try: () => Tool.unsafeSecureJsonParse(event.arguments),
-                catch: (cause) =>
-                  AiError.make({
-                    module: "OpenAiLanguageModel",
-                    method: "makeStreamResponse",
-                    reason: new AiError.ToolParameterValidationError({
-                      toolName: toolCall.name,
-                      toolParams: {},
-                      description: `Failed securely JSON parse tool parameters: ${cause}`
-                    })
-                  })
-              })
-
-              const params = yield* transformToolCallParams(options.tools, toolCall.name, toolParams)
-
               parts.push({
                 type: "tool-params-end",
                 id: toolCall.id
               })
 
-              parts.push({
-                type: "tool-call",
+              parts.push(Response.toolCallPartFromJson({
                 id: toolCall.id,
                 name: toolCall.name,
-                params,
+                params: event.arguments,
                 metadata: { openai: makeItemIdMetadata(event.item_id) }
-              })
+              }))
 
               toolCall.functionCall.emitted = true
             }
@@ -2969,12 +2897,6 @@ const unsupportedSchemaError = (error: unknown, method: string): AiError.AiError
     })
   })
 
-const tryCodecTransform = <S extends Schema.Constraint>(schema: S, method: string) =>
-  Effect.try({
-    try: () => toCodecOpenAI(schema),
-    catch: (error) => unsupportedSchemaError(error, method)
-  })
-
 const tryJsonSchema = <S extends Schema.Constraint>(schema: S, method: string) =>
   Effect.try({
     try: () => Tool.getJsonSchemaFromSchema(schema, { transformer: toCodecOpenAI }),
@@ -3078,40 +3000,20 @@ const getApprovalRequestIdMapping = (prompt: Prompt.Prompt): ReadonlyMap<string,
   return mapping
 }
 
-const normalizeMcpToolCall = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Tool.Any>>({
+const makeMcpToolCallPart = <Tools extends ReadonlyArray<Tool.Any>>({
+  id,
   toolNameMapper,
-  toolParams,
-  method
+  params
 }: {
+  readonly id: string
   readonly toolNameMapper: Tool.NameMapper<Tools>
-  readonly toolParams: unknown
-  readonly method: string
-}): Effect.fn.Return<{
-  readonly toolName: string
   readonly params: unknown
-}, AiError.AiError> {
-  const toolName = toolNameMapper.getCustomName("mcp")
-
-  if (typeof toolParams !== "string") {
-    return { toolName, params: toolParams }
-  }
-
-  const params = yield* Effect.try({
-    try: () => Tool.unsafeSecureJsonParse(toolParams),
-    catch: (cause) =>
-      AiError.make({
-        module: "OpenAiLanguageModel",
-        method,
-        reason: new AiError.ToolParameterValidationError({
-          toolName,
-          toolParams,
-          description: `Failed to securely JSON parse tool parameters: ${cause}`
-        })
-      })
-  })
-
-  return { toolName, params }
-})
+}): Response.ToolCallPartEncoded | Response.ToolCallErrorPartEncoded => {
+  const name = toolNameMapper.getCustomName("mcp")
+  return typeof params === "string"
+    ? Response.toolCallPartFromJson({ id, name, params, providerExecuted: true })
+    : { type: "tool-call", id, name, params, providerExecuted: true }
+}
 
 const getUsage = (usage: OpenAiSchema.ResponseUsage | null | undefined): Response.Usage => {
   if (Predicate.isNullish(usage)) {
@@ -3174,40 +3076,3 @@ const toServiceTier = (value: string | undefined): {
 
 const getUsageTokenDetail = (details: unknown, key: string): number | undefined =>
   Predicate.hasProperty(details, key) && typeof details[key] === "number" ? details[key] : undefined
-
-const transformToolCallParams = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Tool.Any>>(
-  tools: Tools,
-  toolName: string,
-  toolParams: unknown
-): Effect.fn.Return<unknown, AiError.AiError> {
-  const tool = tools.find((tool) => tool.name === toolName)
-
-  if (Predicate.isUndefined(tool)) {
-    return yield* AiError.make({
-      module: "OpenAiLanguageModel",
-      method: "makeResponse",
-      reason: new AiError.ToolNotFoundError({
-        toolName,
-        availableTools: tools.map((tool) => tool.name)
-      })
-    })
-  }
-
-  const { codec } = yield* tryCodecTransform(tool.parametersSchema, "makeResponse")
-
-  const transform = Schema.decodeEffect(codec)
-
-  return yield* (
-    transform(toolParams) as Effect.Effect<unknown, Schema.SchemaError>
-  ).pipe(Effect.mapError((error) =>
-    AiError.make({
-      module: "OpenAiLanguageModel",
-      method: "makeResponse",
-      reason: new AiError.ToolParameterValidationError({
-        toolName,
-        toolParams,
-        description: formatIssue(error.issue)
-      })
-    })
-  ))
-})

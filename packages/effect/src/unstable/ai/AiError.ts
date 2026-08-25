@@ -19,10 +19,21 @@ import * as Predicate from "../../Predicate.ts"
 import { redact } from "../../Redactable.ts"
 import * as Redacted from "../../Redacted.ts"
 import * as Schema from "../../Schema.ts"
+import * as SchemaTransformation from "../../SchemaTransformation.ts"
 import type * as HttpClientError from "../http/HttpClientError.ts"
-import { HttpRequestDetails, HttpResponseDetails } from "./Response.ts"
+import { HttpRequestDetails, HttpResponseDetails } from "./internal/http-details.ts"
 
 const ReasonTypeId = "~effect/ai/AiError/Reason" as const
+
+const DiagnosticPayload = Schema.Json.pipe(
+  Schema.decodeTo(
+    Schema.Unknown,
+    SchemaTransformation.transform<unknown, Schema.Json>({
+      decode: (value) => value,
+      encode: Schema.encodeSync(Schema.Defect())
+    })
+  )
+)
 
 const providerMetadataWithDefaults = <Metadata extends ProviderMetadata>() =>
   (ProviderMetadata as unknown as typeof ProviderMetadata & Schema.Schema<Metadata>).pipe(
@@ -1070,7 +1081,7 @@ export class ToolParameterValidationError extends Schema.Error<ToolParameterVali
 )({
   _tag: Schema.tag("ToolParameterValidationError"),
   toolName: Schema.String,
-  toolParams: Schema.Json,
+  toolParams: DiagnosticPayload,
   description: Schema.String
 }) {
   /**

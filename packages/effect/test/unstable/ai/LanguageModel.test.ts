@@ -138,7 +138,7 @@ describe("LanguageModel", () => {
         strictEqual(yield* Ref.get(calls), 0)
       }))
 
-    it.effect("fails cleanly for a tool call with a missing params field", () =>
+    it.effect("returns a missing tool params field as a model-visible error", () =>
       Effect.gen(function*() {
         const calls = yield* Ref.make(0)
         const handlers = MyToolkit.toLayer({
@@ -148,7 +148,7 @@ describe("LanguageModel", () => {
             )
         })
 
-        const error = yield* LanguageModel.generateText({
+        const response = yield* LanguageModel.generateText({
           prompt: [],
           toolkit: MyToolkit
         }).pipe(
@@ -158,17 +158,102 @@ describe("LanguageModel", () => {
               finishPart
             ]
           }),
-          Effect.provide(handlers),
-          Effect.flip
+          Effect.provide(handlers)
         )
 
-        strictEqual(error.reason._tag, "InvalidOutputError")
+        strictEqual(response.toolCallErrors[0]?.error._tag, "ToolParameterValidationError")
         strictEqual(yield* Ref.get(calls), 0)
       }))
 
-    it.effect("validates encoded tool parameters when tool call resolution is disabled", () =>
+    it.effect("returns invalid tool calls as model-visible errors", () =>
       Effect.gen(function*() {
-        const error = yield* LanguageModel.generateText({
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [{
+              type: "tool-call",
+              id: "tool-invalid-params",
+              name: "MyTool",
+              params: {}
+            }]
+          }),
+          Effect.provide(MyToolkitLayer)
+        )
+
+        const part = response.toolCallErrors[0]!
+
+        strictEqual(part.type, "tool-call-error")
+        strictEqual(part.id, "tool-invalid-params")
+        strictEqual(part.name, "MyTool")
+        deepStrictEqual(part.params, {})
+        strictEqual(part.error._tag, "ToolParameterValidationError")
+      }))
+
+    it.effect("resolves valid tool calls alongside model-visible errors", () =>
+      Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Ref.update(calls, (n) => n + 1).pipe(
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [
+              { type: "tool-call", id: "tool-invalid", name: "MyTool", params: {} },
+              {
+                type: "tool-call",
+                id: "tool-valid",
+                name: "MyTool",
+                params: { testParam: "test-param" }
+              }
+            ]
+          }),
+          Effect.provide(handlers)
+        )
+
+        strictEqual(response.toolCallErrors.length, 1)
+        strictEqual(response.toolCalls.length, 1)
+        strictEqual(response.toolResults.length, 1)
+        strictEqual(yield* Ref.get(calls), 1)
+      }))
+
+    it.effect("returns unknown tool calls as model-visible errors", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [{
+              type: "tool-call",
+              id: "tool-unknown",
+              name: "UnknownTool",
+              params: { query: "effect" }
+            }]
+          }),
+          Effect.provide(MyToolkitLayer)
+        )
+
+        const part = response.toolCallErrors[0]!
+
+        strictEqual(part.type, "tool-call-error")
+        strictEqual(part.id, "tool-unknown")
+        strictEqual(part.name, "UnknownTool")
+        deepStrictEqual(part.params, { query: "effect" })
+        strictEqual(part.error._tag, "ToolNotFoundError")
+      }))
+
+    it.effect("returns invalid encoded tool parameters when tool call resolution is disabled", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
           prompt: [],
           toolkit: TransformToolkit,
           disableToolCallResolution: true
@@ -181,11 +266,10 @@ describe("LanguageModel", () => {
               params: { invalid: true }
             }]
           }),
-          Effect.provide(TransformToolkitLayer),
-          Effect.flip
+          Effect.provide(TransformToolkitLayer)
         )
 
-        strictEqual(error.reason._tag, "InvalidOutputError")
+        strictEqual(response.toolCallErrors[0]?.error._tag, "ToolParameterValidationError")
       }))
 
     it.effect("preserves encoded tool parameters when tool call resolution is disabled", () =>
@@ -205,6 +289,27 @@ describe("LanguageModel", () => {
         )
 
         strictEqual(results[0].result, 42)
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: [{
+            type: "tool-call",
+            id: "tool-transform",
+            name: "TransformTool",
+            params: "21"
+          }]
+        }),
+        Effect.provide(TransformToolkitLayer)
+      ))
+
+    it.effect("decodes transformed tool parameters once before execution", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: TransformToolkit
+        })
+
+        strictEqual(response.toolCalls[0]?.params, 21)
+        strictEqual(response.toolResults[0]?.result, 42)
       }).pipe(
         TestUtils.withLanguageModel({
           generateText: [{
@@ -480,14 +585,83 @@ describe("LanguageModel", () => {
         )
       }))
 
-    it.effect("validates encoded tool parameters when tool call resolution is disabled", () =>
+    it.effect("streams invalid tool calls as model-visible errors", () =>
       Effect.gen(function*() {
-        const error = yield* LanguageModel.streamText({
+        const parts = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({
+            streamText: [{
+              type: "tool-call",
+              id: "tool-invalid-params",
+              name: "MyTool",
+              params: {}
+            }]
+          }),
+          Effect.provide(MyToolkitLayer)
+        )
+
+        const part = parts.find((part) => part.type === "tool-call-error")!
+        strictEqual(part.id, "tool-invalid-params")
+        strictEqual(part.name, "MyTool")
+        deepStrictEqual(part.params, {})
+        strictEqual(part.error._tag, "ToolParameterValidationError")
+      }))
+
+    it.effect("does not synthesize an interrupted result for an invalid tool call", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({
+            streamText: [
+              { type: "tool-call", id: "tool-invalid", name: "MyTool", params: {} },
+              { ...finishPart, reason: "length" }
+            ]
+          }),
+          Effect.provide(MyToolkitLayer)
+        )
+
+        deepStrictEqual(parts.map((part) => part.type), ["tool-call-error", "finish"])
+      }))
+
+    it.effect("streams unknown tool calls as model-visible errors", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({
+            streamText: [{
+              type: "tool-call",
+              id: "tool-unknown",
+              name: "UnknownTool",
+              params: { query: "effect" }
+            }]
+          }),
+          Effect.provide(MyToolkitLayer)
+        )
+
+        const part = parts.find((part) => part.type === "tool-call-error")!
+        strictEqual(part.id, "tool-unknown")
+        strictEqual(part.name, "UnknownTool")
+        deepStrictEqual(part.params, { query: "effect" })
+        strictEqual(part.error._tag, "ToolNotFoundError")
+      }))
+
+    it.effect("streams invalid encoded tool parameters when tool call resolution is disabled", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({
           prompt: [],
           toolkit: TransformToolkit,
           disableToolCallResolution: true
         }).pipe(
-          Stream.runDrain,
+          Stream.runCollect,
           TestUtils.withLanguageModel({
             streamText: [{
               type: "tool-call",
@@ -496,12 +670,35 @@ describe("LanguageModel", () => {
               params: { invalid: true }
             }]
           }),
-          Effect.provide(TransformToolkitLayer),
-          Effect.flip
+          Effect.provide(TransformToolkitLayer)
         )
 
-        strictEqual(error.reason._tag, "InvalidOutputError")
+        const part = parts.find((part) => part.type === "tool-call-error")
+        strictEqual(part?.error._tag, "ToolParameterValidationError")
       }))
+
+    it.effect("decodes transformed tool parameters once before streamed execution", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: TransformToolkit
+        }).pipe(Stream.runCollect)
+
+        const toolCall = parts.find((part) => part.type === "tool-call")
+        const toolResult = parts.find((part) => part.type === "tool-result")
+        strictEqual(toolCall?.params, 21)
+        strictEqual(toolResult?.result, 42)
+      }).pipe(
+        TestUtils.withLanguageModel({
+          streamText: [{
+            type: "tool-call",
+            id: "tool-transform",
+            name: "TransformTool",
+            params: "21"
+          }]
+        }),
+        Effect.provide(TransformToolkitLayer)
+      ))
 
     it.effect("preserves encoded tool parameters when tool call resolution is disabled", () =>
       Effect.gen(function*() {

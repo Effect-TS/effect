@@ -14,9 +14,12 @@ import type * as DateTime from "../../DateTime.ts"
 import * as Effect from "../../Effect.ts"
 import { identity } from "../../Function.ts"
 import * as Predicate from "../../Predicate.ts"
+import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaTransformation from "../../SchemaTransformation.ts"
-import type * as Tool from "./Tool.ts"
+import * as AiError from "./AiError.ts"
+import * as HttpDetails from "./internal/http-details.ts"
+import * as Tool from "./Tool.ts"
 import type * as Toolkit from "./Toolkit.ts"
 
 const PartTypeId = "~effect/ai/Response/Part" as const
@@ -52,6 +55,7 @@ export type AnyPart =
   | ToolParamsDeltaPart
   | ToolParamsEndPart
   | ToolCallPart<any, any>
+  | ToolCallErrorPart
   | ToolResultPart<any, any, any>
   | ToolApprovalRequestPart
   | FilePart
@@ -80,6 +84,7 @@ export type AnyPartEncoded =
   | ToolParamsDeltaPartEncoded
   | ToolParamsEndPartEncoded
   | ToolCallPartEncoded
+  | ToolCallErrorPartEncoded
   | ToolResultPartEncoded
   | ToolApprovalRequestPartEncoded
   | FilePartEncoded
@@ -108,6 +113,7 @@ export type AllParts<Tools extends Record<string, Tool.Any>> =
   | ToolParamsDeltaPart
   | ToolParamsEndPart
   | ToolCallParts<Tools>
+  | ToolCallErrorPart
   | ToolResultParts<Tools>
   | ToolApprovalRequestPart
   | FilePart
@@ -136,6 +142,7 @@ export type AllPartsEncoded =
   | ToolParamsDeltaPartEncoded
   | ToolParamsEndPartEncoded
   | ToolCallPartEncoded
+  | ToolCallErrorPartEncoded
   | ToolResultPartEncoded
   | ToolApprovalRequestPartEncoded
   | FilePartEncoded
@@ -144,6 +151,33 @@ export type AllPartsEncoded =
   | ResponseMetadataPartEncoded
   | FinishPartEncoded
   | ErrorPartEncoded
+
+type ToolkitTools<T> = T extends Toolkit.Toolkit<infer Tools> ? Tools
+  : T extends Toolkit.WithHandler<infer Tools> ? Tools
+  : never
+
+type ToolParameterMode = "decode" | "preserveEncoded" | "validateDecoded"
+
+const toolParameterSchema = (tool: Tool.Any, mode: ToolParameterMode): Schema.Top =>
+  mode === "preserveEncoded" ?
+    Schema.toEncoded(tool.parametersSchema)
+    : mode === "validateDecoded" ?
+    Schema.toType(tool.parametersSchema)
+    : tool.parametersSchema
+
+const makeToolSchemas = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
+  toolkit: T,
+  toolParameters: ToolParameterMode
+) => {
+  const toolCalls: Array<Schema.Top> = []
+  const toolResults: Array<Schema.Top> = []
+  for (const name in toolkit.tools) {
+    const tool: Tool.Any = toolkit.tools[name]
+    toolCalls.push(ToolCallPart(tool.name, toolParameterSchema(tool, toolParameters)))
+    toolResults.push(ToolResultPart(tool.name, tool.successSchema, tool.failureSchema))
+  }
+  return { toolCalls, toolResults }
+}
 
 /**
  * Creates a Schema for all response parts based on a toolkit.
@@ -176,19 +210,12 @@ export type AllPartsEncoded =
 export const AllParts = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   toolkit: T
 ): Schema.Codec<
-  AllParts<T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>>,
+  AllParts<ToolkitTools<T>>,
   AllPartsEncoded,
-  Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
-  Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+  Tool.ResultDecodingServices<ToolkitTools<T>[keyof ToolkitTools<T>]>,
+  Tool.ResultEncodingServices<ToolkitTools<T>[keyof ToolkitTools<T>]>
 > => {
-  const toolCalls: Array<Schema.Top> = []
-  const toolResults: Array<Schema.Top> = []
-  for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
-    const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureSchema)
-    toolCalls.push(toolCall)
-    toolResults.push(toolResult)
-  }
+  const { toolCalls, toolResults } = makeToolSchemas(toolkit, "decode")
   return Schema.Union([
     TextPart,
     TextStartPart,
@@ -208,6 +235,7 @@ export const AllParts = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
     ResponseMetadataPart,
     FinishPart,
     ErrorPart,
+    ToolCallErrorPart,
     ...toolCalls,
     ...toolResults
   ]) as any
@@ -231,6 +259,7 @@ export type Part<
   | TextPart
   | ReasoningPart
   | ToolCallParts<Tools, EncodedToolParameters>
+  | ToolCallErrorPart
   | ToolResultParts<Tools>
   | ToolApprovalRequestPart
   | FilePart
@@ -251,6 +280,7 @@ export type PartEncoded =
   | ReasoningDeltaPartEncoded
   | ReasoningEndPartEncoded
   | ToolCallPartEncoded
+  | ToolCallErrorPartEncoded
   | ToolResultPartEncoded
   | ToolApprovalRequestPartEncoded
   | FilePartEncoded
@@ -258,6 +288,35 @@ export type PartEncoded =
   | UrlSourcePartEncoded
   | ResponseMetadataPartEncoded
   | FinishPartEncoded
+
+/** @internal */
+export const PartWithToolParameters = <
+  T extends Toolkit.Any | Toolkit.WithHandler<any>,
+  Mode extends ToolParameterMode
+>(
+  toolkit: T,
+  toolParameters: Mode
+): Schema.Codec<
+  Part<ToolkitTools<T>, Mode extends "preserveEncoded" ? true : false>,
+  PartEncoded,
+  Tool.ResultDecodingServices<ToolkitTools<T>[keyof ToolkitTools<T>]>,
+  Tool.ResultEncodingServices<ToolkitTools<T>[keyof ToolkitTools<T>]>
+> => {
+  const { toolCalls, toolResults } = makeToolSchemas(toolkit, toolParameters)
+  return Schema.Union([
+    TextPart,
+    ReasoningPart,
+    ToolApprovalRequestPart,
+    FilePart,
+    DocumentSourcePart,
+    UrlSourcePart,
+    ResponseMetadataPart,
+    FinishPart,
+    ToolCallErrorPart,
+    ...toolCalls,
+    ...toolResults
+  ]) as any
+}
 
 /**
  * Creates a Schema for non-streaming response parts based on a toolkit.
@@ -268,32 +327,11 @@ export type PartEncoded =
 export const Part = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   toolkit: T
 ): Schema.Codec<
-  Part<T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>>,
+  Part<ToolkitTools<T>>,
   PartEncoded,
-  Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
-  Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
-> => {
-  const toolCalls: Array<Schema.Top> = []
-  const toolResults: Array<Schema.Top> = []
-  for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
-    const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureSchema)
-    toolCalls.push(toolCall)
-    toolResults.push(toolResult)
-  }
-  return Schema.Union([
-    TextPart,
-    ReasoningPart,
-    ToolApprovalRequestPart,
-    FilePart,
-    DocumentSourcePart,
-    UrlSourcePart,
-    ResponseMetadataPart,
-    FinishPart,
-    ...toolCalls,
-    ...toolResults
-  ]) as any
-}
+  Tool.ResultDecodingServices<ToolkitTools<T>[keyof ToolkitTools<T>]>,
+  Tool.ResultEncodingServices<ToolkitTools<T>[keyof ToolkitTools<T>]>
+> => PartWithToolParameters(toolkit, "decode")
 
 // =============================================================================
 // Stream Parts
@@ -319,6 +357,7 @@ export type StreamPart<
   | ToolParamsDeltaPart
   | ToolParamsEndPart
   | ToolCallParts<Tools, EncodedToolParameters>
+  | ToolCallErrorPart
   | ToolResultParts<Tools>
   | ToolApprovalRequestPart
   | FilePart
@@ -345,6 +384,7 @@ export type StreamPartEncoded =
   | ToolParamsDeltaPartEncoded
   | ToolParamsEndPartEncoded
   | ToolCallPartEncoded
+  | ToolCallErrorPartEncoded
   | ToolResultPartEncoded
   | ToolApprovalRequestPartEncoded
   | FilePartEncoded
@@ -354,28 +394,20 @@ export type StreamPartEncoded =
   | FinishPartEncoded
   | ErrorPartEncoded
 
-/**
- * Creates a Schema for streaming response parts based on a toolkit.
- *
- * @category schemas
- * @since 4.0.0
- */
-export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
-  toolkit: T
+/** @internal */
+export const StreamPartWithToolParameters = <
+  T extends Toolkit.Any | Toolkit.WithHandler<any>,
+  Mode extends ToolParameterMode
+>(
+  toolkit: T,
+  toolParameters: Mode
 ): Schema.Codec<
-  StreamPart<T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>>,
+  StreamPart<ToolkitTools<T>, Mode extends "preserveEncoded" ? true : false>,
   StreamPartEncoded,
-  Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
-  Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+  Tool.ResultDecodingServices<ToolkitTools<T>[keyof ToolkitTools<T>]>,
+  Tool.ResultEncodingServices<ToolkitTools<T>[keyof ToolkitTools<T>]>
 > => {
-  const toolCalls: Array<Schema.Top> = []
-  const toolResults: Array<Schema.Top> = []
-  for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
-    const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureSchema)
-    toolCalls.push(toolCall)
-    toolResults.push(toolResult)
-  }
+  const { toolCalls, toolResults } = makeToolSchemas(toolkit, toolParameters)
   return Schema.Union([
     TextStartPart,
     TextDeltaPart,
@@ -393,10 +425,26 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
     ResponseMetadataPart,
     FinishPart,
     ErrorPart,
+    ToolCallErrorPart,
     ...toolCalls,
     ...toolResults
   ]) as any
 }
+
+/**
+ * Creates a Schema for streaming response parts based on a toolkit.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
+  toolkit: T
+): Schema.Codec<
+  StreamPart<ToolkitTools<T>>,
+  StreamPartEncoded,
+  Tool.ResultDecodingServices<ToolkitTools<T>[keyof ToolkitTools<T>]>,
+  Tool.ResultEncodingServices<ToolkitTools<T>[keyof ToolkitTools<T>]>
+> => StreamPartWithToolParameters(toolkit, "decode")
 
 // =============================================================================
 // utility types
@@ -1444,6 +1492,146 @@ export const toolCallPart = <const Name extends string, Params>(
 ): ToolCallPart<Name, Params> => makePart("tool-call", params)
 
 // =============================================================================
+// Tool Call Error Part
+// =============================================================================
+
+/**
+ * An error caused by a model-generated tool call that could not be resolved.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export type ToolCallError = AiError.ToolNotFoundError | AiError.ToolParameterValidationError
+
+/**
+ * Encoded representation of a model-generated tool call error.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export type ToolCallErrorEncoded =
+  | typeof AiError.ToolNotFoundError.Encoded
+  | typeof AiError.ToolParameterValidationError.Encoded
+
+/**
+ * Schema for errors caused by model-generated tool calls.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ToolCallError = Schema.Union([
+  AiError.ToolNotFoundError,
+  AiError.ToolParameterValidationError
+]) satisfies Schema.Codec<ToolCallError, ToolCallErrorEncoded>
+
+const encodeToolCallError = Schema.encodeSync(ToolCallError)
+
+/**
+ * Response part representing a model-generated tool call that could not be
+ * resolved. The original call is preserved so it can be added to model history
+ * together with the error as a failed tool result.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ToolCallErrorPart extends BasePart<"tool-call-error", ToolCallPartMetadata> {
+  /** Unique identifier for this tool call. */
+  readonly id: string
+  /** Name requested by the model. */
+  readonly name: string
+  /** Original parameters generated by the model. */
+  readonly params: unknown
+  /** The reason the tool call could not be resolved. */
+  readonly error: ToolCallError
+  /** Whether the tool was executed by the provider. */
+  readonly providerExecuted: boolean
+}
+
+/**
+ * Encoded representation of a tool call error part.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ToolCallErrorPartEncoded extends BasePartEncoded<"tool-call-error", ToolCallPartMetadata> {
+  readonly id: string
+  readonly name: string
+  readonly params: unknown
+  readonly error: ToolCallErrorEncoded
+  readonly providerExecuted?: boolean | undefined
+}
+
+/**
+ * Schema for tool call error parts.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ToolCallErrorPart = Schema.Struct({
+  ...BasePart.fields,
+  type: Schema.Literal("tool-call-error"),
+  id: Schema.String,
+  name: Schema.String,
+  params: Schema.Unknown,
+  error: ToolCallError,
+  providerExecuted: Schema.Boolean.pipe(Schema.withDecodingDefaultKey(Effect.succeed(false)))
+}).annotate({ identifier: "ToolCallErrorPart" }) satisfies Schema.Codec<
+  ToolCallErrorPart,
+  ToolCallErrorPartEncoded
+>
+
+/**
+ * Constructs a tool call response part from JSON parameters returned by a
+ * provider. Malformed or unsafe JSON is preserved as a tool call error so the
+ * model can receive the failure in subsequent conversation history.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const toolCallPartFromJson = (options: {
+  readonly id: string
+  readonly name: string
+  readonly params: string
+  readonly providerExecuted?: boolean | undefined
+  readonly metadata?: ToolCallPartMetadata | undefined
+}): ToolCallPartEncoded | ToolCallErrorPartEncoded => {
+  const parsed = Result.try({
+    try: () => Tool.unsafeSecureJsonParse(options.params),
+    catch: (error) => error instanceof Error ? error.message : String(error)
+  })
+
+  const common = {
+    id: options.id,
+    name: options.name,
+    ...(Predicate.isNotUndefined(options.providerExecuted)
+      ? { providerExecuted: options.providerExecuted }
+      : undefined),
+    ...(Predicate.isNotUndefined(options.metadata) ? { metadata: options.metadata } : undefined)
+  }
+
+  if (Result.isFailure(parsed)) {
+    return {
+      type: "tool-call-error",
+      ...common,
+      params: options.params,
+      error: encodeToolCallError(
+        new AiError.ToolParameterValidationError({
+          toolName: options.name,
+          toolParams: options.params,
+          description: `Failed to securely JSON parse tool parameters: ${parsed.failure}`
+        })
+      )
+    }
+  }
+
+  return {
+    type: "tool-call",
+    ...common,
+    params: parsed.success
+  }
+}
+
+// =============================================================================
 // Tool Call Result Part
 // =============================================================================
 
@@ -2158,19 +2346,7 @@ export const UrlSourcePart: Schema.Struct<{
  * @category schemas
  * @since 4.0.0
  */
-export const HttpRequestDetails = Schema.Struct({
-  method: Schema.Literals(["GET", "POST", "PATCH", "PUT", "DELETE", "HEAD", "OPTIONS", "TRACE"]),
-  url: Schema.String,
-  urlParams: Schema.Array(Schema.Tuple([Schema.String, Schema.String])),
-  hash: Schema.optional(Schema.String),
-  headers: Schema.Record(
-    Schema.String,
-    Schema.Union([
-      Schema.String,
-      Schema.Redacted(Schema.String)
-    ])
-  )
-}).annotate({ identifier: "HttpRequestDetails" })
+export const HttpRequestDetails = HttpDetails.HttpRequestDetails
 
 /**
  * Schema for HTTP response details associated with an AI response.
@@ -2199,16 +2375,7 @@ export const HttpRequestDetails = Schema.Struct({
  * @category schemas
  * @since 4.0.0
  */
-export const HttpResponseDetails = Schema.Struct({
-  status: Schema.Int,
-  headers: Schema.Record(
-    Schema.String,
-    Schema.Union([
-      Schema.String,
-      Schema.Redacted(Schema.String)
-    ])
-  )
-}).annotate({ identifier: "HttpResponseDetails" })
+export const HttpResponseDetails = HttpDetails.HttpResponseDetails
 
 // =============================================================================
 // Response Metadata Part

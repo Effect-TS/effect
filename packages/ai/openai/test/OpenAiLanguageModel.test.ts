@@ -968,6 +968,28 @@ describe("OpenAiLanguageModel", () => {
           ])
         ))
 
+      it.effect("returns malformed function call JSON as a tool call error", () =>
+        Effect.gen(function*() {
+          const result = yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit: TestToolkit
+          }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+          const error = result.toolCallErrors[0]?.error
+          assert.isDefined(error)
+          strictEqual(error._tag, "ToolParameterValidationError")
+          if (error._tag === "ToolParameterValidationError") {
+            strictEqual(error.toolParams, "{")
+          }
+        }).pipe(
+          Effect.provide([
+            makeTestLayer({
+              body: { output: [makeFunctionCall("TestTool", {}, { arguments: "{" })] }
+            }),
+            TestToolkitLayer
+          ])
+        ))
+
       it.effect("uses canonical OpenAiMcp name for mcp_call", () =>
         Effect.gen(function*() {
           const result = yield* LanguageModel.generateText({
@@ -991,6 +1013,23 @@ describe("OpenAiLanguageModel", () => {
         }).pipe(Effect.provide(makeTestLayer({
           body: {
             output: [makeMcpCall("CheckPackage", { packageName: "effect" })]
+          }
+        }))))
+
+      it.effect("returns malformed MCP arguments as a tool call error", () =>
+        Effect.gen(function*() {
+          const result = yield* LanguageModel.generateText({
+            prompt: "Use MCP",
+            toolkit: McpToolkit
+          }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+          const error = result.toolCallErrors[0]?.error
+          assert.isDefined(error)
+          strictEqual(error._tag, "ToolParameterValidationError")
+          strictEqual(result.toolResults.length, 0)
+        }).pipe(Effect.provide(makeTestLayer({
+          body: {
+            output: [makeMcpCall("CheckPackage", {}, { arguments: "{" })]
           }
         }))))
 

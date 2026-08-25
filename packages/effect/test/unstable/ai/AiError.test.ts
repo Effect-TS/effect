@@ -304,6 +304,16 @@ describe("AiError", () => {
         assert.deepStrictEqual(error.toolParams, params)
       })
 
+      it("should accept non-JSON tool params", () => {
+        const params = { location: Number.NaN }
+        const error = new AiError.ToolParameterValidationError({
+          toolName: "GetWeather",
+          toolParams: params,
+          description: "Expected string"
+        })
+        assert.deepStrictEqual(error.toolParams, params)
+      })
+
       it("should have _tag set correctly", () => {
         const error = new AiError.ToolParameterValidationError({
           toolName: "Test",
@@ -776,6 +786,19 @@ describe("AiError", () => {
         assert.strictEqual(decoded._tag, "ToolParameterValidationError")
         assert.strictEqual(decoded.toolName, "GetWeather")
         assert.strictEqual(decoded.description, "Expected string")
+      }))
+
+    it.effect("ToolParameterValidationError encodes non-JSON params", () =>
+      Effect.gen(function*() {
+        const error = new AiError.ToolParameterValidationError({
+          toolName: "SendMessage",
+          toolParams: { message: "hello", priority: Number.NaN },
+          description: "Missing recipient"
+        })
+        const encoded = yield* Schema.encodeEffect(AiError.ToolParameterValidationError)(error)
+        const decoded = yield* Schema.decodeEffect(AiError.ToolParameterValidationError)(encoded)
+        assert.deepStrictEqual(encoded.toolParams, { message: "hello", priority: null })
+        assert.deepStrictEqual(decoded.toolParams, { message: "hello", priority: null })
       }))
 
     it.effect("InvalidToolResultError roundtrip", () =>

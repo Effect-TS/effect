@@ -158,7 +158,7 @@ describe("Tool", () => {
         deepStrictEqual(response, toolResult)
       }))
 
-    it.effect("should raise an error when tool call parameters are invalid", () =>
+    it.effect("should return invalid tool call parameters to the model", () =>
       Effect.gen(function*() {
         const toolkit = Toolkit.make(FailureModeReturn)
 
@@ -182,23 +182,40 @@ describe("Tool", () => {
               params: {}
             }]
           }),
-          Effect.provide(handlers),
-          Effect.flip
+          Effect.provide(handlers)
         )
 
         deepStrictEqual(
-          response,
-          AiError.make({
-            module: "Toolkit",
-            method: "FailureModeReturn.handle",
-            reason: new AiError.ToolParameterValidationError({
-              toolName: "FailureModeReturn",
-              toolParams: {},
-              description: `Missing key\n  at ["testParam"]`
-            })
+          response.toolCallErrors[0]?.error,
+          new AiError.ToolParameterValidationError({
+            toolName: "FailureModeReturn",
+            toolParams: {},
+            description: `Missing key\n  at ["testParam"]`
           })
         )
       }))
+
+    it.effect("should fail safely for non-JSON tool parameters", () => {
+      const FiniteNumber = Tool.make("FiniteNumber", {
+        parameters: Schema.Struct({ value: Schema.Finite }),
+        success: Schema.Void
+      })
+      const toolkit = Toolkit.make(FiniteNumber)
+      const handlers = toolkit.toLayer({
+        FiniteNumber: () => Effect.void
+      })
+
+      return Effect.gen(function*() {
+        const withHandlers = yield* toolkit
+        for (const value of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+          const error = yield* withHandlers.handle("FiniteNumber", { value }).pipe(Effect.flip)
+          strictEqual(error.reason._tag, "ToolParameterValidationError")
+          if (error.reason._tag === "ToolParameterValidationError") {
+            deepStrictEqual(error.reason.toolParams, { value })
+          }
+        }
+      }).pipe(Effect.provide(handlers))
+    })
 
     it.effect("should return AiError when user returns an AiErrorReason when failure mode is return", () =>
       Effect.gen(function*() {
@@ -870,7 +887,7 @@ describe("Tool", () => {
         deepStrictEqual(response, toolResult)
       }))
 
-    it.effect("should raise an error when tool call parameters are invalid", () =>
+    it.effect("should return invalid tool call parameters to the model", () =>
       Effect.gen(function*() {
         const tool = HandlerRequired({
           failureMode: "return",
@@ -902,20 +919,15 @@ describe("Tool", () => {
               }
             ]
           }),
-          Effect.provide(handlers),
-          Effect.flip
+          Effect.provide(handlers)
         )
 
         deepStrictEqual(
-          response,
-          AiError.make({
-            module: "Toolkit",
-            method: "HandlerRequired.handle",
-            reason: new AiError.ToolParameterValidationError({
-              toolName: "HandlerRequired",
-              toolParams: {},
-              description: `Missing key\n  at ["testParam"]`
-            })
+          response.toolCallErrors[0]?.error,
+          new AiError.ToolParameterValidationError({
+            toolName: "HandlerRequired",
+            toolParams: {},
+            description: `Missing key\n  at ["testParam"]`
           })
         )
       }))

@@ -20,6 +20,7 @@ import type * as JsonSchema from "../../JsonSchema.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Queue from "../../Queue.ts"
+import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as Semaphore from "../../Semaphore.ts"
@@ -35,7 +36,7 @@ import * as Response from "./Response.ts"
 import * as ResponseIdTracker from "./ResponseIdTracker.ts"
 import type { SpanTransformer } from "./Telemetry.ts"
 import { CurrentSpanTransformer } from "./Telemetry.ts"
-import type * as Tool from "./Tool.ts"
+import * as Tool from "./Tool.ts"
 import * as Toolkit from "./Toolkit.ts"
 
 // =============================================================================
@@ -412,6 +413,13 @@ export class GenerateTextResponse<
    */
   get toolCalls(): Array<Response.ToolCallParts<Tools, EncodedToolParameters>> {
     return this.content.filter((part) => part.type === "tool-call")
+  }
+
+  /**
+   * Returns all tool calls that could not be resolved.
+   */
+  get toolCallErrors(): Array<Response.ToolCallErrorPart> {
+    return this.content.filter((part) => part.type === "tool-call-error")
   }
 
   /**
@@ -1181,17 +1189,15 @@ export const make: (params: {
       }
     }
 
-    // Construct the response schema with the tools from the toolkit, keeping
-    // tool call parameters encoded when tool call resolution is disabled
-    const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(
-      options.disableToolCallResolution === true ? makeToolkitWithEncodedParameters(toolkit) : toolkit
-    )))
-
     // If tool call resolution is disabled, return the response without
     // resolving the tool calls that were generated
     if (options.disableToolCallResolution === true) {
+      const ResponseSchema = Schema.mutable(
+        Schema.Array(Response.PartWithToolParameters(toolkit, "preserveEncoded"))
+      )
       const rawContent = yield* generateWithNonIncrementalFallback()
-      const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
+      const normalized = yield* normalizeToolCallsEncoded(rawContent, toolkit, codecTransformer)
+      const content = yield* Schema.decodeEffect(ResponseSchema)(normalized.parts)
       if (tracker) {
         const responseMetadata = content.find((part) => part.type === "response-metadata")
         if (Predicate.isNotUndefined(responseMetadata) && Predicate.isNotUndefined(responseMetadata.id)) {
@@ -1201,33 +1207,27 @@ export const make: (params: {
       return content as Array<Response.Part<Tools>>
     }
 
-    // Validates the complete response before tool handlers can perform side
-    // effects. Tool parameters remain opaque here so their validation keeps
-    // using Toolkit's more specific ToolParameterValidationError; rawContent
-    // is decoded a second time with ResponseSchema below to produce the
-    // typed response.
-    const PrevalidationSchema = Schema.mutable(
-      Schema.Array(Response.Part(makeToolkitWithOpaqueParameters(toolkit)))
+    const ResponseSchema = Schema.mutable(
+      Schema.Array(Response.PartWithToolParameters(toolkit, "validateDecoded"))
     )
-
     const rawContent = yield* generateWithNonIncrementalFallback()
-
-    yield* Schema.decodeEffect(PrevalidationSchema)(rawContent)
+    const normalizedContent = yield* normalizeToolCalls(rawContent, toolkit, codecTransformer)
+    // Validate the complete response before tool handlers can perform side
+    // effects. Invalid tool calls have already been normalized into model-
+    // visible error parts, while all other response parts are still checked
+    // by the response schema.
+    const content = yield* Schema.decodeEffect(ResponseSchema)(normalizedContent.parts)
 
     // Resolve the generated tool calls. When the finish reason indicates an
     // incomplete response, handlers do not run and every executable tool call
     // gets a synthesized failure result instead.
-    const incompleteFinishReason = findIncompleteFinishReason(rawContent)
+    const incompleteFinishReason = findIncompleteFinishReason(content)
     const toolResults = incompleteFinishReason !== undefined
-      ? rawContent
-        .filter((part): part is Response.ToolCallPartEncoded =>
-          part.type === "tool-call" &&
-          part.providerExecuted !== true &&
-          toolkit.tools[part.name] !== undefined
-        )
+      ? normalizedContent.toolCalls
+        .filter((part) => part.providerExecuted !== true)
         .map((part) => makeInterruptedToolResult(part, incompleteFinishReason) as ToolResolutionResult<Tools>)
       : yield* resolveToolCalls(
-        rawContent,
+        normalizedContent.toolCalls,
         toolkit,
         providerOptions.prompt.content,
         concurrency
@@ -1239,8 +1239,6 @@ export const make: (params: {
         ),
         Stream.runCollect
       )
-
-    const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
 
     if (tracker) {
       const responseMetadata = content.find((part) => part.type === "response-metadata")
@@ -1493,30 +1491,27 @@ export const make: (params: {
       }
     }
 
-    // Construct the response schema with the tools from the toolkit, keeping
-    // tool call parameters encoded when tool call resolution is disabled
-    const ResponseSchema = Schema.NonEmptyArray(Response.StreamPart(
-      options.disableToolCallResolution === true ? makeToolkitWithEncodedParameters(toolkit) : toolkit
-    ))
-    const decodeParts = Schema.decodeEffect(ResponseSchema)
-
     // If tool call resolution is disabled, return the response without
     // resolving the tool calls that were generated
     if (options.disableToolCallResolution === true) {
+      const ResponseSchema = Schema.NonEmptyArray(
+        Response.StreamPartWithToolParameters(toolkit, "preserveEncoded")
+      )
+      const decodeParts = Schema.decodeEffect(ResponseSchema)
       return streamWithNonIncrementalFallback().pipe(
         Stream.mapArrayEffect((parts) =>
-          decodeParts(parts).pipe(
-            tracker ?
-              Effect.tap((decodedParts) => {
-                for (const part of decodedParts) {
-                  if (part.type === "response-metadata" && Predicate.isNotUndefined(part.id)) {
-                    tracker.markParts(providerOptions.prompt.content, part.id)
-                  }
+          Effect.gen(function*() {
+            const normalized = yield* normalizeToolCallsEncoded(parts, toolkit, codecTransformer)
+            const decodedParts = yield* decodeParts([normalized.parts[0], ...normalized.parts.slice(1)])
+            if (tracker) {
+              for (const part of decodedParts) {
+                if (part.type === "response-metadata" && Predicate.isNotUndefined(part.id)) {
+                  tracker.markParts(providerOptions.prompt.content, part.id)
                 }
-                return Effect.void
-              }) :
-              identity
-          )
+              }
+            }
+            return decodedParts
+          })
         )
       ) as Stream.Stream<
         Response.StreamPart<Tools>,
@@ -1524,6 +1519,11 @@ export const make: (params: {
         IdGenerator
       >
     }
+
+    const ResponseSchema = Schema.NonEmptyArray(
+      Response.StreamPartWithToolParameters(toolkit, "validateDecoded")
+    )
+    const decodeParts = Schema.decodeEffect(ResponseSchema)
 
     // Queue for decoded parts and tool results
     const queue = yield* Queue.make<
@@ -1554,10 +1554,10 @@ export const make: (params: {
     // ends with a complete finish). Providers emit a truncating finish
     // back-to-back with the last tool call, so this window is what lets an
     // incomplete finish prevent handlers from starting at all.
-    const bufferedToolCalls: Array<Response.ToolCallPartEncoded> = []
+    const bufferedToolCalls: Array<DecodedToolCallParts<Tools>> = []
 
     // Helper function to handle tool calls with approval logic
-    const handleToolCall = Effect.fnUntraced(function*(part: Response.ToolCallPartEncoded) {
+    const handleToolCall = Effect.fnUntraced(function*(part: DecodedToolCallParts<Tools>) {
       const tool = toolkit.tools[part.name]
       if (!tool) return
 
@@ -1579,7 +1579,7 @@ export const make: (params: {
         return
       }
 
-      yield* toolkit.handle(part.name, part.params as any, part.id).pipe(
+      yield* toolkit[Toolkit.Execute](part.name, part.params, part.id).pipe(
         Stream.unwrap,
         Stream.runForEach((result) => {
           const toolResultPart = Response.makePart("tool-result", {
@@ -1616,7 +1616,8 @@ export const make: (params: {
     yield* streamWithNonIncrementalFallback().pipe(
       Stream.runForEachArray(
         Effect.fnUntraced(function*(chunk) {
-          const parts = yield* decodeParts(chunk)
+          const normalized = yield* normalizeToolCalls(chunk, toolkit, codecTransformer)
+          const parts = yield* decodeParts([normalized.parts[0], ...normalized.parts.slice(1)])
           if (tracker) {
             for (const part of parts) {
               if (part.type === "response-metadata" && part.id) {
@@ -1646,12 +1647,11 @@ export const make: (params: {
             yield* forkBufferedToolCalls
           }
           // Buffer this chunk's tool calls until the next chunk or the end of
-          // the stream - use the raw chunk for encoded params
-          for (const part of chunk) {
-            if (part.type === "tool-call" && part.providerExecuted !== true) {
-              if (toolkit.tools[part.name] !== undefined) {
-                pendingToolCalls.set(part.id, part.name)
-              }
+          // the stream. Invalid calls were normalized into error parts above
+          // and therefore never enter the execution buffer.
+          for (const part of normalized.toolCalls) {
+            if (part.providerExecuted !== true) {
+              pendingToolCalls.set(part.id, part.name)
               bufferedToolCalls.push(part)
             }
           }
@@ -2207,7 +2207,8 @@ const createDenialResults = (
 // Finish reasons that indicate the provider completed the response. Anything
 // else (including "unknown", "other", and future reasons) fails safe and
 // prevents tool handlers from running.
-const completeFinishReasons: ReadonlyArray<Response.FinishReason> = ["stop", "tool-calls", "pause"]
+const isCompleteFinishReason = (reason: unknown): reason is Response.FinishReason =>
+  reason === "stop" || reason === "tool-calls" || reason === "pause"
 
 const findIncompleteFinishReason = (
   content: ReadonlyArray<{ readonly type: string; readonly reason?: unknown }>
@@ -2215,7 +2216,7 @@ const findIncompleteFinishReason = (
   for (const part of content) {
     if (
       part.type === "finish" &&
-      !completeFinishReasons.includes(part.reason as Response.FinishReason)
+      !isCompleteFinishReason(part.reason)
     ) {
       return typeof part.reason === "string" ? part.reason : "unknown"
     }
@@ -2246,6 +2247,208 @@ const makeInterruptedToolResult = (
   })
 }
 
+const decodeToolParameters = <S extends Schema.Constraint>(
+  schema: S,
+  params: unknown
+): Effect.Effect<
+  S["Type"],
+  Schema.SchemaError,
+  S["DecodingServices"]
+> => Schema.decodeUnknownEffect(schema)(params)
+
+const transformToolCodec = <S extends Schema.Constraint>(
+  schema: S,
+  codecTransformer: CodecTransformer
+): Effect.Effect<
+  Schema.ConstraintCodec<S["Type"], unknown, S["DecodingServices"], S["EncodingServices"]>,
+  AiError.AiError
+> =>
+  Effect.try({
+    try: () => codecTransformer(schema).codec,
+    catch: (error) =>
+      AiError.make({
+        module: "LanguageModel",
+        method: "decodeToolCall",
+        reason: new AiError.UnsupportedSchemaError({
+          description: error instanceof Error ? error.message : String(error)
+        })
+      })
+  })
+
+type ToolValues<Tools extends Record<string, Tool.Any>> = Tools[Extract<keyof Tools, string>]
+
+type DecodedToolCallParts<Tools extends Record<string, Tool.Any>> = Response.ToolCallPart<
+  Extract<keyof Tools, string>,
+  Tool.Parameters<ToolValues<Tools>>
+>
+
+type EncodedToolCallParts<Tools extends Record<string, Tool.Any>> = Response.ToolCallPart<
+  Extract<keyof Tools, string>,
+  Tool.ParametersEncoded<ToolValues<Tools>>
+>
+
+const encodeToolCallErrorPart = Schema.encodeSync(Response.ToolCallErrorPart)
+
+type NormalizedResponsePart<
+  Part extends Response.AllPartsEncoded,
+  Tools extends Record<string, Tool.Any>
+> = Part | DecodedToolCallParts<Tools> | Response.ToolCallErrorPartEncoded
+
+type NormalizedEncodedResponsePart<
+  Part extends Response.AllPartsEncoded,
+  Tools extends Record<string, Tool.Any>
+> = Part | EncodedToolCallParts<Tools> | Response.ToolCallErrorPartEncoded
+
+const isToolName = <Tools extends Record<string, Tool.Any>>(
+  tools: Tools,
+  name: string
+): name is Extract<keyof Tools, string> => Object.hasOwn(tools, name)
+
+const normalizeToolCall = <Tools extends Record<string, Tool.Any>>(
+  toolCall: Response.ToolCallPartEncoded,
+  toolkit: Toolkit.WithHandler<Tools>,
+  codecTransformer: CodecTransformer
+): Effect.Effect<
+  | {
+    readonly _tag: "Success"
+    readonly decoded: DecodedToolCallParts<Tools>
+  }
+  | {
+    readonly _tag: "Failure"
+    readonly part: Response.ToolCallErrorPartEncoded
+  },
+  AiError.AiError,
+  Tool.ParametersSchema<ToolValues<Tools>>["DecodingServices"]
+> =>
+  Effect.gen(function*() {
+    if (!isToolName(toolkit.tools, toolCall.name)) {
+      return {
+        _tag: "Failure",
+        part: encodeToolCallErrorPart(Response.makePart("tool-call-error", {
+          id: toolCall.id,
+          name: toolCall.name,
+          params: toolCall.params,
+          providerExecuted: toolCall.providerExecuted ?? false,
+          metadata: toolCall.metadata,
+          error: new AiError.ToolNotFoundError({
+            toolName: toolCall.name,
+            availableTools: Object.keys(toolkit.tools)
+          })
+        }))
+      }
+    }
+
+    const tool = toolkit.tools[toolCall.name]
+    const parametersSchema = tool.parametersSchema
+    const codec = toolCall.providerExecuted === true || Tool.isDynamic(tool)
+      ? parametersSchema
+      : yield* transformToolCodec(parametersSchema, codecTransformer)
+    const decoded = yield* Effect.result(decodeToolParameters(codec, toolCall.params))
+
+    if (Result.isFailure(decoded)) {
+      return {
+        _tag: "Failure",
+        part: encodeToolCallErrorPart(Response.makePart("tool-call-error", {
+          id: toolCall.id,
+          name: toolCall.name,
+          params: toolCall.params,
+          providerExecuted: toolCall.providerExecuted ?? false,
+          metadata: toolCall.metadata,
+          error: new AiError.ToolParameterValidationError({
+            toolName: toolCall.name,
+            toolParams: toolCall.params,
+            description: decoded.failure.message
+          })
+        }))
+      }
+    }
+
+    const common = {
+      id: toolCall.id,
+      name: toolCall.name,
+      providerExecuted: toolCall.providerExecuted ?? false,
+      metadata: toolCall.metadata
+    }
+    return {
+      _tag: "Success",
+      decoded: Response.toolCallPart({ ...common, params: decoded.success })
+    }
+  })
+
+const normalizeToolCalls = <Part extends Response.AllPartsEncoded, Tools extends Record<string, Tool.Any>>(
+  content: ReadonlyArray<Part>,
+  toolkit: Toolkit.WithHandler<Tools>,
+  codecTransformer: CodecTransformer
+): Effect.Effect<
+  {
+    readonly parts: Array<NormalizedResponsePart<Part, Tools>>
+    readonly toolCalls: Array<DecodedToolCallParts<Tools>>
+  },
+  AiError.AiError,
+  Tool.ParametersSchema<ToolValues<Tools>>["DecodingServices"]
+> =>
+  Effect.gen(function*() {
+    const parts: Array<NormalizedResponsePart<Part, Tools>> = []
+    const toolCalls: Array<DecodedToolCallParts<Tools>> = []
+
+    for (const part of content) {
+      if (part.type !== "tool-call") {
+        parts.push(part)
+        continue
+      }
+      const normalized = yield* normalizeToolCall(part, toolkit, codecTransformer)
+      if (normalized._tag === "Failure") {
+        parts.push(normalized.part)
+      } else {
+        parts.push(normalized.decoded)
+        toolCalls.push(normalized.decoded)
+      }
+    }
+
+    return { parts, toolCalls }
+  })
+
+const normalizeToolCallsEncoded = <
+  Part extends Response.AllPartsEncoded,
+  Tools extends Record<string, Tool.Any>
+>(
+  content: ReadonlyArray<Part>,
+  toolkit: Toolkit.WithHandler<Tools>,
+  codecTransformer: CodecTransformer
+): Effect.Effect<
+  { readonly parts: Array<NormalizedEncodedResponsePart<Part, Tools>> },
+  AiError.AiError | Schema.SchemaError,
+  | Tool.ParametersSchema<ToolValues<Tools>>["DecodingServices"]
+  | Tool.ParametersSchema<ToolValues<Tools>>["EncodingServices"]
+> =>
+  Effect.gen(function*() {
+    const parts: Array<NormalizedEncodedResponsePart<Part, Tools>> = []
+
+    for (const part of content) {
+      if (part.type !== "tool-call") {
+        parts.push(part)
+        continue
+      }
+      const normalized = yield* normalizeToolCall(part, toolkit, codecTransformer)
+      if (normalized._tag === "Failure") {
+        parts.push(normalized.part)
+        continue
+      }
+
+      const tool = toolkit.tools[normalized.decoded.name]
+      const params = yield* Schema.encodeUnknownEffect(tool.parametersSchema)(normalized.decoded.params)
+      parts.push(Response.toolCallPart({
+        id: normalized.decoded.id,
+        name: normalized.decoded.name,
+        params,
+        providerExecuted: normalized.decoded.providerExecuted,
+        metadata: normalized.decoded.metadata
+      }))
+    }
+
+    return { parts }
+  })
+
 type ToolResolutionResult<Tools extends Record<string, Tool.Any>> =
   | Response.ToolResultPart<
     Tool.Name<Tools[keyof Tools]>,
@@ -2255,7 +2458,7 @@ type ToolResolutionResult<Tools extends Record<string, Tool.Any>> =
   | Response.ToolApprovalRequestPart
 
 const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
-  content: ReadonlyArray<Response.AllPartsEncoded>,
+  toolCalls: ReadonlyArray<DecodedToolCallParts<Tools>>,
   toolkit: Toolkit.WithHandler<Tools>,
   messages: ReadonlyArray<Prompt.Message>,
   concurrency: Concurrency
@@ -2264,17 +2467,6 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
   Tool.HandlerError<Tools[keyof Tools]> | AiError.AiError,
   Tool.HandlerServices<Tools[keyof Tools]> | IdGenerator
 > => {
-  const toolCalls: Array<Response.ToolCallPartEncoded> = []
-
-  for (const part of content) {
-    if (part.type === "tool-call") {
-      if (part.providerExecuted === true) {
-        continue
-      }
-      toolCalls.push(part)
-    }
-  }
-
   const { approved, denied } = collectToolApprovals(messages)
   const approvedToolCallIds = new Set(
     approved.map((approval) => approval.toolCallId)
@@ -2283,12 +2475,9 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
     denied.map((denial) => [denial.toolCallId, denial])
   )
 
-  const streams = toolCalls.map((toolCall) =>
+  const streams = toolCalls.filter((toolCall) => toolCall.providerExecuted !== true).map((toolCall) =>
     Effect.gen(function*() {
       const tool = toolkit.tools[toolCall.name]
-      if (!tool) {
-        return Stream.empty
-      }
 
       if (deniedByToolCallId.has(toolCall.id)) {
         const denial = deniedByToolCallId.get(toolCall.id)!
@@ -2306,7 +2495,7 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
       }
 
       if (approvedToolCallIds.has(toolCall.id)) {
-        return toolkit.handle(toolCall.name, toolCall.params as any, toolCall.id).pipe(
+        return toolkit[Toolkit.Execute](toolCall.name, toolCall.params, toolCall.id).pipe(
           Stream.unwrap,
           Stream.map(
             (result) =>
@@ -2332,7 +2521,7 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
         )
       }
 
-      return toolkit.handle(toolCall.name, toolCall.params as any, toolCall.id).pipe(
+      return toolkit[Toolkit.Execute](toolCall.name, toolCall.params, toolCall.id).pipe(
         Stream.unwrap,
         Stream.map(
           (result) =>
@@ -2353,20 +2542,6 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 // =============================================================================
 // Utilities
 // =============================================================================
-
-const makeToolkitWithEncodedParameters = <Tools extends Record<string, Tool.Any>>(
-  toolkit: Toolkit.WithHandler<Tools>
-): Toolkit.Any =>
-  Toolkit.make(
-    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.toEncoded(tool.parametersSchema)))
-  )
-
-const makeToolkitWithOpaqueParameters = <Tools extends Record<string, Tool.Any>>(
-  toolkit: Toolkit.WithHandler<Tools>
-): Toolkit.Any =>
-  Toolkit.make(
-    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.Unknown))
-  )
 
 const resolveToolkit = <Tools extends Record<string, Tool.Any>, E, R>(
   toolkit: ToolkitInput<Tools, E, R>

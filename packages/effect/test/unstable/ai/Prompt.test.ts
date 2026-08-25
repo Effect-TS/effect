@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
-import { Prompt, Response } from "effect/unstable/ai"
+import { AiError, Prompt, Response } from "effect/unstable/ai"
 
 describe("Prompt", () => {
   describe("part schemas", () => {
@@ -254,6 +254,50 @@ describe("Prompt", () => {
       const toolContent = prompt.content[1].content
       assert.strictEqual(toolContent.length, 1)
       assert.strictEqual(typeof toolContent[0] === "object" && toolContent[0].type, "tool-result")
+    })
+
+    it("expands tool call errors into model-visible calls and failed results", () => {
+      const error = new AiError.ToolParameterValidationError({
+        toolName: "get_weather",
+        toolParams: { city: 42 },
+        description: "Expected a string at city"
+      })
+      const prompt = Prompt.fromResponseParts([
+        Response.makePart("tool-call-error", {
+          id: "call-1",
+          name: "get_weather",
+          params: { city: 42 },
+          error,
+          providerExecuted: false
+        })
+      ])
+
+      assert.deepStrictEqual(
+        prompt,
+        Prompt.make([
+          {
+            role: "assistant",
+            content: [{
+              type: "tool-call",
+              id: "call-1",
+              name: "get_weather",
+              params: { city: 42 },
+              providerExecuted: false
+            }]
+          },
+          {
+            role: "tool",
+            content: [{
+              type: "tool-result",
+              id: "call-1",
+              name: "get_weather",
+              isFailure: true,
+              result: error,
+              providerExecuted: false
+            }]
+          }
+        ])
+      )
     })
 
     it("places provider-executed tool results in the assistant message", () => {

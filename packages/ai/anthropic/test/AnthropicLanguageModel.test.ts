@@ -329,6 +329,69 @@ describe("AnthropicLanguageModel", () => {
   })
 
   describe("generateText", () => {
+    const TestTool = Tool.make("TestTool", {
+      parameters: Schema.Struct({ input: Schema.String }),
+      success: Schema.String
+    })
+    const TestToolkit = Toolkit.make(TestTool)
+    const TestToolkitLayer = TestToolkit.toLayer({
+      TestTool: ({ input }) => Effect.succeed(input)
+    })
+    const toolCallLayer = (name: string, input: unknown) =>
+      AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+        Layer.provide(Layer.succeed(
+          HttpClient.HttpClient,
+          makeHttpClient((request) =>
+            Effect.succeed(jsonResponse(request, {
+              id: "msg_test_1",
+              type: "message",
+              role: "assistant",
+              model: "claude-sonnet-4-20250514",
+              content: [{ type: "tool_use", id: "toolu_test_1", name, input }],
+              stop_reason: "tool_use",
+              stop_sequence: null,
+              usage: {
+                cache_creation: null,
+                cache_creation_input_tokens: null,
+                cache_read_input_tokens: null,
+                inference_geo: null,
+                input_tokens: 10,
+                output_tokens: 5,
+                service_tier: null
+              }
+            }))
+          )
+        ))
+      )
+
+    it.effect("returns invalid tool parameters as a tool call error", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
+          prompt: "Use the test tool",
+          toolkit: TestToolkit
+        })
+
+        assert.strictEqual(response.toolCallErrors[0]?.error._tag, "ToolParameterValidationError")
+      }).pipe(
+        Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+        Effect.provide(TestToolkitLayer),
+        Effect.provide(toolCallLayer("TestTool", {}))
+      ))
+
+    it.effect("returns unknown tool names as a tool call error", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
+          prompt: "Use a tool",
+          toolkit: TestToolkit
+        })
+
+        assert.strictEqual(response.toolCallErrors[0]?.error._tag, "ToolNotFoundError")
+      }).pipe(
+        Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+        Effect.provide(TestToolkitLayer),
+        Effect.provide(toolCallLayer("UnknownTool", { input: "test" }))
+      ))
+
     it.effect("encodes dynamic tools", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined

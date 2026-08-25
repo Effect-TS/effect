@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Predicate, Ref, Schema } from "effect"
 import { TestClock } from "effect/testing"
-import { Chat, IdGenerator, Prompt } from "effect/unstable/ai"
+import { Chat, IdGenerator, Prompt, Tool, Toolkit } from "effect/unstable/ai"
 import { Persistence } from "effect/unstable/persistence"
 import * as TestUtils from "./utils.ts"
 
@@ -16,6 +16,52 @@ const PersistenceLayer = Layer.provideMerge(
 )
 
 describe("Chat", () => {
+  it.effect("stores invalid tool calls as model-visible history", () =>
+    Effect.gen(function*() {
+      const TestTool = Tool.make("TestTool", {
+        parameters: Schema.Struct({ input: Schema.String }),
+        success: Schema.String
+      })
+      const toolkit = Toolkit.make(TestTool)
+      const handlers = toolkit.toLayer({
+        TestTool: ({ input }) => Effect.succeed(input)
+      })
+      const chat = yield* Chat.empty
+
+      yield* chat.generateText({
+        prompt: "Use the test tool",
+        toolkit
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: [{
+            type: "tool-call",
+            id: "call-1",
+            name: "TestTool",
+            params: {}
+          }]
+        }),
+        Effect.provide(handlers)
+      )
+
+      const history = yield* Ref.get(chat.history)
+      const assistant = history.content[1]
+      const tool = history.content[2]
+      assert.strictEqual(assistant?.role, "assistant")
+      assert.strictEqual(tool?.role, "tool")
+      if (assistant?.role !== "assistant" || tool?.role !== "tool") {
+        return
+      }
+      assert.strictEqual(assistant.content[0]?.type, "tool-call")
+      assert.strictEqual(tool.content[0]?.type, "tool-result")
+      if (tool.content[0]?.type === "tool-result") {
+        assert.strictEqual(tool.content[0].isFailure, true)
+        assert.isTrue(Predicate.hasProperty(tool.content[0].result, "_tag"))
+        if (Predicate.hasProperty(tool.content[0].result, "_tag")) {
+          assert.strictEqual(tool.content[0].result._tag, "ToolParameterValidationError")
+        }
+      }
+    }))
+
   it.effect("should persist chat history to the backing persistence store", () =>
     Effect.gen(function*() {
       const storeId = "chat"

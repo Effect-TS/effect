@@ -31,7 +31,7 @@ import * as LanguageModel from "effect/unstable/ai/LanguageModel"
 import * as AiModel from "effect/unstable/ai/Model"
 import { toCodecOpenAI } from "effect/unstable/ai/OpenAiStructuredOutput"
 import type * as Prompt from "effect/unstable/ai/Prompt"
-import type * as Response from "effect/unstable/ai/Response"
+import * as Response from "effect/unstable/ai/Response"
 import { addGenAIAnnotations } from "effect/unstable/ai/Telemetry"
 import * as Tool from "effect/unstable/ai/Tool"
 import type * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
@@ -1038,30 +1038,14 @@ const makeResponse = Effect.fnUntraced(
         const toolCall = toolCalls[index]
         const toolName = toolCall.function.name
         const toolParams = toolCall.function.arguments ?? "{}"
-        const params = yield* Effect.try({
-          try: () => Tool.unsafeSecureJsonParse(toolParams),
-          catch: (cause) =>
-            AiError.make({
-              module: "OpenRouterLanguageModel",
-              method: "makeResponse",
-              reason: new AiError.ToolParameterValidationError({
-                toolName,
-                toolParams: {},
-                description: `Failed to securely JSON parse tool parameters: ${cause}`
-              })
-            })
-        })
-        parts.push({
-          type: "tool-call",
+        parts.push(Response.toolCallPartFromJson({
           id: toolCall.id,
           name: toolName,
-          params,
-          // Only attach reasoning_details to the first tool call to avoid
-          // duplicating thinking blocks for parallel tool calls (Claude)
-          ...(index === 0 && Predicate.isNotNullish(reasoningDetails) && reasoningDetails.length > 0
-            ? { metadata: { openrouter: { reasoningDetails } } }
-            : undefined)
-        })
+          params: toolParams,
+          metadata: index === 0 && Predicate.isNotNullish(reasoningDetails) && reasoningDetails.length > 0
+            ? { openrouter: { reasoningDetails } }
+            : undefined
+        }))
       }
     }
 
@@ -1501,26 +1485,14 @@ const makeStreamResponse = Effect.fnUntraced(
           // Forward any unsent tool calls if finish reason is 'tool-calls'
           if (finishReason === "tool-calls") {
             for (const toolCall of Object.values(activeToolCalls)) {
-              // Coerce invalid tool call parameters to an empty object
-              let params: unknown
-              // @effect-diagnostics-next-line tryCatchInEffectGen:off
-              try {
-                params = Tool.unsafeSecureJsonParse(toolCall.params)
-              } catch {
-                params = {}
-              }
-
-              // Only attach reasoning_details to the first tool call to avoid
-              // duplicating thinking blocks for parallel tool calls (Claude)
-              parts.push({
-                type: "tool-call",
+              parts.push(Response.toolCallPartFromJson({
                 id: toolCall.id,
                 name: toolCall.name,
-                params,
-                metadata: reasoningDetailsAttachedToToolCall ? undefined : {
-                  openrouter: { reasoningDetails: accumulatedReasoningDetails }
-                }
-              })
+                params: toolCall.params,
+                metadata: reasoningDetailsAttachedToToolCall
+                  ? undefined
+                  : { openrouter: { reasoningDetails: accumulatedReasoningDetails } }
+              }))
 
               reasoningDetailsAttachedToToolCall = true
             }

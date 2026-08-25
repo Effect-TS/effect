@@ -1,4 +1,4 @@
-import { Context, Effect, Schema, type Stream } from "effect"
+import { Context, type Effect, Schema, type Stream } from "effect"
 import { type AiError, type Chat, LanguageModel, Tool, Toolkit } from "effect/unstable/ai"
 import type * as Response from "effect/unstable/ai/Response"
 import { describe, expect, it } from "tstyche"
@@ -35,6 +35,10 @@ const TransformTool = Tool.make("TransformTool", {
   parameters: Schema.FiniteFromString,
   success: Schema.Finite
 })
+
+declare const toolkitWithRequestContext: Toolkit.WithHandler<{
+  readonly ToolWithRequestContext: typeof ToolWithRequestContext
+}>
 
 describe("LanguageModel", () => {
   describe("generateText", () => {
@@ -119,17 +123,9 @@ describe("LanguageModel", () => {
     })
 
     it("includes tool request dependencies for resolved toolkits with handlers", () => {
-      const toolkit: Toolkit.WithHandler<{
-        readonly ToolWithRequestContext: typeof ToolWithRequestContext
-      }> = {
-        tools: {
-          ToolWithRequestContext
-        },
-        handle: () => Effect.die("not implemented")
-      }
       const program = LanguageModel.generateText({
         prompt: "hello",
-        toolkit
+        toolkit: toolkitWithRequestContext
       })
 
       type ProgramRequirements = typeof program extends Effect.Effect<any, any, infer R> ? R : never

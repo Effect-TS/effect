@@ -1,5 +1,5 @@
-import type { Schema } from "effect"
-import { Tool } from "effect/unstable/ai"
+import { Schema } from "effect"
+import { type AiError, Tool, Toolkit } from "effect/unstable/ai"
 import { describe, expect, it } from "tstyche"
 
 describe("Tool", () => {
@@ -28,6 +28,43 @@ describe("Tool", () => {
           readonly failureMode: "error"
         }>
       >()
+    })
+  })
+
+  describe("HandlerResult", () => {
+    it("narrows successful and failed results by isFailure", () => {
+      const tool = Tool.make("A", {
+        success: Schema.String,
+        failure: Schema.Number,
+        failureMode: "return"
+      })
+      const check = (result: Tool.HandlerResult<typeof tool>) => {
+        if (result.isFailure) {
+          expect(result.result).type.toBe<number | AiError.AiError>()
+          expect(result.preliminary).type.toBe<false>()
+        } else {
+          expect(result.result).type.toBe<string>()
+          expect(result.preliminary).type.toBe<boolean>()
+        }
+      }
+      void check
+    })
+  })
+
+  describe("makeWithHandler", () => {
+    it("preserves the toolkit across encoded and decoded handlers", () => {
+      const tool = Tool.make("A", {
+        parameters: Schema.Struct({ value: Schema.Number }),
+        success: Schema.String
+      })
+      type Tools = { readonly A: typeof tool }
+      const compose = (
+        tools: Tools,
+        handle: Toolkit.WithHandler<Tools>["handle"],
+        execute: Toolkit.DecodedHandle<Tools>
+      ) => Toolkit.makeWithHandler(tools, handle, execute)
+
+      expect<ReturnType<typeof compose>>().type.toBe<Toolkit.WithHandler<Tools>>()
     })
   })
 })
