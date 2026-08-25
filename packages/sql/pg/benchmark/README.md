@@ -25,6 +25,12 @@ statement at a time and have nothing to pipeline.
 To use an existing PostgreSQL server instead, set `PGCLIENT_BENCHMARK_URL` to its connection URI. Keep the same server,
 Node version, and machine load when comparing revisions.
 
+Two numbers from different machines are not comparable, and on anything but Linux the container is the reason. Docker
+runs the server inside a virtual machine on macOS and Windows, so every round trip crosses a virtualised network and
+the workloads that wait on one - the single-row query and the transaction - measure that boundary as much as they
+measure the client. Point `PGCLIENT_BENCHMARK_URL` at a natively installed server there, or at a unix socket
+(`postgres:///postgres?host=/tmp`), and compare two revisions against the same server rather than comparing platforms.
+
 The benchmark file is deliberately valid against both the working branch and `main`. Since `main` does not contain the
 new file yet, pipe it from the benchmark branch while checked out on `main`:
 
