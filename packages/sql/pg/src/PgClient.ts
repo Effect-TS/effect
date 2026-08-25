@@ -96,6 +96,15 @@ export interface PgClientConfig {
    */
   readonly multiplex?: boolean | undefined
   /**
+   * How many statements may share one connection when `multiplex` is on.
+   *
+   * Higher trades tail latency for throughput: the statements sharing a
+   * connection are pipelined into one write, and they also queue behind the
+   * slowest of them. The default suits a server that is a cheap round trip
+   * away; one reached across a virtual or real network is worth more.
+   */
+  readonly multiplexConcurrency?: number | undefined
+  /**
    * Caches prepared statements by name. Enabled by default. Disable it for
    * poolers that cannot preserve named statements between queries.
    */

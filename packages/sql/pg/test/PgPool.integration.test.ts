@@ -226,4 +226,23 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       )
       assert.notStrictEqual(second, first)
     }), 20_000)
+  it.effect("honours a configured multiplex concurrency", () =>
+    Effect.gen(function*() {
+      // Two statements to a connection means eight of them need four
+      // connections, where the default for a pool this size would fit them on
+      // one.
+      const pool = yield* PgPool.make({
+        ...(yield* poolConfig),
+        maxConnections: 4,
+        multiplex: true,
+        multiplexConcurrency: 2
+      })
+      const processIds = yield* Effect.all(
+        Array.from({ length: 8 }, () =>
+          Effect.scoped(Effect.flatMap(pool.get, (connection) =>
+            Effect.as(connection.query("SELECT pg_sleep(0.05)"), connection.processId)))),
+        { concurrency: "unbounded" }
+      )
+      assert.strictEqual(new Set(processIds).size, 4)
+    }))
 })
