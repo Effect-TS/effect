@@ -187,6 +187,20 @@ describe("toEquivalence", () => {
     })
   })
 
+  it("Class", () => {
+    class A extends Schema.Class<A>("A")({
+      value: Schema.String
+    }) {}
+
+    const equivalence = Schema.toEquivalence(A)
+    const a = new A({ value: "a" })
+    const b = new A({ value: "a" })
+    ;(b as A & { metadata?: number }).metadata = 1
+
+    assertTrue(equivalence(a, b))
+    assertFalse(equivalence(a, new A({ value: "b" })))
+  })
+
   describe("Record", () => {
     it("Record(String, Number)", () => {
       const schema = Schema.Record(Schema.String, Schema.Number)
