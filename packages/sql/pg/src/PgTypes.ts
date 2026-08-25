@@ -356,13 +356,39 @@ const elementToArray = new Map<number, number>(
 )
 
 /**
+ * Options for registering a codec.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface RegisterOptions {
+  /**
+   * Registers a one-dimensional array codec at this OID and enables array type
+   * inference for the scalar codec.
+   */
+  readonly arrayOid?: number | undefined
+}
+
+/**
+ * A client-specific set of PostgreSQL binary codecs. Each registry starts with
+ * the built-in codecs and does not affect the module-level registry.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Registry {
+  readonly register: <A>(oid: number, codec: Codec<A>, options?: RegisterOptions) => void
+}
+
+/**
  * Returns the array OID whose elements have the given OID, or `undefined`
  * when there is no array type registered for it.
  *
  * @category getters
  * @since 4.0.0
  */
-export const arrayOidFor = (elementOid: number): number | undefined => elementToArray.get(elementOid)
+export const arrayOidFor = (elementOid: number, registry?: Registry): number | undefined =>
+  registry === undefined ? elementToArray.get(elementOid) : getRegistryState(registry).elementToArray.get(elementOid)
 
 // -----------------------------------------------------------------------------
 // calendar helpers
@@ -956,6 +982,34 @@ interface UnsafeCodec<A> {
   readonly read?: (bytes: Uint8Array, offset: number, size: number) => A
 }
 
+type Lookup = (oid: number) => UnsafeCodec<any> | undefined
+
+const toUnsafeCodec = <A>(codec: Codec<A>): UnsafeCodec<A> => ({
+  encode(value) {
+    const encoded = codec.encode(value)
+    if (Result.isFailure(encoded)) throw encoded.failure
+    return encoded.success
+  },
+  decode(bytes) {
+    const decoded = codec.decode(bytes)
+    if (Result.isFailure(decoded)) throw decoded.failure
+    return decoded.success
+  },
+  ...(codec.write === undefined ? undefined : {
+    write(sink: ValueSink, value: A) {
+      const written = codec.write!(sink, value)
+      if (Result.isFailure(written)) throw written.failure
+    }
+  }),
+  ...(codec.read === undefined ? undefined : {
+    read(bytes: Uint8Array, offset: number, size: number) {
+      const decoded = codec.read!(bytes, offset, size)
+      if (Result.isFailure(decoded)) throw decoded.failure
+      return decoded.success
+    }
+  })
+})
+
 /** A codec whose `decode` is its `read` over the whole of its bytes. */
 const codecOf = <A>(
   read: (bytes: Uint8Array, offset: number, size: number) => A,
@@ -1181,7 +1235,7 @@ const jsonbCodec: UnsafeCodec<any> = codecOf(
   }
 )
 
-const builtins = new Map<number, UnsafeCodec<any>>([
+const builtinScalars = new Map<number, UnsafeCodec<any>>([
   [
     OID.bool,
     codecOf(
@@ -1340,16 +1394,14 @@ const builtins = new Map<number, UnsafeCodec<any>>([
   [OID.timestamptz, timestampCodec]
 ])
 
-for (const [arrayOid, elementOid] of arrayToElement) {
-  builtins.set(
-    arrayOid,
-    codecOf(
-      (bytes, offset, size) => decodeArray(bytes, offset, size, elementOid),
-      (value) => encodeArray(value, elementOid),
-      (sink, value) => writeArray(sink, value, elementOid)
-    )
+const makeArrayCodec = (elementOid: number, lookup: Lookup): UnsafeCodec<ReadonlyArray<unknown>> =>
+  codecOf(
+    (bytes, offset, size) => decodeArray(bytes, offset, size, elementOid, lookup),
+    (value) => encodeArray(value, elementOid, lookup),
+    (sink, value) => writeArray(sink, value, elementOid, lookup)
   )
-}
+
+const builtins = new Map<number, UnsafeCodec<any>>(builtinScalars)
 
 /**
  * Built-ins with registered codecs layered over them, so `encode` and `decode`
@@ -1365,9 +1417,68 @@ const codecs = new Map<number, UnsafeCodec<any>>(builtins)
 const tableSize = 4096
 
 const table = new Array<UnsafeCodec<any> | undefined>(tableSize)
-for (const [oid, codec] of codecs) table[oid] = codec
 
 const lookup = (oid: number): UnsafeCodec<any> | undefined => oid >= 0 && oid < tableSize ? table[oid] : codecs.get(oid)
+
+for (const [arrayOid, elementOid] of arrayToElement) {
+  const codec = makeArrayCodec(elementOid, lookup)
+  builtins.set(arrayOid, codec)
+  codecs.set(arrayOid, codec)
+}
+for (const [oid, codec] of codecs) table[oid] = codec
+
+interface RegistryState {
+  readonly codecs: Map<number, UnsafeCodec<any>>
+  readonly elementToArray: Map<number, number>
+  readonly lookup: Lookup
+}
+
+const registryStates = new WeakMap<Registry, RegistryState>()
+
+const getRegistryState = (registry: Registry): RegistryState => {
+  const state = registryStates.get(registry)
+  if (state === undefined) return fail("Invalid PgTypes Registry")
+  return state
+}
+
+const registerInState = <A>(
+  state: RegistryState,
+  oid: number,
+  codec: Codec<A>,
+  options?: RegisterOptions
+): void => {
+  state.codecs.set(oid, toUnsafeCodec(codec))
+  if (options?.arrayOid !== undefined) {
+    state.elementToArray.set(oid, options.arrayOid)
+    state.codecs.set(options.arrayOid, makeArrayCodec(oid, state.lookup))
+  }
+}
+
+/**
+ * Creates a client-specific registry containing the built-in codecs.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeRegistry = (): Registry => {
+  const codecs = new Map<number, UnsafeCodec<any>>(builtinScalars)
+  const state: RegistryState = {
+    codecs,
+    elementToArray: new Map(elementToArray),
+    lookup: (oid) => codecs.get(oid)
+  }
+  for (const [arrayOid, elementOid] of arrayToElement) {
+    codecs.set(arrayOid, makeArrayCodec(elementOid, state.lookup))
+  }
+  const registry: Registry = {
+    register: (oid, codec, options) => registerInState(state, oid, codec, options)
+  }
+  registryStates.set(registry, state)
+  return registry
+}
+
+const lookupFor = (registry: Registry | undefined): Lookup =>
+  registry === undefined ? lookup : getRegistryState(registry).lookup
 
 /**
  * Registers a binary codec for an OID the built-in catalogue does not cover,
@@ -1377,31 +1488,7 @@ const lookup = (oid: number): UnsafeCodec<any> | undefined => oid >= 0 && oid < 
  * @since 4.0.0
  */
 export const register = <A>(oid: number, codec: Codec<A>): void => {
-  const unsafe: UnsafeCodec<A> = {
-    encode(value) {
-      const encoded = codec.encode(value)
-      if (Result.isFailure(encoded)) throw encoded.failure
-      return encoded.success
-    },
-    decode(bytes) {
-      const decoded = codec.decode(bytes)
-      if (Result.isFailure(decoded)) throw decoded.failure
-      return decoded.success
-    },
-    ...(codec.write === undefined ? undefined : {
-      write(sink: ValueSink, value: A) {
-        const written = codec.write!(sink, value)
-        if (Result.isFailure(written)) throw written.failure
-      }
-    }),
-    ...(codec.read === undefined ? undefined : {
-      read(bytes: Uint8Array, offset: number, size: number) {
-        const decoded = codec.read!(bytes, offset, size)
-        if (Result.isFailure(decoded)) throw decoded.failure
-        return decoded.success
-      }
-    })
-  }
+  const unsafe = toUnsafeCodec(codec)
   codecs.set(oid, unsafe)
   if (oid >= 0 && oid < tableSize) table[oid] = unsafe
 }
@@ -1423,7 +1510,7 @@ export const unregister = (oid: number): void => {
 // arrays
 // -----------------------------------------------------------------------------
 
-const encodeArray = (value: unknown, elementOid: number): Uint8Array => {
+const encodeArray = (value: unknown, elementOid: number, lookup: Lookup): Uint8Array => {
   if (!Array.isArray(value)) {
     return fail("Expected an array")
   }
@@ -1475,7 +1562,7 @@ const encodeArray = (value: unknown, elementOid: number): Uint8Array => {
  * and written in place, so neither the elements nor the array itself needs an
  * array of bytes of its own.
  */
-const writeArray = (sink: ValueSink, value: unknown, elementOid: number): void => {
+const writeArray = (sink: ValueSink, value: unknown, elementOid: number, lookup: Lookup): void => {
   if (!Array.isArray(value)) {
     return fail("Expected an array")
   }
@@ -1506,7 +1593,7 @@ const writeArray = (sink: ValueSink, value: unknown, elementOid: number): void =
       sink.int32(-1)
     } else {
       const token = sink.beginLength()
-      if (write === undefined) writeValue(sink, element, elementOid)
+      if (write === undefined) writeValue(sink, element, elementOid, lookup)
       else write(sink, element)
       sink.endLength(token)
     }
@@ -1522,7 +1609,8 @@ const decodeArray = (
   bytes: Uint8Array,
   start: number,
   size: number,
-  elementOid: number
+  elementOid: number,
+  lookup: Lookup
 ): ReadonlyArray<unknown> => {
   if (size < 12) return fail("Truncated array value")
   const dimensions = readInt32(bytes, start)
@@ -1584,18 +1672,15 @@ export interface Column {
 }
 
 /**
- * Builds a field reader for `PgProtocol.makeParser`, so a result's rows decode
- * as they are parsed rather than through a view per column.
+ * Creates a field reader for `PgProtocol.makeParser`.
  *
- * Every column is resolved once here rather than once per row, and a codec that
- * can read in place does; the rest are handed a view. SQL NULL reads as `null`,
- * and a column whose OID has no codec reads as a copy of its bytes.
+ * **Details**
  *
- * Only the binary format is supported, and a text column returns a
- * `CodecError` failure here rather than once per row. A successful result
- * contains the parser's internal throwing fast path; its failures are terminal
- * for that parser. The standalone `encode` and `decode` APIs remain typed
- * `Result` values.
+ * Codecs are resolved once per column. SQL `NULL` becomes `null`, and columns
+ * without a registered codec return a copy of their bytes. Text-format columns
+ * fail with `CodecError`.
+ *
+ * **Example** (Updating the reader after `RowDescription`)
  *
  * ```ts
  * import { PgProtocol, PgTypes } from "@effect/sql-pg"
@@ -1610,9 +1695,11 @@ export interface Column {
  * @since 4.0.0
  */
 export const makeFieldReader = (
-  columns: ReadonlyArray<Column>
+  columns: ReadonlyArray<Column>,
+  registry?: Registry
 ): Result.Result<PgProtocol.FieldReader<unknown>, CodecError> =>
   result(() => {
+    const lookup = lookupFor(registry)
     const codecs = columns.map((column, index) => {
       if (column.format !== 1) {
         return fail(`Only the binary format is supported, column ${index} has format ${column.format}`)
@@ -1631,21 +1718,25 @@ export const makeFieldReader = (
 /**
  * Encodes a JavaScript value as the binary representation of the given OID.
  *
+ * **Details**
+ *
  * Returns a `CodecError` failure when the value has the wrong JavaScript type,
  * or when the OID is neither built in nor registered.
  *
  * @category encoding
  * @since 4.0.0
  */
-export const encode = (value: unknown, oid: number): Result.Result<Uint8Array, CodecError> =>
+export const encode = (value: unknown, oid: number, registry?: Registry): Result.Result<Uint8Array, CodecError> =>
   result(() => {
-    const codec = lookup(oid)
+    const codec = lookupFor(registry)(oid)
     if (codec === undefined) return fail(`No codec registered for OID ${oid}`)
     return codec.encode(value)
   })
 
 /**
  * Decodes the binary representation of the given OID.
+ *
+ * **Details**
  *
  * `format` must be `1`; the text format is not implemented. An OID that is
  * neither built in nor registered decodes to the raw bytes.
@@ -1656,13 +1747,14 @@ export const encode = (value: unknown, oid: number): Result.Result<Uint8Array, C
 export const decode = (
   bytes: Uint8Array,
   oid: number,
-  format: number
+  format: number,
+  registry?: Registry
 ): Result.Result<unknown, CodecError> =>
   result(() => {
     if (format !== 1) {
       return fail(`Only the binary format is supported, received format ${format}`)
     }
-    const codec = lookup(oid)
+    const codec = lookupFor(registry)(oid)
     return codec === undefined ? bytes : codec.decode(bytes)
   })
 
@@ -1671,15 +1763,41 @@ export const decode = (
 // -----------------------------------------------------------------------------
 
 /**
+ * The runtime type identifier for PostgreSQL parameters.
+ *
+ * @category type IDs
+ * @since 4.0.0
+ */
+export const ParameterTypeId: ParameterTypeId = "~@effect/sql-pg/PgTypes/Parameter"
+
+/**
+ * The type-level identifier for PostgreSQL parameters.
+ *
+ * @category type IDs
+ * @since 4.0.0
+ */
+export type ParameterTypeId = "~@effect/sql-pg/PgTypes/Parameter"
+
+/**
  * A value paired with the OID it should be encoded as.
  *
  * @category models
  * @since 4.0.0
  */
 export interface Parameter {
+  readonly [ParameterTypeId]: ParameterTypeId
   readonly oid: number
   readonly value: unknown
 }
+
+/**
+ * Returns whether a value is a parameter created by this module.
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export const isParameter = (value: unknown): value is Parameter =>
+  typeof value === "object" && value !== null && (value as any)[ParameterTypeId] === ParameterTypeId
 
 /**
  * Encodes a parameter for a `Bind` message. SQL NULL stays `null`.
@@ -1687,15 +1805,28 @@ export interface Parameter {
  * @category encoding
  * @since 4.0.0
  */
-export const encodeParameter = (parameter: Parameter): Result.Result<Uint8Array | null, CodecError> =>
-  parameter.value === null ? Result.succeed(null) : encode(parameter.value, parameter.oid)
+export const encodeParameter = (
+  parameter: Parameter,
+  registry?: Registry
+): Result.Result<Uint8Array | null, CodecError> =>
+  parameter.value === null ? Result.succeed(null) : encode(parameter.value, parameter.oid, registry)
 
-const writeValue = (sink: ValueSink, value: unknown, oid: number): void => {
+const writeValue = (sink: ValueSink, value: unknown, oid: number, lookup: Lookup): void => {
   const codec = lookup(oid)
   if (codec === undefined) return fail(`No codec registered for OID ${oid}`)
   if (codec.write === undefined) sink.raw(codec.encode(value))
   else codec.write(sink, value)
 }
+
+/**
+ * Returns whether a parameter uses the text format in a `Bind` message.
+ * Untyped parameters (OID `0`) use text so PostgreSQL can infer their type;
+ * typed parameters use the binary format.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const isTextFormat = (parameter: Parameter): boolean => parameter.oid === 0
 
 /**
  * Writes a parameter into a `Bind` frame, for `PgProtocol.makeBindEncoder`.
@@ -1705,15 +1836,28 @@ const writeValue = (sink: ValueSink, value: unknown, oid: number): void => {
  * @category encoding
  * @since 4.0.0
  */
-const writeParameterUnsafe = (sink: ValueSink, parameter: Parameter): void =>
-  parameter.value === null ? sink.sqlNull() : writeValue(sink, parameter.value, parameter.oid)
+const writeParameterUnsafe = (sink: ValueSink, parameter: Parameter, lookup: Lookup): void =>
+  parameter.value === null
+    ? sink.sqlNull()
+    // An untyped parameter is the value's text representation; see
+    // `isTextFormat`.
+    : parameter.oid === 0
+    ? sink.utf8(String(parameter.value))
+    : writeValue(sink, parameter.value, parameter.oid, lookup)
 
+/**
+ * Writes a parameter into a `Bind` frame.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
 export const writeParameter = (
   sink: ValueSink,
-  parameter: Parameter
+  parameter: Parameter,
+  registry?: Registry
 ): Result.Result<void, CodecError> => {
   try {
-    writeParameterUnsafe(sink, parameter)
+    writeParameterUnsafe(sink, parameter, lookupFor(registry))
     return Result.void
   } catch (error) {
     if (error instanceof CodecError) return Result.fail(error)
@@ -1722,9 +1866,17 @@ export const writeParameter = (
 }
 
 const valueWriterUnsafe = Symbol.for("@effect/sql-pg/PgProtocol/ValueWriter/unsafe")
-Object.defineProperty(writeParameter, valueWriterUnsafe, { value: writeParameterUnsafe })
+Object.defineProperty(writeParameter, valueWriterUnsafe, {
+  value: (sink: ValueSink, parameter: Parameter) => writeParameterUnsafe(sink, parameter, lookup)
+})
 
-const parameter = (oid: number) => (value: unknown): Parameter => ({ oid, value })
+const makeParameter = (oid: number, value: unknown): Parameter => ({
+  [ParameterTypeId]: ParameterTypeId,
+  oid,
+  value
+})
+
+const parameter = (oid: number) => (value: unknown): Parameter => makeParameter(oid, value)
 
 /**
  * A `bool` parameter.
@@ -1919,12 +2071,13 @@ export const timestamptz: (value: number | null) => Parameter = parameter(OID.ti
  */
 export const array = (
   values: ReadonlyArray<unknown> | null,
-  elementOid: number
+  elementOid: number,
+  registry?: Registry
 ): Result.Result<Parameter, CodecError> =>
   result(() => {
-    const arrayOid = elementToArray.get(elementOid)
+    const arrayOid = arrayOidFor(elementOid, registry)
     if (arrayOid === undefined) {
       return fail(`No array type known for element OID ${elementOid}`)
     }
-    return { oid: arrayOid, value: values }
+    return makeParameter(arrayOid, values)
   })

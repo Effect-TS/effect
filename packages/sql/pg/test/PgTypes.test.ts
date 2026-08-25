@@ -8,6 +8,12 @@ const success = <A, E>(result: Result.Result<A, E>): A => {
   return result.success
 }
 
+const makeParameter = (oid: number, value: unknown): PgTypesResult.Parameter => ({
+  [PgTypesResult.ParameterTypeId]: PgTypesResult.ParameterTypeId,
+  oid,
+  value
+})
+
 const PgTypes = {
   ...PgTypesResult,
   encode: (value: unknown, oid: number) => success(PgTypesResult.encode(value, oid)),
@@ -671,12 +677,17 @@ describe("PgTypes", () => {
     })
 
     it("carries the OID with the value", () => {
-      assert.deepStrictEqual(PgTypes.int4(1), { oid: PgTypes.OID.int4, value: 1 })
-      assert.deepStrictEqual(PgTypes.timestamptz(0), { oid: PgTypes.OID.timestamptz, value: 0 })
-      assert.deepStrictEqual(PgTypes.array([1, null], PgTypes.OID.int4), {
-        oid: PgTypes.OID.int4Array,
-        value: [1, null]
-      })
+      assert.deepStrictEqual(PgTypes.int4(1), makeParameter(PgTypes.OID.int4, 1))
+      assert.deepStrictEqual(PgTypes.timestamptz(0), makeParameter(PgTypes.OID.timestamptz, 0))
+      assert.deepStrictEqual(
+        PgTypes.array([1, null], PgTypes.OID.int4),
+        makeParameter(
+          PgTypes.OID.int4Array,
+          [1, null]
+        )
+      )
+      assert.isTrue(PgTypesResult.isParameter(PgTypes.int4(1)))
+      assert.isFalse(PgTypesResult.isParameter({ oid: PgTypes.OID.int4, value: 1 }))
     })
 
     it("encodes SQL NULL as null", () => {
@@ -743,9 +754,9 @@ describe("PgTypes", () => {
     it("writes every builtin parameter as the bytes encode produces", () => {
       const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
       const parameters = [
-        ...roundTrips.map(({ oid, value }) => ({ oid, value })),
-        { oid: PgTypes.OID.int4, value: null },
-        { oid: PgTypes.OID.textArray, value: null }
+        ...roundTrips.map(({ oid, value }) => makeParameter(oid, value)),
+        makeParameter(PgTypes.OID.int4, null),
+        makeParameter(PgTypes.OID.textArray, null)
       ]
       assert.deepStrictEqual(
         encodeBind({ portal: "p1", statement: "s1", parameters }),
@@ -761,11 +772,11 @@ describe("PgTypes", () => {
       const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
       for (
         const parameter of [
-          { oid: PgTypes.OID.bool, value: 1 },
-          { oid: PgTypes.OID.bytea, value: "bytes" },
-          { oid: PgTypes.OID.json, value: undefined },
-          { oid: PgTypes.OID.jsonb, value: undefined },
-          { oid: PgTypes.OID.int4Array, value: "not-an-array" }
+          makeParameter(PgTypes.OID.bool, 1),
+          makeParameter(PgTypes.OID.bytea, "bytes"),
+          makeParameter(PgTypes.OID.json, undefined),
+          makeParameter(PgTypes.OID.jsonb, undefined),
+          makeParameter(PgTypes.OID.int4Array, "not-an-array")
         ]
       ) {
         assertThrowsTagged(
@@ -791,13 +802,35 @@ describe("PgTypes", () => {
       }
     })
 
+    it("isolates registry codecs and installs their generic array codec", () => {
+      const oid = 90_001
+      const arrayOid = 90_002
+      const registry = PgTypesResult.makeRegistry()
+      registry.register<string>(oid, {
+        encode: (value) => Result.succeed(new TextEncoder().encode(value.toUpperCase())),
+        decode: (value) => Result.succeed(new TextDecoder().decode(value).toLowerCase())
+      }, { arrayOid })
+
+      assert.strictEqual(PgTypesResult.arrayOidFor(oid), undefined)
+      assert.strictEqual(PgTypesResult.arrayOidFor(oid, registry), arrayOid)
+      assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.encode("ab", oid))
+
+      const scalar = success(PgTypesResult.encode("ab", oid, registry))
+      assert.deepStrictEqual(scalar, bytes("4142"))
+      assert.strictEqual(success(PgTypesResult.decode(scalar, oid, 1, registry)), "ab")
+
+      const array = success(PgTypesResult.encode(["ab", null], arrayOid, registry))
+      assert.deepStrictEqual(success(PgTypesResult.decode(array, arrayOid, 1, registry)), ["ab", null])
+      assert.deepStrictEqual(success(PgTypesResult.array([], oid, registry)), makeParameter(arrayOid, []))
+    })
+
     it("writes every array OID as the bytes encode produces", () => {
       const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
       for (const [elementOid, sample] of Object.entries(elementSamples)) {
         const arrayOid = PgTypes.arrayOidFor(Number(elementOid))!
         assert.notStrictEqual(arrayOid, undefined)
         for (const value of [[], [sample], [null], [sample, null, sample]]) {
-          const parameters = [{ oid: arrayOid, value }]
+          const parameters = [makeParameter(arrayOid, value)]
           assert.deepStrictEqual(
             encodeBind({ portal: "", statement: "", parameters }),
             PgProtocol.encodeBind({
@@ -814,7 +847,7 @@ describe("PgTypes", () => {
     it("frames array elements that grow the pool mid-write", () => {
       const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
       const value = ["a", "b".repeat(24 * 1024), null, "c"]
-      const parameters = [{ oid: PgTypes.OID.textArray, value }, PgTypes.int4(7)]
+      const parameters = [makeParameter(PgTypes.OID.textArray, value), PgTypes.int4(7)]
       assert.deepStrictEqual(
         encodeBind({ portal: "p", statement: "s", parameters }),
         PgProtocol.encodeBind({ portal: "p", statement: "s", parameters: parameters.map(PgTypes.encodeParameter) })
@@ -823,7 +856,7 @@ describe("PgTypes", () => {
 
     it("writes a registered codec through encode when it has no writer", () => {
       const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
-      const parameters = [{ oid: 99999, value: "ab" }]
+      const parameters = [makeParameter(99999, "ab")]
       assertThrowsTagged("PgTypesCodecError", () => encodeBind({ portal: "", statement: "", parameters }))
       PgTypes.register<string>(99999, {
         encode: (value) => Result.succeed(new TextEncoder().encode(value.toUpperCase())),
