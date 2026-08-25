@@ -158,7 +158,7 @@ export const layerFromConfig = (options?: {
 }): Layer.Layer<Exporter.Flusher, never, HttpClient.HttpClient | OtlpSerialization> =>
   Effect.gen(function*() {
     const { disabled, endpoint, exporters } = yield* Config.all({
-      disabled: Config.boolean("OTEL_SDK_DISABLED").pipe(Config.withDefault(false)),
+      disabled: Config.Boolean("OTEL_SDK_DISABLED").pipe(Config.withDefault(false)),
       endpoint: OtlpEnv.endpoint("TRACES"),
       exporters: OtlpEnv.exporters("TRACES")
     })
@@ -168,15 +168,15 @@ export const layerFromConfig = (options?: {
     }
 
     const { baseTimeout, tracesTimeout, exportTimeout, scheduleDelay, maxBatchSize } = yield* Config.all({
-      baseTimeout: Config.option(Config.int("OTEL_EXPORTER_OTLP_TIMEOUT")),
-      tracesTimeout: Config.option(Config.int("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT")),
-      exportTimeout: Config.option(Config.int("OTEL_BSP_EXPORT_TIMEOUT")),
+      baseTimeout: Config.option(Config.Int("OTEL_EXPORTER_OTLP_TIMEOUT")),
+      tracesTimeout: Config.option(Config.Int("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT")),
+      exportTimeout: Config.option(Config.Int("OTEL_BSP_EXPORT_TIMEOUT")),
       scheduleDelay: Config.option(
-        Config.int("OTEL_BSP_SCHEDULE_DELAY").pipe(
+        Config.Int("OTEL_BSP_SCHEDULE_DELAY").pipe(
           Config.map(Duration.millis)
         )
       ),
-      maxBatchSize: Config.option(Config.int("OTEL_BSP_MAX_EXPORT_BATCH_SIZE"))
+      maxBatchSize: Config.option(Config.Int("OTEL_BSP_MAX_EXPORT_BATCH_SIZE"))
     })
 
     const shutdownTimeout = Option.firstSomeOf([tracesTimeout, baseTimeout, exportTimeout]).pipe(
