@@ -26,6 +26,10 @@ const run = Effect.gen(function*() {
     ...(multiplex ? { multiplex: true } : {})
   })
 
+  // A table for the transaction workload to write into.
+  yield* sql.unsafe("DROP TABLE IF EXISTS pgclient_benchmark")
+  yield* sql.unsafe("CREATE UNLOGGED TABLE pgclient_benchmark (value int4)")
+
   const workloads = [
     {
       name: "parameterized SELECT (1 row)",
@@ -52,6 +56,17 @@ const run = Effect.gen(function*() {
           Array.from({ length: 20 }, (_, index) => `value + ${index} AS column_${index}`).join(", ")
         } FROM generate_series(1, 100) AS value`
       ).pipe(Effect.map((rows) => rows.length))
+    },
+    {
+      // Transactions run their BEGIN, COMMIT, and SAVEPOINT statements through
+      // a different path from the body, so a change to one is invisible here
+      // without a shape that exercises both.
+      name: "transaction (1 INSERT)",
+      unitsPerOperation: 1,
+      unit: "transactions/s",
+      effect: sql.withTransaction(
+        sql.unsafe("INSERT INTO pgclient_benchmark (value) VALUES ($1::int4)", [1])
+      ).pipe(Effect.map((rows) => rows.length + 1))
     },
     {
       name: "20 concurrent parameterized SELECTs",

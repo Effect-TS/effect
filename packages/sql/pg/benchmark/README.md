@@ -4,7 +4,10 @@
 
 `PgClient.ts` measures complete queries through `PgClient`, including Effect execution, pool checkout, the PostgreSQL
 wire protocol, and result decoding. It covers a parameterized one-row query, a 100-row result at three and at twenty
-columns, and 20 concurrent queries through a ten-connection pool. The two row-count-matched widths are there because
+columns, a single-statement transaction, and 20 concurrent queries through a ten-connection pool. The transaction is
+there because `BEGIN`, `COMMIT`, and `SAVEPOINT` reach the connection through a different path from the statements
+between them, so a change to that path is invisible to every other workload here. Its numbers are dominated by the
+commit, so read it for regressions rather than for throughput. The two row-count-matched widths are there because
 per-column work and per-row work scale differently: a change that barely moves a three-column result can dominate a
 twenty-column one. A PostgreSQL Testcontainer starts automatically, so Docker is the only external
 requirement.
