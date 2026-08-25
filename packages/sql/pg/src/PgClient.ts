@@ -14,7 +14,7 @@ import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import * as Client from "effect/unstable/sql/SqlClient"
-import type { Connection } from "effect/unstable/sql/SqlConnection"
+import type { Borrower, Connection } from "effect/unstable/sql/SqlConnection"
 import type { SqlError } from "effect/unstable/sql/SqlError"
 import type { Custom, Fragment } from "effect/unstable/sql/Statement"
 import * as Statement from "effect/unstable/sql/Statement"
@@ -128,6 +128,7 @@ export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, S
   Effect.flatMap(PgPool.make(options), (pool) =>
     makeImpl({
       acquirer: Effect.map(pool.get, makeConnection),
+      borrower: (f) => pool.use((connection) => f(makeConnection(connection))),
       transactionAcquirer: Effect.map(pool.reserve, makeConnection),
       listenAcquirer: pool.reserve,
       config: options
@@ -164,6 +165,7 @@ export const makeClient = (
 const makeImpl = Effect.fnUntraced(function*(
   options: {
     readonly acquirer: Effect.Effect<Connection, SqlError, Scope.Scope>
+    readonly borrower?: Borrower | undefined
     readonly transactionAcquirer: Effect.Effect<Connection, SqlError, Scope.Scope>
     readonly listenAcquirer: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope>
     readonly config: PgClientConfig
@@ -184,6 +186,7 @@ const makeImpl = Effect.fnUntraced(function*(
   return Object.assign(
     yield* Client.make({
       acquirer: options.acquirer,
+      borrower: options.borrower,
       transactionAcquirer: options.transactionAcquirer,
       compiler,
       spanAttributes: [

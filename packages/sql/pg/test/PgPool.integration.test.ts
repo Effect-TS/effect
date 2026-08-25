@@ -185,4 +185,45 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       const result = yield* Fiber.join(waiter)
       assert.deepStrictEqual(result.rows, [{ ok: 1 }])
     }))
+  it.effect("returns a borrowed session on success, failure, and interruption", () =>
+    Effect.gen(function*() {
+      // A pool of one: a lease that is not returned hangs the next borrow.
+      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1 })
+      const borrow = <A, E>(effect: (connection: PgConnection.PgConnection) => Effect.Effect<A, E>) => pool.use(effect)
+
+      assert.deepStrictEqual(
+        (yield* borrow((connection) => connection.query("SELECT 1 AS ok"))).rows,
+        [{ ok: 1 }]
+      )
+
+      const failed = yield* Effect.result(borrow((connection) => connection.query("SELECT * FROM nope")))
+      assert.strictEqual(failed._tag, "Failure")
+
+      const running = yield* Effect.forkScoped(borrow((connection) => connection.query("SELECT pg_sleep(30)")))
+      yield* realSleep
+      yield* Fiber.interrupt(running)
+
+      assert.deepStrictEqual(
+        (yield* borrow((connection) => connection.query("SELECT 2 AS ok"))).rows,
+        [{ ok: 2 }]
+      )
+    }), 20_000)
+
+  it.effect("borrows around a connection that has to be replaced", () =>
+    Effect.gen(function*() {
+      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1 })
+      const first = yield* pool.use((connection) => Effect.as(connection.query("SELECT 1 AS ok"), connection.processId))
+      // Killing the only session leaves it queued dead, which is exactly the
+      // case the fast path declines to take. The backend answers with an error
+      // and closes afterwards, so wait for the close to land before borrowing
+      // again - both paths would race it otherwise.
+      yield* Effect.ignore(
+        pool.use((connection) => connection.query("SELECT pg_terminate_backend(pg_backend_pid())"))
+      )
+      for (let i = 0; i < 50; i++) yield* realSleep
+      const second = yield* pool.use((connection) =>
+        Effect.as(connection.query("SELECT 2 AS ok"), connection.processId)
+      )
+      assert.notStrictEqual(second, first)
+    }), 20_000)
 })

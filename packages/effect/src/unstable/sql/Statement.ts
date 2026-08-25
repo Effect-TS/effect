@@ -22,7 +22,7 @@ import { hasProperty } from "../../Predicate.ts"
 import { TracerTimingEnabled } from "../../References.ts"
 import * as Stream from "../../Stream.ts"
 import type * as Tracer from "../../Tracer.ts"
-import type { Acquirer, Connection, Row } from "./SqlConnection.ts"
+import type { Acquirer, Borrower, Connection, Row } from "./SqlConnection.ts"
 import type { SqlError } from "./SqlError.ts"
 
 const FragmentTypeId = "~effect/sql/Fragment"
@@ -533,7 +533,8 @@ export const make = (
   acquirer: Acquirer,
   compiler: Compiler,
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
-  transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+  transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined,
+  borrower?: Borrower | undefined
 ): Constructor => {
   const cache = transformRows === undefined ? constructorCache.noTransforms : constructorCache.transforms
   if (cache.has(acquirer)) {
@@ -550,7 +551,8 @@ export const make = (
           strings as TemplateStringsArray,
           args,
           spanAttributes,
-          transformRows
+          transformRows,
+          borrower
         )
       }
 
@@ -566,7 +568,8 @@ export const make = (
           acquirer,
           compiler,
           spanAttributes,
-          transformRows
+          transformRows,
+          borrower
         )
       },
       literal(sql: string) {
@@ -621,7 +624,8 @@ export const statement = <A = Row>(
   strings: TemplateStringsArray,
   args: Array<any>,
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
-  transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+  transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined,
+  borrower?: Borrower | undefined
 ): Statement<A> => {
   const segments: Array<Segment> = strings[0].length > 0 ? [literal(strings[0])] : []
 
@@ -641,7 +645,7 @@ export const statement = <A = Row>(
     }
   }
 
-  return makeUnsafe(segments, acquirer, compiler, spanAttributes, transformRows)
+  return makeUnsafe(segments, acquirer, compiler, spanAttributes, transformRows, borrower)
 }
 
 /**
@@ -1216,6 +1220,7 @@ interface StatementImpl<A> extends Statement<A> {
   readonly compiler: Compiler
   readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
   readonly transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+  readonly borrower: Borrower | undefined
 
   withConnection<XA, E>(
     operation: string,
@@ -1243,7 +1248,8 @@ const makeUnsafe = <A = Row>(
   acquirer: Acquirer,
   compiler: Compiler,
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
-  transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+  transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined,
+  borrower: Borrower | undefined
 ): StatementImpl<A> => {
   const self = Object.create(StatementProto)
   self.segments = segments
@@ -1251,13 +1257,14 @@ const makeUnsafe = <A = Row>(
   self.compiler = compiler
   self.spanAttributes = spanAttributes
   self.transformRows = transformRows
+  self.borrower = borrower
   return self
 }
 
 // TODO: figure out why these diagnostics are emitted
 const StatementProto: Omit<
   StatementImpl<any>,
-  "segments" | "acquirer" | "compiler" | "spanAttributes" | "transformRows"
+  "segments" | "acquirer" | "compiler" | "spanAttributes" | "transformRows" | "borrower"
 > = {
   [FragmentTypeId]: FragmentTypeId,
   withConnection<XA, E>(
@@ -1300,7 +1307,13 @@ const StatementProto: Omit<
       }
       span.attribute(ATTR_DB_OPERATION_NAME, operation)
       span.attribute(ATTR_DB_QUERY_TEXT, sql)
-      return Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
+      // A client that can lend a connection for the duration of one effect
+      // saves the scope and the finalizer that borrowing through the acquirer
+      // needs. `stream` keeps the acquirer, because its lease has to outlive
+      // the effect that starts it.
+      return this.borrower === undefined
+        ? Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
+        : this.borrower((connection: Connection) => f(connection, sql, params))
     })
   },
 

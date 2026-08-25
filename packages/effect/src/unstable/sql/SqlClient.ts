@@ -110,6 +110,13 @@ export declare namespace SqlClient {
    */
   export interface MakeOptions {
     readonly acquirer: Connection.Acquirer
+    /**
+     * Lends a connection for one statement instead of leasing one into a
+     * scope. A client that can do this saves the scope and finalizer per
+     * statement; `stream`, transactions, and `reserve` keep the `acquirer`,
+     * whose lease outlives the effect that starts it.
+     */
+    readonly borrower?: Connection.Borrower | undefined
     readonly compiler: Compiler
     readonly transactionAcquirer?: Connection.Acquirer
     readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
@@ -169,8 +176,19 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
   })
 
   const reactivity = yield* Reactivity
+  // A statement inside a transaction has to run on that transaction's
+  // connection, so borrowing is only for statements that reach the pool.
+  const borrower: Connection.Borrower | undefined = options.borrower === undefined ? undefined : (f) =>
+    Effect.flatMap(
+      Effect.serviceOption(transactionService),
+      Option.match({
+        onNone: () => options.borrower!(f),
+        onSome: ([conn]) => f(conn)
+      })
+    )
+
   const client: SqlClient = Object.assign(
-    Statement.make(getConnection, options.compiler, options.spanAttributes, options.transformRows),
+    Statement.make(getConnection, options.compiler, options.spanAttributes, options.transformRows, borrower),
     {
       [TypeId]: TypeId as typeof TypeId,
       safe: undefined as any,
@@ -185,7 +203,8 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
           getConnection,
           options.compiler.withoutTransform,
           options.spanAttributes,
-          undefined
+          undefined,
+          borrower
         )
         const client = Object.assign(statement, {
           ...this,
