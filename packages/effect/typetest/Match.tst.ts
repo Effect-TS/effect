@@ -1,4 +1,4 @@
-import { Match, Option, pipe, type Result } from "effect"
+import { Effect, Match, Option, pipe, type Result } from "effect"
 import { describe, expect, it } from "tstyche"
 
 type Closed = { readonly _tag: "Closed" }
@@ -8,6 +8,12 @@ type Todos = Array<Todo>
 type Filter = "All" | "Active" | "Completed"
 
 declare const stringOrNumber: string | number
+declare const taggedInput:
+  | { readonly _tag: "A"; readonly a: string }
+  | { readonly _tag: "B"; readonly b: number }
+declare const discriminatedInput:
+  | { readonly kind: "A"; readonly a: string }
+  | { readonly kind: "B"; readonly b: number }
 
 describe("Match", () => {
   it("fn infers the selected value and original arguments", () => {
@@ -193,5 +199,91 @@ describe("Match", () => {
     // @ts-expect-error Argument of type
     Match.exhaustive(incomplete)
     expect(Match.exhaustive(complete)).type.toBe<string | number>()
+  })
+
+  it("tagsExhaustive contextually types Effect.fn handlers", () => {
+    Match.value(taggedInput).pipe(
+      Match.tagsExhaustive({
+        A: Effect.fn(function*(value) {
+          expect(value).type.toBe<{ readonly _tag: "A"; readonly a: string }>()
+          return value.a
+        }),
+        B: Effect.fnUntraced(function*(value) {
+          expect(value).type.toBe<{ readonly _tag: "B"; readonly b: number }>()
+          return value.b
+        })
+      })
+    )
+  })
+
+  it("Effect.fn handler return types survive", () => {
+    expect(
+      Match.value(taggedInput).pipe(
+        Match.tagsExhaustive({
+          A: Effect.fn(function*(value) {
+            return value.a
+          }),
+          B: Effect.fnUntraced(function*(value) {
+            return value.b
+          })
+        })
+      )
+    ).type.toBe<Effect.Effect<string | number>>()
+  })
+
+  it("tagsExhaustive rejects missing and unknown tags", () => {
+    Match.value(taggedInput).pipe(
+      // @ts-expect-error Property 'B' is missing
+      Match.tagsExhaustive({ A: (value) => value.a })
+    )
+
+    Match.value(taggedInput).pipe(
+      Match.tagsExhaustive({
+        A: (value) => value.a,
+        B: (value) => value.b,
+        // @ts-expect-error Type '() => number' is not assignable to type 'never'
+        C: () => 1
+      })
+    )
+  })
+
+  it("related handler maps contextually type nested Effect.fn calls", () => {
+    Match.value(taggedInput).pipe(
+      Match.tags({
+        A: Effect.fn(function*(value) {
+          expect(value).type.toBe<{ readonly _tag: "A"; readonly a: string }>()
+          return value.a
+        })
+      })
+    )
+
+    Match.value(discriminatedInput).pipe(
+      Match.discriminators("kind")({
+        A: Effect.fn(function*(value) {
+          expect(value).type.toBe<{ readonly kind: "A"; readonly a: string }>()
+          return value.a
+        })
+      }),
+      Match.discriminatorsExhaustive("kind")({
+        B: Effect.fnUntraced(function*(value) {
+          expect(value).type.toBe<{ readonly kind: "B"; readonly b: number }>()
+          return value.b
+        })
+      })
+    )
+
+    pipe(
+      taggedInput,
+      Match.valueTags({
+        A: Effect.fn(function*(value) {
+          expect(value).type.toBe<{ readonly _tag: "A"; readonly a: string }>()
+          return value.a
+        }),
+        B: Effect.fnUntraced(function*(value) {
+          expect(value).type.toBe<{ readonly _tag: "B"; readonly b: number }>()
+          return value.b
+        })
+      })
+    )
   })
 })
