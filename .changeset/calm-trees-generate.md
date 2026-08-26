@@ -86,8 +86,8 @@ divided by Native latency, so higher is better.
 | 32 recursive samples                |     150 µs |  103 µs |          1.45x |
 | 128 optional Struct samples         |     244 µs | 86.0 µs |          2.84x |
 | 128 constrained strings             |     742 µs | 49.7 µs |         14.86x |
-| RegExp derivation and first sample   |    13.4 ms | 30.8 µs |        429.02x |
-| 64 RegExp strings                    |     595 µs |  919 µs |          0.64x |
+| RegExp derivation and first sample  |    13.4 ms | 30.8 µs |        429.02x |
+| 64 RegExp strings                   |     595 µs |  919 µs |          0.64x |
 | RegExp failure and shrinking        |     168 µs | 88.2 µs |          1.91x |
 | 128 bounded numbers                 |    68.9 µs | 21.8 µs |          3.18x |
 | 128 `Uint8Array` samples            |    98.3 µs | 74.4 µs |          1.32x |
