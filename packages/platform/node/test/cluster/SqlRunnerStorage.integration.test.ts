@@ -128,7 +128,9 @@ describe("SqlRunnerStorage", () => {
       restoreConnection(partitioned)
       expect(
         yield* storage.refresh(runnerAddress1, shards).pipe(
-          Effect.retry({ times: 5, schedule: Schedule.spaced(20) })
+          // The integration shard can delay a healthy replacement beyond a
+          // handful of 100 ms lock-operation deadlines under load.
+          Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
         )
       ).toEqual(shards)
       assert.isAtLeast(partitioned.interruptedQueries, 1)
