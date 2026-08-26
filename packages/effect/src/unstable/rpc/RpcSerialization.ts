@@ -596,19 +596,16 @@ const defaultSchemaBinaryMaxFrameSize = 16 * 1024 * 1024
 const schemaBinaryTextEncoder = new TextEncoder()
 
 const makeSchemaBinary = (options?: {
-  readonly maxFrameSize?: number | undefined
+  readonly maxFrameSize?: number | "unbounded" | undefined
   readonly fingerprintPayloads?: boolean | undefined
 }): RpcSerialization["Service"] => {
-  const maxFrameSize = options?.maxFrameSize ?? defaultSchemaBinaryMaxFrameSize
+  const maxFrameSize = options?.maxFrameSize === "unbounded"
+    ? undefined
+    : options?.maxFrameSize ?? defaultSchemaBinaryMaxFrameSize
   const codecFor: CodecFor = options?.fingerprintPayloads === true
     ? (schema) => SchemaBinary.toCodecDirect(schema, { fingerprint: true })
     : SchemaBinary.toCodecDirect
-  // The envelope repeats itself: the same RPC tag, header names, and trace ids
-  // come back on message after message. A dictionary shared by every frame on
-  // the connection sends each of those once and references it afterwards, so
-  // the writer and the reader here are a matched pair and neither one works
-  // against a peer that was built without the other.
-  const envelopeOptions = { fingerprint: true, dictionary: true } as const
+  const envelopeOptions = { fingerprint: true } as const
   return RpcSerialization.of({
     contentType: "application/vnd.effect.rpc+schema-binary",
     includesFraming: true,
@@ -715,12 +712,13 @@ export const layerMsgPackWith = (
 /**
  * RPC serialization layer that uses SchemaBinary with fingerprinted RPC
  * envelopes. Payload fingerprints are disabled by default to support compatible
- * schema evolution. Frames default to a 16 MiB maximum size.
+ * schema evolution. Frames default to a 16 MiB maximum size. Use `"unbounded"`
+ * to disable the frame-size limit.
  *
  * @category layers
  * @since 4.0.0
  */
 export const layerSchemaBinary = (options?: {
-  readonly maxFrameSize?: number | undefined
+  readonly maxFrameSize?: number | "unbounded" | undefined
   readonly fingerprintPayloads?: boolean | undefined
 }): Layer.Layer<RpcSerialization> => Layer.sync(RpcSerialization)(() => makeSchemaBinary(options))

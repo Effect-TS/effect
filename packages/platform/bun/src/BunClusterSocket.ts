@@ -124,7 +124,11 @@ export const layer = <
     Layer.provide(
       options?.serialization === "ndjson"
         ? RpcSerialization.layerNdjsonWith({ maxBufferSize: options?.serializationMaxBufferSize })
-        : RpcSerialization.layerMsgPackWith({ maxBufferSize: options?.serializationMaxBufferSize })
+        : options?.serialization === "msgpack"
+        ? RpcSerialization.layerMsgPackWith({ maxBufferSize: options?.serializationMaxBufferSize })
+        : RpcSerialization.layerSchemaBinary({
+          maxFrameSize: options?.serializationMaxBufferSize
+        })
     )
   ) as any
 }

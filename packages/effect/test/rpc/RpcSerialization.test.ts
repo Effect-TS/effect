@@ -544,6 +544,31 @@ describe("RpcSerialization", () => {
         assert.deepStrictEqual(parser.decode(frame), [request])
       }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
 
+    it.effect("keeps varied frames decodable across parser replacement", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        const encoder = serialization.makeUnsafe()
+        const requests: Array<RpcMessage.RequestEncoded> = Array.from({ length: 200 }, (_, index) => ({
+          _tag: "Request",
+          id: index % 2 === 0 ? index : `request-${index}`,
+          tag: `Echo${index % 7}`,
+          payload: Uint8Array.from({ length: index % 17 }, (_, offset) => (index + offset) & 0xFF),
+          headers: Array.from({ length: index % 4 }, (_, offset) => [`x-${offset}`, `${index}`]),
+          ...(index % 3 === 0
+            ? { traceId: `trace-${index}`, spanId: `span-${index}`, sampled: index % 2 === 0 }
+            : undefined)
+        }))
+
+        for (const request of requests) {
+          const frame = encoder.encode(request)
+          assert.instanceOf(frame, Uint8Array)
+          const split = 1 + request.tag.length % (frame.length - 1)
+          const parser = serialization.makeUnsafe()
+          assert.deepStrictEqual(parser.decode(frame.subarray(0, split)), [])
+          assert.deepStrictEqual(parser.decode(frame.subarray(split)), [request])
+        }
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary())))
+
     it.effect("owns encoded frames without copying envelope holes", () =>
       Effect.gen(function*() {
         const serialization = yield* RpcSerialization.RpcSerialization
@@ -586,6 +611,12 @@ describe("RpcSerialization", () => {
         assert.deepStrictEqual(serialization.makeUnsafe().decode(uvarint(4)), [])
         assert.throws(() => serialization.makeUnsafe().decode(uvarint(5)), /frame within maxFrameSize/)
       }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary({ maxFrameSize: 4 }))))
+
+    it.effect("layerSchemaBinary allows an unbounded maxFrameSize", () =>
+      Effect.gen(function*() {
+        const serialization = yield* RpcSerialization.RpcSerialization
+        assert.deepStrictEqual(serialization.makeUnsafe().decode(uvarint(16 * 1024 * 1024 + 1)), [])
+      }).pipe(Effect.provide(RpcSerialization.layerSchemaBinary({ maxFrameSize: "unbounded" }))))
   })
 
   describe("codecFor", () => {

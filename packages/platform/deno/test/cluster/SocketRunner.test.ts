@@ -56,7 +56,7 @@ const makeRunnerLayer = (port: number, entities: Layer.Layer<never, never, Shard
       entityMessagePollInterval: 5000,
       sendRetryInterval: 100
     })),
-    Layer.provide(RpcSerialization.layerMsgPack)
+    Layer.provide(RpcSerialization.layerSchemaBinary())
   )
 
 const makeClientLayer = (port: number) =>
@@ -69,7 +69,7 @@ const makeClientLayer = (port: number) =>
       entityMessagePollInterval: 5000,
       sendRetryInterval: 100
     })),
-    Layer.provide(RpcSerialization.layerMsgPack)
+    Layer.provide(RpcSerialization.layerSchemaBinary())
   )
 
 const IsolationEntity = Entity
@@ -88,7 +88,7 @@ const ISOLATION_PORT = 50_126
 
 // BigDecimal.normalize creates a circular `normalized` self-reference.
 // When a persisted message is sent with discard: true, the notify path in Runners.makeRpc
-// passes the raw envelope (with circular BigDecimal payload) to the runner via msgpack,
+// passes the raw envelope (with circular BigDecimal payload) to the runner,
 // causing RangeError: Maximum call stack size exceeded.
 //
 // Volatile discard should complete after the request is sent, without waiting for the

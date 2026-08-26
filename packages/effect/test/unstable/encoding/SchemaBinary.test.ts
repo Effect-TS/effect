@@ -459,6 +459,15 @@ describe("SchemaBinary", () => {
       )
     })
 
+    it("rejects integer varints outside the safe-number range", () => {
+      const codec = SchemaBinary.toCodec(Schema.Int)
+      // Sign-magnitude encoding of Number.MAX_SAFE_INTEGER + 2. Converting it
+      // to number would silently round it down to MAX_SAFE_INTEGER + 1.
+      const unsafe = Uint8Array.of(9, 0x20, 0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x20)
+
+      assert.match(schemaError(() => Schema.decodeUnknownSync(codec)(unsafe)).message, /integer/)
+    })
+
     it("rejects malformed number payloads", () => {
       const codec = SchemaBinary.toCodec(Schema.Number)
       // nine payload bytes are neither the varint nor the f64 form
@@ -2330,6 +2339,160 @@ describe("SchemaBinary", () => {
           .message,
         "Expected unique extra keys"
       )
+    })
+  })
+
+  describe("codec memoization", () => {
+    it("memoizes by schema and wire mode", () => {
+      const schema = Schema.Struct({ id: Schema.Number, label: Schema.String })
+
+      const codec = SchemaBinary.toCodec(schema)
+      assert.strictEqual(SchemaBinary.toCodec(schema), codec)
+      assert.strictEqual(SchemaBinary.toCodec(schema, {}), codec)
+      assert.strictEqual(SchemaBinary.toCodec(schema, { fingerprint: false }), codec)
+
+      const fingerprintCodec = SchemaBinary.toCodec(schema, { fingerprint: true })
+      assert.strictEqual(SchemaBinary.toCodec(schema, { fingerprint: true }), fingerprintCodec)
+      assert.notStrictEqual(fingerprintCodec, codec)
+
+      const directCodec = SchemaBinary.toCodecDirect(schema)
+      assert.strictEqual(SchemaBinary.toCodecDirect(schema), directCodec)
+      assert.strictEqual(SchemaBinary.toCodecDirect(schema, { fingerprint: false }), directCodec)
+
+      const directFingerprintCodec = SchemaBinary.toCodecDirect(schema, { fingerprint: true })
+      assert.strictEqual(
+        SchemaBinary.toCodecDirect(schema, { fingerprint: true }),
+        directFingerprintCodec
+      )
+      assert.notStrictEqual(directFingerprintCodec, directCodec)
+    })
+  })
+
+  describe("generated regressions", () => {
+    const isWellFormedString = (value: string): boolean => {
+      for (let index = 0; index < value.length; index++) {
+        const code = value.charCodeAt(index)
+        if (code >= 0xD800 && code <= 0xDBFF) {
+          if (index + 1 >= value.length) return false
+          const trailing = value.charCodeAt(++index)
+          if (trailing < 0xDC00 || trailing > 0xDFFF) return false
+        } else if (code >= 0xDC00 && code <= 0xDFFF) {
+          return false
+        }
+      }
+      return true
+    }
+    const WellFormedString = Schema.String.check(
+      Schema.makeFilter(isWellFormedString, { expected: "a well-formed Unicode string" })
+    )
+    const Event = Schema.Union([
+      Schema.Struct({ _tag: Schema.tag("Text"), value: WellFormedString }),
+      Schema.Struct({ _tag: Schema.tag("Count"), value: Schema.Number })
+    ])
+    const Generated = Schema.Struct({
+      flag: Schema.Boolean,
+      count: Schema.Int,
+      ratio: Schema.Number,
+      label: WellFormedString,
+      bytes: Schema.Uint8Array,
+      big: Schema.BigInt,
+      optional: Schema.optionalKey(WellFormedString),
+      tuple: Schema.Tuple([WellFormedString, Schema.Number, Schema.Boolean]),
+      items: Schema.Array(Schema.Struct({ id: Schema.Int, name: WellFormedString })),
+      attributes: Schema.Record(
+        WellFormedString,
+        Schema.Union([WellFormedString, Schema.Number, Schema.Boolean, Schema.Null])
+      ),
+      event: Event
+    })
+    it.live.prop(
+      "keeps every encoding entry point equivalent for generated nested values",
+      { value: Generated },
+      ({ value }) =>
+        Effect.sync(() => {
+          for (const fingerprint of [false, true]) {
+            const options = { fingerprint } as const
+            const codec = SchemaBinary.toCodec(Generated, options)
+            const direct = SchemaBinary.toCodecDirect(Generated, options)
+            const frame = Schema.encodeUnknownSync(codec)(value)
+            const optimizedFrame = SchemaBinary.encodeUnknownSync(Generated, options)(value)
+            const statefulFrame = SchemaBinary.encoder(Generated, options).encode(value)
+
+            assert.deepStrictEqual(optimizedFrame, frame)
+            assert.deepStrictEqual(statefulFrame, frame)
+            assert.deepStrictEqual(Schema.decodeUnknownSync(codec)(frame), value)
+            assert.deepStrictEqual(Schema.decodeUnknownSync(direct)(frame), value)
+            assert.deepStrictEqual(SchemaBinary.parser(Generated, options).feedSync(frame), [value])
+          }
+        }),
+      { arbitrary: { runs: 200 } }
+    )
+
+    it.live.prop(
+      "parses generated batches across arbitrary chunk boundaries",
+      {
+        values: Schema.Array(Generated).check(Schema.isMaxLength(20)),
+        chunkSizes: Schema.Array(
+          Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 64 }))
+        ).check(Schema.isMinLength(1), Schema.isMaxLength(30)),
+        fingerprint: Schema.Boolean
+      },
+      ({ chunkSizes, fingerprint, values }) =>
+        Effect.sync(() => {
+          const options = fingerprint ? { fingerprint: true } as const : undefined
+          const bytes = SchemaBinary.encodeManyUnknownSync(Generated, options)(values)
+          const parser = SchemaBinary.parser(Generated, options)
+          const decoded: Array<typeof Generated.Type> = []
+          let offset = 0
+          for (const size of chunkSizes) {
+            if (offset >= bytes.length) break
+            const end = Math.min(offset + size, bytes.length)
+            decoded.push(...parser.feedSync(bytes.subarray(offset, end)))
+            offset = end
+          }
+          if (offset < bytes.length) decoded.push(...parser.feedSync(bytes.subarray(offset)))
+          parser.endSync()
+          assert.deepStrictEqual(decoded, values)
+        }),
+      { arbitrary: { runs: 100 } }
+    )
+
+    it.live.prop(
+      "rejects every generated truncated frame",
+      {
+        value: Generated,
+        offset: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+        fingerprint: Schema.Boolean
+      },
+      ({ fingerprint, offset, value }) =>
+        Effect.sync(() => {
+          const options = fingerprint ? { fingerprint: true } as const : undefined
+          const bytes = SchemaBinary.encodeUnknownSync(Generated, options)(value)
+          const cut = 1 + offset % (bytes.length - 1)
+          const parser = SchemaBinary.parser(Generated, options)
+
+          assert.deepStrictEqual(parser.feedSync(bytes.subarray(0, cut)), [])
+          assert.match(schemaError(() => parser.endSync()).message, /complete value/)
+        }),
+      { arbitrary: { runs: 100 } }
+    )
+
+    it("owns buffered and decoded bytes independently of caller buffers", () => {
+      const schema = Schema.Struct({ label: Schema.String, bytes: Schema.Uint8Array })
+      const value = { label: "fragmented", bytes: Uint8Array.of(1, 2, 3, 4) }
+      const frame = encode(schema, value)
+      const split = Math.floor(frame.length / 2)
+      const prefix = frame.slice(0, split)
+      const parser = SchemaBinary.parser(schema)
+
+      assert.deepStrictEqual(parser.feedSync(prefix), [])
+      prefix.fill(0)
+      const [decoded] = parser.feedSync(frame.subarray(split))
+      frame.fill(0)
+
+      assert.deepStrictEqual(decoded, value)
+      assert.notStrictEqual(decoded.bytes.buffer, frame.buffer)
+      parser.endSync()
     })
   })
 

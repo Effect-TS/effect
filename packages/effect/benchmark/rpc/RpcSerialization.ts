@@ -211,7 +211,7 @@ console.log(
   "End-to-end operations include the payload codec plus RPC envelope framing; codec construction is excluded."
 )
 console.log(
-  "Msgpack uses RpcSerialization.msgPack defaults, including records. SchemaBinary fingerprints envelopes only and shares one string dictionary across the frames of a connection."
+  "Msgpack uses RpcSerialization.msgPack defaults, including records. SchemaBinary fingerprints envelopes only and keeps every frame independently decodable."
 )
 console.log(
   "First-frame sizes use a fresh serializer; steady sizes and throughput reuse one as on a long-lived connection, and decode walks a stream in frame order."

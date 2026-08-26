@@ -380,7 +380,7 @@ export const socketRunnerLayer = (
       ...config,
       runnerAddress: Option.some(address)
     })),
-    Layer.provide(RpcSerialization.layerMsgPack)
+    Layer.provide(RpcSerialization.layerSchemaBinary())
   )
 
 export type RunnerLayer = typeof socketRunnerLayer
@@ -392,7 +392,7 @@ const clientLayer = (
   SocketRunner.layerClientOnly.pipe(
     Layer.provide(clientProtocol),
     Layer.provide(ShardingConfig.layer(config)),
-    Layer.provide(RpcSerialization.layerMsgPack)
+    Layer.provide(RpcSerialization.layerSchemaBinary())
   )
 
 const parseReply = (payload: MessageRow["reply_payload"]): Record<string, unknown> | undefined => {
