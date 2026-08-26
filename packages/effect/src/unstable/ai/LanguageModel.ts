@@ -1214,9 +1214,18 @@ export const make: (params: {
 
     yield* Schema.decodeEffect(PrevalidationSchema)(rawContent)
 
-    // Resolve the generated tool calls
-    const toolResults = hasIncompleteFinish(rawContent)
-      ? []
+    // Resolve the generated tool calls. When the finish reason indicates an
+    // incomplete response, handlers do not run and every executable tool call
+    // gets a synthesized failure result instead.
+    const incompleteFinishReason = findIncompleteFinishReason(rawContent)
+    const toolResults = Predicate.isNotUndefined(incompleteFinishReason)
+      ? rawContent
+        .filter((part): part is Response.ToolCallPartEncoded =>
+          part.type === "tool-call" &&
+          part.providerExecuted !== true &&
+          Predicate.isNotUndefined(toolkit.tools[part.name])
+        )
+        .map((part) => makeInterruptedToolResult(part, incompleteFinishReason) as ToolResolutionResult<Tools>)
       : yield* resolveToolCalls(
         rawContent,
         toolkit,
@@ -1537,6 +1546,9 @@ export const make: (params: {
     const toolCallSemaphore = concurrency === "unbounded"
       ? undefined
       : yield* Semaphore.make(concurrency)
+    // Tool calls that have been observed but not yet resolved with a final
+    // result or approval request (id -> tool name)
+    const pendingToolCalls = new Map<string, string>()
 
     // Helper function to handle tool calls with approval logic
     const handleToolCall = Effect.fnUntraced(function*(part: Response.ToolCallPartEncoded) {
@@ -1556,7 +1568,12 @@ export const make: (params: {
           approvalId,
           toolCallId: part.id
         }) as Response.StreamPart<Tools>
-        yield* Queue.offer(queue, approvalPart)
+        yield* Effect.uninterruptible(
+          Effect.andThen(
+            Queue.offer(queue, approvalPart),
+            Effect.sync(() => pendingToolCalls.delete(part.id))
+          )
+        )
         return
       }
 
@@ -1569,7 +1586,19 @@ export const make: (params: {
             providerExecuted: false,
             ...result
           }) as Response.StreamPart<Tools>
-          return Queue.offer(queue, toolResultPart)
+          // Emitting the result and marking the call resolved is atomic with
+          // respect to interruption so a handler interrupted in between
+          // cannot also receive a synthesized failure result.
+          return Effect.uninterruptible(
+            Effect.andThen(
+              Queue.offer(queue, toolResultPart),
+              Effect.sync(() => {
+                if (result.preliminary !== true) {
+                  pendingToolCalls.delete(part.id)
+                }
+              })
+            )
+          )
         })
       )
     })
@@ -1602,6 +1631,9 @@ export const make: (params: {
           // use the raw chunk for encoded params
           for (const part of chunk) {
             if (part.type === "tool-call" && part.providerExecuted !== true) {
+              if (Predicate.isNotUndefined(toolkit.tools[part.name])) {
+                pendingToolCalls.set(part.id, part.name)
+              }
               const effect = handleToolCall(part)
               yield* FiberSet.run(
                 toolCallFibers,
@@ -1615,16 +1647,28 @@ export const make: (params: {
       // - complete (FiberSet.awaitEmpty)
       // - fail (FiberSet.join)
       // If the provider reported an incomplete finish, interrupt any handlers
-      // that are still running instead of waiting for them.
+      // that are still running instead and emit synthesized failure results
+      // for the tool calls left without one, so the response leaves no tool
+      // call unanswered.
       Effect.andThen(
-        Effect.suspend(() =>
-          hasIncompleteFinish(deferredFinishParts)
-            ? FiberSet.clear(toolCallFibers)
-            : Effect.raceFirst(
+        Effect.suspend(() => {
+          const incompleteFinishReason = findIncompleteFinishReason(deferredFinishParts)
+          if (Predicate.isUndefined(incompleteFinishReason)) {
+            return Effect.raceFirst(
               FiberSet.join(toolCallFibers),
               FiberSet.awaitEmpty(toolCallFibers)
             )
-        )
+          }
+          return FiberSet.clear(toolCallFibers).pipe(
+            Effect.andThen(Effect.suspend(() =>
+              Queue.offerAll(
+                queue,
+                Array.from(pendingToolCalls, ([id, name]) =>
+                  makeInterruptedToolResult({ id, name }, incompleteFinishReason) as Response.StreamPart<Tools>)
+              )
+            ))
+          )
+        })
       ),
       Effect.andThen(
         Queue.offerAll(queue, deferredFinishParts)
@@ -2149,14 +2193,42 @@ const createDenialResults = (
 // prevents tool handlers from running.
 const completeFinishReasons: ReadonlyArray<Response.FinishReason> = ["stop", "tool-calls", "pause"]
 
-const hasIncompleteFinish = (
+const findIncompleteFinishReason = (
   content: ReadonlyArray<{ readonly type: string; readonly reason?: unknown }>
-): boolean =>
-  content.some(
-    (part) =>
+): string | undefined => {
+  for (const part of content) {
+    if (
       part.type === "finish" &&
       !completeFinishReasons.includes(part.reason as Response.FinishReason)
-  )
+    ) {
+      return typeof part.reason === "string" ? part.reason : "unknown"
+    }
+  }
+  return undefined
+}
+
+// Synthesized failure result for a tool call whose handler was interrupted or
+// never started because the response finished with an incomplete reason. This
+// keeps the tool call resolved so the conversation history stays well-formed
+// for subsequent provider requests.
+const makeInterruptedToolResult = (
+  toolCall: { readonly id: string; readonly name: string },
+  finishReason: string
+) => {
+  const result = {
+    type: "execution-interrupted",
+    reason: `Tool call execution was interrupted because the response finished with reason "${finishReason}"`
+  }
+  return Response.makePart("tool-result", {
+    id: toolCall.id,
+    name: toolCall.name,
+    providerExecuted: false,
+    preliminary: false,
+    result,
+    encodedResult: result,
+    isFailure: true
+  })
+}
 
 type ToolResolutionResult<Tools extends Record<string, Tool.Any>> =
   | Response.ToolResultPart<
