@@ -671,6 +671,11 @@ export const intoResult = <A, E, R>(
       Effect.interruptible,
       suspendOnFailure
         ? Effect.catchCause((cause) => {
+          // An interrupt that is neither a suspend nor a durable interrupt is
+          // an abandoned run attempt, which replays instead of suspending.
+          if (Cause.hasInterruptsOnly(cause) && !instance.suspended && !instance.interrupted) {
+            return Effect.failCause(cause)
+          }
           instance.suspended = true
           if (!Cause.hasInterruptsOnly(cause)) {
             instance.cause = Cause.die(Cause.squash(cause))
@@ -688,10 +693,18 @@ export const intoResult = <A, E, R>(
           )
           const hasInterruptsOnly = interrupts.length === cause.reasons.length
           const filtered = reasons.length === 0 ? cause : Cause.fromReasons(reasons)
-          return instance.suspended && hasInterruptsOnly
-            ? Effect.succeed(new Suspended({ cause: instance.cause }))
-            : (!instance.interrupted && hasInterruptsOnly) ||
-                (!captureDefects && Cause.hasDies(cause))
+          if (instance.suspended && hasInterruptsOnly) {
+            return Effect.succeed(new Suspended({ cause: instance.cause }))
+          }
+          if (!instance.interrupted && hasInterruptsOnly) {
+            // The run attempt was abandoned (e.g. the runner is shutting
+            // down). Release owner-local resources without running durable
+            // workflow finalizers, and exit without a result so the run can
+            // replay elsewhere.
+            instance.replaying = true
+            return Effect.failCause(filtered as Cause.Cause<never>)
+          }
+          return !captureDefects && Cause.hasDies(cause)
             ? Effect.failCause(filtered as Cause.Cause<never>)
             : Effect.succeed(new Complete({ exit: Exit.failCause(filtered) }))
         }
@@ -804,9 +817,12 @@ export const addFinalizer: <R>(
 > = Effect.fnUntraced(function*<R>(
   f: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void, never, R>
 ) {
-  const scope = (yield* InstanceTag).scope
+  const instance = yield* InstanceTag
   const services = yield* Effect.context<R>()
-  yield* Scope.addFinalizerExit(scope, (exit) => Effect.provideContext(f(exit), services))
+  yield* Scope.addFinalizerExit(
+    instance.scope,
+    (exit) => instance.replaying ? Effect.void : Effect.provideContext(f(exit), services)
+  )
 })
 
 /**

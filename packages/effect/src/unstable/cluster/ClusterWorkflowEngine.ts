@@ -6,6 +6,7 @@
  *
  * @since 4.0.0
  */
+import * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
 import * as DateTime from "../../DateTime.ts"
 import * as Duration from "../../Duration.ts"
@@ -360,15 +361,21 @@ export const make = Effect.gen(function*() {
             return {
               run: (request: Entity.Request<any>) => {
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
-                const payload = request.payload as any
-                let parent: { workflowName: string; executionId: string } | undefined
-                if (payload[payloadParentKey]) {
-                  parent = payload[payloadParentKey]
-                }
-                return execute(workflow.payloadSchema.make(payload) as object, executionId).pipe(
+                const parent = (request.payload as any)[payloadParentKey] as
+                  | { workflowName: string; executionId: string }
+                  | undefined
+                return execute(workflow.payloadSchema.make(request.payload) as object, executionId).pipe(
                   Effect.onExit((exit) => {
                     const suspendOnFailure = Context.get(workflow.annotations, Workflow.SuspendOnFailure)
-                    if (!instance.suspended && !(suspendOnFailure && exit._tag === "Failure")) {
+                    // An interrupt that is neither a suspend nor a durable
+                    // interrupt is an abandoned run attempt (e.g. the runner
+                    // is shutting down): do not resume the parent, but still
+                    // allow a pending durable interrupt to take effect.
+                    const abandoned = exit._tag === "Failure" &&
+                      Cause.hasInterruptsOnly(exit.cause) &&
+                      !instance.suspended &&
+                      !instance.interrupted
+                    if (!instance.suspended && !abandoned && !(suspendOnFailure && exit._tag === "Failure")) {
                       return parent ? ensureSuccess(sendResumeParent(parent)) : Effect.void
                     }
                     return engine.deferredResult(InterruptSignal).pipe(

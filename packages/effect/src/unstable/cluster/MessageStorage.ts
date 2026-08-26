@@ -121,8 +121,16 @@ export class MessageStorage extends Context.Service<MessageStorage, {
 
   /**
    * Unregister the reply handlers for the specified ShardId.
+   *
+   * By default the waiters are resumed with `EntityNotAssignedToRunner`, so
+   * they can re-route the wait. With `interrupt: true` the waiters are
+   * interrupted instead, for when the runner is shutting down and the reply
+   * can never be observed here.
    */
-  readonly unregisterShardReplyHandlers: (shardId: ShardId.ShardId) => Effect.Effect<void>
+  readonly unregisterShardReplyHandlers: (
+    shardId: ShardId.ShardId,
+    options?: { readonly interrupt?: boolean | undefined }
+  ) => Effect.Effect<void>
 
   /**
    * Retrieves the unprocessed messages for the specified shards.
@@ -551,7 +559,7 @@ export const make = (
             ))
           }
         }),
-      unregisterShardReplyHandlers: (shardId) =>
+      unregisterShardReplyHandlers: (shardId, options) =>
         Effect.sync(() => {
           const id = shardId.toString()
           const shardSet = replyHandlersShard.get(id)
@@ -559,11 +567,13 @@ export const make = (
           replyHandlersShard.delete(id)
           shardSet.forEach((handler) => {
             replyHandlers.delete(handler.message.envelope.requestId)
-            handler.resume(Effect.fail(
-              new EntityNotAssignedToRunner({
-                address: handler.message.envelope.address
-              })
-            ))
+            handler.resume(
+              options?.interrupt ? Effect.interrupt : Effect.fail(
+                new EntityNotAssignedToRunner({
+                  address: handler.message.envelope.address
+                })
+              )
+            )
           })
         }),
       saveReply(reply) {

@@ -299,9 +299,16 @@ describe.concurrent("Sharding", () => {
           assert(!Exit.hasDies(completed.value), "finalizer defected instead of failing cleanly")
           const exit = yield* Deferred.await(requestExit)
           assert(Exit.isFailure(exit), "request succeeded instead of failing during shutdown")
-          const failure = Cause.findErrorOption(exit.cause)
-          assert(Option.isSome(failure), "request did not fail with a typed error")
-          assert(failure.value instanceof ClusterError.EntityNotAssignedToRunner)
+          if (persisted) {
+            // A persisted request is durable, so a transient routing state is
+            // not an error: the caller is interrupted instead, and the request
+            // is served under the next owner.
+            assert(Cause.hasInterruptsOnly(exit.cause), "persisted request was not interrupted")
+          } else {
+            const failure = Cause.findErrorOption(exit.cause)
+            assert(Option.isSome(failure), "request did not fail with a typed error")
+            assert(failure.value instanceof ClusterError.EntityNotAssignedToRunner)
+          }
           assert.strictEqual(driver.journal.length, persisted ? 1 : 0)
         }),
       20_000

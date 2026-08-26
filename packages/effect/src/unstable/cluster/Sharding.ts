@@ -317,7 +317,13 @@ const make = Effect.gen(function*() {
       for (const shardId of shardIds) {
         MutableHashSet.remove(releasingShards, shardId)
         MutableHashSet.remove(forceReleasingShards, shardId)
-        yield* storage.unregisterShardReplyHandlers(shardId)
+        // During shutdown, parked waiters are interrupted: this runner will
+        // never observe the reply. During a rebalance the waiters are resumed
+        // with `EntityNotAssignedToRunner`, and the client falls back to
+        // waiting for the reply via storage while the entity moves.
+        yield* storage.unregisterShardReplyHandlers(shardId, {
+          interrupt: MutableRef.get(isShutdown)
+        })
       }
     })
     const retryShardRelease =
@@ -1113,7 +1119,13 @@ const make = Effect.gen(function*() {
       return Effect.catchTag(persist, "MalformedMessage", Effect.die).pipe(
         Effect.andThen(
           shouldFail
-            ? Effect.fail(error)
+            // The message is durable, so a transient routing state is never an
+            // error for the caller. The runner is tearing down and can no
+            // longer observe the reply, so interrupt the caller instead: the
+            // request will be served under the next owner.
+            ? message._tag === "OutgoingRequest"
+              ? Effect.interrupt
+              : Effect.fail(error)
             : Effect.logWarning("Persisting outgoing message abandoned during shutdown", message.envelope.address)
         )
       )
