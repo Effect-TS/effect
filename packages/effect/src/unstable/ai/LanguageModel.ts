@@ -14,6 +14,7 @@
 import type * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
+import * as FiberSet from "../../FiberSet.ts"
 import { constFalse, identity, pipe } from "../../Function.ts"
 import type * as JsonSchema from "../../JsonSchema.ts"
 import * as Option from "../../Option.ts"
@@ -21,6 +22,7 @@ import * as Predicate from "../../Predicate.ts"
 import * as Queue from "../../Queue.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
+import * as Semaphore from "../../Semaphore.ts"
 import * as Sink from "../../Sink.ts"
 import * as Stream from "../../Stream.ts"
 import type { Span } from "../../Tracer.ts"
@@ -1199,14 +1201,18 @@ export const make: (params: {
       return content as Array<Response.Part<Tools>>
     }
 
+    // Validates the complete response before tool handlers can perform side
+    // effects. Tool parameters remain opaque here so their validation keeps
+    // using Toolkit's more specific ToolParameterValidationError; rawContent
+    // is decoded a second time with ResponseSchema below to produce the
+    // typed response.
+    const PrevalidationSchema = Schema.mutable(
+      Schema.Array(Response.Part(makeToolkitWithOpaqueParameters(toolkit)))
+    )
+
     const rawContent = yield* generateWithNonIncrementalFallback()
 
-    // Validate the complete response before tool handlers can perform side
-    // effects. Tool parameters remain opaque here so their validation keeps
-    // using Toolkit's more specific ToolParameterValidationError.
-    yield* Schema.decodeEffect(
-      Schema.mutable(Schema.Array(Response.Part(makeToolkitWithOpaqueParameters(toolkit))))
-    )(rawContent)
+    yield* Schema.decodeEffect(PrevalidationSchema)(rawContent)
 
     // Resolve the generated tool calls
     const toolResults = hasIncompleteFinish(rawContent)
@@ -1279,14 +1285,21 @@ export const make: (params: {
         incrementalPrompt: undefined,
         previousResponseId: undefined
       }
+      // Only response parts with content count as emitted - a lone
+      // response-metadata part must not disable the full-prompt fallback.
       let emitted = false
       return requestOptions.incrementalPrompt
         ? params.streamText(requestOptions).pipe(
-          Stream.tap(() => Effect.sync(() => emitted = true)),
-          Stream.catchTag("AiError", (error) =>
-            error.reason._tag === "InvalidRequestError" && !emitted
-              ? params.streamText(fallbackOptions)
-              : Stream.fail(error))
+          Stream.tap((part) =>
+            Effect.sync(() => {
+              if (part.type !== "response-metadata") emitted = true
+            })
+          ),
+          Stream.catchReason(
+            "AiError",
+            "InvalidRequestError",
+            (_, error) => emitted ? Stream.fail(error) : params.streamText(fallbackOptions)
+          )
         )
         : params.streamText(requestOptions)
     }
@@ -1511,7 +1524,6 @@ export const make: (params: {
       | Schema.SchemaError
     >()
     const deferredFinishParts: Array<Response.StreamPart<Tools>> = []
-    const deferredToolCalls: Array<Response.ToolCallPartEncoded> = []
 
     // Emit pre-resolved tool results so Chat.streamText persists them to
     // history. This ensures collectToolApprovals({ excludeResolved }) can
@@ -1519,6 +1531,12 @@ export const make: (params: {
     if (preResolvedStreamParts.length > 0) {
       yield* Queue.offerAll(queue, preResolvedStreamParts)
     }
+
+    // FiberSet to track concurrent tool call handlers
+    const toolCallFibers = yield* FiberSet.make<void, AiError.AiError>()
+    const toolCallSemaphore = concurrency === "unbounded"
+      ? undefined
+      : yield* Semaphore.make(concurrency)
 
     // Helper function to handle tool calls with approval logic
     const handleToolCall = Effect.fnUntraced(function*(part: Response.ToolCallPartEncoded) {
@@ -1580,23 +1598,31 @@ export const make: (params: {
           if (immediateParts.length > 0) {
             yield* Queue.offerAll(queue, immediateParts)
           }
-          // Defer tool call handlers until the provider has completed so an
-          // incomplete finish cannot trigger side effects.
+          // Fork tool call handlers as soon as their parameters are complete -
+          // use the raw chunk for encoded params
           for (const part of chunk) {
             if (part.type === "tool-call" && part.providerExecuted !== true) {
-              deferredToolCalls.push(part)
+              const effect = handleToolCall(part)
+              yield* FiberSet.run(
+                toolCallFibers,
+                toolCallSemaphore ? toolCallSemaphore.withPermit(effect) : effect
+              )
             }
           }
         })
       ),
+      // Wait for all tool calls to either:
+      // - complete (FiberSet.awaitEmpty)
+      // - fail (FiberSet.join)
+      // If the provider reported an incomplete finish, interrupt any handlers
+      // that are still running instead of waiting for them.
       Effect.andThen(
         Effect.suspend(() =>
           hasIncompleteFinish(deferredFinishParts)
-            ? Effect.void
-            : Effect.forEach(
-              deferredToolCalls,
-              handleToolCall,
-              { concurrency, discard: true }
+            ? FiberSet.clear(toolCallFibers)
+            : Effect.raceFirst(
+              FiberSet.join(toolCallFibers),
+              FiberSet.awaitEmpty(toolCallFibers)
             )
         )
       ),
@@ -2118,13 +2144,18 @@ const createDenialResults = (
 // Tool Call Resolution
 // =============================================================================
 
+// Finish reasons that indicate the provider completed the response. Anything
+// else (including "unknown", "other", and future reasons) fails safe and
+// prevents tool handlers from running.
+const completeFinishReasons: ReadonlyArray<Response.FinishReason> = ["stop", "tool-calls", "pause"]
+
 const hasIncompleteFinish = (
   content: ReadonlyArray<{ readonly type: string; readonly reason?: unknown }>
 ): boolean =>
   content.some(
     (part) =>
       part.type === "finish" &&
-      (part.reason === "length" || part.reason === "content-filter" || part.reason === "error")
+      !completeFinishReasons.includes(part.reason as Response.FinishReason)
   )
 
 type ToolResolutionResult<Tools extends Record<string, Tool.Any>> =

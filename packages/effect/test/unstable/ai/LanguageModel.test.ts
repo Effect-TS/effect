@@ -71,7 +71,7 @@ describe("LanguageModel", () => {
             )
         })
 
-        for (const reason of ["length", "content-filter", "error"] as const) {
+        for (const reason of ["length", "content-filter", "error", "unknown", "other"] as const) {
           const response = yield* LanguageModel.generateText({
             prompt: [],
             toolkit: MyToolkit
@@ -121,6 +121,34 @@ describe("LanguageModel", () => {
                 params: { testParam: "test-param" }
               },
               { type: "text", text: 123 } as any
+            ]
+          }),
+          Effect.provide(handlers),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+        strictEqual(yield* Ref.get(calls), 0)
+      }))
+
+    it.effect("fails cleanly for a tool call with a missing params field", () =>
+      Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Ref.update(calls, (n) => n + 1).pipe(
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [
+              { type: "tool-call", id: "tool-no-params", name: "MyTool" } as any,
+              finishPart
             ]
           }),
           Effect.provide(handlers),
@@ -184,41 +212,52 @@ describe("LanguageModel", () => {
   })
 
   describe("streamText", () => {
-    it.effect("does not resolve tool calls after an incomplete finish", () =>
+    it.effect("interrupts in-flight tool handlers on an incomplete finish", () =>
       Effect.gen(function*() {
-        const calls = yield* Ref.make(0)
+        const handlerStarted = yield* Latch.make()
+        const handlerInterrupted = yield* Latch.make()
         const handlers = MyToolkit.toLayer({
           MyTool: () =>
-            Ref.update(calls, (n) => n + 1).pipe(
+            handlerStarted.open.pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() => handlerInterrupted.open),
               Effect.as({ testSuccess: "test-success" })
             )
         })
+        const providerQueue = yield* Queue.make<Response.StreamPartEncoded, Cause.Done>()
+        const parts: Array<Response.StreamPart<Toolkit.Tools<typeof MyToolkit>>> = []
 
-        for (const reason of ["length", "content-filter", "error"] as const) {
-          const parts = yield* LanguageModel.streamText({
-            prompt: [],
-            toolkit: MyToolkit
-          }).pipe(
-            Stream.runCollect,
-            TestUtils.withLanguageModel({
-              streamText: [
-                {
-                  type: "tool-call",
-                  id: `tool-${reason}`,
-                  name: "MyTool",
-                  params: { testParam: "test-param" }
-                },
-                { ...finishPart, reason }
-              ]
-            }),
-            Effect.provide(handlers)
-          )
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          Stream.runForEach((part) =>
+            Effect.sync(() => {
+              parts.push(part)
+            })
+          ),
+          TestUtils.withLanguageModel({
+            streamText: () => Stream.fromQueue(providerQueue)
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
 
-          deepStrictEqual(parts.map((part) => part.type), ["tool-call", "finish"])
-          strictEqual(parts.find((part) => part.type === "finish")?.reason, reason)
-        }
+        yield* Queue.offer(providerQueue, {
+          type: "tool-call",
+          id: "tool-interrupted",
+          name: "MyTool",
+          params: { testParam: "test-param" }
+        })
+        yield* handlerStarted.await
 
-        strictEqual(yield* Ref.get(calls), 0)
+        yield* Queue.offer(providerQueue, { ...finishPart, reason: "length" })
+        yield* Queue.end(providerQueue)
+        yield* Fiber.join(fiber)
+
+        yield* handlerInterrupted.await
+        deepStrictEqual(parts.map((part) => part.type), ["tool-call", "finish"])
+        strictEqual(parts.find((part) => part.type === "finish")?.reason, "length")
       }))
 
     it.effect("validates encoded tool parameters when tool call resolution is disabled", () =>
@@ -273,27 +312,18 @@ describe("LanguageModel", () => {
         Effect.provide(TransformToolkitLayer)
       ))
 
-    it.effect("does not execute tool handlers until the provider stream completes", () =>
+    it.effect("executes tool handlers as soon as their parameters are complete", () =>
       Effect.gen(function*() {
         const parts: Array<Response.StreamPart<Toolkit.Tools<typeof MyToolkit>>> = []
-        const toolCallObserved = yield* Latch.make()
+        const handlerCalled = yield* Latch.make()
         const providerQueue = yield* Queue.make<Response.StreamPartEncoded, Cause.Done>()
         const calls = yield* Ref.make(0)
         const handlers = MyToolkit.toLayer({
           MyTool: () =>
             Ref.update(calls, (n) => n + 1).pipe(
+              Effect.andThen(handlerCalled.open),
               Effect.as({ testSuccess: "test-success" })
             )
-        })
-
-        const toolCallId = "tool-abc123"
-        const toolName = "MyTool"
-        const toolParams = { testParam: "test-param" }
-        yield* Queue.offer(providerQueue, {
-          type: "tool-call",
-          id: toolCallId,
-          name: toolName,
-          params: toolParams
         })
 
         const fiber = yield* LanguageModel.streamText({
@@ -301,9 +331,9 @@ describe("LanguageModel", () => {
           toolkit: MyToolkit
         }).pipe(
           Stream.runForEach((part) =>
-            Effect.sync(() => parts.push(part)).pipe(
-              Effect.andThen(part.type === "tool-call" ? toolCallObserved.open : Effect.void)
-            )
+            Effect.sync(() => {
+              parts.push(part)
+            })
           ),
           TestUtils.withLanguageModel({
             streamText: () => Stream.fromQueue(providerQueue)
@@ -312,20 +342,73 @@ describe("LanguageModel", () => {
           Effect.forkScoped
         )
 
-        yield* toolCallObserved.await
+        yield* Queue.offer(providerQueue, {
+          type: "tool-call",
+          id: "tool-abc123",
+          name: "MyTool",
+          params: { testParam: "test-param" }
+        })
 
-        strictEqual(yield* Ref.get(calls), 0)
-        deepStrictEqual(parts.map((part) => part.type), ["tool-call"])
+        // The handler runs while the provider stream is still open
+        yield* handlerCalled.await
+        strictEqual(yield* Ref.get(calls), 1)
 
         yield* Queue.offer(providerQueue, finishPart)
         yield* Queue.end(providerQueue)
         yield* Fiber.join(fiber)
 
-        strictEqual(yield* Ref.get(calls), 1)
         deepStrictEqual(parts.map((part) => part.type), ["tool-call", "tool-result", "finish"])
       }))
 
-    it.effect("does not execute deferred tool calls when the provider stream fails", () =>
+    it.effect("interrupts in-flight tool handlers when the provider stream fails", () =>
+      Effect.gen(function*() {
+        const handlerStarted = yield* Latch.make()
+        const handlerInterrupted = yield* Latch.make()
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            handlerStarted.open.pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() => handlerInterrupted.open),
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+        const providerQueue = yield* Queue.make<Response.StreamPartEncoded, Cause.Done>()
+        const providerError = AiError.make({
+          module: "LanguageModelTest",
+          method: "streamText",
+          reason: new AiError.InvalidRequestError({ description: "provider stream failed" })
+        })
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: () =>
+              Stream.fromQueue(providerQueue).pipe(
+                Stream.concat(Stream.fail(providerError))
+              )
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        yield* Queue.offer(providerQueue, {
+          type: "tool-call",
+          id: "tool-before-failure",
+          name: "MyTool",
+          params: { testParam: "test-param" }
+        })
+        yield* handlerStarted.await
+        yield* Queue.end(providerQueue)
+
+        const error = yield* Fiber.join(fiber).pipe(Effect.flip)
+        strictEqual(error, providerError)
+        yield* handlerInterrupted.await
+      }))
+
+    it.effect("does not execute tool handlers when response content is malformed", () =>
       Effect.gen(function*() {
         const calls = yield* Ref.make(0)
         const handlers = MyToolkit.toLayer({
@@ -334,30 +417,30 @@ describe("LanguageModel", () => {
               Effect.as({ testSuccess: "test-success" })
             )
         })
-        const providerError = AiError.make({
-          module: "LanguageModelTest",
-          method: "streamText",
-          reason: new AiError.InvalidRequestError({ description: "provider stream failed" })
-        })
 
-        yield* LanguageModel.streamText({
+        const error = yield* LanguageModel.streamText({
           prompt: [],
           toolkit: MyToolkit
         }).pipe(
           Stream.runDrain,
           TestUtils.withLanguageModel({
-            streamText: () =>
-              Stream.succeed<Response.StreamPartEncoded>({
+            streamText: [
+              {
                 type: "tool-call",
-                id: "tool-before-failure",
+                id: "tool-before-invalid-part",
                 name: "MyTool",
                 params: { testParam: "test-param" }
-              }).pipe(Stream.concat(Stream.fail(providerError)))
+              },
+              { type: "text", text: 123 } as any,
+              finishPart
+            ]
           }),
           Effect.provide(handlers),
           Effect.flip
         )
 
+        strictEqual(error._tag, "AiError")
+        strictEqual((error as AiError.AiError).reason._tag, "InvalidOutputError")
         strictEqual(yield* Ref.get(calls), 0)
       }))
 
