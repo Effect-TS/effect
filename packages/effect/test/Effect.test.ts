@@ -1515,6 +1515,21 @@ describe("Effect", () => {
   })
 
   describe("timeout", () => {
+    it.effect("timeout produces a useful error message", () =>
+      Effect.gen(function*() {
+        const duration = Duration.millis(1500)
+        const fiber = yield* Effect.never.pipe(
+          Effect.timeout(duration),
+          Effect.flip,
+          Effect.forkChild
+        )
+        yield* TestClock.adjust(Duration.millis(2000))
+        const result = yield* Fiber.join(fiber)
+        assert.include(
+          result.toString(),
+          "TimeoutError: Operation timed out after '1s 500ms'"
+        )
+      }))
     it.live("timeout a long computation", () =>
       Effect.gen(function*() {
         const result = yield* pipe(
@@ -1523,7 +1538,10 @@ describe("Effect", () => {
           Effect.timeout(10),
           Effect.flip
         )
-        assert.deepStrictEqual(result, new Cause.TimeoutError())
+        assert.deepStrictEqual(
+          result,
+          new Cause.TimeoutError("Operation timed out after '10ms'")
+        )
       }))
     it.effect("timeout interrupts the effect", () =>
       Effect.gen(function*() {
@@ -1540,7 +1558,10 @@ describe("Effect", () => {
         )
         yield* TestClock.adjust(10)
         const result = yield* Fiber.join(fiber)
-        assert.deepStrictEqual(result, new Cause.TimeoutError())
+        assert.deepStrictEqual(
+          result,
+          new Cause.TimeoutError("Operation timed out after '10ms'")
+        )
         assert.isTrue(interrupted)
       }))
   })

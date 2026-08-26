@@ -3704,6 +3704,10 @@ export const timeoutOrElse: {
 )
 
 /** @internal */
+const timeoutErrorFromDuration = (duration: Duration.Input): TimeoutError =>
+  new TimeoutError(`Operation timed out after '${Duration.format(Duration.fromInputUnsafe(duration))}'`)
+
+/** @internal */
 export const timeout: {
   (
     duration: Duration.Input
@@ -3722,7 +3726,7 @@ export const timeout: {
   ): Effect.Effect<A, E | TimeoutError, R> =>
     timeoutOrElse(self, {
       duration,
-      orElse: () => fail(new TimeoutError())
+      orElse: () => fail(timeoutErrorFromDuration(duration))
     })
 )
 
