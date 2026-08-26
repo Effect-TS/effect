@@ -603,7 +603,6 @@ export const groupCompaction = <Events extends Event.Any, R>(
               id: makeEntryIdUnsafe({ msecs: timestamp }),
               event: tag,
               payload: yield* Schema.encodeUnknownEffect(event.payloadSchemaBinary)(payload).pipe(
-                Effect.map((bytes) => bytes.slice()),
                 Effect.orDie
               ) as any,
               primaryKey: event.primaryKey(payload)
@@ -905,7 +904,6 @@ const make = Effect.gen(function*() {
     readonly payload: unknown
   }) {
     const payload = yield* Schema.encodeUnknownEffect(handler.event.payloadSchemaBinary)(options.payload).pipe(
-      Effect.map((bytes) => bytes.slice()),
       Effect.orDie
     )
     return yield* journal.withLock(storeId)(journal.write({

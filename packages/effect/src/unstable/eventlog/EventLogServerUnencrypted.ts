@@ -731,7 +731,6 @@ export const make = Effect.gen(function*() {
           event: options.event,
           primaryKey: schemaEvent.primaryKey(options.payload),
           payload: yield* Schema.encodeUnknownEffect(schemaEvent.payloadSchemaBinary)(options.payload).pipe(
-            Effect.map((bytes) => bytes.slice()),
             Effect.mapError((_) =>
               new EventLogServerStoreError({
                 reason: "PersistenceFailure",
