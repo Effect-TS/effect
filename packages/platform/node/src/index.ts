@@ -7,11 +7,6 @@
 /**
  * @since 4.0.0
  */
-export * as Mime from "./Mime.ts"
-
-/**
- * @since 4.0.0
- */
 export * as NodeChildProcessSpawner from "./NodeChildProcessSpawner.ts"
 
 /**

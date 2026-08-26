@@ -471,9 +471,6 @@ importers:
       '@effect/platform-node-shared':
         specifier: workspace:^
         version: link:../node-shared
-      mime:
-        specifier: ^4.1.0
-        version: 4.1.0
       undici:
         specifier: ^8.10.0
         version: 8.10.0
@@ -5103,11 +5100,6 @@ packages:
   mime@1.6.0:
     resolution: {integrity: sha512-x0Vn8spI+wuJ1O6S7gnbaQg8Pxh4NNHb7KSINmEWKiPE4RKOplvijn+NkmYmmRgP68mc70j2EbeTFRsrswaQeg==}
     engines: {node: '>=4'}
-    hasBin: true
-
-  mime@4.1.0:
-    resolution: {integrity: sha512-X5ju04+cAzsojXKes0B/S4tcYtFAJ6tTMuSPBEn9CPGlrWr8Fiw7qYeLT0XyH80HSoAoqWCaz+MWKh22P7G1cw==}
-    engines: {node: '>=16'}
     hasBin: true
 
   mimic-fn@2.1.0:
@@ -10763,8 +10755,6 @@ snapshots:
       mime-db: 1.54.0
 
   mime@1.6.0: {}
-
-  mime@4.1.0: {}
 
   mimic-fn@2.1.0: {}
 

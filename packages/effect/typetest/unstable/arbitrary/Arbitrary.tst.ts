@@ -12,6 +12,12 @@ describe("Arbitrary", () => {
     type A = typeof schema.Type
 
     expect(Arbitrary.schema(schema)).type.toBe<Arbitrary.Arbitrary<A>>()
+    expect(Arbitrary.schema(schema, {
+      shrink: (value) => {
+        expect(value).type.toBe<A>()
+        return [value]
+      }
+    })).type.toBe<Arbitrary.Arbitrary<A>>()
     expect(Arbitrary.sampleEffect(Arbitrary.schema(schema))).type.toBe<
       Effect.Effect<ReadonlyArray<A>, Arbitrary.SampleError>
     >()
@@ -30,6 +36,9 @@ describe("Arbitrary", () => {
     const strings = Arbitrary.schema(Schema.String)
     const stringOrNumber = Arbitrary.schema(Schema.Union([Schema.String, Schema.Number]))
 
+    expect(Arbitrary.Constant({ _tag: "Constant" })).type.toBe<
+      Arbitrary.Arbitrary<{ readonly _tag: "Constant" }>
+    >()
     expect(Arbitrary.map(strings, (value) => value.length)).type.toBe<Arbitrary.Arbitrary<number>>()
     expect(Arbitrary.map((value: string) => value.length)(strings)).type.toBe<Arbitrary.Arbitrary<number>>()
     expect(strings.pipe(Arbitrary.map((value) => value.length))).type.toBe<Arbitrary.Arbitrary<number>>()

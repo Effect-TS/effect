@@ -24,6 +24,7 @@ describe("NodeHttpPlatform", () => {
       })
 
       assert.strictEqual(response.headers["content-length"], "5")
+      assert.strictEqual(response.headers["content-type"], "text/plain")
       assert.strictEqual(response.body._tag, "Raw")
       const body = (response.body as HttpBody.Raw).body
       assert(body instanceof Readable)
@@ -47,5 +48,13 @@ describe("NodeHttpPlatform", () => {
 
       const text = yield* readStream(body)
       assert.strictEqual(text, "")
+    }).pipe(Effect.provide(NodeHttpPlatform.layer)))
+
+  it.effect("fileWebResponse looks up content types case-insensitively", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileWebResponse(new File(["<h1>Effect</h1>"], "INDEX.HTML"))
+
+      assert.strictEqual(response.headers["content-type"], "text/html")
     }).pipe(Effect.provide(NodeHttpPlatform.layer)))
 })
