@@ -21,7 +21,7 @@ import type * as AtomRegistry from "./AtomRegistry.ts"
  * @since 4.0.0
  */
 export interface DehydratedAtom {
-  readonly "~effect/reactivity/DehydratedAtom": true
+  readonly "~effect/reactivity/Hydration/DehydratedAtom": true
 }
 
 /**
@@ -90,7 +90,7 @@ export const dehydrate = (
     }
 
     arr.push({
-      "~effect/reactivity/DehydratedAtom": true,
+      "~effect/reactivity/Hydration/DehydratedAtom": true,
       key: key as string,
       value: encodedValue,
       dehydratedAt: now,

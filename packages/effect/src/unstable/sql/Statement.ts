@@ -25,7 +25,7 @@ import type * as Tracer from "../../Tracer.ts"
 import type { Acquirer, Borrower, Connection, Row } from "./SqlConnection.ts"
 import type { SqlError } from "./SqlError.ts"
 
-const FragmentTypeId = "~effect/sql/Fragment"
+const FragmentTypeId = "~effect/sql/Statement/Fragment"
 
 /**
  * Composable SQL fragment represented as low-level segments that can be

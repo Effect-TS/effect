@@ -380,7 +380,7 @@ export const withSpanContext: {
 // Internals
 // =============================================================================
 
-const OtelSpanTypeId = "~@effect/opentelemetry/Tracer/OtelSpan"
+const OtelSpanTypeId = "~@effect/opentelemetry/OtelTracer/OtelSpan"
 
 const kindMap = {
   "internal": Otel.SpanKind.INTERNAL,

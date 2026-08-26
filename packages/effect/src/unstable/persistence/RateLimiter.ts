@@ -370,7 +370,7 @@ export function sleep(self: RateLimiter, options?: {
  * @category type IDs
  * @since 4.0.0
  */
-export const ErrorTypeId: ErrorTypeId = "~@effect/experimental/RateLimiter/RateLimiterError"
+export const ErrorTypeId: ErrorTypeId = "~effect/persistence/RateLimiter/RateLimiterError"
 
 /**
  * Type-level identifier used to brand `RateLimiterError` values.
@@ -378,7 +378,7 @@ export const ErrorTypeId: ErrorTypeId = "~@effect/experimental/RateLimiter/RateL
  * @category type IDs
  * @since 4.0.0
  */
-export type ErrorTypeId = "~@effect/experimental/RateLimiter/RateLimiterError"
+export type ErrorTypeId = "~effect/persistence/RateLimiter/RateLimiterError"
 
 /**
  * Error reason for a rate-limit check that exceeded the configured limit.

@@ -23,7 +23,7 @@ import * as Model from "./model.ts"
 import * as Compiler from "./schema.ts"
 
 /** @internal */
-export const TypeId = "~effect/unstable/arbitrary/Arbitrary"
+export const TypeId = "~effect/arbitrary/Arbitrary"
 
 type FailureTag = PropertyFailure<unknown>["_tag"]
 

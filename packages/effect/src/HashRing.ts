@@ -17,7 +17,7 @@ import type { Pipeable } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as PrimaryKey from "./PrimaryKey.ts"
 
-const TypeId = "~effect/cluster/HashRing" as const
+const TypeId = "~effect/HashRing" as const
 
 /**
  * A weighted consistent-hashing ring for assigning inputs to nodes with stable

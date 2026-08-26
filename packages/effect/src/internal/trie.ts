@@ -12,7 +12,7 @@ import type * as TR from "../Trie.ts"
 import type { NoInfer } from "../Types.ts"
 
 /** @internal */
-export const TrieTypeId = "~effect/collections/Trie"
+export const TrieTypeId = "~effect/Trie"
 
 type TraversalMap<K, V, A> = (k: K, v: V) => A
 

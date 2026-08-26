@@ -16,7 +16,7 @@ import * as Result from "../Result.ts"
 import type { NoInfer } from "../Types.ts"
 
 /** @internal */
-export const HashMapTypeId = "~effect/collections/HashMap"
+export const HashMapTypeId = "~effect/HashMap"
 
 /** @internal */
 export type HashMapTypeId = typeof HashMapTypeId
