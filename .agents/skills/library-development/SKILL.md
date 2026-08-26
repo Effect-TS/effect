@@ -61,10 +61,3 @@ class MyService extends Context.Service<MyService, {
 ## Time
 
 Use `Clock` rather than `Date.now` or `new Date`. Use `TestClock` in tests.
-
-## Generated barrels
-
-Only `index.ts` sections marked with `@barrel` are generated. Do not edit those
-sections manually; update their source modules and run `pnpm codegen`.
-Hand-maintained `index.ts` files and unmarked sections are not covered by this
-rule.
