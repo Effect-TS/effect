@@ -4,56 +4,22 @@
  * @since 4.0.0
  */
 
-type TypeMap = { readonly [type: string]: ReadonlyArray<string> }
+import standardTypes from "./internal/mimeTypes.ts"
 
-const types: TypeMap = {
-  "application/gzip": ["gz"],
-  "application/json": ["json", "map"],
-  "application/manifest+json": ["webmanifest"],
-  "application/octet-stream": ["bin"],
-  "application/pdf": ["pdf"],
-  "application/vnd.ms-fontobject": ["eot"],
-  "application/wasm": ["wasm"],
-  "application/xml": ["xml"],
-  "application/zip": ["zip"],
-  "audio/aac": ["aac"],
-  "audio/mpeg": ["mp3"],
-  "audio/ogg": ["oga", "ogg", "spx", "opus"],
-  "audio/wav": ["wav"],
-  "audio/x-flac": ["flac"],
-  "font/otf": ["otf"],
-  "font/ttf": ["ttf"],
-  "font/woff": ["woff"],
-  "font/woff2": ["woff2"],
-  "image/avif": ["avif"],
-  "image/bmp": ["bmp"],
-  "image/gif": ["gif"],
-  "image/jpeg": ["jpg", "jpeg", "jpe"],
-  "image/png": ["png"],
-  "image/svg+xml": ["svg", "svgz"],
-  "image/tiff": ["tif", "tiff"],
-  "image/vnd.microsoft.icon": ["ico"],
-  "image/webp": ["webp"],
-  "text/css": ["css"],
-  "text/csv": ["csv"],
-  "text/html": ["html", "htm", "shtml"],
-  "text/javascript": ["js", "mjs"],
-  "text/markdown": ["md", "markdown"],
-  "text/plain": ["txt", "text", "conf", "def", "list", "log", "in", "ini"],
-  "text/yaml": ["yaml", "yml"],
-  "video/mp4": ["mp4"],
-  "video/quicktime": ["mov"],
-  "video/webm": ["webm"],
-  "video/x-m4v": ["m4v"]
+/**
+ * A map from MIME types to their associated file extensions.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface TypeMap {
+  readonly [type: string]: ReadonlyArray<string>
 }
 
 /**
  * A MIME type registry.
  *
- * @deprecated Use a dedicated MIME package when comprehensive MIME mappings
- * are required. The built-in registry only contains types used for common
- * static files served by `NodeHttpPlatform`.
- *
+ * @category constructors
  * @since 4.0.0
  */
 export class Mime {
@@ -174,13 +140,36 @@ export class Mime {
   }
 }
 
-const mime = new Mime(types)._freeze()
+const mime = new Mime(standardTypes)._freeze()
+
+/**
+ * Returns the standard MIME type associated with a file name or extension.
+ *
+ * @category utilities
+ * @since 4.0.0
+ */
+export const getType = (path: string): string | null => mime.getType(path)
+
+/**
+ * Returns the default file extension associated with a standard MIME type.
+ *
+ * @category utilities
+ * @since 4.0.0
+ */
+export const getExtension = (type: string): string | null => mime.getExtension(type)
+
+/**
+ * Returns every file extension associated with a standard MIME type.
+ *
+ * @category utilities
+ * @since 4.0.0
+ */
+export const getAllExtensions = (type: string): Set<string> | null => mime.getAllExtensions(type)
 
 /**
  * The built-in MIME type registry used by `NodeHttpPlatform`.
  *
- * @deprecated Use a dedicated MIME package when comprehensive MIME mappings
- * are required.
+ * @deprecated Use the top-level functions in this module.
  *
  * @since 4.0.0
  */
