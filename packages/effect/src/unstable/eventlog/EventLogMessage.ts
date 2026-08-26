@@ -10,8 +10,9 @@
  */
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "../../Array.ts"
 import type { Brand } from "../../Brand.ts"
+import * as Effect from "../../Effect.ts"
 import * as Schema from "../../Schema.ts"
-import * as Msgpack from "../encoding/Msgpack.ts"
+import * as SchemaBinary from "../encoding/SchemaBinary.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcMiddleware from "../rpc/RpcMiddleware.ts"
@@ -272,9 +273,10 @@ export class WriteEntries extends Schema.Class<WriteEntries>("effect/eventlog/Ev
   storeId: StoreId,
   encryptedEntries: Schema.Array(EncryptedEntry)
 }) {
-  static FromMsgpack = Msgpack.schema(WriteEntries)
-  static encode = Schema.encodeEffect(this.FromMsgpack)
-  static decode = Schema.decodeEffect(this.FromMsgpack)
+  static FromSchemaBinary = SchemaBinary.toCodec(WriteEntries)
+  static encode = (value: WriteEntries) =>
+    Schema.encodeEffect(this.FromSchemaBinary)(value).pipe(Effect.map((bytes) => bytes.slice()))
+  static decode = Schema.decodeEffect(this.FromSchemaBinary)
   get encoded() {
     return WriteEntries.encode(this)
   }
@@ -293,9 +295,10 @@ export class WriteEntriesUnencrypted
     entries: Schema.Array(Entry)
   })
 {
-  static FromMsgpack = Msgpack.schema(WriteEntriesUnencrypted)
-  static encode = Schema.encodeEffect(this.FromMsgpack)
-  static decode = Schema.decodeEffect(this.FromMsgpack)
+  static FromSchemaBinary = SchemaBinary.toCodec(WriteEntriesUnencrypted)
+  static encode = (value: WriteEntriesUnencrypted) =>
+    Schema.encodeEffect(this.FromSchemaBinary)(value).pipe(Effect.map((bytes) => bytes.slice()))
+  static decode = Schema.decodeEffect(this.FromSchemaBinary)
   get encoded() {
     return WriteEntriesUnencrypted.encode(this)
   }
@@ -336,12 +339,14 @@ export class ChangesRpc extends Rpc.make("EventLog.Changes", {
   error: EventLogProtocolError,
   stream: true
 }).middleware(EventLogAuthentication) {
-  static EncryptedFromMsgpack = Msgpack.schema(Schema.NonEmptyArray(EncryptedRemoteEntry))
-  static UnencryptedFromMsgpack = Msgpack.schema(Schema.NonEmptyArray(RemoteEntry))
-  static encodeEncrypted = Schema.encodeEffect(ChangesRpc.EncryptedFromMsgpack)
-  static decodeEncrypted = Schema.decodeEffect(ChangesRpc.EncryptedFromMsgpack)
-  static encodeUnencrypted = Schema.encodeEffect(ChangesRpc.UnencryptedFromMsgpack)
-  static decodeUnencrypted = Schema.decodeEffect(ChangesRpc.UnencryptedFromMsgpack)
+  static EncryptedFromSchemaBinary = SchemaBinary.toCodec(Schema.NonEmptyArray(EncryptedRemoteEntry))
+  static UnencryptedFromSchemaBinary = SchemaBinary.toCodec(Schema.NonEmptyArray(RemoteEntry))
+  static encodeEncrypted = (value: NonEmptyReadonlyArray<EncryptedRemoteEntry>) =>
+    Schema.encodeEffect(ChangesRpc.EncryptedFromSchemaBinary)(value).pipe(Effect.map((bytes) => bytes.slice()))
+  static decodeEncrypted = Schema.decodeEffect(ChangesRpc.EncryptedFromSchemaBinary)
+  static encodeUnencrypted = (value: NonEmptyReadonlyArray<RemoteEntry>) =>
+    Schema.encodeEffect(ChangesRpc.UnencryptedFromSchemaBinary)(value).pipe(Effect.map((bytes) => bytes.slice()))
+  static decodeUnencrypted = Schema.decodeEffect(ChangesRpc.UnencryptedFromSchemaBinary)
 }
 
 /**

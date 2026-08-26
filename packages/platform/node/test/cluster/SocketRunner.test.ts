@@ -49,7 +49,7 @@ const SharedStorage = Layer.mergeAll(
 const makeRunnerLayer = (
   port: number,
   entities: Layer.Layer<never, never, Sharding.Sharding>,
-  serialization: Layer.Layer<RpcSerialization.RpcSerialization> = RpcSerialization.layerMsgPack
+  serialization: Layer.Layer<RpcSerialization.RpcSerialization> = RpcSerialization.layerSchemaBinary()
 ) =>
   entities.pipe(
     Layer.provideMerge(SocketRunner.layer),
@@ -75,12 +75,12 @@ const makeClientLayer = (port: number) =>
       entityMessagePollInterval: 5000,
       sendRetryInterval: 100
     })),
-    Layer.provide(RpcSerialization.layerMsgPack)
+    Layer.provide(RpcSerialization.layerSchemaBinary())
   )
 
 const makeConfiguredClientLayer = (
   port: number,
-  serialization?: "msgpack" | "ndjson",
+  serialization?: "ndjson",
   serializationMaxBufferSize?: number | "unbounded"
 ) =>
   NodeClusterSocket.layer({
@@ -112,7 +112,7 @@ const SerializationEntityLayer = SerializationEntity.toLayer(
 const assertSerialization = (
   port: number,
   serverSerialization: Layer.Layer<RpcSerialization.RpcSerialization>,
-  clientSerialization?: "msgpack" | "ndjson"
+  clientSerialization?: "ndjson"
 ) =>
   Effect.gen(function*() {
     yield* Layer.launch(makeRunnerLayer(port, SerializationEntityLayer, serverSerialization)).pipe(Effect.forkScoped)
@@ -165,12 +165,6 @@ describe("SocketRunner", () => {
   it.live(
     "uses SchemaBinary by default for TCP connections",
     () => assertSerialization(50_120, RpcSerialization.layerSchemaBinary()),
-    15_000
-  )
-
-  it.live(
-    "preserves an explicit MessagePack selection",
-    () => assertSerialization(50_121, RpcSerialization.layerMsgPack, "msgpack"),
     15_000
   )
 

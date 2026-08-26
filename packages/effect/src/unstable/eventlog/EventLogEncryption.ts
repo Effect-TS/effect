@@ -105,7 +105,7 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<EventLogEncr
 
     return EventLogEncryption.of({
       encrypt: Effect.fnUntraced(function*(identity, entries) {
-        const data = yield* Effect.orDie(Entry.encodeArray(entries))
+        const data = (yield* Effect.orDie(Entry.encodeArray(entries))).map((bytes) => bytes.slice())
         const key = (yield* getIdentityRootSecretMaterial(identity)).encryptionKey
         return yield* Effect.promise(() =>
           Promise.all(
