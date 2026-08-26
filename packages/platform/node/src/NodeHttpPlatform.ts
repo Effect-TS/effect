@@ -19,7 +19,7 @@ import * as Platform from "effect/unstable/http/HttpPlatform"
 import * as ServerResponse from "effect/unstable/http/HttpServerResponse"
 import * as Fs from "node:fs"
 import { Readable } from "node:stream"
-import Mime from "./Mime.ts"
+import mime from "./Mime.ts"
 import * as NodeFileSystem from "./NodeFileSystem.ts"
 import * as NodeStream from "./NodeStream.ts"
 
@@ -83,7 +83,7 @@ export const make = Platform.make({
     return ServerResponse.raw(stream, {
       headers: {
         ...headers,
-        "content-type": headers["content-type"] ?? Mime.getType(path) ?? "application/octet-stream",
+        "content-type": headers["content-type"] ?? mime.getType(path) ?? "application/octet-stream",
         "content-length": contentLength.toString()
       },
       status,
@@ -95,7 +95,7 @@ export const make = Platform.make({
       headers: Headers.merge(
         headers,
         Headers.fromRecordUnsafe({
-          "content-type": headers["content-type"] ?? Mime.getType(file.name) ?? "application/octet-stream",
+          "content-type": headers["content-type"] ?? mime.getType(file.name) ?? "application/octet-stream",
           "content-length": file.size.toString()
         })
       ),
