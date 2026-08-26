@@ -12,14 +12,15 @@ import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompr
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as EtagImpl from "effect/unstable/http/Etag"
 import * as Headers from "effect/unstable/http/Headers"
 import * as HttpBody from "effect/unstable/http/HttpBody"
 import * as Platform from "effect/unstable/http/HttpPlatform"
 import * as ServerResponse from "effect/unstable/http/HttpServerResponse"
+import * as Mime from "effect/unstable/http/Mime"
 import * as Fs from "node:fs"
 import { Readable } from "node:stream"
-import Mime from "./Mime.ts"
 import * as NodeFileSystem from "./NodeFileSystem.ts"
 import * as NodeStream from "./NodeStream.ts"
 
@@ -83,7 +84,8 @@ export const make = Platform.make({
     return ServerResponse.raw(stream, {
       headers: {
         ...headers,
-        "content-type": headers["content-type"] ?? Mime.getType(path) ?? "application/octet-stream",
+        "content-type": headers["content-type"] ??
+          Option.getOrElse(Mime.getType(path), () => "application/octet-stream"),
         "content-length": contentLength.toString()
       },
       status,
@@ -95,7 +97,8 @@ export const make = Platform.make({
       headers: Headers.merge(
         headers,
         Headers.fromRecordUnsafe({
-          "content-type": headers["content-type"] ?? Mime.getType(file.name) ?? "application/octet-stream",
+          "content-type": headers["content-type"] ??
+            Option.getOrElse(Mime.getType(file.name), () => "application/octet-stream"),
           "content-length": file.size.toString()
         })
       ),
