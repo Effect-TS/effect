@@ -394,6 +394,12 @@ describe("Chunk", () => {
       deepStrictEqual(Chunk.toArray(Chunk.drop(chunk, 1.5)), [2, 3])
     })
 
+    it("treats NaN like a non-positive count", () => {
+      const chunk = Chunk.make(1, 2, 3)
+      deepStrictEqual(Chunk.toArray(Chunk.take(chunk, Number.NaN)), [])
+      deepStrictEqual(Chunk.toArray(Chunk.drop(chunk, Number.NaN)), [1, 2, 3])
+    })
+
     describe("Given a Chunk with more elements than the amount taken", () => {
       it("should return the subset", () => {
         assertEquals(pipe(Chunk.fromArrayUnsafe([1, 2, 3]), Chunk.take(2)), Chunk.fromArrayUnsafe([1, 2]))

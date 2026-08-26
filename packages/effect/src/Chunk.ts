@@ -730,7 +730,8 @@ export const take: {
   <A>(self: Chunk<A>, n: number): Chunk<A>
 } = dual(2, <A>(self: Chunk<A>, _n: number): Chunk<A> => {
   const n = Math.floor(_n)
-  if (n <= 0) {
+  // `n <= 0` is false for NaN and would allocate a slice with length NaN.
+  if (!(n > 0)) {
     return _empty
   } else if (n >= self.length) {
     return self
@@ -787,7 +788,8 @@ export const drop: {
   <A>(self: Chunk<A>, n: number): Chunk<A>
 } = dual(2, <A>(self: Chunk<A>, _n: number): Chunk<A> => {
   const n = Math.floor(_n)
-  if (n <= 0) {
+  // Same NaN hole as `take`: `n <= 0` is false, so skip the no-op branch.
+  if (!(n > 0)) {
     return self
   } else if (n >= self.length) {
     return _empty
