@@ -18,6 +18,7 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import { constFalse, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Rec from "effect/Record"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
@@ -43,6 +44,26 @@ const open = (Sqlite as typeof Sqlite & {
 
 const classifyError = (cause: unknown, message: string, operation: string) =>
   classifySqliteError(cause, { message, operation })
+
+const normalizeValue = (value: any) => value instanceof ArrayBuffer ? new Uint8Array(value) : value
+
+const normalizeRows = (rows: Array<Record<string, any>>) => {
+  for (const row of rows) {
+    for (const key of Object.keys(row)) {
+      Rec.assignProperty(row, key, normalizeValue(row[key]))
+    }
+  }
+  return rows
+}
+
+const normalizeValues = (rows: Array<Array<any>>) => {
+  for (const row of rows) {
+    for (let i = 0; i < row.length; i++) {
+      row[i] = normalizeValue(row[i])
+    }
+  }
+  return rows
+}
 
 /**
  * Runtime identifier attached to SQLite React Native client values.
@@ -165,11 +186,11 @@ export const make = (
                 catch: (cause) =>
                   new SqlError({ reason: classifyError(cause, "Failed to execute statement (async)", "execute") })
               }),
-              (result) => result.rows
+              (result) => normalizeRows(result.rows)
             )
           }
           return Effect.try({
-            try: () => db.executeSync(sql, params as Array<any>).rows,
+            try: () => normalizeRows(db.executeSync(sql, params as Array<any>).rows),
             catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
           })
         })
@@ -180,14 +201,17 @@ export const make = (
       ) =>
         Effect.withFiber<Array<any>, SqlError>((fiber) => {
           if (fiber.getRef(AsyncQuery)) {
-            return Effect.tryPromise({
-              try: () => db.executeRaw(sql, params as Array<any>),
-              catch: (cause) =>
-                new SqlError({ reason: classifyError(cause, "Failed to execute statement (async)", "execute") })
-            })
+            return Effect.map(
+              Effect.tryPromise({
+                try: () => db.executeRaw(sql, params as Array<any>),
+                catch: (cause) =>
+                  new SqlError({ reason: classifyError(cause, "Failed to execute statement (async)", "execute") })
+              }),
+              (result) => normalizeValues(result.rawRows)
+            )
           }
           return Effect.try({
-            try: () => db.executeRawSync(sql, params as Array<any>),
+            try: () => normalizeValues(db.executeRawSync(sql, params as Array<any>).rawRows),
             catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
           })
         })
@@ -336,12 +360,12 @@ interface DB {
    * Same as `execute` except the results are not returned in objects but rather in arrays with just the values and not the keys
    * It will be faster since a lot of repeated work is skipped and only the values you care about are returned
    */
-  executeRaw: (query: string, params?: Array<any>) => Promise<Array<any>>
+  executeRaw: (query: string, params?: Array<any>) => Promise<RawQueryResult>
   /**
    * Same as `executeRaw` but it will block the JS thread and therefore your UI and should be used with caution
    * It will return an array of arrays with just the values and not the keys
    */
-  executeRawSync: (query: string, params?: Array<any>) => Array<any>
+  executeRawSync: (query: string, params?: Array<any>) => RawQueryResult
   /**
    * Get's the absolute path to the db file. Useful for debugging on local builds and for attaching the DB from users devices
    */
@@ -366,6 +390,10 @@ interface DB {
    * The database is hosted in turso
    */
   sync: () => void
+}
+
+interface RawQueryResult {
+  rawRows: Array<Array<any>>
 }
 
 interface QueryResult {
