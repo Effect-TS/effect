@@ -1,6 +1,6 @@
-import * as Mime from "@effect/platform-node/Mime"
 import { assert, describe, it } from "@effect/vitest"
 import * as Option from "effect/Option"
+import * as Mime from "effect/unstable/http/Mime"
 
 describe("Mime", () => {
   it("looks up common static file types", () => {

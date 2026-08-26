@@ -1,5 +1,5 @@
 /**
- * MIME type data copied from mime 4.1.0.
+ * Standard MIME type data copied from mime 4.1.0.
  *
  * MIT License
  *

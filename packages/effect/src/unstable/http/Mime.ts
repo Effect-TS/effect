@@ -1,9 +1,9 @@
 /**
- * MIME type lookup used by `@effect/platform-node` file responses.
+ * Standard MIME type lookup.
  *
  * @since 4.0.0
  */
-import * as Option from "effect/Option"
+import * as Option from "../../Option.ts"
 import standardTypes from "./internal/mimeTypes.ts"
 
 const extensionToType = new Map<string, string>()
