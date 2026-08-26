@@ -31,6 +31,14 @@ const optionComputation = <A, E, R>(self: Effect.Effect<A, E, R>): Model.Computa
   return effectIsExit(result) && result._tag === "Success" ? result.value : result
 }
 
+/** @internal */
+export function compileValidator<S extends Schema.Constraint>(
+  schema: S
+): (value: S["Type"]) => Model.Computation<Option.Option<S["Type"]>> {
+  const parse = SchemaParser.run<S["Type"], never>(SchemaAST.toType(schema.ast))
+  return (value) => optionComputation(parse(value))
+}
+
 function arbitraryError(what: string, path: ReadonlyArray<PropertyKey>) {
   return errorWithPath(`Unable to derive an arbitrary for ${what}`, path)
 }
