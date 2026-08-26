@@ -11,6 +11,9 @@ declare const stringOrNumber: string | number
 declare const taggedInput:
   | { readonly _tag: "A"; readonly a: string }
   | { readonly _tag: "B"; readonly b: number }
+declare const discriminatedInput:
+  | { readonly kind: "A"; readonly a: string }
+  | { readonly kind: "B"; readonly b: number }
 
 describe("Match", () => {
   it("fn infers the selected value and original arguments", () => {
@@ -201,6 +204,46 @@ describe("Match", () => {
   it("tagsExhaustive contextually types Effect.fn handlers", () => {
     Match.value(taggedInput).pipe(
       Match.tagsExhaustive({
+        A: Effect.fn(function*(value) {
+          expect(value).type.toBe<{ readonly _tag: "A"; readonly a: string }>()
+          return value.a
+        }),
+        B: Effect.fnUntraced(function*(value) {
+          expect(value).type.toBe<{ readonly _tag: "B"; readonly b: number }>()
+          return value.b
+        })
+      })
+    )
+  })
+
+  it("related handler maps contextually type nested Effect.fn calls", () => {
+    Match.value(taggedInput).pipe(
+      Match.tags({
+        A: Effect.fn(function*(value) {
+          expect(value).type.toBe<{ readonly _tag: "A"; readonly a: string }>()
+          return value.a
+        })
+      })
+    )
+
+    Match.value(discriminatedInput).pipe(
+      Match.discriminators("kind")({
+        A: Effect.fn(function*(value) {
+          expect(value).type.toBe<{ readonly kind: "A"; readonly a: string }>()
+          return value.a
+        })
+      }),
+      Match.discriminatorsExhaustive("kind")({
+        B: Effect.fnUntraced(function*(value) {
+          expect(value).type.toBe<{ readonly kind: "B"; readonly b: number }>()
+          return value.b
+        })
+      })
+    )
+
+    pipe(
+      taggedInput,
+      Match.valueTags({
         A: Effect.fn(function*(value) {
           expect(value).type.toBe<{ readonly _tag: "A"; readonly a: string }>()
           return value.a
