@@ -26,6 +26,105 @@ import * as RunnerStorage from "./RunnerStorage.ts"
 import * as ShardId from "./ShardId.ts"
 import * as ShardingConfig from "./ShardingConfig.ts"
 
+type RunnerTableRow<MachineIdValue, BooleanValue, TimestampValue> = {
+  readonly machine_id: MachineIdValue
+  readonly address: string
+  readonly runner: string
+  readonly healthy: BooleanValue
+  readonly last_heartbeat: TimestampValue
+}
+
+type LockTableRow<TimestampValue> = {
+  readonly shard_id: string
+  readonly address: string
+  readonly acquired_at: TimestampValue
+}
+
+/**
+ * Complete PostgreSQL row stored in the cluster runners table, parameterized
+ * over driver-specific scalar representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type PgRunnerRow<
+  BooleanValue = boolean,
+  TimestampValue = number
+> = RunnerTableRow<number, BooleanValue, TimestampValue>
+
+/**
+ * Complete PostgreSQL row stored in the optional cluster locks table,
+ * parameterized over driver-specific timestamp representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type PgLockRow<TimestampValue = number> = LockTableRow<TimestampValue>
+
+/**
+ * Complete MySQL row stored in the cluster runners table, parameterized over
+ * driver-specific scalar representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type MysqlRunnerRow<
+  BooleanValue = number,
+  TimestampValue = Date | string
+> = RunnerTableRow<number, BooleanValue, TimestampValue>
+
+/**
+ * Complete MySQL row stored in the optional cluster locks table, parameterized
+ * over driver-specific timestamp representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type MysqlLockRow<TimestampValue = Date | string> = LockTableRow<TimestampValue>
+
+/**
+ * Complete Microsoft SQL Server row stored in the cluster runners table,
+ * parameterized over driver-specific scalar representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type MssqlRunnerRow<
+  BooleanValue = boolean,
+  TimestampValue = Date
+> = RunnerTableRow<number, BooleanValue, TimestampValue>
+
+/**
+ * Complete Microsoft SQL Server row stored in the optional cluster locks table,
+ * parameterized over driver-specific timestamp representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type MssqlLockRow<TimestampValue = Date> = LockTableRow<TimestampValue>
+
+/**
+ * Complete SQLite row stored in the cluster runners table, parameterized over
+ * driver-specific scalar representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type SqliteRunnerRow<
+  IntegerValue = number | bigint | string,
+  BooleanValue = boolean | number | bigint | string,
+  TimestampValue = string
+> = RunnerTableRow<IntegerValue, BooleanValue, TimestampValue>
+
+/**
+ * Complete SQLite row stored in the optional cluster locks table, parameterized
+ * over driver-specific timestamp representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type SqliteLockRow<TimestampValue = string> = LockTableRow<TimestampValue>
+
 const withTracerDisabled = Effect.withTracerEnabled(false)
 
 // This exact FNV-1a hash, including its tag and UTF-8 encoding, is a persistent
@@ -320,7 +419,12 @@ export const make = Effect.fnUntraced(function*(options: {
 
   // Upsert runner and return machine_id
   const insertRunner = sql.onDialectOrElse({
-    mssql: () => (address: string, runner: string, healthy: boolean) =>
+    mssql: () =>
+    (
+      address: MssqlRunnerRow["address"],
+      runner: MssqlRunnerRow["runner"],
+      healthy: boolean
+    ) =>
       sql`
         MERGE ${runnersTableSql} AS target
         USING (SELECT ${address} AS address, ${runner} AS runner, ${sqlNow} AS last_heartbeat, ${
@@ -334,8 +438,13 @@ export const make = Effect.fnUntraced(function*(options: {
           VALUES (source.address, source.runner, source.last_heartbeat, source.healthy)
         OUTPUT INSERTED.machine_id;
       `.values,
-    mysql: () => (address: string, runner: string, healthy: boolean) =>
-      sql<{ machine_id: number }>`
+    mysql: () =>
+    (
+      address: MysqlRunnerRow["address"],
+      runner: MysqlRunnerRow["runner"],
+      healthy: boolean
+    ) =>
+      sql<Pick<MysqlRunnerRow, "machine_id">>`
         INSERT INTO ${runnersTableSql} (address, runner, last_heartbeat, healthy)
         VALUES (${address}, ${runner}, ${sqlNow}, ${healthy})
         ON DUPLICATE KEY UPDATE
@@ -346,7 +455,12 @@ export const make = Effect.fnUntraced(function*(options: {
       `.unprepared.pipe(
         Effect.map((results: any) => [[results[1][0].machine_id]])
       ),
-    pg: () => (address: string, runner: string, healthy: boolean) =>
+    pg: () =>
+    (
+      address: PgRunnerRow["address"],
+      runner: PgRunnerRow["runner"],
+      healthy: PgRunnerRow["healthy"]
+    ) =>
       sql`
         INSERT INTO ${runnersTableSql} (address, runner, last_heartbeat, healthy)
         VALUES (${address}, ${runner}, ${sqlNow}, ${healthy})
@@ -356,7 +470,12 @@ export const make = Effect.fnUntraced(function*(options: {
             healthy = EXCLUDED.healthy
         RETURNING machine_id
       `.values,
-    orElse: () => (address: string, runner: string, healthy: boolean) =>
+    orElse: () =>
+    (
+      address: SqliteRunnerRow["address"],
+      runner: SqliteRunnerRow["runner"],
+      healthy: boolean
+    ) =>
       // sqlite
       sql`
         INSERT INTO ${runnersTableSql} (address, runner, last_heartbeat, healthy)
@@ -594,7 +713,7 @@ export const make = Effect.fnUntraced(function*(options: {
   const refreshShards = sql.onDialectOrElse({
     pg: () => {
       if (!disableAdvisoryLocks) return acquireLock
-      return (address: string, shardIds: ReadonlyArray<string>) =>
+      return (address: PgLockRow["address"], shardIds: ReadonlyArray<PgLockRow["shard_id"]>) =>
         sql`
           UPDATE ${locksTableSql}
           SET acquired_at = ${sqlNow}
@@ -602,14 +721,14 @@ export const make = Effect.fnUntraced(function*(options: {
           RETURNING shard_id
         `.pipe(
           execWithLockConnValues,
-          Effect.map((rows) => rows.map((row) => row[0] as string))
+          Effect.map((rows) => rows.map((row) => row[0] as PgLockRow["shard_id"]))
         )
     },
     mysql: () => {
       if (!disableAdvisoryLocks) return acquireLock
-      return (address: string, shardIds: ReadonlyArray<string>) => {
+      return (address: MysqlLockRow["address"], shardIds: ReadonlyArray<MysqlLockRow["shard_id"]>) => {
         const shardIdsStr = stringLiteralArr(shardIds)
-        return sql<Array<{ shard_id: string }>>`
+        return sql<Array<Pick<MysqlLockRow, "shard_id">>>`
           UPDATE ${locksTableSql}
           SET acquired_at = ${sqlNow}
           WHERE address = ${address} AND shard_id IN ${shardIdsStr};
@@ -620,20 +739,26 @@ export const make = Effect.fnUntraced(function*(options: {
         )
       }
     },
-    mssql: () => (address: string, shardIds: ReadonlyArray<string>) =>
+    mssql: () => (address: MssqlLockRow["address"], shardIds: ReadonlyArray<MssqlLockRow["shard_id"]>) =>
       sql`
         UPDATE ${locksTableSql}
         SET acquired_at = ${sqlNow}
         OUTPUT inserted.shard_id
         WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)}
-      `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string))),
-    orElse: () => (address: string, shardIds: ReadonlyArray<string>) =>
+      `.pipe(
+        execWithLockConnValues,
+        Effect.map((rows) => rows.map((row) => row[0] as MssqlLockRow["shard_id"]))
+      ),
+    orElse: () => (address: SqliteLockRow["address"], shardIds: ReadonlyArray<SqliteLockRow["shard_id"]>) =>
       sql`
         UPDATE ${locksTableSql}
         SET acquired_at = ${sqlNow}
         WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)}
         RETURNING shard_id
-      `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string)))
+      `.pipe(
+        execWithLockConnValues,
+        Effect.map((rows) => rows.map((row) => row[0] as SqliteLockRow["shard_id"]))
+      )
   })
 
   const withLockOperationDeadline = <A, E, R>(operation: Effect.Effect<A, E, R>) =>

@@ -38,6 +38,144 @@ import * as ShardId from "./ShardId.ts"
 import type { ShardingConfig } from "./ShardingConfig.ts"
 import * as Snowflake from "./Snowflake.ts"
 
+type MessageTableRow<BigIntValue, IntegerValue, BooleanValue, TimestampValue> = {
+  readonly id: BigIntValue
+  readonly message_id: string | null
+  readonly shard_id: string
+  readonly entity_type: string
+  readonly entity_id: string
+  readonly kind: IntegerValue
+  readonly tag: string | null
+  readonly payload: string | null
+  readonly headers: string | null
+  readonly trace_id: string | null
+  readonly span_id: string | null
+  readonly sampled: BooleanValue | null
+  readonly processed: BooleanValue
+  readonly request_id: BigIntValue
+  readonly reply_id: BigIntValue | null
+  readonly last_reply_id: BigIntValue | null
+  readonly last_read: TimestampValue | null
+  readonly deliver_at: BigIntValue | null
+}
+
+type MessageTableRowWithRowId<BigIntValue, IntegerValue, BooleanValue, TimestampValue> =
+  & MessageTableRow<BigIntValue, IntegerValue, BooleanValue, TimestampValue>
+  & { readonly rowid: BigIntValue }
+
+type ReplyTableRow<BigIntValue, IntegerValue, BooleanValue> = {
+  readonly id: BigIntValue
+  readonly kind: IntegerValue | null
+  readonly request_id: BigIntValue
+  readonly payload: string
+  readonly sequence: IntegerValue | null
+  readonly acked: BooleanValue
+}
+
+type ReplyTableRowWithRowId<BigIntValue, IntegerValue, BooleanValue> =
+  & ReplyTableRow<BigIntValue, IntegerValue, BooleanValue>
+  & { readonly rowid: BigIntValue }
+
+/**
+ * Complete PostgreSQL row stored in the cluster messages table, parameterized
+ * over driver-specific scalar representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type PgMessageRow<
+  BigIntValue = bigint,
+  BooleanValue = boolean,
+  TimestampValue = number
+> = MessageTableRowWithRowId<BigIntValue, number, BooleanValue, TimestampValue>
+
+/**
+ * Complete PostgreSQL row stored in the cluster replies table, parameterized
+ * over driver-specific scalar representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type PgReplyRow<
+  BigIntValue = bigint,
+  BooleanValue = boolean
+> = ReplyTableRowWithRowId<BigIntValue, number, BooleanValue>
+
+/**
+ * Complete MySQL row stored in the cluster messages table, parameterized over
+ * driver-specific scalar representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type MysqlMessageRow<
+  BigIntValue = number | string,
+  BooleanValue = number,
+  TimestampValue = Date | string
+> = MessageTableRowWithRowId<BigIntValue, number, BooleanValue, TimestampValue>
+
+/**
+ * Complete MySQL row stored in the cluster replies table, parameterized over
+ * driver-specific scalar representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type MysqlReplyRow<
+  BigIntValue = number | string,
+  BooleanValue = number
+> = ReplyTableRowWithRowId<BigIntValue, number, BooleanValue>
+
+/**
+ * Complete Microsoft SQL Server row stored in the cluster messages table,
+ * parameterized over driver-specific scalar representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type MssqlMessageRow<
+  BigIntValue = string,
+  BooleanValue = boolean,
+  TimestampValue = Date
+> = MessageTableRowWithRowId<BigIntValue, number, BooleanValue, TimestampValue>
+
+/**
+ * Complete Microsoft SQL Server row stored in the cluster replies table,
+ * parameterized over driver-specific scalar representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type MssqlReplyRow<
+  BigIntValue = string,
+  BooleanValue = boolean
+> = ReplyTableRowWithRowId<BigIntValue, number, BooleanValue>
+
+/**
+ * Complete SQLite row stored in the cluster messages table, parameterized over
+ * driver-specific scalar representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type SqliteMessageRow<
+  IntegerValue = number | bigint | string,
+  BooleanValue = boolean | number | bigint | string,
+  TimestampValue = string
+> = MessageTableRow<IntegerValue, IntegerValue, BooleanValue, TimestampValue>
+
+/**
+ * Complete SQLite row stored in the cluster replies table, parameterized over
+ * driver-specific scalar representations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type SqliteReplyRow<
+  IntegerValue = number | bigint | string,
+  BooleanValue = boolean | number | bigint | string
+> = ReplyTableRow<IntegerValue, IntegerValue, BooleanValue>
+
 const withTracerDisabled = Effect.withTracerEnabled(false)
 
 /**
@@ -121,7 +259,7 @@ export const makeEncoded: (options?: {
     envelope: Envelope.Encoded,
     message_id: string | null,
     deliver_at: number | null
-  ): MessageRow => {
+  ): MessageInsertRow => {
     switch (envelope._tag) {
       case "Request":
         return {
@@ -186,7 +324,7 @@ export const makeEncoded: (options?: {
     }
   }
 
-  const replyToRow = (reply: Reply.Encoded): ReplyRow => ({
+  const replyToRow = (reply: Reply.Encoded): ReplyInsertRow => ({
     id: reply.id,
     kind: replyKind[reply._tag],
     request_id: reply.requestId,
@@ -280,7 +418,7 @@ export const makeEncoded: (options?: {
     `
 
   const insertEnvelope: (
-    row: MessageRow,
+    row: MessageInsertRow,
     message_id: string
   ) => Effect.Effect<ReadonlyArray<Row>, SqlError> = sql.onDialectOrElse({
     pg: () => (row, message_id) =>
@@ -424,7 +562,7 @@ export const makeEncoded: (options?: {
 
   const getUnprocessedMessagesForDialect = sql.onDialectOrElse({
     pg: () => (shardIds: ReadonlyArray<string>, now: number, filters: UnprocessedFilters) =>
-      sql<MessageJoinRow>`
+      sql<PgMessageRow & PgReplyJoinRow>`
         WITH messages AS (
           UPDATE ${messagesTableSql} m
           SET last_read = ${sqlNow}
@@ -609,7 +747,7 @@ export const makeEncoded: (options?: {
       // - the request is in the list
       // - the kind is WithExit
       // - or the kind is Chunk and has not been acked yet
-      sql<ReplyRow>`
+      sql<ReplyDecodeRow>`
         SELECT id, kind, request_id, payload, sequence
         FROM ${repliesTableSql}
         WHERE request_id IN (${sql.literal(requestIds.join(","))})
@@ -1148,7 +1286,7 @@ const replyKind = {
   "Chunk": null
 } as const satisfies Record<Reply.Reply<any>["_tag"], number | null>
 
-const replyFromRow = (row: ReplyRow): Reply.Encoded =>
+const replyFromRow = (row: ReplyDecodeRow): Reply.Encoded =>
   row.kind !== null && Number(row.kind) === replyKind.WithExit ?
     {
       _tag: "WithExit",
@@ -1164,38 +1302,43 @@ const replyFromRow = (row: ReplyRow): Reply.Encoded =>
       sequence: Number(row.sequence!)
     }
 
-type MessageRow = {
-  readonly id: string | bigint
-  readonly message_id: string | null
-  readonly shard_id: string
-  readonly entity_type: string
-  readonly entity_id: string
-  readonly kind: 0 | 1 | 2 | 0n | 1n | 2n
-  readonly tag: string | null
-  readonly payload: string | null
-  readonly headers: string | null
-  readonly trace_id: string | null
-  readonly span_id: string | null
-  readonly sampled: boolean | number | bigint | null
-  readonly request_id: string | bigint | null
-  readonly reply_id: string | bigint | null
-  readonly deliver_at: number | bigint | null
-}
+type MessageRow = PgMessageRow | MysqlMessageRow | MssqlMessageRow | SqliteMessageRow
 
-type ReplyRow = {
-  readonly id: string | bigint
-  readonly kind: 0 | null | 0n
-  readonly request_id: string | bigint
-  readonly payload: string
-  readonly sequence: number | bigint | null
+type MessageInsertRow = Pick<
+  MessageRow,
+  | "id"
+  | "message_id"
+  | "shard_id"
+  | "entity_type"
+  | "entity_id"
+  | "kind"
+  | "tag"
+  | "payload"
+  | "headers"
+  | "trace_id"
+  | "span_id"
+  | "sampled"
+  | "request_id"
+  | "reply_id"
+  | "deliver_at"
+>
+
+type ReplyRow = PgReplyRow | MysqlReplyRow | MssqlReplyRow | SqliteReplyRow
+
+type ReplyInsertRow = Pick<ReplyRow, "id" | "kind" | "request_id" | "payload" | "sequence">
+
+type ReplyDecodeRow = Pick<ReplyRow, "id" | "kind" | "request_id" | "payload" | "sequence">
+
+type PgReplyJoinRow = {
+  readonly reply_reply_id: PgReplyRow["id"] | null
+  readonly reply_payload: PgReplyRow["payload"] | null
+  readonly reply_sequence: PgReplyRow["sequence"]
 }
 
 type ReplyJoinRow = {
-  readonly reply_reply_id: string | bigint | null
-  readonly reply_payload: string | null
-  readonly reply_sequence: number | bigint | null
+  readonly reply_reply_id: ReplyRow["id"] | null
+  readonly reply_payload: ReplyRow["payload"] | null
+  readonly reply_sequence: ReplyRow["sequence"]
 }
 
-type MessageJoinRow = MessageRow & ReplyJoinRow & {
-  readonly sequence: number | bigint
-}
+type MessageJoinRow = MessageRow & ReplyJoinRow
