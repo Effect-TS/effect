@@ -216,6 +216,37 @@ describe("Match", () => {
     )
   })
 
+  it("Effect.fn handler return types survive", () => {
+    expect(
+      Match.value(taggedInput).pipe(
+        Match.tagsExhaustive({
+          A: Effect.fn(function*(value) {
+            return value.a
+          }),
+          B: Effect.fnUntraced(function*(value) {
+            return value.b
+          })
+        })
+      )
+    ).type.toBe<Effect.Effect<string | number>>()
+  })
+
+  it("tagsExhaustive rejects missing and unknown tags", () => {
+    Match.value(taggedInput).pipe(
+      // @ts-expect-error Property 'B' is missing
+      Match.tagsExhaustive({ A: (value) => value.a })
+    )
+
+    Match.value(taggedInput).pipe(
+      Match.tagsExhaustive({
+        A: (value) => value.a,
+        B: (value) => value.b,
+        // @ts-expect-error Type '() => number' is not assignable to type 'never'
+        C: () => 1
+      })
+    )
+  })
+
   it("related handler maps contextually type nested Effect.fn calls", () => {
     Match.value(taggedInput).pipe(
       Match.tags({
