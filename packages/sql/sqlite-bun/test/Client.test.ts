@@ -62,11 +62,13 @@ describe("Client", () => {
 
       const sql = yield* SqliteClient.make({ filename, readonly: true })
       assert.deepStrictEqual(yield* sql`SELECT * FROM test`, [])
-      assert.deepStrictEqual(yield* sql.withTransaction(sql`SELECT * FROM test`), [])
 
       const error = yield* Effect.flip(sql`INSERT INTO test DEFAULT VALUES`)
       assert.strictEqual(error._tag, "SqlError")
       assert(error.reason.cause instanceof Error)
       assert.match(error.reason.cause.message, /attempt to write a readonly database/i)
+
+      yield* sql`PRAGMA query_only = ON`
+      assert.deepStrictEqual(yield* sql.withTransaction(sql`SELECT * FROM test`), [])
     }).pipe(Effect.provide(Reactivity.layer)))
 })
