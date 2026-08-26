@@ -390,73 +390,6 @@ describe("RpcSerialization", () => {
     )
   })
 
-  it("msgPack roundtrips an encoded RPC request envelope", () => {
-    const parser = RpcSerialization.msgPack.makeUnsafe()
-    const payload = { _tag: "Request", id: 1, method: "echo" }
-    const encoded = parser.encode(payload)
-    const decoded = parser.decode(encoded as Uint8Array)
-    assert.strictEqual(decoded.length, 1)
-    assert.deepStrictEqual(decoded[0], payload)
-  })
-
-  it("makeMsgPack with useRecords false roundtrips an encoded RPC request envelope", () => {
-    const parser = RpcSerialization.makeMsgPack({ useRecords: false }).makeUnsafe()
-    const payload = { _tag: "Request", id: 1, method: "echo" }
-    const encoded = parser.encode(payload)
-    const decoded = parser.decode(encoded as Uint8Array)
-    assert.strictEqual(decoded.length, 1)
-    assert.deepStrictEqual(decoded[0], payload)
-  })
-
-  it("makeMsgPack with useRecords false handles nested objects with repeated structures", () => {
-    const parser = RpcSerialization.makeMsgPack({ useRecords: false }).makeUnsafe()
-    const payload = {
-      _tag: "Chunk",
-      requestId: "1",
-      values: [
-        responseExitSuccess("1", { _tag: "Ok", data: "a" }),
-        responseExitSuccess("2", { _tag: "Ok", data: "b" }),
-        responseExitSuccess("3", { _tag: "Ok", data: "c" }),
-        responseExitSuccess("4", { _tag: "Ok", data: "d" })
-      ]
-    }
-    const encoded = parser.encode(payload)
-    const decoded = parser.decode(encoded as Uint8Array)
-    assert.strictEqual(decoded.length, 1)
-    assert.deepStrictEqual(decoded[0], payload)
-  })
-
-  it("makeMsgPack fails when incomplete frames exceed maxBufferSize", () => {
-    const parser = RpcSerialization.makeMsgPack({ maxBufferSize: 2 }).makeUnsafe()
-    const incompleteFrame = Uint8Array.of(0xd9)
-
-    assert.deepStrictEqual(parser.decode(incompleteFrame), [])
-    assert.deepStrictEqual(parser.decode(incompleteFrame), [])
-    assertMaxBufferSizeExceeded(() => parser.decode(incompleteFrame), 2)
-  })
-
-  it("makeMsgPack allows an unbounded incomplete frame", () => {
-    const parser = RpcSerialization.makeMsgPack({ maxBufferSize: "unbounded" }).makeUnsafe()
-    const incompleteFrame = Uint8Array.of(0xd9)
-
-    for (let i = 0; i < 20; i++) {
-      assert.deepStrictEqual(parser.decode(incompleteFrame), [])
-    }
-  })
-
-  it.effect("layerMsgPackWith forwards maxBufferSize to its decoder", () =>
-    Effect.gen(function*() {
-      const serialization = yield* RpcSerialization.RpcSerialization
-      const parser = serialization.makeUnsafe()
-      const incompleteFrame = Uint8Array.of(0xd9)
-
-      assert.deepStrictEqual(parser.decode(incompleteFrame), [])
-      assert.deepStrictEqual(parser.decode(incompleteFrame), [])
-      assertMaxBufferSizeExceeded(() => parser.decode(incompleteFrame), 2)
-    }).pipe(
-      Effect.provide(RpcSerialization.layerMsgPackWith({ maxBufferSize: 2 }))
-    ))
-
   describe("SchemaBinary", () => {
     it.effect("roundtrips requests and streamed responses over HTTP", () =>
       Effect.gen(function*() {
@@ -620,11 +553,10 @@ describe("RpcSerialization", () => {
   })
 
   describe("codecFor", () => {
-    it("built-in serializations JSON-lower the hole", () => {
+    it("text serializations JSON-lower the hole", () => {
       const encode = Schema.encodeSync(RpcSerialization.json.codecFor(Schema.Date))
       assert.strictEqual(encode(new Date(0)), "1970-01-01T00:00:00.000Z")
       assert.strictEqual(RpcSerialization.ndjson.codecFor, RpcSerialization.json.codecFor)
-      assert.strictEqual(RpcSerialization.msgPack.codecFor, RpcSerialization.json.codecFor)
       assert.strictEqual(RpcSerialization.jsonRpc().codecFor, RpcSerialization.json.codecFor)
     })
 

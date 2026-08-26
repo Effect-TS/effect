@@ -37,10 +37,10 @@ describe("RpcServer", () => {
     )
   )
   e2eSuite(
-    "e2e http msgpack",
+    "e2e http SchemaBinary",
     HttpNdjsonClient.pipe(
       Layer.provideMerge(HttpNdjsonServer),
-      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerMsgPack])
+      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerSchemaBinary()])
     )
   )
   e2eSuite(
@@ -84,10 +84,10 @@ describe("RpcServer", () => {
     )
   )
   e2eSuite(
-    "e2e ws msgpack",
+    "e2e ws SchemaBinary",
     HttpWsClient.pipe(
       Layer.provideMerge(HttpWsServer),
-      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerMsgPack])
+      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerSchemaBinary()])
     )
   )
   e2eSuite(
@@ -121,10 +121,10 @@ describe("RpcServer", () => {
     )
   )
   e2eSuite(
-    "e2e tcp msgpack",
+    "e2e tcp SchemaBinary",
     TcpClient.pipe(
       Layer.provideMerge(TcpServer),
-      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerMsgPack])
+      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerSchemaBinary()])
     )
   )
   e2eSuite(

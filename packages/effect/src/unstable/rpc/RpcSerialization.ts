@@ -3,13 +3,12 @@
  *
  * `RpcSerialization` is the boundary between `RpcMessage` envelopes and the
  * bytes or strings carried by a transport. This module provides built-in
- * serializers for JSON, newline-delimited JSON, JSON-RPC 2.0, MessagePack, and
- * SchemaBinary, including framed formats that can decode multiple messages
+ * serializers for JSON, newline-delimited JSON, JSON-RPC 2.0, and SchemaBinary,
+ * including framed formats that can decode multiple messages
  * from streaming chunks.
  *
  * @since 4.0.0
  */
-import * as Msgpackr from "msgpackr"
 import * as Context from "../../Context.ts"
 import * as Data from "../../Data.ts"
 import * as Layer from "../../Layer.ts"
@@ -525,72 +524,6 @@ interface JsonRpcResponse {
 
 type JsonRpcMessage = JsonRpcRequest | JsonRpcResponse
 
-/**
- * Create a MessagePack serialization with custom msgpackr options.
- *
- * @category serialization
- * @since 4.0.0
- */
-export const makeMsgPack = (
-  options?: (Msgpackr.Options & StreamOptions) | undefined
-): RpcSerialization["Service"] => {
-  const { maxBufferSize = defaultMaxBufferSize, ...msgpackOptions } = options ?? {}
-  return RpcSerialization.of({
-    contentType: "application/msgpack",
-    includesFraming: true,
-    codecFor: codecForJson,
-    makeUnsafe: () => {
-      const unpackr = new Msgpackr.Unpackr(msgpackOptions)
-      const packr = new Msgpackr.Packr(msgpackOptions)
-      const encoder = new TextEncoder()
-      let incomplete: Uint8Array | undefined = undefined
-      const failMaxBufferSize = (maxBufferSize: number): never => {
-        incomplete = undefined
-        throw new MaxBufferSizeExceeded({ maxBufferSize })
-      }
-      return {
-        decode(bytes) {
-          let buf = typeof bytes === "string" ? encoder.encode(bytes) : bytes
-          if (incomplete !== undefined) {
-            if (isBufferSizeExceeded(incomplete.length + buf.length, maxBufferSize)) {
-              failMaxBufferSize(maxBufferSize)
-            }
-            const prev = buf
-            bytes = new Uint8Array(incomplete.length + buf.length)
-            bytes.set(incomplete)
-            bytes.set(prev, incomplete.length)
-            buf = bytes
-            incomplete = undefined
-          }
-          try {
-            return unpackr.unpackMultiple(buf)
-          } catch (error_) {
-            const error = error_ as any
-            if (error.incomplete) {
-              incomplete = buf.subarray(error.lastPosition)
-              if (isBufferSizeExceeded(incomplete.length, maxBufferSize)) {
-                failMaxBufferSize(maxBufferSize)
-              }
-              return error.values ?? []
-            }
-            throw error_
-          }
-        },
-        encode: (response) => packr.pack(response)
-      }
-    }
-  })
-}
-
-/**
- * Default MessagePack RPC serialization using record support and built-in
- * message framing.
- *
- * @category serialization
- * @since 4.0.0
- */
-export const msgPack: RpcSerialization["Service"] = makeMsgPack({ useRecords: true })
-
 const defaultSchemaBinaryMaxFrameSize = 16 * 1024 * 1024
 
 const schemaBinaryTextEncoder = new TextEncoder()
@@ -685,29 +618,6 @@ export const layerNdJsonRpc = (options?: {
   readonly contentType?: string | undefined
   readonly maxBufferSize?: number | "unbounded" | undefined
 }): Layer.Layer<RpcSerialization> => Layer.succeed(RpcSerialization)(ndJsonRpc(options))
-
-/**
- * RPC serialization layer that uses MessagePack for serialization.
- *
- * **Details**
- *
- * MessagePack has a more compact binary format compared to JSON and NDJSON. It
- * also has better support for binary data.
- *
- * @category layers
- * @since 4.0.0
- */
-export const layerMsgPack: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSerialization)(msgPack)
-
-/**
- * RPC serialization layer that uses MessagePack with custom options.
- *
- * @category layers
- * @since 4.0.0
- */
-export const layerMsgPackWith = (
-  options?: (Msgpackr.Options & StreamOptions) | undefined
-): Layer.Layer<RpcSerialization> => Layer.succeed(RpcSerialization)(makeMsgPack(options))
 
 /**
  * RPC serialization layer that uses SchemaBinary with fingerprinted RPC

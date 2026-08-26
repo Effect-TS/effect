@@ -37,7 +37,7 @@ export const TypeId = "~effect/cluster/Envelope"
  * entity RPC schema, and the result is carried opaquely inside the runner
  * envelope. This schema names that hole so the outer runner encode leaves it
  * alone. It is the identity under `Schema.toCodecJson`, so JSON, NDJSON, and
- * MessagePack transports stay wire-compatible. A binary codec compiles it as a
+ * text transports stay wire-compatible. A binary codec compiles it as a
  * bytes leaf.
  *
  * @category schemas
