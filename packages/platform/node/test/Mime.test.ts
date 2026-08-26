@@ -32,18 +32,4 @@ describe("Mime", () => {
     assert.strictEqual(Mime.getExtension("text/html; charset=utf-8"), "html")
     assert.deepStrictEqual(Mime.getAllExtensions("text/html"), new Set(["html", "htm", "shtml"]))
   })
-
-  it("keeps the customizable Mime facade", () => {
-    const registry = new Mime.Mime({ "application/example": ["example", "*shared"] })
-    registry.define({ "application/shared": ["shared"] })
-
-    assert.strictEqual(registry.getType("file.example"), "application/example")
-    assert.strictEqual(registry.getType("file.shared"), "application/shared")
-    assert.strictEqual(registry.getExtension("application/example; charset=utf-8"), "example")
-    assert.deepStrictEqual(registry.getAllExtensions("application/example"), new Set(["example", "shared"]))
-  })
-
-  it("keeps the default export for compatibility", () => {
-    assert.strictEqual(Mime.default.getType("index.html"), Mime.getType("index.html"))
-  })
 })

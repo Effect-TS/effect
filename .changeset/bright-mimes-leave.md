@@ -2,4 +2,5 @@
 "@effect/platform-node": patch
 ---
 
-Remove the `mime` runtime dependency by using an in-package standard MIME registry with top-level lookup functions.
+Remove the `mime` runtime dependency. The `Mime` module now provides top-level lookup functions backed by a vendored
+standard MIME registry.
