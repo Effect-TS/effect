@@ -1,35 +1,36 @@
 import * as Mime from "@effect/platform-node/Mime"
 import { assert, describe, it } from "@effect/vitest"
+import * as Option from "effect/Option"
 
 describe("Mime", () => {
   it("looks up common static file types", () => {
-    assert.strictEqual(Mime.getType("index.html"), "text/html")
-    assert.strictEqual(Mime.getType("styles.css"), "text/css")
-    assert.strictEqual(Mime.getType("app.js"), "text/javascript")
-    assert.strictEqual(Mime.getType("image.png"), "image/png")
-    assert.strictEqual(Mime.getType("document.pdf"), "application/pdf")
-    assert.strictEqual(Mime.getType("font.woff2"), "font/woff2")
+    assert.deepStrictEqual(Mime.getType("index.html"), Option.some("text/html"))
+    assert.deepStrictEqual(Mime.getType("styles.css"), Option.some("text/css"))
+    assert.deepStrictEqual(Mime.getType("app.js"), Option.some("text/javascript"))
+    assert.deepStrictEqual(Mime.getType("image.png"), Option.some("image/png"))
+    assert.deepStrictEqual(Mime.getType("document.pdf"), Option.some("application/pdf"))
+    assert.deepStrictEqual(Mime.getType("font.woff2"), Option.some("font/woff2"))
   })
 
   it("looks up standard MIME types", () => {
-    assert.strictEqual(Mime.getType("feed.atom"), "application/atom+xml")
-    assert.strictEqual(Mime.getType("archive.jar"), "application/java-archive")
-    assert.strictEqual(Mime.getType("calendar.ics"), "text/calendar")
-    assert.strictEqual(Mime.getType("model.glb"), "model/gltf-binary")
+    assert.deepStrictEqual(Mime.getType("feed.atom"), Option.some("application/atom+xml"))
+    assert.deepStrictEqual(Mime.getType("archive.jar"), Option.some("application/java-archive"))
+    assert.deepStrictEqual(Mime.getType("calendar.ics"), Option.some("text/calendar"))
+    assert.deepStrictEqual(Mime.getType("model.glb"), Option.some("model/gltf-binary"))
   })
 
-  it("returns null for unknown and missing extensions", () => {
-    assert.strictEqual(Mime.getType("file.unknown"), null)
-    assert.strictEqual(Mime.getType("/directory/file"), null)
+  it("returns none for unknown and missing extensions", () => {
+    assert.deepStrictEqual(Mime.getType("file.unknown"), Option.none())
+    assert.deepStrictEqual(Mime.getType("/directory/file"), Option.none())
   })
 
   it("handles extensions case-insensitively", () => {
-    assert.strictEqual(Mime.getType("/directory/INDEX.HTML"), "text/html")
-    assert.strictEqual(Mime.getType("PHOTO.JpEg"), "image/jpeg")
+    assert.deepStrictEqual(Mime.getType("/directory/INDEX.HTML"), Option.some("text/html"))
+    assert.deepStrictEqual(Mime.getType("PHOTO.JpEg"), Option.some("image/jpeg"))
   })
 
   it("exposes reverse lookups at the module level", () => {
-    assert.strictEqual(Mime.getExtension("text/html; charset=utf-8"), "html")
-    assert.deepStrictEqual(Mime.getAllExtensions("text/html"), new Set(["html", "htm", "shtml"]))
+    assert.deepStrictEqual(Mime.getExtension("text/html; charset=utf-8"), Option.some("html"))
+    assert.deepStrictEqual(Mime.getAllExtensions("text/html"), Option.some(new Set(["html", "htm", "shtml"])))
   })
 })

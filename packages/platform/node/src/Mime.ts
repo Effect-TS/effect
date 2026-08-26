@@ -3,6 +3,7 @@
  *
  * @since 4.0.0
  */
+import * as Option from "effect/Option"
 import standardTypes from "./internal/mimeTypes.ts"
 
 const extensionToType = new Map<string, string>()
@@ -34,18 +35,18 @@ for (const [type, extensions] of Object.entries(standardTypes)) {
  * @category utilities
  * @since 4.0.0
  */
-export const getType = (path: string): string | null => {
+export const getType = (path: string): Option.Option<string> => {
   if (typeof path !== "string") {
-    return null
+    return Option.none()
   }
   const last = path.replace(/^.*[/\\]/s, "").toLowerCase()
   const extension = last.replace(/^.*\./s, "").toLowerCase()
   const hasPath = last.length < path.length
   const hasDot = extension.length < last.length - 1
   if (!hasDot && hasPath) {
-    return null
+    return Option.none()
   }
-  return extensionToType.get(extension) ?? null
+  return Option.fromUndefinedOr(extensionToType.get(extension))
 }
 
 /**
@@ -54,11 +55,11 @@ export const getType = (path: string): string | null => {
  * @category utilities
  * @since 4.0.0
  */
-export const getExtension = (type: string): string | null => {
+export const getExtension = (type: string): Option.Option<string> => {
   if (typeof type !== "string") {
-    return null
+    return Option.none()
   }
-  return typeToExtension.get(type.split(";")[0].trim().toLowerCase()) ?? null
+  return Option.fromUndefinedOr(typeToExtension.get(type.split(";")[0].trim().toLowerCase()))
 }
 
 /**
@@ -67,9 +68,9 @@ export const getExtension = (type: string): string | null => {
  * @category utilities
  * @since 4.0.0
  */
-export const getAllExtensions = (type: string): Set<string> | null => {
+export const getAllExtensions = (type: string): Option.Option<ReadonlySet<string>> => {
   if (typeof type !== "string") {
-    return null
+    return Option.none()
   }
-  return typeToExtensions.get(type.toLowerCase()) ?? null
+  return Option.fromUndefinedOr(typeToExtensions.get(type.toLowerCase()))
 }
