@@ -804,9 +804,12 @@ export const addFinalizer: <R>(
 > = Effect.fnUntraced(function*<R>(
   f: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void, never, R>
 ) {
-  const scope = (yield* InstanceTag).scope
+  const instance = yield* InstanceTag
   const services = yield* Effect.context<R>()
-  yield* Scope.addFinalizerExit(scope, (exit) => Effect.provideContext(f(exit), services))
+  yield* Scope.addFinalizerExit(
+    instance.scope,
+    (exit) => instance.replaying ? Effect.void : Effect.provideContext(f(exit), services)
+  )
 })
 
 /**

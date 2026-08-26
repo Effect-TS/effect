@@ -20,7 +20,7 @@ import * as RcMap from "../../RcMap.ts"
 import type * as Record from "../../Record.ts"
 import * as Schedule from "../../Schedule.ts"
 import * as Schema from "../../Schema.ts"
-import type * as Scope from "../../Scope.ts"
+import * as Scope from "../../Scope.ts"
 import * as Headers from "../http/Headers.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import { ClientAbort } from "../rpc/RpcSchema.ts"
@@ -42,6 +42,10 @@ import type { WithExitEncoded } from "./Reply.ts"
 import * as Reply from "./Reply.ts"
 import * as Sharding from "./Sharding.ts"
 import * as Snowflake from "./Snowflake.ts"
+
+class ActivityHandoff extends Context.Service<ActivityHandoff, true>()(
+  "effect/cluster/ClusterWorkflowEngine/ActivityHandoff"
+) {}
 
 /**
  * Creates a `WorkflowEngine` implementation backed by cluster sharding and
@@ -360,13 +364,16 @@ export const make = Effect.gen(function*() {
             return {
               run: (request: Entity.Request<any>) => {
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
-                const payload = request.payload as any
-                let parent: { workflowName: string; executionId: string } | undefined
-                if (payload[payloadParentKey]) {
-                  parent = payload[payloadParentKey]
-                }
-                return execute(workflow.payloadSchema.make(payload) as object, executionId).pipe(
+                let replayAfterActivityHandoff = false
+                const parent = (request.payload as any)[payloadParentKey] as
+                  | { workflowName: string; executionId: string }
+                  | undefined
+                return execute(workflow.payloadSchema.make(request.payload) as object, executionId).pipe(
                   Effect.onExit((exit) => {
+                    replayAfterActivityHandoff = exit._tag === "Failure" &&
+                      exit.cause.reasons.some((reason) =>
+                        reason._tag === "Interrupt" && reason.annotations.has(ActivityHandoff.key)
+                      )
                     const suspendOnFailure = Context.get(workflow.annotations, Workflow.SuspendOnFailure)
                     if (!instance.suspended && !(suspendOnFailure && exit._tag === "Failure")) {
                       return parent ? ensureSuccess(sendResumeParent(parent)) : Effect.void
@@ -387,6 +394,22 @@ export const make = Effect.gen(function*() {
                     )
                   }),
                   Workflow.intoResult,
+                  Effect.flatMap((result) => {
+                    if (
+                      !replayAfterActivityHandoff ||
+                      result._tag !== "Suspended" ||
+                      result.cause !== undefined ||
+                      instance.interrupted
+                    ) {
+                      return Effect.succeed(result)
+                    }
+                    // Release owner-local resources without running terminal
+                    // workflow finalizers, which replay will register again.
+                    instance.replaying = true
+                    return Scope.close(instance.scope, Exit.void).pipe(
+                      Effect.andThen(Effect.interrupt)
+                    )
+                  }),
                   (effect) => deferredState.trackRun(instance, effect)
                 ) as any
               },
@@ -527,12 +550,21 @@ export const make = Effect.gen(function*() {
               activityLatches.delete(activityId)
             }
           }
-          const result = yield* Effect.orDie(
-            client.activity({
-              name: activity.name,
-              attempt,
-              withTransaction: Context.get(activity.annotations, ClusterSchema.WithTransaction)
-            })
+          const result = yield* client.activity({
+            name: activity.name,
+            attempt,
+            withTransaction: Context.get(activity.annotations, ClusterSchema.WithTransaction)
+          }).pipe(
+            Effect.catchTag("EntityNotAssignedToRunner", () => {
+              // Persisted activity sends only expose this error after the
+              // request has been saved by sharding's abandon path.
+              return Effect.interruptible(Effect.callback<never>(() => {
+                instance.suspended = true
+                const fiber = Fiber.getCurrent()!
+                fiber.interruptUnsafe(fiber.id, ActivityHandoff.context(true))
+              }))
+            }),
+            Effect.orDie
           )
           // If the activity has suspended and did not execute, we need to resume
           // it by resetting the attempt and re-executing.

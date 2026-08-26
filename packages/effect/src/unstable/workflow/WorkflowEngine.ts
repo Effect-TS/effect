@@ -256,6 +256,11 @@ export class WorkflowInstance extends Context.Service<
     interrupted: boolean
 
     /**
+     * Whether the workflow scope is being closed for replay rather than completion.
+     */
+    replaying: boolean
+
+    /**
      * When SuspendOnFailure is triggered, the cause of the failure is stored
      * here.
      */
@@ -281,6 +286,7 @@ export class WorkflowInstance extends Context.Service<
       scope,
       suspended: false,
       interrupted: false,
+      replaying: false,
       cause: undefined,
       awaitedDeferreds: new Set(),
       activityState: {
