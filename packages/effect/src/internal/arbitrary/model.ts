@@ -164,6 +164,29 @@ export function sampleFromShrink<A>(value: A, shrink: (value: A) => ReadonlyArra
 }
 
 /** @internal */
+export function sampleFromValidatedShrink<A>(
+  value: A,
+  shrink: (value: A) => ReadonlyArray<A>,
+  validate: (value: A) => Computation<Option.Option<A>>
+): Sample<A> {
+  let candidates: ShrinkPull<A> | undefined
+  return makeSample(
+    value,
+    Effect.suspend(() => {
+      candidates ??= pullFromArray(shrink(value))
+      return Effect.flatMapEager(
+        candidates,
+        (candidate) =>
+          Effect.mapEager(toEffect(validate(candidate)), (validated) =>
+            Option.isSome(validated)
+              ? sampleFromValidatedShrink(validated.value, shrink, validate)
+              : discarded)
+      )
+    })
+  )
+}
+
+/** @internal */
 export function mapSample<A, B>(self: Sample<A>, f: (value: A) => B): Sample<B> {
   return makeSample(
     f(self.value),

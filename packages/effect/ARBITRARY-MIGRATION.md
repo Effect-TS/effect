@@ -1,7 +1,7 @@
 # Migrating to Native Arbitrary
 
 This guide covers migration from the fast-check bridge published in `effect@4.0.0-rc.109` to the native,
-Schema-first module at `effect/unstable/arbitrary/Arbitrary`.
+Schema-first module at `effect/unstable/arbitrary`.
 
 The new module removes fast-check from the `effect` package. Applications may still install and use fast-check
 directly, but Effect Schema generation and `@effect/vitest` property tests no longer depend on it.
@@ -22,7 +22,7 @@ The following APIs have been removed:
 Import the native module explicitly:
 
 ```ts
-import * as Arbitrary from "effect/unstable/arbitrary/Arbitrary"
+import { Arbitrary } from "effect/unstable/arbitrary"
 ```
 
 If other tests still use fast-check-specific APIs, add fast-check as a direct development dependency and import it
@@ -49,7 +49,7 @@ Now derive and sample through the Effect-native module:
 
 ```ts
 import { Effect, Schema } from "effect"
-import * as Arbitrary from "effect/unstable/arbitrary/Arbitrary"
+import { Arbitrary } from "effect/unstable/arbitrary"
 
 const Person = Schema.Struct({
   name: Schema.String,
@@ -88,7 +88,7 @@ Now `Arbitrary.checkEffect` runs a pure or Effectful property and returns a stru
 
 ```ts
 import { Effect, Schema } from "effect"
-import * as Arbitrary from "effect/unstable/arbitrary/Arbitrary"
+import { Arbitrary } from "effect/unstable/arbitrary"
 
 const result = await Effect.runPromise(
   Arbitrary.checkEffect(
@@ -293,7 +293,7 @@ it.prop("mixed", [Schema.String, fc.integer()], ([text, value]) => true)
 Replace those inputs with Schemas when they describe a domain supported by Schema, or compose a native Arbitrary:
 
 ```ts
-import * as Arbitrary from "effect/unstable/arbitrary/Arbitrary"
+import { Arbitrary } from "effect/unstable/arbitrary"
 
 const integer = Arbitrary.schema(Schema.Int)
 

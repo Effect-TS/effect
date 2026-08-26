@@ -59,6 +59,104 @@ describe("Arbitrary", () => {
   })
 
   describe("schema", () => {
+    it.effect("uses a custom Schema shrinker", () =>
+      Effect.gen(function*() {
+        const arbitrary = Arbitrary.schema(Schema.Literals(["large", "small"]), {
+          shrink: (value) => value === "large" ? ["small"] as const : []
+        })
+        const result = yield* Arbitrary.checkEffect(arbitrary, () => false, {
+          runs: 1,
+          maxDiscards: 0,
+          seed: 0
+        })
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") {
+          assert.strictEqual(result.initialInput, "large")
+          assert.strictEqual(result.shrunkInput, "small")
+          assert.strictEqual(result.shrinks, 1)
+
+          const replayed = yield* Arbitrary.checkEffect(arbitrary, () => false, { replay: result.replay })
+          assert.deepStrictEqual(replayed, result)
+        }
+      }))
+
+    it.effect("validates custom shrink candidates before evaluating the property", () =>
+      Effect.gen(function*() {
+        const arbitrary = Arbitrary.schema(Schema.Literals(["large", "small"]), {
+          shrink: (value) => value === "large" ? ["invalid" as "large", "small"] as const : []
+        })
+        const limitedEvaluated: Array<string> = []
+        const limited = yield* Arbitrary.checkEffect(arbitrary, (value) => {
+          limitedEvaluated.push(value)
+          return false
+        }, {
+          runs: 1,
+          maxDiscards: 0,
+          maxShrinks: 1,
+          seed: 0
+        })
+
+        assert.strictEqual(limited._tag, "Falsified")
+        if (limited._tag === "Falsified") {
+          assert.strictEqual(limited.shrunkInput, "large")
+          assert.strictEqual(limited.shrinks, 0)
+          assert.deepStrictEqual(limitedEvaluated, ["large"])
+        }
+
+        const evaluated: Array<string> = []
+        const result = yield* Arbitrary.checkEffect(arbitrary, (value) => {
+          evaluated.push(value)
+          return false
+        }, {
+          runs: 1,
+          maxDiscards: 0,
+          maxShrinks: 2,
+          seed: 0
+        })
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") {
+          assert.strictEqual(result.shrunkInput, "small")
+          assert.strictEqual(result.shrinks, 1)
+          assert.deepStrictEqual(evaluated, ["large", "small"])
+        }
+      }))
+
+    it.effect("evaluates a custom shrinker only while shrinking a failure", () =>
+      Effect.gen(function*() {
+        let calls = 0
+        const arbitrary = Arbitrary.schema(Schema.Literals(["large", "small"]), {
+          shrink: () => {
+            calls++
+            return []
+          }
+        })
+
+        yield* Arbitrary.sampleEffect(arbitrary, { count: 1, maxDiscards: 0, seed: 0 })
+        yield* Arbitrary.checkEffect(arbitrary, () => true, { runs: 1, maxDiscards: 0, seed: 0 })
+        assert.strictEqual(calls, 0)
+
+        yield* Arbitrary.checkEffect(arbitrary, () => false, { runs: 1, maxDiscards: 0, seed: 0 })
+        assert.strictEqual(calls, 1)
+      }))
+
+    it.effect("replaces Schema-derived shrinking with the custom shrinker", () =>
+      Effect.gen(function*() {
+        const schema = Schema.BigInt.check(Schema.isBetweenBigInt({ minimum: 100n, maximum: 1_000n }))
+        const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema, { shrink: () => [] }), () => false, {
+          runs: 1,
+          seed: 21
+        })
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") {
+          assert.isTrue(result.initialInput > 100n)
+          assert.strictEqual(result.shrunkInput, result.initialInput)
+          assert.strictEqual(result.shrinks, 0)
+        }
+      }))
+
     it.effect("generates deterministic samples and pushes constraints into primitive constructors", () =>
       Effect.gen(function*() {
         const schema = Schema.String.check(Schema.isMinLength(8), Schema.isMaxLength(8))
@@ -2102,6 +2200,26 @@ describe("Arbitrary", () => {
   })
 
   describe("combinators", () => {
+    it.effect("generates a constant without shrink candidates", () =>
+      Effect.gen(function*() {
+        const value = { tag: "value" }
+        const arbitrary = Arbitrary.Constant(value)
+        const values = yield* Arbitrary.sampleEffect(arbitrary, { count: 3, seed: "constant" })
+        const result = yield* Arbitrary.checkEffect(arbitrary, () => false, {
+          runs: 1,
+          seed: "constant"
+        })
+
+        assert.deepStrictEqual(values, [value, value, value])
+        assert.isTrue(values.every((sample) => sample === value))
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") {
+          assert.strictEqual(result.initialInput, value)
+          assert.strictEqual(result.shrunkInput, value)
+          assert.strictEqual(result.shrinks, 0)
+        }
+      }))
+
     it.effect("maps generated values and the complete shrink tree", () =>
       Effect.gen(function*() {
         const arbitrary = Arbitrary.schema(
@@ -2509,7 +2627,7 @@ describe("Arbitrary", () => {
         const arbitrary = Arbitrary.flatMap(source, (value) => {
           callbacks++
           if (callbacks === 2) Deferred.doneUnsafe(started, Effect.void)
-          const target = Arbitrary.map(Arbitrary.schema(Schema.Null), () => value)
+          const target = Arbitrary.Constant(value)
           return callbacks === 1 ? target : Arbitrary.filter(target, () => false)
         })
         const fiber = yield* Effect.forkChild(
@@ -2665,6 +2783,62 @@ describe("Arbitrary", () => {
         assert.deepStrictEqual(resampled, sampled)
         assert.deepStrictEqual(rechecked, checked)
       }))
+  })
+
+  describe("formatCheckFailure", () => {
+    it("formats diagnostic values without ambiguity", () => {
+      const falsified = Arbitrary.formatCheckFailure({
+        _tag: "Falsified",
+        initialInput: "initial",
+        shrunkInput: "\n",
+        failure: { _tag: "PropertyError", error: "boom" },
+        runs: 1,
+        discards: 0,
+        shrinks: 0,
+        replay: "replay"
+      })
+      const exhausted = Arbitrary.formatCheckFailure({
+        _tag: "Exhausted",
+        runs: 0,
+        discards: 1,
+        seed: "seed"
+      })
+      const map = Arbitrary.formatCheckFailure({
+        _tag: "Falsified",
+        initialInput: new Map(),
+        shrunkInput: new Map([["key", 1]]),
+        failure: { _tag: "ReturnedFalse" },
+        runs: 1,
+        discards: 0,
+        shrinks: 0,
+        replay: "replay"
+      })
+      const throwingInput = Object.defineProperty({}, "value", {
+        enumerable: true,
+        get() {
+          throw new Error("getter defect")
+        }
+      })
+      const throwing = Arbitrary.formatCheckFailure({
+        _tag: "Falsified",
+        initialInput: throwingInput,
+        shrunkInput: throwingInput,
+        failure: { _tag: "ReturnedFalse" },
+        runs: 1,
+        discards: 0,
+        shrinks: 0,
+        replay: "replay"
+      })
+
+      assert.strictEqual(
+        falsified,
+        "Property falsified after 1 run(s) and 0 shrink(s)\nShrunk input: \"\\n\"\nFailure: \"boom\"\nReplay: replay"
+      )
+      assert.strictEqual(exhausted, "Property exhausted after 0 run(s) and 1 discard(s)\nSeed: \"seed\"")
+      assert.match(map!, /Shrunk input: Map\(/)
+      assert.match(throwing!, /Shrunk input: {"value":"\[property access threw\]"}/)
+      assert.match(throwing!, /Replay: replay$/)
+    })
   })
 
   describe("checkEffect", () => {
@@ -2885,6 +3059,117 @@ describe("Arbitrary", () => {
         assert.strictEqual(replayed.shrunkInput, first.shrunkInput)
         assert.deepStrictEqual(replayed.failure, first.failure)
         assert.strictEqual(replayed.shrinks, first.shrinks)
+      }))
+
+    it.effect("preserves a returned-false failure while shrinking", () =>
+      Effect.gen(function*() {
+        const evaluated: Array<string> = []
+        const arbitrary = Arbitrary.schema(Schema.Literals(["root", "error", "false"]), {
+          shrink: (value) => value === "root" ? ["error", "false"] as const : []
+        })
+        const result = yield* Arbitrary.checkEffect(arbitrary, (value) => {
+          evaluated.push(value)
+          return value === "error" ? Effect.fail("different failure") : false
+        }, {
+          runs: 1,
+          maxShrinks: 2,
+          seed: 0
+        })
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") {
+          assert.strictEqual(result.initialInput, "root")
+          assert.strictEqual(result.shrunkInput, "false")
+          assert.deepStrictEqual(result.failure, { _tag: "ReturnedFalse" })
+          assert.strictEqual(result.shrinks, 1)
+          assert.deepStrictEqual(evaluated, ["root", "error", "false"])
+        }
+      }))
+
+    it.effect("preserves a typed-error failure while shrinking and replaying", () =>
+      Effect.gen(function*() {
+        const evaluated: Array<string> = []
+        const arbitrary = Arbitrary.schema(Schema.Literals(["root", "false", "error"]), {
+          shrink: (value) => value === "root" ? ["false", "error"] as const : []
+        })
+        const property = (value: "root" | "false" | "error") => {
+          evaluated.push(value)
+          return value === "false" ? false : Effect.fail(value)
+        }
+        const result = yield* Arbitrary.checkEffect(arbitrary, property, {
+          runs: 1,
+          maxShrinks: 2,
+          seed: 0
+        })
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") {
+          assert.strictEqual(result.initialInput, "root")
+          assert.strictEqual(result.shrunkInput, "error")
+          assert.deepStrictEqual(result.failure, { _tag: "PropertyError", error: "error" })
+          assert.strictEqual(result.shrinks, 1)
+          assert.deepStrictEqual(evaluated, ["root", "false", "error"])
+
+          evaluated.length = 0
+          const replayed = yield* Arbitrary.checkEffect(arbitrary, property, { replay: result.replay })
+          assert.deepStrictEqual(replayed, result)
+          assert.deepStrictEqual(evaluated, ["root", "error"])
+
+          const mismatch = yield* Arbitrary.checkEffect(
+            arbitrary,
+            (value) => value === "root" ? Effect.fail(value) : false,
+            { replay: result.replay }
+          )
+          assert.deepStrictEqual(mismatch, { _tag: "ReplayMismatch", reason: "ShrinkPassed" })
+        }
+      }))
+
+    it.effect("rejects replay when the recorded root failure class changes", () =>
+      Effect.gen(function*() {
+        const arbitrary = Arbitrary.Constant("root")
+        const returnedFalse = yield* Arbitrary.checkEffect(arbitrary, () => false, { runs: 1, seed: 0 })
+        const propertyError = yield* Arbitrary.checkEffect(arbitrary, () => Effect.fail("error"), {
+          runs: 1,
+          seed: 0
+        })
+
+        assert.strictEqual(returnedFalse._tag, "Falsified")
+        assert.strictEqual(propertyError._tag, "Falsified")
+        if (returnedFalse._tag === "Falsified" && propertyError._tag === "Falsified") {
+          const replayedAsError = yield* Arbitrary.checkEffect(arbitrary, () => Effect.fail("error"), {
+            replay: returnedFalse.replay
+          })
+          const replayedAsFalse = yield* Arbitrary.checkEffect(arbitrary, () => false, {
+            replay: propertyError.replay
+          })
+
+          assert.deepStrictEqual(replayedAsError, { _tag: "ReplayMismatch", reason: "ShrinkPassed" })
+          assert.deepStrictEqual(replayedAsFalse, { _tag: "ReplayMismatch", reason: "ShrinkPassed" })
+        }
+      }))
+
+    it.effect("counts a different failure class against maxShrinks", () =>
+      Effect.gen(function*() {
+        const evaluated: Array<string> = []
+        const arbitrary = Arbitrary.schema(Schema.Literals(["root", "error", "false"]), {
+          shrink: (value) => value === "root" ? ["error", "false"] as const : []
+        })
+        const result = yield* Arbitrary.checkEffect(arbitrary, (value) => {
+          evaluated.push(value)
+          return value === "error" ? Effect.fail("different failure") : false
+        }, {
+          runs: 1,
+          maxShrinks: 1,
+          seed: 0
+        })
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") {
+          assert.strictEqual(result.shrunkInput, "root")
+          assert.deepStrictEqual(result.failure, { _tag: "ReturnedFalse" })
+          assert.strictEqual(result.shrinks, 0)
+          assert.deepStrictEqual(evaluated, ["root", "error"])
+        }
       }))
 
     it.effect("counts every tested shrink candidate against maxShrinks", () =>
