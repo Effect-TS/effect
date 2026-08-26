@@ -14,7 +14,7 @@ import * as Effect from "./Effect.ts"
 import * as Uuid from "./internal/uuid.ts"
 import * as PlatformError from "./PlatformError.ts"
 
-const TypeId = "~effect/platform/Crypto"
+const TypeId = "~effect/Crypto"
 
 /**
  * Digest algorithms supported by the platform `Crypto` service.

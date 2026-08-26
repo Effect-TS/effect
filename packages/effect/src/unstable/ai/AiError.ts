@@ -22,7 +22,7 @@ import * as Schema from "../../Schema.ts"
 import type * as HttpClientError from "../http/HttpClientError.ts"
 import { HttpRequestDetails, HttpResponseDetails } from "./Response.ts"
 
-const ReasonTypeId = "~effect/unstable/ai/AiError/Reason" as const
+const ReasonTypeId = "~effect/ai/AiError/Reason" as const
 
 const providerMetadataWithDefaults = <Metadata extends ProviderMetadata>() =>
   (ProviderMetadata as unknown as typeof ProviderMetadata & Schema.Schema<Metadata>).pipe(
@@ -1452,7 +1452,7 @@ export const AiErrorReason: Schema.Union<[
 // Top-Level AiError
 // =============================================================================
 
-const TypeId = "~effect/unstable/ai/AiError/AiError" as const
+const TypeId = "~effect/ai/AiError" as const
 
 /**
  * Schema for the top-level AI error wrapper using the `reason` pattern.

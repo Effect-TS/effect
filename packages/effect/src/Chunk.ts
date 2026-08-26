@@ -31,7 +31,7 @@ import * as R from "./Result.ts"
 import type { Result } from "./Result.ts"
 import type { Covariant, NoInfer } from "./Types.ts"
 
-const TypeId = "~effect/collections/Chunk"
+const TypeId = "~effect/Chunk"
 
 /**
  * A Chunk is an immutable, ordered collection optimized for efficient concatenation and access patterns.

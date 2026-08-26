@@ -2072,7 +2072,7 @@ export const exhaustive: <I, F, A, Pr, Ret, Args extends Array<any>>(
 ) => [Pr] extends [never] ? [Args] extends [[]] ? (u: I) => Unify<A> : (...args: Args) => Unify<A> : Unify<A> =
   internal.exhaustive
 
-const SafeRefinementId = "~effect/match/Match/SafeRefinement"
+const SafeRefinementId = "~effect/Match/SafeRefinement"
 
 /**
  * A safe refinement that narrows types without runtime errors.

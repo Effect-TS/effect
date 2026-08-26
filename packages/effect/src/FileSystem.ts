@@ -25,7 +25,7 @@ import type { Scope } from "./Scope.ts"
 import * as Sink from "./Sink.ts"
 import * as Stream from "./Stream.ts"
 
-const TypeId = "~effect/platform/FileSystem"
+const TypeId = "~effect/FileSystem"
 
 /**
  * Core interface for file system operations in Effect.
@@ -969,7 +969,7 @@ export const layerNoop = (fileSystem: Partial<FileSystem>): Layer.Layer<FileSyst
  * @category type IDs
  * @since 4.0.0
  */
-export const FileTypeId = "~effect/platform/FileSystem/File"
+export const FileTypeId = "~effect/FileSystem/File"
 
 /**
  * Returns `true` if a value is a `File` handle by checking for the

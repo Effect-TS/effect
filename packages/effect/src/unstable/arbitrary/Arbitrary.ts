@@ -29,7 +29,7 @@ export const TypeId: TypeId = Internal.TypeId
  * @category type IDs
  * @since 4.0.0
  */
-export type TypeId = "~effect/unstable/arbitrary/Arbitrary"
+export type TypeId = "~effect/arbitrary/Arbitrary"
 
 /**
  * Represents a pure description of values that can be generated and shrunk.

@@ -7,7 +7,7 @@ import { pipeArguments } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 
 /** @internal */
-export const TypeId = "~effect/collections/Graph"
+export const TypeId = "~effect/Graph"
 
 /** @internal */
 export interface GraphImpl<in out N, in out E, T extends Graph.Kind>
