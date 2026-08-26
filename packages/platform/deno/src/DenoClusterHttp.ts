@@ -82,7 +82,7 @@ export const layer = <
   const Storage extends "local" | "sql" | "byo" = never
 >(options: {
   readonly transport: "http" | "websocket"
-  readonly serialization?: "ndjson" | undefined
+  readonly serialization?: "binary" | "ndjson" | undefined
   readonly serializationMaxBufferSize?: number | "unbounded" | undefined
   readonly clientOnly?: ClientOnly | undefined
   readonly storage?: Storage | undefined
