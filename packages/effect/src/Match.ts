@@ -1161,11 +1161,17 @@ export const tagsExhaustive: <
     & { readonly [Tag in Types.Tags<"_tag", R> & string]: (_: Extract<R, Record<"_tag", Tag>>) => Ret }
     & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", R>>]: never }
 >(
-  fields: P
+  // Preserve contextual types through nested generic calls (microsoft/TypeScript#52864).
+  fields: [P] extends [never] ? {
+      readonly [Tag in Types.Tags<"_tag", R> & string]: (
+        _: Extract<R, Record<"_tag", Tag>>
+      ) => Ret
+    }
+    : P
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret>
-) => [Pr] extends [never] ? (u: I) => Unify<A | ReturnType<P[keyof P]>> : Unify<A | ReturnType<P[keyof P]>> =
-  internal.tagsExhaustive
+) => [Pr] extends [never] ? (u: I) => Unify<A | ReturnType<P[keyof P]>> : Unify<A | ReturnType<P[keyof P]>> = internal
+  .tagsExhaustive as any
 
 /**
  * Creates a pattern that excludes a specific value while allowing all others.
