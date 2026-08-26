@@ -10,7 +10,6 @@
  */
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "../../Array.ts"
 import type { Brand } from "../../Brand.ts"
-import * as Effect from "../../Effect.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaBinary from "../encoding/SchemaBinary.ts"
 import * as Rpc from "../rpc/Rpc.ts"
@@ -274,8 +273,7 @@ export class WriteEntries extends Schema.Class<WriteEntries>("effect/eventlog/Ev
   encryptedEntries: Schema.Array(EncryptedEntry)
 }) {
   static FromSchemaBinary = SchemaBinary.toCodec(WriteEntries)
-  static encode = (value: WriteEntries) =>
-    Schema.encodeEffect(this.FromSchemaBinary)(value).pipe(Effect.map((bytes) => bytes.slice()))
+  static encode = Schema.encodeEffect(this.FromSchemaBinary)
   static decode = Schema.decodeEffect(this.FromSchemaBinary)
   get encoded() {
     return WriteEntries.encode(this)
@@ -296,8 +294,7 @@ export class WriteEntriesUnencrypted
   })
 {
   static FromSchemaBinary = SchemaBinary.toCodec(WriteEntriesUnencrypted)
-  static encode = (value: WriteEntriesUnencrypted) =>
-    Schema.encodeEffect(this.FromSchemaBinary)(value).pipe(Effect.map((bytes) => bytes.slice()))
+  static encode = Schema.encodeEffect(this.FromSchemaBinary)
   static decode = Schema.decodeEffect(this.FromSchemaBinary)
   get encoded() {
     return WriteEntriesUnencrypted.encode(this)
@@ -341,11 +338,9 @@ export class ChangesRpc extends Rpc.make("EventLog.Changes", {
 }).middleware(EventLogAuthentication) {
   static EncryptedFromSchemaBinary = SchemaBinary.toCodec(Schema.NonEmptyArray(EncryptedRemoteEntry))
   static UnencryptedFromSchemaBinary = SchemaBinary.toCodec(Schema.NonEmptyArray(RemoteEntry))
-  static encodeEncrypted = (value: NonEmptyReadonlyArray<EncryptedRemoteEntry>) =>
-    Schema.encodeEffect(ChangesRpc.EncryptedFromSchemaBinary)(value).pipe(Effect.map((bytes) => bytes.slice()))
+  static encodeEncrypted = Schema.encodeEffect(ChangesRpc.EncryptedFromSchemaBinary)
   static decodeEncrypted = Schema.decodeEffect(ChangesRpc.EncryptedFromSchemaBinary)
-  static encodeUnencrypted = (value: NonEmptyReadonlyArray<RemoteEntry>) =>
-    Schema.encodeEffect(ChangesRpc.UnencryptedFromSchemaBinary)(value).pipe(Effect.map((bytes) => bytes.slice()))
+  static encodeUnencrypted = Schema.encodeEffect(ChangesRpc.UnencryptedFromSchemaBinary)
   static decodeUnencrypted = Schema.decodeEffect(ChangesRpc.UnencryptedFromSchemaBinary)
 }
 
