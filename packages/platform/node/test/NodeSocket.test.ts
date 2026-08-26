@@ -1,6 +1,6 @@
 import { NodeSocket, NodeSocketServer } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Queue } from "effect"
+import { Deferred, Effect, Queue } from "effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Scope from "effect/Scope"
@@ -104,6 +104,35 @@ describe("Socket", () => {
         })
     )
 
+    it.effect("passes headers to the opening handshake", () =>
+      Effect.gen(function*() {
+        const authorization = yield* Deferred.make<string | undefined>()
+        const server = yield* NodeSocketServer.makeWebSocket({
+          host: "127.0.0.1",
+          port: 0,
+          verifyClient: ({ req }: Parameters<NodeSocket.NodeWS.VerifyClientCallbackSync>[0]) => {
+            Deferred.doneUnsafe(authorization, Effect.succeed(req.headers.authorization))
+            return true
+          }
+        })
+        assert.strictEqual(server.address._tag, "TcpAddress")
+        if (server.address._tag !== "TcpAddress") return
+        const port = server.address.port
+
+        const makeWebSocket = yield* Socket.WebSocketConstructor
+        const client = yield* Effect.acquireRelease(
+          Effect.sync(() =>
+            makeWebSocket(`ws://127.0.0.1:${port}`, {
+              headers: { Authorization: "Bearer test" }
+            })
+          ),
+          (client) => Effect.sync(() => client.close())
+        )
+        client.addEventListener("error", () => {})
+
+        assert.strictEqual(yield* Deferred.await(authorization).pipe(Effect.timeout("1 second")), "Bearer test")
+      }).pipe(Effect.provide(NodeSocket.layerWebSocketConstructorWS)))
+
     it.effect("messages", () =>
       Effect.gen(function*() {
         const server = yield* makeServer
@@ -176,7 +205,7 @@ describe("Socket", () => {
         const socket = yield* Socket.makeWebSocket(Effect.succeed(url), { closeCodeIsError: () => false }).pipe(
           Effect.provideService(
             Socket.WebSocketConstructor,
-            () => webSocket as unknown as globalThis.WebSocket
+            () => webSocket
           )
         )
         const exit = yield* Effect.scoped(Effect.gen(function*() {

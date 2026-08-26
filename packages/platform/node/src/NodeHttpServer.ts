@@ -272,10 +272,10 @@ export const makeUpgradeHandler = <
         lazyWss,
         (wss) =>
           Effect.acquireRelease(
-            Effect.callback<globalThis.WebSocket>((resume) =>
+            Effect.callback<NodeWS.WebSocket>((resume) =>
               wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
                 upgraded = true
-                resume(Effect.succeed(ws as any))
+                resume(Effect.succeed(ws))
               })
             ),
             (ws) => Effect.sync(() => ws.close())
