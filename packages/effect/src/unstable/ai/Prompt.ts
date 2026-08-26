@@ -1785,7 +1785,7 @@ export const Message: Schema.Codec<Message, MessageEncoded> = Schema.Union([
 // Prompt
 // =============================================================================
 
-const TypeId = "~effect/unstable/ai/Prompt" as const
+const TypeId = "~effect/ai/Prompt" as const
 
 /**
  * Type guard to check if a value is a Prompt.

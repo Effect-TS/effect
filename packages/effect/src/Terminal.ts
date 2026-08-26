@@ -19,7 +19,7 @@ import type * as Queue from "./Queue.ts"
 import * as Schema from "./Schema.ts"
 import type * as Scope from "./Scope.ts"
 
-const TypeId = "~effect/platform/Terminal"
+const TypeId = "~effect/Terminal"
 
 /**
  * A `Terminal` represents a command-line interface which can read input from a

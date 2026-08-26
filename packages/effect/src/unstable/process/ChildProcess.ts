@@ -21,7 +21,7 @@ import type * as Sink from "../../Sink.ts"
 import type * as Stream from "../../Stream.ts"
 import { type ChildProcessHandle, ChildProcessSpawner } from "./ChildProcessSpawner.ts"
 
-const TypeId = "~effect/unstable/process/ChildProcess"
+const TypeId = "~effect/process/ChildProcess"
 
 /**
  * A command that can be built using `make`, combined using `pipeTo`, and executed using `exec` or `spawn`.

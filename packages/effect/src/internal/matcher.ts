@@ -17,7 +17,7 @@ import * as Result from "../Result.ts"
 import type { Unify } from "../Unify.ts"
 
 /** @internal */
-export const TypeId = "~effect/match/Match/Matcher"
+export const TypeId = "~effect/Match/Matcher"
 
 /** @internal */
 export type Contextual<P, Fallback> = [P] extends [never] ? Fallback : P

@@ -21,7 +21,7 @@ import { hasProperty } from "./Predicate.ts"
 import type * as Scope from "./Scope.ts"
 import * as TxRef from "./TxRef.ts"
 
-const TypeId = "~effect/transactions/TxReentrantLock"
+const TypeId = "~effect/TxReentrantLock"
 
 /**
  * @category models

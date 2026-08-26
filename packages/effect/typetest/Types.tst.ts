@@ -14,6 +14,10 @@ describe("Types", () => {
       .type.toBe<[]>()
     expect<Types.TupleOf<3, number>>()
       .type.toBe<[number, number, number]>()
+    expect<Types.TupleOf<1.5, number>>()
+      .type.toBe<Array<number>>()
+    expect<Types.TupleOf<-1.5, number>>()
+      .type.toBe<never>()
   })
 
   it("TupleOfAtLeast", () => {

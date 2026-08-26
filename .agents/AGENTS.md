@@ -37,10 +37,22 @@ After consumer-visible runtime, public API, entrypoint, lifecycle, or wire-forma
 skill. Independently invoke `v4-migration` when a v3-to-v4 mapping changes; a change may require either skill, both, or
 neither.
 
+## Maintenance Routing
+
+- Use `package-development` when creating, making publishable, renaming, or moving a workspace package.
+- Use `ci-maintenance` for GitHub workflows and composite actions.
+- Use `dependency-maintenance` for dependency additions or upgrades and toolchain, runtime, patch, native-build, or test-image changes.
+
 ## Generated Files
 
 Do not edit generated output directly.
 
+Only `index.ts` sections marked with `@barrel` are generated. Do not edit those
+sections manually; update their source modules and run `pnpm codegen`.
+Hand-maintained `index.ts` files and unmarked sections are not covered by this
+rule.
+
 - Use the `library-development` skill for generated sections marked with `@barrel`.
 - Use the `ai-docs` skill for `LLMS.md`.
 - Use the `v4-migration` skill for `migration/v3-to-v4.md`.
+- Use the `vendored-assets` skill for checked-in third-party generated artifacts.

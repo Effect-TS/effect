@@ -59,9 +59,9 @@ export type State<_A, E> =
     readonly cause: Cause.Cause<E>
   }
 
-const EnqueueTypeId = "~effect/transactions/TxQueue/Enqueue"
-const DequeueTypeId = "~effect/transactions/TxQueue/Dequeue"
-const TypeId = "~effect/transactions/TxQueue"
+const EnqueueTypeId = "~effect/TxQueue/Enqueue"
+const DequeueTypeId = "~effect/TxQueue/Dequeue"
+const TypeId = "~effect/TxQueue"
 
 /**
  * Namespace containing type definitions for TxEnqueue variance annotations.

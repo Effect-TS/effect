@@ -25,6 +25,13 @@ const makeCrypto = (value: bigint) =>
   })
 
 describe("Crypto", () => {
+  it("uses the module path for its type ID", () => {
+    assert.strictEqual(
+      (testCrypto as unknown as Record<string, unknown>)["~effect/Crypto"],
+      "~effect/Crypto"
+    )
+  })
+
   it("supports string literal digest algorithms", () => {
     const algorithm: Crypto.DigestAlgorithm = "SHA-256"
     assert.strictEqual(algorithm, "SHA-256")
