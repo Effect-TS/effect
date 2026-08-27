@@ -133,6 +133,53 @@ describe("HttpEffect", () => {
       strictEqual(await response.text(), "420")
     })
 
+    test("retries the layer build if the initiating request is aborted", async () => {
+      let builds = 0
+      const controller = new AbortController()
+      const { dispose, handler } = HttpEffect.toWebHandlerLayer(
+        Effect.map(TestValue, (value) => HttpServerResponse.text(String(value))),
+        Layer.effect(
+          TestValue,
+          Effect.suspend(() => {
+            builds++
+            // a build started before the abort never completes, simulating a
+            // runtime that never settles promises of aborted requests
+            return controller.signal.aborted ? Effect.succeed(420) : Effect.never
+          })
+        )
+      )
+      // the first request starts the layer build and is then aborted
+      handler(new Request("http://localhost:3000/", { signal: controller.signal })).catch(() => {})
+      controller.abort()
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(await response.text(), "420")
+      strictEqual(builds, 2)
+      await dispose()
+    })
+
+    test("retries the layer build after a failed build", async () => {
+      let builds = 0
+      const { dispose, handler } = HttpEffect.toWebHandlerLayer(
+        Effect.map(TestValue, (value) => HttpServerResponse.text(String(value))),
+        Layer.effect(
+          TestValue,
+          Effect.suspend(() => {
+            builds++
+            return builds === 1 ? Effect.fail("boom" as const) : Effect.succeed(420)
+          })
+        )
+      )
+      const error = await handler(new Request("http://localhost:3000/")).then(
+        () => "unexpected success",
+        (error) => error
+      )
+      strictEqual(error, "boom")
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(await response.text(), "420")
+      strictEqual(builds, 2)
+      await dispose()
+    })
+
     test("pre-response handlers are keyed by request source", () => {
       const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
       const modified = request.modify({ url: "/updated" })
