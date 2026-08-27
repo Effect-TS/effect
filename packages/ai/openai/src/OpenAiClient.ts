@@ -510,7 +510,7 @@ const makeSocket = Effect.gen(function*() {
         Effect.provideService(Socket.WebSocketConstructor, (url) =>
           makeWebSocket(url, {
             headers: request.headers
-          } as any))
+          }))
       )
       const write = yield* socket.writer
 
