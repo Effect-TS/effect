@@ -19,13 +19,6 @@ const runEchoServer = (listener: Deno.Listener) =>
     Effect.promise(() => listener.accept().then((conn) => conn.readable.pipeTo(conn.writable)))
   )
 
-const closeIsDone = Stream.catchIf(
-  (error: Socket.SocketError) => error.reason._tag === "SocketCloseError",
-  () => Stream.empty
-)
-
-const catchClose = Effect.catchReason("SocketError", "SocketCloseError", () => Effect.void)
-
 const makeTestConn = (options?: {
   readonly data?: Uint8Array | undefined
   readonly pendingRead?: boolean | undefined
@@ -99,7 +92,10 @@ describe("DenoSocket", () => {
       const output = yield* Stream.make("Hello", "World").pipe(
         Stream.encodeText,
         Stream.pipeThroughChannel(DenoSocket.makeTcpChannel({ hostname: address.hostname, port: address.port })),
-        closeIsDone,
+        Stream.catchIf(
+          (error) => error.reason._tag === "SocketCloseError",
+          () => Stream.empty
+        ),
         Stream.decodeText(),
         Stream.mkString
       )
@@ -144,7 +140,7 @@ describe("DenoSocket", () => {
         while (true) {
           yield* Queue.offerAll(messages, yield* pull)
         }
-      }).pipe(Effect.scoped, catchClose, Effect.forkChild)
+      }).pipe(Effect.scoped, Effect.catchReason("SocketError", "SocketCloseError", () => Effect.void), Effect.forkChild)
       yield* Effect.scoped(
         socket.writer.pipe(Effect.flatMap((writer) => writer.write(encoder.encode("Hello"))))
       )
@@ -171,7 +167,10 @@ describe("DenoSocket", () => {
 
       const output = yield* Stream.empty.pipe(
         Stream.pipeThroughChannel(DenoSocket.makeTcpChannel({ hostname: address.hostname, port: address.port })),
-        closeIsDone,
+        Stream.catchIf(
+          (error) => error.reason._tag === "SocketCloseError",
+          () => Stream.empty
+        ),
         Stream.decodeText(),
         Stream.mkString
       )
@@ -195,7 +194,7 @@ describe("DenoSocket", () => {
         while (true) {
           yield* pull
         }
-      }).pipe(Effect.scoped, catchClose, Effect.forkChild)
+      }).pipe(Effect.scoped, Effect.catchReason("SocketError", "SocketCloseError", () => Effect.void), Effect.forkChild)
       yield* Deferred.await(opened)
       yield* Effect.scoped(socket.writer)
       yield* Fiber.join(firstRun)
@@ -209,7 +208,7 @@ describe("DenoSocket", () => {
             received.push(data)
           }
         }
-      }).pipe(Effect.scoped, catchClose)
+      }).pipe(Effect.scoped, Effect.catchReason("SocketError", "SocketCloseError", () => Effect.void))
 
       assert.deepStrictEqual(received, [encoder.encode("Second")])
       assert.strictEqual(first.closeWrites(), 1)
@@ -281,7 +280,10 @@ describe("DenoSocket", () => {
       const output = yield* Stream.make("Hello", "Unix").pipe(
         Stream.encodeText,
         Stream.pipeThroughChannel(DenoSocket.makeTcpChannel({ transport: "unix", path })),
-        closeIsDone,
+        Stream.catchIf(
+          (error) => error.reason._tag === "SocketCloseError",
+          () => Stream.empty
+        ),
         Stream.decodeText(),
         Stream.mkString
       )
@@ -314,7 +316,11 @@ describe("DenoSocket", () => {
           while (true) {
             yield* Queue.offerAll(messages, yield* pull)
           }
-        }).pipe(Effect.scoped, catchClose, Effect.forkChild)
+        }).pipe(
+          Effect.scoped,
+          Effect.catchReason("SocketError", "SocketCloseError", () => Effect.void),
+          Effect.forkChild
+        )
         const writer = yield* socket.writer
         yield* writer.write("Hello WebSocket")
 
@@ -357,7 +363,7 @@ describe("DenoSocket", () => {
             received.push(data)
           }
         }
-      }).pipe(Effect.scoped, catchClose)
+      }).pipe(Effect.scoped, Effect.catchReason("SocketError", "SocketCloseError", () => Effect.void))
 
       assert.deepStrictEqual(chunks, ["Hello", "World"])
       assert.deepStrictEqual(received, ["A", "B", "C"])

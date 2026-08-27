@@ -24,11 +24,6 @@ const echo = (socket: Socket.Socket) =>
     Effect.catchTag("SocketError", () => Effect.void)
   )
 
-const closeIsDone = Stream.catchIf(
-  (error: Socket.SocketError) => error.reason._tag === "SocketCloseError",
-  () => Stream.empty
-)
-
 const makeTestConn = (onClose?: () => void): Deno.Conn => {
   const transform = new TransformStream<Uint8Array>()
   return {
@@ -86,7 +81,10 @@ describe("DenoSocketServer", () => {
           hostname: address.hostname,
           port: address.port
         })),
-        closeIsDone,
+        Stream.catchIf(
+          (error) => error.reason._tag === "SocketCloseError",
+          () => Stream.empty
+        ),
         Stream.decodeText(),
         Stream.mkString
       )
@@ -105,7 +103,10 @@ describe("DenoSocketServer", () => {
       const output = yield* Stream.make("Hello", "Unix").pipe(
         Stream.encodeText,
         Stream.pipeThroughChannel(DenoSocket.makeTcpChannel({ transport: "unix", path })),
-        closeIsDone,
+        Stream.catchIf(
+          (error) => error.reason._tag === "SocketCloseError",
+          () => Stream.empty
+        ),
         Stream.decodeText(),
         Stream.mkString
       )
