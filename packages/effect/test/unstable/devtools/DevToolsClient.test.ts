@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Layer } from "effect"
+import { Deferred, Effect, Latch, Layer } from "effect"
 import { DevToolsClient } from "effect/unstable/devtools"
 import { Socket } from "effect/unstable/socket"
 
@@ -23,10 +23,19 @@ describe("DevToolsClient", () => {
           Effect.asVoid
         )
       const socket = Socket.make({
-        reader: Effect.sync(() => {
+        // sends one message, then stays idle until the reader scope closes,
+        // which fails the suspended pull as the reader contract requires
+        reader: Effect.gen(function*() {
+          const closed = Latch.makeUnsafe(false)
+          yield* Effect.addFinalizer(() => closed.open)
           let sent = false
           return Effect.suspend(() => {
-            if (sent) return Effect.never
+            if (sent) {
+              return Effect.andThen(
+                closed.await,
+                Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
+              )
+            }
             sent = true
             return Effect.succeed(["{\"_tag\":\"Pong\"}\n"] as const)
           })

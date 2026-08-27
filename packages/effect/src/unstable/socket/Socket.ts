@@ -14,7 +14,6 @@ import type { NonEmptyReadonlyArray } from "../../Array.ts"
 import type * as Cause from "../../Cause.ts"
 import * as Channel from "../../Channel.ts"
 import * as Context from "../../Context.ts"
-import * as Deferred from "../../Deferred.ts"
 import type * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
@@ -70,6 +69,11 @@ export const Socket: Context.Service<Socket, Socket> = Context.Service<Socket>("
  * between the acquisition and the first pull runs exactly once per
  * (re)connection, which makes handshakes plain code placement.
  *
+ * Closing the acquisition scope must fail a pull that is currently suspended,
+ * rather than leaving it blocked. Consumers such as `toChannel` rely on this
+ * to shut a connection down without racing every pull against a separate
+ * failure signal.
+ *
  * The writer is detached from any single connection: writes made while
  * disconnected suspend until the next connection is established. Releasing
  * the writer scope half-closes the write side where the transport supports
@@ -119,6 +123,10 @@ export interface Writer {
 
 /**
  * Constructs a `Socket` from a reader acquisition and a scoped writer.
+ *
+ * The reader must fail a suspended pull when its acquisition scope closes; see
+ * `Socket` for why. A reader that leaves a pull blocked forever will hang any
+ * consumer that shuts the socket down by closing that scope.
  *
  * @category constructors
  * @since 4.0.0
@@ -454,7 +462,6 @@ const toChannelWithReader = <A, IE>(
     const writer = yield* Scope.provide(self.writer, writeScope)
 
     let writeFailure: Cause.Cause<SocketError | IE> | undefined
-    const failed = Deferred.makeUnsafe<never, SocketError | IE>()
 
     yield* upstream.pipe(
       Effect.flatMap((chunk) => writeChunk(writer, chunk)),
@@ -464,7 +471,8 @@ const toChannelWithReader = <A, IE>(
         (cause) =>
           Effect.suspend(() => {
             writeFailure = cause as Cause.Cause<SocketError | IE>
-            Deferred.doneUnsafe(failed, Exit.failCause(writeFailure))
+            // closing the read scope fails a suspended pull, which is the
+            // reader contract, so the read side needs no per-pull failure race
             return Scope.close(readScope, Exit.void)
           })
       ),
@@ -475,9 +483,7 @@ const toChannelWithReader = <A, IE>(
     return Effect.catchCause(
       Effect.suspend(
         (): Pull.Pull<NonEmptyReadonlyArray<A>, SocketError | IE> =>
-          writeFailure !== undefined
-            ? Effect.failCause(writeFailure)
-            : Effect.raceFirst(pull, Deferred.await(failed))
+          writeFailure !== undefined ? Effect.failCause(writeFailure) : pull
       ),
       (cause) =>
         Effect.failCause(

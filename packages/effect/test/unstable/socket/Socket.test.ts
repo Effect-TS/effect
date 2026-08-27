@@ -4,6 +4,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Latch from "effect/Latch"
 import * as Scheduler from "effect/Scheduler"
+import * as Stream from "effect/Stream"
 import * as Socket from "effect/unstable/socket/Socket"
 
 type EventType = "open" | "message" | "error" | "close"
@@ -101,6 +102,40 @@ describe("Socket", () => {
         assert.lengthOf(tasks, 1)
         scheduler.makeDispatcher().flush()
         assert.deepStrictEqual(yield* Fiber.join(reader), ["hello"])
+      }))
+  })
+
+  describe("toChannel", () => {
+    it.effect("reports a write failure while a pull is suspended", () =>
+      Effect.gen(function*() {
+        const writeError = new Socket.SocketError({
+          reason: new Socket.SocketWriteError({ cause: new Error("write failed") })
+        })
+        // an idle reader that only fails once its acquisition scope closes,
+        // which is the whole reason `toChannel` needs no per-pull race
+        const socket = Socket.make({
+          reader: Effect.gen(function*() {
+            const closed = Latch.makeUnsafe(false)
+            yield* Effect.addFinalizer(() => closed.open)
+            return Effect.andThen(
+              closed.await,
+              Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
+            )
+          }),
+          writer: Effect.succeed({
+            write: () => Effect.fail(writeError),
+            writeAll: () => Effect.fail(writeError)
+          })
+        })
+
+        const exit = yield* Stream.make("hello").pipe(
+          Stream.encodeText,
+          Stream.pipeThroughChannel(Socket.toChannel(socket)),
+          Stream.runDrain,
+          Effect.exit
+        )
+
+        assert.deepStrictEqual(exit, Exit.fail(writeError))
       }))
   })
 })
