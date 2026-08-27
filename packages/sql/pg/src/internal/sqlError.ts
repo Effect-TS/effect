@@ -6,6 +6,7 @@ import {
   DeadlockError,
   LockTimeoutError,
   SerializationError,
+  SqlError,
   type SqlErrorReason,
   SqlSyntaxError,
   StatementTimeoutError,
@@ -17,6 +18,14 @@ interface ErrorProps {
   readonly cause: unknown
   readonly message: string
   readonly operation: string
+}
+
+const channelNameEncoder = new TextEncoder()
+
+export const validateChannelName = (channel: string, operation: string): SqlError | undefined => {
+  if (channelNameEncoder.encode(channel).byteLength <= 63) return undefined
+  const message = "PostgreSQL channel names must not exceed 63 UTF-8 bytes"
+  return new SqlError({ reason: new UnknownError({ cause: new Error(message), message, operation }) })
 }
 
 const normalizeConstraint = (constraint: unknown): string => {

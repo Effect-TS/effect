@@ -21,6 +21,7 @@ import type { Custom, Fragment } from "effect/unstable/sql/Statement"
 import * as Statement from "effect/unstable/sql/Statement"
 import type { Duplex } from "node:stream"
 import type { ConnectionOptions } from "node:tls"
+import { validateChannelName } from "./internal/sqlError.ts"
 import * as PgConnection from "./PgConnection.ts"
 import * as PgPool from "./PgPool.ts"
 import * as PgTypes from "./PgTypes.ts"
@@ -230,11 +231,15 @@ const makeImpl = Effect.fnUntraced(function*(
       config,
       json: (_: unknown) => Statement.fragment([PgJson(_)]),
       listen,
-      notify: (channel: string, payload: string) =>
-        Effect.asVoid(Effect.scoped(Effect.flatMap(
-          options.acquirer,
-          (conn) => conn.executeRaw(`SELECT pg_notify($1, $2)`, [channel, payload])
-        )))
+      notify: (channel: string, payload: string) => {
+        const channelError = validateChannelName(channel, "notify")
+        return channelError !== undefined ?
+          Effect.fail(channelError) :
+          Effect.asVoid(Effect.scoped(Effect.flatMap(
+            options.acquirer,
+            (conn) => conn.executeRaw(`SELECT pg_notify($1, $2)`, [channel, payload])
+          )))
+      }
     }
   )
 })
