@@ -1041,7 +1041,7 @@ export const makeProtocolSocket = (options?: {
     const hooks = yield* Effect.serviceOption(ConnectionHooks)
     const requestClientMap = new Map<string | number, number>()
 
-    const writer = yield* Effect.orDie(socket.writer)
+    const writer = yield* socket.writer
 
     let parser = serialization.makeUnsafe()
 

@@ -51,7 +51,7 @@ describe("Socket", () => {
   it("writer exposes write and writeAll", () => {
     const socket = null as unknown as Socket.Socket
     expect(socket.writer).type.toBe<
-      Effect.Effect<Socket.Writer, Socket.SocketError, Scope.Scope>
+      Effect.Effect<Socket.Writer, never, Scope.Scope>
     >()
   })
 })

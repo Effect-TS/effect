@@ -16,7 +16,7 @@ Redesign `Socket` around a pull-based read side with end-to-end backpressure.
 
 - `Socket.run`, `Socket.runString`, and `Socket.runRaw` are removed. Acquire `socket.reader` (or `Socket.readerBytes` / `Socket.readerString`) in a scope and pull in a loop instead. Code between the acquisition and the first pull runs once per (re)connection, replacing the `onOpen` option.
 - `Socket.make` now takes `{ reader, writer }` with no derivation logic.
-- `writer` now yields a `Writer` object with `write` and `writeAll` methods instead of a write function.
+- `writer` now yields a `Writer` object with `write` and `writeAll` methods instead of a write function. Acquisition is `Effect<Writer, never, Scope>` because it cannot fail; `write` / `writeAll` still fail with `SocketError`.
 - Every termination is an error: any close, clean or not, fails the pull with a `SocketError` wrapping `SocketCloseError`. `closeCodeIsError`, `defaultCloseCodeIsError`, and `SocketCloseError.filterClean` are removed; consumers that treat a close as normal catch the error. Auto-reconnect is a plain `Effect.retry` around the scoped consume loop:
 
   ```ts

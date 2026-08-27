@@ -1461,7 +1461,7 @@ const makeSocketProtocol: Effect.Effect<
       return Queue.offer(disconnects, id)
     })
 
-    const writer = yield* Effect.orDie(socket.writer)
+    const writer = yield* socket.writer
     const write = (response: FromServerEncoded) => {
       try {
         const encoded = parser.encode(response)

@@ -74,10 +74,10 @@ export const Socket: Context.Service<Socket, Socket> = Context.Service<Socket>("
  * to shut a connection down without racing every pull against a separate
  * failure signal.
  *
- * The writer is detached from any single connection: writes made while
- * disconnected suspend until the next connection is established. Releasing
- * the writer scope half-closes the write side where the transport supports
- * it.
+ * The writer is detached from any single connection: acquiring it cannot
+ * fail, and writes made while disconnected suspend until the next connection
+ * is established. Releasing the writer scope half-closes the write side
+ * where the transport supports it.
  *
  * **Example** (Consuming with automatic reconnect)
  *
@@ -103,7 +103,7 @@ export interface Socket {
     SocketError,
     Scope.Scope
   >
-  readonly writer: Effect.Effect<Writer, SocketError, Scope.Scope>
+  readonly writer: Effect.Effect<Writer, never, Scope.Scope>
 }
 
 /**

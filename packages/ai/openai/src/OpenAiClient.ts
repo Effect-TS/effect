@@ -512,7 +512,7 @@ const makeSocket = Effect.gen(function*() {
             headers: request.headers
           }))
       )
-      const writer = yield* Effect.orDie(socket.writer)
+      const writer = yield* socket.writer
 
       yield* Scope.addFinalizerExit(scope, () => {
         tracker.clearUnsafe()
