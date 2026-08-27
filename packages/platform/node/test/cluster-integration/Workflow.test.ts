@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Clock, Duration, Effect, Exit, Fiber, Latch, Layer, Option, Schema } from "effect"
-import { ClusterWorkflowEngine, Entity, EntityId, Sharding } from "effect/unstable/cluster"
+import { ClusterSchema, ClusterWorkflowEngine, Entity, EntityId, Sharding } from "effect/unstable/cluster"
 import { PersistedQueue } from "effect/unstable/persistence"
 import { Rpc } from "effect/unstable/rpc"
 import {
@@ -301,11 +301,17 @@ const activityHandoffState = {
   resourceEvents: new Map<string, Array<"acquire" | "release">>()
 }
 
-const resetActivityHandoffState = (id: string) => {
+const abandon = Effect.interruptible(Effect.callback<never>(() => {
+  const fiber = Fiber.getCurrent()!
+  fiber.interruptUnsafe(fiber.id, ClusterSchema.Abandon.annotation)
+}))
+
+const resetActivityHandoffState = (id: string, options?: { readonly faultReleaseOpen?: boolean }) => {
   activityHandoffState.ready = Latch.makeUnsafe()
   activityHandoffState.start = Latch.makeUnsafe()
   activityHandoffState.faultArmed = false
   activityHandoffState.persisted = Latch.makeUnsafe()
+  activityHandoffState.faultRelease = Latch.makeUnsafe(options?.faultReleaseOpen ?? true)
   activityHandoffState.runs.delete(id)
   activityHandoffState.compensations.delete(id)
   activityHandoffState.resourceEvents.set(id, [])
@@ -387,7 +393,7 @@ const ActivityHandoffShardingLayer = Layer.effect(
                 return activity(payload, { ...options, discard: true }).pipe(
                   Effect.tap(() => activityHandoffState.persisted.open),
                   Effect.andThen(activityHandoffState.faultRelease.await),
-                  Effect.andThen(Effect.interrupt)
+                  Effect.andThen(abandon)
                 )
               }
             }
@@ -891,11 +897,10 @@ describe("cluster workflow integration", () => {
         }
       }))
 
-    it.live(`${backend}: preserves a safe interrupt during a persisted activity handoff`, () => {
-      activityHandoffState.faultRelease = Latch.makeUnsafe()
-      return Effect.gen(function*() {
+    it.live(`${backend}: preserves a safe interrupt during a persisted activity handoff`, () =>
+      Effect.gen(function*() {
         const id = `${backend}-shutdown-activity-interrupt`
-        resetActivityHandoffState(id)
+        resetActivityHandoffState(id, { faultReleaseOpen: false })
         const cluster = yield* make({ backend, entities: ShutdownActivityEntities })
         yield* cluster.start(3)
         yield* cluster.waitForStableAssignments()
@@ -924,12 +929,12 @@ describe("cluster workflow integration", () => {
         const result = yield* waitForComplete(cluster, ShutdownActivityWorkflow, executionId)
         assert.isTrue(Exit.isFailure(result.exit))
         assert.isTrue(Exit.hasInterrupts(result.exit))
+        assert.isTrue(activityHandoffState.compensations.has(id))
       }).pipe(
         Effect.ensuring(Effect.sync(() => {
           activityHandoffState.faultRelease.openUnsafe()
         }))
-      )
-    })
+      ))
 
     it.live(`${backend}: recovers a persisted activity across an actual owner handoff`, () =>
       Effect.gen(function*() {

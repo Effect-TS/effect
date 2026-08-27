@@ -671,9 +671,7 @@ export const intoResult = <A, E, R>(
       Effect.interruptible,
       suspendOnFailure
         ? Effect.catchCause((cause) => {
-          // An interrupt that is neither a suspend nor a durable interrupt is
-          // an abandoned run attempt, which replays instead of suspending.
-          if (Cause.hasInterruptsOnly(cause) && !instance.suspended && !instance.interrupted) {
+          if (instance.abandoned) {
             return Effect.failCause(cause)
           }
           instance.suspended = true
@@ -693,15 +691,16 @@ export const intoResult = <A, E, R>(
           )
           const hasInterruptsOnly = interrupts.length === cause.reasons.length
           const filtered = reasons.length === 0 ? cause : Cause.fromReasons(reasons)
-          if (instance.suspended && hasInterruptsOnly) {
+          const abandoned = instance.abandoned && !instance.interrupted && hasInterruptsOnly
+          instance.abandoned = abandoned
+          if (instance.suspended && hasInterruptsOnly && !abandoned) {
             return Effect.succeed(new Suspended({ cause: instance.cause }))
           }
           if (!instance.interrupted && hasInterruptsOnly) {
-            // The run attempt was abandoned (e.g. the runner is shutting
-            // down). Release owner-local resources without running durable
-            // workflow finalizers, and exit without a result so the run can
-            // replay elsewhere.
-            instance.abandoned = true
+            // External interrupts exit without a result. When the cluster has
+            // marked this attempt abandoned, owner-local resources are
+            // released without running durable workflow finalizers so the run
+            // can replay elsewhere.
             return Effect.failCause(filtered as Cause.Cause<never>)
           }
           return !captureDefects && Cause.hasDies(cause)
@@ -802,8 +801,13 @@ export const provideScope = <A, E, R>(
  * Adds an exit finalizer to the current workflow scope, preserving the
  * services available when the finalizer is registered.
  *
+ * **Details**
+ *
  * Body-level `Effect.onExit` finalizers cannot observe a deposited workflow
  * interrupt. Use this function for terminal-state work that must observe it.
+ * Finalizers are skipped when a cluster owner abandons a run attempt for
+ * replay; owner-local scope finalizers registered with {@link provideScope}
+ * still run.
  *
  * @category resource management
  * @since 4.0.0

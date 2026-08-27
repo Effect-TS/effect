@@ -28,6 +28,7 @@ import { EntityNotAssignedToRunner, MalformedMessage, type PersistenceError } fr
 import * as DeliverAt from "./DeliverAt.ts"
 import type { EntityAddress } from "./EntityAddress.ts"
 import * as Envelope from "./Envelope.ts"
+import * as ClusterAbandon from "./internal/clusterAbandon.ts"
 import * as Message from "./Message.ts"
 import * as Reply from "./Reply.ts"
 import * as ShardId from "./ShardId.ts"
@@ -124,8 +125,8 @@ export class MessageStorage extends Context.Service<MessageStorage, {
    *
    * By default the waiters are resumed with `EntityNotAssignedToRunner`, so
    * they can re-route the wait. With `interrupt: true` the waiters are
-   * interrupted instead, for when the runner is shutting down and the reply
-   * can never be observed here.
+   * interrupted with a cluster-abandon annotation instead, for when the runner
+   * is shutting down and the reply can never be observed here.
    */
   readonly unregisterShardReplyHandlers: (
     shardId: ShardId.ShardId,
@@ -568,7 +569,7 @@ export const make = (
           shardSet.forEach((handler) => {
             replyHandlers.delete(handler.message.envelope.requestId)
             handler.resume(
-              options?.interrupt ? Effect.interrupt : Effect.fail(
+              options?.interrupt ? ClusterAbandon.interrupt : Effect.fail(
                 new EntityNotAssignedToRunner({
                   address: handler.message.envelope.address
                 })

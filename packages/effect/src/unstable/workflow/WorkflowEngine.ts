@@ -256,7 +256,9 @@ export class WorkflowInstance extends Context.Service<
     interrupted: boolean
 
     /**
-     * Whether the current workflow run has been abandoned.
+     * Whether the current workflow run has been abandoned for replay. When
+     * `true`, callbacks registered with `Workflow.addFinalizer` are skipped as
+     * the owner-local scope closes.
      */
     abandoned: boolean
 

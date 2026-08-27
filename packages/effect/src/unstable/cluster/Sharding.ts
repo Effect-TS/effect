@@ -51,6 +51,7 @@ import { make as makeEntityAddress } from "./EntityAddress.ts"
 import type { EntityId } from "./EntityId.ts"
 import { make as makeEntityId } from "./EntityId.ts"
 import * as Envelope from "./Envelope.ts"
+import * as ClusterAbandon from "./internal/clusterAbandon.ts"
 import * as EntityManager from "./internal/entityManager.ts"
 import { EntityReaper } from "./internal/entityReaper.ts"
 import { hashString } from "./internal/hash.ts"
@@ -1124,7 +1125,7 @@ const make = Effect.gen(function*() {
             // longer observe the reply, so interrupt the caller instead: the
             // request will be served under the next owner.
             ? message._tag === "OutgoingRequest"
-              ? Effect.interrupt
+              ? ClusterAbandon.interrupt
               : Effect.fail(error)
             : Effect.logWarning("Persisting outgoing message abandoned during shutdown", message.envelope.address)
         )

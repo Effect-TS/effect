@@ -6,7 +6,6 @@
  *
  * @since 4.0.0
  */
-import * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
 import * as DateTime from "../../DateTime.ts"
 import * as Duration from "../../Duration.ts"
@@ -37,6 +36,7 @@ import * as EntityAddress from "./EntityAddress.ts"
 import * as EntityId from "./EntityId.ts"
 import * as EntityType from "./EntityType.ts"
 import * as Envelope from "./Envelope.ts"
+import * as ClusterAbandon from "./internal/clusterAbandon.ts"
 import * as Message from "./Message.ts"
 import { MessageStorage } from "./MessageStorage.ts"
 import type { WithExitEncoded } from "./Reply.ts"
@@ -367,15 +367,18 @@ export const make = Effect.gen(function*() {
                 return execute(workflow.payloadSchema.make(request.payload) as object, executionId).pipe(
                   Effect.onExit((exit) => {
                     const suspendOnFailure = Context.get(workflow.annotations, Workflow.SuspendOnFailure)
-                    // An interrupt that is neither a suspend nor a durable
-                    // interrupt is an abandoned run attempt (e.g. the runner
-                    // is shutting down): do not resume the parent, but still
-                    // allow a pending durable interrupt to take effect.
-                    const abandoned = exit._tag === "Failure" &&
-                      Cause.hasInterruptsOnly(exit.cause) &&
+                    // An annotated cluster abandonment means this owner can no
+                    // longer finish the run. Do not resume the parent, but
+                    // still allow a pending durable interrupt to take effect.
+                    instance.abandoned ||= exit._tag === "Failure" && ClusterAbandon.isCause(exit.cause)
+                    if (instance.abandoned) {
+                      instance.suspended = false
+                    }
+                    if (
                       !instance.suspended &&
-                      !instance.interrupted
-                    if (!instance.suspended && !abandoned && !(suspendOnFailure && exit._tag === "Failure")) {
+                      !instance.abandoned &&
+                      !(suspendOnFailure && exit._tag === "Failure")
+                    ) {
                       return parent ? ensureSuccess(sendResumeParent(parent)) : Effect.void
                     }
                     return engine.deferredResult(InterruptSignal).pipe(

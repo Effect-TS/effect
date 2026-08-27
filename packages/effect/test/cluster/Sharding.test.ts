@@ -1364,9 +1364,19 @@ describe("Sharding shard lock failover", () => {
   it.effect("keeps the graceful timeout for normal shard reassignment", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
+      const unregisterInterrupts: Array<boolean> = []
       const runnerStorage = Layer.effect(
         RunnerStorage.RunnerStorage,
         Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+      )
+      const shardingLayer = Sharding.layer.pipe(
+        Layer.updateService(MessageStorage.MessageStorage, (storage) => ({
+          ...storage,
+          unregisterShardReplyHandlers: (shardId, options) =>
+            Effect.sync(() => unregisterInterrupts.push(options?.interrupt ?? false)).pipe(
+              Effect.andThen(storage.unregisterShardReplyHandlers(shardId, options))
+            )
+        }))
       )
       const config = ShardingConfig.layer({
         runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
@@ -1379,7 +1389,7 @@ describe("Sharding shard lock failover", () => {
         sendRetryInterval: 10
       })
       const layer = TestEntityNoState.pipe(
-        Layer.provideMerge(Sharding.layer),
+        Layer.provideMerge(shardingLayer),
         Layer.provide(runnerStorage),
         Layer.provide(RunnerHealth.layerNoop),
         Layer.provideMerge(TestEntityState.layer),
@@ -1422,6 +1432,7 @@ describe("Sharding shard lock failover", () => {
         const entityExit = entityFiber.pollUnsafe()
         assert(entityExit && Exit.hasInterrupts(entityExit))
         assert.strictEqual(storageState.releaseCalls.length, 1)
+        assert.deepStrictEqual(unregisterInterrupts, [false])
       }).pipe(Effect.provide(layer), Effect.scoped)
     }))
 
