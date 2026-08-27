@@ -1294,11 +1294,10 @@ export const makeProtocolStdio = Effect.gen(function*() {
       Stream.runForEach((data) => {
         const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
         if (decoded.length === 0) return Effect.void
-        let i = 0
-        return Effect.whileLoop({
-          while: () => i < decoded.length,
-          body: () => writeRequest(0, decoded[i++]),
-          step: constVoid
+        return Effect.gen(function*() {
+          for (let i = 0; i < decoded.length; i++) {
+            yield* writeRequest(0, decoded[i])
+          }
         })
       }),
       Effect.sandbox,
@@ -1482,17 +1481,14 @@ const makeSocketProtocol: Effect.Effect<
       try {
         const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
         if (decoded.length === 0) return Effect.void
-        let i = 0
-        return Effect.whileLoop({
-          while: () => i < decoded.length,
-          body() {
-            const message = decoded[i++]
+        return Effect.gen(function*() {
+          for (let i = 0; i < decoded.length; i++) {
+            const message = decoded[i]
             if (message._tag === "Request" && headers) {
               ;(message as Types.Mutable<RequestEncoded>).headers = headers.concat(message.headers)
             }
-            return writeRequest(id, message)
-          },
-          step: constVoid
+            yield* writeRequest(id, message)
+          }
         })
       } catch (cause) {
         if (Predicate.isTagged(cause, "MaxBufferSizeExceeded")) {
@@ -1502,25 +1498,15 @@ const makeSocketProtocol: Effect.Effect<
       }
     }
 
-    let chunk: ReadonlyArray<Uint8Array | string> | undefined
-    let chunkIndex = 0
-    const processChunk = Effect.whileLoop({
-      while: () => chunkIndex < chunk!.length,
-      body: () => processData(chunk![chunkIndex++]),
-      step: constVoid
-    })
-
-    yield* socket.reader.pipe(
-      Effect.flatMap((pull) =>
-        pull.pipe(
-          Effect.flatMap((data) => {
-            chunk = data
-            chunkIndex = 0
-            return processChunk
-          }),
-          Effect.forever({ disableYield: true })
-        )
-      ),
+    yield* Effect.gen(function*() {
+      const pull = yield* socket.reader
+      while (true) {
+        const frames = yield* pull
+        for (let i = 0; i < frames.length; i++) {
+          yield* processData(frames[i])
+        }
+      }
+    }).pipe(
       Effect.catchReason("SocketError", "SocketCloseError", (_) => Effect.void),
       Effect.orDie
     )

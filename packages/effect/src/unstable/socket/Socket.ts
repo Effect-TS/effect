@@ -434,11 +434,10 @@ const writeChunk = (
 ): Effect.Effect<void, SocketError> => {
   for (let i = 0; i < chunk.length; i++) {
     if (isCloseEvent(chunk[i])) {
-      let index = 0
-      return Effect.whileLoop({
-        while: () => index <= i,
-        body: () => writer.write(chunk[index++]),
-        step: constVoid
+      return Effect.gen(function*() {
+        for (let index = 0; index <= i; index++) {
+          yield* writer.write(chunk[index])
+        }
       })
     }
   }

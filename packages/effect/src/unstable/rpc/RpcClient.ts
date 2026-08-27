@@ -17,7 +17,7 @@ import type * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
-import { constVoid, dual, flow, identity } from "../../Function.ts"
+import { dual, flow, identity } from "../../Function.ts"
 import * as InternalRecord from "../../internal/record.ts"
 import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
@@ -932,18 +932,13 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
           return yield* emptyResponseError(request)
         }
         let completed = false
-        let i = 0
-        yield* Effect.whileLoop({
-          while: () => i < responses.length,
-          body: () => {
-            const response = responses[i++]
-            if (isTerminalResponse(response)) {
-              completed = true
-            }
-            return writeResponse(clientId, response)
-          },
-          step: constVoid
-        })
+        for (let i = 0; i < responses.length; i++) {
+          const response = responses[i]
+          if (isTerminalResponse(response)) {
+            completed = true
+          }
+          yield* writeResponse(clientId, response)
+        }
         if (!completed) {
           return yield* incompleteResponseError(request)
         }
@@ -960,17 +955,14 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
           Effect.flatMap((responses) => {
             if (responses.length === 0) return Effect.void
             hasResponse = true
-            let i = 0
-            return Effect.whileLoop({
-              while: () => i < responses.length,
-              body: () => {
-                const response = responses[i++]
+            return Effect.gen(function*() {
+              for (let i = 0; i < responses.length; i++) {
+                const response = responses[i]
                 if (isTerminalResponse(response)) {
                   completed = true
                 }
-                return writeResponse(clientId, response)
-              },
-              step: constVoid
+                yield* writeResponse(clientId, response)
+              }
             })
           })
         )).pipe(
@@ -1065,14 +1057,12 @@ export const makeProtocolSocket = (options?: {
       try {
         const responses = parser.decode(data) as Array<FromServerEncoded>
         if (responses.length === 0) return Effect.void
-        let i = 0
-        return Effect.whileLoop({
-          while: () => i < responses.length,
-          body: () => {
-            const response = responses[i++]
+        return Effect.gen(function*() {
+          for (let i = 0; i < responses.length; i++) {
+            const response = responses[i]
             if (response._tag === "Pong") {
               pinger.onPong()
-              return Effect.void
+              continue
             }
             if (Object.hasOwn(response, "requestId")) {
               const requestId = (response as FromServerEncoded & { readonly requestId: string | number }).requestId
@@ -1081,12 +1071,12 @@ export const makeProtocolSocket = (options?: {
                 if (response._tag === "Exit") {
                   requestClientMap.delete(requestId)
                 }
-                return writeResponse(clientId, response)
+                yield* writeResponse(clientId, response)
+                continue
               }
             }
-            return broadcast(response)
-          },
-          step: constVoid
+            yield* broadcast(response)
+          }
         })
       } catch (defect) {
         return broadcast({
@@ -1101,14 +1091,6 @@ export const makeProtocolSocket = (options?: {
       }
     }
 
-    let chunk: ReadonlyArray<Uint8Array | string> | undefined
-    let chunkIndex = 0
-    const processChunk = Effect.whileLoop({
-      while: () => chunkIndex < chunk!.length,
-      body: () => processData(chunk![chunkIndex++]),
-      step: constVoid
-    })
-
     yield* Effect.suspend(() => {
       parser = serialization.makeUnsafe()
       pinger.reset()
@@ -1119,9 +1101,10 @@ export const makeProtocolSocket = (options?: {
           yield* hooks.value.onConnect
         }
         while (true) {
-          chunk = yield* pull
-          chunkIndex = 0
-          yield* processChunk
+          const frames = yield* pull
+          for (let i = 0; i < frames.length; i++) {
+            yield* processData(frames[i])
+          }
         }
       }).pipe(
         Effect.scoped,
