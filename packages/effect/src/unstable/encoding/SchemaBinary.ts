@@ -3680,7 +3680,7 @@ function encodeArray(ctx: EncodeContext, layout: ArrayLayout, arr: ReadonlyArray
   const uniform = layout.uniform
   if (uniform !== undefined) {
     if (layout.uniformNumbers) {
-      encodeNumberRun(arr, count, w)
+      encodeNumberRun(ctx, arr, count, w)
       return
     }
     // Only a run field holding an array of strings hands over an intern table.
@@ -3721,22 +3721,23 @@ function encodeArray(ctx: EncodeContext, layout: ArrayLayout, arr: ReadonlyArray
 // synchronous `encodeNumberRun` call.
 const numberRunScales: Array<number> = []
 
-function encodeNumberRun(arr: ReadonlyArray<unknown>, count: number, w: Writer) {
+function encodeNumberRun(ctx: EncodeContext, arr: ReadonlyArray<unknown>, count: number, w: Writer) {
   let varint = true
   let decimal = true
   for (let i = 0; i < count; i++) {
     const value = arr[i]
+    if (typeof value !== "number") {
+      issuePath[issuePathLen++] = i
+      encodeFail("a number", value, ctx.options)
+    }
     if (isVarintNumber(value)) {
-      const magnitude = (value as number) < 0 ? -(value as number) : value as number
+      const magnitude = value < 0 ? -value : value
       if (magnitude > DECIMAL_MANTISSA_MAX) decimal = false
     } else {
       varint = false
-      if (typeof value !== "number") decimal = false
-      else {
-        const scale = decimalScale(value)
-        if (scale === 0) decimal = false
-        else numberRunScales[i] = scale
-      }
+      const scale = decimalScale(value)
+      if (scale === 0) decimal = false
+      else numberRunScales[i] = scale
     }
     if (!varint && !decimal) break
   }
@@ -4460,8 +4461,15 @@ function decodeInterned(table: Array<unknown>, layout: Layout, r: Reader): unkno
     if (ref >= table.length) invalid("a known back-reference", undefined, r.options)
     return table[ref]
   }
-  // Strings consume their whole region, so they skip the reader window.
+  // Plain strings consume their whole region, so they skip the reader window.
   if (layout._ === "string") {
+    if (r.dict !== undefined) {
+      const saved = r.enter(code / 2)
+      const value = decodeChecked(layout, r)
+      r.exit(saved)
+      table.push(value)
+      return value
+    }
     const value = r.readUtf8(code / 2)
     table.push(value)
     return value
@@ -4669,7 +4677,7 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
     if (uniform._ === "string") {
       for (let i = 0; i < count; i++) {
         issuePath[issuePathLen++] = i
-        out[i] = r.readUtf8(r.uvarint())
+        out[i] = r.dict === undefined ? r.readUtf8(r.uvarint()) : decodeSized(uniform, r)
         issuePathLen--
       }
       return out
