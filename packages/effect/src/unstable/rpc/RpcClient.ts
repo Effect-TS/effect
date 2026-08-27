@@ -17,7 +17,7 @@ import type * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
-import { dual, flow, identity } from "../../Function.ts"
+import { constVoid, dual, flow, identity } from "../../Function.ts"
 import * as InternalRecord from "../../internal/record.ts"
 import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
@@ -955,14 +955,17 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
           Effect.flatMap((responses) => {
             if (responses.length === 0) return Effect.void
             hasResponse = true
-            return Effect.gen(function*() {
-              for (let i = 0; i < responses.length; i++) {
-                const response = responses[i]
+            let i = 0
+            return Effect.whileLoop({
+              while: () => i < responses.length,
+              body: () => {
+                const response = responses[i++]
                 if (isTerminalResponse(response)) {
                   completed = true
                 }
-                yield* writeResponse(clientId, response)
-              }
+                return writeResponse(clientId, response)
+              },
+              step: constVoid
             })
           })
         )).pipe(
@@ -1057,12 +1060,14 @@ export const makeProtocolSocket = (options?: {
       try {
         const responses = parser.decode(data) as Array<FromServerEncoded>
         if (responses.length === 0) return Effect.void
-        return Effect.gen(function*() {
-          for (let i = 0; i < responses.length; i++) {
-            const response = responses[i]
+        let i = 0
+        return Effect.whileLoop({
+          while: () => i < responses.length,
+          body: () => {
+            const response = responses[i++]
             if (response._tag === "Pong") {
               pinger.onPong()
-              continue
+              return Effect.void
             }
             if (Object.hasOwn(response, "requestId")) {
               const requestId = (response as FromServerEncoded & { readonly requestId: string | number }).requestId
@@ -1071,12 +1076,12 @@ export const makeProtocolSocket = (options?: {
                 if (response._tag === "Exit") {
                   requestClientMap.delete(requestId)
                 }
-                yield* writeResponse(clientId, response)
-                continue
+                return writeResponse(clientId, response)
               }
             }
-            yield* broadcast(response)
-          }
+            return broadcast(response)
+          },
+          step: constVoid
         })
       } catch (defect) {
         return broadcast({

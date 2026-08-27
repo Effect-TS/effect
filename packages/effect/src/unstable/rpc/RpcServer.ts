@@ -1294,10 +1294,11 @@ export const makeProtocolStdio = Effect.gen(function*() {
       Stream.runForEach((data) => {
         const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
         if (decoded.length === 0) return Effect.void
-        return Effect.gen(function*() {
-          for (let i = 0; i < decoded.length; i++) {
-            yield* writeRequest(0, decoded[i])
-          }
+        let i = 0
+        return Effect.whileLoop({
+          while: () => i < decoded.length,
+          body: () => writeRequest(0, decoded[i++]),
+          step: constVoid
         })
       }),
       Effect.sandbox,
@@ -1481,14 +1482,17 @@ const makeSocketProtocol: Effect.Effect<
       try {
         const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
         if (decoded.length === 0) return Effect.void
-        return Effect.gen(function*() {
-          for (let i = 0; i < decoded.length; i++) {
-            const message = decoded[i]
+        let i = 0
+        return Effect.whileLoop({
+          while: () => i < decoded.length,
+          body() {
+            const message = decoded[i++]
             if (message._tag === "Request" && headers) {
               ;(message as Types.Mutable<RequestEncoded>).headers = headers.concat(message.headers)
             }
-            yield* writeRequest(id, message)
-          }
+            return writeRequest(id, message)
+          },
+          step: constVoid
         })
       } catch (cause) {
         if (Predicate.isTagged(cause, "MaxBufferSizeExceeded")) {
