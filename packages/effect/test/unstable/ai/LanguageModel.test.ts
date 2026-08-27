@@ -221,6 +221,7 @@ describe("LanguageModel", () => {
   describe("streamText", () => {
     it.effect("interrupts in-flight tool handlers on an incomplete finish", () =>
       Effect.gen(function*() {
+        const toolCallObserved = yield* Latch.make()
         const handlerStarted = yield* Latch.make()
         const handlerInterrupted = yield* Latch.make()
         const handlers = MyToolkit.toLayer({
@@ -241,7 +242,9 @@ describe("LanguageModel", () => {
           Stream.runForEach((part) =>
             Effect.sync(() => {
               parts.push(part)
-            })
+            }).pipe(
+              Effect.andThen(part.type === "tool-call" ? toolCallObserved.open : Effect.void)
+            )
           ),
           TestUtils.withLanguageModel({
             streamText: () => Stream.fromQueue(providerQueue)
@@ -256,6 +259,9 @@ describe("LanguageModel", () => {
           name: "MyTool",
           params: { testParam: "test-param" }
         })
+        yield* toolCallObserved.await
+        // The handler starts once the stream moves past the tool call
+        yield* Queue.offer(providerQueue, { type: "text-delta", id: "text-1", delta: "more" })
         yield* handlerStarted.await
 
         yield* Queue.offer(providerQueue, { ...finishPart, reason: "length" })
@@ -263,7 +269,7 @@ describe("LanguageModel", () => {
         yield* Fiber.join(fiber)
 
         yield* handlerInterrupted.await
-        deepStrictEqual(parts.map((part) => part.type), ["tool-call", "tool-result", "finish"])
+        deepStrictEqual(parts.map((part) => part.type), ["tool-call", "text-delta", "tool-result", "finish"])
         strictEqual(parts.find((part) => part.type === "finish")?.reason, "length")
 
         // The interrupted handler produced no result, so a synthesized
@@ -320,9 +326,56 @@ describe("LanguageModel", () => {
         strictEqual(yield* Ref.get(calls), 0)
       }))
 
+    it.effect("does not start tool handlers when an incomplete finish arrives in the next chunk", () =>
+      Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Ref.update(calls, (n) => n + 1).pipe(
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+        const providerQueue = yield* Queue.make<Response.StreamPartEncoded, Cause.Done>()
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({
+            streamText: () => Stream.fromQueue(providerQueue)
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        // The tool call and the truncating finish arrive back-to-back as
+        // separate chunks - the handler must never start
+        yield* Queue.offer(providerQueue, {
+          type: "tool-call",
+          id: "tool-next-chunk",
+          name: "MyTool",
+          params: { testParam: "test-param" }
+        })
+        yield* Queue.offer(providerQueue, { ...finishPart, reason: "length" })
+        yield* Queue.end(providerQueue)
+        const parts = yield* Fiber.join(fiber)
+
+        strictEqual(yield* Ref.get(calls), 0)
+        deepStrictEqual(parts.map((part) => part.type), ["tool-call", "tool-result", "finish"])
+
+        const toolResult = parts.find((part) => part.type === "tool-result")!
+        strictEqual(toolResult.isFailure, true)
+        deepStrictEqual(toolResult.result, {
+          type: "execution-interrupted",
+          reason: `Tool call execution was interrupted because the response finished with reason "length"`
+        })
+      }))
+
     it.effect("keeps results of handlers that completed before an incomplete finish", () =>
       Effect.gen(function*() {
         const parts: Array<Response.StreamPart<Toolkit.Tools<typeof MyToolkit>>> = []
+        const toolCallObserved = yield* Latch.make()
         const resultObserved = yield* Latch.make()
         const providerQueue = yield* Queue.make<Response.StreamPartEncoded, Cause.Done>()
         const handlers = MyToolkit.toLayer({
@@ -337,7 +390,13 @@ describe("LanguageModel", () => {
             Effect.sync(() => {
               parts.push(part)
             }).pipe(
-              Effect.andThen(part.type === "tool-result" ? resultObserved.open : Effect.void)
+              Effect.andThen(
+                part.type === "tool-call"
+                  ? toolCallObserved.open
+                  : part.type === "tool-result"
+                  ? resultObserved.open
+                  : Effect.void
+              )
             )
           ),
           TestUtils.withLanguageModel({
@@ -353,6 +412,8 @@ describe("LanguageModel", () => {
           name: "MyTool",
           params: { testParam: "test-param" }
         })
+        yield* toolCallObserved.await
+        yield* Queue.offer(providerQueue, { type: "text-delta", id: "text-1", delta: "more" })
         yield* resultObserved.await
 
         yield* Queue.offer(providerQueue, { ...finishPart, reason: "length" })
@@ -361,7 +422,7 @@ describe("LanguageModel", () => {
 
         // The completed handler keeps its real result and no synthesized
         // failure result is added for the same call
-        deepStrictEqual(parts.map((part) => part.type), ["tool-call", "tool-result", "finish"])
+        deepStrictEqual(parts.map((part) => part.type), ["tool-call", "text-delta", "tool-result", "finish"])
         const toolResult = parts.find((part) => part.type === "tool-result")!
         strictEqual(toolResult.isFailure, false)
         deepStrictEqual(toolResult.result, { testSuccess: "test-success" })
@@ -370,6 +431,7 @@ describe("LanguageModel", () => {
     it.effect("does not synthesize results for tool calls awaiting approval on an incomplete finish", () =>
       Effect.gen(function*() {
         const parts: Array<Response.StreamPart<Toolkit.Tools<typeof ApprovalToolkit>>> = []
+        const toolCallObserved = yield* Latch.make()
         const approvalObserved = yield* Latch.make()
         const providerQueue = yield* Queue.make<Response.StreamPartEncoded, Cause.Done>()
 
@@ -381,7 +443,13 @@ describe("LanguageModel", () => {
             Effect.sync(() => {
               parts.push(part)
             }).pipe(
-              Effect.andThen(part.type === "tool-approval-request" ? approvalObserved.open : Effect.void)
+              Effect.andThen(
+                part.type === "tool-call"
+                  ? toolCallObserved.open
+                  : part.type === "tool-approval-request"
+                  ? approvalObserved.open
+                  : Effect.void
+              )
             )
           ),
           TestUtils.withLanguageModel({
@@ -397,6 +465,8 @@ describe("LanguageModel", () => {
           name: "ApprovalTool",
           params: { action: "test-action" }
         })
+        yield* toolCallObserved.await
+        yield* Queue.offer(providerQueue, { type: "text-delta", id: "text-1", delta: "more" })
         yield* approvalObserved.await
 
         yield* Queue.offer(providerQueue, { ...finishPart, reason: "length" })
@@ -404,7 +474,10 @@ describe("LanguageModel", () => {
         yield* Fiber.join(fiber)
 
         // The approval request already resolves the call for this turn
-        deepStrictEqual(parts.map((part) => part.type), ["tool-call", "tool-approval-request", "finish"])
+        deepStrictEqual(
+          parts.map((part) => part.type),
+          ["tool-call", "text-delta", "tool-approval-request", "finish"]
+        )
       }))
 
     it.effect("validates encoded tool parameters when tool call resolution is disabled", () =>
@@ -459,9 +532,10 @@ describe("LanguageModel", () => {
         Effect.provide(TransformToolkitLayer)
       ))
 
-    it.effect("executes tool handlers as soon as their parameters are complete", () =>
+    it.effect("executes tool handlers once the stream moves past the tool call", () =>
       Effect.gen(function*() {
         const parts: Array<Response.StreamPart<Toolkit.Tools<typeof MyToolkit>>> = []
+        const toolCallObserved = yield* Latch.make()
         const handlerCalled = yield* Latch.make()
         const providerQueue = yield* Queue.make<Response.StreamPartEncoded, Cause.Done>()
         const calls = yield* Ref.make(0)
@@ -480,7 +554,9 @@ describe("LanguageModel", () => {
           Stream.runForEach((part) =>
             Effect.sync(() => {
               parts.push(part)
-            })
+            }).pipe(
+              Effect.andThen(part.type === "tool-call" ? toolCallObserved.open : Effect.void)
+            )
           ),
           TestUtils.withLanguageModel({
             streamText: () => Stream.fromQueue(providerQueue)
@@ -495,6 +571,8 @@ describe("LanguageModel", () => {
           name: "MyTool",
           params: { testParam: "test-param" }
         })
+        yield* toolCallObserved.await
+        yield* Queue.offer(providerQueue, { type: "text-delta", id: "text-1", delta: "more" })
 
         // The handler runs while the provider stream is still open
         yield* handlerCalled.await
@@ -504,11 +582,12 @@ describe("LanguageModel", () => {
         yield* Queue.end(providerQueue)
         yield* Fiber.join(fiber)
 
-        deepStrictEqual(parts.map((part) => part.type), ["tool-call", "tool-result", "finish"])
+        deepStrictEqual(parts.map((part) => part.type), ["tool-call", "text-delta", "tool-result", "finish"])
       }))
 
     it.effect("interrupts in-flight tool handlers when the provider stream fails", () =>
       Effect.gen(function*() {
+        const toolCallObserved = yield* Latch.make()
         const handlerStarted = yield* Latch.make()
         const handlerInterrupted = yield* Latch.make()
         const handlers = MyToolkit.toLayer({
@@ -530,7 +609,7 @@ describe("LanguageModel", () => {
           prompt: [],
           toolkit: MyToolkit
         }).pipe(
-          Stream.runDrain,
+          Stream.runForEach((part) => part.type === "tool-call" ? toolCallObserved.open : Effect.void),
           TestUtils.withLanguageModel({
             streamText: () =>
               Stream.fromQueue(providerQueue).pipe(
@@ -547,6 +626,8 @@ describe("LanguageModel", () => {
           name: "MyTool",
           params: { testParam: "test-param" }
         })
+        yield* toolCallObserved.await
+        yield* Queue.offer(providerQueue, { type: "text-delta", id: "text-1", delta: "more" })
         yield* handlerStarted.await
         yield* Queue.end(providerQueue)
 

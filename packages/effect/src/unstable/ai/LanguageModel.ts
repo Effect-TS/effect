@@ -1549,6 +1549,12 @@ export const make: (params: {
     // Tool calls that have been observed but not yet resolved with a final
     // result or approval request (id -> tool name)
     const pendingToolCalls = new Map<string, string>()
+    // One-chunk lookahead buffer: a tool call's handler only starts once the
+    // stream has moved past the call (the next chunk arrives, or the stream
+    // ends with a complete finish). Providers emit a truncating finish
+    // back-to-back with the last tool call, so this window is what lets an
+    // incomplete finish prevent handlers from starting at all.
+    const bufferedToolCalls: Array<Response.ToolCallPartEncoded> = []
 
     // Helper function to handle tool calls with approval logic
     const handleToolCall = Effect.fnUntraced(function*(part: Response.ToolCallPartEncoded) {
@@ -1603,6 +1609,21 @@ export const make: (params: {
       )
     })
 
+    const forkBufferedToolCalls = Effect.suspend(() => {
+      if (bufferedToolCalls.length === 0) return Effect.void
+      return Effect.forEach(
+        bufferedToolCalls.splice(0),
+        (part) => {
+          const effect = handleToolCall(part)
+          return FiberSet.run(
+            toolCallFibers,
+            toolCallSemaphore ? toolCallSemaphore.withPermit(effect) : effect
+          )
+        },
+        { discard: true }
+      )
+    })
+
     yield* streamWithNonIncrementalFallback().pipe(
       Stream.runForEachArray(
         Effect.fnUntraced(function*(chunk) {
@@ -1627,27 +1648,22 @@ export const make: (params: {
           if (immediateParts.length > 0) {
             yield* Queue.offerAll(queue, immediateParts)
           }
-          // Fork tool call handlers as soon as their parameters are complete -
-          // use the raw chunk for encoded params. When an incomplete finish
-          // has already been observed (possibly in this very chunk), handlers
-          // are not started at all - the calls are only recorded so they
-          // resolve with synthesized failure results.
-          const incompleteFinish = Predicate.isNotUndefined(
-            findIncompleteFinishReason(deferredFinishParts)
-          )
+          // The stream has moved past any previously buffered tool calls, so
+          // start their handlers now - unless a finish part (possibly
+          // recorded just above) reports an incomplete response, in which
+          // case they stay pending and resolve with synthesized failure
+          // results.
+          if (Predicate.isUndefined(findIncompleteFinishReason(deferredFinishParts))) {
+            yield* forkBufferedToolCalls
+          }
+          // Buffer this chunk's tool calls until the next chunk or the end of
+          // the stream - use the raw chunk for encoded params
           for (const part of chunk) {
             if (part.type === "tool-call" && part.providerExecuted !== true) {
               if (Predicate.isNotUndefined(toolkit.tools[part.name])) {
                 pendingToolCalls.set(part.id, part.name)
               }
-              if (incompleteFinish) {
-                continue
-              }
-              const effect = handleToolCall(part)
-              yield* FiberSet.run(
-                toolCallFibers,
-                toolCallSemaphore ? toolCallSemaphore.withPermit(effect) : effect
-              )
+              bufferedToolCalls.push(part)
             }
           }
         })
@@ -1663,9 +1679,11 @@ export const make: (params: {
         Effect.suspend(() => {
           const incompleteFinishReason = findIncompleteFinishReason(deferredFinishParts)
           if (Predicate.isUndefined(incompleteFinishReason)) {
-            return Effect.raceFirst(
-              FiberSet.join(toolCallFibers),
-              FiberSet.awaitEmpty(toolCallFibers)
+            return forkBufferedToolCalls.pipe(
+              Effect.andThen(Effect.raceFirst(
+                FiberSet.join(toolCallFibers),
+                FiberSet.awaitEmpty(toolCallFibers)
+              ))
             )
           }
           return FiberSet.clear(toolCallFibers).pipe(
