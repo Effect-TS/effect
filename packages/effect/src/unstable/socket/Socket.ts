@@ -428,7 +428,7 @@ const writeChunk = (
     if (isCloseEvent(chunk[i])) {
       let index = 0
       return Effect.whileLoop({
-        while: () => index < chunk.length,
+        while: () => index <= i,
         body: () => writer.write(chunk[index++]),
         step: constVoid
       })
