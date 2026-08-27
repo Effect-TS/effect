@@ -457,59 +457,97 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
           })
       }),
       (upgrade) => {
-        const buffered: Array<MessageEvent> = []
-        const buffer = (event: MessageEvent) => buffered.push(event)
-        upgrade.socket.addEventListener("message", buffer)
+        const ws = bufferedWebSocket(upgrade.socket)
         this.upgraded = true
         this.resolve(upgrade.response)
-
-        return Effect.callback<Socket.Socket, Error.HttpServerError>((resume) => {
-          const cleanup = () => {
-            upgrade.socket.removeEventListener("open", onOpen)
-            upgrade.socket.removeEventListener("error", onFailure)
-            upgrade.socket.removeEventListener("close", onFailure)
-          }
-          const onFailure = (cause: Event) => {
-            cleanup()
-            upgrade.socket.removeEventListener("message", buffer)
-            buffered.length = 0
-            resume(Effect.fail(
-              new Error.HttpServerError({
-                reason: new Error.RequestParseError({
-                  request: this,
-                  cause,
-                  description: "WebSocket upgrade failed before open"
-                })
-              })
-            ))
-          }
-          const onOpen = () => {
-            cleanup()
-            resume(Socket.fromWebSocket(
-              Effect.acquireRelease(
-                Effect.succeed(upgrade.socket),
-                (socket) => Effect.sync(() => socket.close(1000))
-              ),
-              {
-                onInitialRun: (socket) => {
-                  socket.removeEventListener("message", buffer)
-                  return buffered.splice(0)
-                }
-              }
-            ))
-          }
-          upgrade.socket.addEventListener("open", onOpen, { once: true })
-          upgrade.socket.addEventListener("error", onFailure, { once: true })
-          upgrade.socket.addEventListener("close", onFailure, { once: true })
-          return Effect.sync(() => {
-            cleanup()
-            upgrade.socket.removeEventListener("message", buffer)
-            buffered.length = 0
-            upgrade.socket.close()
-          })
-        })
+        return Socket.fromWebSocket(
+          Effect.acquireRelease(
+            Effect.succeed(ws),
+            () => Effect.sync(() => upgrade.socket.close(1000))
+          )
+        )
       }
     )
+  }
+}
+
+// Deno's WebSocket cannot be paused, so events that arrive between the
+// upgrade and the first reader acquisition would be lost. This facade buffers
+// message, error, and close events until listeners attach, then replays them
+// so they come out of the first pull.
+const bufferedWebSocket = (ws: WebSocket): Socket.WebSocketLike => {
+  interface Entry {
+    readonly listener: (event: Socket.WebSocketEvent) => void
+    readonly once: boolean
+  }
+  const listeners = new Map<string, Array<Entry>>()
+  const buffered: Array<[string, Socket.WebSocketEvent]> = []
+  let buffering = true
+
+  ws.binaryType = "arraybuffer"
+
+  function removeListener(type: string, listener: (event: Socket.WebSocketEvent) => void) {
+    const entries = listeners.get(type)
+    if (!entries) return
+    const index = entries.findIndex((entry) => entry.listener === listener)
+    if (index >= 0) entries.splice(index, 1)
+  }
+  function dispatch(type: string, event: Socket.WebSocketEvent) {
+    const entries = listeners.get(type)
+    if (!entries || entries.length === 0) return
+    for (const entry of entries.slice()) {
+      if (entry.once) removeListener(type, entry.listener)
+      entry.listener(event)
+    }
+  }
+  function onEvent(type: string) {
+    return (event: Event) => {
+      const wsEvent = event as unknown as Socket.WebSocketEvent
+      if (buffering) {
+        buffered.push([type, wsEvent])
+      } else {
+        dispatch(type, wsEvent)
+      }
+    }
+  }
+  ws.addEventListener("message", onEvent("message"))
+  ws.addEventListener("error", onEvent("error"))
+  ws.addEventListener("close", onEvent("close"))
+
+  function replay() {
+    if (!buffering) return
+    buffering = false
+    for (const [type, event] of buffered.splice(0)) {
+      dispatch(type, event)
+    }
+  }
+
+  return {
+    get readyState() {
+      return ws.readyState
+    },
+    addEventListener(type, listener, options) {
+      if (type === "open") {
+        ws.addEventListener(type, listener as EventListener, options as AddEventListenerOptions)
+        return
+      }
+      let entries = listeners.get(type)
+      if (!entries) {
+        entries = []
+        listeners.set(type, entries)
+      }
+      entries.push({ listener, once: options?.once === true })
+      if (buffering) queueMicrotask(replay)
+    },
+    removeEventListener(type, listener) {
+      if (type === "open") {
+        ws.removeEventListener(type, listener as EventListener)
+        return
+      }
+      removeListener(type, listener)
+    },
+    close: (code, reason) => ws.close(code, reason),
+    send: (data) => ws.send(data)
   }
 }
 

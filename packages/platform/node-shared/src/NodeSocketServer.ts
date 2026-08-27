@@ -75,7 +75,12 @@ export const make = Effect.fnUntraced(function*(
       server?.close(() => resume(Effect.void))
     })
   )
-  server = Net.createServer(options, (conn) => onConnection(conn))
+  // pause immediately so nothing is dropped before a handler acquires the
+  // socket's reader
+  server = Net.createServer(options, (conn) => {
+    conn.pause()
+    onConnection(conn)
+  })
   server.on("error", (err) => Deferred.doneUnsafe(errorDeferred, Exit.fail(err)))
 
   yield* Effect.callback<void, SocketServer.SocketServerError>((resume) => {
@@ -218,7 +223,12 @@ export const makeWebSocket: (
     conn.addEventListener("close", remove)
   }
   let onConnection = defaultHandler
-  server.on("connection", (conn, req) => onConnection(conn, req))
+  server.on("connection", (conn, req) => {
+    // pause immediately so nothing is dropped before a handler acquires the
+    // socket's reader
+    conn.pause()
+    onConnection(conn, req)
+  })
 
   yield* Effect.callback<void, SocketServer.SocketServerError>((resume) => {
     server.once("error", (error) => {

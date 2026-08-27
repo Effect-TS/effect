@@ -1,7 +1,9 @@
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer"
 import { assert, describe, it } from "@effect/vitest"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as Scope from "effect/Scope"
 import * as HttpServer from "effect/unstable/http/HttpServer"
 import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
@@ -87,13 +89,19 @@ const makeWebSocketServer = Effect.fnUntraced(function*(payload: string, compres
   yield* server.serve(Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
     const socket = yield* request.upgrade
-    const write = yield* socket.writer
-    yield* socket.runRaw(() => undefined, {
-      onOpen: Effect.gen(function*() {
-        yield* Effect.orDie(write(payload))
-        yield* Effect.orDie(write(new TextEncoder().encode(payload)))
-      })
-    })
+    yield* Effect.gen(function*() {
+      const pull = yield* socket.reader
+      const writer = yield* socket.writer
+      yield* Effect.orDie(writer.write(payload))
+      yield* Effect.orDie(writer.write(new TextEncoder().encode(payload)))
+      while (true) {
+        yield* pull
+      }
+    }).pipe(
+      Effect.scoped,
+      Effect.catchTag("SocketError", () => Effect.void),
+      Effect.orDie
+    )
     return HttpServerResponse.empty()
   }))
   return server
@@ -188,5 +196,42 @@ describe("BunHttpServer", () => {
       assert.isFalse(frames.some((frame) => frame.rsv1))
       assert.isTrue(frames.every((frame) => frame.payloadLength === payload.length))
       assert.deepStrictEqual(frames.map((frame) => new TextDecoder().decode(frame.payload)), [payload, payload])
+    }))
+
+  it.effect("fails a concurrent reader waiting behind a closed reader", () =>
+    Effect.gen(function*() {
+      const secondReaderFailed = yield* Deferred.make<boolean>()
+      const server = yield* BunHttpServer.make({
+        hostname: "127.0.0.1",
+        port: 0
+      })
+      yield* server.serve(Effect.gen(function*() {
+        const request = yield* HttpServerRequest.HttpServerRequest
+        const socket = yield* request.upgrade
+        const ownerScope = yield* Effect.scope
+        const firstScope = yield* Scope.fork(ownerScope)
+        const secondScope = yield* Scope.fork(ownerScope)
+
+        const pull = yield* socket.reader.pipe(Scope.provide(firstScope))
+        const writer = yield* socket.writer
+        const secondReader = yield* socket.reader.pipe(
+          Scope.provide(secondScope),
+          Effect.exit,
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* writer.write("first")
+        yield* writer.write("second")
+        yield* Effect.exit(pull)
+        yield* Scope.close(firstScope, Exit.void)
+        const secondExit = yield* Fiber.join(secondReader)
+        yield* Scope.close(secondScope, Exit.void)
+        yield* Deferred.succeed(secondReaderFailed, Exit.isFailure(secondExit))
+        return HttpServerResponse.empty()
+      }))
+
+      const port = (server.address as HttpServer.TcpAddress).port
+      yield* readWebSocketFrames(port, false)
+      const failed = yield* Deferred.await(secondReaderFailed)
+      assert.isTrue(failed)
     }))
 })

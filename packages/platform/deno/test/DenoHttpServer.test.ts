@@ -638,10 +638,7 @@ describe("DenoHttpServer", () => {
 
   it.effect("round trips WebSocket frames and closes cleanly", () =>
     Effect.gen(function*() {
-      yield* serveWebSocket(Effect.fnUntraced(function*(socket) {
-        const write = yield* socket.writer
-        yield* socket.runRaw((message) => write(message))
-      }))
+      yield* serveWebSocket(echoWebSocket)
       const server = yield* HttpServer.HttpServer
       const port = (server.address as HttpServer.TcpAddress).port
       const messages = yield* connectWebSocket(`ws://127.0.0.1:${port}/`, (socket) => socket.send("hello"), 1)
@@ -650,11 +647,11 @@ describe("DenoHttpServer", () => {
 
   it.effect("preserves eager WebSocket frames across an async boundary", () =>
     Effect.gen(function*() {
-      yield* serveWebSocket(Effect.fnUntraced(function*(socket) {
-        yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
-        const write = yield* socket.writer
-        yield* socket.runRaw((message) => write(message))
-      }))
+      yield* serveWebSocket((socket) =>
+        Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0))).pipe(
+          Effect.andThen(echoWebSocket(socket))
+        )
+      )
 
       const server = yield* HttpServer.HttpServer
       const port = (server.address as HttpServer.TcpAddress).port
@@ -669,12 +666,21 @@ describe("DenoHttpServer", () => {
   it.effect("delivers binary WebSocket frames as Uint8Array", () =>
     Effect.gen(function*() {
       const received = yield* Queue.unbounded<Uint8Array>()
-      yield* serveWebSocket(Effect.fnUntraced(function*(socket) {
-        yield* socket.runRaw((message) => {
-          assert(message instanceof Uint8Array)
-          return Queue.offer(received, message)
-        })
-      }))
+      yield* serveWebSocket((socket) =>
+        Effect.gen(function*() {
+          const pull = yield* socket.reader
+          while (true) {
+            const chunk = yield* pull
+            for (const message of chunk) {
+              assert(message instanceof Uint8Array)
+              yield* Queue.offer(received, message)
+            }
+          }
+        }).pipe(
+          Effect.catchReason("SocketError", "SocketCloseError", () => Effect.void),
+          Effect.orDie
+        )
+      )
 
       const server = yield* HttpServer.HttpServer
       const port = (server.address as HttpServer.TcpAddress).port
@@ -685,6 +691,18 @@ describe("DenoHttpServer", () => {
       socket.close()
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 })
+
+const echoWebSocket = (socket: Socket.Socket) =>
+  Effect.gen(function*() {
+    const writer = yield* socket.writer
+    const pull = yield* socket.reader
+    while (true) {
+      yield* writer.writeAll(yield* pull)
+    }
+  }).pipe(
+    Effect.catchReason("SocketError", "SocketCloseError", () => Effect.void),
+    Effect.orDie
+  )
 
 const serveWebSocket = (
   run: (socket: Socket.Socket) => Effect.Effect<void, Socket.SocketError, Scope.Scope>

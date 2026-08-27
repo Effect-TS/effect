@@ -7,15 +7,24 @@ import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import { Socket, type SocketServer } from "effect/unstable/socket"
 import * as Net from "node:net"
+import { Duplex } from "node:stream"
 import { WS } from "vitest-websocket-mock"
 
 const makeServer = Effect.gen(function*() {
   const server = yield* NodeSocketServer.make({ port: 0 })
 
-  yield* server.run(Effect.fnUntraced(function*(socket) {
-    const write = yield* socket.writer
-    yield* socket.run(write)
-  }, Effect.scoped)).pipe(Effect.forkScoped)
+  yield* server.run((socket) =>
+    Effect.gen(function*() {
+      const writer = yield* socket.writer
+      const pull = yield* socket.reader
+      while (true) {
+        yield* writer.writeAll(yield* pull)
+      }
+    }).pipe(
+      Effect.scoped,
+      Effect.catchTag("SocketError", () => Effect.void)
+    )
+  ).pipe(Effect.forkScoped)
 
   return server
 })
@@ -71,6 +80,10 @@ describe("Socket", () => {
       const outputEffect = Stream.make("Hello", "World").pipe(
         Stream.encodeText,
         Stream.pipeThroughChannel(channel),
+        Stream.catchIf(
+          (error) => error.reason._tag === "SocketCloseError",
+          () => Stream.empty
+        ),
         Stream.decodeText(),
         Stream.mkString
       )
@@ -79,10 +92,65 @@ describe("Socket", () => {
       assert.strictEqual(output, "HelloWorld")
     }))
 
+  it.effect("pull batches", () =>
+    Effect.gen(function*() {
+      const server = yield* makeServer
+      const socket = yield* NodeSocket.makeNet({ port: (server.address as SocketServer.TcpAddress).port })
+
+      const received = yield* Effect.gen(function*() {
+        const writer = yield* socket.writer
+        const pull = yield* Socket.readerBytes(socket)
+        yield* writer.writeAll(["Hello", "World"])
+        const received: Array<Uint8Array> = []
+        let length = 0
+        while (length < 10) {
+          const chunk = yield* pull
+          for (const data of chunk) {
+            received.push(data)
+            length += data.byteLength
+          }
+        }
+        return received
+      }).pipe(Effect.scoped)
+
+      const text = new TextDecoder().decode(
+        received.reduce((acc, chunk) => {
+          const next = new Uint8Array(acc.byteLength + chunk.byteLength)
+          next.set(acc, 0)
+          next.set(chunk, acc.byteLength)
+          return next
+        }, new Uint8Array(0))
+      )
+      assert.strictEqual(text, "HelloWorld")
+    }))
+
+  it.effect("pull drains every buffered duplex chunk", () =>
+    Effect.gen(function*() {
+      const first = Buffer.from("aa")
+      const second = Buffer.from("bb")
+      const duplex = new Duplex({
+        read() {},
+        write() {}
+      })
+      duplex.pause()
+      const socket = yield* NodeSocket.fromDuplex(Effect.succeed(duplex))
+      const pull = yield* socket.reader
+      duplex.push(first)
+      duplex.push(second)
+      const batch = yield* pull
+      assert.strictEqual(Buffer.concat(batch.map((chunk) => chunk as Uint8Array)).toString(), "aabb")
+      // Node 26 returns one buffered chunk per `read()`, so the batch carries
+      // the pushed buffers with no copy. Earlier Node concatenates them.
+      if (batch.length === 2) {
+        assert.strictEqual(batch[0], first)
+        assert.strictEqual(batch[1], second)
+      }
+    }))
+
   it.live("respects a zero open timeout", () =>
     Effect.gen(function*() {
       const socket = yield* NodeSocket.fromDuplex(Effect.never, { openTimeout: 0 })
-      const error = yield* socket.runRaw(() => {}).pipe(
+      const error = yield* Effect.scoped(Effect.asVoid(socket.reader)).pipe(
         Effect.flip,
         Effect.timeout("1 second")
       )
@@ -136,15 +204,18 @@ describe("Socket", () => {
     it.effect("messages", () =>
       Effect.gen(function*() {
         const server = yield* makeServer
-        const socket = yield* Socket.makeWebSocket(Effect.succeed(url), {
-          closeCodeIsError: () => false
-        })
+        const socket = yield* Socket.makeWebSocket(Effect.succeed(url))
         const messages = yield* Queue.unbounded<Uint8Array>()
-        const fiber = yield* Effect.forkChild(socket.run((_) => Queue.offer(messages, _)))
+        const fiber = yield* Effect.gen(function*() {
+          const pull = yield* Socket.readerBytes(socket)
+          while (true) {
+            yield* Queue.offerAll(messages, yield* pull)
+          }
+        }).pipe(Effect.scoped, Effect.forkChild)
         yield* Effect.gen(function*() {
-          const write = yield* socket.writer
-          yield* write(new TextEncoder().encode("Hello"))
-          yield* write(new TextEncoder().encode("World"))
+          const writer = yield* socket.writer
+          yield* writer.write(new TextEncoder().encode("Hello"))
+          yield* writer.write(new TextEncoder().encode("World"))
         }).pipe(Effect.scoped)
         assert.deepStrictEqual(yield* Effect.promise(() => server.nextMessage), new TextEncoder().encode("Hello"))
         assert.deepStrictEqual(yield* Effect.promise(() => server.nextMessage), new TextEncoder().encode("World"))
@@ -159,16 +230,30 @@ describe("Socket", () => {
 
         server.close()
         const exit = yield* Fiber.await(fiber)
-        assert.strictEqual(exit._tag, "Success")
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          const failure = exit.cause.reasons[0]
+          assert.strictEqual(failure._tag, "Fail")
+          if (failure._tag === "Fail" && Socket.SocketError.is(failure.error)) {
+            assert.strictEqual(failure.error.reason._tag, "SocketCloseError")
+          } else {
+            assert.fail("expected a SocketError")
+          }
+        }
       }).pipe(
         Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url))
       ))
 
-    it.effect("close codes are errors by default", () =>
+    it.effect("clean closes are errors", () =>
       Effect.gen(function*() {
         const server = yield* makeServer
         const socket = yield* Socket.makeWebSocket(Effect.succeed(url))
-        const fiber = yield* Effect.forkChild(socket.run(() => {}))
+        const fiber = yield* Effect.gen(function*() {
+          const pull = yield* socket.reader
+          while (true) {
+            yield* pull
+          }
+        }).pipe(Effect.scoped, Effect.forkChild)
 
         yield* Effect.promise(() => server.connected)
         server.close({ code: 1000, reason: "done", wasClean: true })
@@ -177,13 +262,14 @@ describe("Socket", () => {
         assert.isTrue(exit._tag === "Failure")
         if (exit._tag === "Failure") {
           const failure = exit.cause.reasons[0]
-          if (failure._tag === "Fail") {
-            assert.isTrue(failure.error instanceof Socket.SocketError)
+          if (failure._tag === "Fail" && failure.error instanceof Socket.SocketError) {
             assert.strictEqual(failure.error.reason._tag, "SocketCloseError")
             if (failure.error.reason._tag === "SocketCloseError") {
               assert.strictEqual(failure.error.reason.code, 1000)
               assert.strictEqual(failure.error.reason.closeReason, "done")
             }
+          } else {
+            assert.fail("expected a SocketError")
           }
         }
       }).pipe(
@@ -202,19 +288,16 @@ describe("Socket", () => {
           }
         }
         const webSocket = new ThrowingWebSocket()
-        const socket = yield* Socket.makeWebSocket(Effect.succeed(url), { closeCodeIsError: () => false }).pipe(
+        const socket = yield* Socket.makeWebSocket(Effect.succeed(url)).pipe(
           Effect.provideService(
             Socket.WebSocketConstructor,
             () => webSocket
           )
         )
         const exit = yield* Effect.scoped(Effect.gen(function*() {
-          const run = yield* Effect.forkChild(socket.runRaw(() => {}))
-          const write = yield* socket.writer
-          const exit = yield* Effect.exit(write(new Uint8Array([1])))
-          webSocket.dispatchEvent(new CloseEvent("close", { code: 1000 }))
-          yield* Fiber.join(run)
-          return exit
+          yield* Effect.asVoid(socket.reader)
+          const writer = yield* socket.writer
+          return yield* Effect.exit(writer.write(new Uint8Array([1])))
         }))
         assert.strictEqual(exit._tag, "Failure")
         if (exit._tag === "Failure") {
@@ -247,26 +330,30 @@ describe("Socket", () => {
           Effect.succeed({
             readable,
             writable
-          }),
-          {
-            closeCodeIsError: () => false
-          }
+          })
         )
         yield* socket.writer.pipe(
-          Effect.tap((write) =>
-            write("Hello").pipe(
-              Effect.andThen(write("World"))
+          Effect.tap((writer) =>
+            writer.write("Hello").pipe(
+              Effect.andThen(writer.write("World"))
             )
           ),
           Effect.scoped,
           Effect.forkChild
         )
         const received: Array<string> = []
-        yield* socket.run((chunk) =>
-          Effect.sync(() => {
-            received.push(decoder.decode(chunk))
-          })
-        ).pipe(Effect.scoped)
+        yield* Effect.gen(function*() {
+          const pull = yield* Socket.readerString(socket)
+          while (true) {
+            const chunk = yield* pull
+            for (const data of chunk) {
+              received.push(data)
+            }
+          }
+        }).pipe(
+          Effect.scoped,
+          Effect.catchReason("SocketError", "SocketCloseError", () => Effect.void)
+        )
 
         assert.deepStrictEqual(chunks, ["Hello", "World"])
         assert.deepStrictEqual(received, ["A", "B", "C"])
@@ -281,11 +368,9 @@ describe("Socket", () => {
           })
         }))
         const exit = yield* Effect.scoped(Effect.gen(function*() {
-          const run = yield* Effect.forkChild(socket.runRaw(() => {}))
-          const write = yield* socket.writer
-          const exit = yield* Effect.exit(write(new Uint8Array([1])))
-          yield* Fiber.interrupt(run)
-          return exit
+          yield* Effect.asVoid(socket.reader)
+          const writer = yield* socket.writer
+          return yield* Effect.exit(writer.write(new Uint8Array([1])))
         }))
         assert.strictEqual(exit._tag, "Failure")
         if (exit._tag === "Failure") {

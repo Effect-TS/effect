@@ -863,7 +863,16 @@ describe("HttpServer", () => {
         Effect.gen(function*() {
           const request = yield* HttpServerRequest.HttpServerRequest
           const socket = yield* Effect.orDie(request.upgrade)
-          yield* Effect.orDie(socket.run(() => Effect.void))
+          yield* Effect.gen(function*() {
+            const pull = yield* socket.reader
+            while (true) {
+              yield* pull
+            }
+          }).pipe(
+            Effect.scoped,
+            Effect.catchTag("SocketError", () => Effect.void),
+            Effect.orDie
+          )
           return HttpServerResponse.empty()
         })
       ).pipe(
@@ -938,10 +947,10 @@ describe("HttpServer", () => {
         Effect.gen(function*() {
           const request = yield* HttpServerRequest.HttpServerRequest
           const socket = yield* Effect.orDie(request.upgrade)
-          yield* Effect.forkScoped(socket.runRaw(constVoid))
-          const write = yield* socket.writer
-          yield* write("refused")
-          yield* write(new Socket.CloseEvent(4400, "refused"))
+          yield* Effect.asVoid(socket.reader)
+          const writer = yield* socket.writer
+          yield* writer.write("refused")
+          yield* writer.write(new Socket.CloseEvent(4400, "refused"))
           return HttpServerResponse.empty()
         }).pipe(Effect.scoped)
       ).pipe(
