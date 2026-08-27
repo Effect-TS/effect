@@ -118,10 +118,10 @@ const TestServerLayer = Layer.unwrap(Effect.promise(() =>
         const client = (yield* HttpClient.HttpClient).pipe(
           HttpClient.followRedirects()
         )
-        const response = yield* client.get("/redirect").pipe(
-          Effect.flatMap((_) => _.text)
-        )
-        expect(response).toBe("test")
+        const response = yield* client.get("/redirect")
+        expect(new URL(response.request.url).pathname).toBe("/redirect")
+        expect(new URL(response.url).pathname).toBe("/")
+        expect(yield* response.text).toBe("test")
       }).pipe(Effect.provide(testLayer)))
 
     it.effect("stream", () =>

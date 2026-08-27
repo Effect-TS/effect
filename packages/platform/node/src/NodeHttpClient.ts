@@ -220,6 +220,10 @@ class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pi
     return this.source.statusCode!
   }
 
+  get url() {
+    return this.request.url
+  }
+
   get statusText() {
     return undefined
   }
@@ -589,6 +593,10 @@ class NodeHttpResponse extends NodeHttpIncomingMessage<Error.HttpClientError> im
 
   get status() {
     return this.source.statusCode!
+  }
+
+  get url() {
+    return this.request.url
   }
 
   cachedCookies?: Cookies.Cookies

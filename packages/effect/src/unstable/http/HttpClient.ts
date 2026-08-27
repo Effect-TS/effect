@@ -1721,6 +1721,10 @@ class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pi
     return this.original.request
   }
 
+  get url() {
+    return this.original.url
+  }
+
   get status() {
     return this.original.status
   }

@@ -66,6 +66,8 @@ export const TypeId = "~effect/http/HttpClientResponse"
 export interface HttpClientResponse extends HttpIncomingMessage.HttpIncomingMessage<Error.HttpClientError>, Pipeable {
   readonly [TypeId]: typeof TypeId
   readonly request: HttpClientRequest.HttpClientRequest
+  /** The final response URL after redirects. */
+  readonly url: string
   readonly status: number
   readonly cookies: Cookies.Cookies
   readonly formData: Effect.Effect<FormData, Error.HttpClientError>
@@ -275,6 +277,10 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
 
   get status(): number {
     return this.source.status
+  }
+
+  get url(): string {
+    return this.source.url || this.request.url
   }
 
   get headers(): Headers.Headers {

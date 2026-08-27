@@ -18,10 +18,9 @@ const layer = (...args: Parameters<typeof MXHR.newServer>) =>
 describe("BrowserHttpClient", () => {
   it.effect("json", () =>
     Effect.gen(function*() {
-      const body = yield* HttpClient.get("http://localhost:8080/my/url").pipe(
-        Effect.flatMap((_) => _.json)
-      )
-      assert.deepStrictEqual(body, { message: "Success!" })
+      const response = yield* HttpClient.get("http://localhost:8080/my/url")
+      assert.strictEqual(response.url, "http://localhost:8080/my/url")
+      assert.deepStrictEqual(yield* response.json, { message: "Success!" })
     }).pipe(Effect.provide(layer({
       get: ["http://localhost:8080/my/url", {
         headers: { "Content-Type": "application/json" },

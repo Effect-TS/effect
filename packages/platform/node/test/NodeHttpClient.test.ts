@@ -154,10 +154,9 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         const client = (yield* HttpClient.HttpClient).pipe(
           HttpClient.followRedirects()
         )
-        const response = yield* client.get("/redirect").pipe(
-          Effect.flatMap((_) => _.text)
-        )
-        expect(response).toBe("redirected")
+        const response = yield* client.get("/redirect")
+        expect(new URL(response.url).pathname).toBe("/redirected")
+        expect(yield* response.text).toBe("redirected")
       }).pipe(Effect.provide(localServerTestLayer)))
 
     it.effect("text stream", () =>
