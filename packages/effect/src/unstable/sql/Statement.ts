@@ -1311,9 +1311,12 @@ const StatementProto: Omit<
       // saves the scope and the finalizer that borrowing through the acquirer
       // needs. `stream` keeps the acquirer, because its lease has to outlive
       // the effect that starts it.
-      return this.borrower === undefined
-        ? Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
-        : this.borrower((connection: Connection) => f(connection, sql, params))
+      return Effect.withParentSpan(
+        this.borrower === undefined
+          ? Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
+          : this.borrower((connection: Connection) => f(connection, sql, params)),
+        span
+      )
     })
   },
 
