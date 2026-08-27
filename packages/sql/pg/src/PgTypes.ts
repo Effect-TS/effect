@@ -680,6 +680,7 @@ const parseIPv6 = (text: string): Uint8Array | undefined => {
   const embedded = trailing.includes(".") ? parseIPv4(trailing) : undefined
   if (trailing.includes(".") && embedded === undefined) return undefined
   if (embedded !== undefined) {
+    if (halves.length === 2 && tail.length === 0) return undefined
     if (tail.length > 0) tail.pop()
     else head.pop()
   }

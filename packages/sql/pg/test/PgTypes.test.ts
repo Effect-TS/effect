@@ -353,6 +353,10 @@ describe("PgTypes", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("2001:db8::1/32", PgTypes.OID.cidr))
     })
 
+    it("rejects an embedded IPv4 address before IPv6 compression", () => {
+      assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("1.2.3.4::", PgTypes.OID.inet))
+    })
+
     it("rejects invalid network masks and CIDR host bits on decode", () => {
       for (
         const [wire, oid] of [
