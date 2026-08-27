@@ -21,12 +21,8 @@ import * as Socket from "effect/unstable/socket/Socket"
  */
 export * from "@effect/platform-node-shared/NodeSocket"
 
-const makeWebSocketWS: Socket.WebSocketConstructor["Service"] = (url, options) => {
-  if (options === undefined || typeof options === "string" || Array.isArray(options)) {
-    return new WS.WebSocket(url, options)
-  }
-  return new WS.WebSocket(url, options)
-}
+const makeWebSocketWS: Socket.WebSocketConstructor["Service"] = (url, options) =>
+  new WS.WebSocket(url, options as WS.ClientOptions)
 
 /**
  * Provides a `Socket.WebSocketConstructor`, using `globalThis.WebSocket` when

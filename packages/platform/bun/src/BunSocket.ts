@@ -28,14 +28,12 @@ export * from "@effect/platform-node-shared/NodeSocket"
  */
 export const layerWebSocketConstructor: Layer.Layer<
   Socket.WebSocketConstructor
-> = Layer.succeed(Socket.WebSocketConstructor)((url, options) => {
-  // `bun-types` defers to the DOM constructor when `lib.dom` is loaded, which
-  // hides Bun's supported `WebSocketOptions` overload.
-  const WebSocket = globalThis.WebSocket as {
-    new(url: string, options?: Socket.WebSocketConstructorOptions): Socket.WebSocketLike
-  }
-  return new WebSocket(url, options)
-})
+> = Layer.succeed(Socket.WebSocketConstructor)(
+  (url, options) =>
+    // Bun accepts `WebSocketOptions`, but `bun-types` selects the DOM overload
+    // when `lib.dom` is loaded and hides those constructor options.
+    new globalThis.WebSocket(url, options as string | Array<string> | undefined)
+)
 
 /**
  * Creates a `Socket.Socket` layer for a WebSocket URL using Bun's global

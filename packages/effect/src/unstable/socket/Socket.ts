@@ -594,7 +594,7 @@ export interface WebSocketClientOptions {
    * This is supported by Node and Bun WebSocket clients. Browser constructors
    * cannot set arbitrary handshake headers and must reject this option.
    */
-  readonly headers?: Readonly<Record<string, string>>
+  readonly headers?: Readonly<Record<string, string>> | undefined
 }
 
 /**
@@ -713,7 +713,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
         let open = false
 
         function onMessage(event: WebSocketEvent) {
-          const data = event.data
+          const data = event.data as Blob | ArrayBuffer | Uint8Array | string
           if (data instanceof Blob) {
             const effect = Effect.flatMap(
               Effect.promise(() => data.arrayBuffer()),
@@ -723,9 +723,6 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
               }
             )
             return run(effect)
-          }
-          if (typeof data !== "string" && !(data instanceof ArrayBuffer) && !(data instanceof Uint8Array)) {
-            return
           }
           const result = handler(data instanceof ArrayBuffer ? new Uint8Array(data) : data)
           if (Effect.isEffect(result)) {

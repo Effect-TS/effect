@@ -10,6 +10,7 @@ describe("Socket", () => {
       expect({ headers: { Authorization: "Bearer test" } }).type.toBeAssignableTo<
         Socket.WebSocketConstructorOptions
       >()
+      expect({ headers: undefined }).type.toBeAssignableTo<Socket.WebSocketConstructorOptions>()
     })
 
     it("rejects non-string header values", () => {
