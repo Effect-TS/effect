@@ -104,9 +104,9 @@ describe("Socket", () => {
         const pull = yield* socket.reader.pipe(
           Effect.provideService(Scheduler.Scheduler, scheduler)
         )
-        assert.strictEqual(ws.pauseCount, 1)
+        assert.strictEqual(ws.pauseCount, 0)
         const reader = yield* pull.pipe(Effect.forkChild({ startImmediately: true }))
-        assert.strictEqual(ws.resumeCount, 1)
+        assert.strictEqual(ws.resumeCount, 0)
 
         ws.dispatch("message", { data: "hello" })
         ws.dispatch("message", { data: "world" })
@@ -115,7 +115,7 @@ describe("Socket", () => {
         assert.lengthOf(tasks, 1)
         scheduler.makeDispatcher().flush()
         assert.deepStrictEqual(yield* Fiber.join(reader), ["hello", "world"])
-        assert.strictEqual(ws.pauseCount, 1)
+        assert.strictEqual(ws.pauseCount, 0)
       }))
 
     it.effect("pauses at the highWaterMark and resumes after draining", () =>
@@ -146,12 +146,26 @@ describe("Socket", () => {
         assert.deepStrictEqual(yield* Fiber.join(firstPull), ["first"])
 
         ws.dispatch("message", { data: "hello" })
-        assert.strictEqual(ws.pauseCount, 1)
+        assert.strictEqual(ws.pauseCount, 0)
         ws.dispatch("message", { data: "world" })
-        assert.strictEqual(ws.pauseCount, 2)
+        assert.strictEqual(ws.pauseCount, 1)
 
         assert.deepStrictEqual(yield* pull, ["hello", "world"])
-        assert.strictEqual(ws.resumeCount, 2)
+        assert.strictEqual(ws.resumeCount, 1)
+      }))
+
+    it.effect("uses the default highWaterMark for pausable sockets", () =>
+      Effect.gen(function*() {
+        const ws = new TestWebSocket(Latch.makeUnsafe(false))
+        ws.readyState = 1
+        const socket = yield* Socket.fromWebSocket(Effect.succeed(ws))
+        const pull = yield* socket.reader
+        const payload = "a".repeat(64 * 1024)
+
+        ws.dispatch("message", { data: payload })
+        assert.strictEqual(ws.pauseCount, 1)
+        assert.deepStrictEqual(yield* pull, [payload])
+        assert.strictEqual(ws.resumeCount, 1)
       }))
   })
 

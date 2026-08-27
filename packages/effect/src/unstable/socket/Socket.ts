@@ -10,7 +10,7 @@
  *
  * @since 4.0.0
  */
-import type { NonEmptyReadonlyArray } from "../../Array.ts"
+import type { NonEmptyArray, NonEmptyReadonlyArray } from "../../Array.ts"
 import type * as Cause from "../../Cause.ts"
 import * as Channel from "../../Channel.ts"
 import * as Context from "../../Context.ts"
@@ -164,12 +164,12 @@ export const readerBytes = (
     Effect.map(pull, (chunk) => {
       for (let i = 0; i < chunk.length; i++) {
         if (typeof chunk[i] === "string") {
-          const out = new Array<Uint8Array>(chunk.length)
+          const out = new Array<Uint8Array>(chunk.length) as NonEmptyArray<Uint8Array>
           for (let j = 0; j < chunk.length; j++) {
             const item = chunk[j]
             out[j] = typeof item === "string" ? encoder.encode(item) : item
           }
-          return out as unknown as NonEmptyReadonlyArray<Uint8Array>
+          return out
         }
       }
       return chunk as NonEmptyReadonlyArray<Uint8Array>
@@ -483,6 +483,7 @@ const toChannelWithReader = <A, IE>(
       Effect.forkIn(scope)
     )
 
+    // @effect-diagnostics-next-line returnEffectInGen:off
     return Effect.catchCause(
       Effect.suspend(
         (): Pull.Pull<NonEmptyReadonlyArray<A>, SocketError | IE> =>
@@ -744,13 +745,13 @@ const isPausable = (ws: WebSocketLike): ws is WebSocketLike & Pausable =>
  *
  * Reader acquisition runs `acquire`, attaches event listeners, then waits for
  * the socket to open. Implementations exposing `pause`/`resume` (the `ws`
- * package) start paused, resume when the first pull waits, and pause again
- * when buffered frames reach the configured `highWaterMark`. Draining the
- * buffer resumes the transport. Incoming frames that arrive in the same tick
- * are coalesced into one batch. Implementations without pause (browsers) buffer
- * incoming frames, optionally failing the socket with a `SocketReadError` when
- * `highWaterMark` bytes are exceeded (default unbounded). Message boundaries
- * survive: each pulled batch contains one element per frame.
+ * package) remain flowing until buffered frames reach the configured
+ * `highWaterMark` (64 KiB by default). Draining the buffer resumes the
+ * transport. Incoming frames that arrive in the same tick are coalesced into
+ * one batch. Implementations without pause (browsers) buffer incoming frames,
+ * optionally failing the socket with a `SocketReadError` when `highWaterMark`
+ * bytes are exceeded (default unbounded). Message boundaries survive: each
+ * pulled batch contains one element per frame.
  *
  * @category constructors
  * @since 4.0.0
@@ -775,7 +776,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
         ;(ws as { binaryType: string }).binaryType = "arraybuffer"
       }
       const pausable = isPausable(ws)
-      const highWaterMark = options?.highWaterMark
+      const highWaterMark = options?.highWaterMark ?? (pausable ? defaultHighWaterMark : undefined)
 
       type ReadResume = (
         effect: Effect.Effect<NonEmptyReadonlyArray<Uint8Array | string>, SocketError>
@@ -832,9 +833,9 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
             dispatcher.scheduleTask(deliver, 0)
           }
         }
-        if (pausable && highWaterMark !== undefined && bufferSize >= highWaterMark) {
+        if (pausable && bufferSize >= highWaterMark!) {
           pauseWebSocket()
-        } else if (!pausable && waiter === undefined && highWaterMark !== undefined && bufferSize > highWaterMark) {
+        } else if (!pausable && !waiter && highWaterMark !== undefined && bufferSize > highWaterMark) {
           fail(
             new SocketError({
               reason: new SocketReadError({
@@ -908,6 +909,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       )
 
       if (ws.readyState >= 2) {
+        // @effect-diagnostics-next-line unnecessaryFailYieldableError:off
         return yield* Effect.fail(error ?? closeError(1006))
       }
 
@@ -943,22 +945,16 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
         open = true
       }
 
-      pauseWebSocket()
       currentWS = ws
       latch.openUnsafe()
 
-      return Effect.suspend(() => {
-        if (buffer.length > 0) return Effect.succeed(takeBuffer())
-        if (error !== undefined) return Effect.fail(error)
-        return Effect.callback<NonEmptyReadonlyArray<Uint8Array | string>, SocketError>((resume) => {
-          waiter = resume
-          resumeWebSocket()
-          return Effect.sync(() => {
-            if (waiter === resume) {
-              waiter = undefined
-              pauseWebSocket()
-            }
-          })
+      // @effect-diagnostics-next-line returnEffectInGen:off
+      return Effect.callback<NonEmptyReadonlyArray<Uint8Array | string>, SocketError>((resume) => {
+        if (buffer.length > 0) return resume(Effect.succeed(takeBuffer()))
+        if (error !== undefined) return resume(Effect.fail(error))
+        waiter = resume
+        return Effect.sync(() => {
+          if (waiter === resume) waiter = undefined
         })
       })
     }).pipe(
@@ -999,6 +995,8 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
 
     return Effect.succeed(make({ reader, writer }))
   })
+
+const defaultHighWaterMark = 64 * 1024
 
 /**
  * Creates a binary `Channel` backed by a WebSocket URL, requiring a
@@ -1113,6 +1111,7 @@ export const fromTransformStream = <R>(
             reason: new SocketReadError({ cause })
           })
       })
+      // @effect-diagnostics-next-line returnEffectInGen:off
       return Effect.suspend(() => {
         if (error !== undefined) return Effect.fail(error)
         return Effect.flatMap(read, ({ done, value }) =>
