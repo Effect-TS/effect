@@ -12,7 +12,7 @@
   note: "The v4 SchemaAST redesign renamed this primitive, collection, or guard while preserving its role."
 "effect/SchemaAST#ArbitraryAnnotationId":
   replacement: "Schema.Annotations.ToArbitrary"
-  note: "Symbol annotation IDs were removed; use the toArbitrary annotation key and its Schema.Annotations types."
+  note: "Symbol annotation IDs were removed. Declarations use the toCodecArbitrary annotation; filters use arbitraryConstraint."
 "effect/SchemaAST#AST":
   replacement: "SchemaAST.AST"
   note: "The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model."
