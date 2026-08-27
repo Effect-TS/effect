@@ -6110,7 +6110,7 @@ export const take: {
 } = dual(
   2,
   <A, E, R>(self: Stream<A, E, R>, n: number): Stream<A, E, R> =>
-    n < 1 ? empty : takeUntil(self, (_, i) => i === (n - 1))
+    !(n > 0) ? empty : takeUntil(self, (_, i) => i === (n - 1))
 )
 
 /**

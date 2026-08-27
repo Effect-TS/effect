@@ -741,6 +741,24 @@ describe("Stream", () => {
         assert.deepStrictEqual(result, [])
       }))
 
+    it.effect("take - treating NaN as a non-positive count", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.make(1, 2, 3).pipe(
+          Stream.take(Number.NaN),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [])
+      }))
+
+    it.effect("take - NaN short-circuits stream evaluation", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.never.pipe(
+          Stream.take(Number.NaN),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [])
+      }))
+
     it.effect("takeUntil - takes elements until a predicate is satisfied", () =>
       Effect.gen(function*() {
         const result = yield* Stream.range(1, 5).pipe(
