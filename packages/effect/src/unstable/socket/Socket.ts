@@ -744,8 +744,10 @@ const isPausable = (ws: WebSocketLike): ws is WebSocketLike & Pausable =>
  *
  * Reader acquisition runs `acquire`, attaches event listeners, then waits for
  * the socket to open. Implementations exposing `pause`/`resume` (the `ws`
- * package) are kept paused between pulls so the transport applies real
- * backpressure; implementations without it (browsers) buffer incoming frames,
+ * package) start paused and resume only while a pull is waiting, so frames
+ * are not read before the first pull. They are not paused again after every
+ * batch. Incoming frames that arrive in the same tick are coalesced into one
+ * batch. Implementations without pause (browsers) buffer incoming frames,
  * optionally failing the socket with a `SocketReadError` when `highWaterMark`
  * bytes are exceeded (default unbounded). Message boundaries survive: each
  * pulled batch contains one element per frame.
@@ -801,7 +803,6 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       function deliver() {
         flushScheduled = false
         if (waiter === undefined || buffer.length === 0) return
-        if (pausable) (ws as WebSocketLike & Pausable).pause()
         const resume = waiter
         waiter = undefined
         resume(Effect.succeed(takeBuffer()))
@@ -938,7 +939,10 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
           waiter = resume
           if (pausable) (ws as WebSocketLike & Pausable).resume()
           return Effect.sync(() => {
-            if (waiter === resume) waiter = undefined
+            if (waiter === resume) {
+              waiter = undefined
+              if (pausable) (ws as WebSocketLike & Pausable).pause()
+            }
           })
         })
       })

@@ -15,8 +15,18 @@ class TestWebSocket implements Socket.WebSocketLike {
     Set<{ readonly listener: (event: Socket.WebSocketEvent) => void; readonly once: boolean }>
   >()
   readyState = 0
+  pauseCount = 0
+  resumeCount = 0
 
   constructor(readonly openListenerAttached: Latch.Latch) {}
+
+  pause(): void {
+    this.pauseCount++
+  }
+
+  resume(): void {
+    this.resumeCount++
+  }
 
   addEventListener(
     type: EventType,
@@ -73,7 +83,7 @@ describe("Socket", () => {
         assert.strictEqual(ws.listenerCount("open"), 0)
       }))
 
-    it.effect("uses the Scheduler service to deliver buffered messages", () =>
+    it.effect("coalesces same-tick messages through the Scheduler and does not pause after deliver", () =>
       Effect.gen(function*() {
         const tasks: Array<() => void> = []
         const scheduler: Scheduler.Scheduler = {
@@ -94,14 +104,18 @@ describe("Socket", () => {
         const pull = yield* socket.reader.pipe(
           Effect.provideService(Scheduler.Scheduler, scheduler)
         )
+        assert.strictEqual(ws.pauseCount, 1)
         const reader = yield* pull.pipe(Effect.forkChild({ startImmediately: true }))
+        assert.strictEqual(ws.resumeCount, 1)
 
         ws.dispatch("message", { data: "hello" })
+        ws.dispatch("message", { data: "world" })
 
         assert.isUndefined(reader.pollUnsafe())
         assert.lengthOf(tasks, 1)
         scheduler.makeDispatcher().flush()
-        assert.deepStrictEqual(yield* Fiber.join(reader), ["hello"])
+        assert.deepStrictEqual(yield* Fiber.join(reader), ["hello", "world"])
+        assert.strictEqual(ws.pauseCount, 1)
       }))
   })
 
