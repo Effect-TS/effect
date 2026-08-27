@@ -772,7 +772,12 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       let bufferSize = 0
       let error: SocketError | undefined
       let waiter: ReadResume | undefined
-      let openWaiter: ((effect: Effect.Effect<void, SocketError>) => void) | undefined
+      let openWaiter:
+        | {
+          readonly resume: (effect: Effect.Effect<void, SocketError>) => void
+          readonly cleanup: () => void
+        }
+        | undefined
       let flushScheduled = false
 
       function takeBuffer(): NonEmptyReadonlyArray<Uint8Array | string> {
@@ -816,8 +821,9 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       function fail(err: SocketError) {
         if (error === undefined) error = err
         if (openWaiter !== undefined) {
-          const resume = openWaiter
+          const { cleanup, resume } = openWaiter
           openWaiter = undefined
+          cleanup()
           resume(Effect.fail(error))
         }
         if (waiter !== undefined) {
@@ -880,15 +886,18 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
 
       if (!open) {
         yield* Effect.callback<void, SocketError>((resume) => {
-          openWaiter = resume
           const onOpen = () => {
-            openWaiter = undefined
-            resume(Effect.void)
-          }
-          ws.addEventListener("open", onOpen, { once: true })
-          return Effect.sync(() => {
+            if (openWaiter?.resume !== resume) return
             openWaiter = undefined
             ws.removeEventListener("open", onOpen)
+            resume(Effect.void)
+          }
+          const cleanup = () => ws.removeEventListener("open", onOpen)
+          openWaiter = { resume, cleanup }
+          ws.addEventListener("open", onOpen, { once: true })
+          return Effect.sync(() => {
+            if (openWaiter?.resume === resume) openWaiter = undefined
+            cleanup()
           })
         }).pipe(
           Effect.timeoutOrElse({

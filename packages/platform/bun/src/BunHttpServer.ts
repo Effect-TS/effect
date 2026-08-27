@@ -604,10 +604,15 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
         const writer: Socket.Socket["writer"] = Effect.succeed({ write, writeAll })
 
         const reader: Socket.Socket["reader"] = Effect.gen(function*() {
-          if (ws.data.closeError !== undefined && ws.data.buffer.length === 0) {
-            return yield* Effect.fail(ws.data.closeError)
+          yield* Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1))
+          const closeError = ws.data.closeError ?? (ws.readyState >= 2
+            ? new Socket.SocketError({
+              reason: new Socket.SocketCloseError({ code: 1006 })
+            })
+            : undefined)
+          if (closeError !== undefined && ws.data.buffer.length === 0) {
+            return yield* Effect.fail(closeError)
           }
-          yield* semaphore.take(1)
           const scope = yield* Effect.scope
 
           type ReadResume = (
@@ -615,7 +620,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
           ) => void
 
           let buffer: Array<Uint8Array | string> = ws.data.buffer.splice(0)
-          let error: Socket.SocketError | undefined = ws.data.closeError
+          let error: Socket.SocketError | undefined = closeError
           let waiter: ReadResume | undefined
           let flushScheduled = false
 
@@ -661,7 +666,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
               ws.data.run = wsDefaultRun
               ws.data.onClose = constVoid
               ws.close(1000)
-              return semaphore.release(1)
+              return Effect.void
             })
           )
 
