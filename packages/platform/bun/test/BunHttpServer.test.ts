@@ -87,13 +87,19 @@ const makeWebSocketServer = Effect.fnUntraced(function*(payload: string, compres
   yield* server.serve(Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
     const socket = yield* request.upgrade
-    const write = yield* socket.writer
-    yield* socket.runRaw(() => undefined, {
-      onOpen: Effect.gen(function*() {
-        yield* Effect.orDie(write(payload))
-        yield* Effect.orDie(write(new TextEncoder().encode(payload)))
-      })
-    })
+    yield* Effect.gen(function*() {
+      const pull = yield* socket.reader
+      const writer = yield* socket.writer
+      yield* Effect.orDie(writer.write(payload))
+      yield* Effect.orDie(writer.write(new TextEncoder().encode(payload)))
+      while (true) {
+        yield* pull
+      }
+    }).pipe(
+      Effect.scoped,
+      Effect.catchTag("SocketError", () => Effect.void),
+      Effect.orDie
+    )
     return HttpServerResponse.empty()
   }))
   return server

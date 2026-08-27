@@ -13,12 +13,21 @@ const makeTempDir = Effect.acquireRelease(
 )
 
 const echo = (socket: Socket.Socket) =>
-  Effect.scoped(
-    Effect.gen(function*() {
-      const write = yield* socket.writer
-      yield* socket.run(write)
-    })
+  Effect.gen(function*() {
+    const writer = yield* socket.writer
+    const pull = yield* socket.reader
+    while (true) {
+      yield* writer.writeAll(yield* pull)
+    }
+  }).pipe(
+    Effect.scoped,
+    Effect.catchTag("SocketError", () => Effect.void)
   )
+
+const closeIsDone = Stream.catchIf(
+  (error: Socket.SocketError) => error.reason._tag === "SocketCloseError",
+  () => Stream.empty
+)
 
 const makeTestConn = (onClose?: () => void): Deno.Conn => {
   const transform = new TransformStream<Uint8Array>()
@@ -77,6 +86,7 @@ describe("DenoSocketServer", () => {
           hostname: address.hostname,
           port: address.port
         })),
+        closeIsDone,
         Stream.decodeText(),
         Stream.mkString
       )
@@ -95,6 +105,7 @@ describe("DenoSocketServer", () => {
       const output = yield* Stream.make("Hello", "Unix").pipe(
         Stream.encodeText,
         Stream.pipeThroughChannel(DenoSocket.makeTcpChannel({ transport: "unix", path })),
+        closeIsDone,
         Stream.decodeText(),
         Stream.mkString
       )

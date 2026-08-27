@@ -3,18 +3,16 @@
  *
  * This module opens `node:net` connections or wraps existing Node `Duplex`
  * streams and presents them as `Socket.Socket` values, socket channels, or
- * layers. It also exposes the current underlying `NetSocket` service for code
- * running inside a socket handler and re-exports the `ws` package namespace.
+ * layers. It also exposes the `NetSocket` service tag for the underlying Node
+ * socket and re-exports the `ws` package namespace.
  *
  * @since 4.0.0
  */
 import type { Array } from "effect"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
-import * as Deferred from "effect/Deferred"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as FiberSet from "effect/FiberSet"
 import * as Function from "effect/Function"
 import { identity } from "effect/Function"
 import * as Latch from "effect/Latch"
@@ -46,12 +44,13 @@ export class NetSocket extends Context.Service<NetSocket, Net.Socket>()(
  *
  * **When to use**
  *
- * Use to create a scoped `Socket.Socket` from Node `net.createConnection`.
+ * Use to create a `Socket.Socket` whose reader acquisition dials
+ * `net.createConnection`.
  *
  * **Details**
  *
  * Supports `openTimeout` and closes or destroys the underlying socket when the
- * enclosing scope is finalized.
+ * reader scope is finalized.
  *
  * @category constructors
  * @since 4.0.0
@@ -98,9 +97,19 @@ export const makeNet = (
   )
 
 /**
- * Adapts a Node `Duplex` into a `Socket.Socket`, wiring data events to socket
- * handlers, providing a scoped writer, and mapping open, read, write, and close
- * failures to `SocketError`.
+ * Adapts a Node `Duplex` into a `Socket.Socket`.
+ *
+ * **Details**
+ *
+ * Reader acquisition opens the duplex and keeps it paused: each pull reads
+ * Node's internal buffer via `stream.read()`, which returns the buffered data
+ * as one concatenated chunk. The stream is never resumed, so once Node's
+ * buffer reaches its `highWaterMark` the kernel receive window closes and the
+ * peer blocks: backpressure is end-to-end with no buffering above Node's own.
+ *
+ * Writes use `write()` return-value backpressure, awaiting one `drain` when
+ * the internal buffer is full. `writeAll` corks the stream around the batch.
+ * Releasing the writer scope half-closes the stream (`end()`).
  *
  * @category constructors
  * @since 4.0.0
@@ -116,112 +125,178 @@ export const fromDuplex = <RO>(
     const latch = Latch.makeUnsafe(false)
     const openServices = fiber.context as Context.Context<RO>
 
-    const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void, opts?: {
-      readonly onOpen?: Effect.Effect<void> | undefined
-    }) =>
-      Effect.scopedWith(Effect.fnUntraced(function*(scope) {
-        const fiberSet = yield* FiberSet.make<any, E | Socket.SocketError>().pipe(
-          Scope.provide(scope)
-        )
-        let conn: Duplex | undefined = undefined
-        yield* Scope.addFinalizer(
-          scope,
-          Effect.sync(() => {
-            if (!conn) return
-            conn.off("data", onData)
-            conn.off("end", onEnd)
-            conn.off("error", onError)
-            conn.off("close", onClose)
-          })
-        )
-        conn = yield* Scope.provide(open, scope).pipe(
-          options?.openTimeout !== undefined ?
-            Effect.timeoutOrElse({
-              duration: options.openTimeout,
-              orElse: () =>
-                Effect.fail(
-                  new Socket.SocketError({
-                    reason: new Socket.SocketOpenError({ kind: "Timeout", cause: new Error("Connection timed out") })
-                  })
-                )
-            }) :
-            identity
-        )
-        conn.on("end", onEnd)
-        conn.on("error", onError)
-        conn.on("close", onClose)
-        const run = yield* Effect.provideService(FiberSet.runtime(fiberSet)<R>(), NetSocket, conn as Net.Socket)
-        conn.on("data", onData)
-
-        currentSocket = conn
-        latch.openUnsafe()
-        if (opts?.onOpen) {
-          yield* opts.onOpen
-        }
-
-        return yield* FiberSet.join(fiberSet)
-
-        function onData(chunk: Uint8Array) {
-          const result = handler(chunk)
-          if (Effect.isEffect(result)) {
-            run(result)
-          }
-        }
-        function onEnd() {
-          Deferred.doneUnsafe(fiberSet.deferred, Effect.void)
-        }
-        function onError(cause: Error) {
-          Deferred.doneUnsafe(
-            fiberSet.deferred,
-            Effect.fail(
-              new Socket.SocketError({
-                reason: new Socket.SocketReadError({ cause })
-              })
-            )
-          )
-        }
-        function onClose(hadError: boolean) {
-          Deferred.doneUnsafe(
-            fiberSet.deferred,
-            Effect.fail(
-              new Socket.SocketError({
-                reason: new Socket.SocketCloseError({ code: hadError ? 1006 : 1000 })
-              })
-            )
-          )
-        }
-      })).pipe(
-        Effect.updateContext((input: Context.Context<R>) => Context.merge(openServices, input)),
-        Effect.onExit(() =>
-          Effect.sync(() => {
-            latch.closeUnsafe()
-            currentSocket = undefined
-          })
-        )
+    const reader: Socket.Socket["reader"] = Effect.gen(function*() {
+      const scope = yield* Effect.scope
+      const conn = yield* Scope.provide(open, scope).pipe(
+        options?.openTimeout !== undefined ?
+          Effect.timeoutOrElse({
+            duration: options.openTimeout,
+            orElse: () =>
+              Effect.fail(
+                new Socket.SocketError({
+                  reason: new Socket.SocketOpenError({ kind: "Timeout", cause: new Error("Connection timed out") })
+                })
+              )
+          }) :
+          identity
       )
 
+      type ReadResume = (
+        effect: Effect.Effect<Array.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>
+      ) => void
+
+      let error: Socket.SocketError | undefined
+      let waiter: ReadResume | undefined
+
+      function fail(err: Socket.SocketError) {
+        if (error === undefined) error = err
+        if (waiter !== undefined) {
+          const resume = waiter
+          waiter = undefined
+          resume(Effect.fail(error!))
+        }
+      }
+      function onReadable() {
+        if (waiter === undefined) return
+        const chunk = conn.read() as Uint8Array | null
+        if (chunk === null) return
+        const resume = waiter
+        waiter = undefined
+        resume(Effect.succeed([chunk] as const))
+      }
+      function onEnd() {
+        fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
+      }
+      function onError(cause: Error) {
+        fail(
+          new Socket.SocketError({
+            reason: new Socket.SocketReadError({ cause })
+          })
+        )
+      }
+      function onClose(hadError: boolean) {
+        fail(
+          new Socket.SocketError({
+            reason: new Socket.SocketCloseError({ code: hadError ? 1006 : 1000 })
+          })
+        )
+      }
+
+      conn.pause()
+      conn.on("readable", onReadable)
+      conn.on("end", onEnd)
+      conn.on("error", onError)
+      conn.on("close", onClose)
+      yield* Scope.addFinalizer(
+        scope,
+        Effect.sync(() => {
+          // resume a pull blocked in another fiber before detaching
+          fail(
+            new Socket.SocketError({
+              reason: new Socket.SocketCloseError({ code: 1006 })
+            })
+          )
+          conn.off("readable", onReadable)
+          conn.off("end", onEnd)
+          conn.off("error", onError)
+          conn.off("close", onClose)
+          latch.closeUnsafe()
+          currentSocket = undefined
+        })
+      )
+
+      currentSocket = conn
+      latch.openUnsafe()
+
+      return Effect.suspend(() => {
+        const chunk = conn.read() as Uint8Array | null
+        if (chunk !== null) return Effect.succeed([chunk] as const)
+        if (error !== undefined) return Effect.fail(error)
+        return Effect.callback<Array.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>((resume) => {
+          waiter = resume
+          return Effect.sync(() => {
+            if (waiter === resume) waiter = undefined
+          })
+        })
+      })
+    }).pipe(
+      Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(openServices, input))
+    ) as Socket.Socket["reader"]
+
+    const awaitDrain = (conn: Duplex) =>
+      Effect.callback<void, Socket.SocketError>((resume) => {
+        function cleanup() {
+          conn.off("drain", onDrain)
+          conn.off("error", onError)
+          conn.off("close", onClose)
+        }
+        function onDrain() {
+          cleanup()
+          resume(Effect.void)
+        }
+        function onError(cause: Error) {
+          cleanup()
+          resume(Effect.fail(
+            new Socket.SocketError({
+              reason: new Socket.SocketWriteError({ cause })
+            })
+          ))
+        }
+        function onClose() {
+          cleanup()
+          resume(Effect.fail(
+            new Socket.SocketError({
+              reason: new Socket.SocketWriteError({ cause: new Error("socket closed") })
+            })
+          ))
+        }
+        conn.on("drain", onDrain)
+        conn.on("error", onError)
+        conn.on("close", onClose)
+        return Effect.sync(cleanup)
+      })
+
     const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
-      latch.whenOpen(Effect.callback<void, Socket.SocketError>((resume) => {
+      latch.whenOpen(Effect.suspend(() => {
         const conn = currentSocket!
         if (Socket.isCloseEvent(chunk)) {
           conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
-          return resume(Effect.void)
+          return Effect.void
         }
-        currentSocket!.write(chunk, (cause) => {
-          resume(
-            cause
-              ? Effect.fail(
-                new Socket.SocketError({
-                  reason: new Socket.SocketWriteError({ cause: cause! })
-                })
-              )
-              : Effect.void
+        try {
+          return conn.write(chunk) ? Effect.void : awaitDrain(conn)
+        } catch (cause) {
+          return Effect.fail(
+            new Socket.SocketError({
+              reason: new Socket.SocketWriteError({ cause })
+            })
           )
-        })
+        }
       }))
 
-    const writer = Effect.acquireRelease(
-      Effect.succeed(write),
+    const writeAll = (chunks: Array.NonEmptyReadonlyArray<Uint8Array | string>) =>
+      latch.whenOpen(Effect.suspend(() => {
+        const conn = currentSocket!
+        let needsDrain = false
+        try {
+          conn.cork()
+          for (let i = 0; i < chunks.length; i++) {
+            needsDrain = !conn.write(chunks[i]) || needsDrain
+          }
+        } catch (cause) {
+          return Effect.fail(
+            new Socket.SocketError({
+              reason: new Socket.SocketWriteError({ cause })
+            })
+          )
+        } finally {
+          conn.uncork()
+        }
+        return needsDrain ? awaitDrain(conn) : Effect.void
+      }))
+
+    const writer: Socket.Socket["writer"] = Effect.acquireRelease(
+      Effect.succeed({ write, writeAll }),
       () =>
         Effect.sync(() => {
           if (!currentSocket || currentSocket.writableEnded) return
@@ -229,11 +304,7 @@ export const fromDuplex = <RO>(
         })
     )
 
-    return Effect.succeed(Socket.make({
-      run,
-      runRaw: run,
-      writer
-    }))
+    return Effect.succeed(Socket.make({ reader, writer }))
   })
 
 /**

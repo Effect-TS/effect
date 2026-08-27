@@ -112,26 +112,36 @@ describe("RpcServer", () => {
       const completed = yield* Deferred.make<void>()
       let closed = false
 
+      const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
+        Effect.sync(() => {
+          writes.push(chunk)
+          if (Socket.isCloseEvent(chunk)) {
+            closed = true
+          }
+        })
       const socket = Socket.make({
-        runRaw: (handler) =>
-          Effect.gen(function*() {
-            for (const chunk of ["12", "34", "5", "{\"_tag\":\"Ping\"}\n"]) {
-              if (closed) break
-              handledChunks.push(chunk)
-              const result = handler(chunk)
-              if (Effect.isEffect(result)) {
-                yield* result
-              }
+        reader: Effect.sync(() => {
+          const chunks = ["12", "34", "5", "{\"_tag\":\"Ping\"}\n"]
+          let index = 0
+          return Effect.suspend(() => {
+            if (closed || index >= chunks.length) {
+              return Deferred.succeed(completed, void 0).pipe(
+                Effect.andThen(Effect.fail(
+                  new Socket.SocketError({
+                    reason: new Socket.SocketCloseError({ code: 1000 })
+                  })
+                ))
+              )
             }
-          }).pipe(Effect.ensuring(Deferred.succeed(completed, void 0))),
-        writer: Effect.succeed((chunk) =>
-          Effect.sync(() => {
-            writes.push(chunk)
-            if (Socket.isCloseEvent(chunk)) {
-              closed = true
-            }
+            const chunk = chunks[index++]
+            handledChunks.push(chunk)
+            return Effect.succeed([chunk] as const)
           })
-        )
+        }),
+        writer: Effect.succeed({
+          write,
+          writeAll: (chunks) => Effect.forEach(chunks, write, { discard: true })
+        })
       })
       const socketServer = SocketServer.SocketServer.of({
         address: {

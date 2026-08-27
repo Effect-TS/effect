@@ -884,7 +884,7 @@ export const makeProtocolSocketServer = Effect.gen(function*() {
   const server = yield* SocketServer.SocketServer
   const { onSocket, protocol } = yield* makeSocketProtocol
   yield* Effect.forkScoped(
-    server.run(Effect.fnUntraced(onSocket, Effect.scoped))
+    server.run((socket) => Effect.scoped(onSocket(socket)))
   )
   return protocol
 })
@@ -1434,17 +1434,7 @@ const makeSocketProtocol: Effect.Effect<
     readonly onSocket: (
       socket: Socket.Socket,
       headers?: ReadonlyArray<[string, string]>
-    ) => Generator<
-      | Effect.Effect<void, never, never>
-      | Effect.Effect<Scope.Scope, never, Scope.Scope>
-      | Effect.Effect<
-        (chunk: Uint8Array | string | Socket.CloseEvent) => Effect.Effect<void, Socket.SocketError>,
-        never,
-        Scope.Scope
-      >,
-      void,
-      any
-    >
+    ) => Effect.Effect<void, never, Scope.Scope>
   },
   never,
   RpcSerialization.RpcSerialization
@@ -1461,7 +1451,7 @@ const makeSocketProtocol: Effect.Effect<
 
   let writeRequest!: (clientId: number, message: FromClientEncoded) => Effect.Effect<void>
 
-  const onSocket = function*(socket: Socket.Socket, headers?: ReadonlyArray<[string, string]>) {
+  const onSocket = Effect.fnUntraced(function*(socket: Socket.Socket, headers?: ReadonlyArray<[string, string]>) {
     const scope = yield* Effect.scope
     const parser = serialization.makeUnsafe()
     const id = clientId++
@@ -1471,24 +1461,24 @@ const makeSocketProtocol: Effect.Effect<
       return Queue.offer(disconnects, id)
     })
 
-    const writeRaw = yield* socket.writer
+    const writer = yield* Effect.orDie(socket.writer)
     const write = (response: FromServerEncoded) => {
       try {
         const encoded = parser.encode(response)
         if (encoded === undefined) {
           return Effect.void
         }
-        return Effect.orDie(writeRaw(encoded))
+        return Effect.orDie(writer.write(encoded))
       } catch (cause) {
         return Effect.orDie(
-          writeRaw(parser.encode(ResponseDefectEncoded(encodeDefectUnsafe(cause)))!)
+          writer.write(parser.encode(ResponseDefectEncoded(encodeDefectUnsafe(cause)))!)
         )
       }
     }
     clients.set(id, { write })
     clientIds.add(id)
 
-    yield* socket.runRaw((data) => {
+    const processData = (data: Uint8Array | string): Effect.Effect<void, Socket.SocketError> => {
       try {
         const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
         if (decoded.length === 0) return Effect.void
@@ -1506,15 +1496,35 @@ const makeSocketProtocol: Effect.Effect<
         })
       } catch (cause) {
         if (Predicate.isTagged(cause, "MaxBufferSizeExceeded")) {
-          return writeRaw(new Socket.CloseEvent(1009, String(cause)))
+          return writer.write(new Socket.CloseEvent(1009, String(cause)))
         }
-        return writeRaw(parser.encode(ResponseDefectEncoded(encodeDefectUnsafe(cause)))!)
+        return writer.write(parser.encode(ResponseDefectEncoded(encodeDefectUnsafe(cause)))!)
       }
-    }).pipe(
+    }
+
+    let chunk: ReadonlyArray<Uint8Array | string> | undefined
+    let chunkIndex = 0
+    const processChunk = Effect.whileLoop({
+      while: () => chunkIndex < chunk!.length,
+      body: () => processData(chunk![chunkIndex++]),
+      step: constVoid
+    })
+
+    yield* socket.reader.pipe(
+      Effect.flatMap((pull) =>
+        pull.pipe(
+          Effect.flatMap((data) => {
+            chunk = data
+            chunkIndex = 0
+            return processChunk
+          }),
+          Effect.forever({ disableYield: true })
+        )
+      ),
       Effect.catchReason("SocketError", "SocketCloseError", (_) => Effect.void),
       Effect.orDie
     )
-  }
+  })
 
   const protocol = yield* Protocol.make((writeRequest_) => {
     writeRequest = writeRequest_

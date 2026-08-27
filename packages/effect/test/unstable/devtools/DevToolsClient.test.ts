@@ -8,27 +8,33 @@ describe("DevToolsClient", () => {
     Effect.gen(function*() {
       const spans: Array<any> = []
       const received = yield* Deferred.make<void>()
-      const socket = Socket.make({
-        runRaw: (handler) =>
-          Effect.suspend(() => {
-            const result = handler("{\"_tag\":\"Pong\"}\n")
-            return Effect.isEffect(result) ? result : Effect.void
-          }).pipe(Effect.andThen(Effect.never)),
-        writer: Effect.succeed((chunk) =>
-          Effect.sync(() => {
-            if (Socket.isCloseEvent(chunk)) return false
-            const text = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)
-            for (const line of text.trim().split("\n")) {
-              if (line.length === 0) continue
-              const message = JSON.parse(line)
-              if (message._tag === "Span") spans.push(message)
-            }
-            return spans.length >= 2
-          }).pipe(
-            Effect.flatMap((done) => done ? Deferred.succeed(received, void 0) : Effect.void),
-            Effect.asVoid
-          )
+      const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
+        Effect.sync(() => {
+          if (Socket.isCloseEvent(chunk)) return false
+          const text = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)
+          for (const line of text.trim().split("\n")) {
+            if (line.length === 0) continue
+            const message = JSON.parse(line)
+            if (message._tag === "Span") spans.push(message)
+          }
+          return spans.length >= 2
+        }).pipe(
+          Effect.flatMap((done) => done ? Deferred.succeed(received, void 0) : Effect.void),
+          Effect.asVoid
         )
+      const socket = Socket.make({
+        reader: Effect.sync(() => {
+          let sent = false
+          return Effect.suspend(() => {
+            if (sent) return Effect.never
+            sent = true
+            return Effect.succeed(["{\"_tag\":\"Pong\"}\n"] as const)
+          })
+        }),
+        writer: Effect.succeed({
+          write,
+          writeAll: (chunks) => Effect.forEach(chunks, write, { discard: true })
+        })
       })
 
       yield* Effect.gen(function*() {

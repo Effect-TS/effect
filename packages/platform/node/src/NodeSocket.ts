@@ -58,7 +58,7 @@ export const layerWebSocketConstructorWS: Layer.Layer<
 
 /**
  * Creates a `Socket.Socket` layer for a WebSocket URL using the Node WebSocket
- * constructor layer, honoring protocol, open-timeout, and close-code error
+ * constructor layer, honoring protocol, open-timeout, and high-water-mark
  * options.
  *
  * @category layers
@@ -67,9 +67,9 @@ export const layerWebSocketConstructorWS: Layer.Layer<
 export const layerWebSocket: (
   url: string | Effect.Effect<string>,
   options?: {
-    readonly closeCodeIsError?: ((code: number) => boolean) | undefined
     readonly openTimeout?: Duration.Input | undefined
     readonly protocols?: string | Array<string> | undefined
+    readonly highWaterMark?: number | undefined
   } | undefined
 ) => Layer.Layer<Socket.Socket, never, never> = flow(
   Socket.makeWebSocket,

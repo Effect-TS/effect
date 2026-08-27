@@ -1041,19 +1041,15 @@ export const makeProtocolSocket = (options?: {
     const hooks = yield* Effect.serviceOption(ConnectionHooks)
     const requestClientMap = new Map<string | number, number>()
 
-    const write = yield* socket.writer
+    const writer = yield* Effect.orDie(socket.writer)
 
     let parser = serialization.makeUnsafe()
 
     // `parser` is replaced on every connect, and a stateful serialization
     // encodes against the connection it is writing to, so the ping is encoded
     // when it is sent rather than once up front.
-    const pinger = yield* makePinger(Effect.suspend(() => write(parser.encode(constPing)!)))
+    const pinger = yield* makePinger(Effect.suspend(() => writer.write(parser.encode(constPing)!)))
     let currentError: RpcClientError | undefined
-    const onOpen = Effect.suspend(() => {
-      currentError = undefined
-      return Option.isSome(hooks) ? hooks.value.onConnect : Effect.void
-    })
 
     const broadcast = (response: FromServerEncoded) =>
       Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
@@ -1065,48 +1061,76 @@ export const makeProtocolSocket = (options?: {
       })
     }
 
+    const processData = (data: Uint8Array | string): Effect.Effect<void> => {
+      try {
+        const responses = parser.decode(data) as Array<FromServerEncoded>
+        if (responses.length === 0) return Effect.void
+        let i = 0
+        return Effect.whileLoop({
+          while: () => i < responses.length,
+          body: () => {
+            const response = responses[i++]
+            if (response._tag === "Pong") {
+              pinger.onPong()
+              return Effect.void
+            }
+            if (Object.hasOwn(response, "requestId")) {
+              const requestId = (response as FromServerEncoded & { readonly requestId: string | number }).requestId
+              const clientId = requestClientMap.get(requestId)
+              if (clientId !== undefined) {
+                if (response._tag === "Exit") {
+                  requestClientMap.delete(requestId)
+                }
+                return writeResponse(clientId, response)
+              }
+            }
+            return broadcast(response)
+          },
+          step: constVoid
+        })
+      } catch (defect) {
+        return broadcast({
+          _tag: "ClientProtocolError",
+          error: new RpcClientError({
+            reason: new RpcClientDefect({
+              message: "Error decoding message",
+              cause: defect
+            })
+          })
+        })
+      }
+    }
+
+    let chunk: ReadonlyArray<Uint8Array | string> | undefined
+    let chunkIndex = 0
+    const processChunk = Effect.whileLoop({
+      while: () => chunkIndex < chunk!.length,
+      body: () => processData(chunk![chunkIndex++]),
+      step: constVoid
+    })
+
     yield* Effect.suspend(() => {
       parser = serialization.makeUnsafe()
       pinger.reset()
-      return socket.runRaw((message) => {
-        try {
-          const responses = parser.decode(message) as Array<FromServerEncoded>
-          if (responses.length === 0) return
-          let i = 0
-          return Effect.whileLoop({
-            while: () => i < responses.length,
-            body: () => {
-              const response = responses[i++]
-              if (response._tag === "Pong") {
-                pinger.onPong()
-                return Effect.void
-              }
-              if (Object.hasOwn(response, "requestId")) {
-                const requestId = (response as FromServerEncoded & { readonly requestId: string | number }).requestId
-                const clientId = requestClientMap.get(requestId)
-                if (clientId !== undefined) {
-                  if (response._tag === "Exit") {
-                    requestClientMap.delete(requestId)
-                  }
-                  return writeResponse(clientId, response)
-                }
-              }
-              return broadcast(response)
-            },
-            step: constVoid
-          })
-        } catch (defect) {
-          return broadcast({
-            _tag: "ClientProtocolError",
-            error: new RpcClientError({
-              reason: new RpcClientDefect({
-                message: "Error decoding message",
-                cause: defect
-              })
-            })
-          })
+      return Effect.gen(function*() {
+        const pull = (yield* socket.reader) as Effect.Effect<
+          ReadonlyArray<Uint8Array | string>,
+          Socket.SocketError
+        >
+        currentError = undefined
+        if (Option.isSome(hooks)) {
+          yield* hooks.value.onConnect
         }
-      }, { onOpen }).pipe(
+        return yield* pull.pipe(
+          Effect.flatMap((data) => {
+            chunk = data
+            chunkIndex = 0
+            return processChunk
+          }),
+          Effect.forever({ disableYield: true })
+        )
+      }).pipe(
+        Effect.scoped,
         Effect.raceFirst(Effect.flatMap(
           pinger.timeout,
           () =>
@@ -1121,9 +1145,6 @@ export const makeProtocolSocket = (options?: {
         ))
       )
     }).pipe(
-      Effect.flatMap(() =>
-        Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
-      ),
       Option.isSome(hooks) ? Effect.ensuring(hooks.value.onDisconnect) : identity,
       Effect.tapCause((cause) => {
         const error = Cause.findError(cause)
@@ -1168,7 +1189,7 @@ export const makeProtocolSocket = (options?: {
         }
         const encoded = parser.encode(request)
         if (encoded === undefined) return Effect.void
-        return Effect.orDie(write(encoded))
+        return Effect.orDie(writer.write(encoded))
       },
       supportsAck: true,
       supportsTransferables: false,
