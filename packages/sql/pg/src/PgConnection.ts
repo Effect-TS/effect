@@ -94,6 +94,8 @@ export interface Config {
   readonly multiplex?: boolean | undefined
   readonly prepare?: boolean | undefined
   readonly preparedStatementCacheSize?: number | undefined
+  /** Maximum backend message size in bytes. Defaults to 16 MiB. */
+  readonly maxMessageSize?: number | undefined
 }
 
 /**
@@ -2010,7 +2012,7 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
     }
 
     const startup = (): void => {
-      parser = PgProtocol.makeParser<unknown>()
+      parser = PgProtocol.makeParser<unknown>({ maxMessageSize: config.maxMessageSize })
       socket.on("data", onData)
       socket.write(PgProtocol.encodeStartupMessage({
         user: config.username,
@@ -2022,7 +2024,7 @@ const connect = (config: ResolvedConfig): Effect.Effect<Session, SqlError> =>
     const onSslResponse = (chunk: Uint8Array): void => {
       if (done) return
       if (sslErrorParser !== undefined || chunk[0] === 0x45) {
-        sslErrorParser ??= PgProtocol.makeParser()
+        sslErrorParser ??= PgProtocol.makeParser({ maxMessageSize: config.maxMessageSize })
         let messages: ReadonlyArray<PgProtocol.BackendMessage>
         try {
           messages = sslErrorParser.push(chunk)
@@ -2117,6 +2119,7 @@ interface ResolvedConfig {
   readonly connectTimeout: Duration.Duration
   readonly applicationName: string
   readonly stream: (() => Duplex) | undefined
+  readonly maxMessageSize: number | undefined
 }
 
 const configError = (message: string, cause?: unknown): SqlError =>
@@ -2151,7 +2154,8 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
       password: options.password !== undefined ? Redacted.value(options.password) : url.password,
       connectTimeout: Duration.fromInputUnsafe(options.connectTimeout ?? url.connectTimeout ?? Duration.seconds(5)),
       applicationName: options.applicationName ?? url.applicationName ?? "@effect/sql-pg",
-      stream: options.stream
+      stream: options.stream,
+      maxMessageSize: options.maxMessageSize
     })
   })
 
