@@ -299,9 +299,16 @@ describe.concurrent("Sharding", () => {
           assert(!Exit.hasDies(completed.value), "finalizer defected instead of failing cleanly")
           const exit = yield* Deferred.await(requestExit)
           assert(Exit.isFailure(exit), "request succeeded instead of failing during shutdown")
-          const failure = Cause.findErrorOption(exit.cause)
-          assert(Option.isSome(failure), "request did not fail with a typed error")
-          assert(failure.value instanceof ClusterError.EntityNotAssignedToRunner)
+          if (persisted) {
+            // A persisted request is durable, so a transient routing state is
+            // not an error: the caller is interrupted instead, and the request
+            // is served under the next owner.
+            assert(Cause.hasInterruptsOnly(exit.cause), "persisted request was not interrupted")
+          } else {
+            const failure = Cause.findErrorOption(exit.cause)
+            assert(Option.isSome(failure), "request did not fail with a typed error")
+            assert(failure.value instanceof ClusterError.EntityNotAssignedToRunner)
+          }
           assert.strictEqual(driver.journal.length, persisted ? 1 : 0)
         }),
       20_000
@@ -1357,9 +1364,19 @@ describe("Sharding shard lock failover", () => {
   it.effect("keeps the graceful timeout for normal shard reassignment", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
+      const unregisterInterrupts: Array<boolean> = []
       const runnerStorage = Layer.effect(
         RunnerStorage.RunnerStorage,
         Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+      )
+      const shardingLayer = Sharding.layer.pipe(
+        Layer.updateService(MessageStorage.MessageStorage, (storage) => ({
+          ...storage,
+          unregisterShardReplyHandlers: (shardId, options) =>
+            Effect.sync(() => unregisterInterrupts.push(options?.interrupt ?? false)).pipe(
+              Effect.andThen(storage.unregisterShardReplyHandlers(shardId, options))
+            )
+        }))
       )
       const config = ShardingConfig.layer({
         runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
@@ -1372,7 +1389,7 @@ describe("Sharding shard lock failover", () => {
         sendRetryInterval: 10
       })
       const layer = TestEntityNoState.pipe(
-        Layer.provideMerge(Sharding.layer),
+        Layer.provideMerge(shardingLayer),
         Layer.provide(runnerStorage),
         Layer.provide(RunnerHealth.layerNoop),
         Layer.provideMerge(TestEntityState.layer),
@@ -1415,6 +1432,7 @@ describe("Sharding shard lock failover", () => {
         const entityExit = entityFiber.pollUnsafe()
         assert(entityExit && Exit.hasInterrupts(entityExit))
         assert.strictEqual(storageState.releaseCalls.length, 1)
+        assert.deepStrictEqual(unregisterInterrupts, [false])
       }).pipe(Effect.provide(layer), Effect.scoped)
     }))
 
