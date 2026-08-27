@@ -26,6 +26,17 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
       assert.strictEqual(first, second)
     }))
 
+  it.effect("uses a connection once when its TTL is zero", () =>
+    Effect.gen(function*() {
+      const pool = yield* PgPool.make({ ...(yield* poolConfig), connectionTTL: 0, maxConnections: 1 })
+      const checkout = Effect.scoped(Effect.map(pool.get, (connection) => connection.processId)).pipe(
+        Effect.timeout("1 second")
+      )
+      const first = yield* checkout
+      const second = yield* checkout
+      assert.notStrictEqual(first, second)
+    }))
+
   it.effect("streams rows incrementally and cancels on early abort", () =>
     Effect.gen(function*() {
       const pool = yield* PgPool.make(yield* poolConfig)
