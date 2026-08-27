@@ -277,6 +277,49 @@ describe("LanguageModel", () => {
         })
       }))
 
+    it.effect("does not start tool handlers when an incomplete finish arrives in the same chunk", () =>
+      Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Ref.update(calls, (n) => n + 1).pipe(
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+
+        for (const reason of ["length", "content-filter", "error", "unknown", "other"] as const) {
+          const parts = yield* LanguageModel.streamText({
+            prompt: [],
+            toolkit: MyToolkit
+          }).pipe(
+            Stream.runCollect,
+            TestUtils.withLanguageModel({
+              streamText: [
+                {
+                  type: "tool-call",
+                  id: `tool-${reason}`,
+                  name: "MyTool",
+                  params: { testParam: "test-param" }
+                },
+                { ...finishPart, reason }
+              ]
+            }),
+            Effect.provide(handlers)
+          )
+
+          deepStrictEqual(parts.map((part) => part.type), ["tool-call", "tool-result", "finish"])
+
+          const toolResult = parts.find((part) => part.type === "tool-result")!
+          strictEqual(toolResult.isFailure, true)
+          deepStrictEqual(toolResult.result, {
+            type: "execution-interrupted",
+            reason: `Tool call execution was interrupted because the response finished with reason "${reason}"`
+          })
+        }
+
+        strictEqual(yield* Ref.get(calls), 0)
+      }))
+
     it.effect("keeps results of handlers that completed before an incomplete finish", () =>
       Effect.gen(function*() {
         const parts: Array<Response.StreamPart<Toolkit.Tools<typeof MyToolkit>>> = []

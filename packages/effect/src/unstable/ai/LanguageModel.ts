@@ -1628,11 +1628,20 @@ export const make: (params: {
             yield* Queue.offerAll(queue, immediateParts)
           }
           // Fork tool call handlers as soon as their parameters are complete -
-          // use the raw chunk for encoded params
+          // use the raw chunk for encoded params. When an incomplete finish
+          // has already been observed (possibly in this very chunk), handlers
+          // are not started at all - the calls are only recorded so they
+          // resolve with synthesized failure results.
+          const incompleteFinish = Predicate.isNotUndefined(
+            findIncompleteFinishReason(deferredFinishParts)
+          )
           for (const part of chunk) {
             if (part.type === "tool-call" && part.providerExecuted !== true) {
               if (Predicate.isNotUndefined(toolkit.tools[part.name])) {
                 pendingToolCalls.set(part.id, part.name)
+              }
+              if (incompleteFinish) {
+                continue
               }
               const effect = handleToolCall(part)
               yield* FiberSet.run(
