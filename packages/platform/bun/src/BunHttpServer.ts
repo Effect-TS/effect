@@ -613,7 +613,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             })
             : undefined)
           if (closeError !== undefined && ws.data.buffer.length === 0) {
-            return yield* Effect.fail(closeError)
+            return yield* closeError
           }
           const scope = yield* Effect.scope
 
@@ -672,17 +672,17 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             })
           )
 
-          return Effect.suspend(() => {
-            if (buffer.length > 0) return Effect.succeed(takeBuffer())
-            if (error !== undefined) return Effect.fail(error)
-            return Effect.callback<Arr.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>(
-              (resumeRead) => {
-                waiter = resumeRead
-                return Effect.sync(() => {
-                  if (waiter === resumeRead) waiter = undefined
-                })
-              }
-            )
+          // @effect-diagnostics-next-line returnEffectInGen:off
+          return Effect.callback<
+            Arr.NonEmptyReadonlyArray<Uint8Array | string>,
+            Socket.SocketError
+          >((resumeRead) => {
+            if (buffer.length > 0) return resumeRead(Effect.succeed(takeBuffer()))
+            if (error !== undefined) return resumeRead(Effect.fail(error))
+            waiter = resumeRead
+            return Effect.sync(() => {
+              if (waiter === resumeRead) waiter = undefined
+            })
           })
         })
 
