@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Clock, Effect, Exit, Fiber, Latch, Layer, Option, PrimaryKey, Schema, Scope } from "effect"
+import { Cause, Clock, Effect, Exit, Fiber, Latch, Layer, PrimaryKey, Schema, Scope } from "effect"
 import { ClusterSchema, Entity, EntityResource, Singleton } from "effect/unstable/cluster"
 import { Rpc } from "effect/unstable/rpc"
 import { type Backend, type ClusterRunner, make } from "./harness.ts"
