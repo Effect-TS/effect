@@ -71,6 +71,35 @@ describe("Formatter", () => {
       strictEqual(format({ toString: () => "custom" }), `custom`)
     })
 
+    it("handles throwing property getters", () => {
+      const value = Object.defineProperty({ safe: 1 }, "unsafe", {
+        enumerable: true,
+        get() {
+          throw new Error("getter defect")
+        }
+      })
+
+      strictEqual(format(value), `{"safe":1,"unsafe":"[property access threw]"}`)
+    })
+
+    it("handles hostile Proxies", () => {
+      const { proxy, revoke } = Proxy.revocable({}, {})
+      revoke()
+
+      strictEqual(format(proxy), `[inspection threw]`)
+    })
+
+    it("does not expose a value when redaction throws", () => {
+      const value = {
+        toString: () => "secret",
+        [Redactable.symbolRedactable]() {
+          throw new Error("redaction defect")
+        }
+      }
+
+      strictEqual(format(value), `[inspection threw]`)
+    })
+
     it("array", () => {
       strictEqual(format([1, 2, 3n]), `[1,2,3n]`)
     })

@@ -2497,7 +2497,7 @@ describe.sequential("Atom", () => {
         { reactivityKeys: ["counter"] }
       )
       const dehydratedState: Array<Hydration.DehydratedAtomValue> = [{
-        "~effect/reactivity/DehydratedAtom": true,
+        "~effect/reactivity/Hydration/DehydratedAtom": true,
         key: "hydrated-counter",
         value: 10,
         dehydratedAt: 0

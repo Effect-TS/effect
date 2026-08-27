@@ -1143,7 +1143,7 @@ export interface Optic<out T, out Iso> extends Schema<T> {
   readonly "Rebuild": Optic<T, Iso>
 }
 
-const SchemaErrorTypeId = "~effect/SchemaError/SchemaError"
+const SchemaErrorTypeId = "~effect/Schema/SchemaError"
 
 /**
  * Error thrown or returned when schema decoding or encoding fails.

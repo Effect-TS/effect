@@ -14,8 +14,9 @@
  * @since 2.0.0
  */
 type TupleOf_<T, N extends number, R extends Array<unknown>> = `${N}` extends `-${number}` ? never
-  : R["length"] extends N ? R
-  : TupleOf_<T, N, [T, ...R]>
+  : `${N}` extends `${bigint}` ? R["length"] extends N ? R
+    : TupleOf_<T, N, [T, ...R]>
+  : Array<T>
 
 /**
  * Constructs a tuple type with exactly `N` elements of type `T`.
@@ -27,8 +28,9 @@ type TupleOf_<T, N extends number, R extends Array<unknown>> = `${N}` extends `-
  *
  * **Details**
  *
- * - If `N` is a literal number, produces a tuple of that exact length.
+ * - If `N` is a non-negative integer literal, produces a tuple of that exact length.
  * - If `N` is the general `number` type (non-literal), degrades to `Array<T>`.
+ * - Positive non-integer literals degrade to `Array<T>`.
  * - Negative numbers produce `never`.
  *
  * **Example** (Checking fixed-length tuples)

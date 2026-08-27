@@ -195,7 +195,7 @@ export const makeWebSocket: (
   options: NodeWS.ServerOptions
 ) {
   const pendingConnections = new Map<
-    globalThis.WebSocket,
+    NodeWS.WebSocket,
     readonly [request: Http.IncomingMessage, remove: () => void]
   >()
   const server = yield* Effect.acquireRelease(
@@ -204,13 +204,12 @@ export const makeWebSocket: (
       Effect.callback<void>((resume) => {
         pendingConnections.forEach(([, remove], conn) => {
           remove()
-          const socket = conn as unknown as NodeWS.WebSocket
-          socket.terminate()
+          conn.terminate()
         })
         server.close(() => resume(Effect.void))
       })
   )
-  function defaultHandler(conn: globalThis.WebSocket, req: Http.IncomingMessage) {
+  function defaultHandler(conn: NodeWS.WebSocket, req: Http.IncomingMessage) {
     const remove = () => {
       pendingConnections.delete(conn)
       conn.removeEventListener("close", remove)
@@ -219,7 +218,7 @@ export const makeWebSocket: (
     conn.addEventListener("close", remove)
   }
   let onConnection = defaultHandler
-  server.on("connection", (conn, req) => onConnection(conn as any, req))
+  server.on("connection", (conn, req) => onConnection(conn, req))
 
   yield* Effect.callback<void, SocketServer.SocketServerError>((resume) => {
     server.once("error", (error) => {
@@ -241,10 +240,10 @@ export const makeWebSocket: (
     const services = Context.omit(Scope.Scope)(yield* Effect.context<R>()) as Context.Context<R>
     const trackFiber = Fiber.runIn(scope)
     const prevOnConnection = onConnection
-    onConnection = function(conn: globalThis.WebSocket, req: Http.IncomingMessage) {
+    onConnection = function(conn: NodeWS.WebSocket, req: Http.IncomingMessage) {
       let context = services
       context = Context.add(context, IncomingMessage, req)
-      context = Context.add(context, Socket.WebSocket, conn as any)
+      context = Context.add(context, Socket.WebSocket, conn)
       pipe(
         Socket.fromWebSocket(
           Effect.acquireRelease(

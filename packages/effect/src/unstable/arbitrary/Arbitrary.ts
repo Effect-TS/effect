@@ -6,8 +6,8 @@
 import * as Cause from "../../Cause.ts"
 import type * as Effect from "../../Effect.ts"
 import type * as Filter from "../../Filter.ts"
+import * as Formatter from "../../Formatter.ts"
 import { dual } from "../../Function.ts"
-import * as Inspectable from "../../Inspectable.ts"
 import type * as Model from "../../internal/arbitrary/model.ts"
 import * as Internal from "../../internal/arbitrary/runner.ts"
 import type { Pipeable } from "../../Pipeable.ts"
@@ -29,14 +29,15 @@ export const TypeId: TypeId = Internal.TypeId
  * @category type IDs
  * @since 4.0.0
  */
-export type TypeId = "~effect/unstable/arbitrary/Arbitrary"
+export type TypeId = "~effect/arbitrary/Arbitrary"
 
 /**
  * Represents a pure description of values that can be generated and shrunk.
  *
  * **When to use**
  *
- * Use as the result of {@link schema} and as the input to {@link sampleEffect} or {@link checkEffect}.
+ * Use as the result of {@link schema}, {@link Constant}, and composition, and as the input to {@link sampleEffect} or
+ * {@link checkEffect}.
  *
  * **Details**
  *
@@ -50,6 +51,21 @@ export interface Arbitrary<out A> extends Pipeable {
   readonly "~A": Types.Covariant<A>
   /** @internal */
   readonly gen: Model.Generator<A>
+}
+
+/**
+ * Configures Schema-derived generation.
+ *
+ * **Details**
+ *
+ * `shrink` returns the immediate semantic simplifications of a failing value. Each returned candidate is validated
+ * against the decoded side of the original Schema before it can reach the property.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface SchemaOptions<A> {
+  readonly shrink?: ((value: A) => ReadonlyArray<A>) | undefined
 }
 
 /**
@@ -109,6 +125,11 @@ export interface SampleError {
  * Use with {@link CheckOptions.replay} to copy, store, and reproduce a `Falsified` result from the same
  * implementation.
  *
+ * **Details**
+ *
+ * The token records whether the property returned `false` or failed its Effect, but does not record a typed error value
+ * or input fingerprint.
+ *
  * **Gotchas**
  *
  * Replay compatibility is not guaranteed across releases of this unstable module.
@@ -130,8 +151,9 @@ export type Replay = string
  *
  * `maxShrinks` bounds the number of shrink candidates inspected after the initial failure. Candidates rejected by a
  * Schema check, `filter`, `filterMap`, or dependent generation consume the same budget even though the property is not
- * evaluated. When the budget is exhausted, checking returns the best shrunk input found so far. The `shrinks` field
- * in a `Falsified` result counts only candidates that were accepted as smaller failures.
+ * evaluated. Candidates that produce a different failure class also consume the budget. When the budget is exhausted,
+ * checking returns the best shrunk input found so far. The `shrinks` field in a `Falsified` result counts only
+ * candidates that were accepted as smaller failures.
  *
  * **Gotchas**
  *
@@ -235,7 +257,13 @@ export interface Exhausted {
 }
 
 /**
- * Reports that replay coordinates no longer reproduce the recorded failure.
+ * Reports that replay coordinates no longer reproduce the recorded failure class.
+ *
+ * **Details**
+ *
+ * - `PropertyPassed` means that the regenerated root passed.
+ * - `ShrinkPassed` means that the root switched failure class, or that a recorded shrink either passed or switched
+ *   failure class.
  *
  * @category models
  * @since 4.0.0
@@ -273,20 +301,20 @@ export function formatCheckFailure<A, E>(result: CheckResult<A, E>): string | un
       return undefined
     case "Falsified":
       return `Property falsified after ${result.runs} run(s) and ${result.shrinks} shrink(s)\n` +
-        `Shrunk input: ${Inspectable.toStringUnknown(result.shrunkInput)}\n` +
+        `Shrunk input: ${Formatter.format(result.shrunkInput, { space: 2 })}\n` +
         `${
           result.failure._tag === "ReturnedFalse"
             ? "Failure: returned false"
             : `Failure: ${
               Cause.isCause(result.failure.error)
                 ? Cause.pretty(result.failure.error)
-                : Inspectable.toStringUnknown(result.failure.error)
+                : Formatter.format(result.failure.error, { space: 2 })
             }`
         }\n` +
         `Replay: ${result.replay}`
     case "Exhausted":
       return `Property exhausted after ${result.runs} run(s) and ${result.discards} discard(s)\n` +
-        `Seed: ${Inspectable.toStringUnknown(result.seed)}`
+        `Seed: ${Formatter.format(result.seed, { space: 2 })}`
     case "ReplayMismatch":
       return `Property replay failed: ${result.reason}`
   }
@@ -299,16 +327,46 @@ export function formatCheckFailure<A, E>(result: CheckResult<A, E>): string | un
  *
  * Use when you want Schema-aware generation without exposing a third-party property-testing engine.
  *
+ * **Details**
+ *
+ * When `options.shrink` is provided, generated roots still come from Schema derivation, while the callback defines the
+ * complete shrink tree. Invalid candidates are skipped and count against `maxShrinks` without reaching the property.
+ *
  * **Gotchas**
  *
  * Derivation is immediate and throws when the current unstable implementation cannot compile the Schema or prove a
  * finite route through a recursive component.
  *
+ * A custom shrinker replaces Schema-derived shrinking. It is evaluated lazily after a property failure and must be
+ * synchronous, deterministic, terminating, and free of mutation.
+ *
  * @category constructors
  * @since 4.0.0
  */
-export function schema<S extends Schema_.Constraint>(schema: S): Arbitrary<S["Type"]> {
-  return Internal.schema(schema)
+export function schema<S extends Schema_.Constraint>(
+  schema: S,
+  options?: SchemaOptions<S["Type"]>
+): Arbitrary<S["Type"]> {
+  return Internal.schema(schema, options)
+}
+
+/**
+ * Creates an `Arbitrary` that always generates `value` and has no shrink candidates.
+ *
+ * **When to use**
+ *
+ * Use when a branch of dependent generation should produce an already constructed value.
+ *
+ * **Gotchas**
+ *
+ * Every generation returns the same value. Objects are not cloned, so properties must not mutate them.
+ *
+ * @see {@link flatMap} for selecting dependent Arbitraries
+ * @category constructors
+ * @since 4.0.0
+ */
+export function Constant<const A>(value: A): Arbitrary<A> {
+  return Internal.constant(value)
 }
 
 /**
@@ -394,6 +452,7 @@ export const filterMap: {
  * Arbitraries when possible.
  *
  * @see {@link map} for total transformations that do not select another Arbitrary
+ * @see {@link Constant} for dependent branches that return an existing value
  * @category sequencing
  * @since 4.0.0
  */
@@ -464,8 +523,10 @@ export function sampleEffect<A>(
  *
  * **Details**
  *
- * Returning `false` and failing an Effect are shrinkable falsifications. Defects and interruption continue through the
- * returned Effect instead of becoming `CheckResult` values.
+ * Returning `false` and failing an Effect are shrinkable falsifications. Shrinking preserves which of these two
+ * failure classes caused the initial falsification. Typed error values may change while shrinking and are not compared
+ * for equality. Defects and interruption continue through the returned Effect instead of becoming `CheckResult`
+ * values.
  *
  * **Gotchas**
  *

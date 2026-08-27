@@ -92,6 +92,10 @@ describe("Chunk", () => {
       pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.chunksOf(1)),
       Chunk.make(Chunk.make(1), Chunk.make(2), Chunk.make(3), Chunk.make(4), Chunk.make(5))
     )
+    assertEquals(
+      pipe(Chunk.make(1, 2, 3), Chunk.chunksOf(1.5)),
+      Chunk.make(Chunk.make(1), Chunk.make(2), Chunk.make(3))
+    )
     assertEquals(pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.chunksOf(5)), Chunk.make(Chunk.make(1, 2, 3, 4, 5)))
     // out of bounds
     assertEquals(
@@ -100,6 +104,10 @@ describe("Chunk", () => {
     )
     assertEquals(
       pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.chunksOf(-1)),
+      Chunk.make(Chunk.make(1), Chunk.make(2), Chunk.make(3), Chunk.make(4), Chunk.make(5))
+    )
+    assertEquals(
+      pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.chunksOf(Number.NaN)),
       Chunk.make(Chunk.make(1), Chunk.make(2), Chunk.make(3), Chunk.make(4), Chunk.make(5))
     )
     assertEquals(pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.chunksOf(10)), Chunk.make(Chunk.make(1, 2, 3, 4, 5)))
@@ -387,13 +395,26 @@ describe("Chunk", () => {
     )
   })
 
-  describe("take", () => {
+  describe("count normalization", () => {
+    it("normalizes NaN to a zero count", () => {
+      const chunk = Chunk.make(1, 2, 3)
+      assertEquals(Chunk.take(chunk, Number.NaN), Chunk.empty())
+      assertEquals(Chunk.drop(chunk, Number.NaN), chunk)
+      assertEquals(Chunk.takeRight(chunk, Number.NaN), Chunk.empty())
+      assertEquals(Chunk.dropRight(chunk, Number.NaN), chunk)
+      assertTuple(Chunk.splitAt(chunk, Number.NaN), [Chunk.empty(), chunk])
+    })
+
     it("produces valid chunks for fractional counts", () => {
       const chunk = Chunk.make(1, 2, 3)
       deepStrictEqual(Chunk.toArray(Chunk.take(chunk, 1.5)), [1])
       deepStrictEqual(Chunk.toArray(Chunk.drop(chunk, 1.5)), [2, 3])
+      deepStrictEqual(Chunk.toArray(Chunk.takeRight(chunk, 1.5)), [3])
+      deepStrictEqual(Chunk.toArray(Chunk.dropRight(chunk, 1.5)), [1, 2])
     })
+  })
 
+  describe("take", () => {
     describe("Given a Chunk with more elements than the amount taken", () => {
       it("should return the subset", () => {
         assertEquals(pipe(Chunk.fromArrayUnsafe([1, 2, 3]), Chunk.take(2)), Chunk.fromArrayUnsafe([1, 2]))
@@ -687,6 +708,7 @@ describe("Chunk", () => {
   it("split", () => {
     assertEquals(pipe(Chunk.empty(), Chunk.split(2)), Chunk.empty())
     assertEquals(pipe(Chunk.make(1), Chunk.split(2)), Chunk.make(Chunk.make(1)))
+    assertEquals(pipe(Chunk.make(1, 2, 3), Chunk.split(Number.NaN)), Chunk.make(Chunk.make(1, 2, 3)))
     assertEquals(pipe(Chunk.make(1, 2), Chunk.split(2)), Chunk.make(Chunk.make(1), Chunk.make(2)))
     assertEquals(pipe(Chunk.make(1, 2, 3, 4, 5), Chunk.split(2)), Chunk.make(Chunk.make(1, 2, 3), Chunk.make(4, 5)))
     assertEquals(
@@ -775,6 +797,7 @@ describe("Chunk", () => {
   it("splitNonEmptyAt", () => {
     assertTuple(Chunk.splitNonEmptyAt(Chunk.make(1, 2, 3, 4), 2), [Chunk.make(1, 2), Chunk.make(3, 4)])
     assertTuple(Chunk.splitNonEmptyAt(Chunk.make(1, 2, 3, 4), 10), [Chunk.make(1, 2, 3, 4), Chunk.empty()])
+    assertTuple(Chunk.splitNonEmptyAt(Chunk.make(1, 2, 3, 4), Number.NaN), [Chunk.make(1), Chunk.make(2, 3, 4)])
   })
 
   it("splitWhere", () => {
@@ -814,6 +837,7 @@ describe("Chunk", () => {
   it("makeBy", () => {
     assertEquals(Chunk.makeBy(5, (n) => n * 2), Chunk.make(0, 2, 4, 6, 8))
     assertEquals(Chunk.makeBy(2.2, (n) => n * 2), Chunk.make(0, 2))
+    assertEquals(Chunk.makeBy(Number.NaN, (n) => n), Chunk.make(0))
   })
 
   it("range", () => {

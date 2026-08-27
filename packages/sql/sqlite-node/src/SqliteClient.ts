@@ -320,7 +320,7 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
-        beginTransaction: "BEGIN IMMEDIATE",
+        beginTransaction: options.readonly === true ? "BEGIN" : "BEGIN IMMEDIATE",
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [ATTR_DB_SYSTEM_NAME, "sqlite"]

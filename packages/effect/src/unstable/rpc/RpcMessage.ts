@@ -206,7 +206,7 @@ export type FromServerEncoded =
  * @category type IDs
  * @since 4.0.0
  */
-export const ResponseIdTypeId = "~effect//rpc/RpcServer/ResponseId"
+export const ResponseIdTypeId = "~effect/rpc/RpcMessage/ResponseId"
 
 /**
  * The literal type of the `ResponseId` brand identifier.

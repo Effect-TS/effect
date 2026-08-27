@@ -21,6 +21,9 @@ import * as Socket from "effect/unstable/socket/Socket"
  */
 export * from "@effect/platform-node-shared/NodeSocket"
 
+const makeWebSocketWS: Socket.WebSocketConstructor["Service"] = (url, options) =>
+  new WS.WebSocket(url, options as WS.ClientOptions)
+
 /**
  * Provides a `Socket.WebSocketConstructor`, using `globalThis.WebSocket` when
  * available and falling back to the `ws` package otherwise.
@@ -32,9 +35,14 @@ export const layerWebSocketConstructor: Layer.Layer<
   Socket.WebSocketConstructor
 > = Layer.sync(Socket.WebSocketConstructor)(() => {
   if ("WebSocket" in globalThis) {
-    return (url, protocols) => new globalThis.WebSocket(url, protocols)
+    return (url, options) => {
+      if (options === undefined || typeof options === "string" || Array.isArray(options)) {
+        return new globalThis.WebSocket(url, options)
+      }
+      return makeWebSocketWS(url, options)
+    }
   }
-  return (url, protocols) => new WS.WebSocket(url, protocols) as unknown as globalThis.WebSocket
+  return makeWebSocketWS
 })
 
 /**
@@ -46,9 +54,7 @@ export const layerWebSocketConstructor: Layer.Layer<
  */
 export const layerWebSocketConstructorWS: Layer.Layer<
   Socket.WebSocketConstructor
-> = Layer.succeed(Socket.WebSocketConstructor)(
-  (url, protocols) => new WS.WebSocket(url, protocols) as unknown as globalThis.WebSocket
-)
+> = Layer.succeed(Socket.WebSocketConstructor)(makeWebSocketWS)
 
 /**
  * Creates a `Socket.Socket` layer for a WebSocket URL using the Node WebSocket

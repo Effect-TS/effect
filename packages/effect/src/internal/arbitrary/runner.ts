@@ -14,7 +14,8 @@ import type {
   Replay,
   ReturnedFalse,
   SampleError,
-  SampleOptions
+  SampleOptions,
+  SchemaOptions
 } from "../../unstable/arbitrary/Arbitrary.ts"
 import { done } from "../core.ts"
 import * as InternalRecord from "../record.ts"
@@ -22,13 +23,16 @@ import * as Model from "./model.ts"
 import * as Compiler from "./schema.ts"
 
 /** @internal */
-export const TypeId = "~effect/unstable/arbitrary/Arbitrary"
+export const TypeId = "~effect/arbitrary/Arbitrary"
+
+type FailureTag = PropertyFailure<unknown>["_tag"]
 
 interface ReplayData {
   readonly seed: string | number
   readonly attempt: number
   readonly size: number
   readonly path: ReadonlyArray<number>
+  readonly failureTag: FailureTag
 }
 
 const ArbitraryProto = {
@@ -50,17 +54,19 @@ function makeReplay(data: ReplayData): Replay {
     globalThis.String(data.seed),
     data.attempt,
     data.size,
-    data.path
+    data.path,
+    data.failureTag
   ])
 }
 
 function replayData(replay: Replay): ReplayData {
-  const encoded = JSON.parse(replay) as [0 | 1, string, number, number, ReadonlyArray<number>]
+  const encoded = JSON.parse(replay) as [0 | 1, string, number, number, ReadonlyArray<number>, FailureTag]
   return {
     seed: encoded[0] === 0 ? globalThis.Number(encoded[1]) : encoded[1],
     attempt: encoded[2],
     size: encoded[3],
-    path: encoded[4]
+    path: encoded[4],
+    failureTag: encoded[5]
   }
 }
 
@@ -200,8 +206,27 @@ const resolveMasterSeed = (seed: string | number | undefined): Effect.Effect<str
   seed === undefined ? Random.nextInt : Effect.succeed(seed)
 
 /** @internal */
-export function schema<S extends Schema.Constraint>(schema: S): Arbitrary<S["Type"]> {
-  return make(Compiler.compile(schema))
+export function schema<S extends Schema.Constraint>(
+  schema: S,
+  options?: SchemaOptions<S["Type"]>
+): Arbitrary<S["Type"]> {
+  const compiled = Compiler.compile(schema)
+  const shrink = options?.shrink
+  if (shrink === undefined) return make(compiled)
+  const validate = Compiler.compileValidator(schema)
+  return make(Model.makeGenerator(
+    compiled.minCost,
+    (state) =>
+      Model.mapGeneration(compiled.generate(state), (attempt) =>
+        attempt._tag === "Discarded" || !state.shrinks
+          ? attempt
+          : Model.sampleFromValidatedShrink(attempt.value, shrink, validate))
+  ))
+}
+
+/** @internal */
+export function constant<A>(value: A): Arbitrary<A> {
+  return make(Model.makeGenerator(0, () => Model.makeSample(value)))
 }
 
 /** @internal */
@@ -466,7 +491,7 @@ const shrink = Effect.fnUntraced(function*<A, E, R>(
       const attempt = candidate
       if (attempt._tag === "Discarded") continue
       const outcome = yield* evaluateProperty(property, attempt.value)
-      if (outcome._tag !== "Passed") {
+      if (outcome._tag === initialFailure._tag) {
         found = attempt
         failure = outcome
         path.push(index)
@@ -500,7 +525,9 @@ const followReplay = Effect.fnUntraced(function*<A, E, R>(
       index++
     }
     const outcome = yield* evaluateProperty(property, selected!.value)
-    if (outcome._tag === "Passed") return { _tag: "ReplayMismatch", reason: "ShrinkPassed" } as const
+    if (outcome._tag !== initialFailure._tag) {
+      return { _tag: "ReplayMismatch", reason: "ShrinkPassed" } as const
+    }
     current = selected!
     failure = outcome
   }
@@ -520,6 +547,7 @@ export const checkEffect = Effect.fnUntraced(function*<A, E, R>(
     if (attempt._tag === "Discarded") return { _tag: "ReplayMismatch", reason: "AttemptDiscarded" }
     const outcome = yield* evaluateProperty(property, attempt.value)
     if (outcome._tag === "Passed") return { _tag: "ReplayMismatch", reason: "PropertyPassed" }
+    if (outcome._tag !== data.failureTag) return { _tag: "ReplayMismatch", reason: "ShrinkPassed" }
     const replayed = yield* followReplay(attempt, outcome, data.path, property)
     if (replayed._tag === "ReplayMismatch") return replayed
     return {
@@ -567,7 +595,13 @@ export const checkEffect = Effect.fnUntraced(function*<A, E, R>(
       runs: runs + 1,
       discards,
       shrinks: minimized.shrinks,
-      replay: makeReplay({ seed, attempt: currentAttempt, size: currentSize, path: minimized.path })
+      replay: makeReplay({
+        seed,
+        attempt: currentAttempt,
+        size: currentSize,
+        path: minimized.path,
+        failureTag: outcome._tag
+      })
     }
   }
   return { _tag: "Passed", runs, discards }

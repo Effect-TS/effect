@@ -538,26 +538,97 @@ export const makeChannel = <IE = never>(): Channel.Channel<
 export const defaultCloseCodeIsError = (_code: number) => true
 
 /**
+ * Event payload exposed by a WebSocket implementation.
+ *
+ * The socket adapter only reads `data`, `code`, and `reason`; implementations
+ * may expose additional fields.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface WebSocketEvent {
+  readonly type?: string
+  readonly data?: unknown
+  readonly code?: number
+  readonly reason?: string
+}
+
+/**
+ * The subset of the WebSocket API required by `Socket`.
+ *
+ * This structural interface is intentionally independent of the DOM
+ * `WebSocket` type. Node implementations such as `ws` expose the same
+ * event-target methods, but are not assignable to `globalThis.WebSocket`
+ * because their event payload types are runtime-specific.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface WebSocketLike {
+  readonly readyState: number
+  addEventListener(
+    type: "open" | "message" | "error" | "close",
+    listener: (event: WebSocketEvent) => void,
+    options?: {
+      readonly once?: boolean
+    }
+  ): void
+  removeEventListener(
+    type: "open" | "message" | "error" | "close",
+    listener: (event: WebSocketEvent) => void
+  ): void
+  close(code?: number, reason?: string): void
+  send(data: string | Uint8Array<ArrayBuffer>): void
+}
+
+/**
+ * Common options understood by a WebSocket client implementation.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface WebSocketClientOptions {
+  /**
+   * Headers to include in the opening handshake.
+   *
+   * This is supported by Node and Bun WebSocket clients. Browser constructors
+   * cannot set arbitrary handshake headers and must reject this option.
+   */
+  readonly headers?: Readonly<Record<string, string>> | undefined
+}
+
+/**
+ * Options accepted by a `WebSocketConstructor`.
+ *
+ * Browser-compatible constructors accept a protocol string or list. Node and
+ * Bun constructors additionally accept `WebSocketClientOptions`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type WebSocketConstructorOptions = string | Array<string> | WebSocketClientOptions
+
+/**
  * Context service for the active `WebSocket` instance available while a
  * WebSocket-backed socket run is handling events.
  *
  * @category services
  * @since 4.0.0
  */
-export class WebSocket extends Context.Service<WebSocket, globalThis.WebSocket>()(
+export class WebSocket extends Context.Service<WebSocket, WebSocketLike>()(
   "~effect/socket/Socket/WebSocket"
 ) {}
 
 /**
  * Context service for constructing `WebSocket` instances from a URL and
- * optional protocols.
+ * optional protocols or platform-specific options.
  *
  * @category services
  * @since 4.0.0
  */
 export class WebSocketConstructor extends Context.Service<
   WebSocketConstructor,
-  (url: string, protocols?: string | Array<string> | undefined) => globalThis.WebSocket
+  (url: string, options?: WebSocketConstructorOptions | undefined) => WebSocketLike
 >()("@effect/platform/Socket/WebSocketConstructor") {}
 
 /**
@@ -567,7 +638,12 @@ export class WebSocketConstructor extends Context.Service<
  * @since 4.0.0
  */
 export const layerWebSocketConstructorGlobal: Layer.Layer<WebSocketConstructor> = Layer.succeed(WebSocketConstructor)(
-  (url, protocols) => new globalThis.WebSocket(url, protocols)
+  (url, options) => {
+    if (options !== undefined && typeof options !== "string" && !Array.isArray(options)) {
+      throw new TypeError("WebSocket client options are not supported by the global WebSocket constructor")
+    }
+    return new globalThis.WebSocket(url, options)
+  }
 )
 
 /**
@@ -603,8 +679,8 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
  * @category constructors
  * @since 4.0.0
  */
-export const fromWebSocket = <RO>(
-  acquire: Effect.Effect<globalThis.WebSocket, SocketError, RO>,
+export const fromWebSocket = <RO, WS extends WebSocketLike>(
+  acquire: Effect.Effect<WS, SocketError, RO>,
   options?: {
     readonly closeCodeIsError?: ((code: number) => boolean) | undefined
     readonly openTimeout?: Duration.Input | undefined
@@ -615,11 +691,11 @@ export const fromWebSocket = <RO>(
      * @category options
      * @since 4.0.0
      */
-    readonly onInitialRun?: ((ws: globalThis.WebSocket) => ReadonlyArray<MessageEvent>) | undefined
+    readonly onInitialRun?: ((ws: WS) => ReadonlyArray<WebSocketEvent>) | undefined
   } | undefined
 ): Effect.Effect<Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber((fiber) => {
-    let currentWS: globalThis.WebSocket | undefined
+    let currentWS: WebSocketLike | undefined
     let initial = true
     const latch = Latch.makeUnsafe(false)
     const acquireContext = fiber.context as Context.Context<RO>
@@ -636,10 +712,11 @@ export const fromWebSocket = <RO>(
         const run = yield* Effect.provideService(FiberSet.runtime(fiberSet)<R>(), WebSocket, ws)
         let open = false
 
-        function onMessage(event: MessageEvent) {
-          if (event.data instanceof Blob) {
+        function onMessage(event: WebSocketEvent) {
+          const data = event.data as Blob | ArrayBuffer | Uint8Array | string
+          if (data instanceof Blob) {
             const effect = Effect.flatMap(
-              Effect.promise(() => event.data.arrayBuffer() as Promise<ArrayBuffer>),
+              Effect.promise(() => data.arrayBuffer()),
               (buffer) => {
                 const result = handler(new Uint8Array(buffer))
                 return Effect.isEffect(result) ? result : Effect.void
@@ -647,12 +724,12 @@ export const fromWebSocket = <RO>(
             )
             return run(effect)
           }
-          const result = handler(event.data instanceof ArrayBuffer ? new Uint8Array(event.data) : event.data)
+          const result = handler(data instanceof ArrayBuffer ? new Uint8Array(data) : data)
           if (Effect.isEffect(result)) {
             run(result)
           }
         }
-        function onError(cause: Event) {
+        function onError(cause: WebSocketEvent) {
           ws.removeEventListener("message", onMessage)
           ws.removeEventListener("close", onClose)
           Deferred.doneUnsafe(
@@ -671,7 +748,7 @@ export const fromWebSocket = <RO>(
             )
           )
         }
-        function onClose(event: globalThis.CloseEvent) {
+        function onClose(event: WebSocketEvent) {
           const code = typeof event.code === "number" ? event.code : 1001
           ws.removeEventListener("message", onMessage)
           ws.removeEventListener("error", onError)
