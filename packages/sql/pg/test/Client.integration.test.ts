@@ -528,4 +528,22 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds" })("PgClient 
       )
       expect(payload.payload).toEqual("payload")
     }).pipe(TestClock.withLive), 20_000)
+
+  it.effect("listen rejects channel names longer than 63 UTF-8 bytes", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const error = yield* Effect.flip(sql.listen("é".repeat(32)))
+
+      assert.strictEqual(error.message, "PostgreSQL channel names must not exceed 63 UTF-8 bytes")
+      assert.strictEqual(error.reason.operation, "listen")
+    }))
+
+  it.effect("notify rejects channel names longer than 63 UTF-8 bytes", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const error = yield* Effect.flip(sql.notify("é".repeat(32), "payload"))
+
+      assert.strictEqual(error.message, "PostgreSQL channel names must not exceed 63 UTF-8 bytes")
+      assert.strictEqual(error.reason.operation, "notify")
+    }))
 })

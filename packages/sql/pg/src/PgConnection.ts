@@ -34,7 +34,7 @@ import type { Duplex } from "node:stream"
 import * as Tls from "node:tls"
 import type { ConnectionOptions } from "node:tls"
 import { type ConnectionInternals, internalsKey } from "./internal/connection.ts"
-import { classifySqlState } from "./internal/sqlError.ts"
+import { classifySqlState, validateChannelName } from "./internal/sqlError.ts"
 import * as PgAuth from "./PgAuth.ts"
 import * as PgProtocol from "./PgProtocol.ts"
 import * as PgTypes from "./PgTypes.ts"
@@ -1771,6 +1771,8 @@ const listenChannel = (
 ): Effect.Effect<Queue.Dequeue<Notification>, SqlError, Scope.Scope> =>
   Effect.uninterruptibleMask((restore) =>
     Effect.gen(function*() {
+      const channelError = validateChannelName(channel, "listen")
+      if (channelError !== undefined) return yield* Effect.fail(channelError)
       const parentScope = yield* Scope.Scope
       const scope = yield* Scope.fork(parentScope)
       return yield* restore(Effect.gen(function*() {
