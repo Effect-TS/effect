@@ -701,7 +701,7 @@ export const intoResult = <A, E, R>(
             // down). Release owner-local resources without running durable
             // workflow finalizers, and exit without a result so the run can
             // replay elsewhere.
-            instance.replaying = true
+            instance.abandoned = true
             return Effect.failCause(filtered as Cause.Cause<never>)
           }
           return !captureDefects && Cause.hasDies(cause)
@@ -821,7 +821,7 @@ export const addFinalizer: <R>(
   const services = yield* Effect.context<R>()
   yield* Scope.addFinalizerExit(
     instance.scope,
-    (exit) => instance.replaying ? Effect.void : Effect.provideContext(f(exit), services)
+    (exit) => instance.abandoned ? Effect.void : Effect.provideContext(f(exit), services)
   )
 })
 
