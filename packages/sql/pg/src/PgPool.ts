@@ -49,6 +49,7 @@ export type TypeId = "~@effect/sql-pg/PgPool"
  *
  * The defaults are 0 to 10 connections and a 10-second idle timeout.
  * `connectionTTL` replaces connections that exceed the configured lifetime.
+ * Every connection is used at least once, so a TTL of zero disables reuse.
  *
  * With `multiplex` enabled, fibers may share pooled connections for pipelined
  * queries. Reserved connections remain exclusive. Without multiplexing, every
@@ -142,6 +143,7 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
     : undefined
   const deadConnections = new Set<PgConnection.PgConnection>()
   const createdAt = new WeakMap<PgConnection.PgConnection, number>()
+  const checkedOut = new WeakSet<PgConnection.PgConnection>()
 
   // Assigned below, once the pool exists. `acquire` only runs when the pool
   // opens a connection, which is always after that.
@@ -177,6 +179,10 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   const expired = (connection: PgConnection.PgConnection): boolean => {
     if (connectionInternals(connection).deadError() !== undefined) return true
     if (connectionTTL === undefined) return false
+    if (!checkedOut.has(connection)) {
+      checkedOut.add(connection)
+      return false
+    }
     const openedAt = createdAt.get(connection)
     return openedAt !== undefined && clock.currentTimeMillisUnsafe() - openedAt >= connectionTTL
   }
