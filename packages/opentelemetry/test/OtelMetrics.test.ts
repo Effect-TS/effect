@@ -3,12 +3,21 @@ import * as OtelMetrics from "@effect/opentelemetry/OtelMetrics"
 import { assert, describe, it } from "@effect/vitest"
 import { ValueType } from "@opentelemetry/api"
 import { resourceFromAttributes } from "@opentelemetry/resources"
-import { MetricReader } from "@opentelemetry/sdk-metrics"
+import { AggregationTemporality, InstrumentType, MetricReader } from "@opentelemetry/sdk-metrics"
 import * as Effect from "effect/Effect"
 import * as Metric from "effect/Metric"
 
 const findMetric = (metrics: any, name: string) =>
   metrics.resourceMetrics.scopeMetrics[0].metrics.find((_: any) => _.descriptor.name === name)
+
+class TestReader extends MetricReader {
+  protected onShutdown(): Promise<void> {
+    return Promise.resolve()
+  }
+  protected onForceFlush(): Promise<void> {
+    return Promise.resolve()
+  }
+}
 
 describe("Metrics", () => {
   it.effect("gauge", () =>
@@ -362,5 +371,75 @@ describe("Metrics", () => {
       const firstValue = (firstResult.resourceMetrics.scopeMetrics[0]!.metrics[0] as any).dataPoints[0].value
       const secondValue = (secondResult.resourceMetrics.scopeMetrics[0]!.metrics[0] as any).dataPoints[0].value
       assert.deepStrictEqual([firstValue, secondValue], [1, 1])
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
+  it.effect("follows the reader's temporality preference when none is configured", () =>
+    Effect.gen(function*() {
+      const services = yield* Effect.context<never>()
+      const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services)
+      const reader = new TestReader({
+        aggregationTemporalitySelector: () => AggregationTemporality.DELTA
+      })
+      yield* OtelMetrics.registerProducer(producer, () => reader)
+      const counter = Metric.counter("delta.requests", { incremental: true })
+
+      yield* Metric.update(counter, 3)
+      const first = findMetric(yield* Effect.promise(() => reader.collect()), "delta.requests")
+      yield* Metric.update(counter, 2)
+      const second = findMetric(yield* Effect.promise(() => reader.collect()), "delta.requests")
+
+      assert.strictEqual(first.aggregationTemporality, AggregationTemporality.DELTA)
+      assert.strictEqual(first.dataPoints[0].value, 3)
+      assert.strictEqual(second.aggregationTemporality, AggregationTemporality.DELTA)
+      assert.strictEqual(second.dataPoints[0].value, 2)
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
+  it.effect("selects the reader's temporality per instrument type", () =>
+    Effect.gen(function*() {
+      const services = yield* Effect.context<never>()
+      const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services)
+      const reader = new TestReader({
+        aggregationTemporalitySelector: (instrumentType) =>
+          instrumentType === InstrumentType.COUNTER
+            ? AggregationTemporality.DELTA
+            : AggregationTemporality.CUMULATIVE
+      })
+      yield* OtelMetrics.registerProducer(producer, () => reader)
+      const requests = Metric.counter("typed.requests", { incremental: true })
+      const inflight = Metric.counter("typed.inflight")
+
+      yield* Metric.update(requests, 3)
+      yield* Metric.update(inflight, 3)
+      yield* Effect.promise(() => reader.collect())
+      yield* Metric.update(requests, 2)
+      yield* Metric.update(inflight, 2)
+      const result = yield* Effect.promise(() => reader.collect())
+
+      const counter = findMetric(result, "typed.requests")
+      const upDownCounter = findMetric(result, "typed.inflight")
+      assert.strictEqual(counter.aggregationTemporality, AggregationTemporality.DELTA)
+      assert.strictEqual(counter.dataPoints[0].value, 2)
+      assert.strictEqual(upDownCounter.aggregationTemporality, AggregationTemporality.CUMULATIVE)
+      assert.strictEqual(upDownCounter.dataPoints[0].value, 5)
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
+  it.effect("an explicit temporality overrides the reader's preference", () =>
+    Effect.gen(function*() {
+      const services = yield* Effect.context<never>()
+      const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services, "cumulative")
+      const reader = new TestReader({
+        aggregationTemporalitySelector: () => AggregationTemporality.DELTA
+      })
+      yield* OtelMetrics.registerProducer(producer, () => reader)
+      const counter = Metric.counter("override.requests", { incremental: true })
+
+      yield* Metric.update(counter, 3)
+      yield* Effect.promise(() => reader.collect())
+      yield* Metric.update(counter, 2)
+      const result = yield* Effect.promise(() => reader.collect())
+
+      const metric = findMetric(result, "override.requests")
+      assert.strictEqual(metric.aggregationTemporality, AggregationTemporality.CUMULATIVE)
+      assert.strictEqual(metric.dataPoints[0].value, 5)
     }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 })
