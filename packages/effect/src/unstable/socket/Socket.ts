@@ -744,13 +744,13 @@ const isPausable = (ws: WebSocketLike): ws is WebSocketLike & Pausable =>
  *
  * Reader acquisition runs `acquire`, attaches event listeners, then waits for
  * the socket to open. Implementations exposing `pause`/`resume` (the `ws`
- * package) start paused and resume only while a pull is waiting, so frames
- * are not read before the first pull. They are not paused again after every
- * batch. Incoming frames that arrive in the same tick are coalesced into one
- * batch. Implementations without pause (browsers) buffer incoming frames,
- * optionally failing the socket with a `SocketReadError` when `highWaterMark`
- * bytes are exceeded (default unbounded). Message boundaries survive: each
- * pulled batch contains one element per frame.
+ * package) start paused, resume when the first pull waits, and pause again
+ * when buffered frames reach the configured `highWaterMark`. Draining the
+ * buffer resumes the transport. Incoming frames that arrive in the same tick
+ * are coalesced into one batch. Implementations without pause (browsers) buffer
+ * incoming frames, optionally failing the socket with a `SocketReadError` when
+ * `highWaterMark` bytes are exceeded (default unbounded). Message boundaries
+ * survive: each pulled batch contains one element per frame.
  *
  * @category constructors
  * @since 4.0.0
@@ -775,12 +775,14 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
         ;(ws as { binaryType: string }).binaryType = "arraybuffer"
       }
       const pausable = isPausable(ws)
+      const highWaterMark = options?.highWaterMark
 
       type ReadResume = (
         effect: Effect.Effect<NonEmptyReadonlyArray<Uint8Array | string>, SocketError>
       ) => void
 
       let open = ws.readyState === 1
+      let paused = false
       let buffer: Array<Uint8Array | string> = []
       let bufferSize = 0
       let error: SocketError | undefined
@@ -793,10 +795,23 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
         | undefined
       let flushScheduled = false
 
+      function pauseWebSocket() {
+        if (!pausable || paused) return
+        ws.pause()
+        paused = true
+      }
+
+      function resumeWebSocket() {
+        if (!pausable || !paused) return
+        ws.resume()
+        paused = false
+      }
+
       function takeBuffer(): NonEmptyReadonlyArray<Uint8Array | string> {
         const chunk = buffer
         buffer = []
         bufferSize = 0
+        if (error === undefined) resumeWebSocket()
         return chunk as unknown as NonEmptyReadonlyArray<Uint8Array | string>
       }
 
@@ -816,14 +831,14 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
             flushScheduled = true
             dispatcher.scheduleTask(deliver, 0)
           }
-        } else if (
-          !pausable && options?.highWaterMark !== undefined &&
-          bufferSize > options.highWaterMark
-        ) {
+        }
+        if (pausable && highWaterMark !== undefined && bufferSize >= highWaterMark) {
+          pauseWebSocket()
+        } else if (!pausable && waiter === undefined && highWaterMark !== undefined && bufferSize > highWaterMark) {
           fail(
             new SocketError({
               reason: new SocketReadError({
-                cause: new Error(`Socket highWaterMark of ${options.highWaterMark} bytes exceeded`)
+                cause: new Error(`Socket highWaterMark of ${highWaterMark} bytes exceeded`)
               })
             })
           )
@@ -882,7 +897,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
           // let the close handshake proceed once nothing is pulling
           if (pausable) {
             try {
-              ws.resume()
+              resumeWebSocket()
             } catch {
               // the underlying stream may already be gone
             }
@@ -928,7 +943,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
         open = true
       }
 
-      if (pausable) ws.pause()
+      pauseWebSocket()
       currentWS = ws
       latch.openUnsafe()
 
@@ -937,11 +952,11 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
         if (error !== undefined) return Effect.fail(error)
         return Effect.callback<NonEmptyReadonlyArray<Uint8Array | string>, SocketError>((resume) => {
           waiter = resume
-          if (pausable) (ws as WebSocketLike & Pausable).resume()
+          resumeWebSocket()
           return Effect.sync(() => {
             if (waiter === resume) {
               waiter = undefined
-              if (pausable) (ws as WebSocketLike & Pausable).pause()
+              pauseWebSocket()
             }
           })
         })

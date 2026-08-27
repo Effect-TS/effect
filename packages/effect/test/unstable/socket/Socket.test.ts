@@ -117,6 +117,42 @@ describe("Socket", () => {
         assert.deepStrictEqual(yield* Fiber.join(reader), ["hello", "world"])
         assert.strictEqual(ws.pauseCount, 1)
       }))
+
+    it.effect("pauses at the highWaterMark and resumes after draining", () =>
+      Effect.gen(function*() {
+        const tasks: Array<() => void> = []
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "sync",
+          shouldYield: () => false,
+          makeDispatcher: () => ({
+            scheduleTask(task) {
+              tasks.push(task)
+            },
+            flush() {
+              while (tasks.length > 0) tasks.shift()!()
+            }
+          })
+        }
+        const ws = new TestWebSocket(Latch.makeUnsafe(false))
+        ws.readyState = 1
+        const socket = yield* Socket.fromWebSocket(Effect.succeed(ws), { highWaterMark: 10 })
+        const pull = yield* socket.reader.pipe(
+          Effect.provideService(Scheduler.Scheduler, scheduler)
+        )
+        const firstPull = yield* pull.pipe(Effect.forkChild({ startImmediately: true }))
+
+        ws.dispatch("message", { data: "first" })
+        scheduler.makeDispatcher().flush()
+        assert.deepStrictEqual(yield* Fiber.join(firstPull), ["first"])
+
+        ws.dispatch("message", { data: "hello" })
+        assert.strictEqual(ws.pauseCount, 1)
+        ws.dispatch("message", { data: "world" })
+        assert.strictEqual(ws.pauseCount, 2)
+
+        assert.deepStrictEqual(yield* pull, ["hello", "world"])
+        assert.strictEqual(ws.resumeCount, 2)
+      }))
   })
 
   describe("toChannel", () => {
