@@ -2,8 +2,8 @@
  * Models bidirectional socket connections in Effect.
  *
  * A `Socket` exposes a pull-based `reader` and a scoped `writer`. Acquiring
- * the reader dials the connection and returns a `Pull` that yields batches of
- * incoming frames with end-to-end backpressure: nothing is read from the
+ * the reader dials the connection and returns an `Effect` that yields batches
+ * of incoming frames with end-to-end backpressure: nothing is read from the
  * transport until the consumer pulls. Every termination, including clean
  * closes, surfaces as a `SocketError`, so reconnecting is a plain
  * `Effect.retry` around the scoped consume loop.
@@ -63,11 +63,11 @@ export const Socket: Context.Service<Socket, Socket> = Context.Service<Socket>("
  * **Details**
  *
  * Acquiring `reader` establishes the connection; the scope of the acquisition
- * owns the connection lifecycle. The returned pull yields non-empty batches of
- * incoming frames and never completes: every termination, clean close
- * included, fails with a `SocketError` wrapping the close reason. Code placed
- * between the acquisition and the first pull runs exactly once per
- * (re)connection, which makes handshakes plain code placement.
+ * owns the connection lifecycle. The returned `Effect` yields non-empty batches
+ * of incoming frames and never completes via `Cause.Done`: every termination,
+ * clean close included, fails with a `SocketError` wrapping the close reason.
+ * Code placed between the acquisition and the first pull runs exactly once
+ * per (re)connection, which makes handshakes plain code placement.
  *
  * Closing the acquisition scope must fail a pull that is currently suspended,
  * rather than leaving it blocked. Consumers such as `toChannel` rely on this
@@ -99,7 +99,7 @@ export const Socket: Context.Service<Socket, Socket> = Context.Service<Socket>("
 export interface Socket {
   readonly [TypeId]: typeof TypeId
   readonly reader: Effect.Effect<
-    Pull.Pull<NonEmptyReadonlyArray<Uint8Array | string>, SocketError>,
+    Effect.Effect<NonEmptyReadonlyArray<Uint8Array | string>, SocketError>,
     SocketError,
     Scope.Scope
   >
@@ -144,7 +144,7 @@ export const make = (options: {
 const encoder = new TextEncoder()
 
 /**
- * Acquires the socket's reader as a pull of binary frame batches, encoding
+ * Acquires the socket's reader as an `Effect` of binary frame batches, encoding
  * any string frames as UTF-8 bytes.
  *
  * When a pulled batch contains no string frames it is returned as-is, so
@@ -156,7 +156,7 @@ const encoder = new TextEncoder()
 export const readerBytes = (
   self: Socket
 ): Effect.Effect<
-  Pull.Pull<NonEmptyReadonlyArray<Uint8Array>, SocketError>,
+  Effect.Effect<NonEmptyReadonlyArray<Uint8Array>, SocketError>,
   SocketError,
   Scope.Scope
 > =>
@@ -176,7 +176,7 @@ export const readerBytes = (
     }))
 
 /**
- * Acquires the socket's reader as a pull of string frame batches, decoding
+ * Acquires the socket's reader as an `Effect` of string frame batches, decoding
  * binary frames with the optional text encoding.
  *
  * The `TextDecoder` is created once per acquisition.
@@ -188,7 +188,7 @@ export const readerString = (
   self: Socket,
   encoding?: string | undefined
 ): Effect.Effect<
-  Pull.Pull<NonEmptyReadonlyArray<string>, SocketError>,
+  Effect.Effect<NonEmptyReadonlyArray<string>, SocketError>,
   SocketError,
   Scope.Scope
 > =>
@@ -447,7 +447,11 @@ const writeChunk = (
 
 const toChannelWithReader = <A, IE>(
   self: Socket,
-  reader: Effect.Effect<Pull.Pull<NonEmptyReadonlyArray<A>, SocketError>, SocketError, Scope.Scope>
+  reader: Effect.Effect<
+    Effect.Effect<NonEmptyReadonlyArray<A>, SocketError>,
+    SocketError,
+    Scope.Scope
+  >
 ): Channel.Channel<
   NonEmptyReadonlyArray<A>,
   SocketError | IE,

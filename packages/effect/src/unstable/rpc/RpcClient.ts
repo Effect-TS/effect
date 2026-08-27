@@ -1113,10 +1113,7 @@ export const makeProtocolSocket = (options?: {
       parser = serialization.makeUnsafe()
       pinger.reset()
       return Effect.gen(function*() {
-        const pull = (yield* socket.reader) as Effect.Effect<
-          ReadonlyArray<Uint8Array | string>,
-          Socket.SocketError
-        >
+        const pull = yield* socket.reader
         currentError = undefined
         if (Option.isSome(hooks)) {
           yield* hooks.value.onConnect

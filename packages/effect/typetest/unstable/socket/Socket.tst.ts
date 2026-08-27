@@ -1,4 +1,4 @@
-import type { Effect, Pull, Scope } from "effect"
+import type { Effect, Scope } from "effect"
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import { Socket } from "effect/unstable/socket"
 import { describe, expect, it } from "tstyche"
@@ -27,21 +27,21 @@ describe("Socket", () => {
     const socket = null as unknown as Socket.Socket
     expect(socket.reader).type.toBe<
       Effect.Effect<
-        Pull.Pull<NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>,
+        Effect.Effect<NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>,
         Socket.SocketError,
         Scope.Scope
       >
     >()
     expect(Socket.readerBytes(socket)).type.toBe<
       Effect.Effect<
-        Pull.Pull<NonEmptyReadonlyArray<Uint8Array>, Socket.SocketError>,
+        Effect.Effect<NonEmptyReadonlyArray<Uint8Array>, Socket.SocketError>,
         Socket.SocketError,
         Scope.Scope
       >
     >()
     expect(Socket.readerString(socket)).type.toBe<
       Effect.Effect<
-        Pull.Pull<NonEmptyReadonlyArray<string>, Socket.SocketError>,
+        Effect.Effect<NonEmptyReadonlyArray<string>, Socket.SocketError>,
         Socket.SocketError,
         Scope.Scope
       >

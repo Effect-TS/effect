@@ -10,7 +10,7 @@
 
 Redesign `Socket` around a pull-based read side with end-to-end backpressure.
 
-`Socket` now exposes `reader` and `writer` instead of handler-based run loops. Acquiring `reader` dials the connection; the scope owns the connection lifecycle, and the returned `Pull` yields non-empty batches of frames (one concatenated buffer for TCP, one element per frame for WebSocket). Nothing is read from the transport until the consumer pulls: Node TCP sockets stay paused so the kernel window closes, `ws` WebSockets pause between pulls, and browser WebSockets buffer with an optional `highWaterMark`. Writes use the transport's native backpressure (`write()` return values plus `drain`, `cork`/`uncork` for batches).
+`Socket` now exposes `reader` and `writer` instead of handler-based run loops. Acquiring `reader` dials the connection; the scope owns the connection lifecycle, and the returned `Effect` yields non-empty batches of frames (one concatenated buffer for TCP, one element per frame for WebSocket). The reader is typed as `Effect<…, SocketError>` rather than `Pull` because it never completes via `Cause.Done`. Nothing is read from the transport until the consumer pulls: Node TCP sockets stay paused so the kernel window closes, `ws` WebSockets pause between pulls, and browser WebSockets buffer with an optional `highWaterMark`. Writes use the transport's native backpressure (`write()` return values plus `drain`, `cork`/`uncork` for batches).
 
 ### Breaking changes
 

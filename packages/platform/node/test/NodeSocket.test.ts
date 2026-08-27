@@ -150,7 +150,7 @@ describe("Socket", () => {
   it.live("respects a zero open timeout", () =>
     Effect.gen(function*() {
       const socket = yield* NodeSocket.fromDuplex(Effect.never, { openTimeout: 0 })
-      const error = yield* Effect.scoped(socket.reader).pipe(
+      const error = yield* Effect.scoped(Effect.asVoid(socket.reader)).pipe(
         Effect.flip,
         Effect.timeout("1 second")
       )

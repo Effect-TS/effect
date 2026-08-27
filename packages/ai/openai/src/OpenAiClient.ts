@@ -584,10 +584,7 @@ const makeSocket = Effect.gen(function*() {
       }
 
       yield* Effect.gen(function*() {
-        const pull = (yield* socket.reader) as Effect.Effect<
-          ReadonlyArray<Uint8Array | string>,
-          Socket.SocketError
-        >
+        const pull = yield* socket.reader
         while (true) {
           const messages = yield* pull
           for (let i = 0; i < messages.length; i++) {

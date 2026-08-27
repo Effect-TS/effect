@@ -222,7 +222,7 @@ describe("DenoSocket", () => {
       listener.close()
       const socket = yield* DenoSocket.makeTcp({ hostname: address.hostname, port: address.port })
 
-      const error = yield* Effect.scoped(socket.reader).pipe(Effect.flip)
+      const error = yield* Effect.scoped(Effect.asVoid(socket.reader)).pipe(Effect.flip)
 
       assert.instanceOf(error, Socket.SocketError)
       assert.strictEqual(error.reason._tag, "SocketOpenError")
