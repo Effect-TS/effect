@@ -45,7 +45,7 @@ import { AlreadyProcessingMessage, EntityNotAssignedToRunner } from "./ClusterEr
 import * as ClusterMetrics from "./ClusterMetrics.ts"
 import { Persisted } from "./ClusterSchema.ts"
 import * as ClusterSchema from "./ClusterSchema.ts"
-import type { CurrentAddress, CurrentRunnerAddress, Entity, HandlersFrom } from "./Entity.ts"
+import { CurrentAddress, type CurrentRunnerAddress, type Entity, type HandlersFrom } from "./Entity.ts"
 import type { EntityAddress } from "./EntityAddress.ts"
 import { make as makeEntityAddress } from "./EntityAddress.ts"
 import type { EntityId } from "./EntityId.ts"
@@ -55,7 +55,7 @@ import * as ClusterAbandon from "./internal/clusterAbandon.ts"
 import * as EntityManager from "./internal/entityManager.ts"
 import { EntityReaper } from "./internal/entityReaper.ts"
 import { hashString } from "./internal/hash.ts"
-import { internalInterruptors } from "./internal/interruptors.ts"
+import * as ActiveTeardown from "./internal/interruptors.ts"
 import { ResourceMap } from "./internal/resourceMap.ts"
 import { effectiveInterval } from "./internal/shardLock.ts"
 import * as Message from "./Message.ts"
@@ -1341,6 +1341,13 @@ const make = Effect.gen(function*() {
     never
   > = yield* ResourceMap.make(
     Effect.fnUntraced(function*(entity: Entity<string, any>) {
+      const clientScope = yield* Effect.scope
+      yield* Scope.addFinalizer(
+        clientScope,
+        Effect.sync(() => {
+          ActiveTeardown.releaseEntityType(entity.type)
+        })
+      )
       const client = yield* RpcClient.makeNoSerialization(entity.protocol, {
         spanPrefix: `${entity.type}.client`,
         disableTracing: !Context.get(entity.protocol.annotations, ClusterSchema.ClientTracingEnabled),
@@ -1419,8 +1426,9 @@ const make = Effect.gen(function*() {
               }
               // for durable messages, we ignore interrupts on shutdown or as a
               // result of a shard being resassigned
+              const caller = Context.getOption(entry.context, CurrentAddress).valueOrUndefined
               const isTransientInterrupt = MutableRef.get(isShutdown) ||
-                options.message.interruptors.some((id) => internalInterruptors.has(id))
+                (caller !== undefined && ActiveTeardown.isActive(caller))
               if (isTransientInterrupt && Context.get(entry.message.annotations, Persisted)) {
                 return Effect.void
               }
@@ -1443,10 +1451,9 @@ const make = Effect.gen(function*() {
       })
 
       yield* Scope.addFinalizer(
-        yield* Effect.scope,
-        Effect.withFiber((fiber) => {
-          internalInterruptors.add(fiber.id)
-          return Effect.void
+        clientScope,
+        Effect.sync(() => {
+          ActiveTeardown.acquireEntityType(entity.type)
         })
       )
 
@@ -1580,8 +1587,10 @@ const make = Effect.gen(function*() {
         const shouldBeRunning = MutableHashSet.has(acquiredShards, shardId)
         if (running && !shouldBeRunning) {
           yield* Effect.logDebug("Stopping singleton", address)
-          internalInterruptors.add(yield* Effect.fiberId)
-          yield* FiberMap.remove(singletonFibers, address)
+          yield* ActiveTeardown.aroundShard(
+            address.shardId,
+            FiberMap.remove(singletonFibers, address)
+          )
         } else if (!running && shouldBeRunning) {
           yield* Effect.logDebug("Starting singleton", address)
           yield* FiberMap.run(singletonFibers, address, run)
@@ -1630,12 +1639,12 @@ const make = Effect.gen(function*() {
       }
       yield* Scope.addFinalizer(
         scope,
-        Effect.withFiber((fiber) => {
+        Effect.suspend(() => {
           state.status = "closing"
-          internalInterruptors.add(fiber.id)
-          // if preemptive shutdown is enabled, we start shutting down Sharding
-          // too
-          return config.preemptiveShutdown ? shutdown() : Effect.void
+          return ActiveTeardown.aroundEntityType(
+            entity.type,
+            config.preemptiveShutdown ? shutdown() : Effect.void
+          )
         })
       )
 
@@ -1717,9 +1726,7 @@ const make = Effect.gen(function*() {
       )
     }
 
-    internalInterruptors.add(yield* Effect.fiberId)
     if (isShutdown.current) return
-
     MutableRef.set(isShutdown, true)
     if (selfRunner) {
       yield* Effect.ignore(runnerStorage.unregister(selfRunner.address))
