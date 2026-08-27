@@ -28,6 +28,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Path from "effect/Path"
 import type * as Record from "effect/Record"
+import * as Scheduler from "effect/Scheduler"
 import type * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
@@ -604,6 +605,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
         const writer: Socket.Socket["writer"] = Effect.succeed({ write, writeAll })
 
         const reader: Socket.Socket["reader"] = Effect.gen(function*() {
+          const dispatcher = (yield* Scheduler.Scheduler).makeDispatcher()
           yield* Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1))
           const closeError = ws.data.closeError ?? (ws.readyState >= 2
             ? new Socket.SocketError({
@@ -640,7 +642,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             buffer.push(data)
             if (waiter !== undefined && !flushScheduled) {
               flushScheduled = true
-              queueMicrotask(deliver)
+              dispatcher.scheduleTask(deliver, 0)
             }
           }
           function fail(err: Socket.SocketError) {

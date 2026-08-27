@@ -23,6 +23,7 @@ import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Pull from "../../Pull.ts"
+import * as Scheduler from "../../Scheduler.ts"
 import * as Schema from "../../Schema.ts"
 import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
@@ -757,6 +758,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
 
     const reader: Socket["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
+      const dispatcher = (yield* Scheduler.Scheduler).makeDispatcher()
       const ws = yield* Scope.provide(acquire, scope)
       if ("binaryType" in ws) {
         ;(ws as { binaryType: string }).binaryType = "arraybuffer"
@@ -802,7 +804,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
         if (waiter !== undefined) {
           if (!flushScheduled) {
             flushScheduled = true
-            queueMicrotask(deliver)
+            dispatcher.scheduleTask(deliver, 0)
           }
         } else if (
           !pausable && options?.highWaterMark !== undefined &&

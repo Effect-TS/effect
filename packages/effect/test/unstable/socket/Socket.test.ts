@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Latch from "effect/Latch"
+import * as Scheduler from "effect/Scheduler"
 import * as Socket from "effect/unstable/socket/Socket"
 
 type EventType = "open" | "message" | "error" | "close"
@@ -69,6 +70,37 @@ describe("Socket", () => {
 
         assert.isTrue(Exit.isFailure(yield* Fiber.join(reader)))
         assert.strictEqual(ws.listenerCount("open"), 0)
+      }))
+
+    it.effect("uses the Scheduler service to deliver buffered messages", () =>
+      Effect.gen(function*() {
+        const tasks: Array<() => void> = []
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "sync",
+          shouldYield: () => false,
+          makeDispatcher: () => ({
+            scheduleTask(task) {
+              tasks.push(task)
+            },
+            flush() {
+              while (tasks.length > 0) tasks.shift()!()
+            }
+          })
+        }
+        const ws = new TestWebSocket(Latch.makeUnsafe(false))
+        ws.readyState = 1
+        const socket = yield* Socket.fromWebSocket(Effect.succeed(ws))
+        const pull = yield* socket.reader.pipe(
+          Effect.provideService(Scheduler.Scheduler, scheduler)
+        )
+        const reader = yield* pull.pipe(Effect.forkChild({ startImmediately: true }))
+
+        ws.dispatch("message", { data: "hello" })
+
+        assert.isUndefined(reader.pollUnsafe())
+        assert.lengthOf(tasks, 1)
+        scheduler.makeDispatcher().flush()
+        assert.deepStrictEqual(yield* Fiber.join(reader), ["hello"])
       }))
   })
 })
