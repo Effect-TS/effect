@@ -937,36 +937,36 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(acquireContext, input))
     ) as Socket["reader"]
 
-    const write = (chunk: Uint8Array | string | CloseEvent) =>
-      latch.whenOpen(
-        Effect.suspend(() => {
-          const ws = currentWS!
-          try {
-            if (isCloseEvent(chunk)) {
-              ws.close(chunk.code, chunk.reason)
-            } else {
-              ws.send(chunk as string | Uint8Array<ArrayBuffer>)
-            }
-            return Effect.void
-          } catch (cause) {
-            return Effect.fail(new SocketError({ reason: new SocketWriteError({ cause }) }))
+    const write = (chunk: Uint8Array | string | CloseEvent): Effect.Effect<void, SocketError> =>
+      Effect.suspend(() => {
+        const ws = currentWS
+        if (ws === undefined) return latch.whenOpen(write(chunk))
+        try {
+          if (isCloseEvent(chunk)) {
+            ws.close(chunk.code, chunk.reason)
+          } else {
+            ws.send(chunk as string | Uint8Array<ArrayBuffer>)
           }
-        })
-      )
-    const writeAll = (chunks: NonEmptyReadonlyArray<Uint8Array | string>) =>
-      latch.whenOpen(
-        Effect.suspend(() => {
-          const ws = currentWS!
-          try {
-            for (let i = 0; i < chunks.length; i++) {
-              ws.send(chunks[i] as string | Uint8Array<ArrayBuffer>)
-            }
-            return Effect.void
-          } catch (cause) {
-            return Effect.fail(new SocketError({ reason: new SocketWriteError({ cause }) }))
+          return Effect.void
+        } catch (cause) {
+          return Effect.fail(new SocketError({ reason: new SocketWriteError({ cause }) }))
+        }
+      })
+    const writeAll = (
+      chunks: NonEmptyReadonlyArray<Uint8Array | string>
+    ): Effect.Effect<void, SocketError> =>
+      Effect.suspend(() => {
+        const ws = currentWS
+        if (ws === undefined) return latch.whenOpen(writeAll(chunks))
+        try {
+          for (let i = 0; i < chunks.length; i++) {
+            ws.send(chunks[i] as string | Uint8Array<ArrayBuffer>)
           }
-        })
-      )
+          return Effect.void
+        } catch (cause) {
+          return Effect.fail(new SocketError({ reason: new SocketWriteError({ cause }) }))
+        }
+      })
     const writer: Socket["writer"] = Effect.succeed({ write, writeAll })
 
     return Effect.succeed(make({ reader, writer }))

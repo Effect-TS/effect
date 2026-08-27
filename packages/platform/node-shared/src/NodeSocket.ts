@@ -256,9 +256,12 @@ export const fromDuplex = <RO>(
         return Effect.sync(cleanup)
       })
 
-    const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
-      latch.whenOpen(Effect.suspend(() => {
-        const conn = currentSocket!
+    const write = (
+      chunk: Uint8Array | string | Socket.CloseEvent
+    ): Effect.Effect<void, Socket.SocketError> =>
+      Effect.suspend(() => {
+        const conn = currentSocket
+        if (conn === undefined) return latch.whenOpen(write(chunk))
         if (Socket.isCloseEvent(chunk)) {
           conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
           return Effect.void
@@ -272,16 +275,27 @@ export const fromDuplex = <RO>(
             })
           )
         }
-      }))
+      })
 
-    const writeAll = (chunks: Array.NonEmptyReadonlyArray<Uint8Array | string>) =>
-      latch.whenOpen(Effect.suspend(() => {
-        const conn = currentSocket!
+    const writeAll = (
+      chunks: Array.NonEmptyReadonlyArray<Uint8Array | string>
+    ): Effect.Effect<void, Socket.SocketError> =>
+      Effect.suspend(() => {
+        const conn = currentSocket
+        if (conn === undefined) return latch.whenOpen(writeAll(chunks))
         let needsDrain = false
         try {
-          conn.cork()
-          for (let i = 0; i < chunks.length; i++) {
-            needsDrain = !conn.write(chunks[i]) || needsDrain
+          if (chunks.length === 1) {
+            needsDrain = !conn.write(chunks[0])
+          } else {
+            conn.cork()
+            try {
+              for (let i = 0; i < chunks.length; i++) {
+                needsDrain = !conn.write(chunks[i]) || needsDrain
+              }
+            } finally {
+              conn.uncork()
+            }
           }
         } catch (cause) {
           return Effect.fail(
@@ -289,11 +303,9 @@ export const fromDuplex = <RO>(
               reason: new Socket.SocketWriteError({ cause })
             })
           )
-        } finally {
-          conn.uncork()
         }
         return needsDrain ? awaitDrain(conn) : Effect.void
-      }))
+      })
 
     const writer: Socket.Socket["writer"] = Effect.acquireRelease(
       Effect.succeed({ write, writeAll }),

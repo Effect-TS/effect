@@ -1,13 +1,20 @@
 /**
- * Socket read/write cost against raw `node:net` and `ws` baselines.
+ * Socket read/write cost against raw `node:net`, `ws` and in-memory baselines.
  *
- * Two workloads run over loopback against plain Node servers, so only the
- * client transport differs between tasks:
+ * Two workloads run against plain Node servers, so only the client transport
+ * differs between tasks:
  *
  * - `stream`: the client requests a fixed payload and reads it back, measuring
  *   the read path under a burst of large frames.
  * - `ping-pong`: the client writes a small frame and waits for the echo,
  *   measuring per-message cost on both paths.
+ *
+ * The `node:net` and `ws` transports go over loopback, which is dominated by
+ * syscalls: a CPU profile of the ping-pong run is roughly 20% idle and 35%
+ * kernel writes, so anything smaller than a microsecond is invisible there.
+ * The `duplex` transport is a cross-wired `PassThrough` pair with no kernel in
+ * the path, which is where allocation-level changes to the Socket layer show
+ * up. Its raw baseline is the same duplex read with `data` events.
  *
  * Run with `pnpm --dir packages/platform/node-shared benchmark:socket`.
  */
@@ -19,6 +26,7 @@ import * as Scope from "effect/Scope"
 import * as Socket from "effect/unstable/socket/Socket"
 import { once } from "node:events"
 import * as Net from "node:net"
+import { Duplex } from "node:stream"
 import { Bench } from "tinybench"
 import { WebSocket, WebSocketServer } from "ws"
 
@@ -80,6 +88,29 @@ const wsStreamServer = await startWebSocketServer((ws) => {
     for (const frame of streamFrames) ws.send(frame)
   })
 })
+
+// A duplex whose write side feeds the read side, so a client talks to itself
+// with no kernel in the path. The read side is unbounded, so this measures the
+// Socket layer rather than transport backpressure.
+const loopbackDuplex = (respond: (chunk: Buffer, push: (data: Uint8Array) => void) => void): Duplex => {
+  const duplex: Duplex = new Duplex({
+    read() {},
+    write(chunk: Buffer, _encoding, callback) {
+      respond(chunk, (data) => {
+        duplex.push(data)
+      })
+      callback()
+    }
+  })
+  return duplex
+}
+
+const duplexEcho = (): Duplex => loopbackDuplex((chunk, push) => push(chunk))
+
+const duplexStream = (): Duplex =>
+  loopbackDuplex((_chunk, push) => {
+    for (const frame of streamFrames) push(frame)
+  })
 
 /**
  * Tracks how many bytes have arrived so a read of `n` bytes resolves once the
@@ -151,6 +182,20 @@ const rawWebSocketClient = async (url: string): Promise<RawClient> => {
   }
 }
 
+const rawDuplexClient = (conn: Duplex): RawClient => {
+  const counter = makeReadCounter()
+  conn.on("data", (chunk: Buffer) => counter.push(chunk.length))
+  return {
+    write(frames) {
+      let flushed = true
+      for (const frame of frames) flushed = conn.write(frame)
+      return flushed ? Promise.resolve() : once(conn, "drain").then(() => {})
+    },
+    read: counter.read,
+    close: () => conn.destroy()
+  }
+}
+
 interface SocketClient {
   readonly write: (frames: NonEmptyReadonlyArray<Uint8Array>) => Effect.Effect<void>
   readonly read: (bytes: number) => Effect.Effect<void>
@@ -179,6 +224,9 @@ const socketClient = Effect.fnUntraced(function*(socket: Socket.Socket) {
 const scope = await Effect.runPromise(Scope.make())
 const runScoped = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) => Effect.runPromise(Scope.provide(effect, scope))
 
+const duplexSocketClient = (open: () => Duplex) =>
+  runScoped(Effect.flatMap(NodeSocket.fromDuplex(Effect.sync(open)), socketClient))
+
 const netSocketClient = (port: number) =>
   runScoped(Effect.flatMap(NodeSocket.makeNet({ host: "127.0.0.1", port, noDelay: true }), socketClient))
 
@@ -201,6 +249,11 @@ const rawClients = [
   await rawWebSocketClient(wsEchoUrl)
 ]
 const [rawNetStream, rawWsStream, rawNetEcho, rawWsEcho] = rawClients
+
+const rawDuplexStream = rawDuplexClient(duplexStream())
+const rawDuplexEcho = rawDuplexClient(duplexEcho())
+const socketDuplexStream = await duplexSocketClient(duplexStream)
+const socketDuplexEcho = await duplexSocketClient(duplexEcho)
 
 const socketNetStream = await netSocketClient(netStreamPort)
 const socketWsStream = await webSocketSocketClient(wsStreamUrl)
@@ -225,11 +278,15 @@ const socketStream = (client: SocketClient) => {
 }
 
 const socketPingPong = (client: SocketClient) => {
-  const effect = Effect.repeat(
-    Effect.flatMap(client.write(ping), () => client.read(pingPongSize)),
-    { times: pingPongCount - 1 }
-  )
-  return () => Effect.runPromise(effect)
+  // A plain counter loop rather than `Effect.repeat`, whose Schedule reads the
+  // clock every iteration and would cost more than the round-trip it wraps.
+  const round = Effect.flatMap(client.write(ping), () => client.read(pingPongSize))
+  let remaining = 0
+  const loop: Effect.Effect<void> = Effect.flatMap(round, () => --remaining > 0 ? loop : Effect.void)
+  return () => {
+    remaining = pingPongCount
+    return Effect.runPromise(loop)
+  }
 }
 
 const options = {
@@ -280,7 +337,9 @@ await runSuite(
     ["node:net (raw)", rawStream(rawNetStream)],
     ["node:net (Socket)", socketStream(socketNetStream)],
     ["ws (raw)", rawStream(rawWsStream)],
-    ["ws (Socket)", socketStream(socketWsStream)]
+    ["ws (Socket)", socketStream(socketWsStream)],
+    ["duplex (raw)", rawStream(rawDuplexStream)],
+    ["duplex (Socket)", socketStream(socketDuplexStream)]
   ]
 )
 
@@ -294,11 +353,15 @@ await runSuite(
     ["node:net (raw)", rawPingPong(rawNetEcho)],
     ["node:net (Socket)", socketPingPong(socketNetEcho)],
     ["ws (raw)", rawPingPong(rawWsEcho)],
-    ["ws (Socket)", socketPingPong(socketWsEcho)]
+    ["ws (Socket)", socketPingPong(socketWsEcho)],
+    ["duplex (raw)", rawPingPong(rawDuplexEcho)],
+    ["duplex (Socket)", socketPingPong(socketDuplexEcho)]
   ]
 )
 
 for (const client of rawClients) client.close()
+rawDuplexStream.close()
+rawDuplexEcho.close()
 await Effect.runPromise(Scope.close(scope, Exit.void))
 netEchoServer.close()
 netStreamServer.close()
