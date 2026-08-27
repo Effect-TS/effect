@@ -18,7 +18,6 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import { constFalse, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Rec from "effect/Record"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
@@ -44,26 +43,6 @@ const open = (Sqlite as typeof Sqlite & {
 
 const classifyError = (cause: unknown, message: string, operation: string) =>
   classifySqliteError(cause, { message, operation })
-
-const normalizeValue = (value: any) => value instanceof ArrayBuffer ? new Uint8Array(value) : value
-
-const normalizeRows = (rows: Array<Record<string, any>>) => {
-  for (const row of rows) {
-    for (const key of Object.keys(row)) {
-      Rec.assignProperty(row, key, normalizeValue(row[key]))
-    }
-  }
-  return rows
-}
-
-const normalizeValues = (rows: Array<Array<any>>) => {
-  for (const row of rows) {
-    for (let i = 0; i < row.length; i++) {
-      row[i] = normalizeValue(row[i])
-    }
-  }
-  return rows
-}
 
 /**
  * Runtime identifier attached to SQLite React Native client values.
@@ -186,11 +165,11 @@ export const make = (
                 catch: (cause) =>
                   new SqlError({ reason: classifyError(cause, "Failed to execute statement (async)", "execute") })
               }),
-              (result) => normalizeRows(result.rows)
+              (result) => result.rows
             )
           }
           return Effect.try({
-            try: () => normalizeRows(db.executeSync(sql, params as Array<any>).rows),
+            try: () => db.executeSync(sql, params as Array<any>).rows,
             catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
           })
         })
@@ -207,11 +186,11 @@ export const make = (
                 catch: (cause) =>
                   new SqlError({ reason: classifyError(cause, "Failed to execute statement (async)", "execute") })
               }),
-              (result) => normalizeValues(result.rawRows)
+              (result) => result.rawRows
             )
           }
           return Effect.try({
-            try: () => normalizeValues(db.executeRawSync(sql, params as Array<any>).rawRows),
+            try: () => db.executeRawSync(sql, params as Array<any>).rawRows,
             catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
           })
         })
