@@ -1242,6 +1242,33 @@ describe.concurrent("Sharding active teardowns", () => {
       assert.strictEqual(Queue.sizeUnsafe(state.interrupts), 1)
     }).pipe(Effect.provide(TestSharding)))
 
+  it.effect("forwards interrupts from an external same-node caller during entity teardown", () =>
+    Effect.gen(function*() {
+      const driver = yield* MessageStorage.MemoryDriver
+      const state = yield* TestEntityState
+      const sharding = yield* Sharding.Sharding
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+      const entityId = EntityId.make("external-teardown")
+      const client = makeClient("external-teardown")
+      const address = EntityAddress.make({
+        shardId: sharding.getShardId(entityId, "default"),
+        entityType: EntityType.make(TestEntity.type),
+        entityId
+      })
+
+      const fiber = yield* client.Never().pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1)
+      ActiveTeardown.acquireEntity(address)
+      yield* Fiber.interrupt(fiber).pipe(
+        Effect.ensuring(Effect.sync(() => ActiveTeardown.releaseEntity(address)))
+      )
+      yield* TestClock.adjust(1)
+
+      assert.strictEqual(journalInterrupts(driver), 1)
+      assert.strictEqual(Queue.sizeUnsafe(state.interrupts), 1)
+    }).pipe(Effect.provide(TestSharding)))
+
   it.effect("returns registry size to baseline after entity reap storms", () =>
     Effect.gen(function*() {
       yield* TestClock.adjust(1)

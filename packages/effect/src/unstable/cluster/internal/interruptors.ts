@@ -1,7 +1,6 @@
 import * as Effect from "../../../Effect.ts"
 import type { EntityAddress } from "../EntityAddress.ts"
 import type { ShardId } from "../ShardId.ts"
-import type { SingletonAddress } from "../SingletonAddress.ts"
 
 const counts = new Map<string, number>()
 
@@ -27,8 +26,6 @@ const entityKey = (address: EntityAddress): string =>
 
 const shardKey = (shardId: ShardId): string => `shard:${shardId.toString()}`
 
-const singletonKey = (address: SingletonAddress): string => `singleton:${address.name}:${address.shardId.toString()}`
-
 const entityTypeKey = (entityType: string): string => `type:${entityType}`
 
 /** @internal */
@@ -48,12 +45,6 @@ export const aroundShard = <A, E, R>(
   shardId: ShardId,
   effect: Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> => around(shardKey(shardId), effect)
-
-/** @internal */
-export const aroundSingleton = <A, E, R>(
-  address: SingletonAddress,
-  effect: Effect.Effect<A, E, R>
-): Effect.Effect<A, E, R> => around(singletonKey(address), effect)
 
 /** @internal */
 export const aroundEntityType = <A, E, R>(

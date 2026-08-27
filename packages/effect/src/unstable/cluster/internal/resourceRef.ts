@@ -82,38 +82,37 @@ export class ResourceRef<A, E = never> {
     const scope = Scope.makeUnsafe()
     this.latch.closeUnsafe()
     MutableRef.set(this.state, { _tag: "Acquiring", scope })
-    const close = Scope.close(prevScope, Exit.void)
     const teardownAddress = this.teardownAddress
-    if (teardownAddress) {
+    return Effect.suspend(() => {
+      const close = Scope.close(prevScope, Exit.void)
+      if (!teardownAddress) return close
       acquireEntity(teardownAddress)
-    }
-    return (teardownAddress
-      ? Effect.ensuring(close, Effect.sync(() => releaseEntity(teardownAddress)))
-      : close).pipe(
-        Effect.andThen(this.acquire(scope)),
-        Effect.flatMap((value) => {
-          if (this.state.current._tag === "Closed") {
-            return Effect.interrupt
-          }
-          MutableRef.set(this.state, { _tag: "Acquired", scope, value })
-          return this.latch.open
-        })
-      ).pipe(
-        Effect.onExit((exit) => {
-          if (Exit.isSuccess(exit)) {
-            return Effect.void
-          }
-          return Scope.close(scope, exit).pipe(
-            Effect.ensuring(Effect.sync(() => {
-              const state = this.state.current
-              if (state._tag === "Acquiring" && state.scope === scope) {
-                MutableRef.set(this.state, { _tag: "Failed", scope, cause: exit.cause })
-                this.latch.openUnsafe()
-              }
-            }))
-          )
-        })
-      )
+      return Effect.ensuring(close, Effect.sync(() => releaseEntity(teardownAddress)))
+    }).pipe(
+      Effect.andThen(this.acquire(scope)),
+      Effect.flatMap((value) => {
+        if (this.state.current._tag === "Closed") {
+          return Effect.interrupt
+        }
+        MutableRef.set(this.state, { _tag: "Acquired", scope, value })
+        return this.latch.open
+      })
+    ).pipe(
+      Effect.onExit((exit) => {
+        if (Exit.isSuccess(exit)) {
+          return Effect.void
+        }
+        return Scope.close(scope, exit).pipe(
+          Effect.ensuring(Effect.sync(() => {
+            const state = this.state.current
+            if (state._tag === "Acquiring" && state.scope === scope) {
+              MutableRef.set(this.state, { _tag: "Failed", scope, cause: exit.cause })
+              this.latch.openUnsafe()
+            }
+          }))
+        )
+      })
+    )
   }
 
   await: Effect.Effect<A, E> = Effect.suspend(() => {

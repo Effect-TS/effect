@@ -1428,7 +1428,6 @@ const make = Effect.gen(function*() {
               // result of a shard being resassigned
               const caller = Context.getOption(entry.context, CurrentAddress).valueOrUndefined
               const isTransientInterrupt = MutableRef.get(isShutdown) ||
-                ActiveTeardown.isActive(address) ||
                 (caller !== undefined && ActiveTeardown.isActive(caller))
               if (isTransientInterrupt && Context.get(entry.message.annotations, Persisted)) {
                 return Effect.void
@@ -1588,12 +1587,9 @@ const make = Effect.gen(function*() {
         const shouldBeRunning = MutableHashSet.has(acquiredShards, shardId)
         if (running && !shouldBeRunning) {
           yield* Effect.logDebug("Stopping singleton", address)
-          yield* ActiveTeardown.aroundSingleton(
-            address,
-            ActiveTeardown.aroundShard(
-              address.shardId,
-              FiberMap.remove(singletonFibers, address)
-            )
+          yield* ActiveTeardown.aroundShard(
+            address.shardId,
+            FiberMap.remove(singletonFibers, address)
           )
         } else if (!running && shouldBeRunning) {
           yield* Effect.logDebug("Starting singleton", address)
