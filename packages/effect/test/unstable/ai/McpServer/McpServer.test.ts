@@ -55,6 +55,14 @@ const AnnotatedVoidTool = Tool.make("AnnotatedVoidTool", {
   success: Schema.Void.annotate({ description: "No output" })
 })
 
+const NullableResultTool = Tool.make("NullableResultTool", {
+  success: Schema.NullOr(Schema.Struct({ answer: Schema.String }))
+})
+
+const ArrayResultTool = Tool.make("ArrayResultTool", {
+  success: Schema.Array(Schema.String)
+})
+
 const TestToolkit = Toolkit.make(
   OptionalStringTool,
   PublicFailureTool,
@@ -62,7 +70,9 @@ const TestToolkit = Toolkit.make(
   DefectTool,
   UntypedTool,
   StructuredResultTool,
-  AnnotatedVoidTool
+  AnnotatedVoidTool,
+  NullableResultTool,
+  ArrayResultTool
 )
 type TestToolkitHandlers = Toolkit.HandlersFrom<Toolkit.Tools<typeof TestToolkit>>
 
@@ -73,7 +83,9 @@ const testToolkitHandlers = TestToolkit.of({
   DefectTool: () => Effect.die("private defect details"),
   UntypedTool: () => Effect.void,
   StructuredResultTool: () => Effect.succeed({ answer: "result" }),
-  AnnotatedVoidTool: () => Effect.void
+  AnnotatedVoidTool: () => Effect.void,
+  NullableResultTool: () => Effect.succeed(null),
+  ArrayResultTool: () => Effect.succeed(["first", "second"])
 })
 
 const INTERNAL_TOOL_ERROR_MESSAGE = "Tool execution failed due to an internal server error."
@@ -387,6 +399,37 @@ describe("McpServer", () => {
           new McpSchema.CallToolResult({
             isError: false,
             content: []
+          })
+        )
+      }))
+
+    it.effect("omits structured content for null and array tool results", () =>
+      Effect.gen(function*() {
+        const client = yield* makeToolkitTestClient()
+
+        const nullResult = yield* client["tools/call"]({
+          name: "NullableResultTool",
+          arguments: {}
+        })
+
+        assert.deepStrictEqual(
+          nullResult,
+          new McpSchema.CallToolResult({
+            isError: false,
+            content: [{ type: "text", text: "null" }]
+          })
+        )
+
+        const arrayResult = yield* client["tools/call"]({
+          name: "ArrayResultTool",
+          arguments: {}
+        })
+
+        assert.deepStrictEqual(
+          arrayResult,
+          new McpSchema.CallToolResult({
+            isError: false,
+            content: [{ type: "text", text: JSON.stringify(["first", "second"]) }]
           })
         )
       }))

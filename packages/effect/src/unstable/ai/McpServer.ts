@@ -104,6 +104,15 @@ type ServerNotificationRequest<
 
 const BroadcastServerNotificationRpcs = ServerNotificationRpcs.omit("notifications/elicitation/complete")
 
+/**
+ * MCP models `structuredContent` as a JSON object, so a `null` or array
+ * encoded result must be omitted rather than sent through as-is.
+ */
+const toStructuredContent = (value: unknown): Schema.JsonObject | undefined =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Schema.JsonObject
+    : undefined
+
 const validateStructuredContent = (
   toolName: string,
   value: unknown
@@ -1570,7 +1579,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           Effect.map((result) =>
             new CallToolResult({
               isError: false,
-              structuredContent: typeof result.encodedResult === "object" ? result.encodedResult : undefined,
+              structuredContent: toStructuredContent(result.encodedResult),
               content: result.encodedResult === undefined ? [] : [{
                 type: "text",
                 text: JSON.stringify(result.encodedResult)
