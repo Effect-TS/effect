@@ -119,6 +119,8 @@ export interface PgClientConfig {
   readonly prepare?: boolean | undefined
   /** How many statements a connection keeps prepared. Defaults to `100`. */
   readonly preparedStatementCacheSize?: number | undefined
+  /** Maximum backend message size in bytes. Defaults to 16 MiB. */
+  readonly maxMessageSize?: number | undefined
 }
 
 /**

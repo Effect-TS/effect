@@ -20,6 +20,12 @@ const int32 = (value: number): Buffer => {
   return bytes
 }
 
+const int16 = (value: number): Buffer => {
+  const bytes = Buffer.allocUnsafe(2)
+  bytes.writeInt16BE(value)
+  return bytes
+}
+
 const authentication = (method: number, payload: Uint8Array = Buffer.alloc(0)): Buffer =>
   backendMessage("R", Buffer.concat([int32(method), payload]))
 
@@ -142,6 +148,61 @@ const withUnixServer = (
   )
 
 describe("PgConnection in-process server", () => {
+  it.effect("accepts backend messages over the default limit when configured", () =>
+    Effect.gen(function*() {
+      const fieldSize = 16 * 1024 * 1024
+      const field = Buffer.alloc(fieldSize, 0x78)
+      const rowDescription = backendMessage(
+        "T",
+        Buffer.concat([
+          int16(1),
+          Buffer.from("big\0"),
+          int32(0),
+          int16(0),
+          int32(25),
+          int16(-1),
+          int32(-1),
+          int16(1)
+        ])
+      )
+      const dataRow = backendMessage("D", Buffer.concat([int16(1), int32(field.length), field]))
+      const result = Buffer.concat([
+        backendMessage("1", Buffer.alloc(0)),
+        backendMessage("2", Buffer.alloc(0)),
+        rowDescription,
+        dataRow,
+        backendMessage("C", Buffer.from("SELECT 1\0")),
+        readyForQuery
+      ])
+      let writes = 0
+      const socket: Duplex = new Duplex({
+        read() {},
+        write(_chunk: Buffer, _encoding, callback) {
+          writes++
+          queueMicrotask(() => {
+            socket.push(
+              writes === 1
+                ? Buffer.concat([authenticationOk, backendKeyData, readyForQuery])
+                : writes === 2
+                ? result
+                : emptyQueryResult
+            )
+          })
+          callback()
+        }
+      })
+      const connection = yield* PgConnection.make({
+        username: "test",
+        stream: () => socket,
+        maxMessageSize: 17 * 1024 * 1024
+      })
+
+      const oversized = yield* connection.query("SELECT repeat('x', 16777216) AS big")
+      assert.strictEqual(typeof oversized.rows[0].big, "string")
+      assert.strictEqual((oversized.rows[0].big as string).length, fieldSize)
+      assert.deepStrictEqual((yield* connection.query("SELECT 1")).rows, [])
+    }))
+
   it.effect("flushes concurrently submitted multiplexed queries in one write", () =>
     Effect.gen(function*() {
       const writes: Array<Buffer> = []
