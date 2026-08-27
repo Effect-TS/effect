@@ -25,3 +25,12 @@
 "@effect/platform/Socket#WebSocketConstructor":
   replacement: "Socket.WebSocketConstructor"
   note: "The service moved to effect/unstable/socket/Socket and is now a Context.Service class."
+"@effect/platform/Socket#defaultCloseCodeIsError":
+  replacement: none
+  note: "Sockets no longer classify close codes; every close fails the reader's pull with a SocketError wrapping SocketCloseError. Consumers that treat a close as normal catch the error."
+"@effect/platform/Socket#fromTransformStream":
+  replacement: "Socket.fromTransformStream"
+  note: "The constructor remains in effect/unstable/socket/Socket but drops closeCodeIsError; every close fails the reader's pull with a SocketError wrapping SocketCloseError."
+"@effect/platform/Socket#toChannelMap":
+  replacement: none
+  note: "The v4 Socket read side is a Pull; map frames by acquiring Socket.readerBytes or Socket.readerString, or Effect.map the pull from socket.reader, and use Socket.toChannel or Socket.toChannelString for duplex channels."
