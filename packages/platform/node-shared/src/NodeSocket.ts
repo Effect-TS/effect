@@ -39,6 +39,21 @@ export class NetSocket extends Context.Service<NetSocket, Net.Socket>()(
   "@effect/platform-node/NodeSocket/NetSocket"
 ) {}
 
+const readAvailable = (
+  conn: Duplex
+): Array.NonEmptyReadonlyArray<Uint8Array | string> | null => {
+  const first = conn.read() as Uint8Array | string | null
+  if (first === null) return null
+  const second = conn.read() as Uint8Array | string | null
+  if (second === null) return [first]
+  const out: [Uint8Array | string, ...Array<Uint8Array | string>] = [first, second]
+  let chunk: Uint8Array | string | null
+  while ((chunk = conn.read() as Uint8Array | string | null) !== null) {
+    out.push(chunk)
+  }
+  return out
+}
+
 /**
  * Opens a Node TCP connection as an Effect socket.
  *
@@ -101,11 +116,13 @@ export const makeNet = (
  *
  * **Details**
  *
- * Reader acquisition opens the duplex and keeps it paused: each pull reads
- * Node's internal buffer via `stream.read()`, which returns the buffered data
- * as one concatenated chunk. The stream is never resumed, so once Node's
- * buffer reaches its `highWaterMark` the kernel receive window closes and the
- * peer blocks: backpressure is end-to-end with no buffering above Node's own.
+ * Reader acquisition opens the duplex and keeps it paused: each pull drains
+ * Node's internal buffer with `stream.read()`. On Node 26+ that yields each
+ * buffered chunk as a separate batch element with no copy. Earlier Node
+ * concatenates the buffer into one chunk. The stream is never resumed, so once
+ * Node's buffer reaches its `highWaterMark` the kernel receive window closes
+ * and the peer blocks: backpressure is end-to-end with no buffering above
+ * Node's own.
  *
  * Writes use `write()` return-value backpressure, awaiting one `drain` when
  * the internal buffer is full. `writeAll` corks the stream around the batch.
@@ -158,11 +175,11 @@ export const fromDuplex = <RO>(
       }
       function onReadable() {
         if (waiter === undefined) return
-        const chunk = conn.read() as Uint8Array | null
+        const chunk = readAvailable(conn)
         if (chunk === null) return
         const resume = waiter
         waiter = undefined
-        resume(Effect.succeed([chunk] as const))
+        resume(Effect.succeed(chunk))
       }
       function onEnd() {
         fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
@@ -209,8 +226,8 @@ export const fromDuplex = <RO>(
       latch.openUnsafe()
 
       return Effect.suspend(() => {
-        const chunk = conn.read() as Uint8Array | null
-        if (chunk !== null) return Effect.succeed([chunk] as const)
+        const chunk = readAvailable(conn)
+        if (chunk !== null) return Effect.succeed(chunk)
         if (error !== undefined) return Effect.fail(error)
         return Effect.callback<Array.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>((resume) => {
           waiter = resume

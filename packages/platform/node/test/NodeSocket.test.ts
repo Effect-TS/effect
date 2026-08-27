@@ -7,6 +7,7 @@ import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import { Socket, type SocketServer } from "effect/unstable/socket"
 import * as Net from "node:net"
+import { Duplex } from "node:stream"
 import { WS } from "vitest-websocket-mock"
 
 const makeServer = Effect.gen(function*() {
@@ -121,6 +122,29 @@ describe("Socket", () => {
         }, new Uint8Array(0))
       )
       assert.strictEqual(text, "HelloWorld")
+    }))
+
+  it.effect("pull drains every buffered duplex chunk", () =>
+    Effect.gen(function*() {
+      const first = Buffer.from("aa")
+      const second = Buffer.from("bb")
+      const duplex = new Duplex({
+        read() {},
+        write() {}
+      })
+      duplex.pause()
+      const socket = yield* NodeSocket.fromDuplex(Effect.succeed(duplex))
+      const pull = yield* socket.reader
+      duplex.push(first)
+      duplex.push(second)
+      const batch = yield* pull
+      assert.strictEqual(Buffer.concat(batch.map((chunk) => chunk as Uint8Array)).toString(), "aabb")
+      // Node 26 returns one buffered chunk per `read()`, so the batch carries
+      // the pushed buffers with no copy. Earlier Node concatenates them.
+      if (batch.length === 2) {
+        assert.strictEqual(batch[0], first)
+        assert.strictEqual(batch[1], second)
+      }
     }))
 
   it.live("respects a zero open timeout", () =>
