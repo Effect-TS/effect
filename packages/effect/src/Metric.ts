@@ -1609,7 +1609,7 @@ export const CurrentMetricAttributes = Context.Reference<Metric.AttributeSet>(Cu
   defaultValue: () => ({})
 })
 
-const MetricRegistryKey = "~effect/observability/Metric/MetricRegistryKey"
+const MetricRegistryKey = "~effect/Metric/MetricRegistryKey"
 
 /**
  * Context reference for the metric registry in the current context.
@@ -1642,7 +1642,7 @@ export const MetricRegistry = Context.Reference<Map<string, Metric.Metadata<any,
   { defaultValue: () => new Map() }
 )
 
-const TypeId = "~effect/observability/Metric"
+const TypeId = "~effect/Metric"
 
 abstract class Metric$<in Input, out State> implements Metric<Input, State> {
   readonly [TypeId] = TypeId

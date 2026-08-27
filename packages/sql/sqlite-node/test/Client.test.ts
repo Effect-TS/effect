@@ -156,6 +156,7 @@ describe("Client", () => {
       )
 
       const sql = yield* SqliteClient.make({ filename, readonly: true })
+      yield* sql`PRAGMA query_only = ON`
       assert.deepStrictEqual(yield* sql.withTransaction(sql`SELECT * FROM test`), [])
     }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
 

@@ -202,7 +202,7 @@ export const layer: Layer.Layer<
  * @category type IDs
  * @since 4.0.0
  */
-export const ErrorTypeId: ErrorTypeId = "~@effect/experimental/PersistedQueue/PersistedQueueError"
+export const ErrorTypeId: ErrorTypeId = "~effect/persistence/PersistedQueue/PersistedQueueError"
 
 /**
  * Type-level identifier used to brand `PersistedQueueError` values.
@@ -210,7 +210,7 @@ export const ErrorTypeId: ErrorTypeId = "~@effect/experimental/PersistedQueue/Pe
  * @category type IDs
  * @since 4.0.0
  */
-export type ErrorTypeId = "~@effect/experimental/PersistedQueue/PersistedQueueError"
+export type ErrorTypeId = "~effect/persistence/PersistedQueue/PersistedQueueError"
 
 /**
  * Error raised by persisted queue store operations.

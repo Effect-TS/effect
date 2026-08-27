@@ -1,25 +1,25 @@
 ---
 name: jsdocs
-description: Write, insert, or update Effect public API JSDoc so it satisfies the jsdocs oxlint rule. Use when adding or fixing JSDoc comments, resolving jsdocs diagnostics, preparing docs for JSON extraction, or reviewing public API documentation.
+description: Public API JSDoc. Use when writing or reviewing Effect API documentation or fixing effect-jsdocs checker diagnostics.
 ---
-
-Use this skill to write well-formed JSDoc for Effect public APIs.
 
 ## Workflow
 
-When updating public API JSDoc:
+1. Inspect the declaration, implementation, nearby JSDoc, tests, and call sites.
+2. Choose a focused API fix or module refinement. Preserve verified facts and
+   valuable examples while applying the contract below.
+3. For module refinement or APIs with close alternatives, audit `@see` links
+   and concrete `**Gotchas**`.
+4. Run `pnpm jsdocs --check` and the applicable root `AGENTS.md` validation.
 
-1. Inspect the declaration, implementation, nearby tests, and nearby JSDoc before editing.
-2. Decide whether the task is a single API fix or a module refinement pass.
-3. Rewrite comments into the required documentation shape while preserving correct facts and examples.
-4. For module refinements, complex APIs, or APIs with related alternatives, run the `@see` and `**Gotchas**` audits.
-5. Run the narrowest relevant validation.
+Complete the task only when the checker passes and every changed runnable
+example passes its targeted doctest.
 
-## Required documentation shape
+## Declaration shape
 
-Use a normal multiline JSDoc comment in TypeScript source:
+Use a multiline JSDoc block for a public declaration:
 
-```ts
+````ts
 /**
  * Short description as one paragraph.
  *
@@ -29,163 +29,92 @@ Use a normal multiline JSDoc comment in TypeScript source:
  *
  * **Details**
  *
- * Optional details for complex APIs, options, overloads, or behavior.
+ * Optional details for complex behavior.
  *
  * **Gotchas**
  *
- * Optional edge cases, footguns, or surprising behavior.
+ * Optional concrete caveats.
  *
- * **Example** (Short title)
- *
- * Optional prose explaining the example.
+ * **Example** (Parsing JSON)
  *
  * ```ts import.meta.vitest
- * const result = example()
+ * operation() // => expected
  * ```
  *
  * @category constructors
  * @since 1.0.0
  */
-```
+````
 
-## Prose Rules
+Write practical English about the public concept, not its implementation. Make
+the description one self-contained paragraph. Start functions and methods with
+a present-tense action such as `Creates`, `Returns`, or `Converts`; match nearby
+noun families for values, such as `Schema for`, `Layer that`, or `Service that`.
 
-- Use sober, practical prose.
-- Write all public JSDoc prose in English.
-- Do not use jargon when a plain word works.
-- Do not be clever.
-- Do not add filler sections.
-- The short description is required and must be exactly one paragraph.
-- Make the short description stand on its own. Do not rely on `**When to use**`
-  to make the API understandable.
-- For functions and methods, prefer present-tense, action-first prose such as
-  `Creates`, `Returns`, `Checks`, `Provides`, `Represents`, `Converts`,
-  `Decodes`, or `Formats`.
-- For technical value exports, use consistent noun forms such as `Schema for`,
-  `Layer that`, `Service that`, `Context reference that`, or
-  `Constructors and matchers for`.
-- Avoid leading `A` or `An` for canonical technical nouns when the surrounding
-  module uses a standard noun family, for example prefer `Schema for ...` over
-  `A schema for ...`.
-- Do not describe implementation mechanics when a public concept is clearer.
-  For example, prefer `Constructors and matchers for ...` over wording that
-  only says an API uses `Data.taggedEnum`.
-- Avoid generic purity or non-mutation remarks unless they document a real
-  surprise, caveat, or meaningful contrast with a mutating-looking API.
-- Optional sections must appear in this order:
-  1. `**When to use**`
-  2. `**Details**`
-  3. `**Gotchas**`
-- Include an optional section only when it has useful, non-empty content.
-- Prefer prose over bullet lists for single-item `**Details**`, `**When to use**`, or `**Gotchas**` sections. Use bullets only when there are two or more parallel facts, options, cases, or caveats.
-- `**When to use**` describes the positive use case for the documented API. Do not use it as a routing section for sibling APIs. If neighboring APIs need to be mentioned, put that boundary in `@see` tag text instead.
-- `**When to use**` is important when the API has close alternatives, trade-offs, or `@see` tags. If `@see` tags are present, inspect the referenced APIs and add `**When to use**` when it clarifies the documented API's own use case.
-- `**When to use**` must start with one of these practical guidance forms: `Use to`, `Use when`, `Use as`, or `Use with`. Avoid bullet lists and vague openers such as `Use this...` or `Useful for...`.
-- Prefer reader-centered `**When to use**` wording, especially `Use when you ...`,
-  when the sentence describes a user's goal. Avoid third-person noun-phrase
-  subjects such as `the input is ...`, `a service needs ...`, or
-  `values should ...` when they would become awkward in generated prompts.
-- A good `**When to use**` sentence should still read naturally if reused as
-  a user intent prompt, for example after `I need ...` or `I have ...`.
-- Keep `short` and `**When to use**` distinct: the short description says what
-  the API is or does; `**When to use**` says when to choose it.
-- Add internal `@see` tags only for semantically useful related public APIs.
-- Write `@see` tag text as normal prose after the link; no special separator is required. Prefer forms like `@see {@link otherApi} for ...` when a short explanation helps.
-- Use exactly one blank line between the short description, sections, examples, and tags.
-- Do not use Markdown headings such as `# Heading` or ad hoc bold headings such as `**Notes**`; only the standard headings are allowed.
-- Examples must use `**Example** (Title)`, optional prose, and exactly one non-empty `ts` code fence.
-- Example titles must be unique after trimming and lowercasing.
-- Example titles should be short use-case phrases, not generic labels.
-- Prefer gerund or action-noun titles that read naturally after `for`, for
-  example `Parsing JSON`, `Creating a scoped runtime`, or `Comparing structs`.
-- Avoid imperative titles such as `Parse JSON`, vague labels such as `Syntax`
-  or `Basic usage`, and title-cased fragments such as `String Ordering`.
-- Preserve canonical technical capitalization inside the phrase, such as
-  `Option`, `Effect`, `Schema`, `DateTime`, `HashMap`, `Base64`, and `JSON`.
-- For multiple examples on the same API, make each title describe the distinct
-  use case shown by that example.
-- Prefer examples with stable, deterministic output. Avoid assertions or
-  `console.log` comments that depend on stack traces, object inspection,
-  `Error` formatting, concurrency order, timing, randomness, or
-  environment-specific formatting. Examples may assume Node.js console
-  formatting. Direct `Set` / `Map` output is acceptable when insertion order is
-  deterministic and the expected output uses Node's format; otherwise
-  demonstrate a stable property instead.
-- Do not use `@example`.
-- Do not put TypeScript code fences outside `**Example** (Title)` sections.
-- Inline `{@link Symbol}` targets must resolve to TypeScript symbols; do not link to URLs with `{@link}`.
-- Avoid overlinking in prose. Use `{@link Symbol}` only when navigation to
-  that symbol helps the reader choose or understand the API. For the API being
-  documented, the module's central type, nearby obvious names, or repeated
-  mentions, prefer plain code formatting such as `Cause`, `Effect`, or
-  `Context`.
-- Do not document module-level comments; module JSDoc is ignored by this rule.
-- `@internal` means the item is ignored; do not rewrite it as public docs.
-- Default exports are ignored by this rule and do not need JSDoc.
-- Do not add unsupported constructs such as enums or empty exports in checked files.
-- For low-level public values, prefer accurate categories such as `symbols`,
-  `type IDs`, or `prototypes` over compensating with verbose descriptions.
+Optional non-empty sections appear once in this order: `**When to use**`,
+`**Details**`, `**Gotchas**`. Separate descriptions, sections, examples, and
+tags with exactly one blank line. Use prose for one fact and bullets for parallel
+facts. Do not add other headings.
 
-## Example quality
+`**When to use**` states a positive use case distinct from the description and
+begins with `Use to`, `Use when`, `Use as`, or `Use with`. Put sibling
+comparisons in `@see`. Reserve `**Gotchas**` for concrete preconditions, edge
+cases, surprising behavior, and important failure modes.
 
-Examples are optional. They should demonstrate:
+`@internal` declarations and default exports are outside public JSDoc authoring.
+Checked files do not support exported enums or empty export declarations.
 
-- behavior or constraints that are not clear from the signature;
-- meaningful composition with other public APIs;
-- a realistic use case supported by repository tests or call sites; or
-- useful type inference, narrowing, or overload behavior.
+## Categories
 
-A good example:
+Root declarations require one non-empty `@category`. Reuse nearby categories;
+prefer lowercase plurals and gerunds while preserving canonical domain casing.
 
-- focuses on the documented API and includes only the context needed to
-  understand it;
-- is a complete, self-contained TypeScript module without placeholders or
-  omitted setup;
-- imports public APIs rather than internal modules or unrelated test helpers;
-- uses stable, deterministic, bounded behavior and does not require network
-  access, external services, timing assumptions, randomness, or machine-specific
-  state;
-- demonstrates the meaningful result, with a concise expected-value comment
-  when useful; and
-- uses explanatory prose only when the code cannot communicate an important
-  choice or caveat on its own.
+Common categories include:
 
-### Executable examples
+- Shapes: `constructors`, `destructors`, `models`, `schemas`, `guards`,
+  `predicates`, `getters`, `accessors`, `instances`, `constants`, `protocols`,
+  `prototypes`, `re-exports`, `unsafe`, `testing`.
+- Effect: `services`, `tags`, `layers`, `context`, `resource management`,
+  `running`, `errors`, `error handling`.
+- Operations: `combinators`, `filtering`, `mapping`, `sequencing`, `zipping`,
+  `combining`, `merging`, `converting`, `transforming`, `folding`, `splitting`,
+  `repetition`.
+- Shared: `utility types`, `encoding`, `decoding`, `serialization`, `tracing`,
+  `metrics`, `logging`, `annotations`, `references`, `symbols`, `type IDs`,
+  `configuration`, `math`, `comparisons`, `ordering`.
 
-- Mark runnable TypeScript fences with `import.meta.vitest`. Run changed examples from the repository root with `pnpm doctest --run <source files>`.
-- Write each marked example as a complete isolated module. Import public APIs, define every runtime value, await asynchronous work, and keep execution deterministic and bounded.
-- Prefer `operation() // => expected` over introducing a result binding used only by the assertion. Retain bindings for reuse, mutation, identity checks, or meaningful multi-step setup, and insert a blank line before a separate assertion block.
-- Keep direct assertions on one line up to 120 characters. Use dense expected arrays such as `[1, 2]` and semantic Effect values such as `Option.some(1)` rather than console formatting.
-- Preserve `import.meta.vitest` for type-level examples, but do not add tautological runtime assertions to them.
-- Leave examples that register Vitest tests or suites as plain `````ts`` fences because the doctest collector executes
-  runnable snippets inside tests. Call the registration API directly to show its intended top-level usage.
-- Keep documentation-only snippets as plain `````ts`` fences.
+Keep these boundaries: services are contracts, tags identify services, and
+layers provide them; getters retrieve values while accessors read context;
+errors model failures while error handling recovers or maps them; models are
+domain data while utility types are type-level contracts; guards narrow while
+predicates return booleans.
 
-When reviewing existing examples:
+## Examples
 
-1. Derive the example's use case and behavior from repository evidence. Inspect
-   the declaration, implementation, tests, call sites, and related APIs. Do not
-   invent a scenario merely to retain an example.
-2. Keep a correct, clear, high-value example without gratuitous rewriting.
-3. Fix or replace an example when repository evidence supports a concise,
-   valuable version.
-4. Remove an example when it is trivial, misleading, contrived, or requires more
-   scaffolding than the insight justifies. Also remove it when a good replacement
-   would require guessing at a use case.
+Examples are optional. Keep or add one only for behavior not evident from the
+signature, meaningful composition, or useful inference or narrowing. Replace or
+remove examples that are trivial, misleading, contrived, or scaffolding-heavy.
 
-Prefer concise trailing `// =>` assertions that keep the meaningful result visible;
-public documentation should not look like a test suite. Type-level examples may demonstrate inference or assignability
-without runtime assertions. For lazy APIs such as `Effect`, execute enough of the
-program to demonstrate the behavior unless the example's value is specifically
-type-level or construction-oriented.
+Use `**Example** (Unique use-case title)`, optional prose, and exactly one
+non-empty `ts` fence. Titles must remain unique after trimming and lowercasing.
 
-If an example review exposes a likely implementation or type-definition bug,
-do not change runtime or API code as part of the documentation pass. Report the
-finding and do not present the suspected behavior as recommended usage.
+Follow the root example rules. Additionally, use public imports and arrange
+nontrivial examples as setup, operation, then semantic observation. Mark
+runnable fences with `import.meta.vitest`; the transform does not run Effects or
+await promises automatically. Prefer awaited `Effect.runPromise`; use
+`Effect.runSync` only when synchronous execution is the documented contract.
 
-## Tag rules
+Keep type-level examples marked without tautological runtime assertions. Leave
+examples that register tests and intentionally non-executable examples as plain
+`ts` fences. Use `Ref`, `Deferred`, or `Queue` rather than mutable probes for
+concurrency, interruption, or races.
 
-When multiple tags are present, keep them in this order:
+If example research suggests an implementation or type bug, report it instead
+of changing runtime code during a documentation-only pass.
+
+## Tags
+
+Declaration tags appear in this order:
 
 1. `@deprecated`
 2. `@default`
@@ -193,68 +122,43 @@ When multiple tags are present, keep them in this order:
 4. `@category`
 5. `@since`
 
-Tag requirements by declaration kind:
+Scope rules:
 
-- Root declarations require `@category` and stable-semver `@since`, and must
-  not use `@default`.
-- Namespaces and declarations inside namespaces require stable-semver `@since`,
-  may use `@category`, and must not use `@default`.
-- Member JSDoc is optional. When present, it follows the same prose and layout
-  rules, may use optional stable-semver `@since`, may use non-empty `@default`,
-  and must not use `@category`.
-- Any declaration may use `@deprecated` with a non-empty message and repeated
-  non-empty `@see` tags for semantically useful related public APIs.
+- Roots require `@category` and stable-semver `@since`; no `@default`.
+- Namespaces and their declarations require stable-semver `@since`, permit
+  `@category`, and reject `@default`.
+- Member JSDoc is optional; when present it permits stable-semver `@since` and
+  non-empty `@default`, rejects `@category`, and follows the prose contract.
+- Any declaration permits one non-empty `@deprecated` and repeated non-empty
+  `@see` tags.
 
-## Updating existing JSDoc
+Use canonical `**Example**` sections rather than `@example` tags or loose code
+fences.
 
-When fixing or updating existing docs:
+## Module JSDoc
 
-1. Preserve correct facts and examples.
-2. Rewrite the layout into the standard template.
-3. Move usage guidance into `**When to use**`, behavior details into `**Details**`, and real caveats into `**Gotchas**`.
-4. Convert `@example` tags and loose `ts` fences into `**Example** (Title)` sections.
-5. Preserve valid `@see`, `@deprecated`, `@default`, `@category`, and `@since` tags.
-6. Remove `@see` tags that do not point to semantically useful related public APIs.
-7. Replace redundant inline `{@link ...}` tags with plain code formatting when
-   the link target is already obvious from the current declaration or module.
-8. Remove sections that would be empty.
+When present, the first top-level JSDoc is the module block unless TypeScript
+attaches it to a non-import first declaration. An `@internal` module is omitted.
 
-## Module refinement
+Module prose does not use the declaration template. Its tags are optional
+non-empty `@deprecated`, repeated non-empty `@see`, then required stable-semver
+`@since`. Its examples and links follow the same contracts as declarations.
 
-When asked to refine an existing module:
+## Links And Refinement
 
-1. First scan the module for local documentation patterns, repeated API families, and category conventions.
-2. Keep the change focused on documentation quality unless the user also asked for rule or source changes.
-3. Prefer improving existing comments over rewriting every comment into a new voice.
-4. Preserve examples unless they are wrong, stale, nondeterministic, or fail
-   the required documentation shape.
-5. Apply the `@see` and `**Gotchas**` audits across the module before finishing.
+Inline `{@link Symbol}` targets must resolve to TypeScript symbols; use normal
+Markdown links for URLs. Prefer code formatting when navigation does not help a
+reader understand or choose the API.
 
-## See audit
+Use `@see` only for a verified related public API: a close alternative, inverse,
+complement, level variant, or closely returned, consumed, or configured type.
+Explain non-obvious relationships. Exclude implementation dependencies, broad
+concepts, example-only helpers, private APIs, and merely lexical matches.
 
-When refining an existing public API module, always do a dedicated `@see` pass:
+For a module refinement:
 
-1. Inspect existing `@see` tags and referenced APIs before keeping, changing, or removing them.
-2. Look for close alternatives in the same module or API family when the documented API is one of several ways to do similar work.
-3. Keep or add `@see` only when the linked API is semantically useful to understand the documented API.
-4. Good `@see` targets include sibling APIs, alternatives, inverse operations, lower-level or higher-level variants, complementary operations, and closely returned, consumed, or configured types/values.
-5. Do not use `@see` for implementation dependencies, broad concepts, external background links, APIs that merely share a word or name, helper APIs used only inside examples, undocumented/private members, or APIs that are only generally compatible.
-6. When `@see` tags are kept or added, include `**When to use**` guidance if the documented API's own use case is not obvious from the short description. Keep comparisons with sibling APIs in the `@see` tag text.
-
-## Gotchas audit
-
-When refining an existing public API module, always do a dedicated `**Gotchas**` pass:
-
-1. Scan existing prose for caveat language: warnings, exceptions, limitations, preconditions, special cases, or behavior that is easy to misuse.
-2. Inspect the implementation and nearby tests for behavior that is not obvious from the type signature or short description.
-3. Move real caveats from `**Details**` into `**Gotchas**` when they describe edge cases, footguns, preconditions, surprising behavior, or important failure modes.
-4. Add `**Gotchas**` only when the caveat is concrete and useful to a reader choosing or using the API.
-5. If no gotchas are added during a refinement pass, state that a gotchas audit was performed and why no caveats were worth documenting.
-
-## Validation
-
-Run the narrowest validation that matches the change:
-
-- For runnable JSDoc example changes, run `pnpm doctest --run <source files>` from the repository root.
-- Run `pnpm lint` because the linter includes the custom rule that checks public API JSDoc.
-- Do not run broad validation for prose-only skill edits.
+1. Scan local documentation, categories, and repeated API families.
+2. Preserve accurate voice and examples rather than rewriting mechanically.
+3. Audit existing and missing `@see` links across close alternatives.
+4. Inspect implementation and tests for concrete gotchas; record when none are
+   worth documenting.

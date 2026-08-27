@@ -256,6 +256,13 @@ export class WorkflowInstance extends Context.Service<
     interrupted: boolean
 
     /**
+     * Whether the current workflow run has been abandoned for replay. When
+     * `true`, callbacks registered with `Workflow.addFinalizer` are skipped as
+     * the owner-local scope closes.
+     */
+    abandoned: boolean
+
+    /**
      * When SuspendOnFailure is triggered, the cause of the failure is stored
      * here.
      */
@@ -281,6 +288,7 @@ export class WorkflowInstance extends Context.Service<
       scope,
       suspended: false,
       interrupted: false,
+      abandoned: false,
       cause: undefined,
       awaitedDeferreds: new Set(),
       activityState: {

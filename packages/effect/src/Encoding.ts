@@ -34,7 +34,7 @@ import * as Result from "./Result.ts"
  * @category type IDs
  * @since 4.0.0
  */
-export const EncodingErrorTypeId = "~effect/encoding/EncodingError" as const
+export const EncodingErrorTypeId = "~effect/Encoding/EncodingError" as const
 
 /**
  * Literal type of the `EncodingErrorTypeId` marker.

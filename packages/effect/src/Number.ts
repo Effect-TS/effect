@@ -441,6 +441,8 @@ export const between: {
  * - If the `number` is less than the `minimum` value, the function returns the `minimum` value.
  * - If the `number` is greater than the `maximum` value, the function returns the `maximum` value.
  * - Otherwise, it returns the original `number`.
+ * - `NaN` is ordered below every non-`NaN` number by `Number.Order`, so it is
+ *   clamped to `minimum`.
  *
  * **Example** (Clamping to a range)
  *

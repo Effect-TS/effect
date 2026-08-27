@@ -17,10 +17,10 @@ import type { Mutable } from "../Types.ts"
 import * as effect from "./effect.ts"
 
 /** @internal */
-export const TypeId = "~effect/time/DateTime"
+export const TypeId = "~effect/DateTime"
 
 /** @internal */
-export const TimeZoneTypeId = "~effect/time/DateTime/TimeZone"
+export const TimeZoneTypeId = "~effect/DateTime/TimeZone"
 
 const Proto = {
   [TypeId]: TypeId,

@@ -28,7 +28,7 @@ import { hasProperty } from "./Predicate.ts"
  * @category symbols
  * @since 2.0.0
  */
-export const symbol = "~effect/interfaces/Hash"
+export const symbol = "~effect/Hash"
 
 /**
  * A type that represents an object that can be hashed.
