@@ -1218,12 +1218,12 @@ export const make: (params: {
     // incomplete response, handlers do not run and every executable tool call
     // gets a synthesized failure result instead.
     const incompleteFinishReason = findIncompleteFinishReason(rawContent)
-    const toolResults = Predicate.isNotUndefined(incompleteFinishReason)
+    const toolResults = incompleteFinishReason !== undefined
       ? rawContent
         .filter((part): part is Response.ToolCallPartEncoded =>
           part.type === "tool-call" &&
           part.providerExecuted !== true &&
-          Predicate.isNotUndefined(toolkit.tools[part.name])
+          toolkit.tools[part.name] !== undefined
         )
         .map((part) => makeInterruptedToolResult(part, incompleteFinishReason) as ToolResolutionResult<Tools>)
       : yield* resolveToolCalls(
@@ -1574,12 +1574,8 @@ export const make: (params: {
           approvalId,
           toolCallId: part.id
         }) as Response.StreamPart<Tools>
-        yield* Effect.uninterruptible(
-          Effect.andThen(
-            Queue.offer(queue, approvalPart),
-            Effect.sync(() => pendingToolCalls.delete(part.id))
-          )
-        )
+        Queue.offerUnsafe(queue, approvalPart)
+        pendingToolCalls.delete(part.id)
         return
       }
 
@@ -1592,19 +1588,12 @@ export const make: (params: {
             providerExecuted: false,
             ...result
           }) as Response.StreamPart<Tools>
-          // Emitting the result and marking the call resolved is atomic with
-          // respect to interruption so a handler interrupted in between
-          // cannot also receive a synthesized failure result.
-          return Effect.uninterruptible(
-            Effect.andThen(
-              Queue.offer(queue, toolResultPart),
-              Effect.sync(() => {
-                if (result.preliminary !== true) {
-                  pendingToolCalls.delete(part.id)
-                }
-              })
-            )
-          )
+          return Effect.sync(() => {
+            Queue.offerUnsafe(queue, toolResultPart)
+            if (result.preliminary !== true) {
+              pendingToolCalls.delete(part.id)
+            }
+          })
         })
       )
     })
@@ -1653,14 +1642,14 @@ export const make: (params: {
           // recorded just above) reports an incomplete response, in which
           // case they stay pending and resolve with synthesized failure
           // results.
-          if (Predicate.isUndefined(findIncompleteFinishReason(deferredFinishParts))) {
+          if (findIncompleteFinishReason(deferredFinishParts) === undefined) {
             yield* forkBufferedToolCalls
           }
           // Buffer this chunk's tool calls until the next chunk or the end of
           // the stream - use the raw chunk for encoded params
           for (const part of chunk) {
             if (part.type === "tool-call" && part.providerExecuted !== true) {
-              if (Predicate.isNotUndefined(toolkit.tools[part.name])) {
+              if (toolkit.tools[part.name] !== undefined) {
                 pendingToolCalls.set(part.id, part.name)
               }
               bufferedToolCalls.push(part)
@@ -1678,7 +1667,7 @@ export const make: (params: {
       Effect.andThen(
         Effect.suspend(() => {
           const incompleteFinishReason = findIncompleteFinishReason(deferredFinishParts)
-          if (Predicate.isUndefined(incompleteFinishReason)) {
+          if (incompleteFinishReason === undefined) {
             return forkBufferedToolCalls.pipe(
               Effect.andThen(Effect.raceFirst(
                 FiberSet.join(toolCallFibers),

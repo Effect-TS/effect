@@ -96,7 +96,7 @@ describe("LanguageModel", () => {
 
           const toolResult = response.toolResults[0]!
           strictEqual(toolResult.isFailure, true)
-          deepStrictEqual(toolResult.result, {
+          deepStrictEqual<unknown>(toolResult.result, {
             type: "execution-interrupted",
             reason: `Tool call execution was interrupted because the response finished with reason "${reason}"`
           })
@@ -277,7 +277,7 @@ describe("LanguageModel", () => {
         const toolResult = parts.find((part) => part.type === "tool-result")!
         strictEqual(toolResult.id, "tool-interrupted")
         strictEqual(toolResult.isFailure, true)
-        deepStrictEqual(toolResult.result, {
+        deepStrictEqual<unknown>(toolResult.result, {
           type: "execution-interrupted",
           reason: `Tool call execution was interrupted because the response finished with reason "length"`
         })
@@ -317,7 +317,7 @@ describe("LanguageModel", () => {
 
           const toolResult = parts.find((part) => part.type === "tool-result")!
           strictEqual(toolResult.isFailure, true)
-          deepStrictEqual(toolResult.result, {
+          deepStrictEqual<unknown>(toolResult.result, {
             type: "execution-interrupted",
             reason: `Tool call execution was interrupted because the response finished with reason "${reason}"`
           })
@@ -366,7 +366,7 @@ describe("LanguageModel", () => {
 
         const toolResult = parts.find((part) => part.type === "tool-result")!
         strictEqual(toolResult.isFailure, true)
-        deepStrictEqual(toolResult.result, {
+        deepStrictEqual<unknown>(toolResult.result, {
           type: "execution-interrupted",
           reason: `Tool call execution was interrupted because the response finished with reason "length"`
         })
