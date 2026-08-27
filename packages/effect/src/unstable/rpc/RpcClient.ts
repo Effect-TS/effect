@@ -1118,14 +1118,11 @@ export const makeProtocolSocket = (options?: {
         if (Option.isSome(hooks)) {
           yield* hooks.value.onConnect
         }
-        return yield* pull.pipe(
-          Effect.flatMap((data) => {
-            chunk = data
-            chunkIndex = 0
-            return processChunk
-          }),
-          Effect.forever({ disableYield: true })
-        )
+        while (true) {
+          chunk = yield* pull
+          chunkIndex = 0
+          yield* processChunk
+        }
       }).pipe(
         Effect.scoped,
         Effect.raceFirst(Effect.flatMap(
