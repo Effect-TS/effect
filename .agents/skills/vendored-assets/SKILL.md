@@ -1,58 +1,47 @@
 ---
 name: vendored-assets
-description: Vendored assets. Use when updating checked-in third-party JavaScript, CSS, registries, schemas, data snapshots, or generated Scalar, Swagger, and MIME artifacts.
+description: Vendored assets. Use when importing or updating checked-in third-party or externally generated JavaScript, CSS, registries, schemas, snapshots, or Scalar, Swagger, and MIME artifacts.
 ---
 
-Treat the upstream artifact as a supply-chain input. Edit its generator or
-documented import source, then regenerate; preserve generated output as reviewable
-evidence rather than hand-editing it.
+Treat upstream artifacts as supply-chain inputs. Change their generator or
+documented import source, then regenerate; generated output is review evidence,
+not an editing surface.
 
 ## Workflow
 
-1. **Trace ownership.** Identify the generated artifact, generator or exact
-   import procedure, recorded upstream source and version, license, consumers,
-   focused tests, and shipped package or bundle. For Scalar and Swagger, start at
-   `scripts/package-scalar.mjs` and `scripts/package-swagger.mjs`; for MIME, start
-   at `packages/effect/src/unstable/http/internal/mimeTypes.ts` and its history.
-   This step is complete when every input and consumer is accounted for and the
-   output can be regenerated without editing it directly.
+1. **Trace ownership.** Identify the artifact, generator or exact import
+   procedure, upstream source/version, license, consumers, tests, and shipped
+   package or bundle. Search by asset and upstream project name to find current
+   packaging scripts, generated artifacts, consumers, and history.
+   Continue when every input and consumer is accounted for.
 2. **Pin provenance.** Resolve moving URLs, tags, branches, and omitted versions
-   to an explicit immutable release or artifact before reviewing changes. Record
-   the upstream project, exact version, artifact path or URL, and a digest in the
-   generator or generated artifact's maintenance header. Omit the digest only
-   when an independently enforced immutable source is evidenced and recorded.
-   This step is complete when a future run cannot silently select different
-   bytes.
-3. **Clear the license gate.** Verify the selected release's package metadata and
-   license files, including notices required by bundled dependencies. Preserve
-   required copyright, license, and notice text in the distributed form; a
-   minifier's reference to an absent license file does not clear this gate. This
-   step is complete when every distributed third-party artifact has a verified,
-   retained license trail.
-4. **Regenerate.** Improve the checked-in generator or import reference first,
-   then run it. For an artifact with no generator, recover the exact extraction
-   procedure from repository history or upstream documentation. Add the smallest
-   deterministic script only when updates will recur; otherwise record the exact
-   import procedure beside the artifact. This step is complete when a clean
-   rerun produces no diff.
-5. **Audit the complete generated diff.** Review all changed output, not only a
-   formatted preview. Account for executable behavior, external URLs and runtime
-   fetches, source-map references, license or notice loss, encoding and format
-   changes, and unexpected additions or removals. For browser assets, also assess
-   CSP requirements, dynamic code execution, injected markup or styles, network
-   destinations, and runtime loading. This step is complete when every generated
-   change is attributable to the selected upstream release and suspicious content
-   is resolved or reported.
-6. **Clear test and size gates.** Record artifact byte sizes before and after.
-   Load `runtime-testing` for focused consumer tests and apply the
-   `.agents/AGENTS.md` lint and validation rules. Load `bundle-analysis` when JavaScript,
-   CSS, or registry data materially affects shipped output, and compare against
-   the pre-update revision. This step is complete when focused tests pass and
-   every non-trivial size delta is measured and explained.
-7. **Close release impact.** Load `changesets` when behavior, browser support,
-   wire data, or meaningful shipped size changes are consumer-visible. Generated
-   provider API code belongs to `ai-codegen`; `@barrel` sections, `LLMS.md`, and
-   `migration/v3-to-v4.md` belong to the owners named in `.agents/AGENTS.md`. The
-   task is complete only when source, version, provenance, license, deterministic
-   regeneration, full diff, tests, size impact, and release impact are all
-   explicitly reported.
+   to an immutable release or artifact. Record project, version, path or URL,
+   and digest in the generator or maintenance header. Omit a digest only when
+   another enforced immutable source is recorded.
+   Continue when a future run cannot silently select different bytes.
+3. **Clear the license gate.** Verify release metadata, license files, bundled
+   notices, and the license trail retained in the distributed form.
+   Continue when every distributed artifact has a verified retained license trail.
+4. **Regenerate.** Improve the generator or import reference first. Recover an
+   exact procedure for generatorless assets; add a deterministic script only
+   for recurring updates. Record a one-off procedure beside the artifact. A
+   clean rerun must produce no diff.
+5. **Audit the complete diff.** Account for behavior, URLs and runtime fetches,
+   source maps, notices, encoding, format changes, and additions or removals.
+   For browser assets, also read [browser-assets.md](browser-assets.md).
+   Continue when every change is attributable and suspicious content is resolved
+   or reported.
+6. **Clear test and size gates.** Record byte sizes before and after, use
+   focused consumer tests, and compare bundle size or composition when shipped
+   JavaScript, CSS, or registry output changes materially. Compare that output
+   against the pre-update revision rather than measuring only current size.
+   Continue when focused checks pass and every non-trivial size delta is explained.
+7. **Close release impact.** Apply root changeset routing for consumer-visible
+   behavior, browser support, wire data, or meaningful shipped-size changes.
+   Generated sections owned by barrels, AI docs, or migration tooling remain
+   with the owners named in root instructions.
+
+The task is complete when every input and consumer is accounted for, provenance
+and licenses are immutable and retained, regeneration is deterministic, every
+output change and non-trivial size delta is explained, focused checks pass or
+are reported as not runnable, and release impact is recorded.

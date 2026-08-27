@@ -10,8 +10,7 @@ This is the Effect TypeScript monorepo. The git base branch is `main`; use `pnpm
 - AI documentation sources are in `ai-docs/src`.
 - Changesets are in `.changeset`.
 - Migration sources (v3-to-v4) are in `migration/annotations`.
-- Task-specific repository conventions live in `.agents/skills`. Load the relevant skill and inspect nearby code before
-  editing.
+- Inspect nearby code before editing.
 
 ## Validation
 
@@ -33,26 +32,15 @@ For an ad hoc runnable probe, create `scratchpad/<name>.ts`, run it with plain `
 
 Report any commands that could not be run.
 
-After consumer-visible runtime, public API, entrypoint, lifecycle, or wire-format changes, invoke the `changesets`
-skill. Independently invoke `v4-migration` when a v3-to-v4 mapping changes; a change may require either skill, both, or
-neither.
-
-## Maintenance Routing
-
-- Use `package-development` when creating, making publishable, renaming, or moving a workspace package.
-- Use `ci-maintenance` for GitHub workflows and composite actions.
-- Use `dependency-maintenance` for dependency additions or upgrades and toolchain, runtime, patch, native-build, or test-image changes.
-
 ## Generated Files
 
 Do not edit generated output directly.
 
-Only `index.ts` sections marked with `@barrel` are generated. Do not edit those
+Some `index.ts` sections marked with `@barrel` are generated. Do not edit those
 sections manually; update their source modules and run `pnpm codegen`.
 Hand-maintained `index.ts` files and unmarked sections are not covered by this
 rule.
 
-- Use the `library-development` skill for generated sections marked with `@barrel`.
-- Use the `ai-docs` skill for `LLMS.md`.
-- Use the `v4-migration` skill for `migration/v3-to-v4.md`.
-- Use the `vendored-assets` skill for checked-in third-party generated artifacts.
+`LLMS.md` is generated from `ai-docs/src`, and `migration/v3-to-v4.md` is
+generated from `migration/annotations`. Update checked-in third-party assets
+through their generator or documented import procedure.
