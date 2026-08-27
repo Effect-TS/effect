@@ -403,6 +403,22 @@ describe("McpServer", () => {
         )
       }))
 
+    it.effect("carries object tool results as structured content", () =>
+      Effect.gen(function*() {
+        const client = yield* makeToolkitTestClient()
+
+        const result = yield* client["tools/call"]({
+          name: "StructuredResultTool",
+          arguments: {}
+        })
+
+        assert.deepStrictEqual(result.structuredContent, { answer: "result" })
+        assert.deepStrictEqual(result.content, [{
+          type: "text",
+          text: JSON.stringify({ answer: "result" })
+        }])
+      }))
+
     it.effect("omits structured content for null and array tool results", () =>
       Effect.gen(function*() {
         const client = yield* makeToolkitTestClient()
@@ -412,26 +428,19 @@ describe("McpServer", () => {
           arguments: {}
         })
 
-        assert.deepStrictEqual(
-          nullResult,
-          new McpSchema.CallToolResult({
-            isError: false,
-            content: [{ type: "text", text: "null" }]
-          })
-        )
+        assert.isUndefined(nullResult.structuredContent)
+        assert.deepStrictEqual(nullResult.content, [{ type: "text", text: "null" }])
 
         const arrayResult = yield* client["tools/call"]({
           name: "ArrayResultTool",
           arguments: {}
         })
 
-        assert.deepStrictEqual(
-          arrayResult,
-          new McpSchema.CallToolResult({
-            isError: false,
-            content: [{ type: "text", text: JSON.stringify(["first", "second"]) }]
-          })
-        )
+        assert.isUndefined(arrayResult.structuredContent)
+        assert.deepStrictEqual(arrayResult.content, [{
+          type: "text",
+          text: JSON.stringify(["first", "second"])
+        }])
       }))
 
     it.effect("returns schema-validated messages for declared handler failures", () =>
