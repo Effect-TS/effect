@@ -952,7 +952,7 @@ type Encoded = {
 type Encoded = typeof schema.Encoded
 ```
 
-If you want the record part to be mutable, you can wrap it in `Schema.mutable`.
+If you want the record part to be mutable, apply `Schema.mutableKey` to its value schema.
 
 **Example** (Allowing dynamic keys to be mutable)
 
@@ -1629,6 +1629,14 @@ const schema = Schema.Tuple([Schema.String, Schema.Number, Schema.Boolean]).mapE
 ## Arrays
 
 An array schema describes a variable-length list where every element shares the same type.
+
+### Mutability
+
+Array and tuple schemas are readonly by default. Use `Schema.mutable` to make them mutable.
+
+> [!NOTE]
+> `Schema.mutable` does not support an encoding attached directly to the array or tuple schema. Apply it before adding
+> such an encoding. Encodings on element schemas are supported.
 
 ### Unique Arrays
 

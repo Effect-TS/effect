@@ -4807,6 +4807,12 @@ interface mutableLambda extends Lambda {
 /**
  * Makes an array or tuple schema mutable, removing the `readonly` modifier.
  *
+ * **Gotchas**
+ *
+ * This combinator does not support an encoding attached to the array or tuple
+ * node and throws if one is present. Encodings on element schemas are
+ * supported.
+ *
  * **Example** (Defining mutable arrays)
  *
  * ```ts import.meta.vitest
@@ -4824,9 +4830,7 @@ interface mutableLambda extends Lambda {
  * @category transforming
  * @since 3.10.0
  */
-export const mutable = Struct_.lambda<mutableLambda>((schema) => {
-  return make(new SchemaAST.Arrays(true, schema.ast.elements, schema.ast.rest), { schema })
-})
+export const mutable = Struct_.lambda<mutableLambda>((schema) => make(SchemaAST.mutable(schema.ast), { schema }))
 
 /**
  * Type-level representation returned by {@link Union}.
