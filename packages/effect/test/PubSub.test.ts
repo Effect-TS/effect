@@ -398,6 +398,29 @@ describe("PubSub", () => {
       assert.deepStrictEqual(PubSub.sizeUnsafe(pubsub), 0)
     }))
 
+  it("normalizes low-level polling and replay counts", () => {
+    const implementations = [
+      PubSub.makeAtomicBounded<number>(1),
+      PubSub.makeAtomicBounded<number>(3),
+      PubSub.makeAtomicBounded<number>(4),
+      PubSub.makeAtomicUnbounded<number>()
+    ]
+
+    for (const pubsub of implementations) {
+      const subscription = pubsub.subscribe()
+      pubsub.publishAll([1, 2, 3])
+      assert.deepStrictEqual(subscription.pollUpTo(1.9), [1])
+      assert.deepStrictEqual(subscription.pollUpTo(Number.NaN), [])
+    }
+
+    const replayPubSub = PubSub.makeAtomicUnbounded<number>({ replay: 3 })
+    replayPubSub.publishAll([1, 2, 3])
+    const replay = replayPubSub.replayWindow()
+    assert.deepStrictEqual(replay.takeN(1.9), [1])
+    assert.deepStrictEqual(replay.takeN(Number.NaN), [])
+    assert.deepStrictEqual(replay.takeAll(), [2, 3])
+  })
+
   describe("replay", () => {
     it("does not retain values published after the replay window is drained", () => {
       const pubsub = PubSub.makeAtomicUnbounded<object>({ replay: 1 })
@@ -488,6 +511,26 @@ describe("PubSub", () => {
         )
       )
     })
+
+    it.effect("takeUpTo and takeBetween normalize message counts", () =>
+      Effect.gen(function*() {
+        const livePubSub = yield* PubSub.unbounded<number>()
+        const live = yield* PubSub.subscribe(livePubSub)
+        yield* PubSub.publishAll(livePubSub, [1, 2, 3])
+        assert.deepStrictEqual(yield* PubSub.takeUpTo(live, 1.9), [1])
+
+        const betweenPubSub = yield* PubSub.unbounded<number>()
+        const between = yield* PubSub.subscribe(betweenPubSub)
+        yield* PubSub.publishAll(betweenPubSub, [1, 2, 3])
+        assert.deepStrictEqual(yield* PubSub.takeBetween(between, 1.9, 2.9), [1, 2])
+
+        const replayPubSub = yield* PubSub.unbounded<number>({ replay: 3 })
+        yield* PubSub.publishAll(replayPubSub, [1, 2, 3])
+        const replay = yield* PubSub.subscribe(replayPubSub)
+        assert.deepStrictEqual(yield* PubSub.takeUpTo(replay, 1.9), [1])
+        assert.deepStrictEqual(yield* PubSub.takeUpTo(replay, Number.NaN), [])
+        assert.deepStrictEqual(yield* PubSub.takeAll(replay), [2, 3])
+      }))
 
     it.effect("dropping", () =>
       Effect.gen(function*() {

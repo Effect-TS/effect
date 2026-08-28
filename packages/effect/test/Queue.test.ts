@@ -79,6 +79,22 @@ describe("Queue", () => {
       assert.deepEqual(b, [3, 4])
     }))
 
+  it.effect("takeN and takeBetween normalize element counts before waiting", () =>
+    Effect.gen(function*() {
+      const takeNQueue = yield* Queue.unbounded<number>()
+      yield* Queue.offer(takeNQueue, 1)
+      assert.deepStrictEqual(yield* Queue.takeN(takeNQueue, 1.9), [1])
+
+      const takeBetweenQueue = yield* Queue.unbounded<number>()
+      yield* Queue.offer(takeBetweenQueue, 1)
+      assert.deepStrictEqual(yield* Queue.takeBetween(takeBetweenQueue, 1.9, 2.9), [1])
+
+      const invalidQueue = yield* Queue.unbounded<number>()
+      yield* Queue.offer(invalidQueue, 1)
+      assert.deepStrictEqual(yield* Queue.takeN(invalidQueue, Number.NaN), [])
+      assert.deepStrictEqual(yield* Queue.takeAll(invalidQueue), [1])
+    }))
+
   it.effect("collect does not duplicate messages", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<{ id: number }, Cause.Done>(10)

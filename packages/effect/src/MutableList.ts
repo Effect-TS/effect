@@ -9,6 +9,7 @@
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"
+import * as Count from "./internal/count.ts"
 
 /**
  * A mutable linked list data structure optimized for high-throughput operations.
@@ -399,6 +400,11 @@ export const clear = <A>(self: MutableList<A>): void => {
  * The taken elements are removed from the list. This operation is optimized for performance
  * and includes zero-copy optimizations when possible.
  *
+ * **Details**
+ *
+ * Finite fractional values of `n` are rounded down. `NaN` and non-positive
+ * values leave the list unchanged and return an empty array.
+ *
  * **Example** (Taking batches)
  *
  * ```ts import.meta.vitest
@@ -416,6 +422,7 @@ export const clear = <A>(self: MutableList<A>): void => {
  * @since 4.0.0
  */
 export const takeN = <A>(self: MutableList<A>, n: number): Array<A> => {
+  n = Count.normalize(n)
   if (n <= 0 || !self.head) return []
   n = Math.min(n, self.length)
   if (n === self.length && self.head?.offset === 0 && !self.head.next) {
@@ -455,8 +462,9 @@ export const takeN = <A>(self: MutableList<A>, n: number): Array<A> => {
  *
  * **Details**
  *
- * If `n` is less than or equal to zero, or the list is empty, the list is left
- * unchanged. If `n` is greater than or equal to the current length, the list is
+ * Finite fractional values of `n` are rounded down. If `n` is `NaN` or
+ * non-positive, or the list is empty, the list is left unchanged. If the
+ * normalized count is greater than or equal to the current length, the list is
  * cleared.
  *
  * @see {@link takeN} for removing up to `n` values and returning them as an array
@@ -466,6 +474,7 @@ export const takeN = <A>(self: MutableList<A>, n: number): Array<A> => {
  * @since 4.0.0
  */
 export const takeNVoid = <A>(self: MutableList<A>, n: number): void => {
+  n = Count.normalize(n)
   if (n <= 0 || !self.head) return
   n = Math.min(n, self.length)
   if (n === self.length && self.head?.offset === 0 && !self.head.next) {
@@ -556,12 +565,18 @@ export const take = <A>(self: MutableList<A>): Empty | A => {
  * Use when you need to inspect or snapshot a bounded prefix of the list without
  * consuming it.
  *
+ * **Details**
+ *
+ * Finite fractional values of `n` are rounded down. `NaN` and non-positive
+ * values return an empty array.
+ *
  * @see {@link takeN} for removing up to `n` values and returning them as an array
  *
  * @category converting
  * @since 4.0.0
  */
 export const toArrayN = <A>(self: MutableList<A>, n: number): Array<A> => {
+  n = Count.normalize(n)
   if (n <= 0) return []
   const length = Math.min(n, self.length)
   const out = new Array<A>(length)

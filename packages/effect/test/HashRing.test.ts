@@ -44,4 +44,19 @@ describe("HashRing", () => {
 
     assert.strictEqual(HashRing.get(ring, "request"), updated)
   })
+
+  it("getShards normalizes the shard count", () => {
+    const node = {
+      name: "node",
+      [PrimaryKey.symbol]() {
+        return "node"
+      }
+    }
+    const ring = HashRing.make<typeof node>()
+    HashRing.add(ring, node)
+
+    const shards = [Number.NaN, -1, 0, 0.5, 1.9, 2.9].map((count) => HashRing.getShards(ring, count))
+
+    assert.deepStrictEqual(shards, [[], [], [], [], [node], [node, node]])
+  })
 })

@@ -16,6 +16,7 @@ import { constant, constTrue, dual, identity } from "./Function.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import * as core from "./internal/core.ts"
 import { PipeInspectableProto } from "./internal/core.ts"
+import * as Count from "./internal/count.ts"
 import * as internalEffect from "./internal/effect.ts"
 import * as MutableList from "./MutableList.ts"
 import * as Option from "./Option.ts"
@@ -1294,9 +1295,10 @@ export const collect = <A, E>(self: Dequeue<A, E | Done>): Effect<Array<A>, Pull
  * **Details**
  *
  * The operation may wait until enough messages are available to satisfy the
- * queue's batching rules. If `n` is less than or equal to zero, it succeeds
- * with an empty array. If the queue completes or fails before messages can be
- * taken, the effect fails with the queue's terminal error.
+ * queue's batching rules. Finite fractional values of `n` are rounded down.
+ * If `n` is `NaN` or non-positive, it succeeds with an empty array. If the
+ * queue completes or fails before messages can be taken, the effect fails with
+ * the queue's terminal error.
  *
  * **Example** (Taking a fixed number of values)
  *
@@ -1337,9 +1339,10 @@ export const takeN = <A, E>(
  * **Details**
  *
  * The operation waits when fewer than the required minimum messages are
- * available. It returns at most `max` messages. If the queue completes or fails
- * before the minimum can be satisfied, the effect fails with the queue's
- * terminal error.
+ * available. It returns at most `max` messages. Finite fractional bounds are
+ * rounded down, while `NaN` and non-positive bounds are treated as `0`. If the
+ * queue completes or fails before the minimum can be satisfied, the effect
+ * fails with the queue's terminal error.
  *
  * **Example** (Taking a bounded batch of values)
  *
@@ -1373,10 +1376,13 @@ export const takeBetween = <A, E>(
   self: Dequeue<A, E>,
   min: number,
   max: number
-): Effect<Array<A>, E> =>
-  internalEffect.suspend(() =>
+): Effect<Array<A>, E> => {
+  min = Count.normalize(min)
+  max = Count.normalize(max)
+  return internalEffect.suspend(() =>
     takeBetweenUnsafe(self, min, max) ?? internalEffect.andThen(awaitTake(self), takeBetween(self, 1, max))
   )
+}
 
 /**
  * Takes a single message from the queue, or wait for a message to be

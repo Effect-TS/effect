@@ -168,7 +168,46 @@ describe("Sink", () => {
       }))
   })
 
+  describe("foldUntil", () => {
+    it.effect("normalizes the maximum element count", () =>
+      Effect.gen(function*() {
+        const results = yield* Effect.forEach([Number.NaN, -1, 0, 0.5, 1.9, 2.9], (max) =>
+          Stream.make(1, 2, 3).pipe(
+            Stream.run(Sink.foldUntil(() => 0, max, (count) => Effect.succeed(count + 1)))
+          ))
+        deepStrictEqual(results, [0, 0, 0, 0, 1, 2])
+      }))
+
+    it.effect("zero normalized counts do not evaluate the upstream", () =>
+      Effect.gen(function*() {
+        let initializations = 0
+        const sink = Sink.foldUntil(
+          () => {
+            initializations++
+            return 42
+          },
+          Number.NaN,
+          (state: number) => Effect.succeed(state + 1)
+        )
+
+        strictEqual(initializations, 0)
+        const result = yield* Stream.fromEffect(Effect.die("upstream evaluated")).pipe(Stream.run(sink))
+        strictEqual(result, 42)
+        strictEqual(initializations, 1)
+      }))
+  })
+
   describe("take", () => {
+    it.effect("normalizes the element count", () =>
+      Effect.gen(function*() {
+        const results = yield* Effect.all([
+          Stream.make(1, 2, 3).pipe(Stream.run(Sink.take(Number.NaN))),
+          Stream.make(1, 2, 3).pipe(Stream.run(Sink.take(-1))),
+          Stream.make(1, 2, 3).pipe(Stream.run(Sink.take(1.9)))
+        ])
+        deepStrictEqual(results, [[], [], [1]])
+      }))
+
     it.effect("respects the given limit", () =>
       Effect.gen(function*() {
         const stream = Stream.make(1, 2, 3, 4).pipe(

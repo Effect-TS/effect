@@ -313,6 +313,36 @@ describe.sequential("Request", () => {
     })
   )
 
+  it.effect("batchN normalizes the maximum batch size", () =>
+    Effect.gen(function*() {
+      const sizes = yield* Effect.forEach([Number.NaN, -1, 0, 0.5, 1.9, 2.9], (n) =>
+        Effect.gen(function*() {
+          const batchSizes: Array<number> = []
+          const resolver = Resolver.make<GetNameById>((entries) =>
+            Effect.sync(() => {
+              batchSizes.push(entries.length)
+              for (const entry of entries) {
+                entry.completeUnsafe(Exit.succeed(String(entry.request.id)))
+              }
+            })
+          ).pipe(Resolver.batchN(n))
+
+          yield* Effect.forEach([1, 2, 3], (id) => Effect.request(new GetNameById({ id }), resolver), {
+            concurrency: "unbounded"
+          })
+          return batchSizes
+        }))
+
+      assert.deepStrictEqual(sizes, [
+        [1, 1, 1],
+        [1, 1, 1],
+        [1, 1, 1],
+        [1, 1, 1],
+        [1, 1, 1],
+        [2, 1]
+      ])
+    }))
+
   it.effect(
     "batch fibers use request services for runAll",
     Effect.fnUntraced(function*() {

@@ -18,6 +18,7 @@ import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import { constTrue, dual, identity } from "./Function.ts"
 import { exitFail, exitSucceed } from "./internal/core.ts"
+import * as Count from "./internal/count.ts"
 import * as effect from "./internal/effect.ts"
 import * as internal from "./internal/request.ts"
 import * as Iterable from "./Iterable.ts"
@@ -740,7 +741,8 @@ export const never: RequestResolver<never> = make(() => Effect.never)
  *
  * When more than `n` requests are waiting for the same resolver and batch key,
  * the current batch is run and additional requests are collected into later
- * batches.
+ * batches. Finite fractional values of `n` are rounded down. `NaN` and
+ * non-positive values are treated as `1` so that every batch remains non-empty.
  *
  * **Example** (Limiting parallel request batches)
  *
@@ -787,11 +789,13 @@ export const never: RequestResolver<never> = make(() => Effect.never)
 export const batchN: {
   (n: number): <A extends Request.Any>(self: RequestResolver<A>) => RequestResolver<A>
   <A extends Request.Any>(self: RequestResolver<A>, n: number): RequestResolver<A>
-} = dual(2, <A extends Request.Any>(self: RequestResolver<A>, n: number): RequestResolver<A> =>
-  makeWith({
+} = dual(2, <A extends Request.Any>(self: RequestResolver<A>, n: number): RequestResolver<A> => {
+  const size = Count.normalizeNonEmpty(n)
+  return makeWith({
     ...self,
-    collectWhile: (requests) => requests.size < n
-  }))
+    collectWhile: (requests) => requests.size < size
+  })
+})
 
 /**
  * Transforms a request resolver by grouping requests using the specified key
