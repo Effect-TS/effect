@@ -11,7 +11,18 @@ import * as Net from "node:net"
 import { Duplex } from "node:stream"
 import * as Tls from "node:tls"
 import { fileURLToPath } from "node:url"
+import { vi } from "vitest"
 import { WS } from "vitest-websocket-mock"
+
+vi.mock("node:net", async (importOriginal) => {
+  const original = await importOriginal<typeof Net>()
+  return { ...original, createConnection: vi.fn(original.createConnection) }
+})
+
+vi.mock("node:tls", async (importOriginal) => {
+  const original = await importOriginal<typeof Tls>()
+  return { ...original, connect: vi.fn(original.connect) }
+})
 
 const makeServer = Effect.gen(function*() {
   const server = yield* NodeSocketServer.make({ port: 0 })
@@ -163,6 +174,49 @@ describe("Socket", () => {
       }
     }))
 
+  it.live("destroys a pending TCP connection on open timeout", () => {
+    const conn = new Net.Socket()
+    const destroy = vi.spyOn(conn, "destroy")
+    const destroySoon = vi.spyOn(conn, "destroySoon").mockImplementation(() => {})
+    vi.mocked(Net.createConnection).mockReturnValueOnce(conn)
+
+    return Effect.gen(function*() {
+      const socket = yield* NodeSocket.makeNet({ host: "127.0.0.1", port: 1, openTimeout: 0 })
+      yield* Effect.scoped(Effect.asVoid(socket.reader)).pipe(Effect.flip)
+      assert.isTrue(destroy.mock.calls.length > 0)
+      assert.strictEqual(destroySoon.mock.calls.length, 0)
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        destroy.mockRestore()
+        destroySoon.mockRestore()
+        conn.destroy()
+      }))
+    )
+  })
+
+  it.live("gracefully closes an established TCP connection", () => {
+    const conn = new Net.Socket()
+    const destroy = vi.spyOn(conn, "destroy")
+    const destroySoon = vi.spyOn(conn, "destroySoon").mockImplementation(() => {})
+    vi.mocked(Net.createConnection).mockImplementationOnce(() => {
+      queueMicrotask(() => conn.emit("connect"))
+      return conn
+    })
+
+    return Effect.gen(function*() {
+      const socket = yield* NodeSocket.makeNet({ host: "127.0.0.1", port: 1 })
+      yield* Effect.scoped(Effect.asVoid(socket.reader))
+      assert.strictEqual(destroy.mock.calls.length, 0)
+      assert.isTrue(destroySoon.mock.calls.length > 0)
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        destroy.mockRestore()
+        destroySoon.mockRestore()
+        conn.destroy()
+      }))
+    )
+  })
+
   describe("TLS", () => {
     // Regenerate with:
     // openssl req -x509 -newkey ed25519 -nodes -days 36500 -subj /CN=localhost \
@@ -251,6 +305,26 @@ describe("Socket", () => {
           assert.strictEqual((error.reason.cause as { code?: string }).code, "DEPTH_ZERO_SELF_SIGNED_CERT")
         }
       }))
+
+    it.live("destroys a pending TLS connection on open timeout", () => {
+      const conn = new Tls.TLSSocket(new Net.Socket())
+      const destroy = vi.spyOn(conn, "destroy")
+      const destroySoon = vi.spyOn(conn, "destroySoon").mockImplementation(() => {})
+      vi.mocked(Tls.connect).mockReturnValueOnce(conn)
+
+      return Effect.gen(function*() {
+        const socket = yield* NodeSocket.makeTls({ host: "127.0.0.1", port: 1, openTimeout: 0 })
+        yield* Effect.scoped(Effect.asVoid(socket.reader)).pipe(Effect.flip)
+        assert.isTrue(destroy.mock.calls.length > 0)
+        assert.strictEqual(destroySoon.mock.calls.length, 0)
+      }).pipe(
+        Effect.ensuring(Effect.sync(() => {
+          destroy.mockRestore()
+          destroySoon.mockRestore()
+          conn.destroy()
+        }))
+      )
+    })
   })
 
   describe("WebSocket", () => {
