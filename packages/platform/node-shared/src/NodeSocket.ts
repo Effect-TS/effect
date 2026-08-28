@@ -55,6 +55,15 @@ const readAvailable = (
   return out
 }
 
+const closeSocket = (conn: Net.Socket, isOpen: boolean) => {
+  if (conn.closed !== false) return
+  if (!isOpen || !("destroySoon" in conn)) {
+    conn.destroy()
+  } else {
+    conn.destroySoon()
+  }
+}
+
 /**
  * Opens a Node TCP connection as an Effect socket.
  *
@@ -79,24 +88,20 @@ export const makeNet = (
   fromDuplex(
     Effect.contextWith((context: Context.Context<Scope.Scope>) => {
       let conn: Net.Socket | undefined
+      let isOpen = false
       return Effect.flatMap(
         Scope.addFinalizer(
           Context.get(context, Scope.Scope),
           Effect.sync(() => {
             if (!conn) return
-            if (conn.closed === false) {
-              if ("destroySoon" in conn) {
-                conn.destroySoon()
-              } else {
-                ;(conn as Net.Socket).destroy()
-              }
-            }
+            closeSocket(conn, isOpen)
           })
         ),
         () =>
           Effect.callback<Net.Socket, Socket.SocketError, never>((resume) => {
             conn = Net.createConnection(options)
             conn.once("connect", () => {
+              isOpen = true
               resume(Effect.succeed(conn!))
             })
             conn.on("error", (cause: Error) => {
@@ -396,20 +401,20 @@ export const makeTls = (
   fromDuplex(
     Effect.contextWith((context: Context.Context<Scope.Scope>) => {
       let conn: Tls.TLSSocket | undefined
+      let isOpen = false
       return Effect.flatMap(
         Scope.addFinalizer(
           Context.get(context, Scope.Scope),
           Effect.sync(() => {
             if (!conn) return
-            if (conn.closed === false) {
-              conn.destroySoon()
-            }
+            closeSocket(conn, isOpen)
           })
         ),
         () =>
           Effect.callback<Tls.TLSSocket, Socket.SocketError, never>((resume) => {
             conn = Tls.connect(options)
             conn.once("secureConnect", () => {
+              isOpen = true
               resume(Effect.succeed(conn!))
             })
             conn.on("error", (cause: Error) => {
