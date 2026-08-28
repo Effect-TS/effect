@@ -375,7 +375,7 @@ describe("Socket", () => {
           Effect.gen(function*() {
             const writer = yield* socket.writer
             const pull = yield* socket.reader
-            yield* Socket.upgrade({ cert, key: Redacted.make(key) })
+            yield* socket.upgrade({ cert, key: Redacted.make(key) })
             while (true) {
               yield* writer.writeAll(yield* pull)
             }
@@ -429,7 +429,7 @@ describe("Socket", () => {
         const received = yield* Effect.gen(function*() {
           const writer = yield* socket.writer
           const pull = yield* Socket.readerString(socket)
-          yield* Socket.upgrade({
+          yield* socket.upgrade({
             cert,
             key: Redacted.make(key),
             ca: [cert],
@@ -457,7 +457,7 @@ describe("Socket", () => {
 
         const error = yield* Effect.gen(function*() {
           yield* Effect.asVoid(socket.reader)
-          return yield* Socket.upgrade({
+          return yield* socket.upgrade({
             cert,
             key: Redacted.make(key),
             rejectUnauthorized: true
@@ -517,7 +517,7 @@ describe("Socket", () => {
         yield* Effect.asVoid(makeServer)
         const socket = yield* Socket.makeWebSocket(Effect.succeed(url))
         yield* Effect.asVoid(socket.reader)
-        const error = yield* Socket.upgrade({ cert, key: Redacted.make(key) }).pipe(Effect.flip)
+        const error = yield* socket.upgrade({ cert, key: Redacted.make(key) }).pipe(Effect.flip)
         assert.strictEqual(error.reason._tag, "SocketUpgradeError")
       }).pipe(
         Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url))

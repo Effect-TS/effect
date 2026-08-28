@@ -17,7 +17,6 @@ import * as Function from "effect/Function"
 import { identity } from "effect/Function"
 import * as Latch from "effect/Latch"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import * as Scope from "effect/Scope"
 import * as Socket from "effect/unstable/socket/Socket"
@@ -159,22 +158,8 @@ export const fromDuplex = <RO>(
       | undefined
     const latch = Latch.makeUnsafe(false)
     const openServices = fiber.context as Context.Context<RO>
-    const tlsUpgrade = Socket.TlsUpgrade.of({
-      upgrade: (options) =>
-        Effect.suspend(() =>
-          currentUpgrade === undefined
-            ? Effect.fail(
-              new Socket.SocketError({
-                reason: new Socket.SocketUpgradeError({
-                  cause: new Error("socket reader is not acquired")
-                })
-              })
-            )
-            : currentUpgrade(options)
-        )
-    })
 
-    const readerAcquire = Effect.gen(function*() {
+    const reader: Socket.Socket["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
       let conn = yield* Scope.provide(open, scope).pipe(
         options?.openTimeout !== undefined ?
@@ -366,27 +351,7 @@ export const fromDuplex = <RO>(
       })
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(openServices, input))
-    )
-
-    const reader: Socket.Socket["reader"] = Effect.flatMap(readerAcquire, (pull) =>
-      Effect.withFiber((readerFiber) => {
-        const previous = Context.getOption(readerFiber.context, Socket.TlsUpgrade)
-        readerFiber.setContext(Context.add(readerFiber.context, Socket.TlsUpgrade, tlsUpgrade))
-        return Effect.as(
-          Effect.addFinalizer(() =>
-            Effect.sync(() => {
-              if (Context.getOrUndefined(readerFiber.context, Socket.TlsUpgrade) !== tlsUpgrade) return
-              readerFiber.setContext(
-                Option.match(previous, {
-                  onNone: () => Context.omit(Socket.TlsUpgrade)(readerFiber.context),
-                  onSome: (service) => Context.add(readerFiber.context, Socket.TlsUpgrade, service)
-                })
-              )
-            })
-          ),
-          pull
-        )
-      })) as Socket.Socket["reader"]
+    ) as Socket.Socket["reader"]
 
     const awaitDrain = (conn: Duplex) =>
       Effect.callback<void, Socket.SocketError>((resume) => {
@@ -481,7 +446,20 @@ export const fromDuplex = <RO>(
         })
     )
 
-    return Effect.succeed(Socket.make({ reader, writer }))
+    const upgrade: Socket.Socket["upgrade"] = (options) =>
+      Effect.suspend(() =>
+        currentUpgrade === undefined
+          ? Effect.fail(
+            new Socket.SocketError({
+              reason: new Socket.SocketUpgradeError({
+                cause: new Error("socket reader is not acquired")
+              })
+            })
+          )
+          : currentUpgrade(options)
+      )
+
+    return Effect.succeed(Socket.make({ reader, writer, upgrade }))
   })
 
 /**

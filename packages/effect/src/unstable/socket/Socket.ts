@@ -20,7 +20,6 @@ import * as Exit from "../../Exit.ts"
 import { constVoid, dual, flow } from "../../Function.ts"
 import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
-import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Pull from "../../Pull.ts"
 import type * as Redacted from "../../Redacted.ts"
@@ -81,6 +80,10 @@ export const Socket: Context.Service<Socket, Socket> = Context.Service<Socket>("
  * is established. Releasing the writer scope half-closes the write side
  * where the transport supports it.
  *
+ * `upgrade` wraps the current live connection with TLS when the transport
+ * supports it. Unsupported socket implementations fail with a
+ * `SocketUpgradeError`.
+ *
  * **Example** (Consuming with automatic reconnect)
  *
  * ```ts skip-type-checking
@@ -106,6 +109,7 @@ export interface Socket {
     Scope.Scope
   >
   readonly writer: Effect.Effect<Writer, never, Scope.Scope>
+  readonly upgrade: (options: TlsUpgradeOptions) => Effect.Effect<void, SocketError>
 }
 
 /**
@@ -142,23 +146,14 @@ export interface TlsUpgradeOptions {
 }
 
 /**
- * Transport-specific implementation for upgrading the current live socket to
- * TLS. Reader acquisition provides this service when the transport supports
- * in-place upgrades.
- *
- * @category services
- * @since 4.0.0
- */
-export class TlsUpgrade extends Context.Service<TlsUpgrade, {
-  readonly upgrade: (options: TlsUpgradeOptions) => Effect.Effect<void, SocketError>
-}>()("effect/socket/Socket/TlsUpgrade") {}
-
-/**
  * Constructs a `Socket` from a reader acquisition and a scoped writer.
  *
  * The reader must fail a suspended pull when its acquisition scope closes; see
  * `Socket` for why. A reader that leaves a pull blocked forever will hang any
  * consumer that shuts the socket down by closing that scope.
+ *
+ * When `upgrade` is omitted, the socket uses an implementation that fails with
+ * `SocketUpgradeError`.
  *
  * @category constructors
  * @since 4.0.0
@@ -166,11 +161,13 @@ export class TlsUpgrade extends Context.Service<TlsUpgrade, {
 export const make = (options: {
   readonly reader: Socket["reader"]
   readonly writer: Socket["writer"]
+  readonly upgrade?: Socket["upgrade"] | undefined
 }): Socket =>
   Socket.of({
     [TypeId]: TypeId,
     reader: options.reader,
-    writer: options.writer
+    writer: options.writer,
+    upgrade: options.upgrade ?? (() => Effect.fail(new SocketError({ reason: new SocketUpgradeError({}) })))
   })
 
 const encoder = new TextEncoder()
@@ -477,22 +474,6 @@ export class SocketError extends Schema.TaggedError<SocketError>(SocketErrorType
 
   override readonly message = this.reason.message
 }
-
-/**
- * Upgrades the socket associated with the current acquired reader to TLS.
- * Unsupported transports fail with `SocketUpgradeError`.
- *
- * @category combinators
- * @since 4.0.0
- */
-export const upgrade = (options: TlsUpgradeOptions): Effect.Effect<void, SocketError> =>
-  Effect.flatMap(
-    Effect.serviceOption(TlsUpgrade),
-    Option.match({
-      onNone: () => Effect.fail(new SocketError({ reason: new SocketUpgradeError({}) })),
-      onSome: (service) => service.upgrade(options)
-    })
-  )
 
 const closeError = (code: number, closeReason?: string | undefined) =>
   new SocketError({ reason: new SocketCloseError({ code, closeReason }) })
