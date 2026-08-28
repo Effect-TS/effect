@@ -352,7 +352,8 @@ const makeNetServer = Effect.fnUntraced(function*(options: {
                   conn.destroySoon()
                 }
               })
-          )
+          ),
+          { tlsServer: true }
         ),
         Effect.flatMap(handler),
         Effect.catchCause(reportUnhandledError),

@@ -20,8 +20,10 @@ import * as Exit from "../../Exit.ts"
 import { constVoid, dual, flow } from "../../Function.ts"
 import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
+import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Pull from "../../Pull.ts"
+import type * as Redacted from "../../Redacted.ts"
 import * as Scheduler from "../../Scheduler.ts"
 import * as Schema from "../../Schema.ts"
 import * as Scope from "../../Scope.ts"
@@ -120,6 +122,36 @@ export interface Writer {
   readonly write: (chunk: Uint8Array | string | CloseEvent) => Effect.Effect<void, SocketError>
   readonly writeAll: (chunks: NonEmptyReadonlyArray<Uint8Array | string>) => Effect.Effect<void, SocketError>
 }
+
+/**
+ * TLS credentials and handshake settings used to upgrade a live socket.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface TlsUpgradeOptions {
+  readonly key:
+    | Redacted.Redacted<string | Uint8Array>
+    | ReadonlyArray<Redacted.Redacted<string | Uint8Array>>
+  readonly cert: string | Uint8Array | ReadonlyArray<string | Uint8Array>
+  readonly ca?: string | Uint8Array | ReadonlyArray<string | Uint8Array> | undefined
+  readonly passphrase?: Redacted.Redacted<string> | undefined
+  readonly alpnProtocols?: ReadonlyArray<string> | undefined
+  readonly requestCert?: boolean | undefined
+  readonly rejectUnauthorized?: boolean | undefined
+}
+
+/**
+ * Transport-specific implementation for upgrading the current live socket to
+ * TLS. Reader acquisition provides this service when the transport supports
+ * in-place upgrades.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export class TlsUpgrade extends Context.Service<TlsUpgrade, {
+  readonly upgrade: (options: TlsUpgradeOptions) => Effect.Effect<void, SocketError>
+}>()("effect/socket/Socket/TlsUpgrade") {}
 
 /**
  * Constructs a `Socket` from a reader acquisition and a scoped writer.
@@ -331,6 +363,25 @@ export class SocketOpenError extends Schema.Error<SocketOpenError>("effect/socke
 }
 
 /**
+ * Typed error for an unsupported or failed in-place TLS upgrade.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class SocketUpgradeError extends Schema.Error<SocketUpgradeError>(
+  "effect/socket/Socket/SocketUpgradeError"
+)({
+  _tag: Schema.tag("SocketUpgradeError"),
+  cause: Schema.optional(Schema.Defect())
+}) {
+  override get message() {
+    return this.cause === undefined
+      ? `Socket does not support TLS upgrade`
+      : `An error occurred during TLS upgrade`
+  }
+}
+
+/**
  * Typed error for a socket close, carrying the close code and optional close
  * reason.
  *
@@ -366,11 +417,12 @@ export const SocketErrorReason = Schema.Union([
   SocketReadError,
   SocketWriteError,
   SocketOpenError,
+  SocketUpgradeError,
   SocketCloseError
 ])
 
 /**
- * Union of socket-specific read, write, open, and close error reasons.
+ * Union of socket-specific read, write, open, upgrade, and close error reasons.
  *
  * @category errors
  * @since 4.0.0
@@ -379,11 +431,12 @@ export type SocketErrorReason =
   | SocketReadError
   | SocketWriteError
   | SocketOpenError
+  | SocketUpgradeError
   | SocketCloseError
 
 /**
- * Tagged error that wraps socket read, write, open, and close failures while
- * preserving the underlying reason.
+ * Tagged error that wraps socket read, write, open, upgrade, and close failures
+ * while preserving the underlying reason.
  *
  * @category errors
  * @since 4.0.0
@@ -394,7 +447,7 @@ export class SocketError extends Schema.TaggedError<SocketError>(SocketErrorType
 }) {
   // @effect-diagnostics-next-line overriddenSchemaConstructor:off
   constructor(props: {
-    readonly reason: SocketReadError | SocketWriteError | SocketOpenError | SocketCloseError
+    readonly reason: SocketReadError | SocketWriteError | SocketOpenError | SocketUpgradeError | SocketCloseError
   }) {
     if ("cause" in props.reason) {
       super({
@@ -424,6 +477,22 @@ export class SocketError extends Schema.TaggedError<SocketError>(SocketErrorType
 
   override readonly message = this.reason.message
 }
+
+/**
+ * Upgrades the socket associated with the current acquired reader to TLS.
+ * Unsupported transports fail with `SocketUpgradeError`.
+ *
+ * @category combinators
+ * @since 4.0.0
+ */
+export const upgrade = (options: TlsUpgradeOptions): Effect.Effect<void, SocketError> =>
+  Effect.flatMap(
+    Effect.serviceOption(TlsUpgrade),
+    Option.match({
+      onNone: () => Effect.fail(new SocketError({ reason: new SocketUpgradeError({}) })),
+      onSome: (service) => service.upgrade(options)
+    })
+  )
 
 const closeError = (code: number, closeReason?: string | undefined) =>
   new SocketError({ reason: new SocketCloseError({ code, closeReason }) })

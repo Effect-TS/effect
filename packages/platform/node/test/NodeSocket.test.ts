@@ -1,6 +1,6 @@
 import { NodeSocket, NodeSocketServer } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Queue } from "effect"
+import { Deferred, Effect, Queue, Redacted } from "effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Scope from "effect/Scope"
@@ -23,6 +23,12 @@ vi.mock("node:tls", async (importOriginal) => {
   const original = await importOriginal<typeof Tls>()
   return { ...original, connect: vi.fn(original.connect) }
 })
+
+// Regenerate with:
+// openssl req -x509 -newkey ed25519 -nodes -days 36500 -subj /CN=localhost \
+//   -addext subjectAltName=DNS:localhost,IP:127.0.0.1 -keyout key.pem -out cert.pem
+const cert = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/cert.pem", import.meta.url)))
+const key = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/key.pem", import.meta.url)))
 
 const makeServer = Effect.gen(function*() {
   const server = yield* NodeSocketServer.make({ port: 0 })
@@ -218,12 +224,6 @@ describe("Socket", () => {
   })
 
   describe("TLS", () => {
-    // Regenerate with:
-    // openssl req -x509 -newkey ed25519 -nodes -days 36500 -subj /CN=localhost \
-    //   -addext subjectAltName=DNS:localhost,IP:127.0.0.1 -keyout key.pem -out cert.pem
-    const cert = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/cert.pem", import.meta.url)))
-    const key = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/key.pem", import.meta.url)))
-
     const makeTlsServer = Effect.suspend(() => {
       const sockets = new Set<Tls.TLSSocket>()
       return Effect.acquireRelease(
@@ -367,6 +367,108 @@ describe("Socket", () => {
 
         assert.strictEqual(received, "HelloWorld")
       }))
+
+    it.effect("upgrades a plain NodeSocketServer connection to TLS", () =>
+      Effect.gen(function*() {
+        const server = yield* NodeSocketServer.make({ host: "127.0.0.1", port: 0 })
+        yield* server.run((socket) =>
+          Effect.gen(function*() {
+            const writer = yield* socket.writer
+            const pull = yield* socket.reader
+            yield* Socket.upgrade({ cert, key: Redacted.make(key) })
+            while (true) {
+              yield* writer.writeAll(yield* pull)
+            }
+          }).pipe(
+            Effect.scoped,
+            Effect.catchTag("SocketError", () => Effect.void)
+          )
+        ).pipe(Effect.forkScoped)
+
+        const socket = yield* NodeSocket.makeTls({
+          host: "127.0.0.1",
+          port: (server.address as SocketServer.TcpAddress).port,
+          ca: [cert]
+        })
+
+        const received = yield* Effect.gen(function*() {
+          const writer = yield* socket.writer
+          const pull = yield* Socket.readerString(socket)
+          yield* writer.writeAll(["Hello", "World"])
+          let text = ""
+          while (text.length < 10) {
+            text += (yield* pull).join("")
+          }
+          return text
+        }).pipe(Effect.scoped)
+
+        assert.strictEqual(received, "HelloWorld")
+      }))
+
+    it.effect("upgrades a makeNet client connection to TLS", () =>
+      Effect.gen(function*() {
+        const server = yield* NodeSocketServer.makeTls({ host: "127.0.0.1", port: 0, cert, key })
+        yield* server.run((socket) =>
+          Effect.gen(function*() {
+            const writer = yield* socket.writer
+            const pull = yield* socket.reader
+            while (true) {
+              yield* writer.writeAll(yield* pull)
+            }
+          }).pipe(
+            Effect.scoped,
+            Effect.catchTag("SocketError", () => Effect.void)
+          )
+        ).pipe(Effect.forkScoped)
+
+        const socket = yield* NodeSocket.makeNet({
+          host: "127.0.0.1",
+          port: (server.address as SocketServer.TcpAddress).port
+        })
+
+        const received = yield* Effect.gen(function*() {
+          const writer = yield* socket.writer
+          const pull = yield* Socket.readerString(socket)
+          yield* Socket.upgrade({
+            cert,
+            key: Redacted.make(key),
+            ca: [cert],
+            rejectUnauthorized: true
+          })
+          yield* writer.writeAll(["Hello", "World"])
+          let text = ""
+          while (text.length < 10) {
+            text += (yield* pull).join("")
+          }
+          return text
+        }).pipe(Effect.scoped)
+
+        assert.strictEqual(received, "HelloWorld")
+      }))
+
+    it.effect("reports TLS handshake failures as SocketUpgradeError", () =>
+      Effect.gen(function*() {
+        const server = yield* NodeSocketServer.makeTls({ host: "127.0.0.1", port: 0, cert, key })
+        yield* server.run(() => Effect.never).pipe(Effect.forkScoped)
+        const socket = yield* NodeSocket.makeNet({
+          host: "127.0.0.1",
+          port: (server.address as SocketServer.TcpAddress).port
+        })
+
+        const error = yield* Effect.gen(function*() {
+          yield* Effect.asVoid(socket.reader)
+          return yield* Socket.upgrade({
+            cert,
+            key: Redacted.make(key),
+            rejectUnauthorized: true
+          }).pipe(Effect.flip)
+        }).pipe(Effect.scoped)
+
+        assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+        if (error.reason._tag === "SocketUpgradeError") {
+          assert.strictEqual((error.reason.cause as { code?: string }).code, "DEPTH_ZERO_SELF_SIGNED_CERT")
+        }
+      }))
   })
 
   describe("WebSocket", () => {
@@ -409,6 +511,17 @@ describe("Socket", () => {
 
         assert.strictEqual(yield* Deferred.await(authorization).pipe(Effect.timeout("1 second")), "Bearer test")
       }).pipe(Effect.provide(NodeSocket.layerWebSocketConstructorWS)))
+
+    it.effect("fails TLS upgrade with SocketUpgradeError", () =>
+      Effect.gen(function*() {
+        yield* Effect.asVoid(makeServer)
+        const socket = yield* Socket.makeWebSocket(Effect.succeed(url))
+        yield* Effect.asVoid(socket.reader)
+        const error = yield* Socket.upgrade({ cert, key: Redacted.make(key) }).pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+      }).pipe(
+        Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url))
+      ))
 
     it.effect("messages", () =>
       Effect.gen(function*() {
