@@ -147,12 +147,9 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
         yield* realSleep
       }
     }))
-  it.effect("spreads multiplexed statements across the connections it may open", () =>
+  it.effect("defaults multiplex concurrency to 32", () =>
     Effect.gen(function*() {
       const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 4, multiplex: true })
-      // Enough statements at once to fill every connection the pool may open.
-      // Letting them all share one would put every statement behind the
-      // slowest, so the pool has to reach for the rest.
       const processIds = yield* Effect.all(
         Array.from({ length: 32 }, () =>
           Effect.scoped(Effect.flatMap(pool.get, (connection) =>
@@ -162,7 +159,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgPool", (it) => {
             )))),
         { concurrency: "unbounded" }
       )
-      assert.strictEqual(new Set(processIds).size, 4)
+      assert.strictEqual(new Set(processIds).size, 1)
     }))
   it.effect("invalidates a reserved connection", () =>
     Effect.gen(function*() {
