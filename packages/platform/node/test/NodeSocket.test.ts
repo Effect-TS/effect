@@ -6,8 +6,11 @@ import * as Fiber from "effect/Fiber"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import { Socket, type SocketServer } from "effect/unstable/socket"
+import * as Fs from "node:fs"
 import * as Net from "node:net"
 import { Duplex } from "node:stream"
+import * as Tls from "node:tls"
+import { fileURLToPath } from "node:url"
 import { WS } from "vitest-websocket-mock"
 
 const makeServer = Effect.gen(function*() {
@@ -159,6 +162,96 @@ describe("Socket", () => {
         assert.strictEqual(error.reason.kind, "Timeout")
       }
     }))
+
+  describe("TLS", () => {
+    // Regenerate with:
+    // openssl req -x509 -newkey ed25519 -nodes -days 36500 -subj /CN=localhost \
+    //   -addext subjectAltName=DNS:localhost,IP:127.0.0.1 -keyout key.pem -out cert.pem
+    const cert = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/cert.pem", import.meta.url)))
+    const key = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/key.pem", import.meta.url)))
+
+    const makeTlsServer = Effect.suspend(() => {
+      const sockets = new Set<Tls.TLSSocket>()
+      return Effect.acquireRelease(
+        Effect.callback<Tls.Server>((resume) => {
+          const server = Tls.createServer({ cert, key }, (socket) => {
+            sockets.add(socket)
+            socket.on("close", () => sockets.delete(socket))
+            socket.pipe(socket)
+          })
+          server.listen(0, "127.0.0.1", () => resume(Effect.succeed(server)))
+        }),
+        (server) =>
+          Effect.sync(() => {
+            for (const socket of sockets) socket.destroy()
+            server.close()
+          })
+      )
+    })
+
+    const serverPort = (server: Tls.Server) => (server.address() as Net.AddressInfo).port
+
+    it.effect("open", () =>
+      Effect.gen(function*() {
+        const server = yield* makeTlsServer
+        const channel = NodeSocket.makeTlsChannel({
+          host: "127.0.0.1",
+          port: serverPort(server),
+          ca: [cert]
+        })
+
+        const output = yield* Stream.make("Hello", "World").pipe(
+          Stream.encodeText,
+          Stream.pipeThroughChannel(channel),
+          Stream.catchIf(
+            (error) => error.reason._tag === "SocketCloseError",
+            () => Stream.empty
+          ),
+          Stream.decodeText(),
+          Stream.mkString
+        )
+        assert.strictEqual(output, "HelloWorld")
+      }))
+
+    it.effect("echoes over the reader and writer", () =>
+      Effect.gen(function*() {
+        const server = yield* makeTlsServer
+        const socket = yield* NodeSocket.makeTls({
+          host: "127.0.0.1",
+          port: serverPort(server),
+          ca: [cert]
+        })
+
+        const received = yield* Effect.gen(function*() {
+          const writer = yield* socket.writer
+          const pull = yield* Socket.readerString(socket)
+          yield* writer.writeAll(["Hello", "World"])
+          let text = ""
+          while (text.length < 10) {
+            text += (yield* pull).join("")
+          }
+          return text
+        }).pipe(Effect.scoped)
+
+        assert.strictEqual(received, "HelloWorld")
+      }))
+
+    it.effect("fails to open against an untrusted certificate", () =>
+      Effect.gen(function*() {
+        const server = yield* makeTlsServer
+        const socket = yield* NodeSocket.makeTls({
+          host: "127.0.0.1",
+          port: serverPort(server)
+        })
+
+        const error = yield* Effect.scoped(Effect.asVoid(socket.reader)).pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "SocketOpenError")
+        if (error.reason._tag === "SocketOpenError") {
+          assert.strictEqual(error.reason.kind, "Unknown")
+          assert.strictEqual((error.reason.cause as { code?: string }).code, "DEPTH_ZERO_SELF_SIGNED_CERT")
+        }
+      }))
+  })
 
   describe("WebSocket", () => {
     const url = `ws://localhost:1234`

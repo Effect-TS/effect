@@ -1,10 +1,10 @@
 /**
  * Node socket adapters for Effect sockets.
  *
- * This module opens `node:net` connections or wraps existing Node `Duplex`
- * streams and presents them as `Socket.Socket` values, socket channels, or
- * layers. It also exposes the `NetSocket` service tag for the underlying Node
- * socket and re-exports the `ws` package namespace.
+ * This module opens `node:net` or `node:tls` connections, or wraps existing
+ * Node `Duplex` streams, and presents them as `Socket.Socket` values, socket
+ * channels, or layers. It also exposes the `NetSocket` service tag for the
+ * underlying Node socket and re-exports the `ws` package namespace.
  *
  * @since 4.0.0
  */
@@ -21,6 +21,7 @@ import * as Scope from "effect/Scope"
 import * as Socket from "effect/unstable/socket/Socket"
 import * as Net from "node:net"
 import type { Duplex } from "node:stream"
+import * as Tls from "node:tls"
 
 /**
  * @category re-exports
@@ -367,3 +368,91 @@ export const layerNet: (options: Net.NetConnectOpts) => Layer.Layer<
   Socket.Socket,
   Socket.SocketError
 > = Function.flow(makeNet, Layer.effect(Socket.Socket))
+
+/**
+ * Opens a Node TLS connection as an Effect socket.
+ *
+ * **When to use**
+ *
+ * Use to create a `Socket.Socket` whose reader acquisition dials
+ * `tls.connect` and completes once the TLS handshake has finished.
+ *
+ * **Details**
+ *
+ * Accepts the same options as `tls.connect`, so trust anchors (`ca`), client
+ * certificates (`cert` / `key`), ALPN protocols, and `servername` are set
+ * there. A failed handshake, including an untrusted or expired peer
+ * certificate, fails with a `SocketOpenError`. Supports `openTimeout` and
+ * destroys the underlying socket when the reader scope is finalized.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeTls = (
+  options: Tls.ConnectionOptions & {
+    readonly openTimeout?: Duration.Input | undefined
+  }
+): Effect.Effect<Socket.Socket> =>
+  fromDuplex(
+    Effect.contextWith((context: Context.Context<Scope.Scope>) => {
+      let conn: Tls.TLSSocket | undefined
+      return Effect.flatMap(
+        Scope.addFinalizer(
+          Context.get(context, Scope.Scope),
+          Effect.sync(() => {
+            if (!conn) return
+            if (conn.closed === false) {
+              conn.destroySoon()
+            }
+          })
+        ),
+        () =>
+          Effect.callback<Tls.TLSSocket, Socket.SocketError, never>((resume) => {
+            conn = Tls.connect(options)
+            conn.once("secureConnect", () => {
+              resume(Effect.succeed(conn!))
+            })
+            conn.on("error", (cause: Error) => {
+              resume(Effect.fail(
+                new Socket.SocketError({
+                  reason: new Socket.SocketOpenError({ kind: "Unknown", cause })
+                })
+              ))
+            })
+          })
+      )
+    }),
+    options
+  )
+
+/**
+ * Creates a `Channel` over a TLS socket, reading arrays of `Uint8Array`
+ * chunks and writing arrays of bytes, strings, or socket close events.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeTlsChannel = <IE = never>(
+  options: Tls.ConnectionOptions
+): Channel.Channel<
+  Array.NonEmptyReadonlyArray<Uint8Array>,
+  Socket.SocketError | IE,
+  void,
+  Array.NonEmptyReadonlyArray<Uint8Array | string | Socket.CloseEvent>,
+  IE
+> =>
+  Channel.unwrap(
+    Effect.map(makeTls(options), Socket.toChannelWith<IE>())
+  )
+
+/**
+ * Provides a `Socket.Socket` by opening a TLS connection with the supplied
+ * Node `tls` connection options.
+ *
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerTls: (options: Tls.ConnectionOptions) => Layer.Layer<
+  Socket.Socket,
+  Socket.SocketError
+> = Function.flow(makeTls, Layer.effect(Socket.Socket))
