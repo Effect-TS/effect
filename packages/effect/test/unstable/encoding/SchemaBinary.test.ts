@@ -388,6 +388,15 @@ describe("SchemaBinary", () => {
       )
     })
 
+    it("rejects non-number elements in uniform number arrays", () => {
+      const codec = SchemaBinary.toCodec(Schema.Array(Schema.Number))
+      for (const value of ["x", undefined, null, 1n]) {
+        const error = schemaError(() => Schema.encodeUnknownSync(codec)([1, value, 3] as any))
+        assert.include(error.message, "Expected a number")
+        assert.include(error.message, "at [1]")
+      }
+    })
+
     it("length-prefixes each number slot of a tuple", () => {
       const pair = Schema.Tuple([Schema.Number, Schema.Number])
       assert.strictEqual(encode(pair, [1, 2]).length, 6)
@@ -2748,6 +2757,39 @@ describe("SchemaBinary", () => {
       }
     })
 
+    it("round-trips arrays of strings across frames", () => {
+      const values = [["a", "b"], ["a", "c"], ["a", "a"]]
+      const encoder = SchemaBinary.encoder(Schema.Array(Schema.String), { dictionary: true })
+      const parser = SchemaBinary.parser(Schema.Array(Schema.String), { dictionary: true })
+      const decoded = values.flatMap((value) => parser.feedSync(encoder.encode(value)))
+      assert.deepStrictEqual(decoded, values)
+
+      const Message = Schema.Struct({ name: Schema.String, tags: Schema.Array(Schema.String) })
+      const messages = [
+        { name: "shared", tags: ["a", "b"] },
+        { name: "other", tags: ["shared", "c"] },
+        { name: "shared", tags: ["a", "a"] }
+      ]
+      const messageEncoder = SchemaBinary.encoder(Message, { dictionary: true })
+      const messageParser = SchemaBinary.parser(Message, { dictionary: true })
+      const decodedMessages = messages.flatMap((value) => messageParser.feedSync(messageEncoder.encode(value)))
+      assert.deepStrictEqual(decodedMessages, messages)
+    })
+
+    it("round-trips arrays of strings inside row runs across frames", () => {
+      const Row = Schema.Struct({ id: Schema.Number, tags: Schema.Array(Schema.String) })
+      const Rows = Schema.Array(Row)
+      const values = [
+        [{ id: 1, tags: ["x"] }],
+        [{ id: 2, tags: ["x"] }],
+        [{ id: 3, tags: ["x"] }]
+      ]
+      const encoder = SchemaBinary.encoder(Rows, { dictionary: true })
+      const parser = SchemaBinary.parser(Rows, { dictionary: true })
+      const decoded = values.flatMap((value) => parser.feedSync(encoder.encode(value)))
+      assert.deepStrictEqual(decoded, values)
+    })
+
     it("round-trips batched frames and fragmented feeds", () => {
       const encoder = SchemaBinary.encoder(Message, { dictionary: true })
       const parser = SchemaBinary.parser(Message, { dictionary: true })
@@ -2898,6 +2940,20 @@ describe("SchemaBinary", () => {
         )
 
         assert.deepStrictEqual([...frames], [concat(encode(Person, ada), encode(Person, grace))])
+      }))
+
+    it.effect("encode rejects non-number elements in uniform number arrays", () =>
+      Effect.gen(function*() {
+        for (const value of ["x", undefined, null]) {
+          const error = yield* Stream.make([1, value, 3] as any).pipe(
+            Stream.pipeThroughChannel(SchemaBinary.encode(Schema.Array(Schema.Number))()),
+            Stream.runCollect,
+            Effect.flip
+          )
+          assert.instanceOf(error, Schema.SchemaError)
+          assert.include(error.message, "Expected a number")
+          assert.include(error.message, "at [1]")
+        }
       }))
 
     it.effect("decodes a value split across byte chunks", () =>
