@@ -13,18 +13,7 @@ import type { SqlError } from "effect/unstable/sql/SqlError"
 import { connectionInternals } from "./internal/connection.ts"
 import * as PgConnection from "./PgConnection.ts"
 
-/**
- * How many statements share one connection when nothing says otherwise.
- *
- * Deliberately low. The backend runs a connection's pipelined statements in
- * the order it received them, so everything sharing a connection queues behind
- * the slowest of them, and spreading over the connections the pool may open
- * costs nothing in throughput against a server a cheap round trip away. It is
- * not the fastest setting everywhere: the further away the server, the more a
- * round trip costs and the more a deeper pipeline is worth. That is what
- * `multiplexConcurrency` is for.
- */
-const defaultMultiplexConcurrency = (maxConnections: number): number => Math.max(4, Math.ceil(32 / maxConnections))
+const defaultMultiplexConcurrency = 32
 
 /**
  * The runtime type identifier for `PgPool`.
@@ -65,12 +54,9 @@ export interface Config extends PgConnection.Config {
   readonly connectionTTL?: Duration.Input | undefined
   /**
    * How many statements may share one connection when `multiplex` is on.
-   *
-   * They are pipelined into one write, so a higher number means fewer round
-   * trips, and it also means a slow statement holds up more of the statements
-   * queued behind it. The default suits a server that is a cheap round trip
-   * away; one reached across a virtual or real network is worth a deeper
-   * pipeline, where settings of 16 to 32 have measured considerably faster.
+   * Defaults to `32`. Statements are pipelined into one write, so a higher
+   * number means fewer round trips, but it also means a slow statement holds
+   * up more of the statements queued behind it.
    */
   readonly multiplexConcurrency?: number | undefined
 }
@@ -170,7 +156,7 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
     min: options.minConnections ?? 0,
     max: maxConnections,
     concurrency: multiplex
-      ? Math.max(1, options.multiplexConcurrency ?? defaultMultiplexConcurrency(maxConnections))
+      ? Math.max(1, options.multiplexConcurrency ?? defaultMultiplexConcurrency)
       : 1,
     timeToLive: options.idleTimeout ?? Duration.seconds(10),
     timeToLiveStrategy: "usage"
