@@ -446,6 +446,68 @@ describe("Socket", () => {
         assert.strictEqual(received, "HelloWorld")
       }))
 
+    it.live("fails pulls after an interrupted TLS upgrade", () =>
+      Effect.gen(function*() {
+        const raw = new Duplex({
+          read() {},
+          write(_chunk, _encoding, callback) {
+            callback()
+          }
+        })
+        const tls = new Duplex({
+          read() {},
+          write(_chunk, _encoding, callback) {
+            callback()
+          }
+        })
+        vi.mocked(Tls.connect).mockReturnValueOnce(tls as Tls.TLSSocket)
+        const socket = yield* NodeSocket.fromDuplex(Effect.succeed(raw))
+
+        const error = yield* Effect.gen(function*() {
+          const pull = yield* socket.reader
+          const upgradeFiber = yield* socket.upgrade({
+            cert,
+            key: Redacted.make(key)
+          }).pipe(Effect.forkChild({ startImmediately: true }))
+          yield* Fiber.interrupt(upgradeFiber)
+          return yield* pull.pipe(Effect.flip, Effect.timeout("1 second"))
+        }).pipe(Effect.scoped)
+
+        assert.strictEqual(error.reason._tag, "SocketCloseError")
+      }))
+
+    it.live("rejects a second TLS upgrade", () =>
+      Effect.gen(function*() {
+        const server = yield* NodeSocketServer.makeTls({ host: "127.0.0.1", port: 0, cert, key })
+        yield* server.run((socket) =>
+          Effect.gen(function*() {
+            yield* Effect.asVoid(socket.reader)
+            return yield* Effect.never
+          }).pipe(Effect.scoped)
+        ).pipe(Effect.forkScoped)
+        const socket = yield* NodeSocket.makeNet({
+          host: "127.0.0.1",
+          port: (server.address as SocketServer.TcpAddress).port
+        })
+
+        const error = yield* Effect.gen(function*() {
+          yield* Effect.asVoid(socket.reader)
+          const options = {
+            cert,
+            key: Redacted.make(key),
+            ca: [cert],
+            rejectUnauthorized: true
+          }
+          yield* socket.upgrade(options)
+          return yield* socket.upgrade(options).pipe(
+            Effect.flip,
+            Effect.timeout("1 second")
+          )
+        }).pipe(Effect.scoped)
+
+        assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+      }))
+
     it.effect("reports TLS handshake failures as SocketUpgradeError", () =>
       Effect.gen(function*() {
         const server = yield* NodeSocketServer.makeTls({ host: "127.0.0.1", port: 0, cert, key })

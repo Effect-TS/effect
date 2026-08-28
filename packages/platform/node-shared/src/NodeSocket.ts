@@ -289,6 +289,7 @@ export const fromDuplex = <RO>(
           }
           function succeed() {
             cleanup()
+            currentUpgrade = undefined
             attachReadListeners(tls)
             resume(Effect.void)
           }
@@ -316,6 +317,11 @@ export const fromDuplex = <RO>(
 
           return Effect.sync(() => {
             cleanup()
+            fail(
+              new Socket.SocketError({
+                reason: new Socket.SocketCloseError({ code: 1006 })
+              })
+            )
             tls.destroy()
           })
         })
@@ -446,7 +452,7 @@ export const fromDuplex = <RO>(
         })
     )
 
-    const upgrade: Socket.Socket["upgrade"] = (options) =>
+    const upgrade: Socket.Socket["upgrade"] = (upgradeOptions) =>
       Effect.suspend(() =>
         currentUpgrade === undefined
           ? Effect.fail(
@@ -456,7 +462,7 @@ export const fromDuplex = <RO>(
               })
             })
           )
-          : currentUpgrade(options)
+          : currentUpgrade(upgradeOptions)
       )
 
     return Effect.succeed(Socket.make({ reader, writer, upgrade }))
