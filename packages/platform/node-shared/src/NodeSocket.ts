@@ -9,6 +9,7 @@
  * @since 4.0.0
  */
 import type { Array } from "effect"
+import * as Arr from "effect/Array"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
@@ -41,11 +42,6 @@ export * as NodeWS from "ws"
 export class NetSocket extends Context.Service<NetSocket, Net.Socket>()(
   "@effect/platform-node/NodeSocket/NetSocket"
 ) {}
-
-const isReadonlyArray = <A>(value: A | ReadonlyArray<A>): value is ReadonlyArray<A> => globalThis.Array.isArray(value)
-
-const toTlsValue = (value: string | Uint8Array): string | Buffer =>
-  typeof value === "string" ? value : Buffer.from(value)
 
 const readAvailable = (
   conn: Duplex
@@ -239,19 +235,15 @@ export const fromDuplex = <RO>(
 
           let tls: Tls.TLSSocket
           try {
-            const key = isReadonlyArray(upgradeOptions.key)
-              ? upgradeOptions.key.map((value) => toTlsValue(Redacted.value(value)))
-              : toTlsValue(Redacted.value(upgradeOptions.key))
             const secureContext = Tls.createSecureContext({
-              key,
-              cert: isReadonlyArray(upgradeOptions.cert)
-                ? upgradeOptions.cert.map(toTlsValue)
-                : toTlsValue(upgradeOptions.cert),
+              key: Arr.map(
+                Arr.ensure(upgradeOptions.key),
+                (value) => Buffer.from(Redacted.value(value))
+              ),
+              cert: Arr.map(Arr.ensure(upgradeOptions.cert), (value) => Buffer.from(value)),
               ca: upgradeOptions.ca === undefined
                 ? undefined
-                : isReadonlyArray(upgradeOptions.ca)
-                ? upgradeOptions.ca.map(toTlsValue)
-                : toTlsValue(upgradeOptions.ca),
+                : Arr.map(Arr.ensure(upgradeOptions.ca), (value) => Buffer.from(value)),
               passphrase: upgradeOptions.passphrase === undefined
                 ? undefined
                 : Redacted.value(upgradeOptions.passphrase)
