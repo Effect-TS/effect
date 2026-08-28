@@ -43,6 +43,46 @@ const concat = (...chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
   return out
 }
 
+const uvarint = (value: number): Array<number> => {
+  const out: Array<number> = []
+  while (value > 0x7F) {
+    out.push((value & 0x7F) | 0x80)
+    value = Math.floor(value / 128)
+  }
+  out.push(value)
+  return out
+}
+
+const nestedArrayFrame = (depth: number): Uint8Array<ArrayBuffer> => {
+  const lengths = [1]
+  for (let i = 0; i < depth; i++) {
+    const childLength = lengths[i]
+    lengths.push(1 + uvarint(childLength).length + childLength)
+  }
+  const bodyLength = lengths[depth]
+  const header = uvarint(bodyLength + 1)
+  const out = new Uint8Array(header.length + 1 + bodyLength)
+  out.set(header)
+  let offset = header.length
+  out[offset++] = 0x20
+  for (let i = depth; i > 0; i--) {
+    out[offset++] = 1
+    const childHeader = uvarint(lengths[i - 1])
+    out.set(childHeader, offset)
+    offset += childHeader.length
+  }
+  out[offset] = 0
+  return out
+}
+
+const int64Frame = (value: bigint): Uint8Array<ArrayBuffer> => {
+  const out = new Uint8Array(10)
+  out[0] = 9
+  out[1] = 0x20
+  new DataView(out.buffer).setBigInt64(2, value, true)
+  return out
+}
+
 const sameNumber = (actual: unknown, expected: number) => {
   assert.isTrue(
     Object.is(actual, expected),
@@ -990,6 +1030,16 @@ describe("SchemaBinary", () => {
       parser.endSync()
     })
 
+    it("fails deeply nested recursive frames with SchemaError", () => {
+      type Nested = ReadonlyArray<Nested>
+      let Nested: Schema.Codec<Nested>
+      Nested = Schema.Array(Schema.suspend(() => Nested))
+      const parser = SchemaBinary.parser(Nested)
+
+      assert.match(schemaError(() => parser.feedSync(nestedArrayFrame(10_000))).message, /nesting depth at most/)
+      assert.match(schemaError(() => parser.feedSync(new Uint8Array())).message, /parser is spent/)
+    })
+
     it("keeps __proto__ safe on the exact parser path", () => {
       const schema = Schema.Struct({ ["__proto__"]: Schema.String, value: Schema.Number })
       const value = { ["__proto__"]: "own", value: 1 }
@@ -1341,6 +1391,20 @@ describe("SchemaBinary", () => {
         const decoded = roundtrip(Schema.DateTimeZoned, zoned)
         assert.strictEqual(DateTime.toEpochMillis(decoded), DateTime.toEpochMillis(zoned))
         assert.strictEqual(DateTime.zoneToString(decoded.zone), DateTime.zoneToString(zoned.zone))
+      }
+    })
+
+    it("validates DateTimeUtc epoch millisecond boundaries", () => {
+      const codec = SchemaBinary.toCodec(Schema.DateTimeUtc)
+      for (const millis of [-8_640_000_000_000_000n, 8_640_000_000_000_000n]) {
+        const decoded = Schema.decodeUnknownSync(codec)(int64Frame(millis))
+        assert.strictEqual(DateTime.toEpochMillis(decoded), Number(millis))
+      }
+      for (const millis of [-8_640_000_000_000_001n, 8_640_000_000_000_001n]) {
+        assert.match(
+          schemaError(() => Schema.decodeUnknownSync(codec)(int64Frame(millis))).message,
+          /valid DateTime/
+        )
       }
     })
 
@@ -1769,6 +1833,23 @@ describe("SchemaBinary", () => {
         schemaError(() => Schema.decodeUnknownSync(codec)(bytes)).message,
         /array count within allocation limit/
       )
+    })
+
+    it("round-trips zero-width arrays across the allocation slack boundary", () => {
+      const verify = <A, I>(schema: Schema.Codec<A, I>, value: A) => {
+        const codec = SchemaBinary.toCodec(Schema.Array(schema))
+        for (const count of [1_048_576, 1_048_577]) {
+          const bytes = Schema.encodeUnknownSync(codec)(new Array<A>(count).fill(value))
+          assert.strictEqual(bytes.length, 5)
+          const decoded = Schema.decodeUnknownSync(codec)(bytes)
+          assert.strictEqual(decoded.length, count)
+          assert.strictEqual(decoded[0], value)
+          assert.strictEqual(decoded[count - 1], value)
+        }
+      }
+
+      verify(Schema.Null, null)
+      verify(Schema.Undefined, undefined)
     })
 
     it("rejects duplicate struct field ids and extra keys", () => {
@@ -2976,6 +3057,21 @@ describe("SchemaBinary", () => {
         )
 
         assert.deepStrictEqual([...values], [ada, grace])
+      }))
+
+    it.effect("fails deeply nested recursive frames in the error channel", () =>
+      Effect.gen(function*() {
+        type Nested = ReadonlyArray<Nested>
+        let Nested: Schema.Codec<Nested>
+        Nested = Schema.Array(Schema.suspend(() => Nested))
+        const error = yield* Stream.make(nestedArrayFrame(10_000)).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.decode(Nested)()),
+          Stream.runCollect,
+          Effect.flip
+        )
+
+        assert.instanceOf(error, Schema.SchemaError)
+        assert.include(error.message, "nesting depth at most")
       }))
 
     it.effect("fails when the stream ends with an incomplete frame", () =>

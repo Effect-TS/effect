@@ -897,6 +897,15 @@ const NUMBER_RUN_F64 = 0
 const NUMBER_RUN_VARINT = 1
 const NUMBER_RUN_DECIMAL = 2
 
+// Recursive layouts must fail before the JavaScript stack does. This is high
+// enough for practical payloads while keeping the decoder's stack bounded.
+const MAX_NESTING_DEPTH = 512
+
+// Variable-width elements must be backed by frame bytes apart from a bounded
+// allowance. Provably zero-width elements need their own absolute bound.
+const ARRAY_ALLOCATION_SLACK = 1_048_576
+const ZERO_WIDTH_ARRAY_MAX = 4_194_304
+
 // Struct field tags pack the field id with enough information to skip the
 // payload without consulting the schema. Decimal is a sign-magnitude mantissa
 // varint followed by an unsigned scale varint.
@@ -1443,6 +1452,7 @@ const EMPTY_READER_VIEW = new DataView(EMPTY_READER_ARRAY_BUFFER)
 
 class Reader {
   pos = 0
+  nesting = 0
   buf: Uint8Array = EMPTY_READER_BUFFER
   // Frames of varints and strings never need a view, so it is built on demand
   // and reused while the reader stays on one buffer.
@@ -1469,6 +1479,7 @@ class Reader {
     positional: boolean,
     dict: DictRead | undefined
   ) {
+    this.nesting = 0
     this.view = undefined
     this.buf = buf
     this.pos = start
@@ -1480,7 +1491,7 @@ class Reader {
     this.dict = dict
   }
   release() {
-    this.pos = this.end = 0
+    this.pos = this.end = this.nesting = 0
     this.buf = EMPTY_READER_BUFFER
     this.view = undefined
     this.viewCache = EMPTY_READER_VIEW
@@ -1905,6 +1916,10 @@ function packedSize(layout: Layout): number | undefined {
 function isInlineSlot(layout: Layout): boolean {
   return packedSize(layout) !== undefined || isSelfDelimiting(layout) ||
     layout._ === "null" || layout._ === "undefined"
+}
+
+function isZeroWidthSlot(layout: Layout): boolean {
+  return layout._ === "literal" ? isZeroWidthSlot(layout.leaf) : layout._ === "null" || layout._ === "undefined"
 }
 
 // One registry row per natively supported declaration: its wire kind and
@@ -4632,10 +4647,6 @@ function decodeRunSlot(
 function decodeArray(layout: ArrayLayout, r: Reader): unknown {
   const elementLen = layout.elements.length
   const count = layout.hasCount ? r.uvarint() : elementLen
-  // Cap allocation amplification from zero-width slots.
-  if (layout.hasCount && count > r.remaining + 1_048_576) {
-    invalid("array count within allocation limit", count, r.options)
-  }
   if (layout.rest.length === 0 && count > elementLen) {
     issuePath[issuePathLen++] = elementLen
     throw issueError(new SchemaIssue.UnexpectedKey(layout.ast, undefined, r.options))
@@ -4643,6 +4654,12 @@ function decodeArray(layout: ArrayLayout, r: Reader): unknown {
   if (count < layout.minCount) {
     issuePath[issuePathLen++] = count
     throw issueError(new SchemaIssue.MissingKey(undefined))
+  }
+  if (layout.hasCount) {
+    const allocationLimit = layout.rest.length > 0 && isZeroWidthSlot(layout.rest[0])
+      ? ZERO_WIDTH_ARRAY_MAX
+      : r.remaining + ARRAY_ALLOCATION_SLACK
+    if (count > allocationLimit) invalid("array count within allocation limit", count, r.options)
   }
   if (count > 0) {
     const plan = runPlan(layout)
@@ -4812,6 +4829,18 @@ function requirePresent(value: unknown): unknown {
 }
 
 function decodeValue(layout: Layout, r: Reader): unknown {
+  if (r.nesting >= MAX_NESTING_DEPTH) {
+    invalid(`nesting depth at most ${MAX_NESTING_DEPTH}`, r.nesting + 1, r.options)
+  }
+  r.nesting++
+  try {
+    return decodeValueUnchecked(layout, r)
+  } finally {
+    r.nesting--
+  }
+}
+
+function decodeValueUnchecked(layout: Layout, r: Reader): unknown {
   switch (layout._) {
     case "literal": {
       const value = decodeValue(layout.leaf, r)
@@ -4857,10 +4886,11 @@ function decodeValue(layout: Layout, r: Reader): unknown {
     case "int64": {
       if (r.remaining !== 8) invalid("int64", undefined, r.options)
       const millis = Number(r.i64())
-      if (layout.flavor !== "date") return DateTime.makeUnsafe(millis)
       const date = new Date(millis)
-      if (Number.isNaN(date.getTime())) invalid("a valid Date", millis, r.options)
-      return date
+      if (Number.isNaN(date.getTime())) {
+        invalid(layout.flavor === "date" ? "a valid Date" : "a valid DateTime", millis, r.options)
+      }
+      return layout.flavor === "date" ? date : DateTime.makeUnsafe(millis)
     }
     case "dateTimeZoned": {
       const millis = Number(r.i64())
