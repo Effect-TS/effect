@@ -1,12 +1,13 @@
 /**
  * Node socket server adapters for Effect's unstable socket server API.
  *
- * This module turns `node:net` TCP or Unix-domain servers and `ws` WebSocket
- * servers into scoped `SocketServer.SocketServer` services. Use the TCP
- * constructors when handlers should receive a `Socket.Socket` backed by a Node
- * `net.Socket`; use the WebSocket constructors when handlers should receive a
- * `Socket.Socket` backed by `ws` and have access to the per-connection
- * WebSocket and `IncomingMessage` services.
+ * This module turns `node:net` TCP or Unix-domain servers, `node:tls` servers,
+ * and `ws` WebSocket servers into scoped `SocketServer.SocketServer` services.
+ * Use the TCP and TLS constructors when handlers should receive a
+ * `Socket.Socket` backed by a Node `net.Socket`; use the WebSocket
+ * constructors when handlers should receive a `Socket.Socket` backed by `ws`
+ * and have access to the per-connection WebSocket and `IncomingMessage`
+ * services.
  *
  * @since 4.0.0
  */
@@ -25,6 +26,7 @@ import * as Socket from "effect/unstable/socket/Socket"
 import * as SocketServer from "effect/unstable/socket/SocketServer"
 import type * as Http from "node:http"
 import * as Net from "node:net"
+import * as Tls from "node:tls"
 import * as NodeSocket from "./NodeSocket.ts"
 import { NodeWS } from "./NodeSocket.ts"
 
@@ -48,125 +50,18 @@ export class IncomingMessage extends Context.Service<
  * @category constructors
  * @since 4.0.0
  */
-export const make = Effect.fnUntraced(function*(
+export const make = (
   options: Net.ServerOpts & Net.ListenOptions
-) {
-  const errorDeferred = Deferred.makeUnsafe<never, Error>()
-  const pending = new Map<Net.Socket, () => void>()
-  function defaultOnConnection(conn: Net.Socket) {
-    const remove = () => {
-      pending.delete(conn)
-      conn.off("close", remove)
-      conn.off("error", remove)
-    }
-    pending.set(conn, remove)
-    conn.on("close", remove)
-    conn.on("error", remove)
-  }
-  let onConnection = defaultOnConnection
-  // oxlint-disable-next-line prefer-const
-  let server: Net.Server | undefined
-  yield* Effect.addFinalizer(() =>
-    Effect.callback<void>((resume) => {
-      pending.forEach((remove, conn) => {
-        remove()
-        conn.destroy()
-      })
-      server?.close(() => resume(Effect.void))
-    })
-  )
-  // pause immediately so nothing is dropped before a handler acquires the
-  // socket's reader
-  server = Net.createServer(options, (conn) => {
-    conn.pause()
-    onConnection(conn)
+): Effect.Effect<
+  SocketServer.SocketServer["Service"],
+  SocketServer.SocketServerError,
+  Scope.Scope
+> =>
+  makeNetServer({
+    listenOptions: options,
+    connectionEvent: "connection",
+    createServer: () => Net.createServer(options)
   })
-  server.on("error", (err) => Deferred.doneUnsafe(errorDeferred, Exit.fail(err)))
-
-  yield* Effect.callback<void, SocketServer.SocketServerError>((resume) => {
-    server.listen(options, () => resume(Effect.void))
-  }).pipe(
-    Effect.raceFirst(Effect.mapError(Deferred.await(errorDeferred), (err) =>
-      new SocketServer.SocketServerError({
-        reason: new SocketServer.SocketServerOpenError({
-          cause: err
-        })
-      })))
-  )
-
-  const run = Effect.fnUntraced(function*<R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) {
-    const scope = yield* Scope.make()
-    const services = Context.omit(Scope.Scope)(yield* Effect.context<R>()) as Context.Context<R>
-    const trackFiber = Fiber.runIn(scope)
-    const prevOnConnection = onConnection
-    onConnection = function(conn: Net.Socket) {
-      let error: Error | undefined
-      conn.on("error", (err) => {
-        error = err
-      })
-      pipe(
-        NodeSocket.fromDuplex(
-          Effect.acquireRelease(
-            Effect.suspend((): Effect.Effect<Net.Socket, Socket.SocketError> => {
-              if (error) {
-                return Effect.fail(
-                  new Socket.SocketError({
-                    reason: new Socket.SocketOpenError({
-                      kind: "Unknown",
-                      cause: error
-                    })
-                  })
-                )
-              } else if (conn.closed) {
-                return Effect.fail(
-                  new Socket.SocketError({
-                    reason: new Socket.SocketCloseError({ code: 1000 })
-                  })
-                )
-              }
-              return Effect.succeed(conn)
-            }),
-            (conn) =>
-              Effect.sync(() => {
-                if (conn.closed === false) {
-                  conn.destroySoon()
-                }
-              })
-          )
-        ),
-        Effect.flatMap(handler),
-        Effect.catchCause(reportUnhandledError),
-        Effect.runForkWith(Context.add(services, NodeSocket.NetSocket, conn)),
-        trackFiber
-      )
-    }
-    pending.forEach((remove, conn) => {
-      remove()
-      onConnection(conn)
-    })
-    return yield* Effect.callback<never>((_resume) => {
-      return Effect.suspend(() => {
-        onConnection = prevOnConnection
-        return Scope.close(scope, Exit.void)
-      })
-    })
-  })
-
-  const address = server.address()!
-  return SocketServer.SocketServer.of({
-    address: typeof address === "string" ?
-      {
-        _tag: "UnixAddress",
-        path: address
-      } :
-      {
-        _tag: "TcpAddress",
-        hostname: address.address,
-        port: address.port
-      },
-    run
-  })
-})
 
 /**
  * Provides a TCP `SocketServer` by creating and managing a scoped Node
@@ -181,6 +76,54 @@ export const layer: (
   SocketServer.SocketServer,
   SocketServer.SocketServerError
 > = Function.flow(make, Layer.effect(SocketServer.SocketServer))
+
+/**
+ * Creates a scoped TLS `SocketServer` from a Node `tls.Server`, starts
+ * listening with the supplied options, queues pending connections until `run`
+ * is called, and closes the server when the scope ends.
+ *
+ * **Details**
+ *
+ * Connections reach `run` only once their handshake has completed, and the
+ * handler receives a `Socket.Socket` backed by the `tls.TLSSocket`, which is
+ * also provided as `NodeSocket.NetSocket`. Connections that fail the handshake
+ * are destroyed and the server keeps listening.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeTls = (
+  options: Tls.TlsOptions & Net.ListenOptions
+): Effect.Effect<
+  SocketServer.SocketServer["Service"],
+  SocketServer.SocketServerError,
+  Scope.Scope
+> =>
+  makeNetServer({
+    listenOptions: options,
+    connectionEvent: "secureConnection",
+    createServer: () => {
+      const server = Tls.createServer(options)
+      server.on("tlsClientError", (_error, socket) => {
+        socket.destroy()
+      })
+      return server
+    }
+  })
+
+/**
+ * Provides a TLS `SocketServer` by creating and managing a scoped Node
+ * `tls.Server` with the supplied TLS and listen options.
+ *
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerTls: (
+  options: Tls.TlsOptions & Net.ListenOptions
+) => Layer.Layer<
+  SocketServer.SocketServer,
+  SocketServer.SocketServerError
+> = Function.flow(makeTls, Layer.effect(SocketServer.SocketServer))
 
 /**
  * Creates a scoped WebSocket `SocketServer` backed by the `ws` package,
@@ -321,3 +264,126 @@ const reportUnhandledError = <E>(cause: Cause<E>) =>
     }
     return Effect.void
   })
+
+const makeNetServer = Effect.fnUntraced(function*(options: {
+  readonly createServer: () => Net.Server
+  readonly connectionEvent: "connection" | "secureConnection"
+  readonly listenOptions: Net.ListenOptions
+}) {
+  const errorDeferred = Deferred.makeUnsafe<never, Error>()
+  const pending = new Map<Net.Socket, () => void>()
+  function defaultOnConnection(conn: Net.Socket) {
+    const remove = () => {
+      pending.delete(conn)
+      conn.off("close", remove)
+      conn.off("error", remove)
+    }
+    pending.set(conn, remove)
+    conn.on("close", remove)
+    conn.on("error", remove)
+  }
+  let onConnection = defaultOnConnection
+  // oxlint-disable-next-line prefer-const
+  let server: Net.Server | undefined
+  yield* Effect.addFinalizer(() =>
+    Effect.callback<void>((resume) => {
+      pending.forEach((remove, conn) => {
+        remove()
+        conn.destroy()
+      })
+      server?.close(() => resume(Effect.void))
+    })
+  )
+  server = options.createServer()
+  server.on(options.connectionEvent, (conn: Net.Socket) => {
+    // pause immediately so nothing is dropped before a handler acquires the
+    // socket's reader
+    conn.pause()
+    onConnection(conn)
+  })
+  server.on("error", (err) => Deferred.doneUnsafe(errorDeferred, Exit.fail(err)))
+
+  yield* Effect.callback<void, SocketServer.SocketServerError>((resume) => {
+    server.listen(options.listenOptions, () => resume(Effect.void))
+  }).pipe(
+    Effect.raceFirst(Effect.mapError(Deferred.await(errorDeferred), (err) =>
+      new SocketServer.SocketServerError({
+        reason: new SocketServer.SocketServerOpenError({
+          cause: err
+        })
+      })))
+  )
+
+  const run = Effect.fnUntraced(function*<R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) {
+    const scope = yield* Scope.make()
+    const services = Context.omit(Scope.Scope)(yield* Effect.context<R>()) as Context.Context<R>
+    const trackFiber = Fiber.runIn(scope)
+    const prevOnConnection = onConnection
+    onConnection = function(conn: Net.Socket) {
+      let error: Error | undefined
+      conn.on("error", (err) => {
+        error = err
+      })
+      pipe(
+        NodeSocket.fromDuplex(
+          Effect.acquireRelease(
+            Effect.suspend((): Effect.Effect<Net.Socket, Socket.SocketError> => {
+              if (error) {
+                return Effect.fail(
+                  new Socket.SocketError({
+                    reason: new Socket.SocketOpenError({
+                      kind: "Unknown",
+                      cause: error
+                    })
+                  })
+                )
+              } else if (conn.closed) {
+                return Effect.fail(
+                  new Socket.SocketError({
+                    reason: new Socket.SocketCloseError({ code: 1000 })
+                  })
+                )
+              }
+              return Effect.succeed(conn)
+            }),
+            (conn) =>
+              Effect.sync(() => {
+                if (conn.closed === false) {
+                  conn.destroySoon()
+                }
+              })
+          )
+        ),
+        Effect.flatMap(handler),
+        Effect.catchCause(reportUnhandledError),
+        Effect.runForkWith(Context.add(services, NodeSocket.NetSocket, conn)),
+        trackFiber
+      )
+    }
+    pending.forEach((remove, conn) => {
+      remove()
+      onConnection(conn)
+    })
+    return yield* Effect.callback<never>((_resume) => {
+      return Effect.suspend(() => {
+        onConnection = prevOnConnection
+        return Scope.close(scope, Exit.void)
+      })
+    })
+  })
+
+  const address = server.address()!
+  return SocketServer.SocketServer.of({
+    address: typeof address === "string" ?
+      {
+        _tag: "UnixAddress",
+        path: address
+      } :
+      {
+        _tag: "TcpAddress",
+        hostname: address.address,
+        port: address.port
+      },
+    run
+  })
+})

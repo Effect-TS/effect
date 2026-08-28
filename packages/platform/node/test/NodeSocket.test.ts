@@ -325,6 +325,48 @@ describe("Socket", () => {
         }))
       )
     })
+
+    it.effect("echoes through a NodeSocketServer.makeTls server", () =>
+      Effect.gen(function*() {
+        const server = yield* NodeSocketServer.makeTls({ host: "127.0.0.1", port: 0, cert, key })
+        yield* server.run((socket) =>
+          Effect.gen(function*() {
+            const writer = yield* socket.writer
+            const pull = yield* socket.reader
+            while (true) {
+              yield* writer.writeAll(yield* pull)
+            }
+          }).pipe(
+            Effect.scoped,
+            Effect.catchTag("SocketError", () => Effect.void)
+          )
+        ).pipe(Effect.forkScoped)
+
+        const socket = yield* NodeSocket.fromDuplex(Effect.acquireRelease(
+          Effect.callback<Tls.TLSSocket>((resume) => {
+            const conn = Tls.connect({
+              host: "127.0.0.1",
+              port: (server.address as SocketServer.TcpAddress).port,
+              ca: [cert]
+            })
+            conn.once("secureConnect", () => resume(Effect.succeed(conn)))
+          }),
+          (conn) => Effect.sync(() => conn.destroy())
+        ))
+
+        const received = yield* Effect.gen(function*() {
+          const writer = yield* socket.writer
+          const pull = yield* Socket.readerString(socket)
+          yield* writer.writeAll(["Hello", "World"])
+          let text = ""
+          while (text.length < 10) {
+            text += (yield* pull).join("")
+          }
+          return text
+        }).pipe(Effect.scoped)
+
+        assert.strictEqual(received, "HelloWorld")
+      }))
   })
 
   describe("WebSocket", () => {
