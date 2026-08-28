@@ -10,8 +10,9 @@
 
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
+import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
-import type * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
+import * as AsyncResult from "effect/unstable/reactivity/AsyncResult"
 import * as Atom from "effect/unstable/reactivity/Atom"
 import type * as AtomRef from "effect/unstable/reactivity/AtomRef"
 import * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry"
@@ -55,6 +56,71 @@ function useStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): A
   const store = makeStore(registry, atom)
 
   return React.useSyncExternalStore(store.subscribe, store.snapshot, store.getServerSnapshot)
+}
+
+interface SelectionInstance<A> {
+  hasValue: boolean
+  value: A
+}
+
+const identity = <A>(value: A): A => value
+
+function useStoreWithSelector<A, B>(
+  registry: AtomRegistry.AtomRegistry,
+  atom: Atom.Atom<A>,
+  select: (_: A) => B,
+  equals: (previous: B, next: B) => boolean
+): B {
+  const store = makeStore(registry, atom)
+  const instanceRef = React.useRef<SelectionInstance<B> | null>(null)
+  if (instanceRef.current === null) {
+    instanceRef.current = { hasValue: false, value: undefined as B }
+  }
+  const instance = instanceRef.current
+
+  const [getSnapshot, getServerSnapshot] = React.useMemo(() => {
+    let hasMemo = false
+    let memoizedSnapshot: A
+    let memoizedSelection: B
+
+    const memoizedSelect = (snapshot: A): B => {
+      if (!hasMemo) {
+        const selection = select(snapshot)
+        let selected = selection
+        if (instance.hasValue && equals(instance.value, selection)) {
+          selected = instance.value
+        }
+        hasMemo = true
+        memoizedSnapshot = snapshot
+        memoizedSelection = selected
+        return selected
+      }
+      if (Object.is(memoizedSnapshot, snapshot)) {
+        return memoizedSelection
+      }
+      const selection = select(snapshot)
+      if (equals(memoizedSelection, selection)) {
+        memoizedSnapshot = snapshot
+        return memoizedSelection
+      }
+      memoizedSnapshot = snapshot
+      memoizedSelection = selection
+      return selection
+    }
+
+    return [
+      () => memoizedSelect(store.snapshot()),
+      () => memoizedSelect(store.getServerSnapshot())
+    ] as const
+  }, [store, select, equals, instance])
+
+  const value = React.useSyncExternalStore(store.subscribe, getSnapshot, getServerSnapshot)
+  React.useEffect(() => {
+    instance.hasValue = true
+    instance.value = value
+  }, [instance, value])
+
+  return value
 }
 
 const initialValuesSet = new WeakMap<AtomRegistry.AtomRegistry, WeakSet<Atom.Atom<any>>>()
@@ -101,8 +167,9 @@ export const useAtomInitialValues = (initialValues: Iterable<readonly [Atom.Atom
  *
  * **Details**
  *
- * When a selector is provided, the hook maps the atom before subscribing so the
- * component reads the selected value from the current `RegistryContext`.
+ * When a selector is provided, the hook subscribes to its result. The component
+ * re-renders only when the selected value changes according to `equals`, which
+ * defaults to `Object.is`. Selectors do not need stable function identity.
  *
  * @see {@link useAtom} for reading and updating a writable atom from one component
  * @see {@link useAtomRef} for reading an `AtomRef` directly
@@ -112,14 +179,19 @@ export const useAtomInitialValues = (initialValues: Iterable<readonly [Atom.Atom
  */
 export const useAtomValue: {
   <A>(atom: Atom.Atom<A>): A
-  <A, B>(atom: Atom.Atom<A>, f: (_: A) => B): B
-} = <A>(atom: Atom.Atom<A>, f?: (_: A) => A): A => {
+  <A, B>(atom: Atom.Atom<A>, select: (_: A) => B, equals?: (previous: B, next: B) => boolean): B
+} = <A, B = A>(
+  atom: Atom.Atom<A>,
+  select?: (_: A) => B,
+  equals?: (previous: B, next: B) => boolean
+): B => {
   const registry = React.useContext(RegistryContext)
-  if (f) {
-    const atomB = React.useMemo(() => Atom.map(atom, f), [atom, f])
-    return useStore(registry, atomB)
-  }
-  return useStore(registry, atom)
+  return useStoreWithSelector(
+    registry,
+    atom,
+    select ?? identity as (_: A) => B,
+    equals ?? Object.is
+  )
 }
 
 function mountAtom<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): void {
@@ -332,21 +404,79 @@ function atomToPromise<A, E>(
   return promise
 }
 
-function atomResultOrSuspend<A, E>(
+const selectAsyncResult = <A, E, B>(
+  result: AsyncResult.AsyncResult<A, E>,
+  select: (_: A) => B,
+  includeFailure: boolean
+): AsyncResult.AsyncResult<B, E> =>
+  result._tag === "Failure" && !includeFailure
+    ? result as unknown as AsyncResult.Failure<B, E>
+    : AsyncResult.map(result, select)
+
+function atomResultOrSuspendWithSelector<A, E, B>(
   registry: AtomRegistry.AtomRegistry,
   atom: Atom.Atom<AsyncResult.AsyncResult<A, E>>,
-  suspendOnWaiting: boolean
+  suspendOnWaiting: boolean,
+  select: ((_: A) => B) | undefined,
+  equals: (previous: B, next: B) => boolean,
+  includeFailure: boolean
 ) {
-  const value = useStore(registry, atom)
+  const value = useStoreWithSelector(
+    registry,
+    atom,
+    select === undefined
+      ? identity as (_: AsyncResult.AsyncResult<A, E>) => AsyncResult.AsyncResult<B, E>
+      : (result) => selectAsyncResult(result, select, includeFailure),
+    select === undefined ? Object.is : selectedResultEquals(equals, includeFailure)
+  )
   if (value._tag === "Initial" || (suspendOnWaiting && value.waiting)) {
     throw atomToPromise(registry, atom, suspendOnWaiting)
   }
   return value
 }
 
+const selectedResultEquals = <A, E>(
+  equals: (previous: A, next: A) => boolean,
+  includeFailure: boolean
+): (previous: AsyncResult.AsyncResult<A, E>, next: AsyncResult.AsyncResult<A, E>) => boolean =>
+(previous, next) => {
+  if (previous === next) {
+    return true
+  }
+  if (previous._tag !== next._tag || previous.waiting !== next.waiting) {
+    return false
+  }
+  switch (previous._tag) {
+    case "Initial":
+      return true
+    case "Success":
+      return equals(previous.value, (next as AsyncResult.Success<A, E>).value)
+    case "Failure": {
+      const nextFailure = next as AsyncResult.Failure<A, E>
+      if (!Equal.equals(previous.cause, nextFailure.cause)) {
+        return false
+      }
+      if (!includeFailure) {
+        return true
+      }
+      const previousSuccess = previous.previousSuccess
+      const nextSuccess = nextFailure.previousSuccess
+      if (previousSuccess._tag !== nextSuccess._tag) {
+        return false
+      }
+      if (previousSuccess._tag === "None" || nextSuccess._tag === "None") {
+        return true
+      }
+      return previousSuccess.value.waiting === nextSuccess.value.waiting &&
+        equals(previousSuccess.value.value, nextSuccess.value.value)
+    }
+  }
+}
+
 /**
  * Reads an `AsyncResult` atom through React Suspense, suspending while the
- * result is initial or configured as waiting.
+ * result is initial or configured as waiting, and optionally selects from the
+ * successful value.
  *
  * **When to use**
  *
@@ -356,28 +486,64 @@ function atomResultOrSuspend<A, E>(
  * **Details**
  *
  * `suspendOnWaiting` defaults to `false`. When `includeFailure` is `true`, a
- * failure result is returned instead of being thrown.
+ * failure result is returned instead of being thrown. When `select` is
+ * provided, the hook subscribes to the selected success value and uses
+ * `equals`, defaulting to `Object.is`, to avoid unrelated re-renders. Changes
+ * to the result variant, waiting state, or failure cause are not hidden by
+ * selection equality.
  *
  * **Gotchas**
  *
  * Without `includeFailure`, failure results are thrown with
  * `Cause.squash(result.cause)`, so callers need an error boundary for failures.
+ * When selected Success values compare equal, the previous selected Success,
+ * including its timestamp, is retained.
  *
  * @see {@link useAtomValue} for reading the raw `AsyncResult` value without Suspense
  *
  * @category hooks
  * @since 4.0.0
  */
-export const useAtomSuspense = <A, E, const IncludeFailure extends boolean = false>(
+export const useAtomSuspense: {
+  <A, E, B, const IncludeFailure extends boolean = false>(
+    atom: Atom.Atom<AsyncResult.AsyncResult<A, E>>,
+    options: {
+      readonly select: (_: A) => B
+      readonly equals?: ((previous: B, next: B) => boolean) | undefined
+      readonly suspendOnWaiting?: boolean | undefined
+      readonly includeFailure?: IncludeFailure | undefined
+    }
+  ): AsyncResult.Success<B, E> | (IncludeFailure extends true ? AsyncResult.Failure<B, E> : never)
+  <A, E, const IncludeFailure extends boolean = false>(
+    atom: Atom.Atom<AsyncResult.AsyncResult<A, E>>,
+    options?: {
+      readonly select?: undefined
+      readonly equals?: undefined
+      readonly suspendOnWaiting?: boolean | undefined
+      readonly includeFailure?: IncludeFailure | undefined
+    }
+  ): AsyncResult.Success<A, E> | (IncludeFailure extends true ? AsyncResult.Failure<A, E> : never)
+} = <A, E, B = A, const IncludeFailure extends boolean = false>(
   atom: Atom.Atom<AsyncResult.AsyncResult<A, E>>,
   options?: {
+    readonly select?: ((_: A) => B) | undefined
+    readonly equals?: ((previous: B, next: B) => boolean) | undefined
     readonly suspendOnWaiting?: boolean | undefined
     readonly includeFailure?: IncludeFailure | undefined
   }
-): AsyncResult.Success<A, E> | (IncludeFailure extends true ? AsyncResult.Failure<A, E> : never) => {
+): AsyncResult.Success<B, E> | (IncludeFailure extends true ? AsyncResult.Failure<B, E> : never) => {
   const registry = React.useContext(RegistryContext)
-  const result = atomResultOrSuspend(registry, atom, options?.suspendOnWaiting ?? false)
-  if (result._tag === "Failure" && !options?.includeFailure) {
+  const suspendOnWaiting = options?.suspendOnWaiting ?? false
+  const includeFailure = options?.includeFailure === true
+  const result = atomResultOrSuspendWithSelector(
+    registry,
+    atom,
+    suspendOnWaiting,
+    options?.select,
+    options?.equals ?? Object.is,
+    includeFailure
+  )
+  if (result._tag === "Failure" && !includeFailure) {
     throw Cause.squash(result.cause)
   }
   return result as any
