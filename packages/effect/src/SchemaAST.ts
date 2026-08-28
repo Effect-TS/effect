@@ -2577,6 +2577,23 @@ export function tupleWithRest(ast: Arrays, rest: ReadonlyArray<AST>): Arrays {
   return new Arrays(ast.isMutable, ast.elements, rest, undefined, ast.checks)
 }
 
+/** @internal */
+export function mutable(ast: Arrays): Arrays {
+  if (ast.encoding) {
+    throw new Error("mutable does not support encodings")
+  }
+  return new Arrays(
+    true,
+    ast.elements,
+    ast.rest,
+    ast.annotations,
+    ast.checks,
+    undefined,
+    ast.context,
+    ast.encodingChecks
+  )
+}
+
 type Type =
   | "null"
   | "array"

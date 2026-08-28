@@ -1077,6 +1077,65 @@ Expected no excess property
     })
   })
 
+  describe("mutable", () => {
+    it("supports encodings on array elements", async () => {
+      const schema = Schema.mutable(Schema.Array(Schema.FiniteFromString))
+      const asserts = new TestSchema.Asserts(schema)
+
+      await asserts.decoding().succeed(["1"], [1])
+      await asserts.encoding().succeed([1], ["1"])
+    })
+
+    it("supports withDecodingDefaultType after mutable", async () => {
+      const schema = Schema.Struct({
+        value: Schema.Array(Schema.String).pipe(
+          Schema.mutable,
+          Schema.withDecodingDefaultType(Effect.succeed(["default"]))
+        )
+      })
+      const asserts = new TestSchema.Asserts(schema)
+
+      await asserts.decoding().succeed({}, { value: ["default"] })
+      await asserts.decoding().succeed({ value: undefined }, { value: ["default"] })
+      await asserts.decoding().succeed({ value: ["a"] })
+      await asserts.encoding().succeed({ value: ["a"] })
+    })
+
+    it("does not support withDecodingDefaultType before mutable", () => {
+      throws(
+        () =>
+          Schema.Struct({
+            value: Schema.Array(Schema.String).pipe(
+              Schema.withDecodingDefaultType(Effect.succeed(["default"])),
+              Schema.mutable
+            )
+          }),
+        new Error("mutable does not support encodings")
+      )
+    })
+
+    it("preserves annotations, checks, encoding checks, and context", async () => {
+      const schema = Schema.Array(Schema.String).annotate({ identifier: "A" }).check(
+        Schema.isMinLength(1)
+      ).pipe(
+        Schema.flip,
+        Schema.check(Schema.isMaxLength(1)),
+        Schema.flip,
+        Schema.optionalKey
+      )
+      const mutable = Schema.mutable(schema)
+
+      strictEqual(mutable.ast.annotations, schema.ast.annotations)
+      strictEqual(mutable.ast.checks, schema.ast.checks)
+      strictEqual(mutable.ast.encodingChecks, schema.ast.encodingChecks)
+      strictEqual(mutable.ast.context, schema.ast.context)
+
+      const asserts = new TestSchema.Asserts(mutable)
+      await asserts.decoding().fail([], "Expected a value with a length of at least 1")
+      await asserts.encoding().fail(["a", "b"], "Expected a value with a length of at most 1")
+    })
+  })
+
   it("ArrayEnsure", async () => {
     const schema = Schema.ArrayEnsure(Schema.FiniteFromString)
     const asserts = new TestSchema.Asserts(schema)
