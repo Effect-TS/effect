@@ -183,7 +183,7 @@ export function encodeUnknownSync<S extends Schema.Constraint>(
   const { exact, exitSuccess, layout } = compileTarget(schema)
   const mode = compileMode(layout, options?.fingerprint)
   const parseOptions: SchemaAST.ParseOptions = options ?? SchemaAST.defaultParseOptions
-  if (!exact) {
+  if (!exact || parseOptions.onExcessProperty === "error") {
     const fallback = Schema.encodeUnknownSync(
       toCodec(schema, options) as unknown as Schema.ConstraintEncoder<unknown, never>,
       options
@@ -221,12 +221,12 @@ export function encodeManyUnknownSync<S extends Schema.Constraint>(
   options?: SchemaAST.ParseOptions & Options
 ): (values: ReadonlyArray<unknown>) => Uint8Array<ArrayBuffer> {
   const { exact, layout } = compileTarget(schema)
-  if (!exact) {
+  const parseOptions: SchemaAST.ParseOptions = options ?? SchemaAST.defaultParseOptions
+  if (!exact || parseOptions.onExcessProperty === "error") {
     const encode = encodeUnknownSync(schema, options)
     return (values) => concatFrames(values.map(encode))
   }
   const mode = compileMode(layout, options?.fingerprint)
-  const parseOptions: SchemaAST.ParseOptions = options ?? SchemaAST.defaultParseOptions
   return (values) => {
     try {
       return encodeFrames(layout, values, parseOptions, mode)
@@ -346,13 +346,19 @@ export function encoder<S extends Schema.Constraint>(
   schema: S,
   options?: SchemaAST.ParseOptions & Options & StreamOptions
 ): Encoder {
-  const { exact, layout } = compileTarget(schema)
+  const { exact, layout, target } = compileTarget(schema)
   const dictionary = requireDictionary(exact, options)
   const encode = encodeUnknownSync(schema, options)
   const encodeMany = encodeManyUnknownSync(schema, options)
   if (!dictionary) return { encode, encodeMany }
   const mode = compileMode(layout, options?.fingerprint)
   const parseOptions: SchemaAST.ParseOptions = options ?? SchemaAST.defaultParseOptions
+  const validate = parseOptions.onExcessProperty === "error"
+    ? Schema.encodeUnknownSync(
+      target as Schema.ConstraintEncoder<unknown, never>,
+      options
+    ) as (value: unknown) => unknown
+    : undefined
   const dict = makeDictWrite()
   const run = <A>(f: () => A): A => {
     try {
@@ -362,8 +368,18 @@ export function encoder<S extends Schema.Constraint>(
     }
   }
   return {
-    encode: (value) => run(() => encodeFrame(layout, value, parseOptions, mode, dict)),
-    encodeMany: (values) => run(() => encodeFrames(layout, values, parseOptions, mode, dict))
+    encode: (value) =>
+      run(() => encodeFrame(layout, validate === undefined ? value : validate(value), parseOptions, mode, dict)),
+    encodeMany: (values) =>
+      run(() =>
+        encodeFrames(
+          layout,
+          validate === undefined ? values : values.map(validate),
+          parseOptions,
+          mode,
+          dict
+        )
+      )
   }
 }
 
@@ -618,7 +634,7 @@ export const encode = <S extends Schema.Constraint>(
       return Effect.die(e)
     }
   }
-  if (exact) {
+  if (exact && parseOptions.onExcessProperty !== "error") {
     return Channel.fromTransform((upstream, _scope) => Effect.sync(() => Effect.flatMap(upstream, write)))
   }
   // One schema pass per chunk brings the values to the binary-adjusted encoded
@@ -4197,6 +4213,7 @@ function decodeExtraPair(
   const key = keys === undefined
     ? r.readUtf8(keyCode)
     : decodeExtraKey(keys, code, keyCode, r)
+  if (layout.names.has(key)) invalid("an extra key distinct from declared fields", key, r.options)
   if (seenKey(seen, key)) invalid("unique extra keys", undefined, r.options)
   const signature = layout.extraAll ??
     (r.indexSignatures ??= new IndexSignatureCache(r.options)).find(layout, key)

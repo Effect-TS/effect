@@ -1872,6 +1872,35 @@ describe("SchemaBinary", () => {
       )
     })
 
+    it("rejects declared field names in the extra-key map", () => {
+      const Declared = Schema.Struct({
+        id: Schema.String,
+        note: Schema.optionalKey(Schema.String)
+      })
+      const Reader = Schema.StructWithRest(
+        Declared,
+        [Schema.Record(Schema.String, Schema.Number)]
+      )
+      const extras = Schema.Record(Schema.String, Schema.Number)
+      const body = (frame: Uint8Array): Uint8Array => {
+        let offset = 0
+        while ((frame[offset] & 0x80) !== 0) offset++
+        assert.strictEqual(frame[++offset], 0x20)
+        return frame.subarray(offset + 1)
+      }
+      const collide = (key: "id" | "note") => {
+        const bytes = concat(body(encode(Declared, { id: "ok" })), body(encode(extras, { [key]: 7 })))
+        return concat(Uint8Array.from([...uvarint(bytes.length + 1), 0x20]), bytes)
+      }
+
+      for (const key of ["id", "note"] as const) {
+        assert.match(
+          schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Reader))(collide(key))).message,
+          /declared field/
+        )
+      }
+    })
+
     it("rejects a duplicate field id after an unknown union decodes as absent", () => {
       const A = Schema.Struct({ _tag: Schema.Literal("A") })
       const B = Schema.Struct({ _tag: Schema.Literal("B"), value: Schema.String })
@@ -1889,16 +1918,15 @@ describe("SchemaBinary", () => {
 
     it("does not satisfy wide-field presence from the extra-key map", () => {
       const fields: Record<string, typeof Schema.String> = {}
-      const value: Record<string, string> = {}
+      const extras: Record<string, string> = {}
       for (let i = 0; i < 34; i++) {
-        const key = `field${i}`
-        fields[key] = Schema.String
-        value[key] = key
+        fields[`field${i}`] = Schema.String
+        extras[`extra${i}`] = `value${i}`
       }
       const record = Schema.Record(Schema.String, Schema.String)
       const struct = Schema.StructWithRest(Schema.Struct(fields), [record])
       const error = schemaError(() =>
-        Schema.decodeUnknownSync(SchemaBinary.toCodec(struct), { errors: "all" })(encode(record, value))
+        Schema.decodeUnknownSync(SchemaBinary.toCodec(struct), { errors: "all" })(encode(record, extras))
       )
 
       assert.strictEqual(error.message.match(/Missing key/g)?.length, 34)
@@ -2706,6 +2734,14 @@ describe("SchemaBinary", () => {
       )
     })
 
+    it("reports excess properties through encodeUnknownSync", () => {
+      const excess = { name: "Ada", age: 36, extra: true }
+      assert.include(
+        schemaError(() => SchemaBinary.encodeUnknownSync(Person, { onExcessProperty: "error" })(excess)).message,
+        "extra"
+      )
+    })
+
     it("falls back to toCodec when the binary layer cannot prove the schema", () => {
       const NonNegative = Schema.Number.check(Schema.isGreaterThanOrEqualTo(0))
       const direct = SchemaBinary.toCodecDirect(NonNegative)
@@ -2740,6 +2776,16 @@ describe("SchemaBinary", () => {
         Array.from(concat(encode(Checked, { age: 1 }), encode(Checked, { age: 2 })))
       )
       assert.include(schemaError(() => checked([{ age: -1 }])).message, "greater than or equal to 0")
+    })
+
+    it("reports excess properties", () => {
+      const excess = { name: "Ada", age: 36, extra: true }
+      assert.include(
+        schemaError(() =>
+          SchemaBinary.encodeManyUnknownSync(Person, { onExcessProperty: "error" })([people[0], excess])
+        ).message,
+        "extra"
+      )
     })
   })
 
@@ -2908,6 +2954,24 @@ describe("SchemaBinary", () => {
       assert.deepStrictEqual(decoded, [first, next])
     })
 
+    it("reports excess properties before advancing the dictionary", () => {
+      const encoder = SchemaBinary.encoder(Message, {
+        dictionary: true,
+        onExcessProperty: "error"
+      })
+      const parser = SchemaBinary.parser(Message, { dictionary: true })
+      assert.include(
+        schemaError(() => encoder.encode({ ...message(0), extra: "NeverSent" })).message,
+        "extra"
+      )
+      assert.include(
+        schemaError(() => encoder.encodeMany([message(1), { ...message(2), extra: "NeverSent" }])).message,
+        "extra"
+      )
+      const next = message(3)
+      assert.deepStrictEqual(parser.feedSync(encoder.encode(next)), [next])
+    })
+
     it("costs nothing on a field whose strings never repeat", () => {
       const Unique = Schema.Struct({ s: Schema.String })
       const encoder = SchemaBinary.encoder(Unique, { dictionary: true })
@@ -3035,6 +3099,17 @@ describe("SchemaBinary", () => {
           assert.include(error.message, "Expected a number")
           assert.include(error.message, "at [1]")
         }
+      }))
+
+    it.effect("encode reports excess properties", () =>
+      Effect.gen(function*() {
+        const error = yield* Stream.make({ ...ada, extra: true }).pipe(
+          Stream.pipeThroughChannel(SchemaBinary.encode(Person, { onExcessProperty: "error" })()),
+          Stream.runCollect,
+          Effect.flip
+        )
+        assert.instanceOf(error, Schema.SchemaError)
+        assert.include(error.message, "extra")
       }))
 
     it.effect("decodes a value split across byte chunks", () =>
