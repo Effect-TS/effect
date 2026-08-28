@@ -454,14 +454,15 @@ const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>
     entry.refCount--
     if (entry.refCount > 0) {
       return Effect.void
-    } else if (
-      self.state._tag === "Closed"
-      || !MutableHashMap.has(self.state.map, key)
-      || Duration.isZero(entry.idleTimeToLive)
-    ) {
-      if (self.state._tag === "Open") {
-        MutableHashMap.remove(self.state.map, key)
-      }
+    } else if (self.state._tag === "Closed") {
+      return Scope.close(entry.scope, Exit.void)
+    }
+
+    const o = MutableHashMap.get(self.state.map, key)
+    if (o._tag === "None" || o.value !== entry) {
+      return Scope.close(entry.scope, Exit.void)
+    } else if (Duration.isZero(entry.idleTimeToLive)) {
+      MutableHashMap.remove(self.state.map, key)
       return Scope.close(entry.scope, Exit.void)
     } else if (!Duration.isFinite(entry.idleTimeToLive)) {
       return Effect.void
@@ -476,6 +477,8 @@ const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>
       const remaining = entry.expiresAt - now
       if (remaining <= 0) {
         if (self.state._tag === "Closed" || entry.refCount > 0) return Effect.void
+        const o = MutableHashMap.get(self.state.map, key)
+        if (o._tag === "None" || o.value !== entry) return Effect.void
         MutableHashMap.remove(self.state.map, key)
         return restore(Scope.close(entry.scope, Exit.void))
       }
