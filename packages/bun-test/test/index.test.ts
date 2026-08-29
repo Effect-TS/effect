@@ -1,9 +1,9 @@
 /// <reference types="bun" />
+import { afterAll, assert, describe, expect, it, layer } from "@effect/bun-test"
+import * as testAssert from "@effect/bun-test/utils"
 import { Clock, Context, Duration, Effect, Fiber, Layer, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import * as Arbitrary from "effect/unstable/arbitrary/Arbitrary"
-import { afterAll, assert, describe, expect, it, layer } from "@effect/bun-test"
-import * as testAssert from "@effect/bun-test/utils"
 
 // Declared ahead of the describe blocks: Bun evaluates describe callbacks
 // synchronously during module evaluation, so a later `const` would be in TDZ.
