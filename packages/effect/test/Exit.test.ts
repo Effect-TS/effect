@@ -19,7 +19,7 @@ describe("Exit", () => {
         cause: {
           _id: "Cause",
           _tag: "Fail",
-          failure: "failure"
+          error: "failure"
         }
       })
       class MyError {
@@ -31,7 +31,7 @@ describe("Exit", () => {
         cause: {
           _id: "Cause",
           _tag: "Fail",
-          failure: new MyError()
+          error: new MyError()
         }
       })
     })
@@ -58,7 +58,7 @@ describe("Exit", () => {
   "cause": {
     "_id": "Cause",
     "_tag": "Fail",
-    "failure": "failure"
+    "error": "failure"
   }
 }`
       )
@@ -73,7 +73,7 @@ describe("Exit", () => {
   "cause": {
     "_id": "Cause",
     "_tag": "Fail",
-    "failure": {
+    "error": {
       "_tag": "WithTag"
     }
   }
