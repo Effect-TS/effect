@@ -35,6 +35,8 @@
       "@effect/ai-openai/*": ["./packages/ai/openai/src/*.ts"],
       "@effect/ai-openrouter": ["./packages/ai/openrouter/src/index.ts"],
       "@effect/ai-openrouter/*": ["./packages/ai/openrouter/src/*.ts"],
+      "@effect/bun-test": ["./packages/bun-test/src/index.ts"],
+      "@effect/bun-test/*": ["./packages/bun-test/src/*.ts"],
       "@effect/atom-react": ["./packages/atom/react/src/index.ts"],
       "@effect/atom-react/*": ["./packages/atom/react/src/*.ts"],
       "@effect/atom-vue": ["./packages/atom/vue/src/index.ts"],
