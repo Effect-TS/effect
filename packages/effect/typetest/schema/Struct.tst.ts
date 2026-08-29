@@ -46,6 +46,31 @@ describe("Struct", () => {
       >()
     })
 
+    it("simplifies readonly & required views", () => {
+      const schema = Schema.Union([
+        Schema.Struct({ name: Schema.Literal("a"), a: Schema.String }),
+        Schema.Struct({ name: Schema.Literal("b"), b: Schema.Finite })
+      ])
+
+      // @ts-expect-error Type '{ readonly name: "a"; readonly a: string; } | { readonly name: "b"; readonly b: number; }'
+      const type: never = null as unknown as typeof schema.Type
+      // @ts-expect-error Type '{ readonly name: "a"; readonly a: string; } | { readonly name: "b"; readonly b: number; }'
+      const encoded: never = null as unknown as typeof schema.Encoded
+      // @ts-expect-error Type '{ readonly name: "a"; readonly a: string; } | { readonly name: "b"; readonly b: number; }'
+      const iso: never = null as unknown as typeof schema.Iso
+
+      void [type, encoded, iso]
+    })
+
+    it("simplifies readonly & required make input", () => {
+      const schema = Schema.Struct({ a: Schema.String, b: Schema.Number })
+
+      // @ts-expect-error Type '{ readonly a: string; readonly b: number; }'
+      const makeIn: never = null as unknown as Schema.Struct.MakeIn<typeof schema.fields>
+
+      void makeIn
+    })
+
     it("readonly & optionalKey field", () => {
       const schema = Schema.Struct({
         a: Schema.optionalKey(Schema.String)

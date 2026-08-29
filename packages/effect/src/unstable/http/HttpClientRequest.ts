@@ -28,6 +28,7 @@ import * as Stream from "../../Stream.ts"
 import * as Headers from "./Headers.ts"
 import * as HttpBody from "./HttpBody.ts"
 import { hasBody, type HttpMethod } from "./HttpMethod.ts"
+import * as bodyInternal from "./internal/httpBody.ts"
 import * as Url from "./Url.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -328,6 +329,39 @@ export const setHeaders: {
   ))
 
 /**
+ * Transforms the request headers with the provided function, returning a new request.
+ *
+ * @category combinators
+ * @since 4.0.0
+ */
+export const updateHeaders: {
+  (f: (headers: Headers.Headers) => Headers.Headers): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, f: (headers: Headers.Headers) => Headers.Headers): HttpClientRequest
+} = dual(2, (self: HttpClientRequest, f: (headers: Headers.Headers) => Headers.Headers): HttpClientRequest =>
+  makeWith(
+    self.method,
+    self.url,
+    self.urlParams,
+    self.hash,
+    f(self.headers),
+    self.body
+  ))
+
+/**
+ * Removes a single request header by name, returning a new request.
+ *
+ * @category combinators
+ * @since 4.0.0
+ */
+export const removeHeader: {
+  (key: string): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, key: string): HttpClientRequest
+} = dual(
+  2,
+  (self: HttpClientRequest, key: string): HttpClientRequest => updateHeaders(self, Headers.remove(key))
+)
+
+/**
  * Sets the `Authorization` header using HTTP Basic authentication credentials.
  *
  * @category combinators
@@ -616,23 +650,12 @@ export const setBody: {
   (body: HttpBody.HttpBody): (self: HttpClientRequest) => HttpClientRequest
   (self: HttpClientRequest, body: HttpBody.HttpBody): HttpClientRequest
 } = dual(2, (self: HttpClientRequest, body: HttpBody.HttpBody): HttpClientRequest => {
-  let headers = self.headers
-  if (body._tag === "Empty" || body._tag === "FormData") {
-    headers = Headers.remove(Headers.remove(headers, "Content-Type"), "Content-length")
-  } else {
-    if (body.contentType) {
-      headers = Headers.set(headers, "content-type", body.contentType)
-    }
-    if (body.contentLength !== undefined) {
-      headers = Headers.set(headers, "content-length", body.contentLength.toString())
-    }
-  }
   return makeWith(
     self.method,
     self.url,
     self.urlParams,
     self.hash,
-    headers,
+    bodyInternal.updateHeaders(self.headers, body),
     body
   )
 })

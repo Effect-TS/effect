@@ -19,7 +19,7 @@ export const resolveFinishReason = (
   if (finishReason == null) {
     return hasToolCalls ? "tool-calls" : "stop"
   }
-  const reason = finishReasonMap[finishReason]
+  const reason = Object.hasOwn(finishReasonMap, finishReason) ? finishReasonMap[finishReason] : undefined
   if (reason == null) {
     return hasToolCalls ? "tool-calls" : "unknown"
   }

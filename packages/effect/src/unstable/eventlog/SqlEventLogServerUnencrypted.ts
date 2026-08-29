@@ -15,6 +15,7 @@ import * as Layer from "../../Layer.ts"
 import * as PubSub from "../../PubSub.ts"
 import * as RcMap from "../../RcMap.ts"
 import * as Schema from "../../Schema.ts"
+import * as SchemaTransformation from "../../SchemaTransformation.ts"
 import type * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
@@ -461,17 +462,29 @@ const EntrySql = Schema.Struct({
 
 type EntrySql = Schema.Schema.Type<typeof EntrySql>
 
-const SqlNumber = Schema.Union([Schema.Number, Schema.NumberFromString])
+const SqlNatural = Schema.Union([
+  Schema.Natural,
+  Schema.FiniteFromString.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
+  Schema.BigInt.pipe(
+    Schema.decodeTo(
+      Schema.Natural,
+      SchemaTransformation.transform({
+        decode: Number,
+        encode: BigInt
+      })
+    )
+  )
+])
 
 const RemoteEntrySql = Schema.Struct({
   ...EntrySql.fields,
-  sequence: SqlNumber
+  sequence: SqlNatural
 })
 
 type RemoteEntrySql = Schema.Schema.Type<typeof RemoteEntrySql>
 
 const StoreSequenceSql = Schema.Struct({
-  next_sequence: SqlNumber
+  next_sequence: SqlNatural
 })
 
 const SessionAuthBindingSql = Schema.Struct({

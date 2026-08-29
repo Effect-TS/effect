@@ -13,7 +13,7 @@ import { Effect, Schema } from "effect"
 // The static `Type` and `Encoded` members are available when you need
 // the decoded or encoded TypeScript representation.
 export class User extends Schema.Class<User>("path/to/module/User")({
-  id: Schema.Number,
+  id: Schema.Int,
   name: Schema.NonEmptyString,
   email: Schema.String,
   role: Schema.Literals(["admin", "member"])
@@ -32,7 +32,7 @@ export type UserEncoded = typeof User["Encoded"]
 export const decodeUser = Schema.decodeUnknownEffect(User)
 export const encodeUser = Schema.encodeEffect(User)
 
-export class InvalidUserPayload extends Schema.TaggedErrorClass<InvalidUserPayload>()("InvalidUserPayload", {
+export class InvalidUserPayload extends Schema.TaggedError<InvalidUserPayload>()("InvalidUserPayload", {
   message: Schema.String
 }) {}
 

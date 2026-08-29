@@ -7,7 +7,7 @@ import { Context, Effect, Layer, ManagedRuntime, Ref, Schema } from "effect"
 import { Hono } from "hono"
 
 class Todo extends Schema.Class<Todo>("Todo")({
-  id: Schema.Number,
+  id: Schema.Int,
   title: Schema.String,
   completed: Schema.Boolean
 }) {}
@@ -16,8 +16,8 @@ class CreateTodoPayload extends Schema.Class<CreateTodoPayload>("CreateTodoPaylo
   title: Schema.String
 }) {}
 
-class TodoNotFound extends Schema.TaggedErrorClass<TodoNotFound>()("TodoNotFound", {
-  id: Schema.Number
+class TodoNotFound extends Schema.TaggedError<TodoNotFound>()("TodoNotFound", {
+  id: Schema.Int
 }) {}
 
 export class TodoRepo extends Context.Service<TodoRepo, {

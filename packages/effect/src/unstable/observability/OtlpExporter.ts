@@ -13,6 +13,9 @@ import * as Context from "../../Context.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Fiber from "../../Fiber.ts"
+import * as FiberSet from "../../FiberSet.ts"
+import { identity } from "../../Function.ts"
+import * as Layer from "../../Layer.ts"
 import * as Num from "../../Number.ts"
 import * as Option from "../../Option.ts"
 import * as Schedule from "../../Schedule.ts"
@@ -23,6 +26,24 @@ import * as HttpClientError from "../../unstable/http/HttpClientError.ts"
 import * as HttpClientRequest from "../../unstable/http/HttpClientRequest.ts"
 import type { HttpBody } from "../http/HttpBody.ts"
 
+const retryAfterDelay = (value: string | undefined): Effect.Effect<Duration.Duration> => {
+  const seconds = Option.fromUndefinedOr(value).pipe(Option.flatMap(Num.parse))
+  if (Option.isSome(seconds)) {
+    return Effect.succeed(Duration.seconds(seconds.value))
+  }
+  if (value === undefined) {
+    return Effect.succeed(Duration.seconds(5))
+  }
+  const timestamp = Date.parse(value)
+  if (Number.isNaN(timestamp)) {
+    return Effect.succeed(Duration.seconds(5))
+  }
+  return Effect.map(
+    Clock,
+    (clock) => Duration.millis(Math.max(timestamp - clock.currentTimeMillisUnsafe(), 1))
+  )
+}
+
 const policy = Schedule.forever.pipe(
   Schedule.passthrough,
   Schedule.addDelay(({ output: error }) => {
@@ -31,15 +52,100 @@ const policy = Schedule.forever.pipe(
       && error.reason._tag === "StatusCodeError"
       && error.reason.response.status === 429
     ) {
-      const retryAfter = Option.fromUndefinedOr(error.reason.response.headers["retry-after"]).pipe(
-        Option.flatMap(Num.parse),
-        Option.getOrElse(() => 5)
-      )
-      return Effect.succeed(Duration.seconds(retryAfter))
+      return retryAfterDelay(error.reason.response.headers["retry-after"])
     }
     return Effect.succeed(Duration.seconds(1))
   })
 )
+
+/**
+ * Registry of exporter flush operations, used to manually drain buffered
+ * telemetry before the surrounding scope closes.
+ *
+ * **Details**
+ *
+ * Every exporter created by `make` registers its export operation here, so a
+ * single `flush` drains all signals sharing the registry. `flush` returns only
+ * after the exports it initiated have settled, cannot fail, and respects each
+ * exporter's temporary-disable window. Wrap it with `Effect.timeoutOption` to
+ * bound its duration at the call site.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export class Flusher extends Context.Service<Flusher, {
+  /**
+   * Drains all registered exporters concurrently and cannot fail.
+   *
+   * **Details**
+   *
+   * There is no built-in timeout; use `Effect.timeoutOption` to bound the
+   * operation. Exporters in their 60-second `disabledUntil` window are skipped.
+   *
+   * **Example** (Flushing exporters)
+   *
+   * ```ts import.meta.vitest
+   * import { Effect } from "effect"
+   * import { OtlpExporter } from "effect/unstable/observability"
+   *
+   * const program = Effect.gen(function*() {
+   *   const flusher = yield* OtlpExporter.Flusher
+   *   yield* flusher.flush
+   *   return "flushed"
+   * }).pipe(Effect.provide(OtlpExporter.layerFlusher))
+   *
+   * await Effect.runPromise(program) // => "flushed"
+   * ```
+   */
+  readonly flush: Effect.Effect<void>
+  readonly register: (run: Effect.Effect<void>) => Effect.Effect<void, never, Scope.Scope>
+}>()(
+  "effect/observability/OtlpExporter/Flusher"
+) {}
+
+/**
+ * Provides a `Flusher` backed by a fresh registry.
+ *
+ * **Details**
+ *
+ * This is intentionally a single module-level constant rather than a factory:
+ * layer memoization is keyed by layer instance, so every signal layer
+ * referencing this same constant shares one registry per layer build, and one
+ * `flush` drains traces, logs and metrics together. A factory returning a new
+ * layer per call would silently create one registry per signal.
+ *
+ * Registration is scoped — an exporter is removed from the registry when its
+ * own scope closes. Flushing with an empty registry is a no-op.
+ *
+ * Note that `flush` cannot await an export that was already in flight when it
+ * was called (for example one started by the export interval); it only waits
+ * for the exports it initiates.
+ *
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerFlusher: Layer.Layer<Flusher> = Layer.sync(Flusher, () => {
+  const registry = new Set<Effect.Effect<void>>()
+  return {
+    flush: Effect.suspend(() => {
+      if (registry.size === 0) {
+        return Effect.void
+      }
+      return Effect.forEach(registry, identity, {
+        concurrency: "unbounded",
+        discard: true
+      })
+    }),
+    register: (run) =>
+      Effect.flatMap(Scope.Scope, (scope) => {
+        registry.add(run)
+        return Scope.addFinalizer(
+          scope,
+          Effect.sync(() => registry.delete(run))
+        )
+      })
+  }
+})
 
 /**
  * Creates a scoped OTLP batch exporter.
@@ -61,18 +167,17 @@ export const make: (
     readonly label: string
     readonly exportInterval: Duration.Input
     readonly maxBatchSize: number | "disabled"
-    readonly body: (data: Array<any>) => HttpBody
+    readonly body: (data: Array<any>) => readonly [body: HttpBody, onSuccess: Effect.Effect<void>]
     readonly shutdownTimeout: Duration.Input
   }
 ) => Effect.Effect<
   { readonly push: (data: unknown) => void },
   never,
-  HttpClient.HttpClient | Scope.Scope
+  Flusher | HttpClient.HttpClient | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const services = yield* Effect.context<Scope.Scope | HttpClient.HttpClient>()
   const clock = Context.get(services, Clock)
   const scope = Context.get(services, Scope.Scope)
-  const runFork = Effect.runForkWith(services)
   const exportInterval = Duration.max(Duration.fromInputUnsafe(options.exportInterval), Duration.zero)
   let disabledUntil: number | undefined = undefined
 
@@ -103,9 +208,11 @@ export const make: (
       }
       buffer = []
     }
+    const [body, onSuccess] = options.body(items)
     return client.execute(
-      HttpClientRequest.setBody(request, options.body(items))
+      HttpClientRequest.setBody(request, body)
     ).pipe(
+      Effect.andThen(onSuccess),
       Effect.asVoid,
       Effect.withTracerEnabled(false)
     )
@@ -122,9 +229,19 @@ export const make: (
     })
   )
 
+  const exportFibers = yield* FiberSet.make<void, never>()
+  const runExportFork = yield* FiberSet.runtime(exportFibers)<never>()
+
+  const flusher = yield* Flusher
+  yield* flusher.register(runExport)
+
   yield* Scope.addFinalizer(
     scope,
-    runExport.pipe(
+    Effect.suspend(() => {
+      if (disabledUntil !== undefined) return Effect.void
+      runExportFork(runExport)
+      return FiberSet.awaitEmpty(exportFibers)
+    }).pipe(
       Effect.ignore,
       Effect.interruptible,
       Effect.timeoutOption(options.shutdownTimeout)
@@ -132,7 +249,8 @@ export const make: (
   )
 
   yield* Effect.sleep(exportInterval).pipe(
-    Effect.andThen(runExport),
+    Effect.andThen(FiberSet.run(exportFibers, runExport)),
+    Effect.flatMap(Fiber.await),
     Effect.forever,
     Effect.forkIn(scope)
   )
@@ -142,7 +260,7 @@ export const make: (
       if (disabledUntil !== undefined) return
       buffer.push(data)
       if (options.maxBatchSize !== "disabled" && buffer.length >= options.maxBatchSize) {
-        Fiber.runIn(runFork(runExport), scope)
+        runExportFork(runExport)
       }
     }
   }

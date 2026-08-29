@@ -8,19 +8,28 @@
  * storage constructor, layers, migrations, optional table prefixes, and the row
  * mapping needed by encoded message storage.
  *
+ * Request deduplication keys that exceed the 255-character `message_id`
+ * column are hashed with the `Crypto` service before they are written, so
+ * composed keys of any length are supported; shorter keys are stored as
+ * plaintext, byte-compatible with rows written by previous versions.
+ *
  * @since 4.0.0
  */
 // eslint-disable effect/no-bigint-literals
 import * as Arr from "../../Array.ts"
+import * as Crypto from "../../Crypto.ts"
 import * as Effect from "../../Effect.ts"
+import * as Encoding from "../../Encoding.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
+import type * as PlatformError from "../../PlatformError.ts"
 import * as Schedule from "../../Schedule.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { Row } from "../sql/SqlConnection.ts"
 import { isSqlError, type SqlError } from "../sql/SqlError.ts"
 import { PersistenceError } from "./ClusterError.ts"
+import type * as EntityAddress from "./EntityAddress.ts"
 import type * as Envelope from "./Envelope.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import { SaveResultEncoded } from "./MessageStorage.ts"
@@ -32,13 +41,13 @@ import * as Snowflake from "./Snowflake.ts"
 const withTracerDisabled = Effect.withTracerEnabled(false)
 
 /**
- * Creates a SQL-backed `MessageStorage` implementation, running its migrations
+ * Creates a SQL-backed encoded message storage driver, running its migrations
  * and using the optional table prefix.
  *
  * **When to use**
  *
- * Use when you need the SQL-backed `MessageStorage` service directly, such as
- * when composing a custom layer or providing your own `Snowflake.Generator`.
+ * Use when you need the SQL-backed encoded driver directly, such as when
+ * composing a custom message storage adapter.
  *
  * **Details**
  *
@@ -50,20 +59,20 @@ const withTracerDisabled = Effect.withTracerEnabled(false)
  * Changing `prefix` after deployment points the runtime at a different set of
  * tables, including the migration history table.
  *
- * @see {@link layer} for a ready-made layer using the default prefix and generator
- * @see {@link layerWith} for a ready-made layer with a custom table prefix
+ * @see {@link make} for the decoded `MessageStorage` constructor
  *
  * @category constructors
  * @since 4.0.0
  */
-export const make: (options?: {
+export const makeEncoded: (options?: {
   readonly prefix?: string | undefined
 }) => Effect.Effect<
-  MessageStorage.MessageStorage["Service"],
+  MessageStorage.Encoded,
   never,
-  SqlClient.SqlClient | Snowflake.Generator
+  SqlClient.SqlClient | Crypto.Crypto
 > = Effect.fnUntraced(function*(options) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+  const crypto = yield* Crypto.Crypto
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
 
@@ -83,6 +92,30 @@ export const make: (options?: {
 
   const repliesTable = table("replies")
   const repliesTableSql = sql(repliesTable)
+
+  // The composed primary key (`entityType/entityId/tag/id`) can legally exceed
+  // the 255-character `message_id` column: entity_type(150) + entity_id(255) +
+  // tag(50) alone total 458 characters before the RPC primary key is appended.
+  // Keys that fit are stored as-is, keeping `message_id` byte-compatible with
+  // rows written by previous versions; longer keys are stored as a SHA-256
+  // digest (64 hex characters, collision probability negligible at a 2^128
+  // birthday bound). Digests never contain "/" while composed keys always do,
+  // so the two encodings cannot collide.
+  const encoder = new TextEncoder()
+  const messageIdForPrimaryKey = (primaryKey: string): Effect.Effect<string, PlatformError.PlatformError> =>
+    primaryKey.length <= 255
+      ? Effect.succeed(primaryKey)
+      : Effect.map(crypto.digest("SHA-256", encoder.encode(primaryKey)), Encoding.encodeHex)
+
+  const messageIdEnforcesWidth = sql.onDialectOrElse({
+    mssql: () => true,
+    mysql: () => true,
+    pg: () => true,
+    orElse: () => false
+  })
+  // sqlite's TEXT message_id column stored over-length plaintext keys before
+  // digests were introduced; those legacy rows need a plaintext fallback read
+  const mayHaveLegacyRow = (primaryKey: string): boolean => !messageIdEnforcesWidth && primaryKey.length > 255
 
   const envelopeToRow = (
     envelope: Envelope.Encoded,
@@ -238,6 +271,14 @@ export const make: (options?: {
   const sqlFalse = sql.literal(supportsBooleans ? "FALSE" : "0")
   const sqlTrue = sql.literal(supportsBooleans ? "TRUE" : "1")
 
+  const selectByMessageId = (message_id: string): Effect.Effect<ReadonlyArray<Row>, SqlError> =>
+    sql`
+      SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+      FROM ${messagesTableSql} m
+      LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
+      WHERE m.message_id = ${message_id}
+    `
+
   const insertEnvelope: (
     row: MessageRow,
     message_id: string
@@ -250,12 +291,7 @@ export const make: (options?: {
       `.pipe(Effect.flatMap((rows) => {
         // inserted a new row
         if (rows.length > 0) return Effect.succeed([])
-        return sql`
-          SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-          FROM ${messagesTableSql} m
-          LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-          WHERE m.message_id = ${message_id}
-        `
+        return selectByMessageId(message_id)
       })),
     mysql: () => (row, message_id) =>
       Effect.flatMap(
@@ -264,12 +300,7 @@ export const make: (options?: {
           if (row.affectedRows > 0) {
             return Effect.succeed([])
           }
-          return sql`
-            SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-            FROM ${messagesTableSql} m
-            LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-            WHERE m.message_id = ${message_id}
-          `
+          return selectByMessageId(message_id)
         }
       ),
     mssql: () => (row, message_id) =>
@@ -311,12 +342,7 @@ export const make: (options?: {
           END as reply_sequence;
       `,
     orElse: () => (row, message_id) =>
-      sql`
-        SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-        FROM ${messagesTableSql} m
-        LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-        WHERE m.message_id = ${message_id}
-      `.pipe(
+      selectByMessageId(message_id).pipe(
         Effect.tap(sql`INSERT OR IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`),
         sql.withTransaction,
         Effect.retry({ times: 3 })
@@ -346,8 +372,58 @@ export const make: (options?: {
     orElse: () => sql.literal("FOR UPDATE")
   })
 
-  const getUnprocessedMessages = sql.onDialectOrElse({
-    pg: () => (shardIds: ReadonlyArray<string>, now: number) =>
+  const emptyFragment = sql.literal("")
+  // mssql only limits with OFFSET/FETCH, which requires the ORDER BY that
+  // both queries already have
+  const limitFragment = sql.onDialectOrElse({
+    mssql: () => (limit: number) => sql.literal(`OFFSET 0 ROWS FETCH NEXT ${Math.floor(limit)} ROWS ONLY`),
+    orElse: () => (limit: number) => sql.literal(`LIMIT ${Math.floor(limit)}`)
+  })
+  const groupAddresses = (addresses: ReadonlyArray<EntityAddress.EntityAddress>) => {
+    const byShard = new Map<string, Map<string, Array<EntityAddress.EntityAddress>>>()
+    for (const address of addresses) {
+      const shardId = address.shardId.toString()
+      let byEntityType = byShard.get(shardId)
+      if (byEntityType === undefined) {
+        byShard.set(shardId, byEntityType = new Map())
+      }
+      const group = byEntityType.get(address.entityType)
+      if (group === undefined) {
+        byEntityType.set(address.entityType, [address])
+      } else {
+        group.push(address)
+      }
+    }
+    return Array.from(
+      byShard,
+      ([shardId, byEntityType]) =>
+        Array.from(byEntityType, ([entityType, addresses]) => ({ shardId, entityType, addresses }))
+    ).flat()
+  }
+  type UnprocessedOptions = {
+    readonly limit?: number | undefined
+    readonly addresses?: ReadonlyArray<EntityAddress.EntityAddress> | undefined
+  }
+  const unprocessedFilters = (options?: UnprocessedOptions | undefined) => ({
+    addressFilter: options?.addresses !== undefined
+      ? sql`AND (${
+        sql.or(
+          groupAddresses(options.addresses).map((group) =>
+            sql.and([
+              sql`m.shard_id = ${group.shardId}`,
+              sql`m.entity_type = ${group.entityType}`,
+              sql.in("m.entity_id", group.addresses.map((address) => address.entityId))
+            ])
+          )
+        )
+      })`
+      : emptyFragment,
+    limit: options?.limit !== undefined ? limitFragment(options.limit) : emptyFragment
+  })
+  type UnprocessedFilters = ReturnType<typeof unprocessedFilters>
+
+  const getUnprocessedMessagesForDialect = sql.onDialectOrElse({
+    pg: () => (shardIds: ReadonlyArray<string>, now: number, filters: UnprocessedFilters) =>
       sql<MessageJoinRow>`
         WITH messages AS (
           UPDATE ${messagesTableSql} m
@@ -356,6 +432,7 @@ export const make: (options?: {
             SELECT m.*
             FROM ${messagesTableSql} m
             WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
+            ${filters.addressFilter}
             AND NOT EXISTS (
               SELECT 1 FROM ${repliesTableSql}
               WHERE request_id = m.request_id
@@ -364,6 +441,8 @@ export const make: (options?: {
             AND m.processed = ${sqlFalse}
             AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
             AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
+            ORDER BY m.rowid ASC
+            ${filters.limit}
             FOR UPDATE
           ) AS ids
           LEFT JOIN ${repliesTableSql} r ON r.id = ids.last_reply_id
@@ -372,12 +451,13 @@ export const make: (options?: {
         )
         SELECT * FROM messages ORDER BY rowid ASC
       `,
-    orElse: () => (shardIds: ReadonlyArray<string>, now: number) =>
+    orElse: () => (shardIds: ReadonlyArray<string>, now: number, filters: UnprocessedFilters) =>
       sql<MessageJoinRow>`
         SELECT m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
         FROM ${messagesTableSql} m
         LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
         WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
+        ${filters.addressFilter}
         AND NOT EXISTS (
           SELECT 1 FROM ${repliesTableSql}
           WHERE request_id = m.request_id
@@ -387,6 +467,7 @@ export const make: (options?: {
         AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
         AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
         ORDER BY m.rowid ASC
+        ${filters.limit}
         ${forUpdate}
       `.unprepared.pipe(
         Effect.tap((rows) => {
@@ -402,22 +483,42 @@ export const make: (options?: {
         sql.withTransaction
       )
   })
+  const getUnprocessedMessages = (
+    shardIds: ReadonlyArray<string>,
+    now: number,
+    options?: UnprocessedOptions | undefined
+  ) =>
+    options?.addresses?.length === 0
+      ? Effect.succeed([])
+      : getUnprocessedMessagesForDialect(shardIds, now, unprocessedFilters(options))
 
-  return yield* MessageStorage.makeEncoded({
+  const encoded: MessageStorage.Encoded = {
     saveEnvelope: ({ deliverAt, envelope, primaryKey }) =>
       Effect.suspend(() => {
-        const row = envelopeToRow(envelope, primaryKey, deliverAt)
-        let insert = primaryKey
-          ? insertEnvelope(row, primaryKey)
-          : Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
-        if (envelope._tag === "AckChunk") {
-          insert = sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
-            Effect.andThen(
-              sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue} WHERE processed = ${sqlFalse} AND request_id = ${envelope.requestId} AND kind = ${messageKindAckChunk}`
-            ),
-            Effect.andThen(insert),
-            sql.withTransaction
-          )
+        let insert: Effect.Effect<ReadonlyArray<Row>, SqlError | PlatformError.PlatformError>
+        if (primaryKey !== null) {
+          insert = Effect.flatMap(messageIdForPrimaryKey(primaryKey), (messageId) => {
+            const row = envelopeToRow(envelope, messageId, deliverAt)
+            if (!mayHaveLegacyRow(primaryKey)) {
+              return insertEnvelope(row, messageId)
+            }
+            return Effect.flatMap(
+              selectByMessageId(primaryKey),
+              (rows) => rows.length > 0 ? Effect.succeed(rows) : insertEnvelope(row, messageId)
+            )
+          })
+        } else {
+          const row = envelopeToRow(envelope, null, deliverAt)
+          insert = Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
+          if (envelope._tag === "AckChunk") {
+            insert = sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
+              Effect.andThen(
+                sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue} WHERE processed = ${sqlFalse} AND request_id = ${envelope.requestId} AND kind = ${messageKindAckChunk}`
+              ),
+              Effect.andThen(insert),
+              sql.withTransaction
+            )
+          }
         }
         return insert.pipe(
           Effect.map((rows) => {
@@ -488,7 +589,15 @@ export const make: (options?: {
     ),
 
     requestIdForPrimaryKey: (primaryKey) =>
-      sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`.pipe(
+      messageIdForPrimaryKey(primaryKey).pipe(
+        Effect.flatMap((messageId) =>
+          sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${messageId}`
+        ),
+        Effect.flatMap((rows) =>
+          rows.length === 0 && mayHaveLegacyRow(primaryKey)
+            ? sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`
+            : Effect.succeed(rows)
+        ),
         Effect.map((rows) => Option.map(Option.fromNullishOr(rows[0]?.id), Snowflake.Snowflake)),
         Effect.provideService(SqlClient.SafeIntegers, true),
         PersistenceError.refail,
@@ -533,8 +642,8 @@ export const make: (options?: {
       ),
 
     unprocessedMessages: Effect.fnUntraced(
-      function*(shardIds, now) {
-        const rows = yield* getUnprocessedMessages(shardIds, now)
+      function*(shardIds, now, options) {
+        const rows = yield* getUnprocessedMessages(shardIds, now, options)
         if (rows.length === 0) {
           return []
         }
@@ -577,19 +686,30 @@ export const make: (options?: {
       )
     },
 
-    resetAddress: (address) =>
-      sql`
+    resetAddresses: (addresses) =>
+      addresses.length === 0
+        ? Effect.void
+        : sql`
         UPDATE ${messagesTableSql}
         SET last_read = NULL
         WHERE processed = ${sqlFalse}
-        AND shard_id = ${address.shardId.toString()}
-        AND entity_type = ${address.entityType}
-        AND entity_id = ${address.entityId}
-      `.pipe(
-        Effect.asVoid,
-        PersistenceError.refail,
-        withTracerDisabled
-      ),
+        AND (${
+          sql.or(
+            groupAddresses(addresses).map(
+              (group) =>
+                sql.and([
+                  sql`shard_id = ${group.shardId}`,
+                  sql`entity_type = ${group.entityType}`,
+                  sql.in("entity_id", group.addresses.map((address) => address.entityId))
+                ])
+            )
+          )
+        })
+        `.pipe(
+          Effect.asVoid,
+          PersistenceError.refail,
+          withTracerDisabled
+        ),
 
     clearAddress: (address) =>
       sql`
@@ -629,8 +749,24 @@ export const make: (options?: {
       sql.withTransaction(effect).pipe(
         Effect.catchIf(isSqlError, Effect.die)
       )
-  })
+  }
+  return encoded
 }, withTracerDisabled)
+
+/**
+ * Creates a SQL-backed `MessageStorage` implementation, running its migrations
+ * and using the optional table prefix.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make: (options?: {
+  readonly prefix?: string | undefined
+}) => Effect.Effect<
+  MessageStorage.MessageStorage["Service"],
+  never,
+  SqlClient.SqlClient | Snowflake.Generator | Crypto.Crypto
+> = (options) => Effect.flatMap(makeEncoded(options), MessageStorage.makeEncoded)
 
 /**
  * Layer that provides SQL-backed `MessageStorage` using the default table prefix
@@ -645,7 +781,9 @@ export const make: (options?: {
  *
  * The layer runs the SQL migrations through `make`, provides `MessageStorage`,
  * and supplies `Snowflake.layerGenerator` internally. Callers still provide
- * `SqlClient` and `ShardingConfig`.
+ * `SqlClient`, `ShardingConfig`, and `Crypto.Crypto`, which is used to hash
+ * message deduplication keys that would overflow the fixed-width
+ * `message_id` column.
  *
  * **Gotchas**
  *
@@ -662,7 +800,7 @@ export const make: (options?: {
 export const layer: Layer.Layer<
   MessageStorage.MessageStorage,
   never,
-  SqlClient.SqlClient | ShardingConfig
+  SqlClient.SqlClient | ShardingConfig | Crypto.Crypto
 > = Layer.effect(MessageStorage.MessageStorage, make()).pipe(
   Layer.provide(Snowflake.layerGenerator)
 )
@@ -675,7 +813,7 @@ export const layer: Layer.Layer<
  */
 export const layerWith = (options: {
   readonly prefix?: string | undefined
-}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig> =>
+}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Crypto> =>
   Layer.effect(MessageStorage.MessageStorage, make(options)).pipe(
     Layer.provide(Snowflake.layerGenerator)
   )
@@ -826,13 +964,17 @@ const migrations = (options?: {
             ON ${messagesTableSql} (request_id);
           `.unprepared.pipe(Effect.ignore),
         pg: () =>
-          sql`
-            CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
-            ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at);
-
-            CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
-            ON ${messagesTableSql} (request_id);
-          `.pipe(
+          Effect.gen(function*() {
+            yield* sql`
+              CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
+              ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at)
+            `
+            yield* sql`
+              CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
+              ON ${messagesTableSql} (request_id)
+            `
+          }).pipe(
+            sql.withTransaction,
             Effect.tapDefect((error) =>
               Effect.annotateLogs(Effect.logDebug("Failed to create indexes", error), {
                 package: "@effect/cluster",
@@ -977,6 +1119,20 @@ const migrations = (options?: {
           // sqlite
           Effect.void
       })
+    }),
+    "0003_pg_messages_rowid_index": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const messagesTableSql = sql(messagesTable)
+      const rowIdIndex = `${messagesTable}_rowid_idx`
+
+      yield* sql.onDialectOrElse({
+        pg: () =>
+          sql`
+            CREATE INDEX IF NOT EXISTS ${sql(rowIdIndex)}
+            ON ${messagesTableSql} (rowid)
+          `,
+        orElse: () => Effect.void
+      })
     })
   })
 }
@@ -993,7 +1149,7 @@ const replyKind = {
 } as const satisfies Record<Reply.Reply<any>["_tag"], number | null>
 
 const replyFromRow = (row: ReplyRow): Reply.Encoded =>
-  Number(row.kind) === replyKind.WithExit ?
+  row.kind !== null && Number(row.kind) === replyKind.WithExit ?
     {
       _tag: "WithExit",
       id: String(row.id),

@@ -133,6 +133,26 @@ const provideEnv = flow(
 )
 
 describe.sequential("Request", () => {
+  it("preserves __proto__ as an own constructor property", () => {
+    interface ProtoRequest extends Request.Request<void> {
+      readonly "__proto__": { readonly polluted: boolean }
+    }
+    const make = Request.of<ProtoRequest>()
+    const value = { polluted: true }
+    const request = make({ ["__proto__"]: value })
+
+    assert.isTrue(Request.isRequest(request))
+    assert.isTrue(Object.hasOwn(request, "__proto__"))
+    assert.strictEqual(request["__proto__"], value)
+  })
+
+  it("copies enumerable symbol properties in Class", () => {
+    const key = Symbol()
+    class SymbolRequest extends Request.Class<{ readonly [key]: string }, void> {}
+
+    assert.strictEqual(new SymbolRequest({ [key]: "value" })[key], "value")
+  })
+
   it("compares StructuralProto values when hashes collide", () => {
     class Req extends Request.Class<{ id: string; account: string }, string> {}
 
@@ -292,6 +312,36 @@ describe.sequential("Request", () => {
       expect(requestsCount).toEqual(26)
     })
   )
+
+  it.effect("batchN normalizes the maximum batch size", () =>
+    Effect.gen(function*() {
+      const sizes = yield* Effect.forEach([Number.NaN, -1, 0, 0.5, 1.9, 2.9], (n) =>
+        Effect.gen(function*() {
+          const batchSizes: Array<number> = []
+          const resolver = Resolver.make<GetNameById>((entries) =>
+            Effect.sync(() => {
+              batchSizes.push(entries.length)
+              for (const entry of entries) {
+                entry.completeUnsafe(Exit.succeed(String(entry.request.id)))
+              }
+            })
+          ).pipe(Resolver.batchN(n))
+
+          yield* Effect.forEach([1, 2, 3], (id) => Effect.request(new GetNameById({ id }), resolver), {
+            concurrency: "unbounded"
+          })
+          return batchSizes
+        }))
+
+      assert.deepStrictEqual(sizes, [
+        [1, 1, 1],
+        [1, 1, 1],
+        [1, 1, 1],
+        [1, 1, 1],
+        [1, 1, 1],
+        [2, 1]
+      ])
+    }))
 
   it.effect(
     "batch fibers use request services for runAll",

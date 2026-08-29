@@ -1,14 +1,35 @@
 import { describe, it } from "@effect/vitest"
 import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
-import { Array as Arr, Equivalence, Number as Num, Option, Order, type Predicate, Result, String as Str } from "effect"
+import {
+  Array as Arr,
+  Equal,
+  Equivalence,
+  Hash,
+  Number as Num,
+  Option,
+  Order,
+  type Predicate,
+  Result,
+  String as Str
+} from "effect"
 import { identity, pipe } from "effect/Function"
-import { FastCheck as fc } from "effect/testing"
+import * as fc from "fast-check"
 
 const symA = Symbol.for("a")
 const symB = Symbol.for("b")
 const symC = Symbol.for("c")
 
 const double = (n: number) => n * 2
+
+class HashCollision implements Equal.Equal {
+  constructor(readonly value: number) {}
+  [Hash.symbol](): number {
+    return 0
+  }
+  [Equal.symbol](that: Equal.Equal): boolean {
+    return that instanceof HashCollision && this.value === that.value
+  }
+}
 
 describe("Array", () => {
   it("of", () => {
@@ -104,6 +125,7 @@ describe("Array", () => {
     it("take", () => {
       deepStrictEqual(pipe([1, 2, 3, 4], Arr.take(2)), [1, 2])
       deepStrictEqual(pipe([1, 2, 3, 4], Arr.take(0)), [])
+      deepStrictEqual(pipe([1, 2, 3, 4], Arr.take(Number.NaN)), [])
       // out of bounds
       deepStrictEqual(pipe([1, 2, 3, 4], Arr.take(-10)), [])
       deepStrictEqual(pipe([1, 2, 3, 4], Arr.take(10)), [1, 2, 3, 4])
@@ -118,6 +140,7 @@ describe("Array", () => {
     it("takeRight", () => {
       deepStrictEqual(pipe(Arr.empty(), Arr.takeRight(0)), [])
       deepStrictEqual(pipe([1, 2], Arr.takeRight(0)), [])
+      deepStrictEqual(pipe([1, 2], Arr.takeRight(Number.NaN)), [])
       deepStrictEqual(pipe([1, 2], Arr.takeRight(1)), [2])
       deepStrictEqual(pipe([1, 2], Arr.takeRight(2)), [1, 2])
       // out of bound
@@ -213,6 +236,7 @@ describe("Array", () => {
     it("split", () => {
       deepStrictEqual(pipe(Arr.empty(), Arr.split(2)), Arr.empty())
       deepStrictEqual(pipe(Arr.make(1), Arr.split(2)), Arr.make(Arr.make(1)))
+      deepStrictEqual(pipe(Arr.make(1, 2, 3), Arr.split(Number.NaN)), Arr.make(Arr.make(1, 2, 3)))
       deepStrictEqual(pipe(Arr.make(1, 2), Arr.split(2)), Arr.make(Arr.make(1), Arr.make(2)))
       deepStrictEqual(pipe(Arr.make(1, 2, 3, 4, 5), Arr.split(2)), Arr.make(Arr.make(1, 2, 3), Arr.make(4, 5)))
       deepStrictEqual(
@@ -224,6 +248,7 @@ describe("Array", () => {
     it("drop", () => {
       deepStrictEqual(pipe(Arr.empty(), Arr.drop(0)), [])
       deepStrictEqual(pipe([1, 2], Arr.drop(0)), [1, 2])
+      deepStrictEqual(pipe([1, 2], Arr.drop(Number.NaN)), [1, 2])
       deepStrictEqual(pipe([1, 2], Arr.drop(1)), [2])
       deepStrictEqual(pipe([1, 2], Arr.drop(2)), [])
       // out of bound
@@ -246,6 +271,7 @@ describe("Array", () => {
     it("dropRight", () => {
       deepStrictEqual(pipe([], Arr.dropRight(0)), [])
       deepStrictEqual(pipe([1, 2], Arr.dropRight(0)), [1, 2])
+      deepStrictEqual(pipe([1, 2], Arr.dropRight(Number.NaN)), [1, 2])
       deepStrictEqual(pipe([1, 2], Arr.dropRight(1)), [1])
       deepStrictEqual(pipe([1, 2], Arr.dropRight(2)), [])
       // out of bound
@@ -587,6 +613,12 @@ describe("Array", () => {
       deepStrictEqual(Arr.rotate(2)(new Set([1, 2, 3, 4, 5])), [4, 5, 1, 2, 3])
       deepStrictEqual(Arr.rotate(-1)(new Set([1, 2, 3, 4, 5])), [2, 3, 4, 5, 1])
       deepStrictEqual(Arr.rotate(-2)(new Set([1, 2, 3, 4, 5])), [3, 4, 5, 1, 2])
+      deepStrictEqual(
+        Arr.rotate(1)((function*() {
+          yield* [1, 2, 3]
+        })()),
+        [3, 1, 2]
+      )
       // out of bounds
       deepStrictEqual(Arr.rotate(7)([1, 2, 3, 4, 5]), [4, 5, 1, 2, 3])
       deepStrictEqual(Arr.rotate(-7)([1, 2, 3, 4, 5]), [3, 4, 5, 1, 2])
@@ -655,6 +687,7 @@ describe("Array", () => {
       ])
       assertSplitAt([], 0, [], [])
       assertSplitAt([1, 2], 0, [], [1, 2])
+      assertSplitAt([1, 2], Number.NaN, [], [1, 2])
 
       // out of bounds
       assertSplitAt([], -1, [], [])
@@ -667,6 +700,7 @@ describe("Array", () => {
   it("splitAtNonEmpty", () => {
     deepStrictEqual(pipe(Arr.make(1, 2, 3, 4), Arr.splitAtNonEmpty(2)), [[1, 2], [3, 4]])
     deepStrictEqual(pipe(Arr.make(1, 2, 3, 4), Arr.splitAtNonEmpty(10)), [[1, 2, 3, 4], []])
+    deepStrictEqual(pipe(Arr.make(1, 2, 3, 4), Arr.splitAtNonEmpty(Number.NaN)), [[1], [2, 3, 4]])
   })
 
   describe("getUnsafe", () => {
@@ -978,6 +1012,7 @@ describe("Array", () => {
     // out of bounds
     deepStrictEqual(Arr.chunksOf(0)([1, 2, 3, 4, 5]), [[1], [2], [3], [4], [5]])
     deepStrictEqual(Arr.chunksOf(-1)([1, 2, 3, 4, 5]), [[1], [2], [3], [4], [5]])
+    deepStrictEqual(Arr.chunksOf(Number.NaN)([1, 2, 3]), [[1], [2], [3]])
 
     const assertSingleChunk = (
       input: Arr.NonEmptyReadonlyArray<number>,
@@ -998,6 +1033,8 @@ describe("Array", () => {
     deepStrictEqual(Arr.window([], 2), [])
     deepStrictEqual(Arr.window([1, 2, 3, 4, 5], 2), [[1, 2], [2, 3], [3, 4], [4, 5]])
     deepStrictEqual(Arr.window([1, 2, 3, 4, 5], 3), [[1, 2, 3], [2, 3, 4], [3, 4, 5]])
+    deepStrictEqual(Arr.window([1, 2, 3], 1.5), [[1], [2], [3]])
+    deepStrictEqual(Arr.window([1, 2, 3], Number.NaN), [])
 
     // n out of bounds
     deepStrictEqual(Arr.window([1, 2, 3, 4, 5], 6), [])
@@ -1140,8 +1177,10 @@ describe("Array", () => {
     deepStrictEqual(pipe([], Arr.pad(0, 0)), [])
     deepStrictEqual(pipe([1, 2, 3], Arr.pad(0, 0)), [])
     deepStrictEqual(pipe([1, 2, 3], Arr.pad(2, 0)), [1, 2])
+    deepStrictEqual(pipe([1], Arr.pad(1.5, 0)), [1])
     deepStrictEqual(pipe([1, 2, 3], Arr.pad(6, 0)), [1, 2, 3, 0, 0, 0])
     deepStrictEqual(pipe([1, 2, 3], Arr.pad(-2, 0)), [])
+    deepStrictEqual(pipe([1, 2, 3], Arr.pad(Number.NaN, 0)), [])
   })
 
   describe("chunksOf", () => {
@@ -1206,11 +1245,13 @@ describe("Array", () => {
     deepStrictEqual(Arr.makeBy((n) => n * 2)(5), [0, 2, 4, 6, 8])
     deepStrictEqual(Arr.makeBy(2.2, (n) => n * 2), [0, 2])
     deepStrictEqual(Arr.makeBy((n) => n * 2)(2.2), [0, 2])
+    deepStrictEqual(Arr.makeBy(Number.NaN, (n) => n), [0])
   })
 
   it("replicate", () => {
     deepStrictEqual(Arr.replicate("a", 0), ["a"])
     deepStrictEqual(Arr.replicate("a", -1), ["a"])
+    deepStrictEqual(Arr.replicate("a", Number.NaN), ["a"])
     deepStrictEqual(Arr.replicate("a", 3), ["a", "a", "a"])
     deepStrictEqual(Arr.replicate("a", 2.2), ["a", "a"])
   })
@@ -1408,6 +1449,26 @@ describe("Array", () => {
     deepStrictEqual(Arr.dedupe([1, 2, 3]), [1, 2, 3])
     deepStrictEqual(Arr.dedupe([1, 1, 1]), [1])
     deepStrictEqual(Arr.dedupe(["a", "b", "a"]), ["a", "b"])
+    deepStrictEqual(Arr.dedupe([NaN, NaN]), [NaN])
+    deepStrictEqual(Arr.dedupe([0, -0]), [0])
+    deepStrictEqual(
+      Arr.dedupe([new HashCollision(1), new HashCollision(2), new HashCollision(1)]).map((value) => value.value),
+      [1, 2]
+    )
+    const sparse = globalThis.Array<number>(2)
+    sparse[1] = 1
+    deepStrictEqual(Arr.dedupe(sparse), [undefined, 1])
+    deepStrictEqual(Arr.dedupe(globalThis.Array(1)), [undefined])
+  })
+
+  it("dedupe does not hash a single value", () => {
+    let value: unknown = null
+    for (let index = 0; index < 25_000; index++) {
+      value = { value }
+    }
+    const result = Arr.dedupe([value])
+    strictEqual(result.length, 1)
+    strictEqual(result[0], value)
   })
 
   it("dedupeAdjacent", () => {
@@ -1431,6 +1492,13 @@ describe("Array", () => {
     deepStrictEqual(Arr.union([], []), [])
     deepStrictEqual(Arr.union([1, 2], [1, 2]), [1, 2])
     deepStrictEqual(pipe([1, 2], Arr.union([3, 4])), [1, 2, 3, 4])
+    deepStrictEqual(
+      Arr.union(
+        [new HashCollision(1), new HashCollision(2)],
+        [new HashCollision(1), new HashCollision(3)]
+      ).map((value) => value.value),
+      [1, 2, 3]
+    )
   })
 
   it("intersection", () => {
@@ -1440,6 +1508,14 @@ describe("Array", () => {
     deepStrictEqual(Arr.intersection([], [1, 2]), [])
     deepStrictEqual(Arr.intersection([1, 2], []), [])
     deepStrictEqual(pipe([1, 2, 3], Arr.intersection([2, 3, 4])), [2, 3])
+    deepStrictEqual(Arr.intersection([1, 1, 2], [1]), [1, 1])
+    deepStrictEqual(
+      Arr.intersection(
+        [new HashCollision(1), new HashCollision(2)],
+        [new HashCollision(1)]
+      ).map((value) => value.value),
+      [1]
+    )
   })
 
   it("difference", () => {
@@ -1448,6 +1524,16 @@ describe("Array", () => {
     deepStrictEqual(Arr.difference([1, 2], []), [1, 2])
     deepStrictEqual(Arr.difference([], [1, 2]), [])
     deepStrictEqual(pipe([1, 2, 3], Arr.difference([3])), [1, 2])
+    const sparse = globalThis.Array<number>(2)
+    sparse[1] = 1
+    deepStrictEqual(Arr.difference(sparse, []), [1])
+    deepStrictEqual(
+      Arr.difference(
+        [new HashCollision(1), new HashCollision(2)],
+        [new HashCollision(1)]
+      ).map((value) => value.value),
+      [2]
+    )
   })
 
   it("cartesianWith", () => {
@@ -1502,6 +1588,9 @@ describe("Array", () => {
 
   it("allocate", () => {
     deepStrictEqual(Arr.allocate(0).length, 0)
+    deepStrictEqual(Arr.allocate(Number.NaN).length, 0)
+    deepStrictEqual(Arr.allocate(-1).length, 0)
+    deepStrictEqual(Arr.allocate(1.5).length, 1)
     deepStrictEqual(Arr.allocate(3).length, 3)
   })
 

@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { assertFalse, assertTrue, deepStrictEqual, throws } from "@effect/vitest/utils"
-import { Cron, DateTime, Equal, Option, Result } from "effect"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
+import { Cron, DateTime, Equal, Hash, HashSet, Option, Result } from "effect"
 
 const match = (input: Cron.Cron | string, date: DateTime.DateTime.Input) =>
   Cron.match(Cron.isCron(input) ? input : Cron.parseUnsafe(input), date)
@@ -165,6 +165,10 @@ describe("Cron", () => {
     assertTrue(Result.isFailure(invalidDayTail))
     deepStrictEqual(invalidDayTail.failure.message, "Expected a value between 1 and 31")
 
+    const invalidMinuteStep = Cron.parse("*/60 * * * *")
+    assertTrue(Result.isFailure(invalidMinuteStep))
+    deepStrictEqual(invalidMinuteStep.failure.message, "Expected step value to be less than or equal to 59")
+
     for (
       const invalid of [
         "0,,5 * * * *",
@@ -214,6 +218,62 @@ describe("Cron", () => {
     )
   })
 
+  it("format preserves compact cron syntax", () => {
+    strictEqual(
+      Cron.format(Cron.parseUnsafe("23 0-20/2 * * 0", "Europe/Berlin")),
+      "23 0-20/2 * * 0"
+    )
+  })
+
+  it("format can include the default seconds field", () => {
+    strictEqual(
+      Cron.format(Cron.parseUnsafe("23 0-20/2 * * 0"), { includeSeconds: true }),
+      "0 23 0-20/2 * * 0"
+    )
+  })
+
+  it("format compacts multiple runs within a field", () => {
+    strictEqual(
+      Cron.format(Cron.make({
+        minutes: [0, 1, 2, 10, 20, 30],
+        hours: [],
+        days: [],
+        months: [],
+        weekdays: []
+      })),
+      "0-2,10-30/10 * * * *"
+    )
+  })
+
+  it("format preserves non-uniform values", () => {
+    strictEqual(
+      Cron.format(Cron.make({
+        minutes: [1, 5, 11],
+        hours: [],
+        days: [],
+        months: [],
+        weekdays: []
+      })),
+      "1,5,11 * * * *"
+    )
+  })
+
+  it("format handles default, non-default, and unrestricted seconds", () => {
+    const format = (seconds?: Iterable<number>) =>
+      Cron.format(Cron.make({
+        seconds,
+        minutes: [],
+        hours: [],
+        days: [],
+        months: [],
+        weekdays: []
+      }))
+
+    strictEqual(format(), "* * * * *")
+    strictEqual(format([15, 30]), "15,30 * * * * *")
+    strictEqual(format([]), "* * * * * *")
+  })
+
   it("make supports requiring both days and weekdays", () => {
     const utc = DateTime.zoneMakeNamedUnsafe("UTC")
     const values = {
@@ -233,6 +293,74 @@ describe("Cron", () => {
     assertFalse(Equal.equals(orCron, andCron))
     deepStrictEqual(Cron.next(orCron, new Date("2024-01-02T00:00:00.000Z")), new Date("2024-01-08T00:00:00.000Z"))
     deepStrictEqual(Cron.next(andCron, new Date("2024-01-02T00:00:00.000Z")), new Date("2024-04-01T00:00:00.000Z"))
+  })
+
+  it("make validates field values and normalizes weekday 7", () => {
+    const make = (field: string, value: number) =>
+      Cron.make({
+        minutes: field === "minutes" ? [value] : [],
+        hours: field === "hours" ? [value] : [],
+        days: field === "days" ? [value] : [],
+        months: field === "months" ? [value] : [],
+        weekdays: field === "weekdays" ? [value] : [],
+        seconds: field === "seconds" ? [value] : []
+      })
+
+    for (
+      const [field, value] of [
+        ["seconds", 60],
+        ["minutes", -1],
+        ["hours", 24],
+        ["days", 0],
+        ["months", 13],
+        ["weekdays", 8],
+        ["seconds", 0.5],
+        ["minutes", NaN]
+      ] as const
+    ) {
+      throws(() => make(field, value), (error) => {
+        assertTrue(error instanceof RangeError)
+        return undefined
+      })
+    }
+
+    const normalized = Cron.make({
+      minutes: [],
+      hours: [],
+      days: [],
+      months: [],
+      weekdays: [7]
+    })
+    deepStrictEqual(normalized.seconds, new Set([0]))
+    deepStrictEqual(normalized.weekdays, new Set([0]))
+  })
+
+  it("make treats weekday 7 as Sunday when matching", () => {
+    const cron = Cron.make({
+      minutes: [0],
+      hours: [0],
+      days: [],
+      months: [],
+      weekdays: [7],
+      tz: DateTime.zoneMakeNamedUnsafe("UTC")
+    })
+
+    assertTrue(Cron.match(cron, new Date("2024-01-07T00:00:00.000Z")))
+    assertFalse(Cron.match(cron, new Date("2024-01-08T00:00:00.000Z")))
+  })
+
+  it("make treats weekday 7 as Sunday when stepping", () => {
+    const cron = Cron.make({
+      minutes: [0],
+      hours: [0],
+      days: [],
+      months: [],
+      weekdays: [7],
+      tz: DateTime.zoneMakeNamedUnsafe("UTC")
+    })
+
+    deepStrictEqual(Cron.next(cron, new Date("2024-01-05T00:00:00.000Z")), new Date("2024-01-07T00:00:00.000Z"))
+    deepStrictEqual(Cron.prev(cron, new Date("2024-01-08T00:00:00.000Z")), new Date("2024-01-07T00:00:00.000Z"))
   })
 
   it("match", () => {
@@ -425,6 +553,30 @@ describe("Cron", () => {
     deepStrictEqual(prev(cron, sunday), new Date("2025-10-17T01:00:00.000Z"))
   })
 
+  it("prev wraps a later weekday into the previous week", () => {
+    const cron = Cron.parseUnsafe("0 0 * * SAT", DateTime.zoneMakeNamedUnsafe("UTC"))
+    const thursday = new Date("2025-10-23T12:00:00.000Z")
+    deepStrictEqual(prev(cron, thursday), new Date("2025-10-18T00:00:00.000Z"))
+  })
+
+  it("prev weekday wrapping returns matching instants strictly before the input", () => {
+    const cron = Cron.parseUnsafe("0 0 * * SAT", DateTime.zoneMakeNamedUnsafe("UTC"))
+    for (
+      const input of [
+        new Date("2025-10-19T12:00:00.000Z"),
+        new Date("2025-10-20T12:00:00.000Z"),
+        new Date("2025-10-21T12:00:00.000Z"),
+        new Date("2025-10-22T12:00:00.000Z"),
+        new Date("2025-10-23T12:00:00.000Z"),
+        new Date("2025-10-24T12:00:00.000Z")
+      ]
+    ) {
+      const result = prev(cron, input)
+      assertTrue(result < input)
+      assertTrue(Cron.match(cron, result))
+    }
+  })
+
   it("prev chooses the preferred occurrence in DST fall-back", () => {
     const make = (s: string): DateTime.Zoned => Option.getOrThrow(DateTime.makeZonedFromString(s))
     const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
@@ -468,6 +620,40 @@ describe("Cron", () => {
     deepStrictEqual(prev(cron, from), new Date("2024-01-31T00:00:00.000Z"))
   })
 
+  it("prev skips an invalid day in the immediately preceding month", () => {
+    const tz = DateTime.zoneMakeNamedUnsafe("UTC")
+    const cron = Cron.parseUnsafe("0 0 31 * *", tz)
+    const from = new Date("2024-03-15T00:00:00.000Z")
+    deepStrictEqual(prev(cron, from), new Date("2024-01-31T00:00:00.000Z"))
+  })
+
+  it("prev finds the previous leap day", () => {
+    const tz = DateTime.zoneMakeNamedUnsafe("UTC")
+    const cron = Cron.parseUnsafe("0 0 29 2 *", tz)
+    const from = new Date("2024-01-01T00:00:00.000Z")
+    deepStrictEqual(prev(cron, from), new Date("2020-02-29T00:00:00.000Z"))
+  })
+
+  it("prev day-of-month rollovers preserve match and ordering invariants", () => {
+    const tz = DateTime.zoneMakeNamedUnsafe("UTC")
+    const cases = [
+      [Cron.parseUnsafe("0 0 31 * *", tz), new Date("2024-03-15T00:00:00.000Z")],
+      [Cron.parseUnsafe("0 0 29 2 *", tz), new Date("2024-01-01T00:00:00.000Z")]
+    ] as const
+
+    for (const [cron, from] of cases) {
+      const result = prev(cron, from)
+      assertTrue(Cron.match(cron, result))
+      assertTrue(result < from)
+    }
+  })
+
+  it("prev terminates for an impossible day and month combination", () => {
+    const tz = DateTime.zoneMakeNamedUnsafe("UTC")
+    const cron = Cron.parseUnsafe("0 0 30 2 *", tz)
+    throws(() => prev(cron, new Date("2024-03-01T00:00:00.000Z")))
+  })
+
   it("prev clamps to the last valid day when rolling back a month with only month constraints", () => {
     const tz = DateTime.zoneMakeNamedUnsafe("UTC")
     const cron = Cron.parseUnsafe("0 0 0 * FEB *", tz)
@@ -494,8 +680,20 @@ describe("Cron", () => {
 
   it("equal", () => {
     const cron = Cron.parseUnsafe("23 0-20/2 * * 0")
+    const utc = Cron.parseUnsafe("23 0-20/2 * * 0", "UTC")
+    const anotherUtc = Cron.parseUnsafe("23 0-20/2 * * 0", "UTC")
+    const berlin = Cron.parseUnsafe("23 0-20/2 * * 0", "Europe/Berlin")
     assertTrue(Equal.equals(cron, cron))
     assertTrue(Equal.equals(cron, Cron.parseUnsafe("23 0-20/2 * * 0")))
+    assertTrue(Cron.equals(utc, anotherUtc))
+    assertTrue(Cron.Equivalence(utc, anotherUtc))
+    assertTrue(Equal.equals(utc, anotherUtc))
+    strictEqual(Hash.hash(utc), Hash.hash(anotherUtc))
+    strictEqual(HashSet.size(HashSet.make(cron, utc, anotherUtc, berlin)), 3)
+    assertFalse(Cron.equals(cron, utc))
+    assertFalse(Cron.Equivalence(utc, berlin))
+    assertFalse(Equal.equals(cron, utc))
+    assertFalse(Equal.equals(utc, berlin))
     assertFalse(Equal.equals(cron, Cron.parseUnsafe("23 0-20/2 * * 1")))
     assertFalse(Equal.equals(cron, Cron.parseUnsafe("23 0-20/2 * * 0-6")))
     assertFalse(Equal.equals(cron, Cron.parseUnsafe("23 0-20/2 1 * 0")))

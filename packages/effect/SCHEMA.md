@@ -37,6 +37,39 @@ Use Schema to:
 13. **Integrations** — working examples for TanStack Form and Elysia.
 14. **Migration from v3** — API mapping from Schema v3 to v4.
 
+## Runtime Performance
+
+Effect Schema is benchmarked against the public
+[`schema-benchmarks`](https://github.com/open-circle/schema-benchmarks) suite.
+It exercises a realistic product schema across validation, parsing, error
+reporting, schema creation, and codecs.
+
+The table below compares Effect Schema with the Valibot and Zod cases available
+in the same suite.
+
+Values are microseconds per operation and lower is better. Results vary between
+machines, so they are most useful for understanding relative costs. A dash
+means that the library does not provide that benchmark.
+
+| Scenario                              | Effect Schema |    Valibot |      Zod 4 |
+| ------------------------------------- | ------------: | ---------: | ---------: |
+| Create a schema                       |        118.23 |  **40.24** |     318.56 |
+| Create a schema and parser            |    **130.50** |          — |          — |
+| Validate valid data                   |     **5.415** |       5.63 |          — |
+| Validate invalid data                 |         1.348 | **0.2431** |          — |
+| Parse valid data and collect errors   |         5.366 |   **5.22** |       7.16 |
+| Parse invalid data and collect errors |     **9.100** |      15.70 |      41.58 |
+| Parse valid data and stop early       |     **5.294** |       5.37 |          — |
+| Parse invalid data and stop early     |         1.352 | **0.2572** |          — |
+| Standard Schema, valid data           |         5.935 |       5.35 |   **3.83** |
+| Standard Schema, invalid data         |    **15.203** |      16.51 |      32.85 |
+| Standard Schema, valid, stop early    |     **5.843** |          — |          — |
+| Standard Schema, invalid, stop early  |     **2.244** |          — |          — |
+| Encode with a typed codec             |        0.3420 |          — | **0.0405** |
+| Decode with a typed codec             |        0.3762 |          — | **0.0463** |
+| Encode unknown input                  |    **0.3472** |          — |          — |
+| Decode unknown input                  |    **0.3637** |          — |          — |
+
 # Defining Elementary Schemas
 
 Schema provides built-in schemas for all common TypeScript types. These schemas represent a single value — like a string or a number — and they are the building blocks you combine into more complex shapes.
@@ -244,9 +277,8 @@ Schema.BigInt.check(isNonPositive)
 
 ## Dates
 
-The `Schema.Date` schema matches `Date` objects (even invalid dates).
-
-If you want to validate only valid dates, use `Schema.DateValid` instead.
+The `Schema.Date` schema matches valid `Date` objects and rejects invalid dates
+such as `new Date(NaN)`.
 
 ## Template literals
 
@@ -282,7 +314,7 @@ Success("a@b.com")
 
 console.log(String(Schema.decodeUnknownExit(email)("@b.com")))
 /*
-Failure(Cause([Fail(SchemaError(Expected a string matching template literal parts, got "@b.com"))]))
+Failure(Cause([Fail(SchemaError(Expected a string matching template literal parts))]))
 */
 ```
 
@@ -308,11 +340,11 @@ console.log(String(Schema.decodeUnknownExit(schema)("aa:1")))
 // Success(["aa",":",1])
 
 console.log(String(Schema.decodeUnknownExit(schema)("a:1")))
-// Failure(Cause([Fail(SchemaError(Expected a value with a length of at least 2, got "a"
+// Failure(Cause([Fail(SchemaError(Expected a value with a length of at least 2
 //   at [0]))]))
 
 console.log(String(Schema.decodeUnknownExit(schema)("aa:1.2")))
-// Failure(Cause([Fail(SchemaError(Expected an integer, got 1.2
+// Failure(Cause([Fail(SchemaError(Expected an integer
 //   at [2]))]))
 ```
 
@@ -920,7 +952,7 @@ type Encoded = {
 type Encoded = typeof schema.Encoded
 ```
 
-If you want the record part to be mutable, you can wrap it in `Schema.mutable`.
+If you want the record part to be mutable, apply `Schema.mutableKey` to its value schema.
 
 **Example** (Allowing dynamic keys to be mutable)
 
@@ -1133,7 +1165,7 @@ console.log(
     })
   )
 )
-// Failure(Cause([Fail(SchemaError: Expected a === b, got {"a":"a","b":"b","c":"c"})]))
+// Failure(Cause([Fail(SchemaError: Expected a === b)]))
 ```
 
 #### Mapping individual fields
@@ -1598,6 +1630,14 @@ const schema = Schema.Tuple([Schema.String, Schema.Number, Schema.Boolean]).mapE
 
 An array schema describes a variable-length list where every element shares the same type.
 
+### Mutability
+
+Array and tuple schemas are readonly by default. Use `Schema.mutable` to make them mutable.
+
+> [!NOTE]
+> `Schema.mutable` does not support an encoding attached directly to the array or tuple schema. Apply it before adding
+> such an encoding. Encodings on element schemas are supported.
+
 ### Unique Arrays
 
 You can deduplicate arrays using `Schema.UniqueArray`.
@@ -1610,7 +1650,7 @@ import { Schema } from "effect"
 const schema = Schema.UniqueArray(Schema.String)
 
 console.log(String(Schema.decodeUnknownExit(schema)(["a", "b", "a"])))
-// Failure(Cause([Fail(SchemaError: Expected an array with unique items, got ["a","b","a"])]))
+// Failure(Cause([Fail(SchemaError: Expected an array with unique items)]))
 ```
 
 ## Records
@@ -1638,9 +1678,12 @@ console.log(Schema.decodeUnknownSync(schema)({ a_b: 1, c_d: 2 }))
 // { aB: 1, cD: 2 }
 ```
 
-By default, if a transformation results in duplicate keys, the last value wins.
+When parsing sequentially, transformed keys are applied in selection order, so
+the later selected property wins if a transformation produces a duplicate key.
+With concurrency greater than `1`, completion order determines which value is
+retained.
 
-**Example** (Merging transformed keys by keeping the last one)
+**Example** (Keeping the later selected value when parsing sequentially)
 
 ```ts
 import { Schema, SchemaTransformation } from "effect"
@@ -1651,35 +1694,6 @@ const schema = Schema.Record(SnakeToCamel, Schema.Number)
 
 console.log(Schema.decodeUnknownSync(schema)({ a_b: 1, aB: 2 }))
 // { aB: 2 }
-```
-
-You can customize how key conflicts are resolved by providing a `combine` function.
-
-**Example** (Combining values for conflicting keys)
-
-```ts
-import { Schema, SchemaTransformation } from "effect"
-
-const SnakeToCamel = Schema.String.pipe(Schema.decode(SchemaTransformation.snakeToCamel()))
-
-const schema = Schema.Record(SnakeToCamel, Schema.Number, {
-  keyValueCombiner: {
-    decode: {
-      // When decoding, combine values of conflicting keys by summing them
-      combine: ([_, v1], [k2, v2]) => [k2, v1 + v2] // you can pass a Semigroup to combine keys
-    },
-    encode: {
-      // Same logic applied when encoding
-      combine: ([_, v1], [k2, v2]) => [k2, v1 + v2]
-    }
-  }
-})
-
-console.log(Schema.decodeUnknownSync(schema)({ a_b: 1, aB: 2 }))
-// { aB: 3 }
-
-console.log(Schema.encodeUnknownSync(schema)({ a_b: 1, aB: 2 }))
-// { a_b: 3 }
 ```
 
 ### Number Keys
@@ -1700,7 +1714,7 @@ console.log(String(Schema.decodeUnknownExit(schema)({ 1.1: "ignored" })))
 // Success({})
 
 console.log(String(Schema.decodeUnknownExit(schema)({ 1: null })))
-// Failure(Cause([Fail(SchemaError(Expected string, got null
+// Failure(Cause([Fail(SchemaError(Expected string
 //  at ["1"]))]))
 ```
 
@@ -1810,7 +1824,7 @@ import { Schema } from "effect"
 const schema = Schema.Union([Schema.NonEmptyString, Schema.Number])
 
 console.log(String(Schema.decodeUnknownExit(schema)("")))
-// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 1, got "")]))
+// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 1)]))
 ```
 
 If none of the union members match the input, the union fails with a message at the top level.
@@ -1823,7 +1837,7 @@ import { Schema } from "effect"
 const schema = Schema.Union([Schema.NonEmptyString, Schema.Number])
 
 console.log(String(Schema.decodeUnknownExit(schema)(null)))
-// Failure(Cause([Fail(SchemaError: Expected string | number, got null)]))
+// Failure(Cause([Fail(SchemaError: Expected string | number)]))
 ```
 
 This behavior is especially helpful when working with literal values. Instead of producing a separate error for each literal (as in version 3), the schema reports a single, clear message.
@@ -1836,7 +1850,7 @@ import { Schema } from "effect"
 const schema = Schema.Literals(["a", "b"])
 
 console.log(String(Schema.decodeUnknownExit(schema)(null)))
-// Failure(Cause([Fail(SchemaError: Expected "a" | "b", got null)]))
+// Failure(Cause([Fail(SchemaError: Expected "a" | "b")]))
 ```
 
 ### Exclusive Unions
@@ -1853,7 +1867,7 @@ const schema = Schema.Union([Schema.Struct({ a: Schema.String }), Schema.Struct(
 })
 
 console.log(String(Schema.decodeUnknownExit(schema)({ a: "a", b: 1 })))
-// Failure(Cause([Fail(SchemaError: Expected exactly one member to match the input {"a":"a","b":1})]))
+// Failure(Cause([Fail(SchemaError: Expected exactly one member to match)]))
 ```
 
 ### Deriving Unions
@@ -1996,7 +2010,7 @@ The result is a tagged union schema with built-in helpers based on the tag value
 
 ### Augmenting Tagged Unions
 
-The `asTaggedUnion` function enhances a tagged union schema by adding helper methods for working with its members.
+The `toTaggedUnion` function enhances a tagged union schema by adding helper methods for working with its members.
 
 You need to specify the name of the tag field used to differentiate between variants.
 
@@ -2022,6 +2036,8 @@ This helper has some advantages over a dedicated constructor:
 - You can choose among multiple possible tag fields if present.
 - It supports unions that include nested unions.
 
+Each member must have a unique discriminant property key. `toTaggedUnion` throws when it encounters a duplicate. Numeric and string values that resolve to the same property key, such as `1` and `"1"`, are considered duplicates.
+
 **Note**. If the tag is the standard `_tag` field, you can use `Schema.TaggedUnion` instead.
 
 #### Accessing Members by Tag
@@ -2034,6 +2050,18 @@ The `cases` property gives direct access to each member schema of the union.
 const A = tagged.cases.A
 const B = tagged.cases.B
 const C = tagged.cases.C
+```
+
+#### Accessing Discriminant Values
+
+The `discriminants` property contains the decoded discriminant values in the same order as the flattened union members. Its type preserves the exact tuple of values.
+
+**Example** (Deriving a literal schema from discriminants)
+
+```ts
+const Tags = Schema.Literals(tagged.discriminants)
+
+// Schema.Literals<readonly ["A", "B", "C"]>
 ```
 
 #### Checking Membership in a Subset of Tags
@@ -2191,7 +2219,7 @@ console.log(String(Schema.decodeUnknownExit(URLSchema)(new URL("https://example.
 // Success(https://example.com/)
 
 console.log(String(Schema.decodeUnknownExit(URLSchema)(null)))
-// Failure(Cause([Fail(SchemaError(Expected <Declaration>, got null))]))
+// Failure(Cause([Fail(SchemaError(Expected <Declaration>))]))
 ```
 
 > **Tip**: For simple `instanceof` checks, prefer `Schema.instanceOf(URL)`, it wraps `Schema.declare` with an `instanceof` guard automatically.
@@ -2211,14 +2239,14 @@ const URLSchema = Schema.declare(
 )
 
 console.log(String(Schema.decodeUnknownExit(URLSchema)(null)))
-// Failure(Cause([Fail(SchemaError(Expected URL, got null))]))
+// Failure(Cause([Fail(SchemaError(Expected URL))]))
 //                                          ^^^
 //                          Now the error message shows "URL" instead of "<Declaration>"
 ```
 
 ### Adding JSON support with `toCodecJson`
 
-`Schema.toCodecJson` derives a codec that can convert your type **to and from JSON**. By default, declared schemas have no JSON representation — encoding produces `null`:
+`Schema.toCodecJson` derives a codec that can convert your type **to and from JSON**. By default, declared schemas use `Schema.Json` as their encoded representation. This keeps codec derivation defined, but it does not invent a serialization for your custom type. For example, a `URL` instance is not itself a JSON value, so encoding fails:
 
 ```ts
 import { Schema } from "effect"
@@ -2231,10 +2259,9 @@ const URLSchema = Schema.declare(
 // Derive a JSON codec from the schema
 const codec = Schema.toCodecJson(URLSchema)
 
-// Encoding a URL produces null because Schema doesn't know
-// how to serialize a URL to JSON yet
+// Encoding fails because Schema doesn't know how to serialize a URL to JSON yet
 console.log(String(Schema.encodeUnknownExit(codec)(new URL("https://example.com"))))
-// Success(null)
+// Failure(Cause([Fail(SchemaError(Expected JSON value))]))
 ```
 
 To fix this, provide a `toCodecJson` annotation. This annotation is a function that returns an `AST.Link`, a bridge that describes how to convert between your custom type and a JSON-friendly representation.
@@ -2244,10 +2271,12 @@ You build a `Link` using `Schema.link<T>()`, which takes two arguments:
 1. **A JSON-side schema** — the shape of the JSON value (e.g. `Schema.String` for a URL string)
 2. **A transformation** — how to convert back and forth between your type and the JSON value
 
+The annotation only defines the link; the consuming parser chooses its execution and failure handling. Transformations may be asynchronous, may fail, and may use optional services, but cannot require services not declared by the input schema.
+
 **Example** (Making `URL` JSON-serializable)
 
 ```ts
-import { Effect, Option, Schema, SchemaIssue, SchemaTransformation } from "effect"
+import { Effect, Schema, SchemaIssue, SchemaTransformation } from "effect"
 
 const URLSchema = Schema.declare(
   (u): u is URL => u instanceof URL,
@@ -2261,10 +2290,10 @@ const URLSchema = Schema.declare(
         // How to convert between URL and string
         SchemaTransformation.transformOrFail<URL, string>({
           // JSON string -> URL (may fail if the string is not a valid URL)
-          decode: (s) =>
+          decode: (s, options) =>
             Effect.try({
               try: () => new URL(s),
-              catch: (e) => new SchemaIssue.InvalidValue(Option.some(s), { message: globalThis.String(e) })
+              catch: () => new SchemaIssue.InvalidValue({ message: "Invalid URL string" }, s, options)
             }),
           // URL -> JSON string (always succeeds)
           encode: (url) => Effect.succeed(url.href)
@@ -2319,7 +2348,7 @@ The parsing function you return from `run` is responsible for:
 **Example** (A generic `Box<A>` container)
 
 ```ts
-import { Effect, Option, Schema, SchemaIssue, SchemaParser } from "effect"
+import { Effect, Schema, SchemaIssue, SchemaParser } from "effect"
 
 // 1. Define the type
 interface Box<A> {
@@ -2340,7 +2369,7 @@ const Box = <A extends Schema.Top>(item: A) =>
     (u, ast, options) => {
       // First, check the outer shape
       if (!isBox(u)) {
-        return Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(u)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast, u, options))
       }
       // Then, decode the inner value using the item codec
       return Effect.mapBothEager(
@@ -2361,7 +2390,7 @@ console.log(String(Schema.decodeUnknownExit(schema)({ value: "1" })))
 // Success({ value: 1 })
 
 console.log(String(Schema.decodeUnknownExit(schema)({ value: "a" })))
-// Failure(Cause([Fail(SchemaError(Expected a finite number, got NaN
+// Failure(Cause([Fail(SchemaError(Expected a finite number
 //   at ["value"]))]))
 ```
 
@@ -2384,7 +2413,7 @@ import { Schema } from "effect"
 const schema = Schema.String.check(Schema.makeFilter((s) => s.length >= 3))
 
 console.log(String(Schema.decodeUnknownExit(schema)("")))
-// Failure(Cause([Fail(SchemaError: Expected <filter>, got "")]))
+// Failure(Cause([Fail(SchemaError: Expected <filter>)]))
 ```
 
 You can attach annotations and provide a custom error message when defining a filter.
@@ -2429,10 +2458,10 @@ import { Schema } from "effect"
 const Username = Schema.NonEmptyString.annotate({ identifier: "Username" })
 
 console.log(String(Schema.decodeUnknownExit(Username)(null)))
-// Failure(Cause([Fail(SchemaError: Expected Username, got null)]))
+// Failure(Cause([Fail(SchemaError: Expected Username)]))
 
 console.log(String(Schema.decodeUnknownExit(Username)("")))
-// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 1, got "")]))
+// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 1)]))
 ```
 
 ### Filter return shapes
@@ -2543,7 +2572,7 @@ const schema = Schema.String.check(
 )
 
 console.log(String(Schema.decodeUnknownExit(schema)(" a")))
-// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3, got " a")]))
+// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3)]))
 ```
 
 **Example** (Using `isMinLength` with an object that has `length`)
@@ -2555,7 +2584,7 @@ import { Schema } from "effect"
 const schema = Schema.Struct({ length: Schema.Number }).check(Schema.isMinLength(3))
 
 console.log(String(Schema.decodeUnknownExit(schema)({ length: 2 })))
-// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3, got {"length":2}]))
+// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3)]))
 ```
 
 **Example** (Validating array length)
@@ -2567,7 +2596,7 @@ import { Schema } from "effect"
 const schema = Schema.Array(Schema.String).check(Schema.isMinLength(3))
 
 console.log(String(Schema.decodeUnknownExit(schema)(["a", "b"])))
-// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3, got ["a","b"]]))
+// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3)]))
 ```
 
 ## Multiple Issues Reporting
@@ -2589,8 +2618,8 @@ console.log(
   )
 )
 /*
-Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3, got " a"
-Expected a string with no leading or trailing whitespace, got " a")]))
+Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3
+Expected a string with no leading or trailing whitespace)]))
 */
 ```
 
@@ -2615,7 +2644,7 @@ console.log(
     })
   )
 )
-// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3, got " a")]))
+// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3)]))
 ```
 
 ## Filter Groups
@@ -2672,16 +2701,16 @@ const branded = Schema.String.pipe(Schema.brand("UserId"))
 
 Some filters check the structure of a value rather than its contents — for example, the number of items in an array or the number of keys in an object. These are called **structural filters**.
 
-Structural filters are evaluated separately from item-level filters, which allows multiple issues to be reported when `{ errors: "all" }` is used. Examples include:
+Examples include:
 
 - `isMinLength` or `isMaxLength` on arrays
 - `isMinSize` or `isMaxSize` on objects with a `size` property
 - `isMinProperties` or `isMaxProperties` on objects
 - any constraint that applies to the "shape" of a value rather than to its nested values
 
-These filters are evaluated separately from item-level filters and allow multiple issues to be reported when `{ errors: "all" }` is used.
+Structural filters run only after the base array, object, or declaration and its nested values parse successfully. If a nested value fails, its issue is reported but structural filters on the containing value are not evaluated, even with `{ errors: "all" }`.
 
-**Example** (Validating an array with item and structural constraints)
+**Example** (A nested failure prevents the structural filter from running)
 
 ```ts
 import { Schema } from "effect"
@@ -2694,10 +2723,8 @@ const schema = Schema.Struct({
 
 console.log(String(Schema.decodeUnknownExit(schema)({ tags: ["a", ""] }, { errors: "all" })))
 /*
-Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 1, got ""
-  at ["tags"][1]
-Expected a value with a length of at least 3, got ["a",""]
-  at ["tags"])]))
+Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 1
+  at ["tags"][1])]))
 */
 ```
 
@@ -2710,7 +2737,7 @@ Define an effectful filter with `Getter.checkEffect` as part of a transformation
 **Example** (Asynchronous validation of a numeric value)
 
 ```ts
-import { Effect, Option, Result, Schema, SchemaGetter, SchemaIssue } from "effect"
+import { Effect, Result, Schema, SchemaGetter, SchemaIssue } from "effect"
 
 // Simulated API call that fails when userId is 0
 const myapi = (userId: number) =>
@@ -2723,13 +2750,15 @@ const myapi = (userId: number) =>
 
 const schema = Schema.Finite.pipe(
   Schema.decode({
-    decode: SchemaGetter.checkEffect((n) =>
+    decode: SchemaGetter.checkEffect((n, options) =>
       Effect.gen(function*() {
         // Call the async API and wrap the result in a Result
         const user = yield* Effect.result(myapi(n))
 
         // If the result is an error, return a SchemaIssue
-        return Result.isFailure(user) ? new SchemaIssue.InvalidValue(Option.some(n), { title: "not found" }) : undefined // No issue, value is valid
+        return Result.isFailure(user)
+          ? new SchemaIssue.InvalidValue({ message: "not found" }, n, options)
+          : undefined // No issue, value is valid
       })
     ),
     encode: SchemaGetter.passthrough()
@@ -3192,16 +3221,16 @@ This is useful when you need to validate input or enforce rules that may not alw
 **Example** (Converting a string URL into a `URL` object)
 
 ```ts
-import { Effect, Option, Schema, SchemaIssue, SchemaTransformation } from "effect"
+import { Effect, Schema, SchemaIssue, SchemaTransformation } from "effect"
 
 const URLFromString = Schema.String.pipe(
   Schema.decodeTo(
     Schema.instanceOf(URL),
     SchemaTransformation.transformOrFail({
-      decode: (s) =>
+      decode: (s, options) =>
         Effect.try({
           try: () => new URL(s),
-          catch: () => new Issue.InvalidValue(Option.some(s), { message: `Invalid URL string: ${s}` })
+          catch: () => new SchemaIssue.InvalidValue({ message: "Invalid URL string" }, s, options)
         }),
       encode: (url) => Effect.succeed(url.href)
     })
@@ -3661,7 +3690,7 @@ class Person extends Schema.Opaque<Person>()(
 ) {}
 
 console.log(String(Schema.decodeUnknownExit(Person)(null)))
-// Failure(Cause([Fail(SchemaError: Expected Person, got null)]))
+// Failure(Cause([Fail(SchemaError: Expected Person)]))
 ```
 
 When you call methods like `annotate` on an opaque struct, you get back the original struct, not a new class.
@@ -3826,7 +3855,7 @@ g(A.make({ a: "a" })) // error: Argument of type 'A' is not assignable to parame
 
 ## Schema as a Class
 
-`Schema.asClass` turns any schema into a class that can be extended with `extends`. The resulting class inherits the full schema API (e.g. `annotate`) and supports static methods that reference `this`.
+Any schema can be extended directly with `extends`. The resulting class inherits the full schema API (e.g. `annotate`) and supports static methods that reference `this`.
 
 Unlike `Schema.Opaque`, it does **not** make the decoded type nominally distinct, and unlike `Schema.Class`, it does **not** create prototype-backed instances with methods or constructors. It is a lightweight way to attach custom static helpers to a schema.
 
@@ -3835,7 +3864,7 @@ Unlike `Schema.Opaque`, it does **not** make the decoded type nominally distinct
 ```ts
 import { Schema } from "effect"
 
-class MyString extends Schema.asClass(Schema.String) {
+class MyString extends Schema.String {
   static readonly decodeUnknownSync = Schema.decodeUnknownSync(this)
 }
 
@@ -3848,9 +3877,7 @@ console.log(MyString.decodeUnknownSync("a"))
 ```ts
 import { Schema } from "effect"
 
-class MyStruct extends Schema.asClass(
-  Schema.Struct({ name: Schema.String })
-) {
+class MyStruct extends Schema.Struct({ name: Schema.String }) {
   static readonly decodeUnknownSync = Schema.decodeUnknownSync(this)
 }
 
@@ -3860,12 +3887,12 @@ console.log(MyStruct.decodeUnknownSync({ name: "a" }))
 
 ### Subclassing
 
-You can extend an `asClass` class to layer on more static helpers:
+You can extend a schema class to layer on more static helpers:
 
 ```ts
 import { Schema } from "effect"
 
-class MyString extends Schema.asClass(Schema.FiniteFromString) {
+class MyString extends Schema.FiniteFromString {
   static readonly decodeUnknownSync = Schema.decodeUnknownSync(this)
 }
 
@@ -3909,7 +3936,7 @@ try {
   }
 }
 /*
-Expected a finite number, got NaN
+Expected a finite number
   at [1]
 */
 ```
@@ -4023,7 +4050,7 @@ class PersonWithEmail extends Person {
 **Example** (Extending Data.Error)
 
 ```ts
-import { Data, Effect, identity, Schema, SchemaTransformation, SchemaUtils } from "effect"
+import { Data, Effect, identity, Schema, SchemaTransformation } from "effect"
 
 const Props = Schema.Struct({
   message: Schema.String
@@ -4069,9 +4096,6 @@ const schema = Schema.instanceOf(Err, {
     json: () => Schema.link<Err>()(Props, transformation)
   }
 }).pipe(Schema.encodeTo(Props, transformation))
-
-// built-in helper?
-const builtIn = SchemaUtils.getNativeClassSchema(Err, { encoding: Props })
 ```
 
 ### Class API
@@ -4118,14 +4142,14 @@ try {
 } catch (error: any) {
   console.log(error.message)
 }
-// Expected a === b, got {"a":"a","b":"b"}
+// Expected a === b
 
 try {
   Schema.decodeUnknownSync(A)({ a: "a", b: "b" })
 } catch (error: any) {
   console.log(error.message)
 }
-// Expected a === b, got {"a":"a","b":"b"}
+// Expected a === b
 ```
 
 #### Branded Classes
@@ -4405,19 +4429,19 @@ console.log(Schema.decodeUnknownSync(Animal)({ _tag: "Cat", lives: 9 }))
 
 All features from `Class` are available: `extend`, `annotate`, `check`, branded classes, and recursive definitions.
 
-### ErrorClass
+### Error
 
 ```ts
 import { Schema } from "effect"
 
-class E extends Schema.ErrorClass<E>("E")({
+class E extends Schema.Error<E>("E")({
   id: Schema.Number
 }) {}
 ```
 
-### TaggedErrorClass
+### TaggedError
 
-`TaggedErrorClass` combines `ErrorClass` with an automatic `_tag` field, giving you a tagged error that can be caught with `Effect.catchTag`.
+`TaggedError` combines `Error` with an automatic `_tag` field, giving you a tagged error that can be caught with `Effect.catchTag`.
 
 Like `TaggedClass`, the tag value doubles as the identifier by default, and you can pass an explicit identifier as the first argument to override it.
 
@@ -4426,7 +4450,7 @@ Like `TaggedClass`, the tag value doubles as the identifier by default, and you 
 ```ts
 import { Effect, Schema } from "effect"
 
-class HttpError extends Schema.TaggedErrorClass<HttpError>()("HttpError", {
+class HttpError extends Schema.TaggedError<HttpError>()("HttpError", {
   status: Schema.Number,
   message: Schema.String
 }) {}
@@ -4445,11 +4469,11 @@ const recovered = program.pipe(
 ```ts
 import { Effect, Schema } from "effect"
 
-class NotFound extends Schema.TaggedErrorClass<NotFound>()("NotFound", {
+class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {
   path: Schema.String
 }) {}
 
-class Unauthorized extends Schema.TaggedErrorClass<Unauthorized>()("Unauthorized", {
+class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", {
   reason: Schema.String
 }) {}
 
@@ -4470,7 +4494,7 @@ const recovered = program.pipe(
 )
 ```
 
-All features from `ErrorClass` are available: `extend`, `annotate`, and `check`.
+All features from `Error` are available: `extend`, `annotate`, and `check`.
 
 # Serialization
 
@@ -4774,6 +4798,8 @@ A canonical codec describes how values that match a schema should be converted t
 2. **AST transformation**: the codec builder walks the schema AST and produces a new schema that represents the serialized form (this traversal is handled by Effect).
 3. **Recursive composition**: codecs apply through nested structures (objects, arrays, unions, and so on) without you having to wire everything manually.
 
+Canonical codec derivation does not run transformations; the consuming parser chooses execution and failure handling. Annotation links may be asynchronous, may fail, and may use optional services, but cannot add required services absent from the derived codec type. `toCodecIso` declares none, while `toCodecJson` and `toCodecStringTree` preserve the input schema's requirements.
+
 The next example shows why a custom class needs a codec when working with JSON.
 
 **Example** (A custom class that does not round-trip through JSON)
@@ -4795,30 +4821,23 @@ class Point {
 const PointSchema = Schema.instanceOf(Point)
 ```
 
-Even if encoding produces something JSON-looking, decoding cannot rebuild a `Point` instance (including its prototype and methods) from plain JSON data.
+Without an annotation, `Schema.toCodecJson` uses `Schema.Json` as the encoded representation. A `Point` instance is not a JSON value, and a plain object parsed from JSON is not a `Point` instance (including its prototype and methods), so neither direction can bridge the two representations.
 
 ```ts
-// Encode a Point instance using the schema, then stringify it.
-// This produces a plain JSON object, not a class instance.
-const json = JSON.stringify(Schema.encodeUnknownSync(PointSchema)(new Point(1, 2)))
+const codecJson = Schema.toCodecJson(PointSchema)
 
-console.log(json)
-// '{"x":1,"y":2}'
+console.log(String(Schema.encodeUnknownExit(codecJson)(new Point(1, 2))))
+// Failure(Cause([Fail(SchemaError(Expected JSON value))]))
 
-// Decode attempts to create a Point instance from parsed JSON.
-// This fails because JSON.parse returns a plain object, not `new Point(...)`.
-try {
-  Schema.decodeUnknownSync(PointSchema)(JSON.parse(json))
-} catch (error) {
-  console.error(String(error))
-}
+console.log(String(Schema.decodeUnknownExit(codecJson)({ x: 1, y: 2 })))
+// Failure(Cause([Fail(SchemaError(Expected <Declaration>))]))
 ```
 
-The same issue shows up when generating a JSON Schema document: since the schema represents a class instance and there is no JSON representation for it, the generator falls back to a placeholder.
+The same issue shows up when generating a JSON Schema document. Since the opaque declaration has no structural JSON representation, the generator emits an unconstrained JSON Schema:
 
 ```ts
 console.log(Schema.toJsonSchemaDocument(PointSchema))
-// { dialect: 'draft-2020-12', schema: { type: 'null' }, definitions: {} }
+// { dialect: 'draft-2020-12', schema: {}, definitions: {} }
 ```
 
 #### Configuring the Codec
@@ -4902,6 +4921,8 @@ When you call `Schema.toCodecJson(schema)`, the library:
 2. **Finds annotations**: it looks for `toCodecJson` annotations on nodes.
 3. **Applies transformations**: it replaces types that are not JSON-friendly with types that are.
 4. **Composes recursively**: it builds codecs for nested schemas by combining the codecs of their parts.
+
+When this traversal adds a transformation because a node has no direct JSON representation, its checks and annotations remain on the source node; they are not copied to the artificial JSON target. The codec still applies source checks after transforming values.
 
 #### Custom Encodings
 
@@ -5143,6 +5164,11 @@ Output:
 
 To generate a draft-07 JSON Schema, use `JsonSchema.toDocumentDraft07` to convert the draft-2020-12 JSON Schema.
 
+The dialect converters preserve unknown and custom keywords as opaque values. When a known keyword cannot be
+represented by the target dialect, or an opaque keyword would become active and change meaning in that dialect,
+conversion throws instead of silently changing its meaning. For example, Draft-07 cannot represent dynamic
+references, unevaluated constraints, or non-default `minContains` / `maxContains` cardinality.
+
 **Example** (Tuple to draft-7 JSON Schema)
 
 ```ts
@@ -5186,6 +5212,8 @@ Use `.annotate(...)` to attach standard JSON Schema annotations:
 - `examples`
 - `readOnly`
 - `writeOnly`
+
+`Schema.toJsonSchemaDocument` compiles the canonical JSON target. Checks and annotations left on the source side of an artificial transformation therefore do not appear in the generated document. Put metadata on an explicit JSON target when it must appear there.
 
 **Example** (Adding basic annotations)
 
@@ -5354,7 +5382,7 @@ console.log(JSON.stringify(document, null, 2))
 
 #### Defining a JSON-safe representation for custom types
 
-This example shows how `Schema.toCodecJson` and `Schema.toJsonSchema` can describe the same JSON shape for a custom type.
+This example shows how `Schema.toCodecJson` and `Schema.toJsonSchemaDocument` can describe the same JSON shape for a custom type.
 
 `Headers` is not JSON-friendly by default. `JSON.stringify(new Headers({ a: "b" }))` produces `{}` because the header data is not stored in enumerable properties. By adding a `toCodecJson` annotation, you define a JSON-safe representation and use it for both serialization and JSON Schema generation.
 
@@ -5541,412 +5569,6 @@ console.log(JSON.stringify(document, null, 2))
 */
 ```
 
-### Generating an Arbitrary from a Schema
-
-Property-based tests need generators. `Schema.toArbitrary` derives a
-`fast-check` `Arbitrary` that generates decoded `Type` values accepted by the
-schema.
-
-Most schemas do not need any extra work:
-
-```ts
-import { Schema } from "effect"
-import { FastCheck } from "effect/testing"
-
-const Person = Schema.Struct({
-  name: Schema.String,
-  age: Schema.Int.check(Schema.isBetween({ minimum: 18, maximum: 80 }))
-})
-
-const PersonArbitrary = Schema.toArbitrary(Person)
-
-console.log(FastCheck.sample(PersonArbitrary, 3))
-```
-
-Use `Schema.toArbitraryLazy` only when you want the caller to provide
-`fast-check`:
-
-```ts
-import { Schema } from "effect"
-import { FastCheck } from "effect/testing"
-
-const makeStringArbitrary = Schema.toArbitraryLazy(Schema.String)
-
-const StringArbitrary = makeStringArbitrary(FastCheck)
-```
-
-`Schema.Never` and declaration schemas without a `toArbitrary` annotation cannot
-be derived automatically.
-
-#### Filters
-
-Generated values are always checked by the schema filters before they are
-returned. The important question is whether a filter can also help choose a good
-generator.
-
-Built-in filters already do this:
-
-```ts
-import { Schema } from "effect"
-
-const Username = Schema.String.check(
-  Schema.isMinLength(3),
-  Schema.isMaxLength(20),
-  Schema.isPattern(/^[a-z0-9_]+$/)
-)
-
-const PositiveInteger = Schema.Int.check(
-  Schema.isGreaterThanOrEqualTo(1)
-)
-
-const Tags = Schema.Array(Schema.String).check(
-  Schema.isMinLength(1),
-  Schema.isUnique()
-)
-```
-
-For these schemas, `toArbitrary` does not generate random unconstrained strings,
-numbers, or arrays and then hope the filters pass. It uses the length, range,
-pattern, and uniqueness metadata to build a better generator first.
-
-A custom filter without metadata is still correct, but may be inefficient:
-
-```ts
-import { Schema } from "effect"
-
-const isPalindrome = (s: string) => s === Array.from(s).reverse().join("")
-
-const Palindrome = Schema.String.check(
-  Schema.makeFilter(isPalindrome, {
-    expected: "a palindrome"
-  })
-)
-```
-
-This works because the final predicate check rejects strings that are not
-palindromes. It may need many attempts, because the base string generator has no
-reason to produce mirrored strings.
-
-#### Reports
-
-Use `{ report: true }` when you want to know which filters did not guide
-generation:
-
-```ts
-import { Schema } from "effect"
-
-const isPalindrome = (s: string) => s === Array.from(s).reverse().join("")
-
-const Palindrome = Schema.String.check(
-  Schema.makeFilter(isPalindrome, {
-    expected: "a palindrome"
-  })
-)
-
-const result = Schema.toArbitrary(Palindrome, { report: true })
-
-result.value
-result.report.warnings
-```
-
-An `OpaqueFilter` warning means: "this filter is still checked, but it did not
-help build the generator."
-
-Reports contain warnings only. Unsupported schemas, impossible constraints,
-invalid candidates, and recursive schemas without a finite terminal path still
-fail immediately.
-
-#### Custom Filters With Constraints
-
-If part of a custom filter can be described as a normal generation constraint,
-attach `arbitrary.constraint` to the filter. The constraint does not have to
-prove the whole predicate; it just makes the base generator closer to the values
-the predicate accepts.
-
-```ts
-import { Order, Schema } from "effect"
-
-const isPrimeNumber = (n: number) => {
-  if (!Number.isInteger(n) || n < 2) {
-    return false
-  }
-  for (let divisor = 2; divisor * divisor <= n; divisor++) {
-    if (n % divisor === 0) {
-      return false
-    }
-  }
-  return true
-}
-
-const prime = Schema.makeFilter(isPrimeNumber, {
-  expected: "a prime number",
-  arbitrary: {
-    constraint: {
-      integer: true,
-      ordered: {
-        order: Order.Number,
-        minimum: 2
-      }
-    }
-  }
-})
-
-const Prime = Schema.Number.check(prime)
-```
-
-The filter still checks primality. The constraint only tells `toArbitrary` not
-to waste time on non-integers or numbers below `2`.
-
-Think of `constraint` as a small vocabulary that the current schema node can
-understand:
-
-- On strings, `minLength` and `maxLength` mean string length.
-- On arrays, `minLength` and `maxLength` mean array length.
-- On objects, `minLength` and `maxLength` mean final own-property count.
-- On sets, maps, hash collections, and chunks, `minLength` and `maxLength` mean final collection size.
-- `patterns` apply to string generation.
-- `integer`, `noNaN`, `noInfinity`, `valid`, and `unique` are enabled when any contributing filter sets them.
-- `ordered` stores bounds for ordered values such as numbers, bigints, dates, `DateTime`, and `BigDecimal`.
-
-Fields that do not make sense for the current node are ignored. The final filter
-check still validates every generated value.
-
-#### Custom Filters With Candidates
-
-Use a candidate when the filter cannot be expressed with the constraint
-vocabulary.
-
-```ts
-import { Schema } from "effect"
-
-const reverse = (s: string) => Array.from(s).reverse().join("")
-
-const isPalindrome = (s: string) => s === reverse(s)
-
-const palindrome = Schema.makeFilter(
-  isPalindrome,
-  {
-    expected: "a palindrome",
-    arbitrary: {
-      candidate: {
-        weight: 5,
-        make: (fc) => fc.string().map((half) => `${half}${reverse(half)}`)
-      }
-    }
-  }
-)
-
-const Palindrome = Schema.String.check(palindrome)
-```
-
-A candidate is an extra source used together with the schema node's base
-generator. The base generator has weight `1`. A candidate has weight `1` unless
-you set another positive integer weight.
-
-With one candidate at weight `5`, fast-check tries the candidate roughly five
-times as often as the base generator. Candidate values are still checked by all
-filters, so a bad candidate can waste attempts but cannot produce invalid
-values.
-
-`make` receives the arbitrary context and may return `undefined` when the
-candidate should not be used for that context.
-
-#### Schema-Level Overrides
-
-Use a `toArbitrary` annotation when you want to replace the generator for a
-schema node.
-
-The annotation is not limited to declaration schemas. You can attach it to a
-normal schema with `.annotate(...)`:
-
-```ts
-import { Schema } from "effect"
-
-const Name = Schema.String.annotate({
-  toArbitrary: () => (fc) => fc.constantFrom("Alice", "Bob", "Carol")
-})
-```
-
-Put override annotations on base schemas when possible, before adding filters:
-
-```ts
-const Name = Schema.String.annotate({
-  toArbitrary: () => (fc) => fc.constantFrom("Alice", "Bob", "Carol")
-}).check(Schema.isMinLength(1))
-```
-
-This shape is easier to reason about. The override provides the base generator;
-the filter remains a normal filter. Schema still checks generated values at the
-end.
-
-Avoid putting an override on a schema that already has filters unless the
-override intentionally handles those filters too:
-
-```ts
-const Name = Schema.String.check(Schema.isMinLength(1)).annotate({
-  toArbitrary: () => (fc) => fc.constant("")
-})
-```
-
-This is valid TypeScript, but it is a bad generator: it always generates a value
-that the filter rejects.
-
-The second argument of a `toArbitrary` hook is the arbitrary context. Its
-`constraint` field contains constraints collected from filters on the same
-schema node as the override. If the override is placed before `.check(...)`, the
-context does not include the later filters. If the override is placed after
-`.check(...)`, the context includes those filters and the override must respect
-them.
-
-`context.recursion` is present while deriving inside a recursive schema.
-
-#### Declaration Schemas
-
-Declaration schemas are opaque to Schema. If you define one, provide a
-`toArbitrary` hook.
-
-For an atomic declaration, return a normal `fast-check` arbitrary:
-
-```ts
-import { Schema } from "effect"
-
-const Url = Schema.instanceOf(globalThis.URL, {
-  title: "URL",
-  toArbitrary: () => (fc) => fc.webUrl().map((s) => new globalThis.URL(s))
-})
-```
-
-Generic declarations receive one derivation per type parameter:
-
-- `arbitrary`: the normal generator for the type parameter.
-- `terminal`: a finite generator for the type parameter, used to close recursive generation.
-
-For an opaque wrapper type, you usually map both sources in the same way:
-
-```ts
-import { Effect, Option, Schema, SchemaIssue, SchemaParser } from "effect"
-
-class Box<A> {
-  private constructor(private readonly value: A) {}
-
-  static make<A>(value: A): Box<A> {
-    return new Box(value)
-  }
-
-  static unbox<A>(box: Box<A>): A {
-    return box.value
-  }
-}
-
-const isBox = (u: unknown): u is Box<unknown> => u instanceof Box
-
-const BoxSchema = <A extends Schema.Top>(value: A) =>
-  Schema.declareConstructor<Box<A["Type"]>, Box<A["Encoded"]>>()(
-    [value],
-    ([valueCodec]) => (input, ast, options) => {
-      if (!isBox(input)) {
-        return Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(input)))
-      }
-      return Effect.map(
-        SchemaParser.decodeUnknownEffect(valueCodec)(Box.unbox(input), options),
-        Box.make
-      )
-    },
-    {
-      toArbitrary: ([value]) => () => ({
-        arbitrary: value.arbitrary.map(Box.make),
-        terminal: value.terminal?.map(Box.make)
-      })
-    }
-  )
-```
-
-This looks like duplicated code, but it is not the same generator twice. It is
-the same opaque constructor applied to two different sources.
-
-Suppose someone later builds a recursive schema like this:
-
-```ts
-interface Tree<A> {
-  readonly value: A
-  readonly children: ReadonlyArray<Tree<A>>
-}
-
-type BoxedTree<A> = Box<Tree<A>>
-```
-
-`Box` does not know whether `A` is recursive. If `A` is `Tree<A>`, then
-`value.arbitrary` may generate a recursive tree, while `value.terminal` is the
-finite tree generator used when the recursion budget is exhausted. Mapping both
-sources through `Box.make` preserves that information. If `Box` returned only
-`arbitrary`, it would hide the finite path from outer recursive schemas.
-
-If the type parameter has no finite terminal generator, `value.terminal` is
-`undefined`, and the wrapper cannot provide a terminal branch either.
-
-#### Integration with Synthetic Data Generation Tools
-
-Synthetic data libraries such as `@faker-js/faker` are useful when the generated
-values should look realistic. Put them behind a Fast-Check arbitrary instead of
-calling them directly, so Fast-Check still controls randomness and shrinking.
-
-```ts
-import { faker } from "@faker-js/faker"
-import { Schema } from "effect"
-import { FastCheck } from "effect/testing"
-
-/**
- * Make it easy to plug a Faker generator into a Schema's `toArbitrary` override.
- * The seed comes from Fast-Check so data is reproducible and shrinks correctly.
- */
-function fake<A>(
-  gen: (f: typeof faker) => A
-): Schema.Annotations.ToArbitrary.Declaration<A, readonly []> {
-  return () => (fc) =>
-    fc.nat().map((seed) => {
-      faker.seed(seed)
-      return gen(faker)
-    })
-}
-
-const FirstName = Schema.String.annotate({
-  toArbitrary: fake((faker) => faker.person.firstName())
-})
-
-const LastName = Schema.String.annotate({
-  toArbitrary: fake((faker) => faker.person.lastName())
-})
-
-const JobTitle = Schema.String.annotate({
-  toArbitrary: fake((faker) => faker.person.jobTitle())
-})
-
-const Company = Schema.String.annotate({
-  toArbitrary: fake((faker) => faker.company.name())
-})
-
-const Person = Schema.Struct({
-  firstName: FirstName,
-  lastName: LastName,
-  jobTitle: JobTitle,
-  company: Company
-})
-
-console.log(FastCheck.sample(Schema.toArbitrary(Person), 3))
-```
-
-These overrides are useful because the values have domain shape: names look like
-names, job titles look like job titles, and companies look like companies. For
-plain numeric ranges, prefer Schema constraints and the default arbitrary
-derivation.
-
-If you combine a Faker source with filters, put the override on the base schema
-first and add filters afterwards. This keeps the responsibilities simple: the
-override chooses a realistic source, and the filter remains the final validation
-rule. If you put the override after `.check(...)`, the override must respect
-those filters itself, or generation will spend time producing values that are
-rejected.
-
 ### Generating an Equivalence from a Schema
 
 An equivalence function checks whether two values are structurally equal according to the schema's definition. Schema derives this automatically, so you do not need to write manual comparison logic.
@@ -6057,6 +5679,8 @@ console.log(_s.replace("b", new B({ a: new A({ s: "a" }) })))
 // B { a: A { s: 'b' } }
 ```
 
+Reading through the generated `Iso` encodes the schema value, while replacing through it decodes the new focus. `Schema.toIso` consumes `Schema.toCodecIso` synchronously, so failing, asynchronous, or service-dependent transformations can throw. Schema failures use `"Schema validation failed"` with a `SchemaIssue.Issue` in `cause`; format it with `SchemaIssue.makeFormatterDefault()`, or use an effectful parser with `Schema.toCodecIso` for asynchronous execution or explicit failure handling.
+
 ### Using the Differ Module for Type-Safe JSON Patches
 
 The `Differ` module lets you compute and apply JSON Patch (RFC 6902) changes for any value described by a `Schema`. You give it a schema once, then use the returned differ to produce a patch from an old value to a new value, and to apply that patch.
@@ -6136,49 +5760,55 @@ The idea is simple: if you have a `Schema` for a type `T`, you can serialize any
 
 This approach keeps patches independent from TypeScript types and uses the schema as the guardrail when turning JSON back into `T`.
 
+`Schema.toDifferJsonPatch` consumes `Schema.toCodecJson` synchronously, so failing, asynchronous, or service-dependent transformations can throw. Schema failures use `"Schema validation failed"` with a `SchemaIssue.Issue` in `cause`, which `SchemaIssue.makeFormatterDefault()` can format; invalid patch operations instead produce `JsonPatch` errors.
+
 # Schema Representation
 
-The `SchemaRepresentation` module converts a `Schema` into a portable data structure and back again.
+The `SchemaRepresentation` module exposes the structural form used to inspect, persist, compile, and rebuild schemas.
+
+A representation is always a projection of one side of a schema. By default, `Schema.toRepresentation` and
+`SchemaRepresentation.toRepresentation` project the encoded side. Apply `Schema.toType` or `SchemaAST.toType` first when
+you need the decoded type side instead.
 
 Use it when you need to:
 
-- store schemas on disk (for example in a cache)
-- send schemas over the network
-- rebuild runtime schemas later
-- convert to JSON Schema (Draft 2020-12)
-- generate TypeScript code that recreates schemas
+- inspect the structural form of a schema
+- store schemas on disk or send them over the network
+- rebuild runtime schemas with an explicit set of revivers
+- compile live representations to JSON Schema Draft 2020-12
+- generate TypeScript code from live representations
 
 At a high level:
 
-- `fromAST` / `fromASTs` turn a schema AST into a `Document` / `MultiDocument`
-- `DocumentFromJson` (schema) round-trip that document through JSON
-- `toSchema` rebuilds a runtime `Schema` from the stored representation
-- `toJsonSchemaDocument` produces a Draft 2020-12 JSON Schema document
-- `toCodeDocument` prepares data for code generation (via `toMultiDocument`)
+- `Schema.toRepresentation(schema)` converts a schema to a `Document`
+- `SchemaRepresentation.toRepresentation(ast)` and `toRepresentations(asts)` convert schema ASTs to a `Document` or
+  `MultiDocument`
+- `toJson` / `fromJson` cross the persistence boundary
+- `fromRepresentation` / `fromRepresentations` rebuild runtime schemas using explicit revivers
+- `toJsonSchemaDocument` compiles a live `Document` to JSON Schema Draft 2020-12
+- `toCodeDocument` compiles a live `MultiDocument` to runtime and TypeScript source fragments
 
 ```mermaid
 flowchart TD
-    S[Schema] -->|fromAST|D{"SchemaRepresentation.Document"}
-    S -->|fromASTs|MD{"SchemaRepresentation.MultiDocument"}
-    JS["JSON Schema (draft-07, draft-2020-12, openapi-3.0, openapi-3.1)"] -->JSD
-    JD --> JS
-    JD["JsonSchema.Document"] -->|fromJsonSchemaDocument|D
-    D <--> |"DocumentFromJson (schema)"|JSON
-    D --> |toJsonSchemaDocument|JD
-    D --> |toSchema|S
-    MD --> |toCodeDocument|CodeDocument["CodeDocument"]
-    D --> |toMultiDocument|MD
-    MD --> |toJsonSchemaMultiDocument|JMD[JsonSchema.MultiDocument]
-    MD <--> |"MultiDocumentFromJson (schema)"|JSON
+    S[Schema] -->|Schema.toRepresentation|LD["live Document"]
+    AST[SchemaAST] -->|SchemaRepresentation.toRepresentation|LD
+    LD -->|toJson|JSON["JSON value"]
+    JSON -->|fromJson|PD["persisted Document"]
+    PD -->|"fromRepresentation + revivers"|S
+    LD -->|toJsonSchemaDocument|JD["JsonSchema.Document (draft-2020-12)"]
+    JD -->|fromJsonSchemaDocument|S
+    LD -->|toMultiDocument|LMD["live MultiDocument"]
+    LMD -->|toCodeDocument|CodeDocument
+    LMD -->|toJsonSchemaMultiDocument|JMD[JsonSchema.MultiDocument]
+    LMD -->|toJsonMultiDocument|JSON
 ```
 
 ## The data model
 
 ### `Representation`
 
-A `Representation` is a tagged object tree (`_tag` fields like `"String"`, `"Objects"`, `"Union"`, ...). It describes the _structure_ of a schema in a JSON-friendly way.
-
-Only a subset of schema features can be represented. See "Limitations" below.
+A `Representation` is a tagged object tree (`_tag` fields like `"String"`, `"Objects"`, `"Union"`, ...). It describes one
+structural side of a schema. Named or recursive nodes use `Reference` values instead of duplicating their definitions.
 
 ### `Document`
 
@@ -6195,130 +5825,343 @@ A `MultiDocument` stores multiple root representations that share the same `refe
 
 This is useful if you want to serialize a set of schemas together, or if you want to generate code for multiple schemas while emitting shared definitions only once.
 
-## Limitations
+## Projection and persistence boundaries
 
-`SchemaRepresentation` is meant for schemas that can be described without user code.
+### Representations use the encoded side
 
-That has a few consequences.
+`toRepresentation` follows a schema's encoding chain and represents its last encoded side. It does not serialize the
+transformation functions.
 
-### Transformations are not supported
+```ts
+import { Schema } from "effect"
 
-The representation format describes the schema's _shape_ and a set of known checks. It does not store transformation logic.
+const encoded = Schema.toRepresentation(Schema.NumberFromString)
+console.log(encoded.representation._tag)
+// "String"
 
-Schemas that rely on transformations cannot be round-tripped, including:
+const decoded = Schema.toRepresentation(Schema.toType(Schema.NumberFromString))
+console.log(decoded.representation._tag)
+// "Number"
+```
 
-- `Schema.transform(...)`
-- `Schema.encodeTo(...)`
-- custom codecs or any schema that changes how values are encoded/decoded
+Consequently, rebuilding `encoded` produces a schema for the string representation; it does not recreate the original
+string-to-number transformation.
 
-If you serialize a transformed schema, the transformation logic will be lost. When you rebuild it with `toSchema`, you will only get the structural schema.
+### Live and persisted documents
 
-> **Aside** (Why transformations are excluded)
->
-> A transformation is user code (functions). JSON cannot store functions, and serializing functions as strings would not be safe or portable.
+A live `Document` can contain functions in its ordinary annotations. These callbacks allow compilers to handle custom
+behavior:
 
-### Only built-in checks can be represented
+- a check can provide `toJsonSchema`
+- a declaration or check can provide `toCode`
 
-Checks are stored as `Filter` / `FilterGroup` nodes with a small `meta` object.
+Functions cannot cross the JSON persistence boundary. `toJson` removes them and keeps only JSON-valued ordinary
+annotations. Nested JSON arrays and objects are preserved; a complete annotation value is omitted when it contains a
+function, `undefined`, `bigint`, a symbol, a cycle, or another non-JSON value.
 
-Only checks that match the built-in meta definitions are supported, such as:
+Structural values such as bigint literals and registered unique symbols have dedicated canonical encodings. That does not
+make bigint or symbol values valid generic annotations.
 
-- string checks: `isMinLength`, `isPattern`, `isUUID`, ...
-- number checks: `isInt`, `isBetween`, `isMultipleOf`, ...
-- bigint checks: `isGreaterThanBigInt`, ...
-- array checks: `isLength`, `isUnique`, ...
-- object checks: `isMinProperties`, ...
-- date checks: `isBetweenDate`, ...
+### Persistence identities
 
-Custom predicates (for example `Schema.filter((x) => ...)`) are not supported, because the representation has nowhere to store the function.
+Opaque declarations and checks need a stable identity before they can be persisted:
 
-### Annotations are filtered
+```ts
+interface RepresentationAnnotation {
+  readonly id: string
+  readonly payload: Schema.Json
+}
 
-Annotations are stored as a record, but:
+interface CheckRepresentationAnnotation<S> extends RepresentationAnnotation {
+  readonly schemas?: ReadonlyArray<S>
+}
+```
 
-- only values that look like JSON primitives (plus `bigint` and `symbol` in the in-memory form) are kept
-- some annotation keys are dropped using an internal blacklist
+`id` selects a reviver, `payload` contains its JSON configuration, and a check can use `schemas` for schema dependencies.
+This replaces the previous closed set of check metadata. Custom declarations and checks are therefore persistable when
+they provide a representation identity and the consumer provides a matching reviver.
 
-In practice, documentation annotations like `title` and `description` are preserved, while complex values (functions, instances, nested objects) are ignored.
+An unannotated custom declaration or leaf filter can still exist in a live representation, but `toJson` rejects it because
+there is no portable way to reconstruct its user code.
 
-### Declarations need a reviver
+## Creating representations
 
-Some runtime schemas are represented as `Declaration` nodes. Rebuilding them requires a "reviver" function.
+Use `Schema.toRepresentation` when starting from a schema:
 
-`toSchema` ships with a default reviver (`toSchemaDefaultReviver`) that recognizes a fixed set of constructors, including:
+```ts
+import { Schema } from "effect"
 
-- `effect/Option`, `effect/Result`, `effect/Exit`, ...
-- `ReadonlyMap`, `ReadonlySet`
-- `RegExp`, `URL`, `Date`
-- `FormData`, `URLSearchParams`, `Uint8Array`
-- `DateTime.Utc`, `effect/Duration`
+const document = Schema.toRepresentation(
+  Schema.Struct({ name: Schema.NonEmptyString })
+)
+```
 
-If your document contains other declarations, pass a custom `reviver` to `toSchema`.
+Use the lower-level functions when working directly with ASTs or several roots:
 
-## JSON round-tripping
+```ts
+import { Schema, SchemaRepresentation } from "effect"
+
+const document = SchemaRepresentation.toRepresentation(Schema.String.ast)
+
+const multiDocument = SchemaRepresentation.toRepresentations([
+  Schema.String.ast,
+  Schema.Number.ast
+])
+```
+
+By default, only candidates with a resolved identifier are placed in `references`. Anonymous non-recursive nodes remain
+inline even when the same AST occurs more than once. Recursive schemas always require a reference; when no identifier is
+available, the converter assigns a synthetic name such as `Objects_` or `Suspend_`.
+
+The default policy uses an explicit `identifier` as the reference name. Reusing the same schema shares its reference.
+Context-only copies created through `SchemaAST.replaceContext` retain the original AST as their reference owner, including
+across several successive context changes. Context still belongs to each occurrence and does not, by itself, create a new
+candidate. Independently constructed ASTs are not canonicalized merely because they are structurally equal. When distinct
+schemas request the same name, the first schema keeps it and later schemas receive numeric suffixes in encounter order,
+such as `Value_1` and `Value_2`. Internal `~identifier` annotations are fallback allocation hints; their generated names
+use the `Encoded` suffix and follow the same collision rules.
+
+`toMultiDocument(document)` wraps a single document when a compiler requires multiple roots.
+
+### Reference policies
+
+`Schema.toRepresentation`, `SchemaRepresentation.toRepresentation`, and `SchemaRepresentation.toRepresentations` accept
+an optional `referencePolicy`. The policy runs once for every candidate, after occurrences across all roots have been
+counted:
+
+```ts
+interface ReferencePolicyInput {
+  readonly ast: SchemaAST.AST
+  readonly occurrences: number
+  readonly identifier: string | undefined
+}
+```
+
+Return a reference name to move the candidate into `references`, or return `undefined` to leave it inline. This example
+extracts anonymous candidates only when the same candidate occurs more than once, while still respecting identifiers:
+
+```ts
+import { Schema, SchemaRepresentation } from "effect"
+
+const Item = Schema.Struct({ name: Schema.String })
+
+const document = SchemaRepresentation.toRepresentations([Item.ast, Item.ast], {
+  referencePolicy: ({ ast, identifier, occurrences }) => identifier ?? (occurrences > 1 ? `${ast._tag}_` : undefined)
+})
+
+console.log(document.representations)
+// [
+//   { _tag: "Reference", $ref: "Objects_" },
+//   { _tag: "Reference", $ref: "Objects_" }
+// ]
+```
+
+Occurrences are counted by candidate identity, not structural equality. Two independently constructed but structurally
+equal ASTs are separate candidates and each reports one occurrence. Recursive candidates cannot remain inline: if a policy
+returns `undefined` for one, the converter assigns a synthetic reference name. If different candidates request the same
+name, later candidates receive numeric suffixes.
+
+`Schema.toJsonSchemaDocument(schema, options)` forwards the policy after deriving the schema's canonical JSON codec, so
+the policy receives canonical JSON-encoded ASTs. `OpenApi.fromApi(api, options)` applies the policy at the same canonical
+JSON boundary when deciding which schemas become OpenAPI components. A `referencePolicy` passed to
+`SchemaRepresentation.toJsonSchemaDocument` or `toJsonSchemaMultiDocument` cannot change an existing document's references;
+pass it while creating the `Document` or `MultiDocument` instead.
+
+## JSON persistence
 
 ### `toJson` / `fromJson`
 
-- `toJson(document)` returns JSON-compatible data (safe to `JSON.stringify`)
-- `fromJson(unknown)` validates and parses JSON data back into a `Document`
+`toJson(document)` projects and validates a live document, then returns a `Schema.Json` value suitable for storage or
+transport. `fromJson(input)` validates persisted JSON and returns a `Document`; it does not restore runtime callbacks.
 
-Internally, these functions use a canonical JSON codec for `Document$`. This is why values like `bigint` in annotations are encoded as strings in the JSON form and restored on decode.
+The multi-root equivalents are `toJsonMultiDocument` and `fromJsonMultiDocument`.
+
+```ts
+import { Schema, SchemaRepresentation } from "effect"
+
+const live = Schema.toRepresentation(
+  Schema.String.check(Schema.isMinLength(3))
+)
+
+const json = SchemaRepresentation.toJson(live)
+const persisted = SchemaRepresentation.fromJson(json)
+```
+
+Persisted `Declaration` and `Filter` nodes must contain a representation identity. `fromJson` validates the document but
+does not require the corresponding revivers until reconstruction.
 
 ## Rebuilding runtime schemas
 
-### `toSchema`
+### `fromRepresentation`
 
-`toSchema(document)` walks the representation tree and recreates a runtime schema.
-
-What it does:
-
-- rebuilds the structural schema nodes (`Struct`, `Tuple`, `Union`, ...)
-- resolves references from `document.references`
-- supports recursive references using `Schema.suspend`
-- re-attaches stored annotations via `.annotate(...)` and `.annotateKey(...)`
-- re-applies supported checks via `.check(...)`
-
-If you need custom handling for declarations:
+`fromRepresentation` rebuilds structural nodes, resolves references, restores recursion, reattaches annotations, and
+reapplies checks. Revivers are resolved by `id`; none are installed implicitly, so the `revivers` array is required even
+when it is empty.
 
 ```ts
-SchemaRepresentation.toSchema(document, {
-  reviver: (declaration, recur) => {
-    // Return a runtime schema to override how a Declaration is rebuilt.
-    // Return undefined to fall back to the default behavior.
-    return undefined
-  }
+import { Schema, SchemaRepresentation } from "effect"
+
+const json = SchemaRepresentation.toJson(
+  Schema.toRepresentation(
+    Schema.String.check(Schema.isMinLength(3))
+  )
+)
+
+const document = SchemaRepresentation.fromJson(json)
+const rebuilt = SchemaRepresentation.fromRepresentation(document, {
+  revivers: [Schema.isMinLengthReviver]
 })
+
+console.log(Schema.is(rebuilt)("abc"))
+// true
+console.log(Schema.is(rebuilt)("a"))
+// false
 ```
 
-## JSON Schema output
+Effect exports individual revivers next to the built-in declarations and checks they reconstruct, such as
+`Schema.OptionReviver`, `Schema.DateReviver`, and `Schema.isMinLengthReviver`. Supply every reviver required by the
+document; a missing or duplicate `id`, or a payload that does not satisfy its reviver's `payloadSchema`, is an error.
 
-### `toJsonSchemaDocument` / `toJsonSchemaMultiDocument`
+`fromRepresentations` rebuilds the ordered roots of a `MultiDocument` in a shared reference environment. Only references
+reachable from those roots are revived.
 
-These functions convert a `Document` or `MultiDocument` into a Draft 2020-12 JSON Schema document.
+### Custom revivers
 
-This is useful for tooling that expects JSON Schema, or for producing OpenAPI-compatible schema pieces (depending on your pipeline).
+There are separate reviver contracts for opaque declarations, leaf filters, and opaque filter groups:
+
+- `DeclarationReviver<P>`
+- `FilterReviver<P>`
+- `FilterGroupReviver<P>`
+
+Use `makeDeclarationReviver`, `makeFilterReviver`, and `makeFilterGroupReviver` to infer `P` from `payloadSchema`.
+
+```ts
+import { Schema, SchemaRepresentation } from "effect"
+
+const id = "acme/schema/minLength"
+
+function minLength(
+  minimum: number,
+  annotations?: Schema.Annotations.Filter
+) {
+  return Schema.makeFilter<string>((value) => value.length >= minimum, {
+    ...annotations,
+    representation: { id, payload: { minimum } }
+  })
+}
+
+const minLengthReviver = SchemaRepresentation.makeFilterReviver(
+  id,
+  Schema.Struct({ minimum: Schema.Number }),
+  ({ annotations, payload }) => minLength(payload.minimum, annotations)
+)
+```
+
+The same reviver can then be included in the `revivers` array passed to `fromRepresentation` or
+`fromRepresentations`.
+
+## JSON Schema
+
+### Exporting JSON Schema
+
+For a runtime schema, prefer `Schema.toJsonSchemaDocument(schema)`. It first derives the schema's canonical JSON codec,
+then compiles its encoded representation to JSON Schema Draft 2020-12. The default reference policy extracts candidates
+with resolved identifiers and leaves anonymous non-recursive candidates inline, including repeated declarations. Recursive
+candidates still receive references, using a synthetic name when necessary. Pass `referencePolicy` in the options to use a
+different allocation rule.
+
+At the lower level, `SchemaRepresentation.toJsonSchemaDocument(document)` compiles a live `Document`, and
+`toJsonSchemaMultiDocument` compiles a live `MultiDocument`. Check-level `toJsonSchema` callbacks contribute JSON Schema
+constraints. Opaque declarations that have not been structurally lowered compile to an unconstrained JSON Schema.
+
+`toJsonSchema` callbacks must treat their input schemas as immutable and return a valid JSON Schema object graph. After a
+callback returns, it must not mutate that object or anything reachable from it; returning a new graph is the supported way
+to produce different output during a later compilation. The compiler may cache structural comparisons while
+deduplicating completed definitions, so mutating a previously returned graph can make equality results stale.
+
+Definitions are compared only with definitions in the same internal fallback-identifier group. Equal definitions in
+different groups and definitions with explicit identifiers remain distinct. After compilation, local `#/$defs/...`
+references are rewritten to the surviving definition, including references returned directly by callbacks. External
+references and other local JSON Pointers remain unchanged.
+
+Because compiler callbacks are not persisted, compile the live document before calling `toJson`, or rebuild and lower the
+schema with revivers first.
+
+### Importing JSON Schema
+
+`SchemaRepresentation.fromJsonSchemaDocument` imports a JSON Schema Draft 2020-12 document as a runtime `Schema.Top`.
+It does not return a representation document.
+
+Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
+references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
+reference to a missing definition throws an `Invalid reference` error.
+
+`fromJsonSchemaMultiDocument` returns the ordered root schemas. It translates only definitions reachable from those
+roots. To pass the result to a representation compiler, call `toRepresentations` with the returned schemas' ASTs.
+
+Import translates a Draft 2020-12 subset. `$dynamicRef`, `contains`, `dependentRequired`, `dependentSchemas`, `not`,
+active `if` / `then` / `else`, `unevaluatedItems`, and `unevaluatedProperties` throw an
+`Unsupported JSON Schema keyword` error. Inactive conditional keywords and `minContains` / `maxContains` without
+`contains` have no validation effect and are ignored. Unknown extension keywords are ignored and their semantics are not
+enforced. Objects and arrays used as `const` values or `enum` members throw an
+`Unsupported structured JSON Schema value` error. The optional `onEnter` callback can normalize each JSON Schema node
+before it is translated.
+
+Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf` literal
+sets. Other union intersections, including cases that would duplicate a nested choice, throw an
+`Unsupported intersection of overlapping unions` error.
+
+Regular expression constraints reached during translation are rejected by default because imported patterns use the
+runtime's native regular expression engine and may block validation for an unbounded amount of time. Set
+`patterns: "apply"` only for trusted documents. Set `patterns: "ignore"` to skip reached pattern constraints explicitly;
+the resulting schema accepts values that the source document may reject. The policy includes `pattern`, the keys of
+`patternProperties`, and patterns nested in `propertyNames`. Ignoring `patternProperties` also skips its value constraints
+and `additionalProperties`, because matching keys cannot be determined without evaluating the patterns.
 
 ## Code generation
 
 ### `toCodeDocument`
 
-`toCodeDocument` converts a `MultiDocument` into a structure that is convenient for generating TypeScript source.
+`toCodeDocument` compiles a live `MultiDocument` into runtime and TypeScript source fragments. It:
 
-It:
-
-- sorts references so non-recursive definitions can be emitted in dependency order
-- keeps recursive definitions separate (they must be emitted using `Schema.suspend`)
+- returns one `Code` value for each root
+- sorts non-recursive references in dependency order
+- keeps recursive references separate so callers can emit `Schema.suspend`
 - sanitizes reference names into valid JavaScript identifiers
-- collects extra artifacts that must be emitted (enums, symbols, imports)
+- collects symbol, enum, and import artifacts
 
-You can customize:
-
-- `sanitizeReference` to control how `$ref` strings become identifiers
-- `reviver` to generate custom code for `Declaration` nodes
+Opaque declarations and checks provide code through their `toCode` callbacks. `toCodeDocument` does not accept a
+reviver option. To generate code from persisted JSON, first reconstruct the schemas with `fromRepresentation` or
+`fromRepresentations`, then create a new live representation so the revivers can restore the callbacks.
 
 # Error Handling and Formatting
 
 When validation fails, Schema produces structured error objects that describe what went wrong. Formatters turn those error objects into human-readable messages you can display to users or write to logs.
+
+### Reporting Rejected Inputs
+
+By default, schema issues neither retain rejected input values nor include them in formatted messages. Pass `{ reportInput: true }` to a parser when the additional diagnostic context is worth the disclosure and retention risk:
+
+```ts
+import { Result, Schema, SchemaIssue, SchemaParser } from "effect"
+
+const result = SchemaParser.decodeUnknownResult(Schema.String)(1, { reportInput: true })
+const formatIssue = SchemaIssue.makeFormatterDefault()
+
+if (Result.isFailure(result)) {
+  SchemaIssue.hasInput(result.failure) // true
+  if (SchemaIssue.hasInput(result.failure)) {
+    result.failure.input // 1
+  }
+  formatIssue(result.failure) // "Expected string, got 1"
+}
+```
+
+Value-bearing issues created by the parser then expose an enumerable own `input` field. The input is retained by reference, not copied. Use `SchemaIssue.hasInput(issue)` instead of checking `issue.input !== undefined`, because a present input whose value is `undefined` is distinct from an issue that does not retain input.
+
+Enabling this option can retain or disclose secrets, personally identifiable information, and large object graphs. Object enumeration, spread, serialization, `SchemaIssue.makeFormatterDefault()`, `SchemaError.message`, and Standard Schema messages may expose the retained value. A Standard Schema failure still contains only its standard `message` and `path` fields; the input can appear inside `message`, but no non-standard `input` field is added.
+
+User-created `SchemaIssue.Issue` values returned directly by declarations, checks, transformations, or middleware are not modified. To make a custom value-bearing issue honor `reportInput`, pass the callback's input and effective parse options to its constructor, for example `new SchemaIssue.InvalidValue(annotations, input, options)`.
 
 ### Formatters
 
@@ -6397,7 +6240,7 @@ Output:
 {
   issues: [
     { path: [ 'a' ], message: 'Missing key' },
-    { path: [ 'b' ], message: 'Expected a value with a length of at least 1, got ""' }
+    { path: [ 'b' ], message: 'Expected a value with a length of at least 1' }
   ]
 }
 */
@@ -6593,7 +6436,7 @@ if (r._tag === "Failure") {
 {
   issues: [
     {
-      message: 'Expected a value with a length of at least 1, got ""',
+      message: 'Expected a value with a length of at least 1',
       path: [ 'a' ]
     },
     { message: 'Missing key', path: [ 'c', 0 ] },

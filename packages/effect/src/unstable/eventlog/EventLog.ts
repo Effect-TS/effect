@@ -13,6 +13,7 @@ import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as FiberMap from "../../FiberMap.ts"
 import { constant, identity } from "../../Function.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import * as Layer from "../../Layer.ts"
 import type { Pipeable } from "../../Pipeable.ts"
 import { pipeArguments } from "../../Pipeable.ts"
@@ -159,7 +160,9 @@ export const layerRegistry = Layer.effect(
       },
       registerReactivity: (keys) =>
         Effect.sync(() => {
-          Object.assign(reactivityKeys, keys)
+          for (const [key, value] of Object.entries(keys)) {
+            InternalRecord.assignProperty(reactivityKeys, key, value)
+          }
         }),
       reactivityKeys
     })
@@ -202,7 +205,7 @@ export const SchemaTypeId: SchemaTypeId = "~effect/eventlog/EventLog/Schema"
 /**
  * Returns `true` when a value carries the `EventLogSchema` marker.
  *
- * @category schemas
+ * @category guards
  * @since 4.0.0
  */
 export const isEventLogSchema = (u: unknown): u is EventLogSchema<EventGroup.Any> =>
@@ -407,7 +410,7 @@ export declare namespace Handlers {
  *
  * Defaults to the branded store id `"default"`.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export class CurrentStoreId extends Context.Reference<StoreId>("effect/eventlog/EventLog/CurrentStoreId", {
@@ -498,7 +501,7 @@ const handlersProto = {
       handlers: {
         ...this.handlers,
         [tag]: {
-          event: this.group.events[tag],
+          event: Object.hasOwn(this.group.events, tag) ? this.group.events[tag] : undefined!,
           context: this.context,
           handler
         }
@@ -547,7 +550,7 @@ export const group = <Events extends Event.Any, Return>(
       const handlers = Effect.isEffect(result)
         ? (yield* (result as unknown as Effect.Effect<Handlers<any>>))
         : (result as unknown as Handlers<any>)
-      for (const tag in handlers.handlers) {
+      for (const tag of Object.keys(handlers.handlers)) {
         registry.registerHandlerUnsafe({ event: tag, handler: handlers.handlers[tag] })
       }
     })
@@ -584,9 +587,9 @@ export const groupCompaction = <Events extends Event.Any, R>(
       yield* registry.registerCompaction({
         events: Object.keys(group.events),
         effect: Effect.fnUntraced(function*({ entries, write }): Effect.fn.Return<void> {
-          const isEventTag = (tag: string): tag is Event.Tag<Events> => tag in group.events
+          const isEventTag = (tag: string): tag is Event.Tag<Events> => Object.hasOwn(group.events, tag)
           const decodePayload = <Tag extends Event.Tag<Events>>(tag: Tag, payload: Uint8Array) =>
-            Schema.decodeUnknownEffect(group.events[tag].payloadMsgPack)(payload).pipe(
+            Schema.decodeUnknownEffect(group.events[tag].payloadSchemaBinary)(payload).pipe(
               Effect.updateContext((input) => Context.merge(services, input)),
               Effect.orDie
             ) as unknown as Effect.Effect<Event.PayloadWithTag<Events, Tag>>
@@ -595,11 +598,11 @@ export const groupCompaction = <Events extends Event.Any, R>(
             tag: Tag,
             payload: Event.PayloadWithTag<Events, Tag>
           ): Effect.fn.Return<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]> {
-            const event = group.events[tag]
+            const event = Object.hasOwn(group.events, tag) ? group.events[tag] : undefined!
             const entry = new Entry({
               id: makeEntryIdUnsafe({ msecs: timestamp }),
               event: tag,
-              payload: yield* Schema.encodeUnknownEffect(event.payloadMsgPack)(payload).pipe(
+              payload: yield* Schema.encodeUnknownEffect(event.payloadSchemaBinary)(payload).pipe(
                 Effect.orDie
               ) as any,
               primaryKey: event.primaryKey(payload)
@@ -674,8 +677,8 @@ export const groupReactivity = <Events extends Event.Any>(
       yield* registry.registerReactivity(keys as Record.ReadonlyRecord<string, ReadonlyArray<string>>)
       return
     }
-    const obj: Record<string, ReadonlyArray<string>> = {}
-    for (const tag in group.events) {
+    const obj: Record<string, ReadonlyArray<string>> = Object.create(null)
+    for (const tag of Object.keys(group.events)) {
       obj[tag] = keys
     }
     yield* registry.registerReactivity(obj)
@@ -716,7 +719,7 @@ export const makeReplayFromRemote = (options: {
         return yield* Effect.logDebug(`Event handler not found for: "${entry.event}"`)
       }
 
-      const decodePayload = Schema.decodeUnknownEffect(handler.event.payloadMsgPack)
+      const decodePayload = Schema.decodeUnknownEffect(handler.event.payloadSchemaBinary)
       const decodedConflicts: Array<{ entry: Entry; payload: unknown }> = new Array(conflicts.length)
       for (let i = 0; i < conflicts.length; i++) {
         decodedConflicts[i] = {
@@ -741,7 +744,9 @@ export const makeReplayFromRemote = (options: {
         Effect.asVoid
       ) as any
 
-      const keys = options.reactivityKeys[entry.event]
+      const keys = Object.hasOwn(options.reactivityKeys, entry.event)
+        ? options.reactivityKeys[entry.event]
+        : undefined
       if (keys) {
         for (const key of keys) {
           options.reactivity.invalidateUnsafe({
@@ -757,6 +762,11 @@ export const makeReplayFromRemote = (options: {
         entryId: entry.idString
       })
   )
+
+const remoteRetrySchedule = Schedule.min([
+  Schedule.exponential(200, 1.5),
+  Schedule.spaced({ seconds: 10 })
+])
 
 const make = Effect.gen(function*() {
   const storeId = yield* CurrentStoreId
@@ -780,7 +790,9 @@ const make = Effect.gen(function*() {
   const invalidateReactivityEntries = (entries: ReadonlyArray<Entry>) =>
     Effect.sync(() => {
       for (const entry of entries) {
-        const keys = registry.reactivityKeys[entry.event]
+        const keys = Object.hasOwn(registry.reactivityKeys, entry.event)
+          ? registry.reactivityKeys[entry.event]
+          : undefined
         if (!keys) {
           continue
         }
@@ -853,12 +865,7 @@ const make = Effect.gen(function*() {
       }).pipe(
         Effect.scoped,
         Effect.catchCause(Effect.logError),
-        Effect.repeat(
-          Schedule.min([
-            Schedule.exponential(200, 1.5),
-            Schedule.spaced({ seconds: 10 })
-          ])
-        ),
+        Effect.repeat(remoteRetrySchedule),
         Effect.annotateLogs({
           service: "EventLog",
           effect: "runRemote consume"
@@ -867,11 +874,21 @@ const make = Effect.gen(function*() {
       )
 
       const write = journal.withRemoteUncommited(remote.id, (entries) => remote.write({ identity, entries, storeId }))
+      const writeUntilSuccess = write.pipe(
+        Effect.tapCause(Effect.logDebug),
+        Effect.retry(remoteRetrySchedule)
+      )
       yield* Effect.addFinalizer(() => Effect.ignore(write))
-      yield* write
       const changesSub = yield* journal.changes
-      return yield* PubSub.takeAll(changesSub).pipe(
-        Effect.andThen(write),
+      const changes = yield* Queue.dropping<void>(1)
+      yield* PubSub.takeAll(changesSub).pipe(
+        Effect.andThen(Queue.offer(changes, undefined)),
+        Effect.forever,
+        Effect.forkScoped
+      )
+      yield* writeUntilSuccess
+      return yield* Queue.take(changes).pipe(
+        Effect.andThen(writeUntilSuccess),
         Effect.catchCause(Effect.logError),
         Effect.forever
       )
@@ -886,7 +903,7 @@ const make = Effect.gen(function*() {
     readonly event: string
     readonly payload: unknown
   }) {
-    const payload = yield* Schema.encodeUnknownEffect(handler.event.payloadMsgPack)(options.payload).pipe(
+    const payload = yield* Schema.encodeUnknownEffect(handler.event.payloadSchemaBinary)(options.payload).pipe(
       Effect.orDie
     )
     return yield* journal.withLock(storeId)(journal.write({
@@ -903,8 +920,11 @@ const make = Effect.gen(function*() {
           Effect.updateContext((input) => Context.merge(handler.context, input)),
           Effect.provideService(Identity, identity),
           Effect.tap(() => {
-            if (registry.reactivityKeys[entry.event]) {
-              for (const key of registry.reactivityKeys[entry.event]) {
+            const keys = Object.hasOwn(registry.reactivityKeys, entry.event)
+              ? registry.reactivityKeys[entry.event]
+              : undefined
+            if (keys) {
+              for (const key of keys) {
                 reactivity.invalidateUnsafe({
                   [key]: [entry.primaryKey]
                 })
@@ -1002,7 +1022,7 @@ export const layer = <Groups extends EventGroup.Any, E, R>(
  * The returned function delegates to the `EventLog` service and preserves each
  * event's success and error types.
  *
- * @category client
+ * @category constructors
  * @since 4.0.0
  */
 export const makeClient = <Groups extends EventGroup.Any>(

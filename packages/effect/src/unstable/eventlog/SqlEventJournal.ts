@@ -8,11 +8,13 @@
  *
  * @since 4.0.0
  */
-import * as Uuid from "uuid"
+import * as Arr from "../../Array.ts"
 import * as Effect from "../../Effect.ts"
+import * as Uuid from "../../internal/uuid.ts"
 import * as Layer from "../../Layer.ts"
 import * as PubSub from "../../PubSub.ts"
 import * as Schema from "../../Schema.ts"
+import * as SchemaTransformation from "../../SchemaTransformation.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import * as SqlError from "../sql/SqlError.ts"
 import * as SqlSchema from "../sql/SqlSchema.ts"
@@ -123,6 +125,7 @@ export const make = (options?: {
     }).pipe(withTracerDisabled)
 
     const decodeEntryRows = Schema.decodeUnknownEffect(EntryRowArray)
+    const decodeEntryIdRows = Schema.decodeUnknownEffect(EntryIdRowArray)
     const toEntries = (rows: ReadonlyArray<EntryRow>): ReadonlyArray<EventJournal.Entry> => rows.map(toEntry)
 
     const insertEntry = SqlSchema.void({
@@ -155,12 +158,13 @@ export const make = (options?: {
 
       const existingIds = new Set<string>()
       if (entries.length > 0) {
-        yield* sql<{ id: Uint8Array }>`SELECT id FROM ${entryTableSql} WHERE ${
+        yield* sql`SELECT id FROM ${entryTableSql} WHERE ${
           sql.in(
             "id",
             entries.map((entry) => entry.id)
           )
         }`.pipe(
+          Effect.flatMap(decodeEntryIdRows),
           Effect.tap((rows) =>
             Effect.sync(() => {
               for (const row of rows) {
@@ -220,10 +224,12 @@ export const make = (options?: {
             primaryKey,
             payload
           }, { disableChecks: true })
-          yield* insertEntry(toEntryRow(entry))
-          const value = yield* effect(entry)
-          yield* PubSub.publish(pubsub, entry)
-          return value
+          return yield* Effect.uninterruptibleMask((restore) =>
+            restore(effect(entry)).pipe(
+              Effect.tap(insertEntry(toEntryRow(entry))),
+              Effect.tap(PubSub.publish(pubsub, entry))
+            )
+          )
         },
         withTracerDisabled,
         Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "write" }))
@@ -247,7 +253,8 @@ export const make = (options?: {
             Effect.flatMap(decodeEntryRows),
             Effect.map(toEntries)
           )
-          return yield* f(entries)
+          if (!Arr.isReadonlyArrayNonEmpty(entries)) return yield* Effect.succeedNone
+          return yield* Effect.asSome(f(entries))
         },
         withTracerDisabled,
         Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "withRemoteUncommited" }))
@@ -314,15 +321,32 @@ export const layer = (options?: {
 }): Layer.Layer<EventJournal.EventJournal, SqlError.SqlError, SqlClient.SqlClient> =>
   Layer.effect(EventJournal.EventJournal)(make(options))
 
+const ArrayBuffer = Schema.instanceOf(globalThis.ArrayBuffer, {
+  expected: "ArrayBuffer"
+})
+
+const SqlUint8Array = Schema.Union([Schema.Uint8Array, ArrayBuffer]).pipe(
+  Schema.decodeTo(
+    Schema.Uint8Array,
+    SchemaTransformation.transform({
+      decode: (value) => value instanceof globalThis.ArrayBuffer ? new globalThis.Uint8Array(value) : value,
+      encode: (value) => value
+    })
+  )
+)
+
+const SqlEntryId = SqlUint8Array.pipe(Schema.decodeTo(EventJournal.EntryId))
+
 const EntryRow = Schema.Struct({
-  id: EventJournal.EntryId,
+  id: SqlEntryId,
   event: Schema.String,
   primary_key: Schema.String,
-  payload: Schema.Uint8Array,
-  timestamp: Schema.Number
+  payload: SqlUint8Array,
+  timestamp: Schema.Int
 })
 
 const EntryRowArray = Schema.Array(EntryRow)
+const EntryIdRowArray = Schema.Array(Schema.Struct({ id: SqlEntryId }))
 
 type EntryRow = Schema.Schema.Type<typeof EntryRow>
 
@@ -345,7 +369,7 @@ const toEntryRow = (entry: EventJournal.Entry): EntryRow => ({
 const RemoteRow = Schema.Struct({
   remote_id: EventJournal.RemoteId,
   entry_id: EventJournal.EntryId,
-  sequence: Schema.Number
+  sequence: Schema.Natural
 })
 
 const RemoteRowArray = Schema.Array(RemoteRow)
