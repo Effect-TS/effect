@@ -203,7 +203,7 @@ interface SocketClient {
 
 const socketClient = Effect.fnUntraced(function*(socket: Socket.Socket) {
   const writer = yield* socket.writer
-  const { pull } = yield* Socket.readerBytes(socket)
+  const pull = yield* Socket.readerBytes(socket)
   const read = Effect.orDie(pull)
   let received = 0
   let consumed = 0

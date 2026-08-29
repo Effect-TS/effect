@@ -684,7 +684,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
                 if (waiter === resumeRead) waiter = undefined
               })
             }),
-            upgrade: Socket.unsupportedUpgrade
+            upgrade: Socket.SocketUpgradeError.unsupported
           }
         })
 

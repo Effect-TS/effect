@@ -48,14 +48,17 @@ const echoHandler = (socket: Socket.Socket, upgradeOptions?: Socket.TlsUpgradeOp
 const sendHelloWorld = (socket: Socket.Socket, upgradeOptions?: Socket.TlsUpgradeOptions) =>
   Effect.gen(function*() {
     const writer = yield* socket.writer
-    const { pull, upgrade } = yield* Socket.readerString(socket)
+    const { pull, upgrade } = yield* socket.reader
     if (upgradeOptions !== undefined) {
       yield* upgrade(upgradeOptions)
     }
     yield* writer.writeAll(["Hello", "World"])
+    const decoder = new TextDecoder()
     let text = ""
     while (text.length < 10) {
-      text += (yield* pull).join("")
+      for (const chunk of yield* pull) {
+        text += typeof chunk === "string" ? chunk : decoder.decode(chunk)
+      }
     }
     return text
   }).pipe(Effect.scoped)
@@ -136,7 +139,7 @@ describe("Socket", () => {
 
       const received = yield* Effect.gen(function*() {
         const writer = yield* socket.writer
-        const { pull } = yield* Socket.readerBytes(socket)
+        const pull = yield* Socket.readerBytes(socket)
         yield* writer.writeAll(["Hello", "World"])
         const received: Array<Uint8Array> = []
         let length = 0
@@ -539,7 +542,7 @@ describe("Socket", () => {
         const socket = yield* Socket.makeWebSocket(Effect.succeed(url))
         const messages = yield* Queue.unbounded<Uint8Array>()
         const fiber = yield* Effect.gen(function*() {
-          const { pull } = yield* Socket.readerBytes(socket)
+          const pull = yield* Socket.readerBytes(socket)
           while (true) {
             yield* Queue.offerAll(messages, yield* pull)
           }
@@ -675,7 +678,7 @@ describe("Socket", () => {
         )
         const received: Array<string> = []
         yield* Effect.gen(function*() {
-          const { pull } = yield* Socket.readerString(socket)
+          const pull = yield* Socket.readerString(socket)
           while (true) {
             const chunk = yield* pull
             for (const data of chunk) {

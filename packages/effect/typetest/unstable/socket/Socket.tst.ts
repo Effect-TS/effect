@@ -1,4 +1,5 @@
 import type { Effect, Scope } from "effect"
+import type { NonEmptyReadonlyArray } from "effect/Array"
 import { Socket } from "effect/unstable/socket"
 import { describe, expect, it } from "tstyche"
 
@@ -28,11 +29,23 @@ describe("Socket", () => {
       Effect.Effect<Socket.Reader, Socket.SocketError, Scope.Scope>
     >()
     expect(Socket.readerBytes(socket)).type.toBe<
-      Effect.Effect<Socket.Reader<Uint8Array>, Socket.SocketError, Scope.Scope>
+      Effect.Effect<
+        Effect.Effect<NonEmptyReadonlyArray<Uint8Array>, Socket.SocketError>,
+        Socket.SocketError,
+        Scope.Scope
+      >
     >()
     expect(Socket.readerString(socket)).type.toBe<
-      Effect.Effect<Socket.Reader<string>, Socket.SocketError, Scope.Scope>
+      Effect.Effect<
+        Effect.Effect<NonEmptyReadonlyArray<string>, Socket.SocketError>,
+        Socket.SocketError,
+        Scope.Scope
+      >
     >()
+  })
+
+  it("exposes the unsupported upgrade implementation on SocketUpgradeError", () => {
+    expect(Socket.SocketUpgradeError.unsupported).type.toBe<Socket.Reader["upgrade"]>()
   })
 
   it("writer exposes write and writeAll", () => {

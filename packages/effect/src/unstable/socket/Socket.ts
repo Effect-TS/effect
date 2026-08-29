@@ -171,21 +171,11 @@ export const make = (options: {
     writer: options.writer
   })
 
-/**
- * A `Reader["upgrade"]` for transports that cannot wrap the connection with
- * TLS. Always fails with a `SocketUpgradeError`.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const unsupportedUpgrade: Reader["upgrade"] = () =>
-  Effect.fail(new SocketError({ reason: new SocketUpgradeError({}) }))
-
 const encoder = new TextEncoder()
 
 /**
- * Acquires the socket's reader with a binary `pull`, encoding any string frames
- * as UTF-8 bytes. The reader's `upgrade` function is preserved.
+ * Acquires the socket's binary `pull`, encoding any string frames as UTF-8
+ * bytes.
  *
  * When a pulled batch contains no string frames it is returned as-is, so
  * transports that only emit bytes (TCP) pay no per-chunk cost.
@@ -196,12 +186,12 @@ const encoder = new TextEncoder()
 export const readerBytes = (
   self: Socket
 ): Effect.Effect<
-  Reader<Uint8Array>,
+  Effect.Effect<NonEmptyReadonlyArray<Uint8Array>, SocketError>,
   SocketError,
   Scope.Scope
 > =>
-  Effect.map(self.reader, ({ pull, upgrade }) => ({
-    pull: Effect.map(pull, (chunk) => {
+  Effect.map(self.reader, ({ pull }) =>
+    Effect.map(pull, (chunk) => {
       for (let i = 0; i < chunk.length; i++) {
         if (typeof chunk[i] === "string") {
           const out = new Array<Uint8Array>(chunk.length) as NonEmptyArray<Uint8Array>
@@ -213,14 +203,11 @@ export const readerBytes = (
         }
       }
       return chunk as NonEmptyReadonlyArray<Uint8Array>
-    }),
-    upgrade
-  }))
+    }))
 
 /**
- * Acquires the socket's reader with a string `pull`, decoding binary frames
- * with the optional text encoding. The reader's `upgrade` function is
- * preserved.
+ * Acquires the socket's string `pull`, decoding binary frames with the optional
+ * text encoding.
  *
  * The `TextDecoder` is created once per acquisition.
  *
@@ -231,23 +218,20 @@ export const readerString = (
   self: Socket,
   encoding?: string | undefined
 ): Effect.Effect<
-  Reader<string>,
+  Effect.Effect<NonEmptyReadonlyArray<string>, SocketError>,
   SocketError,
   Scope.Scope
 > =>
-  Effect.map(self.reader, ({ pull, upgrade }) => {
+  Effect.map(self.reader, ({ pull }) => {
     const decoder = new TextDecoder(encoding)
-    return {
-      pull: Effect.map(pull, (chunk) => {
-        const out = new Array<string>(chunk.length)
-        for (let i = 0; i < chunk.length; i++) {
-          const item = chunk[i]
-          out[i] = typeof item === "string" ? item : decoder.decode(item)
-        }
-        return out as unknown as NonEmptyReadonlyArray<string>
-      }),
-      upgrade
-    }
+    return Effect.map(pull, (chunk) => {
+      const out = new Array<string>(chunk.length)
+      for (let i = 0; i < chunk.length; i++) {
+        const item = chunk[i]
+        out[i] = typeof item === "string" ? item : decoder.decode(item)
+      }
+      return out as unknown as NonEmptyReadonlyArray<string>
+    })
   })
 
 const CloseEventTypeId = "~effect/socket/Socket/CloseEvent"
@@ -388,6 +372,15 @@ export class SocketUpgradeError extends Schema.Error<SocketUpgradeError>(
   _tag: Schema.tag("SocketUpgradeError"),
   cause: Schema.optional(Schema.Defect())
 }) {
+  /**
+   * An upgrade implementation for transports that cannot wrap the connection
+   * with TLS.
+   *
+   * @since 4.0.0
+   */
+  static readonly unsupported: Reader["upgrade"] = () =>
+    Effect.fail(new SocketError({ reason: new SocketUpgradeError({}) }))
+
   override get message() {
     return this.cause === undefined
       ? `Socket does not support TLS upgrade`
@@ -514,7 +507,7 @@ const writeChunk = (
 const toChannelWithReader = <A extends Uint8Array | string, IE>(
   self: Socket,
   reader: Effect.Effect<
-    Reader<A>,
+    Effect.Effect<NonEmptyReadonlyArray<A>, SocketError>,
     SocketError,
     Scope.Scope
   >
@@ -527,7 +520,7 @@ const toChannelWithReader = <A extends Uint8Array | string, IE>(
 > =>
   Channel.fromTransform(Effect.fnUntraced(function*(upstream, scope) {
     const readScope = yield* Scope.fork(scope)
-    const { pull } = yield* Scope.provide(reader, readScope)
+    const pull = yield* Scope.provide(reader, readScope)
     const writeScope = yield* Scope.fork(scope)
     const writer = yield* Scope.provide(self.writer, writeScope)
 
@@ -647,7 +640,7 @@ export const toChannelWith = <IE = never>() =>
  */
 export const toStream = (self: Socket): Stream.Stream<Uint8Array, SocketError> =>
   Stream.fromChannel(
-    Channel.fromTransform((_, scope) => Effect.map(Scope.provide(readerBytes(self), scope), (reader) => reader.pull))
+    Channel.fromTransform((_, scope) => Scope.provide(readerBytes(self), scope))
   )
 
 /**
@@ -1026,7 +1019,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
             if (waiter === resume) waiter = undefined
           })
         }),
-        upgrade: unsupportedUpgrade
+        upgrade: SocketUpgradeError.unsupported
       }
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(acquireContext, input))
@@ -1190,7 +1183,7 @@ export const fromTransformStream = <R>(
               ? Effect.fail(error ?? closeError(1000))
               : Effect.succeed([value] as unknown as NonEmptyReadonlyArray<Uint8Array | string>))
         }),
-        upgrade: unsupportedUpgrade
+        upgrade: SocketUpgradeError.unsupported
       }
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(acquireContext, input))

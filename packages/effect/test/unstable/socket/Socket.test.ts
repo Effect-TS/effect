@@ -95,28 +95,24 @@ describe("Socket", () => {
         assert.isTrue(wasUpgraded())
       }))
 
-    it.effect("readerBytes maps pulls and keeps the reader upgrade", () =>
+    it.effect("readerBytes maps pulls to bytes", () =>
       Effect.gen(function*() {
-        const { socket, wasUpgraded } = stubSocket(Effect.succeed(["hello"]))
+        const { socket } = stubSocket(Effect.succeed(["hello"]))
 
-        const { pull, upgrade } = yield* Socket.readerBytes(socket)
+        const pull = yield* Socket.readerBytes(socket)
         const [message] = yield* pull
-        yield* upgrade({ key: Redacted.make("key"), cert: "cert" })
 
         assert.deepStrictEqual(message, new TextEncoder().encode("hello"))
-        assert.isTrue(wasUpgraded())
       }))
 
-    it.effect("readerString maps pulls and keeps the reader upgrade", () =>
+    it.effect("readerString maps pulls to strings", () =>
       Effect.gen(function*() {
-        const { socket, wasUpgraded } = stubSocket(Effect.succeed([new TextEncoder().encode("hello")]))
+        const { socket } = stubSocket(Effect.succeed([new TextEncoder().encode("hello")]))
 
-        const { pull, upgrade } = yield* Socket.readerString(socket)
+        const pull = yield* Socket.readerString(socket)
         const [message] = yield* pull
-        yield* upgrade({ key: Redacted.make("key"), cert: "cert" })
 
         assert.strictEqual(message, "hello")
-        assert.isTrue(wasUpgraded())
       }))
   })
 
@@ -241,7 +237,7 @@ describe("Socket", () => {
                 closed.await,
                 Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
               ),
-              upgrade: Socket.unsupportedUpgrade
+              upgrade: Socket.SocketUpgradeError.unsupported
             }
           }),
           writer: Effect.succeed({
