@@ -129,12 +129,7 @@ export const fromConn = <RO>(
               )
               : Effect.succeed([value] as const))
         }),
-        upgrade: () =>
-          Effect.fail(
-            new Socket.SocketError({
-              reason: new Socket.SocketUpgradeError({})
-            })
-          )
+        upgrade: Socket.unsupportedUpgrade
       }
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(openServices, input))

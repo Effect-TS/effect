@@ -171,7 +171,15 @@ export const make = (options: {
     writer: options.writer
   })
 
-const unsupportedUpgrade: Reader["upgrade"] = () => Effect.fail(new SocketError({ reason: new SocketUpgradeError({}) }))
+/**
+ * A `Reader["upgrade"]` for transports that cannot wrap the connection with
+ * TLS. Always fails with a `SocketUpgradeError`.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const unsupportedUpgrade: Reader["upgrade"] = () =>
+  Effect.fail(new SocketError({ reason: new SocketUpgradeError({}) }))
 
 const encoder = new TextEncoder()
 

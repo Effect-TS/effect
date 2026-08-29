@@ -65,79 +65,58 @@ class TestWebSocket implements Socket.WebSocketLike {
   send(): void {}
 }
 
+const stubSocket = (pull: Socket.Reader["pull"]) => {
+  let upgraded = false
+  const socket = Socket.make({
+    reader: Effect.succeed({
+      pull,
+      upgrade: () =>
+        Effect.sync(() => {
+          upgraded = true
+        })
+    }),
+    writer: Effect.succeed({
+      write: () => Effect.void,
+      writeAll: () => Effect.void
+    })
+  })
+  return { socket, wasUpgraded: () => upgraded }
+}
+
 describe("Socket", () => {
   describe("make", () => {
     it.effect("exposes TLS upgrade on the acquired reader", () =>
       Effect.gen(function*() {
-        let upgraded = false
-        const socket = Socket.make({
-          reader: Effect.succeed({
-            pull: Effect.never,
-            upgrade: () =>
-              Effect.sync(() => {
-                upgraded = true
-              })
-          }),
-          writer: Effect.succeed({
-            write: () => Effect.void,
-            writeAll: () => Effect.void
-          })
-        })
+        const { socket, wasUpgraded } = stubSocket(Effect.never)
 
         const { upgrade } = yield* socket.reader
         yield* upgrade({ key: Redacted.make("key"), cert: "cert" })
 
-        assert.isTrue(upgraded)
+        assert.isTrue(wasUpgraded())
       }))
 
     it.effect("readerBytes maps pulls and keeps the reader upgrade", () =>
       Effect.gen(function*() {
-        let upgraded = false
-        const socket = Socket.make({
-          reader: Effect.succeed({
-            pull: Effect.succeed(["hello"]),
-            upgrade: () =>
-              Effect.sync(() => {
-                upgraded = true
-              })
-          }),
-          writer: Effect.succeed({
-            write: () => Effect.void,
-            writeAll: () => Effect.void
-          })
-        })
+        const { socket, wasUpgraded } = stubSocket(Effect.succeed(["hello"]))
 
         const { pull, upgrade } = yield* Socket.readerBytes(socket)
         const [message] = yield* pull
         yield* upgrade({ key: Redacted.make("key"), cert: "cert" })
 
         assert.deepStrictEqual(message, new TextEncoder().encode("hello"))
-        assert.isTrue(upgraded)
+        assert.isTrue(wasUpgraded())
       }))
 
     it.effect("readerString maps pulls and keeps the reader upgrade", () =>
       Effect.gen(function*() {
-        let upgraded = false
-        const socket = Socket.make({
-          reader: Effect.succeed({
-            pull: Effect.succeed([new TextEncoder().encode("hello")]),
-            upgrade: () =>
-              Effect.sync(() => {
-                upgraded = true
-              })
-          }),
-          writer: Effect.succeed({
-            write: () => Effect.void,
-            writeAll: () => Effect.void
-          })
-        })
+        const { socket, wasUpgraded } = stubSocket(Effect.succeed([new TextEncoder().encode("hello")]))
 
         const { pull, upgrade } = yield* Socket.readerString(socket)
         const [message] = yield* pull
         yield* upgrade({ key: Redacted.make("key"), cert: "cert" })
 
         assert.strictEqual(message, "hello")
-        assert.isTrue(upgraded)
+        assert.isTrue(wasUpgraded())
       }))
   })
 
@@ -262,12 +241,7 @@ describe("Socket", () => {
                 closed.await,
                 Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
               ),
-              upgrade: () =>
-                Effect.fail(
-                  new Socket.SocketError({
-                    reason: new Socket.SocketUpgradeError({})
-                  })
-                )
+              upgrade: Socket.unsupportedUpgrade
             }
           }),
           writer: Effect.succeed({

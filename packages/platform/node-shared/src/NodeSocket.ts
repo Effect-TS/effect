@@ -8,7 +8,6 @@
  *
  * @since 4.0.0
  */
-import type { Array } from "effect"
 import * as Arr from "effect/Array"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
@@ -45,7 +44,7 @@ export class NetSocket extends Context.Service<NetSocket, Net.Socket>()(
 
 const readAvailable = (
   conn: Duplex
-): Array.NonEmptyReadonlyArray<Uint8Array | string> | null => {
+): Arr.NonEmptyReadonlyArray<Uint8Array | string> | null => {
   const first = conn.read() as Uint8Array | string | null
   if (first === null) return null
   const second = conn.read() as Uint8Array | string | null
@@ -57,6 +56,9 @@ const readAvailable = (
   }
   return out
 }
+
+const toBuffers = (input: string | Uint8Array | ReadonlyArray<string | Uint8Array>): Array<Buffer> =>
+  Arr.map(Arr.ensure(input), (value) => Buffer.from(value))
 
 const closeSocket = (conn: Net.Socket, isOpen: boolean) => {
   if (conn.closed !== false) return
@@ -151,6 +153,8 @@ export const fromDuplex = <RO>(
     let currentSocket: Duplex | undefined
     const latch = Latch.makeUnsafe(false)
     const openServices = fiber.context as Context.Context<RO>
+    const isServer = options?.tlsServer === true
+    const secureEvent = isServer ? "secure" : "secureConnect"
 
     const reader: Socket.Socket["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
@@ -169,12 +173,12 @@ export const fromDuplex = <RO>(
       )
 
       type ReadResume = (
-        effect: Effect.Effect<Array.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>
+        effect: Effect.Effect<Arr.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>
       ) => void
 
       let error: Socket.SocketError | undefined
       let waiter: ReadResume | undefined
-      let currentUpgrade: Socket.Reader["upgrade"] | undefined
+      let upgradeAvailable = true
 
       function fail(err: Socket.SocketError) {
         if (error === undefined) error = err
@@ -226,95 +230,6 @@ export const fromDuplex = <RO>(
 
       conn.pause()
       attachReadListeners(conn)
-      currentUpgrade = (upgradeOptions) =>
-        Effect.callback<void, Socket.SocketError>((resume) => {
-          const raw = conn
-          detachReadListeners(raw)
-
-          let tls: Tls.TLSSocket
-          try {
-            const secureContext = Tls.createSecureContext({
-              key: Arr.map(
-                Arr.ensure(upgradeOptions.key),
-                (value) => Buffer.from(Redacted.value(value))
-              ),
-              cert: Arr.map(Arr.ensure(upgradeOptions.cert), (value) => Buffer.from(value)),
-              ca: upgradeOptions.ca === undefined
-                ? undefined
-                : Arr.map(Arr.ensure(upgradeOptions.ca), (value) => Buffer.from(value)),
-              passphrase: upgradeOptions.passphrase === undefined
-                ? undefined
-                : Redacted.value(upgradeOptions.passphrase)
-            })
-            const tlsOptions = {
-              secureContext,
-              ALPNProtocols: upgradeOptions.alpnProtocols === undefined
-                ? undefined
-                : [...upgradeOptions.alpnProtocols],
-              requestCert: upgradeOptions.requestCert,
-              rejectUnauthorized: upgradeOptions.rejectUnauthorized
-            }
-            tls = options?.tlsServer === true
-              ? new Tls.TLSSocket(raw as Net.Socket, { ...tlsOptions, isServer: true })
-              : Tls.connect({ ...tlsOptions, socket: raw as Net.Socket })
-          } catch (cause) {
-            attachReadListeners(raw)
-            resume(Effect.fail(
-              new Socket.SocketError({
-                reason: new Socket.SocketUpgradeError({ cause })
-              })
-            ))
-            return
-          }
-
-          conn = tls
-          currentSocket = tls
-          tls.pause()
-          const secureEvent = options?.tlsServer === true ? "secure" : "secureConnect"
-
-          function cleanup() {
-            tls.off(secureEvent, onSecure)
-            tls.off("error", onUpgradeError)
-            tls.off("close", onUpgradeClose)
-          }
-          function succeed() {
-            cleanup()
-            currentUpgrade = undefined
-            attachReadListeners(tls)
-            resume(Effect.void)
-          }
-          function failUpgrade(cause: unknown) {
-            cleanup()
-            const upgradeError = new Socket.SocketError({
-              reason: new Socket.SocketUpgradeError({ cause })
-            })
-            fail(upgradeError)
-            resume(Effect.fail(upgradeError))
-          }
-          function onSecure() {
-            succeed()
-          }
-          function onUpgradeError(cause: Error) {
-            failUpgrade(cause)
-          }
-          function onUpgradeClose() {
-            failUpgrade(new Error("socket closed during TLS upgrade"))
-          }
-
-          tls.once(secureEvent, onSecure)
-          tls.once("error", onUpgradeError)
-          tls.once("close", onUpgradeClose)
-
-          return Effect.sync(() => {
-            cleanup()
-            fail(
-              new Socket.SocketError({
-                reason: new Socket.SocketCloseError({ code: 1006 })
-              })
-            )
-            tls.destroy()
-          })
-        })
       yield* Scope.addFinalizer(
         scope,
         Effect.sync(() => {
@@ -327,7 +242,7 @@ export const fromDuplex = <RO>(
           detachReadListeners(conn)
           latch.closeUnsafe()
           currentSocket = undefined
-          currentUpgrade = undefined
+          upgradeAvailable = false
         })
       )
 
@@ -338,7 +253,7 @@ export const fromDuplex = <RO>(
         const chunk = readAvailable(conn)
         if (chunk !== null) return Effect.succeed(chunk)
         if (error !== undefined) return Effect.fail(error)
-        return Effect.callback<Array.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>((resume) => {
+        return Effect.callback<Arr.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>((resume) => {
           waiter = resume
           return Effect.sync(() => {
             if (waiter === resume) waiter = undefined
@@ -347,17 +262,96 @@ export const fromDuplex = <RO>(
       })
 
       const upgrade: Socket.Reader["upgrade"] = (upgradeOptions) =>
-        Effect.suspend(() =>
-          currentUpgrade === undefined
-            ? Effect.fail(
+        Effect.suspend(() => {
+          if (!upgradeAvailable) {
+            return Effect.fail(
               new Socket.SocketError({
                 reason: new Socket.SocketUpgradeError({
                   cause: new Error("socket is already upgraded or closed")
                 })
               })
             )
-            : currentUpgrade(upgradeOptions)
-        )
+          }
+          return Effect.callback<void, Socket.SocketError>((resume) => {
+            const raw = conn
+            detachReadListeners(raw)
+
+            let tls: Tls.TLSSocket
+            try {
+              const secureContext = Tls.createSecureContext({
+                key: Arr.map(
+                  Arr.ensure(upgradeOptions.key),
+                  (value) => Buffer.from(Redacted.value(value))
+                ),
+                cert: toBuffers(upgradeOptions.cert),
+                ca: upgradeOptions.ca === undefined ? undefined : toBuffers(upgradeOptions.ca),
+                passphrase: upgradeOptions.passphrase === undefined
+                  ? undefined
+                  : Redacted.value(upgradeOptions.passphrase)
+              })
+              const tlsOptions = {
+                secureContext,
+                ALPNProtocols: upgradeOptions.alpnProtocols === undefined
+                  ? undefined
+                  : [...upgradeOptions.alpnProtocols],
+                requestCert: upgradeOptions.requestCert,
+                rejectUnauthorized: upgradeOptions.rejectUnauthorized
+              }
+              tls = isServer
+                ? new Tls.TLSSocket(raw as Net.Socket, { ...tlsOptions, isServer: true })
+                : Tls.connect({ ...tlsOptions, socket: raw as Net.Socket })
+            } catch (cause) {
+              attachReadListeners(raw)
+              resume(Effect.fail(
+                new Socket.SocketError({
+                  reason: new Socket.SocketUpgradeError({ cause })
+                })
+              ))
+              return
+            }
+
+            conn = tls
+            currentSocket = tls
+            tls.pause()
+
+            function cleanup() {
+              tls.off(secureEvent, succeed)
+              tls.off("error", failUpgrade)
+              tls.off("close", onUpgradeClose)
+            }
+            function succeed() {
+              cleanup()
+              upgradeAvailable = false
+              attachReadListeners(tls)
+              resume(Effect.void)
+            }
+            function failUpgrade(cause: unknown) {
+              cleanup()
+              const upgradeError = new Socket.SocketError({
+                reason: new Socket.SocketUpgradeError({ cause })
+              })
+              fail(upgradeError)
+              resume(Effect.fail(upgradeError))
+            }
+            function onUpgradeClose() {
+              failUpgrade(new Error("socket closed during TLS upgrade"))
+            }
+
+            tls.once(secureEvent, succeed)
+            tls.once("error", failUpgrade)
+            tls.once("close", onUpgradeClose)
+
+            return Effect.sync(() => {
+              cleanup()
+              fail(
+                new Socket.SocketError({
+                  reason: new Socket.SocketCloseError({ code: 1006 })
+                })
+              )
+              tls.destroy()
+            })
+          })
+        })
 
       return { pull, upgrade }
     }).pipe(
@@ -419,7 +413,7 @@ export const fromDuplex = <RO>(
       })
 
     const writeAll = (
-      chunks: Array.NonEmptyReadonlyArray<Uint8Array | string>
+      chunks: Arr.NonEmptyReadonlyArray<Uint8Array | string>
     ): Effect.Effect<void, Socket.SocketError> =>
       Effect.suspend(() => {
         const conn = currentSocket
@@ -470,10 +464,10 @@ export const fromDuplex = <RO>(
 export const makeNetChannel = <IE = never>(
   options: Net.NetConnectOpts
 ): Channel.Channel<
-  Array.NonEmptyReadonlyArray<Uint8Array>,
+  Arr.NonEmptyReadonlyArray<Uint8Array>,
   Socket.SocketError | IE,
   void,
-  Array.NonEmptyReadonlyArray<Uint8Array | string | Socket.CloseEvent>,
+  Arr.NonEmptyReadonlyArray<Uint8Array | string | Socket.CloseEvent>,
   IE
 > =>
   Channel.unwrap(
@@ -558,10 +552,10 @@ export const makeTls = (
 export const makeTlsChannel = <IE = never>(
   options: Tls.ConnectionOptions
 ): Channel.Channel<
-  Array.NonEmptyReadonlyArray<Uint8Array>,
+  Arr.NonEmptyReadonlyArray<Uint8Array>,
   Socket.SocketError | IE,
   void,
-  Array.NonEmptyReadonlyArray<Uint8Array | string | Socket.CloseEvent>,
+  Arr.NonEmptyReadonlyArray<Uint8Array | string | Socket.CloseEvent>,
   IE
 > =>
   Channel.unwrap(
