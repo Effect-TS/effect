@@ -16,6 +16,13 @@ const TestGroup = RpcGroup.make(
   Rpc.make("Events", { success: RpcSchema.Stream(Schema.String, Schema.Never) })
 )
 
+const unsupportedUpgrade: Socket.Reader["upgrade"] = () =>
+  Effect.fail(
+    new Socket.SocketError({
+      reason: new Socket.SocketUpgradeError({})
+    })
+  )
+
 const makeHttpClient = (body: string): HttpClient.HttpClient =>
   HttpClient.make((request) =>
     Effect.succeed(
@@ -201,7 +208,10 @@ describe("RpcClient", () => {
         })
       })
       const socket = Socket.make({
-        reader: Effect.succeed(Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError)))),
+        reader: Effect.succeed({
+          pull: Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError))),
+          upgrade: unsupportedUpgrade
+        }),
         writer: Effect.succeed({
           write: () => Effect.asVoid(Deferred.succeed(requestSent, void 0)),
           writeAll: () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
@@ -244,7 +254,10 @@ describe("RpcClient", () => {
         })
       })
       const socket = Socket.make({
-        reader: Effect.succeed(Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError)))),
+        reader: Effect.succeed({
+          pull: Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError))),
+          upgrade: unsupportedUpgrade
+        }),
         writer: Effect.succeed({
           write: () => Effect.asVoid(Deferred.succeed(requestSent, void 0)),
           writeAll: () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
@@ -285,12 +298,13 @@ describe("RpcClient", () => {
         })
       })
       const socket = Socket.make({
-        reader: Effect.succeed(
-          Deferred.await(requestSent).pipe(
+        reader: Effect.succeed({
+          pull: Deferred.await(requestSent).pipe(
             Effect.tap(() => Effect.sync(() => attempts++)),
             Effect.andThen(Effect.fail(socketError))
-          )
-        ),
+          ),
+          upgrade: unsupportedUpgrade
+        }),
         writer: Effect.succeed({
           write: () => Effect.asVoid(Deferred.succeed(requestSent, void 0)),
           writeAll: () => Effect.asVoid(Deferred.succeed(requestSent, void 0))

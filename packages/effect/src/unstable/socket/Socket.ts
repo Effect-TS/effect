@@ -158,24 +158,20 @@ export interface TlsUpgradeOptions {
  * `Socket` for why. A reader that leaves a pull blocked forever will hang any
  * consumer that shuts the socket down by closing that scope.
  *
- * When `upgrade` is omitted, the socket uses an implementation that fails with
- * `SocketUpgradeError`.
- *
  * @category constructors
  * @since 4.0.0
  */
 export const make = (options: {
-  readonly reader: Effect.Effect<Reader["pull"], SocketError, Scope.Scope>
+  readonly reader: Socket["reader"]
   readonly writer: Socket["writer"]
-  readonly upgrade?: Reader["upgrade"] | undefined
-}): Socket => {
-  const upgrade = options.upgrade ?? (() => Effect.fail(new SocketError({ reason: new SocketUpgradeError({}) })))
-  return Socket.of({
+}): Socket =>
+  Socket.of({
     [TypeId]: TypeId,
-    reader: Effect.map(options.reader, (pull) => ({ pull, upgrade })),
+    reader: options.reader,
     writer: options.writer
   })
-}
+
+const unsupportedUpgrade: Reader["upgrade"] = () => Effect.fail(new SocketError({ reason: new SocketUpgradeError({}) }))
 
 const encoder = new TextEncoder()
 
@@ -833,7 +829,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
     const latch = Latch.makeUnsafe(false)
     const acquireContext = fiber.context as Context.Context<RO>
 
-    const reader: Effect.Effect<Reader["pull"], SocketError, Scope.Scope> = Effect.gen(function*() {
+    const reader: Socket["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
       const dispatcher = (yield* Scheduler.Scheduler).makeDispatcher()
       const ws = yield* Scope.provide(acquire, scope)
@@ -1013,18 +1009,20 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       currentWS = ws
       latch.openUnsafe()
 
-      // @effect-diagnostics-next-line returnEffectInGen:off
-      return Effect.callback<NonEmptyReadonlyArray<Uint8Array | string>, SocketError>((resume) => {
-        if (buffer.length > 0) return resume(Effect.succeed(takeBuffer()))
-        if (error !== undefined) return resume(Effect.fail(error))
-        waiter = resume
-        return Effect.sync(() => {
-          if (waiter === resume) waiter = undefined
-        })
-      })
+      return {
+        pull: Effect.callback<NonEmptyReadonlyArray<Uint8Array | string>, SocketError>((resume) => {
+          if (buffer.length > 0) return resume(Effect.succeed(takeBuffer()))
+          if (error !== undefined) return resume(Effect.fail(error))
+          waiter = resume
+          return Effect.sync(() => {
+            if (waiter === resume) waiter = undefined
+          })
+        }),
+        upgrade: unsupportedUpgrade
+      }
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(acquireContext, input))
-    ) as Effect.Effect<Reader["pull"], SocketError, Scope.Scope>
+    ) as Socket["reader"]
 
     const write = (chunk: Uint8Array | string | CloseEvent): Effect.Effect<void, SocketError> =>
       Effect.suspend(() => {
@@ -1147,7 +1145,7 @@ export const fromTransformStream = <R>(
       return writer
     }
 
-    const reader: Effect.Effect<Reader["pull"], SocketError, Scope.Scope> = Effect.gen(function*() {
+    const reader: Socket["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
       const stream = yield* Scope.provide(acquire, scope)
       const readerHandle = (stream.readable as ReadableStream<Uint8Array | string>).getReader()
@@ -1176,17 +1174,19 @@ export const fromTransformStream = <R>(
             reason: new SocketReadError({ cause })
           })
       })
-      // @effect-diagnostics-next-line returnEffectInGen:off
-      return Effect.suspend(() => {
-        if (error !== undefined) return Effect.fail(error)
-        return Effect.flatMap(read, ({ done, value }) =>
-          done
-            ? Effect.fail(error ?? closeError(1000))
-            : Effect.succeed([value] as unknown as NonEmptyReadonlyArray<Uint8Array | string>))
-      })
+      return {
+        pull: Effect.suspend(() => {
+          if (error !== undefined) return Effect.fail(error)
+          return Effect.flatMap(read, ({ done, value }) =>
+            done
+              ? Effect.fail(error ?? closeError(1000))
+              : Effect.succeed([value] as unknown as NonEmptyReadonlyArray<Uint8Array | string>))
+        }),
+        upgrade: unsupportedUpgrade
+      }
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(acquireContext, input))
-    ) as Effect.Effect<Reader["pull"], SocketError, Scope.Scope>
+    ) as Socket["reader"]
 
     const write = (chunk: Uint8Array | string | CloseEvent) =>
       latch.whenOpen(Effect.suspend(() => {

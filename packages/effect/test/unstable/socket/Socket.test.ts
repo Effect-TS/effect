@@ -71,15 +71,17 @@ describe("Socket", () => {
       Effect.gen(function*() {
         let upgraded = false
         const socket = Socket.make({
-          reader: Effect.succeed(Effect.never),
+          reader: Effect.succeed({
+            pull: Effect.never,
+            upgrade: () =>
+              Effect.sync(() => {
+                upgraded = true
+              })
+          }),
           writer: Effect.succeed({
             write: () => Effect.void,
             writeAll: () => Effect.void
-          }),
-          upgrade: () =>
-            Effect.sync(() => {
-              upgraded = true
-            })
+          })
         })
 
         const { upgrade } = yield* socket.reader
@@ -92,15 +94,17 @@ describe("Socket", () => {
       Effect.gen(function*() {
         let upgraded = false
         const socket = Socket.make({
-          reader: Effect.succeed(Effect.succeed(["hello"])),
+          reader: Effect.succeed({
+            pull: Effect.succeed(["hello"]),
+            upgrade: () =>
+              Effect.sync(() => {
+                upgraded = true
+              })
+          }),
           writer: Effect.succeed({
             write: () => Effect.void,
             writeAll: () => Effect.void
-          }),
-          upgrade: () =>
-            Effect.sync(() => {
-              upgraded = true
-            })
+          })
         })
 
         const { pull, upgrade } = yield* Socket.readerBytes(socket)
@@ -115,15 +119,17 @@ describe("Socket", () => {
       Effect.gen(function*() {
         let upgraded = false
         const socket = Socket.make({
-          reader: Effect.succeed(Effect.succeed([new TextEncoder().encode("hello")])),
+          reader: Effect.succeed({
+            pull: Effect.succeed([new TextEncoder().encode("hello")]),
+            upgrade: () =>
+              Effect.sync(() => {
+                upgraded = true
+              })
+          }),
           writer: Effect.succeed({
             write: () => Effect.void,
             writeAll: () => Effect.void
-          }),
-          upgrade: () =>
-            Effect.sync(() => {
-              upgraded = true
-            })
+          })
         })
 
         const { pull, upgrade } = yield* Socket.readerString(socket)
@@ -251,10 +257,18 @@ describe("Socket", () => {
           reader: Effect.gen(function*() {
             const closed = Latch.makeUnsafe(false)
             yield* Effect.addFinalizer(() => closed.open)
-            return Effect.andThen(
-              closed.await,
-              Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
-            )
+            return {
+              pull: Effect.andThen(
+                closed.await,
+                Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
+              ),
+              upgrade: () =>
+                Effect.fail(
+                  new Socket.SocketError({
+                    reason: new Socket.SocketUpgradeError({})
+                  })
+                )
+            }
           }),
           writer: Effect.succeed({
             write: () => Effect.fail(writeError),

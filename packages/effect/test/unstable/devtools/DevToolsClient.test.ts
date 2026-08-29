@@ -29,16 +29,24 @@ describe("DevToolsClient", () => {
           const closed = Latch.makeUnsafe(false)
           yield* Effect.addFinalizer(() => closed.open)
           let sent = false
-          return Effect.suspend(() => {
-            if (sent) {
-              return Effect.andThen(
-                closed.await,
-                Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
+          return {
+            pull: Effect.suspend(() => {
+              if (sent) {
+                return Effect.andThen(
+                  closed.await,
+                  Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
+                )
+              }
+              sent = true
+              return Effect.succeed(["{\"_tag\":\"Pong\"}\n"] as const)
+            }),
+            upgrade: () =>
+              Effect.fail(
+                new Socket.SocketError({
+                  reason: new Socket.SocketUpgradeError({})
+                })
               )
-            }
-            sent = true
-            return Effect.succeed(["{\"_tag\":\"Pong\"}\n"] as const)
-          })
+          }
         }),
         writer: Effect.succeed({
           write,

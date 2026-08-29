@@ -149,13 +149,10 @@ export const fromDuplex = <RO>(
 ): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) => {
     let currentSocket: Duplex | undefined
-    let currentUpgrade:
-      | ((options: Socket.TlsUpgradeOptions) => Effect.Effect<void, Socket.SocketError>)
-      | undefined
     const latch = Latch.makeUnsafe(false)
     const openServices = fiber.context as Context.Context<RO>
 
-    const reader: Effect.Effect<Socket.Reader["pull"], Socket.SocketError, Scope.Scope> = Effect.gen(function*() {
+    const reader: Socket.Socket["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
       let conn = yield* Scope.provide(open, scope).pipe(
         options?.openTimeout !== undefined ?
@@ -177,6 +174,7 @@ export const fromDuplex = <RO>(
 
       let error: Socket.SocketError | undefined
       let waiter: ReadResume | undefined
+      let currentUpgrade: Socket.Reader["upgrade"] | undefined
 
       function fail(err: Socket.SocketError) {
         if (error === undefined) error = err
@@ -336,7 +334,7 @@ export const fromDuplex = <RO>(
       currentSocket = conn
       latch.openUnsafe()
 
-      return Effect.suspend(() => {
+      const pull = Effect.suspend(() => {
         const chunk = readAvailable(conn)
         if (chunk !== null) return Effect.succeed(chunk)
         if (error !== undefined) return Effect.fail(error)
@@ -347,9 +345,24 @@ export const fromDuplex = <RO>(
           })
         })
       })
+
+      const upgrade: Socket.Reader["upgrade"] = (upgradeOptions) =>
+        Effect.suspend(() =>
+          currentUpgrade === undefined
+            ? Effect.fail(
+              new Socket.SocketError({
+                reason: new Socket.SocketUpgradeError({
+                  cause: new Error("socket is already upgraded or closed")
+                })
+              })
+            )
+            : currentUpgrade(upgradeOptions)
+        )
+
+      return { pull, upgrade }
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(openServices, input))
-    ) as Effect.Effect<Socket.Reader["pull"], Socket.SocketError, Scope.Scope>
+    ) as Socket.Socket["reader"]
 
     const awaitDrain = (conn: Duplex) =>
       Effect.callback<void, Socket.SocketError>((resume) => {
@@ -444,20 +457,7 @@ export const fromDuplex = <RO>(
         })
     )
 
-    const upgrade: Socket.Reader["upgrade"] = (upgradeOptions) =>
-      Effect.suspend(() =>
-        currentUpgrade === undefined
-          ? Effect.fail(
-            new Socket.SocketError({
-              reason: new Socket.SocketUpgradeError({
-                cause: new Error("socket reader is not acquired")
-              })
-            })
-          )
-          : currentUpgrade(upgradeOptions)
-      )
-
-    return Effect.succeed(Socket.make({ reader, writer, upgrade }))
+    return Effect.succeed(Socket.make({ reader, writer }))
   })
 
 /**

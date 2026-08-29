@@ -604,7 +604,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
           })
         const writer: Socket.Socket["writer"] = Effect.succeed({ write, writeAll })
 
-        const reader: Effect.Effect<Socket.Reader["pull"], Socket.SocketError, Scope.Scope> = Effect.gen(function*() {
+        const reader: Socket.Socket["reader"] = Effect.gen(function*() {
           const dispatcher = (yield* Scheduler.Scheduler).makeDispatcher()
           yield* Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1))
           const closeError = ws.data.closeError ?? (ws.readyState >= 2
@@ -672,18 +672,25 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             })
           )
 
-          // @effect-diagnostics-next-line returnEffectInGen:off
-          return Effect.callback<
-            Arr.NonEmptyReadonlyArray<Uint8Array | string>,
-            Socket.SocketError
-          >((resumeRead) => {
-            if (buffer.length > 0) return resumeRead(Effect.succeed(takeBuffer()))
-            if (error !== undefined) return resumeRead(Effect.fail(error))
-            waiter = resumeRead
-            return Effect.sync(() => {
-              if (waiter === resumeRead) waiter = undefined
-            })
-          })
+          return {
+            pull: Effect.callback<
+              Arr.NonEmptyReadonlyArray<Uint8Array | string>,
+              Socket.SocketError
+            >((resumeRead) => {
+              if (buffer.length > 0) return resumeRead(Effect.succeed(takeBuffer()))
+              if (error !== undefined) return resumeRead(Effect.fail(error))
+              waiter = resumeRead
+              return Effect.sync(() => {
+                if (waiter === resumeRead) waiter = undefined
+              })
+            }),
+            upgrade: () =>
+              Effect.fail(
+                new Socket.SocketError({
+                  reason: new Socket.SocketUpgradeError({})
+                })
+              )
+          }
         })
 
         return Socket.make({ reader, writer })

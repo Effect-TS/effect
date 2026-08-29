@@ -72,7 +72,7 @@ export const fromConn = <RO>(
     const latch = Latch.makeUnsafe(false)
     const openServices = fiber.context as Context.Context<RO>
 
-    const reader: Effect.Effect<Socket.Reader["pull"], Socket.SocketError, Scope.Scope> = Effect.gen(function*() {
+    const reader: Socket.Socket["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
       let conn: Deno.Conn | undefined
       yield* Scope.addFinalizer(
@@ -117,20 +117,28 @@ export const fromConn = <RO>(
               reason: new Socket.SocketReadError({ cause })
             })
       })
-      return Effect.suspend(() => {
-        if (error !== undefined) return Effect.fail(error)
-        return Effect.flatMap(read, ({ done, value }) =>
-          done
-            ? Effect.fail(
-              error ?? new Socket.SocketError({
-                reason: new Socket.SocketCloseError({ code: 1000 })
-              })
-            )
-            : Effect.succeed([value] as const))
-      })
+      return {
+        pull: Effect.suspend(() => {
+          if (error !== undefined) return Effect.fail(error)
+          return Effect.flatMap(read, ({ done, value }) =>
+            done
+              ? Effect.fail(
+                error ?? new Socket.SocketError({
+                  reason: new Socket.SocketCloseError({ code: 1000 })
+                })
+              )
+              : Effect.succeed([value] as const))
+        }),
+        upgrade: () =>
+          Effect.fail(
+            new Socket.SocketError({
+              reason: new Socket.SocketUpgradeError({})
+            })
+          )
+      }
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(openServices, input))
-    ) as Effect.Effect<Socket.Reader["pull"], Socket.SocketError, Scope.Scope>
+    ) as Socket.Socket["reader"]
 
     const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
       latch.whenOpen(Effect.suspend(() => {
