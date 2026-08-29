@@ -1,5 +1,6 @@
 ---
 "@effect/platform-node-shared": patch
+"@effect/platform-deno": patch
 "effect": patch
 ---
 

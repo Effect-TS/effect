@@ -10,7 +10,7 @@ import { hasProperty } from "../Predicate.ts"
 import { SingleShotGen } from "../Utils.ts"
 import { PipeInspectableProto } from "./core.ts"
 
-const TypeId = "~effect/data/Option"
+const TypeId = "~effect/Option"
 
 const CommonProto = {
   [TypeId]: {

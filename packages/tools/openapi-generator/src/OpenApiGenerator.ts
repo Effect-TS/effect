@@ -12,9 +12,11 @@
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as JsonPointer from "effect/JsonPointer"
 import type * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
+import * as Rec from "effect/Record"
 import * as String from "effect/String"
 import type { OpenAPISecurityScheme, OpenAPISpec, OpenAPISpecMethodName } from "effect/unstable/httpapi/OpenApi"
 import SwaggerToOpenApi from "swagger2openapi"
@@ -136,7 +138,7 @@ export const make = Effect.gen(function*() {
       }
 
       function resolveRef(ref: string) {
-        const parts = ref.split("/").slice(1)
+        const parts = ref.split("/").slice(1).map(JsonPointer.unescapeToken)
         let current: any = spec
         for (const part of parts) {
           current = current[part]
@@ -156,7 +158,7 @@ export const make = Effect.gen(function*() {
       const generation = options.format === "httpapi"
         ? generator.generateHttpApi(
           source,
-          withHttpApiMultipartSchemas(spec.components?.schemas ?? {}, multipartSchemaRefs),
+          withHttpApiMultipartSchemas(spec.components?.schemas ?? {}, multipartSchemaRefs, resolveRef),
           {
             onEnter: options.onEnter,
             multipartSchemaRefs
@@ -264,6 +266,7 @@ const parseOpenApi = (
         pathIds,
         pathTemplate
       })
+      const httpClientResponses = op.httpClientResponses
       op.path = path
       op.operationId = Utils.nonEmptyString(operation.operationId)
       op.tags = [...(operation.tags ?? [])]
@@ -288,8 +291,8 @@ const parseOpenApi = (
 
       const schemaId = Utils.identifier(operation.operationId ?? path)
 
-      const pathParameters = Predicate.isObject(methods) && Array.isArray((methods as any).parameters)
-        ? (methods as any).parameters as ReadonlyArray<unknown>
+      const pathParameters = Array.isArray(methods.parameters)
+        ? methods.parameters
         : undefined
       const parameters = resolveOperationParameters(
         pathParameters,
@@ -494,29 +497,53 @@ const parseOpenApi = (
         const representable: Array<ParsedOperation.ParsedOperationMediaTypeSchema> = []
 
         let jsonSchemaName: string | undefined
-        const jsonResponseSchema = content?.["application/json"]?.schema
-        if (Predicate.isNotUndefined(jsonResponseSchema)) {
-          jsonSchemaName = addSchema(`${schemaId}${status}`, jsonResponseSchema, op)
-          if (isHttpApi) {
+        let jsonResponseContentType: string | undefined
+        if (isHttpApi) {
+          const jsonResponseEntries = Object.entries(content ?? {}).filter(([contentType, mediaType]) =>
+            isJsonMediaType(normalizeMediaType(contentType)) &&
+            Predicate.isObject(mediaType) &&
+            Predicate.isNotUndefined(mediaType.schema)
+          )
+          const jsonResponseEntry = jsonResponseEntries.find(([contentType]) =>
+            normalizeMediaType(contentType) === "application/json"
+          ) ?? jsonResponseEntries[0]
+          if (Predicate.isNotUndefined(jsonResponseEntry)) {
+            const [contentType, mediaType] = jsonResponseEntry
+            jsonResponseContentType = contentType
+            jsonSchemaName = addSchema(`${schemaId}${status}`, mediaType.schema as JsonSchema.JsonSchema, op)
             representable.push({
-              contentType: "application/json",
+              contentType,
               encoding: "json",
               schema: jsonSchemaName
             })
+          }
+        } else {
+          const jsonSchemas = Object.entries(content ?? {}).flatMap(([contentType, mediaType]) =>
+            isJsonMediaType(normalizeMediaType(contentType)) &&
+              Predicate.isObject(mediaType) &&
+              Predicate.isNotUndefined(mediaType.schema)
+              ? [mediaType.schema as JsonSchema.JsonSchema]
+              : []
+          )
+          if (jsonSchemas.length > 0) {
+            jsonSchemaName = addSchema(
+              `${schemaId}${status}`,
+              jsonSchemas.length === 1 ? jsonSchemas[0] : { anyOf: jsonSchemas },
+              op
+            )
           }
         }
 
         if (isHttpApi) {
           for (const [contentType, mediaType] of Object.entries(content ?? {})) {
-            if (contentType === "application/json") {
+            if (contentType === jsonResponseContentType) {
               continue
             }
             if (!Predicate.isObject(mediaType)) {
               continue
             }
 
-            const statusMajorNumber = Number(parsedStatus[0])
-            const streamEncoding = !Number.isNaN(statusMajorNumber) && statusMajorNumber < 4
+            const streamEncoding = isSuccessStatus(parsedStatus)
               ? getEffectStreamEncoding(mediaType)
               : undefined
             if (streamEncoding === "uint8array") {
@@ -584,50 +611,67 @@ const parseOpenApi = (
           op.defaultResponse = parsedResponse
         }
 
+        const normalizedStatus = parsedStatus.toLowerCase()
+        const hasBinaryResponse = Object.entries(content ?? {}).some(([contentType, mediaType]) =>
+          Predicate.isObject(mediaType) &&
+          (isBinaryMediaType(normalizeMediaType(contentType)) || isBinarySchema(mediaType.schema))
+        )
+        if (hasBinaryResponse && isSuccessStatus(parsedStatus)) {
+          httpClientResponses.binarySuccessStatuses.add(normalizedStatus)
+        }
+
         if (Predicate.isNotUndefined(jsonSchemaName)) {
-          const schemaName = jsonSchemaName
-
           if (status === "default" && !isHttpApi) {
-            defaultSchema = schemaName
+            defaultSchema = jsonSchemaName
             continue
           }
 
-          const statusLower = parsedStatus.toLowerCase()
-          const statusMajorNumber = Number(parsedStatus[0])
-          if (Number.isNaN(statusMajorNumber)) {
+          if (Number.isNaN(Number(parsedStatus[0]))) {
             continue
           }
-          if (statusMajorNumber < 4) {
-            op.successSchemas.set(statusLower, schemaName)
+          if (isSuccessStatus(parsedStatus)) {
+            if (!httpClientResponses.binarySuccessStatuses.has(normalizedStatus)) {
+              httpClientResponses.successSchemas.set(normalizedStatus, jsonSchemaName)
+            }
           } else {
-            op.errorSchemas.set(statusLower, schemaName)
+            httpClientResponses.errorSchemas.set(normalizedStatus, jsonSchemaName)
           }
         }
 
-        const sseResponseSchema = content?.["text/event-stream"]?.schema
-        if (!isHttpApi && Predicate.isUndefined(op.sseSchema) && Predicate.isNotUndefined(sseResponseSchema)) {
-          const statusMajorNumber = Number(parsedStatus[0])
-          if (!Number.isNaN(statusMajorNumber) && statusMajorNumber < 4) {
-            op.sseSchema = addSchema(`${schemaId}${status}Sse`, sseResponseSchema, op)
-          }
+        const sseMediaType = content?.["text/event-stream"]
+        const sseResponseSchema = sseMediaType?.schema
+        if (
+          !isHttpApi && Predicate.isUndefined(httpClientResponses.sseSchema) &&
+          Predicate.isNotUndefined(sseResponseSchema) &&
+          isSuccessStatus(parsedStatus)
+        ) {
+          const effectStream = sseMediaType["x-effect-stream"]
+          httpClientResponses.sseSchemaMode = getEffectStreamEncoding(sseMediaType) === "sse" ? "event" : "data"
+          httpClientResponses.sseSchema = addSchema(
+            `${schemaId}${status}Sse`,
+            httpClientResponses.sseSchemaMode === "event"
+              ? makeSseEventSchema(
+                resolveReference(sseResponseSchema, resolveRef),
+                effectStream?.encoding === "sse" ? effectStream.failureEvent : undefined
+              )
+              : sseResponseSchema,
+            op
+          )
         }
 
-        if (Predicate.isNotUndefined(content?.["application/octet-stream"])) {
-          const statusMajorNumber = Number(parsedStatus[0])
-          if (!Number.isNaN(statusMajorNumber) && statusMajorNumber < 4) {
-            op.binaryResponse = true
-          }
-        }
-
-        if (isEmptyResponse) {
-          if (parsedStatus !== "default") {
-            op.voidSchemas.add(parsedStatus.toLowerCase())
+        if (isEmptyResponse && parsedStatus !== "default") {
+          if (isSuccessStatus(normalizedStatus)) {
+            httpClientResponses.voidSuccessStatuses.add(normalizedStatus)
+          } else {
+            httpClientResponses.voidErrorStatuses.add(normalizedStatus)
           }
         }
       }
 
-      if (!isHttpApi && op.successSchemas.size === 0 && Predicate.isNotUndefined(defaultSchema)) {
-        op.successSchemas.set("2xx", defaultSchema)
+      if (
+        !isHttpApi && httpClientResponses.successSchemas.size === 0 && Predicate.isNotUndefined(defaultSchema)
+      ) {
+        httpClientResponses.successSchemas.set("2xx", defaultSchema)
         warnForOperation(emitWarning, op, {
           code: "default-response-remapped",
           message: "Default response was remapped to 2xx for the current HttpClient outputs."
@@ -744,14 +788,14 @@ const buildParameterSchema = <
 
       for (const [name, propertySchema] of Object.entries(paramSchema.properties)) {
         const adjustedName = `${parameter.name}[${name}]`
-        schema.properties[adjustedName] = propertySchema as JsonSchema.JsonSchema
+        Rec.assignProperty(schema.properties, adjustedName, propertySchema as JsonSchema.JsonSchema)
         if (required.includes(name)) {
           schema.required.push(adjustedName)
         }
         added.push(adjustedName)
       }
     } else {
-      schema.properties[parameter.name] = parameter.schema as JsonSchema.JsonSchema
+      Rec.assignProperty(schema.properties, parameter.name, parameter.schema as JsonSchema.JsonSchema)
       if (parameter.required) {
         schema.required.push(parameter.name)
       }
@@ -807,13 +851,14 @@ const toDefinitionRef = (name: string): string => `#/$defs/${name.replaceAll("~"
 
 const withHttpApiMultipartSchemas = (
   definitions: JsonSchema.Definitions,
-  multipartSchemaRefs: HttpApiMultipartSchemaRefs | undefined
+  multipartSchemaRefs: HttpApiMultipartSchemaRefs | undefined,
+  resolveRef: (ref: string) => unknown
 ): JsonSchema.Definitions => {
   if (multipartSchemaRefs === undefined) {
     return definitions
   }
   return {
-    ...definitions,
+    ...Rec.map(definitions, (schema) => transformMultipartSchema(schema, multipartSchemaRefs, resolveRef)),
     [multipartSchemaRefs.singleFile]: {
       type: "string",
       format: "binary"
@@ -850,18 +895,21 @@ const transformMultipartSchema = (
     }
 
     if (typeof value.$ref === "string" && value.$ref.startsWith("#/components/schemas/")) {
-      const cached = cache.get(value.$ref)
+      const { $ref, ...siblings } = value
+      const withSiblings = (schema: unknown): unknown =>
+        Object.keys(siblings).length === 0 ? schema : { allOf: [schema, visit(siblings)] }
+      const cached = cache.get($ref)
       if (cached !== undefined) {
-        return cached
+        return withSiblings(cached)
       }
-      if (stack.has(value.$ref)) {
+      if (stack.has($ref)) {
         return value
       }
-      stack.add(value.$ref)
-      const transformed = visit(resolveSchemaReference(value.$ref, resolveRef))
-      stack.delete(value.$ref)
-      cache.set(value.$ref, transformed)
-      return transformed
+      stack.add($ref)
+      const transformed = visit(resolveRef($ref))
+      stack.delete($ref)
+      cache.set($ref, transformed)
+      return withSiblings(transformed)
     }
 
     if (isMultipartBinaryFile(value)) {
@@ -870,7 +918,7 @@ const transformMultipartSchema = (
 
     const out: Record<string, unknown> = {}
     for (const [key, current] of Object.entries(value)) {
-      out[key] = visit(current)
+      Rec.assignProperty(out, key, visit(current))
     }
 
     if (isMultipartBinaryFiles(out, singleFileRef)) {
@@ -881,19 +929,6 @@ const transformMultipartSchema = (
   }
 
   return visit(schema) as JsonSchema.JsonSchema
-}
-
-const resolveSchemaReference = (ref: string, resolveRef: (ref: string) => unknown): unknown => {
-  let current: unknown = { $ref: ref }
-  const seen = new Set<string>()
-  while (Predicate.isObject(current) && typeof current.$ref === "string") {
-    if (seen.has(current.$ref)) {
-      return current
-    }
-    seen.add(current.$ref)
-    current = resolveRef(current.$ref)
-  }
-  return current
 }
 
 const isMultipartBinaryFile = (value: unknown): value is JsonSchema.JsonSchema =>
@@ -916,16 +951,47 @@ const isJsonMediaType = (contentType: string): boolean =>
   contentType === "application/json" ||
   (contentType.startsWith("application/") && contentType.endsWith("+json"))
 
+const normalizeMediaType = (contentType: string): string => contentType.toLowerCase().split(";", 1)[0].trim()
+
 const isTextMediaType = (contentType: string): boolean => contentType.startsWith("text/")
 
+const binaryMediaTypes = new Set([
+  "application/octet-stream",
+  "application/pdf",
+  "application/zip",
+  "application/gzip",
+  "application/x-gzip",
+  "application/x-tar",
+  "application/x-zip-compressed"
+])
+
+const binaryMediaTypePrefixes = ["image/", "audio/", "video/", "font/"]
+
 const isBinaryMediaType = (contentType: string): boolean =>
-  contentType === "application/octet-stream" ||
-  (contentType.startsWith("application/") && (contentType.includes("binary") || contentType.endsWith("+octet-stream")))
+  binaryMediaTypes.has(contentType) ||
+  binaryMediaTypePrefixes.some((prefix) => contentType.startsWith(prefix)) ||
+  (contentType.startsWith("application/") &&
+    (contentType.includes("binary") ||
+      contentType.endsWith("+octet-stream") ||
+      contentType.endsWith("+zip") ||
+      contentType.endsWith("+gzip")))
+
+const isBinarySchema = (schema: unknown): boolean =>
+  Predicate.isObject(schema) &&
+  (
+    (typeof schema.format === "string" && schema.format.toLowerCase() === "binary") ||
+    (typeof schema.contentEncoding === "string" && schema.contentEncoding.toLowerCase() === "binary")
+  )
+
+const isSuccessStatus = (status: string): boolean => {
+  const statusMajorNumber = Number(status[0])
+  return !Number.isNaN(statusMajorNumber) && statusMajorNumber < 4
+}
 
 const getRequestMediaTypeEncoding = (
   contentType: string
 ): ParsedOperation.ParsedOperationMediaTypeEncoding | undefined => {
-  const normalized = contentType.toLowerCase()
+  const normalized = normalizeMediaType(contentType)
   if (isJsonMediaType(normalized)) {
     return "json"
   }
@@ -947,7 +1013,7 @@ const getRequestMediaTypeEncoding = (
 const getResponseMediaTypeEncoding = (
   contentType: string
 ): ParsedOperation.ParsedOperationMediaTypeEncoding | undefined => {
-  const normalized = contentType.toLowerCase()
+  const normalized = normalizeMediaType(contentType)
   if (isJsonMediaType(normalized)) {
     return "json"
   }
@@ -977,6 +1043,59 @@ const getEffectStreamErrorSchema = (mediaType: object): JsonSchema.JsonSchema | 
     return
   }
   return stream.errorSchema as JsonSchema.JsonSchema
+}
+
+const makeSseEventSchema = (
+  input: JsonSchema.JsonSchema,
+  failureEvent: string | undefined
+): JsonSchema.JsonSchema => {
+  const eventSchema = normalizeSseEventSchema(input)
+  if (failureEvent === undefined) {
+    return eventSchema
+  }
+  return {
+    anyOf: [
+      eventSchema,
+      {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          event: { const: failureEvent },
+          data: { type: "string" }
+        },
+        required: ["event", "data"],
+        additionalProperties: false
+      }
+    ]
+  }
+}
+
+const normalizeSseEventSchema = (input: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
+  const schema = { ...input } as Record<string, any>
+  for (const key of ["allOf", "anyOf", "oneOf"] as const) {
+    if (Array.isArray(schema[key])) {
+      schema[key] = schema[key].map(normalizeSseEventSchema)
+    }
+  }
+  if (
+    schema.type !== "object" ||
+    !Predicate.isObject(schema.properties) ||
+    !Object.hasOwn(schema.properties, "id") ||
+    !Object.hasOwn(schema.properties, "event") ||
+    !Object.hasOwn(schema.properties, "data")
+  ) {
+    return schema as JsonSchema.JsonSchema
+  }
+
+  // OpenAPI represents `undefined` as required nullable; restore the SSE parser's optional wire field.
+  schema.properties = {
+    ...schema.properties,
+    id: { type: "string" }
+  }
+  if (Array.isArray(schema.required)) {
+    schema.required = schema.required.filter((name: unknown) => name !== "id")
+  }
+  return schema as JsonSchema.JsonSchema
 }
 
 const resolveReference = (input: unknown, resolveRef: (ref: string) => unknown): any => {

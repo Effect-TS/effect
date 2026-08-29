@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { assertDefined, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Effect, Latch, Option, Schema, Stream } from "effect"
+import { type Cause, Effect, Fiber, Latch, Option, Queue, Ref, Schema, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import { AiError, LanguageModel, Prompt, Response, ResponseIdTracker, Tool, Toolkit } from "effect/unstable/ai"
 import * as TestUtils from "./utils.ts"
@@ -17,6 +17,17 @@ const MyToolkitLayer = MyToolkit.toLayer({
     Effect.succeed({ testSuccess: "test-success" }).pipe(
       Effect.delay("10 seconds")
     )
+})
+
+const TransformTool = Tool.make("TransformTool", {
+  parameters: Schema.FiniteFromString,
+  success: Schema.Finite
+})
+
+const TransformToolkit = Toolkit.make(TransformTool)
+
+const TransformToolkitLayer = TransformToolkit.toLayer({
+  TransformTool: (value) => Effect.succeed(value * 2)
 })
 
 const ApprovalTool = Tool.make("ApprovalTool", {
@@ -45,78 +56,628 @@ describe("LanguageModel", () => {
     usage: {
       inputTokens: { uncached: 5, total: 5, cacheRead: undefined, cacheWrite: undefined },
       outputTokens: { total: 5, text: undefined, reasoning: undefined }
-    }
+    },
+    response: undefined
   }
 
-  describe("streamText", () => {
-    it("should emit tool calls before executing tool handlers", () =>
+  describe("generateText", () => {
+    it.effect("does not resolve tool calls after an incomplete finish", () =>
       Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Ref.update(calls, (n) => n + 1).pipe(
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+
+        for (const reason of ["length", "content-filter", "error", "unknown", "other"] as const) {
+          const response = yield* LanguageModel.generateText({
+            prompt: [],
+            toolkit: MyToolkit
+          }).pipe(
+            TestUtils.withLanguageModel({
+              generateText: [
+                {
+                  type: "tool-call",
+                  id: `tool-${reason}`,
+                  name: "MyTool",
+                  params: { testParam: "test-param" }
+                },
+                { ...finishPart, reason }
+              ]
+            }),
+            Effect.provide(handlers)
+          )
+
+          strictEqual(response.finishReason, reason)
+          strictEqual(response.toolCalls.length, 1)
+          strictEqual(response.toolResults.length, 1)
+
+          const toolResult = response.toolResults[0]!
+          strictEqual(toolResult.isFailure, true)
+          deepStrictEqual<unknown>(toolResult.result, {
+            type: "execution-interrupted",
+            reason: `Tool call execution was interrupted because the response finished with reason "${reason}"`
+          })
+        }
+
+        strictEqual(yield* Ref.get(calls), 0)
+      }))
+
+    it.effect("validates the complete response before resolving tool calls", () =>
+      Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Ref.update(calls, (n) => n + 1).pipe(
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [
+              {
+                type: "tool-call",
+                id: "tool-before-invalid-part",
+                name: "MyTool",
+                params: { testParam: "test-param" }
+              },
+              { type: "text", text: 123 } as any
+            ]
+          }),
+          Effect.provide(handlers),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+        strictEqual(yield* Ref.get(calls), 0)
+      }))
+
+    it.effect("fails cleanly for a tool call with a missing params field", () =>
+      Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Ref.update(calls, (n) => n + 1).pipe(
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [
+              { type: "tool-call", id: "tool-no-params", name: "MyTool" } as any,
+              finishPart
+            ]
+          }),
+          Effect.provide(handlers),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+        strictEqual(yield* Ref.get(calls), 0)
+      }))
+
+    it.effect("validates encoded tool parameters when tool call resolution is disabled", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: TransformToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [{
+              type: "tool-call",
+              id: "tool-invalid-transform",
+              name: "TransformTool",
+              params: { invalid: true }
+            }]
+          }),
+          Effect.provide(TransformToolkitLayer),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }))
+
+    it.effect("preserves encoded tool parameters when tool call resolution is disabled", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: TransformToolkit,
+          disableToolCallResolution: true
+        })
+        const toolCall = response.toolCalls[0]!
+
+        strictEqual(toolCall.params, "21")
+
+        const toolkit = yield* TransformToolkit
+        const results = yield* toolkit.handle(toolCall.name, toolCall.params).pipe(
+          Effect.flatMap(Stream.runCollect)
+        )
+
+        strictEqual(results[0].result, 42)
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: [{
+            type: "tool-call",
+            id: "tool-transform",
+            name: "TransformTool",
+            params: "21"
+          }]
+        }),
+        Effect.provide(TransformToolkitLayer)
+      ))
+  })
+
+  describe("streamText", () => {
+    it.effect("interrupts in-flight tool handlers on an incomplete finish", () =>
+      Effect.gen(function*() {
+        const toolCallObserved = yield* Latch.make()
+        const handlerStarted = yield* Latch.make()
+        const handlerInterrupted = yield* Latch.make()
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            handlerStarted.open.pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() => handlerInterrupted.open),
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+        const providerQueue = yield* Queue.make<Response.StreamPartEncoded, Cause.Done>()
         const parts: Array<Response.StreamPart<Toolkit.Tools<typeof MyToolkit>>> = []
-        const latch = yield* Latch.make()
 
-        const toolCallId = "tool-abc123"
-        const toolName = "MyTool"
-        const toolParams = { testParam: "test-param" }
-        const toolResult = { testSuccess: "test-success" }
-
-        yield* LanguageModel.streamText({
+        const fiber = yield* LanguageModel.streamText({
           prompt: [],
           toolkit: MyToolkit
         }).pipe(
           Stream.runForEach((part) =>
-            Effect.andThen(
-              latch.open,
-              Effect.sync(() => {
-                parts.push(part)
-              })
+            Effect.sync(() => {
+              parts.push(part)
+            }).pipe(
+              Effect.andThen(part.type === "tool-call" ? toolCallObserved.open : Effect.void)
             )
           ),
+          TestUtils.withLanguageModel({
+            streamText: () => Stream.fromQueue(providerQueue)
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        yield* Queue.offer(providerQueue, {
+          type: "tool-call",
+          id: "tool-interrupted",
+          name: "MyTool",
+          params: { testParam: "test-param" }
+        })
+        yield* toolCallObserved.await
+        // The handler starts once the stream moves past the tool call
+        yield* Queue.offer(providerQueue, { type: "text-delta", id: "text-1", delta: "more" })
+        yield* handlerStarted.await
+
+        yield* Queue.offer(providerQueue, { ...finishPart, reason: "length" })
+        yield* Queue.end(providerQueue)
+        yield* Fiber.join(fiber)
+
+        yield* handlerInterrupted.await
+        deepStrictEqual(parts.map((part) => part.type), ["tool-call", "text-delta", "tool-result", "finish"])
+        strictEqual(parts.find((part) => part.type === "finish")?.reason, "length")
+
+        // The interrupted handler produced no result, so a synthesized
+        // failure result resolves the tool call instead
+        const toolResult = parts.find((part) => part.type === "tool-result")!
+        strictEqual(toolResult.id, "tool-interrupted")
+        strictEqual(toolResult.isFailure, true)
+        deepStrictEqual<unknown>(toolResult.result, {
+          type: "execution-interrupted",
+          reason: `Tool call execution was interrupted because the response finished with reason "length"`
+        })
+      }))
+
+    it.effect("does not start tool handlers when an incomplete finish arrives in the same chunk", () =>
+      Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Ref.update(calls, (n) => n + 1).pipe(
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+
+        for (const reason of ["length", "content-filter", "error", "unknown", "other"] as const) {
+          const parts = yield* LanguageModel.streamText({
+            prompt: [],
+            toolkit: MyToolkit
+          }).pipe(
+            Stream.runCollect,
+            TestUtils.withLanguageModel({
+              streamText: [
+                {
+                  type: "tool-call",
+                  id: `tool-${reason}`,
+                  name: "MyTool",
+                  params: { testParam: "test-param" }
+                },
+                { ...finishPart, reason }
+              ]
+            }),
+            Effect.provide(handlers)
+          )
+
+          deepStrictEqual(parts.map((part) => part.type), ["tool-call", "tool-result", "finish"])
+
+          const toolResult = parts.find((part) => part.type === "tool-result")!
+          strictEqual(toolResult.isFailure, true)
+          deepStrictEqual<unknown>(toolResult.result, {
+            type: "execution-interrupted",
+            reason: `Tool call execution was interrupted because the response finished with reason "${reason}"`
+          })
+        }
+
+        strictEqual(yield* Ref.get(calls), 0)
+      }))
+
+    it.effect("does not start tool handlers when an incomplete finish arrives in the next chunk", () =>
+      Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Ref.update(calls, (n) => n + 1).pipe(
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+        const providerQueue = yield* Queue.make<Response.StreamPartEncoded, Cause.Done>()
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({
+            streamText: () => Stream.fromQueue(providerQueue)
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        // The tool call and the truncating finish arrive back-to-back as
+        // separate chunks - the handler must never start
+        yield* Queue.offer(providerQueue, {
+          type: "tool-call",
+          id: "tool-next-chunk",
+          name: "MyTool",
+          params: { testParam: "test-param" }
+        })
+        yield* Queue.offer(providerQueue, { ...finishPart, reason: "length" })
+        yield* Queue.end(providerQueue)
+        const parts = yield* Fiber.join(fiber)
+
+        strictEqual(yield* Ref.get(calls), 0)
+        deepStrictEqual(parts.map((part) => part.type), ["tool-call", "tool-result", "finish"])
+
+        const toolResult = parts.find((part) => part.type === "tool-result")!
+        strictEqual(toolResult.isFailure, true)
+        deepStrictEqual<unknown>(toolResult.result, {
+          type: "execution-interrupted",
+          reason: `Tool call execution was interrupted because the response finished with reason "length"`
+        })
+      }))
+
+    it.effect("keeps results of handlers that completed before an incomplete finish", () =>
+      Effect.gen(function*() {
+        const parts: Array<Response.StreamPart<Toolkit.Tools<typeof MyToolkit>>> = []
+        const toolCallObserved = yield* Latch.make()
+        const resultObserved = yield* Latch.make()
+        const providerQueue = yield* Queue.make<Response.StreamPartEncoded, Cause.Done>()
+        const handlers = MyToolkit.toLayer({
+          MyTool: () => Effect.succeed({ testSuccess: "test-success" })
+        })
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          Stream.runForEach((part) =>
+            Effect.sync(() => {
+              parts.push(part)
+            }).pipe(
+              Effect.andThen(
+                part.type === "tool-call"
+                  ? toolCallObserved.open
+                  : part.type === "tool-result"
+                  ? resultObserved.open
+                  : Effect.void
+              )
+            )
+          ),
+          TestUtils.withLanguageModel({
+            streamText: () => Stream.fromQueue(providerQueue)
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        yield* Queue.offer(providerQueue, {
+          type: "tool-call",
+          id: "tool-completed",
+          name: "MyTool",
+          params: { testParam: "test-param" }
+        })
+        yield* toolCallObserved.await
+        yield* Queue.offer(providerQueue, { type: "text-delta", id: "text-1", delta: "more" })
+        yield* resultObserved.await
+
+        yield* Queue.offer(providerQueue, { ...finishPart, reason: "length" })
+        yield* Queue.end(providerQueue)
+        yield* Fiber.join(fiber)
+
+        // The completed handler keeps its real result and no synthesized
+        // failure result is added for the same call
+        deepStrictEqual(parts.map((part) => part.type), ["tool-call", "text-delta", "tool-result", "finish"])
+        const toolResult = parts.find((part) => part.type === "tool-result")!
+        strictEqual(toolResult.isFailure, false)
+        deepStrictEqual(toolResult.result, { testSuccess: "test-success" })
+      }))
+
+    it.effect("does not synthesize results for tool calls awaiting approval on an incomplete finish", () =>
+      Effect.gen(function*() {
+        const parts: Array<Response.StreamPart<Toolkit.Tools<typeof ApprovalToolkit>>> = []
+        const toolCallObserved = yield* Latch.make()
+        const approvalObserved = yield* Latch.make()
+        const providerQueue = yield* Queue.make<Response.StreamPartEncoded, Cause.Done>()
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: ApprovalToolkit
+        }).pipe(
+          Stream.runForEach((part) =>
+            Effect.sync(() => {
+              parts.push(part)
+            }).pipe(
+              Effect.andThen(
+                part.type === "tool-call"
+                  ? toolCallObserved.open
+                  : part.type === "tool-approval-request"
+                  ? approvalObserved.open
+                  : Effect.void
+              )
+            )
+          ),
+          TestUtils.withLanguageModel({
+            streamText: () => Stream.fromQueue(providerQueue)
+          }),
+          Effect.provide(ApprovalToolkitLayer),
+          Effect.forkScoped
+        )
+
+        yield* Queue.offer(providerQueue, {
+          type: "tool-call",
+          id: "tool-awaiting-approval",
+          name: "ApprovalTool",
+          params: { action: "test-action" }
+        })
+        yield* toolCallObserved.await
+        yield* Queue.offer(providerQueue, { type: "text-delta", id: "text-1", delta: "more" })
+        yield* approvalObserved.await
+
+        yield* Queue.offer(providerQueue, { ...finishPart, reason: "length" })
+        yield* Queue.end(providerQueue)
+        yield* Fiber.join(fiber)
+
+        // The approval request already resolves the call for this turn
+        deepStrictEqual(
+          parts.map((part) => part.type),
+          ["tool-call", "text-delta", "tool-approval-request", "finish"]
+        )
+      }))
+
+    it.effect("validates encoded tool parameters when tool call resolution is disabled", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: TransformToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: [{
+              type: "tool-call",
+              id: "tool-invalid-transform",
+              name: "TransformTool",
+              params: { invalid: true }
+            }]
+          }),
+          Effect.provide(TransformToolkitLayer),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }))
+
+    it.effect("preserves encoded tool parameters when tool call resolution is disabled", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: TransformToolkit,
+          disableToolCallResolution: true
+        }).pipe(Stream.runCollect)
+        const toolCall = parts.find((part) => part.type === "tool-call")!
+
+        strictEqual(toolCall.params, "21")
+
+        const toolkit = yield* TransformToolkit
+        const results = yield* toolkit.handle(toolCall.name, toolCall.params).pipe(
+          Effect.flatMap(Stream.runCollect)
+        )
+
+        strictEqual(results[0].result, 42)
+      }).pipe(
+        TestUtils.withLanguageModel({
+          streamText: [{
+            type: "tool-call",
+            id: "tool-transform",
+            name: "TransformTool",
+            params: "21"
+          }]
+        }),
+        Effect.provide(TransformToolkitLayer)
+      ))
+
+    it.effect("executes tool handlers once the stream moves past the tool call", () =>
+      Effect.gen(function*() {
+        const parts: Array<Response.StreamPart<Toolkit.Tools<typeof MyToolkit>>> = []
+        const toolCallObserved = yield* Latch.make()
+        const handlerCalled = yield* Latch.make()
+        const providerQueue = yield* Queue.make<Response.StreamPartEncoded, Cause.Done>()
+        const calls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Ref.update(calls, (n) => n + 1).pipe(
+              Effect.andThen(handlerCalled.open),
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          Stream.runForEach((part) =>
+            Effect.sync(() => {
+              parts.push(part)
+            }).pipe(
+              Effect.andThen(part.type === "tool-call" ? toolCallObserved.open : Effect.void)
+            )
+          ),
+          TestUtils.withLanguageModel({
+            streamText: () => Stream.fromQueue(providerQueue)
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        yield* Queue.offer(providerQueue, {
+          type: "tool-call",
+          id: "tool-abc123",
+          name: "MyTool",
+          params: { testParam: "test-param" }
+        })
+        yield* toolCallObserved.await
+        yield* Queue.offer(providerQueue, { type: "text-delta", id: "text-1", delta: "more" })
+
+        // The handler runs while the provider stream is still open
+        yield* handlerCalled.await
+        strictEqual(yield* Ref.get(calls), 1)
+
+        yield* Queue.offer(providerQueue, finishPart)
+        yield* Queue.end(providerQueue)
+        yield* Fiber.join(fiber)
+
+        deepStrictEqual(parts.map((part) => part.type), ["tool-call", "text-delta", "tool-result", "finish"])
+      }))
+
+    it.effect("interrupts in-flight tool handlers when the provider stream fails", () =>
+      Effect.gen(function*() {
+        const toolCallObserved = yield* Latch.make()
+        const handlerStarted = yield* Latch.make()
+        const handlerInterrupted = yield* Latch.make()
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            handlerStarted.open.pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() => handlerInterrupted.open),
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+        const providerQueue = yield* Queue.make<Response.StreamPartEncoded, Cause.Done>()
+        const providerError = AiError.make({
+          module: "LanguageModelTest",
+          method: "streamText",
+          reason: new AiError.InvalidRequestError({ description: "provider stream failed" })
+        })
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          Stream.runForEach((part) => part.type === "tool-call" ? toolCallObserved.open : Effect.void),
+          TestUtils.withLanguageModel({
+            streamText: () =>
+              Stream.fromQueue(providerQueue).pipe(
+                Stream.concat(Stream.fail(providerError))
+              )
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        yield* Queue.offer(providerQueue, {
+          type: "tool-call",
+          id: "tool-before-failure",
+          name: "MyTool",
+          params: { testParam: "test-param" }
+        })
+        yield* toolCallObserved.await
+        yield* Queue.offer(providerQueue, { type: "text-delta", id: "text-1", delta: "more" })
+        yield* handlerStarted.await
+        yield* Queue.end(providerQueue)
+
+        const error = yield* Fiber.join(fiber).pipe(Effect.flip)
+        strictEqual(error, providerError)
+        yield* handlerInterrupted.await
+      }))
+
+    it.effect("does not execute tool handlers when response content is malformed", () =>
+      Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Ref.update(calls, (n) => n + 1).pipe(
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+
+        const error = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          Stream.runDrain,
           TestUtils.withLanguageModel({
             streamText: [
               {
                 type: "tool-call",
-                id: toolCallId,
-                name: toolName,
-                params: toolParams
-              }
+                id: "tool-before-invalid-part",
+                name: "MyTool",
+                params: { testParam: "test-param" }
+              },
+              { type: "text", text: 123 } as any,
+              finishPart
             ]
           }),
-          Effect.provide(MyToolkitLayer),
-          Effect.forkScoped
+          Effect.provide(handlers),
+          Effect.flip
         )
 
-        yield* latch.await
-
-        const toolCallPart = Response.makePart("tool-call", {
-          id: toolCallId,
-          name: toolName,
-          params: toolParams,
-          providerExecuted: false
-        })
-
-        const toolResultPart = Response.toolResultPart({
-          id: toolCallId,
-          name: toolName,
-          result: toolResult,
-          encodedResult: toolResult,
-          isFailure: false,
-          providerExecuted: false,
-          preliminary: false
-        })
-
-        deepStrictEqual(parts, [toolCallPart])
-
-        yield* TestClock.adjust("10 seconds")
-
-        deepStrictEqual(parts, [toolCallPart, toolResultPart])
+        strictEqual(error._tag, "AiError")
+        strictEqual((error as AiError.AiError).reason._tag, "InvalidOutputError")
+        strictEqual(yield* Ref.get(calls), 0)
       }))
 
-    it("emits finish after resolved tool results", () =>
+    it.effect("emits finish after resolved tool results", () =>
       Effect.gen(function*() {
         const parts: Array<Response.StreamPart<Toolkit.Tools<typeof MyToolkit>>> = []
         const latch = yield* Latch.make()
 
-        yield* LanguageModel.streamText({
+        const fiber = yield* LanguageModel.streamText({
           prompt: [],
           toolkit: MyToolkit
         }).pipe(
@@ -149,16 +710,254 @@ describe("LanguageModel", () => {
         strictEqual(parts.some((part) => part.type === "finish"), false)
 
         yield* TestClock.adjust("10 seconds")
+        yield* Fiber.join(fiber)
 
         strictEqual(parts.length, 3)
         strictEqual(parts[0]?.type, "tool-call")
         strictEqual(parts[1]?.type, "tool-result")
         strictEqual(parts[2]?.type, "finish")
       }))
+
+    it.effect("runs tool handlers sequentially with concurrency: 1", () =>
+      Effect.gen(function*() {
+        const active = yield* Ref.make(0)
+        const maxActive = yield* Ref.make(0)
+        const started = yield* Latch.make()
+        const release = yield* Latch.make()
+
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Effect.gen(function*() {
+              const current = yield* Ref.updateAndGet(active, (n) => n + 1)
+              yield* Ref.update(maxActive, (n) => Math.max(n, current))
+              yield* started.open
+              yield* release.await
+              return { testSuccess: "test-success" }
+            }).pipe(Effect.ensuring(Ref.update(active, (n) => n - 1)))
+        })
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit,
+          concurrency: 1
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: [
+              {
+                type: "tool-call",
+                id: "tool-1",
+                name: "MyTool",
+                params: { testParam: "test-1" }
+              },
+              {
+                type: "tool-call",
+                id: "tool-2",
+                name: "MyTool",
+                params: { testParam: "test-2" }
+              },
+              {
+                type: "tool-call",
+                id: "tool-3",
+                name: "MyTool",
+                params: { testParam: "test-3" }
+              }
+            ]
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        yield* started.await
+        strictEqual(yield* Ref.get(active), 1)
+        strictEqual(yield* Ref.get(maxActive), 1)
+
+        yield* release.open
+        yield* Fiber.join(fiber)
+
+        strictEqual(yield* Ref.get(active), 0)
+        strictEqual(yield* Ref.get(maxActive), 1)
+      }))
+
+    it.effect("allows tool handler overlap up to a bounded concurrency", () =>
+      Effect.gen(function*() {
+        const active = yield* Ref.make(0)
+        const maxActive = yield* Ref.make(0)
+        const twoStarted = yield* Latch.make()
+        const release = yield* Latch.make()
+
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Effect.gen(function*() {
+              const current = yield* Ref.updateAndGet(active, (n) => n + 1)
+              yield* Ref.update(maxActive, (n) => Math.max(n, current))
+              if (current === 2) {
+                yield* twoStarted.open
+              }
+              yield* release.await
+              return { testSuccess: "test-success" }
+            }).pipe(Effect.ensuring(Ref.update(active, (n) => n - 1)))
+        })
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit,
+          concurrency: 2
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: [
+              {
+                type: "tool-call",
+                id: "tool-1",
+                name: "MyTool",
+                params: { testParam: "test-1" }
+              },
+              {
+                type: "tool-call",
+                id: "tool-2",
+                name: "MyTool",
+                params: { testParam: "test-2" }
+              },
+              {
+                type: "tool-call",
+                id: "tool-3",
+                name: "MyTool",
+                params: { testParam: "test-3" }
+              }
+            ]
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        yield* twoStarted.await
+        strictEqual(yield* Ref.get(active), 2)
+        strictEqual(yield* Ref.get(maxActive), 2)
+
+        yield* release.open
+        yield* Fiber.join(fiber)
+
+        strictEqual(yield* Ref.get(active), 0)
+        strictEqual(yield* Ref.get(maxActive), 2)
+      }))
+
+    it.effect("provides tool call IDs to concurrent identical tool handlers", () =>
+      Effect.gen(function*() {
+        const toolCallIds = yield* Ref.make<Array<string>>([])
+        const twoStarted = yield* Latch.make()
+        const release = yield* Latch.make()
+
+        const handlers = MyToolkit.toLayer({
+          MyTool: (_, context) =>
+            Effect.gen(function*() {
+              const toolCallId = context.toolCallId
+              assertDefined(toolCallId)
+              const ids = yield* Ref.updateAndGet(toolCallIds, (ids) => [...ids, toolCallId])
+              if (ids.length === 2) {
+                yield* twoStarted.open
+              }
+              yield* release.await
+              return { testSuccess: "test-success" }
+            })
+        })
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: [
+              {
+                type: "tool-call",
+                id: "tool-1",
+                name: "MyTool",
+                params: { testParam: "identical" }
+              },
+              {
+                type: "tool-call",
+                id: "tool-2",
+                name: "MyTool",
+                params: { testParam: "identical" }
+              }
+            ]
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        yield* twoStarted.await
+        deepStrictEqual((yield* Ref.get(toolCallIds)).sort(), ["tool-1", "tool-2"])
+
+        yield* release.open
+        yield* Fiber.join(fiber)
+      }))
+
+    it.effect("bounds needsApproval evaluation with the tool handler concurrency", () =>
+      Effect.gen(function*() {
+        const active = yield* Ref.make(0)
+        const maxActive = yield* Ref.make(0)
+        const started = yield* Latch.make()
+        const release = yield* Latch.make()
+
+        const tool = Tool.make("ApprovalConcurrencyTool", {
+          parameters: Schema.Struct({ input: Schema.String }),
+          success: Schema.Struct({ output: Schema.String }),
+          needsApproval: () =>
+            Effect.gen(function*() {
+              const current = yield* Ref.updateAndGet(active, (n) => n + 1)
+              yield* Ref.update(maxActive, (n) => Math.max(n, current))
+              yield* started.open
+              yield* release.await
+              return false
+            }).pipe(Effect.ensuring(Ref.update(active, (n) => n - 1)))
+        })
+        const toolkit = Toolkit.make(tool)
+        const handlers = toolkit.toLayer({
+          ApprovalConcurrencyTool: () => Effect.succeed({ output: "done" })
+        })
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit,
+          concurrency: 1
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: [
+              {
+                type: "tool-call",
+                id: "tool-1",
+                name: "ApprovalConcurrencyTool",
+                params: { input: "test-1" }
+              },
+              {
+                type: "tool-call",
+                id: "tool-2",
+                name: "ApprovalConcurrencyTool",
+                params: { input: "test-2" }
+              }
+            ]
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        yield* started.await
+        strictEqual(yield* Ref.get(active), 1)
+        strictEqual(yield* Ref.get(maxActive), 1)
+
+        yield* release.open
+        yield* Fiber.join(fiber)
+
+        strictEqual(yield* Ref.get(active), 0)
+        strictEqual(yield* Ref.get(maxActive), 1)
+      }))
   })
 
   describe("generateObject", () => {
-    it("includes full generated text in StructuredOutputError", () =>
+    it.effect("includes full generated text in StructuredOutputError", () =>
       Effect.gen(function*() {
         const error = yield* LanguageModel.generateObject({
           prompt: [],
@@ -179,7 +978,7 @@ describe("LanguageModel", () => {
         }
       }))
 
-    it("resolves top-level $ref for class schemas in defaultCodecTransformer", () => {
+    it("resolves the canonical top-level $ref for class schemas in defaultCodecTransformer", () => {
       class Person extends Schema.Class<Person>("Person")({
         name: Schema.String
       }) {}
@@ -196,7 +995,7 @@ describe("LanguageModel", () => {
         required: ["name"],
         additionalProperties: false,
         $defs: {
-          Person: {
+          "PersonEncoded": {
             type: "object",
             properties: {
               name: {
@@ -212,7 +1011,7 @@ describe("LanguageModel", () => {
   })
 
   describe("provider options", () => {
-    it("initialize incremental fields as undefined in generateText", () =>
+    it.effect("initialize incremental fields as undefined in generateText", () =>
       Effect.gen(function*() {
         let capturedOptions: LanguageModel.ProviderOptions | undefined
 
@@ -232,7 +1031,7 @@ describe("LanguageModel", () => {
         strictEqual(capturedOptions.incrementalPrompt, undefined)
       }))
 
-    it("initialize incremental fields as undefined in generateObject", () =>
+    it.effect("initialize incremental fields as undefined in generateObject", () =>
       Effect.gen(function*() {
         let capturedOptions: LanguageModel.ProviderOptions | undefined
 
@@ -259,7 +1058,7 @@ describe("LanguageModel", () => {
         strictEqual(capturedOptions.incrementalPrompt, undefined)
       }))
 
-    it("initialize incremental fields as undefined in streamText", () =>
+    it.effect("initialize incremental fields as undefined in streamText", () =>
       Effect.gen(function*() {
         let capturedOptions: LanguageModel.ProviderOptions | undefined
 
@@ -280,7 +1079,7 @@ describe("LanguageModel", () => {
         strictEqual(capturedOptions.incrementalPrompt, undefined)
       }))
 
-    it("falls back to full prompt in generateText when incremental request fails", () =>
+    it.effect("falls back to full prompt in generateText when incremental request fails", () =>
       Effect.gen(function*() {
         const fullPrompt = Prompt.make([
           Prompt.systemMessage({ content: "system" }),
@@ -337,7 +1136,7 @@ describe("LanguageModel", () => {
         deepStrictEqual(calls[1]!.prompt, fullPrompt)
       }))
 
-    it("falls back to full prompt in streamText when incremental request fails", () =>
+    it.effect("falls back to full prompt in streamText when incremental request fails", () =>
       Effect.gen(function*() {
         const fullPrompt = Prompt.make([
           Prompt.systemMessage({ content: "system" }),
@@ -395,7 +1194,59 @@ describe("LanguageModel", () => {
         deepStrictEqual(calls[1]!.prompt, fullPrompt)
       }))
 
-    it("uses tracker prepareUnsafe and markParts in generateText without toolkit", () =>
+    it.effect("does not retry an incremental stream after emitting a tool call", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.make([
+          Prompt.userMessage({ content: [Prompt.textPart({ text: "full prompt" })] })
+        ])
+        const incrementalPrompt = Prompt.make([
+          Prompt.userMessage({ content: [Prompt.textPart({ text: "incremental prompt" })] })
+        ])
+        const handlerCalls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Ref.update(handlerCalls, (n) => n + 1).pipe(
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+        let providerCalls = 0
+        const providerError = AiError.make({
+          module: "LanguageModelTest",
+          method: "streamText",
+          reason: new AiError.InvalidRequestError({ description: "incremental stream failed" })
+        })
+
+        yield* LanguageModel.streamText({ prompt, toolkit: MyToolkit }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: () => {
+              providerCalls++
+              return Stream.succeed<Response.StreamPartEncoded>({
+                type: "tool-call",
+                id: "tool-before-incremental-failure",
+                name: "MyTool",
+                params: { testParam: "test-param" }
+              }).pipe(Stream.concat(Stream.fail(providerError)))
+            }
+          }),
+          Effect.provideService(ResponseIdTracker.ResponseIdTracker, {
+            clearUnsafe() {},
+            markParts() {},
+            prepareUnsafe: () =>
+              Option.some({
+                previousResponseId: "resp_prev",
+                prompt: incrementalPrompt
+              })
+          }),
+          Effect.provide(handlers),
+          Effect.flip
+        )
+
+        strictEqual(providerCalls, 1)
+        strictEqual(yield* Ref.get(handlerCalls), 0)
+      }))
+
+    it.effect("uses tracker prepareUnsafe and markParts in generateText without toolkit", () =>
       Effect.gen(function*() {
         let capturedOptions: LanguageModel.ProviderOptions | undefined
         let preparedPrompt: LanguageModel.ProviderOptions["prompt"] | undefined
@@ -417,7 +1268,10 @@ describe("LanguageModel", () => {
                 return Effect.succeed([
                   {
                     type: "response-metadata",
-                    id: "resp_next"
+                    id: "resp_next",
+                    modelId: undefined,
+                    timestamp: undefined,
+                    request: undefined
                   },
                   finishPart
                 ])
@@ -451,7 +1305,7 @@ describe("LanguageModel", () => {
         strictEqual(markedResponseId, "resp_next")
       }))
 
-    it("uses tracker prepareUnsafe and markParts in generateText with empty toolkit", () =>
+    it.effect("uses tracker prepareUnsafe and markParts in generateText with empty toolkit", () =>
       Effect.gen(function*() {
         let capturedOptions: LanguageModel.ProviderOptions | undefined
         let prepareCalls = 0
@@ -469,7 +1323,10 @@ describe("LanguageModel", () => {
                 return Effect.succeed([
                   {
                     type: "response-metadata",
-                    id: "resp_next"
+                    id: "resp_next",
+                    modelId: undefined,
+                    timestamp: undefined,
+                    request: undefined
                   },
                   finishPart
                 ])
@@ -498,7 +1355,7 @@ describe("LanguageModel", () => {
         strictEqual(markCalls, 1)
       }))
 
-    it("calls tracker.prepareUnsafe after stripping resolved approvals in toolkit flow", () =>
+    it.effect("calls tracker.prepareUnsafe after stripping resolved approvals in toolkit flow", () =>
       Effect.gen(function*() {
         const toolCallId = "call-tracker"
         const approvalId = "approval-tracker"
@@ -531,7 +1388,8 @@ describe("LanguageModel", () => {
                 id: toolCallId,
                 name: "ApprovalTool",
                 result: { result: "approved-result" },
-                isFailure: false
+                isFailure: false,
+                providerExecuted: false
               })
             ]
           }),
@@ -549,7 +1407,10 @@ describe("LanguageModel", () => {
                 Effect.succeed([
                   {
                     type: "response-metadata",
-                    id: "resp_next"
+                    id: "resp_next",
+                    modelId: undefined,
+                    timestamp: undefined,
+                    request: undefined
                   },
                   finishPart
                 ]),
@@ -582,7 +1443,7 @@ describe("LanguageModel", () => {
         strictEqual(markedParts, preparedPrompt.content)
       }))
 
-    it("uses tracker prepareUnsafe and markParts in streamText without toolkit", () =>
+    it.effect("uses tracker prepareUnsafe and markParts in streamText without toolkit", () =>
       Effect.gen(function*() {
         let capturedOptions: LanguageModel.ProviderOptions | undefined
         let preparedPrompt: LanguageModel.ProviderOptions["prompt"] | undefined
@@ -606,7 +1467,10 @@ describe("LanguageModel", () => {
                 return Stream.fromIterable([
                   {
                     type: "response-metadata",
-                    id: "resp_next"
+                    id: "resp_next",
+                    modelId: undefined,
+                    timestamp: undefined,
+                    request: undefined
                   },
                   finishPart
                 ])
@@ -639,7 +1503,7 @@ describe("LanguageModel", () => {
         strictEqual(markedResponseId, "resp_next")
       }))
 
-    it("uses tracker prepareUnsafe and markParts in streamText with empty toolkit", () =>
+    it.effect("uses tracker prepareUnsafe and markParts in streamText with empty toolkit", () =>
       Effect.gen(function*() {
         let capturedOptions: LanguageModel.ProviderOptions | undefined
         let preparedPrompt: LanguageModel.ProviderOptions["prompt"] | undefined
@@ -664,7 +1528,10 @@ describe("LanguageModel", () => {
                 return Stream.fromIterable([
                   {
                     type: "response-metadata",
-                    id: "resp_next"
+                    id: "resp_next",
+                    modelId: undefined,
+                    timestamp: undefined,
+                    request: undefined
                   },
                   finishPart
                 ])
@@ -697,7 +1564,7 @@ describe("LanguageModel", () => {
         strictEqual(markedResponseId, "resp_next")
       }))
 
-    it("calls tracker.prepareUnsafe after stripping resolved approvals in streamText toolkit flow", () =>
+    it.effect("calls tracker.prepareUnsafe after stripping resolved approvals in streamText toolkit flow", () =>
       Effect.gen(function*() {
         const toolCallId = "call-tracker-stream"
         const approvalId = "approval-tracker-stream"
@@ -730,7 +1597,8 @@ describe("LanguageModel", () => {
                 id: toolCallId,
                 name: "ApprovalTool",
                 result: { result: "approved-result" },
-                isFailure: false
+                isFailure: false,
+                providerExecuted: false
               })
             ]
           }),
@@ -750,7 +1618,10 @@ describe("LanguageModel", () => {
                 Stream.fromIterable([
                   {
                     type: "response-metadata",
-                    id: "resp_next"
+                    id: "resp_next",
+                    modelId: undefined,
+                    timestamp: undefined,
+                    request: undefined
                   },
                   finishPart
                 ])
@@ -782,7 +1653,7 @@ describe("LanguageModel", () => {
         strictEqual(markedParts, preparedPrompt.content)
       }))
 
-    it("uses tracker prepareUnsafe and markParts when disableToolCallResolution is true", () =>
+    it.effect("uses tracker prepareUnsafe and markParts when disableToolCallResolution is true", () =>
       Effect.gen(function*() {
         const toolCallId = "call-tracker-stream-disable"
         const approvalId = "approval-tracker-stream-disable"
@@ -821,7 +1692,8 @@ describe("LanguageModel", () => {
                 id: toolCallId,
                 name: "ApprovalTool",
                 result: { result: "approved-result" },
-                isFailure: false
+                isFailure: false,
+                providerExecuted: false
               })
             ]
           }),
@@ -843,7 +1715,10 @@ describe("LanguageModel", () => {
                 return Stream.fromIterable([
                   {
                     type: "response-metadata",
-                    id: "resp_next"
+                    id: "resp_next",
+                    modelId: undefined,
+                    timestamp: undefined,
+                    request: undefined
                   },
                   finishPart
                 ])
@@ -887,7 +1762,7 @@ describe("LanguageModel", () => {
   })
 
   describe("tool approval", () => {
-    it("emits tool-approval-request when tool has needsApproval: true", () =>
+    it.effect("emits tool-approval-request when tool has needsApproval: true", () =>
       Effect.gen(function*() {
         const parts: Array<Response.StreamPart<Toolkit.Tools<typeof ApprovalToolkit>>> = []
 
@@ -936,7 +1811,7 @@ describe("LanguageModel", () => {
         }
       }))
 
-    it("pre-resolves approved tool calls before calling LLM", () =>
+    it.effect("pre-resolves approved tool calls before calling LLM", () =>
       Effect.gen(function*() {
         const toolCallId = "call-456"
         const approvalId = "approval-456"
@@ -975,14 +1850,7 @@ describe("LanguageModel", () => {
           TestUtils.withLanguageModel({
             streamText: (opts) => {
               capturedPrompt = opts.prompt
-              return [{
-                type: "finish",
-                reason: "stop",
-                usage: {
-                  inputTokens: { uncached: 5, total: 5, cacheRead: undefined, cacheWrite: undefined },
-                  outputTokens: { total: 5, text: undefined, reasoning: undefined }
-                }
-              }]
+              return [finishPart]
             }
           }),
           Effect.provide(ApprovalToolkitLayer)
@@ -1003,7 +1871,7 @@ describe("LanguageModel", () => {
         strictEqual(toolResults[0].isFailure, false)
       }))
 
-    it("pre-resolves denied tool calls with execution-denied before calling LLM", () =>
+    it.effect("pre-resolves denied tool calls with execution-denied before calling LLM", () =>
       Effect.gen(function*() {
         const toolCallId = "call-789"
         const approvalId = "approval-789"
@@ -1043,14 +1911,7 @@ describe("LanguageModel", () => {
           TestUtils.withLanguageModel({
             streamText: (opts) => {
               capturedPrompt = opts.prompt
-              return [{
-                type: "finish",
-                reason: "stop",
-                usage: {
-                  inputTokens: { uncached: 5, total: 5, cacheRead: undefined, cacheWrite: undefined },
-                  outputTokens: { total: 5, text: undefined, reasoning: undefined }
-                }
-              }]
+              return [finishPart]
             }
           }),
           Effect.provide(ApprovalToolkitLayer)
@@ -1073,7 +1934,7 @@ describe("LanguageModel", () => {
         strictEqual(toolResults[0].isFailure, true)
       }))
 
-    it("strips approved approval artifacts from prompt sent to provider (streamText)", () =>
+    it.effect("strips approved approval artifacts from prompt sent to provider (streamText)", () =>
       Effect.gen(function*() {
         const toolCallId = "call-strip"
         const approvalId = "approval-strip"
@@ -1112,14 +1973,7 @@ describe("LanguageModel", () => {
           TestUtils.withLanguageModel({
             streamText: (opts) => {
               capturedPrompt = opts.prompt
-              return [{
-                type: "finish",
-                reason: "stop",
-                usage: {
-                  inputTokens: { uncached: 5, total: 5, cacheRead: undefined, cacheWrite: undefined },
-                  outputTokens: { total: 5, text: undefined, reasoning: undefined }
-                }
-              }]
+              return [finishPart]
             }
           }),
           Effect.provide(ApprovalToolkitLayer)
@@ -1144,7 +1998,7 @@ describe("LanguageModel", () => {
         }
       }))
 
-    it("strips denied approval artifacts from prompt sent to provider", () =>
+    it.effect("strips denied approval artifacts from prompt sent to provider", () =>
       Effect.gen(function*() {
         const toolCallId = "call-strip-deny"
         const approvalId = "approval-strip-deny"
@@ -1184,14 +2038,7 @@ describe("LanguageModel", () => {
           TestUtils.withLanguageModel({
             streamText: (opts) => {
               capturedPrompt = opts.prompt
-              return [{
-                type: "finish",
-                reason: "stop",
-                usage: {
-                  inputTokens: { uncached: 5, total: 5, cacheRead: undefined, cacheWrite: undefined },
-                  outputTokens: { total: 5, text: undefined, reasoning: undefined }
-                }
-              }]
+              return [finishPart]
             }
           }),
           Effect.provide(ApprovalToolkitLayer)
@@ -1222,7 +2069,7 @@ describe("LanguageModel", () => {
         }
       }))
 
-    it("strips only resolved approvals, preserves unrelated parts", () =>
+    it.effect("strips only resolved approvals, preserves unrelated parts", () =>
       Effect.gen(function*() {
         const resolvedCallId = "call-resolved"
         const resolvedApprovalId = "approval-resolved"
@@ -1274,14 +2121,7 @@ describe("LanguageModel", () => {
           TestUtils.withLanguageModel({
             streamText: (opts) => {
               capturedPrompt = opts.prompt
-              return [{
-                type: "finish",
-                reason: "stop",
-                usage: {
-                  inputTokens: { uncached: 5, total: 5, cacheRead: undefined, cacheWrite: undefined },
-                  outputTokens: { total: 5, text: undefined, reasoning: undefined }
-                }
-              }]
+              return [finishPart]
             }
           }),
           Effect.provide(ApprovalToolkitLayer)
@@ -1307,7 +2147,7 @@ describe("LanguageModel", () => {
         }
       }))
 
-    it("strips approval artifacts via generateText path", () =>
+    it.effect("strips approval artifacts via generateText path", () =>
       Effect.gen(function*() {
         const toolCallId = "call-gen"
         const approvalId = "approval-gen"
@@ -1345,14 +2185,7 @@ describe("LanguageModel", () => {
           TestUtils.withLanguageModel({
             generateText: (opts) => {
               capturedPrompt = opts.prompt
-              return Effect.succeed([{
-                type: "finish",
-                reason: "stop",
-                usage: {
-                  inputTokens: { uncached: 5, total: 5, cacheRead: undefined, cacheWrite: undefined },
-                  outputTokens: { total: 5, text: undefined, reasoning: undefined }
-                }
-              }])
+              return Effect.succeed([finishPart])
             }
           }),
           Effect.provide(ApprovalToolkitLayer)
@@ -1372,7 +2205,7 @@ describe("LanguageModel", () => {
         }
       }))
 
-    it("dynamic needsApproval returns true when condition met", () =>
+    it.effect("dynamic needsApproval returns true when condition met", () =>
       Effect.gen(function*() {
         const parts: Array<Response.StreamPart<Toolkit.Tools<typeof ApprovalToolkit>>> = []
 
@@ -1408,7 +2241,7 @@ describe("LanguageModel", () => {
         }
       }))
 
-    it("dynamic needsApproval returns false when condition not met", () =>
+    it.effect("dynamic needsApproval returns false when condition not met", () =>
       Effect.gen(function*() {
         const parts: Array<Response.StreamPart<Toolkit.Tools<typeof ApprovalToolkit>>> = []
 
@@ -1444,14 +2277,14 @@ describe("LanguageModel", () => {
         }
       }))
 
-    it("tool without needsApproval executes normally", () =>
+    it.effect("tool without needsApproval executes normally", () =>
       Effect.gen(function*() {
         const parts: Array<Response.StreamPart<Toolkit.Tools<typeof MyToolkit>>> = []
 
         const toolCallId = "call-normal"
         const latch = yield* Latch.make()
 
-        yield* LanguageModel.streamText({
+        const fiber = yield* LanguageModel.streamText({
           prompt: [],
           toolkit: MyToolkit
         }).pipe(
@@ -1479,6 +2312,7 @@ describe("LanguageModel", () => {
 
         yield* latch.await
         yield* TestClock.adjust("10 seconds")
+        yield* Fiber.join(fiber)
 
         strictEqual(parts.length, 2)
         strictEqual(parts[0].type, "tool-call")
@@ -1488,7 +2322,7 @@ describe("LanguageModel", () => {
         }
       }))
 
-    it("strips previous-round approval artifacts even when no new pending approvals (streamText)", () =>
+    it.effect("strips previous-round approval artifacts even when no new pending approvals (streamText)", () =>
       Effect.gen(function*() {
         const toolCallId = "call-prev"
         const approvalId = "approval-prev"
@@ -1521,7 +2355,8 @@ describe("LanguageModel", () => {
                 id: toolCallId,
                 name: "ApprovalTool",
                 result: { result: "approved-result" },
-                isFailure: false
+                isFailure: false,
+                providerExecuted: false
               })
             ]
           }),
@@ -1537,14 +2372,7 @@ describe("LanguageModel", () => {
           TestUtils.withLanguageModel({
             streamText: (opts) => {
               capturedPrompt = opts.prompt
-              return [{
-                type: "finish",
-                reason: "stop",
-                usage: {
-                  inputTokens: { uncached: 5, total: 5, cacheRead: undefined, cacheWrite: undefined },
-                  outputTokens: { total: 5, text: undefined, reasoning: undefined }
-                }
-              }]
+              return [finishPart]
             }
           }),
           Effect.provide(ApprovalToolkitLayer)
@@ -1576,7 +2404,7 @@ describe("LanguageModel", () => {
         }
       }))
 
-    it("strips previous-round approval artifacts even when no new pending approvals (generateText)", () =>
+    it.effect("strips previous-round approval artifacts even when no new pending approvals (generateText)", () =>
       Effect.gen(function*() {
         const toolCallId = "call-prev-gen"
         const approvalId = "approval-prev-gen"
@@ -1607,7 +2435,8 @@ describe("LanguageModel", () => {
                 id: toolCallId,
                 name: "ApprovalTool",
                 result: { result: "approved-result" },
-                isFailure: false
+                isFailure: false,
+                providerExecuted: false
               })
             ]
           }),
@@ -1621,14 +2450,7 @@ describe("LanguageModel", () => {
           TestUtils.withLanguageModel({
             generateText: (opts) => {
               capturedPrompt = opts.prompt
-              return Effect.succeed([{
-                type: "finish",
-                reason: "stop",
-                usage: {
-                  inputTokens: { uncached: 5, total: 5, cacheRead: undefined, cacheWrite: undefined },
-                  outputTokens: { total: 5, text: undefined, reasoning: undefined }
-                }
-              }])
+              return Effect.succeed([finishPart])
             }
           }),
           Effect.provide(ApprovalToolkitLayer)
@@ -1647,7 +2469,7 @@ describe("LanguageModel", () => {
         }
       }))
 
-    it("streamText emits pre-resolved tool results as stream parts", () =>
+    it.effect("streamText emits pre-resolved tool results as stream parts", () =>
       Effect.gen(function*() {
         const toolCallId = "call-emit"
         const approvalId = "approval-emit"
@@ -1688,14 +2510,7 @@ describe("LanguageModel", () => {
             })
           ),
           TestUtils.withLanguageModel({
-            streamText: [{
-              type: "finish",
-              reason: "stop",
-              usage: {
-                inputTokens: { uncached: 5, total: 5, cacheRead: undefined, cacheWrite: undefined },
-                outputTokens: { total: 5, text: undefined, reasoning: undefined }
-              }
-            }]
+            streamText: [finishPart]
           }),
           Effect.provide(ApprovalToolkitLayer)
         )

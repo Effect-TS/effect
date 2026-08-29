@@ -21,6 +21,7 @@ import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import type * as LogLevel from "effect/LogLevel"
 import * as Predicate from "effect/Predicate"
+import * as Rec from "effect/Record"
 import * as References from "effect/References"
 import * as Tracer from "effect/Tracer"
 import { nanosToHrTime, unknownToAttributeValue } from "./internal/attributes.ts"
@@ -90,6 +91,10 @@ export const make: Effect.Effect<
       fiberId: options.fiber.id
     }
 
+    for (const [key, value] of Object.entries(options.fiber.getRef(References.CurrentLogAnnotations))) {
+      Rec.assignProperty(attributes, key, unknownToAttributeValue(value))
+    }
+
     const span = Context.getOrUndefined(options.fiber.context, Tracer.ParentSpan)
 
     if (Predicate.isNotUndefined(span)) {
@@ -97,9 +102,6 @@ export const make: Effect.Effect<
       attributes.traceId = span.traceId
     }
 
-    for (const [key, value] of Object.entries(options.fiber.getRef(References.CurrentLogAnnotations))) {
-      attributes[key] = unknownToAttributeValue(value)
-    }
     const now = options.date.getTime()
     for (const [label, startTime] of options.fiber.getRef(References.CurrentLogSpans)) {
       attributes[`logSpan.${label}`] = `${now - startTime}ms`
@@ -183,7 +185,7 @@ export const layerLoggerProvider = (
           })
         ),
         (provider) =>
-          Effect.promise(() => provider.forceFlush().then(() => provider.shutdown())).pipe(
+          Effect.promise(() => provider.forceFlush().finally(() => provider.shutdown())).pipe(
             Effect.ignore,
             Effect.interruptible,
             Effect.timeoutOption(config?.shutdownTimeout ?? 3000)

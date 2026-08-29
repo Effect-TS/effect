@@ -1,4 +1,4 @@
-import { type Cause, Context, Effect, Layer, MutableRef, Option, Queue, Schedule, Schema, Stream } from "effect"
+import { type Cause, Context, Effect, Latch, Layer, MutableRef, Option, Queue, Schedule, Schema, Stream } from "effect"
 import type { Envelope } from "effect/unstable/cluster"
 import { ClusterSchema, Entity } from "effect/unstable/cluster"
 import { MemoryTransaction } from "effect/unstable/cluster/MessageStorage"
@@ -8,6 +8,10 @@ import { Rpc, RpcSchema } from "effect/unstable/rpc"
 export class User extends Schema.Class<User>("User")({
   id: Schema.Number,
   name: Schema.String
+}) {}
+
+export class BoomError extends Schema.TaggedError<BoomError>()("BoomError", {
+  cause: Schema.Unknown
 }) {}
 
 export class StreamWithKey extends Rpc.make("StreamWithKey", {
@@ -26,6 +30,7 @@ export const TestEntity = Entity.make("TestEntity", [
     payload: { id: Schema.Number }
   }).annotate(ClusterSchema.Persisted, false),
   Rpc.make("Never"),
+  Rpc.make("Fail", { error: BoomError }),
   Rpc.make("NeverFork"),
   Rpc.make("NeverVolatile").annotate(ClusterSchema.Persisted, false),
   Rpc.make("RequestWithKey", {
@@ -58,6 +63,7 @@ export class TestEntityState extends Context.Service<TestEntityState>()("TestEnt
     >()
     const defectTrigger = MutableRef.make(false)
     const layerBuilds = MutableRef.make(0)
+    const buildLatch = Latch.makeUnsafe(true)
 
     return {
       messages,
@@ -65,7 +71,8 @@ export class TestEntityState extends Context.Service<TestEntityState>()("TestEnt
       envelopes,
       interrupts,
       defectTrigger,
-      layerBuilds
+      layerBuilds,
+      buildLatch
     } as const
   })
 }) {
@@ -77,6 +84,7 @@ export const TestEntityNoState = TestEntity.toLayer(
     const state = yield* TestEntityState
 
     MutableRef.update(state.layerBuilds, (count) => count + 1)
+    yield* state.buildLatch.await
 
     const never = (envelope: any) =>
       Effect.suspend(() => {
@@ -102,6 +110,7 @@ export const TestEntityNoState = TestEntity.toLayer(
           return new User({ id: envelope.payload.id, name: `User ${envelope.payload.id}` })
         }),
       Never: never,
+      Fail: () => Effect.fail(new BoomError({ cause: new Error("boom") })),
       NeverFork: (envelope) => Rpc.fork(never(envelope)),
       NeverVolatile: never,
       RequestWithKey: (envelope) => {

@@ -1,6 +1,17 @@
-import { BigDecimal, DateTime, Duration, Equivalence, HashMap, Option, Redacted, Result, Schema } from "effect"
+import {
+  BigDecimal,
+  DateTime,
+  Duration,
+  Equivalence,
+  HashMap,
+  Option,
+  Redacted,
+  Result,
+  Schema,
+  SchemaGetter
+} from "effect"
 import { describe, it } from "vitest"
-import { assertFalse, assertTrue, throws } from "../utils/assert.ts"
+import { assertFalse, assertTrue, strictEqual } from "../utils/assert.ts"
 
 const Modulo2 = Schema.Number.annotate({
   toEquivalence: (): Equivalence.Equivalence<number> => Equivalence.make((a, b) => a % 2 === b % 2)
@@ -12,22 +23,11 @@ const Modulo3 = Schema.Number.annotate({
 
 describe("toEquivalence", () => {
   it("Never", () => {
-    throws(
-      () =>
-        Schema.toEquivalence(Schema.Struct({
-          a: Schema.Never
-        })),
-      `Unsupported AST Never
-  at ["a"]`
-    )
-    throws(
-      () =>
-        Schema.toEquivalence(Schema.Tuple([
-          Schema.Never
-        ])),
-      `Unsupported AST Never
-  at [0]`
-    )
+    const equivalence = Schema.toEquivalence(Schema.Never)
+    const value = {} as never
+
+    assertTrue(equivalence(value, value))
+    assertFalse(equivalence({} as never, {} as never))
   })
 
   it("String", () => {
@@ -187,6 +187,20 @@ describe("toEquivalence", () => {
     })
   })
 
+  it("Class", () => {
+    class A extends Schema.Class<A>("A")({
+      value: Schema.String
+    }) {}
+
+    const equivalence = Schema.toEquivalence(A)
+    const a = new A({ value: "a" })
+    const b = new A({ value: "a" })
+    ;(b as A & { metadata?: number }).metadata = 1
+
+    assertTrue(equivalence(a, b))
+    assertFalse(equivalence(a, new A({ value: "b" })))
+  })
+
   describe("Record", () => {
     it("Record(String, Number)", () => {
       const schema = Schema.Record(Schema.String, Schema.Number)
@@ -343,6 +357,54 @@ describe("toEquivalence", () => {
     })
   })
 
+  it("precompiles Union members", () => {
+    let derivations = 0
+    const member = Schema.Struct({
+      tag: Schema.Literal("a"),
+      value: Schema.String
+    }).pipe(
+      Schema.overrideToEquivalence(() => {
+        derivations++
+        return Equivalence.make((a, b) => a.value === b.value)
+      })
+    )
+    const equivalence = Schema.toEquivalence(Schema.Union([member, Schema.Never]))
+
+    strictEqual(derivations, 1)
+    assertTrue(equivalence({ tag: "a", value: "a" }, { tag: "a", value: "a" }))
+    assertFalse(equivalence({ tag: "a", value: "a" }, { tag: "a", value: "b" }))
+    strictEqual(derivations, 1)
+  })
+
+  it("selects transformed Union members on the Type side", () => {
+    const Target = Schema.Struct({ value: Schema.String }).pipe(
+      Schema.overrideToEquivalence(() => Equivalence.make((a, b) => a.value === b.value))
+    )
+    const Transformed = Schema.String.pipe(
+      Schema.decodeTo(Target, {
+        decode: SchemaGetter.transform((s) => ({ value: s })),
+        encode: SchemaGetter.transform((a) => a.value)
+      })
+    )
+    const equivalence = Schema.toEquivalence(Schema.Union([Transformed, Schema.Boolean]))
+
+    assertTrue(equivalence({ value: "a" }, { value: "a" }))
+    assertFalse(equivalence({ value: "a" }, { value: "b" }))
+  })
+
+  it("preserves Union member equivalence annotations", () => {
+    const member = Schema.String.pipe(
+      Schema.flip,
+      Schema.check(Schema.makeFilter(() => true)),
+      Schema.flip,
+      Schema.overrideToEquivalence(() => Equivalence.make((a, b) => a[0] === b[0]))
+    )
+    const equivalence = Schema.toEquivalence(Schema.Union([member, Schema.Number]))
+
+    assertTrue(equivalence("ab", "ac"))
+    assertFalse(equivalence("ab", "bc"))
+  })
+
   it("Date", () => {
     const schema = Schema.Date
     const equivalence = Schema.toEquivalence(schema)
@@ -452,6 +514,7 @@ describe("toEquivalence", () => {
     assertTrue(equivalence(Duration.millis(1), Duration.millis(1)))
     assertFalse(equivalence(Duration.millis(1), Duration.millis(2)))
     assertTrue(equivalence(Duration.nanos(1n), Duration.nanos(1n)))
+    assertTrue(equivalence(Duration.millis(1), Duration.nanos(1_000_000n)))
     assertFalse(equivalence(Duration.nanos(1n), Duration.nanos(2n)))
     assertTrue(equivalence(Duration.infinity, Duration.infinity))
     assertFalse(equivalence(Duration.infinity, Duration.millis(1)))
@@ -511,8 +574,10 @@ describe("toEquivalence", () => {
   it("DateTimeZoned", () => {
     const equivalence = Schema.toEquivalence(Schema.DateTimeZoned)
     const z1 = DateTime.makeZonedUnsafe("2024-01-01T00:00:00.000Z", { timeZone: "Europe/London" })
+    const sameInstant = DateTime.makeZonedUnsafe("2024-01-01T00:00:00.000Z", { timeZone: "America/New_York" })
     const z2 = DateTime.makeZonedUnsafe("2024-01-02T00:00:00.000Z", { timeZone: "Europe/London" })
     assertTrue(equivalence(z1, z1))
+    assertTrue(equivalence(z1, sameInstant))
     assertFalse(equivalence(z1, z2))
   })
 
@@ -532,6 +597,14 @@ describe("toEquivalence", () => {
         )
         const equivalence = Schema.toEquivalence(schema)
         assertTrue(equivalence("ab", "ac"))
+      })
+
+      it("overrides a compiler-owned Declaration", () => {
+        const schema = Schema.Option(Schema.Number).pipe(
+          Schema.overrideToEquivalence(() => () => true)
+        )
+        const equivalence = Schema.toEquivalence(schema)
+        assertTrue(equivalence(Option.none(), Option.some(1)))
       })
     })
   })

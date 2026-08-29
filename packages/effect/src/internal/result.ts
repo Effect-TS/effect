@@ -10,7 +10,7 @@ import { SingleShotGen } from "../Utils.ts"
 import { PipeInspectableProto } from "./core.ts"
 import * as option from "./option.ts"
 
-const TypeId = "~effect/data/Result"
+const TypeId = "~effect/Result"
 
 const CommonProto = {
   [TypeId]: {
