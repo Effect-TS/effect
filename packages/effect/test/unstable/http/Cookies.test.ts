@@ -40,6 +40,18 @@ describe("Cookies", () => {
     })
   })
 
+  describe("fromSetCookie", () => {
+    it("ignores invalid cookie names", () => {
+      const cookies = Cookies.fromSetCookie([
+        "bad name=value",
+        "session=abc"
+      ])
+
+      assertNone(Cookies.get(cookies, "bad name"))
+      assertSome(Cookies.getValue(cookies, "session"), "abc")
+    })
+  })
+
   describe("toSetCookieHeaders", () => {
     const invalidCookie = {
       name: "session",

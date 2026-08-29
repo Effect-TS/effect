@@ -288,7 +288,7 @@ function parseSetCookie(header: string): Cookie | undefined {
     return undefined
   }
   const name = parts[0].slice(0, firstEqual)
-  if (!fieldContentRegExp.test(name)) {
+  if (!cookieNameRegExp.test(name)) {
     return undefined
   }
 
