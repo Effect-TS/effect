@@ -51,7 +51,8 @@ export class MssqlContainer extends Context.Tag("test/MssqlContainer")<
         port: container.getPort(),
         username: container.getUsername(),
         password: Redacted.make(container.getPassword()),
-        database: container.getDatabase()
+        database: container.getDatabase(),
+        trustServer: true
       })
     })
   ).pipe(Layer.provide(this.Live))

@@ -44,6 +44,9 @@ export interface ConfigFileError extends YieldableError {
 export const ConfigFileError: (message: string) => ConfigFileError = Internal.ConfigFileError
 
 /**
+ * `fileName` must be a static application-defined value and must not be derived
+ * from untrusted input.
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -58,6 +61,9 @@ export const makeProvider: (
 ) => Effect<ConfigProvider, ConfigFileError, Path | FileSystem> = Internal.makeProvider
 
 /**
+ * `fileName` must be a static application-defined value and must not be derived
+ * from untrusted input.
+ *
  * @since 2.0.0
  * @category layers
  */

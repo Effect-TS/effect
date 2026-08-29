@@ -5,7 +5,9 @@ import * as Util from "../TestUtils.js"
 describe("NonEmptyArrayEnsure", () => {
   it("decode non-array", async () => {
     const schema = S.NonEmptyArrayEnsure(S.NumberFromString)
+    const schema2 = S.NonEmptyArrayEnsure(S.String)
     await Util.assertions.decoding.succeed(schema, "123", [123])
+    await Util.assertions.decoding.succeed(schema2, "foo", ["foo"])
     await Util.assertions.decoding.fail(
       schema,
       null,
@@ -54,6 +56,11 @@ describe("NonEmptyArrayEnsure", () => {
                └─ Encoded side transformation failure
                   └─ Expected string, actual null`
     )
+  })
+
+  it("decode array value", async () => {
+    const schema = S.NonEmptyArrayEnsure(S.Array(S.String))
+    await Util.assertions.decoding.succeed(schema, [], [[]])
   })
 
   it("encode", async () => {

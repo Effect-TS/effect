@@ -431,6 +431,9 @@ export const isAnnotated: <A>(self: Doc<A>) => self is Annotated<A> = internal.i
  * **Invariants**
  * - Cannot be the newline (`"\n"`) character
  *
+ * Control characters are preserved verbatim. Apply `sanitize` before rendering
+ * a document containing untrusted text to a terminal.
+ *
  * @since 1.0.0
  * @category constructors
  */
@@ -443,6 +446,9 @@ export const char: (char: string) => Doc<never> = internal.char
  * - Text cannot be less than two characters long
  * - Text cannot contain a newline (`"\n"`) character
  *
+ * Control characters are preserved verbatim. Apply `sanitize` before rendering
+ * a document containing untrusted text to a terminal.
+ *
  * @since 1.0.0
  * @category constructors
  */
@@ -453,6 +459,9 @@ export const text: (text: string) => Doc<never> = internal.text
  *
  * **Note**: newline characters (`\n`) contained in the provided string will be
  * disregarded (i.e. not rendered) in the output document.
+ *
+ * Control characters are preserved verbatim. Apply `sanitize` before rendering
+ * a document containing untrusted text to a terminal.
  *
  * @since 1.0.0
  * @category constructors
@@ -2225,6 +2234,37 @@ export const Invariant: invariant.Invariant<Doc.TypeLambda> = internal.Invariant
 // -----------------------------------------------------------------------------
 // Utilities
 // -----------------------------------------------------------------------------
+
+/**
+ * Removes control characters from the text leaves of a document while
+ * preserving its structure and annotations.
+ *
+ * Horizontal tabs (`U+0009`) and line feeds (`U+000A`) are preserved. Other C0
+ * controls, DEL (`U+007F`), and C1 controls (`U+0080` through `U+009F`) are
+ * removed.
+ *
+ * Use this at the boundary where untrusted text enters a document that will be
+ * rendered to a terminal. Existing constructors and renderers remain suitable
+ * for trusted text containing intentional terminal sequences, such as OSC 8
+ * hyperlinks.
+ *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert"
+ * import * as Doc from "@effect/printer/Doc"
+ *
+ * const doc = Doc.sanitize(Doc.text("hello\u001bworld"))
+ *
+ * assert.strictEqual(
+ *   Doc.render(doc, { style: "pretty" }),
+ *   "helloworld"
+ * )
+ * ```
+ *
+ * @since 1.0.0
+ * @category utilities
+ */
+export const sanitize: <A>(self: Doc<A>) => Doc<A> = internal.sanitize
 
 /**
  * The `surround` combinator encloses a document in between `left` and `right`

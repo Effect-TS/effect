@@ -4,35 +4,32 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as MutableHashMap from "effect/MutableHashMap"
 import * as MutableRef from "effect/MutableRef"
-import * as Option from "effect/Option"
 import * as Scope from "effect/Scope"
 
 export class ResourceMap<K, A, E> {
   constructor(
     readonly lookup: (key: K, scope: Scope.Scope) => Effect.Effect<A, E>,
-    readonly entries: MutableHashMap.MutableHashMap<K, {
-      readonly scope: Scope.CloseableScope
-      readonly deferred: Deferred.Deferred<A, E>
-    }>,
+    readonly entries: BackingMap<K, A, E>,
     readonly isClosed: MutableRef.MutableRef<boolean>
   ) {}
 
-  static make = Effect.fnUntraced(function*<K, A, E, R>(lookup: (key: K) => Effect.Effect<A, E, R>) {
+  static make = Effect.fnUntraced(function*<K, A, E, R>(lookup: (key: K) => Effect.Effect<A, E, R>, options?: {
+    readonly referential?: boolean | undefined
+  }) {
     const scope = yield* Effect.scope
     const context = yield* Effect.context<R>()
     const isClosed = MutableRef.make(false)
 
-    const entries = MutableHashMap.empty<K, {
-      scope: Scope.CloseableScope
-      deferred: Deferred.Deferred<A, E>
-    }>()
+    const entries: BackingMap<K, A, E> = options?.referential
+      ? { _tag: "Referential", map: new Map() }
+      : { _tag: "Equal", map: MutableHashMap.empty() }
 
     yield* Scope.addFinalizerExit(
       scope,
       (exit) => {
         MutableRef.set(isClosed, true)
-        return Effect.forEach(entries, ([key, { scope }]) => {
-          MutableHashMap.remove(entries, key)
+        return Effect.forEach(entries.map, ([key, { scope }]) => {
+          backingDelete(entries, key)
           return Effect.exit(Scope.close(scope, exit))
         }, { concurrency: "unbounded", discard: true })
       }
@@ -50,18 +47,18 @@ export class ResourceMap<K, A, E> {
       if (MutableRef.get(this.isClosed)) {
         return Effect.interrupt
       }
-      const existing = MutableHashMap.get(this.entries, key)
-      if (Option.isSome(existing)) {
-        return Deferred.await(existing.value.deferred)
+      const existing = backingGet(this.entries, key)
+      if (existing) {
+        return Deferred.await(existing.deferred)
       }
       const scope = Effect.runSync(Scope.make())
       const deferred = Deferred.unsafeMake<A, E>(fiber.id())
-      MutableHashMap.set(this.entries, key, { scope, deferred })
+      backingSet(this.entries, key, { scope, deferred })
       return Effect.onExit(this.lookup(key, scope), (exit) => {
         if (exit._tag === "Success") {
           return Deferred.done(deferred, exit)
         }
-        MutableHashMap.remove(this.entries, key)
+        backingDelete(this.entries, key)
         return Deferred.done(deferred, exit)
       })
     })
@@ -69,12 +66,12 @@ export class ResourceMap<K, A, E> {
 
   remove(key: K): Effect.Effect<void> {
     return Effect.suspend(() => {
-      const entry = MutableHashMap.get(this.entries, key)
-      if (Option.isNone(entry)) {
+      const entry = backingGet(this.entries, key)
+      if (!entry) {
         return Effect.void
       }
-      MutableHashMap.remove(this.entries, key)
-      return Scope.close(entry.value.scope, Exit.void)
+      backingDelete(this.entries, key)
+      return Scope.close(entry.scope, Exit.void)
     })
   }
 
@@ -85,5 +82,42 @@ export class ResourceMap<K, A, E> {
         method: "removeIgnore",
         key
       }))
+  }
+}
+
+type BackingMap<K, A, E> = {
+  readonly _tag: "Equal"
+  readonly map: MutableHashMap.MutableHashMap<K, Entry<A, E>>
+} | {
+  readonly _tag: "Referential"
+  readonly map: Map<K, Entry<A, E>>
+}
+
+type Entry<A, E> = {
+  readonly scope: Scope.CloseableScope
+  readonly deferred: Deferred.Deferred<A, E>
+}
+
+const backingGet = <K, A, E>(map: BackingMap<K, A, E>, key: K): Entry<A, E> | undefined => {
+  if (map._tag === "Referential") {
+    return map.map.get(key)
+  }
+  const entry = MutableHashMap.get(map.map, key)
+  return entry._tag === "Some" ? entry.value : undefined
+}
+
+const backingSet = <K, A, E>(map: BackingMap<K, A, E>, key: K, entry: Entry<A, E>): void => {
+  if (map._tag === "Referential") {
+    map.map.set(key, entry)
+  } else {
+    MutableHashMap.set(map.map, key, entry)
+  }
+}
+
+const backingDelete = <K, A, E>(map: BackingMap<K, A, E>, key: K): void => {
+  if (map._tag === "Referential") {
+    map.map.delete(key)
+  } else {
+    MutableHashMap.remove(map.map, key)
   }
 }

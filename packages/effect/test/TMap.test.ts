@@ -13,6 +13,16 @@ class HashContainer implements Equal.Equal {
   }
 }
 
+class CollidingKey implements Equal.Equal {
+  constructor(readonly id: string) {}
+  [Hash.symbol](): number {
+    return 1
+  }
+  [Equal.symbol](that: unknown): boolean {
+    return that instanceof CollidingKey && this.id === that.id
+  }
+}
+
 const mapEntriesArb: fc.Arbitrary<Array<readonly [string, number]>> = fc.uniqueArray(fc.char())
   .chain((keys) =>
     fc.uniqueArray(fc.integer())
@@ -188,6 +198,50 @@ describe("TMap", () => {
       )
       const result = yield* (STM.commit(transaction))
       assertNone(result)
+    }))
+
+  it.effect("remove - preserves colliding keys", () =>
+    Effect.gen(function*() {
+      const a = new CollidingKey("a")
+      const b = new CollidingKey("b")
+      const c = new CollidingKey("c")
+      const transaction = STM.gen(function*() {
+        const map = yield* (TMap.make([a, 1], [b, 2], [c, 3]))
+        yield* (pipe(map, TMap.remove(b)))
+        return yield* (STM.all({
+          a: pipe(map, TMap.get(a)),
+          b: pipe(map, TMap.get(b)),
+          c: pipe(map, TMap.get(c)),
+          size: TMap.size(map)
+        }))
+      })
+      const result = yield* (STM.commit(transaction))
+      assertSome(result.a, 1)
+      assertNone(result.b)
+      assertSome(result.c, 3)
+      strictEqual(result.size, 2)
+    }))
+
+  it.effect("removeAll - preserves colliding keys", () =>
+    Effect.gen(function*() {
+      const a = new CollidingKey("a")
+      const b = new CollidingKey("b")
+      const c = new CollidingKey("c")
+      const transaction = STM.gen(function*() {
+        const map = yield* (TMap.make([a, 1], [b, 2], [c, 3]))
+        yield* (pipe(map, TMap.removeAll([b])))
+        return yield* (STM.all({
+          a: pipe(map, TMap.get(a)),
+          b: pipe(map, TMap.get(b)),
+          c: pipe(map, TMap.get(c)),
+          size: TMap.size(map)
+        }))
+      })
+      const result = yield* (STM.commit(transaction))
+      assertSome(result.a, 1)
+      assertNone(result.b)
+      assertSome(result.c, 3)
+      strictEqual(result.size, 2)
     }))
 
   it.effect("removeIf", () =>

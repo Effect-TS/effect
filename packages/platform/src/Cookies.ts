@@ -167,7 +167,7 @@ function parseSetCookie(header: string): Option.Option<Cookie> {
     return Option.none()
   }
   const name = parts[0].slice(0, firstEqual)
-  if (!fieldContentRegExp.test(name)) {
+  if (!cookieNameRegExp.test(name)) {
     return Option.none()
   }
 
@@ -302,7 +302,11 @@ export const empty: Cookies = fromIterable([])
 export const isEmpty = (self: Cookies): boolean => Record.isEmptyRecord(self.cookies)
 
 // eslint-disable-next-line no-control-regex
-const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/
+const cookieValueRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/
+const cookieNameRegExp = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
+// eslint-disable-next-line no-control-regex
+const cookieDomainRegExp = /^[\u0009\u0020-\u003a\u003c-\u007e\u0080-\u00ff]+$/
+const cookiePathRegExp = /^[\u0020-\u003a\u003c-\u007e]+$/
 
 const CookieProto = {
   [CookieTypeId]: CookieTypeId,
@@ -328,20 +332,20 @@ export function makeCookie(
   value: string,
   options?: Cookie["options"] | undefined
 ): Either.Either<Cookie, CookiesError> {
-  if (!fieldContentRegExp.test(name)) {
+  if (!cookieNameRegExp.test(name)) {
     return Either.left(new CookiesError({ reason: "InvalidName" }))
   }
   const encodedValue = encodeURIComponent(value)
-  if (encodedValue && !fieldContentRegExp.test(encodedValue)) {
+  if (encodedValue && !cookieValueRegExp.test(encodedValue)) {
     return Either.left(new CookiesError({ reason: "InvalidValue" }))
   }
 
   if (options !== undefined) {
-    if (options.domain !== undefined && !fieldContentRegExp.test(options.domain)) {
+    if (options.domain !== undefined && !cookieDomainRegExp.test(options.domain)) {
       return Either.left(new CookiesError({ reason: "InvalidDomain" }))
     }
 
-    if (options.path !== undefined && !fieldContentRegExp.test(options.path)) {
+    if (options.path !== undefined && !cookiePathRegExp.test(options.path)) {
       return Either.left(new CookiesError({ reason: "InvalidPath" }))
     }
 

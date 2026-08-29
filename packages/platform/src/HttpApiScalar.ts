@@ -129,12 +129,12 @@ const makeHandler = (options: {
     ${
     !spec.info.description
       ? ""
-      : `<meta name="description" content="${Html.escape(spec.info.description)}"/>`
+      : `<meta name="description" content="${Html.escapeAttribute(spec.info.description)}"/>`
   }
     ${
     !spec.info.description
       ? ""
-      : `<meta name="og:description" content="${Html.escape(spec.info.description)}"/>`
+      : `<meta name="og:description" content="${Html.escapeAttribute(spec.info.description)}"/>`
   }
     <meta
       name="viewport"
@@ -149,9 +149,13 @@ const makeHandler = (options: {
     </script>
     ${
     source._tag === "Cdn"
-      ? `<script src="${`https://cdn.jsdelivr.net/npm/@scalar/api-reference@${
-        source.version ?? "latest"
-      }/dist/browser/standalone.min.js`}" crossorigin></script>`
+      ? `<script src="${
+        Html.escapeAttribute(
+          `https://cdn.jsdelivr.net/npm/@scalar/api-reference@${
+            source.version ?? "latest"
+          }/dist/browser/standalone.min.js`
+        )
+      }" crossorigin></script>`
       : `<script>${source.source}</script>`
   }
   </body>

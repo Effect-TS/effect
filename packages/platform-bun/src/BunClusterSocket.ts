@@ -40,6 +40,7 @@ export const layer = <
 >(
   options?: {
     readonly serialization?: "msgpack" | "ndjson" | undefined
+    readonly serializationMaxBufferSize?: number | "unbounded" | undefined
     readonly clientOnly?: ClientOnly | undefined
     readonly storage?: Storage | undefined
     readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Type"]> | undefined
@@ -95,7 +96,9 @@ export const layer = <
     ),
     Layer.provide(ShardingConfig.layerFromEnv(options?.shardingConfig)),
     Layer.provide(
-      options?.serialization === "ndjson" ? RpcSerialization.layerNdjson : RpcSerialization.layerMsgPack
+      options?.serialization === "ndjson"
+        ? RpcSerialization.layerNdjsonWith({ maxBufferSize: options?.serializationMaxBufferSize })
+        : RpcSerialization.layerMsgPackWith({ maxBufferSize: options?.serializationMaxBufferSize })
     )
   ) as any
 }

@@ -91,6 +91,7 @@ export interface StandardCommand extends Command.Proto {
   readonly command: string
   readonly args: ReadonlyArray<string>
   readonly env: HashMap<string, string>
+  readonly extendEnv: boolean
   readonly cwd: Option<string>
   readonly shell: boolean | string
   readonly stdin: Command.Input
@@ -122,12 +123,22 @@ export const isCommand: (u: unknown) => u is Command = internal.isCommand
 /**
  * Specify the environment variables that will be used when running this command.
  *
+ * By default, the configured variables extend the parent process environment.
+ * Set `extendEnv` to `false` to use only the configured variables.
+ *
  * @since 1.0.0
  * @category combinators
  */
 export const env: {
-  (environment: Record<string, string | undefined>): (self: Command) => Command
-  (self: Command, environment: Record<string, string | undefined>): Command
+  (
+    environment: Record<string, string | undefined>,
+    options?: { readonly extendEnv?: boolean | undefined }
+  ): (self: Command) => Command
+  (
+    self: Command,
+    environment: Record<string, string | undefined>,
+    options?: { readonly extendEnv?: boolean | undefined }
+  ): Command
 } = internal.env
 
 /**

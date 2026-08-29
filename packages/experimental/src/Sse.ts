@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
@@ -10,13 +11,62 @@ import * as Mailbox from "effect/Mailbox"
 import { hasProperty } from "effect/Predicate"
 import type * as AsyncInput from "effect/SingleProducerAsyncInput"
 
+const SseErrorTypeId = "@effect/experimental/Sse/SseError"
+
+/**
+ * @since 1.0.0
+ * @category errors
+ */
+export class EventTooLarge extends Data.TaggedError("EventTooLarge")<{
+  readonly maxEventSize: number
+}> {
+  override get message() {
+    return `Pending SSE event exceeded the maximum size of ${this.maxEventSize}`
+  }
+}
+
+/**
+ * @since 1.0.0
+ * @category errors
+ */
+export type SseErrorReason = EventTooLarge
+
+/**
+ * @since 1.0.0
+ * @category errors
+ */
+export class SseError extends Data.TaggedError("SseError")<{
+  readonly cause: SseErrorReason
+}> {
+  readonly [SseErrorTypeId] = SseErrorTypeId
+
+  override get message() {
+    return this.cause.message
+  }
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface DecodeOptions {
+  /**
+   * Maximum number of string code units retained for a pending event. The default is 10 MiB.
+   */
+  readonly maxEventSize?: number | undefined
+}
+
+const defaultMaxEventSize = 10 * 1024 * 1024
+
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const makeChannel = <IE, Done>(options?: {
-  readonly bufferSize?: number
-}): Channel.Channel<
+export const makeChannel = <IE, Done>(
+  options?: DecodeOptions & {
+    readonly bufferSize?: number
+  }
+): Channel.Channel<
   Chunk.Chunk<Event>,
   Chunk.Chunk<string>,
   IE,
@@ -35,7 +85,7 @@ export const makeChannel = <IE, Done>(options?: {
           case "Event":
             return events.push(event)
         }
-      })
+      }, options)
       const input: AsyncInput.AsyncInputProducer<
         IE,
         Chunk.Chunk<string>,
@@ -45,10 +95,17 @@ export const makeChannel = <IE, Done>(options?: {
           return Effect.void
         },
         emit(chunks) {
-          Chunk.forEach(chunks, parser.feed)
+          let error: SseError | undefined
+          Chunk.forEach(chunks, (chunk) => {
+            if (error === undefined) {
+              error = parser.feed(chunk)
+            }
+          })
           const toEmit = events
           events = []
-          return retry
+          return error
+            ? Effect.zipRight(mailbox.offerAll(toEmit), mailbox.failCause(Cause.die(error)))
+            : retry
             ? Effect.zipRight(mailbox.offerAll(toEmit), mailbox.fail(retry))
             : mailbox.offerAll(toEmit)
         },
@@ -86,11 +143,14 @@ export const makeChannel = <IE, Done>(options?: {
  * Create a SSE parser.
  *
  * Adapted from https://github.com/rexxars/eventsource-parser under MIT license.
+ * `feed` returns an `SseError` if the pending event exceeds `maxEventSize`.
  *
  * @since 1.0.0
  * @category constructors
  */
-export function makeParser(onParse: (event: AnyEvent) => void): Parser {
+export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeOptions): Parser {
+  const maxEventSize = options?.maxEventSize ?? defaultMaxEventSize
+
   // Processing state
   let isFirstChunk: boolean
   let buffer: string
@@ -117,7 +177,7 @@ export function makeParser(onParse: (event: AnyEvent) => void): Parser {
     data = ""
   }
 
-  function feed(chunk: string): void {
+  function feed(chunk: string): SseError | undefined {
     buffer = buffer ? buffer + chunk : chunk
 
     // Strip any UTF8 byte order mark (BOM) at the start of the stream.
@@ -186,6 +246,12 @@ export function makeParser(onParse: (event: AnyEvent) => void): Parser {
       // portion of the buffer only
       buffer = buffer.slice(position)
     }
+
+    if (buffer.length + data.length > maxEventSize) {
+      const error = new SseError({ cause: new EventTooLarge({ maxEventSize }) })
+      reset()
+      return error
+    }
   }
 
   function parseEventStreamLine(
@@ -253,7 +319,7 @@ function hasBom(buffer: string) {
  * @category models
  */
 export interface Parser {
-  feed(chunk: string): void
+  feed(chunk: string): SseError | undefined
   reset(): void
 }
 

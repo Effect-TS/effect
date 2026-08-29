@@ -824,6 +824,89 @@ export const string = (str: string): Doc.Doc<never> => {
   )
 }
 
+const stripControlCharacters = (value: string): string => {
+  let sanitized = ""
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i)
+    if (
+      (code > 0x1f || code === 0x09 || code === 0x0a) &&
+      (code < 0x7f || code > 0x9f)
+    ) {
+      sanitized += value[i]
+    }
+  }
+  return sanitized
+}
+
+const sanitizeLeaf = <A>(self: Doc.Char<A> | Doc.Text<A>): Doc.Doc<A> => {
+  const value = self._tag === "Char" ? self.char : self.text
+  const sanitized = stripControlCharacters(value)
+  if (sanitized === value) {
+    return self
+  }
+  if (sanitized.length === 0) {
+    return empty
+  }
+  return sanitized.length === 1 ? char(sanitized) : text(sanitized)
+}
+
+/** @internal */
+export const sanitize = <A>(self: Doc.Doc<A>): Doc.Doc<A> => Effect.runSync(sanitizeSafe(self))
+
+const sanitizeSafe = <A>(self: Doc.Doc<A>): Effect.Effect<Doc.Doc<A>> => {
+  switch (self._tag) {
+    case "Char":
+    case "Text": {
+      return Effect.succeed(sanitizeLeaf(self))
+    }
+    case "Cat": {
+      return Effect.zipWith(
+        Effect.suspend(() => sanitizeSafe(self.left)),
+        sanitizeSafe(self.right),
+        (left, right) => cat(left, right)
+      )
+    }
+    case "FlatAlt": {
+      return Effect.zipWith(
+        Effect.suspend(() => sanitizeSafe(self.left)),
+        sanitizeSafe(self.right),
+        (left, right) => flatAlt(left, right)
+      )
+    }
+    case "Union": {
+      return Effect.zipWith(
+        Effect.suspend(() => sanitizeSafe(self.left)),
+        sanitizeSafe(self.right),
+        (left, right) => union(left, right)
+      )
+    }
+    case "Nest": {
+      return Effect.map(
+        Effect.suspend(() => sanitizeSafe(self.doc)),
+        nest(self.indent)
+      )
+    }
+    case "Column": {
+      return Effect.succeed(column((position) => Effect.runSync(sanitizeSafe(self.react(position)))))
+    }
+    case "WithPageWidth": {
+      return Effect.succeed(pageWidth((width) => Effect.runSync(sanitizeSafe(self.react(width)))))
+    }
+    case "Nesting": {
+      return Effect.succeed(nesting((level) => Effect.runSync(sanitizeSafe(self.react(level)))))
+    }
+    case "Annotated": {
+      return Effect.map(
+        Effect.suspend(() => sanitizeSafe(self.doc)),
+        (doc) => annotate(doc, self.annotation)
+      )
+    }
+    default: {
+      return Effect.succeed(self)
+    }
+  }
+}
+
 /** @internal */
 export const surround = dual<
   <A, B, C>(left: Doc.Doc<A>, right: Doc.Doc<B>) => (self: Doc.Doc<C>) => Doc.Doc<A | B | C>,

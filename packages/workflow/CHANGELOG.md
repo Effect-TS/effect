@@ -1,5 +1,16 @@
 # @effect/workflow
 
+## 0.19.1
+
+### Patch Changes
+
+- [#6795](https://github.com/Effect-TS/effect/pull/6795) [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c) Thanks @tim-smart! - Bound the default activity interrupt retry policy while retaining exponential backoff.
+
+- [#6795](https://github.com/Effect-TS/effect/pull/6795) [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c) Thanks @tim-smart! - Fix replay of persisted `DurableDeferred.raceAll` results.
+
+- Updated dependencies [[`9c4d4b5`](https://github.com/Effect-TS/effect/commit/9c4d4b5ae57627b1fbab274e15de093f52531c2a)]:
+  - @effect/rpc@0.76.2
+
 ## 0.19.0
 
 ### Patch Changes

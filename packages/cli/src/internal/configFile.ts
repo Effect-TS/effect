@@ -25,6 +25,9 @@ export const makeProvider = (fileName: string, options?: {
   readonly searchPaths?: ReadonlyArray<string>
 }): Effect.Effect<ConfigProvider.ConfigProvider, ConfigFile.ConfigFileError, Path.Path | FileSystem.FileSystem> =>
   Effect.gen(function*() {
+    if (fileName === ".." || fileName.includes("/") || fileName.includes("\\")) {
+      return yield* Effect.fail(ConfigFileError("fileName must not contain path separators or '..' segments"))
+    }
     const path = yield* Path.Path
     const fs = yield* FileSystem.FileSystem
     const searchPaths = options?.searchPaths && options.searchPaths.length ? options.searchPaths : ["."]

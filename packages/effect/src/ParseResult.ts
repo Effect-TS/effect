@@ -876,6 +876,24 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
     case "Enums":
       return fromRefinement(ast, (u): u is any => ast.enums.some(([_, value]) => value === u))
     case "TemplateLiteral": {
+      if (ast.spans.every((span) => AST.isStringKeyword(span.type))) {
+        return fromRefinement(ast, (u): u is any => {
+          if (!Predicate.isString(u) || !u.startsWith(ast.head)) {
+            return false
+          }
+          let position = ast.head.length
+          for (let i = 0; i < ast.spans.length - 1; i++) {
+            const literal = ast.spans[i].literal
+            const index = u.indexOf(literal, position)
+            if (index === -1) {
+              return false
+            }
+            position = index + literal.length
+          }
+          const literal = ast.spans[ast.spans.length - 1].literal
+          return u.endsWith(literal) && u.length - literal.length >= position
+        })
+      }
       const regex = AST.getTemplateLiteralRegExp(ast)
       return fromRefinement(ast, (u): u is any => Predicate.isString(u) && regex.test(u))
     }

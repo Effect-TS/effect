@@ -6,9 +6,11 @@ import type * as CommandExecutor from "@effect/platform/CommandExecutor"
 import { SystemError } from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Path from "@effect/platform/Path"
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import * as Array from "effect/Array"
 import * as Chunk from "effect/Chunk"
+import * as Config from "effect/Config"
+import * as ConfigProvider from "effect/ConfigProvider"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
@@ -89,6 +91,25 @@ describe("Command", () => {
       const result = yield* Command.string(command)
       expect(result).toBe("var = myValue")
     })))
+
+  it.effect("should not extend the environment when extendEnv is false", () => {
+    return Effect.gen(function*() {
+      const explicit = yield* Config.string("EXPLICIT")
+      const command = pipe(
+        Command.make(
+          process.execPath,
+          "-e",
+          "process.stdout.write(`${process.env.EXPLICIT ?? ''}:${process.env.PATH ?? ''}`)"
+        ),
+        Command.env({ EXPLICIT: explicit }, { extendEnv: false })
+      )
+      const result = yield* Command.string(command)
+      assert.strictEqual(result, "present:")
+    }).pipe(
+      Effect.withConfigProvider(ConfigProvider.fromMap(new Map([["EXPLICIT", "present"]]))),
+      Effect.provide(TestLive)
+    )
+  })
 
   it("should accept streaming stdin", () =>
     runPromise(Effect.gen(function*() {
@@ -307,14 +328,17 @@ describe("Command", () => {
 
   it("should delegate env to all commands", () => {
     const env = { key: "value" }
+    const environment = { ...env, omitted: undefined }
     const command = pipe(
       Command.make("cat"),
       Command.pipeTo(Command.make("sort")),
       Command.pipeTo(Command.make("head", "-2")),
-      Command.env(env)
+      Command.env(environment, { extendEnv: false })
     )
-    const envs = Command.flatten(command).map((command) => Object.fromEntries(command.env))
+    const commands = Command.flatten(command)
+    const envs = commands.map((command) => Object.fromEntries(command.env))
     expect(envs).toEqual([env, env, env])
+    expect(commands.map((command) => command.extendEnv)).toEqual([false, false, false])
   })
 
   it("should delegate workingDirectory to all commands", () => {

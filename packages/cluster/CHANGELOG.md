@@ -1,5 +1,43 @@
 # @effect/cluster
 
+## 0.60.2
+
+### Patch Changes
+
+- [#6795](https://github.com/Effect-TS/effect/pull/6795) [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c) Thanks @tim-smart! - Use the entity registration context when building and running handlers.
+
+- [#6795](https://github.com/Effect-TS/effect/pull/6795) [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c) Thanks @tim-smart! - Backport the upstream in-memory RunnerStorage fix for acquiring shards from one-shot iterables.
+
+- [#6795](https://github.com/Effect-TS/effect/pull/6795) [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c) Thanks @tim-smart! - Fix partial workflow clients colliding with full workflow clients.
+
+- [#6795](https://github.com/Effect-TS/effect/pull/6795) [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c) Thanks @tim-smart! - Backport upstream SQL message deduplication handling by hashing composed keys longer than 255 characters while preserving short and legacy SQLite keys.
+
+- [#6795](https://github.com/Effect-TS/effect/pull/6795) [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c) Thanks @tim-smart! - Backport upstream runner defect isolation so reply serialization and peer defects remain scoped to their request.
+
+- [#6795](https://github.com/Effect-TS/effect/pull/6795) [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c) Thanks @tim-smart! - Propagate active trace context through persisted cluster workflow requests.
+
+- [#6795](https://github.com/Effect-TS/effect/pull/6795) [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c) Thanks @tim-smart! - Prevent SQL runner lock operations from hanging and safely recover shard ownership after lock storage failures.
+
+- [#6795](https://github.com/Effect-TS/effect/pull/6795) [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c) Thanks @tim-smart! - Retry defects raised while building entity handlers.
+
+- [#6795](https://github.com/Effect-TS/effect/pull/6795) [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c) Thanks @tim-smart! - Avoid creating PostgreSQL and MySQL lock tables when advisory locks are enabled.
+
+- Updated dependencies [[`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`9c4d4b5`](https://github.com/Effect-TS/effect/commit/9c4d4b5ae57627b1fbab274e15de093f52531c2a), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c)]:
+  - @effect/workflow@0.19.1
+  - @effect/rpc@0.76.2
+
+## 0.60.1
+
+### Patch Changes
+
+- [#6310](https://github.com/Effect-TS/effect/pull/6310) [`63ca816`](https://github.com/Effect-TS/effect/commit/63ca8163e57b75db2f70cebf94e4ddea4e32fe91) Thanks @tim-smart! - Fix EntityManager defect restarts so in-flight requests are replayed instead of being dropped when the old entity scope is interrupted.
+
+- Updated dependencies [[`e5dfd78`](https://github.com/Effect-TS/effect/commit/e5dfd78b252d9314bc3e1dddb9271e1148c22988), [`7ccbd9c`](https://github.com/Effect-TS/effect/commit/7ccbd9cfc78c5e0d71c75c06fb69c80ba5a0b0ac), [`ad4085e`](https://github.com/Effect-TS/effect/commit/ad4085e07df6bdd279efeae648ed1ec50e3974ee), [`4b03605`](https://github.com/Effect-TS/effect/commit/4b03605cf0e0ade67fbf0397c99c14ddf4c6ed23), [`ab2af6d`](https://github.com/Effect-TS/effect/commit/ab2af6d702d0fcd06a5f1657bed3408168305245), [`59beb5b`](https://github.com/Effect-TS/effect/commit/59beb5bb5c49dccf90e1fe79e446bd4700be3c48), [`8a405fd`](https://github.com/Effect-TS/effect/commit/8a405fd8bdd48b741ad928fb66c8f1c009058bdf), [`3cc3c6e`](https://github.com/Effect-TS/effect/commit/3cc3c6e1a64cbdc360e9d28e44f3ec3ce0ece6e3), [`3d390f2`](https://github.com/Effect-TS/effect/commit/3d390f232bdbc3f0d3d6a2ae3c775084f494b547), [`fcabf08`](https://github.com/Effect-TS/effect/commit/fcabf08c8af32ae6f8c7ab8c177cf58029a61e25), [`8ee801d`](https://github.com/Effect-TS/effect/commit/8ee801d1ef2ad11f961ad156226cf69ad139334b), [`5859b37`](https://github.com/Effect-TS/effect/commit/5859b373b9be04d5037a594196b4743ad80379bd), [`735d81b`](https://github.com/Effect-TS/effect/commit/735d81ba80b17f03ff337845cc089c2497e31f67), [`ff54da3`](https://github.com/Effect-TS/effect/commit/ff54da3cb7272f3224f28308021e9e125df0b7ec)]:
+  - @effect/platform@0.97.1
+  - effect@3.22.1
+  - @effect/sql@0.52.1
+  - @effect/rpc@0.76.1
+
 ## 0.60.0
 
 ### Patch Changes

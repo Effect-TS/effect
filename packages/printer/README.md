@@ -4,6 +4,7 @@
   - [Installation](#installation)
     - [`@effect/printer`](#effectprinter)
   - [Overview](#overview)
+  - [Terminal Output and Untrusted Text](#terminal-output-and-untrusted-text)
   - [Simple Example](#simple-example)
   - [General Workflow](#general-workflow)
   - [How the Layout Works](#how-the-layout-works)
@@ -39,6 +40,10 @@ bun add @effect/printer
 ## Overview
 
 This module defines a pretty printer to format text in a flexible and convenient way. The idea is to combine a `Doc`ument out of many small components, then using a layouter to convert it to an easily renderable `DocStream`, which can then be rendered to a variety of formats.
+
+## Terminal Output and Untrusted Text
+
+Leaf constructors preserve control characters verbatim. Rendering returns a string and does not make untrusted text safe for a terminal. Before writing attacker-controlled text to a terminal, apply `Doc.sanitize` at that input or subtree boundary. Use the existing raw constructors and renderer only when embedded terminal sequences are trusted and intentional.
 
 The document consists of several parts:
  1. Just below is some general information about the library

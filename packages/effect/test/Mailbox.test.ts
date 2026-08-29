@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { assertFalse, assertNone, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Chunk, Effect, Exit, Fiber, Mailbox, Stream } from "effect"
+import { Chunk, Effect, Exit, Fiber, Mailbox, Scheduler, Stream } from "effect"
 
 describe("Mailbox", () => {
   it.effect("offerAll with capacity", () =>
@@ -181,5 +181,59 @@ describe("Mailbox", () => {
       yield* mailbox.offer(2)
       result = yield* Fiber.join(fiber)
       strictEqual(result, 2)
+    }))
+
+  it.effect("bounded 0 capacity take finalizes after end", () =>
+    Effect.gen(function*() {
+      const mailbox = yield* Mailbox.make<number>(0)
+      const offerFiber = yield* mailbox.offer(1).pipe(Effect.fork)
+      yield* Effect.yieldNow({ priority: 1 })
+
+      yield* mailbox.end
+      const awaitFiber = yield* mailbox.await.pipe(Effect.fork)
+      strictEqual(yield* mailbox.take, 1)
+      yield* Effect.yieldNow({ priority: 1 })
+
+      deepStrictEqual(awaitFiber.unsafePoll(), Exit.void)
+      assertTrue(yield* Fiber.join(offerFiber))
+    }))
+
+  it.effect("bounded 0 capacity takeN rendezvous", () =>
+    Effect.gen(function*() {
+      const pendingOffer = yield* Mailbox.make<number>(0)
+      const offerFiber = yield* pendingOffer.offer(1).pipe(Effect.fork)
+      yield* Effect.yieldNow({ priority: 1 })
+
+      const [first] = yield* pendingOffer.takeN(1)
+      deepStrictEqual(Chunk.toReadonlyArray(first), [1])
+      assertTrue(yield* Fiber.join(offerFiber))
+
+      const pendingTake = yield* Mailbox.make<number>(0)
+      const takeFiber = yield* pendingTake.takeN(1).pipe(Effect.fork)
+      yield* Effect.yieldNow({ priority: 1 })
+      strictEqual(takeFiber.unsafePoll(), null)
+
+      assertTrue(yield* pendingTake.offer(2))
+      const [second] = yield* Fiber.join(takeFiber)
+      deepStrictEqual(Chunk.toReadonlyArray(second), [2])
+    }))
+
+  it.effect("bounded 0 capacity takeN preserves buffered order", () =>
+    Effect.gen(function*() {
+      const scheduler = new Scheduler.ControlledScheduler()
+      const mailbox = yield* Mailbox.make<number>(0).pipe(Effect.withScheduler(scheduler))
+      const taker1 = yield* mailbox.take.pipe(Effect.fork)
+      const taker2 = yield* mailbox.take.pipe(Effect.fork)
+      yield* Effect.yieldNow({ priority: 1 })
+
+      const offerFiber = yield* mailbox.offerAll([1, 2, 3]).pipe(Effect.fork)
+      yield* Effect.yieldNow({ priority: 1 })
+      strictEqual(offerFiber.unsafePoll(), null)
+      yield* Fiber.interrupt(taker1)
+      yield* Fiber.interrupt(taker2)
+
+      const [messages] = yield* mailbox.takeN(1)
+      deepStrictEqual(Chunk.toReadonlyArray(messages), [1])
+      deepStrictEqual(yield* Fiber.join(offerFiber), Chunk.empty())
     }))
 })

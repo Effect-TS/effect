@@ -1,5 +1,15 @@
 # @effect/platform-browser
 
+## 0.77.1
+
+### Patch Changes
+
+- [#6311](https://github.com/Effect-TS/effect/pull/6311) [`8a405fd`](https://github.com/Effect-TS/effect/commit/8a405fd8bdd48b741ad928fb66c8f1c009058bdf) Thanks @tim-smart! - update multipasta
+
+- Updated dependencies [[`e5dfd78`](https://github.com/Effect-TS/effect/commit/e5dfd78b252d9314bc3e1dddb9271e1148c22988), [`7ccbd9c`](https://github.com/Effect-TS/effect/commit/7ccbd9cfc78c5e0d71c75c06fb69c80ba5a0b0ac), [`4b03605`](https://github.com/Effect-TS/effect/commit/4b03605cf0e0ade67fbf0397c99c14ddf4c6ed23), [`ab2af6d`](https://github.com/Effect-TS/effect/commit/ab2af6d702d0fcd06a5f1657bed3408168305245), [`8a405fd`](https://github.com/Effect-TS/effect/commit/8a405fd8bdd48b741ad928fb66c8f1c009058bdf), [`3cc3c6e`](https://github.com/Effect-TS/effect/commit/3cc3c6e1a64cbdc360e9d28e44f3ec3ce0ece6e3), [`3d390f2`](https://github.com/Effect-TS/effect/commit/3d390f232bdbc3f0d3d6a2ae3c775084f494b547), [`fcabf08`](https://github.com/Effect-TS/effect/commit/fcabf08c8af32ae6f8c7ab8c177cf58029a61e25), [`8ee801d`](https://github.com/Effect-TS/effect/commit/8ee801d1ef2ad11f961ad156226cf69ad139334b), [`5859b37`](https://github.com/Effect-TS/effect/commit/5859b373b9be04d5037a594196b4743ad80379bd), [`735d81b`](https://github.com/Effect-TS/effect/commit/735d81ba80b17f03ff337845cc089c2497e31f67)]:
+  - @effect/platform@0.97.1
+  - effect@3.22.1
+
 ## 0.77.0
 
 ### Patch Changes

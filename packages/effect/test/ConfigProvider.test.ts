@@ -940,4 +940,14 @@ describe("ConfigProvider", () => {
         hostPorts: Array.from({ length: 3 }, () => ({ host: "localhost", port: 8080 }))
       })
     }))
+
+  it.effect("fromJson - nested paths do not collide with keys containing U+FEFF", () =>
+    Effect.gen(function*() {
+      const result = yield* ConfigProvider.fromJson({
+        a: { b: "nested" },
+        ["a\ufeffb"]: "sibling"
+      }).load(Config.nested(Config.string("b"), "a"))
+
+      strictEqual(result, "nested")
+    }))
 })

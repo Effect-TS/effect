@@ -57,7 +57,9 @@ export interface EntityManager {
   }) => boolean
   readonly clearProcessed: () => void
 
-  readonly interruptShard: (shardId: ShardId) => Effect.Effect<void>
+  readonly interruptShard: (shardId: ShardId, options?: {
+    readonly force?: boolean
+  }) => Effect.Effect<void>
 
   readonly activeEntityCount: Effect.Effect<number>
 }
@@ -108,16 +110,20 @@ export const make = Effect.fnUntraced(function*<
   const mailboxCapacity = options.mailboxCapacity ?? config.entityMailboxCapacity
   const clock = yield* Effect.clock
   const context = yield* Effect.context<Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | RX>()
-  const retryDriver = yield* Schedule.driver(
-    options.defectRetryPolicy ? Schedule.andThen(options.defectRetryPolicy, defaultRetryPolicy) : defaultRetryPolicy
-  )
+  const defectRetryPolicy = options.defectRetryPolicy
+    ? Schedule.andThen(options.defectRetryPolicy, defaultRetryPolicy)
+    : defaultRetryPolicy
+  const retryDriver = yield* Schedule.driver(defectRetryPolicy)
   const entityRpcs = new Map(entity.protocol.requests)
 
   // add internal rpcs
   entityRpcs.set(KeepAliveRpc._tag, KeepAliveRpc as any)
 
   const activeServers = new Map<EntityId, EntityState>()
-  const serverCloseLatches = new Map<EntityAddress, Effect.Latch>()
+  const serverCloseLatches = new Map<EntityAddress, {
+    readonly closed: Effect.Latch
+    readonly force: Effect.Latch
+  }>()
   const processedRequestIds = new Set<Snowflake.Snowflake>()
 
   const entities: ResourceMap<
@@ -132,12 +138,16 @@ export const make = Effect.fnUntraced(function*<
     const scope = yield* Effect.scope
     const endLatch = Effect.unsafeMakeLatch()
     const keepAliveLatch = Effect.unsafeMakeLatch(false)
+    const closeLatches = {
+      closed: Effect.unsafeMakeLatch(),
+      force: Effect.unsafeMakeLatch()
+    }
 
     // on shutdown, reset the storage for the entity
     yield* Scope.addFinalizerExit(
       scope,
       () => {
-        serverCloseLatches.get(address)?.unsafeOpen()
+        serverCloseLatches.get(address)?.closed.unsafeOpen()
         serverCloseLatches.delete(address)
         return Effect.void
       }
@@ -154,15 +164,24 @@ export const make = Effect.fnUntraced(function*<
       Effect.fnUntraced(function*(scope) {
         let isShuttingDown = false
 
+        const handlerContext = context.pipe(
+          Context.add(CurrentAddress, address),
+          Context.add(CurrentRunnerAddress, options.runnerAddress),
+          Context.add(KeepAliveLatch, keepAliveLatch),
+          Context.add(Scope.Scope, scope)
+        )
+
         // Initiate the behavior for the entity
-        const handlers = yield* (entity.protocol.toHandlersContext(buildHandlers).pipe(
-          Effect.provide(context.pipe(
-            Context.add(CurrentAddress, address),
-            Context.add(CurrentRunnerAddress, options.runnerAddress),
-            Context.add(KeepAliveLatch, keepAliveLatch),
-            Context.add(Scope.Scope, scope)
-          )),
-          Effect.locally(FiberRef.currentLogAnnotations, HashMap.empty())
+        const handlers = yield* ((entity.protocol.toHandlersContext(buildHandlers) as Effect.Effect<
+          Context.Context<Rpc.ToHandler<Rpcs>>,
+          never,
+          any
+        >).pipe(
+          Effect.mapInputContext<never, any>(() => handlerContext as Context.Context<any>),
+          Effect.locally(FiberRef.currentLogAnnotations, HashMap.empty()),
+          Effect.sandbox,
+          Effect.tapError((cause) => Effect.logError("Defect building entity handlers", cause)),
+          Effect.retry(defectRetryPolicy)
         ) as Effect.Effect<Context.Context<Rpc.ToHandler<Rpcs>>>)
 
         const server = yield* RpcServer.makeNoSerialization(entity.protocol, {
@@ -276,7 +295,7 @@ export const make = Effect.fnUntraced(function*<
           }
         }).pipe(
           Scope.extend(scope),
-          Effect.provide(handlers)
+          Effect.mapInputContext<never, any>(() => Context.merge(handlerContext, handlers) as Context.Context<any>)
         )
 
         yield* Scope.addFinalizer(
@@ -356,14 +375,18 @@ export const make = Effect.fnUntraced(function*<
       scope,
       Effect.withFiberRuntime((fiber) => {
         activeServers.delete(address.entityId)
-        serverCloseLatches.set(address, Effect.unsafeMakeLatch(false))
         internalInterruptors.add(fiber.id())
-        return state.write(0, { _tag: "Eof" }).pipe(
-          Effect.andThen(Effect.interruptible(endLatch.await)),
-          Effect.timeoutOption(config.entityTerminationTimeout)
+        return Effect.raceFirst(
+          state.write(0, { _tag: "Eof" }).pipe(
+            Effect.andThen(endLatch.await),
+            Effect.timeoutOption(config.entityTerminationTimeout),
+            Effect.interruptible
+          ),
+          Effect.interruptible(closeLatches.force.await)
         )
       })
     )
+    serverCloseLatches.set(address, closeLatches)
     activeServers.set(address.entityId, state)
 
     return state
@@ -506,17 +529,24 @@ export const make = Effect.fnUntraced(function*<
   )
 
   return identity<EntityManager>({
-    interruptShard: (shardId: ShardId) =>
+    interruptShard: (shardId: ShardId, options) =>
       Effect.suspend(function loop(): Effect.Effect<void> {
         const fibers = Arr.empty<Fiber.RuntimeFiber<void>>()
+        if (options?.force === true) {
+          serverCloseLatches.forEach((latches, address) => {
+            if (shardId[Equal.symbol](address.shardId)) {
+              latches.force.unsafeOpen()
+            }
+          })
+        }
         activeServers.forEach((state) => {
           if (shardId[Equal.symbol](state.address.shardId)) {
             fibers.push(runFork(entities.removeIgnore(state.address)))
           }
         })
-        serverCloseLatches.forEach((latch, address) => {
+        serverCloseLatches.forEach((latches, address) => {
           if (shardId[Equal.symbol](address.shardId)) {
-            fibers.push(runFork(latch.await))
+            fibers.push(runFork(latches.closed.await))
           }
         })
         if (fibers.length === 0) return Effect.void

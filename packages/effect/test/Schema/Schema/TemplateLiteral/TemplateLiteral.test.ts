@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
+import { assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import * as A from "effect/Arbitrary"
 import type * as array_ from "effect/Array"
 import * as fc from "effect/FastCheck"
@@ -79,6 +79,59 @@ schema (Union): boolean | symbol`)
       ["-", S.Union(S.TemplateLiteral("a", S.Literal("b", "c")), S.TemplateLiteral("d", S.Literal("e", "f")))],
       "^-(a(b|c)|d(e|f))$"
     )
+  })
+
+  it("StringKeyword matcher is equivalent to getTemplateLiteralRegExp", () => {
+    const schemas: ReadonlyArray<S.Schema.AnyNoContext> = [
+      S.TemplateLiteral(S.String),
+      S.TemplateLiteral("id_", S.String),
+      S.TemplateLiteral(S.String, ".json"),
+      S.TemplateLiteral(S.String, "@", S.String, ".com"),
+      S.TemplateLiteral(S.String, ".", S.String, ".", S.String, ".json"),
+      S.TemplateLiteral("[", S.String, ".*", S.String, "]")
+    ]
+    const inputs = [
+      "",
+      "id_",
+      "id_value",
+      ".json",
+      "file.json",
+      "file.json.extra",
+      "@.com",
+      "a@b.com",
+      "a@@b.com",
+      "a@b@c.com",
+      "...json",
+      "a.b.c.json",
+      "a.b.c.json.extra",
+      "[]",
+      "[.*]",
+      "[a.*b]",
+      "[a.*b.*c]",
+      "[a.*b]extra",
+      "\n",
+      "a\n@b.com"
+    ]
+
+    for (const schema of schemas) {
+      const ast = schema.ast as AST.TemplateLiteral
+      const regex = AST.getTemplateLiteralRegExp(ast)
+      const is = S.is(schema)
+      for (const input of inputs) {
+        strictEqual(is(input), regex.test(input), `${String(ast)} on ${JSON.stringify(input)}`)
+      }
+    }
+  })
+
+  it("decodes adversarial StringKeyword template literals in linear time", () => {
+    const schema = S.TemplateLiteral(S.String, ".", S.String, ".", S.String, ".json")
+    const decode = S.decodeUnknownEither(schema)
+    const start = Date.now()
+    const result = decode(".".repeat(8_000))
+    const elapsed = Date.now() - start
+
+    strictEqual(result._tag, "Left")
+    assertTrue(elapsed < 1_000, `decoding took ${elapsed}ms`)
   })
 
   describe("AST and toString", () => {

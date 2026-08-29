@@ -21,24 +21,39 @@ export const isCommand = (u: unknown): u is Command.Command => typeof u === "obj
 
 /** @internal */
 export const env: {
-  (environment: Record<string, string | undefined>): (self: Command.Command) => Command.Command
-  (self: Command.Command, environment: Record<string, string | undefined>): Command.Command
+  (
+    environment: Record<string, string | undefined>,
+    options?: { readonly extendEnv?: boolean | undefined }
+  ): (self: Command.Command) => Command.Command
+  (
+    self: Command.Command,
+    environment: Record<string, string | undefined>,
+    options?: { readonly extendEnv?: boolean | undefined }
+  ): Command.Command
 } = dual<
-  (environment: Record<string, string | undefined>) => (self: Command.Command) => Command.Command,
-  (self: Command.Command, environment: Record<string, string | undefined>) => Command.Command
->(2, (self, environment) => {
+  (
+    environment: Record<string, string | undefined>,
+    options?: { readonly extendEnv?: boolean | undefined }
+  ) => (self: Command.Command) => Command.Command,
+  (
+    self: Command.Command,
+    environment: Record<string, string | undefined>,
+    options?: { readonly extendEnv?: boolean | undefined }
+  ) => Command.Command
+>((args) => isCommand(args[0]), (self, environment, options) => {
   switch (self._tag) {
     case "StandardCommand": {
       return makeStandard({
         ...self,
+        extendEnv: options?.extendEnv ?? self.extendEnv,
         env: HashMap.union(
           self.env,
-          HashMap.fromIterable(Object.entries(environment).filter(([v]) => v !== undefined))
+          HashMap.fromIterable(Object.entries(environment).filter(([, value]) => value !== undefined))
         ) as HashMap.HashMap<string, string>
       })
     }
     case "PipedCommand": {
-      return pipeTo(env(self.left, environment), env(self.right, environment))
+      return pipeTo(env(self.left, environment, options), env(self.right, environment, options))
     }
   }
 })
@@ -119,6 +134,7 @@ const StandardProto = {
       command: this.command,
       args: this.args,
       env: Object.fromEntries(this.env),
+      extendEnv: this.extendEnv,
       cwd: this.cwd.toJSON(),
       shell: this.shell,
       gid: this.gid.toJSON(),
@@ -152,6 +168,7 @@ export const make = (command: string, ...args: Array<string>): Command.Command =
     command,
     args,
     env: HashMap.empty(),
+    extendEnv: true,
     cwd: Option.none(),
     shell: false,
     stdin: "pipe",
