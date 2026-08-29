@@ -136,7 +136,7 @@ describe("DenoSocket", () => {
       const socket = yield* DenoSocket.makeTcp({ hostname: address.hostname, port: address.port })
       const messages = yield* Queue.unbounded<Uint8Array>()
       const runFiber = yield* Effect.gen(function*() {
-        const pull = yield* Socket.readerBytes(socket)
+        const { pull } = yield* Socket.readerBytes(socket)
         while (true) {
           yield* Queue.offerAll(messages, yield* pull)
         }
@@ -189,7 +189,7 @@ describe("DenoSocket", () => {
       const opened = yield* Deferred.make<void>()
 
       const firstRun = yield* Effect.gen(function*() {
-        const pull = yield* socket.reader
+        const { pull } = yield* socket.reader
         yield* Deferred.succeed(opened, undefined)
         while (true) {
           yield* pull
@@ -201,7 +201,7 @@ describe("DenoSocket", () => {
 
       const received: Array<Uint8Array> = []
       yield* Effect.gen(function*() {
-        const pull = yield* Socket.readerBytes(socket)
+        const { pull } = yield* Socket.readerBytes(socket)
         while (true) {
           const chunk = yield* pull
           for (const data of chunk) {
@@ -312,7 +312,7 @@ describe("DenoSocket", () => {
       yield* Effect.gen(function*() {
         const socket = yield* Socket.Socket
         const runFiber = yield* Effect.gen(function*() {
-          const pull = yield* Socket.readerBytes(socket)
+          const { pull } = yield* Socket.readerBytes(socket)
           while (true) {
             yield* Queue.offerAll(messages, yield* pull)
           }
@@ -356,7 +356,7 @@ describe("DenoSocket", () => {
       )
       const received: Array<string> = []
       yield* Effect.gen(function*() {
-        const pull = yield* Socket.readerString(socket)
+        const { pull } = yield* Socket.readerString(socket)
         while (true) {
           const chunk = yield* pull
           for (const data of chunk) {

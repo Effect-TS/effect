@@ -604,7 +604,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
           })
         const writer: Socket.Socket["writer"] = Effect.succeed({ write, writeAll })
 
-        const reader: Socket.Socket["reader"] = Effect.gen(function*() {
+        const reader: Effect.Effect<Socket.Reader["pull"], Socket.SocketError, Scope.Scope> = Effect.gen(function*() {
           const dispatcher = (yield* Scheduler.Scheduler).makeDispatcher()
           yield* Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1))
           const closeError = ws.data.closeError ?? (ws.readyState >= 2

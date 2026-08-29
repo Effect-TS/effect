@@ -15,7 +15,7 @@ const makeTempDir = Effect.acquireRelease(
 const echo = (socket: Socket.Socket) =>
   Effect.gen(function*() {
     const writer = yield* socket.writer
-    const pull = yield* socket.reader
+    const { pull } = yield* socket.reader
     while (true) {
       yield* writer.writeAll(yield* pull)
     }

@@ -203,10 +203,11 @@ interface SocketClient {
 
 const socketClient = Effect.fnUntraced(function*(socket: Socket.Socket) {
   const writer = yield* socket.writer
-  const pull = Effect.orDie(yield* Socket.readerBytes(socket))
+  const { pull } = yield* Socket.readerBytes(socket)
+  const read = Effect.orDie(pull)
   let received = 0
   let consumed = 0
-  const drain: Effect.Effect<void> = Effect.flatMap(pull, (frames) => {
+  const drain: Effect.Effect<void> = Effect.flatMap(read, (frames) => {
     for (let i = 0; i < frames.length; i++) received += frames[i].length
     return received >= consumed ? Effect.void : drain
   })

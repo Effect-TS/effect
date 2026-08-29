@@ -155,7 +155,7 @@ export const fromDuplex = <RO>(
     const latch = Latch.makeUnsafe(false)
     const openServices = fiber.context as Context.Context<RO>
 
-    const reader: Socket.Socket["reader"] = Effect.gen(function*() {
+    const reader: Effect.Effect<Socket.Reader["pull"], Socket.SocketError, Scope.Scope> = Effect.gen(function*() {
       const scope = yield* Effect.scope
       let conn = yield* Scope.provide(open, scope).pipe(
         options?.openTimeout !== undefined ?
@@ -349,7 +349,7 @@ export const fromDuplex = <RO>(
       })
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(openServices, input))
-    ) as Socket.Socket["reader"]
+    ) as Effect.Effect<Socket.Reader["pull"], Socket.SocketError, Scope.Scope>
 
     const awaitDrain = (conn: Duplex) =>
       Effect.callback<void, Socket.SocketError>((resume) => {
@@ -444,7 +444,7 @@ export const fromDuplex = <RO>(
         })
     )
 
-    const upgrade: Socket.Socket["upgrade"] = (upgradeOptions) =>
+    const upgrade: Socket.Reader["upgrade"] = (upgradeOptions) =>
       Effect.suspend(() =>
         currentUpgrade === undefined
           ? Effect.fail(

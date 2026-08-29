@@ -36,7 +36,7 @@ const makeServer = Effect.gen(function*() {
   yield* server.run((socket) =>
     Effect.gen(function*() {
       const writer = yield* socket.writer
-      const pull = yield* socket.reader
+      const { pull } = yield* socket.reader
       while (true) {
         yield* writer.writeAll(yield* pull)
       }
@@ -119,7 +119,7 @@ describe("Socket", () => {
 
       const received = yield* Effect.gen(function*() {
         const writer = yield* socket.writer
-        const pull = yield* Socket.readerBytes(socket)
+        const { pull } = yield* Socket.readerBytes(socket)
         yield* writer.writeAll(["Hello", "World"])
         const received: Array<Uint8Array> = []
         let length = 0
@@ -154,7 +154,7 @@ describe("Socket", () => {
       })
       duplex.pause()
       const socket = yield* NodeSocket.fromDuplex(Effect.succeed(duplex))
-      const pull = yield* socket.reader
+      const { pull } = yield* socket.reader
       duplex.push(first)
       duplex.push(second)
       const batch = yield* pull
@@ -278,7 +278,7 @@ describe("Socket", () => {
 
         const received = yield* Effect.gen(function*() {
           const writer = yield* socket.writer
-          const pull = yield* Socket.readerString(socket)
+          const { pull } = yield* Socket.readerString(socket)
           yield* writer.writeAll(["Hello", "World"])
           let text = ""
           while (text.length < 10) {
@@ -332,7 +332,7 @@ describe("Socket", () => {
         yield* server.run((socket) =>
           Effect.gen(function*() {
             const writer = yield* socket.writer
-            const pull = yield* socket.reader
+            const { pull } = yield* socket.reader
             while (true) {
               yield* writer.writeAll(yield* pull)
             }
@@ -356,7 +356,7 @@ describe("Socket", () => {
 
         const received = yield* Effect.gen(function*() {
           const writer = yield* socket.writer
-          const pull = yield* Socket.readerString(socket)
+          const { pull } = yield* Socket.readerString(socket)
           yield* writer.writeAll(["Hello", "World"])
           let text = ""
           while (text.length < 10) {
@@ -374,8 +374,8 @@ describe("Socket", () => {
         yield* server.run((socket) =>
           Effect.gen(function*() {
             const writer = yield* socket.writer
-            const pull = yield* socket.reader
-            yield* socket.upgrade({ cert, key: Redacted.make(key) })
+            const { pull, upgrade } = yield* socket.reader
+            yield* upgrade({ cert, key: Redacted.make(key) })
             while (true) {
               yield* writer.writeAll(yield* pull)
             }
@@ -393,7 +393,7 @@ describe("Socket", () => {
 
         const received = yield* Effect.gen(function*() {
           const writer = yield* socket.writer
-          const pull = yield* Socket.readerString(socket)
+          const { pull } = yield* Socket.readerString(socket)
           yield* writer.writeAll(["Hello", "World"])
           let text = ""
           while (text.length < 10) {
@@ -411,7 +411,7 @@ describe("Socket", () => {
         yield* server.run((socket) =>
           Effect.gen(function*() {
             const writer = yield* socket.writer
-            const pull = yield* socket.reader
+            const { pull } = yield* socket.reader
             while (true) {
               yield* writer.writeAll(yield* pull)
             }
@@ -428,8 +428,8 @@ describe("Socket", () => {
 
         const received = yield* Effect.gen(function*() {
           const writer = yield* socket.writer
-          const pull = yield* Socket.readerString(socket)
-          yield* socket.upgrade({
+          const { pull, upgrade } = yield* Socket.readerString(socket)
+          yield* upgrade({
             cert,
             key: Redacted.make(key),
             ca: [cert],
@@ -464,8 +464,8 @@ describe("Socket", () => {
         const socket = yield* NodeSocket.fromDuplex(Effect.succeed(raw))
 
         const error = yield* Effect.gen(function*() {
-          const pull = yield* socket.reader
-          const upgradeFiber = yield* socket.upgrade({
+          const { pull, upgrade } = yield* socket.reader
+          const upgradeFiber = yield* upgrade({
             cert,
             key: Redacted.make(key)
           }).pipe(Effect.forkChild({ startImmediately: true }))
@@ -491,15 +491,15 @@ describe("Socket", () => {
         })
 
         const error = yield* Effect.gen(function*() {
-          yield* Effect.asVoid(socket.reader)
+          const { upgrade } = yield* socket.reader
           const options = {
             cert,
             key: Redacted.make(key),
             ca: [cert],
             rejectUnauthorized: true
           }
-          yield* socket.upgrade(options)
-          return yield* socket.upgrade(options).pipe(
+          yield* upgrade(options)
+          return yield* upgrade(options).pipe(
             Effect.flip,
             Effect.timeout("1 second")
           )
@@ -518,8 +518,8 @@ describe("Socket", () => {
         })
 
         const error = yield* Effect.gen(function*() {
-          yield* Effect.asVoid(socket.reader)
-          return yield* socket.upgrade({
+          const { upgrade } = yield* socket.reader
+          return yield* upgrade({
             cert,
             key: Redacted.make(key),
             rejectUnauthorized: true
@@ -578,8 +578,8 @@ describe("Socket", () => {
       Effect.gen(function*() {
         yield* Effect.asVoid(makeServer)
         const socket = yield* Socket.makeWebSocket(Effect.succeed(url))
-        yield* Effect.asVoid(socket.reader)
-        const error = yield* socket.upgrade({ cert, key: Redacted.make(key) }).pipe(Effect.flip)
+        const { upgrade } = yield* socket.reader
+        const error = yield* upgrade({ cert, key: Redacted.make(key) }).pipe(Effect.flip)
         assert.strictEqual(error.reason._tag, "SocketUpgradeError")
       }).pipe(
         Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url))
@@ -591,7 +591,7 @@ describe("Socket", () => {
         const socket = yield* Socket.makeWebSocket(Effect.succeed(url))
         const messages = yield* Queue.unbounded<Uint8Array>()
         const fiber = yield* Effect.gen(function*() {
-          const pull = yield* Socket.readerBytes(socket)
+          const { pull } = yield* Socket.readerBytes(socket)
           while (true) {
             yield* Queue.offerAll(messages, yield* pull)
           }
@@ -633,7 +633,7 @@ describe("Socket", () => {
         const server = yield* makeServer
         const socket = yield* Socket.makeWebSocket(Effect.succeed(url))
         const fiber = yield* Effect.gen(function*() {
-          const pull = yield* socket.reader
+          const { pull } = yield* socket.reader
           while (true) {
             yield* pull
           }
@@ -727,7 +727,7 @@ describe("Socket", () => {
         )
         const received: Array<string> = []
         yield* Effect.gen(function*() {
-          const pull = yield* Socket.readerString(socket)
+          const { pull } = yield* Socket.readerString(socket)
           while (true) {
             const chunk = yield* pull
             for (const data of chunk) {

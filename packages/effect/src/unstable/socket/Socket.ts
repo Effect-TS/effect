@@ -64,11 +64,11 @@ export const Socket: Context.Service<Socket, Socket> = Context.Service<Socket>("
  * **Details**
  *
  * Acquiring `reader` establishes the connection; the scope of the acquisition
- * owns the connection lifecycle. The returned `Effect` yields non-empty batches
- * of incoming frames and never completes via `Cause.Done`: every termination,
- * clean close included, fails with a `SocketError` wrapping the close reason.
- * Code placed between the acquisition and the first pull runs exactly once
- * per (re)connection, which makes handshakes plain code placement.
+ * owns the connection lifecycle. Its `pull` yields non-empty batches of incoming
+ * frames and never completes via `Cause.Done`: every termination, clean close
+ * included, fails with a `SocketError` wrapping the close reason. Code placed
+ * between the acquisition and the first pull runs exactly once per
+ * (re)connection, which makes handshakes plain code placement.
  *
  * Closing the acquisition scope must fail a pull that is currently suspended,
  * rather than leaving it blocked. Consumers such as `toChannel` rely on this
@@ -80,15 +80,11 @@ export const Socket: Context.Service<Socket, Socket> = Context.Service<Socket>("
  * is established. Releasing the writer scope half-closes the write side
  * where the transport supports it.
  *
- * `upgrade` wraps the current live connection with TLS when the transport
- * supports it. Unsupported socket implementations fail with a
- * `SocketUpgradeError`.
- *
  * **Example** (Consuming with automatic reconnect)
  *
  * ```ts skip-type-checking
  * Effect.gen(function*() {
- *   const pull = yield* socket.reader
+ *   const { pull } = yield* socket.reader
  *   while (true) {
  *     yield* handle(yield* pull)
  *   }
@@ -103,12 +99,22 @@ export const Socket: Context.Service<Socket, Socket> = Context.Service<Socket>("
  */
 export interface Socket {
   readonly [TypeId]: typeof TypeId
-  readonly reader: Effect.Effect<
-    Effect.Effect<NonEmptyReadonlyArray<Uint8Array | string>, SocketError>,
-    SocketError,
-    Scope.Scope
-  >
+  readonly reader: Effect.Effect<Reader, SocketError, Scope.Scope>
   readonly writer: Effect.Effect<Writer, never, Scope.Scope>
+}
+
+/**
+ * The read side of a live `Socket` connection.
+ *
+ * `pull` reads the next non-empty batch. `upgrade` wraps this connection with
+ * TLS when the transport supports it. Unsupported readers fail with a
+ * `SocketUpgradeError`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Reader<A extends Uint8Array | string = Uint8Array | string> {
+  readonly pull: Effect.Effect<NonEmptyReadonlyArray<A>, SocketError>
   readonly upgrade: (options: TlsUpgradeOptions) => Effect.Effect<void, SocketError>
 }
 
@@ -159,22 +165,23 @@ export interface TlsUpgradeOptions {
  * @since 4.0.0
  */
 export const make = (options: {
-  readonly reader: Socket["reader"]
+  readonly reader: Effect.Effect<Reader["pull"], SocketError, Scope.Scope>
   readonly writer: Socket["writer"]
-  readonly upgrade?: Socket["upgrade"] | undefined
-}): Socket =>
-  Socket.of({
+  readonly upgrade?: Reader["upgrade"] | undefined
+}): Socket => {
+  const upgrade = options.upgrade ?? (() => Effect.fail(new SocketError({ reason: new SocketUpgradeError({}) })))
+  return Socket.of({
     [TypeId]: TypeId,
-    reader: options.reader,
-    writer: options.writer,
-    upgrade: options.upgrade ?? (() => Effect.fail(new SocketError({ reason: new SocketUpgradeError({}) })))
+    reader: Effect.map(options.reader, (pull) => ({ pull, upgrade })),
+    writer: options.writer
   })
+}
 
 const encoder = new TextEncoder()
 
 /**
- * Acquires the socket's reader as an `Effect` of binary frame batches, encoding
- * any string frames as UTF-8 bytes.
+ * Acquires the socket's reader with a binary `pull`, encoding any string frames
+ * as UTF-8 bytes. The reader's `upgrade` function is preserved.
  *
  * When a pulled batch contains no string frames it is returned as-is, so
  * transports that only emit bytes (TCP) pay no per-chunk cost.
@@ -185,12 +192,12 @@ const encoder = new TextEncoder()
 export const readerBytes = (
   self: Socket
 ): Effect.Effect<
-  Effect.Effect<NonEmptyReadonlyArray<Uint8Array>, SocketError>,
+  Reader<Uint8Array>,
   SocketError,
   Scope.Scope
 > =>
-  Effect.map(self.reader, (pull) =>
-    Effect.map(pull, (chunk) => {
+  Effect.map(self.reader, ({ pull, upgrade }) => ({
+    pull: Effect.map(pull, (chunk) => {
       for (let i = 0; i < chunk.length; i++) {
         if (typeof chunk[i] === "string") {
           const out = new Array<Uint8Array>(chunk.length) as NonEmptyArray<Uint8Array>
@@ -202,11 +209,14 @@ export const readerBytes = (
         }
       }
       return chunk as NonEmptyReadonlyArray<Uint8Array>
-    }))
+    }),
+    upgrade
+  }))
 
 /**
- * Acquires the socket's reader as an `Effect` of string frame batches, decoding
- * binary frames with the optional text encoding.
+ * Acquires the socket's reader with a string `pull`, decoding binary frames
+ * with the optional text encoding. The reader's `upgrade` function is
+ * preserved.
  *
  * The `TextDecoder` is created once per acquisition.
  *
@@ -217,20 +227,23 @@ export const readerString = (
   self: Socket,
   encoding?: string | undefined
 ): Effect.Effect<
-  Effect.Effect<NonEmptyReadonlyArray<string>, SocketError>,
+  Reader<string>,
   SocketError,
   Scope.Scope
 > =>
-  Effect.map(self.reader, (pull) => {
+  Effect.map(self.reader, ({ pull, upgrade }) => {
     const decoder = new TextDecoder(encoding)
-    return Effect.map(pull, (chunk) => {
-      const out = new Array<string>(chunk.length)
-      for (let i = 0; i < chunk.length; i++) {
-        const item = chunk[i]
-        out[i] = typeof item === "string" ? item : decoder.decode(item)
-      }
-      return out as unknown as NonEmptyReadonlyArray<string>
-    })
+    return {
+      pull: Effect.map(pull, (chunk) => {
+        const out = new Array<string>(chunk.length)
+        for (let i = 0; i < chunk.length; i++) {
+          const item = chunk[i]
+          out[i] = typeof item === "string" ? item : decoder.decode(item)
+        }
+        return out as unknown as NonEmptyReadonlyArray<string>
+      }),
+      upgrade
+    }
   })
 
 const CloseEventTypeId = "~effect/socket/Socket/CloseEvent"
@@ -494,10 +507,10 @@ const writeChunk = (
   return writer.writeAll(chunk as NonEmptyReadonlyArray<Uint8Array | string>)
 }
 
-const toChannelWithReader = <A, IE>(
+const toChannelWithReader = <A extends Uint8Array | string, IE>(
   self: Socket,
   reader: Effect.Effect<
-    Effect.Effect<NonEmptyReadonlyArray<A>, SocketError>,
+    Reader<A>,
     SocketError,
     Scope.Scope
   >
@@ -510,7 +523,7 @@ const toChannelWithReader = <A, IE>(
 > =>
   Channel.fromTransform(Effect.fnUntraced(function*(upstream, scope) {
     const readScope = yield* Scope.fork(scope)
-    const pull = yield* Scope.provide(reader, readScope)
+    const { pull } = yield* Scope.provide(reader, readScope)
     const writeScope = yield* Scope.fork(scope)
     const writer = yield* Scope.provide(self.writer, writeScope)
 
@@ -629,7 +642,9 @@ export const toChannelWith = <IE = never>() =>
  * @since 4.0.0
  */
 export const toStream = (self: Socket): Stream.Stream<Uint8Array, SocketError> =>
-  Stream.fromChannel(Channel.fromTransform((_, scope) => Scope.provide(readerBytes(self), scope)))
+  Stream.fromChannel(
+    Channel.fromTransform((_, scope) => Effect.map(Scope.provide(readerBytes(self), scope), (reader) => reader.pull))
+  )
 
 /**
  * Creates a binary socket `Channel` from the `Socket` service in the
@@ -818,7 +833,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
     const latch = Latch.makeUnsafe(false)
     const acquireContext = fiber.context as Context.Context<RO>
 
-    const reader: Socket["reader"] = Effect.gen(function*() {
+    const reader: Effect.Effect<Reader["pull"], SocketError, Scope.Scope> = Effect.gen(function*() {
       const scope = yield* Effect.scope
       const dispatcher = (yield* Scheduler.Scheduler).makeDispatcher()
       const ws = yield* Scope.provide(acquire, scope)
@@ -1009,7 +1024,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       })
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(acquireContext, input))
-    ) as Socket["reader"]
+    ) as Effect.Effect<Reader["pull"], SocketError, Scope.Scope>
 
     const write = (chunk: Uint8Array | string | CloseEvent): Effect.Effect<void, SocketError> =>
       Effect.suspend(() => {
@@ -1132,7 +1147,7 @@ export const fromTransformStream = <R>(
       return writer
     }
 
-    const reader: Socket["reader"] = Effect.gen(function*() {
+    const reader: Effect.Effect<Reader["pull"], SocketError, Scope.Scope> = Effect.gen(function*() {
       const scope = yield* Effect.scope
       const stream = yield* Scope.provide(acquire, scope)
       const readerHandle = (stream.readable as ReadableStream<Uint8Array | string>).getReader()
@@ -1171,7 +1186,7 @@ export const fromTransformStream = <R>(
       })
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(acquireContext, input))
-    ) as Socket["reader"]
+    ) as Effect.Effect<Reader["pull"], SocketError, Scope.Scope>
 
     const write = (chunk: Uint8Array | string | CloseEvent) =>
       latch.whenOpen(Effect.suspend(() => {

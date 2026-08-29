@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Latch from "effect/Latch"
+import * as Redacted from "effect/Redacted"
 import * as Scheduler from "effect/Scheduler"
 import * as Stream from "effect/Stream"
 import * as Socket from "effect/unstable/socket/Socket"
@@ -65,6 +66,75 @@ class TestWebSocket implements Socket.WebSocketLike {
 }
 
 describe("Socket", () => {
+  describe("make", () => {
+    it.effect("exposes TLS upgrade on the acquired reader", () =>
+      Effect.gen(function*() {
+        let upgraded = false
+        const socket = Socket.make({
+          reader: Effect.succeed(Effect.never),
+          writer: Effect.succeed({
+            write: () => Effect.void,
+            writeAll: () => Effect.void
+          }),
+          upgrade: () =>
+            Effect.sync(() => {
+              upgraded = true
+            })
+        })
+
+        const { upgrade } = yield* socket.reader
+        yield* upgrade({ key: Redacted.make("key"), cert: "cert" })
+
+        assert.isTrue(upgraded)
+      }))
+
+    it.effect("readerBytes maps pulls and keeps the reader upgrade", () =>
+      Effect.gen(function*() {
+        let upgraded = false
+        const socket = Socket.make({
+          reader: Effect.succeed(Effect.succeed(["hello"])),
+          writer: Effect.succeed({
+            write: () => Effect.void,
+            writeAll: () => Effect.void
+          }),
+          upgrade: () =>
+            Effect.sync(() => {
+              upgraded = true
+            })
+        })
+
+        const { pull, upgrade } = yield* Socket.readerBytes(socket)
+        const [message] = yield* pull
+        yield* upgrade({ key: Redacted.make("key"), cert: "cert" })
+
+        assert.deepStrictEqual(message, new TextEncoder().encode("hello"))
+        assert.isTrue(upgraded)
+      }))
+
+    it.effect("readerString maps pulls and keeps the reader upgrade", () =>
+      Effect.gen(function*() {
+        let upgraded = false
+        const socket = Socket.make({
+          reader: Effect.succeed(Effect.succeed([new TextEncoder().encode("hello")])),
+          writer: Effect.succeed({
+            write: () => Effect.void,
+            writeAll: () => Effect.void
+          }),
+          upgrade: () =>
+            Effect.sync(() => {
+              upgraded = true
+            })
+        })
+
+        const { pull, upgrade } = yield* Socket.readerString(socket)
+        const [message] = yield* pull
+        yield* upgrade({ key: Redacted.make("key"), cert: "cert" })
+
+        assert.strictEqual(message, "hello")
+        assert.isTrue(upgraded)
+      }))
+  })
+
   describe("fromWebSocket", () => {
     it.effect("removes the open listener when the socket closes while connecting", () =>
       Effect.gen(function*() {
@@ -101,7 +171,7 @@ describe("Socket", () => {
         const ws = new TestWebSocket(Latch.makeUnsafe(false))
         ws.readyState = 1
         const socket = yield* Socket.fromWebSocket(Effect.succeed(ws))
-        const pull = yield* socket.reader.pipe(
+        const { pull } = yield* socket.reader.pipe(
           Effect.provideService(Scheduler.Scheduler, scheduler)
         )
         assert.strictEqual(ws.pauseCount, 0)
@@ -136,7 +206,7 @@ describe("Socket", () => {
         const ws = new TestWebSocket(Latch.makeUnsafe(false))
         ws.readyState = 1
         const socket = yield* Socket.fromWebSocket(Effect.succeed(ws), { highWaterMark: 10 })
-        const pull = yield* socket.reader.pipe(
+        const { pull } = yield* socket.reader.pipe(
           Effect.provideService(Scheduler.Scheduler, scheduler)
         )
         const firstPull = yield* pull.pipe(Effect.forkChild({ startImmediately: true }))
@@ -159,7 +229,7 @@ describe("Socket", () => {
         const ws = new TestWebSocket(Latch.makeUnsafe(false))
         ws.readyState = 1
         const socket = yield* Socket.fromWebSocket(Effect.succeed(ws))
-        const pull = yield* socket.reader
+        const { pull } = yield* socket.reader
         const payload = "a".repeat(64 * 1024)
 
         ws.dispatch("message", { data: payload })
