@@ -108,7 +108,6 @@
   },
   "devDependencies": {
     "@types/node": "^26.4.0",
-    "@types/tr46": "5.0.1",
     "ajv": "^8.20.0",
     "ajv-draft-04": "^1.0.0",
     "ast-types": "^0.16.1",
@@ -116,8 +115,5 @@
     "protobufjs": "^8.8.0",
     "tinybench": "^6.1.4",
     "valibot": "^1.4.2"
-  },
-  "dependencies": {
-    "tr46": "6.0.0"
   }
 }

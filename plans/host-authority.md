@@ -7,9 +7,9 @@ Add pure, immutable `Hostname`, `Host`, and `Authority` values beside the existi
 
 The semantic choice is deliberate:
 
-- `Hostname` is an **IDNA-aware Internet host-domain name**: the RFC 1123 host-name subset of DNS names, extended with
-  valid IDNA labels and stored canonically as lowercase ASCII A-labels. It is not an arbitrary DNS owner name, an RFC
-  3986 `reg-name`, or a WHATWG opaque host.
+- `Hostname` is an **ASCII Internet host-domain name** using the RFC 1123 host-name subset of DNS names and stored
+  canonically in lowercase. Unicode names and IDNA A-labels are deferred until they can be supported without adding a
+  core dependency. It is not an arbitrary DNS owner name, an RFC 3986 `reg-name`, or a WHATWG opaque host.
 - `Host` is `Hostname | IpAddress`. It represents the host portion of a network target before any name lookup. IPv6 is
   stored as a bare `Ipv6Address`; brackets are syntax supplied by an authority formatter, not part of the value.
 - `Authority` is a `Host` plus an optional checked numeric port. It is the host-and-port subset needed by HTTP, URI,
@@ -18,7 +18,7 @@ The semantic choice is deliberate:
   `SocketAddress`, and parsing must never perform DNS or OS name resolution.
 
 This fills the unresolved side of the model established by `Net`: values can safely carry `localhost`,
-`example.com`, IDNs, IPv4, and IPv6 through configuration and formatting, while platform adapters remain responsible
+`example.com`, IPv4, and IPv6 through configuration and formatting, while platform adapters remain responsible
 for resolution and socket operations. The first integration should replace ad hoc cluster URL authority formatting and
 validate `RunnerAddress` without changing its encoded `{ host: string, port: number }` shape. Bun HTTP listeners must
 continue to require a numeric address until an explicit resolution seam can produce the concrete address that Bun's
@@ -111,7 +111,7 @@ the same normalization and failure behavior.
 
 - Provide one platform-neutral representation for validated unresolved host names, numeric hosts, and host/port
   authorities.
-- Canonicalize case, IDNA, IP text, brackets, and port syntax once.
+- Canonicalize ASCII case, IP text, brackets, and port syntax once.
 - Preserve the hard boundary between pure target parsing and effectful name resolution.
 - Make values immutable and support Effect equality, hashing, inspection, and Schema.
 - Supply context-specific formatting so callers cannot accidentally emit unbracketed IPv6 authorities.
@@ -131,10 +131,12 @@ the same normalization and failure behavior.
 - IPv6 zone identifiers in `Host` or URI authorities. Existing bare `Ipv6Address` excludes them; scoped socket metadata
   remains on `InetAddressV6`.
 - Replacing `URL` as the HTTP URL representation.
+- Unicode hostnames and IDNA A-labels. These require a separately reviewed implementation that does not add a core
+  dependency.
 
 ### Primary use cases
 
-- Parse configuration such as `localhost`, `api.example.com`, an IDN, `192.0.2.1`, or `2001:db8::1` into a value whose
+- Parse configuration such as `localhost`, `api.example.com`, `192.0.2.1`, or `2001:db8::1` into a value whose
   equality and wire formatting are stable.
 - Parse and format `example.com:443`, `192.0.2.1:8080`, `[2001:db8::1]:8080`, and host-only authorities.
 - Build HTTP and WebSocket URLs without private IPv6-bracketing helpers.
@@ -154,7 +156,7 @@ code only if implementation size justifies it; do not create a public `Dns` modu
 ```ts
 interface Hostname extends Equal.Equal, Hash.Hash {
   readonly _tag: "Hostname"
-  /** Canonical lowercase ASCII: NR-LDH and A-labels separated by dots. */
+  /** Canonical lowercase ASCII LDH labels separated by dots. */
   readonly ascii: string
   toString(): string
 }
@@ -172,16 +174,16 @@ interface Authority extends Equal.Equal, Hash.Hash {
 The exact storage may remain behind type identifiers as existing IP storage does. Public invariants:
 
 - `Hostname.ascii` is non-empty lowercase ASCII.
-- Every label is 1 through 63 octets in A-label form; the complete DNS wire form is at most 255 octets including length
+- Every label is 1 through 63 ASCII characters; the complete DNS wire form is at most 255 octets including length
   octets and the root terminator. The normal dotted form is therefore at most 253 ASCII characters without a final dot.
-- ASCII labels contain only letters, digits, and interior hyphens. A label cannot start or end with `-`. `xn--` labels
-  must be valid, symmetric IDNA A-labels, not merely strings with that prefix.
+- ASCII labels contain only letters, digits, and interior hyphens. A label cannot start or end with `-`. Labels starting
+  with `xn--` are rejected because their IDNA validity cannot be checked by the dependency-free MVP.
 - RFC 1123's update is honored: the first character of a label may be a digit.
 - A trailing dot is accepted as an explicit absolute-name marker and preserved as part of the canonical representation.
   `example.com` and `example.com.` remain distinct because native resolver search behavior can differ. Empty labels
   elsewhere and the root-only `.` are rejected.
-- Unicode input is converted label-by-label to canonical lowercase A-labels under the chosen IDNA profile. Equality and
-  hashing operate on that ASCII form, so equivalent U-label/A-label and ASCII-case spellings compare equal.
+- Unicode input and IDNA A-labels are rejected. Equality and hashing operate on canonical lowercase ASCII, so ASCII-case
+  variants compare equal.
 - Four decimal numeric components are parsed as IPv4 before hostname parsing. Invalid dotted-quad candidates do not
   silently become hostnames. Bracketed input is accepted only by host/authority parsers for IPv6, not by `Hostname`.
 - `Host` has no separate wrapper allocation; guards distinguish `Hostname`, `Ipv4Address`, and `Ipv6Address`.
@@ -284,7 +286,7 @@ The proposed `Authority` intentionally adopts only the common host-plus-optional
 percent-encoded `reg-name`, empty ports, and `IPvFuture`. This is a network/HTTP value, not a complete generic URI
 authority parser.
 
-### IDNA policy
+### Future IDNA policy
 
 RFC 5890 distinguishes ordinary LDH labels, A-labels, U-labels, fake A-labels, and arbitrary DNS labels. A-labels are
 ASCII `xn--` encodings that must round trip to valid U-labels; U-labels are NFC, and equivalence is defined through
@@ -295,7 +297,7 @@ registration from lookup, requires NFC and contextual/Bidi validation, and emits
 warns that mapping user input is application- and locale-dependent; its suggested lowercase/width/NFC mapping is not a
 universal protocol algorithm ([RFC 5895 sections 1 through 3](https://www.rfc-editor.org/rfc/rfc5895.html#section-1)).
 
-For a cross-runtime JavaScript library, implement **UTS #46 non-transitional processing with strict DNS checks**, the
+If IDNA support is added later, implement **UTS #46 non-transitional processing with strict DNS checks**, the
 profile used by the WHATWG URL standard for a valid domain string, while documenting that this compatibility processing
 is not identical to pure IDNA2008. Use `CheckHyphens`, `CheckBidi`, `CheckJoiners`, `UseSTD3ASCIIRules`, and DNS-length
 verification; reject any reported error. This provides interoperable user-input mapping and valid A-label output while
@@ -350,7 +352,7 @@ only generated results attributable to the new source API.
 
 ### Phase 1: pure hostname and host values
 
-1. Select and record the exact UTS #46 implementation and Unicode-version policy before writing parsers.
+1. Implement dependency-free ASCII LDH parsing and reject Unicode and `xn--` labels explicitly.
 2. Add type IDs, immutable prototypes, guards, equality, hash, inspection, checked/unsafe parsers, and formatters.
 3. Parse IP first with existing strict `Net` parsers. Add explicit tests proving WHATWG legacy numeric forms are rejected.
 4. Store canonical lowercase ASCII A-label text. Keep Unicode rendering out of `toString()` and default logs to reduce
@@ -465,8 +467,7 @@ Add table-driven runtime tests for:
   and 255-octet wire-name boundaries.
 - Empty/root names, empty interior labels, leading/trailing hyphens, underscores, spaces, delimiters, overlong labels and
   names, malformed A-labels, and dotted-quad ambiguity.
-- Unicode/A-label pairs, normalization, mapping policy, fake A-label rejection, Bidi and joiner cases, and IDNA length
-  expansion.
+- Explicit rejection of Unicode input, IDNA A-labels, and alternate Unicode dot separators.
 - Strict IPv4 and IPv6 host parsing, bracket rules, and rejection of WHATWG legacy IPv4 forms.
 - Authorities with absent, zero, ordinary, and 65535 ports; invalid numbers; bracket failures; userinfo/path/query/hash;
   parse-format-parse idempotence.
@@ -478,8 +479,8 @@ Add table-driven runtime tests for:
 Add type tests for parser result types, union narrowing, Schema encoded/type values, dual signatures if any, and the
 absence of an implicit `Authority -> InetAddress` conversion.
 
-Property-style coverage should generate valid ASCII label sequences, IP values, and ports and assert canonical
-round trips. IDNA property generation should rely on upstream conformance data rather than arbitrary Unicode strings.
+Property-style coverage should generate valid ASCII label sequences, IP values, and ports and assert canonical round
+trips. A future IDNA implementation should use upstream conformance data rather than arbitrary Unicode strings.
 
 ### Validation
 
@@ -501,7 +502,7 @@ bare `pnpm test` or `pnpm doctest`.
 The foundational public API and any consumer-visible canonicalization require a changeset. Call out:
 
 - the new unstable values and exact hostname semantics;
-- canonical lowercase A-label encoding;
+- canonical lowercase ASCII encoding and explicit IDNA rejection;
 - rejection of arbitrary URI `reg-name`, DNS owner names, and legacy IPv4;
 - `Authority` being unresolved and distinct from `InetAddress`;
 - any `RunnerAddress.host` TypeScript type change despite preserved encoded shape;
@@ -513,8 +514,8 @@ backward-compatibility branches to the pure values.
 
 ## Risks and open decisions
 
-- **IDNA implementation and bundle cost:** Core currently has no direct IDNA dependency. Decide whether a reviewed UTS
-  #46 dependency is acceptable or whether ASCII-only must ship first.
+- **IDNA implementation and bundle cost:** The MVP is ASCII-only because core cannot introduce a direct IDNA dependency.
+  A future implementation needs a separately reviewed dependency-free approach.
 - **Unicode version drift:** UTS #46 tables evolve. Pinning gives reproducibility; upgrading can change acceptance and
   identity. Dependency upgrades require behavior-diff fixtures and release notes.
 - **Mapping policy:** Non-transitional UTS #46 is proposed for interoperability, but it differs from strict IDNA2008.
