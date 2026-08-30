@@ -278,6 +278,15 @@ describe("PgTypes", () => {
     })
   })
 
+  it("uses canonical PostgreSQL wire bytes for equivalent IPv6 CIDR text", () => {
+    const expected = bytes("0320011020010db8000000000000000000000000")
+    assert.deepStrictEqual(
+      PgTypes.encode("2001:0DB8:0000:0000:0000:0000:0000:0000/32", PgTypes.OID.cidr),
+      expected
+    )
+    assert.strictEqual(PgTypes.decode(expected, PgTypes.OID.cidr, 1), "2001:db8::/32")
+  })
+
   describe("errors", () => {
     it("rejects the text format", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.decode(bytes("31"), PgTypes.OID.int4, 0))
@@ -351,11 +360,6 @@ describe("PgTypes", () => {
     it("rejects host bits outside a cidr netmask", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("10.1.2.3/8", PgTypes.OID.cidr))
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("2001:db8::1/32", PgTypes.OID.cidr))
-    })
-
-    it("canonically decodes alternate IPv6 CIDR spelling", () => {
-      const encoded = PgTypes.encode("2001:0DB8:0000:0000:0000:0000:0000:0000/32", PgTypes.OID.cidr)
-      assert.strictEqual(PgTypes.decode(encoded, PgTypes.OID.cidr, 1), "2001:db8::/32")
     })
 
     it("rejects an embedded IPv4 address before IPv6 compression", () => {

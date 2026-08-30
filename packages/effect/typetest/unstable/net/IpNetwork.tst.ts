@@ -1,4 +1,4 @@
-import { type Result, Schema } from "effect"
+import type { Result, Schema } from "effect"
 import * as IpNetwork from "effect/unstable/net/IpNetwork"
 import * as Net from "effect/unstable/net/Net"
 import { describe, expect, it } from "tstyche"
@@ -19,7 +19,7 @@ describe("IpNetwork", () => {
     expect(IpNetwork.fromAddress(address, 0)).type.toBe<Result.Result<IpNetwork.IpNetwork, IpNetwork.NetworkError>>()
   })
 
-  it("exposes checked and throwing parsers", () => {
+  it("preserves families in parsers and unsafe constructors", () => {
     expect(IpNetwork.ipv4FromString("0.0.0.0/0")).type.toBe<
       Result.Result<IpNetwork.Ipv4Network, IpNetwork.NetworkError>
     >()
@@ -52,12 +52,10 @@ describe("IpNetwork", () => {
     expect(IpNetwork.overlaps(value)(value)).type.toBe<boolean>()
   })
 
-  it("exposes declaration and string transformation schemas", () => {
-    expect(Schema.Ipv4Network).type.toBeAssignableTo<Schema.Codec<IpNetwork.Ipv4Network, IpNetwork.Ipv4Network>>()
-    expect(Schema.Ipv6Network).type.toBeAssignableTo<Schema.Codec<IpNetwork.Ipv6Network, IpNetwork.Ipv6Network>>()
-    expect(Schema.IpNetwork).type.toBeAssignableTo<Schema.Codec<IpNetwork.IpNetwork, IpNetwork.IpNetwork>>()
-    expect(Schema.Ipv4NetworkFromString).type.toBeAssignableTo<Schema.Codec<IpNetwork.Ipv4Network, string>>()
-    expect(Schema.Ipv6NetworkFromString).type.toBeAssignableTo<Schema.Codec<IpNetwork.Ipv6Network, string>>()
-    expect(Schema.IpNetworkFromString).type.toBeAssignableTo<Schema.Codec<IpNetwork.IpNetwork, string>>()
+  it("preserves exact Schema types", () => {
+    expect<Schema.Schema.Type<typeof Schema.Ipv4NetworkFromString>>().type.toBe<IpNetwork.Ipv4Network>()
+    expect<Schema.Schema.Type<typeof Schema.Ipv6NetworkFromString>>().type.toBe<IpNetwork.Ipv6Network>()
+    expect<Schema.Schema.Type<typeof Schema.IpNetworkFromString>>().type.toBe<IpNetwork.IpNetwork>()
+    expect<Schema.Codec.Encoded<typeof Schema.IpNetworkFromString>>().type.toBe<string>()
   })
 })

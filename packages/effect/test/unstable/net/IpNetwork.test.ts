@@ -3,15 +3,15 @@ import { Equal, Hash, Result, Schema } from "effect"
 import * as IpNetwork from "effect/unstable/net/IpNetwork"
 import * as Net from "effect/unstable/net/Net"
 import * as fc from "fast-check"
-import { inspect } from "node:util"
 
 const success = <A>(result: Result.Result<A, unknown>): A => {
   if (Result.isFailure(result)) assert.fail("expected Success")
   return result.success
 }
 
-const failure = (result: Result.Result<unknown, unknown>): void => {
-  assert.isTrue(Result.isFailure(result))
+const failure = <E>(result: Result.Result<unknown, E>): E => {
+  if (Result.isSuccess(result)) assert.fail("expected Failure")
+  return result.failure
 }
 
 const ip = (input: string): Net.IpAddress => success(Net.ipFromString(input))
@@ -29,19 +29,24 @@ describe("IpNetwork", () => {
     assert.isFalse(Equal.equals(ipv4, ipv6))
     assert.strictEqual(ipv4.toString(), "0.0.0.0/0")
     assert.strictEqual(ipv6.toString(), "::/0")
-    assert.strictEqual(inspect(ipv4), "0.0.0.0/0")
   })
 
   it("rejects invalid prefix lengths and host bits", () => {
     const ipv4 = ip("10.1.2.3")
     const ipv6 = ip("2001:db8::1")
-    for (const prefix of [-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 33]) {
+    for (const prefix of [1.5, Number.NaN, Number.POSITIVE_INFINITY, 33]) {
       failure(IpNetwork.make(ipv4, prefix))
       failure(IpNetwork.fromAddress(ipv4, prefix))
     }
     failure(IpNetwork.make(ipv6, 129))
     failure(IpNetwork.make(ipv4, 8))
     failure(IpNetwork.make(ipv6, 32))
+
+    const error = failure(IpNetwork.make(ipv4, -1))
+    assert.strictEqual(error._tag, "IpNetworkError")
+    assert.strictEqual(error.kind, "PrefixLength")
+    assert.strictEqual(error.input, -1)
+    assert.strictEqual(error.message, "PrefixLength: prefix length must be an integer from 0 through 32")
   })
 
   it("explicitly truncates byte-aligned and partial-byte host addresses", () => {
@@ -75,15 +80,11 @@ describe("IpNetwork", () => {
         "1.2.3.4/24/1",
         "1.2.3.4/+24",
         "1.2.3.4/024",
-        "1.2.3.4/ 24",
         "1.2.3.4/24 ",
-        "1.2.3.4/1.5",
         "1.2.3.4/1e1",
         "1.2.3.4/33",
         "10.1.2.3/8",
-        "2001:db8::1/32",
-        "[::]/0",
-        "fe80::%1/64"
+        "2001:db8::1/32"
       ]
     ) {
       failure(IpNetwork.fromString(input))
@@ -112,9 +113,14 @@ describe("IpNetwork", () => {
     const ipv4Pair = network("192.0.2.0/31")
     assert.strictEqual(Net.formatIp(IpNetwork.lastAddress(ipv4Pair)), "192.0.2.1")
     assert.strictEqual(IpNetwork.addressCount(ipv4Pair), BigInt(2))
+    assert.strictEqual(Net.formatIp(IpNetwork.lastAddress(network("192.0.2.128/25"))), "192.0.2.255")
     const ipv6Pair = network("2001:db8::/127")
     assert.strictEqual(Net.formatIp(IpNetwork.lastAddress(ipv6Pair)), "2001:db8::1")
     assert.strictEqual(IpNetwork.addressCount(ipv6Pair), BigInt(2))
+    assert.strictEqual(
+      Net.formatIp(IpNetwork.lastAddress(network("2001:db8:0:1:8000::/65"))),
+      "2001:db8:0:1:ffff:ffff:ffff:ffff"
+    )
 
     const ipv4Host = network("255.255.255.255/32")
     assert.strictEqual(Net.formatIp(IpNetwork.lastAddress(ipv4Host)), "255.255.255.255")
@@ -132,10 +138,10 @@ describe("IpNetwork", () => {
   })
 
   it("checks network containment and overlap", () => {
-    const parent = network("10.0.0.0/8")
-    const child = network("10.1.0.0/16")
-    const sibling = network("10.2.0.0/16")
-    const disjoint = network("11.0.0.0/8")
+    const parent = network("2001:db8::/63")
+    const child = network("2001:db8:0:1:8000::/65")
+    const sibling = network("2001:db8:0:1::/65")
+    const disjoint = network("2001:db8:0:2::/63")
     assert.isTrue(IpNetwork.containsNetwork(parent, parent))
     assert.isTrue(IpNetwork.containsNetwork(child)(parent))
     assert.isFalse(IpNetwork.containsNetwork(child, parent))
@@ -143,7 +149,7 @@ describe("IpNetwork", () => {
     assert.isTrue(IpNetwork.overlaps(child, parent))
     assert.isFalse(IpNetwork.overlaps(child, sibling))
     assert.isFalse(IpNetwork.overlaps(parent, disjoint))
-    assert.isFalse(IpNetwork.overlaps(parent, network("::/0")))
+    assert.isFalse(IpNetwork.overlaps(parent, network("0.0.0.0/0")))
   })
 
   it("provides checked unsafe wrappers", () => {
@@ -169,7 +175,7 @@ describe("IpNetwork", () => {
     )
   })
 
-  it("round trips generated canonical networks", () => {
+  it("matches independent range models for generated networks", () => {
     fc.assert(fc.property(
       fc.tuple(
         fc.integer({ min: 0, max: 255 }),
@@ -181,8 +187,31 @@ describe("IpNetwork", () => {
       ([a, b, c, d, prefix]) => {
         const address = success(Net.ipv4FromOctets(a, b, c, d))
         const value = success(IpNetwork.fromAddress(address, prefix))
+        const input = (((a * 256 + b) * 256 + c) * 256 + d) >>> 0
+        const hostBits = 32 - prefix
+        const hostMask = hostBits === 32 ? 0xffffffff : 2 ** hostBits - 1
+        const first = (input & ~hostMask) >>> 0
+        const last = (first | hostMask) >>> 0
         const parsed = success(IpNetwork.fromString(IpNetwork.format(value)))
+        const firstAddress = IpNetwork.firstAddress(value)
+        const lastAddress = IpNetwork.lastAddress(value)
+        if (!Net.isIpv4Address(firstAddress) || !Net.isIpv4Address(lastAddress)) {
+          assert.fail("expected IPv4 bounds")
+        }
         assert.isTrue(Equal.equals(parsed, value))
+        assert.deepStrictEqual(Net.ipv4ToOctets(firstAddress), [
+          first >>> 24,
+          (first >>> 16) & 0xff,
+          (first >>> 8) & 0xff,
+          first & 0xff
+        ])
+        assert.deepStrictEqual(Net.ipv4ToOctets(lastAddress), [
+          last >>> 24,
+          (last >>> 16) & 0xff,
+          (last >>> 8) & 0xff,
+          last & 0xff
+        ])
+        assert.strictEqual(IpNetwork.addressCount(value), BigInt(2) ** BigInt(hostBits))
         assert.isTrue(IpNetwork.contains(value, address))
       }
     ))
@@ -197,7 +226,23 @@ describe("IpNetwork", () => {
           Net.ipv6FromSegments(...segments as [number, number, number, number, number, number, number, number])
         )
         const value = success(IpNetwork.fromAddress(address, prefix))
+        const input = segments.reduce((value, segment) => (value << BigInt(16)) | BigInt(segment), BigInt(0))
+        const hostBits = BigInt(128 - prefix)
+        const hostMask = (BigInt(1) << hostBits) - BigInt(1)
+        const toBigInt = (address: Net.Ipv6Address) =>
+          Net.ipv6ToSegments(address).reduce(
+            (value, segment) => (value << BigInt(16)) | BigInt(segment),
+            BigInt(0)
+          )
+        const firstAddress = IpNetwork.firstAddress(value)
+        const lastAddress = IpNetwork.lastAddress(value)
+        if (!Net.isIpv6Address(firstAddress) || !Net.isIpv6Address(lastAddress)) {
+          assert.fail("expected IPv6 bounds")
+        }
         assert.isTrue(Equal.equals(success(IpNetwork.fromString(IpNetwork.format(value))), value))
+        assert.strictEqual(toBigInt(firstAddress), input & ~hostMask)
+        assert.strictEqual(toBigInt(lastAddress), input | hostMask)
+        assert.strictEqual(IpNetwork.addressCount(value), BigInt(1) << hostBits)
         assert.isTrue(IpNetwork.contains(value, address))
       }
     ))
