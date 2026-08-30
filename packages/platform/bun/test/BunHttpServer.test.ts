@@ -90,7 +90,7 @@ const makeWebSocketServer = Effect.fnUntraced(function*(payload: string, compres
     const request = yield* HttpServerRequest.HttpServerRequest
     const socket = yield* request.upgrade
     yield* Effect.gen(function*() {
-      const pull = yield* socket.reader
+      const { pull } = yield* socket.reader
       const writer = yield* socket.writer
       yield* Effect.orDie(writer.write(payload))
       yield* Effect.orDie(writer.write(new TextEncoder().encode(payload)))
@@ -212,7 +212,7 @@ describe("BunHttpServer", () => {
         const firstScope = yield* Scope.fork(ownerScope)
         const secondScope = yield* Scope.fork(ownerScope)
 
-        const pull = yield* socket.reader.pipe(Scope.provide(firstScope))
+        const { pull } = yield* socket.reader.pipe(Scope.provide(firstScope))
         const writer = yield* socket.writer
         const secondReader = yield* socket.reader.pipe(
           Scope.provide(secondScope),

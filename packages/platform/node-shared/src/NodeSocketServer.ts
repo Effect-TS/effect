@@ -30,6 +30,8 @@ import * as Tls from "node:tls"
 import * as NodeSocket from "./NodeSocket.ts"
 import { NodeWS } from "./NodeSocket.ts"
 
+const isDeno = "Deno" in globalThis
+
 /**
  * Service tag for the Node `IncomingMessage` associated with the current
  * WebSocket server connection.
@@ -170,7 +172,7 @@ export const makeWebSocket: (
     // pause immediately so nothing is dropped before a handler acquires the
     // socket's reader
     conn.pause()
-    onConnection(conn, req)
+    onConnection(conn, req as Http.IncomingMessage)
   })
 
   yield* Effect.callback<void, SocketServer.SocketServerError>((resume) => {
@@ -297,8 +299,9 @@ const makeNetServer = Effect.fnUntraced(function*(options: {
   server = options.createServer()
   server.on(options.connectionEvent, (conn: Net.Socket) => {
     // pause immediately so nothing is dropped before a handler acquires the
-    // socket's reader
-    conn.pause()
+    // socket's reader. Deno's node:net compatibility layer leaves the socket
+    // non-flowing but breaks `readable` events after an explicit pause.
+    if (!isDeno) conn.pause()
     onConnection(conn)
   })
   server.on("error", (err) => Deferred.doneUnsafe(errorDeferred, Exit.fail(err)))
@@ -352,7 +355,8 @@ const makeNetServer = Effect.fnUntraced(function*(options: {
                   conn.destroySoon()
                 }
               })
-          )
+          ),
+          { tlsServer: true }
         ),
         Effect.flatMap(handler),
         Effect.catchCause(reportUnhandledError),

@@ -64,7 +64,57 @@ class TestWebSocket implements Socket.WebSocketLike {
   send(): void {}
 }
 
+const stubSocket = (pull: Socket.Reader["pull"]) => {
+  let upgraded = false
+  const socket = Socket.make({
+    reader: Effect.succeed({
+      pull,
+      upgrade: () =>
+        Effect.sync(() => {
+          upgraded = true
+        })
+    }),
+    writer: Effect.succeed({
+      write: () => Effect.void,
+      writeAll: () => Effect.void
+    })
+  })
+  return { socket, wasUpgraded: () => upgraded }
+}
+
 describe("Socket", () => {
+  describe("make", () => {
+    it.effect("exposes TLS upgrade on the acquired reader", () =>
+      Effect.gen(function*() {
+        const { socket, wasUpgraded } = stubSocket(Effect.never)
+
+        const { upgrade } = yield* socket.reader
+        yield* upgrade()
+
+        assert.isTrue(wasUpgraded())
+      }))
+
+    it.effect("readerBytes maps pulls to bytes", () =>
+      Effect.gen(function*() {
+        const { socket } = stubSocket(Effect.succeed(["hello"]))
+
+        const pull = yield* Socket.readerBytes(socket)
+        const [message] = yield* pull
+
+        assert.deepStrictEqual(message, new TextEncoder().encode("hello"))
+      }))
+
+    it.effect("readerString maps pulls to strings", () =>
+      Effect.gen(function*() {
+        const { socket } = stubSocket(Effect.succeed([new TextEncoder().encode("hello")]))
+
+        const pull = yield* Socket.readerString(socket)
+        const [message] = yield* pull
+
+        assert.strictEqual(message, "hello")
+      }))
+  })
+
   describe("fromWebSocket", () => {
     it.effect("removes the open listener when the socket closes while connecting", () =>
       Effect.gen(function*() {
@@ -101,7 +151,7 @@ describe("Socket", () => {
         const ws = new TestWebSocket(Latch.makeUnsafe(false))
         ws.readyState = 1
         const socket = yield* Socket.fromWebSocket(Effect.succeed(ws))
-        const pull = yield* socket.reader.pipe(
+        const { pull } = yield* socket.reader.pipe(
           Effect.provideService(Scheduler.Scheduler, scheduler)
         )
         assert.strictEqual(ws.pauseCount, 0)
@@ -136,7 +186,7 @@ describe("Socket", () => {
         const ws = new TestWebSocket(Latch.makeUnsafe(false))
         ws.readyState = 1
         const socket = yield* Socket.fromWebSocket(Effect.succeed(ws), { highWaterMark: 10 })
-        const pull = yield* socket.reader.pipe(
+        const { pull } = yield* socket.reader.pipe(
           Effect.provideService(Scheduler.Scheduler, scheduler)
         )
         const firstPull = yield* pull.pipe(Effect.forkChild({ startImmediately: true }))
@@ -159,7 +209,7 @@ describe("Socket", () => {
         const ws = new TestWebSocket(Latch.makeUnsafe(false))
         ws.readyState = 1
         const socket = yield* Socket.fromWebSocket(Effect.succeed(ws))
-        const pull = yield* socket.reader
+        const { pull } = yield* socket.reader
         const payload = "a".repeat(64 * 1024)
 
         ws.dispatch("message", { data: payload })
@@ -181,10 +231,13 @@ describe("Socket", () => {
           reader: Effect.gen(function*() {
             const closed = Latch.makeUnsafe(false)
             yield* Effect.addFinalizer(() => closed.open)
-            return Effect.andThen(
-              closed.await,
-              Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
-            )
+            return {
+              pull: Effect.andThen(
+                closed.await,
+                Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
+              ),
+              upgrade: Socket.SocketUpgradeError.unsupported
+            }
           }),
           writer: Effect.succeed({
             write: () => Effect.fail(writeError),

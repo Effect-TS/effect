@@ -4,10 +4,25 @@ import { Deferred, Effect, Fiber, Queue } from "effect"
 import * as Stream from "effect/Stream"
 import * as Socket from "effect/unstable/socket/Socket"
 
+const ca = Deno.readTextFileSync(new URL("./fixtures/tls/ca.pem", import.meta.url))
+const cert = Deno.readTextFileSync(new URL("./fixtures/tls/cert.pem", import.meta.url))
+const key = Deno.readTextFileSync(new URL("./fixtures/tls/key.pem", import.meta.url))
+
 const makeTcpServer = Effect.acquireRelease(
   Effect.sync(() => Deno.listen({ hostname: "127.0.0.1", port: 0 })),
   (listener) => Effect.sync(() => listener.close())
 )
+
+const makeTlsServer = Effect.acquireRelease(
+  Effect.sync(() => Deno.listenTls({ hostname: "127.0.0.1", port: 0, cert, key })),
+  (listener) => Effect.sync(() => listener.close())
+)
+
+const runTlsEchoServer = (listener: Deno.TlsListener) =>
+  Effect.tryPromise({
+    try: () => listener.accept().then((conn) => conn.readable.pipeTo(conn.writable)),
+    catch: (cause) => cause
+  }).pipe(Effect.ignore)
 
 const makeTempDir = Effect.acquireRelease(
   Effect.promise(() => Deno.makeTempDir()),
@@ -83,6 +98,40 @@ const replaceDenoConnect = (
   )
 
 describe("DenoSocket", () => {
+  it.effect("upgrades a TCP reader to TLS", () =>
+    Effect.gen(function*() {
+      const listener = yield* makeTlsServer
+      yield* runTlsEchoServer(listener).pipe(Effect.forkScoped)
+      const address = listener.addr as Deno.NetAddr
+      const socket = yield* DenoSocket.makeTcp({ hostname: address.hostname, port: address.port })
+      const writer = yield* socket.writer
+      const { pull, upgrade } = yield* socket.reader
+
+      yield* upgrade({ ca: [ca] })
+      yield* writer.writeAll(["Hello", "World"])
+
+      const decoder = new TextDecoder()
+      let output = ""
+      while (output.length < 10) {
+        for (const chunk of yield* pull) output += typeof chunk === "string" ? chunk : decoder.decode(chunk)
+      }
+      assert.strictEqual(output, "HelloWorld")
+    }))
+
+  it.effect("reports TLS handshake failures as SocketUpgradeError", () =>
+    Effect.gen(function*() {
+      const listener = yield* makeTlsServer
+      yield* runTlsEchoServer(listener).pipe(Effect.forkScoped)
+      const address = listener.addr as Deno.NetAddr
+      const socket = yield* DenoSocket.makeTcp({ hostname: address.hostname, port: address.port })
+      const { pull, upgrade } = yield* socket.reader
+
+      const error = yield* upgrade().pipe(Effect.flip)
+      assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+      if (error.reason._tag === "SocketUpgradeError") assert.instanceOf(error.reason.cause, Error)
+      assert.strictEqual(yield* pull.pipe(Effect.flip), error)
+    }))
+
   it.effect("echoes over TCP", () =>
     Effect.gen(function*() {
       const listener = yield* makeTcpServer
@@ -189,7 +238,7 @@ describe("DenoSocket", () => {
       const opened = yield* Deferred.make<void>()
 
       const firstRun = yield* Effect.gen(function*() {
-        const pull = yield* socket.reader
+        const { pull } = yield* socket.reader
         yield* Deferred.succeed(opened, undefined)
         while (true) {
           yield* pull
@@ -289,6 +338,28 @@ describe("DenoSocket", () => {
       )
 
       assert.strictEqual(output, "HelloUnix")
+    }))
+
+  it.effect("rejects TLS upgrades on Unix sockets without disrupting the connection", () =>
+    Effect.gen(function*() {
+      const directory = yield* makeTempDir
+      const path = `${directory}/upgrade.sock`
+      const listener = yield* Effect.acquireRelease(
+        Effect.sync(() => Deno.listen({ transport: "unix", path })),
+        (listener) => Effect.sync(() => listener.close())
+      )
+      yield* runEchoServer(listener).pipe(Effect.forkScoped)
+
+      const socket = yield* DenoSocket.makeTcp({ transport: "unix", path })
+      const writer = yield* socket.writer
+      const { pull, upgrade } = yield* socket.reader
+
+      const error = yield* upgrade().pipe(Effect.flip)
+      assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+
+      yield* writer.write("HelloUnix")
+      const [received] = yield* pull
+      assert.strictEqual(new TextDecoder().decode(received as Uint8Array), "HelloUnix")
     }))
 
   it.effect("uses Deno's native WebSocket", () =>

@@ -123,20 +123,28 @@ describe("RpcServer", () => {
         reader: Effect.sync(() => {
           const chunks = ["12", "34", "5", "{\"_tag\":\"Ping\"}\n"]
           let index = 0
-          return Effect.suspend(() => {
-            if (closed || index >= chunks.length) {
-              return Deferred.succeed(completed, void 0).pipe(
-                Effect.andThen(Effect.fail(
-                  new Socket.SocketError({
-                    reason: new Socket.SocketCloseError({ code: 1000 })
-                  })
-                ))
+          return {
+            pull: Effect.suspend(() => {
+              if (closed || index >= chunks.length) {
+                return Deferred.succeed(completed, void 0).pipe(
+                  Effect.andThen(Effect.fail(
+                    new Socket.SocketError({
+                      reason: new Socket.SocketCloseError({ code: 1000 })
+                    })
+                  ))
+                )
+              }
+              const chunk = chunks[index++]
+              handledChunks.push(chunk)
+              return Effect.succeed([chunk] as const)
+            }),
+            upgrade: () =>
+              Effect.fail(
+                new Socket.SocketError({
+                  reason: new Socket.SocketUpgradeError({})
+                })
               )
-            }
-            const chunk = chunks[index++]
-            handledChunks.push(chunk)
-            return Effect.succeed([chunk] as const)
-          })
+          }
         }),
         writer: Effect.succeed({
           write,

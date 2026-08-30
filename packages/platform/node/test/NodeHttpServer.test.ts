@@ -864,7 +864,7 @@ describe("HttpServer", () => {
           const request = yield* HttpServerRequest.HttpServerRequest
           const socket = yield* Effect.orDie(request.upgrade)
           yield* Effect.gen(function*() {
-            const pull = yield* socket.reader
+            const { pull } = yield* socket.reader
             while (true) {
               yield* pull
             }

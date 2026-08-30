@@ -26,7 +26,7 @@
     "functional-programming"
   ],
   "engines": {
-    "deno": ">=2.5.0"
+    "deno": ">=2.8.3"
   },
   "sideEffects": [],
   "exports": {

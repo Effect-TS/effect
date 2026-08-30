@@ -1503,7 +1503,7 @@ const makeSocketProtocol: Effect.Effect<
     }
 
     yield* Effect.gen(function*() {
-      const pull = yield* socket.reader
+      const { pull } = yield* socket.reader
       while (true) {
         const frames = yield* pull
         for (let i = 0; i < frames.length; i++) {

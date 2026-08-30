@@ -23,14 +23,11 @@ describe("Socket", () => {
     expect(new globalThis.WebSocket("ws://localhost")).type.toBeAssignableTo<Socket.WebSocketLike>()
   })
 
-  it("reader acquisition requires a scope and pulls frame batches", () => {
+  it("reader acquisition requires a scope and exposes typed pulls", () => {
     const socket = null as unknown as Socket.Socket
+    const reader = null as unknown as Socket.Reader
     expect(socket.reader).type.toBe<
-      Effect.Effect<
-        Effect.Effect<NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>,
-        Socket.SocketError,
-        Scope.Scope
-      >
+      Effect.Effect<Socket.Reader, Socket.SocketError, Scope.Scope>
     >()
     expect(Socket.readerBytes(socket)).type.toBe<
       Effect.Effect<
@@ -46,6 +43,11 @@ describe("Socket", () => {
         Scope.Scope
       >
     >()
+    expect(reader.upgrade()).type.toBe<Effect.Effect<void, Socket.SocketError>>()
+  })
+
+  it("exposes the unsupported upgrade implementation on SocketUpgradeError", () => {
+    expect(Socket.SocketUpgradeError.unsupported).type.toBe<Socket.Reader["upgrade"]>()
   })
 
   it("writer exposes write and writeAll", () => {

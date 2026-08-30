@@ -201,7 +201,10 @@ describe("RpcClient", () => {
         })
       })
       const socket = Socket.make({
-        reader: Effect.succeed(Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError)))),
+        reader: Effect.succeed({
+          pull: Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError))),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
         writer: Effect.succeed({
           write: () => Effect.asVoid(Deferred.succeed(requestSent, void 0)),
           writeAll: () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
@@ -244,7 +247,10 @@ describe("RpcClient", () => {
         })
       })
       const socket = Socket.make({
-        reader: Effect.succeed(Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError)))),
+        reader: Effect.succeed({
+          pull: Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError))),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
         writer: Effect.succeed({
           write: () => Effect.asVoid(Deferred.succeed(requestSent, void 0)),
           writeAll: () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
@@ -285,12 +291,13 @@ describe("RpcClient", () => {
         })
       })
       const socket = Socket.make({
-        reader: Effect.succeed(
-          Deferred.await(requestSent).pipe(
+        reader: Effect.succeed({
+          pull: Deferred.await(requestSent).pipe(
             Effect.tap(() => Effect.sync(() => attempts++)),
             Effect.andThen(Effect.fail(socketError))
-          )
-        ),
+          ),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
         writer: Effect.succeed({
           write: () => Effect.asVoid(Deferred.succeed(requestSent, void 0)),
           writeAll: () => Effect.asVoid(Deferred.succeed(requestSent, void 0))

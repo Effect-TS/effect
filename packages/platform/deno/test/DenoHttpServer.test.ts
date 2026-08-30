@@ -668,7 +668,7 @@ describe("DenoHttpServer", () => {
       const received = yield* Queue.unbounded<Uint8Array>()
       yield* serveWebSocket((socket) =>
         Effect.gen(function*() {
-          const pull = yield* socket.reader
+          const { pull } = yield* socket.reader
           while (true) {
             const chunk = yield* pull
             for (const message of chunk) {
@@ -695,7 +695,7 @@ describe("DenoHttpServer", () => {
 const echoWebSocket = (socket: Socket.Socket) =>
   Effect.gen(function*() {
     const writer = yield* socket.writer
-    const pull = yield* socket.reader
+    const { pull } = yield* socket.reader
     while (true) {
       yield* writer.writeAll(yield* pull)
     }

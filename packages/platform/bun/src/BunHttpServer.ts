@@ -672,18 +672,20 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             })
           )
 
-          // @effect-diagnostics-next-line returnEffectInGen:off
-          return Effect.callback<
-            Arr.NonEmptyReadonlyArray<Uint8Array | string>,
-            Socket.SocketError
-          >((resumeRead) => {
-            if (buffer.length > 0) return resumeRead(Effect.succeed(takeBuffer()))
-            if (error !== undefined) return resumeRead(Effect.fail(error))
-            waiter = resumeRead
-            return Effect.sync(() => {
-              if (waiter === resumeRead) waiter = undefined
-            })
-          })
+          return {
+            pull: Effect.callback<
+              Arr.NonEmptyReadonlyArray<Uint8Array | string>,
+              Socket.SocketError
+            >((resumeRead) => {
+              if (buffer.length > 0) return resumeRead(Effect.succeed(takeBuffer()))
+              if (error !== undefined) return resumeRead(Effect.fail(error))
+              waiter = resumeRead
+              return Effect.sync(() => {
+                if (waiter === resumeRead) waiter = undefined
+              })
+            }),
+            upgrade: Socket.SocketUpgradeError.unsupported
+          }
         })
 
         return Socket.make({ reader, writer })
