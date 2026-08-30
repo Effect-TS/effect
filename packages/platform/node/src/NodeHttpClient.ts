@@ -36,7 +36,7 @@ import { pipeline } from "node:stream/promises"
 import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeSink from "./NodeSink.ts"
 import * as NodeStream from "./NodeStream.ts"
-import * as Undici from "./Undici.ts"
+import type * as Undici from "./Undici.ts"
 
 // -----------------------------------------------------------------------------
 // Fetch
@@ -90,6 +90,8 @@ export class Dispatcher extends Context.Service<Dispatcher, Undici.Dispatcher>()
   "@effect/platform-node/NodeHttpClient/Dispatcher"
 ) {}
 
+const loadUndici = Effect.promise(() => import("./Undici.ts"))
+
 /**
  * Acquires a new Undici `Agent` dispatcher and destroys it when the enclosing
  * scope is finalized.
@@ -98,9 +100,7 @@ export class Dispatcher extends Context.Service<Dispatcher, Undici.Dispatcher>()
  * @since 4.0.0
  */
 export const makeDispatcher: Effect.Effect<Undici.Dispatcher, never, Scope.Scope> = Effect.acquireRelease(
-  // oxlint cannot resolve values re-exported through the local Undici facade.
-  // oxlint-disable-next-line import/namespace
-  Effect.sync(() => new Undici.Agent()),
+  Effect.map(loadUndici, (_) => new _.Agent()),
   (dispatcher) => Effect.promise(() => dispatcher.destroy())
 )
 
@@ -119,9 +119,9 @@ export const layerDispatcher: Layer.Layer<Dispatcher> = Layer.effect(Dispatcher)
  * @category layers
  * @since 4.0.0
  */
-// oxlint cannot resolve values re-exported through the local Undici facade.
-// oxlint-disable-next-line import/namespace
-export const dispatcherLayerGlobal: Layer.Layer<Dispatcher> = Layer.sync(Dispatcher)(() => Undici.getGlobalDispatcher())
+export const dispatcherLayerGlobal: Layer.Layer<Dispatcher> = Layer.effect(Dispatcher)(
+  Effect.map(loadUndici, (_) => _.getGlobalDispatcher())
+)
 
 /**
  * Fiber reference containing default Undici request options applied to requests
