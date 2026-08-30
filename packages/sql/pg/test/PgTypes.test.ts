@@ -353,6 +353,11 @@ describe("PgTypes", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("2001:db8::1/32", PgTypes.OID.cidr))
     })
 
+    it("canonically decodes alternate IPv6 CIDR spelling", () => {
+      const encoded = PgTypes.encode("2001:0DB8:0000:0000:0000:0000:0000:0000/32", PgTypes.OID.cidr)
+      assert.strictEqual(PgTypes.decode(encoded, PgTypes.OID.cidr, 1), "2001:db8::/32")
+    })
+
     it("rejects an embedded IPv4 address before IPv6 compression", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("1.2.3.4::", PgTypes.OID.inet))
     })
