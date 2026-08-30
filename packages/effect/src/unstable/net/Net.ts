@@ -42,7 +42,7 @@ export class AddressError extends Data.TaggedError("NetAddressError")<{
  */
 export interface Ipv4Address extends Equal.Equal, Hash.Hash {
   readonly _tag: "Ipv4Address"
-  readonly [Ipv4TypeId]: number
+  readonly [Ipv4TypeId]: typeof Ipv4TypeId
   toString(): string
 }
 
@@ -54,7 +54,7 @@ export interface Ipv4Address extends Equal.Equal, Hash.Hash {
  */
 export interface Ipv6Address extends Equal.Equal, Hash.Hash {
   readonly _tag: "Ipv6Address"
-  readonly [Ipv6TypeId]: bigint
+  readonly [Ipv6TypeId]: typeof Ipv6TypeId
   toString(): string
 }
 
@@ -65,6 +65,18 @@ export interface Ipv6Address extends Equal.Equal, Hash.Hash {
  * @since 4.0.0
  */
 export type IpAddress = Ipv4Address | Ipv6Address
+
+interface Ipv4AddressImpl extends Ipv4Address {
+  bytes: Uint8Array
+}
+
+interface Ipv6AddressImpl extends Ipv6Address {
+  bytes: Uint8Array
+}
+
+const ipv4ToImpl = (self: Ipv4Address): Ipv4AddressImpl => self as Ipv4AddressImpl
+
+const ipv6ToImpl = (self: Ipv6Address): Ipv6AddressImpl => self as Ipv6AddressImpl
 
 /**
  * A resolved IPv4 internet address and port.
@@ -191,11 +203,12 @@ export const isSocketAddress = (u: unknown): u is SocketAddress => isInetAddress
 
 const Ipv4Proto = {
   _tag: "Ipv4Address",
-  [Equal.symbol](this: Ipv4Address, that: Equal.Equal): boolean {
-    return isIpv4Address(that) && this[Ipv4TypeId] === that[Ipv4TypeId]
+  [Ipv4TypeId]: Ipv4TypeId,
+  [Equal.symbol](this: Ipv4AddressImpl, that: Equal.Equal): boolean {
+    return isIpv4Address(that) && bytesEqual(this.bytes, ipv4ToImpl(that).bytes)
   },
-  [Hash.symbol](this: Ipv4Address): number {
-    return Hash.combine(Hash.string("Ipv4Address"))(Hash.number(this[Ipv4TypeId]))
+  [Hash.symbol](this: Ipv4AddressImpl): number {
+    return hashBytes("Ipv4Address", this.bytes)
   },
   toString(this: Ipv4Address): string {
     return formatIp(this)
@@ -207,11 +220,12 @@ const Ipv4Proto = {
 
 const Ipv6Proto = {
   _tag: "Ipv6Address",
-  [Equal.symbol](this: Ipv6Address, that: Equal.Equal): boolean {
-    return isIpv6Address(that) && this[Ipv6TypeId] === that[Ipv6TypeId]
+  [Ipv6TypeId]: Ipv6TypeId,
+  [Equal.symbol](this: Ipv6AddressImpl, that: Equal.Equal): boolean {
+    return isIpv6Address(that) && bytesEqual(this.bytes, ipv6ToImpl(that).bytes)
   },
-  [Hash.symbol](this: Ipv6Address): number {
-    return Hash.combine(Hash.string("Ipv6Address"))(Hash.string(this[Ipv6TypeId].toString(16)))
+  [Hash.symbol](this: Ipv6AddressImpl): number {
+    return hashBytes("Ipv6Address", this.bytes)
   },
   toString(this: Ipv6Address): string {
     return formatIp(this)
@@ -221,15 +235,29 @@ const Ipv6Proto = {
   }
 }
 
-const makeIpv4 = (value: number): Ipv4Address => {
-  const self = Object.create(Ipv4Proto)
-  self[Ipv4TypeId] = value >>> 0
+const bytesEqual = (self: Uint8Array, that: Uint8Array): boolean => {
+  if (self.length !== that.length) return false
+  for (let index = 0; index < self.length; index++) {
+    if (self[index] !== that[index]) return false
+  }
+  return true
+}
+
+const hashBytes = (tag: string, bytes: Uint8Array): number => {
+  let hash = Hash.string(tag)
+  for (const byte of bytes) hash = Hash.combine(hash, Hash.number(byte))
+  return hash
+}
+
+const makeIpv4 = (bytes: Uint8Array): Ipv4Address => {
+  const self: Ipv4AddressImpl = Object.create(Ipv4Proto)
+  self.bytes = bytes
   return Object.freeze(self)
 }
 
-const makeIpv6 = (value: bigint): Ipv6Address => {
-  const self = Object.create(Ipv6Proto)
-  self[Ipv6TypeId] = value
+const makeIpv6 = (bytes: Uint8Array): Ipv6Address => {
+  const self: Ipv6AddressImpl = Object.create(Ipv6Proto)
+  self.bytes = bytes
   return Object.freeze(self)
 }
 
@@ -239,7 +267,7 @@ const makeIpv6 = (value: bigint): Ipv6Address => {
  * @category constants
  * @since 4.0.0
  */
-export const ipv4Loopback: Ipv4Address = makeIpv4(0x7f000001)
+export const ipv4Loopback: Ipv4Address = makeIpv4(new Uint8Array([127, 0, 0, 1]))
 
 /**
  * The IPv6 loopback address `::1`.
@@ -247,7 +275,7 @@ export const ipv4Loopback: Ipv4Address = makeIpv4(0x7f000001)
  * @category constants
  * @since 4.0.0
  */
-export const ipv6Loopback: Ipv6Address = makeIpv6(BigInt(1))
+export const ipv6Loopback: Ipv6Address = makeIpv6(new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]))
 
 /**
  * The unspecified IPv4 address `0.0.0.0`.
@@ -255,7 +283,7 @@ export const ipv6Loopback: Ipv6Address = makeIpv6(BigInt(1))
  * @category constants
  * @since 4.0.0
  */
-export const ipv4Unspecified: Ipv4Address = makeIpv4(0)
+export const ipv4Unspecified: Ipv4Address = makeIpv4(new Uint8Array(4))
 
 /**
  * The unspecified IPv6 address `::`.
@@ -263,7 +291,7 @@ export const ipv4Unspecified: Ipv4Address = makeIpv4(0)
  * @category constants
  * @since 4.0.0
  */
-export const ipv6Unspecified: Ipv6Address = makeIpv6(BigInt(0))
+export const ipv6Unspecified: Ipv6Address = makeIpv6(new Uint8Array(16))
 
 /**
  * The IPv4 broadcast address `255.255.255.255`.
@@ -271,7 +299,7 @@ export const ipv6Unspecified: Ipv6Address = makeIpv6(BigInt(0))
  * @category constants
  * @since 4.0.0
  */
-export const ipv4Broadcast: Ipv4Address = makeIpv4(0xffffffff)
+export const ipv4Broadcast: Ipv4Address = makeIpv4(new Uint8Array([255, 255, 255, 255]))
 
 const addressError = (
   kind: AddressError["kind"],
@@ -295,7 +323,7 @@ export const ipv4FromOctets = (
   if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
     return addressError("Ipv4Address", octets, "octets must be integers from 0 through 255")
   }
-  return Result.succeed(makeIpv4((((a * 256 + b) * 256 + c) * 256 + d) >>> 0))
+  return Result.succeed(makeIpv4(new Uint8Array(octets)))
 }
 
 /**
@@ -318,9 +346,12 @@ export const ipv6FromSegments = (
   if (!segments.every((n) => Number.isInteger(n) && n >= 0 && n <= 0xffff)) {
     return addressError("Ipv6Address", segments, "segments must be integers from 0 through 65535")
   }
-  let value = BigInt(0)
-  for (const segment of segments) value = (value << BigInt(16)) | BigInt(segment)
-  return Result.succeed(makeIpv6(value))
+  const bytes = new Uint8Array(16)
+  for (let index = 0; index < 8; index++) {
+    bytes[index * 2] = segments[index] >> 8
+    bytes[index * 2 + 1] = segments[index]
+  }
+  return Result.succeed(makeIpv6(bytes))
 }
 
 /**
@@ -438,8 +469,8 @@ export const ipFromStringUnsafe = (input: string): IpAddress => Result.getOrThro
  * @since 4.0.0
  */
 export const ipv4ToOctets = (self: Ipv4Address): readonly [number, number, number, number] => {
-  const value = self[Ipv4TypeId]
-  return [value >>> 24, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff]
+  const bytes = ipv4ToImpl(self).bytes
+  return [bytes[0], bytes[1], bytes[2], bytes[3]]
 }
 
 /**
@@ -451,11 +482,10 @@ export const ipv4ToOctets = (self: Ipv4Address): readonly [number, number, numbe
 export const ipv6ToSegments = (
   self: Ipv6Address
 ): readonly [number, number, number, number, number, number, number, number] => {
+  const bytes = ipv6ToImpl(self).bytes
   const output = Array<number>(8)
-  let value = self[Ipv6TypeId]
-  for (let index = 7; index >= 0; index--) {
-    output[index] = Number(value & BigInt(65535))
-    value >>= BigInt(16)
+  for (let index = 0; index < 8; index++) {
+    output[index] = bytes[index * 2] * 256 + bytes[index * 2 + 1]
   }
   return output as any
 }
@@ -486,13 +516,7 @@ export const ipv6ToOctets = (
   number,
   number
 ] => {
-  const output = Array<number>(16)
-  let value = self[Ipv6TypeId]
-  for (let index = 15; index >= 0; index--) {
-    output[index] = Number(value & BigInt(255))
-    value >>= BigInt(8)
-  }
-  return output as any
+  return Array.from(ipv6ToImpl(self).bytes) as any
 }
 
 /**
@@ -556,8 +580,10 @@ export const formatIp = (self: IpAddress): string => {
  * @category predicates
  * @since 4.0.0
  */
-export const isUnspecified = (self: IpAddress): boolean =>
-  isIpv4Address(self) ? self[Ipv4TypeId] === 0 : self[Ipv6TypeId] === BigInt(0)
+export const isUnspecified = (self: IpAddress): boolean => {
+  const bytes = isIpv4Address(self) ? ipv4ToImpl(self).bytes : ipv6ToImpl(self).bytes
+  return bytes.every((byte) => byte === 0)
+}
 
 /**
  * Returns `true` for IPv4 `127.0.0.0/8` or IPv6 `::1`.
@@ -565,8 +591,14 @@ export const isUnspecified = (self: IpAddress): boolean =>
  * @category predicates
  * @since 4.0.0
  */
-export const isLoopback = (self: IpAddress): boolean =>
-  isIpv4Address(self) ? (self[Ipv4TypeId] >>> 24) === 127 : self[Ipv6TypeId] === BigInt(1)
+export const isLoopback = (self: IpAddress): boolean => {
+  if (isIpv4Address(self)) return ipv4ToImpl(self).bytes[0] === 127
+  const bytes = ipv6ToImpl(self).bytes
+  for (let index = 0; index < 15; index++) {
+    if (bytes[index] !== 0) return false
+  }
+  return bytes[15] === 1
+}
 
 /**
  * Returns `true` for IPv4 `224.0.0.0/4` or IPv6 `ff00::/8`.
@@ -574,8 +606,10 @@ export const isLoopback = (self: IpAddress): boolean =>
  * @category predicates
  * @since 4.0.0
  */
-export const isMulticast = (self: IpAddress): boolean =>
-  isIpv4Address(self) ? (self[Ipv4TypeId] >>> 28) === 0xe : (self[Ipv6TypeId] >> BigInt(120)) === BigInt(255)
+export const isMulticast = (self: IpAddress): boolean => {
+  if (isIpv4Address(self)) return (ipv4ToImpl(self).bytes[0] >> 4) === 0xe
+  return ipv6ToImpl(self).bytes[0] === 0xff
+}
 
 /**
  * Returns `true` for the IPv4 broadcast address `255.255.255.255`.
@@ -583,7 +617,7 @@ export const isMulticast = (self: IpAddress): boolean =>
  * @category predicates
  * @since 4.0.0
  */
-export const isBroadcast = (self: Ipv4Address): boolean => self[Ipv4TypeId] === 0xffffffff
+export const isBroadcast = (self: Ipv4Address): boolean => ipv4ToImpl(self).bytes.every((byte) => byte === 0xff)
 
 /**
  * Returns `true` for IPv4 `169.254.0.0/16` or IPv6 `fe80::/10`.
@@ -591,10 +625,14 @@ export const isBroadcast = (self: Ipv4Address): boolean => self[Ipv4TypeId] === 
  * @category predicates
  * @since 4.0.0
  */
-export const isLinkLocal = (self: IpAddress): boolean =>
-  isIpv4Address(self)
-    ? (self[Ipv4TypeId] >>> 16) === 0xa9fe
-    : (self[Ipv6TypeId] >> BigInt(118)) === BigInt(1018)
+export const isLinkLocal = (self: IpAddress): boolean => {
+  if (isIpv4Address(self)) {
+    const bytes = ipv4ToImpl(self).bytes
+    return bytes[0] === 0xa9 && bytes[1] === 0xfe
+  }
+  const bytes = ipv6ToImpl(self).bytes
+  return bytes[0] === 0xfe && (bytes[1] & 0xc0) === 0x80
+}
 
 /**
  * Returns `true` for IPv4 private-use ranges defined by RFC 1918.
@@ -603,8 +641,9 @@ export const isLinkLocal = (self: IpAddress): boolean =>
  * @since 4.0.0
  */
 export const isPrivate = (self: Ipv4Address): boolean => {
-  const value = self[Ipv4TypeId]
-  return (value >>> 24) === 10 || (value >>> 20) === 0xac1 || (value >>> 16) === 0xc0a8
+  const bytes = ipv4ToImpl(self).bytes
+  return bytes[0] === 10 || (bytes[0] === 172 && (bytes[1] & 0xf0) === 16) ||
+    (bytes[0] === 192 && bytes[1] === 168)
 }
 
 /**
@@ -613,7 +652,7 @@ export const isPrivate = (self: Ipv4Address): boolean => {
  * @category predicates
  * @since 4.0.0
  */
-export const isUniqueLocal = (self: Ipv6Address): boolean => (self[Ipv6TypeId] >> BigInt(121)) === BigInt(126)
+export const isUniqueLocal = (self: Ipv6Address): boolean => (ipv6ToImpl(self).bytes[0] & 0xfe) === 0xfc
 
 /**
  * Returns `true` when an IPv6 address is in the `::ffff:0:0/96` mapped range.
@@ -621,7 +660,13 @@ export const isUniqueLocal = (self: Ipv6Address): boolean => (self[Ipv6TypeId] >
  * @category predicates
  * @since 4.0.0
  */
-export const isIpv4Mapped = (self: Ipv6Address): boolean => (self[Ipv6TypeId] >> BigInt(32)) === BigInt(65535)
+export const isIpv4Mapped = (self: Ipv6Address): boolean => {
+  const bytes = ipv6ToImpl(self).bytes
+  for (let index = 0; index < 10; index++) {
+    if (bytes[index] !== 0) return false
+  }
+  return bytes[10] === 0xff && bytes[11] === 0xff
+}
 
 /**
  * Converts an IPv4 address to its IPv4-mapped IPv6 representation.
@@ -629,8 +674,13 @@ export const isIpv4Mapped = (self: Ipv6Address): boolean => (self[Ipv6TypeId] >>
  * @category converting
  * @since 4.0.0
  */
-export const toIpv4Mapped = (self: Ipv4Address): Ipv6Address =>
-  makeIpv6((BigInt(65535) << BigInt(32)) | BigInt(self[Ipv4TypeId]))
+export const toIpv4Mapped = (self: Ipv4Address): Ipv6Address => {
+  const bytes = new Uint8Array(16)
+  bytes[10] = 0xff
+  bytes[11] = 0xff
+  bytes.set(ipv4ToImpl(self).bytes, 12)
+  return makeIpv6(bytes)
+}
 
 /**
  * Extracts the IPv4 value from an IPv4-mapped IPv6 address.
@@ -639,7 +689,7 @@ export const toIpv4Mapped = (self: Ipv4Address): Ipv6Address =>
  * @since 4.0.0
  */
 export const fromIpv4Mapped = (self: Ipv6Address): Option.Option<Ipv4Address> =>
-  isIpv4Mapped(self) ? Option.some(makeIpv4(Number(self[Ipv6TypeId] & BigInt(4294967295)))) : Option.none()
+  isIpv4Mapped(self) ? Option.some(makeIpv4(ipv6ToImpl(self).bytes.slice(12))) : Option.none()
 
 /**
  * Converts an IPv4-mapped IPv6 address to IPv4, leaving all other addresses unchanged.
@@ -649,7 +699,7 @@ export const fromIpv4Mapped = (self: Ipv6Address): Option.Option<Ipv4Address> =>
  */
 export const toCanonical = (self: IpAddress): IpAddress =>
   isIpv6Address(self) && isIpv4Mapped(self)
-    ? makeIpv4(Number(self[Ipv6TypeId] & BigInt(0xffffffff)))
+    ? makeIpv4(ipv6ToImpl(self).bytes.slice(12))
     : self
 
 const InetV4Proto = {
