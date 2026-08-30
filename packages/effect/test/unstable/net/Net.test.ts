@@ -139,6 +139,50 @@ describe("Net", () => {
     })
   })
 
+  describe("MAC", () => {
+    it("parses and canonically formats six octets", () => {
+      const address = success(Net.macAddressFromString("02:0A:0b:0C:0d:0E"))
+      assert.strictEqual(Net.formatMacAddress(address), "02:0a:0b:0c:0d:0e")
+      const octets = Net.macAddressToOctets(address)
+      assert.deepStrictEqual(octets, [2, 10, 11, 12, 13, 14])
+      Reflect.set(octets, 0, 0xff)
+      assert.strictEqual(Net.formatMacAddress(address), "02:0a:0b:0c:0d:0e")
+      assert.isTrue(Net.isMacAddress(address))
+      assert.isTrue(Equal.equals(address, success(Net.macAddressFromOctets(2, 10, 11, 12, 13, 14))))
+      assert.strictEqual(Hash.hash(address), Hash.hash(success(Net.macAddressFromString("02:0a:0b:0c:0d:0e"))))
+    })
+
+    it("rejects malformed inputs and invalid octets", () => {
+      for (
+        const input of [
+          "",
+          "00:11:22:33:44",
+          "00:11:22:33:44:55:66",
+          "0:11:22:33:44:55",
+          "00-11-22-33-44-55",
+          "0011.2233.4455",
+          "gg:11:22:33:44:55"
+        ]
+      ) {
+        failure(Net.macAddressFromString(input))
+      }
+      failure(Net.macAddressFromOctets(0, 0, 0, 0, 0, 256))
+      failure(Net.macAddressFromOctets(0, 0, 0, 0, 0, 1.5))
+      assert.throws(() => Net.macAddressFromStringUnsafe("invalid"))
+    })
+
+    it("classifies address bits", () => {
+      const mac = (text: string) => success(Net.macAddressFromString(text))
+      assert.isTrue(Net.isMacBroadcast(mac("ff:ff:ff:ff:ff:ff")))
+      assert.isTrue(Net.isMacMulticast(mac("01:00:5e:00:00:01")))
+      assert.isFalse(Net.isMacUnicast(mac("01:00:5e:00:00:01")))
+      assert.isTrue(Net.isMacUnicast(mac("00:00:5e:00:53:01")))
+      assert.isTrue(Net.isMacLocallyAdministered(mac("02:00:00:00:00:01")))
+      assert.isFalse(Net.isMacUniversallyAdministered(mac("02:00:00:00:00:01")))
+      assert.isTrue(Net.isMacUniversallyAdministered(mac("00:00:5e:00:53:01")))
+    })
+  })
+
   it("classifies documented address ranges at their boundaries", () => {
     const ip = (text: string) => success(Net.ipFromString(text))
     assert.isTrue(Net.isUnspecified(ip("0.0.0.0")))
@@ -170,9 +214,10 @@ describe("Net", () => {
     const ipv6 = success(Net.ipv6FromString("::1"))
     const inet4 = success(Net.inetAddressV4(ipv4, 80))
     const inet6 = success(Net.inetAddressV6(ipv6, 80, { flowInfo: 1, scopeId: 2 }))
+    const mac = success(Net.macAddressFromString("00:00:5e:00:53:01"))
     const unix = Net.unixPathAddress("server.sock")
 
-    for (const address of [ipv4, ipv6, inet4, inet6, unix]) {
+    for (const address of [ipv4, ipv6, inet4, inet6, mac, unix]) {
       assert.isTrue(Object.isFrozen(address))
     }
   })
@@ -248,6 +293,8 @@ describe("Net", () => {
   })
 
   it("decodes and canonically encodes schemas", () => {
+    const mac = Schema.decodeUnknownSync(Schema.MacAddressFromString)("02:0A:0b:0C:0d:0E")
+    assert.strictEqual(Schema.encodeSync(Schema.MacAddressFromString)(mac), "02:0a:0b:0c:0d:0e")
     const ipv6 = Schema.decodeUnknownSync(Schema.Ipv6AddressFromString)("2001:0DB8:0:0:0:0:0:1")
     assert.strictEqual(Schema.encodeSync(Schema.Ipv6AddressFromString)(ipv6), "2001:db8::1")
     const inet = Schema.decodeUnknownSync(Schema.InetAddressFromString)("[0:0:0:0:0:0:0:1]:0")
@@ -256,6 +303,7 @@ describe("Net", () => {
     assert.strictEqual(Schema.encodeSync(Schema.InetAddressFromString)(scoped), "[fe80::1%3]:80")
     const unix = Schema.decodeUnknownSync(Schema.UnixPathAddressFromString)("../opaque.sock")
     assert.strictEqual(Schema.encodeSync(Schema.UnixPathAddressFromString)(unix), "../opaque.sock")
+    assert.throws(() => Schema.decodeUnknownSync(Schema.MacAddressFromString)("00-11-22-33-44-55"))
     assert.throws(() => Schema.decodeUnknownSync(Schema.Ipv4AddressFromString)("999.0.0.1"))
   })
 })

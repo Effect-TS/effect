@@ -12068,6 +12068,26 @@ const netAddressFromString = <A>(
   ))
 
 /**
+ * Schema for already-constructed MAC address values.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const MacAddress: declare<Net_.MacAddress> = declare(Net_.isMacAddress)
+
+/**
+ * Schema for MAC addresses encoded as canonical colon-separated hexadecimal strings.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const MacAddressFromString = netAddressFromString(
+  MacAddress,
+  Net_.macAddressFromString,
+  Net_.formatMacAddress
+)
+
+/**
  * Schema for already-constructed IPv4 address values.
  *
  * @category schemas

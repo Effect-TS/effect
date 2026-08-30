@@ -1,5 +1,5 @@
 /**
- * Pure, platform-neutral values for IP, internet socket, and Unix path addresses.
+ * Pure, platform-neutral values for MAC, IP, internet socket, and Unix path addresses.
  *
  * @since 4.0.0
  */
@@ -14,6 +14,7 @@ import * as Result from "../../Result.ts"
 
 const Ipv4TypeId = "~effect/net/Ipv4Address"
 const Ipv6TypeId = "~effect/net/Ipv6Address"
+const MacTypeId = "~effect/net/MacAddress"
 const InetV4TypeId = "~effect/net/InetAddressV4"
 const InetV6TypeId = "~effect/net/InetAddressV6"
 const UnixPathTypeId = "~effect/net/UnixPathAddress"
@@ -26,7 +27,7 @@ const UnixPathTypeId = "~effect/net/UnixPathAddress"
  */
 export class AddressError extends Data.TaggedError("NetAddressError")<{
   readonly input: unknown
-  readonly kind: "Ipv4Address" | "Ipv6Address" | "IpAddress" | "InetAddress" | "Port"
+  readonly kind: "Ipv4Address" | "Ipv6Address" | "IpAddress" | "MacAddress" | "InetAddress" | "Port"
   readonly reason: string
 }> {
   override get message(): string {
@@ -66,6 +67,18 @@ export interface Ipv6Address extends Equal.Equal, Hash.Hash {
  */
 export type IpAddress = Ipv4Address | Ipv6Address
 
+/**
+ * An immutable 48-bit IEEE 802 MAC address.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface MacAddress extends Equal.Equal, Hash.Hash {
+  readonly _tag: "MacAddress"
+  readonly [MacTypeId]: typeof MacTypeId
+  toString(): string
+}
+
 interface Ipv4AddressImpl extends Ipv4Address {
   bytes: Uint8Array
 }
@@ -74,9 +87,15 @@ interface Ipv6AddressImpl extends Ipv6Address {
   bytes: Uint8Array
 }
 
+interface MacAddressImpl extends MacAddress {
+  bytes: Uint8Array
+}
+
 const ipv4ToImpl = (self: Ipv4Address): Ipv4AddressImpl => self as Ipv4AddressImpl
 
 const ipv6ToImpl = (self: Ipv6Address): Ipv6AddressImpl => self as Ipv6AddressImpl
+
+const macToImpl = (self: MacAddress): MacAddressImpl => self as MacAddressImpl
 
 /**
  * A resolved IPv4 internet address and port.
@@ -162,6 +181,14 @@ export const isIpv6Address = (u: unknown): u is Ipv6Address => hasProperty(u, Ip
 export const isIpAddress = (u: unknown): u is IpAddress => isIpv4Address(u) || isIpv6Address(u)
 
 /**
+ * Returns `true` when a value is a MAC address.
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export const isMacAddress = (u: unknown): u is MacAddress => hasProperty(u, MacTypeId)
+
+/**
  * Returns `true` when a value is a resolved IPv4 internet address.
  *
  * @category guards
@@ -235,6 +262,23 @@ const Ipv6Proto = {
   }
 }
 
+const MacProto = {
+  _tag: "MacAddress",
+  [MacTypeId]: MacTypeId,
+  [Equal.symbol](this: MacAddressImpl, that: Equal.Equal): boolean {
+    return isMacAddress(that) && bytesEqual(this.bytes, macToImpl(that).bytes)
+  },
+  [Hash.symbol](this: MacAddressImpl): number {
+    return hashBytes("MacAddress", this.bytes)
+  },
+  toString(this: MacAddress): string {
+    return formatMacAddress(this)
+  },
+  [NodeInspectSymbol](this: MacAddress): string {
+    return this.toString()
+  }
+}
+
 const bytesEqual = (self: Uint8Array, that: Uint8Array): boolean => {
   if (self.length !== that.length) return false
   for (let index = 0; index < self.length; index++) {
@@ -257,6 +301,12 @@ const makeIpv4 = (bytes: Uint8Array): Ipv4Address => {
 
 const makeIpv6 = (bytes: Uint8Array): Ipv6Address => {
   const self: Ipv6AddressImpl = Object.create(Ipv6Proto)
+  self.bytes = bytes
+  return Object.freeze(self)
+}
+
+const makeMac = (bytes: Uint8Array): MacAddress => {
+  const self: MacAddressImpl = Object.create(MacProto)
   self.bytes = bytes
   return Object.freeze(self)
 }
@@ -353,6 +403,48 @@ export const ipv6FromSegments = (
   }
   return Result.succeed(makeIpv6(bytes))
 }
+
+/**
+ * Creates a MAC address from six checked octets.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const macAddressFromOctets = (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number
+): Result.Result<MacAddress, AddressError> => {
+  const octets = [a, b, c, d, e, f]
+  if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
+    return addressError("MacAddress", octets, "octets must be integers from 0 through 255")
+  }
+  return Result.succeed(makeMac(new Uint8Array(octets)))
+}
+
+/**
+ * Parses a colon-separated MAC address containing six two-digit hexadecimal octets.
+ *
+ * @category decoding
+ * @since 4.0.0
+ */
+export const macAddressFromString = (input: string): Result.Result<MacAddress, AddressError> => {
+  if (!/^(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/.test(input)) {
+    return addressError("MacAddress", input, "expected six two-digit hexadecimal octets separated by colons")
+  }
+  return Result.succeed(makeMac(new Uint8Array(input.split(":").map((part) => Number.parseInt(part, 16)))))
+}
+
+/**
+ * Parses a trusted colon-separated MAC address, throwing on failure.
+ *
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const macAddressFromStringUnsafe = (input: string): MacAddress => Result.getOrThrow(macAddressFromString(input))
 
 /**
  * Parses a strict dotted-decimal IPv4 address.
@@ -518,6 +610,68 @@ export const ipv6ToOctets = (
 ] => {
   return Array.from(ipv6ToImpl(self).bytes) as any
 }
+
+/**
+ * Returns the six numeric octets of a MAC address in a fresh tuple.
+ *
+ * @category getters
+ * @since 4.0.0
+ */
+export const macAddressToOctets = (
+  self: MacAddress
+): readonly [number, number, number, number, number, number] => {
+  const bytes = macToImpl(self).bytes
+  return [bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5]]
+}
+
+/**
+ * Formats a MAC address as six lowercase hexadecimal octets separated by colons.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const formatMacAddress = (self: MacAddress): string =>
+  Array.from(macToImpl(self).bytes, (byte) => byte.toString(16).padStart(2, "0")).join(":")
+
+/**
+ * Returns `true` when the MAC address is the all-ones broadcast address.
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isMacBroadcast = (self: MacAddress): boolean => macToImpl(self).bytes.every((byte) => byte === 0xff)
+
+/**
+ * Returns `true` when the MAC address has the IEEE group-address bit set.
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isMacMulticast = (self: MacAddress): boolean => (macToImpl(self).bytes[0] & 1) !== 0
+
+/**
+ * Returns `true` when the MAC address has the IEEE group-address bit clear.
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isMacUnicast = (self: MacAddress): boolean => (macToImpl(self).bytes[0] & 1) === 0
+
+/**
+ * Returns `true` when the MAC address has the IEEE local-administration bit set.
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isMacLocallyAdministered = (self: MacAddress): boolean => (macToImpl(self).bytes[0] & 2) !== 0
+
+/**
+ * Returns `true` when the MAC address has the IEEE local-administration bit clear.
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isMacUniversallyAdministered = (self: MacAddress): boolean => (macToImpl(self).bytes[0] & 2) === 0
 
 /**
  * Folds an IP address by its numeric version.
