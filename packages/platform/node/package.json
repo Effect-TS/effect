@@ -77,7 +77,7 @@
     "@testcontainers/mysql": "^12.1.0",
     "@testcontainers/postgresql": "^12.1.0",
     "@testcontainers/redis": "^12.1.0",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.0",
     "effect": "workspace:^",
     "redis": "^6.2.1"
   }

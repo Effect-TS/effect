@@ -76,7 +76,7 @@
     "@effect/vitest": "workspace:^",
     "@types/babel__code-frame": "^7.27.0",
     "@types/doctrine": "^0.0.9",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.0",
     "tsx": "^4.23.12",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"
