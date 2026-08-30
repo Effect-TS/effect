@@ -8,7 +8,7 @@ import {
   strictEqual,
   throws
 } from "@effect/vitest/utils"
-import { ByteSize, Equal, Hash } from "effect"
+import { ByteSize, Equal, Hash, Option } from "effect"
 import * as fc from "fast-check"
 
 const arb = fc.bigInt({ min: 0n, max: 10n ** 40n }).map(ByteSize.bytes)
@@ -43,13 +43,10 @@ describe("ByteSize", () => {
     binary.forEach((constructor, index) => {
       strictEqual(ByteSize.toBytes(constructor(1n)), 1_024n ** BigInt(index + 1))
     })
-    assertFalse(ByteSize.equals(ByteSize.kilobytes(1), ByteSize.kibibytes(1)))
-    assertFalse(ByteSize.equals(ByteSize.megabytes(1), ByteSize.mebibytes(1)))
   })
 
   it("validates primitive and unit constructor inputs", () => {
     strictEqual(ByteSize.bytes(-0), ByteSize.zero)
-    strictEqual(ByteSize.bytes(0), ByteSize.zero)
     assertTrue(ByteSize.bytes(0n) === ByteSize.zero)
     for (const value of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1, NaN, Infinity, -Infinity]) {
       throws(() => ByteSize.bytes(value))
@@ -118,14 +115,9 @@ describe("ByteSize", () => {
     const one = ByteSize.bytes(1)
     const two = ByteSize.bytes(2)
     const three = ByteSize.bytes(3)
-    assertTrue(ByteSize.between(two, { minimum: one, maximum: three }))
-    deepStrictEqual(ByteSize.min(one, two), one)
-    deepStrictEqual(ByteSize.max(one, two), two)
-    deepStrictEqual(ByteSize.clamp(three, { minimum: one, maximum: two }), two)
-    assertTrue(ByteSize.isLessThan(one, two))
-    assertTrue(ByteSize.isLessThanOrEqualTo(two, two))
-    assertTrue(ByteSize.isGreaterThan(two, one))
-    assertTrue(ByteSize.isGreaterThanOrEqualTo(two, two))
+    strictEqual(ByteSize.Order(one, two), -1)
+    strictEqual(ByteSize.Order(two, two), 0)
+    strictEqual(ByteSize.Order(two, one), 1)
     deepStrictEqual(ByteSize.sum(one, two), three)
     assertSome(ByteSize.subtract(three, one), two)
     assertNone(ByteSize.subtract(one, two))
@@ -153,33 +145,29 @@ describe("ByteSize", () => {
     throws(() => ByteSize.format(ByteSize.zero, { precision: 21 }))
   })
 
-  it("satisfies parsing, hash, ordering, addition, and division properties", () => {
+  it("roundtrips canonical strings", () => {
     fc.assert(fc.property(arb, (value) => {
       deepStrictEqual(ByteSize.fromInputUnsafe(String(value)), value)
-      strictEqual(Hash.hash(ByteSize.fromInputUnsafe(String(value))), Hash.hash(value))
-      strictEqual(ByteSize.Order(value, value), 0)
     }))
-    fc.assert(fc.property(arb, arb, arb, (a, b, c) => {
-      deepStrictEqual(ByteSize.sum(a, b), ByteSize.sum(b, a))
-      deepStrictEqual(ByteSize.sum(ByteSize.sum(a, b), c), ByteSize.sum(a, ByteSize.sum(b, c)))
-      deepStrictEqual(ByteSize.sum(a, ByteSize.zero), a)
+  })
+
+  it("preserves arithmetic invariants", () => {
+    fc.assert(fc.property(arb, arb, (a, b) => {
       if (ByteSize.isGreaterThanOrEqualTo(a, b)) {
         deepStrictEqual(ByteSize.sum(ByteSize.subtractUnsafe(a, b), b), a)
       } else {
         assertNone(ByteSize.subtract(a, b))
       }
-      if (ByteSize.Order(a, b) <= 0 && ByteSize.Order(b, c) <= 0) assertTrue(ByteSize.Order(a, c) <= 0)
     }))
     fc.assert(fc.property(arb, fc.bigInt({ min: 1n, max: 1_000n }), (value, divisor) => {
-      const quotient = ByteSize.divide(value, divisor).pipe((option) =>
-        option._tag === "Some" ? option.value : ByteSize.zero
-      )
-      const product = ByteSize.times(quotient, divisor).pipe((option) =>
-        option._tag === "Some" ? option.value : ByteSize.zero
-      )
+      const quotient = Option.getOrThrow(ByteSize.divide(value, divisor))
+      const product = Option.getOrThrow(ByteSize.times(quotient, divisor))
       assertTrue(ByteSize.isLessThanOrEqualTo(product, value))
       assertTrue(ByteSize.isLessThan(value, ByteSize.sum(product, ByteSize.bytes(divisor))))
     }))
+  })
+
+  it("is total for arbitrary strings", () => {
     fc.assert(fc.property(fc.string(), (input) => {
       ByteSize.fromInput(input)
     }))

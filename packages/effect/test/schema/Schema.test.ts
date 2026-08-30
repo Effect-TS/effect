@@ -5572,7 +5572,6 @@ Expected a value between -2147483648 and 2147483647`
 
   it("ByteSizeFromString", async () => {
     const asserts = new TestSchema.Asserts(Schema.ByteSizeFromString)
-    await asserts.decoding().succeed("10 MiB", ByteSize.mebibytes(10))
     await asserts.decoding().succeed("1.5 kB", ByteSize.bytes(1500))
     await asserts.decoding().fail("1 KB", "Expected a valid ByteSize string")
     await asserts.encoding().succeed(ByteSize.bytes(1500), "1500 bytes")

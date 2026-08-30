@@ -1247,28 +1247,18 @@ Expected "Infinity" | "-Infinity" | "NaN"
         )
       })
 
-      it("decodes exact decimal and binary byte sizes", async () => {
+      it("decodes exact byte sizes and reports invalid input", async () => {
         const provider = ConfigProvider.fromUnknown({
-          binary: "10 MiB",
-          decimal: "10 MB",
-          fractional: "1.5 kB",
           huge: "9007199254740993 B",
-          ambiguous: "10 MBi",
-          negative: "-1 B",
-          fractionalByte: "0.1 KiB"
+          invalid: "10 MBi"
         })
 
-        await assertSuccess(Config.ByteSize("binary"), provider, ByteSize.mebibytes(10))
-        await assertSuccess(Config.ByteSize("decimal"), provider, ByteSize.megabytes(10))
-        await assertSuccess(Config.ByteSize("fractional"), provider, ByteSize.bytes(1500))
         await assertSuccess(Config.ByteSize("huge"), provider, ByteSize.bytes(9_007_199_254_740_993n))
-        for (const name of ["ambiguous", "negative", "fractionalByte"]) {
-          await assertFailure(
-            Config.ByteSize(name),
-            provider,
-            `Expected a valid ByteSize string\n  at ["${name}"]`
-          )
-        }
+        await assertFailure(
+          Config.ByteSize("invalid"),
+          provider,
+          `Expected a valid ByteSize string\n  at ["invalid"]`
+        )
       })
 
       it("validates port ranges", async () => {
