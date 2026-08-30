@@ -8,6 +8,7 @@ import {
   Latch,
   Layer,
   Option,
+  Queue,
   Result,
   Schema,
   Stream,
@@ -1145,6 +1146,35 @@ describe.sequential("Atom", () => {
     expect(r.get(state)).toEqual(0)
     expect(r.get(state2)).toEqual(0)
     expect(r.get(state3)).toEqual(0)
+  })
+
+  it("releases a stream-backed atom consumed through a derived atom after idleTTL", async () => {
+    let released = false
+    const source = Stream.callback<number>((queue) =>
+      Effect.acquireRelease(
+        Effect.sync(() => setInterval(() => Queue.offerUnsafe(queue, Date.now()), 100)),
+        (handle) =>
+          Effect.sync(() => {
+            released = true
+            clearInterval(handle)
+          })
+      ).pipe(Effect.asVoid)
+    )
+    const feed = Atom.make(() => source)
+    const derived = Atom.make((get) => AsyncResult.isSuccess(get(feed)) ? "ready" : "initial")
+    const r = AtomRegistry.make({ defaultIdleTTL: 400 })
+
+    try {
+      const unsubscribe = r.subscribe(derived, () => {}, { immediate: true })
+      await vitest.advanceTimersByTimeAsync(600)
+      unsubscribe()
+
+      await vitest.advanceTimersByTimeAsync(2000)
+
+      expect(released).toEqual(true)
+    } finally {
+      r.dispose()
+    }
   })
 
   it("idleTTL fn", async () => {
