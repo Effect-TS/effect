@@ -7,8 +7,9 @@ const success = <A>(result: Result.Result<A, unknown>): A => {
   return result.success
 }
 
-const failure = (result: Result.Result<unknown, unknown>): void => {
-  assert.isTrue(Result.isFailure(result))
+const failure = <E>(result: Result.Result<unknown, E>): E => {
+  if (Result.isSuccess(result)) assert.fail("expected Failure")
+  return result.failure
 }
 
 describe("NetAddress", () => {
@@ -183,6 +184,155 @@ describe("NetAddress", () => {
     })
   })
 
+  describe("Hostname", () => {
+    it("canonicalizes ASCII hostnames and preserves an absolute terminal dot", () => {
+      const cases = [
+        ["Example.COM", "example.com"],
+        ["localhost", "localhost"],
+        ["3example.test", "3example.test"],
+        ["Example.COM.", "example.com."]
+      ] as const
+      for (const [input, expected] of cases) {
+        assert.strictEqual(NetAddress.formatHostname(success(NetAddress.hostnameFromString(input))), expected)
+      }
+      assert.strictEqual(NetAddress.hostnameFromStringUnsafe("Example.COM").toString(), "example.com")
+    })
+
+    it("enforces label and wire lengths", () => {
+      const label63 = "a".repeat(63)
+      const longest = `${label63}.${label63}.${label63}.${"a".repeat(61)}`
+      assert.strictEqual(NetAddress.formatHostname(success(NetAddress.hostnameFromString(longest))), longest)
+      assert.strictEqual(NetAddress.formatHostname(success(NetAddress.hostnameFromString(`${longest}.`))), `${longest}.`)
+      assert.strictEqual(failure(NetAddress.hostnameFromString("a".repeat(64))).reason, "InvalidLength")
+      assert.strictEqual(
+        failure(NetAddress.hostnameFromString(`${label63}.${label63}.${label63}.${label63}`)).reason,
+        "InvalidLength"
+      )
+    })
+
+    it("rejects non-host DNS and unsupported IDNA syntax", () => {
+      for (
+        const input of [
+          "",
+          ".",
+          "a..b",
+          "-example.com",
+          "example-.com",
+          "_sip._tcp.example.com",
+          "example com",
+          "xn--fa-hia.de",
+          "faß.de",
+          "example.com。",
+          "example.com:80",
+          "[::1]"
+        ]
+      ) {
+        failure(NetAddress.hostnameFromString(input))
+      }
+    })
+
+    it("uses canonical equality, hashing, guards, and immutable values", () => {
+      const mixedCase = success(NetAddress.hostnameFromString("Example.COM"))
+      const lowercase = success(NetAddress.hostnameFromString("example.com"))
+      assert.isTrue(Equal.equals(mixedCase, lowercase))
+      assert.strictEqual(Hash.hash(mixedCase), Hash.hash(lowercase))
+      assert.isTrue(NetAddress.isHostname(mixedCase))
+      assert.isTrue(NetAddress.isHost(mixedCase))
+      assert.isFalse(NetAddress.isHostname({ _tag: "Hostname", ascii: "example.com" }))
+      assert.isTrue(Object.isFrozen(mixedCase))
+      assert.isFalse(
+        Equal.equals(
+          success(NetAddress.hostnameFromString("example.com")),
+          success(NetAddress.hostnameFromString("example.com."))
+        )
+      )
+    })
+  })
+
+  describe("Host", () => {
+    it("parses hostnames and strict numeric addresses", () => {
+      assert.isTrue(NetAddress.isHostname(success(NetAddress.hostFromString("example.com"))))
+      assert.isTrue(NetAddress.isIpv4Address(success(NetAddress.hostFromString("192.0.2.1"))))
+      assert.isTrue(NetAddress.isIpv6Address(success(NetAddress.hostFromString("2001:db8::1"))))
+      assert.strictEqual(NetAddress.formatHost(success(NetAddress.hostFromString("[2001:0DB8::1]"))), "2001:db8::1")
+      assert.strictEqual(
+        NetAddress.formatAuthorityHost(success(NetAddress.hostFromString("2001:db8::1"))),
+        "[2001:db8::1]"
+      )
+    })
+
+    it("rejects invalid and legacy numeric IPv4 forms", () => {
+      assert.strictEqual(failure(NetAddress.hostFromString("127.1")).reason, "InvalidIpv4")
+      for (const input of ["0", "0xffffffff", "0177.0.0.1", "0x7f.0.0.1", "1.2.3.999", "[127.0.0.1]"]) {
+        failure(NetAddress.hostFromString(input))
+      }
+    })
+  })
+
+  describe("Authority", () => {
+    it("parses and canonically formats hosts with optional ports", () => {
+      const cases = [
+        ["Example.COM", "example.com"],
+        ["example.com:0", "example.com:0"],
+        ["192.0.2.1:65535", "192.0.2.1:65535"],
+        ["[2001:0DB8::1]", "[2001:db8::1]"],
+        ["[2001:0DB8::1]:443", "[2001:db8::1]:443"]
+      ] as const
+      for (const [input, expected] of cases) {
+        const parsed = success(NetAddress.authorityFromString(input))
+        assert.strictEqual(NetAddress.formatAuthority(parsed), expected)
+        assert.isTrue(Equal.equals(parsed, success(NetAddress.authorityFromString(expected))))
+      }
+    })
+
+    it("rejects ambiguous or non-authority syntax", () => {
+      for (
+        const input of [
+          "",
+          "example.com:",
+          "example.com:-1",
+          "example.com:65536",
+          "example.com:http",
+          "user@example.com:80",
+          "example.com/path",
+          "example.com?query",
+          "example.com#fragment",
+          "2001:db8::1",
+          "2001:db8::1:80",
+          "[127.0.0.1]:80",
+          "[::1",
+          "[::1]extra",
+          "[[::1]]:80"
+        ]
+      ) {
+        failure(NetAddress.authorityFromString(input))
+      }
+      assert.strictEqual(failure(NetAddress.authority(NetAddress.ipv4Loopback, -1)).reason, "InvalidPort")
+    })
+
+    it("supports numeric conversion without resolving hostnames", () => {
+      const inet = NetAddress.inetAddressFromStringUnsafe("[2001:db8::1]:443")
+      const authority = NetAddress.authorityFromInetAddress(inet)
+      assert.strictEqual(NetAddress.formatAuthority(authority), "[2001:db8::1]:443")
+      assert.strictEqual(
+        NetAddress.formatInet(success(NetAddress.inetAddressFromAuthority(authority))),
+        "[2001:db8::1]:443"
+      )
+      failure(NetAddress.inetAddressFromAuthority(NetAddress.authorityFromStringUnsafe("example.com:443")))
+      failure(NetAddress.inetAddressFromAuthority(NetAddress.authorityFromStringUnsafe("192.0.2.1")))
+    })
+
+    it("uses structural equality, hashing, guards, and immutable values", () => {
+      const first = NetAddress.authorityFromStringUnsafe("EXAMPLE.com:443")
+      const second = NetAddress.authorityFromStringUnsafe("example.com:443")
+      assert.isTrue(Equal.equals(first, second))
+      assert.strictEqual(Hash.hash(first), Hash.hash(second))
+      assert.isTrue(NetAddress.isAuthority(first))
+      assert.isFalse(NetAddress.isAuthority({ _tag: "Authority", host: second.host, port: 443 }))
+      assert.isTrue(Object.isFrozen(first))
+    })
+  })
+
   it("classifies documented address ranges at their boundaries", () => {
     const ip = (text: string) => success(NetAddress.ipFromString(text))
     assert.isTrue(NetAddress.isUnspecified(ip("0.0.0.0")))
@@ -331,6 +481,13 @@ describe("NetAddress", () => {
     const unix = Schema.decodeUnknownSync(Schema.UnixPathAddressFromString)("../opaque.sock")
     assert.strictEqual(Schema.encodeSync(Schema.UnixPathAddressFromString)(unix), "../opaque.sock")
     assert.throws(() => Schema.decodeUnknownSync(Schema.MacAddressFromString)("00-11-22-33-44-55"))
+    const hostname = Schema.decodeUnknownSync(Schema.HostnameFromString)("Example.COM")
+    assert.strictEqual(Schema.encodeSync(Schema.HostnameFromString)(hostname), "example.com")
+    const host = Schema.decodeUnknownSync(Schema.HostFromString)("[2001:0DB8::1]")
+    assert.strictEqual(Schema.encodeSync(Schema.HostFromString)(host), "2001:db8::1")
+    const authority = Schema.decodeUnknownSync(Schema.AuthorityFromString)("[2001:0DB8::1]:443")
+    assert.strictEqual(Schema.encodeSync(Schema.AuthorityFromString)(authority), "[2001:db8::1]:443")
+    assert.throws(() => Schema.decodeUnknownSync(Schema.Hostname)({ _tag: "Hostname", ascii: "example.com" }))
     assert.throws(() => Schema.decodeUnknownSync(Schema.Ipv4AddressFromString)("999.0.0.1"))
   })
 })

@@ -15,6 +15,23 @@ import * as Result from "../../Result.ts"
 const TypeId = "~effect/net/NetAddress" as const
 
 /**
+ * A checked hostname, host, authority, or authority-port failure.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class HostError extends Data.TaggedError("NetHostError")<{
+  readonly input: unknown
+  readonly kind: "Hostname" | "Host" | "Authority" | "Port"
+  readonly reason: "InvalidSyntax" | "InvalidLength" | "InvalidIpv4" | "InvalidPort"
+  readonly detail: string
+}> {
+  override get message(): string {
+    return `${this.kind}: ${this.detail}`
+  }
+}
+
+/**
  * An immutable 32-bit IPv4 address.
  *
  * @category models
@@ -61,6 +78,49 @@ export interface MacAddress extends Equal.Equal, Hash.Hash {
   toString(): string
 }
 
+/**
+ * An immutable ASCII Internet hostname stored in lowercase.
+ *
+ * **Details**
+ *
+ * A terminal dot is preserved to distinguish absolute names from names subject
+ * to resolver search policy.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Hostname extends Equal.Equal, Hash.Hash {
+  readonly _tag: "Hostname"
+  readonly ascii: string
+  readonly [TypeId]: typeof TypeId
+  toString(): string
+}
+
+/**
+ * An unresolved Internet hostname or a numeric IP address.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Host = Hostname | IpAddress
+
+/**
+ * An immutable host and optional port without user information or a leading `//`.
+ *
+ * **Gotchas**
+ *
+ * An authority containing a hostname is unresolved and is not a socket address.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Authority extends Equal.Equal, Hash.Hash {
+  readonly _tag: "Authority"
+  readonly host: Host
+  readonly port: number | undefined
+  readonly [TypeId]: typeof TypeId
+  toString(): string
+}
 /**
  * A resolved IPv4 internet address and port.
  *
@@ -136,7 +196,7 @@ export class NetAddressError extends Data.TaggedError("NetAddressError")<{
   }
 }
 
-type Address = IpAddress | MacAddress | SocketAddress
+type Address = IpAddress | MacAddress | SocketAddress | Hostname | Authority
 
 const isAddress = (u: unknown): u is Address => hasProperty(u, TypeId)
 
@@ -171,6 +231,30 @@ export const isIpAddress = (u: unknown): u is IpAddress => isIpv4Address(u) || i
  * @since 4.0.0
  */
 export const isMacAddress = (u: unknown): u is MacAddress => isAddress(u) && u._tag === "MacAddress"
+
+/**
+ * Returns `true` when a value is a hostname.
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export const isHostname = (u: unknown): u is Hostname => isAddress(u) && u._tag === "Hostname"
+
+/**
+ * Returns `true` when a value is a hostname or numeric IP address.
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export const isHost = (u: unknown): u is Host => isHostname(u) || isIpAddress(u)
+
+/**
+ * Returns `true` when a value is a host and optional port authority.
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export const isAuthority = (u: unknown): u is Authority => isAddress(u) && u._tag === "Authority"
 
 /**
  * Returns `true` when a value is a resolved IPv4 internet address.
@@ -534,6 +618,302 @@ export const ipFromString = (input: string): Result.Result<IpAddress, NetAddress
  * @since 4.0.0
  */
 export const ipFromStringUnsafe = (input: string): IpAddress => Result.getOrThrow(ipFromString(input))
+
+const hostError = (
+  kind: HostError["kind"],
+  input: unknown,
+  reason: HostError["reason"],
+  detail: string
+): Result.Result<never, HostError> => Result.fail(new HostError({ kind, input, reason, detail }))
+
+const HostnameProto = {
+  _tag: "Hostname",
+  [TypeId]: TypeId,
+  [Equal.symbol](this: Hostname, that: Equal.Equal): boolean {
+    return isHostname(that) && this.ascii === that.ascii
+  },
+  [Hash.symbol](this: Hostname): number {
+    return Hash.combine(Hash.string("Hostname"))(Hash.string(this.ascii))
+  },
+  toString(this: Hostname): string {
+    return this.ascii
+  },
+  [NodeInspectSymbol](this: Hostname): string {
+    return this.toString()
+  }
+}
+
+const makeHostname = (ascii: string): Hostname => {
+  const self = Object.create(HostnameProto)
+  self.ascii = ascii
+  return Object.freeze(self)
+}
+
+/**
+ * Parses an ASCII Internet hostname.
+ *
+ * **Details**
+ *
+ * Labels use the RFC 1123 letters, digits, and hyphen syntax and are stored in
+ * lowercase. Unicode names and IDNA A-labels are not supported.
+ *
+ * @category decoding
+ * @since 4.0.0
+ */
+export const hostnameFromString = (input: string): Result.Result<Hostname, HostError> => {
+  if (input.length === 0) return hostError("Hostname", input, "InvalidSyntax", "hostname must not be empty")
+  for (let index = 0; index < input.length; index++) {
+    if (input.charCodeAt(index) > 0x7f) {
+      return hostError("Hostname", input, "InvalidSyntax", "hostname must contain only ASCII characters")
+    }
+  }
+  const absolute = input.endsWith(".")
+  const domain = absolute ? input.slice(0, -1) : input
+  if (domain.length === 0) return hostError("Hostname", input, "InvalidSyntax", "the DNS root is not a hostname")
+  const labels = domain.split(".")
+  if (labels.some((label) => label.length === 0)) {
+    return hostError("Hostname", input, "InvalidSyntax", "hostname labels must not be empty")
+  }
+  if (labels.some((label) => label.length > 63)) {
+    return hostError("Hostname", input, "InvalidLength", "hostname labels must contain at most 63 characters")
+  }
+  if (labels.some((label) => !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label))) {
+    return hostError(
+      "Hostname",
+      input,
+      "InvalidSyntax",
+      "hostname labels may contain only letters, digits, and interior hyphens"
+    )
+  }
+  if (labels.some((label) => label.toLowerCase().startsWith("xn--"))) {
+    return hostError("Hostname", input, "InvalidSyntax", "IDNA A-labels are not supported")
+  }
+  const canonical = `${domain.toLowerCase()}${absolute ? "." : ""}`
+  if (canonical.length > (absolute ? 254 : 253)) {
+    return hostError("Hostname", input, "InvalidLength", "hostname exceeds the 255-octet DNS wire limit")
+  }
+  return Result.succeed(makeHostname(canonical))
+}
+
+/**
+ * Parses a trusted Internet hostname, throwing on failure.
+ *
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const hostnameFromStringUnsafe = (input: string): Hostname => Result.getOrThrow(hostnameFromString(input))
+
+/**
+ * Formats a hostname in canonical lowercase ASCII form.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const formatHostname = (hostname: Hostname): string => hostname.ascii
+
+const isLegacyIpv4Candidate = (input: string): boolean => {
+  const parts = input.split(".")
+  return parts.length <= 4 && parts.every((part) => /^\d+$/.test(part) || /^0x[0-9a-f]+$/i.test(part))
+}
+
+const hostErrorFromAddress = (
+  input: string,
+  reason: HostError["reason"],
+  detail: string
+): Result.Result<never, HostError> => hostError("Host", input, reason, detail)
+
+/**
+ * Parses a hostname, strict IPv4 address, or IPv6 address without resolution.
+ *
+ * **Details**
+ *
+ * Brackets are accepted only around IPv6. Legacy shortened, hexadecimal,
+ * octal-like, and out-of-range IPv4 spellings are rejected.
+ *
+ * @category decoding
+ * @since 4.0.0
+ */
+export const hostFromString = (input: string): Result.Result<Host, HostError> => {
+  if (input.startsWith("[") || input.endsWith("]")) {
+    if (!input.startsWith("[") || !input.endsWith("]") || input.length < 3) {
+      return hostErrorFromAddress(input, "InvalidSyntax", "IPv6 brackets must enclose the entire host")
+    }
+    const parsed = ipv6FromString(input.slice(1, -1))
+    return Result.isSuccess(parsed)
+      ? Result.succeed(parsed.success)
+      : hostErrorFromAddress(input, "InvalidSyntax", parsed.failure.reason)
+  }
+  if (input.includes("[") || input.includes("]")) {
+    return hostErrorFromAddress(input, "InvalidSyntax", "brackets are valid only around IPv6")
+  }
+  if (input.includes(":")) {
+    const parsed = ipv6FromString(input)
+    return Result.isSuccess(parsed)
+      ? Result.succeed(parsed.success)
+      : hostErrorFromAddress(input, "InvalidSyntax", parsed.failure.reason)
+  }
+  const ipv4 = ipv4FromString(input)
+  if (Result.isSuccess(ipv4)) return Result.succeed(ipv4.success)
+  if (isLegacyIpv4Candidate(input.replace(/\.$/, ""))) {
+    return hostErrorFromAddress(input, "InvalidIpv4", "numeric host is not a strict dotted-decimal IPv4 address")
+  }
+  const hostname = hostnameFromString(input)
+  return Result.isSuccess(hostname)
+    ? hostname
+    : hostErrorFromAddress(input, hostname.failure.reason, hostname.failure.detail)
+}
+
+/**
+ * Parses a trusted hostname or numeric IP address, throwing on failure.
+ *
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const hostFromStringUnsafe = (input: string): Host => Result.getOrThrow(hostFromString(input))
+
+/**
+ * Formats a host for native APIs, leaving IPv6 unbracketed.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const formatHost = (host: Host): string => isHostname(host) ? host.ascii : formatIp(host)
+
+/**
+ * Formats a host for authority syntax, bracketing IPv6.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const formatAuthorityHost = (host: Host): string =>
+  isIpv6Address(host) ? `[${formatIp(host)}]` : formatHost(host)
+
+const AuthorityProto = {
+  _tag: "Authority",
+  [TypeId]: TypeId,
+  [Equal.symbol](this: Authority, that: Equal.Equal): boolean {
+    return isAuthority(that) && this.port === that.port && Equal.equals(this.host, that.host)
+  },
+  [Hash.symbol](this: Authority): number {
+    return Hash.combine(Hash.hash(this.host))(Hash.hash(this.port))
+  },
+  toString(this: Authority): string {
+    return formatAuthority(this)
+  },
+  [NodeInspectSymbol](this: Authority): string {
+    return this.toString()
+  }
+}
+
+const checkAuthorityPort = (port: number): Result.Result<number, HostError> =>
+  Number.isInteger(port) && port >= 0 && port <= 0xffff
+    ? Result.succeed(port)
+    : hostError("Port", port, "InvalidPort", "port must be an integer from 0 through 65535")
+
+/**
+ * Creates a checked host and optional port authority.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const authority = (host: Host, port?: number): Result.Result<Authority, HostError> => {
+  if (!isHost(host)) return hostError("Authority", host, "InvalidSyntax", "host must be a constructed Host value")
+  if (port !== undefined) {
+    const checked = checkAuthorityPort(port)
+    if (Result.isFailure(checked)) return Result.fail(checked.failure)
+  }
+  const self = Object.create(AuthorityProto)
+  self.host = host
+  self.port = port
+  return Result.succeed(Object.freeze(self))
+}
+
+/**
+ * Creates a trusted host and optional port authority, throwing on failure.
+ *
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const authorityUnsafe = (host: Host, port?: number): Authority => Result.getOrThrow(authority(host, port))
+
+const parseAuthorityPort = (input: string, text: string): Result.Result<number, HostError> => {
+  if (!/^\d+$/.test(text)) {
+    return hostError("Authority", input, "InvalidPort", "port must contain one or more decimal digits")
+  }
+  const checked = checkAuthorityPort(Number(text))
+  return Result.isSuccess(checked)
+    ? checked
+    : hostError("Authority", input, checked.failure.reason, checked.failure.detail)
+}
+
+/**
+ * Parses a host and optional numeric port without resolution.
+ *
+ * **Details**
+ *
+ * IPv6 must be bracketed in authority syntax, including when no port is present.
+ * User information, paths, queries, fragments, and empty ports are rejected.
+ *
+ * @category decoding
+ * @since 4.0.0
+ */
+export const authorityFromString = (input: string): Result.Result<Authority, HostError> => {
+  if (input.length === 0 || /[\s@/?#]/.test(input)) {
+    return hostError("Authority", input, "InvalidSyntax", "expected only a host and optional numeric port")
+  }
+  if (input.startsWith("[")) {
+    const end = input.indexOf("]")
+    if (end < 0 || input.indexOf("]", end + 1) !== -1) {
+      return hostError("Authority", input, "InvalidSyntax", "expected [IPv6] or [IPv6]:port")
+    }
+    const parsedHost = ipv6FromString(input.slice(1, end))
+    if (Result.isFailure(parsedHost)) {
+      return hostError("Authority", input, "InvalidSyntax", parsedHost.failure.reason)
+    }
+    const suffix = input.slice(end + 1)
+    if (suffix === "") return authority(parsedHost.success)
+    if (!suffix.startsWith(":")) {
+      return hostError("Authority", input, "InvalidSyntax", "unexpected text after IPv6 brackets")
+    }
+    const port = parseAuthorityPort(input, suffix.slice(1))
+    return Result.isFailure(port) ? Result.fail(port.failure) : authority(parsedHost.success, port.success)
+  }
+  if (input.includes("[") || input.includes("]")) {
+    return hostError("Authority", input, "InvalidSyntax", "brackets are valid only around IPv6")
+  }
+  const firstColon = input.indexOf(":")
+  if (firstColon !== input.lastIndexOf(":")) {
+    return hostError("Authority", input, "InvalidSyntax", "IPv6 must be bracketed in authority syntax")
+  }
+  const hostText = firstColon === -1 ? input : input.slice(0, firstColon)
+  const parsedHost = hostFromString(hostText)
+  if (Result.isFailure(parsedHost)) {
+    return hostError("Authority", input, parsedHost.failure.reason, parsedHost.failure.detail)
+  }
+  if (isIpv6Address(parsedHost.success)) {
+    return hostError("Authority", input, "InvalidSyntax", "IPv6 must be bracketed in authority syntax")
+  }
+  if (firstColon === -1) return authority(parsedHost.success)
+  const port = parseAuthorityPort(input, input.slice(firstColon + 1))
+  return Result.isFailure(port) ? Result.fail(port.failure) : authority(parsedHost.success, port.success)
+}
+
+/**
+ * Parses a trusted host and optional port authority, throwing on failure.
+ *
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const authorityFromStringUnsafe = (input: string): Authority => Result.getOrThrow(authorityFromString(input))
+
+/**
+ * Formats an authority as canonical ASCII with brackets around IPv6.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const formatAuthority = (self: Authority): string =>
+  self.port === undefined ? formatAuthorityHost(self.host) : `${formatAuthorityHost(self.host)}:${self.port}`
 
 /**
  * Returns the four numeric octets of an IPv4 address in a fresh tuple.
@@ -1042,6 +1422,43 @@ export const formatInet = (self: InetAddress): string => {
   if (self._tag === "InetAddressV4") return `${formatIp(self.address)}:${self.port}`
   const scope = self.scopeId === 0 ? "" : `%${self.scopeId}`
   return `[${formatIp(self.address)}${scope}]:${self.port}`
+}
+
+/**
+ * Converts a resolved internet address to an authority.
+ *
+ * **Details**
+ *
+ * IPv6 flow and scope metadata are not represented by `Authority`.
+ *
+ * @category converting
+ * @since 4.0.0
+ */
+export const authorityFromInetAddress = (self: InetAddress): Authority => authorityUnsafe(self.address, self.port)
+
+/**
+ * Converts an authority with a numeric host and present port to an internet address.
+ *
+ * **Gotchas**
+ *
+ * Hostnames fail instead of being resolved.
+ *
+ * @category converting
+ * @since 4.0.0
+ */
+export const inetAddressFromAuthority = (self: Authority): Result.Result<InetAddress, HostError> => {
+  if (self.port === undefined) {
+    return hostError("Authority", self, "InvalidPort", "a port is required to construct an internet address")
+  }
+  if (isHostname(self.host)) {
+    return hostError(
+      "Authority",
+      self,
+      "InvalidSyntax",
+      "a hostname must be resolved before constructing an internet address"
+    )
+  }
+  return Result.succeed(inetAddressUnsafe(self.host, self.port))
 }
 
 /**

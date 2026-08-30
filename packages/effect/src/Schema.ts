@@ -12205,6 +12205,71 @@ export const IpNetwork: declare<IpNetwork_.IpNetwork> = declare(IpNetwork_.isIpN
 export const IpNetworkFromString = netAddressFromString(IpNetwork, IpNetwork_.fromString, IpNetwork_.format)
 
 /**
+ * Schema for already-constructed Internet hostname values.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Hostname: declare<NetAddress_.Hostname> = declare(NetAddress_.isHostname)
+
+/**
+ * Schema for Internet hostnames encoded as canonical lowercase ASCII A-labels.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const HostnameFromString = netAddressFromString(
+  Hostname,
+  NetAddress_.hostnameFromString,
+  NetAddress_.formatHostname
+).annotate({
+  title: "HostnameFromString",
+  description: "an ASCII hostname encoded in canonical lowercase form"
+})
+
+/**
+ * Schema for already-constructed hostname or numeric IP host values.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Host: declare<NetAddress_.Host> = declare(NetAddress_.isHost)
+
+/**
+ * Schema for hostname or numeric IP hosts encoded as canonical strings.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const HostFromString = netAddressFromString(Host, NetAddress_.hostFromString, NetAddress_.formatHost).annotate({
+  title: "HostFromString",
+  description: "an Internet hostname or numeric IP address encoded as a canonical string"
+})
+
+/**
+ * Schema for already-constructed host and optional port authorities.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Authority: declare<NetAddress_.Authority> = declare(NetAddress_.isAuthority)
+
+/**
+ * Schema for host and optional port authorities encoded as canonical strings.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const AuthorityFromString = netAddressFromString(
+  Authority,
+  NetAddress_.authorityFromString,
+  NetAddress_.formatAuthority
+).annotate({
+  title: "AuthorityFromString",
+  description: "an Internet host and optional numeric port without user information or a leading //"
+})
+
+/**
  * Schema for already-constructed resolved IPv4 internet addresses.
  *
  * @category schemas

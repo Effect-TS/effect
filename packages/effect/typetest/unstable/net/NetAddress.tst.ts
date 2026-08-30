@@ -13,6 +13,27 @@ describe("NetAddress", () => {
     expect(NetAddress.inetAddressUnsafe(NetAddress.ipv6Loopback, 80)).type.toBe<NetAddress.InetAddress>()
     expect(NetAddress.inetAddressFromStringUnsafe("[::1]:80")).type.toBe<NetAddress.InetAddress>()
     expect(NetAddress.ipv4Loopback.bytes).type.toBe<Uint8Array>()
+    expect(NetAddress.hostnameFromString("example.com")).type.toBe<
+      Result.Result<NetAddress.Hostname, NetAddress.HostError>
+    >()
+    expect(NetAddress.hostFromString("example.com")).type.toBe<Result.Result<NetAddress.Host, NetAddress.HostError>>()
+    expect(NetAddress.authorityFromString("example.com:80")).type.toBe<
+      Result.Result<NetAddress.Authority, NetAddress.HostError>
+    >()
+    expect(NetAddress.inetAddressFromAuthority(NetAddress.authorityFromStringUnsafe("127.0.0.1:80"))).type.toBe<
+      Result.Result<NetAddress.InetAddress, NetAddress.HostError>
+    >()
+  })
+
+  it("narrows host unions", () => {
+    const host = null as unknown as NetAddress.Host
+    if (NetAddress.isHostname(host)) {
+      expect(host).type.toBe<NetAddress.Hostname>()
+    } else if (NetAddress.isIpv4Address(host)) {
+      expect(host).type.toBe<NetAddress.Ipv4Address>()
+    } else {
+      expect(host).type.toBe<NetAddress.Ipv6Address>()
+    }
   })
 
   it("narrows address unions", () => {
@@ -33,5 +54,9 @@ describe("NetAddress", () => {
     expect(Schema.UnixPathAddressFromString).type.toBeAssignableTo<
       Schema.Codec<NetAddress.UnixPathAddress, string>
     >()
+    expect(Schema.Hostname).type.toBeAssignableTo<Schema.Codec<NetAddress.Hostname, NetAddress.Hostname>>()
+    expect(Schema.HostnameFromString).type.toBeAssignableTo<Schema.Codec<NetAddress.Hostname, string>>()
+    expect(Schema.HostFromString).type.toBeAssignableTo<Schema.Codec<NetAddress.Host, string>>()
+    expect(Schema.AuthorityFromString).type.toBeAssignableTo<Schema.Codec<NetAddress.Authority, string>>()
   })
 })
