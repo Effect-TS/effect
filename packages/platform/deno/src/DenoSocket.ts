@@ -9,7 +9,7 @@
  *
  * @since 4.0.0
  */
-import type { Array } from "effect"
+import * as Arr from "effect/Array"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
@@ -55,6 +55,10 @@ export class Conn extends Context.Service<Conn, Deno.Conn>()(
 /**
  * Adapts a Deno connection into an Effect socket.
  *
+ * Readers over TCP connections can upgrade in place with `Deno.startTls`.
+ * Deno exposes only the client side of this transition; Unix connections fail
+ * the upgrade with a `SocketUpgradeError`.
+ *
  * @category constructors
  * @since 4.0.0
  */
@@ -75,28 +79,31 @@ export const fromConn = <RO>(
     const reader: Socket.Socket["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
       let conn: Deno.Conn | undefined
+      let upgradeAvailable = true
       yield* Scope.addFinalizer(
         scope,
         Effect.suspend(() => {
           tearingDown = true
           latch.closeUnsafe()
           current = undefined
+          upgradeAvailable = false
           return conn === undefined ? Effect.void : close(conn)
         })
       )
       conn = yield* Scope.provide(open, scope)
-      const readerHandle = conn.readable.getReader()
-      const writerHandle = conn.writable.getWriter()
+      let readerHandle = conn.readable.getReader()
+      let writerHandle = conn.writable.getWriter()
 
       let error: Socket.SocketError | undefined
+      const fail = (err: Socket.SocketError) => {
+        if (error === undefined) error = err
+        tearingDown = true
+        readerHandle.cancel().catch(constVoid)
+      }
       current = {
         conn,
         writer: writerHandle,
-        fail(err) {
-          if (error === undefined) error = err
-          tearingDown = true
-          readerHandle.cancel().catch(constVoid)
-        }
+        fail
       }
       tearingDown = false
       if (writeClosed) {
@@ -117,6 +124,58 @@ export const fromConn = <RO>(
               reason: new Socket.SocketReadError({ cause })
             })
       })
+      const upgrade: Socket.Reader["upgrade"] = (options) =>
+        Effect.suspend(() => {
+          if (!upgradeAvailable) {
+            return Effect.fail(
+              new Socket.SocketError({
+                reason: new Socket.SocketUpgradeError({
+                  cause: new Error("socket is already upgraded or closed")
+                })
+              })
+            )
+          }
+          if (conn!.remoteAddr.transport !== "tcp") {
+            return Effect.fail(
+              new Socket.SocketError({
+                reason: new Socket.SocketUpgradeError({
+                  cause: new Error("TLS upgrade requires a TCP connection")
+                })
+              })
+            )
+          }
+          upgradeAvailable = false
+          const raw = conn as Deno.TcpConn
+          readerHandle.releaseLock()
+          writerHandle.releaseLock()
+          return Effect.tryPromise({
+            try: async () => {
+              const tls = await Deno.startTls(raw, {
+                hostname: raw.remoteAddr.hostname,
+                caCerts: options.ca === undefined ? [] : toStrings(options.ca),
+                unsafelyDisableHostnameVerification: options.rejectUnauthorized === false,
+                ...(options.alpnProtocols === undefined ? {} : { alpnProtocols: [...options.alpnProtocols] })
+              })
+              await tls.handshake()
+              return tls
+            },
+            catch: (cause) =>
+              new Socket.SocketError({
+                reason: new Socket.SocketUpgradeError({ cause })
+              })
+          }).pipe(
+            Effect.tap((tls) =>
+              Effect.sync(() => {
+                conn = tls
+                readerHandle = tls.readable.getReader()
+                writerHandle = tls.writable.getWriter()
+                current = { conn: tls, writer: writerHandle, fail }
+              })
+            ),
+            Effect.tapError((error) => Effect.sync(() => fail(error))),
+            Effect.asVoid
+          )
+        })
       return {
         pull: Effect.suspend(() => {
           if (error !== undefined) return Effect.fail(error)
@@ -129,7 +188,7 @@ export const fromConn = <RO>(
               )
               : Effect.succeed([value] as const))
         }),
-        upgrade: Socket.SocketUpgradeError.unsupported
+        upgrade
       }
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(openServices, input))
@@ -156,7 +215,7 @@ export const fromConn = <RO>(
         })
       }))
 
-    const writeAll = (chunks: Array.NonEmptyReadonlyArray<Uint8Array | string>) =>
+    const writeAll = (chunks: Arr.NonEmptyReadonlyArray<Uint8Array | string>) =>
       latch.whenOpen(Effect.tryPromise({
         try: async () => {
           const { writer } = current!
@@ -269,10 +328,10 @@ export const makeTcp = (options: TcpOptions): Effect.Effect<Socket.Socket> => {
 export const makeTcpChannel = <IE = never>(
   options: ConnectOptions
 ): Channel.Channel<
-  Array.NonEmptyReadonlyArray<Uint8Array>,
+  Arr.NonEmptyReadonlyArray<Uint8Array>,
   Socket.SocketError | IE,
   void,
-  Array.NonEmptyReadonlyArray<Uint8Array | string | Socket.CloseEvent>,
+  Arr.NonEmptyReadonlyArray<Uint8Array | string | Socket.CloseEvent>,
   IE
 > => Channel.unwrap(Effect.map(makeTcp(options), Socket.toChannelWith<IE>()))
 
@@ -312,6 +371,10 @@ export const layerWebSocketConstructor: Layer.Layer<Socket.WebSocketConstructor>
   Socket.layerWebSocketConstructorGlobal
 
 const encoder = new TextEncoder()
+const decoder = new TextDecoder()
+
+const toStrings = (values: string | Uint8Array | ReadonlyArray<string | Uint8Array>): Array<string> =>
+  Arr.map(Arr.ensure(values), (value) => typeof value === "string" ? value : decoder.decode(value))
 
 const isBadResource = (cause: unknown): cause is Deno.errors.BadResource => cause instanceof Deno.errors.BadResource
 
