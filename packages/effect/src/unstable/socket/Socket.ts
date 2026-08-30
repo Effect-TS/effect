@@ -106,9 +106,13 @@ export interface Socket {
 /**
  * The read side of a live `Socket` connection.
  *
+ * **Details**
+ *
  * `pull` reads the next non-empty batch. `upgrade` wraps this connection with
  * TLS when the transport supports it. Unsupported readers fail with a
- * `SocketUpgradeError`.
+ * `SocketUpgradeError`. The upgrade also fails with `SocketUpgradeError` when
+ * the selected TLS role requires an identity but `key` and `cert` are not both
+ * provided.
  *
  * @category models
  * @since 4.0.0
@@ -120,6 +124,8 @@ export interface Reader<A extends Uint8Array | string = Uint8Array | string> {
 
 /**
  * The write side of a `Socket`.
+ *
+ * **Details**
  *
  * `write` sends a single frame or a `CloseEvent`; `writeAll` sends a batch of
  * frames, allowing transports to coalesce them into a single flush. Both
@@ -136,14 +142,22 @@ export interface Writer {
 /**
  * TLS credentials and handshake settings used to upgrade a live socket.
  *
+ * **Details**
+ *
+ * `key` and `cert` are optional for client upgrades that do not present a
+ * client certificate. Server upgrades require both, and providing only one is
+ * invalid. Missing or incomplete credentials fail the upgrade with a
+ * `SocketUpgradeError` when the adapter needs an identity.
+ *
  * @category models
  * @since 4.0.0
  */
 export interface TlsUpgradeOptions {
-  readonly key:
+  readonly key?:
     | Redacted.Redacted<string | Uint8Array>
     | ReadonlyArray<Redacted.Redacted<string | Uint8Array>>
-  readonly cert: string | Uint8Array | ReadonlyArray<string | Uint8Array>
+    | undefined
+  readonly cert?: string | Uint8Array | ReadonlyArray<string | Uint8Array> | undefined
   readonly ca?: string | Uint8Array | ReadonlyArray<string | Uint8Array> | undefined
   readonly passphrase?: Redacted.Redacted<string> | undefined
   readonly alpnProtocols?: ReadonlyArray<string> | undefined

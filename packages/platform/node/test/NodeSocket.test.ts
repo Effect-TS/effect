@@ -388,13 +388,56 @@ describe("Socket", () => {
         })
 
         const received = yield* sendHelloWorld(socket, {
-          cert,
-          key: Redacted.make(key),
           ca: [cert],
           rejectUnauthorized: true
         })
 
         assert.strictEqual(received, "HelloWorld")
+      }))
+
+    it.live("requires both key and cert for server TLS upgrades", () =>
+      Effect.gen(function*() {
+        const raw = new Duplex({
+          read() {},
+          write(_chunk, _encoding, callback) {
+            callback()
+          }
+        })
+        const socket = yield* NodeSocket.fromDuplex(Effect.succeed(raw), { tlsServer: true })
+
+        const error = yield* Effect.gen(function*() {
+          const { upgrade } = yield* socket.reader
+          return yield* upgrade({}).pipe(Effect.flip)
+        }).pipe(Effect.scoped)
+
+        assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+        if (error.reason._tag === "SocketUpgradeError") {
+          assert.strictEqual((error.reason.cause as Error).message, "server TLS upgrade requires both key and cert")
+        }
+      }))
+
+    it.live("rejects incomplete client credentials", () =>
+      Effect.gen(function*() {
+        const raw = new Duplex({
+          read() {},
+          write(_chunk, _encoding, callback) {
+            callback()
+          }
+        })
+        const socket = yield* NodeSocket.fromDuplex(Effect.succeed(raw))
+
+        const error = yield* Effect.gen(function*() {
+          const { upgrade } = yield* socket.reader
+          return yield* upgrade({ cert }).pipe(Effect.flip)
+        }).pipe(Effect.scoped)
+
+        assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+        if (error.reason._tag === "SocketUpgradeError") {
+          assert.strictEqual(
+            (error.reason.cause as Error).message,
+            "TLS upgrade credentials must include both key and cert"
+          )
+        }
       }))
 
     it.live("fails pulls after an interrupted TLS upgrade", () =>

@@ -1,6 +1,6 @@
 import * as DenoSocket from "@effect/platform-deno/DenoSocket"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Queue, Redacted } from "effect"
+import { Deferred, Effect, Fiber, Queue } from "effect"
 import * as Stream from "effect/Stream"
 import * as Socket from "effect/unstable/socket/Socket"
 
@@ -107,7 +107,7 @@ describe("DenoSocket", () => {
       const writer = yield* socket.writer
       const { pull, upgrade } = yield* socket.reader
 
-      yield* upgrade({ cert, key: Redacted.make(key), ca: [ca] })
+      yield* upgrade({ ca: [ca] })
       yield* writer.writeAll(["Hello", "World"])
 
       const decoder = new TextDecoder()
@@ -126,7 +126,7 @@ describe("DenoSocket", () => {
       const socket = yield* DenoSocket.makeTcp({ hostname: address.hostname, port: address.port })
       const { pull, upgrade } = yield* socket.reader
 
-      const error = yield* upgrade({ cert, key: Redacted.make(key) }).pipe(Effect.flip)
+      const error = yield* upgrade({}).pipe(Effect.flip)
       assert.strictEqual(error.reason._tag, "SocketUpgradeError")
       if (error.reason._tag === "SocketUpgradeError") assert.instanceOf(error.reason.cause, Error)
       assert.strictEqual(yield* pull.pipe(Effect.flip), error)
@@ -354,7 +354,7 @@ describe("DenoSocket", () => {
       const writer = yield* socket.writer
       const { pull, upgrade } = yield* socket.reader
 
-      const error = yield* upgrade({ cert, key: Redacted.make(key) }).pipe(Effect.flip)
+      const error = yield* upgrade({}).pipe(Effect.flip)
       assert.strictEqual(error.reason._tag, "SocketUpgradeError")
 
       yield* writer.write("HelloUnix")

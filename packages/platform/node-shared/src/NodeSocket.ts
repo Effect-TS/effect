@@ -272,6 +272,21 @@ export const fromDuplex = <RO>(
               })
             )
           }
+          const hasKey = upgradeOptions.key !== undefined
+          const hasCert = upgradeOptions.cert !== undefined
+          if ((isServer && (!hasKey || !hasCert)) || hasKey !== hasCert) {
+            return Effect.fail(
+              new Socket.SocketError({
+                reason: new Socket.SocketUpgradeError({
+                  cause: new Error(
+                    isServer
+                      ? "server TLS upgrade requires both key and cert"
+                      : "TLS upgrade credentials must include both key and cert"
+                  )
+                })
+              })
+            )
+          }
           return Effect.callback<void, Socket.SocketError>((resume) => {
             const raw = conn
             detachReadListeners(raw)
@@ -279,11 +294,13 @@ export const fromDuplex = <RO>(
             let tls: Tls.TLSSocket
             try {
               const secureContext = Tls.createSecureContext({
-                key: Arr.map(
-                  Arr.ensure(upgradeOptions.key),
-                  (value) => Buffer.from(Redacted.value(value))
-                ),
-                cert: toBuffers(upgradeOptions.cert),
+                key: upgradeOptions.key === undefined
+                  ? undefined
+                  : Arr.map(
+                    Arr.ensure(upgradeOptions.key),
+                    (value) => Buffer.from(Redacted.value(value))
+                  ),
+                cert: upgradeOptions.cert === undefined ? undefined : toBuffers(upgradeOptions.cert),
                 ca: upgradeOptions.ca === undefined ? undefined : toBuffers(upgradeOptions.ca),
                 passphrase: upgradeOptions.passphrase === undefined
                   ? undefined
