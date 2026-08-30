@@ -53,7 +53,7 @@ export const make: (
     const rlRef = yield* RcRef.make({
       acquire: Effect.acquireRelease(
         Effect.sync(() => {
-          const rl = readline.createInterface({ input: stdin, escapeCodeTimeout: 50 })
+          const rl = readline.createInterface({ input: stdin, output: stdout, escapeCodeTimeout: 50 })
           const onLine = (line: string) => Queue.offerUnsafe(lines, line)
           const onClose = () => {
             readlineActive = false
