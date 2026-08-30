@@ -25,6 +25,8 @@ import * as Net from "node:net"
 import type { Duplex } from "node:stream"
 import * as Tls from "node:tls"
 
+const isDeno = "Deno" in globalThis
+
 /**
  * @category re-exports
  * @since 4.0.0
@@ -228,7 +230,9 @@ export const fromDuplex = <RO>(
         conn.off("close", onClose)
       }
 
-      conn.pause()
+      // Deno's node:net compatibility layer stops emitting `readable` after
+      // an explicit pause. The stream is already non-flowing without one.
+      if (!isDeno) conn.pause()
       attachReadListeners(conn)
       yield* Scope.addFinalizer(
         scope,
