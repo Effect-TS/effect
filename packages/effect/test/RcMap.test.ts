@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Data, Deferred, Effect, Exit, Fiber, Option, RcMap, Ref, Scope } from "effect"
+import { Cause, Data, Deferred, Effect, Exit, Fiber, MutableHashMap, Option, RcMap, Ref, Scope } from "effect"
 import { TestClock } from "effect/testing"
 
 describe("RcMap", () => {
@@ -69,6 +69,12 @@ describe("RcMap", () => {
 
         assert.strictEqual(yield* Effect.scoped(RcMap.get(map, "key")), 1)
         yield* TestClock.adjust(500)
+        const oldEntry = map.state._tag === "Open"
+          ? Option.getOrThrow(MutableHashMap.get(map.state.map, "key"))
+          : undefined
+        assert.isDefined(oldEntry)
+        assert.isDefined(oldEntry.fiber)
+        const idleFiber = oldEntry.fiber
         const oldScope = yield* Scope.make()
         const newScope = yield* Scope.make()
         assert.strictEqual(yield* RcMap.get(map, "key").pipe(Scope.provide(oldScope)), 1)
@@ -76,6 +82,9 @@ describe("RcMap", () => {
         assert.deepStrictEqual(released, [])
         assert.strictEqual(yield* RcMap.get(map, "key").pipe(Scope.provide(newScope)), 2)
         yield* Scope.close(oldScope, Exit.void)
+        const idleExit = idleFiber.pollUnsafe()
+        assert.isDefined(idleExit)
+        assert.isTrue(Exit.hasInterrupts(idleExit))
         yield* TestClock.adjust(1000)
         const replacement = yield* Effect.scoped(RcMap.getOption(map, "key"))
         const afterTimer = [...released]

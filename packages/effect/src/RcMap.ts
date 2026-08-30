@@ -274,7 +274,7 @@ export const make: {
         self.state = { _tag: "Closed" }
         return Effect.forEach(
           map,
-          ([, entry]) => Effect.exit(Scope.close(entry.scope, Exit.void))
+          ([, entry]) => Effect.exit(closeEntry(entry))
         ).pipe(
           Effect.tap(() =>
             Effect.sync(() => {
@@ -449,21 +449,26 @@ export const getOption: {
     })
 )
 
+const closeEntry = <A, E>(entry: State.Entry<A, E>) =>
+  entry.fiber
+    ? Fiber.interrupt(entry.fiber).pipe(Effect.andThen(Scope.close(entry.scope, Exit.void)))
+    : Scope.close(entry.scope, Exit.void)
+
 const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>) =>
   Effect.withFiber((fiber) => {
     entry.refCount--
     if (entry.refCount > 0) {
       return Effect.void
     } else if (self.state._tag === "Closed") {
-      return Scope.close(entry.scope, Exit.void)
+      return closeEntry(entry)
     }
 
     const o = MutableHashMap.get(self.state.map, key)
     if (o._tag === "None" || o.value !== entry) {
-      return Scope.close(entry.scope, Exit.void)
+      return closeEntry(entry)
     } else if (Duration.isZero(entry.idleTimeToLive)) {
       MutableHashMap.remove(self.state.map, key)
-      return Scope.close(entry.scope, Exit.void)
+      return closeEntry(entry)
     } else if (!Duration.isFinite(entry.idleTimeToLive)) {
       return Effect.void
     }
@@ -595,8 +600,7 @@ export const invalidate: {
     const entry = o.value
     MutableHashMap.remove(self.state.map, key)
     if (entry.refCount > 0) return
-    if (entry.fiber) yield* Fiber.interrupt(entry.fiber)
-    yield* Scope.close(entry.scope, Exit.void)
+    yield* closeEntry(entry)
   }, Effect.uninterruptible)
 )
 
