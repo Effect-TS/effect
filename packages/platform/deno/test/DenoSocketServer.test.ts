@@ -103,8 +103,6 @@ describe("DenoSocketServer", () => {
 
       const socket = yield* DenoSocket.makeTcp({ hostname: address.hostname, port: address.port })
       const output = yield* sendHelloDeno(socket, {
-        cert,
-        key: Redacted.make(key),
         ca: [ca]
       })
 

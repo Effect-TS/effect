@@ -25,6 +25,7 @@ describe("Socket", () => {
 
   it("reader acquisition requires a scope and exposes typed pulls", () => {
     const socket = null as unknown as Socket.Socket
+    const reader = null as unknown as Socket.Reader
     expect(socket.reader).type.toBe<
       Effect.Effect<Socket.Reader, Socket.SocketError, Scope.Scope>
     >()
@@ -42,6 +43,7 @@ describe("Socket", () => {
         Scope.Scope
       >
     >()
+    expect(reader.upgrade()).type.toBe<Effect.Effect<void, Socket.SocketError>>()
   })
 
   it("exposes the unsupported upgrade implementation on SocketUpgradeError", () => {

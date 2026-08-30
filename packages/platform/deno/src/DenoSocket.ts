@@ -129,7 +129,7 @@ export const fromConn = <RO>(
               reason: new Socket.SocketReadError({ cause })
             })
       })
-      const upgrade: Socket.Reader["upgrade"] = (options) =>
+      const upgrade: Socket.Reader["upgrade"] = (options = {}) =>
         Effect.suspend(() => {
           if (!upgradeAvailable) {
             return Effect.fail(

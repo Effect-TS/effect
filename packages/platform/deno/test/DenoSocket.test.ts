@@ -126,7 +126,7 @@ describe("DenoSocket", () => {
       const socket = yield* DenoSocket.makeTcp({ hostname: address.hostname, port: address.port })
       const { pull, upgrade } = yield* socket.reader
 
-      const error = yield* upgrade({}).pipe(Effect.flip)
+      const error = yield* upgrade().pipe(Effect.flip)
       assert.strictEqual(error.reason._tag, "SocketUpgradeError")
       if (error.reason._tag === "SocketUpgradeError") assert.instanceOf(error.reason.cause, Error)
       assert.strictEqual(yield* pull.pipe(Effect.flip), error)
@@ -354,7 +354,7 @@ describe("DenoSocket", () => {
       const writer = yield* socket.writer
       const { pull, upgrade } = yield* socket.reader
 
-      const error = yield* upgrade({}).pipe(Effect.flip)
+      const error = yield* upgrade().pipe(Effect.flip)
       assert.strictEqual(error.reason._tag, "SocketUpgradeError")
 
       yield* writer.write("HelloUnix")

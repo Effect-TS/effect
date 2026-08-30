@@ -407,7 +407,7 @@ describe("Socket", () => {
 
         const error = yield* Effect.gen(function*() {
           const { upgrade } = yield* socket.reader
-          return yield* upgrade({}).pipe(Effect.flip)
+          return yield* upgrade().pipe(Effect.flip)
         }).pipe(Effect.scoped)
 
         assert.strictEqual(error.reason._tag, "SocketUpgradeError")
@@ -459,10 +459,7 @@ describe("Socket", () => {
 
         const error = yield* Effect.gen(function*() {
           const { pull, upgrade } = yield* socket.reader
-          const upgradeFiber = yield* upgrade({
-            cert,
-            key: Redacted.make(key)
-          }).pipe(Effect.forkChild({ startImmediately: true }))
+          const upgradeFiber = yield* upgrade().pipe(Effect.forkChild({ startImmediately: true }))
           yield* Fiber.interrupt(upgradeFiber)
           return yield* pull.pipe(Effect.flip, Effect.timeout("1 second"))
         }).pipe(Effect.scoped)

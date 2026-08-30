@@ -112,14 +112,15 @@ export interface Socket {
  * TLS when the transport supports it. Unsupported readers fail with a
  * `SocketUpgradeError`. The upgrade also fails with `SocketUpgradeError` when
  * the selected TLS role requires an identity but `key` and `cert` are not both
- * provided.
+ * provided. Calling `upgrade()` without an options object uses the adapter's
+ * client defaults.
  *
  * @category models
  * @since 4.0.0
  */
 export interface Reader<A extends Uint8Array | string = Uint8Array | string> {
   readonly pull: Effect.Effect<NonEmptyReadonlyArray<A>, SocketError>
-  readonly upgrade: (options: TlsUpgradeOptions) => Effect.Effect<void, SocketError>
+  readonly upgrade: (options?: TlsUpgradeOptions) => Effect.Effect<void, SocketError>
 }
 
 /**

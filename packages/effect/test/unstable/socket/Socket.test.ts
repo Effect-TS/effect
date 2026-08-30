@@ -3,7 +3,6 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Latch from "effect/Latch"
-import * as Redacted from "effect/Redacted"
 import * as Scheduler from "effect/Scheduler"
 import * as Stream from "effect/Stream"
 import * as Socket from "effect/unstable/socket/Socket"
@@ -90,7 +89,7 @@ describe("Socket", () => {
         const { socket, wasUpgraded } = stubSocket(Effect.never)
 
         const { upgrade } = yield* socket.reader
-        yield* upgrade({ key: Redacted.make("key"), cert: "cert" })
+        yield* upgrade()
 
         assert.isTrue(wasUpgraded())
       }))

@@ -265,7 +265,7 @@ export const fromDuplex = <RO>(
         })
       })
 
-      const upgrade: Socket.Reader["upgrade"] = (upgradeOptions) =>
+      const upgrade: Socket.Reader["upgrade"] = (upgradeOptions = {}) =>
         Effect.suspend(() => {
           if (!upgradeAvailable) {
             return Effect.fail(
