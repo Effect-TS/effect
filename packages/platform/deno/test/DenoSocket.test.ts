@@ -340,6 +340,28 @@ describe("DenoSocket", () => {
       assert.strictEqual(output, "HelloUnix")
     }))
 
+  it.effect("rejects TLS upgrades on Unix sockets without disrupting the connection", () =>
+    Effect.gen(function*() {
+      const directory = yield* makeTempDir
+      const path = `${directory}/upgrade.sock`
+      const listener = yield* Effect.acquireRelease(
+        Effect.sync(() => Deno.listen({ transport: "unix", path })),
+        (listener) => Effect.sync(() => listener.close())
+      )
+      yield* runEchoServer(listener).pipe(Effect.forkScoped)
+
+      const socket = yield* DenoSocket.makeTcp({ transport: "unix", path })
+      const writer = yield* socket.writer
+      const { pull, upgrade } = yield* socket.reader
+
+      const error = yield* upgrade({ cert, key: Redacted.make(key) }).pipe(Effect.flip)
+      assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+
+      yield* writer.write("HelloUnix")
+      const [received] = yield* pull
+      assert.strictEqual(new TextDecoder().decode(received as Uint8Array), "HelloUnix")
+    }))
+
   it.effect("uses Deno's native WebSocket", () =>
     Effect.gen(function*() {
       const server = yield* Effect.acquireRelease(

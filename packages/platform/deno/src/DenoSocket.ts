@@ -59,6 +59,11 @@ export class Conn extends Context.Service<Conn, Deno.Conn>()(
  * Deno exposes only the client side of this transition; Unix connections fail
  * the upgrade with a `SocketUpgradeError`.
  *
+ * `Deno.startTls` does not support client certificates, so `key`, `cert`,
+ * `passphrase`, and `requestCert` do not affect Deno upgrades. Setting
+ * `rejectUnauthorized` to `false` disables hostname verification only;
+ * certificate-chain validation still applies.
+ *
  * @category constructors
  * @since 4.0.0
  */
@@ -172,7 +177,7 @@ export const fromConn = <RO>(
                 current = { conn: tls, writer: writerHandle, fail }
               })
             ),
-            Effect.tapError((error) => Effect.sync(() => fail(error))),
+            Effect.tapError((upgradeError) => Effect.sync(() => fail(upgradeError))),
             Effect.asVoid
           )
         })
