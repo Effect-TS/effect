@@ -71,6 +71,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.5.6"
+    "@electric-sql/pglite": "^0.5.8"
   }
 }
