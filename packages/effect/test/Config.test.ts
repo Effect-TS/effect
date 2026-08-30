@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import {
+  ByteSize,
   Config,
   ConfigProvider,
   Duration,
@@ -1244,6 +1245,30 @@ Expected "Infinity" | "-Infinity" | "NaN"
           `Expected a valid Duration string
   at ["failure"]`
         )
+      })
+
+      it("decodes exact decimal and binary byte sizes", async () => {
+        const provider = ConfigProvider.fromUnknown({
+          binary: "10 MiB",
+          decimal: "10 MB",
+          fractional: "1.5 kB",
+          huge: "9007199254740993 B",
+          ambiguous: "10 MBi",
+          negative: "-1 B",
+          fractionalByte: "0.1 KiB"
+        })
+
+        await assertSuccess(Config.ByteSize("binary"), provider, ByteSize.mebibytes(10))
+        await assertSuccess(Config.ByteSize("decimal"), provider, ByteSize.megabytes(10))
+        await assertSuccess(Config.ByteSize("fractional"), provider, ByteSize.bytes(1500))
+        await assertSuccess(Config.ByteSize("huge"), provider, ByteSize.bytes(9_007_199_254_740_993n))
+        for (const name of ["ambiguous", "negative", "fractionalByte"]) {
+          await assertFailure(
+            Config.ByteSize(name),
+            provider,
+            `Expected a valid ByteSize string\n  at ["${name}"]`
+          )
+        }
       })
 
       it("validates port ranges", async () => {

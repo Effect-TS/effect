@@ -2,6 +2,7 @@ import { describe, it } from "@effect/vitest"
 import {
   BigDecimal,
   Brand,
+  ByteSize,
   Cause,
   Chunk,
   Context,
@@ -5552,6 +5553,50 @@ Expected a value between -2147483648 and 2147483647`
     await encoding.succeed(Duration.millis(5000), 5000)
     await encoding.succeed(Duration.millis(0.1), 0.1)
     await encoding.succeed(Duration.nanos(5000n), 0.005)
+  })
+
+  it("ByteSize", async () => {
+    const asserts = new TestSchema.Asserts(Schema.ByteSize)
+    if (verifyGeneration) asserts.arbitrary().verifyGeneration()
+
+    const json = new TestSchema.Asserts(Schema.toCodecJson(Schema.ByteSize))
+    await json.decoding().succeed(
+      { _id: "ByteSize", bytes: "9007199254740993" },
+      ByteSize.bytes(9_007_199_254_740_993n)
+    )
+    await json.encoding().succeed(
+      ByteSize.bytes(9_007_199_254_740_993n),
+      { _id: "ByteSize", bytes: "9007199254740993" }
+    )
+  })
+
+  it("ByteSizeFromString", async () => {
+    const asserts = new TestSchema.Asserts(Schema.ByteSizeFromString)
+    await asserts.decoding().succeed("10 MiB", ByteSize.mebibytes(10))
+    await asserts.decoding().succeed("1.5 kB", ByteSize.bytes(1500))
+    await asserts.decoding().fail("1 KB", "Expected a valid ByteSize string")
+    await asserts.encoding().succeed(ByteSize.bytes(1500), "1500 bytes")
+  })
+
+  it("ByteSizeFromBigInt", async () => {
+    const asserts = new TestSchema.Asserts(Schema.ByteSizeFromBigInt)
+    if (verifyGeneration) asserts.arbitrary().verifyGeneration()
+    await asserts.decoding().succeed(9_007_199_254_740_993n, ByteSize.bytes(9_007_199_254_740_993n))
+    await asserts.decoding().fail(-1n, "Expected a non-negative bigint byte count")
+    await asserts.encoding().succeed(ByteSize.bytes(9_007_199_254_740_993n), 9_007_199_254_740_993n)
+  })
+
+  it("ByteSizeFromNumber", async () => {
+    const asserts = new TestSchema.Asserts(Schema.ByteSizeFromNumber)
+    await asserts.decoding().succeed(Number.MAX_SAFE_INTEGER, ByteSize.bytes(Number.MAX_SAFE_INTEGER))
+    await asserts.decoding().fail(-1, "Expected a non-negative safe-integer byte count")
+    await asserts.decoding().fail(0.5, "Expected a non-negative safe-integer byte count")
+    await asserts.decoding().fail(Number.MAX_SAFE_INTEGER + 1, "Expected a non-negative safe-integer byte count")
+    await asserts.encoding().succeed(ByteSize.bytes(1500), 1500)
+    await asserts.encoding().fail(
+      ByteSize.bytes(BigInt(Number.MAX_SAFE_INTEGER) + 1n),
+      "Expected a ByteSize representable as a safe integer"
+    )
   })
 
   it("BigDecimal", async () => {

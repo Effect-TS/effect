@@ -1360,6 +1360,21 @@ export function Duration(name?: string) {
 }
 
 /**
+ * Creates a config for an exact, human-readable byte-size value.
+ *
+ * **Details**
+ *
+ * Decimal symbols such as `kB` use powers of 1,000, while binary symbols such
+ * as `KiB` use powers of 1,024.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export function ByteSize(name?: string) {
+  return schema(Schema.ByteSizeFromString, name)
+}
+
+/**
  * Creates a config for a port number (integer in 1–65535).
  *
  * **When to use**

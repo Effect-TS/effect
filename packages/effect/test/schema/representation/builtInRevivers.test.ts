@@ -930,6 +930,15 @@ describe("SchemaRepresentation built-in declaration revivers", () => {
     })
   })
 
+  it("revives ByteSize", () => {
+    assertDeclarationReviver({
+      schema: Schema.ByteSize,
+      id: "effect/schema/ByteSize",
+      payload: null,
+      reviver: Schema.ByteSizeReviver
+    })
+  })
+
   it("revives BigDecimal", () => {
     assertDeclarationReviver({
       schema: Schema.BigDecimal,
