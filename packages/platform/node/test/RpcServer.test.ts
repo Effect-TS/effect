@@ -3,6 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Cause, Deferred, Effect, Exit, Fiber, Layer, Ref, Schedule, Schema, Stream } from "effect"
 import { Entity, EntityProxy, EntityProxyServer, Sharding } from "effect/unstable/cluster"
 import { HttpClient, HttpClientRequest, HttpRouter, HttpServer } from "effect/unstable/http"
+import type * as Net from "effect/unstable/net/Net"
 import { Rpc, RpcClient, RpcGroup, RpcSerialization, RpcServer, RpcTest } from "effect/unstable/rpc"
 import { SocketServer } from "effect/unstable/socket"
 import { e2eSuite, UsersClient } from "./fixtures/rpc-e2e.ts"
@@ -64,7 +65,7 @@ describe("RpcServer", () => {
     Layer.provide(
       Effect.gen(function*() {
         const server = yield* HttpServer.HttpServer
-        const address = server.address as HttpServer.TcpAddress
+        const address = server.address as Net.InetAddress
         return NodeSocket.layerWebSocket(`http://127.0.0.1:${address.port}/rpc`)
       }).pipe(Layer.unwrap)
     )
@@ -108,7 +109,7 @@ describe("RpcServer", () => {
     Layer.provide(
       Effect.gen(function*() {
         const server = yield* SocketServer.SocketServer
-        const address = server.address as SocketServer.TcpAddress
+        const address = server.address as Net.InetAddress
         return NodeSocket.layerNet({ port: address.port })
       }).pipe(Layer.unwrap)
     )
@@ -221,7 +222,7 @@ describe("RpcServer", () => {
     Layer.provide(
       Effect.gen(function*() {
         const server = yield* SocketServer.SocketServer
-        const address = server.address as SocketServer.TcpAddress
+        const address = server.address as Net.InetAddress
         return NodeSocket.layerNet({ port: address.port })
       }).pipe(Layer.unwrap)
     ),

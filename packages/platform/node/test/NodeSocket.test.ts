@@ -5,7 +5,8 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import { Socket, type SocketServer } from "effect/unstable/socket"
+import type * as EffectNet from "effect/unstable/net/Net"
+import { Socket } from "effect/unstable/socket"
 import * as Fs from "node:fs"
 import * as Net from "node:net"
 import { Duplex } from "node:stream"
@@ -70,12 +71,21 @@ const makeServer = Effect.gen(function*() {
 })
 
 describe("Socket", () => {
+  it.live("preserves a native IPv6 listener address", () =>
+    Effect.gen(function*() {
+      const server = yield* NodeSocketServer.make({ host: "::1", port: 0 })
+      assert.strictEqual(server.address._tag, "InetAddressV6")
+      if (server.address._tag !== "InetAddressV6") return
+      assert.strictEqual(server.address.address.toString(), "::1")
+      assert.notStrictEqual(server.address.port, 0)
+    }))
+
   it.live("closes with a pending pre-run socket", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()
       const server = yield* NodeSocketServer.make({ host: "127.0.0.1", port: 0 }).pipe(Scope.provide(scope))
-      assert.strictEqual(server.address._tag, "TcpAddress")
-      if (server.address._tag !== "TcpAddress") return
+      assert.strictEqual(server.address._tag, "InetAddressV4")
+      if (server.address._tag !== "InetAddressV4") return
       const socket = Net.createConnection({ host: "127.0.0.1", port: server.address.port })
       yield* Effect.promise(() =>
         new Promise<void>((resolve, reject) => {
@@ -95,8 +105,8 @@ describe("Socket", () => {
     Effect.gen(function*() {
       const scope = yield* Scope.make()
       const server = yield* NodeSocketServer.makeWebSocket({ host: "127.0.0.1", port: 0 }).pipe(Scope.provide(scope))
-      assert.strictEqual(server.address._tag, "TcpAddress")
-      if (server.address._tag !== "TcpAddress") return
+      assert.strictEqual(server.address._tag, "InetAddressV4")
+      if (server.address._tag !== "InetAddressV4") return
       const socket = new NodeSocket.NodeWS.WebSocket(`ws://127.0.0.1:${server.address.port}`)
       yield* Effect.promise(() =>
         new Promise<void>((resolve, reject) => {
@@ -115,7 +125,7 @@ describe("Socket", () => {
   it.effect("open", () =>
     Effect.gen(function*() {
       const server = yield* makeServer
-      const channel = NodeSocket.makeNetChannel({ port: (server.address as SocketServer.TcpAddress).port })
+      const channel = NodeSocket.makeNetChannel({ port: (server.address as EffectNet.InetAddress).port })
 
       const outputEffect = Stream.make("Hello", "World").pipe(
         Stream.encodeText,
@@ -135,7 +145,7 @@ describe("Socket", () => {
   it.effect("pull batches", () =>
     Effect.gen(function*() {
       const server = yield* makeServer
-      const socket = yield* NodeSocket.makeNet({ port: (server.address as SocketServer.TcpAddress).port })
+      const socket = yield* NodeSocket.makeNet({ port: (server.address as EffectNet.InetAddress).port })
 
       const received = yield* Effect.gen(function*() {
         const writer = yield* socket.writer
@@ -346,7 +356,7 @@ describe("Socket", () => {
           Effect.callback<Tls.TLSSocket>((resume) => {
             const conn = Tls.connect({
               host: "127.0.0.1",
-              port: (server.address as SocketServer.TcpAddress).port,
+              port: (server.address as EffectNet.InetAddress).port,
               ca: [cert]
             })
             conn.once("secureConnect", () => resume(Effect.succeed(conn)))
@@ -547,8 +557,8 @@ describe("Socket", () => {
             return true
           }
         })
-        assert.strictEqual(server.address._tag, "TcpAddress")
-        if (server.address._tag !== "TcpAddress") return
+        assert.strictEqual(server.address._tag, "InetAddressV4")
+        if (server.address._tag !== "InetAddressV4") return
         const port = server.address.port
 
         const makeWebSocket = yield* Socket.WebSocketConstructor

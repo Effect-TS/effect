@@ -31,6 +31,8 @@ import type { RunnerStorage } from "./RunnerStorage.ts"
 import * as Sharding from "./Sharding.ts"
 import type * as ShardingConfig from "./ShardingConfig.ts"
 
+const formatAuthorityHost = (host: string): string => host.includes(":") && !host.startsWith("[") ? `[${host}]` : host
+
 /**
  * Provides a runner RPC client protocol that connects to runner addresses over
  * HTTP.
@@ -61,7 +63,9 @@ export const layerClientProtocolHttp = (options: {
         make: (address) => {
           const clientWithUrl = HttpClient.mapRequest(
             client,
-            HttpClientRequest.prependUrl(`http${https ? "s" : ""}://${address.host}:${address.port}/${options.path}`)
+            HttpClientRequest.prependUrl(
+              `http${https ? "s" : ""}://${formatAuthorityHost(address.host)}:${address.port}/${options.path}`
+            )
           )
           return RpcClient.makeProtocolHttp(clientWithUrl).pipe(
             Effect.provideService(RpcSerialization.RpcSerialization, serialization)
@@ -112,7 +116,7 @@ export const layerClientProtocolWebsocket = (options: {
         codecFor: serialization.codecFor,
         make: Effect.fnUntraced(function*(address) {
           const socket = yield* Socket.makeWebSocket(
-            `ws${https ? "s" : ""}://${address.host}:${address.port}/${options.path}`
+            `ws${https ? "s" : ""}://${formatAuthorityHost(address.host)}:${address.port}/${options.path}`
           ).pipe(
             Effect.provideService(Socket.WebSocketConstructor, constructor)
           )

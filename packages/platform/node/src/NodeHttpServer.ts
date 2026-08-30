@@ -50,6 +50,7 @@ import * as Request from "effect/unstable/http/HttpServerRequest"
 import { HttpServerRequest } from "effect/unstable/http/HttpServerRequest"
 import type { HttpServerResponse } from "effect/unstable/http/HttpServerResponse"
 import type * as Multipart from "effect/unstable/http/Multipart"
+import * as EffectNet from "effect/unstable/net/Net"
 import * as Socket from "effect/unstable/socket/Socket"
 import * as Http from "node:http"
 import type * as Net from "node:net"
@@ -131,6 +132,12 @@ export const make = Effect.fnUntraced(function*(
   })
 
   const address = server.address()!
+  const effectAddress = typeof address === "string"
+    ? Effect.succeed(EffectNet.unixPathAddress(address))
+    : Effect.fromResult(EffectNet.inetAddressFromIpString(address.address, address.port)).pipe(
+      Effect.mapError((cause) => new ServeError({ cause }))
+    )
+  const boundAddress = yield* effectAddress
 
   const wss = yield* Effect.acquireRelease(
     Effect.sync(() => new NodeWS.WebSocketServer({ ...options.websocket, noServer: true })),
@@ -144,16 +151,7 @@ export const make = Effect.fnUntraced(function*(
   )
 
   return HttpServer.make({
-    address: typeof address === "string" ?
-      {
-        _tag: "UnixAddress",
-        path: address
-      } :
-      {
-        _tag: "TcpAddress",
-        hostname: address.address === "::" ? "0.0.0.0" : address.address,
-        port: address.port
-      },
+    address: boundAddress,
     serve: Effect.fnUntraced(function*(httpApp, middleware) {
       const serveScope = yield* Effect.scope
       const scope = Scope.forkUnsafe(serveScope, "parallel")

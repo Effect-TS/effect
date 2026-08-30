@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Layer, Schema, Stream } from "effect"
 import { HttpRouter } from "effect/unstable/http"
+import * as Net from "effect/unstable/net/Net"
 import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/unstable/rpc"
 import { Socket, SocketServer } from "effect/unstable/socket"
 
@@ -152,11 +153,7 @@ describe("RpcServer", () => {
         })
       })
       const socketServer = SocketServer.SocketServer.of({
-        address: {
-          _tag: "TcpAddress",
-          hostname: "localhost",
-          port: 0
-        },
+        address: Net.inetAddressFromStringUnsafe("127.0.0.1:0"),
         run: (handler) => handler(socket).pipe(Effect.orDie, Effect.andThen(Effect.never))
       })
 

@@ -1,3 +1,6 @@
+"@effect/platform/HttpServer#Address":
+  replacement: "effect/unstable/net/Net#SocketAddress"
+  note: "Replaced by the shared concrete internet-or-Unix socket address union."
 "@effect/platform/HttpServer#addressWith":
   replacement: "HttpServer.HttpServer.use(({ address }) => effect(address))"
   note: "The accessor was removed; read the service and pass its Address to the callback."
@@ -14,14 +17,14 @@
   replacement: "none"
   note: "The unused respond option model was removed with no shared v4 counterpart."
 "@effect/platform/HttpServer#TcpAddress":
-  replacement: "HttpServer.TcpAddress"
-  note: "Moved unchanged."
+  replacement: "effect/unstable/net/Net#InetAddress"
+  note: "Replaced by the shared resolved internet-address model; use address and port instead of hostname and port."
 "@effect/platform/HttpServer#TypeId":
   replacement: "none"
   note: "The public TypeId was removed; HttpServer is now a Context.Service class."
 "@effect/platform/HttpServer#UnixAddress":
-  replacement: "HttpServer.UnixAddress"
-  note: "Moved unchanged."
+  replacement: "effect/unstable/net/Net#UnixPathAddress"
+  note: "Replaced by the shared Unix filesystem-path address model."
 "@effect/platform/HttpServer#serve":
   replacement: "effect/unstable/http/HttpServer#serve"
   note: "Moved to the v4 HTTP module; the application is now an Effect producing HttpServerResponse rather than the separate HttpApp model."

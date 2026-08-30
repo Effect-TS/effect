@@ -35,6 +35,7 @@ import * as ServerRequest from "effect/unstable/http/HttpServerRequest"
 import type * as ServerResponse from "effect/unstable/http/HttpServerResponse"
 import type * as Multipart from "effect/unstable/http/Multipart"
 import * as UrlParams from "effect/unstable/http/UrlParams"
+import * as Net from "effect/unstable/net/Net"
 import * as Socket from "effect/unstable/socket/Socket"
 import * as Platform from "./DenoHttpPlatform.ts"
 import * as DenoMultipart from "./DenoMultipart.ts"
@@ -95,13 +96,12 @@ export const make = Effect.fnUntraced(function*(
   yield* Scope.addFinalizer(scope, shutdown)
 
   const serverAddress = server.addr
-  const address: Server.Address = serverAddress.transport === "unix"
-    ? { _tag: "UnixAddress", path: serverAddress.path }
-    : {
-      _tag: "TcpAddress",
-      port: (serverAddress as Deno.NetAddr).port,
-      hostname: (serverAddress as Deno.NetAddr).hostname
-    }
+  const address = yield* (serverAddress.transport === "unix"
+    ? Effect.succeed(Net.unixPathAddress(serverAddress.path))
+    : Effect.fromResult(Net.inetAddressFromIpString(
+      (serverAddress as Deno.NetAddr).hostname,
+      (serverAddress as Deno.NetAddr).port
+    )).pipe(Effect.mapError((cause) => new Error.ServeError({ cause }))))
 
   return Server.make({
     address,
@@ -216,7 +216,7 @@ export const layerServer: (
     readonly gracefulShutdownTimeout?: Duration.Input | undefined
     readonly websocket?: Deno.UpgradeWebSocketOptions | undefined
   }
-) => Layer.Layer<Server.HttpServer> = flow(
+) => Layer.Layer<Server.HttpServer, Error.ServeError> = flow(
   make,
   Layer.effect(Server.HttpServer)
 )
@@ -245,7 +245,7 @@ export const layer = (
     readonly gracefulShutdownTimeout?: Duration.Input | undefined
     readonly websocket?: Deno.UpgradeWebSocketOptions | undefined
   }
-): Layer.Layer<Server.HttpServer | HttpPlatform | Etag.Generator | DenoServices.DenoServices> =>
+): Layer.Layer<Server.HttpServer | HttpPlatform | Etag.Generator | DenoServices.DenoServices, Error.ServeError> =>
   Layer.mergeAll(layerServer(options), layerHttpServices)
 
 /**
@@ -260,7 +260,7 @@ export const layerTest: Layer.Layer<
   Layer.provide(FetchHttpClient.layer.pipe(
     Layer.provide(Layer.succeed(FetchHttpClient.RequestInit)({ keepalive: false }))
   )),
-  Layer.provideMerge(layer({ hostname: "127.0.0.1", port: 0, onListen: () => {} }))
+  Layer.provideMerge(Layer.orDie(layer({ hostname: "127.0.0.1", port: 0, onListen: () => {} })))
 )
 
 /**
@@ -279,7 +279,7 @@ export const layerConfig = (
   >
 ): Layer.Layer<
   Server.HttpServer | HttpPlatform | FileSystem.FileSystem | Etag.Generator | Path.Path,
-  ConfigError
+  ConfigError | Error.ServeError
 > =>
   Layer.mergeAll(
     Layer.effect(Server.HttpServer)(Effect.flatMap(Config.unwrap(options), make)),

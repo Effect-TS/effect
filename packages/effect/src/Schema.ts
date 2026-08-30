@@ -67,6 +67,7 @@ import type { Assign, Lambda, Mutable, Simplify } from "./Struct.ts"
 import * as Struct_ from "./Struct.ts"
 import type { RequiredKeys, UnionToIntersection } from "./Types.ts"
 import type { Unify } from "./Unify.ts"
+import * as Net_ from "./unstable/net/Net.ts"
 
 const TypeId = InternalSchema.TypeId
 
@@ -12047,6 +12048,139 @@ export const DateFromMillis: DateFromMillis = Int.pipe(
 export interface Duration extends declare<Duration_.Duration> {
   readonly "Rebuild": Duration
 }
+
+const netAddressFromString = <A>(
+  declaration: declare<A>,
+  parse: (input: string) => Result_.Result<A, Net_.AddressError>,
+  encode: (value: A) => string
+) =>
+  String.pipe(decodeTo(
+    declaration,
+    SchemaTransformation.transformOrFail({
+      decode: (input, options) => {
+        const result = parse(input)
+        return Result_.isSuccess(result)
+          ? Effect.succeed(result.success)
+          : Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, input, options))
+      },
+      encode: (value) => Effect.succeed(encode(value))
+    })
+  ))
+
+/**
+ * Schema for already-constructed IPv4 address values.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv4Address: declare<Net_.Ipv4Address> = declare(Net_.isIpv4Address)
+
+/**
+ * Schema for IPv4 addresses encoded as canonical dotted-decimal strings.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv4AddressFromString = netAddressFromString(Ipv4Address, Net_.ipv4FromString, Net_.formatIp)
+
+/**
+ * Schema for already-constructed IPv6 address values.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv6Address: declare<Net_.Ipv6Address> = declare(Net_.isIpv6Address)
+
+/**
+ * Schema for IPv6 addresses encoded as canonical strings.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv6AddressFromString = netAddressFromString(Ipv6Address, Net_.ipv6FromString, Net_.formatIp)
+
+/**
+ * Schema for already-constructed IPv4 or IPv6 address values.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const IpAddress: declare<Net_.IpAddress> = declare(Net_.isIpAddress)
+
+/**
+ * Schema for IP addresses encoded as canonical numeric strings.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const IpAddressFromString = netAddressFromString(IpAddress, Net_.ipFromString, Net_.formatIp)
+
+/**
+ * Schema for already-constructed resolved IPv4 internet addresses.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const InetAddressV4: declare<Net_.InetAddressV4> = declare(Net_.isInetAddressV4)
+
+/**
+ * Schema for already-constructed resolved IPv6 internet addresses.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const InetAddressV6: declare<Net_.InetAddressV6> = declare(Net_.isInetAddressV6)
+
+/**
+ * Schema for already-constructed resolved internet addresses.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const InetAddress: declare<Net_.InetAddress> = declare(Net_.isInetAddress)
+
+/**
+ * Schema for resolved internet addresses encoded as numeric socket strings.
+ *
+ * **Gotchas**
+ *
+ * Numeric socket strings do not carry IPv6 flow metadata. Use the
+ * {@link InetAddress} declaration schema when that metadata must be retained.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const InetAddressFromString = netAddressFromString(InetAddress, Net_.inetAddressFromString, Net_.formatInet)
+
+/**
+ * Schema for already-constructed Unix-domain filesystem addresses.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const UnixPathAddress: declare<Net_.UnixPathAddress> = declare(Net_.isUnixPathAddress)
+
+/**
+ * Schema for Unix-domain filesystem addresses encoded as opaque path strings.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const UnixPathAddressFromString = String.pipe(decodeTo(
+  UnixPathAddress,
+  SchemaTransformation.transform({
+    decode: Net_.unixPathAddress,
+    encode: (address) => address.path
+  })
+))
+
+/**
+ * Schema for already-constructed portable concrete socket addresses.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const SocketAddress: declare<Net_.SocketAddress> = declare(Net_.isSocketAddress)
 
 /**
  * Schema for `Duration` values.

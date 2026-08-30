@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae`)
 
-Head: `HEAD` (`f356bc2da6abb4dee05b8c22fb597af3823e2ef7`)
+Head: `HEAD` (`3e434be209ab505a0495afb50afb7f96406018d6`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -7124,11 +7124,17 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/HttpServer`
 
+- `HttpServer.Address` -> `effect/unstable/net/Net#SocketAddress`: Replaced by the shared concrete internet-or-Unix socket address union.
+
 - `HttpServer.HttpServer` -> `HttpServer.HttpServer`: The interface and tag became one Context.Service class; use its Service member for implementations.
 
 - `HttpServer.ServeOptions` -> `none`: The unused respond option model was removed with no shared v4 counterpart.
 
+- `HttpServer.TcpAddress` -> `effect/unstable/net/Net#InetAddress`: Replaced by the shared resolved internet-address model; use address and port instead of hostname and port.
+
 - `HttpServer.TypeId` -> `none`: The public TypeId was removed; HttpServer is now a Context.Service class.
+
+- `HttpServer.UnixAddress` -> `effect/unstable/net/Net#UnixPathAddress`: Replaced by the shared Unix filesystem-path address model.
 
 - `HttpServer.addressWith` -> `HttpServer.HttpServer.use(({ address }) => effect(address))`: The accessor was removed; read the service and pass its Address to the callback.
 
@@ -7378,13 +7384,25 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Socket.WebSocketConstructor` -> `Socket.WebSocketConstructor`: The service moved to effect/unstable/socket/Socket and is now a Context.Service class.
 
-- `Socket.currentSendQueueCapacity` -> `Socket.SendQueueCapacity`: The FiberRef was replaced by a defaulted Context.Reference.
+- `Socket.currentSendQueueCapacity` -> `none`: The send queue was removed. The v4 Socket is pull-based: acquire socket.reader in a scope and pull frame batches; writes apply the transport's native backpressure.
+
+- `Socket.defaultCloseCodeIsError` -> `none`: Sockets no longer classify close codes; every close fails the reader's pull with a SocketError wrapping SocketCloseError. Consumers that treat a close as normal catch the error.
+
+- `Socket.fromTransformStream` -> `Socket.fromTransformStream`: The constructor remains in effect/unstable/socket/Socket but drops closeCodeIsError; every close fails the reader's pull with a SocketError wrapping SocketCloseError.
 
 - `Socket.layerWebSocket` -> `Socket.layerWebSocket`: The constructor remains in effect/unstable/socket/Socket; its URL may now also be an Effect.
 
+- `Socket.toChannelMap` -> `none`: The v4 Socket read side is an Effect that never completes via Cause.Done; map frames by acquiring Socket.readerBytes or Socket.readerString, or Effect.map the reader from socket.reader, and use Socket.toChannel or Socket.toChannelString for duplex channels.
+
 ### `@effect/platform/SocketServer`
 
+- `SocketServer.Address` -> `effect/unstable/net/Net#SocketAddress`: Replaced by the shared concrete internet-or-Unix socket address union.
+
 - `SocketServer.ErrorTypeId` -> `SocketServer.ErrorTypeId`: The API moved to effect/unstable/socket/SocketServer and retains this name.
+
+- `SocketServer.TcpAddress` -> `effect/unstable/net/Net#InetAddress`: Replaced by the shared resolved internet-address model; use address and port instead of hostname and port.
+
+- `SocketServer.UnixAddress` -> `effect/unstable/net/Net#UnixPathAddress`: Replaced by the shared Unix filesystem-path address model.
 
 ### `@effect/platform/Template`
 
