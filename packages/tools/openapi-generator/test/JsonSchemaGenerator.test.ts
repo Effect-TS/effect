@@ -57,6 +57,59 @@ export const A = Schema.String.annotate({ "description": "desc", "examples": ["e
 `)
   })
 
+  const definitions = {
+    A: {
+      type: "object",
+      properties: { a: { type: "string" } },
+      required: ["a"]
+    },
+    B: {
+      type: "object",
+      properties: { b: { type: "string" } },
+      required: ["b"]
+    }
+  } as const
+
+  for (
+    const [keyword, expected] of [
+      ["oneOf", "Schema.Union(["],
+      ["anyOf", "Schema.Union(["],
+      ["allOf", "Schema.StructWithRest(Schema.Struct({ \"a\": Schema.String, \"b\": Schema.String })"]
+    ] as const
+  ) {
+    it(`preserves omitted additionalProperties with ${keyword}`, () => {
+      const generator = JsonSchemaGenerator.make()
+      generator.addSchema("Choice", {
+        type: "object",
+        [keyword]: [
+          { $ref: "#/components/schemas/A" },
+          { $ref: "#/components/schemas/B" }
+        ]
+      })
+
+      const result = generator.generate("openapi-3.1", definitions, false)
+
+      expect(result).toContain(expected)
+      expect(result).not.toContain("Schema.Never")
+    })
+  }
+
+  it("honors explicit additionalProperties false with oneOf", () => {
+    const generator = JsonSchemaGenerator.make()
+    generator.addSchema("Choice", {
+      type: "object",
+      additionalProperties: false,
+      oneOf: [
+        { $ref: "#/components/schemas/A" },
+        { $ref: "#/components/schemas/B" }
+      ]
+    })
+
+    const result = generator.generate("openapi-3.1", definitions, false)
+
+    expect(result).toContain("export const Choice = Schema.Never")
+  })
+
   it("generateHttpApi emits explicit type and const declarations", () => {
     const generator = JsonSchemaGenerator.make()
     generator.addSchema("A", { type: "string" })
