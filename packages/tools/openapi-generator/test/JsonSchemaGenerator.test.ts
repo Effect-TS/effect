@@ -70,11 +70,19 @@ export const A = Schema.String.annotate({ "description": "desc", "examples": ["e
     }
   } as const
 
+  const openA =
+    `Schema.StructWithRest(Schema.Struct({ "a": Schema.String }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])`
+  const openB =
+    `Schema.StructWithRest(Schema.Struct({ "b": Schema.String }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])`
+
   for (
     const [keyword, expected] of [
-      ["oneOf", "Schema.Union(["],
-      ["anyOf", "Schema.Union(["],
-      ["allOf", "Schema.StructWithRest(Schema.Struct({ \"a\": Schema.String, \"b\": Schema.String })"]
+      ["oneOf", `export const Choice = Schema.Union([${openA}, ${openB}], { mode: "oneOf" })`],
+      ["anyOf", `export const Choice = Schema.Union([${openA}, ${openB}])`],
+      [
+        "allOf",
+        `export const Choice = Schema.StructWithRest(Schema.Struct({ "a": Schema.String, "b": Schema.String }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])`
+      ]
     ] as const
   ) {
     it(`preserves omitted additionalProperties with ${keyword}`, () => {
@@ -90,7 +98,6 @@ export const A = Schema.String.annotate({ "description": "desc", "examples": ["e
       const result = generator.generate("openapi-3.1", definitions, false)
 
       expect(result).toContain(expected)
-      expect(result).not.toContain("Schema.Never")
     })
   }
 
@@ -107,6 +114,7 @@ export const A = Schema.String.annotate({ "description": "desc", "examples": ["e
 
     const result = generator.generate("openapi-3.1", definitions, false)
 
+    // The closed outer object forbids the properties required by both branches.
     expect(result).toContain("export const Choice = Schema.Never")
   })
 
