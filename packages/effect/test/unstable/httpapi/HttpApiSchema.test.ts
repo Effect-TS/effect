@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
+import { MediaType } from "effect/unstable/http"
 import { HttpApiSchema } from "effect/unstable/httpapi"
 
 const getStreamMetadata = (self: HttpApiSchema.StreamSchema) =>
@@ -61,6 +62,23 @@ describe("HttpApiSchema", () => {
       assert.strictEqual(stream.contentType, "text/event-stream; charset=utf-8")
     })
 
+    it("formats parsed content types", () => {
+      const events = Schema.Struct({
+        event: Schema.Literal("custom"),
+        data: Schema.String
+      })
+      const stream = HttpApiSchema.StreamSse({
+        contentType: MediaType.makeUnsafe({
+          type: "Text",
+          subtype: "Event-Stream",
+          parameters: { charset: "UTF-8" }
+        }),
+        events
+      })
+
+      assert.strictEqual(stream.contentType, "text/event-stream; charset=UTF-8")
+    })
+
     it("defaults the stream error schema to Never", () => {
       const events = Schema.Struct({
         event: Schema.Literal("custom"),
@@ -112,6 +130,22 @@ describe("HttpApiSchema", () => {
       })
 
       assert.strictEqual(stream.contentType, "application/custom-binary")
+    })
+
+    it("rejects invalid content types when constructed", () => {
+      assert.throws(
+        () => HttpApiSchema.StreamUint8Array({ contentType: "not a media type" }),
+        MediaType.MediaTypeParseError
+      )
+    })
+  })
+
+  describe("body encodings", () => {
+    it("rejects invalid content types when annotated", () => {
+      assert.throws(
+        () => Schema.String.pipe(HttpApiSchema.asText({ contentType: "not a media type" })),
+        MediaType.MediaTypeParseError
+      )
     })
   })
 

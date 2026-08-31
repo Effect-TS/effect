@@ -375,7 +375,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           addResponseAlternative(
             successAlternatives,
             HttpApiSchema.getStatusSuccessSchema(streamSuccess),
-            streamSchema.contentType,
+            MediaType.essence(HttpApiSchema.getEncodingMediaType(streamSchema)),
             streamToResponse(streamSuccess)
           )
         }
@@ -781,14 +781,11 @@ function addResponseAlternative(
   contentType: string,
   decode: ResponseDecoder
 ) {
-  const normalizedContentType = contentType === ""
-    ? ""
-    : MediaType.essence(MediaType.parseUnsafe(contentType))
   const alternatives = map.get(status)
   if (alternatives === undefined) {
-    map.set(status, [{ contentType: normalizedContentType, decode }])
+    map.set(status, [{ contentType, decode }])
   } else {
-    alternatives.push({ contentType: normalizedContentType, decode })
+    alternatives.push({ contentType, decode })
   }
 }
 
@@ -825,7 +822,7 @@ function groupSchemasByContentType(
     const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
     const contentType = HttpApiSchema.isNoContent(body.ast)
       ? ""
-      : MediaType.essence(MediaType.parseUnsafe(HttpApiSchema.getResponseEncodingSchema(schema).contentType))
+      : MediaType.essence(HttpApiSchema.getEncodingMediaType(HttpApiSchema.getResponseEncodingSchema(schema)))
     const existing = grouped.get(contentType)
     if (existing === undefined) {
       grouped.set(contentType, [schema])

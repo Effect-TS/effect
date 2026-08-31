@@ -1,5 +1,6 @@
 import { Schema } from "effect"
 import type * as Sse from "effect/unstable/encoding/Sse"
+import { MediaType } from "effect/unstable/http"
 import { HttpApiSchema } from "effect/unstable/httpapi"
 import { describe, expect, it } from "tstyche"
 
@@ -17,6 +18,13 @@ describe("HttpApiSchema", () => {
   })
 
   describe("StreamSse", () => {
+    it("accepts parsed content types", () => {
+      const Events = Schema.Struct({ event: Schema.String, data: Schema.String })
+      const stream = HttpApiSchema.StreamSse({ contentType: MediaType.textPlain, events: Events })
+
+      expect(stream).type.toBe<HttpApiSchema.StreamSse<typeof Events, Schema.Never>>()
+    })
+
     it("preserves event and error schemas", () => {
       const Events = Schema.Struct({
         event: Schema.Literal("user.created"),
@@ -114,6 +122,14 @@ describe("HttpApiSchema", () => {
         events: Schema.Struct({ event: Schema.String, data: Schema.Number }),
         error: Schema.String
       })
+    })
+  })
+
+  describe("body encodings", () => {
+    it("accepts parsed content types", () => {
+      const schema = Schema.String.pipe(HttpApiSchema.asText({ contentType: MediaType.textPlain }))
+
+      expect(schema).type.toBe<Schema.String>()
     })
   })
 

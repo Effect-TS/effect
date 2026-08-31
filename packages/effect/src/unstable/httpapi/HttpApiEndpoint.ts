@@ -1127,7 +1127,7 @@ function getPayload(
 
   for (const schema of schemas) {
     const encoding = HttpApiSchema.getPayloadEncoding(schema.ast, method)
-    const contentType = MediaType.essence(MediaType.parseUnsafe(encoding.contentType))
+    const contentType = MediaType.essence(HttpApiSchema.getEncodingMediaType(encoding))
     const existing = result.get(contentType)
     if (existing) {
       if (existing.encoding._tag !== encoding._tag) {
@@ -1205,7 +1205,7 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
       if (entry.noContent) {
         throw new Error(`Cannot combine no-content and streaming success responses for status: ${status}`)
       }
-      if (entry.bufferedContentTypes.has(MediaType.essence(MediaType.parseUnsafe(inner.contentType)))) {
+      if (entry.bufferedContentTypes.has(MediaType.essence(HttpApiSchema.getEncodingMediaType(inner)))) {
         throw new Error(
           `Cannot combine buffered and streaming success responses for status ${status} and content-type: ${inner.contentType}`
         )
@@ -1220,8 +1220,10 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
         }
         const encoding = HttpApiSchema.getResponseEncodingSchema(schema)
         if (
-          MediaType.essence(MediaType.parseUnsafe(encoding.contentType)) ===
-            MediaType.essence(MediaType.parseUnsafe(entry.stream.contentType))
+          MediaType.sameEssence(
+            HttpApiSchema.getEncodingMediaType(encoding),
+            HttpApiSchema.getEncodingMediaType(entry.stream)
+          )
         ) {
           throw new Error(
             `Cannot combine buffered and streaming success responses for status ${status} and content-type: ${encoding.contentType}`
@@ -1230,7 +1232,7 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
       }
       if (!noContent) {
         entry.bufferedContentTypes.add(
-          MediaType.essence(MediaType.parseUnsafe(HttpApiSchema.getResponseEncodingSchema(schema).contentType))
+          MediaType.essence(HttpApiSchema.getEncodingMediaType(HttpApiSchema.getResponseEncodingSchema(schema)))
         )
       }
       entry.noContent = entry.noContent || noContent
@@ -1270,10 +1272,8 @@ function validateResponseExclusivity(
     const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : withHeadersAnnotation?.body ?? schema
     const contentType = HttpApiSchema.isNoContent(body.ast)
       ? ""
-      : MediaType.essence(MediaType.parseUnsafe(
-        HttpApiSchema.isStreamSchema(body)
-          ? body.contentType
-          : HttpApiSchema.getResponseEncodingSchema(schema).contentType
+      : MediaType.essence(HttpApiSchema.getEncodingMediaType(
+        HttpApiSchema.isStreamSchema(body) ? body : HttpApiSchema.getResponseEncodingSchema(schema)
       ))
     let entry = statuses.get(status)
     if (entry === undefined) {

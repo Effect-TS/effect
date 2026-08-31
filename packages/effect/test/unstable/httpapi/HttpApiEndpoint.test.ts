@@ -45,6 +45,21 @@ describe("HttpApiEndpoint payload schemas", () => {
     assert.strictEqual(entry.encoding.contentType, contentType)
   })
 
+  it("accepts parsed content types and stores their canonical representation", () => {
+    const contentType = MediaType.makeUnsafe({
+      type: "Application",
+      subtype: "Vnd.Effect+JSON",
+      parameters: { charset: "UTF-8" }
+    })
+    const endpoint = HttpApiEndpoint.post("create", "/", {
+      payload: Schema.Struct({ name: Schema.String }).pipe(HttpApiSchema.asJson({ contentType }))
+    })
+
+    const entry = endpoint.payload.get("application/vnd.effect+json")
+    assert.isDefined(entry)
+    assert.strictEqual(entry.encoding.contentType, "application/vnd.effect+json; charset=UTF-8")
+  })
+
   it("rejects incompatible encodings for equivalent content types", () => {
     const JsonPayload = Schema.Struct({ name: Schema.String }).pipe(
       HttpApiSchema.asJson({ contentType: "Application/Vnd.Effect+Data; charset=utf-8" })
@@ -57,18 +72,6 @@ describe("HttpApiEndpoint payload schemas", () => {
       () => HttpApiEndpoint.post("create", "/", { payload: [JsonPayload, TextPayload] }),
       /Multiple payload encodings/
     )
-  })
-
-  it("rejects malformed declared content types", () => {
-    const Payload = Schema.String.pipe(HttpApiSchema.asText({ contentType: "not a media type" }))
-
-    let error: unknown
-    try {
-      HttpApiEndpoint.post("create", "/", { payload: Payload })
-    } catch (cause) {
-      error = cause
-    }
-    assert.instanceOf(error, MediaType.MediaTypeParseError)
   })
 })
 
