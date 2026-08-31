@@ -338,6 +338,10 @@ export class PersistedQueueError extends Schema.Error<PersistedQueueError>(
   readonly [ErrorTypeId]: ErrorTypeId = ErrorTypeId
 }
 
+// unreachable in practice: take always records the queue config before its
+// mailbox is created. Kept int32-safe for SQL parameters.
+const fallbackMaxAttempts = 2147483647
+
 // Internal signal used by the factory to tell a store that a taken element
 // cannot ever be processed (its stored payload fails to decode) and must be
 // dead-lettered instead of retried.
@@ -663,7 +667,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
       )
 
       yield* Effect.suspend(() => {
-        const maxAttempts = configs.get(name)?.maxAttempts ?? Number.MAX_SAFE_INTEGER
+        const maxAttempts = configs.get(name)?.maxAttempts ?? fallbackMaxAttempts
         return Effect.flatMap(Clock.currentTimeMillis, (now) =>
           resetQueue(
             queueKey,
@@ -768,16 +772,14 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
 
   return PersistedQueueStore.of({
     offer: ({ element, id, isCustomId, name }) =>
-      Effect.flatMap(Clock.currentTimeMillis, (now) =>
-        isCustomId
-          ? offer(
-            keyQueue(name),
-            keyIds(name),
-            id,
-            JSON.stringify({ id, element }),
-            now
-          )
-          : redis.send("RPUSH", keyQueue(name), JSON.stringify({ id, element }))).pipe(
+      (isCustomId
+        ? offer(
+          keyQueue(name),
+          keyIds(name),
+          id,
+          JSON.stringify({ id, element })
+        )
+        : redis.send("RPUSH", keyQueue(name), JSON.stringify({ id, element }))).pipe(
           Effect.mapError(({ cause }) =>
             new PersistedQueueError({
               message: "Failed to offer element to persisted queue",
@@ -799,7 +801,10 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
             if (takers.current === 1) {
               pollLatch.openUnsafe()
             }
-            return Effect.tap(restore(Queue.take(queue)), () =>
+            // onExit so the decrement also runs when a waiting take is
+            // interrupted, otherwise the poller keeps fetching for a phantom
+            // taker
+            return Effect.onExit(restore(Queue.take(queue)), () =>
               Effect.sync(() => {
                 takers.current--
                 if (takers.current === 0) {
@@ -909,16 +914,17 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
 })
 
 const offerRedis = Redis.script(
-  (...args: [keyQueue: string, keyIds: string, id: string, payload: string, now: number]) => args,
+  (...args: [keyQueue: string, keyIds: string, id: string, payload: string]) => args,
   {
     lua: `
 local key_queue = KEYS[1]
 local key_ids = KEYS[2]
 local id = ARGV[1]
 local payload = ARGV[2]
-local now = ARGV[3]
 
-local result = redis.call("ZADD", key_ids, "NX", now, id)
+-- park the dedupe entry outside the timeToLive trim range until the element
+-- completes, so unprocessed elements never lose dedupe protection
+local result = redis.call("ZADD", key_ids, "NX", "+inf", id)
 if result == 1 then
   redis.call("RPUSH", key_queue, payload)
 end
@@ -1163,12 +1169,16 @@ while removed < 1000 do
   local head = redis.call("LINDEX", key_failed, 0)
   if not head then break end
   local ok, decoded = pcall(cjson.decode, head)
-  if not ok then break end
-  local failed_at = tonumber(decoded.failedAt)
-  if failed_at == nil or failed_at >= cutoff then break end
-  redis.call("LPOP", key_failed)
-  if decoded.id ~= nil then
-    redis.call("ZREM", key_ids, decoded.id)
+  if ok then
+    local failed_at = tonumber(decoded.failedAt)
+    if failed_at ~= nil and failed_at >= cutoff then break end
+    redis.call("LPOP", key_failed)
+    if decoded.id ~= nil then
+      redis.call("ZREM", key_ids, decoded.id)
+    end
+  else
+    -- a corrupt head would otherwise block trimming of the whole list
+    redis.call("LPOP", key_failed)
   end
   removed = removed + 1
 end
@@ -1297,11 +1307,12 @@ export const makeStoreSql: (
       `,
     mssql: () => (id: string, name: string, element: string) =>
       sql`
-        IF NOT EXISTS (SELECT 1 FROM ${tableNameSql} WHERE id = ${id} AND queue_name = ${name})
-        BEGIN
-          INSERT INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
-          VALUES (${id}, ${name}, ${element}, 'pending', 0, ${sqlNow}, ${sqlNow}, ${sqlNow})
-        END
+        MERGE ${tableNameSql} WITH (HOLDLOCK) AS target
+        USING (SELECT ${id} AS id, ${name} AS queue_name) AS source
+        ON target.id = source.id AND target.queue_name = source.queue_name
+        WHEN NOT MATCHED THEN
+          INSERT (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
+          VALUES (source.id, source.queue_name, ${element}, 'pending', 0, ${sqlNow}, ${sqlNow}, ${sqlNow});
       `,
     // sqlite
     orElse: () => (id: string, name: string, element: string) =>
@@ -1413,7 +1424,7 @@ export const makeStoreSql: (
   }
   const mailboxes = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(name: string) {
-      const maxAttempts = configs.get(name)?.maxAttempts ?? 2147483647
+      const maxAttempts = configs.get(name)?.maxAttempts ?? fallbackMaxAttempts
       const queue = yield* Queue.make<Element>()
       const takers = MutableRef.make(0)
       const pollLatch = Latch.makeUnsafe()
@@ -1645,7 +1656,10 @@ export const makeStoreSql: (
             if (takers.current === 1) {
               pollLatch.openUnsafe()
             }
-            return Effect.tap(restore(Queue.take(queue)), () =>
+            // onExit so the decrement also runs when a waiting take is
+            // interrupted, otherwise the poller keeps fetching for a phantom
+            // taker
+            return Effect.onExit(restore(Queue.take(queue)), () =>
               Effect.sync(() => {
                 takers.current--
                 if (takers.current === 0) {

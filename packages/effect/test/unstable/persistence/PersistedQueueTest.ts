@@ -306,6 +306,32 @@ export const suiteWith = <R>(
         yield* TestClock.adjust(1000)
         assert.deepStrictEqual(yield* Fiber.join(fiber), { n: 3n })
       }), { timeout: 20000 })
+
+    it.effect("cleanup keeps dedupe entries for unprocessed elements", () =>
+      Effect.gen(function*() {
+        const store = yield* PersistedQueue.PersistedQueueStore
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-cleanup-pending",
+          schema: Item
+        })
+
+        yield* queue.offer({ n: 1n }, { id: "pending-cleanup-id" })
+
+        // an element older than the ttl that was never processed keeps its
+        // dedupe entry, so the re-offer does not enqueue a duplicate
+        yield* TestClock.adjust("2 minutes")
+        yield* Effect.sleep(1500).pipe(TestClock.withLive)
+        yield* store.cleanup({ timeToLive: Duration.seconds(1), failedTimeToLive: undefined })
+        yield* queue.offer({ n: 2n }, { id: "pending-cleanup-id" })
+
+        const value = yield* queue.take(Effect.succeed)
+        assert.deepStrictEqual(value, { n: 1n })
+
+        const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        yield* TestClock.adjust(1000)
+        yield* Effect.sleep(1000).pipe(TestClock.withLive)
+        assert.isUndefined(fiber.pollUnsafe())
+      }), { timeout: 20000 })
   })
 
 const Item = Schema.Struct({
