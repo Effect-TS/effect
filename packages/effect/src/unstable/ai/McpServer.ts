@@ -23,7 +23,7 @@ import * as Predicate from "../../Predicate.ts"
 import * as PubSub from "../../PubSub.ts"
 import * as Queue from "../../Queue.ts"
 import * as RcMap from "../../RcMap.ts"
-import { CurrentLogLevel } from "../../References.ts"
+import { CurrentLogLevel, Scheduler } from "../../References.ts"
 import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
@@ -325,31 +325,34 @@ export class McpServer extends Context.Service<McpServer, {
       readonly annotations: Context.Context<never>
     }> = []
     const notificationsQueue = yield* Queue.make<QueuedServerNotification>()
-    const pendingListChanged = new Set<string>()
+    const listChangedHandles = new Map<string, any>()
+    const dispatcher = (yield* Scheduler).makeDispatcher()
     const notifications = yield* RpcClient.makeNoSerialization(BroadcastServerNotificationRpcs, {
       spanPrefix: "McpServer/Notifications",
-      onFromClient: (options): Effect.Effect<void> =>
-        Effect.gen(function*() {
+      onFromClient: (options) =>
+        Effect.suspend((): Effect.Effect<void> => {
           const message = options.message
           if (message._tag !== "Request") {
-            return
+            return Effect.void
           }
           const notification = toInternalServerNotification(message)
           if (notification === undefined) {
-            return
+            return Effect.void
           }
           if (message.tag.includes("list_changed")) {
-            if (!pendingListChanged.has(message.tag)) {
-              pendingListChanged.add(message.tag)
-              yield* Queue.offer(notificationsQueue, { notification }).pipe(
-                Effect.ensuring(Effect.sync(() => pendingListChanged.delete(message.tag))),
-                Effect.forkDetach
+            if (!listChangedHandles.has(message.tag)) {
+              listChangedHandles.set(
+                message.tag,
+                dispatcher.scheduleTask(() => {
+                  Queue.offerUnsafe(notificationsQueue, { notification })
+                  listChangedHandles.delete(message.tag)
+                }, 0)
               )
             }
           } else {
-            yield* Queue.offer(notificationsQueue, { notification })
+            Queue.offerUnsafe(notificationsQueue, { notification })
           }
-          yield* notifications.write({
+          return notifications.write({
             clientId: 0,
             requestId: message.id,
             _tag: "Exit",
