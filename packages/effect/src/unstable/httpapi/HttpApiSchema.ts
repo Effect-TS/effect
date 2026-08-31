@@ -70,12 +70,12 @@ export type PayloadEncoding =
   | {
     readonly _tag: "Multipart"
     readonly mode: "buffered" | "stream"
-    readonly contentType: string
+    readonly contentType: MediaType.MediaType
     readonly limits?: Multipart_.withLimits.Options | undefined
   }
   | {
     readonly _tag: "Json" | "FormUrlEncoded" | "Uint8Array" | "Text"
-    readonly contentType: string
+    readonly contentType: MediaType.MediaType
   }
 
 /**
@@ -86,28 +86,11 @@ export type PayloadEncoding =
  */
 export type ResponseEncoding = {
   readonly _tag: "Json" | "FormUrlEncoded" | "Uint8Array" | "Text"
-  readonly contentType: string
+  readonly contentType: MediaType.MediaType
 }
 
 const StreamSchemaTypeId = "~effect/httpapi/HttpApiSchema/Stream"
-const MediaTypeSymbol = Symbol()
 const textEventStreamMediaType = MediaType.makeUnsafe({ type: "text", subtype: "event-stream" })
-
-interface HasMediaType {
-  readonly contentType: string
-  readonly [MediaTypeSymbol]: MediaType.MediaType
-}
-
-const withMediaType = <A extends object>(
-  fields: A,
-  mediaType: MediaType.MediaType
-): A & HasMediaType => {
-  return {
-    ...fields,
-    contentType: MediaType.format(mediaType),
-    [MediaTypeSymbol]: mediaType
-  }
-}
 
 /**
  * Common HTTP status code literals accepted by {@link status}.
@@ -292,7 +275,7 @@ export interface StreamSse<
   readonly _tag: "StreamSse"
   readonly mode: "sse"
   readonly sseMode: StreamSseMode
-  readonly contentType: string
+  readonly contentType: MediaType.MediaType
   readonly events: Events
   readonly error: Error
   readonly "~Value"?: Value | undefined
@@ -347,7 +330,7 @@ export interface StreamUint8Array extends
   readonly [StreamSchemaTypeId]: typeof StreamSchemaTypeId
   readonly _tag: "StreamUint8Array"
   readonly mode: "uint8array"
-  readonly contentType: string
+  readonly contentType: MediaType.MediaType
 }
 
 /**
@@ -393,14 +376,15 @@ export const StreamSse: {
   }
   return Schema.make<StreamSse<Sse.EventCodec, Schema.Top, unknown>>(
     streamSchema.ast,
-    withMediaType({
+    {
       [StreamSchemaTypeId]: StreamSchemaTypeId,
       _tag: "StreamSse",
       mode: "sse",
       sseMode: options.events === undefined ? "data" : "events",
+      contentType: options.contentType ?? defaultStreamMediaType("sse"),
       events,
       error: options.error ?? Schema.Never
-    }, options.contentType ?? defaultStreamMediaType("sse"))
+    }
   )
 }
 
@@ -415,11 +399,12 @@ export const StreamUint8Array = (options?: {
 }): StreamUint8Array =>
   Schema.make<StreamUint8Array>(
     streamSchema.ast,
-    withMediaType({
+    {
       [StreamSchemaTypeId]: StreamSchemaTypeId,
       _tag: "StreamUint8Array",
-      mode: "uint8array"
-    }, options?.contentType ?? defaultStreamMediaType("uint8array"))
+      mode: "uint8array",
+      contentType: options?.contentType ?? defaultStreamMediaType("uint8array")
+    }
   )
 
 /** @internal */
@@ -799,11 +784,12 @@ export interface asMultipart<S extends Schema.Top> extends Schema.brand<S["Rebui
 export function asMultipart(options?: Multipart_.withLimits.Options) {
   return <S extends Schema.Top>(self: S): asMultipart<S> =>
     self.pipe(Schema.brand(MultipartTypeId)).annotate({
-      "~httpApiEncoding": withMediaType({
-        _tag: "Multipart" as const,
-        mode: "buffered" as const,
+      "~httpApiEncoding": {
+        _tag: "Multipart",
+        mode: "buffered",
+        contentType: MediaType.multipartFormData,
         limits: options
-      }, MediaType.multipartFormData)
+      }
     })
 }
 
@@ -842,11 +828,12 @@ export interface asMultipartStream<S extends Schema.Top> extends Schema.brand<S[
 export function asMultipartStream(options?: Multipart_.withLimits.Options) {
   return <S extends Schema.Top>(self: S): asMultipartStream<S> =>
     self.pipe(Schema.brand(MultipartStreamTypeId)).annotate({
-      "~httpApiEncoding": withMediaType({
-        _tag: "Multipart" as const,
-        mode: "stream" as const,
+      "~httpApiEncoding": {
+        _tag: "Multipart",
+        mode: "stream",
+        contentType: MediaType.multipartFormData,
         limits: options
-      }, MediaType.multipartFormData)
+      }
     })
 }
 
@@ -855,9 +842,10 @@ function asNonMultipartEncoding<S extends Schema.Top>(self: S, options: {
   readonly contentType?: MediaType.MediaType | undefined
 }): S["Rebuild"] {
   return self.annotate({
-    "~httpApiEncoding": withMediaType({
-      _tag: options._tag
-    }, options.contentType ?? defaultMediaType(options._tag))
+    "~httpApiEncoding": {
+      _tag: options._tag,
+      contentType: options.contentType ?? defaultMediaType(options._tag)
+    }
   })
 }
 
@@ -966,17 +954,10 @@ export const getWithHeadersAnnotation = SchemaAST.resolveAt<WithHeadersAnnotatio
 
 const resolveHttpApiStatus = SchemaAST.resolveAt<number>("httpApiStatus")
 
-const defaultJsonEncoding: Encoding = withMediaType({ _tag: "Json" }, MediaType.applicationJson)
-const defaultUrlEncodedEncoding: Encoding = withMediaType(
-  { _tag: "FormUrlEncoded" },
-  MediaType.applicationFormUrlEncoded
-)
-
-/** @internal */
-export function getEncodingMediaType(self: Encoding | StreamSchema): MediaType.MediaType {
-  const mediaType = (self as Partial<HasMediaType>)[MediaTypeSymbol]
-  if (mediaType === undefined) throw new Error("Missing parsed content-type metadata")
-  return mediaType
+const defaultJsonEncoding: Encoding = { _tag: "Json", contentType: MediaType.applicationJson }
+const defaultUrlEncodedEncoding: Encoding = {
+  _tag: "FormUrlEncoded",
+  contentType: MediaType.applicationFormUrlEncoded
 }
 
 function getEncoding(ast: SchemaAST.AST): Encoding {

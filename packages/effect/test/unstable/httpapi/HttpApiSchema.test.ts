@@ -33,13 +33,13 @@ describe("HttpApiSchema", () => {
       assert.isFalse(HttpApiSchema.isStreamUint8Array(stream))
       assert.strictEqual(stream.mode, "sse")
       assert.strictEqual(stream.sseMode, "events")
-      assert.strictEqual(stream.contentType, "text/event-stream")
+      assert.strictEqual(MediaType.format(stream.contentType), "text/event-stream")
       assert.strictEqual(stream.events, events)
       assert.strictEqual(stream.error, error)
 
       const metadata = getStreamMetadata(stream)
       assert.strictEqual(metadata.mode, "sse")
-      assert.strictEqual(metadata.contentType, "text/event-stream")
+      assert.strictEqual(metadata.contentType, stream.contentType)
       if (metadata.mode === "sse") {
         assert.strictEqual(metadata.sseMode, "events")
         assert.strictEqual(metadata.events, events)
@@ -47,21 +47,22 @@ describe("HttpApiSchema", () => {
       }
     })
 
-    it("formats parsed content types", () => {
+    it("stores parsed content types", () => {
       const events = Schema.Struct({
         event: Schema.Literal("custom"),
         data: Schema.String
       })
+      const contentType = MediaType.makeUnsafe({
+        type: "Text",
+        subtype: "Event-Stream",
+        parameters: { charset: "UTF-8" }
+      })
       const stream = HttpApiSchema.StreamSse({
-        contentType: MediaType.makeUnsafe({
-          type: "Text",
-          subtype: "Event-Stream",
-          parameters: { charset: "UTF-8" }
-        }),
+        contentType,
         events
       })
 
-      assert.strictEqual(stream.contentType, "text/event-stream; charset=UTF-8")
+      assert.strictEqual(stream.contentType, contentType)
     })
 
     it("defaults the stream error schema to Never", () => {
@@ -102,19 +103,18 @@ describe("HttpApiSchema", () => {
       assert.isFalse(HttpApiSchema.isStreamSse(stream))
       assert.isTrue(HttpApiSchema.isStreamUint8Array(stream))
       assert.strictEqual(stream.mode, "uint8array")
-      assert.strictEqual(stream.contentType, "application/octet-stream")
+      assert.strictEqual(stream.contentType, MediaType.applicationOctetStream)
       assert.deepStrictEqual(getStreamMetadata(stream), {
         mode: "uint8array",
-        contentType: "application/octet-stream"
+        contentType: MediaType.applicationOctetStream
       })
     })
 
     it("stores custom content type", () => {
-      const stream = HttpApiSchema.StreamUint8Array({
-        contentType: MediaType.makeUnsafe({ type: "application", subtype: "custom-binary" })
-      })
+      const contentType = MediaType.makeUnsafe({ type: "application", subtype: "custom-binary" })
+      const stream = HttpApiSchema.StreamUint8Array({ contentType })
 
-      assert.strictEqual(stream.contentType, "application/custom-binary")
+      assert.strictEqual(stream.contentType, contentType)
     })
   })
 
@@ -195,16 +195,10 @@ describe("HttpApiSchema", () => {
       const onInner = HttpApiSchema.WithHeaders(Schema.String.pipe(HttpApiSchema.asText()), headers)
       assert.strictEqual(HttpApiSchema.getResponseEncodingSchema(onInner)._tag, "Text")
 
-      const onWrapper = HttpApiSchema.WithHeaders(Schema.String, headers).pipe(
-        HttpApiSchema.asJson({
-          contentType: MediaType.makeUnsafe({ type: "application", subtype: "vnd.custom+json" })
-        })
-      )
+      const contentType = MediaType.makeUnsafe({ type: "application", subtype: "vnd.custom+json" })
+      const onWrapper = HttpApiSchema.WithHeaders(Schema.String, headers).pipe(HttpApiSchema.asJson({ contentType }))
       assert.isTrue(HttpApiSchema.isWithHeaders(onWrapper))
-      assert.strictEqual(
-        HttpApiSchema.getResponseEncodingSchema(onWrapper).contentType,
-        "application/vnd.custom+json"
-      )
+      assert.strictEqual(HttpApiSchema.getResponseEncodingSchema(onWrapper).contentType, contentType)
 
       const onNeither = HttpApiSchema.WithHeaders(Schema.String, headers)
       assert.strictEqual(HttpApiSchema.getResponseEncodingSchema(onNeither)._tag, "Json")

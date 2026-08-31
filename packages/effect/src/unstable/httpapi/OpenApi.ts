@@ -24,6 +24,7 @@ import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import * as HttpMethod from "../http/HttpMethod.ts"
+import * as MediaType from "../http/MediaType.ts"
 import * as HttpApi from "./HttpApi.ts"
 import * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
 import type * as HttpApiGroup from "./HttpApiGroup.ts"
@@ -572,9 +573,10 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         for (const schema of HttpApiEndpoint.getPayloadSchemas(endpoint)) {
           if (HttpApiSchema.isNoContent(schema.ast)) continue
           const encoding = HttpApiSchema.getPayloadEncoding(schema.ast, endpoint.method)
-          const existing = schemasByContentType.get(encoding.contentType)
+          const contentType = MediaType.format(encoding.contentType)
+          const existing = schemasByContentType.get(contentType)
           if (existing === undefined) {
-            schemasByContentType.set(encoding.contentType, { encoding, schemas: [schema] })
+            schemasByContentType.set(contentType, { encoding, schemas: [schema] })
           } else {
             existing.schemas.push(schema)
           }
@@ -799,7 +801,8 @@ function extractResponseBodies(
     description: string | undefined
   ) {
     const statusMap = map.get(status)
-    const { _tag, contentType } = encoding
+    const { _tag } = encoding
+    const contentType = MediaType.format(encoding.contentType)
     if (statusMap === undefined) {
       map.set(status, {
         descriptions: new Set(description !== undefined ? [description] : []),
@@ -835,19 +838,20 @@ function extractResponseBodies(
     stream: HttpApiSchema.StreamSchema,
     status: number
   ) {
+    const contentType = MediaType.format(stream.contentType)
     const statusMap = map.get(status)
     if (statusMap === undefined) {
       map.set(status, {
         descriptions: new Set(),
         content: undefined,
         headers: [],
-        streamContent: new Map([[stream.contentType, stream]])
+        streamContent: new Map([[contentType, stream]])
       })
     } else {
       if (statusMap.streamContent === undefined) {
-        statusMap.streamContent = new Map([[stream.contentType, stream]])
+        statusMap.streamContent = new Map([[contentType, stream]])
       } else {
-        statusMap.streamContent.set(stream.contentType, stream)
+        statusMap.streamContent.set(contentType, stream)
       }
     }
   }

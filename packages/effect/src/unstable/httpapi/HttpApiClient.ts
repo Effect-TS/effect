@@ -375,7 +375,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           addResponseAlternative(
             successAlternatives,
             HttpApiSchema.getStatusSuccessSchema(streamSuccess),
-            MediaType.essence(HttpApiSchema.getEncodingMediaType(streamSchema)),
+            MediaType.essence(streamSchema.contentType),
             streamToResponse(streamSuccess)
           )
         }
@@ -822,7 +822,7 @@ function groupSchemasByContentType(
     const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
     const contentType = HttpApiSchema.isNoContent(body.ast)
       ? ""
-      : MediaType.essence(HttpApiSchema.getEncodingMediaType(HttpApiSchema.getResponseEncodingSchema(schema)))
+      : MediaType.essence(HttpApiSchema.getResponseEncodingSchema(schema).contentType)
     const existing = grouped.get(contentType)
     if (existing === undefined) {
       grouped.set(contentType, [schema])
@@ -1094,7 +1094,7 @@ function getEncodePayloadSchemaFromBody(
           case "Json": {
             try {
               const body = JSON.stringify(t)
-              return Effect.succeed(HttpBody.text(body, encoding.contentType))
+              return Effect.succeed(HttpBody.text(body, MediaType.format(encoding.contentType)))
             } catch {
               return Effect.fail(
                 new SchemaIssue.InvalidValue(
@@ -1111,7 +1111,7 @@ function getEncodePayloadSchemaFromBody(
                 new SchemaIssue.InvalidValue({ message: "Expected a string" }, t, options)
               )
             }
-            return Effect.succeed(HttpBody.text(t, encoding.contentType))
+            return Effect.succeed(HttpBody.text(t, MediaType.format(encoding.contentType)))
           }
           case "FormUrlEncoded": {
             if (!Predicate.isObject(t)) {
@@ -1119,7 +1119,10 @@ function getEncodePayloadSchemaFromBody(
                 new SchemaIssue.InvalidValue({ message: "Expected a record" }, t, options)
               )
             }
-            return Effect.succeed(HttpBody.urlParams(UrlParams.fromInput(t as any), encoding.contentType))
+            return Effect.succeed(HttpBody.urlParams(
+              UrlParams.fromInput(t as any),
+              MediaType.format(encoding.contentType)
+            ))
           }
           case "Uint8Array": {
             if (!(t instanceof Uint8Array)) {
@@ -1131,7 +1134,7 @@ function getEncodePayloadSchemaFromBody(
                 )
               )
             }
-            return Effect.succeed(HttpBody.uint8Array(t, encoding.contentType))
+            return Effect.succeed(HttpBody.uint8Array(t, MediaType.format(encoding.contentType)))
           }
         }
       }

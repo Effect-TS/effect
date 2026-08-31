@@ -47,7 +47,7 @@ describe("HttpApiEndpoint payload schemas", () => {
 
     const entry = endpoint.payload.get("application/vnd.effect+json")
     assert.isDefined(entry)
-    assert.strictEqual(entry.encoding.contentType, "application/vnd.effect+json; charset=UTF-8")
+    assert.strictEqual(entry.encoding.contentType, contentType)
   })
 
   it("rejects incompatible encodings for equivalent content types", () => {

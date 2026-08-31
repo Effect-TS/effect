@@ -224,7 +224,7 @@ describe("HttpApiSchema", () => {
 
       expect(stream).type.toBe<HttpApiSchema.StreamUint8Array>()
       expect(stream.mode).type.toBe<"uint8array">()
-      expect(stream.contentType).type.toBe<string>()
+      expect(stream.contentType).type.toBe<MediaType.MediaType>()
     })
 
     it("preserves the stream schema type when annotated with status", () => {

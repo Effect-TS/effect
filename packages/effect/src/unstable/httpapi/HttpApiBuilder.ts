@@ -983,7 +983,7 @@ function makeStreamEncoder(endpoint: HttpApiEndpoint.Top): StreamEncoder | undef
 
   const hasBuffered = hasBufferedSuccess(endpoint)
   const status = HttpApiSchema.getStatusStream(streamSchema)
-  const contentType = streamSchema.contentType
+  const contentType = MediaType.format(streamSchema.contentType)
 
   if (HttpApiSchema.isStreamUint8Array(streamSchema)) {
     return (response, context) => {
@@ -1223,6 +1223,7 @@ function getResponseEncode<E>(
   e: E,
   options?: SchemaAST.ParseOptions
 ) => Effect.Effect<Response.HttpServerResponse, SchemaIssue.InvalidValue, never> {
+  const contentType = MediaType.format(encoding.contentType)
   switch (encoding._tag) {
     case "Json": {
       return ((e, options) => {
@@ -1231,7 +1232,7 @@ function getResponseEncode<E>(
         }
         try {
           const s = JSON.stringify(e)
-          return Effect.succeed(Response.text(s, { status, contentType: encoding.contentType }))
+          return Effect.succeed(Response.text(s, { status, contentType }))
         } catch {
           return Effect.fail(
             new SchemaIssue.InvalidValue(
@@ -1247,19 +1248,19 @@ function getResponseEncode<E>(
       return (e) =>
         Effect.succeed(Response.text(e as string, {
           status,
-          contentType: encoding.contentType
+          contentType
         }))
     case "Uint8Array":
       return (e) =>
         Effect.succeed(Response.uint8Array(e as Uint8Array, {
           status,
-          contentType: encoding.contentType
+          contentType
         }))
     case "FormUrlEncoded":
       return (e) =>
         Effect.succeed(
           Response.urlParams(e as URLSearchParams, { status }).pipe(
-            Response.setHeader("content-type", encoding.contentType)
+            Response.setHeader("content-type", contentType)
           )
         )
   }
