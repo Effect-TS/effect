@@ -18,6 +18,8 @@
  */
 import * as Data from "effect/Data"
 import * as Result from "effect/Result"
+import * as IpNetwork from "effect/unstable/net/IpNetwork"
+import * as NetAddress from "effect/unstable/net/NetAddress"
 import type * as PgProtocol from "./PgProtocol.ts"
 import type { ValueSink } from "./PgProtocol.ts"
 
@@ -738,20 +740,24 @@ const formatIPv6 = (bytes: Uint8Array, offset: number): string => {
   return `${head}::${tail}`
 }
 
-const hasHostBits = (bytes: Uint8Array, offset: number, length: number, bits: number): boolean => {
-  const wholeBytes = Math.floor(bits / 8)
-  const partialBits = bits % 8
-  if (partialBits !== 0 && (bytes[offset + wholeBytes] & ((1 << (8 - partialBits)) - 1)) !== 0) {
-    return true
-  }
-  for (let index = wholeBytes + (partialBits === 0 ? 0 : 1); index < length; index++) {
-    if (bytes[offset + index] !== 0) return true
-  }
-  return false
-}
-
 const encodeInet = (value: unknown, isCidr: boolean): Uint8Array => {
   const text = requireString(value, isCidr ? "cidr" : "inet")
+  if (isCidr) {
+    const parsed = IpNetwork.fromString(text)
+    if (Result.isFailure(parsed)) return fail(parsed.failure.message)
+    const network = parsed.success
+    const address = network.address
+    const octets = NetAddress.isIpv4Address(address)
+      ? NetAddress.ipv4ToOctets(address)
+      : NetAddress.ipv6ToOctets(address)
+    const result = new Uint8Array(4 + octets.length)
+    result[0] = NetAddress.isIpv4Address(address) ? PGSQL_AF_INET : PGSQL_AF_INET6
+    result[1] = network.prefixLength
+    result[2] = 1
+    result[3] = octets.length
+    result.set(octets, 4)
+    return result
+  }
   const slash = text.lastIndexOf("/")
   const address = slash === -1 ? text : text.slice(0, slash)
   const v4 = parseIPv4(address)
@@ -763,9 +769,6 @@ const encodeInet = (value: unknown, isCidr: boolean): Uint8Array => {
   const bits = slash === -1 ? fullBits : Number(text.slice(slash + 1))
   if (!Number.isInteger(bits) || bits < 0 || bits > fullBits) {
     return fail(`Invalid netmask length in "${text}"`)
-  }
-  if (isCidr && hasHostBits(bytes, 0, bytes.length, bits)) {
-    return fail(`CIDR address has host bits set in "${text}"`)
   }
   const result = new Uint8Array(4 + bytes.length)
   result[0] = v4 === undefined ? PGSQL_AF_INET6 : PGSQL_AF_INET
@@ -790,11 +793,37 @@ const decodeInet = (bytes: Uint8Array, offset: number, size: number): string => 
   }
   requireSize(size, 4 + addressSize, "inet")
   if (bits > addressSize * 8) return fail(`Invalid inet netmask length: ${bits}`)
-  if (isCidr && hasHostBits(bytes, offset + 4, addressSize, bits)) {
-    return fail("CIDR address has host bits set")
+  if (isCidr) {
+    let address: NetAddress.IpAddress
+    if (family === PGSQL_AF_INET) {
+      const parsed = NetAddress.ipv4FromOctets(
+        bytes[offset + 4],
+        bytes[offset + 5],
+        bytes[offset + 6],
+        bytes[offset + 7]
+      )
+      if (Result.isFailure(parsed)) return fail(parsed.failure.message)
+      address = parsed.success
+    } else {
+      const parsed = NetAddress.ipv6FromSegments(
+        readUint16(bytes, offset + 4),
+        readUint16(bytes, offset + 6),
+        readUint16(bytes, offset + 8),
+        readUint16(bytes, offset + 10),
+        readUint16(bytes, offset + 12),
+        readUint16(bytes, offset + 14),
+        readUint16(bytes, offset + 16),
+        readUint16(bytes, offset + 18)
+      )
+      if (Result.isFailure(parsed)) return fail(parsed.failure.message)
+      address = parsed.success
+    }
+    const network = IpNetwork.make(address, bits)
+    if (Result.isFailure(network)) return fail(network.failure.message)
+    return IpNetwork.format(network.success)
   }
   const text = family === PGSQL_AF_INET ? formatIPv4(bytes, offset + 4) : formatIPv6(bytes, offset + 4)
-  return isCidr || bits !== addressSize * 8 ? `${text}/${bits}` : text
+  return bits !== addressSize * 8 ? `${text}/${bits}` : text
 }
 
 // -----------------------------------------------------------------------------

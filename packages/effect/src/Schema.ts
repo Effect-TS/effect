@@ -67,6 +67,7 @@ import type { Assign, Lambda, Mutable, Simplify } from "./Struct.ts"
 import * as Struct_ from "./Struct.ts"
 import type { RequiredKeys, UnionToIntersection } from "./Types.ts"
 import type { Unify } from "./Unify.ts"
+import * as IpNetwork_ from "./unstable/net/IpNetwork.ts"
 import * as NetAddress_ from "./unstable/net/NetAddress.ts"
 
 const TypeId = InternalSchema.TypeId
@@ -12049,9 +12050,9 @@ export interface Duration extends declare<Duration_.Duration> {
   readonly "Rebuild": Duration
 }
 
-const netAddressFromString = <A>(
+const netAddressFromString = <A, E extends { readonly message: string }>(
   declaration: declare<A>,
-  parse: (input: string) => Result_.Result<A, NetAddress_.NetAddressError>,
+  parse: (input: string) => Result_.Result<A, E>,
   encode: (value: A) => string
 ) =>
   String.pipe(decodeTo(
@@ -12146,6 +12147,62 @@ export const IpAddressFromString = netAddressFromString(
   NetAddress_.ipFromString,
   NetAddress_.formatIp
 )
+
+/**
+ * Schema for already-constructed canonical IPv4 network prefixes.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv4Network: declare<IpNetwork_.Ipv4Network> = declare(IpNetwork_.isIpv4Network)
+
+/**
+ * Schema for canonical IPv4 network prefixes encoded in CIDR notation.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv4NetworkFromString = netAddressFromString(
+  Ipv4Network,
+  IpNetwork_.ipv4FromString,
+  IpNetwork_.format
+)
+
+/**
+ * Schema for already-constructed canonical IPv6 network prefixes.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv6Network: declare<IpNetwork_.Ipv6Network> = declare(IpNetwork_.isIpv6Network)
+
+/**
+ * Schema for canonical IPv6 network prefixes encoded in CIDR notation.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Ipv6NetworkFromString = netAddressFromString(
+  Ipv6Network,
+  IpNetwork_.ipv6FromString,
+  IpNetwork_.format
+)
+
+/**
+ * Schema for already-constructed canonical IPv4 or IPv6 network prefixes.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const IpNetwork: declare<IpNetwork_.IpNetwork> = declare(IpNetwork_.isIpNetwork)
+
+/**
+ * Schema for canonical IPv4 or IPv6 network prefixes encoded in CIDR notation.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const IpNetworkFromString = netAddressFromString(IpNetwork, IpNetwork_.fromString, IpNetwork_.format)
 
 /**
  * Schema for already-constructed resolved IPv4 internet addresses.
