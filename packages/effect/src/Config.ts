@@ -1371,7 +1371,7 @@ export function Duration(name?: string) {
  * @since 4.0.0
  */
 export function ByteSize(name?: string) {
-  return schema(Schema.ByteSizeFromString, name)
+  return schema(Schema.ByteSize, name)
 }
 
 /**

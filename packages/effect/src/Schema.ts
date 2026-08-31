@@ -12247,8 +12247,9 @@ export interface ByteSize extends declare<ByteSize_.ByteSize> {
  *
  * **Details**
  *
- * The JSON codec uses a bigint string, preserving values beyond JavaScript's
- * safe-integer range.
+ * The JSON codec encodes the byte count as a bigint string, preserving values
+ * beyond JavaScript's safe-integer range. The StringTree codec uses the
+ * human-readable byte-size syntax exposed by {@link ByteSizeFromString}.
  *
  * @category schemas
  * @since 4.0.0
@@ -12273,6 +12274,11 @@ export const ByteSize: ByteSize = declare(
           decode: ByteSize_.bytes,
           encode: ByteSize_.toBigInt
         })
+      ),
+    toCodecStringTree: () =>
+      link<ByteSize_.ByteSize>()(
+        ByteSizeString,
+        SchemaTransformation.byteSizeFromString
       )
   }
 )
