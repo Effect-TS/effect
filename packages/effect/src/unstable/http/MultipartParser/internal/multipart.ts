@@ -1,3 +1,4 @@
+import * as Option from "../../../../Option.ts"
 import * as Result from "../../../../Result.ts"
 import * as MediaType from "../../MediaType.ts"
 import type { Config, MultipartError, PartInfo } from "../../MultipartParser.ts"
@@ -37,12 +38,9 @@ export function defaultIsFile(info: PartInfo) {
 }
 
 function parseBoundary(headers: Record<string, string>) {
-  const contentType = MediaType.parse(headers["content-type"] ?? "")
-  return Result.isSuccess(contentType)
-    ? MediaType.getParameter(contentType.success, "boundary").pipe((option) =>
-      option._tag === "Some" ? option.value : undefined
-    )
-    : undefined
+  const contentType = Result.getOrUndefined(MediaType.parse(headers["content-type"] ?? ""))
+  if (contentType === undefined) return undefined
+  return Option.getOrUndefined(MediaType.getParameter(contentType, "boundary"))
 }
 
 function noopOnChunk(_chunk: Uint8Array | null) {}

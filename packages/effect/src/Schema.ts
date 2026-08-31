@@ -11895,9 +11895,11 @@ export const URLFromString: URLFromString = URLString.pipe(decodeTo(URL, SchemaT
  * @category models
  * @since 4.0.0
  */
-export interface MediaType extends declare<MediaType_.MediaType, string> {
+export interface MediaType extends declare<MediaType_.MediaType> {
   readonly "Rebuild": MediaType
 }
+
+const MediaTypeString = String.annotate({ expected: "a string that will be decoded as an HTTP media type" })
 
 const mediaTypeTransformation = SchemaTransformation.transformOrFail({
   decode: (input: string, options) => {
@@ -11924,7 +11926,7 @@ const mediaTypeTransformation = SchemaTransformation.transformOrFail({
  * @since 4.0.0
  */
 export const MediaType: MediaType = declare(MediaType_.isMediaType, {
-  representation: { id: "effect/http/MediaType", payload: null },
+  representation: { id: "effect/schema/MediaType", payload: null },
   toCode: () => ({
     runtime: "Schema.MediaType",
     Type: "MediaType.MediaType",
@@ -11932,8 +11934,19 @@ export const MediaType: MediaType = declare(MediaType_.isMediaType, {
   }),
   expected: "MediaType",
   toEquivalence: () => MediaType_.Equivalence,
-  toCodec: () => link<MediaType_.MediaType>()(String, mediaTypeTransformation)
+  toCodecJson: () => link<MediaType_.MediaType>()(MediaTypeString, mediaTypeTransformation)
 })
+
+/**
+ * Reviver for persisted {@link MediaType} declarations.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const MediaTypeReviver = makeFixedDeclarationReviver(
+  "effect/schema/MediaType",
+  MediaType
+)
 
 /**
  * Type-level representation of {@link MediaTypeFromString}.
@@ -11953,7 +11966,7 @@ export interface MediaTypeFromString extends decodeTo<MediaType, String> {
  * @category schemas
  * @since 4.0.0
  */
-export const MediaTypeFromString: MediaTypeFromString = String.pipe(
+export const MediaTypeFromString: MediaTypeFromString = MediaTypeString.pipe(
   decodeTo(MediaType, mediaTypeTransformation)
 )
 

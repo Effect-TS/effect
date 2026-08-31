@@ -1,5 +1,4 @@
-import type { Result } from "effect"
-import { Schema } from "effect"
+import { type Result, Schema } from "effect"
 import { MediaType } from "effect/unstable/http"
 import { describe, expect, it } from "tstyche"
 
@@ -18,6 +17,7 @@ describe("MediaType", () => {
 
   it("Schema types use the string representation without services", () => {
     expect(Schema.MediaType.Type).type.toBe<MediaType.MediaType>()
+    expect(Schema.MediaType.Iso).type.toBe<MediaType.MediaType>()
     expect(Schema.MediaTypeFromString.Type).type.toBe<MediaType.MediaType>()
     expect<Schema.Codec.Encoded<typeof Schema.MediaTypeFromString>>().type.toBe<string>()
     expect<Schema.Codec.DecodingServices<typeof Schema.MediaTypeFromString>>().type.toBe<never>()

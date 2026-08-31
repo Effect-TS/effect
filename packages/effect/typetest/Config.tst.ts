@@ -1,4 +1,5 @@
 import { Config, ConfigProvider, Schema } from "effect"
+import type { MediaType } from "effect/unstable/http"
 import { describe, expect, it } from "tstyche"
 
 describe("Config", () => {
@@ -45,6 +46,11 @@ describe("Config", () => {
 
     const withPath = Config.Array(Schema.FiniteFromString, "values", { separator: ";" })
     expect(withPath).type.toBe<Config.Config<ReadonlyArray<number>>>()
+  })
+
+  it("MediaType", () => {
+    expect(Config.MediaType()).type.toBe<Config.Config<MediaType.MediaType>>()
+    expect(Config.MediaType("CONTENT_TYPE")).type.toBe<Config.Config<MediaType.MediaType>>()
   })
 
   it("parse", () => {

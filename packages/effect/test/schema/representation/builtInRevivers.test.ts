@@ -912,6 +912,15 @@ describe("SchemaRepresentation built-in declaration revivers", () => {
     })
   })
 
+  it("revives MediaType", () => {
+    assertDeclarationReviver({
+      schema: Schema.MediaType,
+      id: "effect/schema/MediaType",
+      payload: null,
+      reviver: Schema.MediaTypeReviver
+    })
+  })
+
   it("revives Date", () => {
     assertDeclarationReviver({
       schema: Schema.Date,
