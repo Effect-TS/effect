@@ -1,16 +1,48 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { spawn, spawnSync } from "node:child_process"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
+import { tmpdir } from "node:os"
 
 const fixture = join(__dirname, "fixtures", "node-terminal.ts")
+const nodeOptions = "--experimental-strip-types --experimental-transform-types"
 
 const runFixture = (mode: string, input: string) =>
   spawnSync(process.execPath, [fixture, mode], {
     encoding: "utf8",
     input,
-    timeout: 2_000
+    timeout: 2_000,
+    env: { ...process.env, NODE_OPTIONS: nodeOptions }
   })
+
+const runTtyFixture = (mode: string, input: string) => {
+  const logDir = mkdtempSync(join(tmpdir(), "node-terminal-"))
+  const logFile = join(logDir, "tty.log")
+  try {
+    const result = spawnSync(
+      "script",
+      ["-q", "-f", "-c", `${process.execPath} ${fixture} ${mode}`, logFile],
+      {
+        encoding: "utf8",
+        input,
+        timeout: 5_000,
+        env: { ...process.env, NODE_OPTIONS: nodeOptions }
+      }
+    )
+    const output = readFileSync(logFile, "utf8")
+    return { ...result, stderr: output }
+  } finally {
+    rmSync(logDir, { force: true, recursive: true })
+  }
+}
+
+const assertTtyResult = (mode: string, input: string, expected: string) => {
+  const result = runTtyFixture(mode, input)
+  assert.isUndefined(result.error)
+  assert.strictEqual(result.status, 0, result.stderr)
+  assert.isTrue(result.stderr.includes(`RESULT ${expected}`), result.stderr)
+}
 
 const assertResult = (mode: string, input: string, expected: string) => {
   const result = runFixture(mode, input)
@@ -21,7 +53,9 @@ const assertResult = (mode: string, input: string, expected: string) => {
 
 const assertOpenResult = (mode: string, input: string, expected: string) =>
   Effect.callback<void>((resume) => {
-    const child = spawn(process.execPath, [fixture, mode])
+    const child = spawn(process.execPath, [fixture, mode], {
+      env: { ...process.env, NODE_OPTIONS: nodeOptions }
+    })
     let stderr = ""
     child.stderr.setEncoding("utf8")
     child.stderr.on("data", (data) => {
@@ -64,6 +98,20 @@ describe("NodeTerminal", () => {
 
   it("fails readLine with QuitError when stdin ended before initialization", () => {
     assertResult("read-line-after-end", "", "\"QuitError\"")
+  })
+
+  it("keeps stdin in cooked mode while waiting for readLine on a TTY", () => {
+    assertTtyResult("read-line-raw-mode", "hello\n", "{\"isRaw\":false,\"line\":\"hello\"}")
+  })
+
+  it("enables raw mode while waiting for readInput on a TTY", () => {
+    assertTtyResult("read-input-raw-mode", "y", "{\"isRaw\":true,\"first\":\"y\"}")
+  })
+
+  it("interrupts readLine on Ctrl+C when stdin is a TTY", () => {
+    const result = runTtyFixture("read-line-sigint", "\u0003")
+    assert.isUndefined(result.error)
+    assert.isFalse(result.stderr.includes("RESULT "), result.stderr)
   })
 
   it.effect("disposes readline after its idle TTL", () =>

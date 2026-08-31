@@ -1,6 +1,7 @@
 import * as NodeTerminal from "@effect/platform-node-shared/NodeTerminal"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -79,6 +80,39 @@ const readLineDisposed = Effect.gen(function*() {
   return { line, duringTtl, dataListeners: process.stdin.listenerCount("data") }
 })
 
+const readLineRawMode = Effect.scoped(
+  Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const fiber = yield* Effect.forkScoped(terminal.readLine)
+    yield* Effect.sleep("50 millis")
+    const isRaw = process.stdin.isTTY
+      ? (process.stdin as NodeJS.ReadStream & { isRaw: boolean }).isRaw
+      : null
+    const line = yield* Fiber.join(fiber)
+    return { isRaw, line }
+  })
+)
+
+const readInputRawMode = Effect.scoped(
+  Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const input = yield* terminal.readInput
+    yield* Effect.sleep("50 millis")
+    const isRaw = process.stdin.isTTY
+      ? (process.stdin as NodeJS.ReadStream & { isRaw: boolean }).isRaw
+      : null
+    const first = yield* Queue.take(input)
+    return { isRaw, first: Option.getOrNull(first.input) }
+  })
+)
+
+const readLineSigint = Effect.gen(function*() {
+  const terminal = yield* Terminal.Terminal
+  yield* terminal.display("prompt")
+  const line = yield* terminal.readLine
+  return line
+})
+
 const mode = process.argv[2]
 const program = Effect.gen(function*() {
   if (mode === "prompts") {
@@ -95,6 +129,12 @@ const program = Effect.gen(function*() {
     return yield* readLineAfterEnd
   } else if (mode === "read-line-disposed") {
     return yield* readLineDisposed
+  } else if (mode === "read-line-raw-mode") {
+    return yield* readLineRawMode
+  } else if (mode === "read-input-raw-mode") {
+    return yield* readInputRawMode
+  } else if (mode === "read-line-sigint") {
+    return yield* readLineSigint
   }
   return yield* Effect.die(`Unknown mode: ${mode}`)
 })

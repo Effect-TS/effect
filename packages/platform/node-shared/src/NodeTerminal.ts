@@ -4,7 +4,7 @@
  * `NodeTerminal` adapts Node's `readline` APIs plus the current process
  * `stdin` and `stdout` streams into {@link Terminal.Terminal}. The service can
  * display output, read a line, stream key input, and read terminal dimensions.
- * `make` manages readline and TTY raw mode in a scope, while `layer` provides
+ * `make` manages readline and enables TTY raw mode only for key input, while `layer` provides
  * the default service that ends key input on Ctrl+C or Ctrl+D.
  *
  * @since 4.0.0
@@ -23,7 +23,7 @@ import * as readline from "node:readline"
 
 /**
  * Creates a scoped process-backed `Terminal` using Node `readline`, enabling
- * TTY raw mode while in scope and using the supplied predicate to decide when
+ * TTY raw mode for key input and using the supplied predicate to decide when
  * key input should end.
  *
  * @category constructors
@@ -53,7 +53,7 @@ export const make: (
     const rlRef = yield* RcRef.make({
       acquire: Effect.acquireRelease(
         Effect.sync(() => {
-          const rl = readline.createInterface({ input: stdin, escapeCodeTimeout: 50 })
+          const rl = readline.createInterface({ input: stdin, output: stdout, escapeCodeTimeout: 50 })
           const onLine = (line: string) => Queue.offerUnsafe(lines, line)
           const onClose = () => {
             readlineActive = false
@@ -63,10 +63,6 @@ export const make: (
           readline.emitKeypressEvents(stdin, rl)
           rl.on("line", onLine)
           rl.once("close", onClose)
-
-          if (stdin.isTTY) {
-            stdin.setRawMode(true)
-          }
           return { rl, onClose, onLine }
         }),
         ({ rl, onClose, onLine }) =>
@@ -74,9 +70,6 @@ export const make: (
             readlineActive = false
             rl.off("line", onLine)
             rl.off("close", onClose)
-            if (stdin.isTTY) {
-              stdin.setRawMode(false)
-            }
             rl.close()
             if (inputEnded) {
               Queue.endUnsafe(lines)
@@ -115,8 +108,14 @@ export const make: (
           clearInterval(keepAlive)
           stdin.off("keypress", handleKeypress)
           stdin.off("end", handleEnd)
+          if (stdin.isTTY) {
+            stdin.setRawMode(false)
+          }
         })
       )
+      if (stdin.isTTY) {
+        stdin.setRawMode(true)
+      }
       stdin.on("keypress", handleKeypress)
       if (inputEnded) {
         handleEnd()
