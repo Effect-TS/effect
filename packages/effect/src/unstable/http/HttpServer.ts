@@ -16,7 +16,7 @@ import { dual } from "../../Function.ts"
 import * as Layer from "../../Layer.ts"
 import * as Path from "../../Path.ts"
 import type * as Scope from "../../Scope.ts"
-import * as Net from "../net/Net.ts"
+import * as NetAddress from "../net/NetAddress.ts"
 import * as Etag from "./Etag.ts"
 import * as HttpClient from "./HttpClient.ts"
 import * as ClientRequest from "./HttpClientRequest.ts"
@@ -53,7 +53,7 @@ export class HttpServer extends Context.Service<HttpServer, {
     >
   }
 
-  readonly address: Net.SocketAddress
+  readonly address: NetAddress.SocketAddress
 }>()("effect/http/HttpServer") {}
 
 /**
@@ -69,7 +69,7 @@ export const make = (
       httpEffect: Effect.Effect<HttpServerResponse, unknown, HttpServerRequest | Scope.Scope>,
       middleware?: Middleware.HttpMiddleware
     ) => Effect.Effect<void, never, Scope.Scope>
-    readonly address: Net.SocketAddress
+    readonly address: NetAddress.SocketAddress
   }
 ): HttpServer["Service"] => options
 
@@ -179,13 +179,13 @@ export const serveEffect: {
  * @category converting
  * @since 4.0.0
  */
-export const formatAddress = (address: Net.SocketAddress): string => {
+export const formatAddress = (address: NetAddress.SocketAddress): string => {
   switch (address._tag) {
     case "UnixPathAddress":
       return `unix://${address.path}`
     case "InetAddressV4":
     case "InetAddressV6":
-      return `http://${Net.formatInet(address)}`
+      return `http://${NetAddress.formatInet(address)}`
   }
 }
 
@@ -253,12 +253,12 @@ export const makeTestClient: Effect.Effect<
   if (address._tag === "UnixPathAddress") {
     return yield* Effect.die(new Error("HttpServer.layerTestClient: UnixPathAddress not supported"))
   }
-  const host = Net.isUnspecified(address.address)
+  const host = NetAddress.isUnspecified(address.address)
     ? address._tag === "InetAddressV4"
-      ? Net.ipv4Loopback
-      : Net.ipv6Loopback
+      ? NetAddress.ipv4Loopback
+      : NetAddress.ipv6Loopback
     : address.address
-  const url = `http://${Net.formatUrlHost(host)}:${address.port}`
+  const url = `http://${NetAddress.formatUrlHost(host)}:${address.port}`
   return HttpClient.mapRequest(client, ClientRequest.prependUrl(url))
 })
 

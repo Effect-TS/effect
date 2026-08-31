@@ -22,7 +22,7 @@ import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as References from "effect/References"
 import * as Scope from "effect/Scope"
-import * as EffectNet from "effect/unstable/net/Net"
+import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as Socket from "effect/unstable/socket/Socket"
 import * as SocketServer from "effect/unstable/socket/SocketServer"
 import type * as Http from "node:http"
@@ -231,8 +231,8 @@ export const makeWebSocket: (
 
   const address = server.address()!
   const boundAddress = yield* (typeof address === "string"
-    ? Effect.succeed(EffectNet.unixPathAddress(address))
-    : Effect.fromResult(EffectNet.inetAddressFromIpString(address.address, address.port)).pipe(
+    ? Effect.succeed(NetAddress.unixPathAddress(address))
+    : Effect.fromResult(NetAddress.inetAddressFromIpString(address.address, address.port)).pipe(
       Effect.mapError((cause) =>
         new SocketServer.SocketServerError({
           reason: new SocketServer.SocketServerOpenError({ cause })
@@ -379,8 +379,8 @@ const makeNetServer = Effect.fnUntraced(function*(options: {
 
   const address = server.address()!
   const boundAddress = yield* (typeof address === "string"
-    ? Effect.succeed(EffectNet.unixPathAddress(address))
-    : Effect.fromResult(EffectNet.inetAddressFromIpString(address.address, address.port)).pipe(
+    ? Effect.succeed(NetAddress.unixPathAddress(address))
+    : Effect.fromResult(NetAddress.inetAddressFromIpString(address.address, address.port)).pipe(
       Effect.mapError((cause) =>
         new SocketServer.SocketServerError({
           reason: new SocketServer.SocketServerOpenError({ cause })

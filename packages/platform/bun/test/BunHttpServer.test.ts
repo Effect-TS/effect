@@ -8,7 +8,7 @@ import * as Scope from "effect/Scope"
 import * as HttpServer from "effect/unstable/http/HttpServer"
 import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
-import type * as NetAddress from "effect/unstable/net/Net"
+import type * as NetAddress from "effect/unstable/net/NetAddress"
 import * as Net from "node:net"
 
 const fetchText = (url: string) =>

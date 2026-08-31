@@ -3,21 +3,28 @@
  *
  * @since 4.0.0
  */
-import * as Data from "../../Data.ts"
-import * as Equal from "../../Equal.ts"
-import { dual } from "../../Function.ts"
-import * as Hash from "../../Hash.ts"
-import { NodeInspectSymbol } from "../../Inspectable.ts"
-import * as Option from "../../Option.ts"
-import { hasProperty } from "../../Predicate.ts"
-import * as Result from "../../Result.ts"
+import * as Data from "../Data.ts"
+import * as Equal from "../Equal.ts"
+import { dual } from "../Function.ts"
+import * as Hash from "../Hash.ts"
+import { NodeInspectSymbol } from "../Inspectable.ts"
+import * as Option from "../Option.ts"
+import { hasProperty } from "../Predicate.ts"
+import * as Result from "../Result.ts"
+import type * as NetAddress from "../unstable/net/NetAddress.ts"
 
-const Ipv4TypeId = "~effect/net/Ipv4Address"
-const Ipv6TypeId = "~effect/net/Ipv6Address"
-const MacTypeId = "~effect/net/MacAddress"
-const InetV4TypeId = "~effect/net/InetAddressV4"
-const InetV6TypeId = "~effect/net/InetAddressV6"
-const UnixPathTypeId = "~effect/net/UnixPathAddress"
+/** @internal */
+export const TypeId = "~effect/net/NetAddress" as const
+
+type Ipv4Address = NetAddress.Ipv4Address
+type Ipv6Address = NetAddress.Ipv6Address
+type IpAddress = NetAddress.IpAddress
+type MacAddress = NetAddress.MacAddress
+type InetAddressV4 = NetAddress.InetAddressV4
+type InetAddressV6 = NetAddress.InetAddressV6
+type InetAddress = NetAddress.InetAddress
+type UnixPathAddress = NetAddress.UnixPathAddress
+type SocketAddress = NetAddress.SocketAddress
 
 /**
  * A checked network-address operation failure.
@@ -25,7 +32,7 @@ const UnixPathTypeId = "~effect/net/UnixPathAddress"
  * @category errors
  * @since 4.0.0
  */
-export class AddressError extends Data.TaggedError("NetAddressError")<{
+export class NetAddressError extends Data.TaggedError("NetAddressError")<{
   readonly input: unknown
   readonly kind: "Ipv4Address" | "Ipv6Address" | "IpAddress" | "MacAddress" | "InetAddress" | "Port"
   readonly reason: string
@@ -35,126 +42,9 @@ export class AddressError extends Data.TaggedError("NetAddressError")<{
   }
 }
 
-/**
- * An immutable 32-bit IPv4 address.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Ipv4Address extends Equal.Equal, Hash.Hash {
-  readonly _tag: "Ipv4Address"
-  readonly [Ipv4TypeId]: typeof Ipv4TypeId
-  toString(): string
-}
+type Address = IpAddress | MacAddress | SocketAddress
 
-/**
- * An immutable 128-bit IPv6 address without socket scope metadata.
- *
- * @category models
- * @since 4.0.0
- */
-export interface Ipv6Address extends Equal.Equal, Hash.Hash {
-  readonly _tag: "Ipv6Address"
-  readonly [Ipv6TypeId]: typeof Ipv6TypeId
-  toString(): string
-}
-
-/**
- * A numeric IPv4 or IPv6 address.
- *
- * @category models
- * @since 4.0.0
- */
-export type IpAddress = Ipv4Address | Ipv6Address
-
-/**
- * An immutable 48-bit IEEE 802 MAC address.
- *
- * @category models
- * @since 4.0.0
- */
-export interface MacAddress extends Equal.Equal, Hash.Hash {
-  readonly _tag: "MacAddress"
-  readonly [MacTypeId]: typeof MacTypeId
-  toString(): string
-}
-
-interface Ipv4AddressImpl extends Ipv4Address {
-  bytes: Uint8Array
-}
-
-interface Ipv6AddressImpl extends Ipv6Address {
-  bytes: Uint8Array
-}
-
-interface MacAddressImpl extends MacAddress {
-  bytes: Uint8Array
-}
-
-const ipv4ToImpl = (self: Ipv4Address): Ipv4AddressImpl => self as Ipv4AddressImpl
-
-const ipv6ToImpl = (self: Ipv6Address): Ipv6AddressImpl => self as Ipv6AddressImpl
-
-const macToImpl = (self: MacAddress): MacAddressImpl => self as MacAddressImpl
-
-/**
- * A resolved IPv4 internet address and port.
- *
- * @category models
- * @since 4.0.0
- */
-export interface InetAddressV4 extends Equal.Equal, Hash.Hash {
-  readonly _tag: "InetAddressV4"
-  readonly address: Ipv4Address
-  readonly port: number
-  readonly [InetV4TypeId]: typeof InetV4TypeId
-  toString(): string
-}
-
-/**
- * A resolved IPv6 internet address, port, flow information, and scope identifier.
- *
- * @category models
- * @since 4.0.0
- */
-export interface InetAddressV6 extends Equal.Equal, Hash.Hash {
-  readonly _tag: "InetAddressV6"
-  readonly address: Ipv6Address
-  readonly port: number
-  readonly flowInfo: number
-  readonly scopeId: number
-  readonly [InetV6TypeId]: typeof InetV6TypeId
-  toString(): string
-}
-
-/**
- * A resolved IPv4 or IPv6 internet address and port.
- *
- * @category models
- * @since 4.0.0
- */
-export type InetAddress = InetAddressV4 | InetAddressV6
-
-/**
- * An opaque Unix-domain filesystem socket path.
- *
- * @category models
- * @since 4.0.0
- */
-export interface UnixPathAddress extends Equal.Equal, Hash.Hash {
-  readonly _tag: "UnixPathAddress"
-  readonly path: string
-  readonly [UnixPathTypeId]: typeof UnixPathTypeId
-  toString(): string
-}
-
-/**
- * A portable concrete internet or Unix-domain filesystem address.
- *
- * @category models
- * @since 4.0.0
- */
-export type SocketAddress = InetAddress | UnixPathAddress
+const isAddress = (u: unknown): u is Address => hasProperty(u, TypeId)
 
 /**
  * Returns `true` when a value is an IPv4 address.
@@ -162,7 +52,7 @@ export type SocketAddress = InetAddress | UnixPathAddress
  * @category guards
  * @since 4.0.0
  */
-export const isIpv4Address = (u: unknown): u is Ipv4Address => hasProperty(u, Ipv4TypeId)
+export const isIpv4Address = (u: unknown): u is Ipv4Address => isAddress(u) && u._tag === "Ipv4Address"
 
 /**
  * Returns `true` when a value is an IPv6 address.
@@ -170,7 +60,7 @@ export const isIpv4Address = (u: unknown): u is Ipv4Address => hasProperty(u, Ip
  * @category guards
  * @since 4.0.0
  */
-export const isIpv6Address = (u: unknown): u is Ipv6Address => hasProperty(u, Ipv6TypeId)
+export const isIpv6Address = (u: unknown): u is Ipv6Address => isAddress(u) && u._tag === "Ipv6Address"
 
 /**
  * Returns `true` when a value is an IPv4 or IPv6 address.
@@ -186,7 +76,7 @@ export const isIpAddress = (u: unknown): u is IpAddress => isIpv4Address(u) || i
  * @category guards
  * @since 4.0.0
  */
-export const isMacAddress = (u: unknown): u is MacAddress => hasProperty(u, MacTypeId)
+export const isMacAddress = (u: unknown): u is MacAddress => isAddress(u) && u._tag === "MacAddress"
 
 /**
  * Returns `true` when a value is a resolved IPv4 internet address.
@@ -194,7 +84,7 @@ export const isMacAddress = (u: unknown): u is MacAddress => hasProperty(u, MacT
  * @category guards
  * @since 4.0.0
  */
-export const isInetAddressV4 = (u: unknown): u is InetAddressV4 => hasProperty(u, InetV4TypeId)
+export const isInetAddressV4 = (u: unknown): u is InetAddressV4 => isAddress(u) && u._tag === "InetAddressV4"
 
 /**
  * Returns `true` when a value is a resolved IPv6 internet address.
@@ -202,7 +92,7 @@ export const isInetAddressV4 = (u: unknown): u is InetAddressV4 => hasProperty(u
  * @category guards
  * @since 4.0.0
  */
-export const isInetAddressV6 = (u: unknown): u is InetAddressV6 => hasProperty(u, InetV6TypeId)
+export const isInetAddressV6 = (u: unknown): u is InetAddressV6 => isAddress(u) && u._tag === "InetAddressV6"
 
 /**
  * Returns `true` when a value is a resolved internet address.
@@ -218,7 +108,7 @@ export const isInetAddress = (u: unknown): u is InetAddress => isInetAddressV4(u
  * @category guards
  * @since 4.0.0
  */
-export const isUnixPathAddress = (u: unknown): u is UnixPathAddress => hasProperty(u, UnixPathTypeId)
+export const isUnixPathAddress = (u: unknown): u is UnixPathAddress => isAddress(u) && u._tag === "UnixPathAddress"
 
 /**
  * Returns `true` when a value is a portable concrete socket address.
@@ -230,11 +120,11 @@ export const isSocketAddress = (u: unknown): u is SocketAddress => isInetAddress
 
 const Ipv4Proto = {
   _tag: "Ipv4Address",
-  [Ipv4TypeId]: Ipv4TypeId,
-  [Equal.symbol](this: Ipv4AddressImpl, that: Equal.Equal): boolean {
-    return isIpv4Address(that) && bytesEqual(this.bytes, ipv4ToImpl(that).bytes)
+  [TypeId]: TypeId,
+  [Equal.symbol](this: Ipv4Address, that: Equal.Equal): boolean {
+    return isIpv4Address(that) && bytesEqual(this.bytes, that.bytes)
   },
-  [Hash.symbol](this: Ipv4AddressImpl): number {
+  [Hash.symbol](this: Ipv4Address): number {
     return hashBytes("Ipv4Address", this.bytes)
   },
   toString(this: Ipv4Address): string {
@@ -247,11 +137,11 @@ const Ipv4Proto = {
 
 const Ipv6Proto = {
   _tag: "Ipv6Address",
-  [Ipv6TypeId]: Ipv6TypeId,
-  [Equal.symbol](this: Ipv6AddressImpl, that: Equal.Equal): boolean {
-    return isIpv6Address(that) && bytesEqual(this.bytes, ipv6ToImpl(that).bytes)
+  [TypeId]: TypeId,
+  [Equal.symbol](this: Ipv6Address, that: Equal.Equal): boolean {
+    return isIpv6Address(that) && bytesEqual(this.bytes, that.bytes)
   },
-  [Hash.symbol](this: Ipv6AddressImpl): number {
+  [Hash.symbol](this: Ipv6Address): number {
     return hashBytes("Ipv6Address", this.bytes)
   },
   toString(this: Ipv6Address): string {
@@ -264,11 +154,11 @@ const Ipv6Proto = {
 
 const MacProto = {
   _tag: "MacAddress",
-  [MacTypeId]: MacTypeId,
-  [Equal.symbol](this: MacAddressImpl, that: Equal.Equal): boolean {
-    return isMacAddress(that) && bytesEqual(this.bytes, macToImpl(that).bytes)
+  [TypeId]: TypeId,
+  [Equal.symbol](this: MacAddress, that: Equal.Equal): boolean {
+    return isMacAddress(that) && bytesEqual(this.bytes, that.bytes)
   },
-  [Hash.symbol](this: MacAddressImpl): number {
+  [Hash.symbol](this: MacAddress): number {
     return hashBytes("MacAddress", this.bytes)
   },
   toString(this: MacAddress): string {
@@ -294,20 +184,17 @@ const hashBytes = (tag: string, bytes: Uint8Array): number => {
 }
 
 const makeIpv4 = (bytes: Uint8Array): Ipv4Address => {
-  const self: Ipv4AddressImpl = Object.create(Ipv4Proto)
-  self.bytes = bytes
+  const self = Object.assign(Object.create(Ipv4Proto), { bytes })
   return Object.freeze(self)
 }
 
 const makeIpv6 = (bytes: Uint8Array): Ipv6Address => {
-  const self: Ipv6AddressImpl = Object.create(Ipv6Proto)
-  self.bytes = bytes
+  const self = Object.assign(Object.create(Ipv6Proto), { bytes })
   return Object.freeze(self)
 }
 
 const makeMac = (bytes: Uint8Array): MacAddress => {
-  const self: MacAddressImpl = Object.create(MacProto)
-  self.bytes = bytes
+  const self = Object.assign(Object.create(MacProto), { bytes })
   return Object.freeze(self)
 }
 
@@ -352,10 +239,10 @@ export const ipv6Unspecified: Ipv6Address = makeIpv6(new Uint8Array(16))
 export const ipv4Broadcast: Ipv4Address = makeIpv4(new Uint8Array([255, 255, 255, 255]))
 
 const addressError = (
-  kind: AddressError["kind"],
+  kind: NetAddressError["kind"],
   input: unknown,
   reason: string
-): Result.Result<never, AddressError> => Result.fail(new AddressError({ kind, input, reason }))
+): Result.Result<never, NetAddressError> => Result.fail(new NetAddressError({ kind, input, reason }))
 
 /**
  * Creates an IPv4 address from four checked octets.
@@ -368,7 +255,7 @@ export const ipv4FromOctets = (
   b: number,
   c: number,
   d: number
-): Result.Result<Ipv4Address, AddressError> => {
+): Result.Result<Ipv4Address, NetAddressError> => {
   const octets = [a, b, c, d]
   if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
     return addressError("Ipv4Address", octets, "octets must be integers from 0 through 255")
@@ -391,7 +278,7 @@ export const ipv6FromSegments = (
   f: number,
   g: number,
   h: number
-): Result.Result<Ipv6Address, AddressError> => {
+): Result.Result<Ipv6Address, NetAddressError> => {
   const segments = [a, b, c, d, e, f, g, h]
   if (!segments.every((n) => Number.isInteger(n) && n >= 0 && n <= 0xffff)) {
     return addressError("Ipv6Address", segments, "segments must be integers from 0 through 65535")
@@ -417,7 +304,7 @@ export const macAddressFromOctets = (
   d: number,
   e: number,
   f: number
-): Result.Result<MacAddress, AddressError> => {
+): Result.Result<MacAddress, NetAddressError> => {
   const octets = [a, b, c, d, e, f]
   if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
     return addressError("MacAddress", octets, "octets must be integers from 0 through 255")
@@ -431,7 +318,7 @@ export const macAddressFromOctets = (
  * @category decoding
  * @since 4.0.0
  */
-export const macAddressFromString = (input: string): Result.Result<MacAddress, AddressError> => {
+export const macAddressFromString = (input: string): Result.Result<MacAddress, NetAddressError> => {
   if (!/^(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/.test(input)) {
     return addressError("MacAddress", input, "expected six two-digit hexadecimal octets separated by colons")
   }
@@ -456,7 +343,7 @@ export const macAddressFromStringUnsafe = (input: string): MacAddress => Result.
  * @category decoding
  * @since 4.0.0
  */
-export const ipv4FromString = (input: string): Result.Result<Ipv4Address, AddressError> => {
+export const ipv4FromString = (input: string): Result.Result<Ipv4Address, NetAddressError> => {
   const parts = input.split(".")
   if (parts.length !== 4 || parts.some((part) => !/^\d{1,3}$/.test(part))) {
     return addressError("Ipv4Address", input, "expected exactly four decimal octets")
@@ -471,7 +358,7 @@ export const ipv4FromString = (input: string): Result.Result<Ipv4Address, Addres
   return ipv4FromOctets(octets[0], octets[1], octets[2], octets[3])
 }
 
-const parseIpv6Segments = (input: string): Result.Result<ReadonlyArray<number>, AddressError> => {
+const parseIpv6Segments = (input: string): Result.Result<ReadonlyArray<number>, NetAddressError> => {
   if (input.includes("[") || input.includes("]") || input.includes("%")) {
     return addressError("Ipv6Address", input, "brackets and zone identifiers are not valid in a bare IPv6 address")
   }
@@ -524,7 +411,7 @@ const parseIpv6Segments = (input: string): Result.Result<ReadonlyArray<number>, 
  * @category decoding
  * @since 4.0.0
  */
-export const ipv6FromString = (input: string): Result.Result<Ipv6Address, AddressError> => {
+export const ipv6FromString = (input: string): Result.Result<Ipv6Address, NetAddressError> => {
   const parsed = parseIpv6Segments(input)
   return Result.isFailure(parsed)
     ? Result.fail(parsed.failure)
@@ -537,12 +424,12 @@ export const ipv6FromString = (input: string): Result.Result<Ipv6Address, Addres
  * @category decoding
  * @since 4.0.0
  */
-export const ipFromString = (input: string): Result.Result<IpAddress, AddressError> => {
-  const result: Result.Result<IpAddress, AddressError> = input.includes(":")
+export const ipFromString = (input: string): Result.Result<IpAddress, NetAddressError> => {
+  const result: Result.Result<IpAddress, NetAddressError> = input.includes(":")
     ? ipv6FromString(input)
     : ipv4FromString(input)
   return Result.isFailure(result)
-    ? Result.fail(new AddressError({ kind: "IpAddress", input, reason: result.failure.reason }))
+    ? Result.fail(new NetAddressError({ kind: "IpAddress", input, reason: result.failure.reason }))
     : result
 }
 
@@ -561,7 +448,7 @@ export const ipFromStringUnsafe = (input: string): IpAddress => Result.getOrThro
  * @since 4.0.0
  */
 export const ipv4ToOctets = (self: Ipv4Address): readonly [number, number, number, number] => {
-  const bytes = ipv4ToImpl(self).bytes
+  const bytes = self.bytes
   return [bytes[0], bytes[1], bytes[2], bytes[3]]
 }
 
@@ -574,7 +461,7 @@ export const ipv4ToOctets = (self: Ipv4Address): readonly [number, number, numbe
 export const ipv6ToSegments = (
   self: Ipv6Address
 ): readonly [number, number, number, number, number, number, number, number] => {
-  const bytes = ipv6ToImpl(self).bytes
+  const bytes = self.bytes
   const output = Array<number>(8)
   for (let index = 0; index < 8; index++) {
     output[index] = bytes[index * 2] * 256 + bytes[index * 2 + 1]
@@ -608,7 +495,7 @@ export const ipv6ToOctets = (
   number,
   number
 ] => {
-  return Array.from(ipv6ToImpl(self).bytes) as any
+  return Array.from(self.bytes) as any
 }
 
 /**
@@ -620,7 +507,7 @@ export const ipv6ToOctets = (
 export const macAddressToOctets = (
   self: MacAddress
 ): readonly [number, number, number, number, number, number] => {
-  const bytes = macToImpl(self).bytes
+  const bytes = self.bytes
   return [bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5]]
 }
 
@@ -631,7 +518,7 @@ export const macAddressToOctets = (
  * @since 4.0.0
  */
 export const formatMacAddress = (self: MacAddress): string =>
-  Array.from(macToImpl(self).bytes, (byte) => byte.toString(16).padStart(2, "0")).join(":")
+  Array.from(self.bytes, (byte) => byte.toString(16).padStart(2, "0")).join(":")
 
 /**
  * Returns `true` when the MAC address is the all-ones broadcast address.
@@ -639,7 +526,7 @@ export const formatMacAddress = (self: MacAddress): string =>
  * @category predicates
  * @since 4.0.0
  */
-export const isMacBroadcast = (self: MacAddress): boolean => macToImpl(self).bytes.every((byte) => byte === 0xff)
+export const isMacBroadcast = (self: MacAddress): boolean => self.bytes.every((byte) => byte === 0xff)
 
 /**
  * Returns `true` when the MAC address has the IEEE group-address bit set.
@@ -647,7 +534,7 @@ export const isMacBroadcast = (self: MacAddress): boolean => macToImpl(self).byt
  * @category predicates
  * @since 4.0.0
  */
-export const isMacMulticast = (self: MacAddress): boolean => (macToImpl(self).bytes[0] & 1) !== 0
+export const isMacMulticast = (self: MacAddress): boolean => (self.bytes[0] & 1) !== 0
 
 /**
  * Returns `true` when the MAC address has the IEEE group-address bit clear.
@@ -655,7 +542,7 @@ export const isMacMulticast = (self: MacAddress): boolean => (macToImpl(self).by
  * @category predicates
  * @since 4.0.0
  */
-export const isMacUnicast = (self: MacAddress): boolean => (macToImpl(self).bytes[0] & 1) === 0
+export const isMacUnicast = (self: MacAddress): boolean => (self.bytes[0] & 1) === 0
 
 /**
  * Returns `true` when the MAC address has the IEEE local-administration bit set.
@@ -663,7 +550,7 @@ export const isMacUnicast = (self: MacAddress): boolean => (macToImpl(self).byte
  * @category predicates
  * @since 4.0.0
  */
-export const isMacLocallyAdministered = (self: MacAddress): boolean => (macToImpl(self).bytes[0] & 2) !== 0
+export const isMacLocallyAdministered = (self: MacAddress): boolean => (self.bytes[0] & 2) !== 0
 
 /**
  * Returns `true` when the MAC address has the IEEE local-administration bit clear.
@@ -671,7 +558,7 @@ export const isMacLocallyAdministered = (self: MacAddress): boolean => (macToImp
  * @category predicates
  * @since 4.0.0
  */
-export const isMacUniversallyAdministered = (self: MacAddress): boolean => (macToImpl(self).bytes[0] & 2) === 0
+export const isMacUniversallyAdministered = (self: MacAddress): boolean => (self.bytes[0] & 2) === 0
 
 /**
  * Folds an IP address by its numeric version.
@@ -735,7 +622,7 @@ export const formatIp = (self: IpAddress): string => {
  * @since 4.0.0
  */
 export const isUnspecified = (self: IpAddress): boolean => {
-  const bytes = isIpv4Address(self) ? ipv4ToImpl(self).bytes : ipv6ToImpl(self).bytes
+  const bytes = isIpv4Address(self) ? self.bytes : self.bytes
   return bytes.every((byte) => byte === 0)
 }
 
@@ -746,8 +633,8 @@ export const isUnspecified = (self: IpAddress): boolean => {
  * @since 4.0.0
  */
 export const isLoopback = (self: IpAddress): boolean => {
-  if (isIpv4Address(self)) return ipv4ToImpl(self).bytes[0] === 127
-  const bytes = ipv6ToImpl(self).bytes
+  if (isIpv4Address(self)) return self.bytes[0] === 127
+  const bytes = self.bytes
   for (let index = 0; index < 15; index++) {
     if (bytes[index] !== 0) return false
   }
@@ -761,8 +648,8 @@ export const isLoopback = (self: IpAddress): boolean => {
  * @since 4.0.0
  */
 export const isMulticast = (self: IpAddress): boolean => {
-  if (isIpv4Address(self)) return (ipv4ToImpl(self).bytes[0] >> 4) === 0xe
-  return ipv6ToImpl(self).bytes[0] === 0xff
+  if (isIpv4Address(self)) return (self.bytes[0] >> 4) === 0xe
+  return self.bytes[0] === 0xff
 }
 
 /**
@@ -771,7 +658,7 @@ export const isMulticast = (self: IpAddress): boolean => {
  * @category predicates
  * @since 4.0.0
  */
-export const isBroadcast = (self: Ipv4Address): boolean => ipv4ToImpl(self).bytes.every((byte) => byte === 0xff)
+export const isBroadcast = (self: Ipv4Address): boolean => self.bytes.every((byte) => byte === 0xff)
 
 /**
  * Returns `true` for IPv4 `169.254.0.0/16` or IPv6 `fe80::/10`.
@@ -781,10 +668,10 @@ export const isBroadcast = (self: Ipv4Address): boolean => ipv4ToImpl(self).byte
  */
 export const isLinkLocal = (self: IpAddress): boolean => {
   if (isIpv4Address(self)) {
-    const bytes = ipv4ToImpl(self).bytes
+    const bytes = self.bytes
     return bytes[0] === 0xa9 && bytes[1] === 0xfe
   }
-  const bytes = ipv6ToImpl(self).bytes
+  const bytes = self.bytes
   return bytes[0] === 0xfe && (bytes[1] & 0xc0) === 0x80
 }
 
@@ -795,7 +682,7 @@ export const isLinkLocal = (self: IpAddress): boolean => {
  * @since 4.0.0
  */
 export const isPrivate = (self: Ipv4Address): boolean => {
-  const bytes = ipv4ToImpl(self).bytes
+  const bytes = self.bytes
   return bytes[0] === 10 || (bytes[0] === 172 && (bytes[1] & 0xf0) === 16) ||
     (bytes[0] === 192 && bytes[1] === 168)
 }
@@ -806,7 +693,7 @@ export const isPrivate = (self: Ipv4Address): boolean => {
  * @category predicates
  * @since 4.0.0
  */
-export const isUniqueLocal = (self: Ipv6Address): boolean => (ipv6ToImpl(self).bytes[0] & 0xfe) === 0xfc
+export const isUniqueLocal = (self: Ipv6Address): boolean => (self.bytes[0] & 0xfe) === 0xfc
 
 /**
  * Returns `true` when an IPv6 address is in the `::ffff:0:0/96` mapped range.
@@ -815,7 +702,7 @@ export const isUniqueLocal = (self: Ipv6Address): boolean => (ipv6ToImpl(self).b
  * @since 4.0.0
  */
 export const isIpv4Mapped = (self: Ipv6Address): boolean => {
-  const bytes = ipv6ToImpl(self).bytes
+  const bytes = self.bytes
   for (let index = 0; index < 10; index++) {
     if (bytes[index] !== 0) return false
   }
@@ -832,7 +719,7 @@ export const toIpv4Mapped = (self: Ipv4Address): Ipv6Address => {
   const bytes = new Uint8Array(16)
   bytes[10] = 0xff
   bytes[11] = 0xff
-  bytes.set(ipv4ToImpl(self).bytes, 12)
+  bytes.set(self.bytes, 12)
   return makeIpv6(bytes)
 }
 
@@ -843,7 +730,7 @@ export const toIpv4Mapped = (self: Ipv4Address): Ipv6Address => {
  * @since 4.0.0
  */
 export const fromIpv4Mapped = (self: Ipv6Address): Option.Option<Ipv4Address> =>
-  isIpv4Mapped(self) ? Option.some(makeIpv4(ipv6ToImpl(self).bytes.slice(12))) : Option.none()
+  isIpv4Mapped(self) ? Option.some(makeIpv4(self.bytes.slice(12))) : Option.none()
 
 /**
  * Converts an IPv4-mapped IPv6 address to IPv4, leaving all other addresses unchanged.
@@ -853,12 +740,12 @@ export const fromIpv4Mapped = (self: Ipv6Address): Option.Option<Ipv4Address> =>
  */
 export const toCanonical = (self: IpAddress): IpAddress =>
   isIpv6Address(self) && isIpv4Mapped(self)
-    ? makeIpv4(ipv6ToImpl(self).bytes.slice(12))
+    ? makeIpv4(self.bytes.slice(12))
     : self
 
 const InetV4Proto = {
   _tag: "InetAddressV4",
-  [InetV4TypeId]: InetV4TypeId,
+  [TypeId]: TypeId,
   [Equal.symbol](this: InetAddressV4, that: Equal.Equal): boolean {
     return isInetAddressV4(that) && this.port === that.port && Equal.equals(this.address, that.address)
   },
@@ -875,7 +762,7 @@ const InetV4Proto = {
 
 const InetV6Proto = {
   _tag: "InetAddressV6",
-  [InetV6TypeId]: InetV6TypeId,
+  [TypeId]: TypeId,
   [Equal.symbol](this: InetAddressV6, that: Equal.Equal): boolean {
     return isInetAddressV6(that) && this.port === that.port && this.flowInfo === that.flowInfo &&
       this.scopeId === that.scopeId && Equal.equals(this.address, that.address)
@@ -893,7 +780,7 @@ const InetV6Proto = {
   }
 }
 
-const checkPort = (port: number): Result.Result<number, AddressError> =>
+const checkPort = (port: number): Result.Result<number, NetAddressError> =>
   Number.isInteger(port) && port >= 0 && port <= 0xffff
     ? Result.succeed(port)
     : addressError("Port", port, "port must be an integer from 0 through 65535")
@@ -904,7 +791,7 @@ const checkPort = (port: number): Result.Result<number, AddressError> =>
  * @category constructors
  * @since 4.0.0
  */
-export const inetAddressV4 = (address: Ipv4Address, port: number): Result.Result<InetAddressV4, AddressError> => {
+export const inetAddressV4 = (address: Ipv4Address, port: number): Result.Result<InetAddressV4, NetAddressError> => {
   const checked = checkPort(port)
   if (Result.isFailure(checked)) return Result.fail(checked.failure)
   const self = Object.create(InetV4Proto)
@@ -923,7 +810,7 @@ export const inetAddressV6 = (
   address: Ipv6Address,
   port: number,
   options?: { readonly flowInfo?: number | undefined; readonly scopeId?: number | undefined }
-): Result.Result<InetAddressV6, AddressError> => {
+): Result.Result<InetAddressV6, NetAddressError> => {
   const checked = checkPort(port)
   if (Result.isFailure(checked)) return Result.fail(checked.failure)
   const flowInfo = options?.flowInfo ?? 0
@@ -948,7 +835,7 @@ export const inetAddressV6 = (
  * @category constructors
  * @since 4.0.0
  */
-export const inetAddress = (address: IpAddress, port: number): Result.Result<InetAddress, AddressError> =>
+export const inetAddress = (address: IpAddress, port: number): Result.Result<InetAddress, NetAddressError> =>
   isIpv4Address(address) ? inetAddressV4(address, port) : inetAddressV6(address, port)
 
 /**
@@ -974,7 +861,7 @@ export const inetAddressUnsafe = (address: IpAddress, port: number): InetAddress
 export const inetAddressFromIpString = (
   address: string,
   port: number
-): Result.Result<InetAddress, AddressError> => {
+): Result.Result<InetAddress, NetAddressError> => {
   const parsed = ipFromString(address)
   return Result.isFailure(parsed) ? Result.fail(parsed.failure) : inetAddress(parsed.success, port)
 }
@@ -999,7 +886,7 @@ export const inetAddressFromIpStringUnsafe = (address: string, port: number): In
  * @category decoding
  * @since 4.0.0
  */
-export const inetAddressFromString = (input: string): Result.Result<InetAddress, AddressError> => {
+export const inetAddressFromString = (input: string): Result.Result<InetAddress, NetAddressError> => {
   let host: string
   let portText: string
   let scopeId = 0
@@ -1073,7 +960,7 @@ export const formatUrlHost = (self: IpAddress): string => isIpv4Address(self) ? 
 
 const UnixPathProto = {
   _tag: "UnixPathAddress",
-  [UnixPathTypeId]: UnixPathTypeId,
+  [TypeId]: TypeId,
   [Equal.symbol](this: UnixPathAddress, that: Equal.Equal): boolean {
     return isUnixPathAddress(that) && this.path === that.path
   },

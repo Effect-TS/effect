@@ -3,7 +3,7 @@
  *
  * `SocketServer` exposes the bound server `address` and a long-running `run`
  * loop that hands each accepted connection to a handler as a `Socket.Socket`.
- * Bound addresses use the shared `Net.SocketAddress` model. This module also
+ * Bound addresses use the shared `NetAddress.SocketAddress` model. This module also
  * defines server-level errors reported while opening or running a server.
  * Platform layers provide concrete implementations of this service.
  *
@@ -12,7 +12,7 @@
 import * as Context from "../../Context.ts"
 import * as Data from "../../Data.ts"
 import type * as Effect from "../../Effect.ts"
-import type * as Net from "../net/Net.ts"
+import type * as NetAddress from "../net/NetAddress.ts"
 import type * as Socket from "./Socket.ts"
 
 /**
@@ -23,7 +23,7 @@ import type * as Socket from "./Socket.ts"
  * @since 4.0.0
  */
 export class SocketServer extends Context.Service<SocketServer, {
-  readonly address: Net.SocketAddress
+  readonly address: NetAddress.SocketAddress
   readonly run: <R, E, _>(
     handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>
   ) => Effect.Effect<never, SocketServerError, R>

@@ -11,7 +11,7 @@
  */
 import * as Effect from "../../Effect.ts"
 import * as Layer from "../../Layer.ts"
-import * as Net from "../net/Net.ts"
+import * as NetAddress from "../net/NetAddress.ts"
 import type * as RpcSerialization from "../rpc/RpcSerialization.ts"
 import * as RpcServer from "../rpc/RpcServer.ts"
 import { SocketServer } from "../socket/SocketServer.ts"
@@ -28,7 +28,7 @@ const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>): Layer.Layer<A, E,
     const server = yield* SocketServer
     const address = server.address._tag === "UnixPathAddress"
       ? server.address.path
-      : Net.formatInet(server.address)
+      : NetAddress.formatInet(server.address)
     yield* Effect.annotateLogs(Effect.logInfo(`Listening on: ${address}`), {
       package: "@effect/cluster",
       service: "Runner"

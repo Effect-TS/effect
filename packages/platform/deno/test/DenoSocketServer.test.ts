@@ -2,7 +2,7 @@ import * as DenoSocket from "@effect/platform-deno/DenoSocket"
 import * as DenoSocketServer from "@effect/platform-deno/DenoSocketServer"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Redacted, Scope } from "effect"
-import * as Net from "effect/unstable/net/Net"
+import * as NetAddress from "effect/unstable/net/NetAddress"
 import type * as Socket from "effect/unstable/socket/Socket"
 
 const ca = Deno.readTextFileSync(new URL("./fixtures/tls/ca.pem", import.meta.url))
@@ -54,11 +54,14 @@ describe("DenoSocketServer", () => {
       const address = server.address
       assert.strictEqual(address._tag, "InetAddressV4")
       if (address._tag !== "InetAddressV4") return
-      assert.strictEqual(Net.formatIp(address.address), "127.0.0.1")
+      assert.strictEqual(NetAddress.formatIp(address.address), "127.0.0.1")
       assert.notStrictEqual(address.port, 0)
       yield* server.run(echo).pipe(Effect.forkScoped)
 
-      const socket = yield* DenoSocket.makeTcp({ hostname: Net.formatIp(address.address), port: address.port })
+      const socket = yield* DenoSocket.makeTcp({
+        hostname: NetAddress.formatIp(address.address),
+        port: address.port
+      })
       const output = yield* sendHelloDeno(socket)
 
       assert.strictEqual(output, "HelloDeno")
@@ -87,7 +90,7 @@ describe("DenoSocketServer", () => {
       assert.strictEqual(address._tag, "InetAddressV4")
       if (address._tag !== "InetAddressV4") return
       const conn = yield* Effect.acquireRelease(
-        Effect.promise(() => Deno.connect({ hostname: Net.formatIp(address.address), port: address.port })),
+        Effect.promise(() => Deno.connect({ hostname: NetAddress.formatIp(address.address), port: address.port })),
         (conn) => Effect.sync(() => conn.close())
       )
       void conn
@@ -103,7 +106,10 @@ describe("DenoSocketServer", () => {
       if (address._tag !== "InetAddressV4") return
       yield* server.run((socket) => echo(socket, { cert, key: Redacted.make(key) })).pipe(Effect.forkScoped)
 
-      const socket = yield* DenoSocket.makeTcp({ hostname: Net.formatIp(address.address), port: address.port })
+      const socket = yield* DenoSocket.makeTcp({
+        hostname: NetAddress.formatIp(address.address),
+        port: address.port
+      })
       const output = yield* sendHelloDeno(socket, {
         ca: [ca]
       })

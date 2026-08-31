@@ -48,7 +48,7 @@ import * as ServerRequest from "effect/unstable/http/HttpServerRequest"
 import type * as ServerResponse from "effect/unstable/http/HttpServerResponse"
 import type * as Multipart from "effect/unstable/http/Multipart"
 import * as UrlParams from "effect/unstable/http/UrlParams"
-import * as Net from "effect/unstable/net/Net"
+import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as Socket from "effect/unstable/socket/Socket"
 import * as Platform from "./BunHttpPlatform.ts"
 import * as BunMultipart from "./BunMultipart.ts"
@@ -123,7 +123,7 @@ export const make = Effect.fnUntraced(
     const scope = yield* Effect.scope
     const requestedIp = "unix" in options
       ? undefined
-      : yield* Effect.fromResult(Net.ipFromString(
+      : yield* Effect.fromResult(NetAddress.ipFromString(
         (options as Bun.Serve.HostnamePortServeOptions<WebSocketContext>).hostname ?? "0.0.0.0"
       )).pipe(Effect.mapError((cause) => new Error.ServeError({ cause })))
     const { compressionThreshold = MIN_COMPRESSIBLE_SIZE, ...websocket } = options.websocket ?? {}
@@ -166,8 +166,8 @@ export const make = Effect.fnUntraced(
     yield* Scope.addFinalizer(scope, shutdown)
 
     const address = "unix" in options
-      ? Net.unixPathAddress(options.unix)
-      : Net.inetAddressUnsafe(requestedIp!, server.port!)
+      ? NetAddress.unixPathAddress(options.unix)
+      : NetAddress.inetAddressUnsafe(requestedIp!, server.port!)
 
     return Server.make({
       address,

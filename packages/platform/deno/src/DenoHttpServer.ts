@@ -35,7 +35,7 @@ import * as ServerRequest from "effect/unstable/http/HttpServerRequest"
 import type * as ServerResponse from "effect/unstable/http/HttpServerResponse"
 import type * as Multipart from "effect/unstable/http/Multipart"
 import * as UrlParams from "effect/unstable/http/UrlParams"
-import * as Net from "effect/unstable/net/Net"
+import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as Socket from "effect/unstable/socket/Socket"
 import * as Platform from "./DenoHttpPlatform.ts"
 import * as DenoMultipart from "./DenoMultipart.ts"
@@ -97,8 +97,8 @@ export const make = Effect.fnUntraced(function*(
 
   const serverAddress = server.addr
   const address = yield* (serverAddress.transport === "unix"
-    ? Effect.succeed(Net.unixPathAddress(serverAddress.path))
-    : Effect.fromResult(Net.inetAddressFromIpString(
+    ? Effect.succeed(NetAddress.unixPathAddress(serverAddress.path))
+    : Effect.fromResult(NetAddress.inetAddressFromIpString(
       (serverAddress as Deno.NetAddr).hostname,
       (serverAddress as Deno.NetAddr).port
     )).pipe(Effect.mapError((cause) => new Error.ServeError({ cause }))))

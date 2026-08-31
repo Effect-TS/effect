@@ -36,6 +36,7 @@ import * as HashSet_ from "./HashSet.ts"
 import * as core from "./internal/core.ts"
 import { effectIsExit } from "./internal/effect.ts"
 import * as InternalGraph from "./internal/graph.ts"
+import * as InternalNetAddress from "./internal/netAddress.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
 import * as InternalSchema from "./internal/schema/schema.ts"
@@ -67,7 +68,7 @@ import type { Assign, Lambda, Mutable, Simplify } from "./Struct.ts"
 import * as Struct_ from "./Struct.ts"
 import type { RequiredKeys, UnionToIntersection } from "./Types.ts"
 import type { Unify } from "./Unify.ts"
-import * as Net_ from "./unstable/net/Net.ts"
+import type * as NetAddress_ from "./unstable/net/NetAddress.ts"
 
 const TypeId = InternalSchema.TypeId
 
@@ -12051,7 +12052,7 @@ export interface Duration extends declare<Duration_.Duration> {
 
 const netAddressFromString = <A>(
   declaration: declare<A>,
-  parse: (input: string) => Result_.Result<A, Net_.AddressError>,
+  parse: (input: string) => Result_.Result<A, InternalNetAddress.NetAddressError>,
   encode: (value: A) => string
 ) =>
   String.pipe(decodeTo(
@@ -12073,7 +12074,7 @@ const netAddressFromString = <A>(
  * @category schemas
  * @since 4.0.0
  */
-export const MacAddress: declare<Net_.MacAddress> = declare(Net_.isMacAddress)
+export const MacAddress: declare<NetAddress_.MacAddress> = declare(InternalNetAddress.isMacAddress)
 
 /**
  * Schema for MAC addresses encoded as canonical colon-separated hexadecimal strings.
@@ -12083,8 +12084,8 @@ export const MacAddress: declare<Net_.MacAddress> = declare(Net_.isMacAddress)
  */
 export const MacAddressFromString = netAddressFromString(
   MacAddress,
-  Net_.macAddressFromString,
-  Net_.formatMacAddress
+  InternalNetAddress.macAddressFromString,
+  InternalNetAddress.formatMacAddress
 )
 
 /**
@@ -12093,7 +12094,7 @@ export const MacAddressFromString = netAddressFromString(
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv4Address: declare<Net_.Ipv4Address> = declare(Net_.isIpv4Address)
+export const Ipv4Address: declare<NetAddress_.Ipv4Address> = declare(InternalNetAddress.isIpv4Address)
 
 /**
  * Schema for IPv4 addresses encoded as canonical dotted-decimal strings.
@@ -12101,7 +12102,11 @@ export const Ipv4Address: declare<Net_.Ipv4Address> = declare(Net_.isIpv4Address
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv4AddressFromString = netAddressFromString(Ipv4Address, Net_.ipv4FromString, Net_.formatIp)
+export const Ipv4AddressFromString = netAddressFromString(
+  Ipv4Address,
+  InternalNetAddress.ipv4FromString,
+  InternalNetAddress.formatIp
+)
 
 /**
  * Schema for already-constructed IPv6 address values.
@@ -12109,7 +12114,7 @@ export const Ipv4AddressFromString = netAddressFromString(Ipv4Address, Net_.ipv4
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv6Address: declare<Net_.Ipv6Address> = declare(Net_.isIpv6Address)
+export const Ipv6Address: declare<NetAddress_.Ipv6Address> = declare(InternalNetAddress.isIpv6Address)
 
 /**
  * Schema for IPv6 addresses encoded as canonical strings.
@@ -12117,7 +12122,11 @@ export const Ipv6Address: declare<Net_.Ipv6Address> = declare(Net_.isIpv6Address
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv6AddressFromString = netAddressFromString(Ipv6Address, Net_.ipv6FromString, Net_.formatIp)
+export const Ipv6AddressFromString = netAddressFromString(
+  Ipv6Address,
+  InternalNetAddress.ipv6FromString,
+  InternalNetAddress.formatIp
+)
 
 /**
  * Schema for already-constructed IPv4 or IPv6 address values.
@@ -12125,7 +12134,7 @@ export const Ipv6AddressFromString = netAddressFromString(Ipv6Address, Net_.ipv6
  * @category schemas
  * @since 4.0.0
  */
-export const IpAddress: declare<Net_.IpAddress> = declare(Net_.isIpAddress)
+export const IpAddress: declare<NetAddress_.IpAddress> = declare(InternalNetAddress.isIpAddress)
 
 /**
  * Schema for IP addresses encoded as canonical numeric strings.
@@ -12133,7 +12142,11 @@ export const IpAddress: declare<Net_.IpAddress> = declare(Net_.isIpAddress)
  * @category schemas
  * @since 4.0.0
  */
-export const IpAddressFromString = netAddressFromString(IpAddress, Net_.ipFromString, Net_.formatIp)
+export const IpAddressFromString = netAddressFromString(
+  IpAddress,
+  InternalNetAddress.ipFromString,
+  InternalNetAddress.formatIp
+)
 
 /**
  * Schema for already-constructed resolved IPv4 internet addresses.
@@ -12141,7 +12154,7 @@ export const IpAddressFromString = netAddressFromString(IpAddress, Net_.ipFromSt
  * @category schemas
  * @since 4.0.0
  */
-export const InetAddressV4: declare<Net_.InetAddressV4> = declare(Net_.isInetAddressV4)
+export const InetAddressV4: declare<NetAddress_.InetAddressV4> = declare(InternalNetAddress.isInetAddressV4)
 
 /**
  * Schema for already-constructed resolved IPv6 internet addresses.
@@ -12149,7 +12162,7 @@ export const InetAddressV4: declare<Net_.InetAddressV4> = declare(Net_.isInetAdd
  * @category schemas
  * @since 4.0.0
  */
-export const InetAddressV6: declare<Net_.InetAddressV6> = declare(Net_.isInetAddressV6)
+export const InetAddressV6: declare<NetAddress_.InetAddressV6> = declare(InternalNetAddress.isInetAddressV6)
 
 /**
  * Schema for already-constructed resolved internet addresses.
@@ -12157,7 +12170,7 @@ export const InetAddressV6: declare<Net_.InetAddressV6> = declare(Net_.isInetAdd
  * @category schemas
  * @since 4.0.0
  */
-export const InetAddress: declare<Net_.InetAddress> = declare(Net_.isInetAddress)
+export const InetAddress: declare<NetAddress_.InetAddress> = declare(InternalNetAddress.isInetAddress)
 
 /**
  * Schema for resolved internet addresses encoded as numeric socket strings.
@@ -12170,7 +12183,11 @@ export const InetAddress: declare<Net_.InetAddress> = declare(Net_.isInetAddress
  * @category schemas
  * @since 4.0.0
  */
-export const InetAddressFromString = netAddressFromString(InetAddress, Net_.inetAddressFromString, Net_.formatInet)
+export const InetAddressFromString = netAddressFromString(
+  InetAddress,
+  InternalNetAddress.inetAddressFromString,
+  InternalNetAddress.formatInet
+)
 
 /**
  * Schema for already-constructed Unix-domain filesystem addresses.
@@ -12178,7 +12195,9 @@ export const InetAddressFromString = netAddressFromString(InetAddress, Net_.inet
  * @category schemas
  * @since 4.0.0
  */
-export const UnixPathAddress: declare<Net_.UnixPathAddress> = declare(Net_.isUnixPathAddress)
+export const UnixPathAddress: declare<NetAddress_.UnixPathAddress> = declare(
+  InternalNetAddress.isUnixPathAddress
+)
 
 /**
  * Schema for Unix-domain filesystem addresses encoded as opaque path strings.
@@ -12189,7 +12208,7 @@ export const UnixPathAddress: declare<Net_.UnixPathAddress> = declare(Net_.isUni
 export const UnixPathAddressFromString = String.pipe(decodeTo(
   UnixPathAddress,
   SchemaTransformation.transform({
-    decode: Net_.unixPathAddress,
+    decode: InternalNetAddress.unixPathAddress,
     encode: (address) => address.path
   })
 ))
@@ -12200,7 +12219,7 @@ export const UnixPathAddressFromString = String.pipe(decodeTo(
  * @category schemas
  * @since 4.0.0
  */
-export const SocketAddress: declare<Net_.SocketAddress> = declare(Net_.isSocketAddress)
+export const SocketAddress: declare<NetAddress_.SocketAddress> = declare(InternalNetAddress.isSocketAddress)
 
 /**
  * Schema for `Duration` values.

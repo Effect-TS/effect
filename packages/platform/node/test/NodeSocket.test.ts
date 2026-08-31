@@ -5,7 +5,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import type * as EffectNet from "effect/unstable/net/Net"
+import type * as NetAddress from "effect/unstable/net/NetAddress"
 import { Socket } from "effect/unstable/socket"
 import * as Fs from "node:fs"
 import * as Net from "node:net"
@@ -125,7 +125,7 @@ describe("Socket", () => {
   it.effect("open", () =>
     Effect.gen(function*() {
       const server = yield* makeServer
-      const channel = NodeSocket.makeNetChannel({ port: (server.address as EffectNet.InetAddress).port })
+      const channel = NodeSocket.makeNetChannel({ port: (server.address as NetAddress.InetAddress).port })
 
       const outputEffect = Stream.make("Hello", "World").pipe(
         Stream.encodeText,
@@ -145,7 +145,7 @@ describe("Socket", () => {
   it.effect("pull batches", () =>
     Effect.gen(function*() {
       const server = yield* makeServer
-      const socket = yield* NodeSocket.makeNet({ port: (server.address as EffectNet.InetAddress).port })
+      const socket = yield* NodeSocket.makeNet({ port: (server.address as NetAddress.InetAddress).port })
 
       const received = yield* Effect.gen(function*() {
         const writer = yield* socket.writer
@@ -356,7 +356,7 @@ describe("Socket", () => {
           Effect.callback<Tls.TLSSocket>((resume) => {
             const conn = Tls.connect({
               host: "127.0.0.1",
-              port: (server.address as EffectNet.InetAddress).port,
+              port: (server.address as NetAddress.InetAddress).port,
               ca: [cert]
             })
             conn.once("secureConnect", () => resume(Effect.succeed(conn)))

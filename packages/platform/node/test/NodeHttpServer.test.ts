@@ -29,7 +29,7 @@ import {
   UrlParams
 } from "effect/unstable/http"
 import * as HttpApiError from "effect/unstable/httpapi/HttpApiError"
-import type * as NetAddress from "effect/unstable/net/Net"
+import type * as NetAddress from "effect/unstable/net/NetAddress"
 import { Socket } from "effect/unstable/socket"
 import * as Buffer from "node:buffer"
 import { randomBytes } from "node:crypto"

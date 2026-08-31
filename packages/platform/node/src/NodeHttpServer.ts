@@ -50,7 +50,7 @@ import * as Request from "effect/unstable/http/HttpServerRequest"
 import { HttpServerRequest } from "effect/unstable/http/HttpServerRequest"
 import type { HttpServerResponse } from "effect/unstable/http/HttpServerResponse"
 import type * as Multipart from "effect/unstable/http/Multipart"
-import * as EffectNet from "effect/unstable/net/Net"
+import * as NetAddress from "effect/unstable/net/NetAddress"
 import * as Socket from "effect/unstable/socket/Socket"
 import * as Http from "node:http"
 import type * as Net from "node:net"
@@ -133,8 +133,8 @@ export const make = Effect.fnUntraced(function*(
 
   const address = server.address()!
   const effectAddress = typeof address === "string"
-    ? Effect.succeed(EffectNet.unixPathAddress(address))
-    : Effect.fromResult(EffectNet.inetAddressFromIpString(address.address, address.port)).pipe(
+    ? Effect.succeed(NetAddress.unixPathAddress(address))
+    : Effect.fromResult(NetAddress.inetAddressFromIpString(address.address, address.port)).pipe(
       Effect.mapError((cause) => new ServeError({ cause }))
     )
   const boundAddress = yield* effectAddress

@@ -27,7 +27,7 @@ import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
 import * as Multipart from "effect/unstable/http/Multipart"
 import * as UrlParams from "effect/unstable/http/UrlParams"
 import * as HttpApiError from "effect/unstable/httpapi/HttpApiError"
-import type * as Net from "effect/unstable/net/Net"
+import type * as NetAddress from "effect/unstable/net/NetAddress"
 import type * as Socket from "effect/unstable/socket/Socket"
 
 const Todo = Schema.Struct({
@@ -496,7 +496,7 @@ describe("DenoHttpServer", () => {
       )
       yield* Effect.promise(() => runtime.context())
       const downstreamServer = yield* Effect.promise(() => runtime.runPromise(HttpServer.HttpServer))
-      const downstreamPort = (downstreamServer.address as Net.InetAddress).port
+      const downstreamPort = (downstreamServer.address as NetAddress.InetAddress).port
 
       const controller = new AbortController()
       const downstream = fetch(`http://127.0.0.1:${downstreamPort}`, {
@@ -641,7 +641,7 @@ describe("DenoHttpServer", () => {
     Effect.gen(function*() {
       yield* serveWebSocket(echoWebSocket)
       const server = yield* HttpServer.HttpServer
-      const port = (server.address as Net.InetAddress).port
+      const port = (server.address as NetAddress.InetAddress).port
       const messages = yield* connectWebSocket(`ws://127.0.0.1:${port}/`, (socket) => socket.send("hello"), 1)
       assert.deepStrictEqual(messages, ["hello"])
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
@@ -655,7 +655,7 @@ describe("DenoHttpServer", () => {
       )
 
       const server = yield* HttpServer.HttpServer
-      const port = (server.address as Net.InetAddress).port
+      const port = (server.address as NetAddress.InetAddress).port
       const messages = yield* connectWebSocket(`ws://127.0.0.1:${port}/`, (socket) => {
         socket.send("first")
         socket.send("second")
@@ -684,7 +684,7 @@ describe("DenoHttpServer", () => {
       )
 
       const server = yield* HttpServer.HttpServer
-      const port = (server.address as Net.InetAddress).port
+      const port = (server.address as NetAddress.InetAddress).port
       const socket = yield* openWebSocket(`ws://127.0.0.1:${port}/`)
       socket.send(new Uint8Array([1, 2, 3]))
 
