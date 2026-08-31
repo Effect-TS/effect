@@ -409,6 +409,32 @@ describe("HttpApiClient", () => {
         assert.strictEqual(error, "NoContentError")
       }))
 
+    it.effect("does not treat empty or malformed content-type headers as missing", () =>
+      Effect.gen(function*() {
+        for (
+          const [contentType, expected] of [
+            ["", "<empty>"],
+            ["not a media type", "not a media type"]
+          ] as const
+        ) {
+          const client = yield* makeClient(() =>
+            new Response(null, { status: 400, headers: { "content-type": contentType } })
+          )
+          const exit = yield* Effect.exit(client.test.noContent({}))
+          assert.strictEqual(exit._tag, "Failure")
+          if (exit._tag === "Failure") {
+            const decodeError = exit.cause.reasons.find((reason) =>
+              Cause.isFailReason(reason) && HttpClientError.isHttpClientError(reason.error) &&
+              reason.error.reason._tag === "DecodeError"
+            )
+            assert.isDefined(decodeError)
+            if (Cause.isFailReason(decodeError) && HttpClientError.isHttpClientError(decodeError.error)) {
+              assert.include(decodeError.error.reason.description, expected)
+            }
+          }
+        }
+      }))
+
     it.effect("groups schemas by normalized declared content type", () =>
       Effect.gen(function*() {
         const client = yield* makeClient(() =>

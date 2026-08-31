@@ -20,15 +20,15 @@ import * as Predicate from "../../Predicate.ts"
 import * as Result from "../../Result.ts"
 
 /**
- * Runtime type identifier for `MediaType` values.
+ * Type identifier for `MediaType` values.
  *
  * @category type IDs
  * @since 4.0.0
  */
-export const TypeId: unique symbol = Symbol.for("~effect/http/MediaType")
+export const TypeId = "~effect/http/MediaType"
 
 /**
- * Type of the unique symbol used to brand `MediaType` values.
+ * Type of the identifier used to brand `MediaType` values.
  *
  * @category type IDs
  * @since 4.0.0

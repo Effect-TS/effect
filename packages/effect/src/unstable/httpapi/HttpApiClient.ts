@@ -339,7 +339,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         const errorAlternatives = new Map<number, Array<ResponseAlternative>>()
         for (const [status, schemas] of errors.entries()) {
           const grouped = groupSchemasByContentType(schemas)
-          for (const [contentType, schemas] of grouped.entries()) {
+          for (const { contentType, schemas } of grouped) {
             addResponseAlternative(errorAlternatives, status, contentType, schemasToResponse(schemas))
           }
         }
@@ -366,7 +366,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         const successAlternatives = new Map<number, Array<ResponseAlternative>>()
         for (const [status, schemas] of successes.entries()) {
           const grouped = groupSchemasByContentType(schemas)
-          for (const [contentType, schemas] of grouped.entries()) {
+          for (const { contentType, schemas } of grouped) {
             addResponseAlternative(successAlternatives, status, contentType, schemasToResponse(schemas))
           }
         }
@@ -375,7 +375,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           addResponseAlternative(
             successAlternatives,
             HttpApiSchema.getStatusSuccessSchema(streamSuccess),
-            MediaType.essence(streamSchema.contentType),
+            streamSchema.contentType,
             streamToResponse(streamSuccess)
           )
         }
@@ -771,14 +771,14 @@ function toCodecArrayBufferWithHeaders(schema: Schema.Constraint): Schema.Top {
 type ResponseDecoder = (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<unknown, unknown, unknown>
 
 interface ResponseAlternative {
-  readonly contentType: string
+  readonly contentType: MediaType.MediaType | undefined
   readonly decode: ResponseDecoder
 }
 
 function addResponseAlternative(
   map: Map<number, Array<ResponseAlternative>>,
   status: number,
-  contentType: string,
+  contentType: MediaType.MediaType | undefined,
   decode: ResponseDecoder
 ) {
   const alternatives = map.get(status)
@@ -795,9 +795,9 @@ function makeResponseDecoder(alternatives: ReadonlyArray<ResponseAlternative>): 
     return first.decode
   }
   return (response) => {
-    const rawContentType = response.headers["content-type"] ?? ""
-    if (rawContentType === "") {
-      const alternative = alternatives.find((alternative) => alternative.contentType === "")
+    const rawContentType = response.headers["content-type"]
+    if (rawContentType === undefined) {
+      const alternative = alternatives.find((alternative) => alternative.contentType === undefined)
       return alternative === undefined
         ? failUnsupportedContentType(response, rawContentType, alternatives)
         : alternative.decode(response)
@@ -806,47 +806,64 @@ function makeResponseDecoder(alternatives: ReadonlyArray<ResponseAlternative>): 
     if (Result.isFailure(parsedContentType)) {
       return failUnsupportedContentType(response, rawContentType, alternatives)
     }
-    const contentType = MediaType.essence(parsedContentType.success)
-    const alternative = alternatives.find((alternative) => alternative.contentType === contentType)
+    const alternative = alternatives.find((alternative) =>
+      alternative.contentType !== undefined &&
+      MediaType.sameEssence(alternative.contentType, parsedContentType.success)
+    )
     return alternative === undefined
-      ? failUnsupportedContentType(response, contentType, alternatives)
+      ? failUnsupportedContentType(response, rawContentType, alternatives)
       : alternative.decode(response)
   }
 }
 
+interface ResponseSchemaGroup {
+  readonly contentType: MediaType.MediaType | undefined
+  readonly schemas: [Schema.Top, ...Array<Schema.Top>]
+}
+
 function groupSchemasByContentType(
   schemas: Arr.NonEmptyReadonlyArray<Schema.Top>
-): Map<string, Arr.NonEmptyReadonlyArray<Schema.Top>> {
-  const grouped = new Map<string, [Schema.Top, ...Array<Schema.Top>]>()
+): Arr.NonEmptyArray<ResponseSchemaGroup> {
+  const grouped: Array<ResponseSchemaGroup> = []
   for (const schema of schemas) {
     const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
     const contentType = HttpApiSchema.isNoContent(body.ast)
-      ? ""
-      : MediaType.essence(HttpApiSchema.getResponseEncodingSchema(schema).contentType)
-    const existing = grouped.get(contentType)
+      ? undefined
+      : HttpApiSchema.getResponseEncodingSchema(schema).contentType
+    const existing = grouped.find((group) =>
+      contentType === undefined
+        ? group.contentType === undefined
+        : group.contentType !== undefined && MediaType.sameEssence(group.contentType, contentType)
+    )
     if (existing === undefined) {
-      grouped.set(contentType, [schema])
+      grouped.push({ contentType, schemas: [schema] })
     } else {
-      existing.push(schema)
+      existing.schemas.push(schema)
     }
   }
-  return grouped
+  return grouped as Arr.NonEmptyArray<ResponseSchemaGroup>
 }
 
 function failUnsupportedContentType(
   response: HttpClientResponse.HttpClientResponse,
-  contentType: string,
+  contentType: string | undefined,
   alternatives: ReadonlyArray<ResponseAlternative>
 ) {
-  const expected = Array.from(new Set(alternatives.map((alternative) => alternative.contentType))).join(", ")
+  const expected = Array.from(
+    new Set(
+      alternatives.map((alternative) =>
+        alternative.contentType === undefined ? "<missing>" : MediaType.format(alternative.contentType)
+      )
+    )
+  ).join(", ")
+  const actual = contentType === undefined ? "<missing>" : contentType === "" ? "<empty>" : contentType
   return Effect.fail(
     new HttpClientError.HttpClientError({
       reason: new HttpClientError.DecodeError({
         request: response.request,
         response,
-        description: `Unsupported response content-type for status ${response.status}: ${
-          contentType || "<missing>"
-        }. Expected one of: ${expected}`
+        description:
+          `Unsupported response content-type for status ${response.status}: ${actual}. Expected one of: ${expected}`
       })
     })
   )
