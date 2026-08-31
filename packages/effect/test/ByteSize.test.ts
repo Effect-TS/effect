@@ -38,16 +38,16 @@ describe("ByteSize", () => {
       ByteSize.yobibytes
     ]
     decimal.forEach((constructor, index) => {
-      strictEqual(ByteSize.toBytes(constructor(1n)), 1_000n ** BigInt(index + 1))
+      strictEqual(ByteSize.toBigInt(constructor(1n)), 1_000n ** BigInt(index + 1))
     })
     binary.forEach((constructor, index) => {
-      strictEqual(ByteSize.toBytes(constructor(1n)), 1_024n ** BigInt(index + 1))
+      strictEqual(ByteSize.toBigInt(constructor(1n)), 1_024n ** BigInt(index + 1))
     })
   })
 
   it("validates primitive and unit constructor inputs", () => {
-    strictEqual(ByteSize.bytes(-0), ByteSize.zero)
-    assertTrue(ByteSize.bytes(0n) === ByteSize.zero)
+    deepStrictEqual(ByteSize.bytes(-0), ByteSize.zero)
+    deepStrictEqual(ByteSize.bytes(0n), ByteSize.zero)
     for (const value of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1, NaN, Infinity, -Infinity]) {
       throws(() => ByteSize.bytes(value))
     }

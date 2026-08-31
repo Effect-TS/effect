@@ -46,12 +46,12 @@ export interface ByteSize extends Equal.Equal, Pipeable, Inspectable.Inspectable
 export type Input = ByteSize | bigint | number | string
 
 /**
- * Canonical decimal and binary byte unit symbols.
+ * Canonical decimal byte unit symbols.
  *
  * @category models
  * @since 4.0.0
  */
-export type Unit =
+export type DecimalUnit =
   | "B"
   | "kB"
   | "MB"
@@ -63,6 +63,15 @@ export type Unit =
   | "YB"
   | "RB"
   | "QB"
+
+/**
+ * Canonical binary byte unit symbols.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type BinaryUnit =
+  | "B"
   | "KiB"
   | "MiB"
   | "GiB"
@@ -73,17 +82,34 @@ export type Unit =
   | "YiB"
 
 /**
+ * Canonical decimal and binary byte unit symbols.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Unit = DecimalUnit | BinaryUnit
+
+/**
  * Options controlling compact byte-size formatting.
  *
  * @category models
  * @since 4.0.0
  */
-export interface FormatOptions {
-  readonly system?: "decimal" | "binary" | undefined
-  readonly unit?: Unit | undefined
-  readonly precision?: number | undefined
-  readonly trailingZeros?: boolean | undefined
-}
+export type FormatOptions =
+  & {
+    readonly precision?: number | undefined
+    readonly trailingZeros?: boolean | undefined
+  }
+  & (
+    | {
+      readonly system?: "decimal" | undefined
+      readonly unit?: DecimalUnit | undefined
+    }
+    | {
+      readonly system?: "binary" | undefined
+      readonly unit?: BinaryUnit | undefined
+    }
+  )
 
 interface UnitInfo {
   readonly symbol: Unit
@@ -133,7 +159,7 @@ const ByteSizeProto: Omit<ByteSize, "value"> = {
     return `${this.value} ${this.value === bigint1 ? "byte" : "bytes"}`
   },
   toJSON(this: ByteSize) {
-    return { _id: "ByteSize", bytes: globalThis.String(this.value) }
+    return { _id: "ByteSize", bytes: `${this.value}` }
   },
   [NodeInspectSymbol]() {
     return this.toJSON()
@@ -144,13 +170,10 @@ const ByteSizeProto: Omit<ByteSize, "value"> = {
 }
 
 const make = (value: bigint): ByteSize => {
-  if (value === bigint0 && zeroValue !== undefined) return zeroValue
   const byteSize = Object.create(ByteSizeProto)
   byteSize.value = value
   return byteSize
 }
-
-let zeroValue: ByteSize | undefined
 
 /**
  * The byte size containing zero bytes.
@@ -158,7 +181,7 @@ let zeroValue: ByteSize | undefined
  * @category constants
  * @since 4.0.0
  */
-export const zero: ByteSize = zeroValue = make(bigint0)
+export const zero: ByteSize = make(bigint0)
 
 const invalid = (message: string): never => {
   throw new Error(`Invalid ByteSize: ${message}`)
@@ -215,7 +238,7 @@ export const fromInputUnsafe = (input: Input): ByteSize => {
     case "object":
       if (isByteSize(input)) return input
   }
-  return invalid(`unsupported input ${globalThis.String(input)}`)
+  return invalid(`unsupported input ${input}`)
 }
 
 /**
@@ -382,12 +405,12 @@ export const isByteSize = (input: unknown): input is ByteSize => hasProperty(inp
 export const isZero = (self: ByteSize): boolean => self.value === bigint0
 
 /**
- * Returns the exact byte count.
+ * Returns the exact byte count as a bigint.
  *
  * @category getters
  * @since 4.0.0
  */
-export const toBytes = (self: ByteSize): bigint => self.value
+export const toBigInt = (self: ByteSize): bigint => self.value
 
 /**
  * Converts a byte size to a safe integer, returning `None` when it is too large.
@@ -622,7 +645,7 @@ const formatWithUnit = (value: bigint, unit: UnitInfo, precision: number, traili
   const rounded = (value * scale * BigInt(2) + unit.factor) / (unit.factor * BigInt(2))
   const whole = rounded / scale
   if (precision === 0) return `${whole} ${unit.symbol}`
-  let fraction = globalThis.String(rounded % scale).padStart(precision, "0")
+  let fraction = `${rounded % scale}`.padStart(precision, "0")
   if (!trailingZeros) fraction = fraction.replace(/0+$/, "")
   return `${whole}${fraction.length === 0 ? "" : `.${fraction}`} ${unit.symbol}`
 }

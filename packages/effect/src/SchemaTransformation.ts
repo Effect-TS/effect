@@ -1113,7 +1113,7 @@ export const byteSizeFromBigInt: Transformation<ByteSize.ByteSize, bigint> = tra
         ),
       onSome: Effect.succeed
     }),
-  encode: (byteSize) => Effect.succeed(ByteSize.toBytes(byteSize))
+  encode: (byteSize) => Effect.succeed(ByteSize.toBigInt(byteSize))
 })
 
 /**

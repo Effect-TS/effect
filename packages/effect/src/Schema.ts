@@ -12271,7 +12271,7 @@ export const ByteSize: ByteSize = declare(
         Struct({ _id: Literal("ByteSize"), bytes: BigInt.check(isGreaterThanOrEqualToBigInt(globalThis.BigInt(0))) }),
         SchemaTransformation.transform({
           decode: (input) => ByteSize_.bytes(input.bytes),
-          encode: (byteSize) => ({ _id: "ByteSize", bytes: ByteSize_.toBytes(byteSize) } as const)
+          encode: (byteSize) => ({ _id: "ByteSize", bytes: ByteSize_.toBigInt(byteSize) } as const)
         })
       )
   }
