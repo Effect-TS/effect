@@ -7,13 +7,13 @@ const parse = (input: string) => Result.getOrThrow(MediaType.parse(input))
 
 const assertFailure = (
   input: string,
-  reason: MediaType.MediaTypeParseErrorReason,
+  message: string,
   offset?: number
 ) => {
   const result = MediaType.parse(input)
   strictEqual(Result.isFailure(result), true)
   if (Result.isFailure(result)) {
-    strictEqual(result.failure.reason, reason)
+    strictEqual(result.failure.message, `${message} at offset ${result.failure.offset}`)
     if (offset !== undefined) strictEqual(result.failure.offset, offset)
   }
 }
@@ -48,8 +48,8 @@ describe("MediaType", () => {
     const token = "!#$%&'*+-.^_`|~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     strictEqual(MediaType.essence(parse(`${token}/${token}`)), `${token.toLowerCase()}/${token.toLowerCase()}`)
     strictEqual(MediaType.essence(parse("application/vnd.*+json")), "application/vnd.*+json")
-    assertFailure("*/*", "ExpectedType", 0)
-    assertFailure("text/*", "ExpectedSubtype", 5)
+    assertFailure("*/*", "Media type cannot be a wildcard", 0)
+    assertFailure("text/*", "Media subtype cannot be a wildcard", 5)
   })
 
   it("parses quoted values, escapes, empty separators, and obs-text", () => {
@@ -73,33 +73,34 @@ describe("MediaType", () => {
 
   it("preserves intentional differences from Go and WHATWG parsers", () => {
     // Go's MIME grammar accepts braces and equal duplicate parameters; RFC 9110 does not.
-    assertFailure("text/plain; filename={file}.txt", "ExpectedParameterValue")
-    assertFailure("text/plain; charset=utf-8; charset=utf-8", "DuplicateParameter")
+    assertFailure("text/plain; filename={file}.txt", "Expected a value for parameter \"filename\"")
+    assertFailure("text/plain; charset=utf-8; charset=utf-8", "Duplicate parameter \"charset\"")
     // Go preserves unnecessary backslashes for legacy IE paths; RFC quoted-pair decodes them.
     strictEqual(MediaType.format(parse("text/plain; escaped=\"foo\\xbar\"")), "text/plain; escaped=fooxbar")
     // WHATWG recovers from malformed parameters; this parser validates the complete input.
-    assertFailure("text/html; charset=\"shift_jis\"iso-2022-jp", "UnexpectedCharacter")
-    assertFailure("text/plain; charset=utf-8; broken", "ExpectedEquals")
+    assertFailure("text/html; charset=\"shift_jis\"iso-2022-jp", "Unexpected character \"i\"")
+    assertFailure("text/plain; charset=utf-8; broken", "Expected '=' after parameter \"broken\"")
     // HTTP OWS is SP / HTAB, not arbitrary Unicode whitespace.
-    assertFailure("text/plain;\u00a0charset=utf-8", "ExpectedParameterName")
+    assertFailure("text/plain;\u00a0charset=utf-8", "Expected a parameter name after ';'")
   })
 
   it("rejects malformed input with a structured error", () => {
-    assertFailure("", "ExpectedType")
-    assertFailure("text", "ExpectedSlash")
-    assertFailure("text/", "ExpectedSubtype")
-    assertFailure("text /plain", "ExpectedSlash")
-    assertFailure("text/plain; charset =utf-8", "ExpectedEquals")
-    assertFailure("text/plain; charset=", "ExpectedParameterValue")
-    assertFailure("text/plain; charset=\"unterminated", "ExpectedParameterValue")
-    assertFailure("text/plain; charset=\"x\\\"", "ExpectedParameterValue")
-    assertFailure("text/plain; charset=\"x\r\nInjected: yes\"", "UnexpectedCharacter")
-    assertFailure("text/plain; charset=\"\u0000\"", "UnexpectedCharacter")
-    assertFailure("text/plain; charset=\"\u007f\"", "UnexpectedCharacter")
-    assertFailure("text/plain; charset=\"\\\u007f\"", "InvalidQuotedPair")
-    assertFailure("text/plain; charset=\"Ā\"", "UnexpectedCharacter")
-    assertFailure("text/plain garbage", "UnexpectedCharacter")
-    assertFailure("text/plain; A=1; a=2", "DuplicateParameter")
+    assertFailure("", "Expected a media type")
+    assertFailure("text", "Expected '/' after the media type")
+    assertFailure("text/", "Expected a media subtype after '/'")
+    assertFailure("text /plain", "Expected '/' after the media type")
+    assertFailure("text/plain; charset =utf-8", "Expected '=' after parameter \"charset\"")
+    assertFailure("text/plain; charset=", "Expected a value for parameter \"charset\"")
+    assertFailure("text/plain; charset=\"unterminated", "Unterminated quoted value for parameter \"charset\"")
+    assertFailure("text/plain; charset=\"x\\\"", "Unterminated quoted value for parameter \"charset\"")
+    assertFailure("text/plain; charset=\"x\r\nInjected: yes\"", "Invalid character in parameter \"charset\"")
+    assertFailure("text/plain; charset=\"\u0000\"", "Invalid character in parameter \"charset\"")
+    assertFailure("text/plain; charset=\"\u007f\"", "Invalid character in parameter \"charset\"")
+    assertFailure("text/plain; charset=\"\\\u007f\"", "Invalid escape in parameter \"charset\"")
+    assertFailure("text/plain; charset=\"Ā\"", "Invalid character in parameter \"charset\"")
+    assertFailure("text/plain garbage", "Unexpected character \"g\"")
+    assertFailure("text/plain; A=1; a=2", "Duplicate parameter \"a\"")
+    assertFailure("text/plain; a=1; a", "Expected '=' after parameter \"a\"")
   })
 
   it("constructs immutable values and rejects invalid parts", () => {

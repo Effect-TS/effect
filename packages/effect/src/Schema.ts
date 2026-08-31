@@ -11907,7 +11907,7 @@ const mediaTypeTransformation = SchemaTransformation.transformOrFail({
     return Result_.isFailure(result)
       ? Effect.fail(
         new SchemaIssue.InvalidValue(
-          { message: `${result.failure.reason} at offset ${result.failure.offset}` },
+          { message: result.failure.message },
           input,
           options
         )

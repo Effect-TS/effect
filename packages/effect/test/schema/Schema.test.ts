@@ -5824,7 +5824,7 @@ Expected a value between -2147483648 and 2147483647`
     const mediaType = MediaType.parseUnsafe("text/plain; charset=UTF-8")
     const asserts = new TestSchema.Asserts(Schema.MediaTypeFromString)
     await asserts.decoding().succeed("Text/Plain; Charset=UTF-8", mediaType)
-    await asserts.decoding().fail("not a media type", "ExpectedSlash at offset 3")
+    await asserts.decoding().fail("not a media type", "Expected '/' after the media type at offset 3")
     await asserts.encoding().succeed(mediaType, "text/plain; charset=UTF-8")
   })
 

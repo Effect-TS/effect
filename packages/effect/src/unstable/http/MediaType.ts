@@ -82,23 +82,6 @@ export interface MediaType extends Equal.Equal, Pipeable.Pipeable, Inspectable.I
 }
 
 /**
- * Reason that parsing or construction of a media type failed.
- *
- * @category errors
- * @since 4.0.0
- */
-export type MediaTypeParseErrorReason =
-  | "ExpectedType"
-  | "ExpectedSlash"
-  | "ExpectedSubtype"
-  | "ExpectedParameterName"
-  | "ExpectedEquals"
-  | "ExpectedParameterValue"
-  | "InvalidQuotedPair"
-  | "DuplicateParameter"
-  | "UnexpectedCharacter"
-
-/**
  * Describes a media type parse failure at an offset in the original input.
  *
  * @category errors
@@ -107,12 +90,8 @@ export type MediaTypeParseErrorReason =
 export class MediaTypeParseError extends Data.TaggedError("MediaTypeParseError")<{
   readonly input: string
   readonly offset: number
-  readonly reason: MediaTypeParseErrorReason
-}> {
-  override get message(): string {
-    return `${this.reason} at offset ${this.offset}`
-  }
-}
+  readonly message: string
+}> {}
 
 /**
  * Returns `true` if the provided value is a `MediaType` value.
@@ -232,8 +211,8 @@ const fromValidated = (type: string, subtype: string, parameters: Array<Paramete
   return Object.freeze(self)
 }
 
-const fail = (input: string, offset: number, reason: MediaTypeParseErrorReason) =>
-  Result.fail(new MediaTypeParseError({ input, offset, reason }))
+const fail = (input: string, offset: number, message: string) =>
+  Result.fail(new MediaTypeParseError({ input, offset, message: `${message} at offset ${offset}` }))
 
 /**
  * Creates a concrete media type from validated parts.
@@ -243,8 +222,10 @@ const fail = (input: string, offset: number, reason: MediaTypeParseErrorReason) 
  */
 export const make = (parts: Parts): Result.Result<MediaType, MediaTypeParseError> => {
   const input = `${parts.type}/${parts.subtype}`
-  if (!isToken(parts.type) || parts.type === "*") return fail(input, 0, "ExpectedType")
-  if (!isToken(parts.subtype) || parts.subtype === "*") return fail(input, parts.type.length + 1, "ExpectedSubtype")
+  if (!isToken(parts.type) || parts.type === "*") return fail(input, 0, "Expected a valid media type")
+  if (!isToken(parts.subtype) || parts.subtype === "*") {
+    return fail(input, parts.type.length + 1, "Expected a valid media subtype")
+  }
   const parameters: Array<Parameter> = []
   const names = new Set<string>()
   const entries = parts.parameters === undefined
@@ -254,9 +235,9 @@ export const make = (parts: Parts): Result.Result<MediaType, MediaTypeParseError
     : Object.entries(parts.parameters)
   for (const [rawName, value] of entries) {
     const name = rawName.toLowerCase()
-    if (!isToken(rawName)) return fail(input, input.length, "ExpectedParameterName")
-    if (!isDecodedValue(value)) return fail(input, input.length, "ExpectedParameterValue")
-    if (names.has(name)) return fail(input, input.length, "DuplicateParameter")
+    if (!isToken(rawName)) return fail(input, input.length, `Invalid parameter name ${JSON.stringify(rawName)}`)
+    if (!isDecodedValue(value)) return fail(input, input.length, `Invalid value for parameter ${JSON.stringify(name)}`)
+    if (names.has(name)) return fail(input, input.length, `Duplicate parameter ${JSON.stringify(name)}`)
     names.add(name)
     parameters.push({ name, value })
   }
@@ -293,32 +274,35 @@ export const parse = (input: string): Result.Result<MediaType, MediaTypeParseErr
   let index = skipOws(input, 0)
   const typeStart = index
   index = tokenEnd(input, index)
-  if (index === typeStart) return fail(input, index, "ExpectedType")
+  if (index === typeStart) return fail(input, index, "Expected a media type")
   const type = input.slice(typeStart, index).toLowerCase()
-  if (type === "*") return fail(input, typeStart, "ExpectedType")
-  if (input.charCodeAt(index) !== 47) return fail(input, index, "ExpectedSlash")
+  if (type === "*") return fail(input, typeStart, "Media type cannot be a wildcard")
+  if (input.charCodeAt(index) !== 47) return fail(input, index, "Expected '/' after the media type")
   index++
   const subtypeStart = index
   index = tokenEnd(input, index)
-  if (index === subtypeStart) return fail(input, index, "ExpectedSubtype")
+  if (index === subtypeStart) return fail(input, index, "Expected a media subtype after '/'")
   const subtype = input.slice(subtypeStart, index).toLowerCase()
-  if (subtype === "*") return fail(input, subtypeStart, "ExpectedSubtype")
+  if (subtype === "*") return fail(input, subtypeStart, "Media subtype cannot be a wildcard")
 
   const parameters: Array<Parameter> = []
   const names = new Set<string>()
   while (true) {
     index = skipOws(input, index)
     if (index === length) return Result.succeed(fromValidated(type, subtype, parameters))
-    if (input.charCodeAt(index) !== 59) return fail(input, index, "UnexpectedCharacter")
+    if (input.charCodeAt(index) !== 59) {
+      return fail(input, index, `Unexpected character ${JSON.stringify(input[index])}`)
+    }
     index = skipOws(input, index + 1)
     if (index === length || input.charCodeAt(index) === 59) continue
 
     const nameStart = index
     index = tokenEnd(input, index)
-    if (index === nameStart) return fail(input, index, "ExpectedParameterName")
+    if (index === nameStart) return fail(input, index, "Expected a parameter name after ';'")
     const name = input.slice(nameStart, index).toLowerCase()
-    if (names.has(name)) return fail(input, nameStart, "DuplicateParameter")
-    if (input.charCodeAt(index) !== 61) return fail(input, index, "ExpectedEquals")
+    if (input.charCodeAt(index) !== 61) {
+      return fail(input, index, `Expected '=' after parameter ${JSON.stringify(name)}`)
+    }
     index++
 
     let value = ""
@@ -338,7 +322,7 @@ export const parse = (input: string): Result.Result<MediaType, MediaTypeParseErr
             index + 1 >= length ||
             (escaped !== 9 && escaped !== 32 && (escaped < 33 || escaped === 127 || escaped > 255))
           ) {
-            return fail(input, index, "InvalidQuotedPair")
+            return fail(input, index, `Invalid escape in parameter ${JSON.stringify(name)}`)
           }
           value += input[index + 1]
           index += 2
@@ -348,17 +332,18 @@ export const parse = (input: string): Result.Result<MediaType, MediaTypeParseErr
           code !== 9 && code !== 32 && code !== 33 && (code < 35 || code > 91) && (code < 93 || code > 126) &&
           (code < 128 || code > 255)
         ) {
-          return fail(input, index, "UnexpectedCharacter")
+          return fail(input, index, `Invalid character in parameter ${JSON.stringify(name)}`)
         }
         value += input[index++]
       }
-      if (!closed) return fail(input, index, "ExpectedParameterValue")
+      if (!closed) return fail(input, index, `Unterminated quoted value for parameter ${JSON.stringify(name)}`)
     } else {
       const valueStart = index
       index = tokenEnd(input, index)
-      if (index === valueStart) return fail(input, index, "ExpectedParameterValue")
+      if (index === valueStart) return fail(input, index, `Expected a value for parameter ${JSON.stringify(name)}`)
       value = input.slice(valueStart, index)
     }
+    if (names.has(name)) return fail(input, nameStart, `Duplicate parameter ${JSON.stringify(name)}`)
     names.add(name)
     parameters.push({ name, value })
   }
