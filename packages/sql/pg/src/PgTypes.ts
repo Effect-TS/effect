@@ -19,7 +19,7 @@
 import * as Data from "effect/Data"
 import * as Result from "effect/Result"
 import * as IpNetwork from "effect/unstable/net/IpNetwork"
-import * as Net from "effect/unstable/net/Net"
+import * as Net from "effect/unstable/net/NetAddress"
 import type * as PgProtocol from "./PgProtocol.ts"
 import type { ValueSink } from "./PgProtocol.ts"
 

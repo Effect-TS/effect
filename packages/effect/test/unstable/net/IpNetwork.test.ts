@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Equal, Hash, Result, Schema } from "effect"
 import * as IpNetwork from "effect/unstable/net/IpNetwork"
-import * as Net from "effect/unstable/net/Net"
+import * as Net from "effect/unstable/net/NetAddress"
 import * as fc from "fast-check"
 
 const success = <A>(result: Result.Result<A, unknown>): A => {

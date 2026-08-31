@@ -67,8 +67,8 @@ import type { Assign, Lambda, Mutable, Simplify } from "./Struct.ts"
 import * as Struct_ from "./Struct.ts"
 import type { RequiredKeys, UnionToIntersection } from "./Types.ts"
 import type { Unify } from "./Unify.ts"
-import * as NetAddress_ from "./unstable/net/NetAddress.ts"
 import * as IpNetwork_ from "./unstable/net/IpNetwork.ts"
+import * as NetAddress_ from "./unstable/net/NetAddress.ts"
 
 const TypeId = InternalSchema.TypeId
 

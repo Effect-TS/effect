@@ -1,6 +1,6 @@
 import type { Result, Schema } from "effect"
 import * as IpNetwork from "effect/unstable/net/IpNetwork"
-import * as Net from "effect/unstable/net/Net"
+import * as Net from "effect/unstable/net/NetAddress"
 import { describe, expect, it } from "tstyche"
 
 describe("IpNetwork", () => {
