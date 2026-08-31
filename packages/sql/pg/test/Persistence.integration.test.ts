@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Latch, Layer, Schema } from "effect"
+import { Duration, Effect, Fiber, Latch, Layer, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/unstable/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
 import * as SqlCleanupTest from "effect-test/unstable/persistence/SqlCleanupTest"
@@ -43,9 +43,14 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PersistedQueue SQL
         isCustomId: false
       })
 
+      const takeOptions = {
+        name: "lock-refresh",
+        maxAttempts: 10,
+        backoff: () => Duration.zero
+      }
       const acquired = Latch.makeUnsafe()
       const first = yield* Effect.scoped(Effect.gen(function*() {
-        yield* store1.take({ name: "lock-refresh", maxAttempts: 10 })
+        yield* store1.take(takeOptions)
         yield* acquired.open
         return yield* Effect.never
       })).pipe(Effect.forkScoped)
@@ -53,7 +58,7 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PersistedQueue SQL
       yield* acquired.await
 
       const second = yield* Effect.scoped(
-        store2.take({ name: "lock-refresh", maxAttempts: 10 })
+        store2.take(takeOptions)
       ).pipe(Effect.forkScoped)
 
       yield* Effect.sleep("1500 millis")
@@ -64,7 +69,7 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PersistedQueue SQL
       assert.deepStrictEqual(received.element, element)
     }).pipe(TestClock.withLive))
 
-  it.effect("counts malformed JSON as an attempt and continues", () =>
+  it.effect("dead-letters malformed JSON and continues", () =>
     Effect.gen(function*() {
       const tableName = "effect_queue_invalid_json"
       const store = yield* PersistedQueue.makeStoreSql({
@@ -91,18 +96,18 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PersistedQueue SQL
       yield* sql`UPDATE ${table} SET element = ${"{"} WHERE id = ${poisonId}`
       yield* queue.offer("valid")
 
-      const malformed = yield* Effect.exit(queue.take(Effect.succeed, { maxAttempts: 1 }))
-      assert.isTrue(Exit.isFailure(malformed))
+      // the malformed element is skipped and the next one is delivered
+      const value = yield* queue.take(Effect.succeed)
+      assert.strictEqual(value, "valid")
 
       const rows = yield* sql<{
+        readonly state: string
         readonly attempts: number
         readonly last_failure: string | null
-      }>`SELECT attempts, last_failure FROM ${table} WHERE id = ${poisonId}`
-      assert.strictEqual(rows[0].attempts, 1)
+      }>`SELECT state, attempts, last_failure FROM ${table} WHERE id = ${poisonId}`
+      assert.strictEqual(rows[0].state, "failed")
+      assert.strictEqual(Number(rows[0].attempts), 1)
       assert.isNotNull(rows[0].last_failure)
-
-      const value = yield* queue.take(Effect.succeed, { maxAttempts: 1 })
-      assert.strictEqual(value, "valid")
     }).pipe(TestClock.withLive))
 })
 

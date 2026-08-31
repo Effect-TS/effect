@@ -68,10 +68,11 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
 
         const queue = yield* PersistedQueue.make({
           name: queueName,
-          schema: RedisItem
+          schema: RedisItem,
+          maxAttempts: 1
         })
         const id = yield* queue.offer({ n: 42 })
-        const error = yield* queue.take(() => Effect.fail("boom"), { maxAttempts: 1 }).pipe(Effect.flip)
+        const error = yield* queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
         assert.strictEqual(error, "boom")
 
         const failed = yield* redis.use((client) => client.lrange(`effectq:${queueName}:failed`, 0, -1))

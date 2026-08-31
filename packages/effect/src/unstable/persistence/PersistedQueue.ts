@@ -8,17 +8,20 @@
  * This module includes a queue factory, store service, id-based de-duplication,
  * retry handling, and in-memory, Redis, and SQL-backed store layers.
  *
+ * Delivery is at-least-once: a crash between handler success and the
+ * acknowledgement redelivers the element, so handlers must be idempotent.
+ *
  * @since 4.0.0
  */
 import type * as Arr from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
+import * as Clock from "../../Clock.ts"
 import * as Context from "../../Context.ts"
-import * as Data from "../../Data.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import { flow } from "../../Function.ts"
-import * as Iterable from "../../Iterable.ts"
+import { sqlCleanupBatchSize } from "../../internal/persistence.ts"
 import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
 import * as MutableRef from "../../MutableRef.ts"
@@ -54,8 +57,11 @@ export type TypeId = "~effect/persistence/PersistedQueue"
  * **Details**
  *
  * `offer` enqueues values by id, and `take` processes one value at a time,
- * marking it complete on success or retrying it until the maximum attempts is
- * reached.
+ * marking it complete on success or retrying it with the queue's backoff until
+ * the maximum attempts is reached, after which it is marked as failed.
+ *
+ * Delivery is at-least-once: a crash between handler success and the
+ * acknowledgement redelivers the element, so handlers must be idempotent.
  *
  * @category models
  * @since 4.0.0
@@ -69,7 +75,8 @@ export interface PersistedQueue<in out A, out R = never> {
    * **Details**
    *
    * If an element with the same id already exists in the queue, it will not be
-   * added again.
+   * added again. De-duplication survives completion until the id is removed by
+   * `layerCleanup`.
    */
   readonly offer: (value: A, options?: {
     readonly id: string | undefined
@@ -82,18 +89,23 @@ export interface PersistedQueue<in out A, out R = never> {
    * **Details**
    *
    * If the returned effect succeeds, the element is marked as processed;
-   * otherwise it will be retried according to the provided options. By default,
-   * max attempts is set to 10.
+   * otherwise it will be retried with the queue's backoff until the maximum
+   * attempts is reached, after which it is marked as failed.
+   *
+   * An attempt is counted when the element is claimed, so `attempts` in the
+   * handler metadata is 1-based ("this is attempt 3"). A handler crash that
+   * takes down the process still consumes an attempt.
+   *
+   * Elements that fail to decode with the queue's schema are marked as failed
+   * immediately and the next element is taken instead, so schema decode errors
+   * never surface from `take`.
    */
   readonly take: <XA, XE, XR>(
     f: (value: A, metadata: {
       readonly id: string
       readonly attempts: number
-    }) => Effect.Effect<XA, XE, XR>,
-    options?: {
-      readonly maxAttempts?: number | undefined
-    }
-  ) => Effect.Effect<XA, XE | PersistedQueueError | Schema.SchemaError, R | XR>
+    }) => Effect.Effect<XA, XE, XR>
+  ) => Effect.Effect<XA, XE | PersistedQueueError, R | XR>
 }
 
 /**
@@ -108,6 +120,8 @@ export class PersistedQueueFactory extends Context.Service<
     readonly make: <S extends Schema.Constraint>(options: {
       readonly name: string
       readonly schema: S
+      readonly maxAttempts?: number | undefined
+      readonly backoff?: ((attempts: number) => Duration.Input) | undefined
     }) => Effect.Effect<PersistedQueue<S["Type"], S["EncodingServices"] | S["DecodingServices"]>>
   }
 >()("effect/persistence/PersistedQueue/PersistedQueueFactory") {}
@@ -116,17 +130,32 @@ export class PersistedQueueFactory extends Context.Service<
  * Accesses `PersistedQueueFactory` to create a named persisted queue for a
  * schema.
  *
+ * **Details**
+ *
+ * `maxAttempts` defaults to 10. `backoff` computes the delay before a failed
+ * element becomes visible again from the number of consumed attempts, and
+ * defaults to a capped exponential backoff (1 second doubling up to 5
+ * minutes).
+ *
  * @category accessors
  * @since 4.0.0
  */
 export const make = <S extends Schema.Constraint>(options: {
   readonly name: string
   readonly schema: S
+  readonly maxAttempts?: number | undefined
+  readonly backoff?: ((attempts: number) => Duration.Input) | undefined
 }): Effect.Effect<
   PersistedQueue<S["Type"], S["EncodingServices"] | S["DecodingServices"]>,
   never,
   PersistedQueueFactory
 > => PersistedQueueFactory.use((factory) => factory.make(options))
+
+const defaultBackoff = (attempts: number): Duration.Duration =>
+  Duration.min(
+    Duration.seconds(2 ** Math.min(Math.max(attempts - 1, 0), 9)),
+    Duration.minutes(5)
+  )
 
 /**
  * Creates a `PersistedQueueFactory` from the current `PersistedQueueStore`.
@@ -147,10 +176,20 @@ export const makeFactory = Effect.gen(function*() {
     make<S extends Schema.Constraint>(options: {
       readonly name: string
       readonly schema: S
+      readonly maxAttempts?: number | undefined
+      readonly backoff?: ((attempts: number) => Duration.Input) | undefined
     }) {
       const jsonSchema = Schema.toCodecJson(options.schema)
       const encodeUnknown = Schema.encodeUnknownEffect(jsonSchema)
       const decodeUnknown = Schema.decodeUnknownEffect(jsonSchema)
+      const backoff = options.backoff
+      const takeOptions = {
+        name: options.name,
+        maxAttempts: options.maxAttempts ?? 10,
+        backoff: backoff === undefined
+          ? defaultBackoff
+          : (attempts: number) => Duration.fromInputUnsafe(backoff(attempts))
+      }
 
       return Effect.succeed<PersistedQueue<S["Type"], S["EncodingServices"] | S["DecodingServices"]>>({
         [TypeId]: TypeId,
@@ -170,15 +209,39 @@ export const makeFactory = Effect.gen(function*() {
               )
             }
           ),
-        take: (f, opts) =>
-          Effect.scopedWith(Effect.fnUntraced(function*(scope) {
-            const item = yield* store.take({
-              name: options.name,
-              maxAttempts: opts?.maxAttempts ?? 10
-            }).pipe(Scope.provide(scope))
-            const decoded = yield* decodeUnknown(item.element)
-            return yield* f(decoded, { id: item.id, attempts: item.attempts })
-          }))
+        take: <XA, XE, XR>(
+          f: (value: S["Type"], metadata: {
+            readonly id: string
+            readonly attempts: number
+          }) => Effect.Effect<XA, XE, XR>
+        ) => {
+          const loop: Effect.Effect<XA, any, any> = Effect.scopedWith((scope) =>
+            store.take(takeOptions).pipe(
+              Scope.provide(scope),
+              Effect.flatMap((item) =>
+                Effect.flatMap(
+                  Effect.exit(decodeUnknown(item.element)),
+                  (exit): Effect.Effect<XA, any, any> =>
+                    Exit.isSuccess(exit)
+                      ? f(exit.value as S["Type"], { id: item.id, attempts: item.attempts })
+                      : Cause.hasInterruptsOnly(exit.cause)
+                      ? Effect.failCause(exit.cause as Cause.Cause<never>)
+                      : Effect.fail(new DeadLetter(exit.cause))
+                )
+              )
+            )
+          ).pipe(
+            Effect.catchIf(
+              (e): e is DeadLetter => e instanceof DeadLetter,
+              (): Effect.Effect<XA, any, any> => loop
+            )
+          )
+          return loop as Effect.Effect<
+            XA,
+            XE | PersistedQueueError,
+            XR | S["EncodingServices"] | S["DecodingServices"]
+          >
+        }
       })
     }
   })
@@ -195,6 +258,48 @@ export const layer: Layer.Layer<
   never,
   PersistedQueueStore
 > = Layer.effect(PersistedQueueFactory, makeFactory)
+
+/**
+ * Runs `PersistedQueueStore.cleanup` on a schedule.
+ *
+ * **Details**
+ *
+ * Completed elements are retained for `timeToLive` (default 30 days) so
+ * offer de-duplication keeps working across replays, then removed. Failed
+ * elements are the dead-letter record and are kept forever unless
+ * `failedTimeToLive` is set.
+ *
+ * Run this layer in one instance of a deployment rather than on every worker;
+ * racing instances are harmless since deletes are idempotent, but the work is
+ * redundant.
+ *
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerCleanup = (options?: {
+  readonly interval?: Duration.Input | undefined
+  readonly timeToLive?: Duration.Input | undefined
+  readonly failedTimeToLive?: Duration.Input | undefined
+}): Layer.Layer<never, never, PersistedQueueStore> =>
+  Layer.effectDiscard(Effect.gen(function*() {
+    const store = yield* PersistedQueueStore
+    const cleanupOptions = {
+      timeToLive: Duration.fromInputUnsafe(options?.timeToLive ?? Duration.days(30)),
+      failedTimeToLive: options?.failedTimeToLive === undefined
+        ? undefined
+        : Duration.fromInputUnsafe(options.failedTimeToLive)
+    }
+    yield* store.cleanup(cleanupOptions).pipe(
+      Effect.catchCause((cause) => Effect.logWarning("Failed to clean up persisted queue", cause)),
+      Effect.repeat(Schedule.spaced(options?.interval ?? Duration.hours(1))),
+      Effect.interruptible,
+      Effect.forkScoped,
+      Effect.annotateLogs({
+        module: "effect/persistence/PersistedQueue",
+        fiber: "cleanup"
+      })
+    )
+  }))
 
 /**
  * Runtime type identifier for `PersistedQueueError`.
@@ -233,6 +338,26 @@ export class PersistedQueueError extends Schema.Error<PersistedQueueError>(
   readonly [ErrorTypeId]: ErrorTypeId = ErrorTypeId
 }
 
+// Internal signal used by the factory to tell a store that a taken element
+// cannot ever be processed (its stored payload fails to decode) and must be
+// dead-lettered instead of retried.
+class DeadLetter {
+  readonly _tag = "~effect/persistence/PersistedQueue/DeadLetter"
+  readonly cause: Cause.Cause<unknown>
+  constructor(cause: Cause.Cause<unknown>) {
+    this.cause = cause
+  }
+}
+
+const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefined => {
+  for (const reason of cause.reasons) {
+    if (reason._tag === "Fail" && reason.error instanceof DeadLetter) {
+      return reason.error
+    }
+  }
+  return undefined
+}
+
 /**
  * Defines the low-level backing store service used by `PersistedQueue`.
  *
@@ -245,6 +370,12 @@ export class PersistedQueueError extends Schema.Error<PersistedQueueError>(
  *
  * The store persists offered elements and returns taken elements in a scope so
  * the finalizer can complete or retry them based on the processing exit.
+ *
+ * Claiming an element counts an attempt, so the `attempts` returned by `take`
+ * is 1-based. When the take scope closes with a success the element is marked
+ * completed; a failure retries it after `backoff(attempts)` or marks it failed
+ * once `maxAttempts` is exhausted; an interruption releases it without
+ * counting the attempt.
  *
  * @category services
  * @since 4.0.0
@@ -264,6 +395,7 @@ export class PersistedQueueStore extends Context.Service<
     readonly take: (options: {
       readonly name: string
       readonly maxAttempts: number
+      readonly backoff: (attempts: number) => Duration.Duration
     }) => Effect.Effect<
       {
         readonly id: string
@@ -273,6 +405,16 @@ export class PersistedQueueStore extends Context.Service<
       PersistedQueueError,
       Scope.Scope
     >
+
+    /**
+     * Removes completed elements older than `timeToLive`, together with their
+     * de-duplication records. Failed elements are removed only when
+     * `failedTimeToLive` is provided.
+     */
+    readonly cleanup: (options: {
+      readonly timeToLive: Duration.Duration
+      readonly failedTimeToLive: Duration.Duration | undefined
+    }) => Effect.Effect<void, PersistedQueueError>
   }
 >()("effect/persistence/PersistedQueue/PersistedQueueStore") {}
 
@@ -281,8 +423,9 @@ export class PersistedQueueStore extends Context.Service<
  *
  * **Details**
  *
- * The store is process-local and volatile; failed takes are requeued until the
- * configured maximum attempts is reached.
+ * The store is process-local and volatile; failed takes are requeued with the
+ * queue's backoff until the configured maximum attempts is reached, after
+ * which the element is marked as failed.
  *
  * @category layers
  * @since 4.0.0
@@ -292,21 +435,22 @@ export const layerStoreMemory: Layer.Layer<
 > = Layer.sync(PersistedQueueStore, () => {
   type Entry = {
     readonly id: string
-    attempts: number
     readonly element: unknown
+    attempts: number
+    state: "pending" | "processing" | "completed" | "failed"
+    visibleAt: number
+    stateChangedAt: number
   }
   const queues = new Map<string, {
     latch: Latch.Latch
-    ids: Set<string>
-    items: Set<Entry>
+    entries: Map<string, Entry>
   }>()
   const getOrCreateQueue = (name: string) => {
     let queue = queues.get(name)
     if (!queue) {
       queue = {
         latch: Latch.makeUnsafe(false),
-        ids: new Set(),
-        items: new Set()
+        entries: new Map()
       }
       queues.set(name, queue)
     }
@@ -315,38 +459,96 @@ export const layerStoreMemory: Layer.Layer<
 
   return PersistedQueueStore.of({
     offer: (options) =>
-      Effect.sync(() => {
+      Effect.map(Clock.currentTimeMillis, (now) => {
         const queue = getOrCreateQueue(options.name)
-        if (queue.ids.has(options.id)) return
-        queue.ids.add(options.id)
-        queue.items.add({ id: options.id, attempts: 0, element: options.element })
+        if (queue.entries.has(options.id)) return
+        queue.entries.set(options.id, {
+          id: options.id,
+          element: options.element,
+          attempts: 0,
+          state: "pending",
+          visibleAt: now,
+          stateChangedAt: now
+        })
         queue.latch.openUnsafe()
       }),
     take: Effect.fnUntraced(function*(options) {
       const queue = getOrCreateQueue(options.name)
       while (true) {
-        yield* queue.latch.await
-        const item = Iterable.headUnsafe(queue.items)
-        queue.items.delete(item)
-        if (queue.items.size === 0) {
-          queue.latch.closeUnsafe()
+        // close before scanning so a mutation after the scan reopens the latch
+        queue.latch.closeUnsafe()
+        const now = yield* Clock.currentTimeMillis
+        let item: Entry | undefined
+        let nextVisibleAt = Infinity
+        for (const entry of queue.entries.values()) {
+          if (entry.state !== "pending" || entry.attempts >= options.maxAttempts) continue
+          if (entry.visibleAt <= now) {
+            item = entry
+            break
+          }
+          nextVisibleAt = Math.min(nextVisibleAt, entry.visibleAt)
         }
-        yield* Effect.addFinalizer((exit) => {
-          if (exit._tag === "Success") {
-            return Effect.void
-          } else if (!Exit.hasInterrupts(exit)) {
-            item.attempts += 1
-          }
-          if (item.attempts >= options.maxAttempts) {
-            return Effect.void
-          }
-          queue.items.add(item)
-          queue.latch.openUnsafe()
-          return Effect.void
-        })
-        return item
+        if (item === undefined) {
+          yield* nextVisibleAt === Infinity
+            ? queue.latch.await
+            : Effect.race(queue.latch.await, Effect.sleep(Duration.millis(nextVisibleAt - now)))
+          continue
+        }
+        const entry = item
+        entry.state = "processing"
+        entry.attempts += 1
+        queue.latch.openUnsafe()
+        yield* Effect.addFinalizer((exit) =>
+          Effect.map(Clock.currentTimeMillis, (now) => {
+            if (exit._tag === "Success") {
+              entry.state = "completed"
+              entry.stateChangedAt = now
+              return
+            }
+            const deadLetter = deadLetterFromCause(exit.cause)
+            if (deadLetter !== undefined) {
+              entry.state = "failed"
+              entry.stateChangedAt = now
+              return
+            }
+            if (Cause.hasInterruptsOnly(exit.cause)) {
+              entry.attempts -= 1
+              entry.state = "pending"
+              queue.latch.openUnsafe()
+              return
+            }
+            if (entry.attempts >= options.maxAttempts) {
+              entry.state = "failed"
+              entry.stateChangedAt = now
+              return
+            }
+            entry.state = "pending"
+            entry.visibleAt = now + Duration.toMillis(options.backoff(entry.attempts))
+            queue.latch.openUnsafe()
+          })
+        )
+        return { id: entry.id, attempts: entry.attempts, element: entry.element }
       }
-    })
+    }),
+    cleanup: (options) =>
+      Effect.map(Clock.currentTimeMillis, (now) => {
+        const completedCutoff = now - Duration.toMillis(options.timeToLive)
+        const failedCutoff = options.failedTimeToLive === undefined
+          ? undefined
+          : now - Duration.toMillis(options.failedTimeToLive)
+        for (const queue of queues.values()) {
+          for (const [id, entry] of queue.entries) {
+            if (entry.state === "completed" && entry.stateChangedAt <= completedCutoff) {
+              queue.entries.delete(id)
+            } else if (
+              entry.state === "failed" && failedCutoff !== undefined &&
+              entry.stateChangedAt <= failedCutoff
+            ) {
+              queue.entries.delete(id)
+            }
+          }
+        }
+      })
   })
 })
 
@@ -355,9 +557,9 @@ export const layerStoreMemory: Layer.Layer<
  *
  * **Details**
  *
- * The store uses Redis lists and hashes with worker locks, periodically
- * refreshes locks while items are being processed, and moves exhausted items
- * to a failed queue.
+ * The store uses Redis lists, hashes, and sorted sets with worker locks,
+ * periodically refreshes locks while items are being processed, delays retried
+ * items with the queue's backoff, and moves exhausted items to a failed queue.
  *
  * @category constructors
  * @since 4.0.0
@@ -393,31 +595,54 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   const keyLock = (id: string) => `${prefix}${id}:lock`
   const keyPending = (name: string) => `${prefix}${name}:pending`
   const keyFailed = (name: string) => `${prefix}${name}:failed`
+  const keyDelayed = (name: string) => `${prefix}${name}:delayed`
+  const keyAttempts = (name: string) => `${prefix}${name}:attempts`
+  const keyIds = (name: string) => `${prefix}${name}:ids`
   const workerId = crypto.randomUUID()
+
+  const ackRetrySchedule = Schedule.min([
+    Schedule.exponential(200, 1.5),
+    Schedule.spaced(5000)
+  ]).pipe(Schedule.upTo({ duration: Duration.millis(lockExpirationMillis) }))
 
   type Element = {
     readonly id: string
     readonly element: unknown
-    attempts: number
-    lastFailure?: string
+    readonly attempts: number
   }
 
   const requeue = redis.eval(requeueRedis)
   const complete = redis.eval(completeRedis)
   const failed = redis.eval(failedRedis)
+  const retry = redis.eval(retryRedis)
   const resetQueue = redis.eval(resetQueueRedis)
   const offer = redis.eval(offerRedis)
   const take = redis.eval(takeRedis)
   const expireAll = redis.eval(expireAllRedis)
+  const trimFailed = redis.eval(trimFailedRedis)
+
+  const configs = new Map<string, { readonly maxAttempts: number }>()
+  const nudges = new Map<string, Latch.Latch>()
+  const getNudge = (name: string) => {
+    let latch = nudges.get(name)
+    if (!latch) {
+      latch = Latch.makeUnsafe(false)
+      nudges.set(name, latch)
+    }
+    return latch
+  }
 
   const queues = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(name: string) {
       const queueKey = keyQueue(name)
       const pendingKey = keyPending(name)
+      const delayedKey = keyDelayed(name)
+      const attemptsKey = keyAttempts(name)
       const queue = yield* Queue.make<Element>()
       const takers = MutableRef.make(0)
       const pollLatch = Latch.makeUnsafe()
       const takenLatch = Latch.makeUnsafe()
+      const nudge = getNudge(name)
 
       yield* Effect.addFinalizer(() =>
         Effect.orDie(
@@ -429,40 +654,68 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
                   queueKey,
                   pendingKey,
                   keyLock(element.id),
+                  attemptsKey,
                   element.id,
-                  JSON.stringify(element)
+                  JSON.stringify({ id: element.id, element: element.element })
                 ), { concurrency: "unbounded", discard: true })
           )
         )
       )
 
-      yield* resetQueue(queueKey, pendingKey, prefix).pipe(
+      yield* Effect.suspend(() => {
+        const maxAttempts = configs.get(name)?.maxAttempts ?? Number.MAX_SAFE_INTEGER
+        return Effect.flatMap(Clock.currentTimeMillis, (now) =>
+          resetQueue(
+            queueKey,
+            pendingKey,
+            attemptsKey,
+            keyFailed(name),
+            keyIds(name),
+            prefix,
+            maxAttempts,
+            now
+          ))
+      }).pipe(
         Effect.andThen(Effect.sleep(lockRefreshMillis)),
         Effect.forever,
         Effect.forkScoped
       )
 
       const poll = (size: number) =>
-        take(
-          queueKey,
-          pendingKey,
-          prefix,
-          workerId,
-          size,
-          lockExpirationMillis
-        )
+        Effect.flatMap(Clock.currentTimeMillis, (now) =>
+          take(
+            queueKey,
+            pendingKey,
+            delayedKey,
+            attemptsKey,
+            prefix,
+            workerId,
+            size,
+            lockExpirationMillis,
+            now
+          ))
 
       yield* Effect.gen(function*() {
         while (true) {
           yield* pollLatch.await
           yield* Effect.yieldNow
+          nudge.closeUnsafe()
           const results = takers.current === 0 ? null : yield* poll(takers.current)
-          if (results === null) {
-            yield* Effect.sleep(pollInterval)
+          if (results === null || results.length === 0) {
+            yield* Effect.race(Effect.sleep(pollInterval), nudge.await)
             continue
           }
           takenLatch.closeUnsafe()
-          yield* Queue.offerAll(queue, results.map((json) => JSON.parse(json)))
+          const elements: Array<Element> = []
+          for (let i = 0; i < results.length; i += 2) {
+            const payload = JSON.parse(results[i] as string)
+            elements.push({
+              id: payload.id,
+              element: payload.element,
+              attempts: Number(results[i + 1])
+            })
+          }
+          yield* Queue.offerAll(queue, elements)
           yield* takenLatch.await
           yield* Effect.yieldNow
         }
@@ -494,26 +747,53 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     })
   )
 
+  const scanKeys = (pattern: string) =>
+    Effect.gen(function*() {
+      const keys: Array<string> = []
+      let cursor = "0"
+      do {
+        const [next, batch] = yield* redis.send<[string, Array<string>]>(
+          "SCAN",
+          cursor,
+          "MATCH",
+          pattern,
+          "COUNT",
+          "100"
+        )
+        cursor = next
+        for (const key of batch) keys.push(key)
+      } while (cursor !== "0")
+      return keys
+    })
+
   return PersistedQueueStore.of({
     offer: ({ element, id, isCustomId, name }) =>
-      Effect.mapError(
+      Effect.flatMap(Clock.currentTimeMillis, (now) =>
         isCustomId
           ? offer(
-            `${prefix}${name}`,
-            `${prefix}${name}:ids`,
+            keyQueue(name),
+            keyIds(name),
             id,
-            JSON.stringify({ id, element, attempts: 0 })
+            JSON.stringify({ id, element }),
+            now
           )
-          : redis.send("RPUSH", `${prefix}${name}`, JSON.stringify({ id, element, attempts: 0 })),
-        ({ cause }) =>
-          new PersistedQueueError({
-            message: "Failed to offer element to persisted queue",
-            cause
-          })
-      ),
+          : redis.send("RPUSH", keyQueue(name), JSON.stringify({ id, element }))).pipe(
+          Effect.mapError(({ cause }) =>
+            new PersistedQueueError({
+              message: "Failed to offer element to persisted queue",
+              cause
+            })
+          ),
+          Effect.tap(() =>
+            Effect.sync(() => {
+              nudges.get(name)?.openUnsafe()
+            })
+          )
+        ),
     take: (options) =>
-      Effect.uninterruptibleMask((restore) =>
-        RcMap.get(queues, options.name).pipe(
+      Effect.uninterruptibleMask((restore) => {
+        configs.set(options.name, { maxAttempts: options.maxAttempts })
+        return RcMap.get(queues, options.name).pipe(
           Effect.flatMap(({ pollLatch, queue, takenLatch, takers }) => {
             takers.current++
             if (takers.current === 1) {
@@ -534,48 +814,94 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
           Effect.tap((element) => {
             const lock = keyLock(element.id)
             activeLockKeys.add(lock)
-            return Effect.addFinalizer(Exit.match({
-              onFailure: (cause) => {
-                activeLockKeys.delete(lock)
-                const nextAttempts = element.attempts + 1
-                if (nextAttempts >= options.maxAttempts) {
-                  return Effect.orDie(failed(
+            const ack = (effect: Effect.Effect<unknown, Redis.RedisError>) =>
+              effect.pipe(
+                Effect.retry(ackRetrySchedule),
+                Effect.orDie,
+                Effect.ensuring(Effect.sync(() => activeLockKeys.delete(lock)))
+              )
+            return Effect.addFinalizer((exit) =>
+              Effect.flatMap(Clock.currentTimeMillis, (now) => {
+                if (exit._tag === "Success") {
+                  return ack(complete(
+                    keyPending(options.name),
+                    lock,
+                    keyAttempts(options.name),
+                    keyIds(options.name),
+                    element.id,
+                    now
+                  ))
+                }
+                const dead = deadLetterFromCause(exit.cause)
+                const failElement = (cause: Cause.Cause<unknown>) =>
+                  ack(failed(
                     keyPending(options.name),
                     lock,
                     keyFailed(options.name),
+                    keyAttempts(options.name),
+                    keyIds(options.name),
                     element.id,
                     JSON.stringify({
-                      ...element,
+                      id: element.id,
+                      element: element.element,
+                      attempts: element.attempts,
                       lastFailure: Cause.pretty(cause),
-                      attempts: nextAttempts
+                      failedAt: now
                     })
                   ))
+                if (dead !== undefined) {
+                  return failElement(dead.cause)
                 }
-                return Effect.orDie(requeue(
-                  keyQueue(options.name),
+                if (Cause.hasInterruptsOnly(exit.cause)) {
+                  return ack(requeue(
+                    keyQueue(options.name),
+                    keyPending(options.name),
+                    lock,
+                    keyAttempts(options.name),
+                    element.id,
+                    JSON.stringify({ id: element.id, element: element.element })
+                  ))
+                }
+                if (element.attempts >= options.maxAttempts) {
+                  return failElement(exit.cause)
+                }
+                return ack(retry(
                   keyPending(options.name),
                   lock,
+                  keyDelayed(options.name),
                   element.id,
-                  JSON.stringify(
-                    Cause.hasInterruptsOnly(cause)
-                      ? element
-                      : {
-                        ...element,
-                        lastFailure: Cause.pretty(cause),
-                        attempts: nextAttempts
-                      }
-                  )
+                  JSON.stringify({ id: element.id, element: element.element }),
+                  now + Duration.toMillis(options.backoff(element.attempts))
                 ))
-              },
-              onSuccess: () => {
-                activeLockKeys.delete(lock)
-                return Effect.orDie(complete(
-                  keyPending(options.name),
-                  lock,
-                  element.id
-                ))
-              }
-            }))
+              })
+            )
+          })
+        )
+      }),
+    cleanup: ({ failedTimeToLive, timeToLive }) =>
+      Effect.gen(function*() {
+        const now = yield* Clock.currentTimeMillis
+        const idsKeys = yield* scanKeys(`${prefix}*:ids`)
+        const cutoff = now - Duration.toMillis(timeToLive)
+        yield* Effect.forEach(
+          idsKeys,
+          (key) => redis.send("ZREMRANGEBYSCORE", key, "-inf", `(${cutoff}`),
+          { discard: true }
+        )
+        if (failedTimeToLive !== undefined) {
+          const failedCutoff = now - Duration.toMillis(failedTimeToLive)
+          const failedKeys = yield* scanKeys(`${prefix}*:failed`)
+          yield* Effect.forEach(
+            failedKeys,
+            (key) => trimFailed(key, `${key.slice(0, -":failed".length)}:ids`, failedCutoff),
+            { discard: true }
+          )
+        }
+      }).pipe(
+        Effect.mapError(({ cause }) =>
+          new PersistedQueueError({
+            message: "Failed to clean up persisted queue",
+            cause
           })
         )
       )
@@ -583,15 +909,16 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
 })
 
 const offerRedis = Redis.script(
-  (...args: [keyQueue: string, keyIds: string, id: string, payload: string]) => args,
+  (...args: [keyQueue: string, keyIds: string, id: string, payload: string, now: number]) => args,
   {
     lua: `
 local key_queue = KEYS[1]
 local key_ids = KEYS[2]
 local id = ARGV[1]
 local payload = ARGV[2]
+local now = ARGV[3]
 
-local result = redis.call("SADD", key_ids, id)
+local result = redis.call("ZADD", key_ids, "NX", now, id)
 if result == 1 then
   redis.call("RPUSH", key_queue, payload)
 end
@@ -601,12 +928,28 @@ end
 )
 
 const resetQueueRedis = Redis.script(
-  (...args: [keyQueue: string, keyPending: string, prefix: string]) => args,
+  (
+    ...args: [
+      keyQueue: string,
+      keyPending: string,
+      keyAttempts: string,
+      keyFailed: string,
+      keyIds: string,
+      prefix: string,
+      maxAttempts: number,
+      now: number
+    ]
+  ) => args,
   {
     lua: `
 local key_queue = KEYS[1]
 local key_pending = KEYS[2]
+local key_attempts = KEYS[3]
+local key_failed = KEYS[4]
+local key_ids = KEYS[5]
 local prefix = ARGV[1]
+local max_attempts = tonumber(ARGV[2])
+local now = ARGV[3]
 
 local entries = redis.call("HGETALL", key_pending)
 for i = 1, #entries, 2 do
@@ -615,96 +958,184 @@ for i = 1, #entries, 2 do
   local lock_key = prefix .. id .. ":lock"
   local exists = redis.call("EXISTS", lock_key)
   if exists == 0 then
-    redis.call("RPUSH", key_queue, payload)
+    local attempts = tonumber(redis.call("HGET", key_attempts, id) or "0")
+    if attempts >= max_attempts then
+      -- compose the failed record by hand so the element payload does not go
+      -- through a lossy cjson round-trip
+      local record = string.sub(payload, 1, -2) .. ',"attempts":' .. attempts ..
+        ',"lastFailure":"Lock expired after final attempt","failedAt":' .. now .. '}'
+      redis.call("RPUSH", key_failed, record)
+      redis.call("HDEL", key_attempts, id)
+      -- failed ids keep their dedupe entry until failedTimeToLive removes the
+      -- dead-letter record, so park them outside the timeToLive trim range
+      redis.call("ZADD", key_ids, "XX", "+inf", id)
+    else
+      redis.call("RPUSH", key_queue, payload)
+    end
     redis.call("HDEL", key_pending, id)
   end
 end
 `,
-    numberOfKeys: 2
+    numberOfKeys: 5
   }
 )
 
 const requeueRedis = Redis.script(
-  (...args: [keyQueue: string, keyPending: string, keyLock: string, id: string, payload: string]) => args,
-  {
-    lua: `
-local key_queue = KEYS[1]
-local key_pending = KEYS[2]
-local key_lock = KEYS[3]
-local id = ARGV[1]
-local payload = ARGV[2]
-
-redis.call("DEL", key_lock)
-redis.call("HDEL", key_pending, id)
-redis.call("RPUSH", key_queue, payload)
-`,
-    numberOfKeys: 3
-  }
-)
-
-const completeRedis = Redis.script(
-  (...args: [keyPending: string, keyLock: string, id: string]) => args,
-  {
-    lua: `
-local key_pending = KEYS[1]
-local key_lock = KEYS[2]
-local id = ARGV[1]
-
-redis.call("DEL", key_lock)
-redis.call("HDEL", key_pending, id)
-`,
-    numberOfKeys: 2
-  }
-)
-
-const failedRedis = Redis.script(
-  (...args: [keyPending: string, keyLock: string, keyFailed: string, id: string, payload: string]) => args,
-  {
-    lua: `
-local key_pending = KEYS[1]
-local key_lock = KEYS[2]
-local key_failed = KEYS[3]
-local id = ARGV[1]
-local payload = ARGV[2]
-
-redis.call("DEL", key_lock)
-redis.call("HDEL", key_pending, id)
-redis.call("RPUSH", key_failed, payload)
-`,
-    numberOfKeys: 3
-  }
-)
-
-const takeRedis = Redis.script(
   (
-    ...args: [keyQueue: string, keyPending: string, prefix: string, workerId: string, batchSize: number, pttl: number]
+    ...args: [keyQueue: string, keyPending: string, keyLock: string, keyAttempts: string, id: string, payload: string]
   ) => args,
   {
     lua: `
 local key_queue = KEYS[1]
 local key_pending = KEYS[2]
+local key_lock = KEYS[3]
+local key_attempts = KEYS[4]
+local id = ARGV[1]
+local payload = ARGV[2]
+
+redis.call("DEL", key_lock)
+redis.call("HDEL", key_pending, id)
+local attempts = redis.call("HINCRBY", key_attempts, id, -1)
+if attempts <= 0 then
+  redis.call("HDEL", key_attempts, id)
+end
+redis.call("RPUSH", key_queue, payload)
+`,
+    numberOfKeys: 4
+  }
+)
+
+const completeRedis = Redis.script(
+  (...args: [keyPending: string, keyLock: string, keyAttempts: string, keyIds: string, id: string, now: number]) =>
+    args,
+  {
+    lua: `
+local key_pending = KEYS[1]
+local key_lock = KEYS[2]
+local key_attempts = KEYS[3]
+local key_ids = KEYS[4]
+local id = ARGV[1]
+local now = ARGV[2]
+
+redis.call("DEL", key_lock)
+redis.call("HDEL", key_pending, id)
+redis.call("HDEL", key_attempts, id)
+redis.call("ZADD", key_ids, "XX", now, id)
+`,
+    numberOfKeys: 4
+  }
+)
+
+const retryRedis = Redis.script(
+  (
+    ...args: [keyPending: string, keyLock: string, keyDelayed: string, id: string, payload: string, visibleAt: number]
+  ) => args,
+  {
+    lua: `
+local key_pending = KEYS[1]
+local key_lock = KEYS[2]
+local key_delayed = KEYS[3]
+local id = ARGV[1]
+local payload = ARGV[2]
+local visible_at = ARGV[3]
+
+redis.call("DEL", key_lock)
+redis.call("HDEL", key_pending, id)
+redis.call("ZADD", key_delayed, visible_at, payload)
+`,
+    numberOfKeys: 3
+  }
+)
+
+const failedRedis = Redis.script(
+  (
+    ...args: [
+      keyPending: string,
+      keyLock: string,
+      keyFailed: string,
+      keyAttempts: string,
+      keyIds: string,
+      id: string,
+      payload: string
+    ]
+  ) => args,
+  {
+    lua: `
+local key_pending = KEYS[1]
+local key_lock = KEYS[2]
+local key_failed = KEYS[3]
+local key_attempts = KEYS[4]
+local key_ids = KEYS[5]
+local id = ARGV[1]
+local payload = ARGV[2]
+
+redis.call("DEL", key_lock)
+redis.call("HDEL", key_pending, id)
+redis.call("HDEL", key_attempts, id)
+redis.call("RPUSH", key_failed, payload)
+-- failed ids keep their dedupe entry until failedTimeToLive removes the
+-- dead-letter record, so park them outside the timeToLive trim range
+redis.call("ZADD", key_ids, "XX", "+inf", id)
+`,
+    numberOfKeys: 5
+  }
+)
+
+const takeRedis = Redis.script(
+  (
+    ...args: [
+      keyQueue: string,
+      keyPending: string,
+      keyDelayed: string,
+      keyAttempts: string,
+      prefix: string,
+      workerId: string,
+      batchSize: number,
+      pttl: number,
+      now: number
+    ]
+  ) => args,
+  {
+    lua: `
+local key_queue = KEYS[1]
+local key_pending = KEYS[2]
+local key_delayed = KEYS[3]
+local key_attempts = KEYS[4]
 local prefix = ARGV[1]
 local worker_id = ARGV[2]
 local batch_size = tonumber(ARGV[3])
 local pttl = ARGV[4]
+local now = ARGV[5]
+
+local due = redis.call("ZRANGEBYSCORE", key_delayed, "-inf", now, "LIMIT", 0, 100)
+if #due > 0 then
+  for i, payload in ipairs(due) do
+    redis.call("RPUSH", key_queue, payload)
+  end
+  redis.call("ZREM", key_delayed, unpack(due))
+end
 
 local payloads = redis.call("LPOP", key_queue, batch_size)
 if not payloads then
   return nil
 end
 
+local result = {}
 for i, payload in ipairs(payloads) do
   local id = cjson.decode(payload).id
   local key_lock = prefix .. id .. ":lock"
   redis.call("SET", key_lock, worker_id, "PX", pttl)
   redis.call("HSET", key_pending, id, payload)
+  local attempts = redis.call("HINCRBY", key_attempts, id, 1)
+  result[i * 2 - 1] = payload
+  result[i * 2] = attempts
 end
 
-return payloads
+return result
 `,
-    numberOfKeys: 2
+    numberOfKeys: 4
   }
-).withReturnType<Arr.NonEmptyArray<string> | null>()
+).withReturnType<Arr.NonEmptyArray<string | number> | null>()
 
 const expireAllRedis = Redis.script(
   (keys: ReadonlyArray<string>, ttl: number) => [...keys, ttl],
@@ -716,6 +1147,35 @@ for i, key in ipairs(KEYS) do
   redis.call("PEXPIRE", key, ttl)
 end
 `
+  }
+)
+
+const trimFailedRedis = Redis.script(
+  (...args: [keyFailed: string, keyIds: string, cutoff: number]) => args,
+  {
+    lua: `
+local key_failed = KEYS[1]
+local key_ids = KEYS[2]
+local cutoff = tonumber(ARGV[1])
+local removed = 0
+
+while removed < 1000 do
+  local head = redis.call("LINDEX", key_failed, 0)
+  if not head then break end
+  local ok, decoded = pcall(cjson.decode, head)
+  if not ok then break end
+  local failed_at = tonumber(decoded.failedAt)
+  if failed_at == nil or failed_at >= cutoff then break end
+  redis.call("LPOP", key_failed)
+  if decoded.id ~= nil then
+    redis.call("ZREM", key_ids, decoded.id)
+  end
+  removed = removed + 1
+end
+
+return removed
+`,
+    numberOfKeys: 2
   }
 )
 
@@ -777,8 +1237,14 @@ export const makeStoreSql: (
     options?.lockExpiration ? Duration.fromInputUnsafe(options.lockExpiration) : Duration.minutes(2),
     Duration.millis(1)
   )
-  const lockExpirationSql = sql.literal(Math.ceil(Duration.toSeconds(lockExpiration)).toString())
   const workerId = crypto.randomUUID()
+
+  const ackRetrySchedule = Schedule.min([
+    Schedule.exponential(200, 1.5),
+    Schedule.spaced(5000)
+  ]).pipe(
+    Schedule.upTo({ duration: lockExpiration })
+  )
 
   yield* Effect.orDie(
     Migrator.make({})({
@@ -788,45 +1254,60 @@ export const makeStoreSql: (
   )
 
   const sqlNow = sql.onDialectOrElse({
-    mssql: () => sql.literal("GETDATE()"),
+    // GETDATE() rounds to 1/300s and can land in the future, hiding freshly
+    // written visible_at values from the poll query
+    mssql: () => sql.literal("SYSDATETIME()"),
     mysql: () => sql.literal("NOW()"),
     pg: () => sql.literal("NOW()"),
     // sqlite
     orElse: () => sql.literal("CURRENT_TIMESTAMP")
   })
 
-  const expiresAt = sql.onDialectOrElse({
-    pg: () => sql`${sqlNow} - INTERVAL '${lockExpirationSql} seconds'`,
-    mysql: () => sql`DATE_SUB(${sqlNow}, INTERVAL ${lockExpirationSql} SECOND)`,
-    mssql: () => sql`DATEADD(SECOND, -${lockExpirationSql}, ${sqlNow})`,
-    orElse: () => sql`datetime(${sqlNow}, '-${lockExpirationSql} seconds')`
-  })
+  const secondsAgo = (seconds: number) => {
+    const s = sql.literal(Math.max(Math.ceil(seconds), 0).toString())
+    return sql.onDialectOrElse({
+      pg: () => sql`${sqlNow} - INTERVAL '${s} seconds'`,
+      mysql: () => sql`DATE_SUB(${sqlNow}, INTERVAL ${s} SECOND)`,
+      mssql: () => sql`DATEADD(SECOND, -${s}, ${sqlNow})`,
+      orElse: () => sql`datetime(${sqlNow}, '-${s} seconds')`
+    })
+  }
+  const secondsFromNow = (seconds: number) => {
+    const s = sql.literal(Math.max(Math.ceil(seconds), 0).toString())
+    return sql.onDialectOrElse({
+      pg: () => sql`${sqlNow} + INTERVAL '${s} seconds'`,
+      mysql: () => sql`DATE_ADD(${sqlNow}, INTERVAL ${s} SECOND)`,
+      mssql: () => sql`DATEADD(SECOND, ${s}, ${sqlNow})`,
+      orElse: () => sql`datetime(${sqlNow}, '+${s} seconds')`
+    })
+  }
+  const expiresAt = secondsAgo(Duration.toSeconds(lockExpiration))
 
   const offer = sql.onDialectOrElse({
     pg: () => (id: string, name: string, element: string) =>
       sql`
-        INSERT INTO ${tableNameSql} (id, queue_name, element, completed, attempts, created_at, updated_at)
-        VALUES (${id}, ${name}, ${element}, FALSE, 0, ${sqlNow}, ${sqlNow})
+        INSERT INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
+        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${sqlNow}, ${sqlNow}, ${sqlNow})
         ON CONFLICT (id, queue_name) DO NOTHING
       `,
     mysql: () => (id: string, name: string, element: string) =>
       sql`
-        INSERT IGNORE INTO ${tableNameSql} (id, queue_name, element, completed, attempts, created_at, updated_at)
-        VALUES (${id}, ${name}, ${element}, FALSE, 0, ${sqlNow}, ${sqlNow})
+        INSERT IGNORE INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
+        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${sqlNow}, ${sqlNow}, ${sqlNow})
       `,
     mssql: () => (id: string, name: string, element: string) =>
       sql`
         IF NOT EXISTS (SELECT 1 FROM ${tableNameSql} WHERE id = ${id} AND queue_name = ${name})
         BEGIN
-          INSERT INTO ${tableNameSql} (id, queue_name, element, completed, attempts, created_at, updated_at)
-          VALUES (${id}, ${name}, ${element}, 0, 0, ${sqlNow}, ${sqlNow})
+          INSERT INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
+          VALUES (${id}, ${name}, ${element}, 'pending', 0, ${sqlNow}, ${sqlNow}, ${sqlNow})
         END
       `,
     // sqlite
     orElse: () => (id: string, name: string, element: string) =>
       sql`
-        INSERT OR IGNORE INTO ${tableNameSql} (id, queue_name, element, completed, attempts, created_at, updated_at)
-        VALUES (${id}, ${name}, ${element}, FALSE, 0, ${sqlNow}, ${sqlNow})
+        INSERT OR IGNORE INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
+        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${sqlNow}, ${sqlNow}, ${sqlNow})
       `
   })
 
@@ -836,13 +1317,8 @@ export const makeStoreSql: (
   })
   const stringLiteral = (s: string) => sql.literal(wrapString(s))
 
-  const sqlTrue = sql.onDialectOrElse({
-    sqlite: () => sql.literal("1"),
-    orElse: () => sql.literal("TRUE")
-  })
-
   const workerIdSql = stringLiteral(workerId)
-  const elementIds = new Set<number>()
+  const elementIds = new Set<number | string>()
   const refreshLocks: Effect.Effect<void, SqlError> = Effect.suspend((): Effect.Effect<void, SqlError> => {
     if (elementIds.size === 0) return Effect.void
     const ids = Array.from(elementIds)
@@ -853,55 +1329,58 @@ export const makeStoreSql: (
       AND acquired_by = ${workerIdSql}
     `
   })
-  const complete = (sequence: number, attempts: number) => {
-    elementIds.delete(sequence)
-    return sql`
+  const complete = (sequence: number | string) =>
+    sql`
       UPDATE ${tableNameSql}
-      SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, completed = ${sqlTrue}, attempts = ${attempts}
+      SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, state = 'completed'
       WHERE sequence = ${sequence}
       AND acquired_by = ${workerIdSql}
     `.pipe(
-      Effect.retry({
-        times: 5,
-        schedule: Schedule.exponential(100, 1.5)
-      }),
-      Effect.orDie
+      Effect.retry(ackRetrySchedule),
+      Effect.orDie,
+      Effect.ensuring(Effect.sync(() => elementIds.delete(sequence)))
     )
-  }
-  const retry = (sequence: number, attempts: number, cause: Cause.Cause<any>) => {
-    elementIds.delete(sequence)
-    return sql`
+  const fail = (sequence: number | string, cause: Cause.Cause<any>) =>
+    sql`
       UPDATE ${tableNameSql}
-      SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, attempts = ${attempts}, last_failure = ${
+      SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, state = 'failed', last_failure = ${
       Cause.pretty(cause)
     }
       WHERE sequence = ${sequence}
       AND acquired_by = ${workerIdSql}
     `.pipe(
-      Effect.retry({
-        times: 5,
-        schedule: Schedule.exponential(100, 1.5)
-      }),
-      Effect.orDie
+      Effect.retry(ackRetrySchedule),
+      Effect.orDie,
+      Effect.ensuring(Effect.sync(() => elementIds.delete(sequence)))
     )
-  }
-  const interrupt = (ids: Array<number>) => {
-    for (const id of ids) {
-      elementIds.delete(id)
-    }
-    return sql`
+  const retry = (sequence: number | string, backoff: Duration.Duration, cause: Cause.Cause<any>) =>
+    sql`
       UPDATE ${tableNameSql}
-      SET acquired_at = NULL, acquired_by = NULL
+      SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, visible_at = ${
+      secondsFromNow(Duration.toSeconds(backoff))
+    }, last_failure = ${Cause.pretty(cause)}
+      WHERE sequence = ${sequence}
+      AND acquired_by = ${workerIdSql}
+    `.pipe(
+      Effect.retry(ackRetrySchedule),
+      Effect.orDie,
+      Effect.ensuring(Effect.sync(() => elementIds.delete(sequence)))
+    )
+  const interrupt = (ids: Array<number | string>) =>
+    sql`
+      UPDATE ${tableNameSql}
+      SET acquired_at = NULL, acquired_by = NULL, attempts = attempts - 1
       WHERE sequence IN (${sql.literal(ids.join(","))})
       AND acquired_by = ${workerIdSql}
     `.pipe(
-      Effect.retry({
-        times: 5,
-        schedule: Schedule.exponential(100, 1.5)
-      }),
-      Effect.orDie
+      Effect.retry(ackRetrySchedule),
+      Effect.orDie,
+      Effect.ensuring(Effect.sync(() => {
+        for (const id of ids) {
+          elementIds.delete(id)
+        }
+      }))
     )
-  }
 
   yield* refreshLocks.pipe(
     Effect.tapCause(Effect.logWarning),
@@ -917,17 +1396,29 @@ export const makeStoreSql: (
 
   type Element = {
     readonly id: string
-    sequence: number
+    sequence: number | string
     readonly queue_name: string
     element: string
-    readonly attempts: number
+    attempts: number
+  }
+  const configs = new Map<string, { readonly maxAttempts: number }>()
+  const nudges = new Map<string, Latch.Latch>()
+  const getNudge = (name: string) => {
+    let latch = nudges.get(name)
+    if (!latch) {
+      latch = Latch.makeUnsafe(false)
+      nudges.set(name, latch)
+    }
+    return latch
   }
   const mailboxes = yield* RcMap.make({
-    lookup: Effect.fnUntraced(function*({ maxAttempts, name }: QueueKey) {
+    lookup: Effect.fnUntraced(function*(name: string) {
+      const maxAttempts = configs.get(name)?.maxAttempts ?? 2147483647
       const queue = yield* Queue.make<Element>()
       const takers = MutableRef.make(0)
       const pollLatch = Latch.makeUnsafe()
       const takenLatch = Latch.makeUnsafe()
+      const nudge = getNudge(name)
 
       yield* Effect.addFinalizer(() =>
         Effect.flatMap(Queue.clear(queue), (elements) => {
@@ -936,35 +1427,55 @@ export const makeStoreSql: (
         })
       )
 
+      // flip exhausted rows whose lock expired (worker crashed on the final
+      // attempt) to failed, since no finalizer will ever run for them
+      yield* sql`
+        UPDATE ${tableNameSql}
+        SET state = 'failed', acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow},
+          last_failure = COALESCE(last_failure, 'Lock expired after final attempt')
+        WHERE queue_name = ${name}
+        AND state = 'pending'
+        AND attempts >= ${maxAttempts}
+        AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
+      `.pipe(
+        Effect.tapCause(Effect.logWarning),
+        Effect.ignore,
+        Effect.schedule(Schedule.spaced(lockRefreshInterval)),
+        Effect.forkScoped,
+        Effect.interruptible
+      )
+
       const poll = sql.onDialectOrElse({
         pg: () => (size: number) =>
           sql<Element>`
             WITH cte AS (
               UPDATE ${tableNameSql}
-              SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}
+              SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}, attempts = attempts + 1
               WHERE sequence IN (
                 SELECT sequence FROM ${tableNameSql}
                 WHERE queue_name = ${name}
-                AND completed = FALSE
+                AND state = 'pending'
                 AND attempts < ${maxAttempts}
+                AND visible_at <= ${sqlNow}
                 AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
-                ORDER BY updated_at ASC, sequence ASC
+                ORDER BY visible_at ASC, sequence ASC
                 FOR UPDATE SKIP LOCKED
                 LIMIT ${sql.literal(size.toString())}
               )
-              RETURNING sequence, id, queue_name, element, attempts, updated_at
+              RETURNING sequence, id, queue_name, element, attempts, visible_at
             )
             SELECT sequence, id, queue_name, element, attempts FROM cte
-            ORDER BY updated_at ASC, sequence ASC
+            ORDER BY visible_at ASC, sequence ASC
           `,
         mysql: () => (size: number) =>
           sql<Element>`
             SELECT sequence, id, queue_name, element, attempts FROM ${tableNameSql} q
             WHERE queue_name = ${name}
-            AND completed = FALSE
+            AND state = 'pending'
             AND attempts < ${maxAttempts}
+            AND visible_at <= ${sqlNow}
             AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
-            ORDER BY updated_at ASC, sequence ASC
+            ORDER BY visible_at ASC, sequence ASC
             LIMIT ${sql.literal(size.toString())}
             FOR UPDATE SKIP LOCKED
           `.pipe(
@@ -972,10 +1483,11 @@ export const makeStoreSql: (
               if (rows.length === 0) return Effect.void
               return sql`
                 UPDATE ${tableNameSql}
-                SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}
+                SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}, attempts = attempts + 1
                 WHERE sequence IN (${sql.literal(rows.map((r) => r.sequence).join(","))})
               `.unprepared
             }),
+            Effect.map((rows) => rows.map((row) => ({ ...row, attempts: Number(row.attempts) + 1 }))),
             sql.withTransaction
           ),
         mssql: () => (size: number) =>
@@ -983,13 +1495,14 @@ export const makeStoreSql: (
             WITH cte AS (
               SELECT TOP ${sql.literal(size.toString())} sequence FROM ${tableNameSql}
               WHERE queue_name = ${name}
-              AND completed = 0
+              AND state = 'pending'
               AND attempts < ${maxAttempts}
+              AND visible_at <= ${sqlNow}
               AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
-              ORDER BY updated_at ASC, sequence ASC
+              ORDER BY visible_at ASC, sequence ASC
             )
             UPDATE q
-            SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}
+            SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}, attempts = q.attempts + 1
             OUTPUT inserted.sequence, inserted.id, inserted.queue_name, inserted.element, inserted.attempts
             FROM ${tableNameSql} AS q
             INNER JOIN cte ON q.sequence = cte.sequence
@@ -998,14 +1511,15 @@ export const makeStoreSql: (
         orElse: () => (size: number) =>
           sql<Element>`
             UPDATE ${tableNameSql}
-            SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}
+            SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}, attempts = attempts + 1
             WHERE sequence IN (
               SELECT sequence FROM ${tableNameSql}
               WHERE queue_name = ${name}
-              AND completed = FALSE
+              AND state = 'pending'
               AND attempts < ${maxAttempts}
+              AND visible_at <= ${sqlNow}
               AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
-              ORDER BY updated_at ASC, sequence ASC
+              ORDER BY visible_at ASC, sequence ASC
               LIMIT ${sql.literal(size.toString())}
             )
             RETURNING sequence, id, queue_name, element, attempts
@@ -1016,17 +1530,18 @@ export const makeStoreSql: (
         while (true) {
           yield* pollLatch.await
           yield* Effect.yieldNow
+          nudge.closeUnsafe()
           const results = takers.current === 0 ? [] : yield* poll(takers.current)
           if (results.length === 0) {
-            yield* Effect.sleep(pollInterval)
+            yield* Effect.race(Effect.sleep(pollInterval), nudge.await)
             continue
           }
           takenLatch.closeUnsafe()
-          for (let i = 0; i < results.length; i++) {
-            const element = results[i]
-            elementIds.add(element.sequence)
+          const elements = results.map((row) => ({ ...row, attempts: Number(row.attempts) }))
+          for (let i = 0; i < elements.length; i++) {
+            elementIds.add(elements[i].sequence)
           }
-          yield* Queue.offerAll(queue, results)
+          yield* Queue.offerAll(queue, elements)
           yield* takenLatch.await
           yield* Effect.yieldNow
         }
@@ -1042,6 +1557,62 @@ export const makeStoreSql: (
     idleTimeToLive: Duration.seconds(30)
   })
 
+  const cleanupBatch = sql.onDialectOrElse({
+    pg: () => (state: string, seconds: number) =>
+      sql<{ readonly count: number }>`
+        WITH deleted_entries AS (
+          DELETE FROM ${tableNameSql}
+          WHERE sequence IN (
+            SELECT sequence FROM ${tableNameSql}
+            WHERE state = ${state} AND updated_at <= ${secondsAgo(seconds)}
+            LIMIT ${sql.literal(String(sqlCleanupBatchSize))}
+          )
+          RETURNING 1
+        )
+        SELECT COUNT(*)::INT AS count FROM deleted_entries
+      `.pipe(Effect.map((rows) => rows[0].count)),
+    mysql: () =>
+      Effect.fnUntraced(
+        function*(state: string, seconds: number) {
+          const connection = yield* sql.reserve
+          const [statement, parameters] = sql`
+            DELETE FROM ${tableNameSql}
+            WHERE state = ${state} AND updated_at <= ${secondsAgo(seconds)}
+            LIMIT ${sql.literal(String(sqlCleanupBatchSize))}
+          `.compile()
+          yield* connection.execute(statement, parameters, undefined)
+          const rows = yield* connection.executeValues("SELECT ROW_COUNT()", [])
+          return Number(rows[0][0])
+        },
+        Effect.scoped
+      ),
+    mssql: () => (state: string, seconds: number) =>
+      sql<{ readonly sequence: number }>`
+        DELETE TOP (${sql.literal(String(sqlCleanupBatchSize))}) FROM ${tableNameSql}
+        OUTPUT DELETED.sequence
+        WHERE state = ${state} AND updated_at <= ${secondsAgo(seconds)}
+      `.pipe(Effect.map((rows) => rows.length)),
+    // sqlite
+    orElse: () => (state: string, seconds: number) =>
+      sql<{ readonly deleted: number }>`
+        DELETE FROM ${tableNameSql}
+        WHERE sequence IN (
+          SELECT sequence FROM ${tableNameSql}
+          WHERE state = ${state} AND updated_at <= ${secondsAgo(seconds)}
+          LIMIT ${sql.literal(String(sqlCleanupBatchSize))}
+        )
+        RETURNING 1 AS deleted
+      `.pipe(Effect.map((rows) => rows.length))
+  })
+
+  const cleanupState = (state: string, timeToLive: Duration.Duration) =>
+    cleanupBatch(state, Duration.toSeconds(timeToLive)).pipe(
+      Effect.repeat({
+        while: (deletedCount) => deletedCount === sqlCleanupBatchSize,
+        schedule: Schedule.spaced(Duration.millis(10))
+      })
+    )
+
   return PersistedQueueStore.of({
     offer: ({ element, id, name }) =>
       Effect.catchCause(Effect.suspend(() => offer(id, name, JSON.stringify(element))), (cause) =>
@@ -1050,10 +1621,25 @@ export const makeStoreSql: (
             message: "Failed to offer element to persisted queue",
             cause
           })
-        )),
-    take: ({ maxAttempts, name }) =>
-      Effect.uninterruptibleMask((restore) =>
-        RcMap.get(mailboxes, new QueueKey({ name, maxAttempts })).pipe(
+        )).pipe(
+          Effect.tap(() =>
+            Effect.sync(() => {
+              nudges.get(name)?.openUnsafe()
+            })
+          )
+        ),
+    take: (options) => {
+      configs.set(options.name, { maxAttempts: options.maxAttempts })
+      const loop: Effect.Effect<
+        {
+          readonly id: string
+          readonly attempts: number
+          readonly element: unknown
+        },
+        PersistedQueueError,
+        Scope.Scope
+      > = Effect.uninterruptibleMask((restore) =>
+        RcMap.get(mailboxes, options.name).pipe(
           Effect.flatMap(({ pollLatch, queue, takenLatch, takers }) => {
             takers.current++
             if (takers.current === 1) {
@@ -1072,19 +1658,53 @@ export const makeStoreSql: (
           }),
           Effect.scoped,
           restore,
-          Effect.tap((element) =>
-            Effect.addFinalizer(Exit.match({
-              onFailure: (cause) =>
-                Cause.hasInterruptsOnly(cause)
-                  ? interrupt([element.sequence])
-                  : retry(element.sequence, element.attempts + 1, cause),
-              onSuccess: () => complete(element.sequence, element.attempts + 1)
-            }))
-          ),
-          Effect.map((element) => ({
-            ...element,
-            element: JSON.parse(element.element)
-          }))
+          Effect.flatMap((element) => {
+            let parsed: unknown
+            try {
+              parsed = JSON.parse(element.element)
+            } catch (defect) {
+              // a row that cannot be parsed will never succeed, so dead-letter
+              // it and take the next element
+              return Effect.andThen(fail(element.sequence, Cause.die(defect)), loop)
+            }
+            return Effect.as(
+              Effect.addFinalizer((exit) => {
+                if (exit._tag === "Success") {
+                  return complete(element.sequence)
+                }
+                const dead = deadLetterFromCause(exit.cause)
+                if (dead !== undefined) {
+                  return fail(element.sequence, dead.cause)
+                }
+                if (Cause.hasInterruptsOnly(exit.cause)) {
+                  return interrupt([element.sequence])
+                }
+                if (element.attempts >= options.maxAttempts) {
+                  return fail(element.sequence, exit.cause)
+                }
+                return retry(element.sequence, options.backoff(element.attempts), exit.cause)
+              }),
+              { id: element.id, attempts: element.attempts, element: parsed }
+            )
+          })
+        )
+      )
+      return loop
+    },
+    cleanup: ({ failedTimeToLive, timeToLive }) =>
+      Effect.gen(function*() {
+        yield* cleanupState("completed", timeToLive)
+        if (failedTimeToLive !== undefined) {
+          yield* cleanupState("failed", failedTimeToLive)
+        }
+      }).pipe(
+        Effect.catchCause((cause) =>
+          Effect.fail(
+            new PersistedQueueError({
+              message: "Failed to clean up persisted queue",
+              cause
+            })
+          )
         )
       )
   })
@@ -1100,12 +1720,13 @@ const sqlMigrations = (tableName: string) =>
         mysql: () =>
           sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
             sequence BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            id VARCHAR(36) NOT NULL,
-            queue_name VARCHAR(100) NOT NULL,
-            element TEXT NOT NULL,
-            completed BOOLEAN NOT NULL,
+            id VARCHAR(255) NOT NULL,
+            queue_name VARCHAR(255) NOT NULL,
+            element MEDIUMTEXT NOT NULL,
+            state VARCHAR(10) NOT NULL,
             attempts INT NOT NULL DEFAULT 0,
-            last_failure TEXT NULL,
+            last_failure MEDIUMTEXT NULL,
+            visible_at DATETIME NOT NULL,
             acquired_at DATETIME NULL,
             acquired_by VARCHAR(36) NULL,
             created_at DATETIME NOT NULL,
@@ -1113,28 +1734,30 @@ const sqlMigrations = (tableName: string) =>
           )`,
         pg: () =>
           sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
-            sequence SERIAL PRIMARY KEY,
-            id VARCHAR(36) NOT NULL,
-            queue_name VARCHAR(100) NOT NULL,
+            sequence BIGSERIAL PRIMARY KEY,
+            id VARCHAR(255) NOT NULL,
+            queue_name VARCHAR(255) NOT NULL,
             element TEXT NOT NULL,
-            completed BOOLEAN NOT NULL,
+            state VARCHAR(10) NOT NULL,
             attempts INTEGER NOT NULL DEFAULT 0,
             last_failure TEXT NULL,
+            visible_at TIMESTAMP NOT NULL,
             acquired_at TIMESTAMP NULL,
             acquired_by UUID NULL,
             created_at TIMESTAMP NOT NULL,
             updated_at TIMESTAMP NOT NULL
           )`,
         mssql: () =>
-          sql`IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${tableNameSql} AND xtype='U')
+          sql`IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${tableName} AND xtype='U')
           CREATE TABLE ${tableNameSql} (
-            sequence INT IDENTITY(1,1) PRIMARY KEY,
-            id NVARCHAR(36) NOT NULL,
-            queue_name NVARCHAR(100) NOT NULL,
+            sequence BIGINT IDENTITY(1,1) PRIMARY KEY,
+            id NVARCHAR(255) NOT NULL,
+            queue_name NVARCHAR(255) NOT NULL,
             element NVARCHAR(MAX) NOT NULL,
-            completed BIT NOT NULL,
+            state NVARCHAR(10) NOT NULL,
             attempts INT NOT NULL DEFAULT 0,
             last_failure NVARCHAR(MAX) NULL,
+            visible_at DATETIME2 NOT NULL,
             acquired_at DATETIME2 NULL,
             acquired_by UNIQUEIDENTIFIER NULL,
             created_at DATETIME2 NOT NULL,
@@ -1147,9 +1770,10 @@ const sqlMigrations = (tableName: string) =>
             id TEXT NOT NULL,
             queue_name TEXT NOT NULL,
             element TEXT NOT NULL,
-            completed BOOLEAN NOT NULL,
+            state TEXT NOT NULL,
             attempts INTEGER NOT NULL DEFAULT 0,
             last_failure TEXT NULL,
+            visible_at DATETIME NOT NULL,
             acquired_at DATETIME NULL,
             acquired_by TEXT NULL,
             created_at DATETIME NOT NULL,
@@ -1160,7 +1784,7 @@ const sqlMigrations = (tableName: string) =>
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_${tableName}_id')
-            CREATE UNIQUE INDEX idx_${tableNameSql}_id ON ${tableNameSql} (id, queue_name)`,
+            CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`,
         mysql: () =>
           sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`.pipe(
             Effect.ignore
@@ -1169,19 +1793,24 @@ const sqlMigrations = (tableName: string) =>
           sql`CREATE UNIQUE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
       })
 
+      // partial index where supported, so pollers never scan completed rows
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_${tableName}_take')
-            CREATE INDEX idx_${tableNameSql}_take ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`,
+            CREATE INDEX ${sql(`idx_${tableName}_take`)} ON ${tableNameSql} (queue_name, visible_at)
+            WHERE state = 'pending'`,
         mysql: () =>
-          sql`CREATE INDEX ${
-            sql(`idx_${tableName}_take`)
-          } ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`
+          sql`CREATE INDEX ${sql(`idx_${tableName}_take`)} ON ${tableNameSql} (queue_name, state, visible_at)`
             .pipe(Effect.ignore),
+        pg: () =>
+          sql`CREATE INDEX IF NOT EXISTS ${
+            sql(`idx_${tableName}_take`)
+          } ON ${tableNameSql} (queue_name, visible_at) WHERE state = 'pending'`,
+        // sqlite
         orElse: () =>
           sql`CREATE INDEX IF NOT EXISTS ${
             sql(`idx_${tableName}_take`)
-          } ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`
+          } ON ${tableNameSql} (queue_name, visible_at) WHERE state = 'pending'`
       })
 
       yield* sql.onDialectOrElse({
@@ -1197,11 +1826,6 @@ const sqlMigrations = (tableName: string) =>
       })
     })
   })
-
-class QueueKey extends Data.Class<{
-  readonly name: string
-  readonly maxAttempts: number
-}> {}
 
 /**
  * Provides a SQL-backed `PersistedQueueStore` using `makeStoreSql`.

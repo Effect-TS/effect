@@ -15,13 +15,14 @@ describe("PersistedQueue SQL migrations", () => {
         const table = sql(tableName)
 
         yield* sql`CREATE TABLE ${table} (
-          sequence SERIAL PRIMARY KEY,
-          id VARCHAR(36) NOT NULL,
-          queue_name VARCHAR(100) NOT NULL,
+          sequence BIGSERIAL PRIMARY KEY,
+          id VARCHAR(255) NOT NULL,
+          queue_name VARCHAR(255) NOT NULL,
           element TEXT NOT NULL,
-          completed BOOLEAN NOT NULL,
+          state VARCHAR(10) NOT NULL,
           attempts INTEGER NOT NULL DEFAULT 0,
           last_failure TEXT NULL,
+          visible_at TIMESTAMP NOT NULL,
           acquired_at TIMESTAMP NULL,
           acquired_by UUID NULL,
           created_at TIMESTAMP NOT NULL,

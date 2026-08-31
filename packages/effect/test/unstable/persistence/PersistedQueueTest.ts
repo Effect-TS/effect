@@ -1,7 +1,6 @@
 import { assert, it } from "@effect/vitest"
 import type { Vitest } from "@effect/vitest"
-import { Effect, Fiber, Latch, Layer, Schema } from "effect"
-import type { Duration } from "effect"
+import { Duration, Effect, Fiber, Latch, Layer, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import { PersistedQueue } from "effect/unstable/persistence"
 
@@ -25,10 +24,11 @@ export const suiteWith = <R>(
         })
 
         yield* queue.offer({ n: 42n })
-        yield* queue.take(Effect.fnUntraced(function*(value) {
+        yield* queue.take(Effect.fnUntraced(function*(value, metadata) {
           assert.strictEqual(value.n, 42n)
+          assert.strictEqual(metadata.attempts, 1)
         }))
-      }))
+      }), { timeout: 20000 })
 
     it.effect("interrupt", () =>
       Effect.gen(function*() {
@@ -62,13 +62,14 @@ export const suiteWith = <R>(
         yield* TestClock.adjust(1000)
 
         assert.strictEqual((yield* Fiber.join(fiber2)).n, 42n)
-      }))
+      }), { timeout: 20000 })
 
     it.effect("failure", () =>
       Effect.gen(function*() {
         const queue = yield* PersistedQueue.make({
           name: "test-queue-c",
-          schema: Item
+          schema: Item,
+          backoff: () => 0
         })
 
         yield* queue.offer({ n: 42n })
@@ -77,11 +78,44 @@ export const suiteWith = <R>(
         assert.strictEqual(error, "boom")
 
         const value = yield* queue.take((val, { attempts }) => {
-          assert.strictEqual(attempts, 1)
+          assert.strictEqual(attempts, 2)
           return Effect.succeed(val)
         })
         assert.strictEqual(value.n, 42n)
-      }))
+      }), { timeout: 20000 })
+
+    it.effect("delays retries with backoff", () =>
+      Effect.gen(function*() {
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-backoff",
+          schema: Item,
+          backoff: () => 500
+        })
+
+        yield* queue.offer({ n: 42n })
+
+        const error = yield* queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
+        assert.strictEqual(error, "boom")
+
+        const fiber = yield* queue.take((_val, { attempts }) => Effect.succeed(attempts)).pipe(
+          Effect.forkScoped
+        )
+
+        // not redelivered before the backoff elapses
+        yield* TestClock.adjust(100)
+        yield* Effect.sleep(100).pipe(TestClock.withLive)
+        assert.isUndefined(fiber.pollUnsafe())
+
+        yield* TestClock.adjust(1000)
+        yield* Effect.sleep(700).pipe(TestClock.withLive)
+        yield* TestClock.adjust(1000)
+        yield* Effect.sleep(700).pipe(TestClock.withLive)
+        yield* TestClock.adjust(1000)
+        yield* Effect.sleep(700).pipe(TestClock.withLive)
+        yield* TestClock.adjust(1000)
+
+        assert.strictEqual(yield* Fiber.join(fiber), 2)
+      }), { timeout: 20000 })
 
     it.effect("idempotent offer", () =>
       Effect.gen(function*() {
@@ -105,7 +139,7 @@ export const suiteWith = <R>(
         )
 
         assert.isUndefined(fiber.pollUnsafe())
-      }))
+      }), { timeout: 20000 })
 
     it.effect("deduplicates custom ids independently in each queue", () =>
       Effect.gen(function*() {
@@ -121,7 +155,7 @@ export const suiteWith = <R>(
 
         assert.isDefined(fiber.pollUnsafe())
         assert.deepStrictEqual(yield* Fiber.join(fiber), { n: 2n })
-      }))
+      }), { timeout: 20000 })
 
     it.effect("does not redeliver in-flight elements", () =>
       Effect.gen(function*() {
@@ -159,24 +193,23 @@ export const suiteWith = <R>(
         assert.isUndefined(fiber2.pollUnsafe())
 
         yield* Fiber.interrupt(fiber2)
-      }))
+      }), { timeout: 20000 })
 
     it.effect("stops delivering when maxAttempts is exhausted", () =>
       Effect.gen(function*() {
         const queue = yield* PersistedQueue.make({
           name: "test-queue-exhausted",
-          schema: Item
+          schema: Item,
+          maxAttempts: 1,
+          backoff: () => 0
         })
 
         yield* queue.offer({ n: 42n })
 
-        const error = yield* queue
-          .take(() => Effect.fail("boom"), { maxAttempts: 1 })
-          .pipe(Effect.flip)
-
+        const error = yield* queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
         assert.strictEqual(error, "boom")
 
-        const fiber = yield* queue.take((val) => Effect.succeed(val), { maxAttempts: 1 }).pipe(Effect.forkScoped)
+        const fiber = yield* queue.take((val) => Effect.succeed(val)).pipe(Effect.forkScoped)
 
         yield* TestClock.adjust(1000)
         yield* Effect.sleep(1000).pipe(
@@ -184,33 +217,95 @@ export const suiteWith = <R>(
         )
 
         assert.isUndefined(fiber.pollUnsafe())
-      }))
+      }), { timeout: 20000 })
 
-    it.effect("counts schema decode failures as attempts", () =>
+    it.effect("dead-letters elements that fail to decode", () =>
       Effect.gen(function*() {
         const store = yield* PersistedQueue.PersistedQueueStore
         const queue = yield* PersistedQueue.make({
           name: "test-queue-decode-failure",
-          schema: Item
+          schema: Item,
+          backoff: () => 0
         })
 
         yield* store.offer({
           name: "test-queue-decode-failure",
-          id: crypto.randomUUID(),
+          id: "poison",
           element: { n: null },
-          isCustomId: false
+          isCustomId: true
         })
+        yield* queue.offer({ n: 42n })
 
-        const error = yield* queue.take(Effect.succeed, { maxAttempts: 1 }).pipe(Effect.flip)
-        assert.isTrue(Schema.isSchemaError(error))
+        // the poison element is marked as failed and skipped
+        const value = yield* queue.take(Effect.succeed)
+        assert.deepStrictEqual(value, { n: 42n })
 
-        const fiber = yield* queue.take(Effect.succeed, { maxAttempts: 1 }).pipe(Effect.forkScoped)
-
+        // the poison element is not delivered again
+        const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
         yield* TestClock.adjust(1000)
         yield* Effect.sleep(1000).pipe(TestClock.withLive)
-
         assert.isUndefined(fiber.pollUnsafe())
-      }))
+      }), { timeout: 20000 })
+
+    it.effect("cleanup removes expired completed elements", () =>
+      Effect.gen(function*() {
+        const store = yield* PersistedQueue.PersistedQueueStore
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-cleanup",
+          schema: Item
+        })
+
+        yield* queue.offer({ n: 1n }, { id: "cleanup-id" })
+        yield* queue.take(Effect.succeed)
+
+        // within the ttl the dedupe entry survives, so re-offers are ignored
+        yield* store.cleanup({ timeToLive: Duration.days(30), failedTimeToLive: undefined })
+        yield* queue.offer({ n: 2n }, { id: "cleanup-id" })
+        const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        yield* TestClock.adjust(1000)
+        yield* Effect.sleep(1000).pipe(TestClock.withLive)
+        assert.isUndefined(fiber.pollUnsafe())
+
+        // after the ttl the completed element and its dedupe entry go away
+        yield* TestClock.adjust("2 minutes")
+        yield* Effect.sleep(1500).pipe(TestClock.withLive)
+        yield* store.cleanup({ timeToLive: Duration.seconds(1), failedTimeToLive: undefined })
+        yield* queue.offer({ n: 3n }, { id: "cleanup-id" })
+        yield* TestClock.adjust(1000)
+        assert.deepStrictEqual(yield* Fiber.join(fiber), { n: 3n })
+      }), { timeout: 20000 })
+
+    it.effect("cleanup removes failed elements only with failedTimeToLive", () =>
+      Effect.gen(function*() {
+        const store = yield* PersistedQueue.PersistedQueueStore
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-cleanup-failed",
+          schema: Item,
+          maxAttempts: 1,
+          backoff: () => 0
+        })
+
+        yield* queue.offer({ n: 1n }, { id: "failed-cleanup-id" })
+        const error = yield* queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
+        assert.strictEqual(error, "boom")
+
+        // without failedTimeToLive the failed element is the dead-letter
+        // record and is kept, so its id stays deduplicated
+        yield* TestClock.adjust("2 minutes")
+        yield* Effect.sleep(1500).pipe(TestClock.withLive)
+        yield* store.cleanup({ timeToLive: Duration.seconds(1), failedTimeToLive: undefined })
+        yield* queue.offer({ n: 2n }, { id: "failed-cleanup-id" })
+        const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        yield* TestClock.adjust(1000)
+        yield* Effect.sleep(1000).pipe(TestClock.withLive)
+        assert.isUndefined(fiber.pollUnsafe())
+
+        // with failedTimeToLive the failed element and its dedupe entry go away
+        yield* store.cleanup({ timeToLive: Duration.days(30), failedTimeToLive: Duration.seconds(1) })
+        yield* queue.offer({ n: 3n }, { id: "failed-cleanup-id" })
+        yield* TestClock.adjust(1000)
+        assert.deepStrictEqual(yield* Fiber.join(fiber), { n: 3n })
+      }), { timeout: 20000 })
   })
 
 const Item = Schema.Struct({
