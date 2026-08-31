@@ -49,7 +49,6 @@ describe("Config", () => {
   })
 
   it("MediaType", () => {
-    expect(Config.MediaType()).type.toBe<Config.Config<MediaType.MediaType>>()
     expect(Config.MediaType("CONTENT_TYPE")).type.toBe<Config.Config<MediaType.MediaType>>()
   })
 

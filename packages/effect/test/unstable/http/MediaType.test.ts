@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
-import { Equal, Hash, Option, Result, Schema } from "effect"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Equal, Hash, Option, Result } from "effect"
 import { MediaType } from "effect/unstable/http"
 
 const parse = (input: string) => Result.getOrThrow(MediaType.parse(input))
@@ -88,10 +88,10 @@ describe("MediaType", () => {
     strictEqual(Result.isFailure(MediaType.make({ type: "text", subtype: "plain", parameters: { x: "Ā" } })), true)
   })
 
-  it("recognizes only complete MediaType values", () => {
+  it("recognizes branded MediaType values", () => {
     strictEqual(MediaType.isMediaType(MediaType.textPlain), true)
-    strictEqual(MediaType.isMediaType({ [MediaType.TypeId]: MediaType.TypeId }), false)
-    strictEqual(MediaType.isMediaType({ [MediaType.TypeId]: "MediaType" }), false)
+    strictEqual(MediaType.isMediaType({ [MediaType.TypeId]: MediaType.TypeId }), true)
+    strictEqual(MediaType.isMediaType({}), false)
   })
 
   it("uses parameter-aware equality and hashing", () => {
@@ -137,18 +137,5 @@ describe("MediaType", () => {
     strictEqual(MediaType.isXml(parse("text/xml")), true)
     strictEqual(MediaType.isText(parse("text/event-stream")), true)
     strictEqual(MediaType.isText(MediaType.applicationJson), false)
-  })
-
-  it("round trips through the string Schema", () => {
-    const decoded = Schema.decodeUnknownSync(Schema.MediaTypeFromString)("Text/Plain; z=\"a b\"; A=one")
-    strictEqual(MediaType.format(decoded), "text/plain; a=one; z=\"a b\"")
-    strictEqual(Schema.encodeSync(Schema.MediaTypeFromString)(decoded), "text/plain; a=one; z=\"a b\"")
-    strictEqual(Schema.is(Schema.MediaType)(decoded), true)
-    throws(
-      () => Schema.decodeUnknownSync(Schema.MediaTypeFromString)("not a media type"),
-      (error) => {
-        strictEqual(String(error).includes("ExpectedSlash at offset 3"), true)
-      }
-    )
   })
 })

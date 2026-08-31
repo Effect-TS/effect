@@ -120,40 +120,7 @@ export class MediaTypeParseError extends Data.TaggedError("MediaTypeParseError")
  * @category guards
  * @since 4.0.0
  */
-export const isMediaType = (input: unknown): input is MediaType => {
-  if (!Predicate.hasProperty(input, TypeId)) return false
-  const candidate = input as Partial<MediaType>
-  if (
-    candidate[TypeId] !== TypeId ||
-    typeof candidate.type !== "string" || candidate.type !== candidate.type.toLowerCase() ||
-    !isToken(candidate.type) || candidate.type === "*" ||
-    typeof candidate.subtype !== "string" || candidate.subtype !== candidate.subtype.toLowerCase() ||
-    !isToken(candidate.subtype) || candidate.subtype === "*" ||
-    !Option.isOption(candidate.suffix) || !Array.isArray(candidate.parameters) ||
-    typeof candidate.pipe !== "function" || typeof candidate[Equal.symbol] !== "function" ||
-    typeof candidate[Hash.symbol] !== "function" || typeof candidate.toJSON !== "function" ||
-    typeof candidate[Inspectable.NodeInspectSymbol] !== "function"
-  ) return false
-
-  const expectedSuffix = suffixOf(candidate.type, candidate.subtype)
-  if (
-    Option.isSome(expectedSuffix)
-      ? !Option.isSome(candidate.suffix) || candidate.suffix.value !== expectedSuffix.value
-      : !Option.isNone(candidate.suffix)
-  ) return false
-
-  let previousName: string | undefined
-  for (const parameter of candidate.parameters) {
-    if (
-      typeof parameter !== "object" || parameter === null ||
-      typeof parameter.name !== "string" || parameter.name !== parameter.name.toLowerCase() ||
-      !isToken(parameter.name) || typeof parameter.value !== "string" || !isDecodedValue(parameter.value) ||
-      (previousName !== undefined && previousName >= parameter.name)
-    ) return false
-    previousName = parameter.name
-  }
-  return true
-}
+export const isMediaType = (input: unknown): input is MediaType => Predicate.hasProperty(input, TypeId)
 
 const parametersEqual = (left: ReadonlyArray<Parameter>, right: ReadonlyArray<Parameter>): boolean => {
   if (left.length !== right.length) return false
@@ -605,32 +572,35 @@ export const isText = (self: MediaType): boolean => self.type === "text"
  * @category constants
  * @since 4.0.0
  */
-export const applicationJson: MediaType = parseUnsafe("application/json")
+export const applicationJson: MediaType = makeUnsafe({ type: "application", subtype: "json" })
 /**
  * The `application/octet-stream` media type.
  *
  * @category constants
  * @since 4.0.0
  */
-export const applicationOctetStream: MediaType = parseUnsafe("application/octet-stream")
+export const applicationOctetStream: MediaType = makeUnsafe({ type: "application", subtype: "octet-stream" })
 /**
  * The `application/x-www-form-urlencoded` media type.
  *
  * @category constants
  * @since 4.0.0
  */
-export const applicationFormUrlEncoded: MediaType = parseUnsafe("application/x-www-form-urlencoded")
+export const applicationFormUrlEncoded: MediaType = makeUnsafe({
+  type: "application",
+  subtype: "x-www-form-urlencoded"
+})
 /**
  * The `multipart/form-data` media type.
  *
  * @category constants
  * @since 4.0.0
  */
-export const multipartFormData: MediaType = parseUnsafe("multipart/form-data")
+export const multipartFormData: MediaType = makeUnsafe({ type: "multipart", subtype: "form-data" })
 /**
  * The `text/plain` media type.
  *
  * @category constants
  * @since 4.0.0
  */
-export const textPlain: MediaType = parseUnsafe("text/plain")
+export const textPlain: MediaType = makeUnsafe({ type: "text", subtype: "plain" })
