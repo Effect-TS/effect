@@ -13,13 +13,11 @@
  *
  * @since 4.0.0
  */
-import type * as Arr from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
 import * as Clock from "../../Clock.ts"
 import * as Context from "../../Context.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
-import * as Exit from "../../Exit.ts"
 import { flow } from "../../Function.ts"
 import { sqlCleanupBatchSize } from "../../internal/persistence.ts"
 import * as Latch from "../../Latch.ts"
@@ -219,14 +217,13 @@ export const makeFactory = Effect.gen(function*() {
             store.take(takeOptions).pipe(
               Scope.provide(scope),
               Effect.flatMap((item) =>
-                Effect.flatMap(
-                  Effect.exit(decodeUnknown(item.element)),
-                  (exit): Effect.Effect<XA, any, any> =>
-                    Exit.isSuccess(exit)
-                      ? f(exit.value as S["Type"], { id: item.id, attempts: item.attempts })
-                      : Cause.hasInterruptsOnly(exit.cause)
-                      ? Effect.failCause(exit.cause as Cause.Cause<never>)
-                      : Effect.fail(new DeadLetter(exit.cause))
+                decodeUnknown(item.element).pipe(
+                  Effect.catchCause((cause): Effect.Effect<never, DeadLetter> =>
+                    Cause.hasInterruptsOnly(cause)
+                      ? Effect.failCause(cause as Cause.Cause<never>)
+                      : Effect.fail(new DeadLetter(cause))
+                  ),
+                  Effect.flatMap((value) => f(value as S["Type"], { id: item.id, attempts: item.attempts }))
                 )
               )
             )
@@ -338,9 +335,40 @@ export class PersistedQueueError extends Schema.Error<PersistedQueueError>(
   readonly [ErrorTypeId]: ErrorTypeId = ErrorTypeId
 }
 
-// unreachable in practice: take always records the queue config before its
-// mailbox is created. Kept int32-safe for SQL parameters.
-const fallbackMaxAttempts = 2147483647
+// Local per-queue state shared between offer, take, and the mailbox lookup in
+// the Redis and SQL stores: take records maxAttempts here before the mailbox
+// is created, and offer opens the nudge latch so local pollers skip the poll
+// interval.
+type QueueState = {
+  maxAttempts: number
+  readonly nudge: Latch.Latch
+}
+
+const makeQueueStates = (): {
+  readonly peek: (name: string) => QueueState | undefined
+  readonly get: (name: string) => QueueState
+} => {
+  const states = new Map<string, QueueState>()
+  return {
+    peek: (name) => states.get(name),
+    get: (name) => {
+      let state = states.get(name)
+      if (state === undefined) {
+        // the placeholder is overwritten by take before any mailbox reads it,
+        // and is kept int32-safe for SQL parameters
+        state = { maxAttempts: 2147483647, nudge: Latch.makeUnsafe(false) }
+        states.set(name, state)
+      }
+      return state
+    }
+  }
+}
+
+const makeAckRetrySchedule = (lockExpiration: Duration.Input) =>
+  Schedule.min([
+    Schedule.exponential(200, 1.5),
+    Schedule.spaced(5000)
+  ]).pipe(Schedule.upTo({ duration: lockExpiration }))
 
 // Internal signal used by the factory to tell a store that a taken element
 // cannot ever be processed (its stored payload fails to decode) and must be
@@ -355,7 +383,7 @@ class DeadLetter {
 
 const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefined => {
   for (const reason of cause.reasons) {
-    if (reason._tag === "Fail" && reason.error instanceof DeadLetter) {
+    if (Cause.isFailReason(reason) && reason.error instanceof DeadLetter) {
       return reason.error
     }
   }
@@ -447,14 +475,18 @@ export const layerStoreMemory: Layer.Layer<
   }
   const queues = new Map<string, {
     latch: Latch.Latch
+    // all entries ever offered, for de-duplication; `pending` holds the
+    // deliverable subset so take does not scan the completed backlog
     entries: Map<string, Entry>
+    pending: Set<Entry>
   }>()
   const getOrCreateQueue = (name: string) => {
     let queue = queues.get(name)
     if (!queue) {
       queue = {
         latch: Latch.makeUnsafe(false),
-        entries: new Map()
+        entries: new Map(),
+        pending: new Set()
       }
       queues.set(name, queue)
     }
@@ -466,14 +498,16 @@ export const layerStoreMemory: Layer.Layer<
       Effect.map(Clock.currentTimeMillis, (now) => {
         const queue = getOrCreateQueue(options.name)
         if (queue.entries.has(options.id)) return
-        queue.entries.set(options.id, {
+        const entry: Entry = {
           id: options.id,
           element: options.element,
           attempts: 0,
           state: "pending",
           visibleAt: now,
           stateChangedAt: now
-        })
+        }
+        queue.entries.set(options.id, entry)
+        queue.pending.add(entry)
         queue.latch.openUnsafe()
       }),
     take: Effect.fnUntraced(function*(options) {
@@ -484,8 +518,8 @@ export const layerStoreMemory: Layer.Layer<
         const now = yield* Clock.currentTimeMillis
         let item: Entry | undefined
         let nextVisibleAt = Infinity
-        for (const entry of queue.entries.values()) {
-          if (entry.state !== "pending" || entry.attempts >= options.maxAttempts) continue
+        for (const entry of queue.pending) {
+          if (entry.attempts >= options.maxAttempts) continue
           if (entry.visibleAt <= now) {
             item = entry
             break
@@ -501,6 +535,7 @@ export const layerStoreMemory: Layer.Layer<
         const entry = item
         entry.state = "processing"
         entry.attempts += 1
+        queue.pending.delete(entry)
         queue.latch.openUnsafe()
         yield* Effect.addFinalizer((exit) =>
           Effect.map(Clock.currentTimeMillis, (now) => {
@@ -517,17 +552,15 @@ export const layerStoreMemory: Layer.Layer<
             }
             if (Cause.hasInterruptsOnly(exit.cause)) {
               entry.attempts -= 1
-              entry.state = "pending"
-              queue.latch.openUnsafe()
-              return
-            }
-            if (entry.attempts >= options.maxAttempts) {
+            } else if (entry.attempts >= options.maxAttempts) {
               entry.state = "failed"
               entry.stateChangedAt = now
               return
+            } else {
+              entry.visibleAt = now + Duration.toMillis(options.backoff(entry.attempts))
             }
             entry.state = "pending"
-            entry.visibleAt = now + Duration.toMillis(options.backoff(entry.attempts))
+            queue.pending.add(entry)
             queue.latch.openUnsafe()
           })
         )
@@ -542,12 +575,12 @@ export const layerStoreMemory: Layer.Layer<
           : now - Duration.toMillis(options.failedTimeToLive)
         for (const queue of queues.values()) {
           for (const [id, entry] of queue.entries) {
-            if (entry.state === "completed" && entry.stateChangedAt <= completedCutoff) {
-              queue.entries.delete(id)
-            } else if (
-              entry.state === "failed" && failedCutoff !== undefined &&
-              entry.stateChangedAt <= failedCutoff
-            ) {
+            const cutoff = entry.state === "completed"
+              ? completedCutoff
+              : entry.state === "failed"
+              ? failedCutoff
+              : undefined
+            if (cutoff !== undefined && entry.stateChangedAt <= cutoff) {
               queue.entries.delete(id)
             }
           }
@@ -595,24 +628,25 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     1
   )
   const prefix = options?.prefix ?? "effectq:"
-  const keyQueue = (name: string) => `${prefix}${name}`
   const keyLock = (id: string) => `${prefix}${id}:lock`
-  const keyPending = (name: string) => `${prefix}${name}:pending`
-  const keyFailed = (name: string) => `${prefix}${name}:failed`
-  const keyDelayed = (name: string) => `${prefix}${name}:delayed`
-  const keyAttempts = (name: string) => `${prefix}${name}:attempts`
-  const keyIds = (name: string) => `${prefix}${name}:ids`
+  const keysFor = (name: string) => ({
+    queue: `${prefix}${name}`,
+    pending: `${prefix}${name}:pending`,
+    failed: `${prefix}${name}:failed`,
+    delayed: `${prefix}${name}:delayed`,
+    attempts: `${prefix}${name}:attempts`,
+    ids: `${prefix}${name}:ids`
+  })
   const workerId = crypto.randomUUID()
 
-  const ackRetrySchedule = Schedule.min([
-    Schedule.exponential(200, 1.5),
-    Schedule.spaced(5000)
-  ]).pipe(Schedule.upTo({ duration: Duration.millis(lockExpirationMillis) }))
+  const ackRetrySchedule = makeAckRetrySchedule(lockExpirationMillis)
 
   type Element = {
     readonly id: string
     readonly element: unknown
     readonly attempts: number
+    // the raw wire payload, so requeue and retry do not re-stringify it
+    readonly payload: string
   }
 
   const requeue = redis.eval(requeueRedis)
@@ -625,28 +659,16 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   const expireAll = redis.eval(expireAllRedis)
   const trimFailed = redis.eval(trimFailedRedis)
 
-  const configs = new Map<string, { readonly maxAttempts: number }>()
-  const nudges = new Map<string, Latch.Latch>()
-  const getNudge = (name: string) => {
-    let latch = nudges.get(name)
-    if (!latch) {
-      latch = Latch.makeUnsafe(false)
-      nudges.set(name, latch)
-    }
-    return latch
-  }
+  const queueStates = makeQueueStates()
 
   const queues = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(name: string) {
-      const queueKey = keyQueue(name)
-      const pendingKey = keyPending(name)
-      const delayedKey = keyDelayed(name)
-      const attemptsKey = keyAttempts(name)
+      const keys = keysFor(name)
       const queue = yield* Queue.make<Element>()
       const takers = MutableRef.make(0)
       const pollLatch = Latch.makeUnsafe()
       const takenLatch = Latch.makeUnsafe()
-      const nudge = getNudge(name)
+      const state = queueStates.get(name)
 
       yield* Effect.addFinalizer(() =>
         Effect.orDie(
@@ -655,31 +677,30 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
             (elements) =>
               Effect.forEach(elements, (element) =>
                 requeue(
-                  queueKey,
-                  pendingKey,
+                  keys.queue,
+                  keys.pending,
                   keyLock(element.id),
-                  attemptsKey,
+                  keys.attempts,
                   element.id,
-                  JSON.stringify({ id: element.id, element: element.element })
+                  element.payload
                 ), { concurrency: "unbounded", discard: true })
           )
         )
       )
 
-      yield* Effect.suspend(() => {
-        const maxAttempts = configs.get(name)?.maxAttempts ?? fallbackMaxAttempts
-        return Effect.flatMap(Clock.currentTimeMillis, (now) =>
+      yield* Effect.suspend(() =>
+        Effect.flatMap(Clock.currentTimeMillis, (now) =>
           resetQueue(
-            queueKey,
-            pendingKey,
-            attemptsKey,
-            keyFailed(name),
-            keyIds(name),
+            keys.queue,
+            keys.pending,
+            keys.attempts,
+            keys.failed,
+            keys.ids,
             prefix,
-            maxAttempts,
+            state.maxAttempts,
             now
           ))
-      }).pipe(
+      ).pipe(
         Effect.andThen(Effect.sleep(lockRefreshMillis)),
         Effect.forever,
         Effect.forkScoped
@@ -688,10 +709,10 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
       const poll = (size: number) =>
         Effect.flatMap(Clock.currentTimeMillis, (now) =>
           take(
-            queueKey,
-            pendingKey,
-            delayedKey,
-            attemptsKey,
+            keys.queue,
+            keys.pending,
+            keys.delayed,
+            keys.attempts,
             prefix,
             workerId,
             size,
@@ -703,20 +724,22 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
         while (true) {
           yield* pollLatch.await
           yield* Effect.yieldNow
-          nudge.closeUnsafe()
+          state.nudge.closeUnsafe()
           const results = takers.current === 0 ? null : yield* poll(takers.current)
           if (results === null || results.length === 0) {
-            yield* Effect.race(Effect.sleep(pollInterval), nudge.await)
+            yield* Effect.race(Effect.sleep(pollInterval), state.nudge.await)
             continue
           }
           takenLatch.closeUnsafe()
           const elements: Array<Element> = []
           for (let i = 0; i < results.length; i += 2) {
-            const payload = JSON.parse(results[i] as string)
+            const payload = results[i] as string
+            const parsed = JSON.parse(payload)
             elements.push({
-              id: payload.id,
-              element: payload.element,
-              attempts: Number(results[i + 1])
+              id: parsed.id,
+              element: parsed.element,
+              attempts: Number(results[i + 1]),
+              payload
             })
           }
           yield* Queue.offerAll(queue, elements)
@@ -724,6 +747,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
           yield* Effect.yieldNow
         }
       }).pipe(
+        Effect.tapCause(Effect.logWarning),
         Effect.sandbox,
         Effect.retry(Schedule.spaced(500)),
         Effect.forkScoped,
@@ -771,15 +795,12 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     })
 
   return PersistedQueueStore.of({
-    offer: ({ element, id, isCustomId, name }) =>
-      (isCustomId
-        ? offer(
-          keyQueue(name),
-          keyIds(name),
-          id,
-          JSON.stringify({ id, element })
-        )
-        : redis.send("RPUSH", keyQueue(name), JSON.stringify({ id, element }))).pipe(
+    offer: ({ element, id, isCustomId, name }) => {
+      const keys = keysFor(name)
+      const payload = JSON.stringify({ id, element })
+      return (isCustomId
+        ? offer(keys.queue, keys.ids, id, payload)
+        : redis.send("RPUSH", keys.queue, payload)).pipe(
           Effect.mapError(({ cause }) =>
             new PersistedQueueError({
               message: "Failed to offer element to persisted queue",
@@ -788,13 +809,14 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
           ),
           Effect.tap(() =>
             Effect.sync(() => {
-              nudges.get(name)?.openUnsafe()
+              queueStates.peek(name)?.nudge.openUnsafe()
             })
           )
-        ),
+        )
+    },
     take: (options) =>
       Effect.uninterruptibleMask((restore) => {
-        configs.set(options.name, { maxAttempts: options.maxAttempts })
+        queueStates.get(options.name).maxAttempts = options.maxAttempts
         return RcMap.get(queues, options.name).pipe(
           Effect.flatMap(({ pollLatch, queue, takenLatch, takers }) => {
             takers.current++
@@ -817,6 +839,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
           }),
           Effect.scoped,
           Effect.tap((element) => {
+            const keys = keysFor(options.name)
             const lock = keyLock(element.id)
             activeLockKeys.add(lock)
             const ack = (effect: Effect.Effect<unknown, Redis.RedisError>) =>
@@ -828,23 +851,16 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
             return Effect.addFinalizer((exit) =>
               Effect.flatMap(Clock.currentTimeMillis, (now) => {
                 if (exit._tag === "Success") {
-                  return ack(complete(
-                    keyPending(options.name),
-                    lock,
-                    keyAttempts(options.name),
-                    keyIds(options.name),
-                    element.id,
-                    now
-                  ))
+                  return ack(complete(keys.pending, lock, keys.attempts, keys.ids, element.id, now))
                 }
                 const dead = deadLetterFromCause(exit.cause)
                 const failElement = (cause: Cause.Cause<unknown>) =>
                   ack(failed(
-                    keyPending(options.name),
+                    keys.pending,
                     lock,
-                    keyFailed(options.name),
-                    keyAttempts(options.name),
-                    keyIds(options.name),
+                    keys.failed,
+                    keys.attempts,
+                    keys.ids,
                     element.id,
                     JSON.stringify({
                       id: element.id,
@@ -858,24 +874,17 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
                   return failElement(dead.cause)
                 }
                 if (Cause.hasInterruptsOnly(exit.cause)) {
-                  return ack(requeue(
-                    keyQueue(options.name),
-                    keyPending(options.name),
-                    lock,
-                    keyAttempts(options.name),
-                    element.id,
-                    JSON.stringify({ id: element.id, element: element.element })
-                  ))
+                  return ack(requeue(keys.queue, keys.pending, lock, keys.attempts, element.id, element.payload))
                 }
                 if (element.attempts >= options.maxAttempts) {
                   return failElement(exit.cause)
                 }
                 return ack(retry(
-                  keyPending(options.name),
+                  keys.pending,
                   lock,
-                  keyDelayed(options.name),
+                  keys.delayed,
                   element.id,
-                  JSON.stringify({ id: element.id, element: element.element }),
+                  element.payload,
                   now + Duration.toMillis(options.backoff(element.attempts))
                 ))
               })
@@ -891,15 +900,19 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
         yield* Effect.forEach(
           idsKeys,
           (key) => redis.send("ZREMRANGEBYSCORE", key, "-inf", `(${cutoff}`),
-          { discard: true }
+          { concurrency: 16, discard: true }
         )
         if (failedTimeToLive !== undefined) {
           const failedCutoff = now - Duration.toMillis(failedTimeToLive)
           const failedKeys = yield* scanKeys(`${prefix}*:failed`)
           yield* Effect.forEach(
             failedKeys,
-            (key) => trimFailed(key, `${key.slice(0, -":failed".length)}:ids`, failedCutoff),
-            { discard: true }
+            (key) =>
+              trimFailed(key, `${key.slice(0, -":failed".length)}:ids`, failedCutoff).pipe(
+                // each call trims at most one batch, so drain until done
+                Effect.repeat({ while: (removed) => removed >= trimFailedBatchSize })
+              ),
+            { concurrency: 16, discard: true }
           )
         }
       }).pipe(
@@ -1141,7 +1154,7 @@ return result
 `,
     numberOfKeys: 4
   }
-).withReturnType<Arr.NonEmptyArray<string | number> | null>()
+).withReturnType<ReadonlyArray<string | number> | null>()
 
 const expireAllRedis = Redis.script(
   (keys: ReadonlyArray<string>, ttl: number) => [...keys, ttl],
@@ -1156,6 +1169,8 @@ end
   }
 )
 
+const trimFailedBatchSize = 1000
+
 const trimFailedRedis = Redis.script(
   (...args: [keyFailed: string, keyIds: string, cutoff: number]) => args,
   {
@@ -1165,7 +1180,7 @@ local key_ids = KEYS[2]
 local cutoff = tonumber(ARGV[1])
 local removed = 0
 
-while removed < 1000 do
+while removed < ${trimFailedBatchSize} do
   local head = redis.call("LINDEX", key_failed, 0)
   if not head then break end
   local ok, decoded = pcall(cjson.decode, head)
@@ -1187,7 +1202,7 @@ return removed
 `,
     numberOfKeys: 2
   }
-)
+).withReturnType<number>()
 
 /**
  * Provides a Redis-backed `PersistedQueueStore` using `makeStoreRedis`.
@@ -1249,12 +1264,7 @@ export const makeStoreSql: (
   )
   const workerId = crypto.randomUUID()
 
-  const ackRetrySchedule = Schedule.min([
-    Schedule.exponential(200, 1.5),
-    Schedule.spaced(5000)
-  ]).pipe(
-    Schedule.upTo({ duration: lockExpiration })
-  )
+  const ackRetrySchedule = makeAckRetrySchedule(lockExpiration)
 
   yield* Effect.orDie(
     Migrator.make({})({
@@ -1273,24 +1283,18 @@ export const makeStoreSql: (
     orElse: () => sql.literal("CURRENT_TIMESTAMP")
   })
 
-  const secondsAgo = (seconds: number) => {
-    const s = sql.literal(Math.max(Math.ceil(seconds), 0).toString())
-    return sql.onDialectOrElse({
-      pg: () => sql`${sqlNow} - INTERVAL '${s} seconds'`,
-      mysql: () => sql`DATE_SUB(${sqlNow}, INTERVAL ${s} SECOND)`,
-      mssql: () => sql`DATEADD(SECOND, -${s}, ${sqlNow})`,
-      orElse: () => sql`datetime(${sqlNow}, '-${s} seconds')`
-    })
-  }
-  const secondsFromNow = (seconds: number) => {
-    const s = sql.literal(Math.max(Math.ceil(seconds), 0).toString())
+  // `seconds` is a whole number, possibly negative
+  const secondsOffset = (seconds: number) => {
+    const s = sql.literal(seconds.toString())
     return sql.onDialectOrElse({
       pg: () => sql`${sqlNow} + INTERVAL '${s} seconds'`,
       mysql: () => sql`DATE_ADD(${sqlNow}, INTERVAL ${s} SECOND)`,
       mssql: () => sql`DATEADD(SECOND, ${s}, ${sqlNow})`,
-      orElse: () => sql`datetime(${sqlNow}, '+${s} seconds')`
+      orElse: () => sql`datetime(${sqlNow}, '${s} seconds')`
     })
   }
+  const secondsAgo = (seconds: number) => secondsOffset(-Math.max(Math.ceil(seconds), 0))
+  const secondsFromNow = (seconds: number) => secondsOffset(Math.max(Math.ceil(seconds), 0))
   const expiresAt = secondsAgo(Duration.toSeconds(lockExpiration))
 
   const offer = sql.onDialectOrElse({
@@ -1340,57 +1344,63 @@ export const makeStoreSql: (
       AND acquired_by = ${workerIdSql}
     `
   })
-  const complete = (sequence: number | string) =>
-    sql`
-      UPDATE ${tableNameSql}
-      SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, state = 'completed'
-      WHERE sequence = ${sequence}
-      AND acquired_by = ${workerIdSql}
-    `.pipe(
-      Effect.retry(ackRetrySchedule),
-      Effect.orDie,
-      Effect.ensuring(Effect.sync(() => elementIds.delete(sequence)))
-    )
-  const fail = (sequence: number | string, cause: Cause.Cause<any>) =>
-    sql`
-      UPDATE ${tableNameSql}
-      SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, state = 'failed', last_failure = ${
-      Cause.pretty(cause)
-    }
-      WHERE sequence = ${sequence}
-      AND acquired_by = ${workerIdSql}
-    `.pipe(
-      Effect.retry(ackRetrySchedule),
-      Effect.orDie,
-      Effect.ensuring(Effect.sync(() => elementIds.delete(sequence)))
-    )
-  const retry = (sequence: number | string, backoff: Duration.Duration, cause: Cause.Cause<any>) =>
-    sql`
-      UPDATE ${tableNameSql}
-      SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, visible_at = ${
-      secondsFromNow(Duration.toSeconds(backoff))
-    }, last_failure = ${Cause.pretty(cause)}
-      WHERE sequence = ${sequence}
-      AND acquired_by = ${workerIdSql}
-    `.pipe(
-      Effect.retry(ackRetrySchedule),
-      Effect.orDie,
-      Effect.ensuring(Effect.sync(() => elementIds.delete(sequence)))
-    )
-  const interrupt = (ids: Array<number | string>) =>
-    sql`
-      UPDATE ${tableNameSql}
-      SET acquired_at = NULL, acquired_by = NULL, attempts = attempts - 1
-      WHERE sequence IN (${sql.literal(ids.join(","))})
-      AND acquired_by = ${workerIdSql}
-    `.pipe(
+  const ack = (
+    statement: Effect.Effect<unknown, SqlError>,
+    sequences: ReadonlyArray<number | string>
+  ): Effect.Effect<void> =>
+    statement.pipe(
       Effect.retry(ackRetrySchedule),
       Effect.orDie,
       Effect.ensuring(Effect.sync(() => {
-        for (const id of ids) {
-          elementIds.delete(id)
+        for (const sequence of sequences) {
+          elementIds.delete(sequence)
         }
-      }))
+      })),
+      Effect.asVoid
+    )
+  const complete = (sequence: number | string) =>
+    ack(
+      sql`
+        UPDATE ${tableNameSql}
+        SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, state = 'completed'
+        WHERE sequence = ${sequence}
+        AND acquired_by = ${workerIdSql}
+      `,
+      [sequence]
+    )
+  const fail = (sequence: number | string, cause: Cause.Cause<any>) =>
+    ack(
+      sql`
+        UPDATE ${tableNameSql}
+        SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, state = 'failed', last_failure = ${
+        Cause.pretty(cause)
+      }
+        WHERE sequence = ${sequence}
+        AND acquired_by = ${workerIdSql}
+      `,
+      [sequence]
+    )
+  const retry = (sequence: number | string, backoff: Duration.Duration, cause: Cause.Cause<any>) =>
+    ack(
+      sql`
+        UPDATE ${tableNameSql}
+        SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, visible_at = ${
+        secondsFromNow(Duration.toSeconds(backoff))
+      }, last_failure = ${Cause.pretty(cause)}
+        WHERE sequence = ${sequence}
+        AND acquired_by = ${workerIdSql}
+      `,
+      [sequence]
+    )
+  const interrupt = (ids: Array<number | string>) =>
+    ack(
+      sql`
+        UPDATE ${tableNameSql}
+        SET acquired_at = NULL, acquired_by = NULL, attempts = attempts - 1
+        WHERE sequence IN (${sql.literal(ids.join(","))})
+        AND acquired_by = ${workerIdSql}
+      `,
+      ids
     )
 
   yield* refreshLocks.pipe(
@@ -1407,29 +1417,20 @@ export const makeStoreSql: (
 
   type Element = {
     readonly id: string
-    sequence: number | string
-    readonly queue_name: string
-    element: string
+    readonly sequence: number | string
+    readonly element: string
     attempts: number
   }
-  const configs = new Map<string, { readonly maxAttempts: number }>()
-  const nudges = new Map<string, Latch.Latch>()
-  const getNudge = (name: string) => {
-    let latch = nudges.get(name)
-    if (!latch) {
-      latch = Latch.makeUnsafe(false)
-      nudges.set(name, latch)
-    }
-    return latch
-  }
+  const queueStates = makeQueueStates()
   const mailboxes = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(name: string) {
-      const maxAttempts = configs.get(name)?.maxAttempts ?? fallbackMaxAttempts
+      const state = queueStates.get(name)
+      const maxAttempts = state.maxAttempts
       const queue = yield* Queue.make<Element>()
       const takers = MutableRef.make(0)
       const pollLatch = Latch.makeUnsafe()
       const takenLatch = Latch.makeUnsafe()
-      const nudge = getNudge(name)
+      const nudge = state.nudge
 
       yield* Effect.addFinalizer(() =>
         Effect.flatMap(Queue.clear(queue), (elements) => {
@@ -1473,14 +1474,14 @@ export const makeStoreSql: (
                 FOR UPDATE SKIP LOCKED
                 LIMIT ${sql.literal(size.toString())}
               )
-              RETURNING sequence, id, queue_name, element, attempts, visible_at
+              RETURNING sequence, id, element, attempts, visible_at
             )
-            SELECT sequence, id, queue_name, element, attempts FROM cte
+            SELECT sequence, id, element, attempts FROM cte
             ORDER BY visible_at ASC, sequence ASC
           `,
         mysql: () => (size: number) =>
           sql<Element>`
-            SELECT sequence, id, queue_name, element, attempts FROM ${tableNameSql} q
+            SELECT sequence, id, element, attempts FROM ${tableNameSql} q
             WHERE queue_name = ${name}
             AND state = 'pending'
             AND attempts < ${maxAttempts}
@@ -1498,7 +1499,12 @@ export const makeStoreSql: (
                 WHERE sequence IN (${sql.literal(rows.map((r) => r.sequence).join(","))})
               `.unprepared
             }),
-            Effect.map((rows) => rows.map((row) => ({ ...row, attempts: Number(row.attempts) + 1 }))),
+            Effect.map((rows) => {
+              for (const row of rows) {
+                row.attempts = Number(row.attempts) + 1
+              }
+              return rows
+            }),
             sql.withTransaction
           ),
         mssql: () => (size: number) =>
@@ -1514,7 +1520,7 @@ export const makeStoreSql: (
             )
             UPDATE q
             SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}, attempts = q.attempts + 1
-            OUTPUT inserted.sequence, inserted.id, inserted.queue_name, inserted.element, inserted.attempts
+            OUTPUT inserted.sequence, inserted.id, inserted.element, inserted.attempts
             FROM ${tableNameSql} AS q
             INNER JOIN cte ON q.sequence = cte.sequence
           `,
@@ -1533,7 +1539,7 @@ export const makeStoreSql: (
               ORDER BY visible_at ASC, sequence ASC
               LIMIT ${sql.literal(size.toString())}
             )
-            RETURNING sequence, id, queue_name, element, attempts
+            RETURNING sequence, id, element, attempts
           `
       })
 
@@ -1548,11 +1554,11 @@ export const makeStoreSql: (
             continue
           }
           takenLatch.closeUnsafe()
-          const elements = results.map((row) => ({ ...row, attempts: Number(row.attempts) }))
-          for (let i = 0; i < elements.length; i++) {
-            elementIds.add(elements[i].sequence)
+          for (const row of results) {
+            row.attempts = Number(row.attempts)
+            elementIds.add(row.sequence)
           }
-          yield* Queue.offerAll(queue, elements)
+          yield* Queue.offerAll(queue, results)
           yield* takenLatch.await
           yield* Effect.yieldNow
         }
@@ -1635,12 +1641,12 @@ export const makeStoreSql: (
         )).pipe(
           Effect.tap(() =>
             Effect.sync(() => {
-              nudges.get(name)?.openUnsafe()
+              queueStates.peek(name)?.nudge.openUnsafe()
             })
           )
         ),
     take: (options) => {
-      configs.set(options.name, { maxAttempts: options.maxAttempts })
+      queueStates.get(options.name).maxAttempts = options.maxAttempts
       const loop: Effect.Effect<
         {
           readonly id: string
