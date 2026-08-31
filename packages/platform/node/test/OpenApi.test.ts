@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
-import { Multipart } from "effect/unstable/http"
+import { MediaType, Multipart } from "effect/unstable/http"
 import {
   HttpApi,
   HttpApiEndpoint,
@@ -551,7 +551,9 @@ describe("OpenAPI spec", () => {
                   .add(
                     HttpApiEndpoint.post("a", "/a", {
                       payload: Schema.String.pipe(
-                        HttpApiSchema.asJson({ contentType: "application/problem+json" })
+                        HttpApiSchema.asJson({
+                          contentType: MediaType.makeUnsafe({ type: "application", subtype: "problem+json" })
+                        })
                       )
                     })
                   )
@@ -907,7 +909,9 @@ describe("OpenAPI spec", () => {
                 .add(
                   HttpApiEndpoint.get("a", "/a", {
                     success: Schema.String.pipe(
-                      HttpApiSchema.asJson({ contentType: "application/problem+json" })
+                      HttpApiSchema.asJson({
+                        contentType: MediaType.makeUnsafe({ type: "application", subtype: "problem+json" })
+                      })
                     )
                   })
                 )

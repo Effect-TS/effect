@@ -25,6 +25,12 @@ describe("HttpApiSchema", () => {
       expect(stream).type.toBe<HttpApiSchema.StreamSse<typeof Events, Schema.Never>>()
     })
 
+    it("rejects string content types", () => {
+      const Events = Schema.Struct({ event: Schema.String, data: Schema.String })
+
+      expect(HttpApiSchema.StreamSse).type.not.toBeCallableWith({ contentType: "text/plain", events: Events })
+    })
+
     it("preserves event and error schemas", () => {
       const Events = Schema.Struct({
         event: Schema.Literal("user.created"),
@@ -130,6 +136,10 @@ describe("HttpApiSchema", () => {
       const schema = Schema.String.pipe(HttpApiSchema.asText({ contentType: MediaType.textPlain }))
 
       expect(schema).type.toBe<Schema.String>()
+    })
+
+    it("rejects string content types", () => {
+      expect(HttpApiSchema.asText).type.not.toBeCallableWith({ contentType: "text/plain" })
     })
   })
 

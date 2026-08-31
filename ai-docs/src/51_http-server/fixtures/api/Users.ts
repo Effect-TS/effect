@@ -1,4 +1,5 @@
 import { Schema } from "effect"
+import { MediaType } from "effect/unstable/http"
 import { HttpApiEndpoint, HttpApiError, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/unstable/httpapi"
 import { User, UserId } from "../domain/User.ts"
 import { SearchQueryTooShort, UserNotFound } from "../domain/UserErrors.ts"
@@ -23,7 +24,7 @@ export class UsersApiGroup extends HttpApiGroup.make("users")
       success: [
         Schema.Array(User.json),
         Schema.String.pipe(HttpApiSchema.asText({
-          contentType: "text/csv"
+          contentType: MediaType.makeUnsafe({ type: "text", subtype: "csv" })
         }))
       ],
       error: [

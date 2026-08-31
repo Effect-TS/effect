@@ -27,6 +27,7 @@ import {
   HttpServer,
   HttpServerRequest,
   HttpServerResponse,
+  MediaType,
   Multipart
 } from "effect/unstable/http"
 import {
@@ -962,7 +963,9 @@ describe("HttpApi", () => {
           const Api = HttpApi.make("api").add(
             HttpApiGroup.make("group").add(
               HttpApiEndpoint.get("a", "/a", {
-                success: Schema.String.pipe(HttpApiSchema.asJson({ contentType: "application/scim+json" }))
+                success: Schema.String.pipe(HttpApiSchema.asJson({
+                  contentType: MediaType.makeUnsafe({ type: "application", subtype: "scim+json" })
+                }))
               })
             )
           )

@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { type Context, Schema } from "effect"
+import { MediaType } from "effect/unstable/http"
 import {
   HttpApi,
   HttpApiEndpoint,
@@ -126,14 +127,16 @@ describe("OpenApi", () => {
   })
 
   it("preserves every declared payload content type for normalized equivalents", () => {
-    const profileA = "Application/Vnd.Effect+JSON; Profile=A"
-    const profileB = "application/vnd.effect+json; profile=b"
+    const profileAMediaType = MediaType.parseUnsafe("Application/Vnd.Effect+JSON; Profile=A")
+    const profileBMediaType = MediaType.parseUnsafe("application/vnd.effect+json; profile=b")
+    const profileA = MediaType.format(profileAMediaType)
+    const profileB = MediaType.format(profileBMediaType)
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
         HttpApiEndpoint.post("create", "/create", {
           payload: [
-            Schema.Struct({ a: Schema.String }).pipe(HttpApiSchema.asJson({ contentType: profileA })),
-            Schema.Struct({ b: Schema.String }).pipe(HttpApiSchema.asJson({ contentType: profileB }))
+            Schema.Struct({ a: Schema.String }).pipe(HttpApiSchema.asJson({ contentType: profileAMediaType })),
+            Schema.Struct({ b: Schema.String }).pipe(HttpApiSchema.asJson({ contentType: profileBMediaType }))
           ]
         })
       )

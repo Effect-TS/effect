@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import { Cause, Effect, Schema, Stream } from "effect"
 import { Sse } from "effect/unstable/encoding"
-import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
+import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, MediaType } from "effect/unstable/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
 
 describe("HttpApiClient", () => {
@@ -795,7 +795,7 @@ const FirstJsonResponseError = Schema.Struct({
   _tag: Schema.Literal("FirstJsonError"),
   code: Schema.Number
 }).pipe(
-  HttpApiSchema.asJson({ contentType: "Application/Problem+JSON" }),
+  HttpApiSchema.asJson({ contentType: MediaType.parseUnsafe("Application/Problem+JSON") }),
   HttpApiSchema.status(400)
 )
 
@@ -803,7 +803,7 @@ const SecondJsonResponseError = Schema.Struct({
   _tag: Schema.Literal("SecondJsonError"),
   message: Schema.String
 }).pipe(
-  HttpApiSchema.asJson({ contentType: "application/problem+json; charset=utf-8" }),
+  HttpApiSchema.asJson({ contentType: MediaType.parseUnsafe("application/problem+json; charset=utf-8") }),
   HttpApiSchema.status(400)
 )
 

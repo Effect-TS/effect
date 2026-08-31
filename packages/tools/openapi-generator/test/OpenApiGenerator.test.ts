@@ -1723,7 +1723,7 @@ export const CreatePayloadRequestText = Schema.String`,
         [
           `export type DualJson200 = { readonly "value": string }`,
           `export type DualJson200ApplicationProblemJson = { readonly "title": string }`,
-          `HttpApiEndpoint.get("dualJson", "/dual", { success: [DualJson200, DualJson200ApplicationProblemJson.pipe(HttpApiSchema.asJson({ contentType: "application/problem+json" }))] })`
+          `HttpApiEndpoint.get("dualJson", "/dual", { success: [DualJson200, DualJson200ApplicationProblemJson.pipe(HttpApiSchema.asJson({ contentType: MediaType.parseUnsafe("application/problem+json") }))] })`
         ]
       ))
 
@@ -1828,11 +1828,11 @@ export const CreatePayloadRequestText = Schema.String`,
         },
         [
           `HttpApiEndpoint.get("streamEvents", "/events", { success: HttpApiSchema.StreamSse({ events: StreamEvents200Sse, error: StreamEvents200SseError }) })`,
-          `HttpApiEndpoint.get("streamEventsCustom", "/events/custom", { success: HttpApiSchema.StreamSse({ contentType: "application/custom-sse", events: StreamEventsCustom200Sse, error: StreamEventsCustom200SseError }) })`
+          `HttpApiEndpoint.get("streamEventsCustom", "/events/custom", { success: HttpApiSchema.StreamSse({ contentType: MediaType.parseUnsafe("application/custom-sse"), events: StreamEventsCustom200Sse, error: StreamEventsCustom200SseError }) })`
         ],
         [
           `StreamEvents200Sse.pipe(HttpApiSchema.asText())`,
-          `StreamEventsCustom200ApplicationCustomSse.pipe(HttpApiSchema.asText({ contentType: "application/custom-sse" }))`
+          `StreamEventsCustom200ApplicationCustomSse.pipe(HttpApiSchema.asText({ contentType: MediaType.parseUnsafe("application/custom-sse") }))`
         ]
       ))
 
@@ -1989,11 +1989,11 @@ export const CreatePayloadRequestText = Schema.String`,
         },
         [
           `HttpApiEndpoint.get("download", "/download", { success: HttpApiSchema.StreamUint8Array() })`,
-          `HttpApiEndpoint.get("downloadCustom", "/download/custom", { success: HttpApiSchema.StreamUint8Array({ contentType: "application/custom-bytes" }) })`
+          `HttpApiEndpoint.get("downloadCustom", "/download/custom", { success: HttpApiSchema.StreamUint8Array({ contentType: MediaType.parseUnsafe("application/custom-bytes") }) })`
         ],
         [
           `Download200Binary.pipe(HttpApiSchema.asUint8Array())`,
-          `DownloadCustom200ApplicationCustomBytes.pipe(HttpApiSchema.asUint8Array({ contentType: "application/custom-bytes" }))`
+          `DownloadCustom200ApplicationCustomBytes.pipe(HttpApiSchema.asUint8Array({ contentType: MediaType.parseUnsafe("application/custom-bytes") }))`
         ]
       ))
 

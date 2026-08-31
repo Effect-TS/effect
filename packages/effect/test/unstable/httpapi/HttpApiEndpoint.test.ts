@@ -8,6 +8,7 @@ const Events = Schema.Struct({
   data: Schema.String
 })
 const StreamError = Schema.Struct({ reason: Schema.String })
+const mediaType = MediaType.parseUnsafe
 
 const sse = () => HttpApiSchema.StreamSse({ events: Events, error: StreamError })
 
@@ -34,17 +35,6 @@ describe("HttpApiEndpoint", () => {
 })
 
 describe("HttpApiEndpoint payload schemas", () => {
-  it("normalizes payload map keys while preserving the declared content type", () => {
-    const contentType = "Application/Vnd.Effect+JSON; Charset=UTF-8"
-    const endpoint = HttpApiEndpoint.post("create", "/", {
-      payload: Schema.Struct({ name: Schema.String }).pipe(HttpApiSchema.asJson({ contentType }))
-    })
-
-    const entry = endpoint.payload.get("application/vnd.effect+json")
-    assert.isDefined(entry)
-    assert.strictEqual(entry.encoding.contentType, contentType)
-  })
-
   it("accepts parsed content types and stores their canonical representation", () => {
     const contentType = MediaType.makeUnsafe({
       type: "Application",
@@ -62,10 +52,10 @@ describe("HttpApiEndpoint payload schemas", () => {
 
   it("rejects incompatible encodings for equivalent content types", () => {
     const JsonPayload = Schema.Struct({ name: Schema.String }).pipe(
-      HttpApiSchema.asJson({ contentType: "Application/Vnd.Effect+Data; charset=utf-8" })
+      HttpApiSchema.asJson({ contentType: mediaType("Application/Vnd.Effect+Data; charset=utf-8") })
     )
     const TextPayload = Schema.String.pipe(
-      HttpApiSchema.asText({ contentType: "application/vnd.effect+data" })
+      HttpApiSchema.asText({ contentType: mediaType("application/vnd.effect+data") })
     )
 
     assert.throws(
@@ -137,7 +127,7 @@ describe("HttpApiEndpoint streaming success schemas", () => {
     assert.throws(() =>
       HttpApiEndpoint.get("events", "/events", {
         success: [
-          HttpApiSchema.StreamSse({ contentType: "application/json", events: Events, error: StreamError }),
+          HttpApiSchema.StreamSse({ contentType: MediaType.applicationJson, events: Events, error: StreamError }),
           Schema.Struct({ ok: Schema.Boolean })
         ]
       })
@@ -149,7 +139,7 @@ describe("HttpApiEndpoint streaming success schemas", () => {
       HttpApiEndpoint.get("events", "/events", {
         success: [
           HttpApiSchema.StreamSse({
-            contentType: "application/json; charset=utf-8",
+            contentType: mediaType("application/json; charset=utf-8"),
             events: Events,
             error: StreamError
           }),
@@ -188,7 +178,7 @@ describe("HttpApiEndpoint streaming success schemas", () => {
       HttpApiEndpoint.get("events", "/events", {
         success: [
           sse(),
-          HttpApiSchema.StreamUint8Array({ contentType: "application/custom-stream" })
+          HttpApiSchema.StreamUint8Array({ contentType: mediaType("application/custom-stream") })
         ]
       })
     )
@@ -197,7 +187,7 @@ describe("HttpApiEndpoint streaming success schemas", () => {
   it("two streaming successes for distinct statuses throw", () => {
     const stream = HttpApiSchema.status(206)(sse())
     const bytes = HttpApiSchema.status(200)(
-      HttpApiSchema.StreamUint8Array({ contentType: "application/custom-stream" })
+      HttpApiSchema.StreamUint8Array({ contentType: mediaType("application/custom-stream") })
     )
 
     assert.throws(
@@ -423,7 +413,7 @@ describe("HttpApiEndpoint WithHeaders schemas", () => {
       HttpApiEndpoint.get("events", "/events", {
         success: [
           HttpApiSchema.WithHeaders(sse(), { "x-count": Schema.Int }),
-          HttpApiSchema.StreamUint8Array({ contentType: "application/custom-stream" })
+          HttpApiSchema.StreamUint8Array({ contentType: mediaType("application/custom-stream") })
         ]
       })
     )
@@ -440,11 +430,11 @@ describe("HttpApiEndpoint WithHeaders schemas", () => {
         HttpApiEndpoint.get("events", "/events", {
           success: [
             HttpApiSchema.status(206)(
-              HttpApiSchema.StreamUint8Array({ contentType: "application/custom-bytes" })
+              HttpApiSchema.StreamUint8Array({ contentType: mediaType("application/custom-bytes") })
             ),
             HttpApiSchema.WithHeaders(
               HttpApiSchema.status(201)(
-                HttpApiSchema.StreamUint8Array({ contentType: "application/other-bytes" })
+                HttpApiSchema.StreamUint8Array({ contentType: mediaType("application/other-bytes") })
               ),
               { "x-source": Schema.String }
             )

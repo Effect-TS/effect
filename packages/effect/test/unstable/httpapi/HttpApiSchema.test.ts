@@ -47,21 +47,6 @@ describe("HttpApiSchema", () => {
       }
     })
 
-    it("stores custom content type", () => {
-      const events = Schema.Struct({
-        event: Schema.Literal("custom"),
-        data: Schema.String
-      })
-      const error = Schema.String
-      const stream = HttpApiSchema.StreamSse({
-        contentType: "text/event-stream; charset=utf-8",
-        events,
-        error
-      })
-
-      assert.strictEqual(stream.contentType, "text/event-stream; charset=utf-8")
-    })
-
     it("formats parsed content types", () => {
       const events = Schema.Struct({
         event: Schema.Literal("custom"),
@@ -126,26 +111,10 @@ describe("HttpApiSchema", () => {
 
     it("stores custom content type", () => {
       const stream = HttpApiSchema.StreamUint8Array({
-        contentType: "application/custom-binary"
+        contentType: MediaType.makeUnsafe({ type: "application", subtype: "custom-binary" })
       })
 
       assert.strictEqual(stream.contentType, "application/custom-binary")
-    })
-
-    it("rejects invalid content types when constructed", () => {
-      assert.throws(
-        () => HttpApiSchema.StreamUint8Array({ contentType: "not a media type" }),
-        MediaType.MediaTypeParseError
-      )
-    })
-  })
-
-  describe("body encodings", () => {
-    it("rejects invalid content types when annotated", () => {
-      assert.throws(
-        () => Schema.String.pipe(HttpApiSchema.asText({ contentType: "not a media type" })),
-        MediaType.MediaTypeParseError
-      )
     })
   })
 
@@ -227,7 +196,9 @@ describe("HttpApiSchema", () => {
       assert.strictEqual(HttpApiSchema.getResponseEncodingSchema(onInner)._tag, "Text")
 
       const onWrapper = HttpApiSchema.WithHeaders(Schema.String, headers).pipe(
-        HttpApiSchema.asJson({ contentType: "application/vnd.custom+json" })
+        HttpApiSchema.asJson({
+          contentType: MediaType.makeUnsafe({ type: "application", subtype: "vnd.custom+json" })
+        })
       )
       assert.isTrue(HttpApiSchema.isWithHeaders(onWrapper))
       assert.strictEqual(
