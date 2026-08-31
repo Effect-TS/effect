@@ -16,6 +16,7 @@
 import * as Arr from "./Array.ts"
 import * as BigDecimal_ from "./BigDecimal.ts"
 import type * as Brand from "./Brand.ts"
+import * as ByteSize_ from "./ByteSize.ts"
 import * as Cause_ from "./Cause.ts"
 import * as Chunk_ from "./Chunk.ts"
 import * as Data from "./Data.ts"
@@ -12229,6 +12230,155 @@ export interface DurationFromMillis extends decodeTo<Duration, Number> {
  */
 export const DurationFromMillis: DurationFromMillis = Number.pipe(
   decodeTo(Duration, SchemaTransformation.durationFromMillis)
+)
+
+/**
+ * Type-level representation of {@link ByteSize}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ByteSize extends declare<ByteSize_.ByteSize> {
+  readonly "Rebuild": ByteSize
+}
+
+/**
+ * Schema for exact, non-negative `ByteSize` values.
+ *
+ * **Details**
+ *
+ * The JSON codec encodes the byte count as a bigint string, preserving values
+ * beyond JavaScript's safe-integer range. The StringTree codec uses the
+ * human-readable byte-size syntax exposed by {@link ByteSizeFromString}.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ByteSize: ByteSize = declare(
+  ByteSize_.isByteSize,
+  {
+    representation: {
+      id: "effect/schema/ByteSize",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: `Schema.ByteSize`,
+      Type: `ByteSize.ByteSize`,
+      importDeclarations: [`import * as ByteSize from "effect/ByteSize"`]
+    }),
+    expected: "ByteSize",
+    toCodecJson: () =>
+      link<ByteSize_.ByteSize>()(
+        BigInt.check(isGreaterThanOrEqualToBigInt(globalThis.BigInt(0))),
+        SchemaTransformation.transform({
+          decode: ByteSize_.bytes,
+          encode: ByteSize_.toBigInt
+        })
+      ),
+    toCodecStringTree: () =>
+      link<ByteSize_.ByteSize>()(
+        ByteSizeString,
+        SchemaTransformation.byteSizeFromString
+      )
+  }
+)
+
+/**
+ * Reviver for persisted {@link ByteSize} declarations.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ByteSizeReviver = makeFixedDeclarationReviver(
+  "effect/schema/ByteSize",
+  ByteSize
+)
+
+const ByteSizeString = String.annotate({ expected: "a string that will be decoded as a ByteSize" })
+
+/**
+ * Type-level representation of {@link ByteSizeFromString}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ByteSizeFromString extends decodeTo<ByteSize, String> {
+  readonly "Rebuild": ByteSizeFromString
+}
+
+/**
+ * Schema that decodes byte-size strings into exact, non-negative `ByteSize`
+ * values.
+ *
+ * **Details**
+ *
+ * Decoding accepts an unsigned base-10 integer or decimal followed by optional
+ * whitespace and one of these case-sensitive units:
+ *
+ * - bytes: `B`, `byte`, or `bytes`
+ * - decimal SI units (powers of 1,000): `kB`, `MB`, `GB`, `TB`, `PB`, `EB`,
+ *   `ZB`, `YB`, `RB`, or `QB`, plus their lowercase singular and plural names
+ * - binary IEC units (powers of 1,024): `KiB`, `MiB`, `GiB`, `TiB`, `PiB`,
+ *   `EiB`, `ZiB`, or `YiB`, plus their lowercase singular and plural names
+ *
+ * Leading and trailing whitespace is ignored. A decimal quantity must resolve
+ * to an integral number of bytes, so `1.5 kB` is accepted while `0.1 KiB` is
+ * rejected.
+ *
+ * Encoding returns the exact byte count as `<count> byte` or `<count> bytes`.
+ *
+ * **Gotchas**
+ *
+ * A unit is required. Signs, exponent notation, digit separators, and ambiguous
+ * unit spellings such as `KB`, `mb`, `Mb`, or `b` are rejected.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ByteSizeFromString: ByteSizeFromString = ByteSizeString.pipe(
+  decodeTo(ByteSize, SchemaTransformation.byteSizeFromString)
+)
+
+/**
+ * Type-level representation of {@link ByteSizeFromBigInt}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ByteSizeFromBigInt extends decodeTo<ByteSize, BigInt> {
+  readonly "Rebuild": ByteSizeFromBigInt
+}
+
+/**
+ * Schema that decodes non-negative bigint byte counts.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ByteSizeFromBigInt: ByteSizeFromBigInt = BigInt.pipe(
+  decodeTo(ByteSize, SchemaTransformation.byteSizeFromBigInt)
+)
+
+/**
+ * Type-level representation of {@link ByteSizeFromNumber}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ByteSizeFromNumber extends decodeTo<ByteSize, Number> {
+  readonly "Rebuild": ByteSizeFromNumber
+}
+
+/**
+ * Schema that decodes non-negative safe-integer byte counts.
+ *
+ * Encoding fails when the byte count exceeds `Number.MAX_SAFE_INTEGER`.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ByteSizeFromNumber: ByteSizeFromNumber = Number.pipe(
+  decodeTo(ByteSize, SchemaTransformation.byteSizeFromNumber)
 )
 
 /**

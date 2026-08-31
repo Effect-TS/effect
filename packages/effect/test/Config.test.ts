@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import {
+  ByteSize,
   Config,
   ConfigProvider,
   Duration,
@@ -1243,6 +1244,20 @@ Expected "Infinity" | "-Infinity" | "NaN"
           provider,
           `Expected a valid Duration string
   at ["failure"]`
+        )
+      })
+
+      it("decodes exact byte sizes and reports invalid input", async () => {
+        const provider = ConfigProvider.fromUnknown({
+          huge: "9007199254740993 B",
+          invalid: "10 MBi"
+        })
+
+        await assertSuccess(Config.ByteSize("huge"), provider, ByteSize.bytes(9_007_199_254_740_993n))
+        await assertFailure(
+          Config.ByteSize("invalid"),
+          provider,
+          `Expected a valid ByteSize string\n  at ["invalid"]`
         )
       })
 

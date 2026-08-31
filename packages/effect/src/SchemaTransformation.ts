@@ -13,6 +13,7 @@
  */
 
 import * as BigDecimal from "./BigDecimal.ts"
+import * as ByteSize from "./ByteSize.ts"
 import * as DateTime from "./DateTime.ts"
 import * as Duration from "./Duration.ts"
 import * as Effect from "./Effect.ts"
@@ -1069,6 +1070,83 @@ export const durationFromNanos: Transformation<Duration.Duration, bigint> = tran
 export const durationFromMillis: Transformation<Duration.Duration, number> = transform({
   decode: (i) => Duration.millis(i),
   encode: (a) => Duration.toMillis(a)
+})
+
+/**
+ * Decodes a string into a `ByteSize` and encodes it as an exact string.
+ *
+ * @category transforming
+ * @since 4.0.0
+ */
+export const byteSizeFromString: Transformation<ByteSize.ByteSize, string> = transformOrFail({
+  decode: (input, options) =>
+    Option.match(ByteSize.fromInput(input), {
+      onNone: () =>
+        Effect.fail(
+          new SchemaIssue.InvalidValue(
+            { expected: "a valid ByteSize string" },
+            input,
+            options
+          )
+        ),
+      onSome: Effect.succeed
+    }),
+  encode: (byteSize) => Effect.succeed(globalThis.String(byteSize))
+})
+
+/**
+ * Decodes a non-negative bigint byte count into a `ByteSize`.
+ *
+ * @category transforming
+ * @since 4.0.0
+ */
+export const byteSizeFromBigInt: Transformation<ByteSize.ByteSize, bigint> = transformOrFail({
+  decode: (input, options) =>
+    Option.match(ByteSize.fromInput(input), {
+      onNone: () =>
+        Effect.fail(
+          new SchemaIssue.InvalidValue(
+            { expected: "a non-negative bigint byte count" },
+            input,
+            options
+          )
+        ),
+      onSome: Effect.succeed
+    }),
+  encode: (byteSize) => Effect.succeed(ByteSize.toBigInt(byteSize))
+})
+
+/**
+ * Decodes a non-negative safe-integer byte count into a `ByteSize`.
+ *
+ * @category transforming
+ * @since 4.0.0
+ */
+export const byteSizeFromNumber: Transformation<ByteSize.ByteSize, number> = transformOrFail({
+  decode: (input, options) =>
+    Option.match(ByteSize.fromInput(input), {
+      onNone: () =>
+        Effect.fail(
+          new SchemaIssue.InvalidValue(
+            { expected: "a non-negative safe-integer byte count" },
+            input,
+            options
+          )
+        ),
+      onSome: Effect.succeed
+    }),
+  encode: (byteSize, options) =>
+    Option.match(ByteSize.toNumber(byteSize), {
+      onNone: () =>
+        Effect.fail(
+          new SchemaIssue.InvalidValue(
+            { expected: "a ByteSize representable as a safe integer" },
+            byteSize,
+            options
+          )
+        ),
+      onSome: Effect.succeed
+    })
 })
 
 type JsonError = {
