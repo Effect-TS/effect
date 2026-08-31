@@ -2,8 +2,8 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { spawn, spawnSync } from "node:child_process"
 import { mkdtempSync, readFileSync, rmSync } from "node:fs"
-import { join } from "node:path"
 import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 const fixture = join(__dirname, "fixtures", "node-terminal.ts")
 const nodeOptions = "--experimental-strip-types --experimental-transform-types"
