@@ -17,6 +17,7 @@ import * as Effect from "../../Effect.ts"
 import { identity } from "../../Function.ts"
 import * as InternalRecord from "../../internal/record.ts"
 import * as Predicate from "../../Predicate.ts"
+import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaIssue from "../../SchemaIssue.ts"
@@ -31,13 +32,13 @@ import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import * as HttpMethod from "../http/HttpMethod.ts"
+import * as MediaType from "../http/MediaType.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as HttpApi from "./HttpApi.ts"
 import * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
 import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
-import * as MediaType from "./internal/mediaType.ts"
 
 /**
  * The type-safe client shape generated from HTTP API groups, with non-top-level
@@ -780,7 +781,9 @@ function addResponseAlternative(
   contentType: string,
   decode: ResponseDecoder
 ) {
-  const normalizedContentType = MediaType.normalize(contentType)
+  const normalizedContentType = contentType === ""
+    ? ""
+    : MediaType.essence(MediaType.parseUnsafe(contentType))
   const alternatives = map.get(status)
   if (alternatives === undefined) {
     map.set(status, [{ contentType: normalizedContentType, decode }])
@@ -795,7 +798,18 @@ function makeResponseDecoder(alternatives: ReadonlyArray<ResponseAlternative>): 
     return first.decode
   }
   return (response) => {
-    const contentType = MediaType.normalize(response.headers["content-type"] ?? "")
+    const rawContentType = response.headers["content-type"] ?? ""
+    if (rawContentType === "") {
+      const alternative = alternatives.find((alternative) => alternative.contentType === "")
+      return alternative === undefined
+        ? failUnsupportedContentType(response, rawContentType, alternatives)
+        : alternative.decode(response)
+    }
+    const parsedContentType = MediaType.parse(rawContentType)
+    if (Result.isFailure(parsedContentType)) {
+      return failUnsupportedContentType(response, rawContentType, alternatives)
+    }
+    const contentType = MediaType.essence(parsedContentType.success)
     const alternative = alternatives.find((alternative) => alternative.contentType === contentType)
     return alternative === undefined
       ? failUnsupportedContentType(response, contentType, alternatives)
@@ -811,7 +825,7 @@ function groupSchemasByContentType(
     const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
     const contentType = HttpApiSchema.isNoContent(body.ast)
       ? ""
-      : MediaType.normalize(HttpApiSchema.getResponseEncodingSchema(schema).contentType)
+      : MediaType.essence(MediaType.parseUnsafe(HttpApiSchema.getResponseEncodingSchema(schema).contentType))
     const existing = grouped.get(contentType)
     if (existing === undefined) {
       grouped.set(contentType, [schema])

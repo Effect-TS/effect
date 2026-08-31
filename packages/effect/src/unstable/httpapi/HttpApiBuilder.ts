@@ -42,6 +42,7 @@ import * as Request from "../http/HttpServerRequest.ts"
 import { HttpServerRequest } from "../http/HttpServerRequest.ts"
 import * as Response from "../http/HttpServerResponse.ts"
 import type { HttpServerResponse } from "../http/HttpServerResponse.ts"
+import * as MediaType from "../http/MediaType.ts"
 import * as Multipart from "../http/Multipart.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import type * as HttpApi from "./HttpApi.ts"
@@ -51,7 +52,6 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import type * as HttpApiSecurity from "./HttpApiSecurity.ts"
-import * as MediaType from "./internal/mediaType.ts"
 import * as OpenApi from "./OpenApi.ts"
 
 /**
@@ -699,9 +699,14 @@ function decodePayload(
   query: Record<string, string | Array<string>>
 ): Effect.Effect<unknown, Schema.SchemaError, unknown> | HttpServerResponse | undefined {
   const hasBody = HttpMethod.hasBody(httpRequest.method)
-  const contentType = hasBody
-    ? MediaType.normalize(httpRequest.headers["content-type"] ?? "application/json")
+  const rawContentType = hasBody
+    ? httpRequest.headers["content-type"] ?? "application/json"
     : "application/x-www-form-urlencoded"
+  const parsedContentType = MediaType.parse(rawContentType)
+  if (Result.isFailure(parsedContentType)) {
+    return Response.text(`Unsupported content-type: ${rawContentType}`, { status: 415 })
+  }
+  const contentType = MediaType.essence(parsedContentType.success)
   const existing = payloadBy.get(contentType)
   if (!existing) {
     return Response.text(`Unsupported content-type: ${contentType}`, { status: 415 })

@@ -68,6 +68,7 @@ import type { Assign, Lambda, Mutable, Simplify } from "./Struct.ts"
 import * as Struct_ from "./Struct.ts"
 import type { RequiredKeys, UnionToIntersection } from "./Types.ts"
 import type { Unify } from "./Unify.ts"
+import * as MediaType_ from "./unstable/http/MediaType.ts"
 
 const TypeId = InternalSchema.TypeId
 
@@ -11887,6 +11888,74 @@ export interface URLFromString extends decodeTo<URL, String> {
  * @since 4.0.0
  */
 export const URLFromString: URLFromString = URLString.pipe(decodeTo(URL, SchemaTransformation.urlFromString))
+
+/**
+ * Type-level representation of {@link MediaType}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface MediaType extends declare<MediaType_.MediaType, string> {
+  readonly "Rebuild": MediaType
+}
+
+const mediaTypeTransformation = SchemaTransformation.transformOrFail({
+  decode: (input: string, options) => {
+    const result = MediaType_.parse(input)
+    return Result_.isFailure(result)
+      ? Effect.fail(
+        new SchemaIssue.InvalidValue(
+          { message: `${result.failure.reason} at offset ${result.failure.offset}` },
+          input,
+          options
+        )
+      )
+      : Effect.succeed(result.success)
+  },
+  encode: (mediaType: MediaType_.MediaType) => Effect.succeed(MediaType_.format(mediaType))
+})
+
+/**
+ * Schema for parsed HTTP media-type values.
+ *
+ * @see {@link MediaTypeFromString} for decoding media types from strings
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const MediaType: MediaType = declare(MediaType_.isMediaType, {
+  representation: { id: "effect/http/MediaType", payload: null },
+  toCode: () => ({
+    runtime: "Schema.MediaType",
+    Type: "MediaType.MediaType",
+    importDeclarations: [`import * as MediaType from "effect/unstable/http/MediaType"`]
+  }),
+  expected: "MediaType",
+  toEquivalence: () => MediaType_.Equivalence,
+  toCodec: () => link<MediaType_.MediaType>()(String, mediaTypeTransformation)
+})
+
+/**
+ * Type-level representation of {@link MediaTypeFromString}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface MediaTypeFromString extends decodeTo<MediaType, String> {
+  readonly "Rebuild": MediaTypeFromString
+}
+
+/**
+ * Schema that decodes strings into normalized HTTP media-type values.
+ *
+ * @see {@link MediaType} for validating already parsed media types
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const MediaTypeFromString: MediaTypeFromString = String.pipe(
+  decodeTo(MediaType, mediaTypeTransformation)
+)
 
 /**
  * Type-level representation of {@link Date}.

@@ -1,3 +1,5 @@
+import * as Result from "../../../../Result.ts"
+import * as MediaType from "../../MediaType.ts"
 import type { Config, MultipartError, PartInfo } from "../../MultipartParser.ts"
 import * as CT from "./contentType.ts"
 import * as HP from "./headers.ts"
@@ -35,8 +37,12 @@ export function defaultIsFile(info: PartInfo) {
 }
 
 function parseBoundary(headers: Record<string, string>) {
-  const contentType = CT.parse(headers["content-type"])
-  return contentType.parameters.boundary
+  const contentType = MediaType.parse(headers["content-type"] ?? "")
+  return Result.isSuccess(contentType)
+    ? MediaType.getParameter(contentType.success, "boundary").pipe((option) =>
+      option._tag === "Some" ? option.value : undefined
+    )
+    : undefined
 }
 
 function noopOnChunk(_chunk: Uint8Array | null) {}
@@ -159,7 +165,7 @@ export function make({
           return onError({ _tag: "BadHeaders", error: result })
         }
 
-        const contentType = CT.parse(result.headers["content-type"] as string)
+        const contentType = MediaType.parse((result.headers["content-type"] as string | undefined) ?? "")
         const contentDisposition = CT.parse(
           result.headers["content-disposition"] as string,
           true
@@ -188,12 +194,14 @@ export function make({
         state.info = {
           name: contentDisposition.parameters.name ?? "",
           filename: encodedFilename ?? contentDisposition.parameters.filename,
-          contentType: contentType.value === ""
+          contentType: Result.isFailure(contentType)
             ? contentDisposition.parameters.filename !== undefined
               ? "application/octet-stream"
               : "text/plain"
-            : contentType.value,
-          contentTypeParameters: contentType.parameters,
+            : MediaType.essence(contentType.success),
+          contentTypeParameters: Result.isFailure(contentType)
+            ? Object.create(null)
+            : Object.fromEntries(contentType.success.parameters.map((parameter) => [parameter.name, parameter.value])),
           contentDisposition: contentDisposition.value,
           contentDispositionParameters: contentDisposition.parameters as any,
           headers: result.headers

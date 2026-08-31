@@ -11,6 +11,36 @@ import * as HttpServerRespondable from "effect/unstable/http/HttpServerRespondab
 import { deepStrictEqual, notStrictEqual, strictEqual } from "node:assert"
 
 describe("Multipart", () => {
+  it("parses quoted boundaries and normalized part content-type parameters", () => {
+    const boundary = "quoted-boundary"
+    const encoder = new TextEncoder()
+    const parts: Array<MultipartParser.PartInfo> = []
+    const errors: Array<MultipartParser.MultipartError> = []
+    const parser = MultipartParser.make({
+      headers: { "content-type": `Multipart/Form-Data; boundary="${boundary}"` },
+      onField(info) {
+        parts.push(info)
+      },
+      onFile: () => () => {},
+      onError(error) {
+        errors.push(error)
+      },
+      onDone() {}
+    })
+
+    parser.write(encoder.encode(
+      `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="field"\r\n` +
+        `Content-Type: Text/Plain; Profile="a b"; Charset=UTF-8\r\n\r\n` +
+        `value\r\n--${boundary}--\r\n`
+    ))
+    parser.end()
+
+    strictEqual(parts[0].contentType, "text/plain")
+    deepStrictEqual(parts[0].contentTypeParameters, { charset: "UTF-8", profile: "a b" })
+    deepStrictEqual(errors, [])
+  })
+
   it.effect("schemaJson applies a JSON reviver", () =>
     Effect.gen(function*() {
       const decoded = yield* Multipart.schemaJson(Schema.Struct({ value: Schema.String }), {

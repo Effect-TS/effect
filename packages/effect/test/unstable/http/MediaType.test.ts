@@ -1,0 +1,154 @@
+import { describe, it } from "@effect/vitest"
+import { deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
+import { Equal, Hash, Option, Result, Schema } from "effect"
+import { MediaType } from "effect/unstable/http"
+
+const parse = (input: string) => Result.getOrThrow(MediaType.parse(input))
+
+const assertFailure = (
+  input: string,
+  reason: MediaType.MediaTypeParseErrorReason,
+  offset?: number
+) => {
+  const result = MediaType.parse(input)
+  strictEqual(Result.isFailure(result), true)
+  if (Result.isFailure(result)) {
+    strictEqual(result.failure.reason, reason)
+    if (offset !== undefined) strictEqual(result.failure.offset, offset)
+  }
+}
+
+describe("MediaType", () => {
+  it("parses and normalizes concrete media types", () => {
+    const mediaType = parse("\t Application/Vnd.Example+JSON ; Charset=utf-8; profile=Example \t")
+    strictEqual(mediaType.type, "application")
+    strictEqual(mediaType.subtype, "vnd.example+json")
+    strictEqual(Option.getOrUndefined(mediaType.suffix), "json")
+    deepStrictEqual(mediaType.parameters, [
+      { name: "charset", value: "utf-8" },
+      { name: "profile", value: "Example" }
+    ])
+    strictEqual(MediaType.format(mediaType), "application/vnd.example+json; charset=utf-8; profile=Example")
+  })
+
+  it("distinguishes structured suffixes from broad HTTP token syntax", () => {
+    const structured = parse("application/vnd.example+json")
+    strictEqual(MediaType.baseSubtype(structured), "vnd.example")
+    strictEqual(Option.getOrUndefined(structured.suffix), "json")
+
+    for (const input of ["application/+json", "application/vnd.*+json", "application/example+", "app*/problem+json"]) {
+      const mediaType = parse(input)
+      strictEqual(MediaType.baseSubtype(mediaType), mediaType.subtype)
+      strictEqual(Option.isNone(mediaType.suffix), true)
+      strictEqual(MediaType.hasSuffix(mediaType, "json"), false)
+    }
+  })
+
+  it("accepts every tchar and embedded stars but rejects wildcard ranges", () => {
+    const token = "!#$%&'*+-.^_`|~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    strictEqual(MediaType.essence(parse(`${token}/${token}`)), `${token.toLowerCase()}/${token.toLowerCase()}`)
+    strictEqual(MediaType.essence(parse("application/vnd.*+json")), "application/vnd.*+json")
+    assertFailure("*/*", "ExpectedType", 0)
+    assertFailure("text/*", "ExpectedSubtype", 5)
+  })
+
+  it("parses quoted values, escapes, empty separators, and obs-text", () => {
+    const mediaType = parse("text/plain;;; a=token; b=\"a; b\"; c=\"\\\"\\\\\"; d=\"\tÿ\";")
+    strictEqual(MediaType.getParameter(mediaType, "b").pipe(Option.getOrUndefined), "a; b")
+    strictEqual(MediaType.getParameter(mediaType, "c").pipe(Option.getOrUndefined), "\"\\")
+    strictEqual(MediaType.getParameter(mediaType, "d").pipe(Option.getOrUndefined), "\tÿ")
+    strictEqual(MediaType.format(mediaType), "text/plain; a=token; b=\"a; b\"; c=\"\\\"\\\\\"; d=\"\tÿ\"")
+  })
+
+  it("rejects malformed input with a structured error", () => {
+    assertFailure("", "ExpectedType")
+    assertFailure("text", "ExpectedSlash")
+    assertFailure("text/", "ExpectedSubtype")
+    assertFailure("text /plain", "ExpectedSlash")
+    assertFailure("text/plain; charset =utf-8", "ExpectedEquals")
+    assertFailure("text/plain; charset=", "ExpectedParameterValue")
+    assertFailure("text/plain; charset=\"unterminated", "ExpectedParameterValue")
+    assertFailure("text/plain; charset=\"x\\\"", "ExpectedParameterValue")
+    assertFailure("text/plain; charset=\"x\r\nInjected: yes\"", "UnexpectedCharacter")
+    assertFailure("text/plain; charset=\"\u0000\"", "UnexpectedCharacter")
+    assertFailure("text/plain; charset=\"\u007f\"", "UnexpectedCharacter")
+    assertFailure("text/plain; charset=\"\\\u007f\"", "InvalidQuotedPair")
+    assertFailure("text/plain; charset=\"Ā\"", "UnexpectedCharacter")
+    assertFailure("text/plain garbage", "UnexpectedCharacter")
+    assertFailure("text/plain; A=1; a=2", "DuplicateParameter")
+  })
+
+  it("constructs immutable values and rejects invalid parts", () => {
+    const entries: Array<readonly [string, string]> = [["Profile", "a b"], ["charset", "utf-8"]]
+    const mediaType = Result.getOrThrow(MediaType.make({ type: "Text", subtype: "Plain", parameters: entries }))
+    entries.push(["later", "ignored"])
+    strictEqual(MediaType.format(mediaType), "text/plain; charset=utf-8; profile=\"a b\"")
+    strictEqual(Object.isFrozen(mediaType), true)
+    strictEqual(Object.isFrozen(mediaType.parameters), true)
+    strictEqual(Result.isFailure(MediaType.make({ type: "text", subtype: "plain", parameters: { x: "Ā" } })), true)
+  })
+
+  it("recognizes only complete MediaType values", () => {
+    strictEqual(MediaType.isMediaType(MediaType.textPlain), true)
+    strictEqual(MediaType.isMediaType({ [MediaType.TypeId]: MediaType.TypeId }), false)
+    strictEqual(MediaType.isMediaType({ [MediaType.TypeId]: "MediaType" }), false)
+  })
+
+  it("uses parameter-aware equality and hashing", () => {
+    const left = parse("TEXT/PLAIN; B=two; a=one")
+    const right = parse("text/plain; a=\"one\"; b=two")
+    const different = parse("text/plain; a=ONE; b=two")
+    strictEqual(Equal.equals(left, right), true)
+    strictEqual(Hash.hash(left), Hash.hash(right))
+    strictEqual(Equal.equals(left, different), false)
+    strictEqual(MediaType.sameEssence(left, different), true)
+  })
+
+  it("supports parameter, essence, and suffix predicates", () => {
+    const candidate = parse("application/problem+json; charset=utf-8; profile=errors")
+    const expected = parse("application/problem+json; charset=utf-8")
+    strictEqual(MediaType.matchesParameters(candidate, expected), true)
+    strictEqual(MediaType.matchesParameters(expected, candidate), false)
+    strictEqual(candidate.pipe(MediaType.isType("APPLICATION")), true)
+    strictEqual(MediaType.isSubtype(candidate, "problem+json"), true)
+    strictEqual(candidate.pipe(MediaType.hasSuffix("JSON")), true)
+    strictEqual(MediaType.hasParameter(candidate, "CHARSET"), true)
+    strictEqual(Option.isNone(MediaType.getParameter(candidate, "not valid")), true)
+  })
+
+  it("applies charset semantics without changing generic parameter identity", () => {
+    const upper = parse("text/plain; charset=UTF-8; profile=Example")
+    const lower = parse("text/plain; charset=utf-8; profile=Example")
+    strictEqual(Option.getOrUndefined(MediaType.getCharset(upper)), "utf-8")
+    strictEqual(MediaType.matchesParameters(upper, lower), true)
+    strictEqual(MediaType.matchesParameters(lower, upper), true)
+    strictEqual(Equal.equals(upper, lower), false)
+
+    const differentProfile = parse("text/plain; charset=utf-8; profile=example")
+    strictEqual(MediaType.matchesParameters(upper, differentProfile), false)
+  })
+
+  it("classifies common media-type families", () => {
+    strictEqual(MediaType.isJson(MediaType.applicationJson), true)
+    strictEqual(MediaType.isJson(parse("application/problem+json")), true)
+    strictEqual(MediaType.isJson(parse("text/json")), true)
+    strictEqual(MediaType.isJson(parse("application/json-seq")), false)
+    strictEqual(MediaType.isXml(parse("application/atom+xml")), true)
+    strictEqual(MediaType.isXml(parse("text/xml")), true)
+    strictEqual(MediaType.isText(parse("text/event-stream")), true)
+    strictEqual(MediaType.isText(MediaType.applicationJson), false)
+  })
+
+  it("round trips through the string Schema", () => {
+    const decoded = Schema.decodeUnknownSync(Schema.MediaTypeFromString)("Text/Plain; z=\"a b\"; A=one")
+    strictEqual(MediaType.format(decoded), "text/plain; a=one; z=\"a b\"")
+    strictEqual(Schema.encodeSync(Schema.MediaTypeFromString)(decoded), "text/plain; a=one; z=\"a b\"")
+    strictEqual(Schema.is(Schema.MediaType)(decoded), true)
+    throws(
+      () => Schema.decodeUnknownSync(Schema.MediaTypeFromString)("not a media type"),
+      (error) => {
+        strictEqual(String(error).includes("ExpectedSlash at offset 3"), true)
+      }
+    )
+  })
+})

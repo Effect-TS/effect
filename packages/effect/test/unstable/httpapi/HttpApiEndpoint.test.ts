@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
+import { MediaType } from "effect/unstable/http"
 import { HttpApiEndpoint, HttpApiSchema } from "effect/unstable/httpapi"
 
 const Events = Schema.Struct({
@@ -56,6 +57,18 @@ describe("HttpApiEndpoint payload schemas", () => {
       () => HttpApiEndpoint.post("create", "/", { payload: [JsonPayload, TextPayload] }),
       /Multiple payload encodings/
     )
+  })
+
+  it("rejects malformed declared content types", () => {
+    const Payload = Schema.String.pipe(HttpApiSchema.asText({ contentType: "not a media type" }))
+
+    let error: unknown
+    try {
+      HttpApiEndpoint.post("create", "/", { payload: Payload })
+    } catch (cause) {
+      error = cause
+    }
+    assert.instanceOf(error, MediaType.MediaTypeParseError)
   })
 })
 
