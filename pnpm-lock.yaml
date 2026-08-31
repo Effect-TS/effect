@@ -883,9 +883,6 @@ importers:
       openapi-typescript:
         specifier: ^7.13.0
         version: 7.13.0(typescript@7.0.2)
-      yaml:
-        specifier: ^2.9.0
-        version: 2.9.0
 
   packages/tools/oxc:
     dependencies:
