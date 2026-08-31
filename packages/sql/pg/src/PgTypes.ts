@@ -19,7 +19,7 @@
 import * as Data from "effect/Data"
 import * as Result from "effect/Result"
 import * as IpNetwork from "effect/unstable/net/IpNetwork"
-import * as Net from "effect/unstable/net/NetAddress"
+import * as NetAddress from "effect/unstable/net/NetAddress"
 import type * as PgProtocol from "./PgProtocol.ts"
 import type { ValueSink } from "./PgProtocol.ts"
 
@@ -747,9 +747,11 @@ const encodeInet = (value: unknown, isCidr: boolean): Uint8Array => {
     if (Result.isFailure(parsed)) return fail(parsed.failure.message)
     const network = parsed.success
     const address = network.address
-    const octets = Net.isIpv4Address(address) ? Net.ipv4ToOctets(address) : Net.ipv6ToOctets(address)
+    const octets = NetAddress.isIpv4Address(address)
+      ? NetAddress.ipv4ToOctets(address)
+      : NetAddress.ipv6ToOctets(address)
     const result = new Uint8Array(4 + octets.length)
-    result[0] = Net.isIpv4Address(address) ? PGSQL_AF_INET : PGSQL_AF_INET6
+    result[0] = NetAddress.isIpv4Address(address) ? PGSQL_AF_INET : PGSQL_AF_INET6
     result[1] = network.prefixLength
     result[2] = 1
     result[3] = octets.length
@@ -792,13 +794,18 @@ const decodeInet = (bytes: Uint8Array, offset: number, size: number): string => 
   requireSize(size, 4 + addressSize, "inet")
   if (bits > addressSize * 8) return fail(`Invalid inet netmask length: ${bits}`)
   if (isCidr) {
-    let address: Net.IpAddress
+    let address: NetAddress.IpAddress
     if (family === PGSQL_AF_INET) {
-      const parsed = Net.ipv4FromOctets(bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7])
+      const parsed = NetAddress.ipv4FromOctets(
+        bytes[offset + 4],
+        bytes[offset + 5],
+        bytes[offset + 6],
+        bytes[offset + 7]
+      )
       if (Result.isFailure(parsed)) return fail(parsed.failure.message)
       address = parsed.success
     } else {
-      const parsed = Net.ipv6FromSegments(
+      const parsed = NetAddress.ipv6FromSegments(
         readUint16(bytes, offset + 4),
         readUint16(bytes, offset + 6),
         readUint16(bytes, offset + 8),
