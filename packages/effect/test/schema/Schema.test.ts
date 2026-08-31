@@ -5560,14 +5560,8 @@ Expected a value between -2147483648 and 2147483647`
     if (verifyGeneration) asserts.arbitrary().verifyGeneration()
 
     const json = new TestSchema.Asserts(Schema.toCodecJson(Schema.ByteSize))
-    await json.decoding().succeed(
-      { _id: "ByteSize", bytes: "9007199254740993" },
-      ByteSize.bytes(9_007_199_254_740_993n)
-    )
-    await json.encoding().succeed(
-      ByteSize.bytes(9_007_199_254_740_993n),
-      { _id: "ByteSize", bytes: "9007199254740993" }
-    )
+    await json.decoding().succeed("9007199254740993", ByteSize.bytes(9_007_199_254_740_993n))
+    await json.encoding().succeed(ByteSize.bytes(9_007_199_254_740_993n), "9007199254740993")
   })
 
   it("ByteSizeFromString", async () => {

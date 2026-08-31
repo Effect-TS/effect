@@ -12247,8 +12247,8 @@ export interface ByteSize extends declare<ByteSize_.ByteSize> {
  *
  * **Details**
  *
- * The JSON codec uses `{ _id: "ByteSize", bytes: string }`, preserving values
- * beyond JavaScript's safe-integer range.
+ * The JSON codec uses a bigint string, preserving values beyond JavaScript's
+ * safe-integer range.
  *
  * @category schemas
  * @since 4.0.0
@@ -12268,10 +12268,10 @@ export const ByteSize: ByteSize = declare(
     expected: "ByteSize",
     toCodecJson: () =>
       link<ByteSize_.ByteSize>()(
-        Struct({ _id: Literal("ByteSize"), bytes: BigInt.check(isGreaterThanOrEqualToBigInt(globalThis.BigInt(0))) }),
+        BigInt.check(isGreaterThanOrEqualToBigInt(globalThis.BigInt(0))),
         SchemaTransformation.transform({
-          decode: (input) => ByteSize_.bytes(input.bytes),
-          encode: (byteSize) => ({ _id: "ByteSize", bytes: ByteSize_.toBigInt(byteSize) } as const)
+          decode: ByteSize_.bytes,
+          encode: ByteSize_.toBigInt
         })
       )
   }
