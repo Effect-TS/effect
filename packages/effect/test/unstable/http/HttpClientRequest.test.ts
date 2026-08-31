@@ -201,6 +201,24 @@ describe("HttpClientRequest", () => {
         strictEqual(yield* Effect.promise(() => webRequest2.text()), "{\"foo\":\"bar\"}")
       }))
 
+    it("fromWeb ignores malformed or unsafe content lengths", () => {
+      for (const contentLength of ["2junk", "1.5", "1e3", "9007199254740992"]) {
+        const request = HttpClientRequest.fromWeb(
+          new Request("http://localhost:3000", {
+            method: "POST",
+            headers: { "content-length": contentLength },
+            body: "hello"
+          })
+        )
+
+        strictEqual(request.headers["content-length"], undefined)
+        strictEqual(request.body._tag, "Raw")
+        if (request.body._tag === "Raw") {
+          strictEqual(request.body.contentLength, undefined)
+        }
+      }
+    })
+
     it.effect("toWeb stream body", () =>
       Effect.gen(function*() {
         const body = new Uint8Array([104, 101, 108, 108, 111])

@@ -65,6 +65,23 @@ describe("HttpServerRequest", () => {
     }
   })
 
+  it("toClientRequest removes malformed content length metadata", () => {
+    const clientRequest = HttpServerRequest.toClientRequest(
+      HttpServerRequest.fromWeb(
+        new Request("http://localhost:3000", {
+          method: "POST",
+          headers: { "content-length": "2junk" },
+          body: "hello"
+        })
+      )
+    )
+
+    strictEqual(clientRequest.body._tag, "Stream")
+    if (clientRequest.body._tag === "Stream") {
+      strictEqual(clientRequest.body.contentLength, undefined)
+    }
+  })
+
   it("toClientRequest keeps empty bodies empty", () => {
     const clientRequest = HttpServerRequest.toClientRequest(
       HttpServerRequest.fromWeb(

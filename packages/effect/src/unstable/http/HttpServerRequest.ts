@@ -454,8 +454,11 @@ const parseContentLength = (contentLength: string | undefined): number | undefin
   if (contentLength === undefined) {
     return undefined
   }
-  const parsed = Number.parseInt(contentLength, 10)
-  return Number.isNaN(parsed) ? undefined : parsed
+  if (!/^\d+$/.test(contentLength)) {
+    return undefined
+  }
+  const parsed = Number(contentLength)
+  return Number.isSafeInteger(parsed) ? parsed : undefined
 }
 
 const removeHost = (url: string) => {
