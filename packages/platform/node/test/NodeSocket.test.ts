@@ -378,7 +378,7 @@ describe("Socket", () => {
 
         const socket = yield* NodeSocket.makeTls({
           host: "127.0.0.1",
-          port: (server.address as SocketServer.TcpAddress).port,
+          port: (server.address as NetAddress.InetAddress).port,
           ca: [cert]
         })
 
@@ -394,7 +394,7 @@ describe("Socket", () => {
 
         const socket = yield* NodeSocket.makeNet({
           host: "127.0.0.1",
-          port: (server.address as SocketServer.TcpAddress).port
+          port: (server.address as NetAddress.InetAddress).port
         })
 
         const received = yield* sendHelloWorld(socket, {
@@ -488,7 +488,7 @@ describe("Socket", () => {
         ).pipe(Effect.forkScoped)
         const socket = yield* NodeSocket.makeNet({
           host: "127.0.0.1",
-          port: (server.address as SocketServer.TcpAddress).port
+          port: (server.address as NetAddress.InetAddress).port
         })
 
         const error = yield* Effect.gen(function*() {
@@ -515,7 +515,7 @@ describe("Socket", () => {
         yield* server.run(() => Effect.never).pipe(Effect.forkScoped)
         const socket = yield* NodeSocket.makeNet({
           host: "127.0.0.1",
-          port: (server.address as SocketServer.TcpAddress).port
+          port: (server.address as NetAddress.InetAddress).port
         })
 
         const error = yield* Effect.gen(function*() {
