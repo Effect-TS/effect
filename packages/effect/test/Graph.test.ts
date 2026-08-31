@@ -7,7 +7,7 @@ const directed = <N, E>(
 ) =>
   Graph.directed<N, E>((mutable) => {
     for (const node of nodes) Graph.addNode(mutable, node)
-    for (const [source, target, data] of edges) Graph.addEdge(mutable, source, target, data)
+    for (const [source, target, data] of edges) Graph.addEdgeUnsafe(mutable, source, target, data)
   })
 
 const undirected = <N, E>(
@@ -16,7 +16,7 @@ const undirected = <N, E>(
 ) =>
   Graph.undirected<N, E>((mutable) => {
     for (const node of nodes) Graph.addNode(mutable, node)
-    for (const [source, target, data] of edges) Graph.addEdge(mutable, source, target, data)
+    for (const [source, target, data] of edges) Graph.addEdgeUnsafe(mutable, source, target, data)
   })
 
 const assertGraphError = (thunk: () => unknown, message: string): void => {
@@ -106,12 +106,12 @@ describe("Graph", () => {
           { index: 11, source: 5, target: 5, data: "loop" }
         ]
       } as const
-      const graph = Graph.fromSnapshot(snapshot)
+      const graph = Graph.fromSnapshotUnsafe(snapshot)
 
       assertSnapshot(graph, snapshot)
-      assert.deepStrictEqual(Graph.neighbors(graph, 2), [5])
-      assert.deepStrictEqual(Graph.neighbors(graph, 5), [2, 5])
-      assert.strictEqual(Equal.equals(Graph.fromSnapshot(Graph.toSnapshot(graph)), graph), true)
+      assert.deepStrictEqual(Graph.neighborsUnsafe(graph, 2), [5])
+      assert.deepStrictEqual(Graph.neighborsUnsafe(graph, 5), [2, 5])
+      assert.strictEqual(Equal.equals(Graph.fromSnapshotUnsafe(Graph.toSnapshot(graph)), graph), true)
     })
 
     it("snapshots mutable state without exposing stored records", () => {
@@ -132,43 +132,43 @@ describe("Graph", () => {
     })
 
     it("continues allocation after the highest active snapshot indexes", () => {
-      const mutable = Graph.beginMutation(Graph.fromSnapshot({
+      const mutable = Graph.beginMutation(Graph.fromSnapshotUnsafe({
         type: "directed",
         nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }],
         edges: [{ index: 4, source: 2, target: 5, data: 1 }]
       }))
 
       assert.strictEqual(Graph.addNode(mutable, "C"), 6)
-      assert.strictEqual(Graph.addEdge(mutable, 2, 5, 2), 5)
+      assert.strictEqual(Graph.addEdgeUnsafe(mutable, 2, 5, 2), 5)
     })
 
     it("rejects malformed snapshot records and indexes", () => {
       const cases: ReadonlyArray<readonly [() => unknown, string]> = [
         [
           () =>
-            Graph.fromSnapshot(
+            Graph.fromSnapshotUnsafe(
               { type: "invalid", nodes: [], edges: [] } as unknown as Graph.Snapshot<never, never, Graph.Kind>
             ),
           "Snapshot type must be directed or undirected"
         ],
         [
-          () => Graph.fromSnapshot({ type: "directed", nodes: new Array(1), edges: [] }),
+          () => Graph.fromSnapshotUnsafe({ type: "directed", nodes: new Array(1), edges: [] }),
           "Node at position 0 must be defined"
         ],
         [
           () =>
-            Graph.fromSnapshot(
+            Graph.fromSnapshotUnsafe(
               { type: "directed", nodes: [null], edges: [] } as unknown as Graph.Snapshot<never, never, "directed">
             ),
           "Node at position 0 must be defined"
         ],
         [
-          () => Graph.fromSnapshot({ type: "directed", nodes: [{ index: -1, data: "A" }], edges: [] }),
+          () => Graph.fromSnapshotUnsafe({ type: "directed", nodes: [{ index: -1, data: "A" }], edges: [] }),
           "Node index at position 0 must be a non-negative safe integer"
         ],
         [
           () =>
-            Graph.fromSnapshot({
+            Graph.fromSnapshotUnsafe({
               type: "directed",
               nodes: [{ index: Number.MAX_SAFE_INTEGER + 1, data: "A" }],
               edges: []
@@ -177,7 +177,7 @@ describe("Graph", () => {
         ],
         [
           () =>
-            Graph.fromSnapshot({
+            Graph.fromSnapshotUnsafe({
               type: "directed",
               nodes: [{ index: 1, data: "A" }, { index: 1, data: "B" }],
               edges: []
@@ -185,12 +185,12 @@ describe("Graph", () => {
           "Node indexes must be strictly increasing"
         ],
         [
-          () => Graph.fromSnapshot({ type: "directed", nodes: [{ index: 0, data: "A" }], edges: new Array(1) }),
+          () => Graph.fromSnapshotUnsafe({ type: "directed", nodes: [{ index: 0, data: "A" }], edges: new Array(1) }),
           "Edge at position 0 must be defined"
         ],
         [
           () =>
-            Graph.fromSnapshot({
+            Graph.fromSnapshotUnsafe({
               type: "directed",
               nodes: [{ index: 0, data: "A" }],
               edges: [{ index: 0.5, source: 0, target: 0, data: 1 }]
@@ -199,7 +199,7 @@ describe("Graph", () => {
         ],
         [
           () =>
-            Graph.fromSnapshot({
+            Graph.fromSnapshotUnsafe({
               type: "directed",
               nodes: [{ index: 0, data: "A" }],
               edges: [{ index: 1, source: 0, target: 0, data: 1 }, { index: 1, source: 0, target: 0, data: 2 }]
@@ -208,7 +208,7 @@ describe("Graph", () => {
         ],
         [
           () =>
-            Graph.fromSnapshot({
+            Graph.fromSnapshotUnsafe({
               type: "directed",
               nodes: [{ index: 0, data: "A" }],
               edges: [{ index: 0, source: -1, target: 0, data: 1 }]
@@ -217,7 +217,7 @@ describe("Graph", () => {
         ],
         [
           () =>
-            Graph.fromSnapshot({
+            Graph.fromSnapshotUnsafe({
               type: "directed",
               nodes: [{ index: 0, data: "A" }],
               edges: [{ index: 0, source: 0, target: 0.5, data: 1 }]
@@ -226,7 +226,7 @@ describe("Graph", () => {
         ],
         [
           () =>
-            Graph.fromSnapshot({
+            Graph.fromSnapshotUnsafe({
               type: "directed",
               nodes: [{ index: 1, data: "A" }],
               edges: [{ index: 0, source: 0, target: 1, data: 1 }]
@@ -235,7 +235,7 @@ describe("Graph", () => {
         ],
         [
           () =>
-            Graph.fromSnapshot({
+            Graph.fromSnapshotUnsafe({
               type: "directed",
               nodes: [{ index: 1, data: "A" }],
               edges: [{ index: 0, source: 1, target: 2, data: 1 }]
@@ -248,19 +248,19 @@ describe("Graph", () => {
     })
 
     it("rejects allocation after safe indexes are exhausted", () => {
-      const nodes = Graph.beginMutation(Graph.fromSnapshot({
+      const nodes = Graph.beginMutation(Graph.fromSnapshotUnsafe({
         type: "directed",
         nodes: [{ index: Number.MAX_SAFE_INTEGER, data: "A" }],
         edges: []
       }))
-      const edges = Graph.beginMutation(Graph.fromSnapshot({
+      const edges = Graph.beginMutation(Graph.fromSnapshotUnsafe({
         type: "directed",
         nodes: [{ index: 0, data: "A" }],
         edges: [{ index: Number.MAX_SAFE_INTEGER, source: 0, target: 0, data: 1 }]
       }))
 
       assertGraphError(() => Graph.addNode(nodes, "B"), "Graph has exhausted safe node indexes")
-      assertGraphError(() => Graph.addEdge(edges, 0, 0, 2), "Graph has exhausted safe edge indexes")
+      assertGraphError(() => Graph.addEdgeUnsafe(edges, 0, 0, 2), "Graph has exhausted safe edge indexes")
     })
   })
 
@@ -280,7 +280,7 @@ describe("Graph", () => {
         directed(["A", "B"], [[0, 1, "changed"]]),
         directed(["A", "B"], []),
         undirected(["A", "B"], [[0, 1, "edge"]]),
-        Graph.fromSnapshot({
+        Graph.fromSnapshotUnsafe({
           type: "directed",
           nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }],
           edges: [{ index: 3, source: 2, target: 5, data: "edge" }]
@@ -308,9 +308,9 @@ describe("Graph", () => {
       const right = Graph.directed<string, string>((mutable) => {
         Graph.addNode(mutable, "A")
         Graph.addNode(mutable, "B")
-        Graph.addEdge(mutable, 0, 1, "edge")
+        Graph.addEdgeUnsafe(mutable, 0, 1, "edge")
         const node = Graph.addNode(mutable, "removed")
-        const edge = Graph.addEdge(mutable, 0, 1, "removed")
+        const edge = Graph.addEdgeUnsafe(mutable, 0, 1, "removed")
         Graph.removeNode(mutable, node)
         Graph.removeEdge(mutable, edge)
       })
@@ -324,10 +324,10 @@ describe("Graph", () => {
         assert.strictEqual(Graph.addNode(mutable, "next"), 3)
       })
       Graph.mutate(left, (mutable) => {
-        assert.strictEqual(Graph.addEdge(mutable, 0, 1, "next"), 1)
+        assert.strictEqual(Graph.addEdgeUnsafe(mutable, 0, 1, "next"), 1)
       })
       Graph.mutate(right, (mutable) => {
-        assert.strictEqual(Graph.addEdge(mutable, 0, 1, "next"), 2)
+        assert.strictEqual(Graph.addEdgeUnsafe(mutable, 0, 1, "next"), 2)
       })
     })
 
@@ -443,7 +443,7 @@ describe("Graph", () => {
       Graph.endMutation(mutable)
       const mutations: ReadonlyArray<() => unknown> = [
         () => Graph.addNode(mutable, "C"),
-        () => Graph.addEdge(mutable, 1, 0, 2),
+        () => Graph.addEdgeUnsafe(mutable, 1, 0, 2),
         () => Graph.updateNode(mutable, 0, () => "updated"),
         () => Graph.updateEdge(mutable, 0, () => 2),
         () => Graph.removeNode(mutable, 0),
@@ -466,7 +466,7 @@ describe("Graph", () => {
       const mutable = Graph.beginMutation(directed(["A", "B"], [[0, 1, 1]]))
       const mutations: ReadonlyArray<() => unknown> = [
         () => Graph.addNode(mutable, "C"),
-        () => Graph.addEdge(mutable, 1, 0, 2),
+        () => Graph.addEdgeUnsafe(mutable, 1, 0, 2),
         () => Graph.updateNode(mutable, 0, () => "updated"),
         () => Graph.updateEdge(mutable, 0, () => 2),
         () => Graph.removeNode(mutable, 0),
@@ -563,20 +563,22 @@ describe("Graph", () => {
         () => Graph.findEdges(mutable, () => (mutate(), false)),
         () => Graph.toGraphViz(mutable, { edgeLabel: (edge) => (mutate(), String(edge)) }),
         () => Graph.toMermaid(mutable, { nodeShape: () => (mutate(), "rectangle") }),
-        () => Graph.maximumFlow(mutable, { source: 0, target: 1, capacity: (edge) => (mutate(), edge) }),
-        () => Graph.minimumCut(mutable, { source: 0, target: 1, capacity: (edge) => (mutate(), edge) }),
-        () => Graph.dijkstra(mutable, { source: 0, target: 1, cost: (edge) => (mutate(), edge) }),
-        () => Graph.floydWarshall(mutable, (edge) => (mutate(), edge)),
-        () => Graph.astar(mutable, { source: 0, target: 1, cost: (edge) => (mutate(), edge), heuristic: () => 0 }),
-        () => Graph.astar(mutable, { source: 0, target: 1, cost: (edge) => edge, heuristic: () => (mutate(), 0) }),
-        () => Graph.bellmanFord(mutable, { source: 0, target: 1, cost: (edge) => (mutate(), edge) }),
+        () => Graph.maximumFlowUnsafe(mutable, { source: 0, target: 1, capacity: (edge) => (mutate(), edge) }),
+        () => Graph.minimumCutUnsafe(mutable, { source: 0, target: 1, capacity: (edge) => (mutate(), edge) }),
+        () => Graph.dijkstraUnsafe(mutable, { source: 0, target: 1, cost: (edge) => (mutate(), edge) }),
+        () => Graph.floydWarshallUnsafe(mutable, (edge) => (mutate(), edge)),
         () =>
-          Array.from(Graph.allShortestPaths(mutable, {
+          Graph.astarUnsafe(mutable, { source: 0, target: 1, cost: (edge) => (mutate(), edge), heuristic: () => 0 }),
+        () =>
+          Graph.astarUnsafe(mutable, { source: 0, target: 1, cost: (edge) => edge, heuristic: () => (mutate(), 0) }),
+        () => Graph.bellmanFordUnsafe(mutable, { source: 0, target: 1, cost: (edge) => (mutate(), edge) }),
+        () =>
+          Array.from(Graph.allShortestPathsUnsafe(mutable, {
             source: 0,
             target: 1,
             cost: (edge) => (mutate(), edge)
           })),
-        () => Array.from(Graph.dfs(mutable, { start: [0] }).visit(() => mutate())),
+        () => Array.from(Graph.dfsUnsafe(mutable, { start: [0] }).visit(() => mutate())),
         () => Array.from(Graph.nodes(mutable).visit(() => mutate())),
         () => Array.from(Graph.edges(mutable).visit(() => mutate())),
         () => Array.from(Graph.externals(mutable).visit(() => mutate()))
@@ -588,7 +590,7 @@ describe("Graph", () => {
 
       const undirectedMutable = Graph.beginMutation(undirected(["A", "B"], [[0, 1, 1]]))
       assertGraphError(() =>
-        Graph.minimumSpanningForest(undirectedMutable, (edge) => {
+        Graph.minimumSpanningForestUnsafe(undirectedMutable, (edge) => {
           Graph.addNode(undirectedMutable, "C")
           return edge
         }), "Cannot mutate graph during a transformation")
@@ -632,9 +634,9 @@ describe("Graph", () => {
       const graph = Graph.undirected<string, string>((mutable) => {
         Graph.addNode(mutable, "A")
         Graph.addNode(mutable, "B")
-        assert.strictEqual(Graph.addEdge(mutable, 1, 0, "first"), 0)
-        assert.strictEqual(Graph.addEdge(mutable, 1, 0, "parallel"), 1)
-        assert.strictEqual(Graph.addEdge(mutable, 0, 0, "loop"), 2)
+        assert.strictEqual(Graph.addEdgeUnsafe(mutable, 1, 0, "first"), 0)
+        assert.strictEqual(Graph.addEdgeUnsafe(mutable, 1, 0, "parallel"), 1)
+        assert.strictEqual(Graph.addEdgeUnsafe(mutable, 0, 0, "loop"), 2)
       })
 
       assertSnapshot(graph, {
@@ -650,8 +652,8 @@ describe("Graph", () => {
 
     it("rejects missing edge endpoints", () => {
       const mutable = Graph.beginMutation(directed<string, number>(["A"], []))
-      assertGraphError(() => Graph.addEdge(mutable, 1, 0, 1), "Node 1 does not exist")
-      assertGraphError(() => Graph.addEdge(mutable, 0, 1, 1), "Node 1 does not exist")
+      assertGraphError(() => Graph.addEdgeUnsafe(mutable, 1, 0, 1), "Node 1 does not exist")
+      assertGraphError(() => Graph.addEdgeUnsafe(mutable, 0, 1, 1), "Node 1 does not exist")
     })
 
     it("gets and updates undefined edge data without exposing stored records", () => {
@@ -669,8 +671,8 @@ describe("Graph", () => {
         nodes: [{ index: 0, data: "A" }, { index: 1, data: "B" }],
         edges: [{ index: 0, source: 0, target: 1, data: undefined }]
       })
-      assert.deepStrictEqual(Graph.neighbors(mutable, 0), [1])
-      assert.deepStrictEqual(Graph.neighbors(mutable, 1), [])
+      assert.deepStrictEqual(Graph.neighborsUnsafe(mutable, 0), [1])
+      assert.deepStrictEqual(Graph.neighborsUnsafe(mutable, 1), [])
 
       Graph.updateEdge(mutable, 0, () => 2)
       Graph.updateEdge(mutable, 99, () => 3)
@@ -682,7 +684,7 @@ describe("Graph", () => {
         nodes: [{ index: 0, data: "A" }, { index: 1, data: "B" }],
         edges: [{ index: 0, source: 0, target: 1, data: 2 }]
       })
-      assert.deepStrictEqual(Graph.neighbors(mutable, 0), [1])
+      assert.deepStrictEqual(Graph.neighborsUnsafe(mutable, 0), [1])
     })
 
     it("removes parallel undirected edges and self-loops independently", () => {
@@ -696,8 +698,8 @@ describe("Graph", () => {
         nodes: [{ index: 0, data: "A" }, { index: 1, data: "B" }],
         edges: [{ index: 1, source: 0, target: 1, data: "second" }]
       })
-      assert.deepStrictEqual(Graph.neighbors(mutable, 0), [1])
-      assert.deepStrictEqual(Graph.neighbors(mutable, 1), [0])
+      assert.deepStrictEqual(Graph.neighborsUnsafe(mutable, 0), [1])
+      assert.deepStrictEqual(Graph.neighborsUnsafe(mutable, 1), [0])
     })
 
     it("removes undirected nodes with reversed edges, parallel edges, and self-loops", () => {
@@ -730,11 +732,11 @@ describe("Graph", () => {
       const edges = Graph.beginMutation(directed(["A", "B"], [[0, 1, 1]]))
       Graph.removeEdges(edges, {
         *[Symbol.iterator]() {
-          assert.strictEqual(Graph.hasPath(edges, 0, 1), true)
+          assert.strictEqual(Graph.hasPathUnsafe(edges, 0, 1), true)
           yield 0
         }
       })
-      assert.strictEqual(Graph.hasPath(edges, 0, 1), false)
+      assert.strictEqual(Graph.hasPathUnsafe(edges, 0, 1), false)
 
       const nodes = Graph.beginMutation(directed(["A", "B"], [[0, 1, 1], [1, 0, 2]]))
       Graph.removeNodes(nodes, {
@@ -836,29 +838,29 @@ describe("Graph", () => {
     it("publishes updated callback values to subsequent graph reads", () => {
       const nodes = Graph.beginMutation(directed<string, never>(["old"], []))
       Graph.updateNode(nodes, 0, () => {
-        assert.deepStrictEqual(Array.from(Graph.values(Graph.bfs(nodes, { start: [0] }))), ["old"])
+        assert.deepStrictEqual(Array.from(Graph.values(Graph.bfsUnsafe(nodes, { start: [0] }))), ["old"])
         return "new"
       })
-      assert.deepStrictEqual(Array.from(Graph.values(Graph.bfs(nodes, { start: [0] }))), ["new"])
+      assert.deepStrictEqual(Array.from(Graph.values(Graph.bfsUnsafe(nodes, { start: [0] }))), ["new"])
 
       const edges = Graph.beginMutation(directed(["source", "target"], [[0, 1, 1]]))
       Graph.updateEdge(edges, 0, () => {
-        assert.deepStrictEqual(Array.from(Graph.simplePaths(edges, { source: 0, target: 1 }))[0].costs, [1])
+        assert.deepStrictEqual(Array.from(Graph.simplePathsUnsafe(edges, { source: 0, target: 1 }))[0].costs, [1])
         return 2
       })
-      assert.deepStrictEqual(Array.from(Graph.simplePaths(edges, { source: 0, target: 1 }))[0].costs, [2])
+      assert.deepStrictEqual(Array.from(Graph.simplePathsUnsafe(edges, { source: 0, target: 1 }))[0].costs, [2])
     })
 
     it("reverses directed edges and leaves undirected stored orientation unchanged", () => {
       const directedMutable = Graph.beginMutation(directed(["A", "B", "C"], [[0, 1, 1], [1, 2, 2]]))
       Graph.reverse(directedMutable)
-      Graph.addEdge(directedMutable, 0, 1, 3)
+      Graph.addEdgeUnsafe(directedMutable, 0, 1, 3)
       assert.deepStrictEqual(Graph.toSnapshot(directedMutable).edges, [
         { index: 0, source: 1, target: 0, data: 1 },
         { index: 1, source: 2, target: 1, data: 2 },
         { index: 2, source: 0, target: 1, data: 3 }
       ])
-      assert.deepStrictEqual(Graph.neighbors(directedMutable, 2), [1])
+      assert.deepStrictEqual(Graph.neighborsUnsafe(directedMutable, 2), [1])
       assert.strictEqual(Graph.hasEdge(directedMutable, 1, 0), true)
       assert.strictEqual(Graph.hasEdge(directedMutable, 0, 1), true)
 
@@ -1032,12 +1034,12 @@ describe("Graph", () => {
 
     it("returns induced neighborhoods and validates radius", () => {
       const graph = directed(["A", "B", "C", "D"], [[0, 1, "AB"], [1, 2, "BC"], [2, 1, "CB"], [2, 3, "CD"]])
-      assertSnapshot(Graph.neighborhood(graph, 1, { radius: 1 }), {
+      assertSnapshot(Graph.neighborhoodUnsafe(graph, 1, { radius: 1 }), {
         type: "directed",
         nodes: [{ index: 0, data: "B" }, { index: 1, data: "C" }],
         edges: [{ index: 0, source: 0, target: 1, data: "BC" }, { index: 1, source: 1, target: 0, data: "CB" }]
       })
-      assertSnapshot(Graph.neighborhood(1, { radius: Infinity })(graph), {
+      assertSnapshot(Graph.neighborhoodUnsafe(1, { radius: Infinity })(graph), {
         type: "directed",
         nodes: [{ index: 0, data: "B" }, { index: 1, data: "C" }, { index: 2, data: "D" }],
         edges: [
@@ -1048,7 +1050,7 @@ describe("Graph", () => {
       })
       for (const radius of [NaN, -1, 0.5]) {
         assertGraphError(
-          () => Graph.neighborhood(graph, 1, { radius }),
+          () => Graph.neighborhoodUnsafe(graph, 1, { radius }),
           "Traversal radius must be a non-negative integer or Infinity"
         )
       }
@@ -1056,7 +1058,7 @@ describe("Graph", () => {
 
     it("can ignore edge direction when selecting a neighborhood", () => {
       const graph = directed(["A", "B", "C"], [[0, 1, "AB"], [0, 2, "AC"]])
-      assertSnapshot(Graph.neighborhood(graph, 1, { radius: 2, direction: "undirected" }), {
+      assertSnapshot(Graph.neighborhoodUnsafe(graph, 1, { radius: 2, direction: "undirected" }), {
         type: "directed",
         nodes: [{ index: 0, data: "B" }, { index: 1, data: "A" }, { index: 2, data: "C" }],
         edges: [{ index: 0, source: 1, target: 0, data: "AB" }, { index: 1, source: 1, target: 2, data: "AC" }]
@@ -1064,7 +1066,7 @@ describe("Graph", () => {
     })
 
     it("preserves sparse indexes in induced subgraphs and rejects missing nodes", () => {
-      const graph = Graph.fromSnapshot({
+      const graph = Graph.fromSnapshotUnsafe({
         type: "directed",
         nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 9, data: "C" }],
         edges: [
@@ -1073,16 +1075,16 @@ describe("Graph", () => {
           { index: 11, source: 5, target: 5, data: "loop" }
         ]
       })
-      assertSnapshot(Graph.inducedSubgraph([9, 5, 5])(graph), {
+      assertSnapshot(Graph.inducedSubgraphUnsafe([9, 5, 5])(graph), {
         type: "directed",
         nodes: [{ index: 5, data: "B" }, { index: 9, data: "C" }],
         edges: [{ index: 7, source: 5, target: 9, data: "BC" }, { index: 11, source: 5, target: 5, data: "loop" }]
       })
-      assertGraphError(() => Graph.inducedSubgraph(graph, [2, 4]), "Node 4 does not exist")
+      assertGraphError(() => Graph.inducedSubgraphUnsafe(graph, [2, 4]), "Node 4 does not exist")
     })
 
     it("preserves graph kind for empty induced subgraphs", () => {
-      assertSnapshot(Graph.inducedSubgraph(Graph.undirected<string, never>(), []), {
+      assertSnapshot(Graph.inducedSubgraphUnsafe(Graph.undirected<string, never>(), []), {
         type: "undirected",
         nodes: [],
         edges: []
@@ -1120,30 +1122,30 @@ describe("Graph", () => {
     ])
 
     it("reports exact edge order, multiplicity, and directed degrees", () => {
-      assert.deepStrictEqual(Graph.incidentEdges(graph, 0), [0, 1, 2, 3, 4])
-      assert.deepStrictEqual(Graph.outgoingEdges(graph, 0), [0, 1, 3, 4])
-      assert.deepStrictEqual(Graph.incomingEdges(graph, 0), [2, 3])
-      assert.deepStrictEqual(Graph.edgesBetween(graph, 0, 1), [0, 1])
-      assert.deepStrictEqual(Graph.edgesBetween(graph, 1, 0), [])
-      assert.strictEqual(Graph.outDegree(graph, 0), 4)
-      assert.strictEqual(Graph.inDegree(graph, 0), 2)
+      assert.deepStrictEqual(Graph.incidentEdgesUnsafe(graph, 0), [0, 1, 2, 3, 4])
+      assert.deepStrictEqual(Graph.outgoingEdgesUnsafe(graph, 0), [0, 1, 3, 4])
+      assert.deepStrictEqual(Graph.incomingEdgesUnsafe(graph, 0), [2, 3])
+      assert.deepStrictEqual(Graph.edgesBetweenUnsafe(graph, 0, 1), [0, 1])
+      assert.deepStrictEqual(Graph.edgesBetweenUnsafe(graph, 1, 0), [])
+      assert.strictEqual(Graph.outDegreeUnsafe(graph, 0), 4)
+      assert.strictEqual(Graph.inDegreeUnsafe(graph, 0), 2)
     })
 
     it("deduplicates neighbors in first-edge occurrence order", () => {
-      assert.deepStrictEqual(Graph.neighbors(graph, 0), [1, 0, 2])
-      assert.deepStrictEqual(Graph.successors(0)(graph), [1, 0, 2])
-      assert.deepStrictEqual(Graph.predecessors(graph, 0), [2, 0])
-      assert.deepStrictEqual(Graph.neighborsDirected(graph, 0, "outgoing"), [1, 0, 2])
-      assert.deepStrictEqual(Graph.successors(graph, 0.5), [])
+      assert.deepStrictEqual(Graph.neighborsUnsafe(graph, 0), [1, 0, 2])
+      assert.deepStrictEqual(Graph.successorsUnsafe(0)(graph), [1, 0, 2])
+      assert.deepStrictEqual(Graph.predecessorsUnsafe(graph, 0), [2, 0])
+      assert.deepStrictEqual(Graph.neighborsDirectedUnsafe(graph, 0, "outgoing"), [1, 0, 2])
+      assert.deepStrictEqual(Graph.successorsUnsafe(graph, 0.5), [])
     })
 
     it("handles undirected orientation, self-loops, parallel edges, and degree", () => {
       const graph = undirected(["A", "B"], [[1, 0, 1], [0, 1, 2], [0, 0, 3]])
-      assert.deepStrictEqual(Graph.neighbors(graph, 0), [1, 0])
-      assert.deepStrictEqual(Graph.neighbors(graph, 1), [0])
-      assert.deepStrictEqual(Graph.incidentEdges(graph, 0), [0, 1, 2])
-      assert.deepStrictEqual(Graph.edgesBetween(graph, 0, 1), [0, 1])
-      assert.strictEqual(Graph.degree(graph, 0), 4)
+      assert.deepStrictEqual(Graph.neighborsUnsafe(graph, 0), [1, 0])
+      assert.deepStrictEqual(Graph.neighborsUnsafe(graph, 1), [0])
+      assert.deepStrictEqual(Graph.incidentEdgesUnsafe(graph, 0), [0, 1, 2])
+      assert.deepStrictEqual(Graph.edgesBetweenUnsafe(graph, 0, 1), [0, 1])
+      assert.strictEqual(Graph.degreeUnsafe(graph, 0), 4)
       assert.strictEqual(Graph.hasEdge(graph, 0, 1), true)
       assert.strictEqual(Graph.hasEdge(graph, 1, 0), true)
     })
@@ -1156,8 +1158,8 @@ describe("Graph", () => {
         [0, 2, "out-last"],
         [1, 0, "in-last"]
       ])
-      assert.deepStrictEqual(Graph.incidentEdges(directedGraph, 0), [0, 1, 2, 3, 4])
-      assert.deepStrictEqual(Graph.edgesBetween(directedGraph, 0, 0), [2])
+      assert.deepStrictEqual(Graph.incidentEdgesUnsafe(directedGraph, 0), [0, 1, 2, 3, 4])
+      assert.deepStrictEqual(Graph.edgesBetweenUnsafe(directedGraph, 0, 0), [2])
 
       const undirectedGraph = undirected([0, 1, 2], [
         [1, 0, "reverse"],
@@ -1165,9 +1167,9 @@ describe("Graph", () => {
         [0, 2, "forward"],
         [2, 0, "reverse-last"]
       ])
-      assert.deepStrictEqual(Graph.incidentEdges(undirectedGraph, 0), [0, 1, 2, 3])
-      assert.deepStrictEqual(Graph.edgesBetween(undirectedGraph, 0, 2), [2, 3])
-      assert.deepStrictEqual(Graph.edgesBetween(undirectedGraph, 2, 0), [2, 3])
+      assert.deepStrictEqual(Graph.incidentEdgesUnsafe(undirectedGraph, 0), [0, 1, 2, 3])
+      assert.deepStrictEqual(Graph.edgesBetweenUnsafe(undirectedGraph, 0, 2), [2, 3])
+      assert.deepStrictEqual(Graph.edgesBetweenUnsafe(undirectedGraph, 2, 0), [2, 3])
     })
 
     it("reports directed edge membership without assuming symmetry", () => {
@@ -1206,23 +1208,23 @@ describe("Graph", () => {
       const one = directed<string, number>(["A"], [])
       const undirectedOne = undirected<string, number>(["A"], [])
       assertGraphError(
-        () => Graph.degree(one as unknown as Graph.UndirectedGraph<string, number>, 0),
+        () => Graph.degreeUnsafe(one as unknown as Graph.UndirectedGraph<string, number>, 0),
         "Cannot get degree of directed graph"
       )
       assertGraphError(
-        () => Graph.outgoingEdges(undirectedOne as unknown as Graph.DirectedGraph<string, number>, 0),
+        () => Graph.outgoingEdgesUnsafe(undirectedOne as unknown as Graph.DirectedGraph<string, number>, 0),
         "Cannot get outgoing edges of undirected graph"
       )
       assertGraphError(
-        () => Graph.incomingEdges(undirectedOne as unknown as Graph.DirectedGraph<string, number>, 0),
+        () => Graph.incomingEdgesUnsafe(undirectedOne as unknown as Graph.DirectedGraph<string, number>, 0),
         "Cannot get incoming edges of undirected graph"
       )
       assertGraphError(
-        () => Graph.successors(undirectedOne as unknown as Graph.DirectedGraph<string, number>, 0),
+        () => Graph.successorsUnsafe(undirectedOne as unknown as Graph.DirectedGraph<string, number>, 0),
         "Cannot get successors of undirected graph"
       )
-      assertGraphError(() => Graph.incidentEdges(one, 1), "Node 1 does not exist")
-      assertGraphError(() => Graph.edgesBetween(one, 0, 1), "Node 1 does not exist")
+      assertGraphError(() => Graph.incidentEdgesUnsafe(one, 1), "Node 1 does not exist")
+      assertGraphError(() => Graph.edgesBetweenUnsafe(one, 0, 1), "Node 1 does not exist")
     })
   })
 
@@ -1335,7 +1337,7 @@ describe("Graph", () => {
 
   describe("cycles and connectivity", () => {
     it("returns exact sparse cycle witnesses including self-loops and parallel edges", () => {
-      const directedCycle = Graph.fromSnapshot({
+      const directedCycle = Graph.fromSnapshotUnsafe({
         type: "directed",
         nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 9, data: "C" }],
         edges: [
@@ -1363,7 +1365,7 @@ describe("Graph", () => {
     it("invalidates acyclic results after adding and removing a cycle edge", () => {
       const mutable = Graph.beginMutation(directed(["A", "B", "C"], [[0, 1, 1], [1, 2, 1]]))
       assert.strictEqual(Graph.isAcyclic(mutable), true)
-      const cycle = Graph.addEdge(mutable, 2, 0, 1)
+      const cycle = Graph.addEdgeUnsafe(mutable, 2, 0, 1)
       assert.strictEqual(Graph.isAcyclic(mutable), false)
       Graph.removeEdge(mutable, cycle)
       assert.strictEqual(Graph.isAcyclic(mutable), true)
@@ -1388,27 +1390,27 @@ describe("Graph", () => {
 
     it("computes reachability in outgoing, incoming, and undirected modes", () => {
       const graph = directed(["A", "B", "C", "D"], [[0, 1, 1], [1, 2, 1], [3, 1, 1]])
-      assert.deepStrictEqual(Array.from(Graph.unweightedDistances(graph, 0)), [[0, 0], [1, 1], [2, 2]])
-      assert.deepStrictEqual(Array.from(Graph.unweightedDistances(graph, 2, { direction: "incoming" })), [
+      assert.deepStrictEqual(Array.from(Graph.unweightedDistancesUnsafe(graph, 0)), [[0, 0], [1, 1], [2, 2]])
+      assert.deepStrictEqual(Array.from(Graph.unweightedDistancesUnsafe(graph, 2, { direction: "incoming" })), [
         [0, 2],
         [1, 1],
         [2, 0],
         [3, 2]
       ])
-      assert.strictEqual(Graph.hasPath(graph, 0, 2), true)
-      assert.strictEqual(Graph.hasPath(graph, 2, 0), false)
-      assert.strictEqual(Graph.hasPath(2, 0, { direction: "incoming" })(graph), true)
-      assert.strictEqual(Graph.hasPath(graph, 2, 3), false)
-      assert.strictEqual(Graph.hasPath(graph, 2, 3, { direction: "undirected" }), true)
+      assert.strictEqual(Graph.hasPathUnsafe(graph, 0, 2), true)
+      assert.strictEqual(Graph.hasPathUnsafe(graph, 2, 0), false)
+      assert.strictEqual(Graph.hasPathUnsafe(2, 0, { direction: "incoming" })(graph), true)
+      assert.strictEqual(Graph.hasPathUnsafe(graph, 2, 3), false)
+      assert.strictEqual(Graph.hasPathUnsafe(graph, 2, 3, { direction: "undirected" }), true)
     })
 
     it("updates connectivity results after mutable changes", () => {
       const mutable = Graph.beginMutation(directed(["A", "B", "C"], [[0, 1, 1]]))
       assertComponents(Graph.weaklyConnectedComponents(mutable), [[0, 1], [2]])
-      assert.strictEqual(Graph.hasPath(mutable, 0, 2), false)
-      Graph.addEdge(mutable, 1, 2, 1)
+      assert.strictEqual(Graph.hasPathUnsafe(mutable, 0, 2), false)
+      Graph.addEdgeUnsafe(mutable, 1, 2, 1)
       assertComponents(Graph.weaklyConnectedComponents(mutable), [[0, 1, 2]])
-      assert.strictEqual(Graph.hasPath(mutable, 0, 2), true)
+      assert.strictEqual(Graph.hasPathUnsafe(mutable, 0, 2), true)
     })
 
     it("checks connected, weak, strong, and tree predicates including empty graphs", () => {
@@ -1417,7 +1419,7 @@ describe("Graph", () => {
       const weak = directed(["A", "B", "C"], [[0, 1, 1], [1, 2, 1]])
       const weaklyDisconnected = directed<string, number>(["A", "B"], [])
       const strong = Graph.mutate(weak, (mutable) => {
-        Graph.addEdge(mutable, 2, 0, 1)
+        Graph.addEdgeUnsafe(mutable, 2, 0, 1)
       })
       assert.strictEqual(Graph.isConnected(tree), true)
       assert.strictEqual(Graph.isConnected(disconnected), false)
@@ -1449,7 +1451,7 @@ describe("Graph", () => {
         () => Graph.isTree(directedGraph as Graph.UndirectedGraph<never, never>),
         "Cannot determine tree status of directed graph"
       )
-      assertGraphError(() => Graph.hasPath(Graph.directed(), 0, 1), "Node 0 does not exist")
+      assertGraphError(() => Graph.hasPathUnsafe(Graph.directed(), 0, 1), "Node 0 does not exist")
     })
   })
 
@@ -1466,12 +1468,12 @@ describe("Graph", () => {
     it("reads fresh mutable structure after bipartite mutations", () => {
       const mutable = Graph.beginMutation(undirected([0, 1, 2], [[0, 1, 1], [1, 2, 1]]))
       assert.strictEqual(Graph.isBipartite(mutable), true)
-      Graph.addEdge(mutable, 2, 0, 1)
+      Graph.addEdgeUnsafe(mutable, 2, 0, 1)
       assert.strictEqual(Graph.isBipartite(mutable), false)
       Graph.removeEdge(mutable, 2)
-      Graph.addEdge(mutable, 0, 1, 1)
+      Graph.addEdgeUnsafe(mutable, 0, 1, 1)
       assert.strictEqual(Graph.isBipartite(mutable), true)
-      Graph.addEdge(mutable, 2, 2, 1)
+      Graph.addEdgeUnsafe(mutable, 2, 2, 1)
       assert.strictEqual(Graph.isBipartite(mutable), false)
     })
 
@@ -1481,11 +1483,11 @@ describe("Graph", () => {
         3,
         "edge"
       ]])
-      assert.deepStrictEqual(Graph.maximumBipartiteMatching(graph), [
+      assert.deepStrictEqual(Graph.maximumBipartiteMatchingUnsafe(graph), [
         { left: 0, right: 2, edge: 0 },
         { left: 1, right: 3, edge: 4 }
       ])
-      assert.deepStrictEqual(Graph.maximumBipartiteMatching(Graph.beginMutation(graph)), [
+      assert.deepStrictEqual(Graph.maximumBipartiteMatchingUnsafe(Graph.beginMutation(graph)), [
         { left: 0, right: 2, edge: 0 },
         { left: 1, right: 3, edge: 4 }
       ])
@@ -1508,12 +1510,12 @@ describe("Graph", () => {
             for (let right = 0; right < 3; right++) {
               if ((mask & (1 << (left * 3 + right))) !== 0) {
                 adjacency[left].push(right)
-                Graph.addEdge(mutable, left, right + 3, undefined)
+                Graph.addEdgeUnsafe(mutable, left, right + 3, undefined)
               }
             }
           }
         })
-        const matching = Graph.maximumBipartiteMatching(graph)
+        const matching = Graph.maximumBipartiteMatchingUnsafe(graph)
         assert.strictEqual(matching.length, oracle(adjacency))
         assert.strictEqual(new Set(matching.map((match) => match.left)).size, matching.length)
         assert.strictEqual(new Set(matching.map((match) => match.right)).size, matching.length)
@@ -1535,11 +1537,11 @@ describe("Graph", () => {
         "Cannot determine bipartite status of directed graph"
       )
       assertGraphError(
-        () => Graph.maximumBipartiteMatching(Graph.directed() as unknown as Graph.UndirectedGraph<never, never>),
+        () => Graph.maximumBipartiteMatchingUnsafe(Graph.directed() as unknown as Graph.UndirectedGraph<never, never>),
         "Cannot find bipartite matching of directed graph"
       )
       assertGraphError(
-        () => Graph.maximumBipartiteMatching(undirected([0, 1, 2], [[0, 1, 1], [1, 2, 1], [2, 0, 1]])),
+        () => Graph.maximumBipartiteMatchingUnsafe(undirected([0, 1, 2], [[0, 1, 1], [1, 2, 1], [2, 0, 1]])),
         "Cannot find bipartite matching of non-bipartite graph"
       )
     })
@@ -1553,7 +1555,7 @@ describe("Graph", () => {
     })
 
     it("handles paths, cycles, disconnected components, parallel edges, loops, and sparse indexes", () => {
-      const graph = Graph.fromSnapshot({
+      const graph = Graph.fromSnapshotUnsafe({
         type: "undirected",
         nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 9, data: "C" }, { index: 12, data: "D" }],
         edges: [
@@ -1616,10 +1618,10 @@ describe("Graph", () => {
       const config = { source: 0, target: 1, capacity: (edge: number) => edge }
       const flow = { value: 3, flows: new Map([[0, 3]]), cut: [0] }
       const cut = { value: 3, edges: [0], source: [0], target: [1] }
-      assert.deepStrictEqual(Graph.maximumFlow(graph, config), flow)
-      assert.deepStrictEqual(Graph.maximumFlow(config)(graph), flow)
-      assert.deepStrictEqual(Graph.minimumCut(graph, config), cut)
-      assert.deepStrictEqual(Graph.minimumCut(config)(Graph.beginMutation(graph)), cut)
+      assert.deepStrictEqual(Graph.maximumFlowUnsafe(graph, config), flow)
+      assert.deepStrictEqual(Graph.maximumFlowUnsafe(config)(graph), flow)
+      assert.deepStrictEqual(Graph.minimumCutUnsafe(graph, config), cut)
+      assert.deepStrictEqual(Graph.minimumCutUnsafe(config)(Graph.beginMutation(graph)), cut)
     })
 
     it("enforces capacities, conservation, and max-flow/min-cut equality", () => {
@@ -1631,8 +1633,8 @@ describe("Graph", () => {
       )
       const config = { source: 0, target: 5, capacity: (edge: number) => edge }
       for (const candidate of [graph, Graph.beginMutation(graph)]) {
-        const flow = Graph.maximumFlow(candidate, config)
-        const cut = Graph.minimumCut(candidate, config)
+        const flow = Graph.maximumFlowUnsafe(candidate, config)
+        const cut = Graph.minimumCutUnsafe(candidate, config)
         const balance = new Float64Array(6)
         for (let edge = 0; edge < endpoints.length; edge++) {
           const value = flow.flows.get(edge)!
@@ -1658,7 +1660,7 @@ describe("Graph", () => {
         [1, 4, 1],
         [4, 5, 1]
       ])
-      assert.strictEqual(Graph.maximumFlow(graph, { source: 0, target: 5, capacity: (edge) => edge }).value, 2)
+      assert.strictEqual(Graph.maximumFlowUnsafe(graph, { source: 0, target: 5, capacity: (edge) => edge }).value, 2)
     })
 
     it("handles parallel edges, self-loops, fractions, and disconnected targets", () => {
@@ -1669,12 +1671,12 @@ describe("Graph", () => {
         [2, 1, 1],
         [0, 2, 0.25]
       ])
-      assert.deepStrictEqual(Graph.maximumFlow(graph, { source: 0, target: 1, capacity: (edge) => edge }), {
+      assert.deepStrictEqual(Graph.maximumFlowUnsafe(graph, { source: 0, target: 1, capacity: (edge) => edge }), {
         value: 1,
         flows: new Map([[0, 0], [1, 0], [2, 0.75], [3, 1], [4, 0.25]]),
         cut: [1, 2, 4]
       })
-      assert.deepStrictEqual(Graph.maximumFlow(graph, { source: 0, target: 3, capacity: (edge) => edge }), {
+      assert.deepStrictEqual(Graph.maximumFlowUnsafe(graph, { source: 0, target: 3, capacity: (edge) => edge }), {
         value: 0,
         flows: new Map([[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]]),
         cut: []
@@ -1684,16 +1686,16 @@ describe("Graph", () => {
     it("rejects invalid graphs, endpoints, capacities, and finite-range overflow", () => {
       const graph = directed<void, number>([undefined, undefined], [])
       assertGraphError(
-        () => Graph.maximumFlow(graph, { source: 0, target: 2, capacity: (edge) => edge }),
+        () => Graph.maximumFlowUnsafe(graph, { source: 0, target: 2, capacity: (edge) => edge }),
         "Node 2 does not exist"
       )
       assertGraphError(
-        () => Graph.maximumFlow(graph, { source: 0, target: 0, capacity: (edge) => edge }),
+        () => Graph.maximumFlowUnsafe(graph, { source: 0, target: 0, capacity: (edge) => edge }),
         "Flow source and target must be different nodes"
       )
       assertGraphError(
         () =>
-          Graph.maximumFlow(Graph.undirected() as unknown as Graph.DirectedGraph<never, number>, {
+          Graph.maximumFlowUnsafe(Graph.undirected() as unknown as Graph.DirectedGraph<never, number>, {
             source: 0,
             target: 1,
             capacity: (edge) => edge
@@ -1703,7 +1705,7 @@ describe("Graph", () => {
       for (const capacity of [-1, NaN, Infinity, -Infinity]) {
         const invalid = directed<void, number>([undefined, undefined], [[0, 0, capacity]])
         assertGraphError(
-          () => Graph.maximumFlow(invalid, { source: 0, target: 1, capacity: (edge) => edge }),
+          () => Graph.maximumFlowUnsafe(invalid, { source: 0, target: 1, capacity: (edge) => edge }),
           "Edge 0 capacity must be a finite non-negative number"
         )
       }
@@ -1713,7 +1715,7 @@ describe("Graph", () => {
         Number.MAX_VALUE
       ]])
       assertGraphError(
-        () => Graph.maximumFlow(overflow, { source: 0, target: 1, capacity: (edge) => edge }),
+        () => Graph.maximumFlowUnsafe(overflow, { source: 0, target: 1, capacity: (edge) => edge }),
         "Maximum flow exceeds the finite number range"
       )
     })
@@ -1721,7 +1723,7 @@ describe("Graph", () => {
 
   describe("spanning forests and reductions", () => {
     it("preserves sparse indexes, isolated nodes, and fixed mutable parity in minimum spanning forests", () => {
-      const graph = Graph.fromSnapshot({
+      const graph = Graph.fromSnapshotUnsafe({
         type: "undirected",
         nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 9, data: "C" }, {
           index: 20,
@@ -1743,20 +1745,20 @@ describe("Graph", () => {
         }],
         edges: [{ index: 7, source: 2, target: 5, data: 1 }, { index: 11, source: 5, target: 9, data: -2 }]
       } as const
-      assertSnapshot(Graph.minimumSpanningForest(graph, (edge) => edge), expected)
-      assertSnapshot(Graph.minimumSpanningForest(Graph.beginMutation(graph), (edge) => edge), expected)
+      assertSnapshot(Graph.minimumSpanningForestUnsafe(graph, (edge) => edge), expected)
+      assertSnapshot(Graph.minimumSpanningForestUnsafe(Graph.beginMutation(graph), (edge) => edge), expected)
     })
 
     it("breaks equal spanning-forest weights by first edge order", () => {
       const graph = undirected([0, 1, 2], [[0, 1, 1], [1, 2, 1], [0, 2, 1]])
       assert.deepStrictEqual(
-        Graph.toSnapshot(Graph.minimumSpanningForest(graph, (edge) => edge)).edges.map((edge) => edge.index),
+        Graph.toSnapshot(Graph.minimumSpanningForestUnsafe(graph, (edge) => edge)).edges.map((edge) => edge.index),
         [0, 1]
       )
     })
 
     it("preserves sparse reachability and first parallel edges in transitive reductions", () => {
-      const graph = Graph.fromSnapshot({
+      const graph = Graph.fromSnapshotUnsafe({
         type: "directed",
         nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 9, data: "C" }],
         edges: [
@@ -1771,32 +1773,41 @@ describe("Graph", () => {
         nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 9, data: "C" }],
         edges: [{ index: 3, source: 2, target: 5, data: "first" }, { index: 7, source: 5, target: 9, data: "next" }]
       } as const
-      assertSnapshot(Graph.transitiveReduction(graph), expected)
-      assertSnapshot(Graph.transitiveReduction(Graph.beginMutation(graph)), expected)
+      assertSnapshot(Graph.transitiveReductionUnsafe(graph), expected)
+      assertSnapshot(Graph.transitiveReductionUnsafe(Graph.beginMutation(graph)), expected)
     })
 
     it("keeps both branches of a diamond", () => {
       const graph = directed([0, 1, 2, 3], [[0, 1, 1], [0, 2, 1], [1, 3, 1], [2, 3, 1]])
-      assert.deepStrictEqual(Array.from(Graph.indices(Graph.edges(Graph.transitiveReduction(graph)))), [0, 1, 2, 3])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.edges(Graph.transitiveReductionUnsafe(graph)))), [
+        0,
+        1,
+        2,
+        3
+      ])
     })
 
     it("rejects invalid kinds, weights, and cyclic reductions", () => {
       assertGraphError(
-        () => Graph.minimumSpanningForest(Graph.directed() as unknown as Graph.UndirectedGraph<never, number>, () => 1),
+        () =>
+          Graph.minimumSpanningForestUnsafe(
+            Graph.directed() as unknown as Graph.UndirectedGraph<never, number>,
+            () => 1
+          ),
         "Cannot find minimum spanning forest of directed graph"
       )
       for (const weight of [NaN, -Infinity]) {
         assertGraphError(
-          () => Graph.minimumSpanningForest(undirected([0, 1], [[0, 1, weight]]), (edge) => edge),
+          () => Graph.minimumSpanningForestUnsafe(undirected([0, 1], [[0, 1, weight]]), (edge) => edge),
           "Minimum spanning forest does not support NaN or -Infinity edge weights"
         )
       }
       assertGraphError(
-        () => Graph.transitiveReduction(Graph.undirected() as unknown as Graph.DirectedGraph<never, never>),
+        () => Graph.transitiveReductionUnsafe(Graph.undirected() as unknown as Graph.DirectedGraph<never, never>),
         "Cannot transitively reduce undirected graph"
       )
       assertGraphError(
-        () => Graph.transitiveReduction(directed([0, 1], [[0, 1, 1], [1, 0, 1]])),
+        () => Graph.transitiveReductionUnsafe(directed([0, 1], [[0, 1, 1], [1, 0, 1]])),
         "Cannot transitively reduce cyclic graph"
       )
     })
@@ -1815,14 +1826,14 @@ describe("Graph", () => {
       const dijkstra = { source: 0, target: 3, cost: (edge: number) => edge }
       const astar = { ...dijkstra, heuristic: () => 0 }
       const bellmanFord = { path: [0, 2, 3], edges: [1, 2], distance: 2, costs: [1, 1] }
-      assertPath(Graph.dijkstra(graph, dijkstra), expected)
-      assertPath(Graph.dijkstra(Graph.beginMutation(graph), dijkstra), expected)
-      assertPath(Graph.dijkstra(dijkstra)(graph), expected)
-      assertPath(Graph.astar(graph, astar), expected)
-      assertPath(Graph.astar(Graph.beginMutation(graph), astar), expected)
-      assertPath(Graph.astar(astar)(graph), expected)
-      assertPath(Graph.bellmanFord(dijkstra)(graph), bellmanFord)
-      const all = Graph.floydWarshall((edge: number) => edge)(graph)
+      assertPath(Graph.dijkstraUnsafe(graph, dijkstra), expected)
+      assertPath(Graph.dijkstraUnsafe(Graph.beginMutation(graph), dijkstra), expected)
+      assertPath(Graph.dijkstraUnsafe(dijkstra)(graph), expected)
+      assertPath(Graph.astarUnsafe(graph, astar), expected)
+      assertPath(Graph.astarUnsafe(Graph.beginMutation(graph), astar), expected)
+      assertPath(Graph.astarUnsafe(astar)(graph), expected)
+      assertPath(Graph.bellmanFordUnsafe(dijkstra)(graph), bellmanFord)
+      const all = Graph.floydWarshallUnsafe((edge: number) => edge)(graph)
       assert.strictEqual(all.distances.get(0)?.get(3), 2)
       assert.deepStrictEqual(all.paths.get(0)?.get(3), expected.path)
       assert.deepStrictEqual(all.edges.get(0)?.get(3), expected.edges)
@@ -1832,8 +1843,8 @@ describe("Graph", () => {
     it("preserves parallel edges for topological and weighted algorithms", () => {
       const graph = directed([0, 1, 2], [[0, 1, 10], [0, 1, 1], [1, 2, 2]])
 
-      assertIndices(Graph.topo(graph), [0, 1, 2])
-      assertPath(Graph.dijkstra(graph, { source: 0, target: 2, cost: (edge) => edge }), {
+      assertIndices(Graph.topoUnsafe(graph), [0, 1, 2])
+      assertPath(Graph.dijkstraUnsafe(graph, { source: 0, target: 2, cost: (edge) => edge }), {
         path: [0, 1, 2],
         edges: [1, 2],
         distance: 3,
@@ -1850,7 +1861,7 @@ describe("Graph", () => {
         [1, 4, 1],
         [3, 4, 1]
       ])
-      assertPath(Graph.dijkstra(reordered, { source: 0, target: 4, cost: (edge) => edge }), {
+      assertPath(Graph.dijkstraUnsafe(reordered, { source: 0, target: 4, cost: (edge) => edge }), {
         path: [0, 3, 4],
         edges: [2, 5],
         distance: 3,
@@ -1864,7 +1875,7 @@ describe("Graph", () => {
         [1, 3, 20],
         [3, 4, 20]
       ])
-      assertPath(Graph.dijkstra(stale, { source: 0, target: 4, cost: (edge) => edge }), {
+      assertPath(Graph.dijkstraUnsafe(stale, { source: 0, target: 4, cost: (edge) => edge }), {
         path: [0, 2, 1, 3, 4],
         edges: [1, 2, 3, 4],
         distance: 42,
@@ -1880,7 +1891,7 @@ describe("Graph", () => {
         [1, 3, 20],
         [3, 4, 20]
       ])
-      assertPath(Graph.astar(stale, { source: 0, target: 4, cost: (edge) => edge, heuristic: () => 0 }), {
+      assertPath(Graph.astarUnsafe(stale, { source: 0, target: 4, cost: (edge) => edge, heuristic: () => 0 }), {
         path: [0, 2, 1, 3, 4],
         edges: [1, 2, 3, 4],
         distance: 42,
@@ -1894,7 +1905,7 @@ describe("Graph", () => {
         [2, 1, 1]
       ])
       assertPath(
-        Graph.astar(closed, {
+        Graph.astarUnsafe(closed, {
           source: 0,
           target: 3,
           cost: (edge) => edge,
@@ -1905,17 +1916,20 @@ describe("Graph", () => {
     })
 
     it("preserves sparse parallel edge identity across all shortest-path algorithms", () => {
-      const graph = Graph.fromSnapshot({
+      const graph = Graph.fromSnapshotUnsafe({
         type: "directed",
         nodes: [{ index: 2, data: "source" }, { index: 5, data: "target" }],
         edges: [{ index: 3, source: 2, target: 5, data: 1 }, { index: 1_000_000, source: 2, target: 5, data: 1 }]
       })
       const expected = { path: [2, 5], edges: [3], distance: 1, costs: [1] }
       for (const candidate of [graph, Graph.beginMutation(graph)]) {
-        assertPath(Graph.dijkstra(candidate, { source: 2, target: 5, cost: (edge) => edge }), expected)
-        assertPath(Graph.astar(candidate, { source: 2, target: 5, cost: (edge) => edge, heuristic: () => 0 }), expected)
-        assertPath(Graph.bellmanFord(candidate, { source: 2, target: 5, cost: (edge) => edge }), expected)
-        const all = Graph.floydWarshall(candidate, (edge) => edge)
+        assertPath(Graph.dijkstraUnsafe(candidate, { source: 2, target: 5, cost: (edge) => edge }), expected)
+        assertPath(
+          Graph.astarUnsafe(candidate, { source: 2, target: 5, cost: (edge) => edge, heuristic: () => 0 }),
+          expected
+        )
+        assertPath(Graph.bellmanFordUnsafe(candidate, { source: 2, target: 5, cost: (edge) => edge }), expected)
+        const all = Graph.floydWarshallUnsafe(candidate, (edge) => edge)
         assert.strictEqual(all.distances.get(2)?.get(5), 1)
         assert.deepStrictEqual(all.paths.get(2)?.get(5), [2, 5])
         assert.deepStrictEqual(all.edges.get(2)?.get(5), [3])
@@ -1926,11 +1940,11 @@ describe("Graph", () => {
     it("handles unreachable and same-node paths completely", () => {
       const graph = directed<string, number>(["A", "B"], [])
       const expected = { path: [0], edges: [], distance: 0, costs: [] }
-      assert.deepStrictEqual(Graph.dijkstra(graph, { source: 0, target: 1, cost: (edge) => edge }), Option.none())
-      assertPath(Graph.dijkstra(graph, { source: 0, target: 0, cost: (edge) => edge }), expected)
-      assertPath(Graph.astar(graph, { source: 0, target: 0, cost: (edge) => edge, heuristic: () => 0 }), expected)
-      assertPath(Graph.bellmanFord(graph, { source: 0, target: 0, cost: (edge) => edge }), expected)
-      const all = Graph.floydWarshall(graph, (edge) => edge)
+      assert.deepStrictEqual(Graph.dijkstraUnsafe(graph, { source: 0, target: 1, cost: (edge) => edge }), Option.none())
+      assertPath(Graph.dijkstraUnsafe(graph, { source: 0, target: 0, cost: (edge) => edge }), expected)
+      assertPath(Graph.astarUnsafe(graph, { source: 0, target: 0, cost: (edge) => edge, heuristic: () => 0 }), expected)
+      assertPath(Graph.bellmanFordUnsafe(graph, { source: 0, target: 0, cost: (edge) => edge }), expected)
+      const all = Graph.floydWarshallUnsafe(graph, (edge) => edge)
       assert.strictEqual(all.distances.get(0)?.get(1), Infinity)
       assert.strictEqual(all.paths.get(0)?.get(1), null)
       assert.deepStrictEqual(all.edges.get(0)?.get(1), [])
@@ -1943,7 +1957,7 @@ describe("Graph", () => {
 
     it("uses negative Bellman-Ford edges in shortest paths", () => {
       assertPath(
-        Graph.bellmanFord(directed([0, 1, 2], [[0, 1, -1], [1, 2, 3], [0, 2, 5]]), {
+        Graph.bellmanFordUnsafe(directed([0, 1, 2], [[0, 1, -1], [1, 2, 3], [0, 2, 5]]), {
           source: 0,
           target: 2,
           cost: (edge) => edge
@@ -1955,9 +1969,9 @@ describe("Graph", () => {
     it("ignores negative cycles that cannot affect the Bellman-Ford target", () => {
       const graph = directed([0, 1, 2, 3], [[0, 1, 1], [1, 2, -2], [2, 1, 1], [0, 3, 5]])
       const expected = { path: [0, 3], edges: [3], distance: 5, costs: [5] }
-      assertPath(Graph.bellmanFord(graph, { source: 0, target: 3, cost: (edge) => edge }), expected)
+      assertPath(Graph.bellmanFordUnsafe(graph, { source: 0, target: 3, cost: (edge) => edge }), expected)
       assertPath(
-        Graph.bellmanFord(Graph.beginMutation(graph), { source: 0, target: 3, cost: (edge) => edge }),
+        Graph.bellmanFordUnsafe(Graph.beginMutation(graph), { source: 0, target: 3, cost: (edge) => edge }),
         expected
       )
     })
@@ -1965,7 +1979,7 @@ describe("Graph", () => {
     it("detects directed and undirected negative self-loops when source equals target", () => {
       for (const graph of [directed([0], [[0, 0, -1]]), undirected([0], [[0, 0, -1]])]) {
         assertGraphError(
-          () => Graph.bellmanFord(graph, { source: 0, target: 0, cost: (edge) => edge }),
+          () => Graph.bellmanFordUnsafe(graph, { source: 0, target: 0, cost: (edge) => edge }),
           "Negative cycle affects path to node 0"
         )
       }
@@ -1978,7 +1992,7 @@ describe("Graph", () => {
         [1, 2, null],
         [0, 2, { weight: 10 }]
       ])
-      const result = Graph.floydWarshall(graph, (edge) => edge === null ? 1 : edge.weight)
+      const result = Graph.floydWarshallUnsafe(graph, (edge) => edge === null ? 1 : edge.weight)
       assert.strictEqual(result.distances.get(0)?.get(2), 2)
       assert.deepStrictEqual(result.paths.get(0)?.get(2), [0, 1, 2])
       assert.deepStrictEqual(result.edges.get(0)?.get(2), [0, 1])
@@ -1987,13 +2001,16 @@ describe("Graph", () => {
 
     it("treats positive Infinity as unreachable in every shortest-path algorithm", () => {
       const graph = directed([0, 1], [[0, 1, Infinity]])
-      assert.deepStrictEqual(Graph.dijkstra(graph, { source: 0, target: 1, cost: (edge) => edge }), Option.none())
+      assert.deepStrictEqual(Graph.dijkstraUnsafe(graph, { source: 0, target: 1, cost: (edge) => edge }), Option.none())
       assert.deepStrictEqual(
-        Graph.astar(graph, { source: 0, target: 1, cost: (edge) => edge, heuristic: () => 0 }),
+        Graph.astarUnsafe(graph, { source: 0, target: 1, cost: (edge) => edge, heuristic: () => 0 }),
         Option.none()
       )
-      assert.deepStrictEqual(Graph.bellmanFord(graph, { source: 0, target: 1, cost: (edge) => edge }), Option.none())
-      const all = Graph.floydWarshall(graph, (edge) => edge)
+      assert.deepStrictEqual(
+        Graph.bellmanFordUnsafe(graph, { source: 0, target: 1, cost: (edge) => edge }),
+        Option.none()
+      )
+      const all = Graph.floydWarshallUnsafe(graph, (edge) => edge)
       assert.strictEqual(all.distances.get(0)?.get(1), Infinity)
       assert.strictEqual(all.paths.get(0)?.get(1), null)
       assert.deepStrictEqual(all.edges.get(0)?.get(1), [])
@@ -2003,43 +2020,46 @@ describe("Graph", () => {
     it("reports relevant Bellman-Ford and Floyd-Warshall negative cycles", () => {
       const cycle = directed([0, 1, 2], [[0, 1, 1], [1, 2, -3], [2, 0, 1]])
       assertGraphError(
-        () => Graph.bellmanFord(cycle, { source: 0, target: 2, cost: (edge) => edge }),
+        () => Graph.bellmanFordUnsafe(cycle, { source: 0, target: 2, cost: (edge) => edge }),
         "Negative cycle affects path to node 2"
       )
-      assertGraphError(() => Graph.floydWarshall(cycle, (edge) => edge), "Negative cycle detected involving node 0")
+      assertGraphError(
+        () => Graph.floydWarshallUnsafe(cycle, (edge) => edge),
+        "Negative cycle detected involving node 0"
+      )
       const negativeUndirected = undirected([0, 1], [[0, 1, -1]])
       assertGraphError(
-        () => Graph.bellmanFord(negativeUndirected, { source: 0, target: 1, cost: (edge) => edge }),
+        () => Graph.bellmanFordUnsafe(negativeUndirected, { source: 0, target: 1, cost: (edge) => edge }),
         "Negative cycle affects path to node 1"
       )
     })
 
     it("validates endpoints, edge weights, heuristics, and finite arithmetic", () => {
       assertGraphError(
-        () => Graph.dijkstra(Graph.directed(), { source: 0, target: 1, cost: () => 1 }),
+        () => Graph.dijkstraUnsafe(Graph.directed(), { source: 0, target: 1, cost: () => 1 }),
         "Node 0 does not exist"
       )
       for (const weight of [-1, NaN, -Infinity]) {
         const invalid = directed([0, 1], [[0, 1, weight]])
         assertGraphError(
-          () => Graph.dijkstra(invalid, { source: 0, target: 1, cost: (edge) => edge }),
+          () => Graph.dijkstraUnsafe(invalid, { source: 0, target: 1, cost: (edge) => edge }),
           "Dijkstra's algorithm requires non-negative edge weights"
         )
         assertGraphError(
-          () => Graph.astar(invalid, { source: 0, target: 1, cost: (edge) => edge, heuristic: () => 0 }),
+          () => Graph.astarUnsafe(invalid, { source: 0, target: 1, cost: (edge) => edge, heuristic: () => 0 }),
           "A* algorithm requires non-negative edge weights"
         )
       }
       for (const heuristic of [NaN, Infinity, -Infinity]) {
         assertGraphError(() =>
-          Graph.astar(directed<string, never>(["A"], []), {
+          Graph.astarUnsafe(directed<string, never>(["A"], []), {
             source: 0,
             target: 0,
             cost: () => 1,
             heuristic: () => heuristic
           }), "A* algorithm requires finite heuristic values")
         assertGraphError(() =>
-          Graph.astar(directed(["source", "middle", "target"], [[0, 1, 1], [1, 2, 1]]), {
+          Graph.astarUnsafe(directed(["source", "middle", "target"], [[0, 1, 1], [1, 2, 1]]), {
             source: 0,
             target: 2,
             cost: (edge) => edge,
@@ -2049,26 +2069,26 @@ describe("Graph", () => {
       for (const weight of [NaN, -Infinity]) {
         const invalid = directed([0, 1], [[0, 1, weight]])
         assertGraphError(
-          () => Graph.bellmanFord(invalid, { source: 0, target: 1, cost: (edge) => edge }),
+          () => Graph.bellmanFordUnsafe(invalid, { source: 0, target: 1, cost: (edge) => edge }),
           "Bellman-Ford algorithm does not support NaN or -Infinity edge weights"
         )
         assertGraphError(
-          () => Graph.floydWarshall(invalid, (edge) => edge),
+          () => Graph.floydWarshallUnsafe(invalid, (edge) => edge),
           "Floyd-Warshall algorithm does not support NaN or -Infinity edge weights"
         )
       }
       const overflow = directed([0, 1, 2], [[0, 1, Number.MAX_VALUE], [1, 2, Number.MAX_VALUE]])
       assertGraphError(
-        () => Graph.dijkstra(overflow, { source: 0, target: 2, cost: (edge) => edge }),
+        () => Graph.dijkstraUnsafe(overflow, { source: 0, target: 2, cost: (edge) => edge }),
         "Dijkstra distance calculation exceeded the finite number range"
       )
       assertGraphError(
-        () => Graph.astar(overflow, { source: 0, target: 2, cost: (edge) => edge, heuristic: () => 0 }),
+        () => Graph.astarUnsafe(overflow, { source: 0, target: 2, cost: (edge) => edge, heuristic: () => 0 }),
         "A* distance calculation exceeded the finite number range"
       )
       assertGraphError(
         () =>
-          Graph.astar(directed([0, 1], [[0, 1, Number.MAX_VALUE]]), {
+          Graph.astarUnsafe(directed([0, 1], [[0, 1, Number.MAX_VALUE]]), {
             source: 0,
             target: 1,
             cost: (edge) => edge,
@@ -2077,20 +2097,20 @@ describe("Graph", () => {
         "A* priority calculation exceeded the finite number range"
       )
       assertGraphError(
-        () => Graph.bellmanFord(overflow, { source: 0, target: 2, cost: (edge) => edge }),
+        () => Graph.bellmanFordUnsafe(overflow, { source: 0, target: 2, cost: (edge) => edge }),
         "Bellman-Ford distance calculation exceeded the finite number range"
       )
       assertGraphError(
-        () => Graph.floydWarshall(overflow, (edge) => edge),
+        () => Graph.floydWarshallUnsafe(overflow, (edge) => edge),
         "Floyd-Warshall distance calculation exceeded the finite number range"
       )
       const underflow = directed([0, 1, 2], [[0, 1, -Number.MAX_VALUE], [1, 2, -Number.MAX_VALUE]])
       assertGraphError(
-        () => Graph.bellmanFord(underflow, { source: 0, target: 2, cost: (edge) => edge }),
+        () => Graph.bellmanFordUnsafe(underflow, { source: 0, target: 2, cost: (edge) => edge }),
         "Bellman-Ford distance calculation exceeded the finite number range"
       )
       assertGraphError(
-        () => Graph.floydWarshall(underflow, (edge) => edge),
+        () => Graph.floydWarshallUnsafe(underflow, (edge) => edge),
         "Floyd-Warshall distance calculation exceeded the finite number range"
       )
     })
@@ -2100,11 +2120,11 @@ describe("Graph", () => {
       const same = directed([0], [[0, 0, -1]])
       for (const [graph, source, target] of [[early, 0, 1], [same, 0, 0]] as const) {
         assertGraphError(
-          () => Graph.dijkstra(graph, { source, target, cost: (edge) => edge }),
+          () => Graph.dijkstraUnsafe(graph, { source, target, cost: (edge) => edge }),
           "Dijkstra's algorithm requires non-negative edge weights"
         )
         assertGraphError(
-          () => Graph.astar(graph, { source, target, cost: (edge) => edge, heuristic: () => 0 }),
+          () => Graph.astarUnsafe(graph, { source, target, cost: (edge) => edge, heuristic: () => 0 }),
           "A* algorithm requires non-negative edge weights"
         )
       }
@@ -2113,10 +2133,10 @@ describe("Graph", () => {
     it("traverses undirected edges against stored orientation", () => {
       const graph = undirected(["A", "B", "C"], [[0, 1, 1], [2, 1, 1]])
       const expected = { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [1, 1] }
-      assertPath(Graph.dijkstra(graph, { source: 0, target: 2, cost: (edge) => edge }), expected)
-      assertPath(Graph.astar(graph, { source: 0, target: 2, cost: (edge) => edge, heuristic: () => 0 }), expected)
-      assertPath(Graph.bellmanFord(graph, { source: 0, target: 2, cost: (edge) => edge }), expected)
-      const all = Graph.floydWarshall(graph, (edge) => edge)
+      assertPath(Graph.dijkstraUnsafe(graph, { source: 0, target: 2, cost: (edge) => edge }), expected)
+      assertPath(Graph.astarUnsafe(graph, { source: 0, target: 2, cost: (edge) => edge, heuristic: () => 0 }), expected)
+      assertPath(Graph.bellmanFordUnsafe(graph, { source: 0, target: 2, cost: (edge) => edge }), expected)
+      const all = Graph.floydWarshallUnsafe(graph, (edge) => edge)
       assert.strictEqual(all.distances.get(0)?.get(2), 2)
       assert.deepStrictEqual(all.paths.get(0)?.get(2), [0, 1, 2])
       assert.deepStrictEqual(all.edges.get(0)?.get(2), [0, 1])
@@ -2134,7 +2154,7 @@ describe("Graph", () => {
         [2, 3, "23"],
         [2, 1, "21"]
       ])
-      const paths = Graph.simplePaths(graph, { source: 0, target: 3, limit: 3 })
+      const paths = Graph.simplePathsUnsafe(graph, { source: 0, target: 3, limit: 3 })
       const expected = [
         { path: [0, 1, 2, 3], edges: [0, 2, 4], distance: 3, costs: ["01", "12", "23"] },
         { path: [0, 1, 3], edges: [0, 3], distance: 2, costs: ["01", "13"] },
@@ -2142,7 +2162,7 @@ describe("Graph", () => {
       ]
       assert.deepStrictEqual(Array.from(paths), expected)
       assert.deepStrictEqual(Array.from(paths), expected)
-      assert.deepStrictEqual(Array.from(Graph.simplePaths({ source: 0, target: 3, limit: 3 })(graph)), expected)
+      assert.deepStrictEqual(Array.from(Graph.simplePathsUnsafe(graph, { source: 0, target: 3, limit: 3 })), expected)
     })
 
     it("enumerates parallel and structurally tied shortest paths exactly", () => {
@@ -2153,15 +2173,15 @@ describe("Graph", () => {
         { path: [0, 2, 3], edges: [1, 3], distance: 2, costs: [1, 1] }
       ]
       assert.deepStrictEqual(
-        Array.from(Graph.allShortestPaths(graph, { source: 0, target: 3, cost: (edge) => edge })),
+        Array.from(Graph.allShortestPathsUnsafe(graph, { source: 0, target: 3, cost: (edge) => edge })),
         expected
       )
       assert.deepStrictEqual(
-        Array.from(Graph.allShortestPaths({ source: 0, target: 3, cost: (edge: number) => edge })(graph)),
+        Array.from(Graph.allShortestPathsUnsafe({ source: 0, target: 3, cost: (edge: number) => edge })(graph)),
         expected
       )
       assert.deepStrictEqual(
-        Array.from(Graph.allShortestPaths(Graph.beginMutation(graph), {
+        Array.from(Graph.allShortestPathsUnsafe(Graph.beginMutation(graph), {
           source: 0,
           target: 3,
           cost: (edge) => edge,
@@ -2174,7 +2194,7 @@ describe("Graph", () => {
     it("terminates zero-cost predecessor cycles and emits only simple shortest paths", () => {
       const graph = directed([0, 1, 2, 3], [[0, 1, 0], [1, 2, 0], [2, 1, 0], [1, 3, 1], [2, 3, 1]])
       assert.deepStrictEqual(
-        Array.from(Graph.allShortestPaths(graph, { source: 0, target: 3, cost: (edge) => edge })),
+        Array.from(Graph.allShortestPathsUnsafe(graph, { source: 0, target: 3, cost: (edge) => edge })),
         [
           { path: [0, 1, 3], edges: [0, 3], distance: 1, costs: [0, 1] },
           { path: [0, 1, 2, 3], edges: [0, 1, 4], distance: 1, costs: [0, 0, 1] }
@@ -2182,9 +2202,9 @@ describe("Graph", () => {
       )
     })
 
-    it("defers shortest-path cost evaluation until iteration", () => {
+    it("evaluates shortest-path costs eagerly once", () => {
       let calls = 0
-      const paths = Graph.allShortestPaths(directed([0, 1], [[0, 1, 1]]), {
+      const paths = Graph.allShortestPathsUnsafe(directed([0, 1], [[0, 1, 1]]), {
         source: 0,
         target: 1,
         cost: (edge) => {
@@ -2192,28 +2212,30 @@ describe("Graph", () => {
           return edge
         }
       })
-      assert.strictEqual(calls, 0)
+      assert.strictEqual(calls, 1)
+      assert.deepStrictEqual(Array.from(paths), [{ path: [0, 1], edges: [0], distance: 1, costs: [1] }])
+      assert.strictEqual(calls, 1)
       assert.deepStrictEqual(Array.from(paths), [{ path: [0, 1], edges: [0], distance: 1, costs: [1] }])
       assert.strictEqual(calls, 1)
     })
 
-    it("revalidates mutable endpoints and isolates active snapshots", () => {
+    it("captures mutable path snapshots at construction", () => {
       const removed = Graph.beginMutation(directed([0, 1], [[0, 1, 1]]))
-      const pending = Graph.simplePaths(removed, { source: 0, target: 1 })
+      const pending = Graph.simplePathsUnsafe(removed, { source: 0, target: 1 })
       Graph.removeNode(removed, 0)
-      assertGraphError(() => Array.from(pending), "Node 0 does not exist")
+      assert.strictEqual(Array.from(pending).length, 1)
 
       const shortestRemoved = Graph.beginMutation(directed([0, 1], [[0, 1, 1]]))
-      const shortestPending = Graph.allShortestPaths(shortestRemoved, {
+      const shortestPending = Graph.allShortestPathsUnsafe(shortestRemoved, {
         source: 0,
         target: 1,
         cost: (edge) => edge
       })
       Graph.removeNode(shortestRemoved, 1)
-      assertGraphError(() => Array.from(shortestPending), "Node 1 does not exist")
+      assert.strictEqual(Array.from(shortestPending).length, 1)
 
       const mutable = Graph.beginMutation(directed([0, 1, 2, 3], [[0, 1, 1], [0, 2, 1], [1, 3, 1], [2, 3, 1]]))
-      const paths = Graph.simplePaths(mutable, { source: 0, target: 3 })
+      const paths = Graph.simplePathsUnsafe(mutable, { source: 0, target: 3 })
       const iterator = paths[Symbol.iterator]()
       assert.deepStrictEqual(iterator.next().value, {
         path: [0, 1, 3],
@@ -2228,7 +2250,10 @@ describe("Graph", () => {
         distance: 2,
         costs: [1, 1]
       })
-      assert.deepStrictEqual(Array.from(paths), [{ path: [0, 1, 3], edges: [0, 2], distance: 2, costs: [1, 1] }])
+      assert.deepStrictEqual(Array.from(paths), [
+        { path: [0, 1, 3], edges: [0, 2], distance: 2, costs: [1, 1] },
+        { path: [0, 2, 3], edges: [1, 3], distance: 2, costs: [1, 1] }
+      ])
 
       const shortestMutable = Graph.beginMutation(directed([0, 1, 2, 3], [
         [0, 1, 1],
@@ -2236,7 +2261,7 @@ describe("Graph", () => {
         [1, 3, 1],
         [2, 3, 1]
       ]))
-      const shortest = Graph.allShortestPaths(shortestMutable, { source: 0, target: 3, cost: (edge) => edge })
+      const shortest = Graph.allShortestPathsUnsafe(shortestMutable, { source: 0, target: 3, cost: (edge) => edge })
       const shortestIterator = shortest[Symbol.iterator]()
       assert.deepStrictEqual(shortestIterator.next().value, {
         path: [0, 1, 3],
@@ -2252,7 +2277,8 @@ describe("Graph", () => {
         costs: [1, 1]
       })
       assert.deepStrictEqual(Array.from(shortest), [
-        { path: [0, 1, 3], edges: [0, 2], distance: 2, costs: [1, 1] }
+        { path: [0, 1, 3], edges: [0, 2], distance: 2, costs: [1, 1] },
+        { path: [0, 2, 3], edges: [1, 3], distance: 2, costs: [1, 1] }
       ])
     })
 
@@ -2260,13 +2286,13 @@ describe("Graph", () => {
       const graph = directed<string, number>(["A", "B"], [])
       const same = [{ path: [0], edges: [], distance: 0, costs: [] }]
 
-      assert.deepStrictEqual(Array.from(Graph.simplePaths(graph, { source: 0, target: 0 })), same)
+      assert.deepStrictEqual(Array.from(Graph.simplePathsUnsafe(graph, { source: 0, target: 0 })), same)
       assert.deepStrictEqual(
-        Array.from(Graph.allShortestPaths(graph, { source: 0, target: 0, cost: (edge) => edge })),
+        Array.from(Graph.allShortestPathsUnsafe(graph, { source: 0, target: 0, cost: (edge) => edge })),
         same
       )
       assert.deepStrictEqual(
-        Array.from(Graph.allShortestPaths(graph, { source: 0, target: 1, cost: (edge) => edge })),
+        Array.from(Graph.allShortestPathsUnsafe(graph, { source: 0, target: 1, cost: (edge) => edge })),
         []
       )
     })
@@ -2274,24 +2300,24 @@ describe("Graph", () => {
     it("validates limits, endpoints, and non-negative shortest-path costs", () => {
       const graph = directed([0, 1], [[0, 1, -1]])
       assertGraphError(
-        () => Array.from(Graph.allShortestPaths(graph, { source: 0, target: 1, cost: (edge) => edge })),
+        () => Array.from(Graph.allShortestPathsUnsafe(graph, { source: 0, target: 1, cost: (edge) => edge })),
         "All shortest paths requires non-negative edge weights"
       )
       assertGraphError(
-        () => Array.from(Graph.allShortestPaths(graph, { source: 0, target: 1, cost: (edge) => edge, limit: 0 })),
+        () => Array.from(Graph.allShortestPathsUnsafe(graph, { source: 0, target: 1, cost: (edge) => edge, limit: 0 })),
         "All shortest paths requires non-negative edge weights"
       )
       const overflow = directed([0, 1, 2], [[0, 1, Number.MAX_VALUE], [1, 2, Number.MAX_VALUE]])
       assertGraphError(
-        () => Array.from(Graph.allShortestPaths(overflow, { source: 0, target: 2, cost: (edge) => edge })),
+        () => Array.from(Graph.allShortestPathsUnsafe(overflow, { source: 0, target: 2, cost: (edge) => edge })),
         "All shortest paths distance calculation exceeded the finite number range"
       )
       assertGraphError(
-        () => Graph.simplePaths(graph, { source: 0, target: 1, limit: -1 }),
+        () => Graph.simplePathsUnsafe(graph, { source: 0, target: 1, limit: -1 }),
         "Path enumeration limit must be a non-negative integer or Infinity"
       )
-      assertGraphError(() => Graph.simplePaths(graph, { source: 0, target: 2 }), "Node 2 does not exist")
-      assert.deepStrictEqual(Array.from(Graph.simplePaths(graph, { source: 0, target: 1, limit: 0 })), [])
+      assertGraphError(() => Graph.simplePathsUnsafe(graph, { source: 0, target: 2 }), "Node 2 does not exist")
+      assert.deepStrictEqual(Array.from(Graph.simplePathsUnsafe(graph, { source: 0, target: 1, limit: 0 })), [])
     })
   })
 
@@ -2299,10 +2325,10 @@ describe("Graph", () => {
     const graph = directed(["A", "B", "C", "D"], [[0, 1, 1], [0, 2, 2], [1, 3, 3], [2, 3, 4]])
 
     it("traverses DFS, BFS, and postorder in documented order", () => {
-      assertIndices(Graph.dfs(graph, { start: [0] }), [0, 1, 3, 2])
-      assertIndices(Graph.bfs(graph, { start: [0] }), [0, 1, 2, 3])
-      assertIndices(Graph.dfsPostOrder(graph, { start: [0] }), [3, 1, 2, 0])
-      assertIndices(Graph.dfs(graph), [])
+      assertIndices(Graph.dfsUnsafe(graph, { start: [0] }), [0, 1, 3, 2])
+      assertIndices(Graph.bfsUnsafe(graph, { start: [0] }), [0, 1, 2, 3])
+      assertIndices(Graph.dfsPostOrderUnsafe(graph, { start: [0] }), [3, 1, 2, 0])
+      assertIndices(Graph.dfsUnsafe(graph), [])
     })
 
     it("preserves postorder with parallel edges, self-loops, and directionless traversal", () => {
@@ -2315,21 +2341,21 @@ describe("Graph", () => {
         [1, 4, 6],
         [1, 1, 7]
       ])
-      assertIndices(Graph.dfsPostOrder(parallel, { start: [0] }), [2, 3, 4, 1, 0])
-      assertIndices(Graph.dfsPostOrder(parallel, { start: [0, 1] }), [2, 3, 4, 1, 0])
+      assertIndices(Graph.dfsPostOrderUnsafe(parallel, { start: [0] }), [2, 3, 4, 1, 0])
+      assertIndices(Graph.dfsPostOrderUnsafe(parallel, { start: [0, 1] }), [2, 3, 4, 1, 0])
 
       const directionless = directed([0, 1, 2, 3], [[0, 1, 1], [2, 1, 2], [1, 3, 3], [1, 1, 4]])
-      assertIndices(Graph.dfsPostOrder(directionless, { start: [1], direction: "undirected" }), [3, 0, 2, 1])
+      assertIndices(Graph.dfsPostOrderUnsafe(directionless, { start: [1], direction: "undirected" }), [3, 0, 2, 1])
     })
 
     it("uses shortest distance for radius membership and supports traversal directions", () => {
       const graph = directed([0, 1, 2, 3], [[0, 1, 1], [1, 2, 1], [0, 2, 1], [2, 3, 1]])
-      assertIndices(Graph.dfs(graph, { start: [0], radius: 2 }), [0, 1, 2, 3])
-      assertIndices(Graph.bfs(graph, { start: [2], direction: "incoming" }), [2, 1, 0])
-      assertIndices(Graph.dfsPostOrder(graph, { start: [2], direction: "incoming" }), [0, 1, 2])
-      assertIndices(Graph.bfs(graph, { start: [1], direction: "undirected", radius: 1 }), [1, 2, 0])
+      assertIndices(Graph.dfsUnsafe(graph, { start: [0], radius: 2 }), [0, 1, 2, 3])
+      assertIndices(Graph.bfsUnsafe(graph, { start: [2], direction: "incoming" }), [2, 1, 0])
+      assertIndices(Graph.dfsPostOrderUnsafe(graph, { start: [2], direction: "incoming" }), [0, 1, 2])
+      assertIndices(Graph.bfsUnsafe(graph, { start: [1], direction: "undirected", radius: 1 }), [1, 2, 0])
       assertIndices(
-        Graph.dfsPostOrder(directed([0, 1, 2], [[0, 1, 1], [1, 2, 1]]), {
+        Graph.dfsPostOrderUnsafe(directed([0, 1, 2], [[0, 1, 1], [1, 2, 1]]), {
           start: [0],
           radius: 1
         }),
@@ -2340,16 +2366,16 @@ describe("Graph", () => {
     it("preserves bounded undirected DFS order for reciprocal neighbors", () => {
       const graph = directed<void, number>(new Array(5).fill(undefined), [[0, 1, 1], [4, 1, 2], [1, 4, 3]])
 
-      assertIndices(Graph.dfs(graph, { start: [1], direction: "undirected", radius: 2 }), [1, 4, 0])
+      assertIndices(Graph.dfsUnsafe(graph, { start: [1], direction: "undirected", radius: 2 }), [1, 4, 0])
     })
 
     it("validates radius in data-first and data-last forms", () => {
       for (const radius of [NaN, -Infinity, -1, 0.5]) {
         for (
           const run of [
-            () => Graph.dfs(graph, { start: [0], radius }),
-            () => Graph.bfs({ start: [0], radius })(graph),
-            () => Graph.dfsPostOrder(graph, { start: [0], radius })
+            () => Graph.dfsUnsafe(graph, { start: [0], radius }),
+            () => Graph.bfsUnsafe({ start: [0], radius })(graph),
+            () => Graph.dfsPostOrderUnsafe(graph, { start: [0], radius })
           ]
         ) assertGraphError(run, "Traversal radius must be a non-negative integer or Infinity")
       }
@@ -2357,14 +2383,18 @@ describe("Graph", () => {
 
     it("copies starts, prioritizes distinct roots, and preserves sparse indexes", () => {
       const start = [0]
-      const walkers = [Graph.dfs(graph, { start }), Graph.bfs(graph, { start }), Graph.dfsPostOrder(graph, { start })]
+      const walkers = [
+        Graph.dfsUnsafe(graph, { start }),
+        Graph.bfsUnsafe(graph, { start }),
+        Graph.dfsPostOrderUnsafe(graph, { start })
+      ]
       start[0] = 3
       assertIndices(walkers[0], [0, 1, 3, 2])
       assertIndices(walkers[1], [0, 1, 2, 3])
       assertIndices(walkers[2], [3, 1, 2, 0])
-      assertIndices(Graph.bfs(graph, { start: [0, 0, 2, 2] }), [0, 2, 1, 3])
+      assertIndices(Graph.bfsUnsafe(graph, { start: [0, 0, 2, 2] }), [0, 2, 1, 3])
 
-      const sparse = Graph.fromSnapshot({
+      const sparse = Graph.fromSnapshotUnsafe({
         type: "directed",
         nodes: [{ index: 2, data: "A" }, { index: 5, data: "B" }, { index: 1_000_000, data: "C" }],
         edges: [{ index: 3, source: 2, target: 5, data: 1 }, {
@@ -2374,70 +2404,73 @@ describe("Graph", () => {
           data: 2
         }]
       })
-      assertIndices(Graph.bfs(sparse, { start: [2] }), [2, 5, 1_000_000])
-      assertIndices(Graph.dfsPostOrder(sparse, { start: [2] }), [1_000_000, 5, 2])
+      assertIndices(Graph.bfsUnsafe(sparse, { start: [2] }), [2, 5, 1_000_000])
+      assertIndices(Graph.dfsPostOrderUnsafe(sparse, { start: [2] }), [1_000_000, 5, 2])
     })
 
-    it("revalidates missing starts for fresh DFS, BFS, and postorder iterators", () => {
+    it("captures DFS, BFS, and postorder snapshots at construction", () => {
       const mutable = Graph.beginMutation(directed([0, 1], [[0, 1, 1]]))
       const walkers = [
-        Graph.indices(Graph.dfs(mutable, { start: [0] })),
-        Graph.indices(Graph.bfs(mutable, { start: [0] })),
-        Graph.indices(Graph.dfsPostOrder(mutable, { start: [0] }))
+        Graph.indices(Graph.dfsUnsafe(mutable, { start: [0] })),
+        Graph.indices(Graph.bfsUnsafe(mutable, { start: [0] })),
+        Graph.indices(Graph.dfsPostOrderUnsafe(mutable, { start: [0] }))
       ]
       Graph.removeNode(mutable, 0)
-      for (const walker of walkers) assertGraphError(() => walker[Symbol.iterator](), "Node 0 does not exist")
+      assert.deepStrictEqual(walkers.map((walker) => Array.from(walker)), [[0, 1], [0, 1], [1, 0]])
     })
 
-    it("isolates active mutable traversal snapshots while fresh iterators see mutations", () => {
+    it("repeats construction-time mutable traversal snapshots", () => {
       const mutable = Graph.beginMutation(directed(["A", "B", "C"], [[0, 1, 1], [1, 2, 2]]))
       const walkers = [
-        Graph.indices(Graph.dfs(mutable, { start: [0] })),
-        Graph.indices(Graph.bfs(mutable, { start: [0] })),
-        Graph.indices(Graph.dfsPostOrder(mutable, { start: [0] }))
+        Graph.indices(Graph.dfsUnsafe(mutable, { start: [0] })),
+        Graph.indices(Graph.bfsUnsafe(mutable, { start: [0] })),
+        Graph.indices(Graph.dfsPostOrderUnsafe(mutable, { start: [0] }))
       ]
       const active = walkers.map((walker) => walker[Symbol.iterator]())
       Graph.removeNode(mutable, 1)
       assert.deepStrictEqual(Array.from({ [Symbol.iterator]: () => active[0] }), [0, 1, 2])
       assert.deepStrictEqual(Array.from({ [Symbol.iterator]: () => active[1] }), [0, 1, 2])
       assert.deepStrictEqual(Array.from({ [Symbol.iterator]: () => active[2] }), [2, 1, 0])
-      for (const walker of walkers) assert.deepStrictEqual(Array.from(walker), [0])
+      assert.deepStrictEqual(walkers.map((walker) => Array.from(walker)), [[0, 1, 2], [0, 1, 2], [2, 1, 0]])
     })
 
-    it("topologically sorts with prioritized initials and validates fresh mutable state", () => {
+    it("topologically sorts with prioritized initials from a construction snapshot", () => {
       const graph = directed(["A", "B", "C", "D"], [[0, 1, 1], [2, 3, 1]])
-      assertIndices(Graph.topo(graph, { initials: [2] }), [2, 0, 3, 1])
+      assertIndices(Graph.topoUnsafe(graph, { initials: [2] }), [2, 0, 3, 1])
 
       const mutable = Graph.beginMutation(directed<string, number>(["A", "B"], []))
-      const walker = Graph.topo(mutable)
+      const walker = Graph.topoUnsafe(mutable)
       assertIndices(walker, [0, 1])
-      Graph.addEdge(mutable, 0, 1, 1)
-      Graph.addEdge(mutable, 1, 0, 2)
-      assertGraphError(() => Array.from(Graph.indices(walker)), "Cannot perform topological sort on cyclic graph")
+      Graph.addEdgeUnsafe(mutable, 0, 1, 1)
+      Graph.addEdgeUnsafe(mutable, 1, 0, 2)
+      assertIndices(walker, [0, 1])
     })
 
-    it("isolates active mutable topological snapshots while fresh iterators see mutations", () => {
+    it("repeats construction-time mutable topological snapshots", () => {
       const mutable = Graph.beginMutation(directed([0, 1, 2], [[0, 1, 1], [1, 2, 1]]))
-      const walker = Graph.indices(Graph.topo(mutable))
+      const walker = Graph.indices(Graph.topoUnsafe(mutable))
       const active = walker[Symbol.iterator]()
       Graph.removeNode(mutable, 1)
 
       assert.deepStrictEqual(Array.from({ [Symbol.iterator]: () => active }), [0, 1, 2])
-      assert.deepStrictEqual(Array.from(walker), [0, 2])
+      assert.deepStrictEqual(Array.from(walker), [0, 1, 2])
     })
 
     it("rejects invalid topological graphs and initials", () => {
       assertGraphError(
-        () => Graph.topo(Graph.undirected() as unknown as Graph.DirectedGraph<never, never>),
+        () => Graph.topoUnsafe(Graph.undirected() as unknown as Graph.DirectedGraph<never, never>),
         "Cannot perform topological sort on undirected graph"
       )
       assertGraphError(
-        () => Graph.topo(directed([0, 1], [[0, 1, 1], [1, 0, 1]])),
+        () => Graph.topoUnsafe(directed([0, 1], [[0, 1, 1], [1, 0, 1]])),
         "Cannot perform topological sort on cyclic graph"
       )
       const graph = directed([0, 1], [[0, 1, 1]])
-      assertGraphError(() => Array.from(Graph.topo(graph, { initials: [1] })), "Initial node 1 has incoming edges")
-      assertGraphError(() => Graph.topo(graph, { initials: [2] }), "Node 2 does not exist")
+      assertGraphError(
+        () => Array.from(Graph.topoUnsafe(graph, { initials: [1] })),
+        "Initial node 1 has incoming edges"
+      )
+      assertGraphError(() => Graph.topoUnsafe(graph, { initials: [2] }), "Node 2 does not exist")
     })
 
     it("keeps nodes, edges, and externals live on mutable graphs", () => {
@@ -2450,7 +2483,7 @@ describe("Graph", () => {
       assert.strictEqual(externals.next().value, 1)
 
       Graph.addNode(mutable, "C")
-      Graph.addEdge(mutable, 1, 2, 2)
+      Graph.addEdgeUnsafe(mutable, 1, 2, 2)
       assert.deepStrictEqual(Array.from({ [Symbol.iterator]: () => nodes }), [1, 2])
       assert.deepStrictEqual(Array.from({ [Symbol.iterator]: () => edges }), [1])
       assert.deepStrictEqual(Array.from({ [Symbol.iterator]: () => externals }), [2])

@@ -11216,7 +11216,7 @@ function graphToArbitrary<N, E, T extends Graph_.Kind>(
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const source = Graph.addNode(mutable, "A")
  *   const target = Graph.addNode(mutable, "B")
- *   Graph.addEdge(mutable, source, target, 1)
+ *   Graph.addEdgeUnsafe(mutable, source, target, 1)
  * })
  *
  * const encoded = Schema.encodeSync(codec)(graph)
