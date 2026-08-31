@@ -12307,7 +12307,30 @@ export interface ByteSizeFromString extends decodeTo<ByteSize, String> {
 }
 
 /**
- * Schema that decodes exact human-readable byte-size strings.
+ * Schema that decodes byte-size strings into exact, non-negative `ByteSize`
+ * values.
+ *
+ * **Details**
+ *
+ * Decoding accepts an unsigned base-10 integer or decimal followed by optional
+ * whitespace and one of these case-sensitive units:
+ *
+ * - bytes: `B`, `byte`, or `bytes`
+ * - decimal SI units (powers of 1,000): `kB`, `MB`, `GB`, `TB`, `PB`, `EB`,
+ *   `ZB`, `YB`, `RB`, or `QB`, plus their lowercase singular and plural names
+ * - binary IEC units (powers of 1,024): `KiB`, `MiB`, `GiB`, `TiB`, `PiB`,
+ *   `EiB`, `ZiB`, or `YiB`, plus their lowercase singular and plural names
+ *
+ * Leading and trailing whitespace is ignored. A decimal quantity must resolve
+ * to an integral number of bytes, so `1.5 kB` is accepted while `0.1 KiB` is
+ * rejected.
+ *
+ * Encoding returns the exact byte count as `<count> byte` or `<count> bytes`.
+ *
+ * **Gotchas**
+ *
+ * A unit is required. Signs, exponent notation, digit separators, and ambiguous
+ * unit spellings such as `KB`, `mb`, `Mb`, or `b` are rejected.
  *
  * @category schemas
  * @since 4.0.0
