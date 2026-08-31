@@ -497,7 +497,7 @@ export class NetAddressError extends Schema.TaggedError<NetAddressError>("effect
   }
 }
 
-const mapError = <A>(result: Result.Result<A, internal.NetAddressError>): Result.Result<A, NetAddressError> =>
+const mapError = <A>(result: Result.Result<A, internal.NetAddressIssue>): Result.Result<A, NetAddressError> =>
   Result.mapError(
     result,
     (error) => new NetAddressError({ input: error.input, kind: error.kind, reason: error.reason })
