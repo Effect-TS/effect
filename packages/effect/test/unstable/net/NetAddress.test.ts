@@ -202,7 +202,10 @@ describe("NetAddress", () => {
       const label63 = "a".repeat(63)
       const longest = `${label63}.${label63}.${label63}.${"a".repeat(61)}`
       assert.strictEqual(NetAddress.formatHostname(success(NetAddress.hostnameFromString(longest))), longest)
-      assert.strictEqual(NetAddress.formatHostname(success(NetAddress.hostnameFromString(`${longest}.`))), `${longest}.`)
+      assert.strictEqual(
+        NetAddress.formatHostname(success(NetAddress.hostnameFromString(`${longest}.`))),
+        `${longest}.`
+      )
       assert.strictEqual(failure(NetAddress.hostnameFromString("a".repeat(64))).reason, "InvalidLength")
       assert.strictEqual(
         failure(NetAddress.hostnameFromString(`${label63}.${label63}.${label63}.${label63}`)).reason,
