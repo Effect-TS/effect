@@ -56,7 +56,7 @@ const projectCapabilities = (
   tools: capabilities.tools
 })
 
-const projectContent = Effect.fnUntraced(function*(content: typeof PublicMcpSchema.ContentBlock.Type) {
+const projectContent = Effect.fnUntraced(function*(content: PublicMcpSchema.ContentBlock) {
   const projected = Match.value(content).pipe(
     Match.when({ type: "text" }, (content) => ({
       ...content,

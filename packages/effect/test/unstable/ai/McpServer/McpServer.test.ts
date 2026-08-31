@@ -277,7 +277,7 @@ describe("McpServer", () => {
         assert.isUndefined(received)
       }))
 
-    it.effect("should provide neutral and legacy request services to legacy handlers", () =>
+    it.effect("should provide the neutral request service to handlers", () =>
       Effect.gen(function*() {
         const server = yield* McpServer.McpServer.make
         let received: string | undefined
@@ -288,10 +288,8 @@ describe("McpServer", () => {
           }),
           annotations: Context.empty(),
           handle: () =>
-            Effect.gen(function*() {
-              const request = yield* McpSchema.McpRequestContext
-              const client = yield* McpSchema.McpServerClient
-              received = `${request.protocolVersion}:${client.initializePayload.clientInfo.name}`
+            McpSchema.McpRequestContext.useSync((request) => {
+              received = request.protocolVersion
               return new McpSchema.CallToolResult({ content: [] })
             })
         })
@@ -300,7 +298,7 @@ describe("McpServer", () => {
           Effect.provideService(McpSchema.McpServerClient, directClient)
         )
 
-        assert.strictEqual(received, "2025-06-18:TestClient")
+        assert.strictEqual(received, "2025-06-18")
       }))
   })
 

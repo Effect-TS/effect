@@ -79,7 +79,7 @@ const hasElicitationModeCapability = (
     : elicitation.url !== undefined
 }
 
-const projectContent = Effect.fnUntraced(function*(content: typeof PublicMcpSchema.ContentBlock.Type) {
+const projectContent = Effect.fnUntraced(function*(content: PublicMcpSchema.ContentBlock) {
   return Match.value(content).pipe(
     Match.when({ type: Match.is("text", "resource_link") }, (content) => content),
     Match.when({ type: Match.is("image", "audio") }, (content) => ({

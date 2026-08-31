@@ -111,12 +111,6 @@ export class ToolExecutionError extends Data.TaggedError("ToolExecutionError")<{
 }> {}
 
 /** @internal */
-export class ToolResultProjectionError extends Data.TaggedError("ToolResultProjectionError")<{
-  readonly name: string
-  readonly message: string
-}> {}
-
-/** @internal */
 export class UnsupportedByProtocol extends Data.TaggedError("UnsupportedByProtocol")<{
   readonly protocolVersion: McpProtocol.ProtocolVersion
   readonly feature: string
@@ -127,7 +121,6 @@ export type ToolError =
   | ToolNotFound
   | InvalidToolInput
   | ToolExecutionError
-  | ToolResultProjectionError
 
 /** @internal */
 export interface ToolRegistration {
@@ -140,7 +133,7 @@ export interface ToolRegistration {
     invocation: McpInvocation
   ) => Effect.Effect<
     OperationOutcome<McpSchema.CallToolResult>,
-    InvalidToolInput | ToolExecutionError | ToolResultProjectionError,
+    InvalidToolInput | ToolExecutionError,
     never
   >
 }

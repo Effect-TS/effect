@@ -142,6 +142,15 @@ describe("McpServer", () => {
   })
 
   describe("request context", () => {
+    it("should not claim that stateless handlers receive the legacy client service", () => {
+      const layer = McpServer.resource({
+        uri: "file:///legacy-client.txt",
+        name: "legacy-client",
+        content: McpSchema.McpServerClient.useSync((client) => client.clientInfo.name)
+      })
+      expect<Layer.Services<typeof layer>>().type.toBe<McpSchema.McpServerClient>()
+    })
+
     it("should expose multi-round-trip input through the request context", () => {
       expect(McpSchema.McpRequestContext.useSync((context) => context.inputResponses)).type.toBe<
         Effect.Effect<

@@ -46,7 +46,7 @@ const requireCapability = (
     ? Effect.void
     : Effect.fail(unsupported(operation, `Client did not advertise the ${capability} capability`))
 
-const projectContent = Effect.fnUntraced(function*(content: typeof PublicMcpSchema.ContentBlock.Type) {
+const projectContent = Effect.fnUntraced(function*(content: PublicMcpSchema.ContentBlock) {
   const projected = Match.value(content).pipe(
     Match.when({ type: "text" }, (content) => ({
       ...content,

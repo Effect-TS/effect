@@ -113,8 +113,6 @@ export const METHOD_NOT_FOUND = -32601
 /** @internal */
 export const INVALID_PARAMS = -32602
 /** @internal */
-export const INTERNAL_ERROR = -32603
-/** @internal */
 export const MISSING_REQUIRED_CLIENT_CAPABILITY = -32021
 
 /** @internal */

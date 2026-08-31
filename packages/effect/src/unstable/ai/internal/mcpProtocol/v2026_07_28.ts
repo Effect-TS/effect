@@ -172,11 +172,6 @@ const matchedProtocolError = Match.type<ProtocolError>().pipe(
         code: McpSchema.INVALID_PARAMS,
         message: `Resource '${error.uri}' not found`
       }),
-    ToolResultProjectionError: (error) =>
-      new McpProtocol.ProtocolError({
-        code: McpSchema.INTERNAL_ERROR,
-        message: error.message
-      }),
     ToolNotFound: (error) =>
       new McpProtocol.ProtocolError({
         code: McpSchema.INVALID_PARAMS,
@@ -256,15 +251,13 @@ export const makeHandlers = (
   const decodeListToolsResult = Schema.decodeUnknownEffect(McpSchema.ListToolsResult)
   const sendNotification = context.sendNotification
   const supportsSubscriptions = sendNotification !== undefined
-  const discovery: ServerDiscoveryContext = {
+  const getDiscovery = Effect.map(context.registrationPresence, (presence): ServerDiscoveryContext => ({
     supportedVersions: context.supportedVersions,
     capabilities: {
       completions: {},
       logging: {},
-      ...(context.registrationPresence.tools
-        ? { tools: { listChanged: supportsSubscriptions } }
-        : {}),
-      ...(context.registrationPresence.resources
+      ...(presence.tools ? { tools: { listChanged: supportsSubscriptions } } : {}),
+      ...(presence.resources
         ? {
           resources: {
             listChanged: supportsSubscriptions,
@@ -272,12 +265,10 @@ export const makeHandlers = (
           }
         }
         : {}),
-      ...(context.registrationPresence.prompts
-        ? { prompts: { listChanged: supportsSubscriptions } }
-        : {})
+      ...(presence.prompts ? { prompts: { listChanged: supportsSubscriptions } } : {})
     },
     serverInfo: context.serverInfo
-  }
+  }))
   const getInvocation = PublicMcpSchema.McpRequestContext.useSync(
     McpProtocol.invocationFromRequestContext
   )
@@ -306,18 +297,19 @@ export const makeHandlers = (
           message: "Method not found: subscriptions/listen"
         })
       }
+      const presence = yield* context.registrationPresence
       const events = yield* context.subscribeServerNotifications
       const honored = {
-        ...(context.registrationPresence.tools && request.notifications.toolsListChanged === true
+        ...(presence.tools && request.notifications.toolsListChanged === true
           ? { toolsListChanged: true }
           : {}),
-        ...(context.registrationPresence.prompts && request.notifications.promptsListChanged === true
+        ...(presence.prompts && request.notifications.promptsListChanged === true
           ? { promptsListChanged: true }
           : {}),
-        ...(context.registrationPresence.resources && request.notifications.resourcesListChanged === true
+        ...(presence.resources && request.notifications.resourcesListChanged === true
           ? { resourcesListChanged: true }
           : {}),
-        ...(context.registrationPresence.resources && request.notifications.resourceSubscriptions !== undefined
+        ...(presence.resources && request.notifications.resourceSubscriptions !== undefined
           ? { resourceSubscriptions: request.notifications.resourceSubscriptions }
           : {})
       }
@@ -385,11 +377,12 @@ export const makeHandlers = (
     "server/discover": Effect.fnUntraced(function*(
       _request: typeof McpSchema.Discover.payloadSchema.Type
     ) {
+      const discovery = yield* getDiscovery
       const result = yield* projectCompleteResult({
         ...privateStaleCache,
         supportedVersions: Array.from(discovery.supportedVersions),
         capabilities: discovery.capabilities
-      }, discovery.serverInfo)
+      }, context.serverInfo)
       return yield* decodeDiscoverResult(result)
     }, Effect.mapError(projectError)),
     "resources/list": Effect.fnUntraced(function*(
@@ -400,7 +393,7 @@ export const makeHandlers = (
       const result = yield* projectCompleteResult({
         ...privateStaleCache,
         resources: resources.map(projectResource)
-      }, discovery.serverInfo)
+      }, context.serverInfo)
       return yield* decodeListResourcesResult(result)
     }, Effect.mapError(projectError)),
     "resources/templates/list": Effect.fnUntraced(function*(
@@ -411,14 +404,12 @@ export const makeHandlers = (
       const result = yield* projectCompleteResult({
         ...privateStaleCache,
         resourceTemplates: resourceTemplates.map(projectResourceTemplate)
-      }, discovery.serverInfo)
+      }, context.serverInfo)
       return yield* decodeListResourceTemplatesResult(result)
     }, Effect.mapError(projectError)),
-    "resources/read": Effect.fnUntraced(function*(
-      { uri }: typeof McpSchema.ReadResource.payloadSchema.Type
-    ) {
-      const invocation = yield* getInvocation
-      const read = yield* core.resources.read(uri, invocation)
+    "resources/read": Effect.fnUntraced(function*(request: typeof McpSchema.ReadResource.payloadSchema.Type) {
+      const invocation = yield* getInputInvocation(request)
+      const read = yield* core.resources.read(request.uri, invocation)
       const contents = read.contents.map((content) =>
         "text" in content
           ? omitUndefined({
@@ -438,7 +429,7 @@ export const makeHandlers = (
         ...privateStaleCache,
         contents,
         _meta: read._meta
-      }, discovery.serverInfo)
+      }, context.serverInfo)
       return yield* decodeReadResourceResult(result)
     }, Effect.mapError(projectError)),
     "prompts/list": Effect.fnUntraced(function*(
@@ -450,14 +441,12 @@ export const makeHandlers = (
       const result = yield* projectCompleteResult({
         ...privateStaleCache,
         prompts: projectedPrompts
-      }, discovery.serverInfo)
+      }, context.serverInfo)
       return yield* decodeListPromptsResult(result)
     }, Effect.mapError(projectError)),
-    "prompts/get": Effect.fnUntraced(function*(
-      { arguments: args, name }: typeof McpSchema.GetPrompt.payloadSchema.Type
-    ) {
-      const invocation = yield* getInvocation
-      const prompt = yield* core.prompts.get(name, args ?? {}, invocation)
+    "prompts/get": Effect.fnUntraced(function*(request: typeof McpSchema.GetPrompt.payloadSchema.Type) {
+      const invocation = yield* getInputInvocation(request)
+      const prompt = yield* core.prompts.get(request.name, request.arguments ?? {}, invocation)
       const messages = prompt.messages.map((message) => ({
         role: message.role,
         content: projectContent(message.content)
@@ -466,7 +455,7 @@ export const makeHandlers = (
         description: prompt.description,
         messages,
         _meta: prompt._meta
-      }, discovery.serverInfo)
+      }, context.serverInfo)
       return yield* decodeGetPromptResult(result)
     }, Effect.mapError(projectError)),
     "completion/complete": Effect.fnUntraced(function*(
@@ -490,7 +479,7 @@ export const makeHandlers = (
           hasMore: completion.hasMore
         }),
         _meta: completion.metadata
-      }, discovery.serverInfo)
+      }, context.serverInfo)
       return yield* decodeCompleteResult(result)
     }, Effect.mapError(projectError)),
     "tools/list": Effect.fnUntraced(function*(
@@ -502,7 +491,7 @@ export const makeHandlers = (
       const result = yield* projectCompleteResult({
         ...privateStaleCache,
         tools: projectedTools
-      }, discovery.serverInfo)
+      }, context.serverInfo)
       return yield* decodeListToolsResult(result)
     }, Effect.mapError(projectError)),
     "tools/call": Effect.fnUntraced(function*(request: typeof McpSchema.CallTool.payloadSchema.Type) {
@@ -550,7 +539,7 @@ export const makeHandlers = (
             data: { requiredCapabilities }
           })
         }
-        return yield* projectCallToolOutcome(outcome, discovery.serverInfo)
+        return yield* projectCallToolOutcome(outcome, context.serverInfo)
       }
       const toolResult = outcome.value
       const content = toolResult.content.map(projectContent)
@@ -561,7 +550,7 @@ export const makeHandlers = (
           isError: toolResult.isError,
           _meta: toolResult._meta
         }),
-        discovery.serverInfo
+        context.serverInfo
       )
     }, Effect.mapError(projectError)),
     "notifications/cancelled": Effect.fnUntraced(function*(
@@ -598,6 +587,7 @@ export const protocol = McpProtocol.make({
   }),
   projectNotification: (notification) =>
     McpProtocol.isSubscriptionServerNotification(notification)
+      // @effect-diagnostics-next-line effectSucceedWithVoid:off the projector requires the value `undefined`
       ? Effect.succeed(undefined)
       : McpProtocol.makeNotificationProjector({
         supportsProgressMessage: true

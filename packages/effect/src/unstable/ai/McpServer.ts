@@ -96,27 +96,13 @@ const internalState = new WeakMap<object, {
   readonly core: McpCore.McpCore
   readonly notifications: Queue.Dequeue<QueuedServerNotification>
 }>()
-type ServerExtensions = NonNullable<typeof ServerCapabilities.Type["extensions"]>
+type ServerExtensions = NonNullable<ServerCapabilities["extensions"]>
 type ServerNotificationRequest<
   R extends Rpc.Any = RpcGroup.Rpcs<typeof BroadcastServerNotificationRpcs>
 > = R extends Rpc.Any ? RpcMessage.Request<R> : never
 
 const BroadcastServerNotificationRpcs = ServerNotificationRpcs.omit("notifications/elicitation/complete")
-const isJson = Schema.is(Schema.Json)
 const isLoggingLevel = Schema.is(McpSchema.LoggingLevel)
-
-const validateStructuredContent = (
-  toolName: string,
-  value: unknown
-): Effect.Effect<Schema.Json, McpCore.ToolResultProjectionError> =>
-  isJson(value)
-    ? Effect.succeed(value)
-    : Effect.fail(
-      new McpCore.ToolResultProjectionError({
-        name: toolName,
-        message: `Tool '${toolName}' returned structured content that is not valid JSON`
-      })
-    )
 
 const toInternalServerNotification = (
   message: ServerNotificationRequest
@@ -162,7 +148,7 @@ const toInternalServerNotification = (
 const provideInvocationContext = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
   invocation: McpCore.McpInvocation
-): Effect.Effect<A, E, Exclude<R, McpRequestContext | McpServerClient>> => {
+): Effect.Effect<A, E, Exclude<R, McpRequestContext>> => {
   let provided = Effect.provideService(effect, McpRequestContext, invocation.requestContext)
   const requestMetadata = invocation.requestContext.requestMetadata
   const logLevel = Predicate.hasProperty(requestMetadata, "io.modelcontextprotocol/logLevel")
@@ -189,7 +175,7 @@ const provideInvocationContext = <A, E, R>(
     : Effect.provideService(provided, McpServerClient, invocation.serverClient)) as Effect.Effect<
       A,
       E,
-      Exclude<R, McpRequestContext | McpServerClient>
+      Exclude<R, McpRequestContext>
     >
 }
 
@@ -223,7 +209,7 @@ export class McpServer extends Context.Service<McpServer, {
     ) => Effect.Effect<
       CallToolResult | McpSchema.InputRequired,
       InternalError | InvalidParams,
-      McpRequestContext | McpServerClient
+      McpRequestContext
     >
   }) => Effect.Effect<void>
   readonly callTool: (
@@ -238,9 +224,9 @@ export class McpServer extends Context.Service<McpServer, {
     readonly resource: Resource
     readonly annotations: Context.Context<never>
     readonly handle: Effect.Effect<
-      typeof ReadResourceResult.Type,
+      ReadResourceResult,
       InternalError,
-      McpRequestContext | McpServerClient
+      McpRequestContext
     >
   }) => Effect.Effect<void>
 
@@ -264,16 +250,16 @@ export class McpServer extends Context.Service<McpServer, {
         uri: string,
         params: Array<string>
       ) => Effect.Effect<
-        typeof ReadResourceResult.Type,
+        ReadResourceResult,
         InvalidParams | InternalError,
-        McpRequestContext | McpServerClient
+        McpRequestContext
       >
     }
   ) => Effect.Effect<void>
 
   readonly findResource: (
     uri: string
-  ) => Effect.Effect<typeof ReadResourceResult.Type, McpErrorBase | InvalidParams | InternalError, McpServerClient>
+  ) => Effect.Effect<ReadResourceResult, McpErrorBase | InvalidParams | InternalError, McpServerClient>
 
   readonly prompts: ReadonlyArray<{
     readonly prompt: Prompt
@@ -287,11 +273,11 @@ export class McpServer extends Context.Service<McpServer, {
       (
         input: string,
         context: CompletionContext
-      ) => Effect.Effect<CompleteResult, InternalError, McpRequestContext | McpServerClient>
+      ) => Effect.Effect<CompleteResult, InternalError, McpRequestContext>
     >
     readonly handle: (
       params: Record<string, string>
-    ) => Effect.Effect<GetPromptResult, InternalError | InvalidParams, McpRequestContext | McpServerClient>
+    ) => Effect.Effect<GetPromptResult, InternalError | InvalidParams, McpRequestContext>
   }) => Effect.Effect<void>
   readonly getPromptResult: (
     request: typeof GetPrompt.payloadSchema.Type
@@ -415,11 +401,7 @@ export class McpServer extends Context.Service<McpServer, {
                   if (Predicate.isTagged(result, "InputRequired")) {
                     return Effect.succeed(McpCore.OperationOutcome.InputRequired(result))
                   }
-                  return (result.structuredContent === undefined
-                    ? Effect.succeed(result)
-                    : validateStructuredContent(options.tool.name, result.structuredContent).pipe(
-                      Effect.as(result)
-                    )).pipe(Effect.map(McpCore.OperationOutcome.Complete))
+                  return Effect.succeed(McpCore.OperationOutcome.Complete(result))
                 })
               )
           })
@@ -991,7 +973,7 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
                         ? handled
                         : Effect.provideService(handled, McpRequestContext, prepared.requestContext)
                     }),
-                    Effect.catchCause(() => Effect.void)
+                    Effect.ignoreCause
                   )
                 }
                 if (!rpc || isClientNotification) {
@@ -1147,10 +1129,10 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
             headers: [],
             isNotification: true
           })
-        }).pipe(Effect.catchCause(() => Effect.void))
+        }).pipe(Effect.ignoreCause)
       }
     })),
-    Effect.catchCause(() => Effect.void),
+    Effect.ignoreCause,
     Effect.forever,
     Effect.forkScoped
   )
@@ -1439,7 +1421,7 @@ const layerMcpProtocolHttp = (options: {
         Effect.matchEffect({
           onFailure: () => Effect.succeed(parseErrorResponse()),
           onSuccess: (body) =>
-            Effect.matchEffect(Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)(body), {
+            Effect.matchEffect(Schema.decodeEffect(Schema.UnknownFromJsonString)(body), {
               onFailure: () => Effect.succeed(parseErrorResponse()),
               onSuccess: (input) => {
                 if (!Array.isArray(input)) {
@@ -1634,7 +1616,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
 ) => Effect.Effect<
   void,
   never,
-  McpServer | Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools>, McpRequestContext | McpServerClient>
+  McpServer | Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools>, McpRequestContext>
 > = Effect.fnUntraced(function*<Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.Toolkit<Tools>
 ) {
@@ -1642,7 +1624,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
   const built = yield* (toolkit as any as Effect.Effect<
     Toolkit.WithHandler<Tools>,
     never,
-    Exclude<Tool.HandlersFor<Tools>, McpRequestContext | McpServerClient>
+    Exclude<Tool.HandlersFor<Tools>, McpRequestContext>
   >)
   const services = yield* Effect.context<never>()
   for (const tool of Object.values(built.tools)) {
@@ -1727,7 +1709,7 @@ export const toolkit = <Tools extends Record<string, Tool.Any>>(
 ): Layer.Layer<
   never,
   never,
-  Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools>, McpRequestContext | McpServerClient>
+  Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools>, McpRequestContext>
 > =>
   Layer.effectDiscard(registerToolkit(toolkit)).pipe(
     Layer.provide(McpServer.layer)
@@ -1795,12 +1777,12 @@ export const registerResource: {
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
     readonly content: Effect.Effect<
-      typeof ReadResourceResult.Type | string | Uint8Array,
+      ReadResourceResult | string | Uint8Array,
       E,
       R
     >
     readonly annotations?: Context.Context<never> | undefined
-  }): Effect.Effect<void, never, Exclude<R, McpRequestContext | McpServerClient> | McpServer>
+  }): Effect.Effect<void, never, Exclude<R, McpRequestContext> | McpServer>
   <const Schemas extends ReadonlyArray<Schema.Constraint>>(segments: TemplateStringsArray, ...schemas: Schemas): <
     E,
     R,
@@ -1813,7 +1795,7 @@ export const registerResource: {
     readonly priority?: number | undefined
     readonly completion?: ValidateCompletions<Completions, keyof ResourceCompletions<Schemas>> | undefined
     readonly content: (uri: string, ...params: { readonly [K in keyof Schemas]: Schemas[K]["Type"] }) => Effect.Effect<
-      typeof ReadResourceResult.Type | string | Uint8Array,
+      ReadResourceResult | string | Uint8Array,
       E,
       R
     >
@@ -1828,7 +1810,7 @@ export const registerResource: {
       | (Completions[keyof Completions] extends (input: string) => infer Ret ?
         Ret extends Effect.Effect<infer _A, infer _E, infer _R> ? _R : never
         : never),
-      McpRequestContext | McpServerClient
+      McpRequestContext
     >
     | McpServer
   >
@@ -1841,7 +1823,7 @@ export const registerResource: {
       readonly mimeType?: string | undefined
       readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
       readonly priority?: number | undefined
-      readonly content: Effect.Effect<typeof ReadResourceResult.Type | string | Uint8Array, any, any>
+      readonly content: Effect.Effect<ReadResourceResult | string | Uint8Array, any, any>
       readonly annotations?: Context.Context<never> | undefined
     }
     return Effect.gen(function*() {
@@ -1886,7 +1868,7 @@ export const registerResource: {
       >
       | undefined
     readonly content: (uri: string, ...params: Array<any>) => Effect.Effect<
-      typeof ReadResourceResult.Type | string | Uint8Array,
+      ReadResourceResult | string | Uint8Array,
       E,
       R
     >
@@ -1974,11 +1956,11 @@ export const resource: {
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
     readonly content: Effect.Effect<
-      typeof ReadResourceResult.Type | string | Uint8Array,
+      ReadResourceResult | string | Uint8Array,
       E,
       R
     >
-  }): Layer.Layer<never, never, Exclude<R, McpRequestContext | McpServerClient>>
+  }): Layer.Layer<never, never, Exclude<R, McpRequestContext>>
   <const Schemas extends ReadonlyArray<Schema.Constraint>>(segments: TemplateStringsArray, ...schemas: Schemas): <
     E,
     R,
@@ -1991,7 +1973,7 @@ export const resource: {
     readonly priority?: number | undefined
     readonly completion?: ValidateCompletions<Completions, keyof ResourceCompletions<Schemas>> | undefined
     readonly content: (uri: string, ...params: { readonly [K in keyof Schemas]: Schemas[K]["Type"] }) => Effect.Effect<
-      typeof ReadResourceResult.Type | string | Uint8Array,
+      ReadResourceResult | string | Uint8Array,
       E,
       R
     >
@@ -2003,7 +1985,7 @@ export const resource: {
       | (Completions[keyof Completions] extends (input: string) => infer Ret ?
         Ret extends Effect.Effect<infer _A, infer _E, infer _R> ? _R : never
         : never),
-      McpRequestContext | McpServerClient
+      McpRequestContext
     >
   >
 } = function() {
@@ -2056,15 +2038,15 @@ export const registerPrompt = <
     readonly completion?: ValidateCompletions<Completions, Extract<keyof Params, string>> | undefined
     readonly content: (
       params: Schema.Struct.Type<Params>
-    ) => Effect.Effect<Array<typeof PromptMessage.Type> | string, E, R>
+    ) => Effect.Effect<Array<PromptMessage> | string, E, R>
     readonly annotations?: Context.Context<never> | undefined
   }
 ): Effect.Effect<
   void,
   never,
-  Exclude<Schema.Struct.DecodingServices<Params> | R, McpRequestContext | McpServerClient> | McpServer
+  Exclude<Schema.Struct.DecodingServices<Params> | R, McpRequestContext> | McpServer
 > => {
-  const args = Arr.empty<typeof PromptArgument.Type>()
+  const args = Arr.empty<PromptArgument>()
   const props: Record<string, Schema.Constraint> = options.parameters ?? {}
   for (const [name, prop] of Object.entries(props)) {
     args.push({
@@ -2091,14 +2073,14 @@ export const registerPrompt = <
   return Effect.gen(function*() {
     const registry = yield* McpServer
     const services = yield* Effect.context<
-      Exclude<R | Schema.Struct.DecodingServices<Params>, McpRequestContext | McpServerClient>
+      Exclude<R | Schema.Struct.DecodingServices<Params>, McpRequestContext>
     >()
     const completions: Record<
       string,
       (
         input: string,
         context: CompletionContext
-      ) => Effect.Effect<CompleteResult, InternalError, McpRequestContext | McpServerClient>
+      ) => Effect.Effect<CompleteResult, InternalError, McpRequestContext>
     > = Object.create(null)
     for (const [param, handle] of Object.entries(completion)) {
       const encodeArray = Schema.encodeEffect(Schema.Array(props[param]))
@@ -2189,13 +2171,13 @@ export const prompt = <
     readonly completion?: ValidateCompletions<Completions, Extract<keyof Params, string>> | undefined
     readonly content: (
       params: Schema.Struct.Type<Params>
-    ) => Effect.Effect<Array<typeof PromptMessage.Type> | string, E, R>
+    ) => Effect.Effect<Array<PromptMessage> | string, E, R>
     readonly annotations?: Context.Context<never> | undefined
   }
 ): Layer.Layer<
   never,
   never,
-  Exclude<Schema.Struct.DecodingServices<Params> | R, McpRequestContext | McpServerClient>
+  Exclude<Schema.Struct.DecodingServices<Params> | R, McpRequestContext>
 > =>
   Layer.effectDiscard(registerPrompt(options)).pipe(
     Layer.provide(McpServer.layer)
@@ -2305,8 +2287,8 @@ const compileUriTemplate = (segments: TemplateStringsArray, ...schemas: Readonly
 
 const resolveResourceContent = (
   uri: string,
-  content: typeof ReadResourceResult.Type | string | Uint8Array
-): typeof ReadResourceResult.Type => {
+  content: ReadResourceResult | string | Uint8Array
+): ReadResourceResult => {
   if (typeof content === "string") {
     return {
       contents: [{
@@ -2325,11 +2307,9 @@ const resolveResourceContent = (
   return content
 }
 
-const InvalidBatchExit = Schema.Struct({
-  _tag: Schema.Literal("Exit"),
+const InvalidBatchExit = Schema.TaggedStruct("Exit", {
   requestId: Schema.Null,
-  exit: Schema.Struct({
-    _tag: Schema.Literal("Failure"),
+  exit: Schema.TaggedStruct("Failure", {
     cause: Schema.Unknown
   })
 })
