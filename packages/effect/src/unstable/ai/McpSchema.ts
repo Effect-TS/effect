@@ -2774,7 +2774,7 @@ export interface McpReverseClient {
   ) => Effect.Effect<CreateMessageResult, McpReverseOperationError | McpReverseOperationUnsupported>
   readonly elicit: (
     request: typeof Elicit.payloadSchema.Type
-  ) => Effect.Effect<typeof ElicitResult.Type, McpReverseOperationError | McpReverseOperationUnsupported>
+  ) => Effect.Effect<ElicitResult, McpReverseOperationError | McpReverseOperationUnsupported>
 }
 
 /**

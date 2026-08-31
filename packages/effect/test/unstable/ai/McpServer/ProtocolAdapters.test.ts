@@ -58,7 +58,7 @@ const CapabilityTool = Tool.make("capability", {
 const InitializeMetadataTool = Tool.make("initialize-metadata", {
   parameters: Tool.EmptyParams,
   success: Schema.String,
-  dependencies: [McpSchema.McpServerClient]
+  dependencies: [McpSchema.McpRequestContext]
 })
 
 const LogLevelTool = Tool.make("log-level", {
@@ -106,6 +106,22 @@ const FamilyPrompt = McpServer.prompt({
     style: () => Effect.succeed(["short", "long"])
   },
   content: ({ style }) => Effect.succeed(`Use the ${style} style`)
+})
+
+const InputResource = McpServer.resource({
+  uri: "file:///input-context.txt",
+  name: "input-context",
+  content: McpSchema.McpRequestContext.useSync((context) =>
+    JSON.stringify({ inputResponses: context.inputResponses, requestState: context.requestState })
+  )
+})
+
+const InputPrompt = McpServer.prompt({
+  name: "input-context",
+  content: () =>
+    McpSchema.McpRequestContext.useSync((context) =>
+      JSON.stringify({ inputResponses: context.inputResponses, requestState: context.requestState })
+    )
 })
 
 const AudioPrompt = McpServer.prompt({
@@ -172,7 +188,7 @@ const makeFixture = Effect.fnUntraced(function*() {
           })
         ),
       "initialize-metadata": () =>
-        McpSchema.McpServerClient.useSync((client) => JSON.stringify(client.initializePayload._meta)),
+        McpSchema.McpRequestContext.useSync((context) => JSON.stringify(context.requestMetadata)),
       "log-level": () => CurrentLogLevel,
       "capability-gated": () => Effect.succeed("visible")
     })))
@@ -197,6 +213,8 @@ const makeFixture = Effect.fnUntraced(function*() {
     mrtrToolLayer,
     FamilyResource,
     FamilyPrompt,
+    InputResource,
+    InputPrompt,
     AudioPrompt,
     ResourceLinkPrompt
   ).pipe(
@@ -465,6 +483,15 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
           )
       })
       yield* server.addTool({
+        tool: makeTool("invalid-structured-content", "Non-JSON structured content"),
+        annotations: Context.empty(),
+        handle: () =>
+          Effect.succeed({
+            content: [{ type: "text", text: "invalid" }],
+            structuredContent: Symbol("not-json")
+          } as unknown as McpSchema.CallToolResult)
+      })
+      yield* server.addTool({
         tool: makeTool("resource-link", "Current-revision resource link"),
         annotations: Context.empty(),
         handle: () =>
@@ -671,6 +698,28 @@ const textResult = (message: JsonRpcResponse): string => {
 }
 
 describe("McpServer protocol adapters", () => {
+  it.effect("should negotiate a stateful protocol when initialize offers the stateless revision", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+      const response = yield* fixture.post({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2026-07-28",
+          capabilities: {},
+          clientInfo: { name: "legacy-client", version: "1.0.0" }
+        }
+      })
+      const message = yield* Effect.promise<unknown>(() => response.json()).pipe(
+        Effect.flatMap(decodeJsonRpcResponse)
+      )
+
+      assert.strictEqual(response.status, 200)
+      assert.isNotNull(response.headers.get("Mcp-Session-Id"))
+      assert.strictEqual(resultOf(message).protocolVersion, "2025-11-25")
+    }))
+
   it.effect("should discover the modern server without initialization or a session", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
@@ -692,6 +741,45 @@ describe("McpServer protocol adapters", () => {
         "2025-03-26",
         "2024-11-05"
       ])
+    }))
+
+  it.effect("should expose continuation input to modern resource and prompt handlers", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+      const continuation = {
+        inputResponses: { roots: { roots: [{ uri: "file:///workspace" }] } },
+        requestState: "round-2"
+      }
+      const cases = [
+        {
+          method: "resources/read",
+          params: { uri: "file:///input-context.txt", ...continuation },
+          read: (result: Record<string, unknown>) =>
+            (result.contents as ReadonlyArray<{ readonly text: string }>)[0]!.text
+        },
+        {
+          method: "prompts/get",
+          params: { name: "input-context", ...continuation },
+          read: (result: Record<string, unknown>) =>
+            (result.messages as ReadonlyArray<{ readonly content: { readonly text: string } }>)[0]!.content.text
+        }
+      ] as const
+
+      for (const [index, testCase] of cases.entries()) {
+        const response = yield* fixture.post(
+          modernRequest(index + 30, testCase.method, testCase.params),
+          {
+            ...modernHeaders(testCase.method),
+            "Mcp-Name": testCase.method === "resources/read" ?
+              "file:///input-context.txt" :
+              "input-context"
+          }
+        )
+        const message = yield* Effect.promise<unknown>(() => response.json()).pipe(
+          Effect.flatMap(decodeJsonRpcResponse)
+        )
+        assert.deepStrictEqual(JSON.parse(testCase.read(resultOf(message))), continuation)
+      }
     }))
 
   it.effect("should keep log levels isolated when one session updates its level", () =>
@@ -1552,58 +1640,19 @@ describe("McpServer protocol adapters", () => {
       assert.strictEqual(fixture.state.resourceLinkInvocations, 1)
     }))
 
-  it.effect("should return a typed failure when structured tool content is not valid JSON", () =>
+  it.effect("should reject invalid structured content at the protocol serialization boundary", () =>
     Effect.gen(function*() {
-      const server = yield* McpServer.McpServer.make
-      yield* server.addTool({
-        tool: new McpSchema.Tool({
-          name: "invalid-structured-content",
-          inputSchema: {
-            type: "object",
-            properties: {}
-          }
-        }),
-        annotations: Context.empty(),
-        handle: () =>
-          Effect.succeed({
-            content: [{ type: "text", text: "invalid" }],
-            structuredContent: Symbol("not-json")
-          } as unknown as McpSchema.CallToolResult)
-      })
-
-      const error = yield* server.callTool({
-        name: "invalid-structured-content",
-        arguments: {}
-      }).pipe(
-        Effect.provideService(
-          McpSchema.McpServerClient,
-          McpSchema.McpServerClient.of({
-            clientId: 1,
-            protocolVersion: "2025-06-18",
-            clientCapabilities: {},
-            clientInfo: {
-              name: "direct-client",
-              version: "1.0.0"
-            },
-            initializePayload: {
-              protocolVersion: "2025-06-18",
-              capabilities: {},
-              clientInfo: {
-                name: "direct-client",
-                version: "1.0.0"
-              }
-            },
-            getClient: Effect.die("not used")
-          })
-        ),
-        Effect.flip
+      const fixture = yield* makeLowLevelFixture()
+      const response = yield* fixture.post(
+        modernRequest(50, "tools/call", { name: "invalid-structured-content", arguments: {} }),
+        { ...modernHeaders("tools/call"), "Mcp-Name": "invalid-structured-content" }
+      )
+      const message = yield* Effect.promise<unknown>(() => response.json()).pipe(
+        Effect.flatMap(decodeJsonRpcResponse)
       )
 
-      assert.instanceOf(error, McpSchema.InvalidParams)
-      assert.strictEqual(
-        error.message,
-        "Tool 'invalid-structured-content' returned structured content that is not valid JSON"
-      )
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(errorOf(message).code, McpSchema.INTERNAL_ERROR_CODE)
     }))
 
   it("should reject a tool schema when inputSchema is not an object", () => {

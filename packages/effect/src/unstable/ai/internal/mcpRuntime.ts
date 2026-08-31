@@ -30,6 +30,7 @@ const MCP_METHOD_HEADER = "mcp-method"
 const MCP_NAME_HEADER = "mcp-name"
 const PROTOCOL_VERSION_METADATA_KEY = "io.modelcontextprotocol/protocolVersion"
 const CLIENT_CAPABILITIES_METADATA_KEY = "io.modelcontextprotocol/clientCapabilities"
+const UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE = -32022
 const BASE64_SENTINEL_PREFIX = "=?base64?"
 const BASE64_SENTINEL_SUFFIX = "?="
 
@@ -127,7 +128,7 @@ export interface HandlerInstallationOptions {
     readonly description?: string | undefined
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<PublicMcpSchema.Icon> | undefined
-    readonly extensions?: NonNullable<typeof PublicMcpSchema.ServerCapabilities.Type["extensions"]> | undefined
+    readonly extensions?: NonNullable<PublicMcpSchema.ServerCapabilities["extensions"]> | undefined
   }
 }
 
@@ -201,6 +202,10 @@ export const make = Effect.fnUntraced(function*(
     statelessProtocol = protocol
   }
   const registry = yield* McpProtocolRegistry.make(protocols)
+  const selectStatefulProtocol = (offeredVersion: string) =>
+    registry.protocols.find((protocol) =>
+      protocol.runtime._tag === "Stateful" && protocol.protocolVersion === offeredVersion
+    ) ?? statefulProtocol
   const protocolForInternalTag = (tag: string): PublicMcpProtocol.AnyProtocolAdapter => {
     for (const protocol of registry.protocols) {
       const routed = registry.routeClientRequest(protocol, {
@@ -235,17 +240,27 @@ export const make = Effect.fnUntraced(function*(
             typeof metadata["io.modelcontextprotocol/protocolVersion"] === "string"
           ? metadata["io.modelcontextprotocol/protocolVersion"]
           : undefined
-        protocol = hasStatelessVersion
-          ? registry.protocols.find((protocol) => protocol.protocolVersion === offeredVersion) ?? statelessProtocol ??
-            registry.protocols[0]
-          : offeredVersion === undefined
-          ? request.tag === "initialize"
-            ? registry.select((request.payload as any)?.protocolVersion)
-            : registry.protocols[0]
-          : registry.select(offeredVersion)
+        if (hasStatelessVersion) {
+          protocol = registry.protocols.find((protocol) => protocol.protocolVersion === offeredVersion) ??
+            statelessProtocol ?? registry.protocols[0]
+        } else if (request.tag === "initialize") {
+          const requestedVersion = (request.payload as any)?.protocolVersion
+          protocol = selectStatefulProtocol(requestedVersion)
+          if (protocol === undefined) {
+            return yield* new McpProtocol.ProtocolError({
+              code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
+              message: `initialize is not supported by the configured MCP protocols (requested '${requestedVersion}')`
+            })
+          }
+        } else {
+          protocol = registry.protocols[0]
+        }
       }
       if (protocol.runtime._tag === "Stateful") {
         return { protocol, binding }
+      }
+      if (request.isNotification && request.tag === "notifications/cancelled") {
+        return { protocol }
       }
       if (statelessDescriptor === undefined) {
         return yield* Effect.die("MCP stateless runtime invariant failed")
@@ -260,7 +275,7 @@ export const make = Effect.fnUntraced(function*(
         : undefined
       if (requestedVersion !== undefined && requestedVersion !== protocol.protocolVersion) {
         return yield* new McpProtocol.ProtocolError({
-          code: -32022,
+          code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
           message: `Unsupported protocol version '${requestedVersion}'`,
           data: { supported: protocolVersions, requested: requestedVersion }
         })
@@ -290,22 +305,27 @@ export const make = Effect.fnUntraced(function*(
       const id = inputRecord?.id
       const isInitialize = inputRecord?.jsonrpc === "2.0" && inputRecord.method === "initialize" &&
         (typeof id === "string" || typeof id === "number")
+      const isCancellationNotification = inputRecord?.jsonrpc === "2.0" &&
+        inputRecord.method === "notifications/cancelled" && id === undefined
       const isStatelessRequest = claim.present || (!isInitialize &&
         statelessProtocol !== undefined && protocolVersion === statelessProtocol.protocolVersion)
       if (isStatelessRequest) {
         if (protocolVersion === undefined) {
           return headerMismatch("MCP-Protocol-Version header is required")
         }
-        if (typeof claim.value !== "string" || claim.value !== protocolVersion) {
+        if (
+          (!isCancellationNotification || claim.present) &&
+          (typeof claim.value !== "string" || claim.value !== protocolVersion)
+        ) {
           return headerMismatch("MCP-Protocol-Version header does not match request metadata")
         }
         const metadata = asRecord(asRecord(asRecord(input)?.params)?._meta)
-        if (asRecord(metadata?.[CLIENT_CAPABILITIES_METADATA_KEY]) === undefined) {
+        if (!isCancellationNotification && asRecord(metadata?.[CLIENT_CAPABILITIES_METADATA_KEY]) === undefined) {
           return {
             _tag: "Rejected",
             status: 400,
             error: {
-              code: -32602,
+              code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
               message: `${CLIENT_CAPABILITIES_METADATA_KEY} request metadata is required`
             }
           }
@@ -315,7 +335,7 @@ export const make = Effect.fnUntraced(function*(
             _tag: "Rejected",
             status: 400,
             error: {
-              code: -32022,
+              code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
               message: `Unsupported protocol version '${protocolVersion}'`,
               data: {
                 supported: protocolVersions,
@@ -368,13 +388,12 @@ export const make = Effect.fnUntraced(function*(
       stateful?.canDeliver(clientId, headers, notification, fallback) ?? false,
     installHandlers: Effect.fnUntraced(function*(options) {
       const contextMap = new Map<string, unknown>()
-      const registrationPresence = yield* options.core.registrationPresence
       const installationContext: McpProtocol.HandlerInstallationContext = {
         subscribeServerNotifications: options.subscribeServerNotifications,
         ...(options.sendNotification === undefined ? {} : { sendNotification: options.sendNotification }),
         supportedVersions: protocolVersions,
         serverInfo: options.serverInfo,
-        registrationPresence
+        registrationPresence: options.core.registrationPresence
       }
       const handlerTarget = registry.handlerTarget(contextMap, installationContext)
       for (const protocol of registry.protocols) {

@@ -196,6 +196,42 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
           assert.deepStrictEqual(discovered.message.result.capabilities.prompts, { listChanged: true })
         }))
 
+      it.effect("should update discovery and subscription capabilities after late registration", () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol)
+          const before = yield* fixture.initialize()
+          const beforeResult = before.result
+          if (!Predicate.isObject(beforeResult)) {
+            return assert.fail("Expected discovery result before late registration")
+          }
+          const beforeCapabilities = beforeResult.capabilities
+          if (!Predicate.isObject(beforeCapabilities)) {
+            return assert.fail("Expected discovery capabilities before late registration")
+          }
+          assert.notProperty(beforeCapabilities, "tools")
+
+          yield* fixture.server.addTool(makeTool("late-registration"))
+
+          const after = yield* fixture.initialize()
+          const afterResult = after.result
+          if (!Predicate.isObject(afterResult)) {
+            return assert.fail("Expected discovery result after late registration")
+          }
+          const afterCapabilities = afterResult.capabilities
+          if (!Predicate.isObject(afterCapabilities)) {
+            return assert.fail("Expected discovery capabilities after late registration")
+          }
+          assert.deepStrictEqual(afterCapabilities.tools, { listChanged: true })
+
+          const request = yield* listen(fixture, "late-registration-listener", { toolsListChanged: true })
+          assertAcknowledged(
+            yield* fixture.takeMessage,
+            "late-registration-listener",
+            { toolsListChanged: true }
+          )
+          yield* request.cancel("test complete")
+        }))
+
       it.effect("should not advertise subscriptions and should reject listen when the transport cannot send notifications", () =>
         Effect.gen(function*() {
           const outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
@@ -296,7 +332,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }),
             supportedVersions: [McpSchema2026.protocolVersion],
             serverInfo: { name: "SubscriptionConformance", version: "1.0.0" },
-            registrationPresence: { tools: true, resources: false, prompts: false }
+            registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false })
           })
           const listener = yield* handlers["subscriptions/listen"](
             { notifications: { toolsListChanged: true }, _meta: httpMetadata(protocol) },
@@ -353,7 +389,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             sendNotification: () => Effect.void,
             supportedVersions: [McpSchema2026.protocolVersion],
             serverInfo: { name: "SubscriptionConformance", version: "1.0.0" },
-            registrationPresence: { tools: true, resources: false, prompts: false }
+            registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false })
           })
           const listener = yield* handlers["subscriptions/listen"](
             { notifications: { toolsListChanged: true }, _meta: httpMetadata(protocol) },

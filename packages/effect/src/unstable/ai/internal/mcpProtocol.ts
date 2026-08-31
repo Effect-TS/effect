@@ -109,8 +109,7 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
       ),
       Match.tags({
         InvalidToolInput: (error) => error.message,
-        ToolExecutionError: (error) => error.message,
-        ToolResultProjectionError: (error) => error.message
+        ToolExecutionError: (error) => error.message
       }),
       Match.exhaustive
     )
@@ -143,7 +142,7 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
 }
 
 const ProtocolErrorFields = Schema.Struct({
-  code: Schema.Number,
+  code: Schema.Finite,
   message: Schema.String,
   data: Schema.optionalKey(Schema.Unknown)
 })
@@ -282,11 +281,11 @@ export interface HandlerInstallationContext {
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<PublicMcpSchema.Icon> | undefined
   }
-  readonly registrationPresence: {
+  readonly registrationPresence: Effect.Effect<{
     readonly tools: boolean
     readonly resources: boolean
     readonly prompts: boolean
-  }
+  }>
 }
 
 /** @internal */

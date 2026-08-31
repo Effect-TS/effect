@@ -92,6 +92,42 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         assert.strictEqual(second.status, 200)
         assert.isNull(first.headers.get("Mcp-Session-Id"))
       }))
+
+    it.effect("should reject initialize when no stateful protocol is configured", () =>
+      Effect.gen(function*() {
+        const test = yield* McpConformance
+        const response = yield* test.post({
+          jsonrpc: "2.0",
+          id: 10,
+          method: "initialize",
+          params: {
+            protocolVersion: protocol.protocolVersion,
+            capabilities: {},
+            clientInfo: { name: "legacy-client", version: "1.0.0" }
+          }
+        })
+        const message = yield* test.decodeError(response)
+
+        assert.strictEqual(response.status, 200)
+        assert.strictEqual(message.error.code, -32022)
+        assert.strictEqual(
+          message.error.message,
+          `initialize is not supported by the configured MCP protocols (requested '${protocol.protocolVersion}')`
+        )
+      }))
+
+    it.effect("should accept cancellation notifications without request metadata", () =>
+      Effect.gen(function*() {
+        const test = yield* McpConformance
+        const response = yield* test.post({
+          jsonrpc: "2.0",
+          method: "notifications/cancelled",
+          params: { requestId: "already-complete" }
+        }, headers("notifications/cancelled"))
+
+        assert.strictEqual(response.status, 202)
+        assert.strictEqual(yield* Effect.promise(() => response.text()), "")
+      }))
   })
 
   describe("Transports", () => {
