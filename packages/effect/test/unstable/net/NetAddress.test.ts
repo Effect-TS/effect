@@ -230,19 +230,11 @@ describe("NetAddress", () => {
     assert.isFalse(NetAddress.isMacAddress(NetAddress.ipv4Loopback))
   })
 
-  it("decodes NetAddressError as a schema-backed error", () => {
+  it("returns NetAddressError from checked operations", () => {
     const result = NetAddress.ipFromString("localhost")
     if (Result.isSuccess(result)) assert.fail("expected Failure")
     assert.instanceOf(result.failure, NetAddress.NetAddressError)
-
-    const error = Schema.decodeUnknownSync(NetAddress.NetAddressError)({
-      _tag: "NetAddressError",
-      input: "localhost",
-      kind: "IpAddress",
-      reason: "expected a numeric address"
-    })
-    assert.instanceOf(error, NetAddress.NetAddressError)
-    assert.strictEqual(error.message, "IpAddress: expected a numeric address")
+    assert.strictEqual(result.failure.message, "IpAddress: expected exactly four decimal octets")
   })
 
   describe("socket addresses", () => {

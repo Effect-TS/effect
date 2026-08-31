@@ -3,12 +3,12 @@
  *
  * @since 4.0.0
  */
+import type * as Cause from "../../Cause.ts"
 import type * as Equal from "../../Equal.ts"
 import type * as Hash from "../../Hash.ts"
 import * as internal from "../../internal/netAddress.ts"
 import type * as Option from "../../Option.ts"
 import * as Result from "../../Result.ts"
-import * as Schema from "../../Schema.ts"
 
 const TypeId = internal.TypeId
 
@@ -484,24 +484,24 @@ export const formatSocketAddress: (self: SocketAddress) => string = internal.for
  * @category errors
  * @since 4.0.0
  */
-export class NetAddressError extends Schema.TaggedError<NetAddressError>("effect/net/NetAddressError")(
-  "NetAddressError",
-  {
-    input: Schema.Unknown,
-    kind: Schema.Literals(["Ipv4Address", "Ipv6Address", "IpAddress", "MacAddress", "InetAddress", "Port"]),
-    reason: Schema.String
-  }
-) {
-  override get message(): string {
-    return `${this.kind}: ${this.reason}`
-  }
+export interface NetAddressError extends Cause.YieldableError {
+  readonly _tag: "NetAddressError"
+  readonly input: unknown
+  readonly kind: "Ipv4Address" | "Ipv6Address" | "IpAddress" | "MacAddress" | "InetAddress" | "Port"
+  readonly reason: string
 }
 
-const mapError = <A>(result: Result.Result<A, internal.NetAddressIssue>): Result.Result<A, NetAddressError> =>
-  Result.mapError(
-    result,
-    (error) => new NetAddressError({ input: error.input, kind: error.kind, reason: error.reason })
-  )
+/**
+ * Constructs a checked network-address operation failure.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export const NetAddressError: new(args: {
+  readonly input: unknown
+  readonly kind: NetAddressError["kind"]
+  readonly reason: string
+}) => NetAddressError = internal.NetAddressError
 
 /**
  * Creates an IPv4 address from four checked octets.
@@ -514,7 +514,7 @@ export const ipv4FromOctets = (
   b: number,
   c: number,
   d: number
-): Result.Result<Ipv4Address, NetAddressError> => mapError(internal.ipv4FromOctets(a, b, c, d))
+): Result.Result<Ipv4Address, NetAddressError> => internal.ipv4FromOctets(a, b, c, d)
 
 /**
  * Creates an IPv6 address from eight checked 16-bit segments.
@@ -531,7 +531,7 @@ export const ipv6FromSegments = (
   f: number,
   g: number,
   h: number
-): Result.Result<Ipv6Address, NetAddressError> => mapError(internal.ipv6FromSegments(a, b, c, d, e, f, g, h))
+): Result.Result<Ipv6Address, NetAddressError> => internal.ipv6FromSegments(a, b, c, d, e, f, g, h)
 
 /**
  * Creates a MAC address from six checked octets.
@@ -546,7 +546,7 @@ export const macAddressFromOctets = (
   d: number,
   e: number,
   f: number
-): Result.Result<MacAddress, NetAddressError> => mapError(internal.macAddressFromOctets(a, b, c, d, e, f))
+): Result.Result<MacAddress, NetAddressError> => internal.macAddressFromOctets(a, b, c, d, e, f)
 
 /**
  * Parses a colon-separated MAC address containing six two-digit hexadecimal octets.
@@ -556,7 +556,7 @@ export const macAddressFromOctets = (
  */
 export const macAddressFromString = (
   input: string
-): Result.Result<MacAddress, NetAddressError> => mapError(internal.macAddressFromString(input))
+): Result.Result<MacAddress, NetAddressError> => internal.macAddressFromString(input)
 
 /**
  * Parses a trusted colon-separated MAC address, throwing on failure.
@@ -574,7 +574,7 @@ export const macAddressFromStringUnsafe = (input: string): MacAddress => Result.
  */
 export const ipv4FromString = (
   input: string
-): Result.Result<Ipv4Address, NetAddressError> => mapError(internal.ipv4FromString(input))
+): Result.Result<Ipv4Address, NetAddressError> => internal.ipv4FromString(input)
 
 /**
  * Parses an IPv6 address with optional compression and trailing embedded IPv4.
@@ -584,7 +584,7 @@ export const ipv4FromString = (
  */
 export const ipv6FromString = (
   input: string
-): Result.Result<Ipv6Address, NetAddressError> => mapError(internal.ipv6FromString(input))
+): Result.Result<Ipv6Address, NetAddressError> => internal.ipv6FromString(input)
 
 /**
  * Parses a bare numeric IPv4 or IPv6 address.
@@ -594,7 +594,7 @@ export const ipv6FromString = (
  */
 export const ipFromString = (
   input: string
-): Result.Result<IpAddress, NetAddressError> => mapError(internal.ipFromString(input))
+): Result.Result<IpAddress, NetAddressError> => internal.ipFromString(input)
 
 /**
  * Parses a trusted bare numeric IPv4 or IPv6 address, throwing on failure.
@@ -613,7 +613,7 @@ export const ipFromStringUnsafe = (input: string): IpAddress => Result.getOrThro
 export const inetAddressV4 = (
   address: Ipv4Address,
   port: number
-): Result.Result<InetAddressV4, NetAddressError> => mapError(internal.inetAddressV4(address, port))
+): Result.Result<InetAddressV4, NetAddressError> => internal.inetAddressV4(address, port)
 
 /**
  * Creates a checked IPv6 internet address with optional flow and scope metadata.
@@ -625,7 +625,7 @@ export const inetAddressV6 = (
   address: Ipv6Address,
   port: number,
   options?: { readonly flowInfo?: number | undefined; readonly scopeId?: number | undefined }
-): Result.Result<InetAddressV6, NetAddressError> => mapError(internal.inetAddressV6(address, port, options))
+): Result.Result<InetAddressV6, NetAddressError> => internal.inetAddressV6(address, port, options)
 
 /**
  * Creates a checked internet address for an IP address and port.
@@ -636,7 +636,7 @@ export const inetAddressV6 = (
 export const inetAddress = (
   address: IpAddress,
   port: number
-): Result.Result<InetAddress, NetAddressError> => mapError(internal.inetAddress(address, port))
+): Result.Result<InetAddress, NetAddressError> => internal.inetAddress(address, port)
 
 /**
  * Creates an internet address from a trusted IP address and port, throwing on failure.
@@ -656,7 +656,7 @@ export const inetAddressUnsafe = (address: IpAddress, port: number): InetAddress
 export const inetAddressFromIpString = (
   address: string,
   port: number
-): Result.Result<InetAddress, NetAddressError> => mapError(internal.inetAddressFromIpString(address, port))
+): Result.Result<InetAddress, NetAddressError> => internal.inetAddressFromIpString(address, port)
 
 /**
  * Creates an internet address from a trusted numeric IP string and port.
@@ -675,7 +675,7 @@ export const inetAddressFromIpStringUnsafe = (address: string, port: number): In
  */
 export const inetAddressFromString = (
   input: string
-): Result.Result<InetAddress, NetAddressError> => mapError(internal.inetAddressFromString(input))
+): Result.Result<InetAddress, NetAddressError> => internal.inetAddressFromString(input)
 
 /**
  * Parses a trusted numeric internet address and port, throwing on failure.

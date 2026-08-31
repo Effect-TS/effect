@@ -3,6 +3,7 @@
  *
  * @since 4.0.0
  */
+import * as Data from "../Data.ts"
 import * as Equal from "../Equal.ts"
 import { dual } from "../Function.ts"
 import * as Hash from "../Hash.ts"
@@ -26,11 +27,14 @@ type UnixPathAddress = NetAddress.UnixPathAddress
 type SocketAddress = NetAddress.SocketAddress
 
 /** @internal */
-export interface NetAddressIssue {
+export class NetAddressError extends Data.TaggedError("NetAddressError")<{
   readonly input: unknown
   readonly kind: "Ipv4Address" | "Ipv6Address" | "IpAddress" | "MacAddress" | "InetAddress" | "Port"
   readonly reason: string
-  readonly message: string
+}> {
+  override get message(): string {
+    return `${this.kind}: ${this.reason}`
+  }
 }
 
 type Address = IpAddress | MacAddress | SocketAddress
@@ -230,10 +234,10 @@ export const ipv6Unspecified: Ipv6Address = makeIpv6(new Uint8Array(16))
 export const ipv4Broadcast: Ipv4Address = makeIpv4(new Uint8Array([255, 255, 255, 255]))
 
 const addressError = (
-  kind: NetAddressIssue["kind"],
+  kind: NetAddressError["kind"],
   input: unknown,
   reason: string
-): Result.Result<never, NetAddressIssue> => Result.fail({ kind, input, reason, message: `${kind}: ${reason}` })
+): Result.Result<never, NetAddressError> => Result.fail(new NetAddressError({ kind, input, reason }))
 
 /**
  * Creates an IPv4 address from four checked octets.
@@ -246,7 +250,7 @@ export const ipv4FromOctets = (
   b: number,
   c: number,
   d: number
-): Result.Result<Ipv4Address, NetAddressIssue> => {
+): Result.Result<Ipv4Address, NetAddressError> => {
   const octets = [a, b, c, d]
   if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
     return addressError("Ipv4Address", octets, "octets must be integers from 0 through 255")
@@ -269,7 +273,7 @@ export const ipv6FromSegments = (
   f: number,
   g: number,
   h: number
-): Result.Result<Ipv6Address, NetAddressIssue> => {
+): Result.Result<Ipv6Address, NetAddressError> => {
   const segments = [a, b, c, d, e, f, g, h]
   if (!segments.every((n) => Number.isInteger(n) && n >= 0 && n <= 0xffff)) {
     return addressError("Ipv6Address", segments, "segments must be integers from 0 through 65535")
@@ -295,7 +299,7 @@ export const macAddressFromOctets = (
   d: number,
   e: number,
   f: number
-): Result.Result<MacAddress, NetAddressIssue> => {
+): Result.Result<MacAddress, NetAddressError> => {
   const octets = [a, b, c, d, e, f]
   if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
     return addressError("MacAddress", octets, "octets must be integers from 0 through 255")
@@ -309,7 +313,7 @@ export const macAddressFromOctets = (
  * @category decoding
  * @since 4.0.0
  */
-export const macAddressFromString = (input: string): Result.Result<MacAddress, NetAddressIssue> => {
+export const macAddressFromString = (input: string): Result.Result<MacAddress, NetAddressError> => {
   if (!/^(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/.test(input)) {
     return addressError("MacAddress", input, "expected six two-digit hexadecimal octets separated by colons")
   }
@@ -334,7 +338,7 @@ export const macAddressFromStringUnsafe = (input: string): MacAddress => Result.
  * @category decoding
  * @since 4.0.0
  */
-export const ipv4FromString = (input: string): Result.Result<Ipv4Address, NetAddressIssue> => {
+export const ipv4FromString = (input: string): Result.Result<Ipv4Address, NetAddressError> => {
   const parts = input.split(".")
   if (parts.length !== 4 || parts.some((part) => !/^\d{1,3}$/.test(part))) {
     return addressError("Ipv4Address", input, "expected exactly four decimal octets")
@@ -349,7 +353,7 @@ export const ipv4FromString = (input: string): Result.Result<Ipv4Address, NetAdd
   return ipv4FromOctets(octets[0], octets[1], octets[2], octets[3])
 }
 
-const parseIpv6Segments = (input: string): Result.Result<ReadonlyArray<number>, NetAddressIssue> => {
+const parseIpv6Segments = (input: string): Result.Result<ReadonlyArray<number>, NetAddressError> => {
   if (input.includes("[") || input.includes("]") || input.includes("%")) {
     return addressError("Ipv6Address", input, "brackets and zone identifiers are not valid in a bare IPv6 address")
   }
@@ -402,7 +406,7 @@ const parseIpv6Segments = (input: string): Result.Result<ReadonlyArray<number>, 
  * @category decoding
  * @since 4.0.0
  */
-export const ipv6FromString = (input: string): Result.Result<Ipv6Address, NetAddressIssue> => {
+export const ipv6FromString = (input: string): Result.Result<Ipv6Address, NetAddressError> => {
   const parsed = parseIpv6Segments(input)
   return Result.isFailure(parsed)
     ? Result.fail(parsed.failure)
@@ -415,8 +419,8 @@ export const ipv6FromString = (input: string): Result.Result<Ipv6Address, NetAdd
  * @category decoding
  * @since 4.0.0
  */
-export const ipFromString = (input: string): Result.Result<IpAddress, NetAddressIssue> => {
-  const result: Result.Result<IpAddress, NetAddressIssue> = input.includes(":")
+export const ipFromString = (input: string): Result.Result<IpAddress, NetAddressError> => {
+  const result: Result.Result<IpAddress, NetAddressError> = input.includes(":")
     ? ipv6FromString(input)
     : ipv4FromString(input)
   return Result.isFailure(result)
@@ -771,7 +775,7 @@ const InetV6Proto = {
   }
 }
 
-const checkPort = (port: number): Result.Result<number, NetAddressIssue> =>
+const checkPort = (port: number): Result.Result<number, NetAddressError> =>
   Number.isInteger(port) && port >= 0 && port <= 0xffff
     ? Result.succeed(port)
     : addressError("Port", port, "port must be an integer from 0 through 65535")
@@ -782,7 +786,7 @@ const checkPort = (port: number): Result.Result<number, NetAddressIssue> =>
  * @category constructors
  * @since 4.0.0
  */
-export const inetAddressV4 = (address: Ipv4Address, port: number): Result.Result<InetAddressV4, NetAddressIssue> => {
+export const inetAddressV4 = (address: Ipv4Address, port: number): Result.Result<InetAddressV4, NetAddressError> => {
   const checked = checkPort(port)
   if (Result.isFailure(checked)) return Result.fail(checked.failure)
   const self = Object.create(InetV4Proto)
@@ -801,7 +805,7 @@ export const inetAddressV6 = (
   address: Ipv6Address,
   port: number,
   options?: { readonly flowInfo?: number | undefined; readonly scopeId?: number | undefined }
-): Result.Result<InetAddressV6, NetAddressIssue> => {
+): Result.Result<InetAddressV6, NetAddressError> => {
   const checked = checkPort(port)
   if (Result.isFailure(checked)) return Result.fail(checked.failure)
   const flowInfo = options?.flowInfo ?? 0
@@ -826,7 +830,7 @@ export const inetAddressV6 = (
  * @category constructors
  * @since 4.0.0
  */
-export const inetAddress = (address: IpAddress, port: number): Result.Result<InetAddress, NetAddressIssue> =>
+export const inetAddress = (address: IpAddress, port: number): Result.Result<InetAddress, NetAddressError> =>
   isIpv4Address(address) ? inetAddressV4(address, port) : inetAddressV6(address, port)
 
 /**
@@ -852,7 +856,7 @@ export const inetAddressUnsafe = (address: IpAddress, port: number): InetAddress
 export const inetAddressFromIpString = (
   address: string,
   port: number
-): Result.Result<InetAddress, NetAddressIssue> => {
+): Result.Result<InetAddress, NetAddressError> => {
   const parsed = ipFromString(address)
   return Result.isFailure(parsed) ? Result.fail(parsed.failure) : inetAddress(parsed.success, port)
 }
@@ -877,7 +881,7 @@ export const inetAddressFromIpStringUnsafe = (address: string, port: number): In
  * @category decoding
  * @since 4.0.0
  */
-export const inetAddressFromString = (input: string): Result.Result<InetAddress, NetAddressIssue> => {
+export const inetAddressFromString = (input: string): Result.Result<InetAddress, NetAddressError> => {
   let host: string
   let portText: string
   let scopeId = 0

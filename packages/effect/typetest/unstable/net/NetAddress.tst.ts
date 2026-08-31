@@ -27,14 +27,6 @@ describe("NetAddress", () => {
   })
 
   it("exposes string transformation schemas", () => {
-    expect(
-      Schema.decodeUnknownSync(NetAddress.NetAddressError)({
-        _tag: "NetAddressError",
-        input: "localhost",
-        kind: "IpAddress",
-        reason: "expected a numeric address"
-      })
-    ).type.toBe<NetAddress.NetAddressError>()
     expect(Schema.MacAddressFromString).type.toBeAssignableTo<Schema.Codec<NetAddress.MacAddress, string>>()
     expect(Schema.IpAddressFromString).type.toBeAssignableTo<Schema.Codec<NetAddress.IpAddress, string>>()
     expect(Schema.InetAddressFromString).type.toBeAssignableTo<Schema.Codec<NetAddress.InetAddress, string>>()
