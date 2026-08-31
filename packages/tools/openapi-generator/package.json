@@ -66,13 +66,13 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "swagger2openapi": "^7.0.8"
+    "swagger2openapi": "^7.0.8",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/swagger2openapi": "^7.0.4",
     "effect": "workspace:^",
     "json-schema-typed": "^8.0.2",
-    "openapi-typescript": "^7.13.0",
-    "yaml": "^2.9.0"
+    "openapi-typescript": "^7.13.0"
   }
 }
