@@ -11,20 +11,20 @@ import { NodeInspectSymbol } from "../Inspectable.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Result from "../Result.ts"
-import type * as NetAddress from "../unstable/net/NetAddress.ts"
+import type {
+  InetAddress,
+  InetAddressV4,
+  InetAddressV6,
+  IpAddress,
+  Ipv4Address,
+  Ipv6Address,
+  MacAddress,
+  SocketAddress,
+  UnixPathAddress
+} from "../unstable/net/NetAddress.ts"
 
 /** @internal */
 export const TypeId = "~effect/net/NetAddress" as const
-
-type Ipv4Address = NetAddress.Ipv4Address
-type Ipv6Address = NetAddress.Ipv6Address
-type IpAddress = NetAddress.IpAddress
-type MacAddress = NetAddress.MacAddress
-type InetAddressV4 = NetAddress.InetAddressV4
-type InetAddressV6 = NetAddress.InetAddressV6
-type InetAddress = NetAddress.InetAddress
-type UnixPathAddress = NetAddress.UnixPathAddress
-type SocketAddress = NetAddress.SocketAddress
 
 /** @internal */
 export class NetAddressError extends Data.TaggedError("NetAddressError")<{
