@@ -178,10 +178,14 @@ const isTchar = (code: number): boolean =>
   code === 33 || code === 35 || code === 36 || code === 37 || code === 38 || code === 39 || code === 42 ||
   code === 43 || code === 45 || code === 46 || code === 94 || code === 95 || code === 96 || code === 124 || code === 126
 
+const tokenEnd = (input: string, start: number): number => {
+  let end = start
+  while (end < input.length && isTchar(input.charCodeAt(end))) end++
+  return end
+}
+
 const isToken = (value: string): boolean => {
-  if (value.length === 0) return false
-  for (let i = 0; i < value.length; i++) if (!isTchar(value.charCodeAt(i))) return false
-  return true
+  return value.length > 0 && tokenEnd(value, 0) === value.length
 }
 
 const isDecodedValue = (value: string): boolean => {
@@ -288,14 +292,14 @@ export const parse = (input: string): Result.Result<MediaType, MediaTypeParseErr
   const length = input.length
   let index = skipOws(input, 0)
   const typeStart = index
-  while (index < length && isTchar(input.charCodeAt(index))) index++
+  index = tokenEnd(input, index)
   if (index === typeStart) return fail(input, index, "ExpectedType")
   const type = input.slice(typeStart, index).toLowerCase()
   if (type === "*") return fail(input, typeStart, "ExpectedType")
   if (input.charCodeAt(index) !== 47) return fail(input, index, "ExpectedSlash")
   index++
   const subtypeStart = index
-  while (index < length && isTchar(input.charCodeAt(index))) index++
+  index = tokenEnd(input, index)
   if (index === subtypeStart) return fail(input, index, "ExpectedSubtype")
   const subtype = input.slice(subtypeStart, index).toLowerCase()
   if (subtype === "*") return fail(input, subtypeStart, "ExpectedSubtype")
@@ -310,7 +314,7 @@ export const parse = (input: string): Result.Result<MediaType, MediaTypeParseErr
     if (index === length || input.charCodeAt(index) === 59) continue
 
     const nameStart = index
-    while (index < length && isTchar(input.charCodeAt(index))) index++
+    index = tokenEnd(input, index)
     if (index === nameStart) return fail(input, index, "ExpectedParameterName")
     const name = input.slice(nameStart, index).toLowerCase()
     if (names.has(name)) return fail(input, nameStart, "DuplicateParameter")
@@ -351,7 +355,7 @@ export const parse = (input: string): Result.Result<MediaType, MediaTypeParseErr
       if (!closed) return fail(input, index, "ExpectedParameterValue")
     } else {
       const valueStart = index
-      while (index < length && isTchar(input.charCodeAt(index))) index++
+      index = tokenEnd(input, index)
       if (index === valueStart) return fail(input, index, "ExpectedParameterValue")
       value = input.slice(valueStart, index)
     }

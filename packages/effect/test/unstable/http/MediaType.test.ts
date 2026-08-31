@@ -60,6 +60,30 @@ describe("MediaType", () => {
     strictEqual(MediaType.format(mediaType), "text/plain; a=token; b=\"a; b\"; c=\"\\\"\\\\\"; d=\"\tÿ\"")
   })
 
+  it("handles strict vectors from Go and WHATWG parser corpora", () => {
+    const vectors = [
+      ["text/plain; empty=\"\"", "text/plain; empty=\"\""],
+      ["application/pdf; name=\"Here's a semicolon;.pdf\"", "application/pdf; name=\"Here's a semicolon;.pdf\""],
+      ["text/plain; charset=utf-8 \t", "text/plain; charset=utf-8"]
+    ] as const
+    for (const [input, expected] of vectors) {
+      strictEqual(MediaType.format(parse(input)), expected)
+    }
+  })
+
+  it("preserves intentional differences from Go and WHATWG parsers", () => {
+    // Go's MIME grammar accepts braces and equal duplicate parameters; RFC 9110 does not.
+    assertFailure("text/plain; filename={file}.txt", "ExpectedParameterValue")
+    assertFailure("text/plain; charset=utf-8; charset=utf-8", "DuplicateParameter")
+    // Go preserves unnecessary backslashes for legacy IE paths; RFC quoted-pair decodes them.
+    strictEqual(MediaType.format(parse("text/plain; escaped=\"foo\\xbar\"")), "text/plain; escaped=fooxbar")
+    // WHATWG recovers from malformed parameters; this parser validates the complete input.
+    assertFailure("text/html; charset=\"shift_jis\"iso-2022-jp", "UnexpectedCharacter")
+    assertFailure("text/plain; charset=utf-8; broken", "ExpectedEquals")
+    // HTTP OWS is SP / HTAB, not arbitrary Unicode whitespace.
+    assertFailure("text/plain;\u00a0charset=utf-8", "ExpectedParameterName")
+  })
+
   it("rejects malformed input with a structured error", () => {
     assertFailure("", "ExpectedType")
     assertFailure("text", "ExpectedSlash")
