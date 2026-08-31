@@ -6,14 +6,12 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 const fixture = join(__dirname, "fixtures", "node-terminal.ts")
-const nodeOptions = "--experimental-strip-types --experimental-transform-types"
 
 const runFixture = (mode: string, input: string) =>
   spawnSync(process.execPath, [fixture, mode], {
     encoding: "utf8",
     input,
-    timeout: 2_000,
-    env: { ...process.env, NODE_OPTIONS: nodeOptions }
+    timeout: 2_000
   })
 
 const runTtyFixture = (mode: string, input: string) => {
@@ -26,8 +24,7 @@ const runTtyFixture = (mode: string, input: string) => {
       {
         encoding: "utf8",
         input,
-        timeout: 5_000,
-        env: { ...process.env, NODE_OPTIONS: nodeOptions }
+        timeout: 5_000
       }
     )
     const output = readFileSync(logFile, "utf8")
@@ -53,9 +50,7 @@ const assertResult = (mode: string, input: string, expected: string) => {
 
 const assertOpenResult = (mode: string, input: string, expected: string) =>
   Effect.callback<void>((resume) => {
-    const child = spawn(process.execPath, [fixture, mode], {
-      env: { ...process.env, NODE_OPTIONS: nodeOptions }
-    })
+    const child = spawn(process.execPath, [fixture, mode])
     let stderr = ""
     child.stderr.setEncoding("utf8")
     child.stderr.on("data", (data) => {
