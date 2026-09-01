@@ -1612,7 +1612,7 @@ export const TracerHeaderFilter = Context.Reference<
  * @category services
  * @since 4.0.0
  */
-export const TracerPropagationEnabled = Context.Reference<boolean>("effect/HttpClient/TracerPropagationEnabled", {
+export const TracerPropagationEnabled = Context.Reference<boolean>("effect/http/HttpClient/TracerPropagationEnabled", {
   defaultValue: constTrue
 })
 
