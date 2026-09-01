@@ -4,6 +4,7 @@ import { RedisContainer } from "@testcontainers/redis"
 import { Effect, Layer, Queue, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/unstable/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
+import { TestClock } from "effect/testing"
 import { PersistedQueue, Persistence, Redis } from "effect/unstable/persistence"
 import { createServer } from "node:net"
 
@@ -95,10 +96,11 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
 
         const queue = yield* PersistedQueue.make({
           name: queueName,
-          schema: RedisItem
+          schema: RedisItem,
+          maxAttempts: 1
         })
         const id = yield* queue.offer({ n: 42 })
-        const error = yield* queue.take(() => Effect.fail("boom"), { maxAttempts: 1 }).pipe(Effect.flip)
+        const error = yield* queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
         assert.strictEqual(error, "boom")
 
         const failed = yield* redis.use((client) => client.lRange(`effectq:${queueName}:failed`, 0, -1))
@@ -111,6 +113,78 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
         const pending = yield* redis.use((client) => client.hLen(`effectq:${queueName}:pending`))
         assert.strictEqual(pending, 0)
       }))
+
+    it.effect("recovers elements from crashed workers", () =>
+      Effect.gen(function*() {
+        const prefix = "effectq-crash:"
+        const store = yield* PersistedQueue.makeStoreRedis({
+          prefix,
+          pollInterval: "50 millis",
+          lockRefreshInterval: "100 millis",
+          lockExpiration: "1 second"
+        })
+        const factory = yield* PersistedQueue.makeFactory.pipe(
+          Effect.provideService(PersistedQueue.PersistedQueueStore, store)
+        )
+        const queue = yield* factory.make({ name: "crash-recovery", schema: RedisItem })
+        const redis = yield* Redis.Redis
+
+        // simulate a worker that claimed the element and then crashed: the
+        // element sits in the pending hash with a consumed attempt and no lock
+        yield* redis.send(
+          "HSET",
+          `${prefix}crash-recovery:pending`,
+          "crashed",
+          JSON.stringify({ id: "crashed", element: { n: 1 } })
+        )
+        yield* redis.send("HSET", `${prefix}crash-recovery:attempts`, "crashed", "1")
+
+        const result = yield* queue.take((value, metadata) => Effect.succeed([value.n, metadata.attempts]))
+        assert.deepStrictEqual(result, [1, 2])
+      }).pipe(TestClock.withLive), { timeout: 20000 })
+
+    it.effect("dead-letters elements from workers that crashed on the final attempt", () =>
+      Effect.gen(function*() {
+        const prefix = "effectq-crash-exhausted:"
+        const store = yield* PersistedQueue.makeStoreRedis({
+          prefix,
+          pollInterval: "50 millis",
+          lockRefreshInterval: "100 millis",
+          lockExpiration: "1 second"
+        })
+        const factory = yield* PersistedQueue.makeFactory.pipe(
+          Effect.provideService(PersistedQueue.PersistedQueueStore, store)
+        )
+        const queue = yield* factory.make({ name: "crash-exhausted", schema: RedisItem, maxAttempts: 1 })
+        const redis = yield* Redis.Redis
+
+        // the final attempt was claimed by a worker that crashed, so no
+        // finalizer will ever settle this element
+        yield* redis.send(
+          "HSET",
+          `${prefix}crash-exhausted:pending`,
+          "crashed",
+          JSON.stringify({ id: "crashed", element: { n: 1 } })
+        )
+        yield* redis.send("HSET", `${prefix}crash-exhausted:attempts`, "crashed", "1")
+
+        // an active taker runs the periodic reset that dead-letters such
+        // elements instead of redelivering them
+        const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        yield* Effect.sleep(1000)
+
+        const failed = yield* redis.send<Array<string>>("LRANGE", `${prefix}crash-exhausted:failed`, "0", "-1")
+        assert.strictEqual(failed.length, 1)
+        const failedItem = JSON.parse(failed[0])
+        assert.strictEqual(failedItem.id, "crashed")
+        assert.deepStrictEqual(failedItem.element, { n: 1 })
+        assert.strictEqual(failedItem.attempts, 1)
+        assert.include(failedItem.lastFailure, "Lock expired after final attempt")
+
+        const pending = yield* redis.send<number>("HLEN", `${prefix}crash-exhausted:pending`)
+        assert.strictEqual(Number(pending), 0)
+        assert.isUndefined(fiber.pollUnsafe())
+      }).pipe(TestClock.withLive), { timeout: 20000 })
   }
 )
 
