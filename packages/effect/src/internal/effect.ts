@@ -6226,7 +6226,7 @@ export class UnknownError extends TaggedError("UnknownError")<{
 
 /** @internal */
 export const ConsoleRef = Context.Reference<Console.Console>(
-  "effect/Console/CurrentConsole",
+  "effect/Console",
   { defaultValue: (): Console.Console => globalThis.console }
 )
 
@@ -6269,7 +6269,7 @@ export const isLogLevelGreaterThan = Order.isGreaterThan(LogLevelOrder)
 /** @internal */
 export const CurrentLoggers = Context.Reference<
   ReadonlySet<Logger.Logger<unknown, any>>
->("effect/Loggers/CurrentLoggers", {
+>("effect/Logger/CurrentLoggers", {
   defaultValue: () => new Set([defaultLogger, tracerLogger])
 })
 
