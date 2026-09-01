@@ -130,6 +130,40 @@ describe("Command help output", () => {
       expect(shortLine!.indexOf("Short flag description")).toBe(longLine!.indexOf("Long flag description"))
     }).pipe(Effect.provide(TestLayer)))
 
+  it.effect("aligns flag descriptions when flag names contain wide graphemes", () =>
+    Effect.gen(function*() {
+      const command = Command.make("tool", {
+        file: Flag.boolean("ファイル").pipe(Flag.withDescription("Wide flag description")),
+        emoji: Flag.boolean("👩‍💻").pipe(Flag.withDescription("Emoji flag description")),
+        verbose: Flag.boolean("verbose").pipe(Flag.withDescription("ASCII flag description"))
+      })
+      const run = Command.runWith(command, { version: "1.0.0" })
+
+      yield* run(["--help"])
+
+      const lines = (yield* TestConsole.logLines).join("\n").split("\n")
+      assert.include(lines, "  --ファイル    Wide flag description")
+      assert.include(lines, "  --👩‍💻          Emoji flag description")
+      assert.include(lines, "  --verbose     ASCII flag description")
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("aligns flag descriptions when flag names contain zero-width code points", () =>
+    Effect.gen(function*() {
+      const command = Command.make("tool", {
+        combining: Flag.boolean("e\u0301").pipe(Flag.withDescription("Combining flag description")),
+        zeroWidth: Flag.boolean("a\u200Bb").pipe(Flag.withDescription("Zero-width flag description")),
+        ascii: Flag.boolean("abcd").pipe(Flag.withDescription("ASCII flag description"))
+      })
+      const run = Command.runWith(command, { version: "1.0.0" })
+
+      yield* run(["--help"])
+
+      const lines = (yield* TestConsole.logLines).join("\n").split("\n")
+      assert.include(lines, "  --e\u0301       Combining flag description")
+      assert.include(lines, "  --a\u200Bb      Zero-width flag description")
+      assert.include(lines, "  --abcd    ASCII flag description")
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("separates long subcommand and argument names from their descriptions", () =>
     Effect.gen(function*() {
       const child = Command.make("account:set-password", {
