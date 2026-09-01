@@ -38,7 +38,7 @@ export class HttpPlatform extends Context.Service<HttpPlatform, {
     path: string,
     options?: Response.Options.WithContent & {
       readonly bytesToRead?: ByteSize.Input | undefined
-      readonly chunkSize?: ByteSize.Input | undefined
+      readonly chunkSize?: number | undefined
       readonly offset?: ByteSize.Input | undefined
     }
   ) => Effect.Effect<Response.HttpServerResponse, PlatformError>
@@ -46,7 +46,7 @@ export class HttpPlatform extends Context.Service<HttpPlatform, {
     file: Body.HttpBody.FileLike,
     options?: Response.Options.WithContent & {
       readonly bytesToRead?: ByteSize.Input | undefined
-      readonly chunkSize?: ByteSize.Input | undefined
+      readonly chunkSize?: number | undefined
       readonly offset?: ByteSize.Input | undefined
     }
   ) => Effect.Effect<Response.HttpServerResponse>
@@ -77,7 +77,7 @@ export const make: (impl: {
     headers: Headers.Headers,
     options?: {
       readonly bytesToRead?: ByteSize.ByteSize | undefined
-      readonly chunkSize?: ByteSize.ByteSize | undefined
+      readonly chunkSize?: number | undefined
       readonly offset?: ByteSize.ByteSize | undefined
     }
   ) => Response.HttpServerResponse
@@ -135,7 +135,7 @@ export const make: (impl: {
           bytesToRead: options.bytesToRead === undefined
             ? undefined
             : ByteSize.fromInputUnsafe(options.bytesToRead),
-          chunkSize: options.chunkSize === undefined ? undefined : ByteSize.fromInputUnsafe(options.chunkSize),
+          chunkSize: options.chunkSize,
           offset: options.offset === undefined ? undefined : ByteSize.fromInputUnsafe(options.offset)
         }
         const headers = Headers.merge(
@@ -191,13 +191,9 @@ export const layer = Layer.effect(HttpPlatform)(
         const requested = options?.bytesToRead?.value
         const contentLengthBigInt = requested === undefined ? available : BI.min(requested, available)
         const endBigInt = offsetBigInt + contentLengthBigInt
-        const chunkSizeBigInt = BI.min(
-          BI.max(options?.chunkSize?.value ?? BigInt(Number.MAX_SAFE_INTEGER), BigInt(1)),
-          BigInt(Number.MAX_SAFE_INTEGER)
-        )
         const offset = Number(offsetBigInt)
         const end = Number(endBigInt)
-        const chunkSize = Number(chunkSizeBigInt)
+        const chunkSize = Math.min(Math.max(options?.chunkSize ?? Number.MAX_SAFE_INTEGER, 1), Number.MAX_SAFE_INTEGER)
         const stream = end <= offset
           ? Stream.empty
           : Stream.fromReadableStream({

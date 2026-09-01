@@ -947,13 +947,13 @@ export const layer = <
  * **Example** (Writing JSON logs to a file)
  *
  * ```ts import.meta.vitest
- * import { ByteSize, Effect, FileSystem, Logger } from "effect"
+ * import { Effect, FileSystem, Logger } from "effect"
  *
  * const writes: Array<string> = []
  * const file = {
  *   write: (buffer: Uint8Array) => Effect.sync(() => {
  *     writes.push(new TextDecoder().decode(buffer).trim())
- *     return ByteSize.bytes(buffer.length)
+ *     return buffer.length
  *   })
  * } as unknown as FileSystem.File
  * const fileSystem = FileSystem.makeNoop({ open: () => Effect.succeed(file) })
@@ -973,13 +973,13 @@ export const layer = <
  * **Example** (Writing logs to files)
  *
  * ```ts import.meta.vitest
- * import { ByteSize, Effect, FileSystem, Logger } from "effect"
+ * import { Effect, FileSystem, Logger } from "effect"
  *
  * const writes: Array<string> = []
  * const file = {
  *   write: (buffer: Uint8Array) => Effect.sync(() => {
  *     writes.push(new TextDecoder().decode(buffer).trim())
- *     return ByteSize.bytes(buffer.length)
+ *     return buffer.length
  *   })
  * } as unknown as FileSystem.File
  * const fileSystem = FileSystem.makeNoop({ open: () => Effect.succeed(file) })

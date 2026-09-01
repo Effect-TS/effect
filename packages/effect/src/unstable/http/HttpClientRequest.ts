@@ -838,7 +838,7 @@ export const bodyFile: {
     path: string,
     options?: {
       readonly bytesToRead?: ByteSize.Input | undefined
-      readonly chunkSize?: ByteSize.Input | undefined
+      readonly chunkSize?: number | undefined
       readonly offset?: ByteSize.Input | undefined
       readonly contentType?: string
     }
@@ -848,7 +848,7 @@ export const bodyFile: {
     path: string,
     options?: {
       readonly bytesToRead?: ByteSize.Input | undefined
-      readonly chunkSize?: ByteSize.Input | undefined
+      readonly chunkSize?: number | undefined
       readonly offset?: ByteSize.Input | undefined
       readonly contentType?: string
     }
@@ -860,7 +860,7 @@ export const bodyFile: {
     path: string,
     options?: {
       readonly bytesToRead?: ByteSize.Input | undefined
-      readonly chunkSize?: ByteSize.Input | undefined
+      readonly chunkSize?: number | undefined
       readonly offset?: ByteSize.Input | undefined
       readonly contentType?: string
     }

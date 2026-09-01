@@ -308,42 +308,40 @@ const makeFile = (() => {
         return Effect.map(
           nodeRead(this.fd, { buffer, position }),
           (bytesRead) => {
-            const sizeRead = ByteSize.bytes(bytesRead)
             this.position = position + BigInt(bytesRead)
-            return sizeRead
+            return bytesRead
           }
         )
       })
     }
 
-    readAlloc(size: ByteSize.Input) {
-      return Effect.flatMap(byteSizeToNumber(size, "readAlloc"), (sizeNumber) =>
-        Effect.flatMap(
-          Effect.try({
-            try: () => Buffer.allocUnsafeSlow(sizeNumber),
-            catch: handleBadArgument("readAlloc")
-          }),
-          (buffer) => {
-            const position = this.position
-            return Effect.map(
-              nodeReadAlloc(this.fd, { buffer, position }),
-              (bytesRead): Option.Option<Buffer> => {
-                if (bytesRead === 0) {
-                  return Option.none()
-                }
-
-                this.position = position + BigInt(bytesRead)
-                if (bytesRead === sizeNumber) {
-                  return Option.some(buffer)
-                }
-
-                const dst = Buffer.allocUnsafeSlow(bytesRead)
-                buffer.copy(dst, 0, 0, bytesRead)
-                return Option.some(dst)
+    readAlloc(size: number) {
+      return Effect.flatMap(
+        Effect.try({
+          try: () => Buffer.allocUnsafeSlow(size),
+          catch: handleBadArgument("readAlloc")
+        }),
+        (buffer) => {
+          const position = this.position
+          return Effect.map(
+            nodeReadAlloc(this.fd, { buffer, position }),
+            (bytesRead): Option.Option<Buffer> => {
+              if (bytesRead === 0) {
+                return Option.none()
               }
-            )
-          }
-        ))
+
+              this.position = position + BigInt(bytesRead)
+              if (bytesRead === size) {
+                return Option.some(buffer)
+              }
+
+              const dst = Buffer.allocUnsafeSlow(bytesRead)
+              buffer.copy(dst, 0, 0, bytesRead)
+              return Option.some(dst)
+            }
+          )
+        }
+      )
     }
 
     truncate(length?: ByteSize.Input) {
@@ -371,11 +369,10 @@ const makeFile = (() => {
             Effect.map(
               nodeWrite(this.fd, buffer, undefined, undefined, positionNumber),
               (bytesWritten) => {
-                const sizeWritten = ByteSize.bytes(bytesWritten)
                 if (!this.append) {
                   this.position = position + BigInt(bytesWritten)
                 }
-                return sizeWritten
+                return bytesWritten
               }
             )
         )

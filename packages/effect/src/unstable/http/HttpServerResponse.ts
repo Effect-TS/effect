@@ -486,7 +486,7 @@ export const file = (
   options?:
     | (Options & {
       readonly bytesToRead?: ByteSize.Input | undefined
-      readonly chunkSize?: ByteSize.Input | undefined
+      readonly chunkSize?: number | undefined
       readonly offset?: ByteSize.Input | undefined
     })
     | undefined
@@ -509,7 +509,7 @@ export const fileWeb = (
   options?:
     | (Options.WithContent & {
       readonly bytesToRead?: ByteSize.Input | undefined
-      readonly chunkSize?: ByteSize.Input | undefined
+      readonly chunkSize?: number | undefined
       readonly offset?: ByteSize.Input | undefined
     })
     | undefined

@@ -322,7 +322,7 @@ export interface FileSystem {
     path: string,
     options?: {
       readonly bytesToRead?: ByteSize.Input | undefined
-      readonly chunkSize?: ByteSize.Input | undefined
+      readonly chunkSize?: number | undefined
       readonly offset?: ByteSize.Input | undefined
     }
   ) => Stream.Stream<Uint8Array, PlatformError>
@@ -527,9 +527,7 @@ export const make = (
         ? undefined
         : ByteSize.fromInputUnsafe(options.bytesToRead)
       let totalBytesRead = BigInt(0)
-      const chunkSize = options?.chunkSize === undefined
-        ? ByteSize.kibibytes(64)
-        : ByteSize.fromInputUnsafe(options.chunkSize)
+      const chunkSize = options?.chunkSize ?? 64 * 1024
       const readChunk = file.readAlloc(chunkSize)
       return Stream.fromPull(Effect.succeed(
         Effect.flatMap(
@@ -537,8 +535,8 @@ export const make = (
             if (bytesToRead !== undefined && bytesToRead.value <= totalBytesRead) {
               return Cause.done()
             }
-            return bytesToRead !== undefined && (bytesToRead.value - totalBytesRead) < chunkSize.value
-              ? file.readAlloc(ByteSize.bytes(bytesToRead.value - totalBytesRead))
+            return bytesToRead !== undefined && (bytesToRead.value - totalBytesRead) < BigInt(chunkSize)
+              ? file.readAlloc(Number(bytesToRead.value - totalBytesRead))
               : readChunk
           }),
           Option.match({
@@ -826,11 +824,11 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  *   sync: Effect.void,
  *   read: (buffer) => Effect.sync(() => {
  *     buffer.set([1, 2, 3, 4, 5])
- *     return ByteSize.bytes(5)
+ *     return 5
  *   }),
  *   readAlloc: () => Effect.succeed(Option.none()),
  *   truncate: () => Effect.void,
- *   write: (buffer) => Effect.succeed(ByteSize.bytes(buffer.length)),
+ *   write: (buffer) => Effect.succeed(buffer.length),
  *   writeAll: () => Effect.void
  * }
  *
@@ -845,7 +843,7 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  *
  * const result = Effect.runSync(program)
  * ByteSize.toBigInt(result.size) // => 5n
- * ByteSize.toBigInt(result.bytesRead) // => 5n
+ * result.bytesRead // => 5
  * result.buffer // => [1, 2, 3, 4, 5]
  * ```
  *
@@ -857,10 +855,10 @@ export interface File {
   readonly stat: Effect.Effect<File.Info, PlatformError>
   readonly seek: (offset: bigint, from: SeekMode) => Effect.Effect<ByteSize.ByteSize, PlatformError>
   readonly sync: Effect.Effect<void, PlatformError>
-  readonly read: (buffer: Uint8Array) => Effect.Effect<ByteSize.ByteSize, PlatformError>
-  readonly readAlloc: (size: ByteSize.Input) => Effect.Effect<Option.Option<Uint8Array>, PlatformError>
+  readonly read: (buffer: Uint8Array) => Effect.Effect<number, PlatformError>
+  readonly readAlloc: (size: number) => Effect.Effect<Option.Option<Uint8Array>, PlatformError>
   readonly truncate: (length?: ByteSize.Input) => Effect.Effect<void, PlatformError>
-  readonly write: (buffer: Uint8Array) => Effect.Effect<ByteSize.ByteSize, PlatformError>
+  readonly write: (buffer: Uint8Array) => Effect.Effect<number, PlatformError>
   readonly writeAll: (buffer: Uint8Array) => Effect.Effect<void, PlatformError>
 }
 

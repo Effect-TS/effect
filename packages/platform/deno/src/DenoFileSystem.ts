@@ -253,9 +253,8 @@ class FileImpl implements FileSystem.File {
           }
         ),
         (bytesRead) => {
-          const sizeRead = ByteSize.bytes(bytesRead ?? 0)
           this.position = this.nativePosition = position + BigInt(bytesRead ?? 0)
-          return sizeRead
+          return bytesRead ?? 0
         }
       )
     })
@@ -265,29 +264,26 @@ class FileImpl implements FileSystem.File {
     return this.readChunk("read", buffer)
   }
 
-  readAlloc(size: ByteSize.Input) {
-    return Effect.flatMap(byteSizeToNumber(size, "readAlloc"), (sizeNumber) =>
-      Effect.flatMap(
-        Effect.try({
-          try: () => new Uint8Array(sizeNumber),
-          catch: (cause) =>
-            PlatformError.badArgument({
-              module: "FileSystem",
-              method: "readAlloc",
-              description: cause instanceof Error ? cause.message : String(cause)
-            })
-        }),
-        (buffer) => {
-          return Effect.map(this.readChunk("readAlloc", buffer), (bytesRead) => {
-            if (ByteSize.isZero(bytesRead)) {
-              return Option.none()
-            }
-            return Option.some(
-              bytesRead.value === BigInt(sizeNumber) ? buffer : buffer.subarray(0, Number(bytesRead.value))
-            )
+  readAlloc(size: number) {
+    return Effect.flatMap(
+      Effect.try({
+        try: () => new Uint8Array(size),
+        catch: (cause) =>
+          PlatformError.badArgument({
+            module: "FileSystem",
+            method: "readAlloc",
+            description: cause instanceof Error ? cause.message : String(cause)
           })
-        }
-      ))
+      }),
+      (buffer) => {
+        return Effect.map(this.readChunk("readAlloc", buffer), (bytesRead) => {
+          if (bytesRead === 0) {
+            return Option.none()
+          }
+          return Option.some(bytesRead === size ? buffer : buffer.subarray(0, bytesRead))
+        })
+      }
+    )
   }
 
   truncate(length?: ByteSize.Input) {
@@ -319,13 +315,12 @@ class FileImpl implements FileSystem.File {
           }
         ),
         (bytesWritten) => {
-          const sizeWritten = ByteSize.bytes(bytesWritten)
           if (this.append) {
             this.nativePosition = undefined
           } else {
             this.position = this.nativePosition = position + BigInt(bytesWritten)
           }
-          return sizeWritten
+          return bytesWritten
         }
       )
     })
@@ -337,7 +332,7 @@ class FileImpl implements FileSystem.File {
 
   private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, PlatformError.PlatformError> {
     return Effect.flatMap(this.writeChunk("writeAll", buffer), (bytesWritten) => {
-      if (ByteSize.isZero(bytesWritten)) {
+      if (bytesWritten === 0) {
         return Effect.fail(PlatformError.systemError({
           module: "FileSystem",
           method: "writeAll",
@@ -345,8 +340,8 @@ class FileImpl implements FileSystem.File {
           description: "write returned 0 bytes written"
         }))
       }
-      return bytesWritten.value < BigInt(buffer.length)
-        ? this.writeAllChunk(buffer.subarray(Number(bytesWritten.value)))
+      return bytesWritten < buffer.length
+        ? this.writeAllChunk(buffer.subarray(bytesWritten))
         : Effect.void
     })
   }
