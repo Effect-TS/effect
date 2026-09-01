@@ -17,9 +17,11 @@ const assertNotDelivered = <A, E>(fiber: Fiber.Fiber<A, E>) =>
     assert.isUndefined(fiber.pollUnsafe())
   })
 
-// move both the virtual clock and real time past a 1 second ttl
+// move both the virtual clock and real time past a 1 second ttl. The virtual
+// jump is kept small: a large jump can fire the SQL clients' pool timers and
+// time out in-flight connection acquisitions
 const advancePastTtl = Effect.gen(function*() {
-  yield* TestClock.adjust("2 minutes")
+  yield* TestClock.adjust("2 seconds")
   yield* Effect.sleep(1500).pipe(TestClock.withLive)
 })
 
@@ -314,6 +316,52 @@ export const suiteWith = <R>(
 
         const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
         yield* assertNotDelivered(fiber)
+      }), testOptions)
+
+    it.effect("processes concurrent elements exactly once with retries", () =>
+      Effect.gen(function*() {
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-soak",
+          schema: Item,
+          retrySchedule: Schedule.spaced(0)
+        })
+
+        const total = 24
+        const deliveries = new Map<bigint, number>()
+        const succeeded = new Set<bigint>()
+
+        yield* Effect.forEach(
+          Array.from({ length: total }, (_, i) => BigInt(i)),
+          (n) => queue.offer({ n }),
+          { concurrency: 8, discard: true }
+        )
+
+        const worker = queue.take(({ n }) =>
+          Effect.suspend(() => {
+            const count = (deliveries.get(n) ?? 0) + 1
+            deliveries.set(n, count)
+            // every third element fails on its first delivery
+            if (n % 3n === 0n && count === 1) {
+              return Effect.fail("transient")
+            }
+            succeeded.add(n)
+            return Effect.void
+          })
+        ).pipe(Effect.ignore, Effect.forever)
+
+        yield* Effect.forkScoped(worker)
+        yield* Effect.forkScoped(worker)
+        yield* Effect.forkScoped(worker)
+
+        for (let i = 0; i < 30 && succeeded.size < total; i++) {
+          yield* TestClock.adjust(1000)
+          yield* Effect.sleep(250).pipe(TestClock.withLive)
+        }
+
+        assert.strictEqual(succeeded.size, total)
+        for (const [n, count] of deliveries) {
+          assert.strictEqual(count, n % 3n === 0n ? 2 : 1, `deliveries for element ${n}`)
+        }
       }), testOptions)
   })
 }

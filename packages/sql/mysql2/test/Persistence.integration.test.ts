@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Effect, Layer } from "effect"
+import { Effect, Layer, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/unstable/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
 import * as SqlCleanupTest from "effect-test/unstable/persistence/SqlCleanupTest"
@@ -14,6 +14,25 @@ it.layer(MysqlContainer.layerClient, { timeout: "90 seconds" })("Persistence", (
   PersistedCacheTest.suiteWith("sql-mysql2-single", Persistence.layerSql, it)
 
   PersistedQueueTest.suiteWith("sql-mysql2", PersistedQueue.layerStoreSql(), it)
+
+  // elements are stored in a MEDIUMTEXT column, so payloads must survive the
+  // 64KB TEXT limit
+  it.effect("round-trips queue payloads larger than 64KB", () =>
+    Effect.gen(function*() {
+      const store = yield* PersistedQueue.makeStoreSql({
+        tableName: "effect_queue_large_payload",
+        pollInterval: "10 millis"
+      })
+      const factory = yield* PersistedQueue.makeFactory.pipe(
+        Effect.provideService(PersistedQueue.PersistedQueueStore, store)
+      )
+      const queue = yield* factory.make({ name: "large-payload", schema: Schema.String })
+
+      const payload = "x".repeat(200_000)
+      yield* queue.offer(payload)
+      const value = yield* queue.take(Effect.succeed)
+      assert.strictEqual(value, payload)
+    }).pipe(TestClock.withLive), { timeout: 30000 })
 
   it.effect("deletes expired entries in batches", () =>
     Effect.gen(function*() {
