@@ -261,6 +261,9 @@ ${clientErrorSource(name)}`
     }
 
     const helpers: Array<string> = [commonSource]
+    if (requiresStreaming(requirements)) {
+      helpers.push(executeStreamRequestSource)
+    }
     if (requirements.eventStreamData) {
       helpers.push(sseRequestSource(importName))
     }
@@ -686,6 +689,9 @@ ${clientErrorSource(name)}`
     }
 
     const helpers: Array<string> = [commonSource]
+    if (requiresStreaming(requirements)) {
+      helpers.push(executeStreamRequestSource)
+    }
     if (requirements.eventStream) {
       helpers.push(sseRequestSourceTs)
     }
@@ -973,6 +979,16 @@ const commonSource = `const unexpectedStatus = (response: HttpClientResponse.Htt
 const decodeBinarySource = `const decodeBinary = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.map(response.arrayBuffer, (buffer) => new Uint8Array(buffer))`
 
+const executeStreamRequestSource = `const executeStreamRequest = (request: HttpClientRequest.HttpClientRequest) =>
+    Effect.suspend(() =>
+      options?.transformClient
+        ? Effect.flatMap(
+            options.transformClient(httpClient),
+            (client) => HttpClient.filterStatusOk(client).execute(request)
+          )
+        : HttpClient.filterStatusOk(httpClient).execute(request)
+    )`
+
 const decodeVoidErrorSource = (name: string) =>
   `const decodeVoidError = <const Tag extends string>(tag: Tag) =>
     (response: HttpClientResponse.HttpClientResponse) =>
@@ -1036,7 +1052,7 @@ const sseRequestSource = (_importName: string) =>
       HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
       DecodingServices
     > =>
-      HttpClient.filterStatusOk(httpClient).execute(request).pipe(
+      executeStreamRequest(request).pipe(
         Effect.map((response) => response.stream),
         Stream.unwrap,
         Stream.decodeText(),
@@ -1051,7 +1067,7 @@ const sseEventRequestSource = `const sseEventRequest = <S extends Sse.EventCodec
       HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
       S["DecodingServices"]
     > =>
-      HttpClient.filterStatusOk(httpClient).execute(request).pipe(
+      executeStreamRequest(request).pipe(
         Effect.map((response) => response.stream),
         Stream.unwrap,
         Stream.decodeText(),
@@ -1060,7 +1076,7 @@ const sseEventRequestSource = `const sseEventRequest = <S extends Sse.EventCodec
 
 const binaryRequestSource =
   `const binaryRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<Uint8Array, HttpClientError.HttpClientError> =>
-    HttpClient.filterStatusOk(httpClient).execute(request).pipe(
+    executeStreamRequest(request).pipe(
       Effect.map((response) => response.stream),
       Stream.unwrap
     )`
@@ -1068,7 +1084,7 @@ const binaryRequestSource =
 // Type-only mode helpers (no schema decoding)
 const sseRequestSourceTs =
   `const sseRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<unknown, HttpClientError.HttpClientError> =>
-    HttpClient.filterStatusOk(httpClient).execute(request).pipe(
+    executeStreamRequest(request).pipe(
       Effect.map((response) => response.stream),
       Stream.unwrap,
       Stream.decodeText(),
@@ -1079,7 +1095,7 @@ const sseRequestSourceTs =
 
 const binaryRequestSourceTs =
   `const binaryRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<Uint8Array, HttpClientError.HttpClientError> =>
-    HttpClient.filterStatusOk(httpClient).execute(request).pipe(
+    executeStreamRequest(request).pipe(
       Effect.map((response) => response.stream),
       Stream.unwrap
     )`
