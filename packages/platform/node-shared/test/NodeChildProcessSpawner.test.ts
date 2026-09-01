@@ -4,6 +4,7 @@ import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import * as NodePath from "@effect/platform-node-shared/NodePath"
 import { assert, describe, it } from "@effect/vitest"
 import * as ChildProcessSpawnerTest from "effect-test/unstable/process/ChildProcessSpawnerTest"
+import * as ByteSize from "effect/ByteSize"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -92,8 +93,8 @@ it.live("kills every process in a pipeline", () =>
     const rootFinalSize = (yield* fs.stat(rootHeartbeat)).size
     const childFinalSize = (yield* fs.stat(childHeartbeat)).size
 
-    assert.strictEqual(rootFinalSize, rootSizeAfterKill)
-    assert.strictEqual(childFinalSize, childSizeAfterKill)
+    assert.strictEqual(ByteSize.toBigInt(rootFinalSize), ByteSize.toBigInt(rootSizeAfterKill))
+    assert.strictEqual(ByteSize.toBigInt(childFinalSize), ByteSize.toBigInt(childSizeAfterKill))
   }).pipe(Effect.scoped, Effect.provide(NodeServices)))
 
 const processGroupFixture = join(__dirname, "fixtures", "process-group.ts")

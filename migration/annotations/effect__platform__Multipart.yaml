@@ -54,4 +54,4 @@
   note: "The channel constructor moved and no longer accepts bufferSize; input and output chunks use non-empty readonly arrays."
 "@effect/platform/Multipart#withLimits.Options":
   replacement: "Multipart.withLimits.Options"
-  note: "Limit fields now use optional plain numbers or SizeInput values; convert Option.none to undefined and Option.some(value) to value."
+  note: "Limit fields now use optional plain numbers or ByteSize inputs; convert Option.none to undefined and Option.some(value) to value."

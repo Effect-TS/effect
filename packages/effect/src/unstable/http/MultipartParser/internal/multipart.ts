@@ -1,3 +1,4 @@
+import * as ByteSize from "../../../../ByteSize.ts"
 import type { Config, MultipartError, PartInfo } from "../../MultipartParser.ts"
 import * as CT from "./contentType.ts"
 import * as HP from "./headers.ts"
@@ -49,10 +50,13 @@ export function make({
   onDone,
   isFile = defaultIsFile,
   maxParts = Infinity,
-  maxTotalSize = Infinity,
-  maxPartSize = Infinity,
-  maxFieldSize = 1024 * 1024
+  maxTotalSize,
+  maxPartSize,
+  maxFieldSize = ByteSize.mebibytes(1)
 }: Config) {
+  const maxTotalSizeBigInt = maxTotalSize === undefined ? undefined : ByteSize.fromInputUnsafe(maxTotalSize).value
+  const maxPartSizeBigInt = maxPartSize === undefined ? undefined : ByteSize.fromInputUnsafe(maxPartSize).value
+  const maxFieldSizeBigInt = ByteSize.fromInputUnsafe(maxFieldSize).value
   const boundary = parseBoundary(headers)
   if (boundary === undefined) {
     onError({ _tag: "InvalidBoundary" })
@@ -69,8 +73,8 @@ export function make({
     onChunk: noopOnChunk,
     info: undefined as any as PartInfo,
     headerSkip: 0,
-    partSize: 0,
-    totalSize: 0,
+    partSize: BigInt(0),
+    totalSize: BigInt(0),
     isFile: false,
     fieldChunks: [] as Array<Uint8Array>,
     fieldSize: 0,
@@ -126,7 +130,7 @@ export function make({
             state.fieldChunks = []
           }
         }
-        state.partSize = 0
+        state.partSize = BigInt(0)
 
         state.state = State.headers
         state.index = index
@@ -144,7 +148,8 @@ export function make({
         }
       }
 
-      if ((state.partSize += chunk.length) > maxPartSize) {
+      state.partSize += BigInt(chunk.length)
+      if (maxPartSizeBigInt !== undefined && state.partSize > maxPartSizeBigInt) {
         return stop(errMaxPartSize)
       }
 
@@ -211,7 +216,8 @@ export function make({
             state.onChunk(chunk.subarray(result.endPosition))
           } else {
             const buf = chunk.subarray(result.endPosition)
-            if ((state.fieldSize += buf.length) > maxFieldSize) {
+            state.fieldSize += buf.length
+            if (BigInt(state.fieldSize) > maxFieldSizeBigInt) {
               return stop(errMaxFieldSize)
             }
             state.fieldChunks.push(buf)
@@ -220,7 +226,8 @@ export function make({
       } else if (state.isFile) {
         state.onChunk(chunk)
       } else {
-        if ((state.fieldSize += chunk.length) > maxFieldSize) {
+        state.fieldSize += chunk.length
+        if (BigInt(state.fieldSize) > maxFieldSizeBigInt) {
           return stop(errMaxFieldSize)
         }
         state.fieldChunks.push(chunk)
@@ -235,7 +242,8 @@ export function make({
       if (state.stopped) {
         return
       }
-      if ((state.totalSize += chunk.length) > maxTotalSize) {
+      state.totalSize += BigInt(chunk.length)
+      if (maxTotalSizeBigInt !== undefined && state.totalSize > maxTotalSizeBigInt) {
         return stop(errMaxTotalSize)
       }
       return split.write(chunk)
@@ -251,8 +259,8 @@ export function make({
       state.parts = 0
       state.onChunk = noopOnChunk
       state.info = undefined as any as PartInfo
-      state.totalSize = 0
-      state.partSize = 0
+      state.totalSize = BigInt(0)
+      state.partSize = BigInt(0)
       state.fieldChunks = []
       state.fieldSize = 0
       state.done = false

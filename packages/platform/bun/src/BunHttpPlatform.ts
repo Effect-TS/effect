@@ -10,9 +10,13 @@
  * @since 4.0.0
  */
 import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
-import type * as Effect from "effect/Effect"
+import * as BI from "effect/BigInt"
+import * as ByteSize from "effect/ByteSize"
+import * as Effect from "effect/Effect"
 import type { FileSystem } from "effect/FileSystem"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import * as PlatformError from "effect/PlatformError"
 import * as Etag from "effect/unstable/http/Etag"
 import * as Platform from "effect/unstable/http/HttpPlatform"
 import * as Response from "effect/unstable/http/HttpServerResponse"
@@ -36,22 +40,46 @@ const make: Effect.Effect<
 > = Platform.make({
   platform: "bun",
   compression,
-  fileResponse(path, status, statusText, headers, start, end, _contentLength) {
-    let file = Bun.file(path)
-    if (start > 0 || end !== undefined) {
-      file = file.slice(start, end)
-    }
-    return Response.raw(file, { headers, status, statusText })
+  fileResponse(path, status, statusText, headers, start, end, contentLength) {
+    return Effect.gen(function*() {
+      if (ByteSize.isZero(contentLength)) {
+        return Response.raw(new Uint8Array(0), { headers, status, statusText })
+      }
+      let file = Bun.file(path)
+      if (!ByteSize.isZero(start) || end !== undefined) {
+        file = file.slice(
+          yield* byteSizeToNumber(start),
+          end === undefined ? undefined : yield* byteSizeToNumber(end)
+        )
+      }
+      return Response.raw(file, { headers, status, statusText })
+    })
   },
   fileWebResponse(file, status, statusText, headers, options) {
-    const start = Number(options?.offset ?? 0)
-    const end = options?.bytesToRead !== undefined ? start + Number(options.bytesToRead) : undefined
+    const fileSize = BigInt(file.size)
+    const startBigInt = BI.min(ByteSize.toBigInt(options?.offset ?? ByteSize.zero), fileSize)
+    const endBigInt = options?.bytesToRead === undefined
+      ? undefined
+      : BI.min(startBigInt + ByteSize.toBigInt(options.bytesToRead), fileSize)
+    const start = Number(startBigInt)
+    const end = endBigInt === undefined ? undefined : Number(endBigInt)
     const body = start > 0 || end !== undefined
       ? (file as File).slice(start, end, file.type)
       : file
     return Response.raw(body, { headers, status, statusText })
   }
 })
+
+const byteSizeToNumber = (size: ByteSize.ByteSize) =>
+  Option.match(ByteSize.toNumber(size), {
+    onNone: () =>
+      Effect.fail(PlatformError.badArgument({
+        module: "HttpPlatform",
+        method: "fileResponse",
+        description: "file range exceeds Number.MAX_SAFE_INTEGER"
+      })),
+    onSome: Effect.succeed
+  })
 
 /**
  * Layer that provides the Bun `HttpPlatform`, including file responses backed by `Bun.file`.

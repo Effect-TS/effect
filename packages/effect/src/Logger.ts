@@ -947,7 +947,7 @@ export const layer = <
  * **Example** (Writing JSON logs to a file)
  *
  * ```ts import.meta.vitest
- * import { Effect, FileSystem, Logger } from "effect"
+ * import { ByteSize, Effect, FileSystem, Logger } from "effect"
  *
  * const writes: Array<string> = []
  * const file = {
@@ -972,7 +972,7 @@ export const layer = <
  * **Example** (Writing logs to files)
  *
  * ```ts import.meta.vitest
- * import { Effect, FileSystem, Logger } from "effect"
+ * import { ByteSize, Effect, FileSystem, Logger } from "effect"
  *
  * const writes: Array<string> = []
  * const file = {

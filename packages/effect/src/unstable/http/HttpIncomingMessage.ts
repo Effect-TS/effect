@@ -9,9 +9,9 @@
  *
  * @since 4.0.0
  */
+import type * as ByteSize from "../../ByteSize.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
-import type * as FileSystem from "../../FileSystem.ts"
 import type * as Inspectable from "../../Inspectable.ts"
 import type * as Option from "../../Option.ts"
 import { hasProperty } from "../../Predicate.ts"
@@ -130,7 +130,7 @@ export const schemaHeaders = <A, I extends Readonly<Record<string, string | unde
  * @category references
  * @since 4.0.0
  */
-export const MaxBodySize = Context.Reference<FileSystem.Size | undefined>(
+export const MaxBodySize = Context.Reference<ByteSize.ByteSize | undefined>(
   "effect/http/HttpIncomingMessage/MaxBodySize",
   { defaultValue: () => undefined }
 )
