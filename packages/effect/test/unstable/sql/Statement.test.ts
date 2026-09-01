@@ -1,4 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
+import { Effect, Option, Stream } from "effect"
+import * as Reactivity from "effect/unstable/reactivity/Reactivity"
+import * as SqlClient from "effect/unstable/sql/SqlClient"
+import type { Connection } from "effect/unstable/sql/SqlConnection"
 import * as Statement from "effect/unstable/sql/Statement"
 
 describe("Statement", () => {
@@ -32,4 +36,34 @@ describe("Statement", () => {
     assert.deepStrictEqual(postgres.compile(fragment, false), ["\"value\"$1", [1]])
     assert.deepStrictEqual(sqlite.compile(fragment, false), ["\"value\"?", [1]])
   })
+
+  it.effect("executes the connection under the sql.execute span", () =>
+    Effect.gen(function*() {
+      const seen: Array<string> = []
+      const observe = Effect.map(
+        Effect.option(Effect.currentSpan),
+        (span) => {
+          seen.push(Option.isSome(span) ? span.value.name : "none")
+          return []
+        }
+      )
+      const connection: Connection = {
+        execute: () => observe,
+        executeRaw: () => observe,
+        executeStream: () => Stream.fromEffect(observe),
+        executeValues: () => observe,
+        executeUnprepared: () => observe,
+        executeValuesUnprepared: () => observe
+      }
+      const sql = yield* SqlClient.make({
+        acquirer: Effect.succeed(connection),
+        compiler: Statement.makeCompilerSqlite(),
+        spanAttributes: []
+      })
+
+      yield* sql`select 1`
+      yield* sql`select 1`.values
+
+      assert.deepStrictEqual(seen, ["sql.execute", "sql.execute"])
+    }).pipe(Effect.provide(Reactivity.layer)))
 })
