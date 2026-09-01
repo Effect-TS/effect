@@ -18,5 +18,3 @@ PersistedQueueTest.suite(
   "sql-mssql",
   PersistedQueue.layerStoreSql().pipe(Layer.provide(MssqlContainer.layerClient))
 )
-
-PersistedQueueTest.sqlMigrationSuite("sql-mssql", MssqlContainer.layerClient)

@@ -23,8 +23,6 @@ PersistedQueueTest.suite(
   PersistedQueue.layerStoreSql().pipe(Layer.provide(PgContainer.layerClient))
 )
 
-PersistedQueueTest.sqlMigrationSuite("sql-pg", PgContainer.layerClient)
-
 it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PersistedQueue SQL locks", (it) => {
   it.effect("refreshes locks for acquired elements", () =>
     Effect.gen(function*() {

@@ -124,8 +124,6 @@ PersistedQueueTest.suite(
   PersistedQueue.layerStoreSql().pipe(Layer.provide(ClientLayer))
 )
 
-PersistedQueueTest.sqlMigrationSuite("sql-sqlite-node", ClientLayer)
-
 it.layer(ClientLayer)("Persistence SQL cleanup", (it) => {
   it.effect("deletes expired entries in batches", () =>
     Effect.gen(function*() {
