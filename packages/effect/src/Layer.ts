@@ -1137,6 +1137,8 @@ export const effectDiscard = <X, E, R>(effect: Effect<X, E, R>): Layer<never, E,
 export const suspend = <A, E, R>(evaluate: LazyArg<Layer<A, E, R>>): Layer<A, E, R> =>
   fromBuildMemo((memoMap, scope) => internalEffect.suspend(() => evaluate().build(memoMap, scope)))
 
+const unwrapKey = Context.Service<Layer<any, any, any>>("effect/Layer/unwrap")
+
 /**
  * Unwraps a `Layer` from an `Effect`, flattening the nested structure.
  *
@@ -1173,10 +1175,7 @@ export const suspend = <A, E, R>(evaluate: LazyArg<Layer<A, E, R>>): Layer<A, E,
  */
 export const unwrap = <A, E1, R1, E, R>(
   self: Effect<Layer<A, E1, R1>, E, R>
-): Layer<A, E | E1, R1 | Exclude<R, Scope.Scope>> => {
-  const service = Context.Service<Layer<A, E1, R1>>("effect/Layer/unwrap")
-  return flatMap(effect(service)(self), Context.get(service))
-}
+): Layer<A, E | E1, R1 | Exclude<R, Scope.Scope>> => flatMap(effect(unwrapKey)(self), Context.get(unwrapKey))
 
 const mergeAllEffect = <Layers extends [Layer<never, any, any>, ...Array<Layer<never, any, any>>]>(
   layers: Layers,
