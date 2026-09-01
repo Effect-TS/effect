@@ -306,7 +306,7 @@ export const defaultFormatter = (options?: { colors?: boolean }): Formatter => {
       typeof globalProcess.stdout === "object" &&
       globalProcess.stdout !== null &&
       globalProcess.stdout.isTTY === true &&
-      globalProcess.env?.NO_COLOR !== "1")
+      !globalProcess.env?.NO_COLOR)
 
   // Color palette using ANSI escape codes
   const colors = useColor
