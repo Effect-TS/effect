@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae`)
+Base: `v3` (`7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae`)
 
-Head: `HEAD` (`f356bc2da6abb4dee05b8c22fb597af3823e2ef7`)
+Head: `HEAD` (`ed7d633383e0a3737922be85864825e382f411d1`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -6486,13 +6486,21 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `FileSystem.FileTypeId` -> `typeof FileSystem.FileTypeId`: The runtime marker remains exported, but the separate type alias was removed.
 
+- `FileSystem.GiB` -> `ByteSize.gibibytes`: Use the ByteSize binary unit constructor.
+
+- `FileSystem.KiB` -> `ByteSize.kibibytes`: Use the ByteSize binary unit constructor.
+
 - `FileSystem.MakeDirectoryOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["makeDirectory"]>[1]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
 - `FileSystem.MakeTempDirectoryOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["makeTempDirectory"]>[0]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
 - `FileSystem.MakeTempFileOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["makeTempFile"]>[0]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
+- `FileSystem.MiB` -> `ByteSize.mebibytes`: Use the ByteSize binary unit constructor.
+
 - `FileSystem.OpenFileOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["open"]>[1]>`: Operation option interfaces are inline in the v4 FileSystem service.
+
+- `FileSystem.PiB` -> `ByteSize.pebibytes`: Use the ByteSize binary unit constructor.
 
 - `FileSystem.ReadDirectoryOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["readDirectory"]>[1]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
@@ -6500,7 +6508,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `FileSystem.SinkOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["sink"]>[1]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
-- `FileSystem.StreamOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["stream"]>[1]>`: Stream options are inline; bufferSize was removed while bytesToRead, chunkSize, and offset remain.
+- `FileSystem.Size` -> `ByteSize.ByteSize`: File sizes and byte counts use the exact non-negative ByteSize value; construct values with ByteSize.bytes or a unit constructor such as ByteSize.mebibytes. Signed File.seek offsets use bigint.
+
+- `FileSystem.SizeInput` -> `ByteSize.Input`: Byte-count parameters accept ByteSize inputs and normalize them at the API boundary.
+
+- `FileSystem.StreamOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["stream"]>[1]>`: Stream options are inline; bufferSize was removed while bytesToRead, chunkSize, and offset accept ByteSize inputs.
+
+- `FileSystem.TiB` -> `ByteSize.tebibytes`: Use the ByteSize binary unit constructor.
 
 - `FileSystem.WatchEventCreate` -> `FileSystem.WatchEvent.Create`: The constructor was removed; construct a tagged object with \_tag: "Create" and path.
 
@@ -6972,11 +6986,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/HttpIncomingMessage`
 
-- `HttpIncomingMessage.MaxBodySize` -> `HttpIncomingMessage.MaxBodySize`: Changed from a Reference subclass holding Option\<Size\> to Context.Reference\<Size | undefined\>.
+- `HttpIncomingMessage.MaxBodySize` -> `HttpIncomingMessage.MaxBodySize`: Changed from a Reference subclass holding Option\<Size\> to Context.Reference\<ByteSize.ByteSize | undefined\>.
 
 - `HttpIncomingMessage.TypeId` -> `typeof HttpIncomingMessage.TypeId`: TypeId remains public but is now a string constant; use typeof in type position.
 
-- `HttpIncomingMessage.withMaxBodySize` -> `Effect.provideService(HttpIncomingMessage.MaxBodySize, size)`: The helper was removed; provide FileSystem.Size(input) or undefined directly.
+- `HttpIncomingMessage.withMaxBodySize` -> `Effect.provideService(HttpIncomingMessage.MaxBodySize, size)`: The helper was removed; provide a ByteSize value or undefined directly.
 
 ### `@effect/platform/HttpLayerRouter`
 
@@ -7260,7 +7274,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Multipart.withLimits` -> `Effect.provideContext(effect, Multipart.limitsServices(options))`: Build the multipart limit context and provide it to the effect; Option-valued limits became optional plain values.
 
-- `Multipart.withLimits.Options` -> `Multipart.withLimits.Options`: Limit fields now use optional plain numbers or SizeInput values; convert Option.none to undefined and Option.some(value) to value.
+- `Multipart.withLimits.Options` -> `Multipart.withLimits.Options`: Limit fields now use optional plain numbers or ByteSize inputs; convert Option.none to undefined and Option.some(value) to value.
 
 - `Multipart.withLimitsStream` -> `Stream.provideContext(stream, Multipart.limitsServices(options))`: Build the multipart limit context and provide it to the stream; Option-valued limits became optional plain values.
 
@@ -7378,9 +7392,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Socket.WebSocketConstructor` -> `Socket.WebSocketConstructor`: The service moved to effect/unstable/socket/Socket and is now a Context.Service class.
 
-- `Socket.currentSendQueueCapacity` -> `Socket.SendQueueCapacity`: The FiberRef was replaced by a defaulted Context.Reference.
+- `Socket.currentSendQueueCapacity` -> `none`: The send queue was removed. The v4 Socket is pull-based: acquire socket.reader in a scope and pull frame batches; writes apply the transport's native backpressure.
+
+- `Socket.defaultCloseCodeIsError` -> `none`: Sockets no longer classify close codes; every close fails the reader's pull with a SocketError wrapping SocketCloseError. Consumers that treat a close as normal catch the error.
+
+- `Socket.fromTransformStream` -> `Socket.fromTransformStream`: The constructor remains in effect/unstable/socket/Socket but drops closeCodeIsError; every close fails the reader's pull with a SocketError wrapping SocketCloseError.
 
 - `Socket.layerWebSocket` -> `Socket.layerWebSocket`: The constructor remains in effect/unstable/socket/Socket; its URL may now also be an Effect.
+
+- `Socket.toChannelMap` -> `none`: The v4 Socket read side is an Effect that never completes via Cause.Done; map frames by acquiring Socket.readerBytes or Socket.readerString, or Effect.map the reader from socket.reader, and use Socket.toChannel or Socket.toChannelString for duplex channels.
 
 ### `@effect/platform/SocketServer`
 
@@ -7924,6 +7944,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Bounded.clamp` -> `Order.clamp(B.compare)`: Use the v4 Order combinator with { minimum: B.minBound, maximum: B.maxBound }; the Bounded dictionary itself was removed.
 
+- `Bounded.max` -> `Reducer.make(Combiner.max(B.compare).combine, B.minBound)`: V4 removed Bounded dictionaries. Build the maximum Reducer from the separately retained Order and minimum bound.
+
+- `Bounded.min` -> `Reducer.make(Combiner.min(B.compare).combine, B.maxBound)`: V4 removed Bounded dictionaries. Build the minimum Reducer from the separately retained Order and maximum bound.
+
 - `Bounded.reverse` -> `Order.flip(B.compare)`: Flip the Order and swap the separately stored minimum and maximum bounds; v4 has no bundled Bounded dictionary.
 
 ### `@effect/typeclass/Monoid`
@@ -7933,6 +7957,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Monoid.array` -> `Array.makeReducerConcat`: Use the v4 array concatenation Reducer; Reducer replaces Monoid and names the identity initialValue.
 
 - `Monoid.fromSemigroup` -> `Reducer.make(S.combine, empty)`: Construct a v4 Reducer from the replacement Combiner operation and identity value.
+
+- `Monoid.max` -> `Reducer.make(Combiner.max(B.compare).combine, B.minBound)`: Reducer replaces Monoid. Build it from the v4 maximum Combiner and the bounded order's minimum value.
+
+- `Monoid.min` -> `Reducer.make(Combiner.min(B.compare).combine, B.maxBound)`: Reducer replaces Monoid. Build it from the v4 minimum Combiner and the bounded order's maximum value.
 
 - `Monoid.reverse` -> `Reducer.flip`: Use the v4 Reducer combinator; it preserves initialValue and reverses combine argument order.
 
@@ -7965,6 +7993,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Semigroup.last` -> `Combiner.last`: Combiner replaces Semigroup in v4.
 
 - `Semigroup.make` -> `Combiner.make`: Combiner replaces Semigroup. V4 accepts only the binary combine function and has no combineMany override.
+
+- `Semigroup.max` -> `Combiner.max`: Combiner replaces Semigroup; pass the same Order to retain last-maximum tie behavior.
+
+- `Semigroup.min` -> `Combiner.min`: Combiner replaces Semigroup; pass the same Order to retain last-minimum tie behavior.
 
 - `Semigroup.reverse` -> `Combiner.flip`: Use the v4 Combiner combinator to reverse combine argument order.
 
@@ -10347,6 +10379,8 @@ Arbitrary.schema(schema)
 - `FastCheck.SchedulerSequenceItem`: TODO: needs guidance
 
 - `FastCheck.ShuffledSubarrayConstraints`: TODO: needs guidance
+
+- `FastCheck.Size`: TODO: needs guidance
 
 - `FastCheck.SizeForArbitrary`: TODO: needs guidance
 
