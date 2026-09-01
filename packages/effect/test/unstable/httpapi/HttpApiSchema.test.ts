@@ -57,7 +57,7 @@ describe("HttpApiSchema", () => {
         events
       })
 
-      assert.strictEqual(MediaType.format(stream.contentType), "text/event-stream; charset=UTF-8")
+      assert.strictEqual(MediaType.format(stream.contentType), "text/event-stream; charset=utf-8")
     })
 
     it("defaults the stream error schema to Never", () => {
