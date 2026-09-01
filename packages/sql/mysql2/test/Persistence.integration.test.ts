@@ -64,3 +64,5 @@ it.layer(MysqlContainer.layerClient, { timeout: "90 seconds" })("Persistence", (
       assert.strictEqual(Number(indexes[0].count), 1)
     }), { timeout: SqlCleanupTest.testTimeout })
 })
+
+PersistedQueueTest.sqlMigrationSuite("sql-mysql2", MysqlContainer.layerClient, "90 seconds")

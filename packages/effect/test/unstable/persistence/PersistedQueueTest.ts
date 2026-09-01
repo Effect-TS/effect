@@ -3,6 +3,7 @@ import type { Vitest } from "@effect/vitest"
 import { Duration, Effect, Fiber, Latch, Layer, Schedule, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import { PersistedQueue } from "effect/unstable/persistence"
+import { Migrator, SqlClient } from "effect/unstable/sql"
 
 const Item = Schema.Struct({
   n: Schema.BigInt
@@ -320,3 +321,218 @@ export const suiteWith = <R>(
 
 export const suite = (name: string, layer: Layer.Layer<PersistedQueue.PersistedQueueStore, unknown>) =>
   suiteWith(name, layer, it)
+
+const originalSqlMigration = (tableName: string) =>
+  Effect.gen(function*() {
+    const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+    const table = sql(tableName)
+
+    yield* sql.onDialectOrElse({
+      mysql: () =>
+        sql`CREATE TABLE IF NOT EXISTS ${table} (
+          sequence BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          id VARCHAR(36) NOT NULL,
+          queue_name VARCHAR(100) NOT NULL,
+          element TEXT NOT NULL,
+          completed BOOLEAN NOT NULL,
+          attempts INT NOT NULL DEFAULT 0,
+          last_failure TEXT NULL,
+          acquired_at DATETIME NULL,
+          acquired_by VARCHAR(36) NULL,
+          created_at DATETIME NOT NULL,
+          updated_at DATETIME NOT NULL
+        )`,
+      pg: () =>
+        sql`CREATE TABLE IF NOT EXISTS ${table} (
+          sequence SERIAL PRIMARY KEY,
+          id VARCHAR(36) NOT NULL,
+          queue_name VARCHAR(100) NOT NULL,
+          element TEXT NOT NULL,
+          completed BOOLEAN NOT NULL,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          last_failure TEXT NULL,
+          acquired_at TIMESTAMP NULL,
+          acquired_by UUID NULL,
+          created_at TIMESTAMP NOT NULL,
+          updated_at TIMESTAMP NOT NULL
+        )`,
+      mssql: () =>
+        sql`IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${tableName} AND xtype='U')
+        CREATE TABLE ${table} (
+          sequence INT IDENTITY(1,1) PRIMARY KEY,
+          id NVARCHAR(36) NOT NULL,
+          queue_name NVARCHAR(100) NOT NULL,
+          element NVARCHAR(MAX) NOT NULL,
+          completed BIT NOT NULL,
+          attempts INT NOT NULL DEFAULT 0,
+          last_failure NVARCHAR(MAX) NULL,
+          acquired_at DATETIME2 NULL,
+          acquired_by UNIQUEIDENTIFIER NULL,
+          created_at DATETIME2 NOT NULL,
+          updated_at DATETIME2 NOT NULL
+        )`,
+      orElse: () =>
+        sql`CREATE TABLE IF NOT EXISTS ${table} (
+          sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+          id TEXT NOT NULL,
+          queue_name TEXT NOT NULL,
+          element TEXT NOT NULL,
+          completed BOOLEAN NOT NULL,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          last_failure TEXT NULL,
+          acquired_at DATETIME NULL,
+          acquired_by TEXT NULL,
+          created_at DATETIME NOT NULL,
+          updated_at DATETIME NOT NULL
+        )`
+    })
+
+    yield* sql.onDialectOrElse({
+      mssql: () => sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${table} (id, queue_name)`,
+      mysql: () => sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${table} (id, queue_name)`,
+      orElse: () => sql`CREATE UNIQUE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_id`)} ON ${table} (id, queue_name)`
+    })
+
+    yield* sql.onDialectOrElse({
+      mssql: () =>
+        sql`CREATE INDEX ${sql(`idx_${tableName}_take`)} ON ${table} (queue_name, completed, attempts, acquired_at)`,
+      mysql: () =>
+        sql`CREATE INDEX ${sql(`idx_${tableName}_take`)} ON ${table} (queue_name, completed, attempts, acquired_at)`,
+      orElse: () =>
+        sql`CREATE INDEX IF NOT EXISTS ${
+          sql(`idx_${tableName}_take`)
+        } ON ${table} (queue_name, completed, attempts, acquired_at)`
+    })
+
+    yield* sql.onDialectOrElse({
+      mssql: () => sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${table} (sequence, acquired_by)`,
+      mysql: () => sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${table} (sequence, acquired_by)`,
+      orElse: () =>
+        sql`CREATE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_update`)} ON ${table} (sequence, acquired_by)`
+    })
+  })
+
+export const sqlMigrationSuite = (
+  name: string,
+  layer: Layer.Layer<SqlClient.SqlClient, unknown>,
+  timeout: Duration.Input = "30 seconds"
+) =>
+  it.layer(layer, { timeout })(`PersistedQueue SQL migrations (${name})`, (it) => {
+    it.effect("upgrades the original schema without losing data", () =>
+      Effect.gen(function*() {
+        const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+        const tableName = "persisted_queue_upgrade_test"
+        const table = sql(tableName)
+        const migrationsTable = `${tableName}_migrations`
+
+        yield* Migrator.make({})({
+          loader: Migrator.fromRecord({
+            "0001_create_table": originalSqlMigration(tableName)
+          }),
+          table: migrationsTable
+        })
+
+        const now = sql.onDialectOrElse({
+          mssql: () => sql.literal("SYSDATETIME()"),
+          mysql: () => sql.literal("NOW()"),
+          pg: () => sql.literal("NOW()"),
+          orElse: () => sql.literal("CURRENT_TIMESTAMP")
+        })
+        const completedFalse = sql.onDialectOrElse({
+          mysql: () => sql.literal("FALSE"),
+          pg: () => sql.literal("FALSE"),
+          orElse: () => sql.literal("0")
+        })
+        const completedTrue = sql.onDialectOrElse({
+          mysql: () => sql.literal("TRUE"),
+          pg: () => sql.literal("TRUE"),
+          orElse: () => sql.literal("1")
+        })
+        yield* sql`INSERT INTO ${table}
+          (id, queue_name, element, completed, attempts, last_failure, acquired_at, acquired_by, created_at, updated_at)
+          VALUES
+          ('pending-id', 'upgrade-queue', ${
+          JSON.stringify({ value: "pending" })
+        }, ${completedFalse}, 2, 'previous failure', NULL, NULL, ${now}, ${now}),
+          ('completed-id', 'upgrade-queue', ${
+          JSON.stringify({ value: "completed" })
+        }, ${completedTrue}, 1, NULL, NULL, NULL, ${now}, ${now})`
+
+        const store = yield* PersistedQueue.makeStoreSql({ tableName, pollInterval: "10 millis" })
+        yield* PersistedQueue.makeStoreSql({ tableName, pollInterval: "10 millis" })
+
+        const migrations = yield* sql<{
+          readonly migration_id: number
+          readonly name: string
+        }>`SELECT migration_id, name FROM ${sql(migrationsTable)} ORDER BY migration_id`
+        assert.deepStrictEqual(
+          migrations.map((migration) => [
+            Number(migration.migration_id),
+            migration.name
+          ]),
+          [[1, "create_table"], [2, "upgrade_schema"]]
+        )
+
+        const rows = yield* sql<{
+          readonly id: string
+          readonly state: string
+          readonly attempts: number
+          readonly last_failure: string | null
+          readonly visible_at: Date | string | null
+        }>`SELECT id, state, attempts, last_failure, visible_at FROM ${table} ORDER BY sequence`
+        assert.deepStrictEqual(
+          rows.map((row) => ({
+            id: row.id,
+            state: row.state,
+            attempts: Number(row.attempts),
+            lastFailure: row.last_failure
+          })),
+          [
+            { id: "pending-id", state: "pending", attempts: 2, lastFailure: "previous failure" },
+            { id: "completed-id", state: "completed", attempts: 1, lastFailure: null }
+          ]
+        )
+        assert.isNotNull(rows[0].visible_at)
+        assert.isNotNull(rows[1].visible_at)
+
+        yield* store.offer({
+          name: "upgrade-queue",
+          id: "completed-id",
+          element: { value: "duplicate" },
+          isCustomId: true
+        })
+        const completedRows = yield* sql<{ readonly count: number }>`
+          SELECT COUNT(*) AS count FROM ${table} WHERE id = 'completed-id' AND queue_name = 'upgrade-queue'
+        `
+        assert.strictEqual(Number(completedRows[0].count), 1)
+
+        const pending = yield* Effect.scoped(store.take({
+          name: "upgrade-queue",
+          maxAttempts: 10,
+          retryDelay: () => Effect.succeed(Duration.zero)
+        }))
+        assert.deepStrictEqual(pending, {
+          id: "pending-id",
+          attempts: 3,
+          element: { value: "pending" }
+        })
+
+        const longId = "i".repeat(200)
+        const longQueueName = "q".repeat(200)
+        const largeElement = "x".repeat(70_000)
+        yield* store.offer({
+          name: longQueueName,
+          id: longId,
+          element: largeElement,
+          isCustomId: true
+        })
+        const upgraded = yield* Effect.scoped(store.take({
+          name: longQueueName,
+          maxAttempts: 10,
+          retryDelay: () => Effect.succeed(Duration.zero)
+        }))
+        assert.strictEqual(upgraded.id, longId)
+        assert.strictEqual(upgraded.attempts, 1)
+        assert.strictEqual(upgraded.element, largeElement)
+      }), { timeout: Duration.toMillis(timeout) })
+  })

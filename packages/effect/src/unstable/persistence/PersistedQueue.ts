@@ -1790,13 +1790,12 @@ const sqlMigrations = (tableName: string) =>
         mysql: () =>
           sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
             sequence BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            id VARCHAR(255) NOT NULL,
-            queue_name VARCHAR(255) NOT NULL,
-            element MEDIUMTEXT NOT NULL,
-            state VARCHAR(10) NOT NULL,
+            id VARCHAR(36) NOT NULL,
+            queue_name VARCHAR(100) NOT NULL,
+            element TEXT NOT NULL,
+            completed BOOLEAN NOT NULL,
             attempts INT NOT NULL DEFAULT 0,
-            last_failure MEDIUMTEXT NULL,
-            visible_at DATETIME NOT NULL,
+            last_failure TEXT NULL,
             acquired_at DATETIME NULL,
             acquired_by VARCHAR(36) NULL,
             created_at DATETIME NOT NULL,
@@ -1804,14 +1803,13 @@ const sqlMigrations = (tableName: string) =>
           )`,
         pg: () =>
           sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
-            sequence BIGSERIAL PRIMARY KEY,
-            id VARCHAR(255) NOT NULL,
-            queue_name VARCHAR(255) NOT NULL,
+            sequence SERIAL PRIMARY KEY,
+            id VARCHAR(36) NOT NULL,
+            queue_name VARCHAR(100) NOT NULL,
             element TEXT NOT NULL,
-            state VARCHAR(10) NOT NULL,
+            completed BOOLEAN NOT NULL,
             attempts INTEGER NOT NULL DEFAULT 0,
             last_failure TEXT NULL,
-            visible_at TIMESTAMP NOT NULL,
             acquired_at TIMESTAMP NULL,
             acquired_by UUID NULL,
             created_at TIMESTAMP NOT NULL,
@@ -1820,14 +1818,13 @@ const sqlMigrations = (tableName: string) =>
         mssql: () =>
           sql`IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${tableName} AND xtype='U')
           CREATE TABLE ${tableNameSql} (
-            sequence BIGINT IDENTITY(1,1) PRIMARY KEY,
-            id NVARCHAR(255) NOT NULL,
-            queue_name NVARCHAR(255) NOT NULL,
+            sequence INT IDENTITY(1,1) PRIMARY KEY,
+            id NVARCHAR(36) NOT NULL,
+            queue_name NVARCHAR(100) NOT NULL,
             element NVARCHAR(MAX) NOT NULL,
-            state NVARCHAR(10) NOT NULL,
+            completed BIT NOT NULL,
             attempts INT NOT NULL DEFAULT 0,
             last_failure NVARCHAR(MAX) NULL,
-            visible_at DATETIME2 NOT NULL,
             acquired_at DATETIME2 NULL,
             acquired_by UNIQUEIDENTIFIER NULL,
             created_at DATETIME2 NOT NULL,
@@ -1840,10 +1837,9 @@ const sqlMigrations = (tableName: string) =>
             id TEXT NOT NULL,
             queue_name TEXT NOT NULL,
             element TEXT NOT NULL,
-            state TEXT NOT NULL,
+            completed BOOLEAN NOT NULL,
             attempts INTEGER NOT NULL DEFAULT 0,
             last_failure TEXT NULL,
-            visible_at DATETIME NOT NULL,
             acquired_at DATETIME NULL,
             acquired_by TEXT NULL,
             created_at DATETIME NOT NULL,
@@ -1863,24 +1859,21 @@ const sqlMigrations = (tableName: string) =>
           sql`CREATE UNIQUE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
       })
 
-      // partial index where supported, so pollers never scan completed rows
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_${tableName}_take')
-            CREATE INDEX ${sql(`idx_${tableName}_take`)} ON ${tableNameSql} (queue_name, visible_at)
-            WHERE state = 'pending'`,
-        mysql: () =>
-          sql`CREATE INDEX ${sql(`idx_${tableName}_take`)} ON ${tableNameSql} (queue_name, state, visible_at)`
-            .pipe(Effect.ignore),
-        pg: () =>
-          sql`CREATE INDEX IF NOT EXISTS ${
+            CREATE INDEX ${
             sql(`idx_${tableName}_take`)
-          } ON ${tableNameSql} (queue_name, visible_at) WHERE state = 'pending'`,
-        // sqlite
+          } ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`,
+        mysql: () =>
+          sql`CREATE INDEX ${
+            sql(`idx_${tableName}_take`)
+          } ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`
+            .pipe(Effect.ignore),
         orElse: () =>
           sql`CREATE INDEX IF NOT EXISTS ${
             sql(`idx_${tableName}_take`)
-          } ON ${tableNameSql} (queue_name, visible_at) WHERE state = 'pending'`
+          } ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`
       })
 
       yield* sql.onDialectOrElse({
@@ -1893,6 +1886,128 @@ const sqlMigrations = (tableName: string) =>
           ),
         orElse: () =>
           sql`CREATE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
+      })
+    }),
+    "0002_upgrade_schema": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const tableNameSql = sql(tableName)
+      const takeIndex = sql(`idx_${tableName}_take`)
+
+      yield* sql.onDialectOrElse({
+        pg: () =>
+          Effect.gen(function*() {
+            yield* sql`DROP INDEX IF EXISTS ${takeIndex}`
+            yield* sql`ALTER TABLE ${tableNameSql}
+              ADD COLUMN state VARCHAR(10),
+              ADD COLUMN visible_at TIMESTAMP`
+            yield* sql`UPDATE ${tableNameSql}
+              SET state = CASE WHEN completed THEN 'completed' ELSE 'pending' END,
+                  visible_at = updated_at`
+            yield* sql`ALTER TABLE ${tableNameSql}
+              ALTER COLUMN sequence TYPE BIGINT,
+              ALTER COLUMN id TYPE VARCHAR(255),
+              ALTER COLUMN queue_name TYPE VARCHAR(255),
+              ALTER COLUMN state SET NOT NULL,
+              ALTER COLUMN visible_at SET NOT NULL,
+              DROP COLUMN completed`
+          }),
+        mysql: () =>
+          Effect.gen(function*() {
+            yield* sql`DROP INDEX ${takeIndex} ON ${tableNameSql}`
+            yield* sql`ALTER TABLE ${tableNameSql}
+              MODIFY COLUMN id VARCHAR(255) NOT NULL,
+              MODIFY COLUMN queue_name VARCHAR(255) NOT NULL,
+              MODIFY COLUMN element MEDIUMTEXT NOT NULL,
+              MODIFY COLUMN last_failure MEDIUMTEXT NULL,
+              ADD COLUMN state VARCHAR(10) NULL,
+              ADD COLUMN visible_at DATETIME NULL`
+            yield* sql`UPDATE ${tableNameSql}
+              SET state = CASE WHEN completed THEN 'completed' ELSE 'pending' END,
+                  visible_at = updated_at`
+            yield* sql`ALTER TABLE ${tableNameSql}
+              MODIFY COLUMN state VARCHAR(10) NOT NULL,
+              MODIFY COLUMN visible_at DATETIME NOT NULL,
+              DROP COLUMN completed`
+          }),
+        mssql: () =>
+          Effect.gen(function*() {
+            const upgradedTableName = `${tableName}_upgrade`
+            const upgradedTable = sql(upgradedTableName)
+            yield* sql`CREATE TABLE ${upgradedTable} (
+              sequence BIGINT IDENTITY(1,1) PRIMARY KEY,
+              id NVARCHAR(255) NOT NULL,
+              queue_name NVARCHAR(255) NOT NULL,
+              element NVARCHAR(MAX) NOT NULL,
+              state NVARCHAR(10) NOT NULL,
+              attempts INT NOT NULL DEFAULT 0,
+              last_failure NVARCHAR(MAX) NULL,
+              visible_at DATETIME2 NOT NULL,
+              acquired_at DATETIME2 NULL,
+              acquired_by UNIQUEIDENTIFIER NULL,
+              created_at DATETIME2 NOT NULL,
+              updated_at DATETIME2 NOT NULL
+            )`
+            yield* sql`SET IDENTITY_INSERT ${upgradedTable} ON;
+              INSERT INTO ${upgradedTable}
+              (sequence, id, queue_name, element, state, attempts, last_failure, visible_at,
+                acquired_at, acquired_by, created_at, updated_at)
+              SELECT sequence, id, queue_name, element,
+                CASE WHEN completed = 1 THEN 'completed' ELSE 'pending' END,
+                attempts, last_failure, updated_at, acquired_at, acquired_by, created_at, updated_at
+              FROM ${tableNameSql};
+              SET IDENTITY_INSERT ${upgradedTable} OFF`
+            yield* sql`DROP TABLE ${tableNameSql}`
+            yield* sql`EXEC sp_rename ${upgradedTableName}, ${tableName}`
+            yield* sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
+            yield* sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
+          }),
+        // sqlite rebuilds the table because altering or dropping constrained
+        // columns is not portable across supported SQLite versions.
+        orElse: () =>
+          Effect.gen(function*() {
+            const upgradedTableName = `${tableName}_upgrade`
+            const upgradedTable = sql(upgradedTableName)
+            yield* sql`DROP INDEX IF EXISTS ${takeIndex}`
+            yield* sql`CREATE TABLE ${upgradedTable} (
+              sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+              id TEXT NOT NULL,
+              queue_name TEXT NOT NULL,
+              element TEXT NOT NULL,
+              state TEXT NOT NULL,
+              attempts INTEGER NOT NULL DEFAULT 0,
+              last_failure TEXT NULL,
+              visible_at DATETIME NOT NULL,
+              acquired_at DATETIME NULL,
+              acquired_by TEXT NULL,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL
+            )`
+            yield* sql`INSERT INTO ${upgradedTable}
+              (sequence, id, queue_name, element, state, attempts, last_failure, visible_at,
+                acquired_at, acquired_by, created_at, updated_at)
+              SELECT sequence, id, queue_name, element,
+                CASE WHEN completed THEN 'completed' ELSE 'pending' END,
+                attempts, last_failure, updated_at, acquired_at, acquired_by, created_at, updated_at
+              FROM ${tableNameSql}`
+            yield* sql`DROP TABLE ${tableNameSql}`
+            yield* sql`ALTER TABLE ${upgradedTable} RENAME TO ${tableNameSql}`
+            yield* sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
+            yield* sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
+          })
+      })
+
+      // partial index where supported, so pollers never scan completed rows
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`CREATE INDEX ${takeIndex} ON ${tableNameSql} (queue_name, visible_at)
+            WHERE state = 'pending'`,
+        mysql: () => sql`CREATE INDEX ${takeIndex} ON ${tableNameSql} (queue_name, state, visible_at)`,
+        pg: () =>
+          sql`CREATE INDEX ${takeIndex} ON ${tableNameSql} (queue_name, visible_at)
+            WHERE state = 'pending'`,
+        orElse: () =>
+          sql`CREATE INDEX ${takeIndex} ON ${tableNameSql} (queue_name, visible_at)
+            WHERE state = 'pending'`
       })
     })
   })
