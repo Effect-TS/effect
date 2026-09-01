@@ -71,6 +71,8 @@ export interface PgliteClient extends Client.SqlClient {
   /**
    * Subscribes to a PGlite notification channel.
    *
+   * **Details**
+   *
    * The effect completes after the listener is installed. Notifications are
    * buffered in the returned dequeue, and the subscription remains active
    * until the required scope closes.

@@ -10087,6 +10087,8 @@ const RedactedRepresentationPayload: Decoder<RedactedRepresentationPayload> = Un
 /**
  * Schema for `Redacted` values, which hide their contents from inspection.
  *
+ * **Details**
+ *
  * Options:
  *
  * - `label`: When provided, the schema will behave as follows:
@@ -11200,6 +11202,8 @@ function graphToArbitrary<N, E, T extends Graph_.Kind>(
 
 /**
  * Creates a schema for immutable directed or undirected Effect graphs.
+ *
+ * **Details**
  *
  * Encoding preserves active node and edge indexes, payloads, endpoints,
  * isolated nodes, self-loops, parallel edges, and stored edge orientation. It
@@ -12371,6 +12375,8 @@ export interface ByteSizeFromNumber extends decodeTo<ByteSize, Number> {
 
 /**
  * Schema that decodes non-negative safe-integer byte counts.
+ *
+ * **Details**
  *
  * Encoding fails when the byte count exceeds `Number.MAX_SAFE_INTEGER`.
  *
@@ -16364,6 +16370,9 @@ export function resolveAnnotationsKey<S extends Constraint>(schema: S): Annotati
   return schema.ast.context?.annotations
 }
 
+/** @internal */
+type AnnotationSchemaConstraint = Constraint
+
 /**
  * The `Annotations` namespace groups all annotation interfaces used to attach
  * metadata to schemas. Annotations control documentation, validation messages,
@@ -16374,10 +16383,9 @@ export function resolveAnnotationsKey<S extends Constraint>(schema: S): Annotati
  * Use {@link resolveAnnotations} to read the annotations attached to a schema at
  * runtime.
  *
+ * @category models
  * @since 4.0.0
  */
-type AnnotationSchemaConstraint = Constraint
-
 export declare namespace Annotations {
   /**
    * This interface is used to define the annotations that can be attached to a
@@ -16577,6 +16585,8 @@ export declare namespace Annotations {
     /**
      * Returns the fallback link used by canonical codec derivations.
      *
+     * **Details**
+     *
      * Transformations may be asynchronous, may fail, and may use optional
      * services, but cannot require services absent from the derived codec type.
      */
@@ -16587,6 +16597,8 @@ export declare namespace Annotations {
      * Returns the link used to derive the declaration's JSON representation, or
      * `undefined` when the declaration is already in canonical JSON form.
      *
+     * **Details**
+     *
      * Transformations follow the execution and service constraints of `toCodec`.
      */
     readonly toCodecJson?:
@@ -16596,6 +16608,8 @@ export declare namespace Annotations {
      * Returns the link used to derive the declaration's StringTree
      * representation, or `undefined` when it is already canonical.
      *
+     * **Details**
+     *
      * Transformations follow the execution and service constraints of `toCodec`.
      */
     readonly toCodecStringTree?:
@@ -16604,6 +16618,8 @@ export declare namespace Annotations {
     /**
      * Returns the link used to derive the declaration's isomorphism
      * representation.
+     *
+     * **Details**
      *
      * Transformations may be asynchronous, may fail, and may use optional
      * services, but cannot require services because the derived `Codec` exposes
@@ -16683,6 +16699,8 @@ export declare namespace Annotations {
     readonly identifier?: string | undefined
     /**
      * Native arbitrary-generation hints for this filter.
+     *
+     * **Details**
      *
      * The value is declarative metadata merged with constraints from the other filters on the node. The filter
      * predicate remains authoritative.

@@ -332,10 +332,13 @@ export const type: <I>() => Matcher<I, Types.Without<never>, I, never, never> = 
 /**
  * Creates a reusable matcher from a function that selects the value to match.
  *
+ * **Details**
+ *
  * The compiled matcher keeps the selector's original argument list. Case
  * handlers receive the narrowed selected value followed by those arguments.
  *
- * @example
+ * **Example** (Creating a reusable matcher)
+ *
  * ```ts import.meta.vitest
  * import { Match } from "effect"
  *

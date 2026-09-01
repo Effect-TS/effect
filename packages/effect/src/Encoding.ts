@@ -409,6 +409,8 @@ export const encodeHex: (input: Uint8Array | string) => string = (input) =>
  * Generates a random lowercase hexadecimal string, optimized for lengths that
  * are multiples of 8.
  *
+ * **Details**
+ *
  * `length` is not validated. The function generates `length >>> 3` random
  * 8-character words, so non-negative lengths below `2 ** 32` are rounded down
  * to a multiple of 8 and other values follow JavaScript's unsigned 32-bit

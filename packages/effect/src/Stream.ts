@@ -10892,6 +10892,11 @@ export const mkString = <E, R>(self: Stream<string, E, R>): Effect.Effect<string
 /**
  * Concatenates the stream's `Uint8Array` chunks into a single `ArrayBuffer`.
  *
+ * **Gotchas**
+ *
+ * This materializes the full content in memory. The source stream must not
+ * reuse or mutate emitted buffers, which are retained until collection completes.
+ *
  * **Example** (Joining byte chunks into an ArrayBuffer)
  *
  * ```ts import.meta.vitest
@@ -10908,11 +10913,6 @@ export const mkString = <E, R>(self: Stream<string, E, R>): Effect.Effect<string
  * await Effect.runPromise(program) // => [1, 2, 3, 4]
  * ```
  *
- * **Gotchas**
- *
- * This materializes the full content in memory. The source stream must not
- * reuse or mutate emitted buffers, which are retained until collection completes.
- *
  * @category destructors
  * @since 4.0.0
  */
@@ -10921,6 +10921,11 @@ export const mkArrayBuffer = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effe
 
 /**
  * Concatenates the stream's `Uint8Array` chunks into a single `Uint8Array`.
+ *
+ * **Gotchas**
+ *
+ * This materializes the full content in memory. The source stream must not
+ * reuse or mutate emitted buffers, which are retained until collection completes.
  *
  * **Example** (Joining Uint8Array chunks)
  *
@@ -10935,11 +10940,6 @@ export const mkArrayBuffer = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effe
  *
  * await Effect.runPromise(program)
  * ```
- *
- * **Gotchas**
- *
- * This materializes the full content in memory. The source stream must not
- * reuse or mutate emitted buffers, which are retained until collection completes.
  *
  * @category destructors
  * @since 4.0.0

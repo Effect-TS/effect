@@ -457,7 +457,7 @@ export const cors = (options?: {
  * explicitly flush each input chunk, so incremental delivery depends on the
  * runtime's implementation.
  *
- * **Security**
+ * **Gotchas**
  *
  * Compression can expose secrets through BREACH-style attacks when one
  * response contains both secret data and attacker-controlled input and an

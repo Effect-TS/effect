@@ -495,6 +495,8 @@ class TomlParser {
 /**
  * Parses a TOML document into a null-prototype record.
  *
+ * **Details**
+ *
  * Offset date-times are represented by `Date`, matching the package this
  * parser replaces. Local dates and times remain strings.
  *

@@ -7981,6 +7981,11 @@ export const runForEachWhile: {
 /**
  * Concatenates a channel's `Uint8Array` chunks into a single `Uint8Array`.
  *
+ * **Gotchas**
+ *
+ * This materializes the full content in memory. The source channel must not
+ * reuse or mutate emitted buffers, which are retained until collection completes.
+ *
  * **Example** (Joining channel byte chunks)
  *
  * ```ts import.meta.vitest
@@ -7994,11 +7999,6 @@ export const runForEachWhile: {
  * const bytes = Effect.runSync(Channel.mkUint8Array(channel))
  * Array.from(bytes) // => [1, 2, 3, 4]
  * ```
- *
- * **Gotchas**
- *
- * This materializes the full content in memory. The source channel must not
- * reuse or mutate emitted buffers, which are retained until collection completes.
  *
  * @category running
  * @since 4.0.0

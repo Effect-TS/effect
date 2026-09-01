@@ -151,6 +151,8 @@ export interface Handlers<State, Output, Input = Terminal.UserInput> {
 /**
  * Defines the symbols used to render built-in prompts.
  *
+ * **Details**
+ *
  * Set a symbol to an empty string to omit both the symbol and its adjacent
  * spacing.
  *
@@ -640,6 +642,8 @@ export const makeTheme = (options?: Partial<Theme>): Theme => ({
 
 /**
  * Context reference for the theme used by built-in prompts.
+ *
+ * **Details**
  *
  * Provide this reference once to theme every prompt in an application. A
  * prompt's `theme` option takes precedence over the context value.

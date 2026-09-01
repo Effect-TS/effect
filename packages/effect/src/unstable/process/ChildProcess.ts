@@ -436,6 +436,8 @@ export interface CommandOptions extends KillOptions {
    * If set to `true`, prevents the child process's console or GUI window from
    * becoming visible on Windows.
    *
+   * **Details**
+   *
    * Defaults to `true` unless `detached` is set to `true`. This option has no
    * effect on non-Windows platforms.
    */
