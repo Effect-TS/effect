@@ -14,10 +14,7 @@ describe("HttpPlatform", () => {
   it.effect("honors Web file offset and byte count", () =>
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
-      const response = yield* platform.fileWebResponse(file, {
-        offset: 1,
-        bytesToRead: 2
-      })
+      const response = yield* platform.fileWebResponse(file, { offset: 1, bytesToRead: 2 })
       assert.strictEqual(response.body._tag, "Stream")
       if (response.body._tag === "Stream") {
         assert.strictEqual(response.body.contentLength, 2)

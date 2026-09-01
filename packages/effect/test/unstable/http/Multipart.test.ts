@@ -330,6 +330,9 @@ describe("Multipart", () => {
     let done = false
     const parser = MultipartParser.make({
       headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+      maxTotalSize: Infinity,
+      maxPartSize: Infinity,
+      maxFieldSize: Infinity,
       onField(info, value) {
         fields.push([info.name, decoder.decode(value)])
       },

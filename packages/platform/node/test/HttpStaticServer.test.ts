@@ -173,6 +173,14 @@ describe("HttpStaticServer", () => {
       assert.strictEqual(invalid.status, 416)
       assert.strictEqual(invalid.headers.get("content-range"), `bytes */${fileSize}`)
 
+      const unsafe = await handler(
+        new Request("http://localhost/range.txt", {
+          headers: { Range: `bytes=${BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)}-` }
+        })
+      )
+      assert.strictEqual(unsafe.status, 416)
+      assert.strictEqual(unsafe.headers.get("content-range"), `bytes */${fileSize}`)
+
       const malformed = await handler(new Request("http://localhost/range.txt", { headers: { Range: "bytes=abc" } }))
       assert.strictEqual(malformed.status, 200)
       assert.strictEqual(await malformed.text(), fullBody)

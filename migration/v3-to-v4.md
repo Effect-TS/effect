@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `v3` (`7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae`)
+Base: `origin/v3` (`7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae`)
 
-Head: `HEAD` (`ed7d633383e0a3737922be85864825e382f411d1`)
+Head: `origin/main` (`53843f6490f4eebaf1eeb91fdcc5f1c542b0e132`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -6486,21 +6486,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `FileSystem.FileTypeId` -> `typeof FileSystem.FileTypeId`: The runtime marker remains exported, but the separate type alias was removed.
 
-- `FileSystem.GiB` -> `ByteSize.gibibytes`: Use the ByteSize binary unit constructor.
-
-- `FileSystem.KiB` -> `ByteSize.kibibytes`: Use the ByteSize binary unit constructor.
-
 - `FileSystem.MakeDirectoryOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["makeDirectory"]>[1]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
 - `FileSystem.MakeTempDirectoryOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["makeTempDirectory"]>[0]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
 - `FileSystem.MakeTempFileOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["makeTempFile"]>[0]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
-- `FileSystem.MiB` -> `ByteSize.mebibytes`: Use the ByteSize binary unit constructor.
-
 - `FileSystem.OpenFileOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["open"]>[1]>`: Operation option interfaces are inline in the v4 FileSystem service.
-
-- `FileSystem.PiB` -> `ByteSize.pebibytes`: Use the ByteSize binary unit constructor.
 
 - `FileSystem.ReadDirectoryOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["readDirectory"]>[1]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
@@ -6508,13 +6500,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `FileSystem.SinkOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["sink"]>[1]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
-- `FileSystem.Size` -> `ByteSize.ByteSize`: File sizes and byte counts use the exact non-negative ByteSize value; construct values with ByteSize.bytes or a unit constructor such as ByteSize.mebibytes. Signed File.seek offsets use bigint.
-
-- `FileSystem.SizeInput` -> `ByteSize.Input`: Byte-count parameters accept ByteSize inputs and normalize them at the API boundary.
-
-- `FileSystem.StreamOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["stream"]>[1]>`: Stream options are inline; bufferSize was removed while bytesToRead, chunkSize, and offset accept ByteSize inputs.
-
-- `FileSystem.TiB` -> `ByteSize.tebibytes`: Use the ByteSize binary unit constructor.
+- `FileSystem.StreamOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["stream"]>[1]>`: Stream options are inline; bufferSize was removed while bytesToRead, chunkSize, and offset remain.
 
 - `FileSystem.WatchEventCreate` -> `FileSystem.WatchEvent.Create`: The constructor was removed; construct a tagged object with \_tag: "Create" and path.
 
@@ -6986,11 +6972,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/HttpIncomingMessage`
 
-- `HttpIncomingMessage.MaxBodySize` -> `HttpIncomingMessage.MaxBodySize`: Changed from a Reference subclass holding Option\<Size\> to Context.Reference\<ByteSize.ByteSize | undefined\>.
+- `HttpIncomingMessage.MaxBodySize` -> `HttpIncomingMessage.MaxBodySize`: Changed from a Reference subclass holding Option\<Size\> to Context.Reference\<Size | undefined\>.
 
 - `HttpIncomingMessage.TypeId` -> `typeof HttpIncomingMessage.TypeId`: TypeId remains public but is now a string constant; use typeof in type position.
 
-- `HttpIncomingMessage.withMaxBodySize` -> `Effect.provideService(HttpIncomingMessage.MaxBodySize, size)`: The helper was removed; provide a ByteSize value or undefined directly.
+- `HttpIncomingMessage.withMaxBodySize` -> `Effect.provideService(HttpIncomingMessage.MaxBodySize, size)`: The helper was removed; provide FileSystem.Size(input) or undefined directly.
 
 ### `@effect/platform/HttpLayerRouter`
 
@@ -7274,7 +7260,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Multipart.withLimits` -> `Effect.provideContext(effect, Multipart.limitsServices(options))`: Build the multipart limit context and provide it to the effect; Option-valued limits became optional plain values.
 
-- `Multipart.withLimits.Options` -> `Multipart.withLimits.Options`: Limit fields now use optional plain numbers or ByteSize inputs; convert Option.none to undefined and Option.some(value) to value.
+- `Multipart.withLimits.Options` -> `Multipart.withLimits.Options`: Limit fields now use optional plain numbers or SizeInput values; convert Option.none to undefined and Option.some(value) to value.
 
 - `Multipart.withLimitsStream` -> `Stream.provideContext(stream, Multipart.limitsServices(options))`: Build the multipart limit context and provide it to the stream; Option-valued limits became optional plain values.
 
@@ -10379,8 +10365,6 @@ Arbitrary.schema(schema)
 - `FastCheck.SchedulerSequenceItem`: TODO: needs guidance
 
 - `FastCheck.ShuffledSubarrayConstraints`: TODO: needs guidance
-
-- `FastCheck.Size`: TODO: needs guidance
 
 - `FastCheck.SizeForArbitrary`: TODO: needs guidance
 

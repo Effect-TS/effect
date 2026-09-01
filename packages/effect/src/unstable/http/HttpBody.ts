@@ -500,7 +500,7 @@ const fileContentLength = (
   const selected = options?.bytesToRead === undefined
     ? available
     : BI.min(options.bytesToRead.value, available)
-  return Option.getOrUndefined(ByteSize.toNumber(ByteSize.bytes(selected)))
+  return Option.getOrUndefined(BI.toNumber(selected))
 }
 
 /**
@@ -580,6 +580,5 @@ const normalizeFileOptions = (
   options === undefined ? undefined : {
     ...options,
     bytesToRead: options.bytesToRead === undefined ? undefined : ByteSize.fromInputUnsafe(options.bytesToRead),
-    chunkSize: options.chunkSize,
     offset: options.offset === undefined ? undefined : ByteSize.fromInputUnsafe(options.offset)
   }
