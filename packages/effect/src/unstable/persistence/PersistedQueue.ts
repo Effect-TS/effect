@@ -23,6 +23,7 @@ import { sqlCleanupBatchSize } from "../../internal/persistence.ts"
 import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
 import * as MutableRef from "../../MutableRef.ts"
+import * as Predicate from "../../Predicate.ts"
 import * as Queue from "../../Queue.ts"
 import * as RcMap from "../../RcMap.ts"
 import * as Schedule from "../../Schedule.ts"
@@ -229,7 +230,7 @@ export const makeFactory = Effect.gen(function*() {
             )
           ).pipe(
             Effect.catchIf(
-              (e): e is DeadLetter => e instanceof DeadLetter,
+              isDeadLetter,
               (): Effect.Effect<XA, any, any> => loop
             )
           )
@@ -381,9 +382,12 @@ class DeadLetter {
   }
 }
 
+const isDeadLetter = (u: unknown): u is DeadLetter =>
+  Predicate.isTagged(u, "~effect/persistence/PersistedQueue/DeadLetter")
+
 const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefined => {
   for (const reason of cause.reasons) {
-    if (Cause.isFailReason(reason) && reason.error instanceof DeadLetter) {
+    if (Cause.isFailReason(reason) && isDeadLetter(reason.error)) {
       return reason.error
     }
   }
