@@ -14,6 +14,7 @@ import * as Context from "../../Context.ts"
 import * as Equal from "../../Equal.ts"
 import { constFalse } from "../../Function.ts"
 import * as InternalRecord from "../../internal/record.ts"
+import * as InternalToCodec from "../../internal/schema/toCodec.ts"
 import * as InternalToJsonSchemaDocument from "../../internal/schema/toJsonSchemaDocument.ts"
 import * as InternalToRepresentation from "../../internal/schema/toRepresentation.ts"
 import * as JsonPatch from "../../JsonPatch.ts"
@@ -672,7 +673,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
     const jsonSchemaMultiDocument = JsonSchema.toMultiDocumentOpenApi3_1(
       InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(
         InternalToRepresentation.toRepresentations(
-          Arr.map(pathOps, (op) => Schema.toCodecJsonAST(op.ast)),
+          Arr.map(pathOps, (op) => InternalToCodec.toCodecJsonAST(op.ast)),
           options
         )
       )

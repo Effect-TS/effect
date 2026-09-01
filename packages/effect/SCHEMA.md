@@ -6009,7 +6009,7 @@ const json = SchemaRepresentation.toJson(
 
 const document = SchemaRepresentation.fromJson(json)
 const rebuilt = SchemaRepresentation.fromRepresentation(document, {
-  revivers: [Schema.isMinLengthReviver]
+  revivers: [SchemaRepresentation.isMinLengthReviver]
 })
 
 console.log(Schema.is(rebuilt)("abc"))
@@ -6018,9 +6018,9 @@ console.log(Schema.is(rebuilt)("a"))
 // false
 ```
 
-Effect exports individual revivers next to the built-in declarations and checks they reconstruct, such as
-`Schema.OptionReviver`, `Schema.DateReviver`, and `Schema.isMinLengthReviver`. Supply every reviver required by the
-document; a missing or duplicate `id`, or a payload that does not satisfy its reviver's `payloadSchema`, is an error.
+`SchemaRepresentation` exports individual revivers for built-in declarations and checks, such as
+`OptionReviver`, `DateReviver`, and `isMinLengthReviver`. Supply every reviver required by the document; a missing or
+duplicate `id`, or a payload that does not satisfy its reviver's `payloadSchema`, is an error.
 
 `fromRepresentations` rebuilds the ordered roots of a `MultiDocument` in a shared reference environment. Only references
 reachable from those roots are revived.
@@ -6033,7 +6033,7 @@ There are separate reviver contracts for opaque declarations, leaf filters, and 
 - `FilterReviver<P>`
 - `FilterGroupReviver<P>`
 
-Use `makeDeclarationReviver`, `makeFilterReviver`, and `makeFilterGroupReviver` to infer `P` from `payloadSchema`.
+Use `makeReviverDeclaration`, `makeReviverFilter`, and `makeReviverFilterGroup` to infer `P` from `payloadSchema`.
 
 ```ts
 import { Schema, SchemaRepresentation } from "effect"
@@ -6050,7 +6050,7 @@ function minLength(
   })
 }
 
-const minLengthReviver = SchemaRepresentation.makeFilterReviver(
+const minLengthReviver = SchemaRepresentation.makeReviverFilter(
   id,
   Schema.Struct({ minimum: Schema.Number }),
   ({ annotations, payload }) => minLength(payload.minimum, annotations)

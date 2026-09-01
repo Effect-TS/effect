@@ -5,7 +5,7 @@ import type * as JsonSchema from "../../JsonSchema.ts"
 import { rewriteRefs } from "../../JsonSchema.ts"
 import * as RegEx from "../../RegExp.ts"
 import type * as Schema from "../../Schema.ts"
-import * as SchemaAST from "../../SchemaAST.ts"
+import * as InternalAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
@@ -37,9 +37,9 @@ function collectJsonSchemaAnnotations(
   else if (options?.generateDescriptions === true && typeof expected === "string") out.description = expected
 
   const defaultValue = annotations.default
-  if (SchemaAST.isJson(defaultValue)) out.default = defaultValue
+  if (InternalAST.isJson(defaultValue)) out.default = defaultValue
   const examples = annotations.examples
-  if (Array.isArray(examples) && SchemaAST.isJson(examples)) out.examples = examples
+  if (Array.isArray(examples) && InternalAST.isJson(examples)) out.examples = examples
   const readOnly = annotations.readOnly
   if (typeof readOnly === "boolean") out.readOnly = readOnly
   const writeOnly = annotations.writeOnly
@@ -51,7 +51,7 @@ function collectJsonSchemaAnnotations(
   const contentMediaType = annotations.contentMediaType
   if (typeof contentMediaType === "string") out.contentMediaType = contentMediaType
   const contentSchema = annotations.contentSchema
-  if (SchemaAST.isJson(contentSchema)) out.contentSchema = contentSchema
+  if (InternalAST.isJson(contentSchema)) out.contentSchema = contentSchema
 
   if (options?.includeAnnotationKey !== undefined) {
     for (const [key, value] of Object.entries(annotations)) {
@@ -61,7 +61,7 @@ function collectJsonSchemaAnnotations(
       ) {
         continue
       }
-      if (SchemaAST.isJson(value)) InternalRecord.assignProperty(out, key, value)
+      if (InternalAST.isJson(value)) InternalRecord.assignProperty(out, key, value)
     }
   }
 
@@ -554,9 +554,9 @@ function getPartPattern(part: SchemaRepresentation.Representation): string {
     case "Literal":
       return RegEx.escape(globalThis.String(part.literal))
     case "String":
-      return SchemaAST.STRING_PATTERN
+      return InternalAST.STRING_PATTERN
     case "Number":
-      return SchemaAST.FINITE_PATTERN
+      return InternalAST.FINITE_PATTERN
     case "TemplateLiteral":
       return part.parts.map(getPartPattern).join("")
     case "Union":

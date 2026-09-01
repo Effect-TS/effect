@@ -14,7 +14,6 @@ import * as Effect from "../../Effect.ts"
 import * as FileSystem from "../../FileSystem.ts"
 import { format } from "../../Formatter.ts"
 import { identity } from "../../Function.ts"
-import * as InternalConfig from "../../internal/config.ts"
 import * as Path from "../../Path.ts"
 import * as Redacted from "../../Redacted.ts"
 import * as Schema from "../../Schema.ts"
@@ -99,10 +98,10 @@ const Proto = {
 }
 
 /** @internal */
-export const isTrueValue = Schema.is(InternalConfig.trueValues)
+export const isTrueLiteral = Schema.is(Schema.TrueLiterals)
 
 /** @internal */
-export const isFalseValue = Schema.is(InternalConfig.falseValues)
+export const isFalseLiteral = Schema.is(Schema.FalseLiterals)
 
 /** @internal */
 export const isBoolean = (p: Primitive<unknown>): p is Primitive<boolean> => p._tag === "Boolean"
@@ -173,7 +172,7 @@ const makeSchemaPrimitive = <T>(
  */
 export const boolean: Primitive<boolean> = makeSchemaPrimitive(
   "Boolean",
-  InternalConfig.boolean
+  Schema.BooleanLiterals
 )
 
 /**
