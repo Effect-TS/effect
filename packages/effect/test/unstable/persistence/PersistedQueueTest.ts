@@ -329,6 +329,7 @@ export const suiteWith = <R>(
         const total = 24
         const deliveries = new Map<bigint, number>()
         const succeeded = new Set<bigint>()
+        const completed = Latch.makeUnsafe()
 
         yield* Effect.forEach(
           Array.from({ length: total }, (_, i) => BigInt(i)),
@@ -345,6 +346,9 @@ export const suiteWith = <R>(
               return Effect.fail("transient")
             }
             succeeded.add(n)
+            if (succeeded.size === total) {
+              completed.openUnsafe()
+            }
             return Effect.void
           })
         ).pipe(Effect.ignore, Effect.forever)
@@ -353,7 +357,7 @@ export const suiteWith = <R>(
         yield* Effect.forkScoped(worker)
         yield* Effect.forkScoped(worker)
 
-        for (let i = 0; i < 30 && succeeded.size < total; i++) {
+        while (!completed.isOpen()) {
           yield* TestClock.adjust(1000)
           yield* Effect.sleep(250).pipe(TestClock.withLive)
         }
