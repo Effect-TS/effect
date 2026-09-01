@@ -189,6 +189,19 @@ describe("HttpCompression", () => {
     assert.strictEqual(response.headers.get("content-encoding"), "gzip")
   })
 
+  it("ignores malformed content lengths when checking minSize", async () => {
+    for (const contentLength of ["1e3", "1.5"]) {
+      const app = Effect.succeed(
+        HttpServerResponse.stream(Stream.succeed(new TextEncoder().encode(bigJson)), {
+          contentType: "application/json",
+          headers: { "content-length": contentLength }
+        })
+      )
+      const response = await get(makeHandler(app), { "accept-encoding": "gzip" })
+      assert.strictEqual(response.headers.get("content-encoding"), "gzip")
+    }
+  })
+
   it("skips non-compressible content types without Vary", async () => {
     const app = Effect.succeed(
       HttpServerResponse.uint8Array(randomBytes(2048), { contentType: "image/png" })
