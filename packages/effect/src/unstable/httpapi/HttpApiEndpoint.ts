@@ -1157,7 +1157,18 @@ function getSuccessResponse(
   return new Set(disableCodecs ? schemas : schemas.map(transformResponseSchema))
 }
 
-function transformResponseSchema(schema: Schema.Top): Schema.Top {
+const transformedResponseSchemas = new WeakMap<Schema.Top, Schema.Top>()
+
+/** @internal */
+export function transformResponseSchema(schema: Schema.Top): Schema.Top {
+  const cached = transformedResponseSchemas.get(schema)
+  if (cached !== undefined) return cached
+  const transformed = transformResponseSchemaUncached(schema)
+  transformedResponseSchemas.set(schema, transformed)
+  return transformed
+}
+
+function transformResponseSchemaUncached(schema: Schema.Top): Schema.Top {
   if (HttpApiSchema.isStreamSchema(schema)) return schema
   if (HttpApiSchema.isWithHeaders(schema)) {
     const inner = HttpApiSchema.isStreamSchema(schema.schema)

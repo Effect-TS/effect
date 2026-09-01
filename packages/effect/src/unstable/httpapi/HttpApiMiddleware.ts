@@ -26,7 +26,7 @@ import type * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import type * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import type * as HttpRouter from "../http/HttpRouter.ts"
 import type { HttpServerResponse } from "../http/HttpServerResponse.ts"
-import type * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
+import * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
 import { HttpApiSchemaError } from "./HttpApiError.ts"
 import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiSecurity from "./HttpApiSecurity.ts"
@@ -380,7 +380,8 @@ export const Service = <
 
 function getError(error: ErrorConstraint | undefined): ReadonlySet<Schema.Top> {
   if (error === undefined) return new Set()
-  return new Set(Array.isArray(error) ? error : [error])
+  const schemas = Array.isArray(error) ? error : [error]
+  return new Set(schemas.map(HttpApiEndpoint.transformResponseSchema))
 }
 
 /**
