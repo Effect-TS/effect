@@ -11,7 +11,7 @@ import {
   SchemaTransformation,
   Stream
 } from "effect"
-import { Etag, HttpPlatform, MediaType } from "effect/unstable/http"
+import { Etag, HttpPlatform } from "effect/unstable/http"
 import {
   HttpApi,
   HttpApiBuilder,
@@ -26,7 +26,6 @@ import {
 const textDecoder = new TextDecoder()
 
 const StreamError = Schema.Struct({ reason: Schema.String })
-const mediaType = MediaType.parseUnsafe
 
 const TestServices = Layer.mergeAll(
   Path.layer,
@@ -62,7 +61,9 @@ it.layer(TestServices)("HttpApiBuilder query parameters", (it) => {
 
 it.effect("reuses response schema transformations by source AST", () => {
   const SharedSuccess = Schema.String.pipe(HttpApiSchema.asText())
-  const DistinctSuccess = Schema.String.pipe(HttpApiSchema.asText({ contentType: mediaType("text/custom") }))
+  const DistinctSuccess = Schema.String.pipe(
+    HttpApiSchema.asText({ contentType: "text/custom" })
+  )
   const Api = HttpApi.make("Api").add(
     HttpApiGroup.make("test")
       .add(HttpApiEndpoint.get("first", "/first", { success: SharedSuccess }))
@@ -98,7 +99,7 @@ it.layer(TestServices)("HttpApiBuilder payload content types", (it) => {
     Effect.gen(function*() {
       const Payload = Schema.Struct({ name: Schema.String }).pipe(
         HttpApiSchema.asJson({
-          contentType: mediaType("Application/Vnd.Effect+JSON; profile=declared")
+          contentType: "Application/Vnd.Effect+JSON; profile=declared"
         })
       )
       const Api = HttpApi.make("Api").add(
@@ -137,7 +138,9 @@ it.layer(TestServices)("HttpApiBuilder payload content types", (it) => {
   it.effect("round trips custom form-urlencoded media types", () =>
     Effect.gen(function*() {
       const Payload = Schema.Struct({ name: Schema.String }).pipe(
-        HttpApiSchema.asFormUrlEncoded({ contentType: mediaType("application/vnd.effect.form") })
+        HttpApiSchema.asFormUrlEncoded({
+          contentType: "application/vnd.effect.form"
+        })
       )
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("test").add(
@@ -498,7 +501,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       const Plain = Schema.Struct({
         body: Schema.String,
         headers: Schema.Struct({ "x-source": Schema.String })
-      }).pipe(HttpApiSchema.asJson({ contentType: mediaType("application/vnd.plain+json") }))
+      }).pipe(HttpApiSchema.asJson({ contentType: "application/vnd.plain+json" }))
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("test").add(
           HttpApiEndpoint.get("mixed", "/test", {
@@ -530,7 +533,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
         { "x-source": Schema.String }
       )
       const Plain = Schema.TaggedStruct("Plain", { value: Schema.String }).pipe(
-        HttpApiSchema.asJson({ contentType: mediaType("application/vnd.plain+json") })
+        HttpApiSchema.asJson({ contentType: "application/vnd.plain+json" })
       )
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("test").add(
@@ -555,7 +558,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
         HttpApiGroup.make("test").add(
           HttpApiEndpoint.get("override", "/test", {
             success: HttpApiSchema.WithHeaders(
-              Schema.String.pipe(HttpApiSchema.asText({ contentType: MediaType.textPlain })),
+              Schema.String.pipe(HttpApiSchema.asText({ contentType: "text/plain" })),
               { "content-type": Schema.String, "x-source": Schema.String }
             )
           })
@@ -797,7 +800,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
         HttpApiGroup.make("test").add(
           HttpApiEndpoint.get("download", "/test", {
             success: HttpApiSchema.status(206)(
-              HttpApiSchema.StreamUint8Array({ contentType: mediaType("application/custom-bytes") })
+              HttpApiSchema.StreamUint8Array({ contentType: "application/custom-bytes" })
             )
           })
         )
@@ -829,7 +832,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
           HttpApiEndpoint.get("download", "/test", {
             success: HttpApiSchema.WithHeaders(
               HttpApiSchema.status(206)(
-                HttpApiSchema.StreamUint8Array({ contentType: mediaType("application/custom-bytes") })
+                HttpApiSchema.StreamUint8Array({ contentType: "application/custom-bytes" })
               ),
               { "content-type": Schema.String, "x-count": Schema.Int }
             )
@@ -869,7 +872,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
           HttpApiEndpoint.get("events", "/test", {
             success: HttpApiSchema.status(202)(
               HttpApiSchema.StreamSse({
-                contentType: mediaType("text/event-stream; charset=utf-8"),
+                contentType: "text/event-stream; charset=utf-8",
                 events: Events,
                 error: StreamError
               })
@@ -912,7 +915,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
             success: HttpApiSchema.WithHeaders(
               HttpApiSchema.status(202)(
                 HttpApiSchema.StreamSse({
-                  contentType: mediaType("text/event-stream; charset=utf-8"),
+                  contentType: "text/event-stream; charset=utf-8",
                   events: Events,
                   error: StreamError
                 })

@@ -3,8 +3,6 @@ import { deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import { Equal, Hash, Option, Result } from "effect"
 import { MediaType } from "effect/unstable/http"
 
-const parse = (input: string) => Result.getOrThrow(MediaType.parse(input))
-
 const assertFailure = (
   input: string,
   message: string,
@@ -20,7 +18,7 @@ const assertFailure = (
 
 describe("MediaType", () => {
   it("parses and normalizes concrete media types", () => {
-    const mediaType = parse("\t Application/Vnd.Example+JSON ; Charset=utf-8; profile=Example \t")
+    const mediaType = MediaType.fromInputUnsafe("\t Application/Vnd.Example+JSON ; Charset=utf-8; profile=Example \t")
     strictEqual(mediaType.type, "application")
     strictEqual(mediaType.subtype, "vnd.example+json")
     strictEqual(Option.getOrUndefined(mediaType.suffix), "json")
@@ -32,11 +30,11 @@ describe("MediaType", () => {
   })
 
   it("distinguishes structured suffixes from broad HTTP token syntax", () => {
-    const structured = parse("application/vnd.example+json")
+    const structured = MediaType.fromInputUnsafe("application/vnd.example+json")
     strictEqual(MediaType.baseSubtype(structured), "vnd.example")
 
     for (const input of ["application/+json", "application/vnd.*+json", "application/example+", "app*/problem+json"]) {
-      const mediaType = parse(input)
+      const mediaType = MediaType.fromInputUnsafe(input)
       strictEqual(MediaType.baseSubtype(mediaType), mediaType.subtype)
       strictEqual(Option.isNone(mediaType.suffix), true)
       strictEqual(MediaType.hasSuffix(mediaType, "json"), false)
@@ -45,13 +43,18 @@ describe("MediaType", () => {
 
   it("accepts every tchar but rejects wildcard ranges", () => {
     const token = "!#$%&'*+-.^_`|~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-    strictEqual(MediaType.essence(parse(`${token}/${token}`)), `${token.toLowerCase()}/${token.toLowerCase()}`)
+    strictEqual(
+      MediaType.essence(MediaType.fromInputUnsafe(`${token}/${token}`)),
+      `${token.toLowerCase()}/${token.toLowerCase()}`
+    )
     assertFailure("*/*", "Media type cannot be a wildcard", 0)
     assertFailure("text/*", "Media subtype cannot be a wildcard", 5)
   })
 
   it("parses quoted values, escapes, empty separators, and obs-text", () => {
-    const mediaType = parse("text/plain;;; a=token; b=\"a; b\"; c=\"\\\"\\\\\"; d=\"\tÿ\"; empty=\"\";")
+    const mediaType = MediaType.fromInputUnsafe(
+      "text/plain;;; a=token; b=\"a; b\"; c=\"\\\"\\\\\"; d=\"\tÿ\"; empty=\"\";"
+    )
     strictEqual(MediaType.getParameter(mediaType, "b").pipe(Option.getOrUndefined), "a; b")
     strictEqual(MediaType.getParameter(mediaType, "c").pipe(Option.getOrUndefined), "\"\\")
     strictEqual(MediaType.getParameter(mediaType, "d").pipe(Option.getOrUndefined), "\tÿ")
@@ -63,7 +66,10 @@ describe("MediaType", () => {
     assertFailure("text/plain; filename={file}.txt", "Expected a value for parameter \"filename\"")
     assertFailure("text/plain; charset=utf-8; charset=utf-8", "Duplicate parameter \"charset\"")
     // Go preserves unnecessary backslashes for legacy IE paths; RFC quoted-pair decodes them.
-    strictEqual(MediaType.format(parse("text/plain; escaped=\"foo\\xbar\"")), "text/plain; escaped=fooxbar")
+    strictEqual(
+      MediaType.format(MediaType.fromInputUnsafe("text/plain; escaped=\"foo\\xbar\"")),
+      "text/plain; escaped=fooxbar"
+    )
     // WHATWG recovers from malformed parameters; this parser validates the complete input.
     assertFailure("text/html; charset=\"shift_jis\"iso-2022-jp", "Unexpected character \"i\"")
     assertFailure("text/plain; charset=utf-8; broken", "Expected '=' after parameter \"broken\"")
@@ -120,9 +126,9 @@ describe("MediaType", () => {
   })
 
   it("uses parameter-aware equality and hashing", () => {
-    const left = parse("TEXT/PLAIN; B=two; a=one")
-    const right = parse("text/plain; a=\"one\"; b=two")
-    const different = parse("text/plain; a=ONE; b=two")
+    const left = MediaType.fromInputUnsafe("TEXT/PLAIN; B=two; a=one")
+    const right = MediaType.fromInputUnsafe("text/plain; a=\"one\"; b=two")
+    const different = MediaType.fromInputUnsafe("text/plain; a=ONE; b=two")
     strictEqual(Equal.equals(left, right), true)
     strictEqual(Hash.hash(left), Hash.hash(right))
     strictEqual(Equal.equals(left, different), false)
@@ -130,8 +136,8 @@ describe("MediaType", () => {
   })
 
   it("supports parameter, essence, and suffix predicates", () => {
-    const candidate = parse("application/problem+json; charset=utf-8; profile=errors")
-    const expected = parse("application/problem+json; charset=utf-8")
+    const candidate = MediaType.fromInputUnsafe("application/problem+json; charset=utf-8; profile=errors")
+    const expected = MediaType.fromInputUnsafe("application/problem+json; charset=utf-8")
     strictEqual(MediaType.matchesParameters(candidate, expected), true)
     strictEqual(MediaType.matchesParameters(expected, candidate), false)
     strictEqual(candidate.pipe(MediaType.isType("APPLICATION")), true)
@@ -142,25 +148,25 @@ describe("MediaType", () => {
   })
 
   it("applies charset semantics without changing generic parameter identity", () => {
-    const upper = parse("text/plain; charset=UTF-8; profile=Example")
-    const lower = parse("text/plain; charset=utf-8; profile=Example")
+    const upper = MediaType.fromInputUnsafe("text/plain; charset=UTF-8; profile=Example")
+    const lower = MediaType.fromInputUnsafe("text/plain; charset=utf-8; profile=Example")
     strictEqual(Option.getOrUndefined(MediaType.getCharset(upper)), "utf-8")
     strictEqual(MediaType.matchesParameters(upper, lower), true)
     strictEqual(MediaType.matchesParameters(lower, upper), true)
     strictEqual(Equal.equals(upper, lower), false)
 
-    const differentProfile = parse("text/plain; charset=utf-8; profile=example")
+    const differentProfile = MediaType.fromInputUnsafe("text/plain; charset=utf-8; profile=example")
     strictEqual(MediaType.matchesParameters(upper, differentProfile), false)
   })
 
   it("classifies common media-type families", () => {
     strictEqual(MediaType.isJson(MediaType.applicationJson), true)
-    strictEqual(MediaType.isJson(parse("application/problem+json")), true)
-    strictEqual(MediaType.isJson(parse("text/json")), true)
-    strictEqual(MediaType.isJson(parse("application/json-seq")), false)
-    strictEqual(MediaType.isXml(parse("application/atom+xml")), true)
-    strictEqual(MediaType.isXml(parse("text/xml")), true)
-    strictEqual(MediaType.isText(parse("text/event-stream")), true)
+    strictEqual(MediaType.isJson(MediaType.fromInputUnsafe("application/problem+json")), true)
+    strictEqual(MediaType.isJson(MediaType.fromInputUnsafe("text/json")), true)
+    strictEqual(MediaType.isJson(MediaType.fromInputUnsafe("application/json-seq")), false)
+    strictEqual(MediaType.isXml(MediaType.fromInputUnsafe("application/atom+xml")), true)
+    strictEqual(MediaType.isXml(MediaType.fromInputUnsafe("text/xml")), true)
+    strictEqual(MediaType.isText(MediaType.fromInputUnsafe("text/event-stream")), true)
     strictEqual(MediaType.isText(MediaType.applicationJson), false)
   })
 })
