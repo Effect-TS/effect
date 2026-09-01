@@ -1612,6 +1612,14 @@ export const CurrentMetricAttributes = Context.Reference<Metric.AttributeSet>(Cu
 const MetricRegistryKey = "effect/Metric/MetricRegistry"
 
 /**
+ * The registry used to store metric metadata and hooks.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export type MetricRegistry = Map<string, Metric.Metadata<any, any>>
+
+/**
  * Context reference for the metric registry in the current context.
  *
  * **When to use**
@@ -1637,7 +1645,7 @@ const MetricRegistryKey = "effect/Metric/MetricRegistry"
  * @category services
  * @since 4.0.0
  */
-export const MetricRegistry = Context.Reference<Map<string, Metric.Metadata<any, any>>>(
+export const MetricRegistry: Context.Reference<MetricRegistry> = Context.Reference<MetricRegistry>(
   MetricRegistryKey,
   { defaultValue: () => new Map() }
 )
