@@ -51,13 +51,9 @@ export const imports = (
   importName: string,
   options?: {
     readonly multipart?: boolean | undefined
-    readonly mediaType?: boolean | undefined
   }
 ): string => {
-  const httpImports = [
-    ...(options?.multipart === true ? ["Multipart"] : []),
-    ...(options?.mediaType === true ? ["MediaType"] : [])
-  ]
+  const httpImports = options?.multipart === true ? ["Multipart"] : []
   return [
     `import * as ${importName} from "effect/Schema"`,
     ...(httpImports.length === 0 ? [] : [`import { ${httpImports.join(", ")} } from "effect/unstable/http"`]),
@@ -299,7 +295,7 @@ const renderResponseSet = (
 const joinSchemas = (schemas: ReadonlyArray<string>): string =>
   schemas.length === 1 ? schemas[0] : `[${schemas.join(", ")}]`
 
-const renderMediaType = (contentType: string): string => `MediaType.parseUnsafe(${JSON.stringify(contentType)})`
+const renderMediaType = (contentType: string): string => JSON.stringify(contentType)
 
 const renderMediaSchema = (media: ParsedOperationMediaTypeSchema): string => {
   if (media.effectStream === "sse") {

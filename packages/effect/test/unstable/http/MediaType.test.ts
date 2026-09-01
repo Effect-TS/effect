@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import { Equal, Hash, Option, Result } from "effect"
 import { MediaType } from "effect/unstable/http"
 
@@ -96,6 +96,21 @@ describe("MediaType", () => {
     strictEqual(Object.isFrozen(mediaType), true)
     strictEqual(Object.isFrozen(mediaType.parameters), true)
     strictEqual(Result.isFailure(MediaType.make({ type: "text", subtype: "plain", parameters: { x: "Ā" } })), true)
+  })
+
+  it("converts supported input shapes", () => {
+    const existing = MediaType.textPlain
+    strictEqual(Result.getOrThrow(MediaType.fromInput(existing)), existing)
+    strictEqual(
+      MediaType.format(Result.getOrThrow(MediaType.fromInput("Text/Plain; Charset=UTF-8"))),
+      "text/plain; charset=UTF-8"
+    )
+    strictEqual(
+      MediaType.format(MediaType.fromInputUnsafe({ type: "application", subtype: "json" })),
+      "application/json"
+    )
+    strictEqual(Result.isFailure(MediaType.fromInput("invalid")), true)
+    throws(() => MediaType.fromInputUnsafe("invalid"))
   })
 
   it("recognizes branded MediaType values", () => {

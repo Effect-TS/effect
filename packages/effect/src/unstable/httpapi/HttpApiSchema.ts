@@ -351,17 +351,17 @@ const streamSchema = Schema.declare(Stream.isStream)
  */
 export const StreamSse: {
   <Events extends Sse.EventCodec, Error extends Schema.Constraint = Schema.Never>(options: {
-    readonly contentType?: MediaType.MediaType | undefined
+    readonly contentType?: MediaType.Input | undefined
     readonly events: Events
     readonly error?: Error | undefined
   }): StreamSse<Events, Error, Events["Type"]>
   <Data extends Schema.Constraint, Error extends Schema.Constraint = Schema.Never>(options: {
-    readonly contentType?: MediaType.MediaType | undefined
+    readonly contentType?: MediaType.Input | undefined
     readonly data: Data
     readonly error?: Error | undefined
   }): StreamSse<SseEventFromData<Data>, Error, Data["Type"]>
 } = (options: {
-  readonly contentType?: MediaType.MediaType | undefined
+  readonly contentType?: MediaType.Input | undefined
   readonly events?: Sse.EventCodec | undefined
   readonly data?: Schema.Constraint | undefined
   readonly error?: Schema.Constraint | undefined
@@ -381,7 +381,9 @@ export const StreamSse: {
       _tag: "StreamSse",
       mode: "sse",
       sseMode: options.events === undefined ? "data" : "events",
-      contentType: options.contentType ?? defaultStreamMediaType("sse"),
+      contentType: options.contentType === undefined
+        ? defaultStreamMediaType("sse")
+        : MediaType.fromInputUnsafe(options.contentType),
       events,
       error: options.error ?? Schema.Never
     }
@@ -395,7 +397,7 @@ export const StreamSse: {
  * @since 4.0.0
  */
 export const StreamUint8Array = (options?: {
-  readonly contentType?: MediaType.MediaType | undefined
+  readonly contentType?: MediaType.Input | undefined
 }): StreamUint8Array =>
   Schema.make<StreamUint8Array>(
     streamSchema.ast,
@@ -403,7 +405,9 @@ export const StreamUint8Array = (options?: {
       [StreamSchemaTypeId]: StreamSchemaTypeId,
       _tag: "StreamUint8Array",
       mode: "uint8array",
-      contentType: options?.contentType ?? defaultStreamMediaType("uint8array")
+      contentType: options?.contentType === undefined
+        ? defaultStreamMediaType("uint8array")
+        : MediaType.fromInputUnsafe(options.contentType)
     }
   )
 
@@ -839,12 +843,14 @@ export function asMultipartStream(options?: Multipart_.withLimits.Options) {
 
 function asNonMultipartEncoding<S extends Schema.Top>(self: S, options: {
   readonly _tag: "Json" | "FormUrlEncoded" | "Uint8Array" | "Text"
-  readonly contentType?: MediaType.MediaType | undefined
+  readonly contentType?: MediaType.Input | undefined
 }): S["Rebuild"] {
   return self.annotate({
     "~httpApiEncoding": {
       _tag: options._tag,
-      contentType: options.contentType ?? defaultMediaType(options._tag)
+      contentType: options.contentType === undefined
+        ? defaultMediaType(options._tag)
+        : MediaType.fromInputUnsafe(options.contentType)
     }
   })
 }
@@ -871,7 +877,7 @@ function defaultMediaType(_tag: Encoding["_tag"]): MediaType.MediaType {
  * @since 4.0.0
  */
 export function asJson(options?: {
-  readonly contentType?: MediaType.MediaType
+  readonly contentType?: MediaType.Input
 }) {
   return <S extends Schema.Top>(self: S) => asNonMultipartEncoding(self, { _tag: "Json", ...options })
 }
@@ -887,7 +893,7 @@ export function asJson(options?: {
  * @since 4.0.0
  */
 export function asFormUrlEncoded(options?: {
-  readonly contentType?: MediaType.MediaType
+  readonly contentType?: MediaType.Input
 }) {
   return <S extends Schema.Top>(
     self: S
@@ -905,7 +911,7 @@ export function asFormUrlEncoded(options?: {
  * @since 4.0.0
  */
 export function asText(options?: {
-  readonly contentType?: MediaType.MediaType
+  readonly contentType?: MediaType.Input
 }) {
   return <S extends Schema.Top & { readonly Encoded: string }>(self: S) =>
     asNonMultipartEncoding(self, { _tag: "Text", ...options })
@@ -922,7 +928,7 @@ export function asText(options?: {
  * @since 4.0.0
  */
 export function asUint8Array(options?: {
-  readonly contentType?: MediaType.MediaType
+  readonly contentType?: MediaType.Input
 }) {
   return <S extends Schema.Top & { readonly Encoded: Uint8Array }>(self: S) =>
     asNonMultipartEncoding(self, { _tag: "Uint8Array", ...options })

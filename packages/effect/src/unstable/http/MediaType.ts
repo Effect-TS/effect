@@ -82,6 +82,14 @@ export interface MediaType extends Equal.Equal, Pipeable.Pipeable, Inspectable.I
 }
 
 /**
+ * Input accepted when constructing a media type.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Input = MediaType | Parts | string
+
+/**
  * Describes a media type parse failure at an offset in the original input.
  *
  * @category errors
@@ -356,6 +364,24 @@ export const parse = (input: string): Result.Result<MediaType, MediaTypeParseErr
  * @since 4.0.0
  */
 export const parseUnsafe = (input: string): MediaType => Result.getOrThrow(parse(input))
+
+/**
+ * Converts a supported input into a normalized media type.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromInput = (input: Input): Result.Result<MediaType, MediaTypeParseError> =>
+  isMediaType(input) ? Result.succeed(input) : typeof input === "string" ? parse(input) : make(input)
+
+/**
+ * Converts a supported input into a normalized media type, throwing when the
+ * input is invalid.
+ *
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const fromInputUnsafe = (input: Input): MediaType => Result.getOrThrow(fromInput(input))
 
 /**
  * Returns the normalized `type/subtype` without parameters.

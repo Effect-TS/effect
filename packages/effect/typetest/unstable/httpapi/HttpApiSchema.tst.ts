@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import type * as Sse from "effect/unstable/encoding/Sse"
-import { MediaType } from "effect/unstable/http"
+import type { MediaType } from "effect/unstable/http"
 import { HttpApiSchema } from "effect/unstable/httpapi"
 import { describe, expect, it } from "tstyche"
 
@@ -18,17 +18,11 @@ describe("HttpApiSchema", () => {
   })
 
   describe("StreamSse", () => {
-    it("accepts parsed content types", () => {
+    it("accepts media type inputs", () => {
       const Events = Schema.Struct({ event: Schema.String, data: Schema.String })
-      const stream = HttpApiSchema.StreamSse({ contentType: MediaType.textPlain, events: Events })
+      const stream = HttpApiSchema.StreamSse({ contentType: "text/plain", events: Events })
 
       expect(stream).type.toBe<HttpApiSchema.StreamSse<typeof Events, Schema.Never>>()
-    })
-
-    it("rejects string content types", () => {
-      const Events = Schema.Struct({ event: Schema.String, data: Schema.String })
-
-      expect(HttpApiSchema.StreamSse).type.not.toBeCallableWith({ contentType: "text/plain", events: Events })
     })
 
     it("preserves event and error schemas", () => {
@@ -132,14 +126,12 @@ describe("HttpApiSchema", () => {
   })
 
   describe("body encodings", () => {
-    it("accepts parsed content types", () => {
-      const schema = Schema.String.pipe(HttpApiSchema.asText({ contentType: MediaType.textPlain }))
+    it("accepts media type inputs", () => {
+      const schema = Schema.String.pipe(HttpApiSchema.asText({
+        contentType: { type: "text", subtype: "plain" }
+      }))
 
       expect(schema).type.toBe<Schema.String>()
-    })
-
-    it("rejects string content types", () => {
-      expect(HttpApiSchema.asText).type.not.toBeCallableWith({ contentType: "text/plain" })
     })
   })
 

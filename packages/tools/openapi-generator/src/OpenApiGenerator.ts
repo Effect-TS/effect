@@ -179,8 +179,7 @@ export const make = Effect.gen(function*() {
         return String.stripMargin(
           `|${
             HttpApiTransformer.imports(importName, {
-              multipart: needsMultipartImport,
-              mediaType: implementation.includes("MediaType.")
+              multipart: needsMultipartImport
             })
           }
            |${generation}

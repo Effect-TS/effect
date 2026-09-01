@@ -3,10 +3,14 @@ import { MediaType } from "effect/unstable/http"
 import { describe, expect, it } from "tstyche"
 
 describe("MediaType", () => {
-  it("parse errors and data-last parameter lookup preserve their public types", () => {
+  it("constructors and data-last parameter lookup preserve their public types", () => {
     expect(MediaType.parse("text/plain")).type.toBe<
       Result.Result<MediaType.MediaType, MediaType.MediaTypeParseError>
     >()
+    expect(MediaType.fromInput({ type: "text", subtype: "plain" })).type.toBe<
+      Result.Result<MediaType.MediaType, MediaType.MediaTypeParseError>
+    >()
+    expect(MediaType.fromInputUnsafe("text/plain")).type.toBe<MediaType.MediaType>()
     const mediaType = MediaType.textPlain
     expect(mediaType.pipe(MediaType.getParameter("charset"))).type.toBe<Option.Option<string>>()
   })

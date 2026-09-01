@@ -47,22 +47,17 @@ describe("HttpApiSchema", () => {
       }
     })
 
-    it("stores parsed content types", () => {
+    it("normalizes content type inputs", () => {
       const events = Schema.Struct({
         event: Schema.Literal("custom"),
         data: Schema.String
       })
-      const contentType = MediaType.makeUnsafe({
-        type: "Text",
-        subtype: "Event-Stream",
-        parameters: { charset: "UTF-8" }
-      })
       const stream = HttpApiSchema.StreamSse({
-        contentType,
+        contentType: "Text/Event-Stream; Charset=UTF-8",
         events
       })
 
-      assert.strictEqual(stream.contentType, contentType)
+      assert.strictEqual(MediaType.format(stream.contentType), "text/event-stream; charset=UTF-8")
     })
 
     it("defaults the stream error schema to Never", () => {
@@ -110,11 +105,12 @@ describe("HttpApiSchema", () => {
       })
     })
 
-    it("stores custom content type", () => {
-      const contentType = MediaType.makeUnsafe({ type: "application", subtype: "custom-binary" })
-      const stream = HttpApiSchema.StreamUint8Array({ contentType })
+    it("normalizes custom content types", () => {
+      const stream = HttpApiSchema.StreamUint8Array({
+        contentType: { type: "Application", subtype: "Custom-Binary" }
+      })
 
-      assert.strictEqual(stream.contentType, contentType)
+      assert.strictEqual(MediaType.format(stream.contentType), "application/custom-binary")
     })
   })
 
@@ -195,10 +191,14 @@ describe("HttpApiSchema", () => {
       const onInner = HttpApiSchema.WithHeaders(Schema.String.pipe(HttpApiSchema.asText()), headers)
       assert.strictEqual(HttpApiSchema.getResponseEncodingSchema(onInner)._tag, "Text")
 
-      const contentType = MediaType.makeUnsafe({ type: "application", subtype: "vnd.custom+json" })
-      const onWrapper = HttpApiSchema.WithHeaders(Schema.String, headers).pipe(HttpApiSchema.asJson({ contentType }))
+      const onWrapper = HttpApiSchema.WithHeaders(Schema.String, headers).pipe(
+        HttpApiSchema.asJson({ contentType: "Application/Vnd.Custom+JSON" })
+      )
       assert.isTrue(HttpApiSchema.isWithHeaders(onWrapper))
-      assert.strictEqual(HttpApiSchema.getResponseEncodingSchema(onWrapper).contentType, contentType)
+      assert.strictEqual(
+        MediaType.format(HttpApiSchema.getResponseEncodingSchema(onWrapper).contentType),
+        "application/vnd.custom+json"
+      )
 
       const onNeither = HttpApiSchema.WithHeaders(Schema.String, headers)
       assert.strictEqual(HttpApiSchema.getResponseEncodingSchema(onNeither)._tag, "Json")
