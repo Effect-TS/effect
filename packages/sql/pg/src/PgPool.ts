@@ -90,6 +90,8 @@ export interface PgPool {
    * Lends a session for the duration of one effect and takes it back on any
    * exit, without opening a scope for it.
    *
+   * **Details**
+   *
    * For work that finishes with the effect that runs it. A lease that has to
    * outlive its effect - a stream, a transaction - takes `get` or `reserve`.
    */

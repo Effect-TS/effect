@@ -517,6 +517,8 @@ class YamlParser {
 /**
  * Parses one YAML document into JavaScript values.
  *
+ * **Details**
+ *
  * The core YAML 1.2 scalar schema is used, so booleans, nulls, and numbers are
  * decoded while date-like values remain strings.
  *

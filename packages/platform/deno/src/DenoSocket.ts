@@ -55,6 +55,8 @@ export class Conn extends Context.Service<Conn, Deno.Conn>()(
 /**
  * Adapts a Deno connection into an Effect socket.
  *
+ * **Details**
+ *
  * Readers over TCP connections can upgrade in place with `Deno.startTls`.
  * Deno exposes only the client side of this transition; Unix connections fail
  * the upgrade with a `SocketUpgradeError`.

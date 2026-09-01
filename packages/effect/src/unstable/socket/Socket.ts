@@ -169,6 +169,8 @@ export interface TlsUpgradeOptions {
 /**
  * Constructs a `Socket` from a reader acquisition and a scoped writer.
  *
+ * **Details**
+ *
  * The reader must fail a suspended pull when its acquisition scope closes; see
  * `Socket` for why. A reader that leaves a pull blocked forever will hang any
  * consumer that shuts the socket down by closing that scope.
@@ -191,6 +193,8 @@ const encoder = new TextEncoder()
 /**
  * Acquires the socket's binary `pull`, encoding any string frames as UTF-8
  * bytes.
+ *
+ * **Details**
  *
  * When a pulled batch contains no string frames it is returned as-is, so
  * transports that only emit bytes (TCP) pay no per-chunk cost.
@@ -223,6 +227,8 @@ export const readerBytes = (
 /**
  * Acquires the socket's string `pull`, decoding binary frames with the optional
  * text encoding.
+ *
+ * **Details**
  *
  * The `TextDecoder` is created once per acquisition.
  *
@@ -576,6 +582,8 @@ const toChannelWithReader = <A extends Uint8Array | string, IE>(
  * incoming string frames as UTF-8 bytes and writing outgoing frame batches to
  * the socket.
  *
+ * **Details**
+ *
  * The read side is the socket's pull, so the channel is backpressured
  * end-to-end.
  *
@@ -678,6 +686,8 @@ export const makeChannel = <IE = never>(): Channel.Channel<
 /**
  * Event payload exposed by a WebSocket implementation.
  *
+ * **Details**
+ *
  * The socket adapter only reads `data`, `code`, and `reason`; implementations
  * may expose additional fields.
  *
@@ -693,6 +703,8 @@ export interface WebSocketEvent {
 
 /**
  * The subset of the WebSocket API required by `Socket`.
+ *
+ * **Details**
  *
  * This structural interface is intentionally independent of the DOM
  * `WebSocket` type. Node implementations such as `ws` expose the same
@@ -729,6 +741,8 @@ export interface WebSocketClientOptions {
   /**
    * Headers to include in the opening handshake.
    *
+   * **Details**
+   *
    * This is supported by Node and Bun WebSocket clients. Browser constructors
    * cannot set arbitrary handshake headers and must reject this option.
    */
@@ -737,6 +751,8 @@ export interface WebSocketClientOptions {
 
 /**
  * Options accepted by a `WebSocketConstructor`.
+ *
+ * **Details**
  *
  * Browser-compatible constructors accept a protocol string or list. Node and
  * Bun constructors additionally accept `WebSocketClientOptions`.

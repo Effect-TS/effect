@@ -126,6 +126,8 @@ export declare namespace SqlClient {
      * `ROLLBACK`, and the savepoint pair - can be prepared like any other
      * statement.
      *
+     * **Details**
+     *
      * They run on every transaction and never change, so a database that can
      * prepare them stops parsing them again each time. Off by default,
      * because several databases refuse to prepare transaction control at all;

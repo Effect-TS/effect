@@ -567,7 +567,7 @@ export const defaultParseOptions: ParseOptions = {}
  * - `annotations` — key-level annotations (e.g. description of the key
  *   itself).
  *
- * @see {@link optionalKey}
+ * @see `Schema.optionalKey`
  * @see {@link isOptional}
  * @category models
  * @since 4.0.0
@@ -3735,7 +3735,7 @@ export function record(key: AST, value: AST): Objects {
  * Checks `ast.context?.isOptional`. Defaults to `false` when no
  * {@link Context} is set.
  *
- * @see {@link optionalKey}
+ * @see `Schema.optionalKey`
  * @see {@link Context}
  * @category predicates
  * @since 4.0.0

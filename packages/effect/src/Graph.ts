@@ -777,7 +777,7 @@ const mutateScoped = <N, E, T extends Kind>(
  *
  * **When to use**
  *
- * Use for the usual immutable update workflow when several node or edge
+ * Use when several node or edge
  * mutations should be applied together.
  *
  * **Details**
@@ -3031,6 +3031,8 @@ export const edgeCount = <N, E, T extends Kind = "directed">(
 /**
  * Returns the indices of all edges incident to a node.
  *
+ * **Details**
+ *
  * Each edge is returned once in graph edge order, including self-loops.
  * Throws a `GraphError` when the node does not exist.
  *
@@ -3093,6 +3095,8 @@ export const incidentEdges: {
 /**
  * Returns the indices of outgoing edges for a node in a directed graph.
  *
+ * **Details**
+ *
  * Parallel edges and self-loops are returned separately in adjacency order.
  * Throws a `GraphError` for an undirected graph or missing node.
  *
@@ -3124,6 +3128,8 @@ export const outgoingEdges: {
 /**
  * Returns the indices of incoming edges for a node in a directed graph.
  *
+ * **Details**
+ *
  * Parallel edges and self-loops are returned separately in reverse-adjacency
  * order. Throws a `GraphError` for an undirected graph or missing node.
  *
@@ -3154,6 +3160,8 @@ export const incomingEdges: {
 
 /**
  * Returns all edge indices connecting the supplied nodes.
+ *
+ * **Details**
  *
  * Directed graphs only include edges from `source` to `target`; undirected
  * graphs include either stored orientation. Parallel edges are retained.
@@ -3202,6 +3210,8 @@ export const edgesBetween: {
 /**
  * Returns the degree of a node in an undirected graph.
  *
+ * **Details**
+ *
  * Parallel edges count separately and a self-loop contributes two. Throws a
  * `GraphError` for a directed graph or missing node.
  *
@@ -3230,6 +3240,8 @@ export const degree: {
 /**
  * Returns the out-degree of a node in a directed graph.
  *
+ * **Details**
+ *
  * Parallel edges count separately and a self-loop contributes one. Throws a
  * `GraphError` for an undirected graph or missing node.
  *
@@ -3257,6 +3269,8 @@ export const outDegree: {
 
 /**
  * Returns the in-degree of a node in a directed graph.
+ *
+ * **Details**
  *
  * Parallel edges count separately and a self-loop contributes one. Throws a
  * `GraphError` for an undirected graph or missing node.

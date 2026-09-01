@@ -38,6 +38,8 @@ import * as SchemaTransformation from "../../SchemaTransformation.ts"
 /**
  * Selects the wire mode.
  *
+ * **Details**
+ *
  * The default mode supports compatible schema evolution. `fingerprint: true`
  * uses positional layouts and an 8-byte layout hash for smaller frames, but
  * requires peers to use the same schema definition.
@@ -47,6 +49,8 @@ import * as SchemaTransformation from "../../SchemaTransformation.ts"
  */
 export interface Options {
   /**
+   * Uses a compact positional layout with a schema fingerprint.
+   *
    * @since 4.0.0
    */
   readonly fingerprint?: boolean | undefined
@@ -75,6 +79,8 @@ const directFingerprintCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>
 /**
  * Derives a compact binary codec from a schema.
  *
+ * **Details**
+ *
  * The wire layout is compiled from the encoded side of the schema. Each
  * encode/decode handles exactly one frame; use {@link parser} for streams.
  * Derived codecs are memoized by schema identity and wire mode.
@@ -82,7 +88,7 @@ const directFingerprintCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>
  * Encoded results are arena-backed views and may share a larger buffer. Use
  * `bytes.slice()` when independent ownership is required.
  *
- * **Example**
+ * **Example** (Deriving a binary codec)
  *
  * ```ts
  * import { Schema } from "effect"
@@ -257,18 +263,26 @@ function concatFrames(frames: ReadonlyArray<Uint8Array<ArrayBuffer>>): Uint8Arra
  */
 export interface Parser<T> {
   /**
+   * Feeds another chunk into the parser and returns any completed values.
+   *
    * @since 4.0.0
    */
   feed(chunk: Uint8Array): Effect.Effect<ReadonlyArray<T>, Schema.SchemaError>
   /**
+   * Feeds another chunk into the parser synchronously.
+   *
    * @since 4.0.0
    */
   feedSync(chunk: Uint8Array): ReadonlyArray<T>
   /**
+   * Finishes parsing and fails if an incomplete frame remains.
+   *
    * @since 4.0.0
    */
   end: Effect.Effect<void, Schema.SchemaError>
   /**
+   * Finishes parsing synchronously and throws for an incomplete frame.
+   *
    * @since 4.0.0
    */
   endSync(): void
@@ -276,6 +290,8 @@ export interface Parser<T> {
 
 /**
  * Creates a stateful parser for a stream of concatenated frames.
+ *
+ * **Details**
  *
  * Values completed before a failure remain observable. After a failure, the
  * parser rejects further calls. Use `maxFrameSize` to limit buffered frames.
@@ -317,6 +333,8 @@ export interface StreamOptions {
    * string that repeats costs a reference after the first frame that carries
    * it. Frames stop standing alone: they only decode through the parser that
    * saw the frames before them, in order.
+   *
+   * **Gotchas**
    *
    * Both ends have to set it. A schema the binary layer does not fully
    * validate on its own cannot use it, and asking for it throws.
@@ -853,10 +871,15 @@ export const duplex: {
 /**
  * Assigns an explicit wire field id to a struct property.
  *
- * Use this to preserve the wire id across a rename or resolve a hash collision.
+ * **When to use**
+ *
+ * Use to preserve the wire id across a rename or resolve a hash collision.
+ *
+ * **Details**
+ *
  * Valid ids are integers from 1 through 4294967295.
  *
- * **Example**
+ * **Example** (Assigning a wire field id)
  *
  * ```ts
  * import { Schema } from "effect"
