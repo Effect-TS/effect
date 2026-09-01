@@ -1,6 +1,7 @@
 import type * as Tracer from "../Tracer.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "./stackTraceLimit.ts"
 
+/** @internal */
 export interface ErrorWithStackTraceLimit {
   stackTraceLimit?: number | undefined
 }

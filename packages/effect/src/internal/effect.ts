@@ -2311,7 +2311,7 @@ export const zipWith: {
 // filtering & conditionals
 // ----------------------------------------------------------------------------
 
-/* @internal */
+/** @internal */
 export const filterOrFail: {
   <A, E2, B extends A>(
     refinement: Predicate.Refinement<NoInfer<A>, B>,
@@ -3267,7 +3267,7 @@ export const mapError: {
   ): Effect.Effect<A, E2, R> => catch_(self, (error) => failSync(() => f(error)))
 )
 
-/* @internal */
+/** @internal */
 export const mapBoth: {
   <E, E2, A, A2>(
     options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
@@ -4961,7 +4961,7 @@ const forEachConcurrent = iterateEagerImpl({
   }
 })
 
-/* @internal */
+/** @internal */
 export const filterOrElse: {
   <A, C, E2, R2, B extends A>(
     refinement: Predicate.Refinement<NoInfer<A>, B>,
@@ -5017,7 +5017,7 @@ export const filterMapOrElse: {
     }
   ))
 
-/* @internal */
+/** @internal */
 export const filterMapOrFail: {
   <A, B, X, E2>(
     filter: Filter.Filter<NoInfer<A>, B, X>,

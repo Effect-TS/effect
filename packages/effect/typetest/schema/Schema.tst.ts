@@ -530,6 +530,13 @@ describe("Schema", () => {
     })
   })
 
+  describe("toEncoderXml", () => {
+    it("returns SchemaIssue.Issue in the error channel", () => {
+      const encode = Schema.toEncoderXml(Schema.toCodecStringTree(Schema.FiniteFromString))
+      expect(encode).type.toBe<(value: number) => Effect.Effect<string, SchemaIssue.Issue>>()
+    })
+  })
+
   describe("toCodecArrayFromSingle", () => {
     it("revealCodec + annotate", () => {
       const stringTree = Schema.toCodecStringTree(Schema.Array(Schema.FiniteFromString))
