@@ -52,12 +52,13 @@ export const imports = (
   options?: {
     readonly multipart?: boolean | undefined
   }
-): string =>
-  [
+): string => {
+  return [
     `import * as ${importName} from "effect/Schema"`,
     ...(options?.multipart === true ? [`import { Multipart } from "effect/unstable/http"`] : []),
     `import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema, HttpApiSecurity, OpenApi } from "effect/unstable/httpapi"`
   ].join("\n")
+}
 
 /**
  * Convert a parsed OpenAPI document into Effect HttpApi source code.

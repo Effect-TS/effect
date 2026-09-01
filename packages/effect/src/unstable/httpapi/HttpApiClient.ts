@@ -17,6 +17,7 @@ import * as Effect from "../../Effect.ts"
 import { identity } from "../../Function.ts"
 import * as InternalRecord from "../../internal/record.ts"
 import * as Predicate from "../../Predicate.ts"
+import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaIssue from "../../SchemaIssue.ts"
@@ -31,13 +32,13 @@ import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import * as HttpMethod from "../http/HttpMethod.ts"
+import * as MediaType from "../http/MediaType.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as HttpApi from "./HttpApi.ts"
 import * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
 import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
-import * as MediaType from "./internal/mediaType.ts"
 
 /**
  * The type-safe client shape generated from HTTP API groups, with non-top-level
@@ -338,8 +339,13 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         const errorAlternatives = new Map<number, Array<ResponseAlternative>>()
         for (const [status, schemas] of errors.entries()) {
           const grouped = groupSchemasByContentType(schemas)
-          for (const [contentType, schemas] of grouped.entries()) {
-            addResponseAlternative(errorAlternatives, status, contentType, schemasToResponse(schemas))
+          for (const [contentType, schemas] of grouped) {
+            addResponseAlternative(
+              errorAlternatives,
+              status,
+              contentType === "" ? undefined : MediaType.parseUnsafe(contentType),
+              schemasToResponse(schemas)
+            )
           }
         }
         for (const [status, alternatives] of errorAlternatives.entries()) {
@@ -365,8 +371,13 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         const successAlternatives = new Map<number, Array<ResponseAlternative>>()
         for (const [status, schemas] of successes.entries()) {
           const grouped = groupSchemasByContentType(schemas)
-          for (const [contentType, schemas] of grouped.entries()) {
-            addResponseAlternative(successAlternatives, status, contentType, schemasToResponse(schemas))
+          for (const [contentType, schemas] of grouped) {
+            addResponseAlternative(
+              successAlternatives,
+              status,
+              contentType === "" ? undefined : MediaType.parseUnsafe(contentType),
+              schemasToResponse(schemas)
+            )
           }
         }
         for (const streamSuccess of getStreamSuccessSchemas(endpoint)) {
@@ -770,22 +781,21 @@ function toCodecArrayBufferWithHeaders(schema: Schema.Constraint): Schema.Top {
 type ResponseDecoder = (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<unknown, unknown, unknown>
 
 interface ResponseAlternative {
-  readonly contentType: string
+  readonly contentType: MediaType.MediaType | undefined
   readonly decode: ResponseDecoder
 }
 
 function addResponseAlternative(
   map: Map<number, Array<ResponseAlternative>>,
   status: number,
-  contentType: string,
+  contentType: MediaType.MediaType | undefined,
   decode: ResponseDecoder
 ) {
-  const normalizedContentType = MediaType.normalize(contentType)
   const alternatives = map.get(status)
   if (alternatives === undefined) {
-    map.set(status, [{ contentType: normalizedContentType, decode }])
+    map.set(status, [{ contentType, decode }])
   } else {
-    alternatives.push({ contentType: normalizedContentType, decode })
+    alternatives.push({ contentType, decode })
   }
 }
 
@@ -795,10 +805,23 @@ function makeResponseDecoder(alternatives: ReadonlyArray<ResponseAlternative>): 
     return first.decode
   }
   return (response) => {
-    const contentType = MediaType.normalize(response.headers["content-type"] ?? "")
-    const alternative = alternatives.find((alternative) => alternative.contentType === contentType)
+    const rawContentType = response.headers["content-type"]
+    if (rawContentType === undefined) {
+      const alternative = alternatives.find((alternative) => alternative.contentType === undefined)
+      return alternative === undefined
+        ? failUnsupportedContentType(response, rawContentType, alternatives)
+        : alternative.decode(response)
+    }
+    const parsedContentType = MediaType.parse(rawContentType)
+    if (Result.isFailure(parsedContentType)) {
+      return failUnsupportedContentType(response, rawContentType, alternatives)
+    }
+    const alternative = alternatives.find((alternative) =>
+      alternative.contentType !== undefined &&
+      MediaType.sameEssence(alternative.contentType, parsedContentType.success)
+    )
     return alternative === undefined
-      ? failUnsupportedContentType(response, contentType, alternatives)
+      ? failUnsupportedContentType(response, rawContentType, alternatives)
       : alternative.decode(response)
   }
 }
@@ -806,12 +829,12 @@ function makeResponseDecoder(alternatives: ReadonlyArray<ResponseAlternative>): 
 function groupSchemasByContentType(
   schemas: Arr.NonEmptyReadonlyArray<Schema.Top>
 ): Map<string, Arr.NonEmptyReadonlyArray<Schema.Top>> {
-  const grouped = new Map<string, [Schema.Top, ...Array<Schema.Top>]>()
+  const grouped = new Map<string, Arr.NonEmptyArray<Schema.Top>>()
   for (const schema of schemas) {
     const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
     const contentType = HttpApiSchema.isNoContent(body.ast)
       ? ""
-      : MediaType.normalize(HttpApiSchema.getResponseEncodingSchema(schema).contentType)
+      : MediaType.essence(HttpApiSchema.getResponseEncodingSchema(schema).contentType)
     const existing = grouped.get(contentType)
     if (existing === undefined) {
       grouped.set(contentType, [schema])
@@ -824,18 +847,24 @@ function groupSchemasByContentType(
 
 function failUnsupportedContentType(
   response: HttpClientResponse.HttpClientResponse,
-  contentType: string,
+  contentType: string | undefined,
   alternatives: ReadonlyArray<ResponseAlternative>
 ) {
-  const expected = Array.from(new Set(alternatives.map((alternative) => alternative.contentType))).join(", ")
+  const expected = Array.from(
+    new Set(
+      alternatives.map((alternative) =>
+        alternative.contentType === undefined ? "<missing>" : MediaType.format(alternative.contentType)
+      )
+    )
+  ).join(", ")
+  const actual = contentType === undefined ? "<missing>" : contentType === "" ? "<empty>" : contentType
   return Effect.fail(
     new HttpClientError.HttpClientError({
       reason: new HttpClientError.DecodeError({
         request: response.request,
         response,
-        description: `Unsupported response content-type for status ${response.status}: ${
-          contentType || "<missing>"
-        }. Expected one of: ${expected}`
+        description:
+          `Unsupported response content-type for status ${response.status}: ${actual}. Expected one of: ${expected}`
       })
     })
   )
@@ -1083,7 +1112,7 @@ function getEncodePayloadSchemaFromBody(
           case "Json": {
             try {
               const body = JSON.stringify(t)
-              return Effect.succeed(HttpBody.text(body, encoding.contentType))
+              return Effect.succeed(HttpBody.text(body, MediaType.format(encoding.contentType)))
             } catch {
               return Effect.fail(
                 new SchemaIssue.InvalidValue(
@@ -1100,7 +1129,7 @@ function getEncodePayloadSchemaFromBody(
                 new SchemaIssue.InvalidValue({ message: "Expected a string" }, t, options)
               )
             }
-            return Effect.succeed(HttpBody.text(t, encoding.contentType))
+            return Effect.succeed(HttpBody.text(t, MediaType.format(encoding.contentType)))
           }
           case "FormUrlEncoded": {
             if (!Predicate.isObject(t)) {
@@ -1108,7 +1137,10 @@ function getEncodePayloadSchemaFromBody(
                 new SchemaIssue.InvalidValue({ message: "Expected a record" }, t, options)
               )
             }
-            return Effect.succeed(HttpBody.urlParams(UrlParams.fromInput(t as any), encoding.contentType))
+            return Effect.succeed(HttpBody.urlParams(
+              UrlParams.fromInput(t as any),
+              MediaType.format(encoding.contentType)
+            ))
           }
           case "Uint8Array": {
             if (!(t instanceof Uint8Array)) {
@@ -1120,7 +1152,7 @@ function getEncodePayloadSchemaFromBody(
                 )
               )
             }
-            return Effect.succeed(HttpBody.uint8Array(t, encoding.contentType))
+            return Effect.succeed(HttpBody.uint8Array(t, MediaType.format(encoding.contentType)))
           }
         }
       }

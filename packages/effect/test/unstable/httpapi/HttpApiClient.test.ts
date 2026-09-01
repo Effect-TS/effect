@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import { Cause, Effect, Schema, Stream } from "effect"
 import { Sse } from "effect/unstable/encoding"
-import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
+import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, MediaType } from "effect/unstable/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
 
 describe("HttpApiClient", () => {
@@ -409,6 +409,32 @@ describe("HttpApiClient", () => {
         assert.strictEqual(error, "NoContentError")
       }))
 
+    it.effect("does not treat empty or malformed content-type headers as missing", () =>
+      Effect.gen(function*() {
+        for (
+          const [contentType, expected] of [
+            ["", "<empty>"],
+            ["not a media type", "not a media type"]
+          ] as const
+        ) {
+          const client = yield* makeClient(() =>
+            new Response(null, { status: 400, headers: { "content-type": contentType } })
+          )
+          const exit = yield* Effect.exit(client.test.noContent({}))
+          assert.strictEqual(exit._tag, "Failure")
+          if (exit._tag === "Failure") {
+            const decodeError = exit.cause.reasons.find((reason) =>
+              Cause.isFailReason(reason) && HttpClientError.isHttpClientError(reason.error) &&
+              reason.error.reason._tag === "DecodeError"
+            )
+            assert.isDefined(decodeError)
+            if (Cause.isFailReason(decodeError) && HttpClientError.isHttpClientError(decodeError.error)) {
+              assert.include(decodeError.error.reason.description, expected)
+            }
+          }
+        }
+      }))
+
     it.effect("groups schemas by normalized declared content type", () =>
       Effect.gen(function*() {
         const client = yield* makeClient(() =>
@@ -795,7 +821,7 @@ const FirstJsonResponseError = Schema.Struct({
   _tag: Schema.Literal("FirstJsonError"),
   code: Schema.Number
 }).pipe(
-  HttpApiSchema.asJson({ contentType: "Application/Problem+JSON" }),
+  HttpApiSchema.asJson({ contentType: MediaType.parseUnsafe("Application/Problem+JSON") }),
   HttpApiSchema.status(400)
 )
 
@@ -803,7 +829,7 @@ const SecondJsonResponseError = Schema.Struct({
   _tag: Schema.Literal("SecondJsonError"),
   message: Schema.String
 }).pipe(
-  HttpApiSchema.asJson({ contentType: "application/problem+json; charset=utf-8" }),
+  HttpApiSchema.asJson({ contentType: MediaType.parseUnsafe("application/problem+json; charset=utf-8") }),
   HttpApiSchema.status(400)
 )
 

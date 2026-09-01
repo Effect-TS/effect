@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { type Context, Schema } from "effect"
+import { MediaType } from "effect/unstable/http"
 import {
   HttpApi,
   HttpApiEndpoint,
@@ -125,15 +126,15 @@ describe("OpenApi", () => {
     assert.strictEqual(cached.info.title, "Api")
   })
 
-  it("preserves every declared payload content type for normalized equivalents", () => {
-    const profileA = "Application/Vnd.Effect+JSON; Profile=A"
-    const profileB = "application/vnd.effect+json; profile=b"
+  it("groups payload content types by essence", () => {
+    const profileAMediaType = MediaType.parseUnsafe("Application/Vnd.Effect+JSON; Profile=A")
+    const profileBMediaType = MediaType.parseUnsafe("application/vnd.effect+json; profile=b")
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
         HttpApiEndpoint.post("create", "/create", {
           payload: [
-            Schema.Struct({ a: Schema.String }).pipe(HttpApiSchema.asJson({ contentType: profileA })),
-            Schema.Struct({ b: Schema.String }).pipe(HttpApiSchema.asJson({ contentType: profileB }))
+            Schema.Struct({ a: Schema.String }).pipe(HttpApiSchema.asJson({ contentType: profileAMediaType })),
+            Schema.Struct({ b: Schema.String }).pipe(HttpApiSchema.asJson({ contentType: profileBMediaType }))
           ]
         })
       )
@@ -143,19 +144,18 @@ describe("OpenApi", () => {
     const content = spec.paths["/create"]?.post?.requestBody?.content
 
     assert.isDefined(content)
-    assert.property(content, profileA)
-    assert.property(content, profileB)
-    assert.deepStrictEqual(content[profileA]?.schema, {
-      type: "object",
-      properties: { a: { type: "string" } },
-      required: ["a"],
-      additionalProperties: false
-    })
-    assert.deepStrictEqual(content[profileB]?.schema, {
-      type: "object",
-      properties: { b: { type: "string" } },
-      required: ["b"],
-      additionalProperties: false
+    assert.deepStrictEqual(content["application/vnd.effect+json"]?.schema, {
+      anyOf: [{
+        type: "object",
+        properties: { a: { type: "string" } },
+        required: ["a"],
+        additionalProperties: false
+      }, {
+        type: "object",
+        properties: { b: { type: "string" } },
+        required: ["b"],
+        additionalProperties: false
+      }]
     })
   })
 

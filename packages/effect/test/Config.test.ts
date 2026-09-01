@@ -13,6 +13,7 @@ import {
   SchemaIssue,
   SchemaTransformation
 } from "effect"
+import { MediaType } from "effect/unstable/http"
 import { vi } from "vitest"
 import type * as ConfigProviderModule from "../src/ConfigProvider.ts"
 
@@ -209,6 +210,25 @@ describe("Config", () => {
         provider,
         `Expected string
   at ["failure"]`
+      )
+    })
+
+    it("media type decodes normalized values and reports invalid input", async () => {
+      const provider = ConfigProvider.fromUnknown({
+        mediaType: "Text/Plain; Charset=UTF-8",
+        invalid: "not a media type"
+      })
+
+      await assertSuccess(
+        Config.MediaType("mediaType"),
+        provider,
+        MediaType.parseUnsafe("text/plain; charset=UTF-8")
+      )
+      await assertFailure(
+        Config.MediaType("invalid"),
+        provider,
+        `Expected '/' after the media type at offset 3
+  at ["invalid"]`
       )
     })
   })

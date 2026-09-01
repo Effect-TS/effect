@@ -251,9 +251,11 @@ export const schemaBodyJson = <A, RD>(
   return Effect.flatMap(HttpServerRequest, parse)
 }
 
-const isMultipart = (request: HttpServerRequest) =>
-  request.headers["content-type"]?.toLowerCase().includes("multipart/form-data") === true ||
-  getFormDataBody(request) !== undefined
+const isMultipart = (request: HttpServerRequest) => {
+  const contentType = request.headers["content-type"]
+  return contentType?.toLowerCase().includes("multipart/form-data") === true ||
+    getFormDataBody(request) !== undefined
+}
 
 /**
  * Decodes the current request body as form data.

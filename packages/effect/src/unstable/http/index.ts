@@ -127,6 +127,11 @@ export * as HttpTraceContext from "./HttpTraceContext.ts"
 /**
  * @since 4.0.0
  */
+export * as MediaType from "./MediaType.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as Mime from "./Mime.ts"
 
 /**

@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
+import { MediaType } from "effect/unstable/http"
 import { HttpApiEndpoint, HttpApiSchema } from "effect/unstable/httpapi"
 
 const Events = Schema.Struct({
@@ -33,8 +34,12 @@ describe("HttpApiEndpoint", () => {
 })
 
 describe("HttpApiEndpoint payload schemas", () => {
-  it("normalizes payload map keys while preserving the declared content type", () => {
-    const contentType = "Application/Vnd.Effect+JSON; Charset=UTF-8"
+  it("accepts parsed content types and stores their canonical representation", () => {
+    const contentType = MediaType.makeUnsafe({
+      type: "Application",
+      subtype: "Vnd.Effect+JSON",
+      parameters: { charset: "UTF-8" }
+    })
     const endpoint = HttpApiEndpoint.post("create", "/", {
       payload: Schema.Struct({ name: Schema.String }).pipe(HttpApiSchema.asJson({ contentType }))
     })
@@ -46,7 +51,9 @@ describe("HttpApiEndpoint payload schemas", () => {
 
   it("rejects incompatible encodings for equivalent content types", () => {
     const JsonPayload = Schema.Struct({ name: Schema.String }).pipe(
-      HttpApiSchema.asJson({ contentType: "Application/Vnd.Effect+Data; charset=utf-8" })
+      HttpApiSchema.asJson({
+        contentType: "Application/Vnd.Effect+Data; charset=utf-8"
+      })
     )
     const TextPayload = Schema.String.pipe(
       HttpApiSchema.asText({ contentType: "application/vnd.effect+data" })
@@ -121,7 +128,7 @@ describe("HttpApiEndpoint streaming success schemas", () => {
     assert.throws(() =>
       HttpApiEndpoint.get("events", "/events", {
         success: [
-          HttpApiSchema.StreamSse({ contentType: "application/json", events: Events, error: StreamError }),
+          HttpApiSchema.StreamSse({ contentType: MediaType.applicationJson, events: Events, error: StreamError }),
           Schema.Struct({ ok: Schema.Boolean })
         ]
       })

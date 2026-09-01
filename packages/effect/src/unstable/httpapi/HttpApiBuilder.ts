@@ -42,6 +42,7 @@ import * as Request from "../http/HttpServerRequest.ts"
 import { HttpServerRequest } from "../http/HttpServerRequest.ts"
 import * as Response from "../http/HttpServerResponse.ts"
 import type { HttpServerResponse } from "../http/HttpServerResponse.ts"
+import * as MediaType from "../http/MediaType.ts"
 import * as Multipart from "../http/Multipart.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import type * as HttpApi from "./HttpApi.ts"
@@ -51,7 +52,6 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import type * as HttpApiSecurity from "./HttpApiSecurity.ts"
-import * as MediaType from "./internal/mediaType.ts"
 import * as OpenApi from "./OpenApi.ts"
 
 /**
@@ -699,9 +699,17 @@ function decodePayload(
   query: Record<string, string | Array<string>>
 ): Effect.Effect<unknown, Schema.SchemaError, unknown> | HttpServerResponse | undefined {
   const hasBody = HttpMethod.hasBody(httpRequest.method)
-  const contentType = hasBody
-    ? MediaType.normalize(httpRequest.headers["content-type"] ?? "application/json")
-    : "application/x-www-form-urlencoded"
+  const rawContentType = hasBody ? httpRequest.headers["content-type"] : undefined
+  let contentType: string
+  if (rawContentType === undefined) {
+    contentType = MediaType.essence(hasBody ? MediaType.applicationJson : MediaType.applicationFormUrlEncoded)
+  } else {
+    const parsedContentType = MediaType.parse(rawContentType)
+    if (Result.isFailure(parsedContentType)) {
+      return Response.text(`Unsupported content-type: ${rawContentType}`, { status: 415 })
+    }
+    contentType = MediaType.essence(parsedContentType.success)
+  }
   const existing = payloadBy.get(contentType)
   if (!existing) {
     return Response.text(`Unsupported content-type: ${contentType}`, { status: 415 })
@@ -978,7 +986,7 @@ function makeStreamEncoder(endpoint: HttpApiEndpoint.Top): StreamEncoder | undef
 
   const hasBuffered = hasBufferedSuccess(endpoint)
   const status = HttpApiSchema.getStatusStream(streamSchema)
-  const contentType = streamSchema.contentType
+  const contentType = MediaType.format(streamSchema.contentType)
 
   if (HttpApiSchema.isStreamUint8Array(streamSchema)) {
     return (response, context) => {
@@ -1218,6 +1226,7 @@ function getResponseEncode<E>(
   e: E,
   options?: SchemaAST.ParseOptions
 ) => Effect.Effect<Response.HttpServerResponse, SchemaIssue.InvalidValue, never> {
+  const contentType = MediaType.format(encoding.contentType)
   switch (encoding._tag) {
     case "Json": {
       return ((e, options) => {
@@ -1226,7 +1235,7 @@ function getResponseEncode<E>(
         }
         try {
           const s = JSON.stringify(e)
-          return Effect.succeed(Response.text(s, { status, contentType: encoding.contentType }))
+          return Effect.succeed(Response.text(s, { status, contentType }))
         } catch {
           return Effect.fail(
             new SchemaIssue.InvalidValue(
@@ -1242,19 +1251,19 @@ function getResponseEncode<E>(
       return (e) =>
         Effect.succeed(Response.text(e as string, {
           status,
-          contentType: encoding.contentType
+          contentType
         }))
     case "Uint8Array":
       return (e) =>
         Effect.succeed(Response.uint8Array(e as Uint8Array, {
           status,
-          contentType: encoding.contentType
+          contentType
         }))
     case "FormUrlEncoded":
       return (e) =>
         Effect.succeed(
           Response.urlParams(e as URLSearchParams, { status }).pipe(
-            Response.setHeader("content-type", encoding.contentType)
+            Response.setHeader("content-type", contentType)
           )
         )
   }

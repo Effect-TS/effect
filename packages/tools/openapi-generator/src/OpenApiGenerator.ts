@@ -175,10 +175,15 @@ export const make = Effect.gen(function*() {
 
       if (options.format === "httpapi") {
         const needsMultipartImport = generation.includes("Multipart.")
+        const implementation = HttpApiTransformer.toImplementation(importName, options.name, parsed)
         return String.stripMargin(
-          `|${HttpApiTransformer.imports(importName, { multipart: needsMultipartImport })}
+          `|${
+            HttpApiTransformer.imports(importName, {
+              multipart: needsMultipartImport
+            })
+          }
            |${generation}
-           |${HttpApiTransformer.toImplementation(importName, options.name, parsed)}`
+           |${implementation}`
         )
       }
 

@@ -33,6 +33,7 @@ import {
   Tuple
 } from "effect"
 import { TestSchema } from "effect/testing"
+import { MediaType } from "effect/unstable/http"
 import { produce } from "immer"
 import { deepStrictEqual, fail, strictEqual } from "node:assert"
 import {
@@ -5777,6 +5778,21 @@ Expected a value between -2147483648 and 2147483647`
     }
   })
 
+  it("MediaType", async () => {
+    const mediaType = MediaType.parseUnsafe("text/plain; charset=UTF-8")
+    const asserts = new TestSchema.Asserts(Schema.MediaType)
+    await asserts.decoding().succeed(mediaType)
+    await asserts.decoding().fail("text/plain", "Expected MediaType")
+
+    const json = new TestSchema.Asserts(Schema.toCodecJson(Schema.MediaType))
+    await json.decoding().succeed("Text/Plain; Charset=UTF-8", mediaType)
+    await json.encoding().succeed(mediaType, "text/plain; charset=utf-8")
+
+    const stringTree = new TestSchema.Asserts(Schema.toCodecStringTree(Schema.MediaType))
+    await stringTree.decoding().succeed("Text/Plain; Charset=UTF-8", mediaType)
+    await stringTree.encoding().succeed(mediaType, "text/plain; charset=utf-8")
+  })
+
   it("RegExp", async () => {
     const schema = Schema.RegExp
     const asserts = new TestSchema.Asserts(schema)
@@ -5802,6 +5818,14 @@ Expected a value between -2147483648 and 2147483647`
 
     const encoding = asserts.encoding()
     await encoding.succeed(new URL("https://effect.website"), "https://effect.website/")
+  })
+
+  it("MediaTypeFromString", async () => {
+    const mediaType = MediaType.parseUnsafe("text/plain; charset=UTF-8")
+    const asserts = new TestSchema.Asserts(Schema.MediaTypeFromString)
+    await asserts.decoding().succeed("Text/Plain; Charset=UTF-8", mediaType)
+    await asserts.decoding().fail("not a media type", "Expected '/' after the media type at offset 3")
+    await asserts.encoding().succeed(mediaType, "text/plain; charset=utf-8")
   })
 
   describe("UnknownFromJsonString / fromJsonString", () => {

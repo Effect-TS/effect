@@ -61,7 +61,9 @@ it.layer(TestServices)("HttpApiBuilder query parameters", (it) => {
 
 it.effect("reuses response schema transformations by source AST", () => {
   const SharedSuccess = Schema.String.pipe(HttpApiSchema.asText())
-  const DistinctSuccess = Schema.String.pipe(HttpApiSchema.asText({ contentType: "text/custom" }))
+  const DistinctSuccess = Schema.String.pipe(
+    HttpApiSchema.asText({ contentType: "text/custom" })
+  )
   const Api = HttpApi.make("Api").add(
     HttpApiGroup.make("test")
       .add(HttpApiEndpoint.get("first", "/first", { success: SharedSuccess }))
@@ -136,7 +138,9 @@ it.layer(TestServices)("HttpApiBuilder payload content types", (it) => {
   it.effect("round trips custom form-urlencoded media types", () =>
     Effect.gen(function*() {
       const Payload = Schema.Struct({ name: Schema.String }).pipe(
-        HttpApiSchema.asFormUrlEncoded({ contentType: "application/vnd.effect.form" })
+        HttpApiSchema.asFormUrlEncoded({
+          contentType: "application/vnd.effect.form"
+        })
       )
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("test").add(

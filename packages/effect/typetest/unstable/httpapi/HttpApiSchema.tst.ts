@@ -1,5 +1,6 @@
 import { Schema } from "effect"
 import type * as Sse from "effect/unstable/encoding/Sse"
+import type { MediaType } from "effect/unstable/http"
 import { HttpApiSchema } from "effect/unstable/httpapi"
 import { describe, expect, it } from "tstyche"
 
@@ -17,6 +18,13 @@ describe("HttpApiSchema", () => {
   })
 
   describe("StreamSse", () => {
+    it("accepts media type inputs", () => {
+      const Events = Schema.Struct({ event: Schema.String, data: Schema.String })
+      const stream = HttpApiSchema.StreamSse({ contentType: "text/plain", events: Events })
+
+      expect(stream).type.toBe<HttpApiSchema.StreamSse<typeof Events, Schema.Never>>()
+    })
+
     it("preserves event and error schemas", () => {
       const Events = Schema.Struct({
         event: Schema.Literal("user.created"),
@@ -117,6 +125,16 @@ describe("HttpApiSchema", () => {
     })
   })
 
+  describe("body encodings", () => {
+    it("accepts media type inputs", () => {
+      const schema = Schema.String.pipe(HttpApiSchema.asText({
+        contentType: { type: "text", subtype: "plain" }
+      }))
+
+      expect(schema).type.toBe<Schema.String>()
+    })
+  })
+
   describe("WithHeaders", () => {
     it("preserves the inner schema and headers schema types", () => {
       const Headers = Schema.Struct({ "x-total-count": Schema.FiniteFromString })
@@ -198,7 +216,7 @@ describe("HttpApiSchema", () => {
 
       expect(stream).type.toBe<HttpApiSchema.StreamUint8Array>()
       expect(stream.mode).type.toBe<"uint8array">()
-      expect(stream.contentType).type.toBe<string>()
+      expect(stream.contentType).type.toBe<MediaType.MediaType>()
     })
 
     it("preserves the stream schema type when annotated with status", () => {

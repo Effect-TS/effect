@@ -1532,6 +1532,21 @@ export function URL(name?: string) {
 }
 
 /**
+ * Creates a config for a normalized HTTP media type parsed from a string.
+ *
+ * **Details**
+ *
+ * This is a shortcut for `Config.schema(Schema.MediaType, name)`.
+ *
+ * @unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export function MediaType(name?: string) {
+  return schema(Schema.MediaType, name)
+}
+
+/**
  * Creates a config for a `Date` value parsed from a string.
  *
  * **When to use**

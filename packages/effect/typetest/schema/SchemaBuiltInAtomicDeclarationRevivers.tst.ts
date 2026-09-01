@@ -5,6 +5,7 @@ describe("Schema built-in atomic declaration revivers", () => {
   it("composes every atomic declaration reviver without casts", () => {
     const revivers: ReadonlyArray<SchemaRepresentation.AnyReviver> = [
       Schema.DateReviver,
+      Schema.MediaTypeReviver,
       Schema.FileReviver,
       Schema.FormDataReviver,
       Schema.RegExpReviver,
@@ -15,6 +16,7 @@ describe("Schema built-in atomic declaration revivers", () => {
 
     expect(revivers).type.toBe<ReadonlyArray<SchemaRepresentation.AnyReviver>>()
     expect(Schema.DateReviver).type.toBe<SchemaRepresentation.DeclarationReviver<null>>()
+    expect(Schema.MediaTypeReviver).type.toBe<SchemaRepresentation.DeclarationReviver<null>>()
     expect(Schema.FileReviver).type.toBe<SchemaRepresentation.DeclarationReviver<null>>()
     expect(Schema.FormDataReviver).type.toBe<SchemaRepresentation.DeclarationReviver<null>>()
   })
