@@ -14,7 +14,14 @@
     "./packages/**/typetest/**/*.ts",
     "./packages/**/benchmark/**/*.ts"
   ],
-  "exclude": ["**/node_modules/**", "**/dist/**", "./packages/platform/deno/**"],
+  "exclude": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "./packages/platform/deno/**",
+    // Compiled by the package's own tsconfig.alchemy.json: the alchemy type
+    // graph loads bun globals that clash with this project's node globals.
+    "./packages/platform/cloudflare/typetest/**"
+  ],
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,

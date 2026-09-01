@@ -3,6 +3,7 @@
   "include": [],
   "references": [
     { "path": "tsconfig.packages.json" },
-    { "path": "tsconfig.tests.json" }
+    { "path": "tsconfig.tests.json" },
+    { "path": "packages/platform/cloudflare/tsconfig.alchemy.json" }
   ]
 }
