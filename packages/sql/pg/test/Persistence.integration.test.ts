@@ -46,7 +46,7 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PersistedQueue SQL
       const takeOptions = {
         name: "lock-refresh",
         maxAttempts: 10,
-        backoff: () => Duration.zero
+        retryDelay: () => Effect.succeed(Duration.zero)
       }
       const acquired = Latch.makeUnsafe()
       const first = yield* Effect.scoped(Effect.gen(function*() {

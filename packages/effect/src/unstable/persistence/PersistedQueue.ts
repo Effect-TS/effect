@@ -24,6 +24,7 @@ import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
 import * as MutableRef from "../../MutableRef.ts"
 import * as Predicate from "../../Predicate.ts"
+import * as Pull from "../../Pull.ts"
 import * as Queue from "../../Queue.ts"
 import * as RcMap from "../../RcMap.ts"
 import * as Schedule from "../../Schedule.ts"
@@ -56,8 +57,9 @@ export type TypeId = "~effect/persistence/PersistedQueue"
  * **Details**
  *
  * `offer` enqueues values by id, and `take` processes one value at a time,
- * marking it complete on success or retrying it with the queue's backoff until
- * the maximum attempts is reached, after which it is marked as failed.
+ * marking it complete on success or retrying it with the queue's retry
+ * schedule until the maximum attempts is reached, after which it is marked as
+ * failed.
  *
  * Delivery is at-least-once: a crash between handler success and the
  * acknowledgement redelivers the element, so handlers must be idempotent.
@@ -88,8 +90,8 @@ export interface PersistedQueue<in out A, out R = never> {
    * **Details**
    *
    * If the returned effect succeeds, the element is marked as processed;
-   * otherwise it will be retried with the queue's backoff until the maximum
-   * attempts is reached, after which it is marked as failed.
+   * otherwise it will be retried with the queue's retry schedule until the
+   * maximum attempts is reached, after which it is marked as failed.
    *
    * An attempt is counted when the element is claimed, so `attempts` in the
    * handler metadata is 1-based ("this is attempt 3"). A handler crash that
@@ -120,7 +122,7 @@ export class PersistedQueueFactory extends Context.Service<
       readonly name: string
       readonly schema: S
       readonly maxAttempts?: number | undefined
-      readonly backoff?: ((attempts: number) => Duration.Input) | undefined
+      readonly retrySchedule?: Schedule.Schedule<any, number> | undefined
     }) => Effect.Effect<PersistedQueue<S["Type"], S["EncodingServices"] | S["DecodingServices"]>>
   }
 >()("effect/persistence/PersistedQueue/PersistedQueueFactory") {}
@@ -131,10 +133,9 @@ export class PersistedQueueFactory extends Context.Service<
  *
  * **Details**
  *
- * `maxAttempts` defaults to 10. `backoff` computes the delay before a failed
- * element becomes visible again from the number of consumed attempts, and
- * defaults to a capped exponential backoff (1 second doubling up to 5
- * minutes).
+ * `maxAttempts` defaults to 10. `retrySchedule` controls the delay before a
+ * failed element becomes visible again, and defaults to an exponential delay
+ * starting at 1 second and capped at 5 minutes.
  *
  * @category accessors
  * @since 4.0.0
@@ -143,18 +144,36 @@ export const make = <S extends Schema.Constraint>(options: {
   readonly name: string
   readonly schema: S
   readonly maxAttempts?: number | undefined
-  readonly backoff?: ((attempts: number) => Duration.Input) | undefined
+  readonly retrySchedule?: Schedule.Schedule<any, number> | undefined
 }): Effect.Effect<
   PersistedQueue<S["Type"], S["EncodingServices"] | S["DecodingServices"]>,
   never,
   PersistedQueueFactory
 > => PersistedQueueFactory.use((factory) => factory.make(options))
 
-const defaultBackoff = (attempts: number): Duration.Duration =>
-  Duration.min(
-    Duration.seconds(2 ** Math.min(Math.max(attempts - 1, 0), 9)),
-    Duration.minutes(5)
-  )
+const defaultRetrySchedule = Schedule.min([
+  Schedule.exponential("1 second"),
+  Schedule.spaced("5 minutes")
+])
+
+const retryDelay = (
+  schedule: Schedule.Schedule<any, number>,
+  attempts: number
+): Effect.Effect<Duration.Duration> =>
+  Effect.gen(function*() {
+    const step = yield* Schedule.toStep(schedule)
+    let now = 0
+    let delay = Duration.zero
+    for (let i = 0; i < attempts; i++) {
+      const result = yield* Pull.catchDone(
+        step(now, i + 1),
+        () => Effect.succeed([undefined, delay] as [unknown, Duration.Duration])
+      )
+      delay = result[1]
+      now += Duration.toMillis(delay)
+    }
+    return delay
+  })
 
 /**
  * Creates a `PersistedQueueFactory` from the current `PersistedQueueStore`.
@@ -176,18 +195,16 @@ export const makeFactory = Effect.gen(function*() {
       readonly name: string
       readonly schema: S
       readonly maxAttempts?: number | undefined
-      readonly backoff?: ((attempts: number) => Duration.Input) | undefined
+      readonly retrySchedule?: Schedule.Schedule<any, number> | undefined
     }) {
       const jsonSchema = Schema.toCodecJson(options.schema)
       const encodeUnknown = Schema.encodeUnknownEffect(jsonSchema)
       const decodeUnknown = Schema.decodeUnknownEffect(jsonSchema)
-      const backoff = options.backoff
+      const retrySchedule = options.retrySchedule ?? defaultRetrySchedule
       const takeOptions = {
         name: options.name,
         maxAttempts: options.maxAttempts ?? 10,
-        backoff: backoff === undefined
-          ? defaultBackoff
-          : (attempts: number) => Duration.fromInputUnsafe(backoff(attempts))
+        retryDelay: (attempts: number) => retryDelay(retrySchedule, attempts)
       }
 
       return Effect.succeed<PersistedQueue<S["Type"], S["EncodingServices"] | S["DecodingServices"]>>({
@@ -409,7 +426,7 @@ const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefine
  *
  * Claiming an element counts an attempt, so the `attempts` returned by `take`
  * is 1-based. When the take scope closes with a success the element is marked
- * completed; a failure retries it after `backoff(attempts)` or marks it failed
+ * completed; a failure retries it according to `retryDelay` or marks it failed
  * once `maxAttempts` is exhausted; an interruption releases it without
  * counting the attempt.
  *
@@ -431,7 +448,7 @@ export class PersistedQueueStore extends Context.Service<
     readonly take: (options: {
       readonly name: string
       readonly maxAttempts: number
-      readonly backoff: (attempts: number) => Duration.Duration
+      readonly retryDelay: (attempts: number) => Effect.Effect<Duration.Duration>
     }) => Effect.Effect<
       {
         readonly id: string
@@ -460,138 +477,145 @@ export class PersistedQueueStore extends Context.Service<
  * **Details**
  *
  * The store is process-local and volatile; failed takes are requeued with the
- * queue's backoff until the configured maximum attempts is reached, after
- * which the element is marked as failed.
+ * queue's retry schedule until the configured maximum attempts is reached,
+ * after which the element is marked as failed.
  *
  * @category layers
  * @since 4.0.0
  */
 export const layerStoreMemory: Layer.Layer<
   PersistedQueueStore
-> = Layer.sync(PersistedQueueStore, () => {
-  type Entry = {
-    readonly id: string
-    readonly element: unknown
-    attempts: number
-    state: "pending" | "processing" | "completed" | "failed"
-    visibleAt: number
-    stateChangedAt: number
-  }
-  const queues = new Map<string, {
-    latch: Latch.Latch
-    // all entries ever offered, for de-duplication; `pending` holds the
-    // deliverable subset so take does not scan the completed backlog
-    entries: Map<string, Entry>
-    pending: Set<Entry>
-  }>()
-  const getOrCreateQueue = (name: string) => {
-    let queue = queues.get(name)
-    if (!queue) {
-      queue = {
-        latch: Latch.makeUnsafe(false),
-        entries: new Map(),
-        pending: new Set()
-      }
-      queues.set(name, queue)
+> = Layer.effect(
+  PersistedQueueStore,
+  Effect.gen(function*() {
+    const clock = yield* Clock.Clock
+    type Entry = {
+      readonly id: string
+      readonly element: unknown
+      attempts: number
+      state: "pending" | "processing" | "completed" | "failed"
+      visibleAt: number
+      stateChangedAt: number
     }
-    return queue
-  }
-
-  return PersistedQueueStore.of({
-    offer: (options) =>
-      Effect.map(Clock.currentTimeMillis, (now) => {
-        const queue = getOrCreateQueue(options.name)
-        if (queue.entries.has(options.id)) return
-        const entry: Entry = {
-          id: options.id,
-          element: options.element,
-          attempts: 0,
-          state: "pending",
-          visibleAt: now,
-          stateChangedAt: now
+    const queues = new Map<string, {
+      latch: Latch.Latch
+      // all entries ever offered, for de-duplication; `pending` holds the
+      // deliverable subset so take does not scan the completed backlog
+      entries: Map<string, Entry>
+      pending: Set<Entry>
+    }>()
+    const getOrCreateQueue = (name: string) => {
+      let queue = queues.get(name)
+      if (!queue) {
+        queue = {
+          latch: Latch.makeUnsafe(false),
+          entries: new Map(),
+          pending: new Set()
         }
-        queue.entries.set(options.id, entry)
-        queue.pending.add(entry)
-        queue.latch.openUnsafe()
-      }),
-    take: Effect.fnUntraced(function*(options) {
-      const queue = getOrCreateQueue(options.name)
-      while (true) {
-        // close before scanning so a mutation after the scan reopens the latch
-        queue.latch.closeUnsafe()
-        const now = yield* Clock.currentTimeMillis
-        let item: Entry | undefined
-        let nextVisibleAt = Infinity
-        for (const entry of queue.pending) {
-          if (entry.attempts >= options.maxAttempts) continue
-          if (entry.visibleAt <= now) {
-            item = entry
-            break
-          }
-          nextVisibleAt = Math.min(nextVisibleAt, entry.visibleAt)
-        }
-        if (item === undefined) {
-          yield* nextVisibleAt === Infinity
-            ? queue.latch.await
-            : Effect.race(queue.latch.await, Effect.sleep(Duration.millis(nextVisibleAt - now)))
-          continue
-        }
-        const entry = item
-        entry.state = "processing"
-        entry.attempts += 1
-        queue.pending.delete(entry)
-        queue.latch.openUnsafe()
-        yield* Effect.addFinalizer((exit) =>
-          Effect.map(Clock.currentTimeMillis, (now) => {
-            if (exit._tag === "Success") {
-              entry.state = "completed"
-              entry.stateChangedAt = now
-              return
-            }
-            const deadLetter = deadLetterFromCause(exit.cause)
-            if (deadLetter !== undefined) {
-              entry.state = "failed"
-              entry.stateChangedAt = now
-              return
-            }
-            if (Cause.hasInterruptsOnly(exit.cause)) {
-              entry.attempts -= 1
-            } else if (entry.attempts >= options.maxAttempts) {
-              entry.state = "failed"
-              entry.stateChangedAt = now
-              return
-            } else {
-              entry.visibleAt = now + Duration.toMillis(options.backoff(entry.attempts))
-            }
-            entry.state = "pending"
-            queue.pending.add(entry)
-            queue.latch.openUnsafe()
-          })
-        )
-        return { id: entry.id, attempts: entry.attempts, element: entry.element }
+        queues.set(name, queue)
       }
-    }),
-    cleanup: (options) =>
-      Effect.map(Clock.currentTimeMillis, (now) => {
-        const completedCutoff = now - Duration.toMillis(options.timeToLive)
-        const failedCutoff = options.failedTimeToLive === undefined
-          ? undefined
-          : now - Duration.toMillis(options.failedTimeToLive)
-        for (const queue of queues.values()) {
-          for (const [id, entry] of queue.entries) {
-            const cutoff = entry.state === "completed"
-              ? completedCutoff
-              : entry.state === "failed"
-              ? failedCutoff
-              : undefined
-            if (cutoff !== undefined && entry.stateChangedAt <= cutoff) {
-              queue.entries.delete(id)
+      return queue
+    }
+
+    return PersistedQueueStore.of({
+      offer: (options) =>
+        Effect.sync(() => {
+          const now = clock.currentTimeMillisUnsafe()
+          const queue = getOrCreateQueue(options.name)
+          if (queue.entries.has(options.id)) return
+          const entry: Entry = {
+            id: options.id,
+            element: options.element,
+            attempts: 0,
+            state: "pending",
+            visibleAt: now,
+            stateChangedAt: now
+          }
+          queue.entries.set(options.id, entry)
+          queue.pending.add(entry)
+          queue.latch.openUnsafe()
+        }),
+      take: Effect.fnUntraced(function*(options) {
+        const queue = getOrCreateQueue(options.name)
+        while (true) {
+          // close before scanning so a mutation after the scan reopens the latch
+          queue.latch.closeUnsafe()
+          const now = clock.currentTimeMillisUnsafe()
+          let item: Entry | undefined
+          let nextVisibleAt = Infinity
+          for (const entry of queue.pending) {
+            if (entry.attempts >= options.maxAttempts) continue
+            if (entry.visibleAt <= now) {
+              item = entry
+              break
+            }
+            nextVisibleAt = Math.min(nextVisibleAt, entry.visibleAt)
+          }
+          if (item === undefined) {
+            yield* nextVisibleAt === Infinity
+              ? queue.latch.await
+              : Effect.race(queue.latch.await, Effect.sleep(Duration.millis(nextVisibleAt - now)))
+            continue
+          }
+          const entry = item
+          entry.state = "processing"
+          entry.attempts += 1
+          queue.pending.delete(entry)
+          queue.latch.openUnsafe()
+          yield* Effect.addFinalizer((exit) =>
+            Effect.gen(function*() {
+              const now = clock.currentTimeMillisUnsafe()
+              if (exit._tag === "Success") {
+                entry.state = "completed"
+                entry.stateChangedAt = now
+                return
+              }
+              const deadLetter = deadLetterFromCause(exit.cause)
+              if (deadLetter !== undefined) {
+                entry.state = "failed"
+                entry.stateChangedAt = now
+                return
+              }
+              if (Cause.hasInterruptsOnly(exit.cause)) {
+                entry.attempts -= 1
+              } else if (entry.attempts >= options.maxAttempts) {
+                entry.state = "failed"
+                entry.stateChangedAt = now
+                return
+              } else {
+                entry.visibleAt = now + Duration.toMillis(yield* options.retryDelay(entry.attempts))
+              }
+              entry.state = "pending"
+              queue.pending.add(entry)
+              queue.latch.openUnsafe()
+            })
+          )
+          return { id: entry.id, attempts: entry.attempts, element: entry.element }
+        }
+      }),
+      cleanup: (options) =>
+        Effect.sync(() => {
+          const now = clock.currentTimeMillisUnsafe()
+          const completedCutoff = now - Duration.toMillis(options.timeToLive)
+          const failedCutoff = options.failedTimeToLive === undefined
+            ? undefined
+            : now - Duration.toMillis(options.failedTimeToLive)
+          for (const queue of queues.values()) {
+            for (const [id, entry] of queue.entries) {
+              const cutoff = entry.state === "completed"
+                ? completedCutoff
+                : entry.state === "failed"
+                ? failedCutoff
+                : undefined
+              if (cutoff !== undefined && entry.stateChangedAt <= cutoff) {
+                queue.entries.delete(id)
+              }
             }
           }
-        }
-      })
+        })
+    })
   })
-})
+)
 
 /**
  * Creates a Redis-backed `PersistedQueueStore`.
@@ -600,7 +624,8 @@ export const layerStoreMemory: Layer.Layer<
  *
  * The store uses Redis lists, hashes, and sorted sets with worker locks,
  * periodically refreshes locks while items are being processed, delays retried
- * items with the queue's backoff, and moves exhausted items to a failed queue.
+ * items with the queue's retry schedule, and moves exhausted items to a failed
+ * queue.
  *
  * @category constructors
  * @since 4.0.0
@@ -614,6 +639,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   }
 ) {
   const redis = yield* Redis.Redis
+  const clock = yield* Clock.Clock
 
   const pollInterval = Duration.max(
     options?.pollInterval ? Duration.fromInputUnsafe(options.pollInterval) : Duration.seconds(1),
@@ -693,17 +719,16 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
       )
 
       yield* Effect.suspend(() =>
-        Effect.flatMap(Clock.currentTimeMillis, (now) =>
-          resetQueue(
-            keys.queue,
-            keys.pending,
-            keys.attempts,
-            keys.failed,
-            keys.ids,
-            prefix,
-            state.maxAttempts,
-            now
-          ))
+        resetQueue(
+          keys.queue,
+          keys.pending,
+          keys.attempts,
+          keys.failed,
+          keys.ids,
+          prefix,
+          state.maxAttempts,
+          clock.currentTimeMillisUnsafe()
+        )
       ).pipe(
         Effect.andThen(Effect.sleep(lockRefreshMillis)),
         Effect.forever,
@@ -711,7 +736,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
       )
 
       const poll = (size: number) =>
-        Effect.flatMap(Clock.currentTimeMillis, (now) =>
+        Effect.suspend(() =>
           take(
             keys.queue,
             keys.pending,
@@ -721,8 +746,9 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
             workerId,
             size,
             lockExpirationMillis,
-            now
-          ))
+            clock.currentTimeMillisUnsafe()
+          )
+        )
 
       yield* Effect.gen(function*() {
         while (true) {
@@ -853,7 +879,8 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
                 Effect.ensuring(Effect.sync(() => activeLockKeys.delete(lock)))
               )
             return Effect.addFinalizer((exit) =>
-              Effect.flatMap(Clock.currentTimeMillis, (now) => {
+              Effect.suspend(() => {
+                const now = clock.currentTimeMillisUnsafe()
                 if (exit._tag === "Success") {
                   return ack(complete(keys.pending, lock, keys.attempts, keys.ids, element.id, now))
                 }
@@ -883,14 +910,15 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
                 if (element.attempts >= options.maxAttempts) {
                   return failElement(exit.cause)
                 }
-                return ack(retry(
-                  keys.pending,
-                  lock,
-                  keys.delayed,
-                  element.id,
-                  element.payload,
-                  now + Duration.toMillis(options.backoff(element.attempts))
-                ))
+                return Effect.flatMap(options.retryDelay(element.attempts), (delay) =>
+                  ack(retry(
+                    keys.pending,
+                    lock,
+                    keys.delayed,
+                    element.id,
+                    element.payload,
+                    now + Duration.toMillis(delay)
+                  )))
               })
             )
           })
@@ -898,7 +926,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
       }),
     cleanup: ({ failedTimeToLive, timeToLive }) =>
       Effect.gen(function*() {
-        const now = yield* Clock.currentTimeMillis
+        const now = clock.currentTimeMillisUnsafe()
         const idsKeys = yield* scanKeys(`${prefix}*:ids`)
         const cutoff = now - Duration.toMillis(timeToLive)
         yield* Effect.forEach(
@@ -1384,12 +1412,12 @@ export const makeStoreSql: (
       `,
       [sequence]
     )
-  const retry = (sequence: number | string, backoff: Duration.Duration, cause: Cause.Cause<any>) =>
+  const retry = (sequence: number | string, delay: Duration.Duration, cause: Cause.Cause<any>) =>
     ack(
       sql`
         UPDATE ${tableNameSql}
         SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, visible_at = ${
-        secondsFromNow(Duration.toSeconds(backoff))
+        secondsFromNow(Duration.toSeconds(delay))
       }, last_failure = ${Cause.pretty(cause)}
         WHERE sequence = ${sequence}
         AND acquired_by = ${workerIdSql}
@@ -1706,7 +1734,10 @@ export const makeStoreSql: (
                 if (element.attempts >= options.maxAttempts) {
                   return fail(element.sequence, exit.cause)
                 }
-                return retry(element.sequence, options.backoff(element.attempts), exit.cause)
+                return Effect.flatMap(
+                  options.retryDelay(element.attempts),
+                  (delay) => retry(element.sequence, delay, exit.cause)
+                )
               }),
               { id: element.id, attempts: element.attempts, element: parsed }
             )

@@ -1,6 +1,6 @@
 import { assert, it } from "@effect/vitest"
 import type { Vitest } from "@effect/vitest"
-import { Duration, Effect, Fiber, Latch, Layer, Schema } from "effect"
+import { Duration, Effect, Fiber, Latch, Layer, Schedule, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import { PersistedQueue } from "effect/unstable/persistence"
 
@@ -84,7 +84,7 @@ export const suiteWith = <R>(
         const queue = yield* PersistedQueue.make({
           name: "test-queue-c",
           schema: Item,
-          backoff: () => 0
+          retrySchedule: Schedule.spaced(0)
         })
 
         yield* queue.offer({ n: 42n })
@@ -99,12 +99,12 @@ export const suiteWith = <R>(
         assert.strictEqual(value.n, 42n)
       }), testOptions)
 
-    it.effect("delays retries with backoff", () =>
+    it.effect("delays retries with the retry schedule", () =>
       Effect.gen(function*() {
         const queue = yield* PersistedQueue.make({
-          name: "test-queue-backoff",
+          name: "test-queue-retry-schedule",
           schema: Item,
-          backoff: () => 500
+          retrySchedule: Schedule.spaced(500)
         })
 
         yield* queue.offer({ n: 42n })
@@ -116,12 +116,12 @@ export const suiteWith = <R>(
           Effect.forkScoped
         )
 
-        // not redelivered before the backoff elapses
+        // not redelivered before the retry delay elapses
         yield* TestClock.adjust(100)
         yield* Effect.sleep(100).pipe(TestClock.withLive)
         assert.isUndefined(fiber.pollUnsafe())
 
-        // give real-time backends time to pass the backoff and poll again
+        // give real-time backends time to pass the retry delay and poll again
         for (let i = 0; i < 3; i++) {
           yield* TestClock.adjust(1000)
           yield* Effect.sleep(700).pipe(TestClock.withLive)
@@ -200,7 +200,7 @@ export const suiteWith = <R>(
           name: "test-queue-exhausted",
           schema: Item,
           maxAttempts: 1,
-          backoff: () => 0
+          retrySchedule: Schedule.spaced(0)
         })
 
         yield* queue.offer({ n: 42n })
@@ -219,7 +219,7 @@ export const suiteWith = <R>(
         const queue = yield* PersistedQueue.make({
           name: "test-queue-decode-failure",
           schema: Item,
-          backoff: () => 0
+          retrySchedule: Schedule.spaced(0)
         })
 
         yield* store.offer({
@@ -271,7 +271,7 @@ export const suiteWith = <R>(
           name: "test-queue-cleanup-failed",
           schema: Item,
           maxAttempts: 1,
-          backoff: () => 0
+          retrySchedule: Schedule.spaced(0)
         })
 
         yield* queue.offer({ n: 1n }, { id: "failed-cleanup-id" })
