@@ -34,15 +34,30 @@ const handleBadArgument = (method: string) => (err: unknown) =>
     description: (err as Error).message ?? String(err)
   })
 
-const positionToNumber = (position: bigint, method: string): Effect.Effect<number, Error.PlatformError> =>
-  Option.match(BI.toNumber(position), {
-    onNone: () =>
-      Effect.fail(Error.badArgument({
-        module: "FileSystem",
-        method,
-        description: "file position exceeds Number.MAX_SAFE_INTEGER"
-      })),
+/**
+ * Converts a bigint to a safe number or fails with a bad argument error.
+ *
+ * @category utilities
+ * @since 4.0.0
+ */
+export const bigintToNumber = (
+  value: bigint,
+  options: {
+    readonly module: string
+    readonly method: string
+    readonly description: string
+  }
+): Effect.Effect<number, Error.PlatformError> =>
+  Option.match(BI.toNumber(value), {
+    onNone: () => Effect.fail(Error.badArgument(options)),
     onSome: Effect.succeed
+  })
+
+const positionToNumber = (position: bigint, method: string): Effect.Effect<number, Error.PlatformError> =>
+  bigintToNumber(position, {
+    module: "FileSystem",
+    method,
+    description: "file position exceeds Number.MAX_SAFE_INTEGER"
   })
 
 // == access
@@ -525,7 +540,7 @@ const makeFileInfo = (stat: NFS.BigIntStats): FileSystem.File.Info => ({
   gid: Option.some(Number(stat.gid)),
   size: ByteSize.bytes(stat.size),
   blksize: stat.blksize !== undefined ? Option.some(ByteSize.bytes(stat.blksize)) : Option.none(),
-  blocks: Option.some(Number(stat.blocks))
+  blocks: stat.blocks !== undefined ? Option.some(Number(stat.blocks)) : Option.none()
 })
 const stat = (() => {
   const nodeStat = effectify(

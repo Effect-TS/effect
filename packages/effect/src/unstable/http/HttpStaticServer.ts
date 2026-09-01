@@ -121,8 +121,15 @@ export const make: (options: {
         request.headers["if-modified-since"] !== undefined
 
       let fullResponse: HttpServerResponse.HttpServerResponse | undefined
+      const getFullResponse = () =>
+        fullResponse === undefined
+          ? Effect.map(
+            handlePlatformError(request, platform.fileResponse(filePath)),
+            (response) => setFileHeaders(response, filePath)
+          )
+          : Effect.succeed(fullResponse)
       if (shouldEvaluateConditionals) {
-        fullResponse = setFileHeaders(yield* handlePlatformError(request, platform.fileResponse(filePath)), filePath)
+        fullResponse = yield* getFullResponse()
         const conditionalResponse = evaluateConditionalRequest(request, fullResponse)
         if (conditionalResponse !== undefined) {
           return conditionalResponse
@@ -137,15 +144,13 @@ export const make: (options: {
         : fileSize ?? (yield* handlePlatformError(request, fileSystem.stat(filePath))).size
 
       if (rangeHeader === undefined || resolvedFileSize === undefined) {
-        return fullResponse ??
-          setFileHeaders(yield* handlePlatformError(request, platform.fileResponse(filePath)), filePath)
+        return yield* getFullResponse()
       }
 
       const parsedRange = parseRange(rangeHeader, resolvedFileSize)
 
       if (parsedRange === undefined) {
-        return fullResponse ??
-          setFileHeaders(yield* handlePlatformError(request, platform.fileResponse(filePath)), filePath)
+        return yield* getFullResponse()
       }
 
       if (parsedRange === "unsatisfiable") {

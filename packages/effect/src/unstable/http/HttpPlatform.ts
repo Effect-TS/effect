@@ -130,12 +130,6 @@ export const make: (impl: {
     }),
     fileWebResponse(file, options) {
       return Effect.map(etagGen.fromFileWeb(file), (etag) => {
-        const normalizedOptions = options === undefined ? undefined : {
-          ...options,
-          bytesToRead: options.bytesToRead,
-          chunkSize: options.chunkSize,
-          offset: options.offset
-        }
         const headers = Headers.merge(
           options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
           Headers.fromRecordUnsafe({
@@ -148,7 +142,7 @@ export const make: (impl: {
           options?.status ?? 200,
           options?.statusText,
           headers,
-          normalizedOptions
+          options
         )
       })
     }
@@ -188,7 +182,7 @@ export const layer = Layer.effect(HttpPlatform)(
           ? available
           : Math.min(Math.max(options.bytesToRead, 0), available)
         const end = offset + contentLength
-        const chunkSize = Math.min(Math.max(options?.chunkSize ?? Number.MAX_SAFE_INTEGER, 1), Number.MAX_SAFE_INTEGER)
+        const chunkSize = Math.max(options?.chunkSize ?? Number.MAX_SAFE_INTEGER, 1)
         const stream = end <= offset
           ? Stream.empty
           : Stream.fromReadableStream({

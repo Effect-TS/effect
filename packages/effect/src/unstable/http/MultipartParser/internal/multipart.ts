@@ -1,4 +1,5 @@
 import * as ByteSize from "../../../../ByteSize.ts"
+import * as Option from "../../../../Option.ts"
 import type { Config, MultipartError, PartInfo } from "../../MultipartParser.ts"
 import * as CT from "./contentType.ts"
 import * as HP from "./headers.ts"
@@ -54,9 +55,15 @@ export function make({
   maxPartSize,
   maxFieldSize = ByteSize.mebibytes(1)
 }: Config) {
-  const maxTotalSizeBigInt = maxTotalSize === undefined ? undefined : ByteSize.fromInputUnsafe(maxTotalSize).value
-  const maxPartSizeBigInt = maxPartSize === undefined ? undefined : ByteSize.fromInputUnsafe(maxPartSize).value
-  const maxFieldSizeBigInt = ByteSize.fromInputUnsafe(maxFieldSize).value
+  const maxTotalSizeBigInt = maxTotalSize === undefined || maxTotalSize === Infinity
+    ? undefined
+    : ByteSize.fromInputUnsafe(maxTotalSize).value
+  const maxPartSizeBigInt = maxPartSize === undefined || maxPartSize === Infinity
+    ? undefined
+    : ByteSize.fromInputUnsafe(maxPartSize).value
+  const maxFieldSizeNumber = maxFieldSize === Infinity
+    ? Infinity
+    : Option.getOrElse(ByteSize.toNumber(ByteSize.fromInputUnsafe(maxFieldSize)), () => Infinity)
   const boundary = parseBoundary(headers)
   if (boundary === undefined) {
     onError({ _tag: "InvalidBoundary" })
@@ -217,7 +224,7 @@ export function make({
           } else {
             const buf = chunk.subarray(result.endPosition)
             state.fieldSize += buf.length
-            if (BigInt(state.fieldSize) > maxFieldSizeBigInt) {
+            if (state.fieldSize > maxFieldSizeNumber) {
               return stop(errMaxFieldSize)
             }
             state.fieldChunks.push(buf)
@@ -227,7 +234,7 @@ export function make({
         state.onChunk(chunk)
       } else {
         state.fieldSize += chunk.length
-        if (BigInt(state.fieldSize) > maxFieldSizeBigInt) {
+        if (state.fieldSize > maxFieldSizeNumber) {
           return stop(errMaxFieldSize)
         }
         state.fieldChunks.push(chunk)

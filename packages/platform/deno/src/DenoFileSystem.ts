@@ -396,9 +396,7 @@ const symlink: FileSystem.FileSystem["symlink"] = (target, path) =>
   tryPromise("symlink", target, () => Deno.symlink(target, path))
 
 const truncate: FileSystem.FileSystem["truncate"] = (path, length) =>
-  length === undefined
-    ? tryPromise("truncate", path, () => Deno.truncate(path))
-    : tryPromise("truncate", path, () => Deno.truncate(path, length))
+  tryPromise("truncate", path, () => Deno.truncate(path, length))
 
 const utimes: FileSystem.FileSystem["utimes"] = (path, atime, mtime) =>
   tryPromise("utimes", path, () => Deno.utime(path, atime, mtime))

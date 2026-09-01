@@ -9,13 +9,12 @@
  *
  * @since 4.0.0
  */
+import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
 import * as ByteSize from "effect/ByteSize"
 import * as Effect from "effect/Effect"
 import type { FileSystem } from "effect/FileSystem"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import * as PlatformError from "effect/PlatformError"
 import * as Etag from "effect/unstable/http/Etag"
 import * as Platform from "effect/unstable/http/HttpPlatform"
 import * as Response from "effect/unstable/http/HttpServerResponse"
@@ -39,16 +38,13 @@ const make: Effect.Effect<
 > = Platform.make({
   platform: "bun",
   compression,
-  fileResponse(path, status, statusText, headers, start, end, contentLength) {
+  fileResponse(path, status, statusText, headers, start, end, _contentLength) {
     return Effect.gen(function*() {
-      if (ByteSize.isZero(contentLength)) {
-        return Response.raw(new Uint8Array(0), { headers, status, statusText })
-      }
       let file = Bun.file(path)
       if (!ByteSize.isZero(start) || end !== undefined) {
         file = file.slice(
-          yield* byteSizeToNumber(start),
-          end === undefined ? undefined : yield* byteSizeToNumber(end)
+          yield* byteSizeToNumber(start.value),
+          end === undefined ? undefined : yield* byteSizeToNumber(end.value)
         )
       }
       return Response.raw(file, { headers, status, statusText })
@@ -66,15 +62,11 @@ const make: Effect.Effect<
   }
 })
 
-const byteSizeToNumber = (size: ByteSize.ByteSize) =>
-  Option.match(ByteSize.toNumber(size), {
-    onNone: () =>
-      Effect.fail(PlatformError.badArgument({
-        module: "HttpPlatform",
-        method: "fileResponse",
-        description: "file range exceeds Number.MAX_SAFE_INTEGER"
-      })),
-    onSome: Effect.succeed
+const byteSizeToNumber = (size: bigint) =>
+  NodeFileSystem.bigintToNumber(size, {
+    module: "HttpPlatform",
+    method: "fileResponse",
+    description: "file range exceeds Number.MAX_SAFE_INTEGER"
   })
 
 /**
