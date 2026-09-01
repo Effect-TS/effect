@@ -519,11 +519,17 @@ export const sqlMigrationSuite = (
 
         const longId = "i".repeat(200)
         const longQueueName = "q".repeat(200)
-        const largeElement = "x".repeat(70_000)
+        // Only MySQL needs a payload over 64 KB to verify the TEXT to
+        // MEDIUMTEXT upgrade. Large NVARCHAR parameters disconnect Tedious
+        // under Deno, which is unrelated to the MSSQL schema migration.
+        const element = sql.onDialectOrElse({
+          mysql: () => "x".repeat(70_000),
+          orElse: () => "upgraded"
+        })
         yield* store.offer({
           name: longQueueName,
           id: longId,
-          element: largeElement,
+          element,
           isCustomId: true
         })
         const upgraded = yield* Effect.scoped(store.take({
@@ -533,6 +539,6 @@ export const sqlMigrationSuite = (
         }))
         assert.strictEqual(upgraded.id, longId)
         assert.strictEqual(upgraded.attempts, 1)
-        assert.strictEqual(upgraded.element, largeElement)
+        assert.strictEqual(upgraded.element, element)
       }), { timeout: Duration.toMillis(timeout) })
   })
