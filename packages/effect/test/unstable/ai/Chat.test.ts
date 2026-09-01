@@ -135,6 +135,44 @@ describe("Chat", () => {
       assert.deepStrictEqual(storedHistory, expectedHistory)
     }).pipe(withConstantIdGenerator("msg_abc123"), Effect.provide(PersistenceLayer)))
 
+  it.effect("should persist messages that were rewritten rather than appended", () =>
+    Effect.gen(function*() {
+      const storeId = "chat"
+      const chatId = "1"
+
+      const backing = yield* Persistence.BackingPersistence
+      const persistence = yield* Chat.Persistence
+
+      const store = yield* backing.make(storeId)
+      const chat = yield* persistence.getOrCreate(chatId)
+
+      yield* chat.generateText({ prompt: "test user message" }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: [{
+            type: "text",
+            text: "test assistant message"
+          }]
+        })
+      )
+
+      // Replace a message that has already been persisted, the shape a caller
+      // summarizing or redacting history produces, and save without appending
+      const options = { [Chat.Persistence.key]: { messageId: "msg_abc123" } }
+      const rewritten = Prompt.make([
+        { role: "user", content: [{ type: "text", text: "rewritten user message" }], options },
+        { role: "assistant", content: [{ type: "text", text: "test assistant message" }], options }
+      ])
+      yield* Ref.set(chat.history, rewritten)
+      yield* chat.save
+
+      const encodedHistory = yield* store.get(chatId)
+      const storedHistory = Predicate.isNotUndefined(encodedHistory)
+        ? yield* Schema.decodeUnknownEffect(Prompt.Prompt)(encodedHistory)
+        : undefined
+
+      assert.deepStrictEqual(storedHistory, rewritten)
+    }).pipe(withConstantIdGenerator("msg_abc123"), Effect.provide(PersistenceLayer)))
+
   it.effect("should raise an error when retrieving a chat that does not exist", () =>
     Effect.gen(function*() {
       const persistence = yield* Chat.Persistence

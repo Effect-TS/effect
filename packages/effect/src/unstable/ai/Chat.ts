@@ -408,6 +408,7 @@ export interface Service {
 
 const decodeHistory = Schema.decodeUnknownEffect(Prompt.Prompt)
 const encodeHistory = Schema.encodeUnknownEffect(Prompt.Prompt)
+const encodeMessage = Schema.encodeUnknownEffect(Prompt.Message)
 const decodeHistoryJson = Schema.decodeUnknownEffect(Schema.fromJsonString(Prompt.Prompt))
 const encodeHistoryJson = Schema.encodeUnknownEffect(Schema.fromJsonString(Prompt.Prompt))
 
@@ -792,6 +793,30 @@ export interface Persisted extends Service {
 }
 
 /**
+ * Returns the message with its persistence message identifier attached.
+ *
+ * The message is replaced rather than mutated so that a message already handed
+ * to a caller - or already encoded by a previous save - never changes
+ * underneath them.
+ */
+const withMessageId = <M extends Prompt.Message>(message: M, messageId: string): M => ({
+  ...message,
+  options: { ...message.options, [Persistence.key]: { messageId } }
+})
+
+/** Stamps every message from `start` onwards with `messageId`. */
+const stampMessages = (history: Prompt.Prompt, start: number, messageId: string): Prompt.Prompt => {
+  if (start >= history.content.length) {
+    return history
+  }
+  const content = history.content.slice()
+  for (let i = start; i < content.length; i++) {
+    content[i] = withMessageId(content[i], messageId)
+  }
+  return Prompt.fromMessages(content)
+}
+
+/**
  * Creates a new chat persistence service.
  *
  * **When to use**
@@ -821,6 +846,28 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
         Effect.map(Option.getOrElse(() => IdGenerator.defaultIdGenerator))
       )
 
+      // Encoding the whole history on every save makes persisting a chat
+      // quadratic in the number of turns: turn `n` re-encodes the `n - 1`
+      // messages that have not changed since the previous save. Messages are
+      // immutable values, so a message that changes is a different object and
+      // simply misses this cache; weak keys let a message that leaves history
+      // take its encoding with it.
+      const encodedMessages = new WeakMap<Prompt.Message, unknown>()
+      const exportHistory = Effect.fnUntraced(function*(history: Prompt.Prompt) {
+        const messages = history.content
+        const content = new Array<unknown>(messages.length)
+        for (let i = 0; i < messages.length; i++) {
+          const message = messages[i]
+          let encoded = encodedMessages.get(message)
+          if (Predicate.isUndefined(encoded)) {
+            encoded = yield* encodeMessage(message)
+            encodedMessages.set(message, encoded)
+          }
+          content[i] = encoded
+        }
+        return { content }
+      })
+
       const saveChat = Effect.fnUntraced(
         function*(prevHistory: Prompt.Prompt) {
           // Get the current chat history
@@ -839,15 +886,13 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
           if (Predicate.isUndefined(messageId)) {
             messageId = yield* idGenerator.generateId()
           }
-          // Mutate the new messages to add the generated message identifier
-          for (let i = prevHistory.content.length; i < history.content.length; i++) {
-            const message = history.content[i]
-            ;(message.options as any)[Persistence.key] = { messageId }
-          }
-          // Save the mutated history back to the ref
-          yield* Ref.set(chat.history, history)
-          // Export the chat history
-          const exported = yield* Effect.orDie(chat.export)
+          // Stamp the messages added since the previous save
+          const stamped = stampMessages(history, prevHistory.content.length, messageId)
+          // Save the stamped history back to the ref
+          yield* Ref.set(chat.history, stamped)
+          // Export the chat history, reusing the encoding of every message
+          // that was already persisted by a previous save
+          const exported = yield* Effect.orDie(exportHistory(stamped))
           const timeToLive = Predicate.isNotUndefined(ttl)
             ? Option.getOrUndefined(Duration.fromInput(ttl))
             : undefined
