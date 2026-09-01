@@ -6,13 +6,13 @@ import { MediaType } from "effect/unstable/http"
 const assertFailure = (
   input: string,
   message: string,
-  offset?: number
+  offset: number
 ) => {
   const result = MediaType.parse(input)
   strictEqual(Result.isFailure(result), true)
   if (Result.isFailure(result)) {
-    strictEqual(result.failure.message, `${message} at offset ${result.failure.offset}`)
-    if (offset !== undefined) strictEqual(result.failure.offset, offset)
+    strictEqual(result.failure.message, message)
+    strictEqual(result.failure.offset, offset)
   }
 }
 
@@ -51,9 +51,9 @@ describe("MediaType", () => {
     assertFailure("text/*", "Media subtype cannot be a wildcard", 5)
   })
 
-  it("parses quoted values, escapes, empty separators, and obs-text", () => {
+  it("parses quoted values, escapes, and obs-text", () => {
     const mediaType = MediaType.fromInputUnsafe(
-      "text/plain;;; a=token; b=\"a; b\"; c=\"\\\"\\\\\"; d=\"\tÿ\"; empty=\"\";"
+      "text/plain; a=token; b=\"a; b\"; c=\"\\\"\\\\\"; d=\"\tÿ\"; empty=\"\""
     )
     strictEqual(MediaType.getParameter(mediaType, "b").pipe(Option.getOrUndefined), "a; b")
     strictEqual(MediaType.getParameter(mediaType, "c").pipe(Option.getOrUndefined), "\"\\")
@@ -63,35 +63,37 @@ describe("MediaType", () => {
 
   it("preserves intentional differences from Go and WHATWG parsers", () => {
     // Go's MIME grammar accepts braces and equal duplicate parameters; RFC 9110 does not.
-    assertFailure("text/plain; filename={file}.txt", "Expected a value for parameter \"filename\"")
-    assertFailure("text/plain; charset=utf-8; charset=utf-8", "Duplicate parameter \"charset\"")
+    assertFailure("text/plain; filename={file}.txt", "Expected a value for parameter \"filename\"", 21)
+    assertFailure("text/plain; charset=utf-8; charset=utf-8", "Duplicate parameter \"charset\"", 27)
     // Go preserves unnecessary backslashes for legacy IE paths; RFC quoted-pair decodes them.
     strictEqual(
       MediaType.format(MediaType.fromInputUnsafe("text/plain; escaped=\"foo\\xbar\"")),
       "text/plain; escaped=fooxbar"
     )
     // WHATWG recovers from malformed parameters; this parser validates the complete input.
-    assertFailure("text/html; charset=\"shift_jis\"iso-2022-jp", "Unexpected character \"i\"")
-    assertFailure("text/plain; charset=utf-8; broken", "Expected '=' after parameter \"broken\"")
+    assertFailure("text/html; charset=\"shift_jis\"iso-2022-jp", "Unexpected character \"i\"", 30)
+    assertFailure("text/plain; charset=utf-8; broken", "Expected '=' after parameter \"broken\"", 33)
     // HTTP OWS is SP / HTAB, not arbitrary Unicode whitespace.
-    assertFailure("text/plain;\u00a0charset=utf-8", "Expected a parameter name after ';'")
+    assertFailure("text/plain;\u00a0charset=utf-8", "Expected a parameter name after ';'", 11)
   })
 
   it("rejects malformed input with a structured error", () => {
-    assertFailure("", "Expected a media type")
-    assertFailure("text", "Expected '/' after the media type")
-    assertFailure("text/", "Expected a media subtype after '/'")
-    assertFailure("text /plain", "Expected '/' after the media type")
-    assertFailure("text/plain; charset =utf-8", "Expected '=' after parameter \"charset\"")
-    assertFailure("text/plain; charset=", "Expected a value for parameter \"charset\"")
-    assertFailure("text/plain; charset=\"unterminated", "Unterminated quoted value for parameter \"charset\"")
-    assertFailure("text/plain; charset=\"x\\\"", "Unterminated quoted value for parameter \"charset\"")
-    assertFailure("text/plain; charset=\"x\r\nInjected: yes\"", "Invalid character in parameter \"charset\"")
-    assertFailure("text/plain; charset=\"\u007f\"", "Invalid character in parameter \"charset\"")
-    assertFailure("text/plain; charset=\"\\\u007f\"", "Invalid escape in parameter \"charset\"")
-    assertFailure("text/plain; charset=\"Ā\"", "Invalid character in parameter \"charset\"")
-    assertFailure("text/plain garbage", "Unexpected character \"g\"")
-    assertFailure("text/plain; A=1; a=2", "Duplicate parameter \"a\"")
+    assertFailure("", "Expected a media type", 0)
+    assertFailure("text", "Expected '/' after the media type", 4)
+    assertFailure("text/", "Expected a media subtype after '/'", 5)
+    assertFailure("text /plain", "Expected '/' after the media type", 4)
+    assertFailure("text/plain; charset =utf-8", "Expected '=' after parameter \"charset\"", 19)
+    assertFailure("text/plain; charset=", "Expected a value for parameter \"charset\"", 20)
+    assertFailure("text/plain; charset=\"unterminated", "Unterminated quoted value for parameter \"charset\"", 33)
+    assertFailure("text/plain; charset=\"x\\\"", "Unterminated quoted value for parameter \"charset\"", 24)
+    assertFailure("text/plain; charset=\"x\r\nInjected: yes\"", "Invalid character in parameter \"charset\"", 22)
+    assertFailure("text/plain; charset=\"\u007f\"", "Invalid character in parameter \"charset\"", 21)
+    assertFailure("text/plain; charset=\"\\\u007f\"", "Invalid escape in parameter \"charset\"", 21)
+    assertFailure("text/plain; charset=\"Ā\"", "Invalid character in parameter \"charset\"", 21)
+    assertFailure("text/plain garbage", "Unexpected character \"g\"", 11)
+    assertFailure("text/plain; A=1; a=2", "Duplicate parameter \"a\"", 17)
+    assertFailure("text/plain;;;", "Expected a parameter name after ';'", 11)
+    assertFailure("text/plain;", "Expected a parameter name after ';'", 11)
   })
 
   it("constructs immutable values and rejects invalid parts", () => {
@@ -109,7 +111,7 @@ describe("MediaType", () => {
     strictEqual(Result.getOrThrow(MediaType.fromInput(existing)), existing)
     strictEqual(
       MediaType.format(Result.getOrThrow(MediaType.fromInput("Text/Plain; Charset=UTF-8"))),
-      "text/plain; charset=UTF-8"
+      "text/plain; charset=utf-8"
     )
     strictEqual(
       MediaType.format(MediaType.fromInputUnsafe({ type: "application", subtype: "json" })),
@@ -147,13 +149,13 @@ describe("MediaType", () => {
     strictEqual(Option.isNone(MediaType.getParameter(candidate, "not valid")), true)
   })
 
-  it("applies charset semantics without changing generic parameter identity", () => {
+  it("normalizes charset values", () => {
     const upper = MediaType.fromInputUnsafe("text/plain; charset=UTF-8; profile=Example")
     const lower = MediaType.fromInputUnsafe("text/plain; charset=utf-8; profile=Example")
     strictEqual(Option.getOrUndefined(MediaType.getCharset(upper)), "utf-8")
     strictEqual(MediaType.matchesParameters(upper, lower), true)
     strictEqual(MediaType.matchesParameters(lower, upper), true)
-    strictEqual(Equal.equals(upper, lower), false)
+    strictEqual(Equal.equals(upper, lower), true)
 
     const differentProfile = MediaType.fromInputUnsafe("text/plain; charset=utf-8; profile=example")
     strictEqual(MediaType.matchesParameters(upper, differentProfile), false)

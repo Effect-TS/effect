@@ -34,7 +34,6 @@ import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import { hasBody, type HttpMethod } from "./HttpMethod.ts"
 import { HttpServerError, type RequestError, RequestParseError } from "./HttpServerError.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
-import * as MediaType from "./MediaType.ts"
 import * as Multipart from "./Multipart.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -253,8 +252,8 @@ export const schemaBodyJson = <A, RD>(
 }
 
 const isMultipart = (request: HttpServerRequest) => {
-  const contentType = MediaType.parse(request.headers["content-type"] ?? "")
-  return (Result.isSuccess(contentType) && MediaType.sameEssence(contentType.success, MediaType.multipartFormData)) ||
+  const contentType = request.headers["content-type"]
+  return contentType?.toLowerCase().includes("multipart/form-data") === true ||
     getFormDataBody(request) !== undefined
 }
 

@@ -11892,6 +11892,7 @@ export const URLFromString: URLFromString = URLString.pipe(decodeTo(URL, SchemaT
 /**
  * Type-level representation of {@link MediaType}.
  *
+ * @unstable
  * @category models
  * @since 4.0.0
  */
@@ -11907,7 +11908,7 @@ const mediaTypeTransformation = SchemaTransformation.transformOrFail({
     return Result_.isFailure(result)
       ? Effect.fail(
         new SchemaIssue.InvalidValue(
-          { message: result.failure.message },
+          { message: `${result.failure.message} at offset ${result.failure.offset}` },
           input,
           options
         )
@@ -11922,6 +11923,7 @@ const mediaTypeTransformation = SchemaTransformation.transformOrFail({
  *
  * @see {@link MediaTypeFromString} for decoding media types from strings
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11940,6 +11942,7 @@ export const MediaType: MediaType = declare(MediaType_.isMediaType, {
 /**
  * Reviver for persisted {@link MediaType} declarations.
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11951,6 +11954,7 @@ export const MediaTypeReviver = makeFixedDeclarationReviver(
 /**
  * Type-level representation of {@link MediaTypeFromString}.
  *
+ * @unstable
  * @category models
  * @since 4.0.0
  */
@@ -11963,6 +11967,7 @@ export interface MediaTypeFromString extends decodeTo<MediaType, String> {
  *
  * @see {@link MediaType} for validating already parsed media types
  *
+ * @unstable
  * @category schemas
  * @since 4.0.0
  */

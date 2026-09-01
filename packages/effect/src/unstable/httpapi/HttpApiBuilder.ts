@@ -699,14 +699,17 @@ function decodePayload(
   query: Record<string, string | Array<string>>
 ): Effect.Effect<unknown, Schema.SchemaError, unknown> | HttpServerResponse | undefined {
   const hasBody = HttpMethod.hasBody(httpRequest.method)
-  const rawContentType = hasBody
-    ? httpRequest.headers["content-type"] ?? "application/json"
-    : "application/x-www-form-urlencoded"
-  const parsedContentType = MediaType.parse(rawContentType)
-  if (Result.isFailure(parsedContentType)) {
-    return Response.text(`Unsupported content-type: ${rawContentType}`, { status: 415 })
+  const rawContentType = hasBody ? httpRequest.headers["content-type"] : undefined
+  let contentType: string
+  if (rawContentType === undefined) {
+    contentType = MediaType.essence(hasBody ? MediaType.applicationJson : MediaType.applicationFormUrlEncoded)
+  } else {
+    const parsedContentType = MediaType.parse(rawContentType)
+    if (Result.isFailure(parsedContentType)) {
+      return Response.text(`Unsupported content-type: ${rawContentType}`, { status: 415 })
+    }
+    contentType = MediaType.essence(parsedContentType.success)
   }
-  const contentType = MediaType.essence(parsedContentType.success)
   const existing = payloadBy.get(contentType)
   if (!existing) {
     return Response.text(`Unsupported content-type: ${contentType}`, { status: 415 })

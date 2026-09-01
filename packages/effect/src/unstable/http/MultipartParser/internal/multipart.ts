@@ -198,7 +198,7 @@ export function make({
               : "text/plain"
             : MediaType.essence(contentType.success),
           contentTypeParameters: Result.isFailure(contentType)
-            ? Object.create(null)
+            ? {}
             : Object.fromEntries(contentType.success.parameters.map((parameter) => [parameter.name, parameter.value])),
           contentDisposition: contentDisposition.value,
           contentDispositionParameters: contentDisposition.parameters as any,

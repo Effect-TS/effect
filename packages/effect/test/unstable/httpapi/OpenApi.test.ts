@@ -126,11 +126,9 @@ describe("OpenApi", () => {
     assert.strictEqual(cached.info.title, "Api")
   })
 
-  it("preserves every declared payload content type for normalized equivalents", () => {
+  it("groups payload content types by essence", () => {
     const profileAMediaType = MediaType.parseUnsafe("Application/Vnd.Effect+JSON; Profile=A")
     const profileBMediaType = MediaType.parseUnsafe("application/vnd.effect+json; profile=b")
-    const profileA = MediaType.format(profileAMediaType)
-    const profileB = MediaType.format(profileBMediaType)
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
         HttpApiEndpoint.post("create", "/create", {
@@ -146,19 +144,18 @@ describe("OpenApi", () => {
     const content = spec.paths["/create"]?.post?.requestBody?.content
 
     assert.isDefined(content)
-    assert.property(content, profileA)
-    assert.property(content, profileB)
-    assert.deepStrictEqual(content[profileA]?.schema, {
-      type: "object",
-      properties: { a: { type: "string" } },
-      required: ["a"],
-      additionalProperties: false
-    })
-    assert.deepStrictEqual(content[profileB]?.schema, {
-      type: "object",
-      properties: { b: { type: "string" } },
-      required: ["b"],
-      additionalProperties: false
+    assert.deepStrictEqual(content["application/vnd.effect+json"]?.schema, {
+      anyOf: [{
+        type: "object",
+        properties: { a: { type: "string" } },
+        required: ["a"],
+        additionalProperties: false
+      }, {
+        type: "object",
+        properties: { b: { type: "string" } },
+        required: ["b"],
+        additionalProperties: false
+      }]
     })
   })
 

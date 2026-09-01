@@ -37,7 +37,7 @@ describe("Multipart", () => {
     parser.end()
 
     strictEqual(parts[0].contentType, "text/plain")
-    deepStrictEqual(parts[0].contentTypeParameters, { charset: "UTF-8", profile: "a b" })
+    deepStrictEqual(parts[0].contentTypeParameters, { charset: "utf-8", profile: "a b" })
     deepStrictEqual(errors, [])
   })
 

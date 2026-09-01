@@ -1538,6 +1538,7 @@ export function URL(name?: string) {
  *
  * This is a shortcut for `Config.schema(Schema.MediaType, name)`.
  *
+ * @unstable
  * @category constructors
  * @since 4.0.0
  */

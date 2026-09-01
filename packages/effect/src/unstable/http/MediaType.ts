@@ -210,6 +210,9 @@ const suffixOf = (type: string, subtype: string): Option.Option<string> => {
 }
 
 const fromValidated = (type: string, subtype: string, parameters: Array<Parameter>): MediaType => {
+  parameters = parameters.map((parameter) =>
+    parameter.name === "charset" ? { name: parameter.name, value: parameter.value.toLowerCase() } : parameter
+  )
   parameters.sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0)
   const self = Object.create(Proto)
   self.type = type
@@ -220,7 +223,7 @@ const fromValidated = (type: string, subtype: string, parameters: Array<Paramete
 }
 
 const fail = (input: string, offset: number, message: string) =>
-  Result.fail(new MediaTypeParseError({ input, offset, message: `${message} at offset ${offset}` }))
+  Result.fail(new MediaTypeParseError({ input, offset, message }))
 
 /**
  * Creates a concrete media type from validated parts.
@@ -238,7 +241,7 @@ export const make = (parts: Parts): Result.Result<MediaType, MediaTypeParseError
   const names = new Set<string>()
   const entries = parts.parameters === undefined
     ? []
-    : Symbol.iterator in Object(parts.parameters)
+    : Symbol.iterator in parts.parameters
     ? parts.parameters as Iterable<readonly [string, string]>
     : Object.entries(parts.parameters)
   for (const [rawName, value] of entries) {
@@ -302,7 +305,9 @@ export const parse = (input: string): Result.Result<MediaType, MediaTypeParseErr
       return fail(input, index, `Unexpected character ${JSON.stringify(input[index])}`)
     }
     index = skipOws(input, index + 1)
-    if (index === length || input.charCodeAt(index) === 59) continue
+    if (index === length || input.charCodeAt(index) === 59) {
+      return fail(input, index, "Expected a parameter name after ';'")
+    }
 
     const nameStart = index
     index = tokenEnd(input, index)

@@ -339,8 +339,13 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         const errorAlternatives = new Map<number, Array<ResponseAlternative>>()
         for (const [status, schemas] of errors.entries()) {
           const grouped = groupSchemasByContentType(schemas)
-          for (const { contentType, schemas } of grouped) {
-            addResponseAlternative(errorAlternatives, status, contentType, schemasToResponse(schemas))
+          for (const [contentType, schemas] of grouped) {
+            addResponseAlternative(
+              errorAlternatives,
+              status,
+              contentType === "" ? undefined : MediaType.parseUnsafe(contentType),
+              schemasToResponse(schemas)
+            )
           }
         }
         for (const [status, alternatives] of errorAlternatives.entries()) {
@@ -366,8 +371,13 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         const successAlternatives = new Map<number, Array<ResponseAlternative>>()
         for (const [status, schemas] of successes.entries()) {
           const grouped = groupSchemasByContentType(schemas)
-          for (const { contentType, schemas } of grouped) {
-            addResponseAlternative(successAlternatives, status, contentType, schemasToResponse(schemas))
+          for (const [contentType, schemas] of grouped) {
+            addResponseAlternative(
+              successAlternatives,
+              status,
+              contentType === "" ? undefined : MediaType.parseUnsafe(contentType),
+              schemasToResponse(schemas)
+            )
           }
         }
         for (const streamSuccess of getStreamSuccessSchemas(endpoint)) {
@@ -816,32 +826,23 @@ function makeResponseDecoder(alternatives: ReadonlyArray<ResponseAlternative>): 
   }
 }
 
-interface ResponseSchemaGroup {
-  readonly contentType: MediaType.MediaType | undefined
-  readonly schemas: [Schema.Top, ...Array<Schema.Top>]
-}
-
 function groupSchemasByContentType(
   schemas: Arr.NonEmptyReadonlyArray<Schema.Top>
-): Arr.NonEmptyArray<ResponseSchemaGroup> {
-  const grouped: Array<ResponseSchemaGroup> = []
+): Map<string, Arr.NonEmptyReadonlyArray<Schema.Top>> {
+  const grouped = new Map<string, Arr.NonEmptyArray<Schema.Top>>()
   for (const schema of schemas) {
     const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
     const contentType = HttpApiSchema.isNoContent(body.ast)
-      ? undefined
-      : HttpApiSchema.getResponseEncodingSchema(schema).contentType
-    const existing = grouped.find((group) =>
-      contentType === undefined
-        ? group.contentType === undefined
-        : group.contentType !== undefined && MediaType.sameEssence(group.contentType, contentType)
-    )
+      ? ""
+      : MediaType.essence(HttpApiSchema.getResponseEncodingSchema(schema).contentType)
+    const existing = grouped.get(contentType)
     if (existing === undefined) {
-      grouped.push({ contentType, schemas: [schema] })
+      grouped.set(contentType, [schema])
     } else {
-      existing.schemas.push(schema)
+      existing.push(schema)
     }
   }
-  return grouped as Arr.NonEmptyArray<ResponseSchemaGroup>
+  return grouped
 }
 
 function failUnsupportedContentType(

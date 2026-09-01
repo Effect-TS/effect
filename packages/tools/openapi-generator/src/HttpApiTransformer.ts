@@ -53,10 +53,9 @@ export const imports = (
     readonly multipart?: boolean | undefined
   }
 ): string => {
-  const httpImports = options?.multipart === true ? ["Multipart"] : []
   return [
     `import * as ${importName} from "effect/Schema"`,
-    ...(httpImports.length === 0 ? [] : [`import { ${httpImports.join(", ")} } from "effect/unstable/http"`]),
+    ...(options?.multipart === true ? [`import { Multipart } from "effect/unstable/http"`] : []),
     `import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema, HttpApiSecurity, OpenApi } from "effect/unstable/httpapi"`
   ].join("\n")
 }
@@ -295,13 +294,11 @@ const renderResponseSet = (
 const joinSchemas = (schemas: ReadonlyArray<string>): string =>
   schemas.length === 1 ? schemas[0] : `[${schemas.join(", ")}]`
 
-const renderMediaType = (contentType: string): string => JSON.stringify(contentType)
-
 const renderMediaSchema = (media: ParsedOperationMediaTypeSchema): string => {
   if (media.effectStream === "sse") {
     const options = media.contentType === "text/event-stream"
       ? `{ events: ${media.schema}, error: ${media.errorSchema} }`
-      : `{ contentType: ${renderMediaType(media.contentType)}, events: ${media.schema}, error: ${media.errorSchema} }`
+      : `{ contentType: ${JSON.stringify(media.contentType)}, events: ${media.schema}, error: ${media.errorSchema} }`
     return `HttpApiSchema.StreamSse(${options})`
   }
 
@@ -309,7 +306,7 @@ const renderMediaSchema = (media: ParsedOperationMediaTypeSchema): string => {
     if (media.contentType === "application/octet-stream") {
       return "HttpApiSchema.StreamUint8Array()"
     }
-    return `HttpApiSchema.StreamUint8Array({ contentType: ${renderMediaType(media.contentType)} })`
+    return `HttpApiSchema.StreamUint8Array({ contentType: ${JSON.stringify(media.contentType)} })`
   }
 
   switch (media.encoding) {
@@ -317,7 +314,7 @@ const renderMediaSchema = (media: ParsedOperationMediaTypeSchema): string => {
       if (media.contentType === "application/json") {
         return media.schema
       }
-      return `${media.schema}.pipe(HttpApiSchema.asJson({ contentType: ${renderMediaType(media.contentType)} }))`
+      return `${media.schema}.pipe(HttpApiSchema.asJson({ contentType: ${JSON.stringify(media.contentType)} }))`
     }
     case "multipart": {
       return `${media.schema}.pipe(HttpApiSchema.asMultipart())`
@@ -327,20 +324,20 @@ const renderMediaSchema = (media: ParsedOperationMediaTypeSchema): string => {
         return `${media.schema}.pipe(HttpApiSchema.asFormUrlEncoded())`
       }
       return `${media.schema}.pipe(HttpApiSchema.asFormUrlEncoded({ contentType: ${
-        renderMediaType(media.contentType)
+        JSON.stringify(media.contentType)
       } }))`
     }
     case "text": {
       if (media.contentType === "text/plain") {
         return `${media.schema}.pipe(HttpApiSchema.asText())`
       }
-      return `${media.schema}.pipe(HttpApiSchema.asText({ contentType: ${renderMediaType(media.contentType)} }))`
+      return `${media.schema}.pipe(HttpApiSchema.asText({ contentType: ${JSON.stringify(media.contentType)} }))`
     }
     case "binary": {
       if (media.contentType === "application/octet-stream") {
         return `${media.schema}.pipe(HttpApiSchema.asUint8Array())`
       }
-      return `${media.schema}.pipe(HttpApiSchema.asUint8Array({ contentType: ${renderMediaType(media.contentType)} }))`
+      return `${media.schema}.pipe(HttpApiSchema.asUint8Array({ contentType: ${JSON.stringify(media.contentType)} }))`
     }
   }
 }

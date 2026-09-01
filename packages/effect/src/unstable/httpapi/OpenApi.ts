@@ -573,7 +573,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         for (const schema of HttpApiEndpoint.getPayloadSchemas(endpoint)) {
           if (HttpApiSchema.isNoContent(schema.ast)) continue
           const encoding = HttpApiSchema.getPayloadEncoding(schema.ast, endpoint.method)
-          const contentType = MediaType.format(encoding.contentType)
+          const contentType = MediaType.essence(encoding.contentType)
           const existing = schemasByContentType.get(contentType)
           if (existing === undefined) {
             schemasByContentType.set(contentType, { encoding, schemas: [schema] })

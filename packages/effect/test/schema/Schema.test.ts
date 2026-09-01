@@ -5786,11 +5786,11 @@ Expected a value between -2147483648 and 2147483647`
 
     const json = new TestSchema.Asserts(Schema.toCodecJson(Schema.MediaType))
     await json.decoding().succeed("Text/Plain; Charset=UTF-8", mediaType)
-    await json.encoding().succeed(mediaType, "text/plain; charset=UTF-8")
+    await json.encoding().succeed(mediaType, "text/plain; charset=utf-8")
 
     const stringTree = new TestSchema.Asserts(Schema.toCodecStringTree(Schema.MediaType))
     await stringTree.decoding().succeed("Text/Plain; Charset=UTF-8", mediaType)
-    await stringTree.encoding().succeed(mediaType, "text/plain; charset=UTF-8")
+    await stringTree.encoding().succeed(mediaType, "text/plain; charset=utf-8")
   })
 
   it("RegExp", async () => {
@@ -5825,7 +5825,7 @@ Expected a value between -2147483648 and 2147483647`
     const asserts = new TestSchema.Asserts(Schema.MediaTypeFromString)
     await asserts.decoding().succeed("Text/Plain; Charset=UTF-8", mediaType)
     await asserts.decoding().fail("not a media type", "Expected '/' after the media type at offset 3")
-    await asserts.encoding().succeed(mediaType, "text/plain; charset=UTF-8")
+    await asserts.encoding().succeed(mediaType, "text/plain; charset=utf-8")
   })
 
   describe("UnknownFromJsonString / fromJsonString", () => {

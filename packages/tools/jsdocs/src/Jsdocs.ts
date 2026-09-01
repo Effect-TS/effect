@@ -1460,7 +1460,7 @@ function buildTags(
 ): Result<ParsedModuleTags | ParsedDeclarationTags | ParsedNamespaceTags | ParsedMemberTags, JSDocParseError> {
   const diagnostics: Array<JSDocDiagnostic> = []
   const allowed = scope === "declaration"
-    ? new Set(["deprecated", "see", "category", "since"])
+    ? new Set(["deprecated", "see", "unstable", "category", "since"])
     : scope === "member"
     ? new Set(["deprecated", "default", "see", "since"])
     : scope === "module"
@@ -1511,6 +1511,13 @@ function buildTags(
   }
   const deprecated = values.get("deprecated")?.[0] ?? null
   if (deprecated === "") diagnostics.push(diagnostic("empty-tag", "@deprecated must include a message"))
+  const unstable = values.get("unstable") ?? []
+  if (unstable.length > 1) {
+    diagnostics.push(diagnostic("duplicate-tag", "JSDoc blocks may contain at most one @unstable tag"))
+  }
+  if (unstable[0] !== undefined && unstable[0] !== "") {
+    diagnostics.push(diagnostic("non-empty-tag", "@unstable must not include a value"))
+  }
   const since = values.get("since")?.[0] ?? null
   if ((scope === "declaration" || scope === "namespace" || scope === "namespace-declaration") && since === null) {
     diagnostics.push(

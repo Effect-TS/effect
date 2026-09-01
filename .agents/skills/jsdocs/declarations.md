@@ -53,11 +53,13 @@ Declaration tags appear in this order:
 1. `@deprecated`
 2. `@default`
 3. `@see`
-4. `@category`
-5. `@since`
+4. `@unstable`
+5. `@category`
+6. `@since`
 
 - Roots require stable-semver `@since` and no `@default`; category requirements
-  live in [categories.md](categories.md).
+  live in [categories.md](categories.md). Root declarations may include one
+  valueless `@unstable` marker.
 - Namespaces and their declarations require stable-semver `@since`, permit
   `@category`, and reject `@default`.
 - Member JSDoc is optional; when present it permits stable-semver `@since` and
