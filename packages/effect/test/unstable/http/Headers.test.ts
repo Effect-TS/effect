@@ -5,9 +5,9 @@ import { Headers } from "effect/unstable/http"
 import { assertSuccess } from "../../utils/assert.ts"
 
 describe("Headers", () => {
-  describe("HeadersSchema", () => {
+  describe("Schema.Headers", () => {
     it("serializer annotation", () => {
-      const _Accept = Schema.toIso(Headers.HeadersSchema).at("Accept")
+      const _Accept = Schema.toIso(Schema.Headers).at("Accept")
       const headers = Headers.fromRecordUnsafe({
         "Accept": "application/json, text/plain, */*",
         "Cache-Control": "no-cache"

@@ -33,6 +33,17 @@ describe("jsdocs", () => {
     }
   })
 
+  it("accepts unstable declarations", () => {
+    const result = parseJSDoc(`/**
+ * Creates an unstable value.
+ *
+ * @unstable
+ * @category constructors
+ * @since 1.0.0
+ */`)
+    assert.strictEqual(result._tag, "Success")
+  })
+
   it("accepts doctest metadata on TypeScript fences", () => {
     const result = parseJSDoc(`/**
  * Creates a value.

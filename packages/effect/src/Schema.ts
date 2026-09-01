@@ -72,6 +72,9 @@ import type { Assign, Lambda, Mutable, Simplify } from "./Struct.ts"
 import * as Struct_ from "./Struct.ts"
 import type { RequiredKeys, UnionToIntersection } from "./Types.ts"
 import type { Unify } from "./Unify.ts"
+import * as Cookies_ from "./unstable/http/Cookies.ts"
+import * as Headers_ from "./unstable/http/Headers.ts"
+import * as UrlParams_ from "./unstable/http/UrlParams.ts"
 
 const TypeId = InternalMake.TypeId
 /**
@@ -12232,6 +12235,351 @@ export function OptionFromNullishOr<S extends Constraint>(
     SchemaTransformation.optionFromNullishOr(options)
   ))
 }
+/**
+ * Type-level representation of {@link Cookie}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Cookie extends declare<Cookies_.Cookie> {
+  readonly "Rebuild": Cookie
+}
+
+/**
+ * Schema for HTTP cookie values.
+ *
+ * @unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Cookie: Cookie = declare(
+  Cookies_.isCookie,
+  {
+    representation: {
+      id: "effect/http/Cookie",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: "Schema.Cookie",
+      Type: "Cookies.Cookie",
+      importDeclarations: [`import * as Cookies from "effect/unstable/http/Cookies"`]
+    }),
+    expected: "Cookie"
+  }
+)
+
+/**
+ * Type-level representation of {@link Cookies}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Cookies extends
+  declare<
+    Cookies_.Cookies,
+    Record_.ReadonlyRecord<string, Cookies_.Cookie>
+  >
+{
+  readonly "Rebuild": Cookies
+}
+
+/**
+ * Schema for HTTP cookie collections.
+ *
+ * **Details**
+ *
+ * JSON encoding uses `Set-Cookie` header strings, while isomorphic encoding uses
+ * a readonly record of cookie values.
+ *
+ * @unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Cookies: Cookies = declare(
+  Cookies_.isCookies,
+  {
+    representation: {
+      id: "effect/http/Cookies",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: "Schema.Cookies",
+      Type: "Cookies.Cookies",
+      importDeclarations: [`import * as Cookies from "effect/unstable/http/Cookies"`]
+    }),
+    expected: "Cookies",
+    toCodecJson: () =>
+      link<Cookies_.Cookies>()(
+        ArraySchema(String),
+        SchemaTransformation.transform<Cookies_.Cookies, ReadonlyArray<string>>({
+          decode: Cookies_.fromSetCookie,
+          encode: Cookies_.toSetCookieHeaders
+        })
+      ),
+    toCodecIso: () =>
+      link<Cookies_.Cookies>()(
+        Record(String, Cookie),
+        SchemaTransformation.transform({
+          decode: Cookies_.fromReadonlyRecord,
+          encode: (cookies) => cookies.cookies
+        })
+      )
+  }
+)
+
+/**
+ * Type-level representation of {@link RecordFromCookies}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface RecordFromCookies extends decodeTo<$Record<String, String>, Cookies> {
+  readonly "Rebuild": RecordFromCookies
+}
+
+/**
+ * Schema that decodes HTTP cookies into a record of decoded string values keyed
+ * by cookie name.
+ *
+ * @unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const RecordFromCookies: RecordFromCookies = Cookies.pipe(
+  decodeTo(
+    Record(String, String),
+    SchemaTransformation.transform({
+      decode: Cookies_.toRecord,
+      encode: (self) =>
+        Cookies_.fromIterable(
+          globalThis.Object.entries(self).map(([name, value]) => Cookies_.makeCookieUnsafe(name, value))
+        )
+    })
+  )
+)
+
+/**
+ * Type-level representation of {@link Headers}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Headers extends declare<Headers_.Headers, { readonly [x: string]: string }> {
+  readonly "Rebuild": Headers
+}
+
+/**
+ * Schema for HTTP headers encoded as records of string values.
+ *
+ * **Details**
+ *
+ * Decoding normalizes header names; encoding returns a plain record.
+ *
+ * @unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Headers: Headers = declare(
+  Headers_.isHeaders,
+  {
+    representation: {
+      id: "effect/http/Headers",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: "Schema.Headers",
+      Type: "Headers.Headers",
+      importDeclarations: [`import * as Headers from "effect/unstable/http/Headers"`]
+    }),
+    expected: "Headers",
+    toEquivalence: () => Headers_.Equivalence,
+    toCodec: () =>
+      link<Headers_.Headers>()(
+        Record(String, String),
+        SchemaTransformation.transform<Headers_.Headers, { readonly [x: string]: string }>({
+          decode: Headers_.fromInput,
+          encode: (headers) => ({ ...headers })
+        })
+      )
+  }
+)
+
+/**
+ * Type-level representation of {@link UrlParams}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface UrlParams extends
+  declare<
+    UrlParams_.UrlParams,
+    ReadonlyArray<readonly [string, string]>
+  >
+{
+  readonly "Rebuild": UrlParams
+}
+
+/**
+ * Schema for HTTP URL parameters.
+ *
+ * **Details**
+ *
+ * The encoded representation is an array of string key-value tuples.
+ *
+ * @unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const UrlParams: UrlParams = declare(
+  UrlParams_.isUrlParams,
+  {
+    representation: {
+      id: "effect/http/UrlParams",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: "Schema.UrlParams",
+      Type: "UrlParams.UrlParams",
+      importDeclarations: [`import * as UrlParams from "effect/unstable/http/UrlParams"`]
+    }),
+    expected: "UrlParams",
+    toEquivalence: () => UrlParams_.Equivalence,
+    toCodec: () =>
+      link<UrlParams_.UrlParams>()(
+        ArraySchema(Tuple([String, String])),
+        SchemaTransformation.transform({
+          decode: UrlParams_.make,
+          encode: (self) => self.params
+        })
+      )
+  }
+)
+
+/**
+ * Type-level representation of {@link JsonFromUrlParamsField}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface JsonFromUrlParamsField extends decodeTo<fromJsonString<Unknown>, UrlParams> {
+  readonly "Rebuild": JsonFromUrlParamsField
+}
+
+/**
+ * Extracts a JSON value from the first occurrence of the given `field` in URL
+ * parameters.
+ *
+ * **Example** (Decoding a JSON parameter field)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { UrlParams } from "effect/unstable/http"
+ *
+ * const extractFoo = Schema.JsonFromUrlParamsField("foo").pipe(
+ *   Schema.decodeTo(Schema.Struct({
+ *     some: Schema.String,
+ *     number: Schema.Number
+ *   }))
+ * )
+ *
+ * const decoded = Schema.decodeSync(extractFoo)(UrlParams.fromInput({
+ *   foo: `{"some":"bar","number":42}`,
+ *   baz: "qux"
+ * }))
+ * const result = [decoded.some, decoded.number] // => ["bar", 42]
+ * ```
+ *
+ * @unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const JsonFromUrlParamsField = (
+  field: string,
+  options?: { readonly reviver?: Parameters<typeof JSON.parse>[1] | undefined } | undefined
+): JsonFromUrlParamsField =>
+  UrlParams.pipe(
+    decodeTo(
+      fromJsonString(Unknown, options),
+      SchemaTransformation.transformOrFail({
+        decode: (params) =>
+          Option_.match(UrlParams_.getFirst(params, field), {
+            onNone: () => Effect.fail(new SchemaIssue.Pointer([field], new SchemaIssue.MissingKey(undefined))),
+            onSome: Effect.succeed
+          }),
+        encode: (value) => Effect.succeed(UrlParams_.make([[field, value]]))
+      })
+    )
+  )
+
+/**
+ * Type-level representation of {@link RecordFromUrlParams}.
+ *
+ * @unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface RecordFromUrlParams extends
+  decodeTo<
+    $Record<String, Union<readonly [String, NonEmptyArray<String>]>>,
+    UrlParams,
+    never,
+    never
+  >
+{
+  readonly "Rebuild": RecordFromUrlParams
+}
+
+/**
+ * Schema that decodes URL parameters into a record of string values.
+ *
+ * **Details**
+ *
+ * Keys with one value decode to a string, and keys with multiple values decode to
+ * a non-empty readonly array of strings.
+ *
+ * **Example** (Decoding URL parameters to a record)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { UrlParams } from "effect/unstable/http"
+ *
+ * const toStruct = Schema.RecordFromUrlParams.pipe(
+ *   Schema.decodeTo(Schema.Struct({
+ *     some: Schema.String,
+ *     number: Schema.FiniteFromString
+ *   }))
+ * )
+ *
+ * const decoded = Schema.decodeSync(toStruct)(UrlParams.fromInput({
+ *   some: "value",
+ *   number: 42
+ * }))
+ * const result = [decoded.some, decoded.number] // => ["value", 42]
+ * ```
+ *
+ * @unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const RecordFromUrlParams: RecordFromUrlParams = UrlParams.pipe(
+  decodeTo(
+    Record(
+      String,
+      Union([String, NonEmptyArray(String)])
+    ),
+    SchemaTransformation.transform({
+      decode: UrlParams_.toReadonlyRecord,
+      encode: UrlParams_.fromInput
+    })
+  )
+)
+
 /**
  * Type-level representation returned by {@link OptionFromOptionalKey}.
  *
