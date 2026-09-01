@@ -196,6 +196,7 @@ export const tracer: <E, R>(
     return Effect.onExitPrimitive(httpApp, (exit) => {
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
+      const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
       fiber.currentDispatcher.scheduleTask(() => {
         let response: HttpServerResponse
         let spanExit = exit
@@ -207,7 +208,6 @@ export const tracer: <E, R>(
           response = exit.value
         }
         if (span.sampled) {
-          const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
           span.attribute("http.request.method", request.method)
           if (request.url.startsWith("/")) {
             const host = request.headers.host ?? "localhost"
