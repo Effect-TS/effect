@@ -10,7 +10,6 @@
  * @since 4.0.0
  */
 import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
-import * as BI from "effect/BigInt"
 import * as ByteSize from "effect/ByteSize"
 import * as Effect from "effect/Effect"
 import type { FileSystem } from "effect/FileSystem"
@@ -56,13 +55,10 @@ const make: Effect.Effect<
     })
   },
   fileWebResponse(file, status, statusText, headers, options) {
-    const fileSize = BigInt(file.size)
-    const startBigInt = BI.min(ByteSize.toBigInt(options?.offset ?? ByteSize.zero), fileSize)
-    const endBigInt = options?.bytesToRead === undefined
+    const start = Math.min(Math.max(options?.offset ?? 0, 0), file.size)
+    const end = options?.bytesToRead === undefined
       ? undefined
-      : BI.min(startBigInt + ByteSize.toBigInt(options.bytesToRead), fileSize)
-    const start = Number(startBigInt)
-    const end = endBigInt === undefined ? undefined : Number(endBigInt)
+      : Math.min(start + Math.max(options.bytesToRead, 0), file.size)
     const body = start > 0 || end !== undefined
       ? (file as File).slice(start, end, file.type)
       : file

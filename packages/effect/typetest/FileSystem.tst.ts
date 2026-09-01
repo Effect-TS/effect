@@ -8,7 +8,7 @@ describe("FileSystem", () => {
     expect<NonNullable<Parameters<FileSystem.FileSystem["stream"]>[1]>["chunkSize"]>().type.toBe<
       number | undefined
     >()
-    expect<Parameters<FileSystem.File["truncate"]>[0]>().type.toBe<ByteSize.Input | undefined>()
+    expect<Parameters<FileSystem.File["truncate"]>[0]>().type.toBe<number | undefined>()
     expect<Parameters<FileSystem.File["seek"]>[0]>().type.toBe<bigint>()
     expect<Effect.Success<ReturnType<FileSystem.File["seek"]>>>().type.toBe<ByteSize.ByteSize>()
     expect<Effect.Error<ReturnType<FileSystem.File["seek"]>>>().type.toBe<PlatformError.PlatformError>()

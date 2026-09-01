@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { ByteSize, Effect, FileSystem, Stream } from "effect"
+import { Effect, FileSystem, Stream } from "effect"
 import { HttpPlatform } from "effect/unstable/http"
 
 describe("HttpPlatform", () => {
@@ -15,8 +15,8 @@ describe("HttpPlatform", () => {
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
       const response = yield* platform.fileWebResponse(file, {
-        offset: ByteSize.bytes(1),
-        bytesToRead: "2 B"
+        offset: 1,
+        bytesToRead: 2
       })
       assert.strictEqual(response.body._tag, "Stream")
       if (response.body._tag === "Stream") {
@@ -33,8 +33,8 @@ describe("HttpPlatform", () => {
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
       const response = yield* platform.fileWebResponse(file, {
-        offset: ByteSize.zero,
-        bytesToRead: ByteSize.bytes(4),
+        offset: 0,
+        bytesToRead: 4,
         chunkSize: 2
       })
       assert.strictEqual(response.body._tag, "Stream")

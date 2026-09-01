@@ -339,7 +339,7 @@ export interface FileSystem {
    */
   readonly truncate: (
     path: string,
-    length?: ByteSize.Input
+    length?: number
   ) => Effect.Effect<void, PlatformError>
   /**
    * Change the file system timestamps of the file at `path`.
@@ -857,7 +857,7 @@ export interface File {
   readonly sync: Effect.Effect<void, PlatformError>
   readonly read: (buffer: Uint8Array) => Effect.Effect<number, PlatformError>
   readonly readAlloc: (size: number) => Effect.Effect<Option.Option<Uint8Array>, PlatformError>
-  readonly truncate: (length?: ByteSize.Input) => Effect.Effect<void, PlatformError>
+  readonly truncate: (length?: number) => Effect.Effect<void, PlatformError>
   readonly write: (buffer: Uint8Array) => Effect.Effect<number, PlatformError>
   readonly writeAll: (buffer: Uint8Array) => Effect.Effect<void, PlatformError>
 }

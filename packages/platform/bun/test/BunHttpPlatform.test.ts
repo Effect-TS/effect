@@ -1,6 +1,5 @@
 import * as BunHttpPlatform from "@effect/platform-bun/BunHttpPlatform"
 import { assert, describe, it } from "@effect/vitest"
-import * as ByteSize from "effect/ByteSize"
 import * as Effect from "effect/Effect"
 import type * as HttpBody from "effect/unstable/http/HttpBody"
 import * as HttpPlatform from "effect/unstable/http/HttpPlatform"
@@ -16,10 +15,10 @@ describe("BunHttpPlatform", () => {
       const platform = yield* HttpPlatform.HttpPlatform
       const file = new File(["abcd"], "file.txt", { type: "text/plain", lastModified: 0 })
       const sliced = yield* platform.fileWebResponse(file, {
-        offset: ByteSize.bytes(1),
-        bytesToRead: ByteSize.bytes(2)
+        offset: 1,
+        bytesToRead: 2
       })
-      const empty = yield* platform.fileWebResponse(file, { offset: ByteSize.bytes(1), bytesToRead: ByteSize.zero })
+      const empty = yield* platform.fileWebResponse(file, { offset: 1, bytesToRead: 0 })
 
       assert.deepStrictEqual(
         { sliced: yield* readBody(sliced.body), empty: yield* readBody(empty.body) },

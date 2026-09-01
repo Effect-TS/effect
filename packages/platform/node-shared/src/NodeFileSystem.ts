@@ -9,6 +9,7 @@
  *
  * @since 4.0.0
  */
+import * as BI from "effect/BigInt"
 import * as ByteSize from "effect/ByteSize"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
@@ -33,13 +34,13 @@ const handleBadArgument = (method: string) => (err: unknown) =>
     description: (err as Error).message ?? String(err)
   })
 
-const byteSizeToNumber = (input: ByteSize.Input, method: string): Effect.Effect<number, Error.PlatformError> =>
-  Option.match(ByteSize.toNumber(ByteSize.fromInputUnsafe(input)), {
+const positionToNumber = (position: bigint, method: string): Effect.Effect<number, Error.PlatformError> =>
+  Option.match(BI.toNumber(position), {
     onNone: () =>
       Effect.fail(Error.badArgument({
         module: "FileSystem",
         method,
-        description: "byte size exceeds Number.MAX_SAFE_INTEGER"
+        description: "file position exceeds Number.MAX_SAFE_INTEGER"
       })),
     onSome: Effect.succeed
   })
@@ -344,27 +345,22 @@ const makeFile = (() => {
       )
     }
 
-    truncate(length?: ByteSize.Input) {
-      const size = ByteSize.fromInputUnsafe(length ?? ByteSize.zero)
-      return Effect.flatMap(
-        byteSizeToNumber(size, "truncate"),
-        (sizeNumber) =>
-          Effect.map(nodeTruncate(this.fd, sizeNumber), () => {
-            if (!this.append) {
-              const len = size.value
-              if (this.position > len) {
-                this.position = len
-              }
-            }
-          })
-      )
+    truncate(length = 0) {
+      return Effect.map(nodeTruncate(this.fd, length), () => {
+        if (!this.append) {
+          const len = BigInt(length)
+          if (this.position > len) {
+            this.position = len
+          }
+        }
+      })
     }
 
     write(buffer: Uint8Array) {
       return Effect.suspend(() => {
         const position = this.position
         return Effect.flatMap(
-          this.append ? Effect.succeed(undefined) : byteSizeToNumber(ByteSize.bytes(position), "write"),
+          this.append ? Effect.succeed(undefined) : positionToNumber(position, "write"),
           (positionNumber) =>
             Effect.map(
               nodeWrite(this.fd, buffer, undefined, undefined, positionNumber),
@@ -383,7 +379,7 @@ const makeFile = (() => {
       return Effect.suspend(() => {
         const position = this.position
         return Effect.flatMap(
-          this.append ? Effect.succeed(undefined) : byteSizeToNumber(ByteSize.bytes(position), "writeAll"),
+          this.append ? Effect.succeed(undefined) : positionToNumber(position, "writeAll"),
           (positionNumber) => nodeWriteAll(this.fd, buffer, undefined, undefined, positionNumber)
         ).pipe(Effect.flatMap((bytesWritten) => {
           if (bytesWritten === 0) {
@@ -560,10 +556,7 @@ const truncate = (() => {
     handleErrnoException("FileSystem", "truncate"),
     handleBadArgument("truncate")
   )
-  return (path: string, length?: ByteSize.Input) =>
-    length === undefined
-      ? nodeTruncate(path, undefined)
-      : Effect.flatMap(byteSizeToNumber(length, "truncate"), (length) => nodeTruncate(path, length))
+  return (path: string, length?: number) => nodeTruncate(path, length)
 })()
 
 // == utimes
