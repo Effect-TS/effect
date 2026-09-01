@@ -47,11 +47,11 @@
   replacement: "NonNullable<Parameters<FileSystem.FileSystem[\"sink\"]>[1]>"
   note: "Operation option interfaces are inline in the v4 FileSystem service."
 "@effect/platform/FileSystem#Size":
-  replacement: "FileSystem.Size"
-  note: "The branded bigint size type remains after moving the module to effect/FileSystem."
+  replacement: "ByteSize.ByteSize"
+  note: "File sizes and byte counts use the exact non-negative ByteSize value; construct values with ByteSize.bytes or a unit constructor such as ByteSize.mebibytes. Signed File.seek offsets use bigint."
 "@effect/platform/FileSystem#StreamOptions":
   replacement: "NonNullable<Parameters<FileSystem.FileSystem[\"stream\"]>[1]>"
-  note: "Stream options are inline; bufferSize was removed while bytesToRead, chunkSize, and offset remain."
+  note: "Stream options are inline; bufferSize was removed while bytesToRead, chunkSize, and offset accept ByteSize inputs."
 "@effect/platform/FileSystem#WatchEventCreate":
   replacement: "FileSystem.WatchEvent.Create"
   note: "The constructor was removed; construct a tagged object with _tag: \"Create\" and path."

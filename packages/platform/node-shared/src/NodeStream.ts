@@ -10,13 +10,13 @@
  * @since 4.0.0
  */
 import * as Arr from "effect/Array"
+import * as ByteSize from "effect/ByteSize"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import type { SizeInput } from "effect/FileSystem"
 import { dual, type LazyArg } from "effect/Function"
 import * as Latch from "effect/Latch"
 import * as MutableRef from "effect/MutableRef"
@@ -219,10 +219,10 @@ export const toString = <E = Cause.UnknownError>(
   options?: {
     readonly onError?: (error: unknown) => E
     readonly encoding?: BufferEncoding | undefined
-    readonly maxBytes?: SizeInput | undefined
+    readonly maxBytes?: ByteSize.Input | undefined
   }
 ): Effect.Effect<string, E> => {
-  const maxBytesNumber = options?.maxBytes !== undefined ? Number(options.maxBytes) : undefined
+  const maxBytes = options?.maxBytes !== undefined ? ByteSize.fromInputUnsafe(options.maxBytes).value : undefined
   const onError = options?.onError ?? defaultOnError
   const encoding = options?.encoding ?? "utf8"
   return Effect.callback((resume) => {
@@ -237,14 +237,14 @@ export const toString = <E = Cause.UnknownError>(
     })
 
     let string = ""
-    let bytes = 0
+    let bytes = BigInt(0)
     stream.once("end", () => {
       resume(Effect.succeed(string))
     })
     stream.on("data", (chunk) => {
       string += chunk
-      bytes += Buffer.byteLength(chunk)
-      if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
+      bytes += BigInt(Buffer.byteLength(chunk))
+      if (maxBytes !== undefined && bytes > maxBytes) {
         if ("closed" in stream && !stream.closed) {
           stream.destroy()
         }
@@ -271,15 +271,15 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
   readable: LazyArg<Readable | NodeJS.ReadableStream>,
   options?: {
     readonly onError?: (error: unknown) => E
-    readonly maxBytes?: SizeInput | undefined
+    readonly maxBytes?: ByteSize.Input | undefined
   }
 ): Effect.Effect<ArrayBuffer, E> => {
-  const maxBytesNumber = options?.maxBytes !== undefined ? Number(options.maxBytes) : undefined
+  const maxBytes = options?.maxBytes !== undefined ? ByteSize.fromInputUnsafe(options.maxBytes).value : undefined
   const onError = options?.onError ?? defaultOnError
   return Effect.callback((resume) => {
     const stream = readable() as Readable
     const buffers: Array<Uint8Array> = []
-    let bytes = 0
+    let bytes = BigInt(0)
     stream.once("error", (err) => {
       if ("closed" in stream && !stream.closed) {
         stream.destroy()
@@ -297,8 +297,8 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
     })
     stream.on("data", (chunk) => {
       buffers.push(chunk)
-      bytes += chunk.length
-      if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
+      bytes += BigInt(chunk.length)
+      if (maxBytes !== undefined && bytes > maxBytes) {
         if ("closed" in stream && !stream.closed) {
           stream.destroy()
         }
@@ -324,7 +324,7 @@ export const toUint8Array = <E = Cause.UnknownError>(
   readable: LazyArg<Readable | NodeJS.ReadableStream>,
   options?: {
     readonly onError?: (error: unknown) => E
-    readonly maxBytes?: SizeInput | undefined
+    readonly maxBytes?: ByteSize.Input | undefined
   }
 ): Effect.Effect<Uint8Array, E> => Effect.map(toArrayBuffer(readable, options), (buffer) => new Uint8Array(buffer))
 

@@ -11,11 +11,14 @@
  *
  * @since 4.0.0
  */
+import * as BI from "../../BigInt.ts"
+import * as ByteSize from "../../ByteSize.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import * as FileSystem from "../../FileSystem.ts"
 import { format } from "../../Formatter.ts"
 import * as Inspectable from "../../Inspectable.ts"
+import * as Option from "../../Option.ts"
 import type * as PlatformError from "../../PlatformError.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
@@ -485,16 +488,19 @@ export const stream = (
 ): Stream => new Stream(body, contentType ?? "application/octet-stream", contentLength)
 
 const fileContentLength = (
-  size: FileSystem.SizeInput,
+  size: ByteSize.ByteSize,
   options?: {
-    readonly bytesToRead?: FileSystem.SizeInput | undefined
-    readonly offset?: FileSystem.SizeInput | undefined
+    readonly bytesToRead?: ByteSize.ByteSize | undefined
+    readonly offset?: ByteSize.ByteSize | undefined
   }
-): number => {
-  const available = Math.max(0, Number(size) - Number(options?.offset ?? 0))
-  return options?.bytesToRead === undefined
+): number | undefined => {
+  const offset = ByteSize.toBigInt(options?.offset ?? ByteSize.zero)
+  const total = ByteSize.toBigInt(size)
+  const available = BI.max(total - offset, BigInt(0))
+  const selected = options?.bytesToRead === undefined
     ? available
-    : Math.min(available, Math.max(0, Number(options.bytesToRead)))
+    : BI.min(options.bytesToRead.value, available)
+  return Option.getOrUndefined(ByteSize.toNumber(ByteSize.bytes(selected)))
 }
 
 /**
@@ -511,22 +517,24 @@ const fileContentLength = (
 export const file = (
   path: string,
   options?: {
-    readonly bytesToRead?: FileSystem.SizeInput | undefined
-    readonly chunkSize?: FileSystem.SizeInput | undefined
-    readonly offset?: FileSystem.SizeInput | undefined
+    readonly bytesToRead?: ByteSize.Input | undefined
+    readonly chunkSize?: ByteSize.Input | undefined
+    readonly offset?: ByteSize.Input | undefined
     readonly contentType?: string | undefined
   }
-): Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> =>
-  Effect.flatMap(
+): Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> => {
+  const normalizedOptions = normalizeFileOptions(options)
+  return Effect.flatMap(
     FileSystem.FileSystem,
     (fs) =>
       Effect.map(fs.stat(path), (info) =>
         stream(
-          fs.stream(path, options),
+          fs.stream(path, normalizedOptions),
           options?.contentType,
-          fileContentLength(info.size, options)
+          fileContentLength(info.size, normalizedOptions)
         ))
   )
+}
 
 /**
  * Creates a streaming HTTP body for a file path using already-known file information.
@@ -543,18 +551,35 @@ export const fileFromInfo = (
   path: string,
   info: FileSystem.File.Info,
   options?: {
-    readonly bytesToRead?: FileSystem.SizeInput | undefined
-    readonly chunkSize?: FileSystem.SizeInput | undefined
-    readonly offset?: FileSystem.SizeInput | undefined
+    readonly bytesToRead?: ByteSize.Input | undefined
+    readonly chunkSize?: ByteSize.Input | undefined
+    readonly offset?: ByteSize.Input | undefined
     readonly contentType?: string | undefined
   }
-): Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> =>
-  Effect.map(
+): Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> => {
+  const normalizedOptions = normalizeFileOptions(options)
+  return Effect.map(
     FileSystem.FileSystem,
     (fs) =>
       stream(
-        fs.stream(path, options),
+        fs.stream(path, normalizedOptions),
         options?.contentType,
-        fileContentLength(info.size, options)
+        fileContentLength(info.size, normalizedOptions)
       )
   )
+}
+
+const normalizeFileOptions = (
+  options: {
+    readonly bytesToRead?: ByteSize.Input | undefined
+    readonly chunkSize?: ByteSize.Input | undefined
+    readonly offset?: ByteSize.Input | undefined
+    readonly contentType?: string | undefined
+  } | undefined
+) =>
+  options === undefined ? undefined : {
+    ...options,
+    bytesToRead: options.bytesToRead === undefined ? undefined : ByteSize.fromInputUnsafe(options.bytesToRead),
+    chunkSize: options.chunkSize === undefined ? undefined : ByteSize.fromInputUnsafe(options.chunkSize),
+    offset: options.offset === undefined ? undefined : ByteSize.fromInputUnsafe(options.offset)
+  }

@@ -44,6 +44,22 @@ const startWatch = <E, R>(
 describe("FileSystem", () => {
   testLayer(NodeFileSystem.layer)
 
+  it.effect("rejects writes at positions above Number.MAX_SAFE_INTEGER", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* fs.makeTempFileScoped()
+      const file = yield* fs.open(path, { flag: "w+" })
+      yield* file.seek(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1), "start")
+
+      const writeError = yield* Effect.flip(file.write(new Uint8Array([1])))
+      assert.strictEqual(writeError.reason._tag, "BadArgument")
+      const writeAllError = yield* Effect.flip(file.writeAll(new Uint8Array([1])))
+      assert.strictEqual(writeAllError.reason._tag, "BadArgument")
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(NodeFileSystem.layer)
+    ))
+
   it.effect("watch does not report nested changes when recursive is false", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem

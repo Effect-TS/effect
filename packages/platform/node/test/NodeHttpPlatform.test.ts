@@ -1,5 +1,6 @@
 import * as NodeHttpPlatform from "@effect/platform-node/NodeHttpPlatform"
 import { assert, describe, it } from "@effect/vitest"
+import * as ByteSize from "effect/ByteSize"
 import * as Effect from "effect/Effect"
 import type * as HttpBody from "effect/unstable/http/HttpBody"
 import * as HttpPlatform from "effect/unstable/http/HttpPlatform"
@@ -19,8 +20,8 @@ describe("NodeHttpPlatform", () => {
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
       const response = yield* platform.fileResponse(`${__dirname}/fixtures/text.txt`, {
-        offset: 6,
-        bytesToRead: 5
+        offset: ByteSize.bytes(6),
+        bytesToRead: ByteSize.bytes(5)
       })
 
       assert.strictEqual(response.headers["content-length"], "5")
@@ -37,8 +38,8 @@ describe("NodeHttpPlatform", () => {
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
       const response = yield* platform.fileResponse(`${__dirname}/fixtures/text.txt`, {
-        offset: 6,
-        bytesToRead: 0
+        offset: ByteSize.bytes(6),
+        bytesToRead: ByteSize.zero
       })
 
       assert.strictEqual(response.headers["content-length"], "0")
@@ -48,6 +49,20 @@ describe("NodeHttpPlatform", () => {
 
       const text = yield* readStream(body)
       assert.strictEqual(text, "")
+    }).pipe(Effect.provide(NodeHttpPlatform.layer)))
+
+  it.effect("fileResponse clamps byte ranges to the file size", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileResponse(`${__dirname}/fixtures/text.txt`, {
+        offset: ByteSize.bytes(22),
+        bytesToRead: ByteSize.bytes(100)
+      })
+
+      assert.strictEqual(response.headers["content-length"], "5")
+      assert.strictEqual(response.body._tag, "Raw")
+      const text = yield* readStream((response.body as HttpBody.Raw).body as Readable)
+      assert.strictEqual(text, "amet\n")
     }).pipe(Effect.provide(NodeHttpPlatform.layer)))
 
   it.effect("fileWebResponse looks up content types case-insensitively", () =>

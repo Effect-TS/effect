@@ -8,6 +8,7 @@
  *
  * @since 4.0.0
  */
+import * as ByteSize from "../../ByteSize.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import type * as FileSystem from "../../FileSystem.ts"
@@ -84,7 +85,7 @@ const fromFileInfo = (info: FileSystem.File.Info) => {
     onNone: () => "0",
     onSome: (mtime) => mtime.getTime().toString(16)
   })
-  return `${info.size.toString(16)}-${mtime}`
+  return `${ByteSize.toBigInt(info.size).toString(16)}-${mtime}`
 }
 
 const fromFileWeb = (file: Body.HttpBody.FileLike) => {

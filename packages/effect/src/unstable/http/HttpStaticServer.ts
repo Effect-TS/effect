@@ -9,6 +9,8 @@
  *
  * @since 4.0.0
  */
+import * as BI from "../../BigInt.ts"
+import * as ByteSize from "../../ByteSize.ts"
 import * as Effect from "../../Effect.ts"
 import * as FileSystem from "../../FileSystem.ts"
 import * as Layer from "../../Layer.ts"
@@ -27,7 +29,7 @@ import * as HttpServerResponse from "./HttpServerResponse.ts"
  * **Example** (Serving files from a directory)
  *
  * ```ts import.meta.vitest
- * import { Effect, FileSystem, Layer, Path } from "effect"
+ * import { ByteSize, Effect, FileSystem, Layer, Path } from "effect"
  * import {
  *   HttpEffect,
  *   HttpPlatform,
@@ -39,7 +41,7 @@ import * as HttpServerResponse from "./HttpServerResponse.ts"
  *   stat: () =>
  *     Effect.succeed({
  *       type: "File",
- *       size: FileSystem.Size(20)
+ *       size: ByteSize.bytes(20)
  *     } as FileSystem.File.Info)
  * })
  * const TestHttpPlatform = Layer.succeed(
@@ -111,7 +113,7 @@ export const make: (options: {
   const serveFile: (
     request: HttpServerRequest.HttpServerRequest,
     filePath: string,
-    fileSize?: number
+    fileSize?: ByteSize.ByteSize
   ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HttpServerError.HttpServerError> = Effect.fnUntraced(
     function*(request, filePath, fileSize) {
       const rangeHeader = request.headers["range"]
@@ -132,10 +134,14 @@ export const make: (options: {
 
       const resolvedFileSize = rangeHeader === undefined
         ? undefined
-        : fileSize ?? Number((yield* handlePlatformError(request, fileSystem.stat(filePath))).size)
-      const parsedRange = rangeHeader === undefined || resolvedFileSize === undefined
-        ? undefined
-        : parseRange(rangeHeader, resolvedFileSize)
+        : fileSize ?? (yield* handlePlatformError(request, fileSystem.stat(filePath))).size
+
+      if (rangeHeader === undefined || resolvedFileSize === undefined) {
+        return fullResponse ??
+          setFileHeaders(yield* handlePlatformError(request, platform.fileResponse(filePath)), filePath)
+      }
+
+      const parsedRange = parseRange(rangeHeader, resolvedFileSize)
 
       if (parsedRange === undefined) {
         return fullResponse ??
@@ -146,7 +152,7 @@ export const make: (options: {
         return HttpServerResponse.empty({
           status: 416,
           headers: {
-            "Content-Range": `bytes */${resolvedFileSize}`
+            "Content-Range": `bytes */${resolvedFileSize.value}`
           }
         })
       }
@@ -156,8 +162,8 @@ export const make: (options: {
           request,
           platform.fileResponse(filePath, {
             status: 206,
-            offset: parsedRange.start,
-            bytesToRead: parsedRange.end - parsedRange.start + 1
+            offset: ByteSize.bytes(parsedRange.start),
+            bytesToRead: ByteSize.bytes(parsedRange.end - parsedRange.start + BigInt(1))
           })
         ),
         filePath
@@ -166,7 +172,7 @@ export const make: (options: {
       response = HttpServerResponse.setHeader(
         response,
         "Content-Range",
-        `bytes ${parsedRange.start}-${parsedRange.end}/${resolvedFileSize}`
+        `bytes ${parsedRange.start}-${parsedRange.end}/${resolvedFileSize.value}`
       )
 
       return response
@@ -190,7 +196,7 @@ export const make: (options: {
           : Effect.fail(toInternalServerError(request, error)),
       onSuccess(info) {
         if (info.type === "File") {
-          return serveFile(request, resolvedPath, Number(info.size))
+          return serveFile(request, resolvedPath, info.size)
         }
         if (info.type === "Directory" && index !== undefined) {
           return serveFile(request, path.join(resolvedPath, index))
@@ -302,19 +308,18 @@ const resolveMimeType = (path: Path.Path, filePath: string, mimeTypes: Record<st
   return mimeTypes[extension.slice(1)] ?? "application/octet-stream"
 }
 
-const parseInteger = (value: string): number | undefined => {
+const parseInteger = (value: string): bigint | undefined => {
   if (!/^\d+$/.test(value)) {
     return undefined
   }
-  const parsed = Number(value)
-  return Number.isSafeInteger(parsed) ? parsed : undefined
+  return BigInt(value)
 }
 
 const parseRange = (
   header: string,
-  fileSize: number
+  fileSize: ByteSize.ByteSize
 ):
-  | { readonly start: number; readonly end: number }
+  | { readonly start: bigint; readonly end: bigint }
   | "unsatisfiable"
   | undefined =>
 {
@@ -340,12 +345,12 @@ const parseRange = (
     if (suffixLength === undefined) {
       return undefined
     }
-    if (suffixLength === 0 || fileSize === 0) {
+    if (suffixLength === BigInt(0) || ByteSize.isZero(fileSize)) {
       return "unsatisfiable"
     }
     return {
-      start: Math.max(fileSize - suffixLength, 0),
-      end: fileSize - 1
+      start: BI.max(fileSize.value - suffixLength, BigInt(0)),
+      end: fileSize.value - BigInt(1)
     }
   }
   const start = parseInteger(startPart)
@@ -353,24 +358,24 @@ const parseRange = (
     return undefined
   }
   if (endPart === "") {
-    if (start >= fileSize) {
+    if (start >= fileSize.value) {
       return "unsatisfiable"
     }
     return {
       start,
-      end: fileSize - 1
+      end: fileSize.value - BigInt(1)
     }
   }
   const end = parseInteger(endPart)
   if (end === undefined) {
     return undefined
   }
-  if (start > end || start >= fileSize) {
+  if (start > end || start >= fileSize.value) {
     return "unsatisfiable"
   }
   return {
     start,
-    end: Math.min(end, fileSize - 1)
+    end: BI.min(end, fileSize.value - BigInt(1))
   }
 }
 
