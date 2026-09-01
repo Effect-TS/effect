@@ -118,6 +118,94 @@ export default {
 
 `Entity.client` stays the user API. The Worker encodes `(type, id)` into the Durable Object name and resolves the object with `getByName`; an unknown entity type fails at the Worker before any Durable Object is contacted.
 
+## Deploying with Alchemy
+
+[Alchemy](https://alchemy.run) v2 ("Infrastructure as Effects") is the second
+deployment story, behind the optional `alchemy` peer dependency
+(`>=2.0.0-beta <3`). The Wrangler path above never imports it.
+
+```sh
+npm install alchemy@beta
+```
+
+With Alchemy there is no wrangler config, no class re-exports, and no
+initializer: `AlchemyCloudflareCluster.make` runs inside the Effect-native
+`Cloudflare.Worker` init program and registers the four Durable Object
+classes itself, so Alchemy owns the bindings, class exports, and SQLite
+migrations across deploys. Cron Triggers stay user-declared through
+`cluster.wake`:
+
+```ts
+// src/worker.ts
+import * as AlchemyCloudflareCluster from "@effect/platform-cloudflare/AlchemyCloudflareCluster"
+import * as Cloudflare from "alchemy/Cloudflare"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+
+export default Cloudflare.Worker(
+  "MyApp",
+  {
+    main: import.meta.url
+  },
+  Effect.gen(function*() {
+    const cluster = yield* AlchemyCloudflareCluster.make({
+      entities: [Counter],
+      layer: Layer.mergeAll(CounterLayer, MaintenanceLayer)
+    })
+
+    yield* Cloudflare.Workers.cron("0 * * * *", cluster.wake("hourly-maintenance"))
+
+    return {
+      // routes using Entity.client, etc.
+      fetch: cluster.provide(handler)
+    }
+  }).pipe(Effect.provide(Cloudflare.Workers.CronEventSourceLive))
+)
+```
+
+```ts
+// alchemy.run.ts
+import * as Alchemy from "alchemy"
+import * as Cloudflare from "alchemy/Cloudflare"
+import * as Effect from "effect/Effect"
+import App from "./src/worker.ts"
+
+export default Alchemy.Stack(
+  "MyApp",
+  { providers: Cloudflare.providers(), state: Cloudflare.state() },
+  Effect.gen(function*() {
+    const app = yield* App
+    return { url: app.url }
+  })
+)
+```
+
+`make` builds the cluster layer merged with your handler layer into the
+isolate-lifetime scope and hands back `provide` for the Worker's handlers, so
+do not wrap the init program in `Effect.provide` for cluster services — that
+would tear the layer down when init returns. The handle also exposes the four
+native namespace bindings (`entityNamespace`, `workflowNamespace`,
+`queueNamespace`, `singletonNamespace`) as escape hatches.
+
+A complete runnable example (one entity, one singleton, one Cron Trigger)
+lives at [`examples/alchemy`](./examples/alchemy).
+
+### Manual live smoke
+
+Alchemy tracks the published `effect` release, so CI covers this integration
+with typechecks only (plus the manual `Alchemy Canary` workflow against the
+latest `alchemy@beta`). After changing the integration, run one live smoke
+with Cloudflare credentials configured:
+
+1. `cd packages/platform/cloudflare/examples/alchemy`
+2. `alchemy deploy` — expect the Worker plus the four SQLite-backed Durable
+   Object classes (`ClusterEntity`, `ClusterWorkflow`, `ClusterDurableQueue`,
+   `ClusterSingleton`) and the `0 * * * *` Cron Trigger.
+3. `curl https://<worker-url>/counter-1` twice — expect `1` then `2`.
+4. Trigger the cron (or wait for the top of the hour) and check the Worker
+   logs for `Running hourly maintenance`.
+5. `alchemy destroy` to clean up.
+
 ## Worker routes
 
 The existing `EntityProxy` / `EntityProxyServer` and `WorkflowProxy` /
