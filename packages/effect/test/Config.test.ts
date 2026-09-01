@@ -227,7 +227,7 @@ describe("Config", () => {
       await assertFailure(
         Config.MediaType("invalid"),
         provider,
-        `ExpectedSlash at offset 3
+        `Expected '/' after the media type at offset 3
   at ["invalid"]`
       )
     })
