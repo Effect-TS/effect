@@ -545,7 +545,7 @@ export const file = (
   path: string,
   options?: {
     readonly bytesToRead?: ByteSize.Input | undefined
-    readonly chunkSize?: ByteSize.Input | undefined
+    readonly chunkSize?: number | undefined
     readonly offset?: ByteSize.Input | undefined
     readonly contentType?: string | undefined
   }
@@ -579,7 +579,7 @@ export const fileFromInfo = (
   info: FileSystem.File.Info,
   options?: {
     readonly bytesToRead?: ByteSize.Input | undefined
-    readonly chunkSize?: ByteSize.Input | undefined
+    readonly chunkSize?: number | undefined
     readonly offset?: ByteSize.Input | undefined
     readonly contentType?: string | undefined
   }
@@ -599,7 +599,7 @@ export const fileFromInfo = (
 const normalizeFileOptions = (
   options: {
     readonly bytesToRead?: ByteSize.Input | undefined
-    readonly chunkSize?: ByteSize.Input | undefined
+    readonly chunkSize?: number | undefined
     readonly offset?: ByteSize.Input | undefined
     readonly contentType?: string | undefined
   } | undefined
@@ -607,6 +607,6 @@ const normalizeFileOptions = (
   options === undefined ? undefined : {
     ...options,
     bytesToRead: options.bytesToRead === undefined ? undefined : ByteSize.fromInputUnsafe(options.bytesToRead),
-    chunkSize: options.chunkSize === undefined ? undefined : ByteSize.fromInputUnsafe(options.chunkSize),
+    chunkSize: options.chunkSize,
     offset: options.offset === undefined ? undefined : ByteSize.fromInputUnsafe(options.offset)
   }

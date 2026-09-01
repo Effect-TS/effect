@@ -35,7 +35,7 @@ describe("HttpPlatform", () => {
       const response = yield* platform.fileWebResponse(file, {
         offset: ByteSize.zero,
         bytesToRead: ByteSize.bytes(4),
-        chunkSize: ByteSize.bytes(2)
+        chunkSize: 2
       })
       assert.strictEqual(response.body._tag, "Stream")
       if (response.body._tag === "Stream") {

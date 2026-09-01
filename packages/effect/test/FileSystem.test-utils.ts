@@ -200,28 +200,28 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         let text: string
         const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
 
-        text = yield* file.readAlloc("5 B").pipe(
+        text = yield* file.readAlloc(5).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
         expect(text).toBe("lorem")
 
         yield* file.seek(BigInt(7), "current")
-        text = yield* file.readAlloc(ByteSize.bytes(5)).pipe(
+        text = yield* file.readAlloc(5).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
         expect(text).toBe("dolar")
 
         yield* file.seek(BigInt(1), "current")
-        text = yield* file.readAlloc(ByteSize.bytes(8)).pipe(
+        text = yield* file.readAlloc(8).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
         expect(text).toBe("sit amet")
 
         yield* file.seek(BigInt(0), "start")
-        text = yield* file.readAlloc(ByteSize.bytes(11)).pipe(
+        text = yield* file.readAlloc(11).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
@@ -241,6 +241,19 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       )
     })))
 
+  it("should return a numeric byte count when reading", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+
+      yield* Effect.gen(function*() {
+        const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+        const buffer = new Uint8Array(5)
+
+        assert.strictEqual(yield* file.read(buffer), 5)
+        assert.strictEqual(new TextDecoder().decode(buffer), "lorem")
+      }).pipe(Effect.scoped)
+    })))
+
   it("should read from a backwards seek", () =>
     runPromise(Effect.gen(function*() {
       const fs = yield* Fs.FileSystem
@@ -248,14 +261,14 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       yield* Effect.gen(function*() {
         const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
 
-        const first = yield* file.readAlloc(ByteSize.bytes(5)).pipe(
+        const first = yield* file.readAlloc(5).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
         expect(first).toBe("lorem")
 
         yield* file.seek(BigInt(-3), "current")
-        const second = yield* file.readAlloc(ByteSize.bytes(3)).pipe(
+        const second = yield* file.readAlloc(3).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
@@ -286,13 +299,13 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       yield* Effect.gen(function*() {
         const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
 
-        const first = yield* file.readAlloc(ByteSize.bytes(5)).pipe(
+        const first = yield* file.readAlloc(5).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
         expect(first).toBe("lorem")
 
-        const second = yield* file.readAlloc(ByteSize.bytes(6)).pipe(
+        const second = yield* file.readAlloc(6).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
@@ -311,7 +324,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         const path = yield* fs.makeTempFileScoped()
         const file = yield* fs.open(path, { flag: "w+" })
 
-        yield* file.write(new TextEncoder().encode("lorem ipsum"))
+        assert.strictEqual(yield* file.write(new TextEncoder().encode("lorem ipsum")), 11)
         yield* file.write(new TextEncoder().encode(" "))
         yield* file.write(new TextEncoder().encode("dolor sit amet"))
         text = yield* fs.readFileString(path)
@@ -347,7 +360,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         text = yield* fs.readFileString(path)
         expect(text).toBe("foobar")
 
-        text = yield* file.readAlloc(ByteSize.bytes(3)).pipe(
+        text = yield* file.readAlloc(3).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
@@ -357,7 +370,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         text = yield* fs.readFileString(path)
         expect(text).toBe("foobarbaz")
 
-        text = yield* file.readAlloc(ByteSize.bytes(6)).pipe(
+        text = yield* file.readAlloc(6).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
@@ -378,14 +391,14 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         yield* file.write(new TextEncoder().encode("foo"))
         yield* file.seek(BigInt(0), "start")
 
-        const first = yield* file.readAlloc(ByteSize.bytes(1)).pipe(
+        const first = yield* file.readAlloc(1).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
         expect(first).toBe("f")
 
         yield* file.write(new TextEncoder().encode("bar"))
-        const second = yield* file.readAlloc(ByteSize.bytes(2)).pipe(
+        const second = yield* file.readAlloc(2).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
@@ -444,7 +457,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         yield* file.truncate(ByteSize.bytes(5))
         yield* fs.writeFile(path, new TextEncoder().encode("xyz"), { flag: "a" })
 
-        const text = yield* file.readAlloc(ByteSize.bytes(3)).pipe(
+        const text = yield* file.readAlloc(3).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
