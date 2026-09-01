@@ -61,7 +61,27 @@ import * as Str from "./String.ts"
  * @category models
  * @since 4.0.0
  */
-export class Getter<out T, in E, R = never> extends Pipeable.Class {
+export interface Getter<out T, in E, R = never> extends Pipeable.Pipeable {
+  readonly run: (
+    input: Option.Option<E>,
+    options: SchemaAST.ParseOptions
+  ) => Effect.Effect<Option.Option<T>, SchemaIssue.Issue, R>
+  map<T2>(f: (t: T) => T2): Getter<T2, E, R>
+  compose<T2, R2>(other: Getter<T2, T, R2>): Getter<T2, E, R | R2>
+}
+
+/**
+ * Constructs a composable schema getter.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const Getter: new<T, E, R = never>(
+  run: (
+    input: Option.Option<E>,
+    options: SchemaAST.ParseOptions
+  ) => Effect.Effect<Option.Option<T>, SchemaIssue.Issue, R>
+) => Getter<T, E, R> = class<out T, in E, R = never> extends Pipeable.Class {
   readonly run: (
     input: Option.Option<E>,
     options: SchemaAST.ParseOptions
