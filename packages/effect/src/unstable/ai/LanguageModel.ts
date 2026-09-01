@@ -15,7 +15,7 @@ import type * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as FiberSet from "../../FiberSet.ts"
-import { constFalse, identity, pipe } from "../../Function.ts"
+import { identity, pipe } from "../../Function.ts"
 import type * as JsonSchema from "../../JsonSchema.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
@@ -2097,19 +2097,18 @@ const stripResolvedApprovals = (
 
 const isApprovalNeeded = Effect.fnUntraced(function*<T extends Tool.Any>(
   tool: T,
-  toolCall: Response.ToolCallPartEncoded,
+  // Parameters have already been decoded by the time approval is decided
+  toolCall: { readonly id: string; readonly params: unknown },
   messages: ReadonlyArray<Prompt.Message>
-): Effect.fn.Return<boolean, Schema.SchemaError, Tool.HandlerServices<T>> {
+): Effect.fn.Return<boolean> {
   if (Predicate.isUndefined(tool.needsApproval)) {
     return false
   }
 
   if (typeof tool.needsApproval === "function") {
-    const params = yield* Schema.decodeUnknownEffect(tool.parametersSchema)(
-      toolCall.params
-    ) as any
-
-    const result = tool.needsApproval(params, {
+    // Decoding `params` again here would fail for any schema that transforms
+    // its input, and a failure would have read as "no approval needed"
+    const result = tool.needsApproval(toolCall.params, {
       toolCallId: toolCall.id,
       messages
     })
@@ -2118,7 +2117,7 @@ const isApprovalNeeded = Effect.fnUntraced(function*<T extends Tool.Any>(
   }
 
   return tool.needsApproval
-}, Effect.orElseSucceed(constFalse))
+})
 
 const executeApprovedToolCalls = <Tools extends Record<string, Tool.Any>>(
   approvals: ReadonlyArray<ApprovalResult>,
@@ -2340,7 +2339,10 @@ const normalizeToolCall = <Tools extends Record<string, Tool.Any>>(
 
     const tool = toolkit.tools[toolCall.name]
     const parametersSchema = tool.parametersSchema
-    const codec = toolCall.providerExecuted === true || Tool.isDynamic(tool)
+    // Only a dynamic tool that declares raw JSON Schema bypasses the provider
+    // codec; one whose parameters are an Effect `Schema` still needs it
+    const declaresJsonSchema = Tool.isDynamic(tool) && Predicate.isNotUndefined(tool.jsonSchema)
+    const codec = toolCall.providerExecuted === true || declaresJsonSchema
       ? parametersSchema
       : yield* transformToolCodec(parametersSchema, codecTransformer)
     const decoded = yield* Effect.result(decodeToolParameters(codec, toolCall.params))

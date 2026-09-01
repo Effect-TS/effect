@@ -30,6 +30,37 @@ const TransformToolkitLayer = TransformToolkit.toLayer({
   TransformTool: (value) => Effect.succeed(value * 2)
 })
 
+const DynamicSchemaTool = Tool.dynamic("DynamicSchemaTool", {
+  parameters: Schema.Struct({ value: Schema.String })
+})
+
+const DynamicJsonSchemaTool = Tool.dynamic("DynamicJsonSchemaTool", {
+  parameters: {
+    type: "object",
+    properties: { value: { type: "string" } },
+    required: ["value"]
+  }
+})
+
+const DynamicToolkit = Toolkit.make(DynamicSchemaTool, DynamicJsonSchemaTool)
+
+const DynamicToolkitLayer = DynamicToolkit.toLayer({
+  DynamicSchemaTool: (params) => Effect.succeed(params),
+  DynamicJsonSchemaTool: (params) => Effect.succeed(params)
+})
+
+const TransformApprovalTool = Tool.make("TransformApprovalTool", {
+  parameters: Schema.FiniteFromString,
+  success: Schema.Finite,
+  needsApproval: (value) => value > 10
+})
+
+const TransformApprovalToolkit = Toolkit.make(TransformApprovalTool)
+
+const TransformApprovalToolkitLayer = TransformApprovalToolkit.toLayer({
+  TransformApprovalTool: (value) => Effect.succeed(value)
+})
+
 const ApprovalTool = Tool.make("ApprovalTool", {
   parameters: Schema.Struct({ action: Schema.String }),
   success: Schema.Struct({ result: Schema.String }),
@@ -1959,6 +1990,136 @@ describe("LanguageModel", () => {
   })
 
   describe("tool approval", () => {
+    it.effect("applies the provider codec to a dynamic tool defined with a schema", () =>
+      Effect.gen(function*() {
+        const transformed: Array<string> = []
+        const codecTransformer: LanguageModel.CodecTransformer = (schema) => {
+          transformed.push("DynamicSchemaTool")
+          return LanguageModel.defaultCodecTransformer(schema)
+        }
+
+        yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: DynamicToolkit
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [{
+              type: "tool-call",
+              id: "call-dynamic-schema",
+              name: "DynamicSchemaTool",
+              params: { value: "hello" }
+            }],
+            codecTransformer
+          }),
+          Effect.provide(DynamicToolkitLayer)
+        )
+
+        deepStrictEqual(transformed, ["DynamicSchemaTool"])
+      }))
+
+    it.effect("bypasses the provider codec for a dynamic tool defined with raw JSON Schema", () =>
+      Effect.gen(function*() {
+        const transformed: Array<string> = []
+        const codecTransformer: LanguageModel.CodecTransformer = (schema) => {
+          transformed.push("DynamicJsonSchemaTool")
+          return LanguageModel.defaultCodecTransformer(schema)
+        }
+
+        yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: DynamicToolkit
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [{
+              type: "tool-call",
+              id: "call-dynamic-json-schema",
+              name: "DynamicJsonSchemaTool",
+              params: { value: "hello" }
+            }],
+            codecTransformer
+          }),
+          Effect.provide(DynamicToolkitLayer)
+        )
+
+        deepStrictEqual(transformed, [])
+      }))
+
+    it.effect("evaluates needsApproval against decoded parameters when streaming", () =>
+      Effect.gen(function*() {
+        const parts: Array<Response.StreamPart<Toolkit.Tools<typeof TransformApprovalToolkit>>> = []
+
+        yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: TransformApprovalToolkit
+        }).pipe(
+          Stream.runForEach((part) =>
+            Effect.sync(() => {
+              parts.push(part)
+            })
+          ),
+          TestUtils.withLanguageModel({
+            streamText: [{
+              type: "tool-call",
+              id: "call-approval-transform",
+              name: "TransformApprovalTool",
+              params: "42"
+            }]
+          }),
+          Effect.provide(TransformApprovalToolkitLayer)
+        )
+
+        const approval = parts.find((part) => part.type === "tool-approval-request")
+        assertDefined(approval)
+        strictEqual(parts.some((part) => part.type === "tool-result"), false)
+      }))
+
+    it.effect("evaluates needsApproval against decoded parameters when generating", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: TransformApprovalToolkit
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [{
+              type: "tool-call",
+              id: "call-approval-transform",
+              name: "TransformApprovalTool",
+              params: "42"
+            }]
+          }),
+          Effect.provide(TransformApprovalToolkitLayer)
+        )
+
+        strictEqual(
+          response.content.some((part) => part.type === "tool-approval-request"),
+          true
+        )
+      }))
+
+    it.effect("runs the handler when the decoded parameters do not need approval", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: TransformApprovalToolkit
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [{
+              type: "tool-call",
+              id: "call-approval-transform",
+              name: "TransformApprovalTool",
+              params: "7"
+            }]
+          }),
+          Effect.provide(TransformApprovalToolkitLayer)
+        )
+
+        strictEqual(
+          response.content.some((part) => part.type === "tool-approval-request"),
+          false
+        )
+        deepStrictEqual(response.toolResults[0]?.result, 7)
+      }))
+
     it.effect("emits tool-approval-request when tool has needsApproval: true", () =>
       Effect.gen(function*() {
         const parts: Array<Response.StreamPart<Toolkit.Tools<typeof ApprovalToolkit>>> = []

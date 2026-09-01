@@ -14,6 +14,7 @@ interface WithLanguageModelOptions {
     | ((options: LanguageModel.ProviderOptions) =>
       | Array<Response.StreamPartEncoded>
       | Stream.Stream<Response.StreamPartEncoded, AiError.AiError, IdGenerator.IdGenerator>)
+  readonly codecTransformer?: LanguageModel.CodecTransformer | undefined
 }
 
 export const withLanguageModel: {
@@ -42,6 +43,9 @@ export const withLanguageModel: {
         const result = options.generateText(opts)
         return Effect.isEffect(result) ? result : Effect.succeed(result)
       },
+      ...(Predicate.isNotUndefined(options.codecTransformer)
+        ? { codecTransformer: options.codecTransformer }
+        : {}),
       streamText: (opts) => {
         if (Predicate.isUndefined(options.streamText)) {
           return Stream.empty
