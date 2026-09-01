@@ -137,6 +137,11 @@ export class PersistedQueueFactory extends Context.Service<
  * failed element becomes visible again, and defaults to an exponential delay
  * starting at 1 second and capped at 5 minutes.
  *
+ * The schedule's state is the element's persisted attempt count: on each
+ * failure the schedule is replayed up to the current attempt, so delays keep
+ * progressing even when consecutive retries run in different processes. The
+ * schedule input is the attempt number.
+ *
  * @category accessors
  * @since 4.0.0
  */
@@ -156,6 +161,10 @@ const defaultRetrySchedule = Schedule.min([
   Schedule.spaced("5 minutes")
 ])
 
+// The persisted attempt count is the schedule state: consecutive retries of an
+// element can run in different processes, so a fresh schedule step is replayed
+// up to the given attempt on every call. Delays therefore depend only on the
+// attempt count, with elapsed time simulated from the summed delays.
 const retryDelay = (
   schedule: Schedule.Schedule<any, number>,
   attempts: number
@@ -165,10 +174,11 @@ const retryDelay = (
     let now = 0
     let delay = Duration.zero
     for (let i = 0; i < attempts; i++) {
-      const result = yield* Pull.catchDone(
-        step(now, i + 1),
-        () => Effect.succeed([undefined, delay] as [unknown, Duration.Duration])
-      )
+      const result = yield* Pull.catchDone(step(now, i + 1), () => Effect.undefined)
+      if (result === undefined) {
+        // the schedule is done, keep using its final delay
+        break
+      }
       delay = result[1]
       now += Duration.toMillis(delay)
     }
