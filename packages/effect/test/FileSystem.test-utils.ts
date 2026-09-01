@@ -101,7 +101,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       const before = yield* Effect.map(fs.readFile(file), (_) => new TextDecoder().decode(_))
       expect(before).toEqual(text)
 
-      yield* fs.truncate(file, ByteSize.bytes(5))
+      yield* fs.truncate(file, 5)
       const truncated = yield* Effect.map(fs.readFile(file), (_) => new TextDecoder().decode(_))
       expect(truncated).toEqual("hello")
 
@@ -418,7 +418,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
 
         yield* file.write(new TextEncoder().encode("lorem ipsum dolor sit amet"))
         yield* file.seek(BigInt(6), "start")
-        yield* file.truncate(ByteSize.bytes(11))
+        yield* file.truncate(11)
 
         const cursor = yield* file.seek(BigInt(0), "current")
         assert.strictEqual(ByteSize.toBigInt(cursor), BigInt(6))
@@ -436,7 +436,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         const file = yield* fs.open(path, { flag: "w+" })
 
         yield* file.write(new TextEncoder().encode("lorem ipsum dolor sit amet"))
-        yield* file.truncate(ByteSize.bytes(11))
+        yield* file.truncate(11)
 
         const cursor = yield* file.seek(BigInt(0), "current")
         assert.strictEqual(ByteSize.toBigInt(cursor), BigInt(11))
@@ -454,7 +454,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         const file = yield* fs.open(path, { flag: "w+" })
 
         yield* file.write(new TextEncoder().encode("abcdefghij"))
-        yield* file.truncate(ByteSize.bytes(5))
+        yield* file.truncate(5)
         yield* fs.writeFile(path, new TextEncoder().encode("xyz"), { flag: "a" })
 
         const text = yield* file.readAlloc(3).pipe(

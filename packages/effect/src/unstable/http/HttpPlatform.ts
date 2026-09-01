@@ -45,9 +45,9 @@ export class HttpPlatform extends Context.Service<HttpPlatform, {
   readonly fileWebResponse: (
     file: Body.HttpBody.FileLike,
     options?: Response.Options.WithContent & {
-      readonly bytesToRead?: ByteSize.Input | undefined
+      readonly bytesToRead?: number | undefined
       readonly chunkSize?: number | undefined
-      readonly offset?: ByteSize.Input | undefined
+      readonly offset?: number | undefined
     }
   ) => Effect.Effect<Response.HttpServerResponse>
 }>()("effect/http/HttpPlatform") {}
@@ -76,9 +76,9 @@ export const make: (impl: {
     statusText: string | undefined,
     headers: Headers.Headers,
     options?: {
-      readonly bytesToRead?: ByteSize.ByteSize | undefined
+      readonly bytesToRead?: number | undefined
       readonly chunkSize?: number | undefined
-      readonly offset?: ByteSize.ByteSize | undefined
+      readonly offset?: number | undefined
     }
   ) => Response.HttpServerResponse
 }) => Effect.Effect<
@@ -132,11 +132,9 @@ export const make: (impl: {
       return Effect.map(etagGen.fromFileWeb(file), (etag) => {
         const normalizedOptions = options === undefined ? undefined : {
           ...options,
-          bytesToRead: options.bytesToRead === undefined
-            ? undefined
-            : ByteSize.fromInputUnsafe(options.bytesToRead),
+          bytesToRead: options.bytesToRead,
           chunkSize: options.chunkSize,
-          offset: options.offset === undefined ? undefined : ByteSize.fromInputUnsafe(options.offset)
+          offset: options.offset
         }
         const headers = Headers.merge(
           options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
@@ -184,15 +182,12 @@ export const layer = Layer.effect(HttpPlatform)(
         ))
       },
       fileWebResponse(file, status, statusText, headers, options) {
-        const fileSize = BigInt(file.size)
-        const requestedOffset = ByteSize.toBigInt(options?.offset ?? ByteSize.zero)
-        const offsetBigInt = BI.min(requestedOffset, fileSize)
-        const available = fileSize - offsetBigInt
-        const requested = options?.bytesToRead?.value
-        const contentLengthBigInt = requested === undefined ? available : BI.min(requested, available)
-        const endBigInt = offsetBigInt + contentLengthBigInt
-        const offset = Number(offsetBigInt)
-        const end = Number(endBigInt)
+        const offset = Math.min(Math.max(options?.offset ?? 0, 0), file.size)
+        const available = file.size - offset
+        const contentLength = options?.bytesToRead === undefined
+          ? available
+          : Math.min(Math.max(options.bytesToRead, 0), available)
+        const end = offset + contentLength
         const chunkSize = Math.min(Math.max(options?.chunkSize ?? Number.MAX_SAFE_INTEGER, 1), Number.MAX_SAFE_INTEGER)
         const stream = end <= offset
           ? Stream.empty
@@ -220,7 +215,7 @@ export const layer = Layer.effect(HttpPlatform)(
             Stream.map((chunk) => chunk.bytes)
           )
         return Response.stream(stream, {
-          contentLength: Number(contentLengthBigInt),
+          contentLength,
           headers,
           status,
           statusText

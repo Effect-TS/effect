@@ -87,29 +87,28 @@ export const make = Platform.make({
     )
   },
   fileWebResponse(file, status, statusText, headers, options) {
-    const fileSize = BigInt(file.size)
-    const offsetBigInt = BI.min(ByteSize.toBigInt(options?.offset ?? ByteSize.zero), fileSize)
-    const available = fileSize - offsetBigInt
-    const contentLengthBigInt = options?.bytesToRead === undefined
+    const offset = Math.min(Math.max(options?.offset ?? 0, 0), file.size)
+    const available = file.size - offset
+    const contentLength = options?.bytesToRead === undefined
       ? available
-      : BI.min(available, ByteSize.toBigInt(options.bytesToRead))
+      : Math.min(available, Math.max(options.bytesToRead, 0))
     let body: typeof file | ReadableStream<Uint8Array> = file
-    if (contentLengthBigInt === BigInt(0)) {
+    if (contentLength === 0) {
       body = new ReadableStream<Uint8Array>({
         start(controller) {
           controller.close()
         }
       })
-    } else if (offsetBigInt > BigInt(0) || options?.bytesToRead !== undefined) {
+    } else if (offset > 0 || options?.bytesToRead !== undefined) {
       body = (file.stream() as ReadableStream<Uint8Array>).pipeThrough(
-        sliceStream(offsetBigInt, contentLengthBigInt)
+        sliceStream(BigInt(offset), BigInt(contentLength))
       )
     }
     return Response.raw(body, {
       headers: {
         ...headers,
         "content-type": file.type,
-        "content-length": contentLengthBigInt.toString()
+        "content-length": contentLength.toString()
       },
       status,
       statusText

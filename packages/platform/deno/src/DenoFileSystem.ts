@@ -30,20 +30,6 @@ const close = (file: Deno.FsFile, method: string, pathOrDescriptor: string | num
     catch: handleError("FileSystem", method, pathOrDescriptor)
   }))
 
-const byteSizeToNumber = (
-  input: ByteSize.Input,
-  method: string
-): Effect.Effect<number, PlatformError.PlatformError> =>
-  Option.match(ByteSize.toNumber(ByteSize.fromInputUnsafe(input)), {
-    onNone: () =>
-      Effect.fail(PlatformError.badArgument({
-        module: "FileSystem",
-        method,
-        description: "byte size exceeds Number.MAX_SAFE_INTEGER"
-      })),
-    onSome: Effect.succeed
-  })
-
 const collectAsyncIterable = <A>(
   method: string,
   pathOrDescriptor: string | number | undefined,
@@ -286,17 +272,16 @@ class FileImpl implements FileSystem.File {
     )
   }
 
-  truncate(length?: ByteSize.Input) {
-    const size = ByteSize.fromInputUnsafe(length ?? ByteSize.zero)
-    return Effect.flatMap(byteSizeToNumber(size, "truncate"), (sizeNumber) =>
-      Effect.map(
-        tryPromise("truncate", undefined, () => this.file.truncate(sizeNumber)),
-        () => {
-          if (!this.append && this.position > size.value) {
-            this.position = size.value
-          }
+  truncate(length = 0) {
+    return Effect.map(
+      tryPromise("truncate", undefined, () => this.file.truncate(length)),
+      () => {
+        const size = BigInt(length)
+        if (!this.append && this.position > size) {
+          this.position = size
         }
-      ))
+      }
+    )
   }
 
   private writeChunk(method: string, buffer: Uint8Array) {
@@ -413,10 +398,7 @@ const symlink: FileSystem.FileSystem["symlink"] = (target, path) =>
 const truncate: FileSystem.FileSystem["truncate"] = (path, length) =>
   length === undefined
     ? tryPromise("truncate", path, () => Deno.truncate(path))
-    : Effect.flatMap(
-      byteSizeToNumber(length, "truncate"),
-      (length) => tryPromise("truncate", path, () => Deno.truncate(path, length))
-    )
+    : tryPromise("truncate", path, () => Deno.truncate(path, length))
 
 const utimes: FileSystem.FileSystem["utimes"] = (path, atime, mtime) =>
   tryPromise("utimes", path, () => Deno.utime(path, atime, mtime))

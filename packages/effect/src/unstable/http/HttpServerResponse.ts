@@ -508,9 +508,9 @@ export const fileWeb = (
   file: Body.HttpBody.FileLike,
   options?:
     | (Options.WithContent & {
-      readonly bytesToRead?: ByteSize.Input | undefined
+      readonly bytesToRead?: number | undefined
       readonly chunkSize?: number | undefined
-      readonly offset?: ByteSize.Input | undefined
+      readonly offset?: number | undefined
     })
     | undefined
 ): Effect.Effect<HttpServerResponse, never, HttpPlatform> =>

@@ -20,10 +20,10 @@ describe("DenoHttpPlatform", () => {
       const platform = yield* HttpPlatform.HttpPlatform
       const file = new File(["abcd"], "file.txt", { type: "text/plain", lastModified: 0 })
       const sliced = yield* platform.fileWebResponse(file, {
-        offset: ByteSize.bytes(1),
-        bytesToRead: ByteSize.bytes(2)
+        offset: 1,
+        bytesToRead: 2
       })
-      const empty = yield* platform.fileWebResponse(file, { offset: ByteSize.bytes(1), bytesToRead: ByteSize.zero })
+      const empty = yield* platform.fileWebResponse(file, { offset: 1, bytesToRead: 0 })
 
       assert.deepStrictEqual(
         {

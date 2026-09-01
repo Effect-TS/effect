@@ -1,5 +1,6 @@
 import * as DenoHttpServer from "@effect/platform-deno/DenoHttpServer"
 import { assert, describe, it } from "@effect/vitest"
+import * as ByteSize from "effect/ByteSize"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
@@ -151,7 +152,7 @@ describe("DenoHttpServer", () => {
       ).pipe(
         HttpRouter.serve,
         Layer.build,
-        Effect.provideService(Multipart.MaxFileSize, 100)
+        Effect.provideService(Multipart.MaxFileSize, ByteSize.bytes(100))
       )
       const formData = new FormData()
       formData.append("file", new Blob([new Uint8Array(1000)], { type: "text/plain" }), "test.txt")
@@ -175,7 +176,7 @@ describe("DenoHttpServer", () => {
       ).pipe(
         HttpRouter.serve,
         Layer.build,
-        Effect.provideService(Multipart.MaxFieldSize, 100)
+        Effect.provideService(Multipart.MaxFieldSize, ByteSize.bytes(100))
       )
       const formData = new FormData()
       formData.append("file", "x".repeat(1000))
