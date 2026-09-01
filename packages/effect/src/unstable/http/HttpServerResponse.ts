@@ -1292,7 +1292,7 @@ export const fromClientResponse = (
     body: Body.stream(
       Stream.catchIf(response.stream, isEmptyBodyError, () => Stream.empty),
       Option.getOrUndefined(Headers.get(headers, "content-type")),
-      getContentLength(headers)
+      bodyInternal.parseContentLength(headers["content-length"])
     )
   })
 }
@@ -1304,15 +1304,6 @@ const isEmptyBodyError = (
   error: HttpClientError.HttpClientError
 ): error is HttpClientError.HttpClientError =>
   HttpClientError.isHttpClientError(error) && error.reason._tag === "EmptyBodyError"
-
-const getContentLength = (headers: Headers.Headers): number | undefined => {
-  const contentLength = Option.getOrUndefined(Headers.get(headers, "content-length"))
-  if (contentLength === undefined) {
-    return undefined
-  }
-  const parsed = Number(contentLength)
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
-}
 
 const Proto: Omit<
   HttpServerResponse,

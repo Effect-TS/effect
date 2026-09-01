@@ -86,6 +86,22 @@ describe("HttpServerResponse", () => {
       assert.strictEqual(yield* roundTrip.text, "")
     }))
 
+  it("fromClientResponse ignores malformed or unsafe content lengths", () => {
+    const request = HttpClientRequest.get("http://localhost:3000")
+    for (const contentLength of ["2junk", "1.5", "1e3", "9007199254740992"]) {
+      const clientResponse = HttpClientResponse.fromWeb(
+        request,
+        new Response("hello", { headers: { "content-length": contentLength } })
+      )
+      const response = HttpServerResponse.fromClientResponse(clientResponse)
+
+      assert.strictEqual(response.body._tag, "Stream")
+      if (response.body._tag === "Stream") {
+        assert.strictEqual(response.body.contentLength, undefined)
+      }
+    }
+  })
+
   it("synchronizes body metadata headers for empty and replaced bodies", () => {
     const emptyBytes = HttpServerResponse.uint8Array(new Uint8Array())
     assert.strictEqual(emptyBytes.headers["content-length"], "0")

@@ -906,16 +906,8 @@ const fromWebBody = (request: globalThis.Request, method: HttpMethod): HttpBody.
   }
   return HttpBody.raw(request.body, {
     contentType: request.headers.get("content-type") ?? undefined,
-    contentLength: parseContentLength(request.headers.get("content-length"))
+    contentLength: bodyInternal.parseContentLength(request.headers.get("content-length"))
   })
-}
-
-const parseContentLength = (contentLength: string | null): number | undefined => {
-  if (contentLength === null) {
-    return undefined
-  }
-  const parsed = Number.parseInt(contentLength, 10)
-  return Number.isNaN(parsed) ? undefined : parsed
 }
 
 /**

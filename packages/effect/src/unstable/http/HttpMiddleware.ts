@@ -32,6 +32,7 @@ import * as Response from "./HttpServerResponse.ts"
 import type { HttpServerResponse } from "./HttpServerResponse.ts"
 import * as TraceContext from "./HttpTraceContext.ts"
 import * as compressionInternal from "./internal/compression.ts"
+import * as bodyInternal from "./internal/httpBody.ts"
 import { appendPreResponseHandlerUnsafe } from "./internal/preResponseHandler.ts"
 
 /**
@@ -542,7 +543,7 @@ export const compression = (
     if (algorithm === undefined) {
       return Effect.succeed(withVary(response))
     }
-    const contentLength = body.contentLength ?? contentLengthHeader(response.headers)
+    const contentLength = body.contentLength ?? bodyInternal.parseContentLength(response.headers["content-length"])
     if (contentLength !== undefined && contentLength < minSize) {
       return Effect.succeed(withVary(response))
     }
@@ -575,12 +576,3 @@ const defaultLevels = {
 } as const
 
 const noTransformRegex = /(?:^|[\s,])no-transform(?:$|[\s,;])/i
-
-const contentLengthHeader = (headers: Headers.Headers): number | undefined => {
-  const value = headers["content-length"]
-  if (value === undefined) {
-    return undefined
-  }
-  const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
-}

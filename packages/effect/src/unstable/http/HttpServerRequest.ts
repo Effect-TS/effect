@@ -33,6 +33,7 @@ import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import { hasBody, type HttpMethod } from "./HttpMethod.ts"
 import { HttpServerError, type RequestError, RequestParseError } from "./HttpServerError.ts"
+import * as bodyInternal from "./internal/httpBody.ts"
 import * as Multipart from "./Multipart.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -423,18 +424,23 @@ export const fromWeb = (request: globalThis.Request): HttpServerRequest =>
  * @category converting
  * @since 4.0.0
  */
-export const toClientRequest = (request: HttpServerRequest): HttpClientRequest.HttpClientRequest =>
-  HttpClientRequest.setUrl(
+export const toClientRequest = (request: HttpServerRequest): HttpClientRequest.HttpClientRequest => {
+  const body = toClientBody(request)
+  const headers = body._tag !== "Empty" && body.contentLength === undefined
+    ? Headers.remove(request.headers, "content-length")
+    : request.headers
+  return HttpClientRequest.setUrl(
     HttpClientRequest.makeWith(
       request.method,
       "",
       UrlParams.empty,
       Option.none(),
-      request.headers,
-      toClientBody(request)
+      headers,
+      body
     ),
     Option.getOrElse(toURL(request), () => request.url)
   )
+}
 
 const toClientBody = (request: HttpServerRequest): HttpBody.HttpBody => {
   if (!hasBody(request.method)) {
@@ -445,17 +451,9 @@ const toClientBody = (request: HttpServerRequest): HttpBody.HttpBody => {
     ? HttpBody.stream(
       request.stream,
       request.headers["content-type"],
-      parseContentLength(request.headers["content-length"])
+      bodyInternal.parseContentLength(request.headers["content-length"])
     )
     : HttpBody.formData(formData)
-}
-
-const parseContentLength = (contentLength: string | undefined): number | undefined => {
-  if (contentLength === undefined) {
-    return undefined
-  }
-  const parsed = Number.parseInt(contentLength, 10)
-  return Number.isNaN(parsed) ? undefined : parsed
 }
 
 const removeHost = (url: string) => {
