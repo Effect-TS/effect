@@ -29,3 +29,9 @@ allowBuilds:
 
 patchedDependencies:
   '@changesets/get-github-info@1.0.0': patches/@changesets__get-github-info@1.0.0.patch
+
+minimumReleaseAgeExclude:
+  - '@alchemy.run/cloudflare-runtime@2.0.0-beta.76'
+  - '@alchemy.run/floci@2.0.0-beta.76'
+  - '@alchemy.run/node-utils@2.0.0-beta.76'
+  - alchemy@2.0.0-beta.76

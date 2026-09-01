@@ -8,6 +8,72 @@ Runs Effect Cluster on [Cloudflare Durable Objects](https://developers.cloudflar
 npm install effect@rc @effect/platform-cloudflare@rc
 ```
 
+Install Alchemy when deploying through the Alchemy integration:
+
+```sh
+npm install alchemy
+```
+
+## Alchemy
+
+`CloudflareAlchemy.worker` composes Alchemy's native `Cloudflare.Worker` and
+`Cloudflare.DurableObject` resources. Alchemy manages the four namespace
+bindings, SQLite class migrations, Cron Triggers, local development, and the
+normal Worker outputs.
+
+```ts
+// alchemy.run.ts
+import * as CloudflareAlchemy from "@effect/platform-cloudflare/CloudflareAlchemy"
+import * as Cloudflare from "alchemy/Cloudflare"
+
+export const Api = CloudflareAlchemy.worker("Api", {
+  main: "./src/worker.ts",
+  singletonTriggers: [
+    { cron: "0 * * * *", names: ["hourly-maintenance"] }
+  ]
+})
+
+export type ApiEnv = Cloudflare.InferEnv<typeof Api>
+```
+
+The Worker uses `CloudflareWorker.makeRuntime` to build the application once
+per isolate and share the same initialization with cold Durable Objects:
+
+```ts
+// src/worker.ts
+import { CloudflareWorker } from "@effect/platform-cloudflare"
+import type { ApiEnv } from "../alchemy.run.ts"
+
+export {
+  ClusterDurableQueue,
+  ClusterEntity,
+  ClusterSingleton,
+  ClusterWorkflow
+} from "@effect/platform-cloudflare/CloudflareDurableObjects"
+
+const runtime = CloudflareWorker.makeRuntime({
+  entities: [Counter],
+  layer: AppLive
+})
+
+export default {
+  fetch(request: Request, env: ApiEnv) {
+    return runtime.run(env, handleRequest(request))
+  },
+  scheduled: runtime.scheduled
+}
+```
+
+The integration reserves `CLUSTER_ENTITY`, `CLUSTER_WORKFLOW`,
+`CLUSTER_QUEUE`, `CLUSTER_SINGLETON`, and `CLUSTER_SINGLETON_TRIGGERS`.
+It preserves the class and binding names from the Wrangler configuration so an
+existing Worker can be adopted by Alchemy without replacing its Durable Object
+namespaces. Use the existing physical Worker name and Alchemy's normal adoption
+flow for the first deployment.
+
+Import `CloudflareAlchemy` through its direct package subpath. Alchemy is an
+optional peer dependency and is not loaded by the main package entry.
+
 ## Usage
 
 The package ships four Durable Object classes. Re-export them from your Worker entry module and bind each one as a SQLite-backed class:
