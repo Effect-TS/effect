@@ -137,6 +137,17 @@ export class PersistedQueueFactory extends Context.Service<
  * failed element becomes visible again, and defaults to an exponential delay
  * starting at 1 second and capped at 5 minutes.
  *
+ * The schedule's state is the element's persisted attempt count. On each
+ * failure the schedule is replayed up to the current attempt, so delays keep
+ * progressing even when consecutive retries run in different processes. The
+ * schedule input is the attempt number.
+ *
+ * Replay simulates elapsed time from the sum of the computed delays.
+ * Attempt-driven schedules are therefore exact, while wall-clock-anchored
+ * schedules observe this idealized time. In particular,
+ * `Schedule.upTo({ duration })` caps the summed delays rather than real time
+ * since the original failure.
+ *
  * @category accessors
  * @since 4.0.0
  */
