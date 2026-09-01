@@ -577,8 +577,8 @@ export const layerStoreMemory: Layer.Layer<
           entry.attempts += 1
           queue.pending.delete(entry)
           queue.latch.openUnsafe()
-          yield* Effect.addFinalizer((exit) =>
-            Effect.gen(function*() {
+          yield* Effect.addFinalizer(
+            Effect.fnUntraced(function*(exit) {
               const now = clock.currentTimeMillisUnsafe()
               if (exit._tag === "Success") {
                 entry.state = "completed"
