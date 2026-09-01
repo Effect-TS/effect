@@ -35,3 +35,9 @@ minimumReleaseAgeExclude:
   - '@alchemy.run/floci@2.0.0-beta.76'
   - '@alchemy.run/node-utils@2.0.0-beta.76'
   - alchemy@2.0.0-beta.76
+
+# alchemy's dependency tree pulls @types/ssh2, whose @types/node@18 would
+# otherwise join the shared tests compilation and clash with the workspace
+# @types/node globals.
+overrides:
+  '@types/ssh2>@types/node': ^26.2.0
