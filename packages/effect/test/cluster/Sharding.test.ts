@@ -1498,6 +1498,12 @@ describe.concurrent("Sharding residency cap", () => {
 describe("Sharding shard lock failover", () => {
   it.effect("interrupts entities and reacquires shards after lock storage recovers", () =>
     Effect.gen(function*() {
+      const warnings: Array<unknown> = []
+      const logger = Logger.make<unknown, void>((options) => {
+        if (options.logLevel === "Warn") {
+          warnings.push(options.message)
+        }
+      })
       const storageState = makeFailoverStorageState()
       const runnerStorage = Layer.effect(
         RunnerStorage.RunnerStorage,
@@ -1579,6 +1585,65 @@ describe("Sharding shard lock failover", () => {
         assert(storageState.acquireCalls.at(-1)!.shards.some((shard) => shard.id === shardId.id))
         assert.deepStrictEqual(yield* client.GetUserVolatile({ id: 2 }), new User({ id: 2, name: "User 2" }))
         assert.strictEqual(Queue.sizeUnsafe(entityState.envelopes), 2)
+        assert.isTrue(warnings.some((message) =>
+          globalThis.Array.isArray(message) && message.includes("Shard lock storage is still unhealthy")
+        ))
+      }).pipe(Effect.provide(layer), Effect.withLogger(logger), Effect.scoped)
+    }))
+
+  it.effect("reacquires shards when the liveness probe succeeds while lock refresh is hung", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+      )
+      const config = ShardingConfig.layer({
+        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+        shardsPerGroup: 1,
+        shardLockExpiration: 300,
+        shardLockRefreshInterval: 1000,
+        entityTerminationTimeout: 30_000,
+        entityMessagePollInterval: 10,
+        refreshAssignmentsInterval: 10,
+        sendRetryInterval: 10
+      })
+      const layer = TestEntityNoState.pipe(
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provideMerge(TestEntityState.layer),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(config)
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const makeClient = yield* TestEntity.client
+        const client = makeClient("1")
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        while (!storageState.refreshCalls.some((call) => call.shards.length > 0)) {
+          yield* TestClock.adjust(100)
+        }
+
+        const acquireCount = storageState.acquireCalls.length
+        storageState.blackholeNonEmptyRefresh = true
+        yield* TestClock.adjust(201)
+        assert.isFalse(sharding.hasShardId(shardId))
+
+        // recovery only needs the empty liveness probe to succeed
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+
+        assert.isAbove(storageState.acquireCalls.length, acquireCount)
+        assert(storageState.refreshCalls.some((call) => call.shards.length === 0))
+        assert.deepStrictEqual(yield* client.GetUserVolatile({ id: 3 }), new User({ id: 3, name: "User 3" }))
       }).pipe(Effect.provide(layer), Effect.scoped)
     }))
 
@@ -1812,6 +1877,8 @@ describe("Sharding shard lock failover", () => {
 
 interface FailoverStorageState {
   blackholed: boolean
+  /** Hang only non-empty refreshes, so the empty liveness probe can succeed. */
+  blackholeNonEmptyRefresh: boolean
   assignSelf: boolean
   otherRunnerHealthy: boolean
   /** Test clock duration `releaseAll` stays in flight for. */
@@ -1833,6 +1900,7 @@ const makeFailoverStorageState = (
   overrides?: Partial<FailoverStorageState>
 ): FailoverStorageState => ({
   blackholed: false,
+  blackholeNonEmptyRefresh: false,
   assignSelf: true,
   otherRunnerHealthy: false,
   releaseAllDuration: 0,
@@ -1874,7 +1942,9 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
           at: clock.currentTimeMillisUnsafe(),
           shards
         })
-        return state.blackholed ? Effect.never : Effect.succeed(shards)
+        return (state.blackholed || (state.blackholeNonEmptyRefresh && shards.length > 0))
+          ? Effect.never
+          : Effect.succeed(shards)
       }),
     release: (_address, shardId) =>
       Effect.sync(() => {

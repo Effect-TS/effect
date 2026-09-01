@@ -99,6 +99,52 @@ describe("SqlRunnerStorage", () => {
     )
   }, 60_000)
 
+  it.effect("empty liveness probe bypasses a wedged reserved connection", () => {
+    const partitioned = makePartitionState()
+    const layer = StorageLayer.pipe(
+      Layer.provideMerge(blackholeReservedConnection(partitioned, true)),
+      Layer.provide(ShardingConfig.layer({
+        shardLockExpiration: 1000,
+        shardLockRefreshInterval: 100
+      }))
+    )
+
+    return Effect.gen(function*() {
+      const storage = yield* RunnerStorage.RunnerStorage
+      const runner = Runner.make({
+        address: runnerAddress1,
+        groups: ["default"],
+        weight: 1
+      })
+      const shards = [ShardId.make("default", 1)]
+
+      yield* storage.register(runner, true)
+      yield* storage.acquire(runnerAddress1, shards)
+      partitionConnection(partitioned)
+
+      // shard lock operations are stuck behind the wedged reserved connection
+      const exit = yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
+      assert(Exit.isFailure(exit))
+
+      // the liveness probe runs on the shared pool, so it must succeed while
+      // the reserved connection stays wedged
+      expect(yield* storage.refresh(runnerAddress1, [])).toEqual([])
+
+      restoreConnection(partitioned)
+      expect(
+        yield* storage.refresh(runnerAddress1, shards).pipe(
+          Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
+        )
+      ).toEqual(shards)
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        restoreConnection(partitioned)
+      })),
+      Effect.provide(layer),
+      TestClock.withLive
+    )
+  }, 60_000)
+
   it.effect("recovers when a blackholed query cannot resume after the partition clears", () => {
     const partitioned = makePartitionState()
     const layer = StorageLayer.pipe(
