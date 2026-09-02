@@ -226,11 +226,11 @@ export const AllParts = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
  */
 export type Part<
   Tools extends Record<string, Tool.Any>,
-  EncodedToolParameters extends boolean = false
+  ParametersMode extends ToolParametersMode = "decoded"
 > =
   | TextPart
   | ReasoningPart
-  | ToolCallParts<Tools, EncodedToolParameters>
+  | ToolCallParts<Tools, ParametersMode>
   | ToolResultParts<Tools>
   | ToolApprovalRequestPart
   | FilePart
@@ -307,7 +307,7 @@ export const Part = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
  */
 export type StreamPart<
   Tools extends Record<string, Tool.Any>,
-  EncodedToolParameters extends boolean = false
+  ParametersMode extends ToolParametersMode = "decoded"
 > =
   | TextStartPart
   | TextDeltaPart
@@ -318,7 +318,7 @@ export type StreamPart<
   | ToolParamsStartPart
   | ToolParamsDeltaPart
   | ToolParamsEndPart
-  | ToolCallParts<Tools, EncodedToolParameters>
+  | ToolCallParts<Tools, ParametersMode>
   | ToolResultParts<Tools>
   | ToolApprovalRequestPart
   | FilePart
@@ -410,16 +410,26 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
  */
 export type ToolCallParts<
   Tools extends Record<string, Tool.Any>,
-  EncodedParameters extends boolean = false
-> = ToolCallPartForName<Tools, EncodedParameters, keyof Tools>
+  ParametersMode extends ToolParametersMode = "decoded"
+> = ToolCallPartForName<Tools, ParametersMode, keyof Tools>
+
+/**
+ * Controls whether tool parameters are decoded, encoded, or opaque.
+ *
+ * @category utility types
+ * @since 4.0.0
+ */
+export type ToolParametersMode = "decoded" | "encoded" | "opaque"
 
 type ToolCallPartForName<
   Tools extends Record<string, Tool.Any>,
-  EncodedParameters extends boolean,
+  ParametersMode extends ToolParametersMode,
   Name extends keyof Tools
 > = Name extends string ? ToolCallPart<
     Name,
-    EncodedParameters extends true ? Tool.ParametersEncoded<Tools[Name]> : Tool.Parameters<Tools[Name]>
+    ParametersMode extends "encoded" ? Tool.ParametersEncoded<Tools[Name]>
+      : ParametersMode extends "opaque" ? unknown
+      : Tool.Parameters<Tools[Name]>
   >
   : never
 

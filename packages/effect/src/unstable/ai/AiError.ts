@@ -1055,7 +1055,6 @@ export class ToolNotFoundError extends Schema.Error<ToolNotFoundError>(
  *
  * const error = new AiError.ToolParameterValidationError({
  *   toolName: "GetWeather",
- *   toolParams: { location: 123 },
  *   description: "Expected string, got number"
  * })
  *
@@ -1070,7 +1069,6 @@ export class ToolParameterValidationError extends Schema.Error<ToolParameterVali
 )({
   _tag: Schema.tag("ToolParameterValidationError"),
   toolName: Schema.String,
-  toolParams: Schema.Json,
   description: Schema.String
 }) {
   /**

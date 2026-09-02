@@ -19,7 +19,6 @@ import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import * as SchemaIssue from "effect/SchemaIssue"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { DeepMutable, Mutable, Simplify } from "effect/Types"
@@ -39,8 +38,6 @@ import { OpenAiClient } from "./OpenAiClient.ts"
 import type * as OpenAiSchema from "./OpenAiSchema.ts"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.ts"
 import type * as OpenAiTool from "./OpenAiTool.ts"
-
-const formatIssue = SchemaIssue.makeFormatterDefault()
 
 const ResponseModelIds = Generated.ModelIdsResponses.members[1]
 const SharedModelIds = Generated.ModelIdsShared.members[1]
@@ -1045,7 +1042,6 @@ const prepareMessages = Effect.fnUntraced(
                         method: "prepareMessages",
                         reason: new AiError.ToolParameterValidationError({
                           toolName: "local_shell",
-                          toolParams: part.params as Schema.Json,
                           description: error.message
                         })
                       })
@@ -1071,7 +1067,6 @@ const prepareMessages = Effect.fnUntraced(
                         method: "prepareMessages",
                         reason: new AiError.ToolParameterValidationError({
                           toolName: "shell",
-                          toolParams: part.params as Schema.Json,
                           description: error.message
                         })
                       })
@@ -1398,7 +1393,6 @@ const makeResponse = Effect.fnUntraced(
                 method: "makeResponse",
                 reason: new AiError.ToolParameterValidationError({
                   toolName,
-                  toolParams: {},
                   description: `Faled to securely JSON parse tool parameters: ${cause}`
                 })
               })
@@ -2147,7 +2141,6 @@ const makeStreamResponse = Effect.fnUntraced(
                       method: "makeStreamResponse",
                       reason: new AiError.ToolParameterValidationError({
                         toolName,
-                        toolParams: {},
                         description: `Failed securely JSON parse tool parameters: ${cause}`
                       })
                     })
@@ -2450,7 +2443,6 @@ const makeStreamResponse = Effect.fnUntraced(
                     method: "makeStreamResponse",
                     reason: new AiError.ToolParameterValidationError({
                       toolName: toolCall.name,
-                      toolParams: {},
                       description: `Failed securely JSON parse tool parameters: ${cause}`
                     })
                   })
@@ -3104,7 +3096,6 @@ const normalizeMcpToolCall = Effect.fnUntraced(function*<Tools extends ReadonlyA
         method,
         reason: new AiError.ToolParameterValidationError({
           toolName,
-          toolParams,
           description: `Failed to securely JSON parse tool parameters: ${cause}`
         })
       })
@@ -3195,19 +3186,13 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
 
   const { codec } = yield* tryCodecTransform(tool.parametersSchema, "makeResponse")
 
-  const transform = Schema.decodeEffect(codec)
-
+  // Normalize valid parameters; leave invalid ones for Toolkit.
   return yield* (
-    transform(toolParams) as Effect.Effect<unknown, Schema.SchemaError>
-  ).pipe(Effect.mapError((error) =>
-    AiError.make({
-      module: "OpenAiLanguageModel",
-      method: "makeResponse",
-      reason: new AiError.ToolParameterValidationError({
-        toolName,
-        toolParams,
-        description: formatIssue(error.issue)
-      })
-    })
-  ))
+    Schema.decodeEffect(codec)(toolParams) as Effect.Effect<unknown, Schema.SchemaError>
+  ).pipe(
+    Effect.flatMap((decoded) =>
+      Schema.encodeUnknownEffect(tool.parametersSchema)(decoded) as Effect.Effect<unknown, Schema.SchemaError>
+    ),
+    Effect.orElseSucceed(() => toolParams)
+  )
 })

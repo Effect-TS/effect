@@ -24,11 +24,11 @@ describe("Response", () => {
     const narrow = <
       StaticTools extends Record<string, Tool.Any>,
       DynamicTools extends Record<string, Tool.Any>,
-      EncodedParameters extends boolean
-    >(part: Response.StreamPart<StaticTools & DynamicTools, EncodedParameters>) => {
+      ParametersMode extends Response.ToolParametersMode
+    >(part: Response.StreamPart<StaticTools & DynamicTools, ParametersMode>) => {
       if (part.type === "error") return
 
-      const narrowed: Response.StreamPart<StaticTools & DynamicTools, EncodedParameters> = part
+      const narrowed: Response.StreamPart<StaticTools & DynamicTools, ParametersMode> = part
       return narrowed
     }
 
@@ -36,19 +36,22 @@ describe("Response", () => {
   })
 
   it("preserves tool names with decoded and encoded parameters", () => {
-    const decoded = null as unknown as Response.ToolCallParts<Tools>
+    const decoded = null as unknown as Response.ToolCallParts<Tools, "decoded">
     if (decoded.name === "BooleanTool") {
       expect(decoded.params).type.toBe<boolean>()
     } else {
       expect(decoded.params).type.toBe<number>()
     }
 
-    const encoded = null as unknown as Response.ToolCallParts<Tools, true>
+    const encoded = null as unknown as Response.ToolCallParts<Tools, "encoded">
     if (encoded.name === "BooleanTool") {
       expect(encoded.params).type.toBe<boolean>()
     } else {
       expect(encoded.params).type.toBe<string>()
     }
+
+    const opaque = null as unknown as Response.ToolCallParts<Tools, "opaque">
+    expect(opaque.params).type.toBe<unknown>()
   })
 
   it("preserves tool names with success and failure results", () => {

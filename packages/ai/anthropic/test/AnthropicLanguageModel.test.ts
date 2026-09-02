@@ -2,6 +2,7 @@ import { AnthropicClient, AnthropicLanguageModel, AnthropicTool } from "@effect/
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Schema, Stream } from "effect"
 import {
+  type AiError,
   AnthropicStructuredOutput,
   LanguageModel,
   Prompt,
@@ -117,6 +118,113 @@ describe("AnthropicLanguageModel", () => {
 
         assert.strictEqual(toolCall.name, "GlobTool")
         assert.deepStrictEqual(toolCall.params, toolParams)
+      }))
+
+    it.effect("routes invalid tool call params through failureMode: return without failing the stream", () =>
+      Effect.gen(function*() {
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(sseResponse(request, [
+                {
+                  type: "message_start",
+                  message: {
+                    id: "msg_test_1",
+                    type: "message",
+                    role: "assistant",
+                    model: "claude-sonnet-4-20250514",
+                    content: [],
+                    stop_reason: null,
+                    stop_sequence: null,
+                    usage: {
+                      cache_creation: null,
+                      cache_creation_input_tokens: null,
+                      cache_read_input_tokens: null,
+                      inference_geo: null,
+                      input_tokens: 10,
+                      output_tokens: 0,
+                      service_tier: null
+                    }
+                  }
+                },
+                {
+                  type: "content_block_start",
+                  index: 0,
+                  content_block: {
+                    type: "tool_use",
+                    id: "toolu_test_1",
+                    name: "GlobTool",
+                    input: {}
+                  }
+                },
+                {
+                  type: "content_block_delta",
+                  index: 0,
+                  delta: {
+                    type: "input_json_delta",
+                    partial_json: JSON.stringify({ pattern: 123 })
+                  }
+                },
+                {
+                  type: "content_block_stop",
+                  index: 0
+                },
+                {
+                  type: "message_delta",
+                  delta: {
+                    stop_reason: "tool_use",
+                    stop_sequence: null
+                  },
+                  usage: {
+                    cache_creation_input_tokens: null,
+                    cache_read_input_tokens: null,
+                    input_tokens: null,
+                    output_tokens: 5
+                  }
+                },
+                {
+                  type: "message_stop"
+                }
+              ]))
+            )
+          ))
+        )
+
+        const GlobTool = Tool.make("GlobTool", {
+          description: "Search for files",
+          failureMode: "return",
+          parameters: Schema.Struct({ pattern: Schema.String }),
+          success: Schema.String,
+          failure: Schema.String
+        })
+
+        const toolkit = Toolkit.make(GlobTool)
+        const toolkitLayer = toolkit.toLayer({
+          GlobTool: () => Effect.succeed("found.ts")
+        })
+
+        const partsChunk = yield* LanguageModel.streamText({
+          prompt: "find ts files",
+          toolkit
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(toolkitLayer),
+          Effect.provide(layer)
+        )
+
+        const parts = globalThis.Array.from(partsChunk)
+        const toolResult = parts.find((part) => part.type === "tool-result")
+        assert.isDefined(toolResult)
+        if (toolResult?.type !== "tool-result") {
+          return
+        }
+
+        assert.strictEqual(toolResult.isFailure, true)
+        const failure = toolResult.result as AiError.AiError
+        assert.strictEqual(failure._tag, "AiError")
+        assert.strictEqual(failure.reason._tag, "ToolParameterValidationError")
       }))
 
     const codeExecutionCases = [

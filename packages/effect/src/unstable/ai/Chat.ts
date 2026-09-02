@@ -240,7 +240,7 @@ export interface Service {
         readonly toolkit: LanguageModel.ToolkitInput<Tools>
       }
     ): Effect.Effect<
-      LanguageModel.GenerateTextResponse<Tools, LanguageModel.ExtractEncodedToolParameters<Options>>,
+      LanguageModel.GenerateTextResponse<Tools, LanguageModel.ExtractToolParametersMode<Options>>,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
     >
@@ -255,7 +255,7 @@ export interface Service {
     ): Effect.Effect<
       LanguageModel.GenerateTextResponse<
         LanguageModel.ExtractTools<Options>,
-        LanguageModel.ExtractEncodedToolParameters<Options>
+        LanguageModel.ExtractToolParametersMode<Options>
       >,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
@@ -322,7 +322,7 @@ export interface Service {
         readonly toolkit: LanguageModel.ToolkitInput<Tools>
       }
     ): Stream.Stream<
-      Response.StreamPart<Tools, LanguageModel.ExtractEncodedToolParameters<Options>>,
+      Response.StreamPart<Tools, LanguageModel.ExtractToolParametersMode<Options>>,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
     >
@@ -337,7 +337,7 @@ export interface Service {
     ): Stream.Stream<
       Response.StreamPart<
         LanguageModel.ExtractTools<Options>,
-        LanguageModel.ExtractEncodedToolParameters<Options>
+        LanguageModel.ExtractToolParametersMode<Options>
       >,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
@@ -399,7 +399,7 @@ export interface Service {
     LanguageModel.GenerateObjectResponse<
       LanguageModel.ExtractTools<Options>,
       ObjectSchema["Type"],
-      LanguageModel.ExtractEncodedToolParameters<Options>
+      LanguageModel.ExtractToolParametersMode<Options>
     >,
     LanguageModel.ExtractError<Options>,
     LanguageModel.ExtractServices<Options> | ObjectSchema["DecodingServices"] | LanguageModel.LanguageModel
