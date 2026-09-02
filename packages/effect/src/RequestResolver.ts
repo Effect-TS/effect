@@ -1118,8 +1118,9 @@ export const asCache: {
  *
  * **Gotchas**
  *
- * Entries do not expire by time, and completed failures are cached the same as
- * successes. Request equality controls cache hits.
+ * Entries do not expire by time, and completed failures without interruptions
+ * are cached the same as successes. Results containing interruptions are not
+ * cached. Request equality controls cache hits.
  *
  * @see {@link asCache} for exposing the resolver as a `Cache` with time-to-live and service lookup controls
  * @see {@link persisted} for backing persistable requests with the configured persistence store
@@ -1167,7 +1168,14 @@ export const withCache: {
           MutableHashMap.set(cache, entry.request, cached)
           const prevComplete = entry.completeUnsafe
           entry.completeUnsafe = function(exit) {
-            cached.exit = exit as any
+            if (Exit.hasInterrupts(exit)) {
+              const current = MutableHashMap.get(cache, entry.request)
+              if (current._tag === "Some" && current.value === cached) {
+                MutableHashMap.remove(cache, entry.request)
+              }
+            } else {
+              cached.exit = exit as any
+            }
             prevComplete(exit)
           }
           return true
