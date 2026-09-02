@@ -787,6 +787,11 @@ const prepareMessages = Effect.fnUntraced(
 
                   if (typeof part.data === "string" && isFileId(part.data, config)) {
                     content.push({ type: "input_image", file_id: part.data, detail })
+                  } else if (typeof part.data === "string") {
+                    const imageUrl = part.data.startsWith("data:")
+                      ? part.data
+                      : `data:${mediaType};base64,${part.data}`
+                    content.push({ type: "input_image", image_url: imageUrl, detail })
                   }
 
                   if (part.data instanceof URL) {
