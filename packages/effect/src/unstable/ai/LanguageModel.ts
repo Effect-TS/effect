@@ -602,6 +602,23 @@ type ExtractServicesFromToolkitOption<ToolkitValue> = ToolkitValue extends Toolk
       | R
   : never
 
+// When tool call resolution is disabled, tool handlers never run and results
+// are never decoded, so those requirements are omitted. Provider packages
+// still normalize tool call parameters into their standard encoded form, so
+// parameter encoding services remain required. A bare `Toolkit` is matched
+// before the generic `Effect` branch so its `HandlersFor` requirement is also
+// omitted; toolkits supplied as arbitrary effects keep their resolution
+// requirements because the effect still runs.
+type ExtractDisabledResolutionServicesFromToolkitOption<ToolkitValue> = ToolkitValue extends
+  Toolkit.WithHandler<infer Tools> ? Tool.ParametersEncodingServices<Tools[keyof Tools]>
+  : ToolkitValue extends Toolkit.Toolkit<infer Tools> ? Tool.ParametersEncodingServices<Tools[keyof Tools]>
+  : ToolkitValue extends Effect.Effect<
+    Toolkit.WithHandler<infer Tools>,
+    infer _E,
+    infer R
+  > ? Tool.ParametersEncodingServices<Tools[keyof Tools]> | R
+  : never
+
 type ExtractToolkitResolutionError<ToolkitValue> = ToolkitValue extends Effect.Effect<
   Toolkit.WithHandler<infer _Tools>,
   infer E,
@@ -651,10 +668,13 @@ export type ExtractError<Options> = Options extends {
  */
 export type ExtractServices<Options> = Options extends {
   readonly disableToolCallResolution: true
-} ? never
+} ? Options extends {
+    readonly toolkit: infer ToolkitValue
+  } ? ExtractDisabledResolutionServicesFromToolkitOption<Exclude<ToolkitValue, undefined>>
+  : never
   : Options extends {
-    readonly toolkit: infer Toolkit
-  } ? ExtractServicesFromToolkitOption<Exclude<Toolkit, undefined>>
+    readonly toolkit: infer ToolkitValue
+  } ? ExtractServicesFromToolkitOption<Exclude<ToolkitValue, undefined>>
   : never
 
 // =============================================================================

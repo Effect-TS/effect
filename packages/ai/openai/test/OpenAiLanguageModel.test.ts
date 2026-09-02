@@ -1051,6 +1051,29 @@ describe("OpenAiLanguageModel", () => {
           }))
         ))
 
+      it.effect("provides parameter encoding services to provider normalization when tool call resolution is disabled", () =>
+        Effect.gen(function*() {
+          const used = yield* Ref.make(false)
+          const toolkit = Toolkit.make(AsymmetricParamsTool)
+
+          const result = yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit,
+            disableToolCallResolution: true
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provideService(ParamEncodeService, { use: Ref.set(used, true) })
+          )
+
+          strictEqual(yield* Ref.get(used), true)
+          const toolCall = result.toolCalls[0]!
+          deepStrictEqual(toolCall.params, { input: "hello" })
+        }).pipe(
+          Effect.provide(makeTestLayer({
+            body: { output: [makeFunctionCall("AsymmetricParamsTool", { input: "hello" })] }
+          }))
+        ))
+
       it.effect("uses canonical OpenAiMcp name for mcp_call", () =>
         Effect.gen(function*() {
           const result = yield* LanguageModel.generateText({

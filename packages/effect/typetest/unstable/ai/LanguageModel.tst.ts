@@ -151,6 +151,32 @@ describe("LanguageModel", () => {
       >()
     })
 
+    it("includes parameter encoding services when tool call resolution is disabled", () => {
+      const toolkit = Toolkit.make(AsymmetricParamsTool)
+      const program = LanguageModel.generateText({
+        prompt: "hello",
+        toolkit,
+        disableToolCallResolution: true
+      })
+
+      type ProgramRequirements = typeof program extends Effect.Effect<any, any, infer R> ? R : never
+
+      expect<ProgramRequirements>().type.toBe<LanguageModel.LanguageModel | ParamEncodeService>()
+    })
+
+    it("omits handler and result requirements when tool call resolution is disabled", () => {
+      const toolkit = Toolkit.make(ToolWithRequestContext)
+      const program = LanguageModel.generateText({
+        prompt: "hello",
+        toolkit,
+        disableToolCallResolution: true
+      })
+
+      type ProgramRequirements = typeof program extends Effect.Effect<any, any, infer R> ? R : never
+
+      expect<ProgramRequirements>().type.toBe<LanguageModel.LanguageModel>()
+    })
+
     it("includes tool request dependencies for resolved toolkits with handlers", () => {
       const toolkit: Toolkit.WithHandler<{
         readonly ToolWithRequestContext: typeof ToolWithRequestContext
