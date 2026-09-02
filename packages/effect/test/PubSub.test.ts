@@ -1,8 +1,47 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Array, Effect, Exit, Fiber, Latch, PubSub, Stream } from "effect"
+import { Array, Effect, Exit, Fiber, Latch, PubSub, Scope, Stream } from "effect"
 import { pipe } from "effect/Function"
 
 describe("PubSub", () => {
+  for (const batch of [false, true]) {
+    it.effect.each([1, 2, 3])(
+      `sliding capacity %s delivers each retained message once per subscriber (batch: ${batch})`,
+      (capacity) =>
+        Effect.gen(function*() {
+          const pubsub = yield* PubSub.sliding<number>(capacity)
+          const first = yield* PubSub.subscribe(pubsub)
+          const second = yield* PubSub.subscribe(pubsub)
+          const values = Array.range(1, capacity + 1)
+          yield* PubSub.publishAll(pubsub, values)
+
+          const received = batch
+            ? yield* PubSub.takeAll(first)
+            : yield* Effect.forEach(values.slice(1), () => PubSub.take(first))
+          const duplicate = yield* PubSub.takeUpTo(first, capacity)
+          const other = yield* PubSub.takeUpTo(second, capacity)
+
+          assert.deepStrictEqual([received, duplicate, other], [values.slice(1), [], values.slice(1)])
+        })
+    )
+  }
+
+  it.effect.each([1, 2, 3])(
+    "unsubscribing after a slide preserves the other subscriber's messages (capacity: %s)",
+    (capacity) =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.sliding<number>(capacity)
+        const scope = yield* Scope.make()
+        const first = yield* PubSub.subscribe(pubsub).pipe(Scope.provide(scope))
+        const second = yield* PubSub.subscribe(pubsub)
+        const values = Array.range(1, capacity + 1)
+        yield* PubSub.publishAll(pubsub, values)
+        yield* PubSub.takeAll(first)
+        yield* Scope.close(scope, Exit.void)
+
+        assert.deepStrictEqual(yield* PubSub.takeUpTo(second, capacity), values.slice(1))
+      })
+  )
+
   it.effect("publishAll - capacity 2 (BoundedPubSubPow2)", () => {
     const messages = [1, 2]
     return PubSub.bounded<number>(2).pipe(

@@ -2020,7 +2020,7 @@ class BoundedPubSubSingleSubscription<in out A> implements PubSub.BackingSubscri
     if (this.self.subscribers === 0) {
       this.self.value = AbsentValue as unknown as A
     }
-    this.subscriberIndex += 1
+    this.subscriberIndex = this.self.publisherIndex
     return elem
   }
 
@@ -2034,7 +2034,7 @@ class BoundedPubSubSingleSubscription<in out A> implements PubSub.BackingSubscri
     if (this.self.subscribers === 0) {
       this.self.value = AbsentValue as unknown as A
     }
-    this.subscriberIndex += 1
+    this.subscriberIndex = this.self.publisherIndex
     return [a]
   }
 
