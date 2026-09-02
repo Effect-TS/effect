@@ -413,8 +413,19 @@ export const cors = (options?: {
     })
   }
 
-  const preResponseHandler = (request: HttpServerRequest, response: HttpServerResponse) =>
-    Effect.succeed(Response.setHeaders(response, headersFromRequest(request)))
+  const preResponseHandler = (request: HttpServerRequest, response: HttpServerResponse) => {
+    let headers = headersFromRequest(request)
+    const vary = response.headers["vary"]
+    if (headers["vary"] !== undefined && vary !== undefined) {
+      const members = vary.split(",").map((member) => member.trim().toLowerCase())
+      headers = Headers.set(
+        headers,
+        "vary",
+        members.includes("*") || members.includes("origin") ? vary : `${vary}, Origin`
+      )
+    }
+    return Effect.succeed(Response.setHeaders(response, headers))
+  }
 
   return <E, R>(
     httpApp: Effect.Effect<HttpServerResponse, E, R>
