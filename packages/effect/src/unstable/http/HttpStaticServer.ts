@@ -114,7 +114,7 @@ export const make: (options: {
     fileSize?: number
   ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HttpServerError.HttpServerError> = Effect.fnUntraced(
     function*(request, filePath, fileSize) {
-      const rangeHeader = request.headers["range"]
+      const rangeHeader = request.method === "GET" ? request.headers["range"] : undefined
       const shouldEvaluateConditionals = request.headers["if-none-match"] !== undefined ||
         request.headers["if-modified-since"] !== undefined
 
