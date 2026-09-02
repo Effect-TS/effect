@@ -145,3 +145,21 @@ export const transformationRootValid = validCase(Schema.FiniteFromString, "123",
 export const transformationRootValidCompiled = validCase(Schema.FiniteFromString, "123", true, 123)
 export const transformationRootInvalid = invalidCase(Schema.FiniteFromString, "invalid", false)
 export const transformationRootInvalidCompiled = invalidCase(Schema.FiniteFromString, "invalid", true)
+
+interface RecursiveNode {
+  readonly value: string
+  readonly children: ReadonlyArray<RecursiveNode>
+}
+
+const recursiveNode: Schema.Codec<RecursiveNode> = Schema.Struct({
+  value: Schema.String,
+  children: Schema.Array(Schema.suspend((): Schema.Codec<RecursiveNode> => recursiveNode))
+})
+const makeRecursiveNode = (depth: number): RecursiveNode => ({
+  value: `depth${depth}`,
+  children: depth === 0 ? [] : Array.from({ length: 3 }, () => makeRecursiveNode(depth - 1))
+})
+const recursiveNodeInput = makeRecursiveNode(4)
+
+export const recursiveNodeValid = validCase(recursiveNode, recursiveNodeInput, false)
+export const recursiveNodeValidCompiled = validCase(recursiveNode, recursiveNodeInput, true)

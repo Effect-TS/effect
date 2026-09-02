@@ -11,6 +11,7 @@ import { type Decoder, DecoderFailure, invalid } from "./compilerHook.ts"
 
 const cache = new WeakMap<SchemaAST.AST, Decoder | null>()
 const runtimeCache = new WeakMap<SchemaAST.AST, Decoder>()
+const suspendCache = new WeakMap<SchemaAST.Suspend, Decoder>()
 
 const hasParseOptions = (ast: SchemaAST.AST): boolean => {
   const annotations = ast.checks === undefined
@@ -47,7 +48,7 @@ const canEmitShape = (ast: SchemaAST.AST): boolean => {
     case "Objects":
       if (ast.encodingChecks !== undefined) return false
       if (ast.indexSignatures.length === 0) {
-        return ast.propertySignatures.every((property) => typeof property.name === "string")
+        return true
       }
       return ast.propertySignatures.length === 0 &&
         ast.indexSignatures.length === 1 &&
@@ -75,6 +76,21 @@ const runtimeDecoder = (ast: SchemaAST.AST): Decoder => {
     throw new DecoderFailure(exit.cause)
   }
   runtimeCache.set(ast, decoder)
+  return decoder
+}
+
+const suspendDecoder = (ast: SchemaAST.Suspend): Decoder => {
+  const cached = suspendCache.get(ast)
+  if (cached !== undefined) return cached
+  let target: Decoder | undefined
+  const decoder: Decoder = (input) => {
+    if (target === undefined) {
+      const targetAST = ast.thunk()
+      target = compile(targetAST) ?? runtimeDecoder(targetAST)
+    }
+    return target(input)
+  }
+  suspendCache.set(ast, decoder)
   return decoder
 }
 
@@ -122,8 +138,11 @@ type Emitter = {
 
 const variable = (emitter: Emitter): string => `v${emitter.next++}`
 
-const assignProperty = (output: string, key: string, value: string): string =>
-  key === "\"__proto__\""
+const propertyKey = (emitter: Emitter, key: PropertyKey): string =>
+  typeof key === "string" ? JSON.stringify(key) : constant(emitter, key)
+
+const assignProperty = (output: string, key: string, value: string, name: PropertyKey): string =>
+  name === "__proto__"
     ? `Object.defineProperty(${output},${key},{value:${value},writable:true,enumerable:true,configurable:true})`
     : `${output}[${key}]=${value}`
 
@@ -150,6 +169,9 @@ const needsOwnProperty = (ast: SchemaAST.AST): boolean => {
       return false
   }
 }
+
+const propertyNeedsOwn = (name: PropertyKey, ast: SchemaAST.AST): boolean =>
+  needsOwnProperty(ast) || typeof name === "string" && name in Object.prototype
 
 const failsChecks = (ast: SchemaAST.AST, value: unknown): boolean =>
   ast.checks !== undefined &&
@@ -232,7 +254,10 @@ function emit(
 ): string {
   if (!canEmit(ast)) {
     const output = variable(emitter)
-    const decoder = constant(emitter, runtimeDecoder(ast))
+    const decoder = constant(
+      emitter,
+      ast._tag === "Suspend" && ast.encoding === undefined ? suspendDecoder(ast) : runtimeDecoder(ast)
+    )
     statements.push(`const ${output}=${decoder}(${input})`, `if(${output}===I)return I`)
     return output
   }
@@ -272,11 +297,11 @@ const emitObjectHelper = (ast: SchemaAST.Objects, emitter: Emitter): string => {
     const output = variable(emitter)
     statements.push(`const ${output}={}`)
     for (const property of ast.propertySignatures) {
-      const key = JSON.stringify(property.name)
+      const key = propertyKey(emitter, property.name)
       const value = variable(emitter)
       const propertyStatements: Array<string> = [`const ${value}=i[${key}]`]
       const decoded = emit(property.type, value, propertyStatements, emitter)
-      propertyStatements.push(assignProperty(output, key, decoded))
+      propertyStatements.push(assignProperty(output, key, decoded, property.name))
       statements.push(
         isOptional(property.type)
           ? `if(Object.hasOwn(i,${key})){${propertyStatements.join(";")}}`
@@ -287,7 +312,7 @@ const emitObjectHelper = (ast: SchemaAST.Objects, emitter: Emitter): string => {
     return name
   }
   const properties = ast.propertySignatures.map((property) => {
-    const key = JSON.stringify(property.name)
+    const key = propertyKey(emitter, property.name)
     const value = variable(emitter)
     statements.push(`if(!Object.hasOwn(i,${key}))return I`, `const ${value}=i[${key}]`)
     return `[${key}]:${emit(property.type, value, statements, emitter)}`
@@ -431,24 +456,24 @@ const emitBase = (
       if (ast.propertySignatures.some((property) => isOptional(property.type))) {
         plainStatements.push(`${output}={}`)
         for (const property of ast.propertySignatures) {
-          const key = JSON.stringify(property.name)
+          const key = propertyKey(emitter, property.name)
           const value = variable(emitter)
           const propertyStatements: Array<string> = [`const ${value}=${input}[${key}]`]
           const decoded = emit(property.type, value, propertyStatements, emitter)
-          propertyStatements.push(assignProperty(output, key, decoded))
+          propertyStatements.push(assignProperty(output, key, decoded, property.name))
           plainStatements.push(
             isOptional(property.type)
               ? `if(Object.hasOwn(${input},${key})){${propertyStatements.join(";")}}`
-              : `${needsOwnProperty(property.type) ? `if(!Object.hasOwn(${input},${key}))return I;` : ""}${
-                propertyStatements.join(";")
-              }`
+              : `${
+                propertyNeedsOwn(property.name, property.type) ? `if(!Object.hasOwn(${input},${key}))return I;` : ""
+              }${propertyStatements.join(";")}`
           )
         }
       } else {
         const properties = ast.propertySignatures.map((property) => {
-          const key = JSON.stringify(property.name)
+          const key = propertyKey(emitter, property.name)
           const value = variable(emitter)
-          if (needsOwnProperty(property.type)) {
+          if (propertyNeedsOwn(property.name, property.type)) {
             plainStatements.push(`if(!Object.hasOwn(${input},${key}))return I`)
           }
           plainStatements.push(`const ${value}=${input}[${key}]`)

@@ -2197,6 +2197,24 @@
               "family": "transformations",
               "path": "invalid",
               "size": 1
+            },
+            {
+              "name": "recursive-node-valid-effect",
+              "export": "recursiveNodeValid",
+              "scenario": "schema-compiler-recursive-node-valid",
+              "implementation": "effect",
+              "family": "recursion",
+              "path": "valid",
+              "size": 121
+            },
+            {
+              "name": "recursive-node-valid-effect-compiled",
+              "export": "recursiveNodeValidCompiled",
+              "scenario": "schema-compiler-recursive-node-valid",
+              "implementation": "effect-compiled",
+              "family": "recursion",
+              "path": "valid",
+              "size": 121
             }
           ]
         }

@@ -126,6 +126,29 @@ describe("SchemaCompiler", () => {
     })
   })
 
+  it("preserves own-property semantics for Object.prototype names", () => {
+    const decode = SchemaParser.decodeUnknownSync(Schema.Struct({ toString: Schema.ObjectKeyword }))
+    throws(() => decode({}), (error) => {
+      assertSchemaIssueError(error, `Missing key\n  at ["toString"]`)
+    })
+
+    const toString = () => "value"
+    strictEqual(decode({ toString }).toString, toString)
+  })
+
+  it("compiles symbol-keyed Struct properties", () => {
+    const key = Symbol("key")
+    const decode = SchemaParser.decodeUnknownSync(Schema.Struct({
+      text: Schema.String,
+      [key]: Schema.Number
+    }))
+    const output = decode({ text: "value", [key]: 1, extra: true })
+
+    strictEqual(output.text, "value")
+    strictEqual(output[key], 1)
+    deepStrictEqual(Reflect.ownKeys(output), ["text", key])
+  })
+
   it("uses the interpreter for unsupported schemas", () => {
     const date = new Date(0)
     const decode = SchemaParser.decodeUnknownSync(Schema.instanceOf(Date))
