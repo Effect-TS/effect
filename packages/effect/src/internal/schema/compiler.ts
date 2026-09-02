@@ -1,6 +1,9 @@
+import * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
+import * as Option from "../../Option.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
+import * as SchemaIssue from "../../SchemaIssue.ts"
 import * as SchemaParser from "../../SchemaParser.ts"
 import { effectIsExit } from "../effect.ts"
 import * as InternalSchemaCause from "./cause.ts"
@@ -20,8 +23,7 @@ const isCompatible = (ast: SchemaAST.AST): boolean => ast.encoding === undefined
 
 const isOptional = (ast: SchemaAST.AST): boolean => ast.context?.isOptional ?? false
 
-const canEmit = (ast: SchemaAST.AST): boolean => {
-  if (!isCompatible(ast)) return false
+const canEmitShape = (ast: SchemaAST.AST): boolean => {
   switch (ast._tag) {
     case "Null":
     case "Undefined":
@@ -59,6 +61,8 @@ const canEmit = (ast: SchemaAST.AST): boolean => {
   }
 }
 
+const canEmit = (ast: SchemaAST.AST): boolean => !hasParseOptions(ast) && canEmitShape(ast)
+
 const runtimeDecoder = (ast: SchemaAST.AST): Decoder => {
   const cached = runtimeCache.get(ast)
   if (cached !== undefined) return cached
@@ -73,6 +77,36 @@ const runtimeDecoder = (ast: SchemaAST.AST): Decoder => {
   runtimeCache.set(ast, decoder)
   return decoder
 }
+
+const transform = (
+  transformation: SchemaAST.Link["transformation"],
+  value: unknown
+): unknown | typeof invalid => {
+  const option = Option.some(value)
+  const result = transformation._tag === "Transformation"
+    ? transformation.decode.run(option, SchemaAST.defaultParseOptions)
+    : transformation.decode(Effect.succeed(option), SchemaAST.defaultParseOptions)
+  const exit = effectIsExit(result)
+    ? result
+    : Effect.runSyncExit(result as Effect.Effect<Option.Option<unknown>, SchemaIssue.Issue>)
+  if (Exit.isSuccess(exit)) {
+    return Option.isSome(exit.value) ? exit.value.value : invalid
+  }
+  if (InternalSchemaCause.getSchemaIssue(exit.cause) !== undefined) return invalid
+  throw new DecoderFailure(exit.cause)
+}
+
+const wrapEncodingFailure = (
+  error: unknown,
+  ast: SchemaAST.AST,
+  input: unknown
+): unknown =>
+  error instanceof DecoderFailure
+    ? new DecoderFailure(Cause.map(
+      error.cause,
+      (issue) => new SchemaIssue.Encoding(ast, issue, input, SchemaAST.defaultParseOptions)
+    ))
+    : error
 
 type Emitter = {
   readonly statements: Array<string>
@@ -142,6 +176,54 @@ const lookupMemberValues = (ast: SchemaAST.AST): ReadonlyArray<unknown> | undefi
   }
 }
 
+function emitDecoded(
+  ast: SchemaAST.AST,
+  input: string,
+  statements: Array<string>,
+  emitter: Emitter
+): string {
+  const output = emitBase(ast, input, statements, emitter)
+  if (ast.checks === undefined) return output
+  const checked = variable(emitter)
+  const astConstant = constant(emitter, ast)
+  statements.push(`const ${checked}=${output}`, `if(K(${astConstant},${checked}))return I`)
+  return checked
+}
+
+function emitEncodingBody(
+  ast: SchemaAST.AST,
+  input: string,
+  statements: Array<string>,
+  emitter: Emitter
+): string {
+  const links = ast.encoding!
+  let current = emit(links[links.length - 1].to, input, statements, emitter)
+  for (let index = links.length - 1; index >= 0; index--) {
+    const transformed = variable(emitter)
+    const transformation = constant(emitter, links[index].transformation)
+    statements.push(`const ${transformed}=X(${transformation},${current})`, `if(${transformed}===I)return I`)
+    current = index === 0 ? transformed : emit(links[index - 1].to, transformed, statements, emitter)
+  }
+  return emitDecoded(ast, current, statements, emitter)
+}
+
+function emitEncoding(
+  ast: SchemaAST.AST,
+  input: string,
+  statements: Array<string>,
+  emitter: Emitter
+): string {
+  const body: Array<string> = []
+  const output = emitEncodingBody(ast, input, body, emitter)
+  const result = variable(emitter)
+  const error = variable(emitter)
+  const astConstant = constant(emitter, ast)
+  statements.push(
+    `let ${result};try{${body.join(";")};${result}=${output}}catch(${error}){throw Y(${error},${astConstant},${input})}`
+  )
+  return result
+}
+
 function emit(
   ast: SchemaAST.AST,
   input: string,
@@ -154,12 +236,9 @@ function emit(
     statements.push(`const ${output}=${decoder}(${input})`, `if(${output}===I)return I`)
     return output
   }
-  const output = emitBase(ast, input, statements, emitter)
-  if (ast.checks === undefined) return output
-  const checked = variable(emitter)
-  const astConstant = constant(emitter, ast)
-  statements.push(`const ${checked}=${output}`, `if(K(${astConstant},${checked}))return I`)
-  return checked
+  return ast.encoding === undefined
+    ? emitDecoded(ast, input, statements, emitter)
+    : emitEncoding(ast, input, statements, emitter)
 }
 
 const emitDecoderHelper = (ast: SchemaAST.AST, emitter: Emitter): string => {
@@ -449,12 +528,14 @@ const make = (ast: SchemaAST.AST): Decoder | undefined => {
     const source = `"use strict";${emitter.helpers.join(";")};${emitter.initializers.join(";")};return function(i){${
       emitter.statements.join(";")
     };return ${output}}`
-    return globalThis.Function("I", "C", "K", "T", "U", source)(
+    return globalThis.Function("I", "C", "K", "T", "U", "X", "Y", source)(
       invalid,
       emitter.constants,
       failsChecks,
       matchesTemplateLiteral,
-      SchemaAST.getCandidates
+      SchemaAST.getCandidates,
+      transform,
+      wrapEncodingFailure
     ) as Decoder
   } catch {
     return undefined

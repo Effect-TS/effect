@@ -140,3 +140,8 @@ export const transformationStructValidCompiled = validCase(
   true,
   transformationStructOutput
 )
+
+export const transformationRootValid = validCase(Schema.FiniteFromString, "123", false, 123)
+export const transformationRootValidCompiled = validCase(Schema.FiniteFromString, "123", true, 123)
+export const transformationRootInvalid = invalidCase(Schema.FiniteFromString, "invalid", false)
+export const transformationRootInvalidCompiled = invalidCase(Schema.FiniteFromString, "invalid", true)

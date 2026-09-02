@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Schema, SchemaCompiler, SchemaParser } from "effect"
+import { Cause, Effect, Result, Schema, SchemaCompiler, SchemaGetter, SchemaIssue, SchemaParser } from "effect"
 import { assertSchemaIssueError, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 const schema = Schema.Struct({
@@ -127,8 +127,9 @@ describe("SchemaCompiler", () => {
   })
 
   it("uses the interpreter for unsupported schemas", () => {
-    const decode = SchemaParser.decodeUnknownSync(Schema.NumberFromString)
-    strictEqual(decode("1"), 1)
+    const date = new Date(0)
+    const decode = SchemaParser.decodeUnknownSync(Schema.instanceOf(Date))
+    strictEqual(decode(date), date)
   })
 
   it("compiles primitive leaves without confusing undefined with a missing key", () => {
@@ -266,6 +267,39 @@ describe("SchemaCompiler", () => {
     strictEqual(output.date, date)
     strictEqual(output.count, 1)
     deepStrictEqual(Reflect.ownKeys(output), ["date", "count"])
+  })
+
+  it("compiles root encoding chains", () => {
+    const decodeNumber = SchemaParser.decodeUnknownSync(Schema.FiniteFromString)
+    strictEqual(decodeNumber("1"), 1)
+    throws(() => decodeNumber("invalid"), (error) => {
+      assertSchemaIssueError(error, "Expected a finite number")
+    })
+
+    const decodeJson = SchemaParser.decodeUnknownSync(
+      Schema.fromJsonString(Schema.Struct({ value: Schema.Number }))
+    )
+    deepStrictEqual(decodeJson("{\"value\":1,\"extra\":true}"), { value: 1 })
+  })
+
+  it("preserves mixed causes from compiled encoding chains", () => {
+    const cause = Cause.combine(
+      Cause.fail(new SchemaIssue.InvalidValue({ message: "schema issue" })),
+      Cause.die(new Error("defect"))
+    )
+    const schema = Schema.String.pipe(Schema.decode({
+      decode: new SchemaGetter.Getter(() => Effect.failCause(cause)),
+      encode: SchemaGetter.passthrough()
+    }))
+
+    throws(() => SchemaParser.decodeUnknownSync(schema)("value"), (error) => {
+      assert(error instanceof Error)
+      strictEqual(error.message, "Sync adapter can only throw schema issues")
+      const issue = Cause.findError(error.cause as Cause.Cause<SchemaIssue.Issue>)
+      assert(Result.isSuccess(issue))
+      strictEqual(issue.success._tag, "Encoding")
+      assert(Cause.hasDies(error.cause as Cause.Cause<never>))
+    })
   })
 
   it("keeps Suspend runtime islands lazy", () => {

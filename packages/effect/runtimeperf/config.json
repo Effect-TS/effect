@@ -2161,6 +2161,42 @@
               "family": "transformations",
               "path": "valid",
               "size": 32
+            },
+            {
+              "name": "transformation-root-valid-effect",
+              "export": "transformationRootValid",
+              "scenario": "schema-compiler-transformation-root-valid",
+              "implementation": "effect",
+              "family": "transformations",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "transformation-root-valid-effect-compiled",
+              "export": "transformationRootValidCompiled",
+              "scenario": "schema-compiler-transformation-root-valid",
+              "implementation": "effect-compiled",
+              "family": "transformations",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "transformation-root-invalid-effect",
+              "export": "transformationRootInvalid",
+              "scenario": "schema-compiler-transformation-root-invalid",
+              "implementation": "effect",
+              "family": "transformations",
+              "path": "invalid",
+              "size": 1
+            },
+            {
+              "name": "transformation-root-invalid-effect-compiled",
+              "export": "transformationRootInvalidCompiled",
+              "scenario": "schema-compiler-transformation-root-invalid",
+              "implementation": "effect-compiled",
+              "family": "transformations",
+              "path": "invalid",
+              "size": 1
             }
           ]
         }
