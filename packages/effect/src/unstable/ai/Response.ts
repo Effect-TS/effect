@@ -414,15 +414,8 @@ export type ToolCallParts<
 > = ToolCallPartForName<Tools, EncodedParameters, keyof Tools>
 
 /**
- * Utility type that determines how tool call parameters are typed on response
- * parts.
- *
- * **Details**
- *
- * - `false`: parameters are fully decoded via the tool's parameter schema
- * - `true`: parameters are typed in their encoded form
- * - `"opaque"`: parameters are typed as `unknown` because transport decode
- *   leaves them untouched and validation happens in `Toolkit`
+ * Controls tool parameter types: decoded (`false`), encoded (`true`), or
+ * `unknown` (`"opaque"`).
  *
  * @category utility types
  * @since 4.0.0

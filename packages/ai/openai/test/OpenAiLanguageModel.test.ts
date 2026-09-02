@@ -2108,7 +2108,6 @@ class ParamEncodeService extends Context.Service<ParamEncodeService, {
   readonly use: Effect.Effect<void>
 }>()("ParamEncodeService") {}
 
-// Decoding is service-free while encoding requires `ParamEncodeService`
 const AsymmetricParam = Schema.String.pipe(
   Schema.decodeTo(Schema.String, {
     decode: SchemaGetter.passthrough(),

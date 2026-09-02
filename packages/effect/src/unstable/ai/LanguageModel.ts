@@ -558,15 +558,8 @@ export type ExtractTools<Options> = Options extends {
   : {}
 
 /**
- * Utility type that determines how tool call parameters are typed on language
- * model response parts.
- *
- * **Details**
- *
- * When tool call resolution is disabled, tool call parts preserve the encoded
- * parameters. When tool call resolution is enabled, transport decode keeps the
- * parameters opaque (typed as `unknown`) and `Toolkit` is the single authority
- * for parameter validation.
+ * Resolves to `true` for encoded parameters when tool call resolution is
+ * disabled, otherwise `"opaque"`.
  *
  * @category utility types
  * @since 4.0.0
@@ -602,13 +595,8 @@ type ExtractServicesFromToolkitOption<ToolkitValue> = ToolkitValue extends Toolk
       | R
   : never
 
-// When tool call resolution is disabled, tool handlers never run and results
-// are never decoded, so those requirements are omitted. Provider packages
-// still normalize tool call parameters into their standard encoded form, so
-// parameter encoding services remain required. A bare `Toolkit` is matched
-// before the generic `Effect` branch so its `HandlersFor` requirement is also
-// omitted; toolkits supplied as arbitrary effects keep their resolution
-// requirements because the effect still runs.
+// Disabled resolution needs parameter encoding but not handlers or result
+// decoding. Match Toolkit before Effect to omit its handler requirement.
 type ExtractDisabledResolutionServicesFromToolkitOption<ToolkitValue> = ToolkitValue extends
   Toolkit.WithHandler<infer Tools> ? Tool.ParametersEncodingServices<Tools[keyof Tools]>
   : ToolkitValue extends Toolkit.Toolkit<infer Tools> ? Tool.ParametersEncodingServices<Tools[keyof Tools]>
@@ -1210,12 +1198,6 @@ export const make: (params: {
       }
     }
 
-    // Construct the response schema with the tools from the toolkit, keeping
-    // tool call parameters encoded when tool call resolution is disabled.
-    // When tool call resolution is enabled, tool parameters remain opaque so
-    // their validation happens in Toolkit, which uses the more specific
-    // ToolParameterValidationError and routes failures through the tool's
-    // failure mode.
     const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(
       options.disableToolCallResolution === true
         ? makeToolkitWithEncodedParameters(toolkit)
@@ -1238,8 +1220,7 @@ export const make: (params: {
 
     const rawContent = yield* generateWithNonIncrementalFallback()
 
-    // Validates the complete response before tool handlers can perform side
-    // effects
+    // Validate before running tool handlers.
     const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
     yield* validateProviderExecutedToolCalls(toolkit, rawContent)
 
@@ -1520,12 +1501,6 @@ export const make: (params: {
       }
     }
 
-    // Construct the response schema with the tools from the toolkit, keeping
-    // tool call parameters encoded when tool call resolution is disabled.
-    // When tool call resolution is enabled, tool parameters remain opaque so
-    // their validation happens in Toolkit, which uses the more specific
-    // ToolParameterValidationError and routes failures through the tool's
-    // failure mode instead of failing the stream.
     const ResponseSchema = Schema.NonEmptyArray(Response.StreamPart(
       options.disableToolCallResolution === true
         ? makeToolkitWithEncodedParameters(toolkit)
@@ -2402,10 +2377,7 @@ const makeToolkitWithOpaqueParameters = <Tools extends Record<string, Tool.Any>>
     ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.Unknown))
   )
 
-// With tool call resolution enabled, transport decode keeps tool parameters
-// opaque so Toolkit can route validation failures through the tool's failure
-// mode. Provider-executed tool calls never reach Toolkit, so their parameters
-// are validated here as part of response validation.
+// Provider-executed tools bypass Toolkit, so validate their parameters here.
 const validateProviderExecutedToolCalls = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>,
   parts: ReadonlyArray<Response.PartEncoded | Response.StreamPartEncoded>

@@ -309,9 +309,6 @@ const Proto = {
             )
           )
 
-        // Decode the tool call parameters which will be passed to the handler.
-        // When the tool's failure mode is "return", a validation failure is
-        // surfaced as a failed tool result instead of failing the effect.
         const decodedParamsResult = yield* Effect.result(schemas.decodeParameters(params))
         if (Result.isFailure(decodedParamsResult)) {
           const error = AiError.make({

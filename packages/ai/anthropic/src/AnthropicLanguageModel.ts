@@ -3103,10 +3103,7 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
 
   const { codec } = yield* tryCodecTransform(tool.parametersSchema, "makeResponse")
 
-  // Convert provider wire parameters into the tool's standard encoded form.
-  // Validation failures pass the raw parameters through unchanged: Toolkit is
-  // the single authority for parameter validation and routes failures through
-  // the tool's failure mode.
+  // Normalize valid parameters; leave invalid ones for Toolkit.
   return yield* (
     Schema.decodeEffect(codec)(toolParams) as Effect.Effect<unknown, Schema.SchemaError>
   ).pipe(
