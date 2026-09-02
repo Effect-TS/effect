@@ -117,6 +117,12 @@ const DeferredProto = {
   }
 }
 
+function DeferredImpl(this: any) {
+  this.resumes = undefined
+  this.effect = undefined
+}
+DeferredImpl.prototype = DeferredProto
+
 /**
  * Creates an empty `Deferred` synchronously outside the `Effect` runtime.
  *
@@ -137,12 +143,7 @@ const DeferredProto = {
  * @category unsafe
  * @since 4.0.0
  */
-export const makeUnsafe = <A, E = never>(): Deferred<A, E> => {
-  const self = Object.create(DeferredProto)
-  self.resumes = undefined
-  self.effect = undefined
-  return self
-}
+export const makeUnsafe = <A, E = never>(): Deferred<A, E> => new (DeferredImpl as any)()
 
 /**
  * Creates a new `Deferred`.

@@ -418,20 +418,18 @@ export const makePrimitiveProto = <Op extends string>(options: {
 
 /** @internal */
 export const makePrimitive = <
-  Fn extends (...args: Array<any>) => any,
-  Single extends boolean = true
+  Fn extends (...args: Array<any>) => any
 >(options: {
   readonly op: string
-  readonly single?: Single
   readonly [evaluate]?: (
     this: Primitive & {
-      readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn>
+      readonly [args]: Parameters<Fn>[0]
     },
     fiber: FiberImpl
   ) => Primitive | Effect.Effect<any, any, any> | Yield
   readonly [contA]?: (
     this: Primitive & {
-      readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn>
+      readonly [args]: Parameters<Fn>[0]
     },
     value: any,
     fiber: FiberImpl,
@@ -439,7 +437,7 @@ export const makePrimitive = <
   ) => Primitive | Effect.Effect<any, any, any> | Yield
   readonly [contE]?: (
     this: Primitive & {
-      readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn>
+      readonly [args]: Parameters<Fn>[0]
     },
     cause: Cause.Cause<any>,
     fiber: FiberImpl,
@@ -447,7 +445,7 @@ export const makePrimitive = <
   ) => Primitive | Effect.Effect<any, any, any> | Yield
   readonly [contAll]?: (
     this: Primitive & {
-      readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn>
+      readonly [args]: Parameters<Fn>[0]
     },
     fiber: FiberImpl
   ) => void | ((value: any, fiber: FiberImpl) => void)
@@ -457,13 +455,9 @@ export const makePrimitive = <
     this[args] = value
   }
   Primitive.prototype = Proto
-  return (options.single === false
-    ? function() {
-      return new (Primitive as any)(arguments)
-    }
-    : function(value: any) {
-      return new (Primitive as any)(value)
-    }) as Fn
+  return function(value: any) {
+    return new (Primitive as any)(value)
+  } as Fn
 }
 
 /** @internal */
