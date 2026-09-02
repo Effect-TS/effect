@@ -539,15 +539,35 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 
   // set in setContext
   context!: Context.Context<never>
-  currentScheduler!: Scheduler.Scheduler
-  currentTracerContext: Tracer.Tracer["context"]
-  currentSpan: Tracer.AnySpan | undefined
-  currentLogLevel!: LogLevel.LogLevel
-  minimumLogLevel!: LogLevel.LogLevel
-  currentStackFrame: StackFrame | undefined
-  runtimeMetrics: Metric.FiberRuntimeMetricsService | undefined
-  maxOpsBeforeYield!: number
-  currentPreventYield!: boolean
+  _ctxCache!: FiberContextCache
+
+  get currentScheduler(): Scheduler.Scheduler {
+    return this._ctxCache.scheduler
+  }
+  get currentTracerContext(): Tracer.Tracer["context"] {
+    return this._ctxCache.tracerContext
+  }
+  get currentSpan(): Tracer.AnySpan | undefined {
+    return this._ctxCache.span
+  }
+  get currentLogLevel(): LogLevel.LogLevel {
+    return this._ctxCache.logLevel
+  }
+  get minimumLogLevel(): LogLevel.LogLevel {
+    return this._ctxCache.minimumLogLevel
+  }
+  get currentStackFrame(): StackFrame | undefined {
+    return this._ctxCache.stackFrame
+  }
+  get runtimeMetrics(): Metric.FiberRuntimeMetricsService | undefined {
+    return this._ctxCache.runtimeMetrics
+  }
+  get maxOpsBeforeYield(): number {
+    return this._ctxCache.maxOpsBeforeYield
+  }
+  get currentPreventYield(): boolean {
+    return this._ctxCache.preventYield
+  }
 
   _dispatcher: Scheduler.SchedulerDispatcher | undefined = undefined
   get currentDispatcher(): Scheduler.SchedulerDispatcher {
@@ -712,25 +732,47 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     // Every key cached below opts in to Context caching, so contexts related
     // only by non-caching adds cannot have changed any of them
     if (previous !== undefined && Context.hasSameCache(previous, context)) return
-    const scheduler = this.getRef(Scheduler.Scheduler)
-    if (scheduler !== this.currentScheduler) {
-      this.currentScheduler = scheduler
+    // Contexts sharing a cacheRoot resolve every cached key identically, so
+    // the derived cache object is computed once per root and shared by all
+    // fibers running with that root (forked fibers reuse the parent's).
+    const root: any = (context as any).cacheRoot
+    const cache: FiberContextCache = root._fiberCache ??= makeFiberContextCache(context)
+    if (this._ctxCache !== undefined && this._ctxCache.scheduler !== cache.scheduler) {
       this._dispatcher = undefined
     }
-    // The string-keyed lookups keep the Tracer key values (and the native
-    // tracer behind Tracer.Tracer's default) out of every bundle
-    this.currentSpan = Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey)
-    this.currentLogLevel = this.getRef(CurrentLogLevel)
-    this.minimumLogLevel = this.getRef(MinimumLogLevel)
-    this.currentStackFrame = this.getRef(CurrentStackFrame)
-    this.maxOpsBeforeYield = this.getRef(Scheduler.MaxOpsBeforeYield)
-    this.currentPreventYield = this.getRef(Scheduler.PreventSchedulerYield)
-    this.runtimeMetrics = Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey)
-    const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
-    this.currentTracerContext = currentTracer ? currentTracer["context"] : undefined
+    this._ctxCache = cache
   }
   get currentSpanLocal(): Tracer.Span | undefined {
     return this.currentSpan?._tag === "Span" ? this.currentSpan : undefined
+  }
+}
+
+interface FiberContextCache {
+  readonly scheduler: Scheduler.Scheduler
+  readonly tracerContext: Tracer.Tracer["context"]
+  readonly span: Tracer.AnySpan | undefined
+  readonly logLevel: LogLevel.LogLevel
+  readonly minimumLogLevel: LogLevel.LogLevel
+  readonly stackFrame: StackFrame | undefined
+  readonly runtimeMetrics: Metric.FiberRuntimeMetricsService | undefined
+  readonly maxOpsBeforeYield: number
+  readonly preventYield: boolean
+}
+
+const makeFiberContextCache = (context: Context.Context<never>): FiberContextCache => {
+  // The string-keyed lookups keep the Tracer key values (and the native
+  // tracer behind Tracer.Tracer's default) out of every bundle
+  const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
+  return {
+    scheduler: Context.get(context, Scheduler.Scheduler),
+    tracerContext: currentTracer ? currentTracer["context"] : undefined,
+    span: Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey),
+    logLevel: Context.get(context, CurrentLogLevel),
+    minimumLogLevel: Context.get(context, MinimumLogLevel),
+    stackFrame: Context.get(context, CurrentStackFrame),
+    runtimeMetrics: Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey),
+    maxOpsBeforeYield: Context.get(context, Scheduler.MaxOpsBeforeYield),
+    preventYield: Context.get(context, Scheduler.PreventSchedulerYield)
   }
 }
 
