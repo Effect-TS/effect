@@ -165,6 +165,69 @@ describe("Cache", () => {
 
   describe("basic operations", () => {
     describe("get", () => {
+      it.effect("a synchronous interruption does not evict another key", () =>
+        Effect.gen(function*() {
+          const cache = yield* Cache.make<string, number>({
+            capacity: 1,
+            lookup: () => Effect.interrupt
+          })
+          yield* Cache.set(cache, "good", 99)
+          const exit = yield* Effect.exit(Cache.get(cache, "bad"))
+
+          assert.isTrue(Exit.hasInterrupts(exit))
+          assert.isFalse(yield* Cache.has(cache, "bad"))
+          assert.deepStrictEqual(yield* Cache.getSuccess(cache, "good"), Option.some(99))
+        }))
+
+      it.effect("does not retain an entry when its synchronous TTL callback throws", () =>
+        Effect.gen(function*() {
+          let calls = 0
+          const cache = yield* Cache.makeWith(
+            (_key: string) => Effect.sync(() => ++calls),
+            {
+              capacity: 1,
+              timeToLive: (_exit, key) => {
+                if (key === "bad") throw "ttl defect"
+                return "1 hour"
+              }
+            }
+          )
+          yield* Cache.get(cache, "good")
+          const first = yield* Effect.exit(Cache.get(cache, "bad"))
+          const second = yield* Effect.exit(Cache.get(cache, "bad"))
+
+          assert.deepStrictEqual(first, Exit.die("ttl defect"))
+          assert.deepStrictEqual(second, Exit.die("ttl defect"))
+          assert.deepStrictEqual(yield* Cache.getSuccess(cache, "good"), Option.some(1))
+          assert.strictEqual(yield* Cache.size(cache), 1)
+          assert.strictEqual(calls, 3)
+        }))
+
+      it.effect.each([false, true])(
+        "does not retain an interrupted lookup (yield: %s)",
+        (yieldBeforeInterrupt) =>
+          Effect.gen(function*() {
+            let calls = 0
+            const cache = yield* Cache.make<string, number>({
+              capacity: 1,
+              lookup: () =>
+                Effect.suspend(() => {
+                  if (++calls > 1) return Effect.succeed(42)
+                  return yieldBeforeInterrupt ? Effect.andThen(Effect.yieldNow, Effect.interrupt) : Effect.interrupt
+                })
+            })
+
+            const first = yield* Effect.exit(Cache.get(cache, "key"))
+            const retained = yield* Cache.has(cache, "key")
+            const second = yield* Effect.exit(Cache.get(cache, "key"))
+
+            assert.isTrue(Exit.hasInterrupts(first))
+            assert.isFalse(retained)
+            assert.deepStrictEqual(second, Exit.succeed(42))
+            assert.strictEqual(calls, 2)
+          })
+      )
+
       it.effect("cache hit - returns existing cached value", () =>
         Effect.gen(function*() {
           const { cache, lookupCount, setLookupResult } = yield* makeTestCache(10)
