@@ -60,6 +60,55 @@ describe("RcRef", () => {
       assert.isTrue(Exit.hasInterrupts(exit))
     }))
 
+  it.effect("releasing an invalidated borrower preserves the replacement resource", () =>
+    Effect.gen(function*() {
+      let acquired = 0
+      const released: Array<number> = []
+      const owner = yield* Scope.make()
+      const scopeA = yield* Scope.make()
+      const scopeB = yield* Scope.make()
+      const scopeC = yield* Scope.make()
+      const ref = yield* RcRef.make({
+        acquire: Effect.acquireRelease(
+          Effect.sync(() => ++acquired),
+          (id) => Effect.sync(() => released.push(id))
+        )
+      }).pipe(Scope.provide(owner))
+
+      const first = yield* RcRef.get(ref).pipe(Scope.provide(scopeA))
+      yield* RcRef.invalidate(ref)
+      const replacement = yield* RcRef.get(ref).pipe(Scope.provide(scopeB))
+      yield* Scope.close(scopeA, Exit.void)
+      const next = yield* RcRef.get(ref).pipe(Scope.provide(scopeC))
+      yield* Scope.close(owner, Exit.void)
+      const releasedAtOwnerClose = [...released]
+      yield* Scope.close(scopeB, Exit.void)
+      yield* Scope.close(scopeC, Exit.void)
+
+      assert.deepStrictEqual(
+        { first, replacement, next, releasedAtOwnerClose },
+        { first: 1, replacement: 2, next: 2, releasedAtOwnerClose: [1, 2] }
+      )
+    }))
+
+  it.effect("releasing a borrower after owner shutdown does not reopen the reference", () =>
+    Effect.gen(function*() {
+      let acquired = 0
+      const owner = yield* Scope.make()
+      const borrower = yield* Scope.make()
+      const ref = yield* RcRef.make({
+        acquire: Effect.sync(() => ++acquired)
+      }).pipe(Scope.provide(owner))
+
+      yield* RcRef.get(ref).pipe(Scope.provide(borrower))
+      yield* Scope.close(owner, Exit.void)
+      yield* Scope.close(borrower, Exit.void)
+      const exit = yield* RcRef.get(ref).pipe(Effect.scoped, Effect.exit)
+
+      assert.isTrue(Exit.hasInterrupts(exit))
+      assert.strictEqual(acquired, 1)
+    }))
+
   it.effect("releases resources acquired before acquisition failure", () =>
     Effect.gen(function*() {
       const acquired = yield* Ref.make(0)

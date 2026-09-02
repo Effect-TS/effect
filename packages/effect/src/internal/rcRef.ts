@@ -150,7 +150,9 @@ export const get = Effect.fnUntraced(function*<A, E>(
       return Effect.void
     }
     if (self.idleTimeToLive === undefined) {
-      self.state = stateEmpty
+      if (self.state === state) {
+        self.state = stateEmpty
+      }
       return Scope.close(state.scope, Exit.void)
     } else if (state.invalidated) {
       return Scope.close(state.scope, Exit.void)
