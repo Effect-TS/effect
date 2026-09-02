@@ -8076,7 +8076,7 @@ export const runCollect = <OutElem, OutErr, OutDone, Env>(
  */
 export const runDone = <OutElem, OutErr, OutDone, Env>(
   self: Channel<OutElem, OutErr, OutDone, unknown, unknown, unknown, Env>
-): Effect.Effect<OutDone, OutErr, Env> => runWith(self, identity_, Effect.succeed)
+): Effect.Effect<OutDone, OutErr, Env> => runDrain(self)
 
 /**
  * Runs a channel until the first output element is available, returning it in
