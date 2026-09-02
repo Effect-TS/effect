@@ -348,7 +348,8 @@ export const setAll: {
   (input: Input): (self: UrlParams) => UrlParams
   (self: UrlParams, input: Input): UrlParams
 } = dual(2, (self: UrlParams, input: Input): UrlParams => {
-  const params = fromInput(input).params.slice()
+  const out = fromInput(input)
+  const params = out.params as Array<readonly [string, string]>
   const keys = new Set()
   for (let i = 0; i < params.length; i++) {
     keys.add(params[i][0])
@@ -357,7 +358,7 @@ export const setAll: {
     if (keys.has(self.params[i][0])) continue
     params.push(self.params[i])
   }
-  return make(params)
+  return out
 })
 
 /**
