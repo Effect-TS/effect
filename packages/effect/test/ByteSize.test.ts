@@ -94,14 +94,15 @@ describe("ByteSize", () => {
     for (const input of invalid) assertNone(ByteSize.fromInput(input))
   })
 
-  it("has exact canonical serialization and value behavior", () => {
+  it("uses a branded bigint representation", () => {
     const value = ByteSize.bytes(9_007_199_254_740_993n)
-    strictEqual(String(value), "9007199254740993 bytes")
-    deepStrictEqual(value.toJSON(), { _id: "ByteSize", bytes: "9007199254740993" })
-    assertTrue(Equal.equals(value, ByteSize.fromInputUnsafe(String(value))))
-    strictEqual(Hash.hash(value), Hash.hash(ByteSize.bytes(value.value)))
+    strictEqual(typeof value, "bigint")
+    strictEqual(String(value), "9007199254740993")
+    assertTrue(Equal.equals(value, ByteSize.bytes(9_007_199_254_740_993n)))
+    strictEqual(Hash.hash(value), Hash.hash(9_007_199_254_740_993n))
     assertTrue(ByteSize.isByteSize(value))
-    assertFalse(ByteSize.isByteSize(value.value))
+    assertTrue(ByteSize.isByteSize(0n))
+    assertFalse(ByteSize.isByteSize(-1n))
   })
 
   it("converts to numbers only within the safe-integer range", () => {
@@ -140,14 +141,14 @@ describe("ByteSize", () => {
     strictEqual(ByteSize.format(ByteSize.bytes(1536), { system: "decimal" }), "1.54 kB")
     strictEqual(ByteSize.format(ByteSize.bytes(1500), { unit: "kB", precision: 3, trailingZeros: true }), "1.500 kB")
     strictEqual(ByteSize.format(ByteSize.mebibytes(1)), "1 MiB")
-    strictEqual(ByteSize.format(ByteSize.mebibytes(1).pipe(ByteSize.subtractUnsafe(ByteSize.bytes(1)))), "1 MiB")
+    strictEqual(ByteSize.format(ByteSize.subtractUnsafe(ByteSize.mebibytes(1), ByteSize.bytes(1))), "1 MiB")
     strictEqual(ByteSize.format(ByteSize.bytes(10n ** 35n), { system: "decimal" }), "100000 QB")
     throws(() => ByteSize.format(ByteSize.zero, { precision: 21 }))
   })
 
   it("roundtrips canonical strings", () => {
     fc.assert(fc.property(arb, (value) => {
-      deepStrictEqual(ByteSize.fromInputUnsafe(String(value)), value)
+      deepStrictEqual(ByteSize.fromInputUnsafe(`${value} B`), value)
     }))
   })
 

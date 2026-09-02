@@ -1033,7 +1033,7 @@ export const durationFromString: Transformation<Duration.Duration, string> = tra
         ),
       onSome: Effect.succeed
     }),
-  encode: (duration) => Effect.succeed(globalThis.String(duration))
+  encode: (duration) => Effect.succeed(String(duration))
 })
 
 /**
@@ -1137,7 +1137,7 @@ export const byteSizeFromString: Transformation<ByteSize.ByteSize, string> = tra
         ),
       onSome: Effect.succeed
     }),
-  encode: (byteSize) => Effect.succeed(globalThis.String(byteSize))
+  encode: (byteSize) => Effect.succeed(`${byteSize} ${byteSize === BigInt(1) ? "byte" : "bytes"}`)
 })
 
 /**
