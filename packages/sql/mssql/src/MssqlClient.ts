@@ -40,6 +40,7 @@ import {
   UnknownError
 } from "effect/unstable/sql/SqlError"
 import * as Statement from "effect/unstable/sql/Statement"
+import { Buffer } from "node:buffer"
 import * as Tedious from "tedious"
 import type { ConnectionOptions } from "tedious/lib/connection.ts"
 import type { DataType } from "tedious/lib/data-type.ts"
@@ -366,7 +367,14 @@ export const make = (
               } else {
                 const kind = Statement.primitiveKind(value)
                 const type = parameterTypes[kind]
-                req.addParameter(name, type, value)
+                req.addParameter(
+                  name,
+                  type,
+                  type === Tedious.TYPES.VarBinary && (kind === "Uint8Array" || kind === "Int8Array") &&
+                    !Buffer.isBuffer(value)
+                    ? Buffer.from(value.buffer, value.byteOffset, value.byteLength)
+                    : value
+                )
               }
             }
           }
