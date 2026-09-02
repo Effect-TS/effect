@@ -308,6 +308,167 @@ describe("Pool", () => {
       yield* Scope.close(scope1, Exit.void)
     }))
 
+  it.effect("releasing a shared borrower preserves an active reservation", () =>
+    Effect.gen(function*() {
+      const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1, concurrency: 2 })
+      const owner = yield* Scope.make()
+      const borrower = yield* Scope.make()
+      const reservation = yield* Scope.make()
+      yield* Pool.get(pool).pipe(Scope.provide(owner))
+      yield* Pool.get(pool).pipe(Scope.provide(borrower))
+      yield* Pool.reserve(pool, "resource").pipe(Scope.provide(reservation))
+
+      yield* Scope.close(borrower, Exit.void)
+      const next = yield* Pool.use(pool, Effect.succeed).pipe(Effect.forkChild({ startImmediately: true }))
+      const beforeRelease = next.pollUnsafe()
+      yield* Scope.close(reservation, Exit.void)
+      const result = yield* Fiber.join(next)
+      yield* Scope.close(owner, Exit.void)
+
+      assert.isUndefined(beforeRelease)
+      assert.strictEqual(result, "resource")
+    }))
+
+  it.effect("overlapping reservations keep an item reserved until both close", () =>
+    Effect.gen(function*() {
+      const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1, concurrency: 2 })
+      const owner = yield* Scope.make()
+      const first = yield* Scope.make()
+      const second = yield* Scope.make()
+      yield* Pool.get(pool).pipe(Scope.provide(owner))
+      yield* Pool.reserve(pool, "resource").pipe(Scope.provide(first))
+      yield* Pool.reserve(pool, "resource").pipe(Scope.provide(second))
+      // One lease plus one reservation; the overlapping reservation must not
+      // count usage again.
+      assert.strictEqual(pool.state.usage, 2)
+
+      yield* Scope.close(first, Exit.void)
+      assert.strictEqual(pool.state.usage, 2)
+      const next = yield* Pool.use(pool, Effect.succeed).pipe(Effect.forkChild({ startImmediately: true }))
+      const beforeRelease = next.pollUnsafe()
+      yield* Scope.close(second, Exit.void)
+      const result = yield* Fiber.join(next)
+      yield* Scope.close(owner, Exit.void)
+
+      assert.isUndefined(beforeRelease)
+      assert.strictEqual(result, "resource")
+      assert.strictEqual(pool.state.usage, 0)
+    }))
+
+  it.effect("releasing a reservation wakes all available slots after borrowers return", () =>
+    Effect.gen(function*() {
+      const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1, concurrency: 2 })
+      const owner = yield* Scope.make()
+      const reservation = yield* Scope.make()
+      const borrowers = yield* Scope.make()
+      yield* Pool.get(pool).pipe(Scope.provide(owner))
+      yield* Pool.reserve(pool, "resource").pipe(Scope.provide(reservation))
+      yield* Scope.close(owner, Exit.void)
+
+      const first = yield* Pool.get(pool).pipe(Scope.provide(borrowers), Effect.forkChild({ startImmediately: true }))
+      const second = yield* Pool.get(pool).pipe(Scope.provide(borrowers), Effect.forkChild({ startImmediately: true }))
+      const beforeRelease = [first.pollUnsafe(), second.pollUnsafe()]
+      yield* Scope.close(reservation, Exit.void)
+      yield* TestClock.adjust(0)
+      const afterRelease = [first.pollUnsafe(), second.pollUnsafe()]
+      yield* Fiber.interrupt(first)
+      yield* Fiber.interrupt(second)
+      yield* Scope.close(borrowers, Exit.void)
+
+      assert.deepStrictEqual(beforeRelease, [undefined, undefined])
+      assert.deepStrictEqual(afterRelease, [Exit.succeed("resource"), Exit.succeed("resource")])
+      assert.strictEqual(pool.state.usage, 0)
+    }))
+
+  it.effect("usage TTL reclaim skips reserved items", () =>
+    Effect.gen(function*() {
+      let acquired = 0
+      const pool = yield* Pool.makeWithTTL({
+        acquire: Effect.sync(() => ++acquired),
+        min: 0,
+        max: 2,
+        concurrency: 2,
+        timeToLive: 1000
+      })
+      const owner = yield* Scope.make()
+      const reservation = yield* Scope.make()
+      yield* Pool.get(pool).pipe(Scope.provide(owner))
+      yield* Pool.reserve(pool, 1).pipe(Scope.provide(reservation))
+      yield* Pool.use(pool, Effect.succeed)
+      yield* TestClock.adjust(1000)
+
+      const first = yield* Pool.get(pool).pipe(Scope.provide(owner))
+      yield* TestClock.adjust(0)
+      const second = yield* Pool.get(pool).pipe(Scope.provide(owner))
+      // The invalidated item 1 is still reserved, so reclaim must not
+      // un-invalidate it; the waiter is served by a fresh item instead.
+      const result = yield* Pool.use(pool, Effect.succeed)
+      yield* Scope.close(reservation, Exit.void)
+      yield* Scope.close(owner, Exit.void)
+
+      assert.deepStrictEqual([first, second], [2, 2])
+      assert.strictEqual(result, 3)
+      assert.strictEqual(acquired, 3)
+      assert.strictEqual(pool.state.usage, 0)
+    }))
+
+  it.effect("reserve is a no-op with concurrency one", () =>
+    Effect.gen(function*() {
+      const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1 })
+      const owner = yield* Scope.make()
+      const reservation = yield* Scope.make()
+      yield* Pool.get(pool).pipe(Scope.provide(owner))
+      yield* Pool.reserve(pool, "resource").pipe(Scope.provide(reservation))
+      yield* Scope.close(owner, Exit.void)
+
+      const next = yield* Pool.use(pool, Effect.succeed).pipe(Effect.forkChild({ startImmediately: true }))
+      const beforeRelease = next.pollUnsafe()
+      yield* Scope.close(reservation, Exit.void)
+      yield* Fiber.interrupt(next)
+
+      assert.deepStrictEqual(beforeRelease, Exit.succeed("resource"))
+    }))
+
+  it.effect.each([false, true])(
+    "reservation cleanup does not revive removed items (shutdown: %s)",
+    (shutdown) =>
+      Effect.gen(function*() {
+        let acquired = 0
+        const released: Array<number> = []
+        const poolScope = yield* Scope.make()
+        const owner = yield* Scope.make()
+        const reservation = yield* Scope.make()
+        const pool = yield* Pool.make({
+          acquire: Effect.acquireRelease(
+            Effect.sync(() => ++acquired),
+            (item) => Effect.sync(() => released.push(item))
+          ),
+          size: 1,
+          concurrency: 2
+        }).pipe(Scope.provide(poolScope))
+        yield* Pool.get(pool).pipe(Scope.provide(owner))
+        yield* Pool.reserve(pool, 1).pipe(Scope.provide(reservation))
+        yield* Scope.close(owner, Exit.void)
+        if (shutdown) {
+          yield* Scope.close(poolScope, Exit.void)
+        } else {
+          yield* Pool.invalidate(pool, 1)
+        }
+        yield* Scope.close(reservation, Exit.void)
+        const next = yield* Effect.exit(Pool.use(pool, Effect.succeed))
+        yield* Scope.close(poolScope, Exit.void)
+
+        if (shutdown) {
+          assert.isTrue(Exit.hasInterrupts(next))
+          assert.deepStrictEqual(released, [1])
+        } else {
+          assert.deepStrictEqual(next, Exit.succeed(2))
+          assert.deepStrictEqual(released, [1, 2])
+        }
+        assert.strictEqual(pool.state.usage, 0)
+      })
+  )
+
   it.effect("scale to zero", () =>
     Effect.gen(function*() {
       const deferred = yield* Deferred.make<void>()

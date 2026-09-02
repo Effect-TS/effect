@@ -673,9 +673,12 @@ const wakeAll = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
     return internal.void
   })
 
+// Reservations prevent reuse without extending the lifetime of borrowed items.
+const reservations = new WeakMap<PoolItem<unknown, unknown>, number>()
+
 /** Adds a freshly acquired item, which has no use behind it, at the back. */
 const addAvailable = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
-  if (item.isAvailable) return
+  if (item.isAvailable || reservations.has(item)) return
   item.isAvailable = true
   item.availablePrevious = self.state.availableTail
   item.availableNext = undefined
@@ -701,7 +704,7 @@ const addAvailable = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
  * item is checked out either way.
  */
 const addAvailableFront = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
-  if (item.isAvailable) return
+  if (item.isAvailable || reservations.has(item)) return
   item.isAvailable = true
   item.availablePrevious = undefined
   item.availableNext = self.state.availableHead
@@ -783,9 +786,12 @@ export const reserve: {
   <A, E>(self: Pool<A, E>, item: A): Effect.Effect<void, never, Scope.Scope> =>
     Effect.asVoid(Effect.acquireRelease(
       Effect.sync(() => {
+        if (self.config.concurrency === 1) return undefined
         for (const poolItem of self.state.items) {
           if (poolItem.exit._tag !== "Success" || poolItem.exit.value !== item) continue
-          self.state.usage += self.config.concurrency - 1
+          const existing = reservations.get(poolItem)
+          if (existing === undefined) self.state.usage += self.config.concurrency - 1
+          reservations.set(poolItem, (existing ?? 0) + 1)
           removeAvailable(self, poolItem)
           return poolItem
         }
@@ -794,15 +800,22 @@ export const reserve: {
       (poolItem) =>
         core.withFiber((fiber) => {
           if (poolItem === undefined) return internal.void
+          const remaining = (reservations.get(poolItem) ?? 1) - 1
+          if (remaining > 0) {
+            reservations.set(poolItem, remaining)
+            return internal.void
+          }
+          reservations.delete(poolItem)
           self.state.usage -= self.config.concurrency - 1
           if (
+            !self.state.isShuttingDown &&
             self.state.items.has(poolItem) &&
             !self.state.invalidated.has(poolItem) &&
             poolItem.refCount < self.config.concurrency
           ) {
-            addAvailable(self, poolItem)
+            addAvailableFront(self, poolItem)
+            wakeWaiters(self, fiber, self.config.concurrency - poolItem.refCount)
           }
-          wakeWaiters(self, fiber, self.config.concurrency - 1)
           return internal.void
         })
     ))
@@ -988,7 +1001,7 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
           return Effect.undefined
         }
         const item = Iterable.head(
-          Iterable.filter(pool.state.invalidated, (item) => !item.disableReclaim)
+          Iterable.filter(pool.state.invalidated, (item) => !item.disableReclaim && !reservations.has(item))
         )
         if (item._tag === "None") {
           return Effect.undefined
