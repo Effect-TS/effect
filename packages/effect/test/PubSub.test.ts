@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Array, Effect, Exit, Fiber, Latch, PubSub, Scope, Stream } from "effect"
+import { Array, Effect, Exit, Fiber, Latch, MutableList, PubSub, Scope, Stream } from "effect"
 import { pipe } from "effect/Function"
 
 describe("PubSub", () => {
@@ -462,6 +462,14 @@ describe("PubSub", () => {
     assert.deepStrictEqual(replay.takeAll(), [2, 3])
   })
 
+  it("polls MutableList.Empty as a value", () => {
+    const pubsub = PubSub.makeAtomicBounded<symbol>(1)
+    const subscription = pubsub.subscribe()
+    pubsub.publish(MutableList.Empty)
+
+    assert.deepStrictEqual(subscription.pollUpTo(1), [MutableList.Empty])
+  })
+
   it("publishes after a capacity-one subscriber unsubscribes from a slid message", () => {
     const pubsub = PubSub.makeAtomicBounded<number>(1)
     const subscription = pubsub.subscribe()
@@ -469,9 +477,10 @@ describe("PubSub", () => {
     pubsub.slide()
     subscription.unsubscribe()
 
+    const next = pubsub.subscribe()
     assert.isTrue(pubsub.publish(2))
-    assert.strictEqual(pubsub.size(), 0)
-    assert.isFalse(pubsub.isFull())
+    assert.strictEqual(pubsub.size(), 1)
+    assert.deepStrictEqual(next.pollUpTo(1), [2])
   })
 
   describe("replay", () => {
