@@ -1106,14 +1106,14 @@ const callbackOptions: <A, E = never, R = never>(
     signal?: AbortSignal
   ) => void | Effect.Effect<void, never, R>,
   withSignal: boolean
-) => Effect.Effect<A, E, R> = makePrimitive({
-  op: "Async",
-  single: false,
-  [evaluate](fiber) {
-    const register = internalCall(() => this[args][0].bind(fiber.currentScheduler))
-    let resumed = false
-    let yielded: boolean | Primitive = false
-    const controller = this[args][1] ? new AbortController() : undefined
+) => Effect.Effect<A, E, R> = (function() {
+  const Proto = makePrimitiveProto({
+    op: "Async",
+    [evaluate](this: any, fiber) {
+      const register = internalCall(() => this.register.bind(fiber.currentScheduler))
+      let resumed = false
+      let yielded: boolean | Primitive = false
+      const controller = this.withSignal ? new AbortController() : undefined
     const onCancel = register((effect) => {
       if (resumed) return
       resumed = true
@@ -1131,16 +1131,25 @@ const callbackOptions: <A, E = never, R = never>(
     if (controller === undefined && onCancel === undefined) {
       return Yield
     }
-    fiber._stack.push(
-      asyncFinalizer(() => {
-        resumed = true
-        controller?.abort()
-        return onCancel ?? exitVoid
-      })
-    )
-    return Yield
+      fiber._stack.push(
+        asyncFinalizer(() => {
+          resumed = true
+          controller?.abort()
+          return onCancel ?? exitVoid
+        })
+      )
+      return Yield
+    }
+  })
+  function AsyncImpl(this: any, register: any, withSignal: boolean) {
+    this.register = register
+    this.withSignal = withSignal
   }
-})
+  AsyncImpl.prototype = Proto
+  return function(register: any, withSignal: boolean) {
+    return new (AsyncImpl as any)(register, withSignal)
+  } as any
+})()
 
 const asyncFinalizer: (
   onInterrupt: () => Effect.Effect<void, any, any>
@@ -1356,27 +1365,36 @@ const fromIteratorEagerUnsafe = (
 const fromIteratorUnsafe: (
   iterator: Iterator<Effect.Effect<any, any, any>>,
   initial?: undefined
-) => Effect.Effect<any, any, any> = makePrimitive({
-  op: "Iterator",
-  single: false,
-  [contA](value, fiber) {
-    const iter = this[args][0]
-    while (true) {
-      const state = iter.next(value)
-      if (state.done) return succeed(state.value)
-      if (!effectIsExit(state.value)) {
-        fiber._stack.push(this)
-        return state.value
-      } else if (state.value._tag === "Failure") {
-        return state.value
+) => Effect.Effect<any, any, any> = (function() {
+  const Proto = makePrimitiveProto({
+    op: "Iterator",
+    [contA](this: any, value, fiber) {
+      const iter = this.iterator
+      while (true) {
+        const state = iter.next(value)
+        if (state.done) return succeed(state.value)
+        if (!effectIsExit(state.value)) {
+          fiber._stack.push(this)
+          return state.value
+        } else if (state.value._tag === "Failure") {
+          return state.value
+        }
+        value = state.value.value
       }
-      value = state.value.value
+    },
+    [evaluate](this: any, fiber: FiberImpl) {
+      return this[contA](this.initial, fiber)
     }
-  },
-  [evaluate](this: any, fiber: FiberImpl) {
-    return this[contA](this[args][1], fiber)
+  })
+  function IteratorImpl(this: any, iterator: any, initial: any) {
+    this.iterator = iterator
+    this.initial = initial
   }
-})
+  IteratorImpl.prototype = Proto
+  return function(iterator: any, initial?: undefined) {
+    return new (IteratorImpl as any)(iterator, initial)
+  } as any
+})()
 
 // ----------------------------------------------------------------------------
 // mapping & sequencing
@@ -4016,30 +4034,40 @@ export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
   self: Effect.Effect<A, E, R>,
   f: (exit: Exit.Exit<A, E>) => Effect.Effect<void, XE, XR> | undefined,
   interruptible?: boolean
-) => Effect.Effect<A, E | XE, R | XR> = makePrimitive({
-  op: "OnExit",
-  single: false,
-  [evaluate](fiber: FiberImpl) {
-    fiber._stack.push(this)
-    return this[args][0]
-  },
-  [contAll](fiber) {
-    if (fiber.interruptible && this[args][2] !== true) {
-      fiber._stack.push(setInterruptibleTrue)
-      fiber.interruptible = false
+) => Effect.Effect<A, E | XE, R | XR> = (function() {
+  const Proto = makePrimitiveProto({
+    op: "OnExit",
+    [evaluate](this: any, fiber: FiberImpl) {
+      fiber._stack.push(this)
+      return this.effect
+    },
+    [contAll](this: any, fiber) {
+      if (fiber.interruptible && this.interruptible !== true) {
+        fiber._stack.push(setInterruptibleTrue)
+        fiber.interruptible = false
+      }
+    },
+    [contA](this: any, value, _, exit) {
+      exit ??= exitSucceed(value)
+      const eff = this.onExit(exit)
+      return eff ? flatMap(eff, (_) => exit) : exit
+    },
+    [contE](this: any, cause, _, exit) {
+      exit ??= exitFailCause(cause)
+      const eff = this.onExit(exit)
+      return eff ? flatMap(combineFinalizerCause(exit, eff), (_) => exit) : exit
     }
-  },
-  [contA](value, _, exit) {
-    exit ??= exitSucceed(value)
-    const eff = this[args][1](exit)
-    return eff ? flatMap(eff, (_) => exit) : exit
-  },
-  [contE](cause, _, exit) {
-    exit ??= exitFailCause(cause)
-    const eff = this[args][1](exit)
-    return eff ? flatMap(combineFinalizerCause(exit, eff), (_) => exit) : exit
+  })
+  function OnExitImpl(this: any, effect: any, onExit: any, interruptible: any) {
+    this.effect = effect
+    this.onExit = onExit
+    this.interruptible = interruptible
   }
-})
+  OnExitImpl.prototype = Proto
+  return function(effect: any, onExit: any, interruptible?: boolean) {
+    return new (OnExitImpl as any)(effect, onExit, interruptible)
+  } as any
+})()
 
 /** @internal */
 export const onExit: {
