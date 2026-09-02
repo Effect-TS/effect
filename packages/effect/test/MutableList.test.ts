@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { MutableList } from "effect"
 
@@ -10,6 +10,179 @@ describe("MutableList", () => {
 
     strictEqual(MutableList.toArray(list).join(","), "1,2")
     strictEqual(list.length, 2)
+  })
+
+  describe("nonempty bulk prepend followed by append", () => {
+    const inputs = [
+      { name: "array singleton", values: [1], make: () => Object.freeze([1]) },
+      { name: "array multiple", values: [1, 2], make: () => Object.freeze([1, 2]) },
+      {
+        name: "generator singleton",
+        values: [1],
+        make: function*() {
+          yield 1
+        }
+      },
+      {
+        name: "generator multiple",
+        values: [1, 2],
+        make: function*() {
+          yield 1
+          yield 2
+        }
+      }
+    ]
+
+    for (const input of inputs) {
+      for (const state of ["fresh", "drained before", "nonempty", "drained after prepend"]) {
+        for (const consumer of ["append", "appendAll"]) {
+          it(`${input.name}; ${state}; ${consumer}`, () => {
+            const list = MutableList.make<number>()
+            if (state === "nonempty") MutableList.append(list, 9)
+            if (state === "drained before") {
+              MutableList.append(list, 9)
+              assert.strictEqual(MutableList.take(list), 9)
+              assert.strictEqual(list.length, 0)
+            }
+
+            MutableList.prependAll(list, input.make())
+            const prepended = [...input.values, ...(state === "nonempty" ? [9] : [])]
+            assert.deepStrictEqual(MutableList.toArray(list), prepended)
+            assert.strictEqual(list.length, prepended.length)
+
+            let expected = [...prepended, 2]
+            if (state === "drained after prepend") {
+              assert.deepStrictEqual(MutableList.takeAll(list), prepended)
+              assert.strictEqual(MutableList.take(list), MutableList.Empty)
+              expected = [2]
+            }
+            if (consumer === "append") {
+              MutableList.append(list, 2)
+            } else {
+              assert.strictEqual(MutableList.appendAll(list, [2]), 1)
+            }
+
+            assert.deepStrictEqual(MutableList.toArray(list), expected)
+            assert.strictEqual(list.length, expected.length)
+            for (const [index, value] of expected.entries()) {
+              assert.strictEqual(MutableList.take(list), value)
+              assert.strictEqual(list.length, expected.length - index - 1)
+            }
+            assert.strictEqual(MutableList.take(list), MutableList.Empty)
+            assert.strictEqual(list.length, 0)
+          })
+        }
+      }
+    }
+
+    for (const input of inputs.filter((input) => input.values.length === 1)) {
+      it(`takes the prepended value before the appended value; ${input.name}`, () => {
+        const list = MutableList.make<number>()
+        MutableList.prependAll(list, input.make())
+        MutableList.append(list, 2)
+
+        assert.strictEqual(MutableList.take(list), 1)
+        assert.strictEqual(list.length, 1)
+        assert.strictEqual(MutableList.take(list), 2)
+        assert.strictEqual(list.length, 0)
+        assert.strictEqual(MutableList.take(list), MutableList.Empty)
+      })
+    }
+
+    for (const mutable of [false, true]) {
+      for (const consumer of ["append", "appendAll"]) {
+        it(`prependAllUnsafe; mutable=${mutable}; ${consumer}`, () => {
+          const list = MutableList.make<number>()
+          // Transfer ownership when mutable=true; never access the input afterward.
+          MutableList.prependAllUnsafe(list, [1], mutable)
+          if (consumer === "append") {
+            MutableList.append(list, 2)
+          } else {
+            assert.strictEqual(MutableList.appendAll(list, [2]), 1)
+          }
+
+          assert.deepStrictEqual(MutableList.toArray(list), [1, 2])
+          assert.strictEqual(list.length, 2)
+          assert.strictEqual(MutableList.take(list), 1)
+          assert.strictEqual(MutableList.take(list), 2)
+          assert.strictEqual(list.length, 0)
+          assert.strictEqual(MutableList.take(list), MutableList.Empty)
+        })
+      }
+    }
+  })
+
+  describe("bulk prepend boundaries", () => {
+    const inputs: Array<{
+      name: string
+      prepend: (list: MutableList.MutableList<number>, values: ReadonlyArray<number>) => void
+    }> = [
+      { name: "array", prepend: (list, values) => MutableList.prependAll(list, values) },
+      { name: "frozen array", prepend: (list, values) => MutableList.prependAll(list, Object.freeze([...values])) },
+      {
+        name: "generator",
+        prepend: (list, values) =>
+          MutableList.prependAll(
+            list,
+            (function*() {
+              yield* values
+            })()
+          )
+      },
+      { name: "unsafe immutable", prepend: (list, values) => MutableList.prependAllUnsafe(list, values, false) },
+      // Each copy is transferred without any subsequent caller access.
+      { name: "unsafe mutable", prepend: (list, values) => MutableList.prependAllUnsafe(list, [...values], true) }
+    ]
+
+    for (const input of inputs) {
+      for (const state of ["fresh", "drained"]) {
+        for (const repeats of [1, 2]) {
+          it(`empty; ${input.name}; ${state}; repeats=${repeats}`, () => {
+            const list = MutableList.make<number>()
+            if (state === "drained") {
+              MutableList.append(list, 9)
+              assert.strictEqual(MutableList.take(list), 9)
+              assert.strictEqual(list.length, 0)
+            }
+            for (let i = 0; i < repeats; i++) input.prepend(list, [])
+            MutableList.append(list, 1)
+
+            assert.deepStrictEqual(MutableList.toArray(list), [1])
+            assert.strictEqual(list.length, 1)
+            assert.strictEqual(MutableList.take(list), 1)
+            assert.strictEqual(list.length, 0)
+            assert.strictEqual(MutableList.take(list), MutableList.Empty)
+            assert.strictEqual(list.length, 0)
+          })
+        }
+      }
+
+      for (const consumer of ["append", "appendAll"]) {
+        it(`repeated nonempty; ${input.name}; ${consumer}`, () => {
+          const list = MutableList.make<number>()
+          const first = [2, 3]
+          const second = [1]
+          input.prepend(list, first)
+          input.prepend(list, second)
+          if (consumer === "append") {
+            MutableList.append(list, 4)
+          } else {
+            assert.strictEqual(MutableList.appendAll(list, [4]), 1)
+          }
+
+          assert.deepStrictEqual(MutableList.toArray(list), [1, 2, 3, 4])
+          assert.strictEqual(list.length, 4)
+          for (const value of [1, 2, 3, 4]) {
+            assert.strictEqual(MutableList.take(list), value)
+            assert.strictEqual(list.length, 4 - value)
+          }
+          assert.strictEqual(MutableList.take(list), MutableList.Empty)
+          assert.strictEqual(list.length, 0)
+          assert.deepStrictEqual(first, [2, 3])
+          assert.deepStrictEqual(second, [1])
+        })
+      }
+    }
   })
 
   it("returns an empty snapshot for a negative bound", () => {
