@@ -71,6 +71,23 @@ const recordInput = Object.fromEntries(
 export const recordValid = validCase(record, recordInput, false)
 export const recordValidCompiled = validCase(record, recordInput, true)
 
+const templateRecord = Schema.Record(
+  Schema.TemplateLiteral(["data-", Schema.String]),
+  Schema.Number
+)
+const templateRecordInput = Object.fromEntries(
+  Array.from({ length: 64 }, (_, index) => [
+    index % 2 === 0 ? `data-${index}` : `ignored-${index}`,
+    index
+  ])
+)
+const templateRecordOutput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`data-${index * 2}`, index * 2])
+)
+
+export const templateRecordValid = validCase(templateRecord, templateRecordInput, false, templateRecordOutput)
+export const templateRecordValidCompiled = validCase(templateRecord, templateRecordInput, true, templateRecordOutput)
+
 const literal100 = Schema.Literals(Array.from({ length: 100 }, (_, index) => `value${index}`))
 
 export const literal100ValidLast = validCase(literal100, "value99", false)

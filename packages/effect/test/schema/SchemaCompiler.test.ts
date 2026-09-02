@@ -264,6 +264,22 @@ describe("SchemaCompiler", () => {
     })
   })
 
+  it("compiles symbol and template-literal records", () => {
+    const symbol = Symbol("key")
+    const decodeSymbols = SchemaParser.decodeUnknownSync(Schema.Record(Schema.Symbol, Schema.Number))
+    const symbolOutput = decodeSymbols({ text: "ignored", [symbol]: 1 })
+    strictEqual(symbolOutput[symbol], 1)
+    deepStrictEqual(Reflect.ownKeys(symbolOutput), [symbol])
+
+    const decodeTemplates = SchemaParser.decodeUnknownSync(
+      Schema.Record(Schema.TemplateLiteral(["data-", Schema.String]), Schema.Number)
+    )
+    deepStrictEqual(
+      decodeTemplates({ "data-a": 1, ignored: 2, "data-b": 3 }),
+      { "data-a": 1, "data-b": 3 }
+    )
+  })
+
   it("runs checks against decoded output", () => {
     const decodeString = SchemaParser.decodeUnknownSync(
       Schema.String.check(Schema.isMinLength(2))

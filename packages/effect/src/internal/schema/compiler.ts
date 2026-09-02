@@ -24,6 +24,20 @@ const isCompatible = (ast: SchemaAST.AST): boolean => ast.encoding === undefined
 
 const isOptional = (ast: SchemaAST.AST): boolean => ast.context?.isOptional ?? false
 
+const canEmitIndexParameter = (ast: SchemaAST.AST): boolean => {
+  if (!isCompatible(ast)) return false
+  switch (ast._tag) {
+    case "String":
+    case "Symbol":
+    case "TemplateLiteral":
+      return true
+    case "Union":
+      return ast.types.every(canEmitIndexParameter)
+    default:
+      return false
+  }
+}
+
 const canEmitShape = (ast: SchemaAST.AST): boolean => {
   switch (ast._tag) {
     case "Null":
@@ -51,10 +65,7 @@ const canEmitShape = (ast: SchemaAST.AST): boolean => {
         return true
       }
       return ast.propertySignatures.length === 0 &&
-        ast.indexSignatures.length === 1 &&
-        ast.indexSignatures[0].parameter._tag === "String" &&
-        ast.indexSignatures[0].parameter.checks === undefined &&
-        isCompatible(ast.indexSignatures[0].parameter)
+        ast.indexSignatures.every((signature) => canEmitIndexParameter(signature.parameter))
     case "Union":
       return ast.encodingChecks === undefined
     default:
@@ -431,21 +442,31 @@ const emitBase = (
         `if(typeof ${input}!=="object"||${input}===null||Array.isArray(${input}))return I`
       )
       if (ast.indexSignatures.length > 0) {
-        const keys = variable(emitter)
         const output = variable(emitter)
-        const index = variable(emitter)
-        const key = variable(emitter)
-        statements.push(`const ${keys}=Object.keys(${input})`, `const ${output}={}`)
-        const loop: Array<string> = [`const ${key}=${keys}[${index}]`]
-        const value = variable(emitter)
-        loop.push(`const ${value}=${input}[${key}]`)
-        const decoded = emit(ast.indexSignatures[0].type, value, loop, emitter)
-        loop.push(
-          `if(${key}==="__proto__")Object.defineProperty(${output},${key},{value:${decoded},writable:true,enumerable:true,configurable:true});else ${output}[${key}]=${decoded}`
-        )
-        statements.push(
-          `for(let ${index}=0;${index}<${keys}.length;${index}++){${loop.join(";")}}`
-        )
+        statements.push(`const ${output}={}`)
+        for (const signature of ast.indexSignatures) {
+          const keys = variable(emitter)
+          const index = variable(emitter)
+          const key = variable(emitter)
+          const parameter = signature.parameter
+          statements.push(
+            `const ${keys}=${
+              parameter._tag === "String" && parameter.checks === undefined
+                ? `Object.keys(${input})`
+                : `G(${input},${constant(emitter, parameter)})`
+            }`
+          )
+          const loop: Array<string> = [`const ${key}=${keys}[${index}]`]
+          const value = variable(emitter)
+          loop.push(`const ${value}=${input}[${key}]`)
+          const decoded = emit(signature.type, value, loop, emitter)
+          loop.push(
+            `if(${key}==="__proto__")Object.defineProperty(${output},${key},{value:${decoded},writable:true,enumerable:true,configurable:true});else ${output}[${key}]=${decoded}`
+          )
+          statements.push(
+            `for(let ${index}=0;${index}<${keys}.length;${index}++){${loop.join(";")}}`
+          )
+        }
         return output
       }
       const helper = emitObjectHelper(ast, emitter)
@@ -553,12 +574,13 @@ const make = (ast: SchemaAST.AST): Decoder | undefined => {
     const source = `"use strict";${emitter.helpers.join(";")};${emitter.initializers.join(";")};return function(i){${
       emitter.statements.join(";")
     };return ${output}}`
-    return globalThis.Function("I", "C", "K", "T", "U", "X", "Y", source)(
+    return globalThis.Function("I", "C", "K", "T", "U", "G", "X", "Y", source)(
       invalid,
       emitter.constants,
       failsChecks,
       matchesTemplateLiteral,
       SchemaAST.getCandidates,
+      SchemaAST.getIndexSignatureKeys,
       transform,
       wrapEncodingFailure
     ) as Decoder
