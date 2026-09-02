@@ -593,7 +593,11 @@ export const makeHandlers = (
               }),
               Match.when({ method: "elicitation/create" }, (request) => {
                 const mode = request.params.mode === "url" ? "url" : "form"
-                return capabilities.elicitation?.[mode] === undefined
+                const elicitation = capabilities.elicitation
+                const supportsMode = elicitation !== undefined && (mode === "url"
+                  ? elicitation.url !== undefined
+                  : elicitation.form !== undefined || Object.keys(elicitation).length === 0)
+                return !supportsMode
                   ? { ...required, elicitation: { ...required.elicitation, [mode]: {} } }
                   : required
               }),
