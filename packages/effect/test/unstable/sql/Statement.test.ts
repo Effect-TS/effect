@@ -34,58 +34,25 @@ describe("Statement", () => {
     assert.deepStrictEqual(sqlite.compile(fragment, false), ["\"value\"?", [1]])
   })
 
-  describe("returning fragment placeholders", () => {
-    const makeSql = () =>
-      Statement.make(
-        Effect.die("Compilation must not acquire a connection"),
-        Statement.makeCompiler({
-          dialect: "pg",
-          placeholder: (index) => `$${index}`,
-          onIdentifier: Statement.defaultEscape("\""),
-          onRecordUpdate: () => ["", []],
-          onCustom: () => ["", []]
-        }),
-        [],
-        undefined
-      )
+  it("renumbers a cached returning fragment", () => {
+    const sql = Statement.make(
+      Effect.void as any,
+      Statement.makeCompiler({
+        dialect: "pg",
+        placeholder: (index) => `$${index}`,
+        onIdentifier: Statement.defaultEscape("\""),
+        onRecordUpdate: () => ["", []],
+        onCustom: () => ["", []]
+      }),
+      [],
+      undefined
+    )
+    const returning = sql`${"label"} AS label`
 
-    for (const withoutTransform of [false, true]) {
-      it(`renumbers a previously compiled returning fragment (withoutTransform=${withoutTransform})`, () => {
-        const sql = makeSql()
-        const returning = sql`${"label"} AS label`
-
-        assert.deepStrictEqual(returning.compile(withoutTransform), ["$1 AS label", ["label"]])
-        assert.deepStrictEqual(
-          sql`INSERT INTO people ${sql.insert({ name: "Ada" }).returning(returning)}, ${"extra"} AS extra`.compile(
-            withoutTransform
-          ),
-          ["INSERT INTO people (\"name\") VALUES ($1) RETURNING $2 AS label, $3 AS extra", ["Ada", "label", "extra"]]
-        )
-      })
-
-      it(`numbers a fresh returning fragment without polluting its standalone cache (withoutTransform=${withoutTransform})`, () => {
-        const sql = makeSql()
-        const returning = sql`${"label"} AS label`
-
-        assert.deepStrictEqual(
-          sql`INSERT INTO people ${sql.insert({ name: "Ada" }).returning(returning)}, ${"extra"} AS extra`.compile(
-            withoutTransform
-          ),
-          ["INSERT INTO people (\"name\") VALUES ($1) RETURNING $2 AS label, $3 AS extra", ["Ada", "label", "extra"]]
-        )
-        assert.deepStrictEqual(returning.compile(withoutTransform), ["$1 AS label", ["label"]])
-      })
-
-      it(`renumbers a previously compiled directly interpolated fragment (withoutTransform=${withoutTransform})`, () => {
-        const sql = makeSql()
-        const returning = sql`${"label"} AS label`
-
-        assert.deepStrictEqual(returning.compile(withoutTransform), ["$1 AS label", ["label"]])
-        assert.deepStrictEqual(
-          sql`SELECT ${"Ada"} AS name, ${returning}, ${"extra"} AS extra`.compile(withoutTransform),
-          ["SELECT $1 AS name, $2 AS label, $3 AS extra", ["Ada", "label", "extra"]]
-        )
-      })
-    }
+    assert.deepStrictEqual(returning.compile(), ["$1 AS label", ["label"]])
+    assert.deepStrictEqual(
+      sql`INSERT INTO people ${sql.insert({ name: "Ada" }).returning(returning)}, ${"extra"} AS extra`.compile(),
+      ["INSERT INTO people (\"name\") VALUES ($1) RETURNING $2 AS label, $3 AS extra", ["Ada", "label", "extra"]]
+    )
   })
 })
