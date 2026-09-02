@@ -12235,6 +12235,7 @@ export function OptionFromNullishOr<S extends Constraint>(
     SchemaTransformation.optionFromNullishOr(options)
   ))
 }
+
 /**
  * Type-level representation of {@link Cookie}.
  *
