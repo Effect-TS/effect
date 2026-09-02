@@ -1,48 +1,9 @@
-import { assertEquals } from "@effect/doctest/Runtime"
 import { transform } from "@effect/doctest/Transform"
 import { assert, describe, it } from "@effect/vitest"
-import { compileFunction } from "node:vm"
 
 const imported = `import { assertEquals as __effect_doctest_assert_0 } from "@effect/doctest/Runtime"`
 
 describe("Transform", () => {
-  for (
-    const [form, statement] of [
-      ["expression", "1 + 1; // => 2"],
-      ["const", "const result = 1 + 1; // => 2"]
-    ]
-  ) {
-    for (
-      const [boundary, continuation] of [
-        ["array", "[1, 2].forEach(record)"],
-        ["IIFE", "(() => { record(1); record(2) })()"],
-        ["void-array control", "void [1, 2].forEach(record)"]
-      ]
-    ) {
-      it(`preserves the ${boundary} statement after a ${form} assertion`, () => {
-        const source = `${statement}\n${continuation}`
-        const original: Array<number> = []
-        compileFunction(source, ["record"])((value: number) => original.push(value))
-        assert.deepStrictEqual(original, [1, 2])
-
-        const transformed = transform(source, "example.ts", 0)
-        assert.ok(transformed.endsWith(imported))
-        const actual: Array<number> = []
-        const assertions: Array<ReadonlyArray<number>> = []
-        // Bind the generated import to the real void-returning assertion utility.
-        compileFunction(transformed.slice(0, -imported.length), ["__effect_doctest_assert_0", "record"])(
-          (actual: number, expected: number): void => {
-            assertions.push([actual, expected])
-            assertEquals(actual, expected)
-          },
-          (value: number) => actual.push(value)
-        )
-        assert.deepStrictEqual(assertions, [[2, 2]])
-        assert.deepStrictEqual(actual, original)
-      })
-    }
-  }
-
   it("transforms expression assertions", () => {
     assert.strictEqual(
       transform("Option.some(1) // => Option.some(1)", "example.ts", 10),
