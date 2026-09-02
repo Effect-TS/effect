@@ -390,7 +390,7 @@ export const isRedactedName = (
   for (let i = 0; i < patterns.length; i++) {
     const pattern = patterns[i]
     if (typeof pattern === "string") {
-      if (pattern.toLowerCase() === name) {
+      if (pattern.toLowerCase() === name.toLowerCase()) {
         return true
       }
     } else if (pattern.test(name)) {

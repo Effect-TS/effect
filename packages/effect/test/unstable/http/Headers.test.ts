@@ -52,6 +52,10 @@ describe("Headers", () => {
     deepStrictEqual({ ...result }, { keep: "me" })
   })
 
+  it("isRedactedName compares string patterns case-insensitively", () => {
+    strictEqual(Headers.isRedactedName("Authorization", ["authorization"]), true)
+  })
+
   it("works with for..in based headers polyfills", () => {
     const effectHeaders = Headers.fromInput({ foo: "bar" })
     const nativeHeaders = new globalThis.Headers()
