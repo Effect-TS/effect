@@ -255,6 +255,46 @@ describe("SchemaBinary", () => {
     })
   })
 
+  describe("string content", () => {
+    for (const fingerprint of [false, true]) {
+      for (
+        const { label, values } of [
+          {
+            label: "leading U+FEFF",
+            values: ["\uFEFFreport", "\uFEFF", "\uFEFF\uFEFFreport", `\uFEFF${"report".repeat(8)}`, "\uFEFFreport"]
+          },
+          {
+            label: "ordinary Unicode and non-leading U+FEFF",
+            values: ["", "report", "caf\u00E9", "report\uFEFF", "re\uFEFFport", "report".repeat(8), "report\uFEFF"]
+          }
+        ]
+      ) {
+        it(`preserves ${label} through the codec (fingerprint=${fingerprint})`, () => {
+          const codec = SchemaBinary.toCodec(Schema.String, { fingerprint })
+          const encode = Schema.encodeSync(codec)
+          const decode = Schema.decodeUnknownSync(codec)
+
+          assert.deepStrictEqual(values.map((value) => decode(encode(value))), values)
+        })
+
+        it(`preserves ${label} through fragmented dictionary frames (fingerprint=${fingerprint})`, () => {
+          const options = { dictionary: true, fingerprint }
+          const encoder = SchemaBinary.encoder(Schema.String, options)
+          const parser = SchemaBinary.parser(Schema.String, options)
+          const decoded: Array<string> = []
+          for (const value of values) {
+            for (const byte of encoder.encode(value)) {
+              decoded.push(...parser.feedSync(Uint8Array.of(byte)))
+            }
+          }
+          parser.endSync()
+
+          assert.deepStrictEqual(decoded, values)
+        })
+      }
+    }
+  })
+
   describe("output arena", () => {
     it("keeps an earlier result stable through later encodes and arena rollover", () => {
       const codec = SchemaBinary.toCodec(Schema.String)
