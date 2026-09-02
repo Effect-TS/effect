@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Clock, Context, Data, Deferred, Duration, Effect, Exit, Fiber, Option, ScopedCache } from "effect"
+import { Clock, Context, Data, Deferred, Duration, Effect, Exit, Fiber, Option, Scope, ScopedCache } from "effect"
 import { TestClock } from "effect/testing"
 
 describe("ScopedCache", () => {
@@ -752,6 +752,57 @@ describe("ScopedCache", () => {
     })
 
     describe("invalidateWhen", () => {
+      it.effect.each([Exit.succeed(1), Exit.fail("error")])(
+        "preserves a replacement resource after an old lookup completes (%#)",
+        (exit) =>
+          Effect.gen(function*() {
+            let acquired = 0
+            const released: Array<number> = []
+            const values: Array<number> = []
+            const gate = yield* Deferred.make<number, string>()
+            const owner = yield* Scope.make()
+            const cache = yield* ScopedCache.make({
+              capacity: 1,
+              lookup: (_key: string) =>
+                Effect.gen(function*() {
+                  const id = yield* Effect.acquireRelease(
+                    Effect.sync(() => ++acquired),
+                    (value) => Effect.sync(() => released.push(value))
+                  )
+                  if (id === 1) return yield* Deferred.await(gate)
+                  return id
+                })
+            }).pipe(Scope.provide(owner))
+            const lookup = yield* ScopedCache.get(cache, "key").pipe(
+              Effect.exit,
+              Effect.forkChild({ startImmediately: true })
+            )
+            const invalidator = yield* ScopedCache.invalidateWhen(cache, "key", (value) => {
+              values.push(value)
+              return value === 1
+            }).pipe(
+              Effect.forkChild({ startImmediately: true })
+            )
+
+            yield* ScopedCache.invalidate(cache, "key")
+            const replacement = yield* ScopedCache.get(cache, "key")
+            yield* Deferred.done(gate, exit)
+            const original = yield* Fiber.join(lookup)
+            const invalidated = yield* Fiber.join(invalidator)
+            const cached = yield* ScopedCache.getSuccess(cache, "key")
+            const releasedBeforeClose = [...released]
+            yield* Scope.close(owner, Exit.void)
+
+            assert.deepStrictEqual(releasedBeforeClose, [1])
+            assert.deepStrictEqual(original, exit)
+            assert.deepStrictEqual(values, Exit.isSuccess(exit) ? [1] : [])
+            assert.deepStrictEqual(
+              { invalidated, replacement, cached, released },
+              { invalidated: false, replacement: 2, cached: Option.some(2), released: [1, 2] }
+            )
+          })
+      )
+
       it.effect("invalidates when predicate matches", () =>
         Effect.gen(function*() {
           const cache = yield* ScopedCache.make({

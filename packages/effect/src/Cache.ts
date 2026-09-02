@@ -1041,6 +1041,10 @@ export const invalidateWhen: {
       return oentry.await().pipe(
         effect.map((value) => {
           if (f(value)) {
+            const current = MutableHashMap.get(self.map, key)
+            if (Option.isNone(current) || current.value !== oentry) {
+              return false
+            }
             MutableHashMap.remove(self.map, key)
             return true
           }
