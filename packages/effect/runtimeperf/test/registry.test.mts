@@ -9,7 +9,17 @@ describe("runtimeperf registry", () => {
     const { fixtures } = loadRegistry()
     assert.equal(new Set(fixtures.map((fixture) => fixture.target)).size, fixtures.length)
     for (const fixture of fixtures) {
-      assert.ok(["effect", "fast-check-v4", "valibot", "zod4"].includes(fixture.implementation))
+      assert.ok(
+        [
+          "effect",
+          "fast-check-v4",
+          "valibot",
+          "zod4",
+          "zod4-jitless",
+          "zod4-validate",
+          "zod4-compiled"
+        ].includes(fixture.implementation)
+      )
     }
   })
 
@@ -113,6 +123,61 @@ describe("runtimeperf registry", () => {
       assert.doesNotMatch(source, /from "zod\/v4-mini"/)
       assert.match(source, /jitless:\s*true/)
     }
+  })
+
+  it("includes the Moltar assertLoose matrix and isolates the Zod optimization layers", async () => {
+    const { fixtures } = loadRegistry()
+    const moltar = fixtures.filter((fixture) => fixture.suite === "moltar-assert-loose")
+    const implementations = (scenario) =>
+      moltar
+        .filter((fixture) => fixture.scenario === scenario)
+        .map((fixture) => fixture.implementation)
+        .sort()
+
+    assert.deepEqual(implementations("moltar-assert-loose-valid"), [
+      "effect",
+      "zod4",
+      "zod4-compiled",
+      "zod4-jitless",
+      "zod4-validate"
+    ])
+    assert.deepEqual(implementations("moltar-assert-loose-extra-valid"), [
+      "effect",
+      "zod4",
+      "zod4-compiled",
+      "zod4-jitless",
+      "zod4-validate"
+    ])
+    assert.deepEqual(implementations("moltar-assert-loose-invalid"), [
+      "effect",
+      "zod4-compiled",
+      "zod4-validate"
+    ])
+
+    const source = await readFile(moltar.find((fixture) => fixture.implementation === "zod4-compiled").fixturePath, "utf8")
+    assert.match(source, /z\.compile\(/)
+    assert.match(source, /z\.validate\(/)
+    assert.match(source, /schema\.parse\(input, \{ jitless: true \}\)/)
+  })
+
+  it("includes the Moltar parseSafe matrix and isolates the Zod compilation layers", async () => {
+    const { fixtures } = loadRegistry()
+    const moltar = fixtures.filter((fixture) => fixture.suite === "moltar-parse-safe")
+    const implementations = (scenario) =>
+      moltar
+        .filter((fixture) => fixture.scenario === scenario)
+        .map((fixture) => fixture.implementation)
+        .sort()
+    const parsers = ["effect", "zod4", "zod4-compiled", "zod4-jitless"]
+
+    assert.deepEqual(implementations("moltar-parse-safe-valid"), parsers)
+    assert.deepEqual(implementations("moltar-parse-safe-extra-valid"), parsers)
+    assert.deepEqual(implementations("moltar-parse-safe-invalid"), parsers)
+
+    const source = await readFile(moltar.find((fixture) => fixture.implementation === "zod4-compiled").fixturePath, "utf8")
+    assert.match(source, /z\.compile\(/)
+    assert.match(source, /schema\.parse\(input, \{ jitless: true \}\)/)
+    assert.doesNotMatch(source, /passthrough\(/)
   })
 
   it("loads, runs and validates every fixture export", async () => {

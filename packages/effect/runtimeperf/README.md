@@ -33,6 +33,18 @@ with valid/invalid inputs and first/all error modes, plus BigInt codec
 operations. The upstream bundle and stack reports are not throughput
 benchmarks, and the adapters do not define the optional string-format cases.
 
+Run the Moltar `assertLoose` and `parseSafe` cases, including Zod's standard
+object JIT, `jitless: true`, and full-schema compilation:
+
+```sh
+pnpm runtimeperf moltar-assert-loose
+pnpm runtimeperf moltar-parse-safe
+```
+
+These fixtures are adapted from
+[`moltar/typescript-runtime-type-benchmarks`](https://github.com/moltar/typescript-runtime-type-benchmarks)
+and exercise Effect only through public `SchemaParser` functions.
+
 Select a suite, fixture, shared scenario, tier, family or implementation:
 
 ```sh

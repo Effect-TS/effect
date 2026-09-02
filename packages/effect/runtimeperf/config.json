@@ -1589,6 +1589,308 @@
           ]
         }
       ]
+    },
+    {
+      "name": "moltar-assert-loose",
+      "fixtures": [
+        {
+          "file": "suites/moltar-assert-loose/fixtures/effect.ts",
+          "defaults": {
+            "tier": 3,
+            "implementation": "effect",
+            "family": "moltar-assert-loose",
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
+            "size": "moltar-object",
+            "operation": "is"
+          },
+          "cases": [
+            {
+              "name": "valid-effect",
+              "export": "assertLooseValid",
+              "scenario": "moltar-assert-loose-valid",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-effect",
+              "export": "assertLooseExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-effect",
+              "export": "assertLooseInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "path": "invalid"
+            },
+            {
+              "name": "initialization-first-use-effect",
+              "export": "initializationSchema",
+              "scenario": "moltar-assert-loose-effect-initialization",
+              "operation": "schema-and-is",
+              "path": "cold"
+            }
+          ]
+        },
+        {
+          "file": "suites/moltar-assert-loose/fixtures/zod.ts",
+          "defaults": {
+            "tier": 3,
+            "family": "moltar-assert-loose",
+            "astTags": [],
+            "size": "moltar-object"
+          },
+          "cases": [
+            {
+              "name": "valid-zod4-parse",
+              "export": "assertLooseParseValid",
+              "scenario": "moltar-assert-loose-valid",
+              "implementation": "zod4",
+              "operation": "parse-and-assert",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-zod4-parse",
+              "export": "assertLooseParseExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "implementation": "zod4",
+              "operation": "parse-and-assert",
+              "path": "extra-valid"
+            },
+            {
+              "name": "valid-zod4-jitless-parse",
+              "export": "assertLooseParseJitlessValid",
+              "scenario": "moltar-assert-loose-valid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-and-assert-jitless",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-zod4-jitless-parse",
+              "export": "assertLooseParseJitlessExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-and-assert-jitless",
+              "path": "extra-valid"
+            },
+            {
+              "name": "valid-zod4-validate",
+              "export": "assertLooseValidateValid",
+              "scenario": "moltar-assert-loose-valid",
+              "implementation": "zod4-validate",
+              "operation": "validate",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-zod4-validate",
+              "export": "assertLooseValidateExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "implementation": "zod4-validate",
+              "operation": "validate",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-zod4-validate",
+              "export": "assertLooseValidateInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "implementation": "zod4-validate",
+              "operation": "validate",
+              "path": "invalid"
+            },
+            {
+              "name": "valid-zod4-compiled",
+              "export": "assertLooseCompiledValid",
+              "scenario": "moltar-assert-loose-valid",
+              "implementation": "zod4-compiled",
+              "operation": "validate-compiled",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-zod4-compiled",
+              "export": "assertLooseCompiledExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "implementation": "zod4-compiled",
+              "operation": "validate-compiled",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-zod4-compiled",
+              "export": "assertLooseCompiledInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "implementation": "zod4-compiled",
+              "operation": "validate-compiled",
+              "path": "invalid"
+            },
+            {
+              "name": "initialization-schema-zod4",
+              "export": "initializationSchema",
+              "scenario": "moltar-assert-loose-zod-initialization",
+              "implementation": "zod4",
+              "operation": "schema",
+              "path": "cold"
+            },
+            {
+              "name": "initialization-compiled-schema-zod4",
+              "export": "initializationCompiledSchema",
+              "scenario": "moltar-assert-loose-zod-initialization",
+              "implementation": "zod4-compiled",
+              "operation": "schema-and-compile",
+              "path": "cold"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "moltar-parse-safe",
+      "fixtures": [
+        {
+          "file": "suites/moltar-parse-safe/fixtures/effect.ts",
+          "defaults": {
+            "tier": 3,
+            "implementation": "effect",
+            "family": "moltar-parse-safe",
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
+            "size": "moltar-object",
+            "operation": "decode-sync"
+          },
+          "cases": [
+            {
+              "name": "valid-effect",
+              "export": "parseSafeValid",
+              "scenario": "moltar-parse-safe-valid",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-effect",
+              "export": "parseSafeExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-effect",
+              "export": "parseSafeInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "path": "invalid"
+            },
+            {
+              "name": "initialization-first-use-effect",
+              "export": "initializationSchema",
+              "scenario": "moltar-parse-safe-effect-initialization",
+              "operation": "schema-and-decode",
+              "path": "cold"
+            }
+          ]
+        },
+        {
+          "file": "suites/moltar-parse-safe/fixtures/zod.ts",
+          "defaults": {
+            "tier": 3,
+            "family": "moltar-parse-safe",
+            "astTags": [],
+            "size": "moltar-object"
+          },
+          "cases": [
+            {
+              "name": "valid-zod4-parse",
+              "export": "parseSafeValid",
+              "scenario": "moltar-parse-safe-valid",
+              "implementation": "zod4",
+              "operation": "parse",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-zod4-parse",
+              "export": "parseSafeExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "implementation": "zod4",
+              "operation": "parse",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-zod4-parse",
+              "export": "parseSafeInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "implementation": "zod4",
+              "operation": "parse",
+              "path": "invalid"
+            },
+            {
+              "name": "valid-zod4-jitless-parse",
+              "export": "parseSafeJitlessValid",
+              "scenario": "moltar-parse-safe-valid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-jitless",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-zod4-jitless-parse",
+              "export": "parseSafeJitlessExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-jitless",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-zod4-jitless-parse",
+              "export": "parseSafeJitlessInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "implementation": "zod4-jitless",
+              "operation": "parse-jitless",
+              "path": "invalid"
+            },
+            {
+              "name": "valid-zod4-compiled",
+              "export": "parseSafeCompiledValid",
+              "scenario": "moltar-parse-safe-valid",
+              "implementation": "zod4-compiled",
+              "operation": "parse-compiled",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-zod4-compiled",
+              "export": "parseSafeCompiledExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "implementation": "zod4-compiled",
+              "operation": "parse-compiled",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-zod4-compiled",
+              "export": "parseSafeCompiledInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "implementation": "zod4-compiled",
+              "operation": "parse-compiled",
+              "path": "invalid"
+            },
+            {
+              "name": "initialization-schema-zod4",
+              "export": "initializationSchema",
+              "scenario": "moltar-parse-safe-zod-initialization",
+              "implementation": "zod4",
+              "operation": "schema",
+              "path": "cold"
+            },
+            {
+              "name": "initialization-compiled-schema-zod4",
+              "export": "initializationCompiledSchema",
+              "scenario": "moltar-parse-safe-zod-initialization",
+              "implementation": "zod4-compiled",
+              "operation": "schema-and-compile",
+              "path": "cold"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
