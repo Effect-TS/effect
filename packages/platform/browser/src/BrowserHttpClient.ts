@@ -260,6 +260,13 @@ abstract class IncomingMessageImpl<E> extends Inspectable.Class implements HttpI
     if (this._textEffect) {
       return this._textEffect
     }
+    if (this.source.responseType === "arraybuffer") {
+      return this._textEffect = this.arrayBuffer.pipe(
+        Effect.map((buffer) => new TextDecoder().decode(buffer)),
+        Effect.cached,
+        Effect.runSync
+      )
+    }
     return this._textEffect = Effect.callback<string, E>((resume) => {
       if (this.source.readyState === 4) {
         resume(Effect.succeed(this.source.responseText))
@@ -303,6 +310,9 @@ abstract class IncomingMessageImpl<E> extends Inspectable.Class implements HttpI
   }
 
   get stream(): Stream.Stream<Uint8Array, E> {
+    if (this.source.responseType === "arraybuffer") {
+      return Stream.fromEffect(Effect.map(this.arrayBuffer, (buffer) => new Uint8Array(buffer)))
+    }
     return Stream.callback<Uint8Array, E>((queue) => {
       let offset = 0
       const onReadyStateChange = () => {
