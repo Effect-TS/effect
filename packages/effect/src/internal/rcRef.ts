@@ -116,7 +116,10 @@ const getState = <A, E>(self: RcRefImpl<A, E>) =>
               self.acquire as Effect.Effect<A, E>,
               Context.add(self.context, Scope.Scope, scope)
             )).pipe(
-              Effect.map((value) => {
+              Effect.flatMap((value) => {
+                if (self.state._tag === "Closed") {
+                  return Effect.interrupt
+                }
                 const state: State.Acquired<A> = {
                   _tag: "Acquired",
                   value,
@@ -126,7 +129,7 @@ const getState = <A, E>(self: RcRefImpl<A, E>) =>
                   invalidated: false
                 }
                 self.state = state
-                return state
+                return Effect.succeed(state)
               }),
               Effect.onExit((exit) => Exit.isFailure(exit) ? Scope.close(scope, exit) : Effect.void)
             )
