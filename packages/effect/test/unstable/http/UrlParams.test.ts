@@ -5,6 +5,12 @@ import { UrlParams } from "effect/unstable/http"
 import { assertSuccess } from "../../utils/assert.ts"
 
 describe("UrlParams", () => {
+  describe("fromInput", () => {
+    it("coerces null to a string", () => {
+      deepStrictEqual(UrlParams.fromInput({ filter: null }).params, [["filter", "null"]])
+    })
+  })
+
   describe("Schema.UrlParams", () => {
     it("round-trips ordered pairs with the serializer annotation", () => {
       const iso = Schema.toIso(Schema.UrlParams)
