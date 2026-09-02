@@ -117,10 +117,10 @@ const DeferredProto = {
   }
 }
 
-function DeferredImpl(this: any) {
+const DeferredImpl = function(this: any) {
   this.resumes = undefined
   this.effect = undefined
-}
+} as unknown as { new<A, E>(): Deferred<A, E>; prototype: any }
 DeferredImpl.prototype = DeferredProto
 
 /**
@@ -143,7 +143,7 @@ DeferredImpl.prototype = DeferredProto
  * @category unsafe
  * @since 4.0.0
  */
-export const makeUnsafe = <A, E = never>(): Deferred<A, E> => new (DeferredImpl as any)()
+export const makeUnsafe = <A, E = never>(): Deferred<A, E> => new DeferredImpl<A, E>()
 
 /**
  * Creates a new `Deferred`.

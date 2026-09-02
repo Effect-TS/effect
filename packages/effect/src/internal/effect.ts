@@ -1156,13 +1156,13 @@ const callbackOptions: <A, E = never, R = never>(
       return Yield
     }
   })
-  function AsyncImpl(this: any, register: any, withSignal: boolean) {
+  const AsyncImpl = function(this: any, register: any, withSignal: boolean) {
     this.register = register
     this.withSignal = withSignal
-  }
+  } as unknown as PrimitiveCtor<[register: any, withSignal: boolean]>
   AsyncImpl.prototype = Proto
   return function(register: any, withSignal: boolean) {
-    return new (AsyncImpl as any)(register, withSignal)
+    return new AsyncImpl(register, withSignal)
   } as any
 })()
 
@@ -1403,13 +1403,13 @@ const fromIteratorUnsafe: (
       return this[contA](this.initial, fiber)
     }
   })
-  function IteratorImpl(this: any, iterator: any, initial: any) {
+  const IteratorImpl = function(this: any, iterator: any, initial: any) {
     this.iterator = iterator
     this.initial = initial
-  }
+  } as unknown as PrimitiveCtor<[iterator: any, initial: any]>
   IteratorImpl.prototype = Proto
   return function(iterator: any, initial?: undefined) {
-    return new (IteratorImpl as any)(iterator, initial)
+    return new IteratorImpl(iterator, initial)
   } as any
 })()
 
@@ -1428,7 +1428,7 @@ export const as: {
   <A, E, R, B>(
     self: Effect.Effect<A, E, R>,
     value: B
-  ): Effect.Effect<B, E, R> => new (AsImpl as any)(self, succeed(value))
+  ): Effect.Effect<B, E, R> => new ContImpl(self, returnPayload, succeed(value))
 )
 
 const evaluateCont = function(this: any, fiber: FiberImpl): Primitive {
@@ -1436,18 +1436,62 @@ const evaluateCont = function(this: any, fiber: FiberImpl): Primitive {
   return this[args]
 }
 
-const AsProto = makePrimitiveProto({
-  op: "As",
-  [evaluate]: evaluateCont,
-  [contA](this: any, _value, _fiber) {
-    return this.exit
-  }
-})
-function AsImpl(this: any, self: any, exit: any) {
-  this[args] = self
-  this.exit = exit
+interface PrimitiveCtor<Args extends Array<any>> {
+  new(...args: Args): Primitive & Effect.Effect<any, any, any>
+  prototype: any
 }
-AsImpl.prototype = AsProto
+
+const OnSuccessProto = makePrimitiveProto({
+  op: "OnSuccess",
+  [evaluate]: evaluateCont
+})
+
+const OnSuccessImpl = function(this: any, self: Effect.Effect<any, any, any>, f: any) {
+  this[args] = self
+  this[contA] = f
+} as unknown as PrimitiveCtor<[self: Effect.Effect<any, any, any>, f: any]>
+OnSuccessImpl.prototype = OnSuccessProto
+
+// A success continuation with an extra payload slot. The stored continuation
+// receives the primitive as `this` and reads `this.payload`, so combinators
+// like map / as / tap / andThen can share module-level continuation functions
+// instead of allocating a closure per call.
+const ContImpl = function(
+  this: any,
+  self: Effect.Effect<any, any, any>,
+  cont: (this: { readonly payload: any }, value: any, fiber: FiberImpl) => unknown,
+  payload: unknown
+) {
+  this[args] = self
+  this[contA] = cont
+  this.payload = payload
+} as unknown as PrimitiveCtor<
+  [
+    self: Effect.Effect<any, any, any>,
+    cont: (this: { readonly payload: any }, value: any, fiber: FiberImpl) => unknown,
+    payload: unknown
+  ]
+>
+ContImpl.prototype = OnSuccessProto
+
+const returnPayload = function(this: { readonly payload: any }) {
+  return this.payload
+}
+const mapCont = function(this: { readonly payload: any }, value: any) {
+  const f = this.payload
+  return succeed(internalCall(() => f(value)))
+}
+const andThenCont = function(this: { readonly payload: any }, value: any) {
+  const f = this.payload
+  return internalCall(() => f(value))
+}
+const tapCont = function(this: { readonly payload: any }, value: any) {
+  const f = this.payload
+  return new ContImpl(internalCall(() => f(value)), returnPayload, exitSucceed(value))
+}
+const tapEffectCont = function(this: { readonly payload: any }, value: any) {
+  return new ContImpl(this.payload, returnPayload, exitSucceed(value))
+}
 
 /** @internal */
 export const asSome = <A, E, R>(
@@ -1484,36 +1528,8 @@ export const andThen: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: ((a: A) => Effect.Effect<B, E2, R2>) | Effect.Effect<B, E2, R2>
-  ): Effect.Effect<B, E | E2, R | R2> =>
-    isEffect(f) ? new (AndThenEffectImpl as any)(self, f) : new (AndThenImpl as any)(self, f)
+  ): Effect.Effect<B, E | E2, R | R2> => new ContImpl(self, isEffect(f) ? returnPayload : andThenCont, f)
 )
-
-const AndThenProto = makePrimitiveProto({
-  op: "AndThen",
-  [evaluate]: evaluateCont,
-  [contA](this: any, value, _fiber) {
-    const f = this.f
-    return internalCall(() => f(value))
-  }
-})
-function AndThenImpl(this: any, self: any, f: any) {
-  this[args] = self
-  this.f = f
-}
-AndThenImpl.prototype = AndThenProto
-
-const AndThenEffectProto = makePrimitiveProto({
-  op: "AndThenEffect",
-  [evaluate]: evaluateCont,
-  [contA](this: any, _value, _fiber) {
-    return this.f
-  }
-})
-function AndThenEffectImpl(this: any, self: any, f: any) {
-  this[args] = self
-  this.f = f
-}
-AndThenEffectImpl.prototype = AndThenEffectProto
 
 /** @internal */
 export const tap: {
@@ -1536,41 +1552,13 @@ export const tap: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: ((a: A) => Effect.Effect<B, E2, R2>) | Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A, E | E2, R | R2> =>
-    isEffect(f) ? new (TapEffectImpl as any)(self, f) : new (TapImpl as any)(self, f)
+  ): Effect.Effect<A, E | E2, R | R2> => new ContImpl(self, isEffect(f) ? tapEffectCont : tapCont, f)
 )
-
-const TapProto = makePrimitiveProto({
-  op: "Tap",
-  [evaluate]: evaluateCont,
-  [contA](this: any, value, _fiber) {
-    const f = this.f
-    return new (AsImpl as any)(internalCall(() => f(value)), exitSucceed(value))
-  }
-})
-function TapImpl(this: any, self: any, f: any) {
-  this[args] = self
-  this.f = f
-}
-TapImpl.prototype = TapProto
-
-const TapEffectProto = makePrimitiveProto({
-  op: "TapEffect",
-  [evaluate]: evaluateCont,
-  [contA](this: any, value, _fiber) {
-    return new (AsImpl as any)(this.f, exitSucceed(value))
-  }
-})
-function TapEffectImpl(this: any, self: any, f: any) {
-  this[args] = self
-  this.f = f
-}
-TapEffectImpl.prototype = TapEffectProto
 
 /** @internal */
 export const asVoid = <A, E, R>(
   self: Effect.Effect<A, E, R>
-): Effect.Effect<void, E, R> => new (AsImpl as any)(self, exitVoid)
+): Effect.Effect<void, E, R> => new ContImpl(self, returnPayload, exitVoid)
 
 /** @internal */
 export const sandbox = <A, E, R>(
@@ -1777,17 +1765,8 @@ export const flatMap: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (a: A) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<B, E | E2, R | R2> => new (OnSuccessImpl as any)(self, f.length !== 1 ? (a: A) => f(a) : f)
+  ): Effect.Effect<B, E | E2, R | R2> => new OnSuccessImpl(self, f.length !== 1 ? (a: A) => f(a) : f)
 )
-const OnSuccessProto = makePrimitiveProto({
-  op: "OnSuccess",
-  [evaluate]: evaluateCont
-})
-function OnSuccessImpl(this: any, self: any, f: any) {
-  this[args] = self
-  this[contA] = f
-}
-OnSuccessImpl.prototype = OnSuccessProto
 
 /** @internal */
 export const matchCauseEffectEager: {
@@ -1870,21 +1849,8 @@ export const map: {
   <A, E, R, B>(
     self: Effect.Effect<A, E, R>,
     f: (a: A) => B
-  ): Effect.Effect<B, E, R> => new (MapImpl as any)(self, f)
+  ): Effect.Effect<B, E, R> => new ContImpl(self, mapCont, f)
 )
-
-const MapProto = makePrimitiveProto({
-  op: "Map",
-  [evaluate]: evaluateCont,
-  [contA](this: any, value, _fiber) {
-    return succeed(internalCall(() => this.f(value)))
-  }
-})
-function MapImpl(this: any, self: any, f: any) {
-  this[args] = self
-  this.f = f
-}
-MapImpl.prototype = MapProto
 
 /** @internal */
 export const mapEager: {
@@ -2600,16 +2566,16 @@ export const catchCause: {
     self: Effect.Effect<A, E, R>,
     f: (cause: NoInfer<Cause.Cause<E>>) => Effect.Effect<B, E2, R2>
   ): Effect.Effect<A | B, E2, R | R2> =>
-    new (OnFailureImpl as any)(self, f.length !== 1 ? (cause: Cause.Cause<E>) => f(cause) : f)
+    new OnFailureImpl(self, f.length !== 1 ? (cause: Cause.Cause<E>) => f(cause) : f)
 )
 const OnFailureProto = makePrimitiveProto({
   op: "OnFailure",
   [evaluate]: evaluateCont
 })
-function OnFailureImpl(this: any, self: any, f: any) {
+const OnFailureImpl = function(this: any, self: Effect.Effect<any, any, any>, f: any) {
   this[args] = self
   this[contE] = f
-}
+} as unknown as PrimitiveCtor<[self: Effect.Effect<any, any, any>, f: any]>
 OnFailureImpl.prototype = OnFailureProto
 
 /** @internal */
@@ -3559,7 +3525,7 @@ export const matchCauseEffect: {
       readonly onSuccess: (a: A) => Effect.Effect<A3, E3, R3>
     }
   ): Effect.Effect<A2 | A3, E2 | E3, R2 | R3 | R> =>
-    new (OnSuccessAndFailureImpl as any)(
+    new OnSuccessAndFailureImpl(
       self,
       options.onSuccess.length !== 1 ? (a: A) => options.onSuccess(a) : options.onSuccess,
       options.onFailure.length !== 1
@@ -3571,11 +3537,16 @@ const OnSuccessAndFailureProto = makePrimitiveProto({
   op: "OnSuccessAndFailure",
   [evaluate]: evaluateCont
 })
-function OnSuccessAndFailureImpl(this: any, self: any, onSuccess: any, onFailure: any) {
+const OnSuccessAndFailureImpl = function(
+  this: any,
+  self: Effect.Effect<any, any, any>,
+  onSuccess: any,
+  onFailure: any
+) {
   this[args] = self
   this[contA] = onSuccess
   this[contE] = onFailure
-}
+} as unknown as PrimitiveCtor<[self: Effect.Effect<any, any, any>, onSuccess: any, onFailure: any]>
 OnSuccessAndFailureImpl.prototype = OnSuccessAndFailureProto
 
 /** @internal */
@@ -4147,14 +4118,14 @@ export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
       return eff ? flatMap(combineFinalizerCause(exit, eff), (_) => exit) : exit
     }
   })
-  function OnExitImpl(this: any, effect: any, onExit: any, interruptible: any) {
+  const OnExitImpl = function(this: any, effect: any, onExit: any, interruptible: any) {
     this.effect = effect
     this.onExit = onExit
     this.interruptible = interruptible
-  }
+  } as unknown as PrimitiveCtor<[effect: any, onExit: any, interruptible: any]>
   OnExitImpl.prototype = Proto
   return function(effect: any, onExit: any, interruptible?: boolean) {
-    return new (OnExitImpl as any)(effect, onExit, interruptible)
+    return new OnExitImpl(effect, onExit, interruptible)
   } as any
 })()
 

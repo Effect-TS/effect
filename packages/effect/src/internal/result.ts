@@ -80,22 +80,22 @@ export const isSuccess = <A, E>(result: Result.Result<A, E>): result is Result.S
   result._tag === "Success"
 
 /** @internal */
-function FailureImpl(this: any, failure: unknown) {
+const FailureImpl = function(this: any, failure: unknown) {
   this.failure = failure
-}
+} as unknown as { new<E>(failure: E): Result.Result<never, E>; prototype: any }
 FailureImpl.prototype = FailureProto
 
 /** @internal */
-export const fail = <E>(failure: E): Result.Result<never, E> => new (FailureImpl as any)(failure)
+export const fail = <E>(failure: E): Result.Result<never, E> => new FailureImpl(failure)
 
 /** @internal */
-function SuccessImpl(this: any, success: unknown) {
+const SuccessImpl = function(this: any, success: unknown) {
   this.success = success
-}
+} as unknown as { new<A>(success: A): Result.Result<A>; prototype: any }
 SuccessImpl.prototype = SuccessProto
 
 /** @internal */
-export const succeed = <A>(success: A): Result.Result<A> => new (SuccessImpl as any)(success)
+export const succeed = <A>(success: A): Result.Result<A> => new SuccessImpl(success)
 
 /** @internal */
 export const getFailure = <A, E>(self: Result.Result<A, E>): Option<E> =>

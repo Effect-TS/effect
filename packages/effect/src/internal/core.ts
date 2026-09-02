@@ -380,6 +380,11 @@ export interface Primitive {
   [evaluate](fiber: FiberImpl): Primitive | Yield
 }
 
+interface PrimitiveClass {
+  new(value: any): Primitive
+  prototype: any
+}
+
 function defaultEvaluate(_fiber: FiberImpl): Primitive | Yield {
   return exitDie(`Effect.evaluate: Not implemented`) as any
 }
@@ -451,12 +456,12 @@ export const makePrimitive = <
   ) => void | ((value: any, fiber: FiberImpl) => void)
 }): Fn => {
   const Proto = makePrimitiveProto(options as any)
-  function Primitive(this: any, value: any) {
+  const PrimitiveImpl = function(this: any, value: any) {
     this[args] = value
-  }
-  Primitive.prototype = Proto
+  } as unknown as PrimitiveClass
+  PrimitiveImpl.prototype = Proto
   return function(value: any) {
-    return new (Primitive as any)(value)
+    return new PrimitiveImpl(value)
   } as Fn
 }
 
@@ -500,12 +505,12 @@ export const makeExit = <
       return Hash.combine(Hash.string(options.op), Hash.hash(this[args]))
     }
   }
-  function ExitPrimitive(this: any, value: unknown) {
+  const ExitPrimitive = function(this: any, value: unknown) {
     this[args] = value
-  }
+  } as unknown as PrimitiveClass
   ExitPrimitive.prototype = Proto
   return function(value: unknown) {
-    return new (ExitPrimitive as any)(value)
+    return new ExitPrimitive(value)
   } as Fn
 }
 
