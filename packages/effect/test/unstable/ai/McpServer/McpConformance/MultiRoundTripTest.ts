@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
-import { mrtrRequestState, MrtrToolName } from "./McpConformanceFixtures.ts"
+import { mrtrRequestState, MrtrStateOnlyToolName, MrtrToolName } from "./McpConformanceFixtures.ts"
 
 const decodeInputRequired = Schema.decodeUnknownEffect(Schema.Struct({
   resultType: Schema.Literal("input_required"),
@@ -101,6 +101,30 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             },
             roots: { roots: [{ uri: "file:///workspace" }] }
           })
+        }))
+
+      it.effect("should return a retry state without requesting client input", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const initialized = yield* test.initialize({ server: "features" })
+          const response = yield* test.send(initialized, {
+            jsonrpc: "2.0",
+            id: 2,
+            method: "tools/call",
+            params: { name: MrtrStateOnlyToolName, arguments: {} }
+          })
+          const result = yield* test.decodeResult(response).pipe(
+            Effect.flatMap((message) =>
+              Schema.decodeUnknownEffect(Schema.Struct({
+                resultType: Schema.Literal("input_required"),
+                inputRequests: Schema.optionalKey(Schema.Record(Schema.String, Schema.Unknown)),
+                requestState: Schema.String
+              }))(message.result)
+            )
+          )
+
+          assert.strictEqual(result.requestState, mrtrRequestState)
+          assert.isUndefined(result.inputRequests)
         }))
 
       it.effect("should remain input-required when continuation keys or request state do not match", () =>

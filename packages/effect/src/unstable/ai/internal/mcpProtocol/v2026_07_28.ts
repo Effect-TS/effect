@@ -573,7 +573,7 @@ export const makeHandlers = (
         const capabilities = invocation.protocol.clientCapabilities
         const noneRequired: Record<string, Schema.JsonObject> = {}
         const requiredCapabilities = Arr.reduce(
-          Object.values(outcome.inputRequests),
+          Object.values(outcome.inputRequests ?? {}),
           noneRequired,
           (required, request) =>
             Match.value(request).pipe(

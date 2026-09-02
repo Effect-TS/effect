@@ -13,7 +13,7 @@ import * as McpSchema from "../McpSchema.ts"
 
 /** @internal */
 export interface InputRequiredFields {
-  readonly inputRequests: Readonly<Record<string, McpSchema.McpInputRequest>>
+  readonly inputRequests?: Readonly<Record<string, McpSchema.McpInputRequest>> | undefined
   readonly requestState?: string | undefined
 }
 

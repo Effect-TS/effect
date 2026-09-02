@@ -2692,9 +2692,25 @@ export type McpInputResponse = Schema.JsonObject
  * @since 4.0.0
  */
 export class InputRequired extends Data.TaggedClass("InputRequired")<{
-  readonly inputRequests: Readonly<Record<string, McpInputRequest>>
+  readonly inputRequests?: Readonly<Record<string, McpInputRequest>> | undefined
   readonly requestState?: string | undefined
-}> {}
+}> {
+  // The overload preserves the requirement that at least one of inputRequests or requestState is present.
+  // oxlint-disable-next-line no-useless-constructor
+  constructor(
+    fields:
+      | {
+        readonly inputRequests: Readonly<Record<string, McpInputRequest>>
+        readonly requestState?: string | undefined
+      }
+      | {
+        readonly inputRequests?: Readonly<Record<string, McpInputRequest>> | undefined
+        readonly requestState: string
+      }
+  ) {
+    super(fields)
+  }
+}
 
 /**
  * Sent from the server asking the client to collect structured input from the

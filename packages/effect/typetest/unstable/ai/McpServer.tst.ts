@@ -169,6 +169,12 @@ describe("McpServer", () => {
           }
         })
       ).type.toBe<McpSchema.InputRequired>()
+      expect(
+        new McpSchema.InputRequired({
+          requestState: "retry-after-1s"
+        })
+      ).type.toBe<McpSchema.InputRequired>()
+      expect(McpSchema.InputRequired).type.not.toBeConstructableWith({})
     })
 
     it("should expose the selected protocol version when a handler reads its client", () => {
