@@ -7,10 +7,6 @@ export class ContainerError extends Data.TaggedError("ContainerError")<{
   cause: unknown
 }> {}
 
-let mysqlContainerAcquisitions = 0
-
-export const getMysqlContainerAcquisitionCount = () => mysqlContainerAcquisitions
-
 const makeMysqlContainer = () =>
   new MySqlContainer("mysql:lts").withHealthCheck({
     test: [
@@ -29,10 +25,7 @@ export class MysqlContainer extends Context.Service<
   static readonly layer = Layer.effect(this)(
     Effect.acquireRelease(
       Effect.tryPromise({
-        try: () => {
-          mysqlContainerAcquisitions++
-          return makeMysqlContainer().start()
-        },
+        try: () => makeMysqlContainer().start(),
         catch: (cause) => new ContainerError({ cause })
       }),
       (container) => Effect.promise(() => container.stop())
@@ -60,8 +53,6 @@ export class MysqlContainer extends Context.Service<
       })
     })
   )
-
-  static layerClientWithTransforms = this.clientWithTransforms.pipe(Layer.provide(this.layer))
 
   static layerVitest = Layer.effect(
     this,
