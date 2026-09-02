@@ -451,11 +451,17 @@ export const makePrimitive = <
   ) => void | ((value: any, fiber: FiberImpl) => void)
 }): Fn => {
   const Proto = makePrimitiveProto(options as any)
-  return function() {
-    const self = Object.create(Proto)
-    self[args] = options.single === false ? arguments : arguments[0]
-    return self
-  } as Fn
+  function Primitive(this: any, value: any) {
+    this[args] = value
+  }
+  Primitive.prototype = Proto
+  return (options.single === false
+    ? function() {
+      return new (Primitive as any)(arguments)
+    }
+    : function(value: any) {
+      return new (Primitive as any)(value)
+    }) as Fn
 }
 
 /** @internal */
@@ -498,10 +504,12 @@ export const makeExit = <
       return Hash.combine(Hash.string(options.op), Hash.hash(this[args]))
     }
   }
+  function ExitPrimitive(this: any, value: unknown) {
+    this[args] = value
+  }
+  ExitPrimitive.prototype = Proto
   return function(value: unknown) {
-    const self = Object.create(Proto)
-    self[args] = value
-    return self
+    return new (ExitPrimitive as any)(value)
   } as Fn
 }
 

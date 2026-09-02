@@ -1673,12 +1673,8 @@ export const flatMap: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (a: A) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<B, E | E2, R | R2> => {
-    const onSuccess = Object.create(OnSuccessProto)
-    onSuccess[args] = self
-    onSuccess[contA] = f.length !== 1 ? (a: A) => f(a) : f
-    return onSuccess
-  }
+  ): Effect.Effect<B, E | E2, R | R2> =>
+    new (OnSuccessImpl as any)(self, f.length !== 1 ? (a: A) => f(a) : f)
 )
 const OnSuccessProto = makePrimitiveProto({
   op: "OnSuccess",
@@ -1687,6 +1683,11 @@ const OnSuccessProto = makePrimitiveProto({
     return this[args]
   }
 })
+function OnSuccessImpl(this: any, self: any, f: any) {
+  this[args] = self
+  this[contA] = f
+}
+OnSuccessImpl.prototype = OnSuccessProto
 
 /** @internal */
 export const matchCauseEffectEager: {
@@ -2485,12 +2486,8 @@ export const catchCause: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (cause: NoInfer<Cause.Cause<E>>) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A | B, E2, R | R2> => {
-    const onFailure = Object.create(OnFailureProto)
-    onFailure[args] = self
-    onFailure[contE] = f.length !== 1 ? (cause: Cause.Cause<E>) => f(cause) : f
-    return onFailure
-  }
+  ): Effect.Effect<A | B, E2, R | R2> =>
+    new (OnFailureImpl as any)(self, f.length !== 1 ? (cause: Cause.Cause<E>) => f(cause) : f)
 )
 const OnFailureProto = makePrimitiveProto({
   op: "OnFailure",
@@ -2499,6 +2496,11 @@ const OnFailureProto = makePrimitiveProto({
     return this[args]
   }
 })
+function OnFailureImpl(this: any, self: any, f: any) {
+  this[args] = self
+  this[contE] = f
+}
+OnFailureImpl.prototype = OnFailureProto
 
 /** @internal */
 export const catchCauseIf: {
@@ -3446,15 +3448,14 @@ export const matchCauseEffect: {
       readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<A2, E2, R2>
       readonly onSuccess: (a: A) => Effect.Effect<A3, E3, R3>
     }
-  ): Effect.Effect<A2 | A3, E2 | E3, R2 | R3 | R> => {
-    const primitive = Object.create(OnSuccessAndFailureProto)
-    primitive[args] = self
-    primitive[contA] = options.onSuccess.length !== 1 ? (a: A) => options.onSuccess(a) : options.onSuccess
-    primitive[contE] = options.onFailure.length !== 1
-      ? (cause: Cause.Cause<E>) => options.onFailure(cause)
-      : options.onFailure
-    return primitive
-  }
+  ): Effect.Effect<A2 | A3, E2 | E3, R2 | R3 | R> =>
+    new (OnSuccessAndFailureImpl as any)(
+      self,
+      options.onSuccess.length !== 1 ? (a: A) => options.onSuccess(a) : options.onSuccess,
+      options.onFailure.length !== 1
+        ? (cause: Cause.Cause<E>) => options.onFailure(cause)
+        : options.onFailure
+    )
 )
 const OnSuccessAndFailureProto = makePrimitiveProto({
   op: "OnSuccessAndFailure",
@@ -3463,6 +3464,12 @@ const OnSuccessAndFailureProto = makePrimitiveProto({
     return this[args]
   }
 })
+function OnSuccessAndFailureImpl(this: any, self: any, onSuccess: any, onFailure: any) {
+  this[args] = self
+  this[contA] = onSuccess
+  this[contE] = onFailure
+}
+OnSuccessAndFailureImpl.prototype = OnSuccessAndFailureProto
 
 /** @internal */
 export const matchCause: {
