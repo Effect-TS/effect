@@ -3555,7 +3555,7 @@ export const Union: new<A extends AST = AST>(
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
 
-    return (input, options) => {
+    const parse: SchemaParser.Parser = (input, options) => {
       if (input === InternalParser.missing) {
         return InternalParser.missingExit
       }
@@ -3589,6 +3589,13 @@ export const Union: new<A extends AST = AST>(
         if (state.out) return state.out
         return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], input, options))
       })
+    }
+    return (input, options) => {
+      try {
+        return parse(input, options)
+      } catch (error) {
+        return Effect.die(error)
+      }
     }
   }
   private _rebuild(

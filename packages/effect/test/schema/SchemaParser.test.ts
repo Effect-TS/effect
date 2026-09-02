@@ -716,5 +716,23 @@ describe("SchemaParser", () => {
         assertTrue(SchemaIssue.isIssue(error.success))
       }
     })
+
+    it("captures synchronous defects during Union candidate selection", () => {
+      const schema = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("a"), value: Schema.String }),
+        Schema.Struct({ kind: Schema.Literal("b"), value: Schema.Number })
+      ])
+      const defect = new Error("sentinel defect")
+      const input = {
+        get kind(): string {
+          throw defect
+        },
+        value: "value"
+      }
+
+      const exit = SchemaParser.decodeUnknownExit(schema)(input)
+      assertTrue(Exit.isFailure(exit))
+      assertTrue(Exit.hasDies(exit))
+    })
   })
 })
