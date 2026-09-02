@@ -19,6 +19,21 @@ describe("Stream", () => {
       assert.deepEqual(items, ["a", "b", "c"])
     }))
 
+  it.effect("fromReadable bufferSize caps each pull", () =>
+    Effect.gen(function*() {
+      const readable = new Readable({ objectMode: true, read() {} })
+      readable.push("a")
+      readable.push("b")
+      readable.push("c")
+      readable.push(null)
+      const stream = NodeStream.fromReadable({
+        evaluate: () => readable,
+        bufferSize: 1
+      })
+      const chunks = yield* Stream.runCollect(Stream.chunks(stream))
+      assert.deepEqual(chunks, [["a"], ["b"], ["c"]])
+    }))
+
   it.effect("fromDuplex", () =>
     Effect.gen(function*() {
       const result = yield* Stream.fromArray(["a", "b", "c"]).pipe(

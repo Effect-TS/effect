@@ -32,6 +32,9 @@ import { pullIntoWritable } from "./NodeSink.ts"
  * an optional chunk size, mapping stream errors with `onError`, and destroying
  * the readable on completion unless `closeOnDone` is `false`.
  *
+ * `bufferSize` caps how many already-buffered readable chunks are taken in a
+ * single pull. Omit it to drain every currently available chunk.
+ *
  * @category constructors
  * @since 4.0.0
  */
@@ -55,6 +58,7 @@ export const fromReadableChannel = <A = Uint8Array, E = Cause.UnknownError>(opti
   readonly evaluate: LazyArg<Readable | NodeJS.ReadableStream>
   readonly onError?: (error: unknown) => E
   readonly chunkSize?: number | undefined
+  readonly bufferSize?: number | undefined
   readonly closeOnDone?: boolean | undefined
 }): Channel.Channel<Arr.NonEmptyReadonlyArray<A>, E> =>
   Channel.fromTransform((_, scope) =>
@@ -63,6 +67,7 @@ export const fromReadableChannel = <A = Uint8Array, E = Cause.UnknownError>(opti
       readable: options.evaluate(),
       onError: options.onError ?? defaultOnError as any,
       chunkSize: options.chunkSize,
+      bufferSize: options.bufferSize,
       closeOnDone: options.closeOnDone
     })
   )
@@ -108,7 +113,8 @@ export const fromDuplex = <IE, I = Uint8Array, O = Uint8Array, E = Cause.Unknown
           exit,
           readable: duplex,
           onError: options.onError ?? defaultOnError as any,
-          chunkSize: options.chunkSize
+          chunkSize: options.chunkSize,
+          bufferSize: options.bufferSize
         })
       )
     )
@@ -338,6 +344,7 @@ const readableToPullUnsafe = <A, E>(options: {
   readonly readable: Readable | NodeJS.ReadableStream
   readonly onError: (error: unknown) => E
   readonly chunkSize: number | undefined
+  readonly bufferSize?: number | undefined
   readonly closeOnDone?: boolean | undefined
 }) => {
   const readable = options.readable as Readable
@@ -373,7 +380,9 @@ const readableToPullUnsafe = <A, E>(options: {
       return Effect.flatMap(latch.await, loop)
     }
     const chunk = Arr.of(item as A)
-    while (true) {
+    const limit = options.bufferSize
+    const hasLimit = typeof limit === "number" && Number.isFinite(limit) && limit > 0
+    while (!hasLimit || chunk.length < limit) {
       item = options.readable.read(options.chunkSize)
       if (item === null) break
       chunk.push(item)
