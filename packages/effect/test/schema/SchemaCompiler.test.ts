@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Schema, SchemaCompiler, SchemaParser } from "effect"
+import { Cause, Effect, Schema, SchemaCompiler, SchemaParser } from "effect"
 import { assertSchemaIssueError, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 const schema = Schema.Struct({
@@ -253,5 +253,59 @@ describe("SchemaCompiler", () => {
       Schema.Struct({ value: Schema.String }).check(Schema.isMaxProperties(1))
     )
     deepStrictEqual(decodeObject({ value: "a", extra: true }), { value: "a" })
+  })
+
+  it("embeds synchronous Declaration and transformation runtime islands", () => {
+    const date = new Date(0)
+    const decode = SchemaParser.decodeUnknownSync(Schema.Struct({
+      date: Schema.instanceOf(Date),
+      count: Schema.FiniteFromString
+    }))
+
+    const output = decode({ date, count: "1", extra: true })
+    strictEqual(output.date, date)
+    strictEqual(output.count, 1)
+    deepStrictEqual(Reflect.ownKeys(output), ["date", "count"])
+  })
+
+  it("keeps Suspend runtime islands lazy", () => {
+    interface Category {
+      readonly value: string
+      readonly children: ReadonlyArray<Category>
+    }
+    let evaluations = 0
+    const schema: Schema.Codec<Category> = Schema.Struct({
+      value: Schema.String,
+      children: Schema.Array(Schema.suspend((): Schema.Codec<Category> => {
+        evaluations++
+        return schema
+      }))
+    })
+    const decode = SchemaParser.decodeUnknownSync(schema)
+
+    deepStrictEqual(decode({ value: "root", children: [] }), { value: "root", children: [] })
+    strictEqual(evaluations, 0)
+    deepStrictEqual(
+      decode({ value: "root", children: [{ value: "child", children: [] }] }),
+      { value: "root", children: [{ value: "child", children: [] }] }
+    )
+    strictEqual(evaluations, 1)
+  })
+
+  it("does not replay defects from runtime islands", () => {
+    const defect = new Error("declaration defect")
+    let runs = 0
+    const declaration = Schema.declareConstructor<unknown>()([], () => () => {
+      runs++
+      return Effect.die(defect)
+    })
+    const decode = SchemaParser.decodeUnknownSync(Schema.Struct({ declaration }))
+
+    throws(() => decode({ declaration: "value" }), (error) => {
+      assert(error instanceof Error)
+      strictEqual(error.message, "Sync adapter can only throw schema issues")
+      assert(Cause.hasDies(error.cause as Cause.Cause<never>))
+    })
+    strictEqual(runs, 1)
   })
 })

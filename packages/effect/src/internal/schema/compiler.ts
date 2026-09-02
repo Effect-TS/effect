@@ -1,7 +1,13 @@
+import * as Effect from "../../Effect.ts"
+import * as Exit from "../../Exit.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
-import { type Decoder, invalid } from "./compilerHook.ts"
+import * as SchemaParser from "../../SchemaParser.ts"
+import { effectIsExit } from "../effect.ts"
+import * as InternalSchemaCause from "./cause.ts"
+import { type Decoder, DecoderFailure, invalid } from "./compilerHook.ts"
 
 const cache = new WeakMap<SchemaAST.AST, Decoder | null>()
+const runtimeCache = new WeakMap<SchemaAST.AST, Decoder>()
 
 const hasParseOptions = (ast: SchemaAST.AST): boolean => {
   const annotations = ast.checks === undefined
@@ -14,7 +20,7 @@ const isCompatible = (ast: SchemaAST.AST): boolean => ast.encoding === undefined
 
 const isOptional = (ast: SchemaAST.AST): boolean => ast.context?.isOptional ?? false
 
-const isCompilable = (ast: SchemaAST.AST): boolean => {
+const canEmit = (ast: SchemaAST.AST): boolean => {
   if (!isCompatible(ast)) return false
   switch (ast._tag) {
     case "Null":
@@ -35,27 +41,37 @@ const isCompilable = (ast: SchemaAST.AST): boolean => {
     case "TemplateLiteral":
       return true
     case "Arrays":
-      return ast.encodingChecks === undefined &&
-        ast.elements.every(isCompilable) &&
-        ast.rest.every(isCompilable)
+      return ast.encodingChecks === undefined
     case "Objects":
       if (ast.encodingChecks !== undefined) return false
       if (ast.indexSignatures.length === 0) {
-        return ast.propertySignatures.every((property) =>
-          typeof property.name === "string" && isCompilable(property.type)
-        )
+        return ast.propertySignatures.every((property) => typeof property.name === "string")
       }
       return ast.propertySignatures.length === 0 &&
         ast.indexSignatures.length === 1 &&
         ast.indexSignatures[0].parameter._tag === "String" &&
         ast.indexSignatures[0].parameter.checks === undefined &&
-        isCompatible(ast.indexSignatures[0].parameter) &&
-        isCompilable(ast.indexSignatures[0].type)
+        isCompatible(ast.indexSignatures[0].parameter)
     case "Union":
-      return ast.encodingChecks === undefined && ast.types.every(isCompilable)
+      return ast.encodingChecks === undefined
     default:
       return false
   }
+}
+
+const runtimeDecoder = (ast: SchemaAST.AST): Decoder => {
+  const cached = runtimeCache.get(ast)
+  if (cached !== undefined) return cached
+  const parse = SchemaParser.run<unknown, never>(ast)
+  const decoder: Decoder = (input) => {
+    const result = parse(input)
+    const exit = effectIsExit(result) ? result : Effect.runSyncExit(result)
+    if (Exit.isSuccess(exit)) return exit.value
+    if (InternalSchemaCause.getSchemaIssue(exit.cause) !== undefined) return invalid
+    throw new DecoderFailure(exit.cause)
+  }
+  runtimeCache.set(ast, decoder)
+  return decoder
 }
 
 type Emitter = {
@@ -66,6 +82,7 @@ type Emitter = {
   readonly decoderHelpers: Map<SchemaAST.AST, string>
   readonly unionHelpers: Map<SchemaAST.Union, string>
   readonly constants: Array<unknown>
+  readonly constantIndexes: Map<unknown, number>
   next: number
 }
 
@@ -77,12 +94,16 @@ const assignProperty = (output: string, key: string, value: string): string =>
     : `${output}[${key}]=${value}`
 
 const constant = (emitter: Emitter, value: unknown): string => {
+  const cached = emitter.constantIndexes.get(value)
+  if (cached !== undefined) return `C[${cached}]`
   const index = emitter.constants.length
   emitter.constants.push(value)
+  emitter.constantIndexes.set(value, index)
   return `C[${index}]`
 }
 
 const needsOwnProperty = (ast: SchemaAST.AST): boolean => {
+  if (!canEmit(ast)) return true
   switch (ast._tag) {
     case "Undefined":
     case "Void":
@@ -127,6 +148,12 @@ function emit(
   statements: Array<string>,
   emitter: Emitter
 ): string {
+  if (!canEmit(ast)) {
+    const output = variable(emitter)
+    const decoder = constant(emitter, runtimeDecoder(ast))
+    statements.push(`const ${output}=${decoder}(${input})`, `if(${output}===I)return I`)
+    return output
+  }
   const output = emitBase(ast, input, statements, emitter)
   if (ast.checks === undefined) return output
   const checked = variable(emitter)
@@ -406,7 +433,7 @@ const emitBase = (
 
 const make = (ast: SchemaAST.AST): Decoder | undefined => {
   try {
-    if (!isCompilable(ast)) return undefined
+    if (!canEmit(ast)) return undefined
     const emitter: Emitter = {
       statements: [],
       helpers: [],
@@ -415,6 +442,7 @@ const make = (ast: SchemaAST.AST): Decoder | undefined => {
       decoderHelpers: new Map(),
       unionHelpers: new Map(),
       constants: [],
+      constantIndexes: new Map(),
       next: 0
     }
     const output = emit(ast, "i", emitter.statements, emitter)

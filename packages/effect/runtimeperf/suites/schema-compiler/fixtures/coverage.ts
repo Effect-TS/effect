@@ -116,3 +116,27 @@ const templateLiteral = Schema.TemplateLiteral(["prefix-", Schema.String])
 
 export const templateLiteralValid = validCase(templateLiteral, "prefix-value", false)
 export const templateLiteralValidCompiled = validCase(templateLiteral, "prefix-value", true)
+
+const transformationFields = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field${index}`, Schema.FiniteFromString])
+)
+const transformationStruct = Schema.Struct(transformationFields)
+const transformationStructInput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field${index}`, String(index)])
+)
+const transformationStructOutput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field${index}`, index])
+)
+
+export const transformationStructValid = validCase(
+  transformationStruct,
+  transformationStructInput,
+  false,
+  transformationStructOutput
+)
+export const transformationStructValidCompiled = validCase(
+  transformationStruct,
+  transformationStructInput,
+  true,
+  transformationStructOutput
+)

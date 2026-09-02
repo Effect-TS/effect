@@ -1,4 +1,6 @@
+import type * as Cause from "../../Cause.ts"
 import type * as SchemaAST from "../../SchemaAST.ts"
+import type * as SchemaIssue from "../../SchemaIssue.ts"
 
 /** @internal */
 export const invalid = Symbol()
@@ -6,6 +8,14 @@ export const invalid = Symbol()
 /** @internal */
 export interface Decoder {
   (input: unknown): unknown | typeof invalid
+}
+
+/** @internal */
+export class DecoderFailure {
+  readonly cause: Cause.Cause<SchemaIssue.Issue>
+  constructor(cause: Cause.Cause<SchemaIssue.Issue>) {
+    this.cause = cause
+  }
 }
 
 /** @internal */

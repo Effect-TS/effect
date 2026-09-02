@@ -2143,6 +2143,24 @@
               "family": "template-literals",
               "path": "valid",
               "size": 1
+            },
+            {
+              "name": "transformation-struct-valid-effect",
+              "export": "transformationStructValid",
+              "scenario": "schema-compiler-transformation-struct-valid",
+              "implementation": "effect",
+              "family": "transformations",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "transformation-struct-valid-effect-compiled",
+              "export": "transformationStructValidCompiled",
+              "scenario": "schema-compiler-transformation-struct-valid",
+              "implementation": "effect-compiled",
+              "family": "transformations",
+              "path": "valid",
+              "size": 32
             }
           ]
         }

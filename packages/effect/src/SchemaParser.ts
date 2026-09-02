@@ -540,6 +540,9 @@ export function decodeUnknownSync<S extends Schema.ConstraintDecoder<unknown>>(
     try {
       output = decoder(input)
     } catch (error) {
+      if (error instanceof CompilerHook.DecoderFailure) {
+        return throwSyncCause(error.cause)
+      }
       return throwSyncDefect(error)
     }
     return output === CompilerHook.invalid ? fallback(input) : output as S["Type"]
@@ -1029,17 +1032,15 @@ function asSync<T, E>(
   }
 }
 
-const throwSyncDefect = (defect: unknown): never => {
-  const exit = Effect.runSyncExit(Effect.die(defect))
-  if (Exit.isFailure(exit)) {
-    const issue = InternalSchemaCause.getSchemaIssueOrThrow(
-      exit.cause,
-      "Sync adapter can only throw schema issues"
-    )
-    throw new Error("Schema validation failed", { cause: issue })
-  }
-  throw new Error("BUG: Effect.die unexpectedly succeeded")
+const throwSyncCause = (cause: Cause.Cause<SchemaIssue.Issue>): never => {
+  const issue = InternalSchemaCause.getSchemaIssueOrThrow(
+    cause,
+    "Sync adapter can only throw schema issues"
+  )
+  throw new Error("Schema validation failed", { cause: issue })
 }
+
+const throwSyncDefect = (defect: unknown): never => throwSyncCause(Cause.die(defect))
 
 /** @internal */
 export interface Parser {
