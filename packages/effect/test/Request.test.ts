@@ -544,6 +544,50 @@ describe.sequential("Request", () => {
       assert.strictEqual(calls, 1)
     }).pipe(Effect.provide(Persistence.layerMemory)))
 
+  it.effect("persisted propagates failures to unfinished requests", () =>
+    Effect.gen(function*() {
+      class GetValue extends Persistable.Class<{ payload: { id: number } }>()("GetValue", {
+        primaryKey: ({ id }) => String(id),
+        success: Schema.String,
+        error: Persistence.PersistenceError
+      }) {}
+      const request = new GetValue({ id: 1 })
+      const error = new Persistence.PersistenceError({ message: "backend failed" })
+      const resolver = Resolver.make<GetValue>((entries) => {
+        entries[0].completeUnsafe(Exit.succeed("first"))
+        return Effect.fail(error)
+      })
+      const persisted = yield* Resolver.persisted(resolver, { storeId: "resolver-failure" })
+
+      assert.deepStrictEqual(
+        yield* Effect.forEach(
+          [request, request, new GetValue({ id: 2 })],
+          (request) => Effect.exit(Effect.request(request, persisted)),
+          { concurrency: "unbounded" }
+        ),
+        [Exit.succeed("first"), Exit.fail(error), Exit.fail(error)]
+      )
+    }).pipe(Effect.provide(Persistence.layerMemory)))
+
+  it.effect("persisted stores synchronous resolver failures", () =>
+    Effect.gen(function*() {
+      class GetValue extends Persistable.Class()("ThrowingValue", {
+        primaryKey: () => "value",
+        success: Schema.String
+      }) {}
+      let calls = 0
+      const resolver = Resolver.make<GetValue>(() => {
+        calls++
+        throw "backend defect"
+      })
+      const persisted = yield* Resolver.persisted(resolver, { storeId: "resolver-throw" })
+      const request = new GetValue()
+
+      assert.deepStrictEqual(yield* Effect.exit(Effect.request(request, persisted)), Exit.die("backend defect"))
+      assert.deepStrictEqual(yield* Effect.exit(Effect.request(request, persisted)), Exit.die("backend defect"))
+      assert.strictEqual(calls, 1)
+    }).pipe(Effect.provide(Persistence.layerMemory)))
+
   it.effect(
     "batching preserves individual & identical requests",
     Effect.fnUntraced(function*() {
