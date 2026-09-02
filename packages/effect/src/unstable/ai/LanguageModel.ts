@@ -366,7 +366,7 @@ export type ToolChoice<ToolName extends string> =
  */
 export class GenerateTextResponse<
   Tools extends Record<string, Tool.Any>,
-  EncodedToolParameters extends boolean = false
+  EncodedToolParameters extends Response.ToolParametersMode = false
 > {
   readonly content: Array<Response.Part<Tools, EncodedToolParameters>>
 
@@ -476,7 +476,7 @@ export class GenerateTextResponse<
 export class GenerateObjectResponse<
   Tools extends Record<string, Tool.Any>,
   A,
-  EncodedToolParameters extends boolean = false
+  EncodedToolParameters extends Response.ToolParametersMode = false
 > extends GenerateTextResponse<Tools, EncodedToolParameters> {
   /**
    * The parsed structured object that conforms to the provided schema.
@@ -558,8 +558,15 @@ export type ExtractTools<Options> = Options extends {
   : {}
 
 /**
- * Utility type that determines whether language model responses contain
- * encoded tool call parameters.
+ * Utility type that determines how tool call parameters are typed on language
+ * model response parts.
+ *
+ * **Details**
+ *
+ * When tool call resolution is disabled, tool call parts preserve the encoded
+ * parameters. When tool call resolution is enabled, transport decode keeps the
+ * parameters opaque (typed as `unknown`) and `Toolkit` is the single authority
+ * for parameter validation.
  *
  * @category utility types
  * @since 4.0.0
@@ -567,7 +574,7 @@ export type ExtractTools<Options> = Options extends {
 export type ExtractEncodedToolParameters<Options> = Options extends {
   readonly disableToolCallResolution: true
 } ? true
-  : false
+  : "opaque"
 
 type ExtractErrorFromToolkitOption<ToolkitValue, DisableToolCallResolution extends boolean> = ToolkitValue extends
   Toolkit.WithHandler<infer Tools> ?
@@ -860,7 +867,7 @@ export const make: (params: {
   >(
     options: Options & GenerateObjectOptions<Tools, StructuredOutputSchema>
   ): Effect.Effect<
-    GenerateObjectResponse<Tools, StructuredOutputSchema["Type"]>,
+    GenerateObjectResponse<Tools, StructuredOutputSchema["Type"], ExtractEncodedToolParameters<Options>>,
     ExtractError<Options>,
     ExtractServices<Options> | StructuredOutputSchema["DecodingServices"]
   > => {
@@ -1212,6 +1219,7 @@ export const make: (params: {
     // Validates the complete response before tool handlers can perform side
     // effects
     const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
+    yield* validateProviderExecutedToolCalls(toolkit, rawContent)
 
     // Resolve the generated tool calls. When the finish reason indicates an
     // incomplete response, handlers do not run and every executable tool call
@@ -1620,6 +1628,7 @@ export const make: (params: {
       Stream.runForEachArray(
         Effect.fnUntraced(function*(chunk) {
           const parts = (yield* decodeParts(chunk)) as ReadonlyArray<Response.StreamPart<Tools>>
+          yield* validateProviderExecutedToolCalls(toolkit, chunk)
           if (tracker) {
             for (const part of parts) {
               if (part.type === "response-metadata" && part.id) {
@@ -1703,7 +1712,7 @@ export const make: (params: {
 
   return {
     generateText: generateText as Service["generateText"],
-    generateObject,
+    generateObject: generateObject as Service["generateObject"],
     streamText: streamText as Service["streamText"]
   } as const
 })
@@ -1794,7 +1803,7 @@ export const generateText: {
     ExtractServices<Options> | LanguageModel
   >
 } = (options: GenerateTextOptions<any>): Effect.Effect<
-  GenerateTextResponse<any>,
+  GenerateTextResponse<any, any>,
   AiError.AiError,
   LanguageModel
 > =>
@@ -2369,6 +2378,31 @@ const makeToolkitWithOpaqueParameters = <Tools extends Record<string, Tool.Any>>
 ): Toolkit.Any =>
   Toolkit.make(
     ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.Unknown))
+  )
+
+// With tool call resolution enabled, transport decode keeps tool parameters
+// opaque so Toolkit can route validation failures through the tool's failure
+// mode. Provider-executed tool calls never reach Toolkit, so their parameters
+// are validated here as part of response validation.
+const validateProviderExecutedToolCalls = <Tools extends Record<string, Tool.Any>>(
+  toolkit: Toolkit.WithHandler<Tools>,
+  parts: ReadonlyArray<Response.PartEncoded | Response.StreamPartEncoded>
+): Effect.Effect<void, Schema.SchemaError> =>
+  Effect.forEach(
+    parts,
+    (part) => {
+      if (part.type !== "tool-call" || part.providerExecuted !== true) {
+        return Effect.void
+      }
+      const tool = toolkit.tools[part.name]
+      if (Predicate.isUndefined(tool) || !Schema.isSchema(tool.parametersSchema)) {
+        return Effect.void
+      }
+      return Effect.asVoid(
+        Schema.decodeUnknownEffect(tool.parametersSchema)(part.params)
+      ) as Effect.Effect<void, Schema.SchemaError>
+    },
+    { discard: true }
   )
 
 const resolveToolkit = <Tools extends Record<string, Tool.Any>, E, R>(

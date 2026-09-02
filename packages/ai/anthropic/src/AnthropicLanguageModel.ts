@@ -20,7 +20,6 @@ import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
 import * as Schema from "effect/Schema"
 import * as SchemaAST from "effect/SchemaAST"
-import * as SchemaIssue from "effect/SchemaIssue"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { Mutable, Simplify } from "effect/Types"
@@ -39,8 +38,6 @@ import { addGenAIAnnotations } from "./AnthropicTelemetry.ts"
 import type { AnthropicTool } from "./AnthropicTool.ts"
 import type * as Generated from "./Generated.ts"
 import * as InternalUtilities from "./internal/utilities.ts"
-
-const formatIssue = SchemaIssue.makeFormatterDefault()
 
 /**
  * Known Anthropic Claude model identifiers exposed by the generated Anthropic schema.
@@ -3106,18 +3103,16 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
 
   const { codec } = yield* tryCodecTransform(tool.parametersSchema, "makeResponse")
 
-  const transform = Schema.decodeEffect(codec)
-
+  // Convert provider wire parameters into the tool's standard encoded form.
+  // Validation failures pass the raw parameters through unchanged: Toolkit is
+  // the single authority for parameter validation and routes failures through
+  // the tool's failure mode.
   return yield* (
-    transform(toolParams) as Effect.Effect<unknown, Schema.SchemaError>
-  ).pipe(Effect.mapError((error) =>
-    AiError.make({
-      module: "AnthropicLanguageModel",
-      method: "makeResponse",
-      reason: new AiError.ToolParameterValidationError({
-        toolName,
-        description: formatIssue(error.issue)
-      })
-    })
-  ))
+    Schema.decodeEffect(codec)(toolParams) as Effect.Effect<unknown, Schema.SchemaError>
+  ).pipe(
+    Effect.flatMap((decoded) =>
+      Schema.encodeUnknownEffect(tool.parametersSchema)(decoded) as Effect.Effect<unknown, Schema.SchemaError>
+    ),
+    Effect.orElseSucceed(() => toolParams)
+  )
 })

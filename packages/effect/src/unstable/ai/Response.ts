@@ -226,7 +226,7 @@ export const AllParts = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
  */
 export type Part<
   Tools extends Record<string, Tool.Any>,
-  EncodedToolParameters extends boolean = false
+  EncodedToolParameters extends ToolParametersMode = false
 > =
   | TextPart
   | ReasoningPart
@@ -307,7 +307,7 @@ export const Part = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
  */
 export type StreamPart<
   Tools extends Record<string, Tool.Any>,
-  EncodedToolParameters extends boolean = false
+  EncodedToolParameters extends ToolParametersMode = false
 > =
   | TextStartPart
   | TextDeltaPart
@@ -410,16 +410,34 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
  */
 export type ToolCallParts<
   Tools extends Record<string, Tool.Any>,
-  EncodedParameters extends boolean = false
+  EncodedParameters extends ToolParametersMode = false
 > = ToolCallPartForName<Tools, EncodedParameters, keyof Tools>
+
+/**
+ * Utility type that determines how tool call parameters are typed on response
+ * parts.
+ *
+ * **Details**
+ *
+ * - `false`: parameters are fully decoded via the tool's parameter schema
+ * - `true`: parameters are typed in their encoded form
+ * - `"opaque"`: parameters are typed as `unknown` because transport decode
+ *   leaves them untouched and validation happens in `Toolkit`
+ *
+ * @category utility types
+ * @since 4.0.0
+ */
+export type ToolParametersMode = boolean | "opaque"
 
 type ToolCallPartForName<
   Tools extends Record<string, Tool.Any>,
-  EncodedParameters extends boolean,
+  EncodedParameters extends ToolParametersMode,
   Name extends keyof Tools
 > = Name extends string ? ToolCallPart<
     Name,
-    EncodedParameters extends true ? Tool.ParametersEncoded<Tools[Name]> : Tool.Parameters<Tools[Name]>
+    EncodedParameters extends true ? Tool.ParametersEncoded<Tools[Name]>
+      : EncodedParameters extends "opaque" ? unknown
+      : Tool.Parameters<Tools[Name]>
   >
   : never
 
