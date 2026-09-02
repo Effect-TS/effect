@@ -1275,6 +1275,7 @@ export const persisted: {
         >)
         const leftover: Array<Request.Entry<A>> = []
         const toPersist = new Map<A, Request.Result<A>>()
+        const completed = new Set<Request.Entry<A>>()
         for (let i = 0; i < results.length; i++) {
           const entry = entries[i]
           const exit = results[i]
@@ -1284,6 +1285,7 @@ export const persisted: {
           ) {
             const prevComplete = entry.completeUnsafe
             entry.completeUnsafe = function(exit) {
+              completed.add(entry)
               toPersist.set(entry.request, exit as any)
               prevComplete(exit)
             }
@@ -1295,10 +1297,10 @@ export const persisted: {
         if (!Arr.isArrayNonEmpty(leftover)) {
           return
         }
-        yield* Effect.catchCause(self.runAll(leftover, key), (cause) => {
+        yield* Effect.catchCause(Effect.suspend(() => self.runAll(leftover, key)), (cause) => {
           for (let i = 0; i < leftover.length; i++) {
             const entry = leftover[i]
-            if (!toPersist.has(entry.request)) continue
+            if (completed.has(entry)) continue
             entry.completeUnsafe(Exit.failCause(cause) as any)
           }
           return Effect.void

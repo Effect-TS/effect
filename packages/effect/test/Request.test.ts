@@ -1,12 +1,13 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Array, Context, Data, Deferred, Equal, Fiber, Hash, Schema } from "effect"
+import { Array, Context, Data, Deferred, Equal, Fiber, Hash, Layer, Schema } from "effect"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { flow, pipe } from "effect/Function"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
-import { Persistable, Persistence } from "effect/unstable/persistence"
+import * as Persistable from "effect/unstable/persistence/Persistable"
+import * as Persistence from "effect/unstable/persistence/Persistence"
 
 class Counter extends Context.Service<Counter, { count: number }>()("Counter") {}
 class Requests extends Context.Service<Requests, { count: number }>()("Requests") {}
@@ -543,6 +544,85 @@ describe.sequential("Request", () => {
       assert.strictEqual(yield* Effect.request(new GetName(), resolver), "Bob")
       assert.strictEqual(calls, 1)
     }).pipe(Effect.provide(Persistence.layerMemory)))
+  for (const failure of ["failure", "defect", "throw"] as const) {
+    it.effect(`persisted preserves completed results and propagates a resolver ${failure}`, () =>
+      Effect.gen(function*() {
+        class GetValue extends Persistable.Class<{ payload: { id: number } }>()("GetValue", {
+          primaryKey: ({ id }) => String(id),
+          success: Schema.String,
+          error: Persistence.PersistenceError
+        }) {}
+        const error = new Persistence.PersistenceError({ message: "backend failed" })
+        let calls = 0
+        const resolver = Resolver.make<GetValue>((entries) => {
+          calls++
+          entries[0].completeUnsafe(Exit.succeed("first"))
+          if (failure === "throw") throw "backend failed"
+          return failure === "failure" ? Effect.fail(error) : Effect.die("backend failed")
+        })
+        const expected = [
+          Exit.succeed("first"),
+          failure === "failure" ? Exit.fail(error) : Exit.die("backend failed")
+        ]
+        const requests = [new GetValue({ id: 1 }), new GetValue({ id: 2 })]
+
+        assert.deepStrictEqual(
+          yield* Effect.forEach(requests, (request) => Effect.exit(Effect.request(request, resolver)), {
+            concurrency: "unbounded"
+          }),
+          expected
+        )
+        const persisted = yield* Resolver.persisted(resolver, { storeId: "resolver-failure" })
+        assert.deepStrictEqual(
+          yield* Effect.forEach(requests, (request) => Effect.exit(Effect.request(request, persisted)), {
+            concurrency: "unbounded"
+          }),
+          expected
+        )
+        yield* Effect.yieldNow
+        assert.deepStrictEqual(
+          yield* Effect.forEach(requests, (request) => Effect.exit(Effect.request(request, persisted)), {
+            concurrency: "unbounded"
+          }),
+          expected
+        )
+        assert.strictEqual(calls, 2)
+      }).pipe(Effect.provide(Persistence.layer.pipe(Layer.provide(Persistence.layerBackingMemory)))))
+  }
+
+  it.effect("persisted completes separate entries sharing the same request object", () =>
+    Effect.gen(function*() {
+      class GetValue extends Persistable.Class()("GetSharedValue", {
+        primaryKey: () => "shared",
+        success: Schema.String,
+        error: Persistence.PersistenceError
+      }) {}
+      const request = new GetValue()
+      const error = new Persistence.PersistenceError({ message: "backend failed" })
+      const resolver = Resolver.make<GetValue>((entries) => {
+        assert.strictEqual(entries.length, 2)
+        assert.strictEqual(entries[0].request, entries[1].request)
+        entries[0].completeUnsafe(Exit.succeed("first"))
+        return Effect.fail(error)
+      })
+      const expected = [Exit.succeed("first"), Exit.fail(error)]
+
+      assert.deepStrictEqual(
+        yield* Effect.forEach([request, request], (request) => Effect.exit(Effect.request(request, resolver)), {
+          concurrency: "unbounded"
+        }),
+        expected
+      )
+      const persisted = yield* Resolver.persisted(resolver, { storeId: "shared-request" })
+      assert.deepStrictEqual(
+        yield* Effect.forEach([request, request], (request) => Effect.exit(Effect.request(request, persisted)), {
+          concurrency: "unbounded"
+        }),
+        expected
+      )
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(yield* Effect.exit(Effect.request(request, persisted)), Exit.fail(error))
+    }).pipe(Effect.provide(Persistence.layer.pipe(Layer.provide(Persistence.layerBackingMemory)))))
 
   it.effect(
     "batching preserves individual & identical requests",
