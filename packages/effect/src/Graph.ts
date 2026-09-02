@@ -19,7 +19,6 @@ import * as csr from "./internal/graphCsr.ts"
 import * as MutableHashMap from "./MutableHashMap.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
-import { hasProperty } from "./Predicate.ts"
 import type { Covariant, Invariant } from "./Types.ts"
 
 const TypeId = internal.TypeId
@@ -148,22 +147,6 @@ export interface Snapshot<out N, out E, out T extends Kind> {
 }
 
 /**
- * Common public protocol for graph values.
- *
- * **Details**
- *
- * Contains only the runtime marker and shared protocols. Graph storage is kept
- * internal; use module functions such as `nodes`, `edges`, `getNode`, and
- * `getEdge` to inspect graph contents.
- *
- * @category protocols
- * @since 3.18.0
- */
-export interface Proto<out N, out E> extends Iterable<readonly [NodeIndex, N]>, Equal.Equal, Pipeable, Inspectable {
-  readonly [TypeId]: Graph.Variance<N, E>
-}
-
-/**
  * Immutable graph interface.
  *
  * **When to use**
@@ -181,7 +164,10 @@ export interface Proto<out N, out E> extends Iterable<readonly [NodeIndex, N]>, 
  * @category models
  * @since 3.18.0
  */
-export interface Graph<out N, out E, T extends Kind = "directed"> extends Proto<N, E> {
+export interface Graph<out N, out E, T extends Kind = "directed">
+  extends Iterable<readonly [NodeIndex, N]>, Equal.Equal, Pipeable, Inspectable
+{
+  readonly [TypeId]: Graph.Variance<N, E>
   readonly type: T
   readonly mutable: false
 }
@@ -415,9 +401,9 @@ const withMutationGuard = <N, E, T extends Kind, A>(
  * @category guards
  * @since 4.0.0
  */
-export const isGraph = <N = unknown, E = unknown, T extends Kind = Kind, U = never>(
+export const isGraph: <N = unknown, E = unknown, T extends Kind = Kind, U = never>(
   u: U | Graph<N, E, T> | MutableGraph<N, E, T>
-): u is Graph<N, E, T> | MutableGraph<N, E, T> => hasProperty(u, TypeId)
+) => u is Graph<N, E, T> | MutableGraph<N, E, T> = internal.isGraph
 
 /**
  * Reconstructs an immutable graph from its indexed active structure.
