@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve sliced Chunk elements when subsequent appends or prepends rebalance concatenations.
+Fix `Chunk` concatenation to preserve sliced elements.

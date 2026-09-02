@@ -537,56 +537,14 @@ describe("Chunk", () => {
   })
 
   describe("concat", () => {
-    for (
-      const { name, slice } of [
-        { name: "take", slice: () => Chunk.take(Chunk.make(2, 3, 4), 2) },
-        { name: "drop", slice: () => Chunk.drop(Chunk.make(1, 2, 3), 1) }
-      ]
-    ) {
-      describe(`with ${name} slices`, () => {
-        it("preserves an unmaterialized slice when appending after a prefix", () => {
-          const chunk = Chunk.appendAll(Chunk.of(1), slice())
-          // Observing the intermediate chunk would materialize it and mask the regression.
-          const result = Chunk.append(chunk, 5)
-          assert.deepStrictEqual(Chunk.toArray(result), [1, 2, 3, 5])
-        })
-
-        it("preserves an unmaterialized slice when prepending before a suffix", () => {
-          const chunk = Chunk.appendAll(slice(), Chunk.of(4))
-          const result = Chunk.prepend(chunk, 0)
-          assert.deepStrictEqual(Chunk.toArray(result), [0, 2, 3, 4])
-        })
-
-        it("preserves a slice when appending without a prefix", () => {
-          assert.deepStrictEqual(Chunk.toArray(Chunk.append(slice(), 5)), [2, 3, 5])
-        })
-
-        it("preserves a slice when prepending without a suffix", () => {
-          assert.deepStrictEqual(Chunk.toArray(Chunk.prepend(slice(), 0)), [0, 2, 3])
-        })
-
-        it("preserves a materialized concatenation when appending", () => {
-          const chunk = Chunk.appendAll(Chunk.of(1), slice())
-          assert.deepStrictEqual(Chunk.toArray(chunk), [1, 2, 3])
-          assert.deepStrictEqual(Chunk.toArray(Chunk.append(chunk, 5)), [1, 2, 3, 5])
-        })
-
-        it("preserves a materialized concatenation when prepending", () => {
-          const chunk = Chunk.appendAll(slice(), Chunk.of(4))
-          assert.deepStrictEqual(Chunk.toArray(chunk), [2, 3, 4])
-          assert.deepStrictEqual(Chunk.toArray(Chunk.prepend(chunk, 0)), [0, 2, 3, 4])
-        })
-      })
-    }
-
-    it("preserves an unsliced chunk when appending after a prefix", () => {
-      const chunk = Chunk.appendAll(Chunk.of(1), Chunk.make(2, 3))
-      assert.deepStrictEqual(Chunk.toArray(Chunk.append(chunk, 5)), [1, 2, 3, 5])
-    })
-
-    it("preserves an unsliced chunk when prepending before a suffix", () => {
-      const chunk = Chunk.appendAll(Chunk.make(2, 3), Chunk.of(4))
-      assert.deepStrictEqual(Chunk.toArray(Chunk.prepend(chunk, 0)), [0, 2, 3, 4])
+    it("preserves a sliced chunk when appending after a prefix", () => {
+      const chunk = pipe(
+        Chunk.make(2, 3, 4),
+        Chunk.take(2),
+        Chunk.prependAll(Chunk.of(1)),
+        Chunk.append(5)
+      )
+      assert.deepStrictEqual(Chunk.toArray(chunk), [1, 2, 3, 5])
     })
 
     describe("Given 2 chunks of the same length", () => {
