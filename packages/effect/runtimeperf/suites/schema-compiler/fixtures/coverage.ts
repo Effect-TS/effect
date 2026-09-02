@@ -78,6 +78,35 @@ export const literal100ValidLastCompiled = validCase(literal100, "value99", true
 export const literal100Invalid = invalidCase(literal100, "missing", false)
 export const literal100InvalidCompiled = invalidCase(literal100, "missing", true)
 
+const taggedUnion100 = Schema.Union(
+  Array.from({ length: 100 }, (_, index) =>
+    Schema.Struct({
+      kind: Schema.Literal(`value${index}`),
+      text: Schema.String,
+      count: Schema.Number
+    }))
+)
+const taggedUnion100Input = { kind: "value99", text: "value", count: 99, extra: true }
+const taggedUnion100Output = { kind: "value99", text: "value", count: 99 }
+
+export const taggedUnion100ValidLast = validCase(taggedUnion100, taggedUnion100Input, false, taggedUnion100Output)
+export const taggedUnion100ValidLastCompiled = validCase(
+  taggedUnion100,
+  taggedUnion100Input,
+  true,
+  taggedUnion100Output
+)
+export const taggedUnion100Invalid = invalidCase(
+  taggedUnion100,
+  { kind: "missing", text: "value", count: 99 },
+  false
+)
+export const taggedUnion100InvalidCompiled = invalidCase(
+  taggedUnion100,
+  { kind: "missing", text: "value", count: 99 },
+  true
+)
+
 const checkedString = Schema.String.check(Schema.isMinLength(2))
 
 export const checkedStringValid = validCase(checkedString, "value", false)

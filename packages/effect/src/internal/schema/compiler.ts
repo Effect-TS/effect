@@ -52,8 +52,7 @@ const isCompilable = (ast: SchemaAST.AST): boolean => {
         isCompatible(ast.indexSignatures[0].parameter) &&
         isCompilable(ast.indexSignatures[0].type)
     case "Union":
-      return ast.encodingChecks === undefined &&
-        ast.types.every((type) => type._tag !== "Arrays" && type._tag !== "Objects" && isCompilable(type))
+      return ast.encodingChecks === undefined && ast.types.every(isCompilable)
     default:
       return false
   }
@@ -62,8 +61,10 @@ const isCompilable = (ast: SchemaAST.AST): boolean => {
 type Emitter = {
   readonly statements: Array<string>
   readonly helpers: Array<string>
+  readonly initializers: Array<string>
   readonly objectHelpers: Map<SchemaAST.Objects, string>
   readonly decoderHelpers: Map<SchemaAST.AST, string>
+  readonly unionHelpers: Map<SchemaAST.Union, string>
   readonly constants: Array<unknown>
   next: number
 }
@@ -142,6 +143,16 @@ const emitDecoderHelper = (ast: SchemaAST.AST, emitter: Emitter): string => {
   const statements: Array<string> = []
   const output = emit(ast, "i", statements, emitter)
   emitter.helpers.push(`function ${name}(i){${statements.join(";")};return ${output}}`)
+  return name
+}
+
+const emitUnionHelper = (ast: SchemaAST.Union, emitter: Emitter): string => {
+  const cached = emitter.unionHelpers.get(ast)
+  if (cached !== undefined) return cached
+  const name = `u${emitter.unionHelpers.size}`
+  emitter.unionHelpers.set(ast, name)
+  const entries = ast.types.map((type) => `[${constant(emitter, type)},${emitDecoderHelper(type, emitter)}]`)
+  emitter.initializers.push(`const ${name}=new Map([${entries.join(",")}])`)
   return name
 }
 
@@ -362,24 +373,28 @@ const emitBase = (
         }
         return input
       }
+      const candidates = variable(emitter)
       const output = variable(emitter)
       const candidate = variable(emitter)
-      statements.push(`let ${output}=I,${candidate}`)
+      const index = variable(emitter)
+      const decoder = variable(emitter)
+      const types = constant(emitter, ast.types)
+      const decoders = emitUnionHelper(ast, emitter)
+      statements.push(
+        `const ${candidates}=U(${input},${types})`,
+        `let ${output}=I,${candidate},${decoder}`
+      )
       if (ast.mode === "anyOf") {
-        for (const type of ast.types) {
-          const helper = emitDecoderHelper(type, emitter)
-          statements.push(`if(${output}===I)${output}=${helper}(${input})`)
-        }
+        statements.push(
+          `for(let ${index}=0;${index}<${candidates}.length;${index}++){${decoder}=${decoders}.get(${candidates}[${index}]);${candidate}=${decoder}(${input});if(${candidate}!==I){${output}=${candidate};break}}`
+        )
         statements.push(`if(${output}===I)return I`)
       } else {
         const successes = variable(emitter)
         statements.push(`let ${successes}=0`)
-        for (const type of ast.types) {
-          const helper = emitDecoderHelper(type, emitter)
-          statements.push(
-            `${candidate}=${helper}(${input});if(${candidate}!==I){${successes}++;${output}=${candidate}}`
-          )
-        }
+        statements.push(
+          `for(let ${index}=0;${index}<${candidates}.length;${index}++){${decoder}=${decoders}.get(${candidates}[${index}]);${candidate}=${decoder}(${input});if(${candidate}!==I){${successes}++;${output}=${candidate}}}`
+        )
         statements.push(`if(${successes}!==1)return I`)
       }
       return output
@@ -395,20 +410,23 @@ const make = (ast: SchemaAST.AST): Decoder | undefined => {
     const emitter: Emitter = {
       statements: [],
       helpers: [],
+      initializers: [],
       objectHelpers: new Map(),
       decoderHelpers: new Map(),
+      unionHelpers: new Map(),
       constants: [],
       next: 0
     }
     const output = emit(ast, "i", emitter.statements, emitter)
-    const source = `"use strict";${emitter.helpers.join(";")};return function(i){${
+    const source = `"use strict";${emitter.helpers.join(";")};${emitter.initializers.join(";")};return function(i){${
       emitter.statements.join(";")
     };return ${output}}`
-    return globalThis.Function("I", "C", "K", "T", source)(
+    return globalThis.Function("I", "C", "K", "T", "U", source)(
       invalid,
       emitter.constants,
       failsChecks,
-      matchesTemplateLiteral
+      matchesTemplateLiteral,
+      SchemaAST.getCandidates
     ) as Decoder
   } catch {
     return undefined

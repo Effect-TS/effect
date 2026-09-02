@@ -2073,6 +2073,42 @@
               "size": 100
             },
             {
+              "name": "tagged-union-100-valid-last-effect",
+              "export": "taggedUnion100ValidLast",
+              "scenario": "schema-compiler-tagged-union-100-valid-last",
+              "implementation": "effect",
+              "family": "unions",
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "tagged-union-100-valid-last-effect-compiled",
+              "export": "taggedUnion100ValidLastCompiled",
+              "scenario": "schema-compiler-tagged-union-100-valid-last",
+              "implementation": "effect-compiled",
+              "family": "unions",
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "tagged-union-100-invalid-effect",
+              "export": "taggedUnion100Invalid",
+              "scenario": "schema-compiler-tagged-union-100-invalid",
+              "implementation": "effect",
+              "family": "unions",
+              "path": "invalid",
+              "size": 100
+            },
+            {
+              "name": "tagged-union-100-invalid-effect-compiled",
+              "export": "taggedUnion100InvalidCompiled",
+              "scenario": "schema-compiler-tagged-union-100-invalid",
+              "implementation": "effect-compiled",
+              "family": "unions",
+              "path": "invalid",
+              "size": 100
+            },
+            {
               "name": "checked-string-valid-effect",
               "export": "checkedStringValid",
               "scenario": "schema-compiler-checked-string-valid",

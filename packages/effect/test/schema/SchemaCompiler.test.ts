@@ -182,6 +182,34 @@ describe("SchemaCompiler", () => {
     })
   })
 
+  it("compiles structural unions through canonical candidate selection", () => {
+    const decodeTagged = SchemaParser.decodeUnknownSync(Schema.Union([
+      Schema.Struct({ kind: Schema.Literal("a"), value: Schema.String }),
+      Schema.Struct({ kind: Schema.Literal("b"), value: Schema.Number })
+    ]))
+    deepStrictEqual(
+      decodeTagged({ kind: "b", value: 1, extra: true }),
+      { kind: "b", value: 1 }
+    )
+
+    const decodeUntagged = SchemaParser.decodeUnknownSync(Schema.Union([
+      Schema.Struct({ first: Schema.String }),
+      Schema.Struct({ second: Schema.String })
+    ]))
+    deepStrictEqual(
+      decodeUntagged({ first: "a", second: "b" }),
+      { first: "a" }
+    )
+
+    const decodeOneOf = SchemaParser.decodeUnknownSync(Schema.Union([
+      Schema.Struct({ first: Schema.String }),
+      Schema.Struct({ second: Schema.String })
+    ], { mode: "oneOf" }))
+    throws(() => decodeOneOf({ first: "a", second: "b" }), (error) => {
+      assertSchemaIssueError(error, "Expected exactly one member to match")
+    })
+  })
+
   it("compiles optional object properties", () => {
     const decode = SchemaParser.decodeUnknownSync(Schema.Struct({
       required: Schema.String,
