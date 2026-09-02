@@ -52,7 +52,7 @@ describe("LanguageModel", () => {
       expect<ToolCallParams>().type.toBe<string>()
     })
 
-    it("uses decoded tool parameters when tool call resolution is enabled", () => {
+    it("uses opaque tool parameters when tool call resolution is enabled", () => {
       const toolkit = Toolkit.make(TransformTool)
       const program = LanguageModel.generateText({
         prompt: "hello",
@@ -62,10 +62,10 @@ describe("LanguageModel", () => {
       type ProgramSuccess = typeof program extends Effect.Effect<infer A, any, any> ? A : never
       type ToolCallParams = ProgramSuccess["toolCalls"][number]["params"]
 
-      expect<ToolCallParams>().type.toBe<number>()
+      expect<ToolCallParams>().type.toBe<unknown>()
     })
 
-    it("uses decoded tool parameters for a non-literal resolution flag", () => {
+    it("uses opaque tool parameters for a non-literal resolution flag", () => {
       const toolkit = Toolkit.make(TransformTool)
       const disableToolCallResolution = null as unknown as boolean
       const program = LanguageModel.generateText({
@@ -77,7 +77,7 @@ describe("LanguageModel", () => {
       type ProgramSuccess = typeof program extends Effect.Effect<infer A, any, any> ? A : never
       type ToolCallParams = ProgramSuccess["toolCalls"][number]["params"]
 
-      expect<ToolCallParams>().type.toBe<number>()
+      expect<ToolCallParams>().type.toBe<unknown>()
     })
 
     it("returns an empty tool record when no toolkit is provided", () => {
@@ -197,7 +197,7 @@ describe("LanguageModel", () => {
       expect<ProgramSuccess>().type.toBe<
         LanguageModel.GenerateTextResponse<{
           readonly ToolWithRequestContext: typeof ToolWithRequestContext
-        }>
+        }, "opaque">
       >()
     })
   })
@@ -245,8 +245,21 @@ describe("LanguageModel", () => {
       expect<StreamPart>().type.toBe<
         Response.StreamPart<{
           readonly ToolWithRequestContext: typeof ToolWithRequestContext
-        }>
+        }, "opaque">
       >()
+    })
+
+    it("uses opaque tool parameters when tool call resolution is enabled", () => {
+      const toolkit = Toolkit.make(TransformTool)
+      const stream = LanguageModel.streamText({
+        prompt: "hello",
+        toolkit
+      })
+
+      type StreamPart = typeof stream extends Stream.Stream<infer A, any, any> ? A : never
+      type ToolCallParams = Extract<StreamPart, { readonly type: "tool-call" }>["params"]
+
+      expect<ToolCallParams>().type.toBe<unknown>()
     })
   })
 
