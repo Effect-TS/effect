@@ -871,6 +871,57 @@ describe("ScopedCache", () => {
     })
 
     describe("refresh", () => {
+      it.effect("caches a synchronous lookup defect for a missing key", () =>
+        Effect.gen(function*() {
+          let lookups = 0
+          const cache = yield* ScopedCache.make({
+            capacity: 10,
+            lookup: (_key: string): Effect.Effect<number> => {
+              lookups++
+              throw "lookup defect"
+            }
+          })
+
+          assert.deepStrictEqual(yield* Effect.exit(ScopedCache.refresh(cache, "test")), Exit.die("lookup defect"))
+          const reader = yield* ScopedCache.get(cache, "test").pipe(
+            Effect.exit,
+            Effect.timeoutOption("1 second"),
+            Effect.forkChild
+          )
+          yield* TestClock.adjust("1 second")
+
+          assert.deepStrictEqual(yield* Fiber.join(reader), Option.some(Exit.die("lookup defect")))
+          assert.strictEqual(lookups, 1)
+        }))
+
+      it.effect("replaces an existing entry with a synchronous lookup defect", () =>
+        Effect.gen(function*() {
+          let fail = false
+          let released = 0
+          const cache = yield* ScopedCache.make({
+            capacity: 10,
+            lookup: (_key: string) => {
+              if (fail) throw "lookup defect"
+              return Effect.acquireRelease(
+                Effect.succeed(42),
+                () => Effect.sync(() => released++)
+              )
+            }
+          })
+          assert.strictEqual(yield* ScopedCache.get(cache, "test"), 42)
+          fail = true
+
+          assert.deepStrictEqual(yield* Effect.exit(ScopedCache.refresh(cache, "test")), Exit.die("lookup defect"))
+
+          assert.deepStrictEqual({
+            result: yield* Effect.exit(ScopedCache.get(cache, "test")),
+            released
+          }, {
+            result: Exit.die("lookup defect"),
+            released: 1
+          })
+        }))
+
       it.effect("refresh existing key invokes lookup again", () =>
         Effect.gen(function*() {
           let counter = 0
