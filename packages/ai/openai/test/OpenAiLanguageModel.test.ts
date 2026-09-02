@@ -169,6 +169,28 @@ describe("OpenAiLanguageModel", () => {
       })
 
       describe("user messages", () => {
+        it.effect("handles image data URLs", () =>
+          Effect.gen(function*() {
+            const dataUrl = "data:image/png;base64,iVBORw0KGgo="
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([Prompt.userMessage({
+                content: [Prompt.filePart({ mediaType: "image/png", data: dataUrl })]
+              })])
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+
+            assert.deepStrictEqual(body.input, [{
+              role: "user",
+              content: [{
+                type: "input_image",
+                image_url: dataUrl,
+                detail: "auto"
+              }]
+            }])
+          }).pipe(Effect.provide(makeTestLayer())))
+
         it.effect("converts text parts to input_text", () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({
