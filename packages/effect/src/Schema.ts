@@ -30,7 +30,7 @@ import * as Exit_ from "./Exit.ts"
 import type { Formatter } from "./Formatter.ts"
 import { format, formatPropertyKey } from "./Formatter.ts"
 import { identity } from "./Function.ts"
-import * as Graph_ from "./Graph.ts"
+import type * as Graph_ from "./Graph.ts"
 import * as HashMap_ from "./HashMap.ts"
 import * as HashSet_ from "./HashSet.ts"
 import * as core from "./internal/core.ts"
@@ -11711,7 +11711,7 @@ function graphEncode<N, E, T extends Graph_.Kind>(
   type: T,
   options: SchemaAST.ParseOptions
 ): Effect.Effect<EncodedGraph<N, E, T>, SchemaIssue.Issue> {
-  if (!Graph_.isGraph(input) || input.mutable || input.type !== type) {
+  if (!InternalGraph.isGraph(input) || input.mutable || input.type !== type) {
     return Effect.fail(new SchemaIssue.InvalidValue({ expected: `an immutable ${type} Graph` }, input, options))
   }
   return Effect.succeed(InternalGraph.snapshot(input))
@@ -11836,7 +11836,7 @@ export function Graph<T extends Graph_.Kind, Node extends Constraint, Edge exten
     ([node, edge]) => {
       const encoded = graphEncodedSchema(type, node, edge)
       return (input, ast, options) => {
-        if (!Graph_.isGraph(input) || input.mutable || input.type !== type) {
+        if (!InternalGraph.isGraph(input) || input.mutable || input.type !== type) {
           return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
         }
         return Effect.flatMap(
