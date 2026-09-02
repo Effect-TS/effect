@@ -280,6 +280,16 @@ describe("SchemaCompiler", () => {
     )
   })
 
+  it("compiles fixed properties with index signatures", () => {
+    const decode = SchemaParser.decodeUnknownSync(
+      Schema.StructWithRest(
+        Schema.Struct({ fixed: Schema.Trim }),
+        [Schema.Record(Schema.String, Schema.String)]
+      )
+    )
+    deepStrictEqual(decode({ fixed: "  value  ", other: "other" }), { fixed: "value", other: "other" })
+  })
+
   it("runs checks against decoded output", () => {
     const decodeString = SchemaParser.decodeUnknownSync(
       Schema.String.check(Schema.isMinLength(2))

@@ -64,8 +64,7 @@ const canEmitShape = (ast: SchemaAST.AST): boolean => {
       if (ast.indexSignatures.length === 0) {
         return true
       }
-      return ast.propertySignatures.length === 0 &&
-        ast.indexSignatures.every((signature) => canEmitIndexParameter(signature.parameter))
+      return ast.indexSignatures.every((signature) => canEmitIndexParameter(signature.parameter))
     case "Union":
       return ast.encodingChecks === undefined
     default:
@@ -332,6 +331,39 @@ const emitObjectHelper = (ast: SchemaAST.Objects, emitter: Emitter): string => {
   return name
 }
 
+const emitIndexes = (
+  ast: SchemaAST.Objects,
+  input: string,
+  output: string,
+  statements: Array<string>,
+  emitter: Emitter
+): void => {
+  const fixedKeys = ast.propertySignatures.length === 0
+    ? undefined
+    : constant(emitter, new Set(ast.propertySignatures.map((property) => property.name)))
+  for (const signature of ast.indexSignatures) {
+    const keys = variable(emitter)
+    const index = variable(emitter)
+    const key = variable(emitter)
+    const parameter = signature.parameter
+    statements.push(
+      `const ${keys}=${
+        parameter._tag === "String" && parameter.checks === undefined
+          ? `Object.keys(${input})`
+          : `G(${input},${constant(emitter, parameter)})`
+      }`
+    )
+    const loop: Array<string> = [`const ${key}=${keys}[${index}]`]
+    const value = variable(emitter)
+    loop.push(`const ${value}=${input}[${key}]`)
+    const decoded = emit(signature.type, value, loop, emitter)
+    const assign =
+      `if(${key}==="__proto__")Object.defineProperty(${output},${key},{value:${decoded},writable:true,enumerable:true,configurable:true});else ${output}[${key}]=${decoded}`
+    loop.push(fixedKeys === undefined ? assign : `if(!${fixedKeys}.has(${key})){${assign}}`)
+    statements.push(`for(let ${index}=0;${index}<${keys}.length;${index}++){${loop.join(";")}}`)
+  }
+}
+
 const emitBase = (
   ast: SchemaAST.AST,
   input: string,
@@ -441,32 +473,10 @@ const emitBase = (
       statements.push(
         `if(typeof ${input}!=="object"||${input}===null||Array.isArray(${input}))return I`
       )
-      if (ast.indexSignatures.length > 0) {
+      if (ast.indexSignatures.length > 0 && ast.propertySignatures.length === 0) {
         const output = variable(emitter)
         statements.push(`const ${output}={}`)
-        for (const signature of ast.indexSignatures) {
-          const keys = variable(emitter)
-          const index = variable(emitter)
-          const key = variable(emitter)
-          const parameter = signature.parameter
-          statements.push(
-            `const ${keys}=${
-              parameter._tag === "String" && parameter.checks === undefined
-                ? `Object.keys(${input})`
-                : `G(${input},${constant(emitter, parameter)})`
-            }`
-          )
-          const loop: Array<string> = [`const ${key}=${keys}[${index}]`]
-          const value = variable(emitter)
-          loop.push(`const ${value}=${input}[${key}]`)
-          const decoded = emit(signature.type, value, loop, emitter)
-          loop.push(
-            `if(${key}==="__proto__")Object.defineProperty(${output},${key},{value:${decoded},writable:true,enumerable:true,configurable:true});else ${output}[${key}]=${decoded}`
-          )
-          statements.push(
-            `for(let ${index}=0;${index}<${keys}.length;${index}++){${loop.join(";")}}`
-          )
-        }
+        emitIndexes(ast, input, output, statements, emitter)
         return output
       }
       const helper = emitObjectHelper(ast, emitter)
@@ -507,6 +517,9 @@ const emitBase = (
           plainStatements.join(";")
         }}`
       )
+      if (ast.indexSignatures.length > 0) {
+        emitIndexes(ast, input, output, statements, emitter)
+      }
       return output
     }
     case "Union": {

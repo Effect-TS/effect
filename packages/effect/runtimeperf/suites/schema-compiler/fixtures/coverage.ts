@@ -88,6 +88,19 @@ const templateRecordOutput = Object.fromEntries(
 export const templateRecordValid = validCase(templateRecord, templateRecordInput, false, templateRecordOutput)
 export const templateRecordValidCompiled = validCase(templateRecord, templateRecordInput, true, templateRecordOutput)
 
+const structWithRecord = Schema.StructWithRest(
+  Schema.Struct(
+    Object.fromEntries(Array.from({ length: 16 }, (_, index) => [`field${index}`, Schema.Number]))
+  ),
+  [Schema.Record(Schema.String, Schema.Number)]
+)
+const structWithRecordInput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field${index}`, index])
+)
+
+export const structWithRecordValid = validCase(structWithRecord, structWithRecordInput, false)
+export const structWithRecordValidCompiled = validCase(structWithRecord, structWithRecordInput, true)
+
 const literal100 = Schema.Literals(Array.from({ length: 100 }, (_, index) => `value${index}`))
 
 export const literal100ValidLast = validCase(literal100, "value99", false)

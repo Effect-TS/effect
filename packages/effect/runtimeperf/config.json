@@ -2055,6 +2055,24 @@
               "size": 32
             },
             {
+              "name": "struct-with-record-valid-effect",
+              "export": "structWithRecordValid",
+              "scenario": "schema-compiler-struct-with-record-valid",
+              "implementation": "effect",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "struct-with-record-valid-effect-compiled",
+              "export": "structWithRecordValidCompiled",
+              "scenario": "schema-compiler-struct-with-record-valid",
+              "implementation": "effect-compiled",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
               "name": "literal-100-valid-last-effect",
               "export": "literal100ValidLast",
               "scenario": "schema-compiler-literal-100-valid-last",
