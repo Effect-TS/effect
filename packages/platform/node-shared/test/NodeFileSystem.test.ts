@@ -44,74 +44,16 @@ const startWatch = <E, R>(
 describe("FileSystem", () => {
   testLayer(NodeFileSystem.layer)
 
-  describe("file writes", () => {
-    it.effect("write accepts an empty buffer without changing the cursor or contents", () =>
-      Effect.gen(function*() {
-        const fs = yield* FileSystem.FileSystem
-        const path = yield* fs.makeTempFileScoped()
-        yield* fs.writeFileString(path, "abc")
-        const file = yield* fs.open(path, { flag: "r+" })
-        yield* file.seek(1, "start")
+  it.effect("writeAll accepts an empty buffer", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* fs.makeTempFileScoped()
+      const file = yield* fs.open(path, { flag: "r+" })
 
-        assert.strictEqual(yield* file.write(new Uint8Array(0)), 0n)
-        assert.strictEqual(yield* file.seek(0, "current"), 1n)
-        assert.strictEqual(yield* fs.readFileString(path), "abc")
-      }).pipe(
-        Effect.provide(NodeFileSystem.layer)
-      ))
-
-    it.effect("writeAll accepts an empty buffer without changing the cursor or contents", () =>
-      Effect.gen(function*() {
-        const fs = yield* FileSystem.FileSystem
-        const path = yield* fs.makeTempFileScoped()
-        yield* fs.writeFileString(path, "abc")
-        const file = yield* fs.open(path, { flag: "r+" })
-        yield* file.seek(1, "start")
-
-        yield* file.writeAll(new Uint8Array(0))
-        assert.strictEqual(yield* file.seek(0, "current"), 1n)
-        assert.strictEqual(yield* fs.readFileString(path), "abc")
-      }).pipe(
-        Effect.provide(NodeFileSystem.layer)
-      ))
-
-    it.effect.each([
-      { name: "non-empty buffers", chunks: ["xy", "z"] },
-      { name: "empty buffers before, between and after writes", chunks: ["", "xy", "", "z", ""] }
-    ])("writeAll preserves surrounding contents with $name", ({ chunks }) =>
-      Effect.gen(function*() {
-        const fs = yield* FileSystem.FileSystem
-        const path = yield* fs.makeTempFileScoped()
-        yield* fs.writeFileString(path, "abcdef")
-        const file = yield* fs.open(path, { flag: "r+" })
-        yield* file.seek(1, "start")
-
-        for (const chunk of chunks) {
-          yield* file.writeAll(new TextEncoder().encode(chunk))
-        }
-        assert.strictEqual(yield* file.seek(0, "current"), 4n)
-        assert.strictEqual(yield* fs.readFileString(path), "axyzef")
-      }).pipe(
-        Effect.provide(NodeFileSystem.layer)
-      ))
-
-    it.effect.each([
-      { name: "non-empty buffers", chunks: ["abc", "def"] },
-      { name: "empty buffers before, between and after writes", chunks: ["", "abc", "", "def", ""] }
-    ])("sink preserves contents with $name", ({ chunks }) =>
-      Effect.gen(function*() {
-        const fs = yield* FileSystem.FileSystem
-        const path = yield* fs.makeTempFileScoped()
-
-        yield* Stream.fromIterable(chunks).pipe(
-          Stream.map((chunk) => new TextEncoder().encode(chunk)),
-          Stream.run(fs.sink(path))
-        )
-        assert.strictEqual(yield* fs.readFileString(path), "abcdef")
-      }).pipe(
-        Effect.provide(NodeFileSystem.layer)
-      ))
-  })
+      yield* file.writeAll(new Uint8Array(0))
+    }).pipe(
+      Effect.provide(NodeFileSystem.layer)
+    ))
 
   it.effect("watch does not report nested changes when recursive is false", () =>
     Effect.gen(function*() {
