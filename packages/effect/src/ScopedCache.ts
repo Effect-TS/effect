@@ -656,6 +656,7 @@ export const refresh: {
       if (!newEntry) {
         const oentry = MutableHashMap.get(self.state.map, key)
         MutableHashMap.set(self.state.map, key, entry)
+        yield* checkCapacity(fiber, self.state.map, self.capacity)
         if (Option.isSome(oentry)) {
           yield* Scope.close(oentry.value.scope, effect.exitVoid)
         }
