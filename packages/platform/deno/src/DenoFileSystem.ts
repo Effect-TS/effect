@@ -5,6 +5,7 @@
  */
 import { copy as denoCopy, expandGlob, walk } from "@std/fs"
 import { relative } from "@std/path"
+import * as ByteSize from "effect/ByteSize"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
@@ -175,8 +176,8 @@ const makeFileInfo = (info: Deno.FileInfo): FileSystem.File.Info => ({
   nlink: Option.fromNullishOr(info.nlink),
   uid: Option.fromNullishOr(info.uid),
   gid: Option.fromNullishOr(info.gid),
-  size: FileSystem.Size(info.size),
-  blksize: Option.map(Option.fromNullishOr(info.blksize), FileSystem.Size),
+  size: ByteSize.bytes(info.size),
+  blksize: Option.map(Option.fromNullishOr(info.blksize), ByteSize.bytes),
   blocks: Option.fromNullishOr(info.blocks)
 })
 
@@ -207,15 +208,18 @@ class FileImpl implements FileSystem.File {
     return tryPromise("sync", undefined, () => this.file.sync())
   }
 
-  seek(offset: FileSystem.SizeInput, from: FileSystem.SeekMode) {
-    const size = FileSystem.Size(offset)
-    return Effect.sync(() => {
-      if (from === "start") {
-        this.position = size
-      } else {
-        this.position += size
+  seek(offset: bigint, from: FileSystem.SeekMode) {
+    return Effect.suspend(() => {
+      const position = from === "start" ? offset : this.position + offset
+      if (position < BigInt(0)) {
+        return Effect.fail(PlatformError.badArgument({
+          module: "FileSystem",
+          method: "seek",
+          description: "resulting position must be non-negative"
+        }))
       }
-      return FileSystem.Size(this.position)
+      this.position = position
+      return Effect.succeed(ByteSize.bytes(this.position))
     })
   }
 
@@ -235,9 +239,8 @@ class FileImpl implements FileSystem.File {
           }
         ),
         (bytesRead) => {
-          const sizeRead = FileSystem.Size(bytesRead ?? 0)
-          this.position = this.nativePosition = position + sizeRead
-          return sizeRead
+          this.position = this.nativePosition = position + BigInt(bytesRead ?? 0)
+          return bytesRead ?? 0
         }
       )
     })
@@ -247,24 +250,33 @@ class FileImpl implements FileSystem.File {
     return this.readChunk("read", buffer)
   }
 
-  readAlloc(size: FileSystem.SizeInput) {
-    const sizeNumber = Number(size)
-    return Effect.suspend(() => {
-      const buffer = new Uint8Array(sizeNumber)
-      return Effect.map(this.readChunk("readAlloc", buffer), (bytesRead) => {
-        if (bytesRead === BigInt(0)) {
-          return Option.none()
-        }
-        return Option.some(bytesRead === BigInt(sizeNumber) ? buffer : buffer.subarray(0, Number(bytesRead)))
-      })
-    })
+  readAlloc(size: number) {
+    return Effect.flatMap(
+      Effect.try({
+        try: () => new Uint8Array(size),
+        catch: (cause) =>
+          PlatformError.badArgument({
+            module: "FileSystem",
+            method: "readAlloc",
+            description: cause instanceof Error ? cause.message : String(cause)
+          })
+      }),
+      (buffer) => {
+        return Effect.map(this.readChunk("readAlloc", buffer), (bytesRead) => {
+          if (bytesRead === 0) {
+            return Option.none()
+          }
+          return Option.some(bytesRead === size ? buffer : buffer.subarray(0, bytesRead))
+        })
+      }
+    )
   }
 
-  truncate(length?: FileSystem.SizeInput) {
-    const size = FileSystem.Size(length ?? 0)
+  truncate(length = 0) {
     return Effect.map(
-      tryPromise("truncate", undefined, () => this.file.truncate(Number(size))),
+      tryPromise("truncate", undefined, () => this.file.truncate(length)),
       () => {
+        const size = BigInt(length)
         if (!this.append && this.position > size) {
           this.position = size
         }
@@ -288,13 +300,12 @@ class FileImpl implements FileSystem.File {
           }
         ),
         (bytesWritten) => {
-          const sizeWritten = FileSystem.Size(bytesWritten)
           if (this.append) {
             this.nativePosition = undefined
           } else {
-            this.position = this.nativePosition = position + sizeWritten
+            this.position = this.nativePosition = position + BigInt(bytesWritten)
           }
-          return sizeWritten
+          return bytesWritten
         }
       )
     })
@@ -306,7 +317,7 @@ class FileImpl implements FileSystem.File {
 
   private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, PlatformError.PlatformError> {
     return Effect.flatMap(this.writeChunk("writeAll", buffer), (bytesWritten) => {
-      if (bytesWritten === BigInt(0)) {
+      if (bytesWritten === 0) {
         return Effect.fail(PlatformError.systemError({
           module: "FileSystem",
           method: "writeAll",
@@ -315,7 +326,7 @@ class FileImpl implements FileSystem.File {
         }))
       }
       return bytesWritten < buffer.length
-        ? this.writeAllChunk(buffer.subarray(Number(bytesWritten)))
+        ? this.writeAllChunk(buffer.subarray(bytesWritten))
         : Effect.void
     })
   }
@@ -385,7 +396,7 @@ const symlink: FileSystem.FileSystem["symlink"] = (target, path) =>
   tryPromise("symlink", target, () => Deno.symlink(target, path))
 
 const truncate: FileSystem.FileSystem["truncate"] = (path, length) =>
-  tryPromise("truncate", path, () => Deno.truncate(path, length === undefined ? undefined : Number(length)))
+  tryPromise("truncate", path, () => Deno.truncate(path, length))
 
 const utimes: FileSystem.FileSystem["utimes"] = (path, atime, mtime) =>
   tryPromise("utimes", path, () => Deno.utime(path, atime, mtime))

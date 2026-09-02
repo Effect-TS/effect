@@ -9,6 +9,8 @@
  *
  * @since 4.0.0
  */
+import * as BI from "../../BigInt.ts"
+import * as ByteSize from "../../ByteSize.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as FileSystem from "../../FileSystem.ts"
@@ -35,17 +37,17 @@ export class HttpPlatform extends Context.Service<HttpPlatform, {
   readonly fileResponse: (
     path: string,
     options?: Response.Options.WithContent & {
-      readonly bytesToRead?: FileSystem.SizeInput | undefined
-      readonly chunkSize?: FileSystem.SizeInput | undefined
-      readonly offset?: FileSystem.SizeInput | undefined
+      readonly bytesToRead?: ByteSize.Input | undefined
+      readonly chunkSize?: number | undefined
+      readonly offset?: ByteSize.Input | undefined
     }
   ) => Effect.Effect<Response.HttpServerResponse, PlatformError>
   readonly fileWebResponse: (
     file: Body.HttpBody.FileLike,
     options?: Response.Options.WithContent & {
-      readonly bytesToRead?: FileSystem.SizeInput | undefined
-      readonly chunkSize?: FileSystem.SizeInput | undefined
-      readonly offset?: FileSystem.SizeInput | undefined
+      readonly bytesToRead?: number | undefined
+      readonly chunkSize?: number | undefined
+      readonly offset?: number | undefined
     }
   ) => Effect.Effect<Response.HttpServerResponse>
 }>()("effect/http/HttpPlatform") {}
@@ -64,19 +66,19 @@ export const make: (impl: {
     status: number,
     statusText: string | undefined,
     headers: Headers.Headers,
-    start: number,
-    end: number | undefined,
-    contentLength: number
-  ) => Response.HttpServerResponse
+    start: ByteSize.ByteSize,
+    end: ByteSize.ByteSize | undefined,
+    contentLength: ByteSize.ByteSize
+  ) => Effect.Effect<Response.HttpServerResponse, PlatformError>
   readonly fileWebResponse: (
     file: Body.HttpBody.FileLike,
     status: number,
     statusText: string | undefined,
     headers: Headers.Headers,
     options?: {
-      readonly bytesToRead?: FileSystem.SizeInput | undefined
-      readonly chunkSize?: FileSystem.SizeInput | undefined
-      readonly offset?: FileSystem.SizeInput | undefined
+      readonly bytesToRead?: number | undefined
+      readonly chunkSize?: number | undefined
+      readonly offset?: number | undefined
     }
   ) => Response.HttpServerResponse
 }) => Effect.Effect<
@@ -93,8 +95,21 @@ export const make: (impl: {
     fileResponse: Effect.fnUntraced(function*(path, options) {
       const info = yield* fs.stat(path)
       const etag = yield* etagGen.fromFileInfo(info)
-      const start = Number(options?.offset ?? 0)
-      const end = options?.bytesToRead !== undefined ? start + Number(options.bytesToRead) : undefined
+      const requestedOffset = ByteSize.fromInputUnsafe(options?.offset ?? ByteSize.zero)
+      const requestedBytesToRead = options?.bytesToRead === undefined
+        ? undefined
+        : ByteSize.fromInputUnsafe(options.bytesToRead)
+      const startBigInt = BI.min(requestedOffset, info.size)
+      const available = info.size - startBigInt
+      const contentLengthBigInt = requestedBytesToRead !== undefined
+        ? BI.min(requestedBytesToRead, available)
+        : available
+      const endBigInt = requestedBytesToRead !== undefined
+        ? startBigInt + contentLengthBigInt
+        : undefined
+      const start = ByteSize.bytes(startBigInt)
+      const end = endBigInt !== undefined ? ByteSize.bytes(endBigInt) : undefined
+      const contentLength = ByteSize.bytes(contentLengthBigInt)
       const headers = Headers.set(
         options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
         "etag",
@@ -103,8 +118,7 @@ export const make: (impl: {
       if (Option.isSome(info.mtime)) {
         ;(headers as any)["last-modified"] = info.mtime.value.toUTCString()
       }
-      const contentLength = end !== undefined ? end - start : Number(info.size) - start
-      return impl.fileResponse(
+      return yield* impl.fileResponse(
         path,
         options?.status ?? 200,
         options?.statusText,
@@ -153,19 +167,22 @@ export const layer = Layer.effect(HttpPlatform)(
       platform: "web",
       compression: internal.compressionWeb,
       fileResponse(path, status, statusText, headers, start, end, contentLength) {
-        return Response.stream(
+        return Effect.succeed(Response.stream(
           fs.stream(path, {
             offset: start,
-            bytesToRead: end !== undefined ? end - start : undefined
+            bytesToRead: end !== undefined ? contentLength : undefined
           }),
-          { contentLength, headers, status, statusText }
-        )
+          { contentLength: Option.getOrUndefined(ByteSize.toNumber(contentLength)), headers, status, statusText }
+        ))
       },
       fileWebResponse(file, status, statusText, headers, options) {
-        const offset = Number(options?.offset ?? 0)
-        const bytesToRead = options?.bytesToRead !== undefined ? Number(options.bytesToRead) : undefined
-        const chunkSize = options?.chunkSize !== undefined ? Math.max(1, Number(options.chunkSize)) : Infinity
-        const end = offset + (bytesToRead ?? Infinity)
+        const offset = Math.min(Math.max(options?.offset ?? 0, 0), file.size)
+        const available = file.size - offset
+        const contentLength = options?.bytesToRead === undefined
+          ? available
+          : Math.min(Math.max(options.bytesToRead, 0), available)
+        const end = offset + contentLength
+        const chunkSize = Math.max(options?.chunkSize ?? Number.MAX_SAFE_INTEGER, 1)
         const stream = end <= offset
           ? Stream.empty
           : Stream.fromReadableStream({
@@ -192,7 +209,7 @@ export const layer = Layer.effect(HttpPlatform)(
             Stream.map((chunk) => chunk.bytes)
           )
         return Response.stream(stream, {
-          contentLength: bytesToRead ?? file.size - offset,
+          contentLength,
           headers,
           status,
           statusText

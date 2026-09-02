@@ -9,6 +9,8 @@
  *
  * @since 4.0.0
  */
+import * as BI from "effect/BigInt"
+import * as ByteSize from "effect/ByteSize"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import { effectify } from "effect/Effect"
@@ -30,6 +32,32 @@ const handleBadArgument = (method: string) => (err: unknown) =>
     module: "FileSystem",
     method,
     description: (err as Error).message ?? String(err)
+  })
+
+/**
+ * Converts a bigint to a safe number or fails with a bad argument error.
+ *
+ * @category utilities
+ * @since 4.0.0
+ */
+export const bigintToNumber = (
+  value: bigint,
+  options: {
+    readonly module: string
+    readonly method: string
+    readonly description: string
+  }
+): Effect.Effect<number, Error.PlatformError> =>
+  Option.match(BI.toNumber(value), {
+    onNone: () => Effect.fail(Error.badArgument(options)),
+    onSome: Effect.succeed
+  })
+
+const positionToNumber = (position: bigint, method: string): Effect.Effect<number, Error.PlatformError> =>
+  bigintToNumber(position, {
+    module: "FileSystem",
+    method,
+    description: "file position exceeds Number.MAX_SAFE_INTEGER"
   })
 
 // == access
@@ -225,7 +253,8 @@ const makeFile = (() => {
   const nodeRead = nodeReadFactory("read")
   const nodeReadAlloc = nodeReadFactory("readAlloc")
   const nodeStat = effectify(
-    NFS.fstat,
+    (fd: number, callback: (error: NodeJS.ErrnoException | null, stats: NFS.BigIntStats) => void) =>
+      NFS.fstat(fd, { bigint: true }, callback),
     handleErrnoException("FileSystem", "stat"),
     handleBadArgument("stat")
   )
@@ -274,16 +303,18 @@ const makeFile = (() => {
       return nodeSync(this.fd)
     }
 
-    seek(offset: FileSystem.SizeInput, from: FileSystem.SeekMode) {
-      const offsetSize = FileSystem.Size(offset)
-      return Effect.sync(() => {
-        if (from === "start") {
-          this.position = offsetSize
-        } else if (from === "current") {
-          this.position = this.position + offsetSize
+    seek(offset: bigint, from: FileSystem.SeekMode) {
+      return Effect.suspend(() => {
+        const position = from === "start" ? offset : this.position + offset
+        if (position < BigInt(0)) {
+          return Effect.fail(Error.badArgument({
+            module: "FileSystem",
+            method: "seek",
+            description: "resulting position must be non-negative"
+          }))
         }
-
-        return FileSystem.Size(this.position)
+        this.position = position
+        return Effect.succeed(ByteSize.bytes(this.position))
       })
     }
 
@@ -293,43 +324,46 @@ const makeFile = (() => {
         return Effect.map(
           nodeRead(this.fd, { buffer, position }),
           (bytesRead) => {
-            const sizeRead = FileSystem.Size(bytesRead)
-            this.position = position + sizeRead
-            return sizeRead
-          }
-        )
-      })
-    }
-
-    readAlloc(size: FileSystem.SizeInput) {
-      const sizeNumber = Number(size)
-      return Effect.suspend(() => {
-        const buffer = Buffer.allocUnsafeSlow(sizeNumber)
-        const position = this.position
-        return Effect.map(
-          nodeReadAlloc(this.fd, { buffer, position }),
-          (bytesRead): Option.Option<Buffer> => {
-            if (bytesRead === 0) {
-              return Option.none()
-            }
-
             this.position = position + BigInt(bytesRead)
-            if (bytesRead === sizeNumber) {
-              return Option.some(buffer)
-            }
-
-            const dst = Buffer.allocUnsafeSlow(bytesRead)
-            buffer.copy(dst, 0, 0, bytesRead)
-            return Option.some(dst)
+            return bytesRead
           }
         )
       })
     }
 
-    truncate(length?: FileSystem.SizeInput) {
-      return Effect.map(nodeTruncate(this.fd, length ? Number(length) : undefined), () => {
+    readAlloc(size: number) {
+      return Effect.flatMap(
+        Effect.try({
+          try: () => Buffer.allocUnsafeSlow(size),
+          catch: handleBadArgument("readAlloc")
+        }),
+        (buffer) => {
+          const position = this.position
+          return Effect.map(
+            nodeReadAlloc(this.fd, { buffer, position }),
+            (bytesRead): Option.Option<Buffer> => {
+              if (bytesRead === 0) {
+                return Option.none()
+              }
+
+              this.position = position + BigInt(bytesRead)
+              if (bytesRead === size) {
+                return Option.some(buffer)
+              }
+
+              const dst = Buffer.allocUnsafeSlow(bytesRead)
+              buffer.copy(dst, 0, 0, bytesRead)
+              return Option.some(dst)
+            }
+          )
+        }
+      )
+    }
+
+    truncate(length = 0) {
+      return Effect.map(nodeTruncate(this.fd, length), () => {
         if (!this.append) {
-          const len = BigInt(length ?? 0)
+          const len = BigInt(length)
           if (this.position > len) {
             this.position = len
           }
@@ -340,15 +374,18 @@ const makeFile = (() => {
     write(buffer: Uint8Array) {
       return Effect.suspend(() => {
         const position = this.position
-        return Effect.map(
-          nodeWrite(this.fd, buffer, undefined, undefined, this.append ? undefined : Number(position)),
-          (bytesWritten) => {
-            const sizeWritten = FileSystem.Size(bytesWritten)
-            if (!this.append) {
-              this.position = position + sizeWritten
-            }
-            return sizeWritten
-          }
+        return Effect.flatMap(
+          this.append ? Effect.succeed(undefined) : positionToNumber(position, "write"),
+          (positionNumber) =>
+            Effect.map(
+              nodeWrite(this.fd, buffer, undefined, undefined, positionNumber),
+              (bytesWritten) => {
+                if (!this.append) {
+                  this.position = position + BigInt(bytesWritten)
+                }
+                return bytesWritten
+              }
+            )
         )
       })
     }
@@ -357,27 +394,27 @@ const makeFile = (() => {
       return Effect.suspend(() => {
         const position = this.position
         return Effect.flatMap(
-          nodeWriteAll(this.fd, buffer, undefined, undefined, this.append ? undefined : Number(position)),
-          (bytesWritten) => {
-            if (bytesWritten === 0) {
-              return Effect.fail(
-                Error.systemError({
-                  module: "FileSystem",
-                  method: "writeAll",
-                  _tag: "WriteZero",
-                  pathOrDescriptor: this.fd,
-                  description: "write returned 0 bytes written"
-                })
-              )
-            }
-
-            if (!this.append) {
-              this.position = position + BigInt(bytesWritten)
-            }
-
-            return bytesWritten < buffer.length ? this.writeAllChunk(buffer.subarray(bytesWritten)) : Effect.void
+          this.append ? Effect.succeed(undefined) : positionToNumber(position, "writeAll"),
+          (positionNumber) => nodeWriteAll(this.fd, buffer, undefined, undefined, positionNumber)
+        ).pipe(Effect.flatMap((bytesWritten) => {
+          if (bytesWritten === 0) {
+            return Effect.fail(
+              Error.systemError({
+                module: "FileSystem",
+                method: "writeAll",
+                _tag: "WriteZero",
+                pathOrDescriptor: this.fd,
+                description: "write returned 0 bytes written"
+              })
+            )
           }
-        )
+
+          if (!this.append) {
+            this.position = position + BigInt(bytesWritten)
+          }
+
+          return bytesWritten < buffer.length ? this.writeAllChunk(buffer.subarray(bytesWritten)) : Effect.void
+        }))
       })
     }
 
@@ -475,7 +512,7 @@ const rename = (() => {
 
 // == stat
 
-const makeFileInfo = (stat: NFS.Stats): FileSystem.File.Info => ({
+const makeFileInfo = (stat: NFS.BigIntStats): FileSystem.File.Info => ({
   type: stat.isFile() ?
     "File" :
     stat.isDirectory() ?
@@ -494,20 +531,21 @@ const makeFileInfo = (stat: NFS.Stats): FileSystem.File.Info => ({
   mtime: Option.fromNullishOr(stat.mtime),
   atime: Option.fromNullishOr(stat.atime),
   birthtime: Option.fromNullishOr(stat.birthtime),
-  dev: stat.dev,
-  rdev: Option.fromNullishOr(stat.rdev),
-  ino: Option.fromNullishOr(stat.ino),
-  mode: stat.mode,
-  nlink: Option.fromNullishOr(stat.nlink),
-  uid: Option.fromNullishOr(stat.uid),
-  gid: Option.fromNullishOr(stat.gid),
-  size: FileSystem.Size(stat.size),
-  blksize: stat.blksize !== undefined ? Option.some(FileSystem.Size(stat.blksize)) : Option.none(),
-  blocks: Option.fromNullishOr(stat.blocks)
+  dev: Number(stat.dev),
+  rdev: Option.some(Number(stat.rdev)),
+  ino: Option.some(Number(stat.ino)),
+  mode: Number(stat.mode),
+  nlink: Option.some(Number(stat.nlink)),
+  uid: Option.some(Number(stat.uid)),
+  gid: Option.some(Number(stat.gid)),
+  size: ByteSize.bytes(stat.size),
+  blksize: stat.blksize !== undefined ? Option.some(ByteSize.bytes(stat.blksize)) : Option.none(),
+  blocks: stat.blocks !== undefined ? Option.some(Number(stat.blocks)) : Option.none()
 })
 const stat = (() => {
   const nodeStat = effectify(
-    NFS.stat,
+    (path: NFS.PathLike, callback: (error: NodeJS.ErrnoException | null, stats: NFS.BigIntStats) => void) =>
+      NFS.stat(path, { bigint: true }, callback),
     handleErrnoException("FileSystem", "stat"),
     handleBadArgument("stat")
   )
@@ -533,8 +571,7 @@ const truncate = (() => {
     handleErrnoException("FileSystem", "truncate"),
     handleBadArgument("truncate")
   )
-  return (path: string, length?: FileSystem.SizeInput) =>
-    nodeTruncate(path, length !== undefined ? Number(length) : undefined)
+  return (path: string, length?: number) => nodeTruncate(path, length)
 })()
 
 // == utimes

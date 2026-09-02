@@ -1,5 +1,6 @@
 import * as DenoHttpPlatform from "@effect/platform-deno/DenoHttpPlatform"
 import { assert, describe, it } from "@effect/vitest"
+import * as ByteSize from "effect/ByteSize"
 import * as Effect from "effect/Effect"
 import type * as HttpBody from "effect/unstable/http/HttpBody"
 import * as HttpPlatform from "effect/unstable/http/HttpPlatform"
@@ -20,15 +21,25 @@ describe("DenoHttpPlatform", () => {
       const file = new File(["abcd"], "file.txt", { type: "text/plain", lastModified: 0 })
       const sliced = yield* platform.fileWebResponse(file, { offset: 1, bytesToRead: 2 })
       const empty = yield* platform.fileWebResponse(file, { offset: 1, bytesToRead: 0 })
+      const clamped = yield* platform.fileWebResponse(file, { offset: 1, bytesToRead: 10 })
 
       assert.deepStrictEqual(
         {
           slicedLength: sliced.headers["content-length"],
           slicedBody: yield* readBody(sliced.body),
           emptyLength: empty.headers["content-length"],
-          emptyBody: yield* readBody(empty.body)
+          emptyBody: yield* readBody(empty.body),
+          clampedLength: clamped.headers["content-length"],
+          clampedBody: yield* readBody(clamped.body)
         },
-        { slicedLength: "2", slicedBody: "bc", emptyLength: "0", emptyBody: "" }
+        {
+          slicedLength: "2",
+          slicedBody: "bc",
+          emptyLength: "0",
+          emptyBody: "",
+          clampedLength: "3",
+          clampedBody: "bcd"
+        }
       )
     }).pipe(Effect.provide(DenoHttpPlatform.layer)))
 
@@ -36,8 +47,8 @@ describe("DenoHttpPlatform", () => {
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
       const response = yield* platform.fileResponse(fixture, {
-        offset: 6,
-        bytesToRead: 5
+        offset: ByteSize.bytes(6),
+        bytesToRead: ByteSize.bytes(5)
       })
 
       assert.strictEqual(response.headers["content-length"], "5")
@@ -53,8 +64,8 @@ describe("DenoHttpPlatform", () => {
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
       const response = yield* platform.fileResponse(fixture, {
-        offset: 6,
-        bytesToRead: 0
+        offset: ByteSize.bytes(6),
+        bytesToRead: ByteSize.zero
       })
 
       assert.strictEqual(response.headers["content-length"], "0")

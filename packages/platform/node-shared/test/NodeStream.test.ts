@@ -2,6 +2,7 @@ import * as NodeStream from "@effect/platform-node-shared/NodeStream"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import * as Array from "effect/Array"
+import * as ByteSize from "effect/ByteSize"
 import * as Channel from "effect/Channel"
 import * as Console from "effect/Console"
 import * as Stream from "effect/Stream"
@@ -192,7 +193,7 @@ describe("Stream", () => {
         }
       })
       const error = yield* NodeStream.toString(() => stream, {
-        maxBytes: 0,
+        maxBytes: "0 B",
         onError: () => "maxBytes exceeded" as const
       }).pipe(Effect.flip)
 
@@ -211,7 +212,7 @@ describe("Stream", () => {
         }
       })
       const error = yield* NodeStream.toArrayBuffer(() => stream, {
-        maxBytes: 0,
+        maxBytes: ByteSize.zero,
         onError: () => "maxBytes exceeded" as const
       }).pipe(Effect.flip)
 

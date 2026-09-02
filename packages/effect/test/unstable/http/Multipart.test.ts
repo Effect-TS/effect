@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { Effect, ErrorReporter, FileSystem, identity, Path, Schema, Stream, Unify } from "effect"
+import { ByteSize, Effect, ErrorReporter, FileSystem, identity, Path, Schema, Stream, Unify } from "effect"
 import {
   HttpClientRequest,
   HttpIncomingMessage,
@@ -189,7 +189,7 @@ describe("Multipart", () => {
           return Stream.runDrain(part.content)
         }),
         Stream.runDrain,
-        Effect.provideService(Multipart.MaxFileSize, 256),
+        Effect.provideService(Multipart.MaxFileSize, ByteSize.bytes(256)),
         Effect.flip
       )
 
@@ -225,7 +225,7 @@ describe("Multipart", () => {
           return Stream.runDrain(part.content)
         }),
         Stream.runDrain,
-        Effect.provideService(HttpIncomingMessage.MaxBodySize, FileSystem.Size(256)),
+        Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(256)),
         Effect.flip
       )
 
@@ -271,8 +271,8 @@ describe("Multipart", () => {
     description: string
     options: {
       readonly maxParts?: number
-      readonly maxFieldSize?: number
-      readonly maxPartSize?: number
+      readonly maxFieldSize?: ByteSize.Input
+      readonly maxPartSize?: ByteSize.Input
     }
     limit: "MaxParts" | "MaxFieldSize" | "MaxPartSize"
     expectedFields: Array<string>
@@ -285,13 +285,13 @@ describe("Multipart", () => {
     },
     {
       description: "maxFieldSize",
-      options: { maxFieldSize: 1 },
+      options: { maxFieldSize: "1 B" },
       limit: "MaxFieldSize",
       expectedFields: []
     },
     {
       description: "maxPartSize",
-      options: { maxPartSize: 1 },
+      options: { maxPartSize: ByteSize.bytes(1) },
       limit: "MaxPartSize",
       expectedFields: []
     }
@@ -330,6 +330,9 @@ describe("Multipart", () => {
     let done = false
     const parser = MultipartParser.make({
       headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+      maxTotalSize: Infinity,
+      maxPartSize: Infinity,
+      maxFieldSize: Infinity,
       onField(info, value) {
         fields.push([info.name, decoder.decode(value)])
       },

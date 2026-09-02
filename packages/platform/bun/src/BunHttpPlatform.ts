@@ -9,8 +9,10 @@
  *
  * @since 4.0.0
  */
+import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
-import type * as Effect from "effect/Effect"
+import * as ByteSize from "effect/ByteSize"
+import * as Effect from "effect/Effect"
 import type { FileSystem } from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Etag from "effect/unstable/http/Etag"
@@ -37,21 +39,35 @@ const make: Effect.Effect<
   platform: "bun",
   compression,
   fileResponse(path, status, statusText, headers, start, end, _contentLength) {
-    let file = Bun.file(path)
-    if (start > 0 || end !== undefined) {
-      file = file.slice(start, end)
-    }
-    return Response.raw(file, { headers, status, statusText })
+    return Effect.gen(function*() {
+      let file = Bun.file(path)
+      if (!ByteSize.isZero(start) || end !== undefined) {
+        file = file.slice(
+          yield* byteSizeToNumber(start),
+          end === undefined ? undefined : yield* byteSizeToNumber(end)
+        )
+      }
+      return Response.raw(file, { headers, status, statusText })
+    })
   },
   fileWebResponse(file, status, statusText, headers, options) {
-    const start = Number(options?.offset ?? 0)
-    const end = options?.bytesToRead !== undefined ? start + Number(options.bytesToRead) : undefined
+    const start = Math.min(Math.max(options?.offset ?? 0, 0), file.size)
+    const end = options?.bytesToRead === undefined
+      ? undefined
+      : Math.min(start + Math.max(options.bytesToRead, 0), file.size)
     const body = start > 0 || end !== undefined
       ? (file as File).slice(start, end, file.type)
       : file
     return Response.raw(body, { headers, status, statusText })
   }
 })
+
+const byteSizeToNumber = (size: bigint) =>
+  NodeFileSystem.bigintToNumber(size, {
+    module: "HttpPlatform",
+    method: "fileResponse",
+    description: "file range exceeds Number.MAX_SAFE_INTEGER"
+  })
 
 /**
  * Layer that provides the Bun `HttpPlatform`, including file responses backed by `Bun.file`.

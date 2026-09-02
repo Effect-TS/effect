@@ -29,12 +29,30 @@ describe("HttpPlatform", () => {
   it.effect("honors Web file chunk size", () =>
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
-      const response = yield* platform.fileWebResponse(file, { offset: 0, bytesToRead: 4, chunkSize: 2 })
+      const response = yield* platform.fileWebResponse(file, {
+        offset: 0,
+        bytesToRead: 4,
+        chunkSize: 2
+      })
       assert.strictEqual(response.body._tag, "Stream")
       if (response.body._tag === "Stream") {
         assert.strictEqual(response.body.contentLength, 4)
         const chunks = yield* Stream.runCollect(response.body.stream)
         assert.deepStrictEqual(chunks.map((chunk) => Array.from(chunk)), [[1, 2], [3, 4]])
+      }
+    }).pipe(
+      Effect.provide(HttpPlatform.layer),
+      Effect.provideService(FileSystem.FileSystem, {} as any)
+    ))
+
+  it.effect("keeps the source chunking by default", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileWebResponse(file)
+      assert.strictEqual(response.body._tag, "Stream")
+      if (response.body._tag === "Stream") {
+        const chunks = yield* Stream.runCollect(response.body.stream)
+        assert.deepStrictEqual(chunks.map((chunk) => Array.from(chunk)), [[1, 2, 3, 4]])
       }
     }).pipe(
       Effect.provide(HttpPlatform.layer),

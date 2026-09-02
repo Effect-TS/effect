@@ -5,13 +5,13 @@
  * Platform packages provide concrete layers, while this module defines the
  * operations for reading, writing, inspecting, streaming, and watching files.
  * Operations return `Effect`, `Stream`, or `Sink` values and fail with
- * `PlatformError`. The module also includes file handles, size helpers, open
- * flags, watch events, and the watch backend service.
+ * `PlatformError`. The module also includes file handles, open flags, watch
+ * events, and the watch backend service.
  *
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"
-import type * as Brand from "./Brand.ts"
+import * as ByteSize from "./ByteSize.ts"
 import * as Cause from "./Cause.ts"
 import * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
@@ -39,12 +39,12 @@ const TypeId = "~effect/FileSystem"
  * **Example** (Accessing file system operations)
  *
  * ```ts import.meta.vitest
- * import { Effect, FileSystem } from "effect"
+ * import { ByteSize, Effect, FileSystem } from "effect"
  *
  * const fileSystem = FileSystem.makeNoop({
  *   exists: () => Effect.succeed(true),
  *   makeDirectory: () => Effect.void,
- *   stat: () => Effect.succeed({ size: FileSystem.Size(22) } as FileSystem.File.Info),
+ *   stat: () => Effect.succeed({ size: ByteSize.bytes(22) } as FileSystem.File.Info),
  *   readFileString: () => Effect.succeed("{\"env\": \"development\"}")
  * })
  *
@@ -68,7 +68,7 @@ const TypeId = "~effect/FileSystem"
  * })
  *
  * const result = Effect.runSync(Effect.provideService(program, FileSystem.FileSystem, fileSystem))
- * result.size // => 22n
+ * ByteSize.toBigInt(result.size) // => 22n
  * result.content // => "{\"env\": \"development\"}"
  * ```
  *
@@ -321,9 +321,9 @@ export interface FileSystem {
   readonly stream: (
     path: string,
     options?: {
-      readonly bytesToRead?: SizeInput | undefined
-      readonly chunkSize?: SizeInput | undefined
-      readonly offset?: SizeInput | undefined
+      readonly bytesToRead?: ByteSize.Input | undefined
+      readonly chunkSize?: number | undefined
+      readonly offset?: ByteSize.Input | undefined
     }
   ) => Stream.Stream<Uint8Array, PlatformError>
   /**
@@ -339,7 +339,7 @@ export interface FileSystem {
    */
   readonly truncate: (
     path: string,
-    length?: SizeInput
+    length?: number
   ) => Effect.Effect<void, PlatformError>
   /**
    * Change the file system timestamps of the file at `path`.
@@ -382,199 +382,6 @@ export interface FileSystem {
     }
   ) => Effect.Effect<void, PlatformError>
 }
-
-/**
- * Represents a file size in bytes using a branded bigint.
- *
- * **Details**
- *
- * This type ensures type safety when working with file sizes, preventing
- * accidental mixing of regular numbers with size values. The underlying
- * bigint allows for handling very large file sizes beyond JavaScript's
- * number precision limits.
- *
- * **Example** (Creating branded file sizes)
- *
- * ```ts import.meta.vitest
- * import { FileSystem } from "effect"
- *
- * FileSystem.Size(1024) // => 1024n
- * FileSystem.Size(BigInt("9007199254740992")) // => 9007199254740992n
- * ```
- *
- * @category sizes
- * @since 4.0.0
- */
-export type Size = Brand.Branded<bigint, "Size">
-
-/**
- * Input type for size parameters that accepts multiple numeric types.
- *
- * **Details**
- *
- * This union type allows file system operations to accept size values in
- * different formats for convenience, which are then normalized to the
- * branded `Size` type internally.
- *
- * **Example** (Using size inputs)
- *
- * ```ts import.meta.vitest
- * import { FileSystem } from "effect"
- *
- * const inputs: ReadonlyArray<FileSystem.SizeInput> = [
- *   1024,
- *   2048n,
- *   FileSystem.Size(4096)
- * ]
- * inputs.map(FileSystem.Size) // => [1024n, 2048n, 4096n]
- * ```
- *
- * @category sizes
- * @since 4.0.0
- */
-export type SizeInput = bigint | number | Size
-
-/**
- * Creates a `Size` from various numeric input types.
- *
- * **Details**
- *
- * Converts numbers, bigints, or existing Size values into a properly
- * branded Size type. This function handles the conversion and ensures
- * type safety for file size operations.
- *
- * **Example** (Converting size inputs)
- *
- * ```ts import.meta.vitest
- * import { FileSystem } from "effect"
- *
- * // From number
- * const size1 = FileSystem.Size(1024)
- * typeof size1 // => "bigint"
- *
- * // From bigint
- * const size2 = FileSystem.Size(BigInt(2048))
- *
- * // From existing Size (identity)
- * const size3 = FileSystem.Size(size1)
- * const sizes = [size2, size3] // => [2048n, 1024n]
- * ```
- *
- * @category sizes
- * @since 4.0.0
- */
-export const Size = (bytes: SizeInput): Size => typeof bytes === "bigint" ? bytes as Size : BigInt(bytes) as Size
-
-/**
- * Creates a `Size` representing kilobytes (1024 bytes).
- *
- * **Details**
- *
- * Converts a number of kilobytes to the equivalent size in bytes.
- * Uses binary kilobytes (1024 bytes) rather than decimal (1000 bytes).
- *
- * **Example** (Creating kibibyte sizes)
- *
- * ```ts import.meta.vitest
- * import { FileSystem } from "effect"
- *
- * FileSystem.KiB(64) // => 65536n
- * FileSystem.KiB(100) // => 102400n
- * ```
- *
- * @category sizes
- * @since 4.0.0
- */
-export const KiB = (n: number): Size => Size(n * 1024)
-
-/**
- * Creates a `Size` representing mebibytes (1024² bytes).
- *
- * **Details**
- *
- * Converts a number of mebibytes to the equivalent size in bytes.
- * Uses binary mebibytes (1,048,576 bytes) rather than decimal megabytes.
- *
- * **Example** (Creating mebibyte sizes)
- *
- * ```ts import.meta.vitest
- * import { FileSystem } from "effect"
- *
- * FileSystem.MiB(10) // => 10485760n
- * FileSystem.MiB(100) // => 104857600n
- * ```
- *
- * @category sizes
- * @since 4.0.0
- */
-export const MiB = (n: number): Size => Size(n * 1024 * 1024)
-
-/**
- * Creates a `Size` representing gibibytes (1024³ bytes).
- *
- * **Details**
- *
- * Converts a number of gibibytes to the equivalent size in bytes.
- * Uses binary gibibytes (1,073,741,824 bytes) rather than decimal gigabytes.
- *
- * **Example** (Creating gibibyte sizes)
- *
- * ```ts import.meta.vitest
- * import { FileSystem } from "effect"
- *
- * FileSystem.GiB(1) // => 1073741824n
- * ```
- *
- * @category sizes
- * @since 4.0.0
- */
-export const GiB = (n: number): Size => Size(n * 1024 * 1024 * 1024)
-
-/**
- * Creates a `Size` representing tebibytes (1024⁴ bytes).
- *
- * **Details**
- *
- * Converts a number of tebibytes to the equivalent size in bytes.
- * Uses binary tebibytes (1,099,511,627,776 bytes) rather than decimal terabytes.
- *
- * **Example** (Creating tebibyte sizes)
- *
- * ```ts import.meta.vitest
- * import { FileSystem } from "effect"
- *
- * FileSystem.TiB(1) // => 1099511627776n
- * ```
- *
- * @category sizes
- * @since 4.0.0
- */
-export const TiB = (n: number): Size => Size(n * 1024 * 1024 * 1024 * 1024)
-
-const bigint1024 = BigInt(1024)
-const bigintPiB = bigint1024 * bigint1024 * bigint1024 * bigint1024 * bigint1024
-
-/**
- * Creates a `Size` representing pebibytes (1024⁵ bytes).
- *
- * **Details**
- *
- * Converts a number of pebibytes to the equivalent size in bytes.
- * Uses binary pebibytes (1,125,899,906,842,624 bytes) rather than decimal petabytes.
- * This function uses BigInt arithmetic to handle the very large numbers involved.
- *
- * **Example** (Creating pebibyte sizes)
- *
- * ```ts import.meta.vitest
- * import { FileSystem } from "effect"
- *
- * FileSystem.PiB(2) // => 2251799813685248n
- * ```
- *
- * @category sizes
- * @since 4.0.0
- */
-export const PiB = (n: number): Size => Size(BigInt(n) * bigintPiB)
 
 /**
  * File open flags that determine how a file is opened and what operations are allowed.
@@ -712,12 +519,15 @@ export const make = (
         })),
     stream: Effect.fnUntraced(function*(path, options) {
       const file = yield* impl.open(path, { flag: "r" })
-      if (options?.offset) {
-        yield* file.seek(options.offset, "start")
+      const offset = options?.offset === undefined ? undefined : ByteSize.fromInputUnsafe(options.offset)
+      if (offset !== undefined) {
+        yield* file.seek(offset, "start")
       }
-      const bytesToRead = options?.bytesToRead !== undefined ? Size(options.bytesToRead) : undefined
+      const bytesToRead = options?.bytesToRead === undefined
+        ? undefined
+        : ByteSize.fromInputUnsafe(options.bytesToRead)
       let totalBytesRead = BigInt(0)
-      const chunkSize = Size(options?.chunkSize ?? 64 * 1024)
+      const chunkSize = options?.chunkSize ?? 64 * 1024
       const readChunk = file.readAlloc(chunkSize)
       return Stream.fromPull(Effect.succeed(
         Effect.flatMap(
@@ -725,8 +535,8 @@ export const make = (
             if (bytesToRead !== undefined && bytesToRead <= totalBytesRead) {
               return Cause.done()
             }
-            return bytesToRead !== undefined && (bytesToRead - totalBytesRead) < chunkSize
-              ? file.readAlloc(bytesToRead - totalBytesRead)
+            return bytesToRead !== undefined && (bytesToRead - totalBytesRead) < BigInt(chunkSize)
+              ? file.readAlloc(Number(bytesToRead - totalBytesRead))
               : readChunk
           }),
           Option.match({
@@ -1005,20 +815,20 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  * **Example** (Working with file handles)
  *
  * ```ts import.meta.vitest
- * import { Effect, FileSystem, Option } from "effect"
+ * import { ByteSize, Effect, FileSystem, Option } from "effect"
  *
  * const file: FileSystem.File = {
  *   [FileSystem.FileTypeId]: FileSystem.FileTypeId,
- *   stat: Effect.succeed({ size: FileSystem.Size(5) } as FileSystem.File.Info),
- *   seek: () => Effect.succeed(FileSystem.Size(0)),
+ *   stat: Effect.succeed({ size: ByteSize.bytes(5) } as FileSystem.File.Info),
+ *   seek: () => Effect.succeed(ByteSize.zero),
  *   sync: Effect.void,
  *   read: (buffer) => Effect.sync(() => {
  *     buffer.set([1, 2, 3, 4, 5])
- *     return FileSystem.Size(5)
+ *     return 5
  *   }),
  *   readAlloc: () => Effect.succeed(Option.none()),
  *   truncate: () => Effect.void,
- *   write: (buffer) => Effect.succeed(FileSystem.Size(buffer.length)),
+ *   write: (buffer) => Effect.succeed(buffer.length),
  *   writeAll: () => Effect.void
  * }
  *
@@ -1031,7 +841,10 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  *   return { size: stats.size, bytesRead, buffer: Array.from(buffer) }
  * })
  *
- * Effect.runSync(program) // => { size: 5n, bytesRead: 5n, buffer: [1, 2, 3, 4, 5] }
+ * const result = Effect.runSync(program)
+ * ByteSize.toBigInt(result.size) // => 5n
+ * result.bytesRead // => 5
+ * result.buffer // => [1, 2, 3, 4, 5]
  * ```
  *
  * @category models
@@ -1040,12 +853,12 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
 export interface File {
   readonly [FileTypeId]: typeof FileTypeId
   readonly stat: Effect.Effect<File.Info, PlatformError>
-  readonly seek: (offset: SizeInput, from: SeekMode) => Effect.Effect<Size>
+  readonly seek: (offset: bigint, from: SeekMode) => Effect.Effect<ByteSize.ByteSize, PlatformError>
   readonly sync: Effect.Effect<void, PlatformError>
-  readonly read: (buffer: Uint8Array) => Effect.Effect<Size, PlatformError>
-  readonly readAlloc: (size: SizeInput) => Effect.Effect<Option.Option<Uint8Array>, PlatformError>
-  readonly truncate: (length?: SizeInput) => Effect.Effect<void, PlatformError>
-  readonly write: (buffer: Uint8Array) => Effect.Effect<Size, PlatformError>
+  readonly read: (buffer: Uint8Array) => Effect.Effect<number, PlatformError>
+  readonly readAlloc: (size: number) => Effect.Effect<Option.Option<Uint8Array>, PlatformError>
+  readonly truncate: (length?: number) => Effect.Effect<void, PlatformError>
+  readonly write: (buffer: Uint8Array) => Effect.Effect<number, PlatformError>
   readonly writeAll: (buffer: Uint8Array) => Effect.Effect<void, PlatformError>
 }
 
@@ -1089,7 +902,7 @@ export declare namespace File {
    * **Example** (Inspecting file information)
    *
    * ```ts import.meta.vitest
-   * import { FileSystem, Option } from "effect"
+   * import { ByteSize, FileSystem, Option } from "effect"
    *
    * const info: FileSystem.File.Info = {
    *   type: "File",
@@ -1103,13 +916,13 @@ export declare namespace File {
    *   uid: Option.none(),
    *   gid: Option.none(),
    *   rdev: Option.none(),
-   *   size: FileSystem.Size(5),
+   *   size: ByteSize.bytes(5),
    *   blksize: Option.none(),
    *   blocks: Option.none()
    * }
    *
    * info.type // => "File"
-   * info.size // => 5n
+   * ByteSize.toBigInt(info.size) // => 5n
    * info.mode.toString(8) // => "644"
    *
    * const modified = Option.match(info.mtime, {
@@ -1135,8 +948,8 @@ export declare namespace File {
     readonly uid: Option.Option<number>
     readonly gid: Option.Option<number>
     readonly rdev: Option.Option<number>
-    readonly size: Size
-    readonly blksize: Option.Option<Size>
+    readonly size: ByteSize.ByteSize
+    readonly blksize: Option.Option<ByteSize.ByteSize>
     readonly blocks: Option.Option<number>
   }
 }

@@ -8,7 +8,9 @@
  *
  * @since 4.0.0
  */
+import * as SharedNodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
+import * as ByteSize from "effect/ByteSize"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -78,18 +80,25 @@ export const make = Platform.make({
   platform: "node",
   compression,
   fileResponse(path, status, statusText, headers, start, end, contentLength) {
-    const stream = contentLength === 0
-      ? Readable.from([])
-      : Fs.createReadStream(path, { start, end: end === undefined ? undefined : end - 1 })
-    return ServerResponse.raw(stream, {
-      headers: {
-        ...headers,
-        "content-type": headers["content-type"] ??
-          Option.getOrElse(Mime.getType(path), () => "application/octet-stream"),
-        "content-length": contentLength.toString()
-      },
-      status,
-      statusText
+    return Effect.gen(function*() {
+      let stream: Readable
+      if (ByteSize.isZero(contentLength)) {
+        stream = Readable.from([])
+      } else {
+        const startNumber = yield* byteSizeToNumber(start)
+        const endNumber = end === undefined ? undefined : yield* byteSizeToNumber(end - BigInt(1))
+        stream = Fs.createReadStream(path, { start: startNumber, end: endNumber })
+      }
+      return ServerResponse.raw(stream, {
+        headers: {
+          ...headers,
+          "content-type": headers["content-type"] ??
+            Option.getOrElse(Mime.getType(path), () => "application/octet-stream"),
+          "content-length": ByteSize.toBigInt(contentLength).toString()
+        },
+        status,
+        statusText
+      })
     })
   },
   fileWebResponse(file, status, statusText, headers, _options) {
@@ -107,6 +116,13 @@ export const make = Platform.make({
     })
   }
 })
+
+const byteSizeToNumber = (size: bigint) =>
+  SharedNodeFileSystem.bigintToNumber(size, {
+    module: "HttpPlatform",
+    method: "fileResponse",
+    description: "file range exceeds Number.MAX_SAFE_INTEGER"
+  })
 
 /**
  * Provides the Node `HttpPlatform` together with the filesystem and ETag

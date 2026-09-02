@@ -12,6 +12,7 @@
  */
 // @effect-diagnostics returnEffectInGen:off
 import * as Arr from "./Array.ts"
+import * as ByteSize from "./ByteSize.ts"
 import * as Cause from "./Cause.ts"
 import * as Channel from "./Channel.ts"
 import { Clock } from "./Clock.ts"
@@ -22,7 +23,6 @@ import * as Equal from "./Equal.ts"
 import * as ExecutionPlan from "./ExecutionPlan.ts"
 import * as Exit from "./Exit.ts"
 import * as Fiber from "./Fiber.ts"
-import type { SizeInput } from "./FileSystem.ts"
 import type * as Filter from "./Filter.ts"
 import type { LazyArg } from "./Function.ts"
 import { constant, constTrue, constVoid, dual, identity } from "./Function.ts"
@@ -6133,13 +6133,13 @@ export const take: {
  * **Example** (Truncating at a byte limit)
  *
  * ```ts import.meta.vitest
- * import { Effect, Stream } from "effect"
+ * import { ByteSize, Effect, Stream } from "effect"
  *
  * const program = Stream.make(
  *   new Uint8Array([1, 2]),
  *   new Uint8Array([3, 4, 5])
  * ).pipe(
- *   Stream.limitBytes(4, () => Stream.empty),
+ *   Stream.limitBytes(ByteSize.bytes(4), () => Stream.empty),
  *   Stream.runCollect,
  *   Effect.map((chunks) => chunks.map((chunk) => [...chunk]))
  * )
@@ -6152,21 +6152,21 @@ export const take: {
  */
 export const limitBytes: {
   <E, R>(
-    bytes: SizeInput,
+    bytes: ByteSize.Input,
     onLimitReached: LazyArg<Stream<Uint8Array, E, R>>
   ): (self: Stream<Uint8Array, E, R>) => Stream<Uint8Array, E, R>
   <E, R>(
     self: Stream<Uint8Array, E, R>,
-    bytes: SizeInput,
+    bytes: ByteSize.Input,
     onLimitReached: LazyArg<Stream<Uint8Array, E, R>>
   ): Stream<Uint8Array, E, R>
 } = dual(3, <E, R>(
   self: Stream<Uint8Array, E, R>,
-  bytes: SizeInput,
+  bytes: ByteSize.Input,
   onLimitReached: LazyArg<Stream<Uint8Array, E, R>>
 ): Stream<Uint8Array, E, R> =>
   suspend(() => {
-    const limit = BigInt(bytes)
+    const limit = ByteSize.fromInputUnsafe(bytes)
     let size = BigInt(0)
     let limitReached = false
     return concat(

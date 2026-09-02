@@ -953,7 +953,7 @@ export const layer = <
  * const file = {
  *   write: (buffer: Uint8Array) => Effect.sync(() => {
  *     writes.push(new TextDecoder().decode(buffer).trim())
- *     return FileSystem.Size(buffer.length)
+ *     return buffer.length
  *   })
  * } as unknown as FileSystem.File
  * const fileSystem = FileSystem.makeNoop({ open: () => Effect.succeed(file) })
@@ -979,7 +979,7 @@ export const layer = <
  * const file = {
  *   write: (buffer: Uint8Array) => Effect.sync(() => {
  *     writes.push(new TextDecoder().decode(buffer).trim())
- *     return FileSystem.Size(buffer.length)
+ *     return buffer.length
  *   })
  * } as unknown as FileSystem.File
  * const fileSystem = FileSystem.makeNoop({ open: () => Effect.succeed(file) })

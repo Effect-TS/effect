@@ -1,5 +1,5 @@
 import { assert, expect, it } from "@effect/vitest"
-import { Array, Result } from "effect"
+import { Array, ByteSize, Result } from "effect"
 import * as Effect from "effect/Effect"
 import * as Fs from "effect/FileSystem"
 import type * as Layer from "effect/Layer"
@@ -101,6 +101,10 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       const before = yield* Effect.map(fs.readFile(file), (_) => new TextDecoder().decode(_))
       expect(before).toEqual(text)
 
+      yield* fs.truncate(file, 5)
+      const truncated = yield* Effect.map(fs.readFile(file), (_) => new TextDecoder().decode(_))
+      expect(truncated).toEqual("hello")
+
       yield* fs.truncate(file)
 
       const after = yield* Effect.map(fs.readFile(file), (_) => new TextDecoder().decode(_))
@@ -196,34 +200,37 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         let text: string
         const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
 
-        text = yield* file.readAlloc(Fs.Size(5)).pipe(
+        text = yield* file.readAlloc(5).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
         expect(text).toBe("lorem")
 
-        yield* file.seek(Fs.Size(7), "current")
-        text = yield* file.readAlloc(Fs.Size(5)).pipe(
+        yield* file.seek(BigInt(7), "current")
+        text = yield* file.readAlloc(5).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
         expect(text).toBe("dolar")
 
-        yield* file.seek(Fs.Size(1), "current")
-        text = yield* file.readAlloc(Fs.Size(8)).pipe(
+        yield* file.seek(BigInt(1), "current")
+        text = yield* file.readAlloc(8).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
         expect(text).toBe("sit amet")
 
-        yield* file.seek(Fs.Size(0), "start")
-        text = yield* file.readAlloc(Fs.Size(11)).pipe(
+        yield* file.seek(BigInt(0), "start")
+        text = yield* file.readAlloc(11).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
         expect(text).toBe("lorem ipsum")
 
-        text = yield* fs.stream(`${__dirname}/fixtures/text.txt`, { offset: Fs.Size(6), bytesToRead: Fs.Size(5) }).pipe(
+        text = yield* fs.stream(`${__dirname}/fixtures/text.txt`, {
+          offset: ByteSize.bytes(6),
+          bytesToRead: ByteSize.bytes(5)
+        }).pipe(
           Stream.map((_) => new TextDecoder().decode(_)),
           Stream.runCollect,
           Effect.map(Array.join(""))
@@ -234,6 +241,19 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       )
     })))
 
+  it("should return a numeric byte count when reading", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+
+      yield* Effect.gen(function*() {
+        const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+        const buffer = new Uint8Array(5)
+
+        assert.strictEqual(yield* file.read(buffer), 5)
+        assert.strictEqual(new TextDecoder().decode(buffer), "lorem")
+      }).pipe(Effect.scoped)
+    })))
+
   it("should read from a backwards seek", () =>
     runPromise(Effect.gen(function*() {
       const fs = yield* Fs.FileSystem
@@ -241,14 +261,14 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       yield* Effect.gen(function*() {
         const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
 
-        const first = yield* file.readAlloc(Fs.Size(5)).pipe(
+        const first = yield* file.readAlloc(5).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
         expect(first).toBe("lorem")
 
-        yield* file.seek(Fs.Size(-3), "current")
-        const second = yield* file.readAlloc(Fs.Size(3)).pipe(
+        yield* file.seek(BigInt(-3), "current")
+        const second = yield* file.readAlloc(3).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
@@ -258,6 +278,20 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       )
     })))
 
+  it("should reject seeks before the start of the file", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+
+      yield* Effect.gen(function*() {
+        const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+        const error = yield* file.seek(BigInt(-1), "start").pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "BadArgument")
+
+        const position = yield* file.seek(BigInt(0), "current")
+        assert.strictEqual(ByteSize.toBigInt(position), BigInt(0))
+      }).pipe(Effect.scoped)
+    })))
+
   it("should read sequentially without an intervening seek", () =>
     runPromise(Effect.gen(function*() {
       const fs = yield* Fs.FileSystem
@@ -265,13 +299,13 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       yield* Effect.gen(function*() {
         const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
 
-        const first = yield* file.readAlloc(Fs.Size(5)).pipe(
+        const first = yield* file.readAlloc(5).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
         expect(first).toBe("lorem")
 
-        const second = yield* file.readAlloc(Fs.Size(6)).pipe(
+        const second = yield* file.readAlloc(6).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
@@ -290,18 +324,18 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         const path = yield* fs.makeTempFileScoped()
         const file = yield* fs.open(path, { flag: "w+" })
 
-        yield* file.write(new TextEncoder().encode("lorem ipsum"))
+        assert.strictEqual(yield* file.write(new TextEncoder().encode("lorem ipsum")), 11)
         yield* file.write(new TextEncoder().encode(" "))
         yield* file.write(new TextEncoder().encode("dolor sit amet"))
         text = yield* fs.readFileString(path)
         expect(text).toBe("lorem ipsum dolor sit amet")
 
-        yield* file.seek(Fs.Size(-4), "current")
+        yield* file.seek(BigInt(-4), "current")
         yield* file.write(new TextEncoder().encode("hello world"))
         text = yield* fs.readFileString(path)
         expect(text).toBe("lorem ipsum dolor sit hello world")
 
-        yield* file.seek(Fs.Size(6), "start")
+        yield* file.seek(BigInt(6), "start")
         yield* file.write(new TextEncoder().encode("blabl"))
         text = yield* fs.readFileString(path)
         expect(text).toBe("lorem blabl dolor sit hello world")
@@ -320,13 +354,13 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         const file = yield* fs.open(path, { flag: "a+" })
 
         yield* file.write(new TextEncoder().encode("foo"))
-        yield* file.seek(Fs.Size(0), "start")
+        yield* file.seek(BigInt(0), "start")
 
         yield* file.write(new TextEncoder().encode("bar"))
         text = yield* fs.readFileString(path)
         expect(text).toBe("foobar")
 
-        text = yield* file.readAlloc(Fs.Size(3)).pipe(
+        text = yield* file.readAlloc(3).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
@@ -336,7 +370,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         text = yield* fs.readFileString(path)
         expect(text).toBe("foobarbaz")
 
-        text = yield* file.readAlloc(Fs.Size(6)).pipe(
+        text = yield* file.readAlloc(6).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
@@ -355,16 +389,16 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         const file = yield* fs.open(path, { flag: "a+" })
 
         yield* file.write(new TextEncoder().encode("foo"))
-        yield* file.seek(Fs.Size(0), "start")
+        yield* file.seek(BigInt(0), "start")
 
-        const first = yield* file.readAlloc(Fs.Size(1)).pipe(
+        const first = yield* file.readAlloc(1).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
         expect(first).toBe("f")
 
         yield* file.write(new TextEncoder().encode("bar"))
-        const second = yield* file.readAlloc(Fs.Size(2)).pipe(
+        const second = yield* file.readAlloc(2).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
@@ -383,11 +417,11 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         const file = yield* fs.open(path, { flag: "w+" })
 
         yield* file.write(new TextEncoder().encode("lorem ipsum dolor sit amet"))
-        yield* file.seek(Fs.Size(6), "start")
-        yield* file.truncate(Fs.Size(11))
+        yield* file.seek(BigInt(6), "start")
+        yield* file.truncate(11)
 
-        const cursor = yield* file.seek(Fs.Size(0), "current")
-        expect(cursor).toBe(Fs.Size(6))
+        const cursor = yield* file.seek(BigInt(0), "current")
+        assert.strictEqual(ByteSize.toBigInt(cursor), BigInt(6))
       }).pipe(
         Effect.scoped
       )
@@ -402,10 +436,10 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         const file = yield* fs.open(path, { flag: "w+" })
 
         yield* file.write(new TextEncoder().encode("lorem ipsum dolor sit amet"))
-        yield* file.truncate(Fs.Size(11))
+        yield* file.truncate(11)
 
-        const cursor = yield* file.seek(Fs.Size(0), "current")
-        expect(cursor).toBe(Fs.Size(11))
+        const cursor = yield* file.seek(BigInt(0), "current")
+        assert.strictEqual(ByteSize.toBigInt(cursor), BigInt(11))
       }).pipe(
         Effect.scoped
       )
@@ -420,10 +454,10 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         const file = yield* fs.open(path, { flag: "w+" })
 
         yield* file.write(new TextEncoder().encode("abcdefghij"))
-        yield* file.truncate(Fs.Size(5))
+        yield* file.truncate(5)
         yield* fs.writeFile(path, new TextEncoder().encode("xyz"), { flag: "a" })
 
-        const text = yield* file.readAlloc(Fs.Size(3)).pipe(
+        const text = yield* file.readAlloc(3).pipe(
           Effect.flatMap(Effect.fromOption),
           Effect.map((_) => new TextDecoder().decode(_))
         )
