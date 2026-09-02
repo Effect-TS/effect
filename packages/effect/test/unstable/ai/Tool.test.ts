@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Context, DateTime, Effect, Fiber, identity, Latch, Schema, Stream } from "effect"
 import { TestClock } from "effect/testing"
@@ -1181,6 +1181,111 @@ describe("setNeedsApproval", () => {
 })
 
 describe("Dynamic", () => {
+  describe("setParameters", () => {
+    const rawParameters = {
+      type: "object",
+      properties: { query: { type: "string" } },
+      required: ["query"],
+      additionalProperties: false
+    } as const
+    const parameters = Schema.Struct({ count: Schema.Finite })
+
+    it("preserves raw parameters in unrelated clones and derived parameters in later clones", () => {
+      const original = Tool.dynamic("TestTool", {
+        description: "Test tool",
+        parameters: rawParameters,
+        failureMode: "return"
+      }).annotate(Tool.Strict, true)
+      const sibling = original.setSuccess(Schema.Number).setFailure(Schema.String).setNeedsApproval(true)
+      const updated = original.setParameters(parameters)
+      const cloned = updated.setSuccess(Schema.Number).setFailure(Schema.String).setNeedsApproval(true)
+      const replaced = cloned.setParameters(Schema.Struct({ enabled: Schema.Boolean }))
+
+      assert.strictEqual(Tool.getJsonSchema(sibling), rawParameters)
+      assert.strictEqual(Tool.getJsonSchema(original), rawParameters)
+      assert.deepStrictEqual(Tool.getJsonSchema(cloned), Tool.getJsonSchemaFromSchema(parameters))
+      assert.deepStrictEqual(Tool.getJsonSchema(updated), Tool.getJsonSchemaFromSchema(parameters))
+      assert.deepStrictEqual(Tool.getJsonSchema(replaced).required, ["enabled"])
+      for (const tool of [sibling, updated, cloned, replaced]) {
+        assert.isFalse(Object.is(tool, original))
+        assert.isTrue(Tool.isDynamic(tool))
+        assert.strictEqual(tool.id, original.id)
+        assert.strictEqual(tool.description, "Test tool")
+        assert.strictEqual(tool.failureMode, "return")
+        assert.strictEqual(Tool.getStrictMode(tool), true)
+      }
+    })
+
+    it("advertises the replacement schema for a raw JSON Schema tool", () => {
+      const original = Tool.dynamic("TestTool", { parameters: rawParameters })
+      const updated = original.setParameters(parameters)
+
+      assert.isTrue(Tool.isDynamic(updated))
+      assert.strictEqual(updated.parametersSchema, parameters)
+      assert.deepStrictEqual(Tool.getJsonSchema(updated), Tool.getJsonSchemaFromSchema(parameters))
+    })
+
+    it.effect("validates replacement parameters before executing a raw JSON Schema tool", () =>
+      Effect.gen(function*() {
+        const tool = Tool.dynamic("TestTool", {
+          parameters: rawParameters,
+          success: Schema.Number
+        }).setParameters(parameters)
+        const toolkit = Toolkit.make(tool)
+        let calls = 0
+        const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+          TestTool: ({ count }) =>
+            Effect.sync(() => {
+              calls++
+              return count
+            })
+        })))
+        const results = yield* handlers.handle("TestTool", { count: 2 }).pipe(Effect.flatMap(Stream.runCollect))
+        assert.deepStrictEqual(results, [{
+          isFailure: false,
+          preliminary: false,
+          result: 2,
+          encodedResult: 2
+        }])
+
+        const error = yield* handlers.handle("TestTool", { count: Infinity }).pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "ToolParameterValidationError")
+        assert.strictEqual(calls, 1)
+        const oldParameters = yield* Schema.decodeUnknownEffect(tool.parametersSchema)({ query: "search" }).pipe(
+          Effect.flip
+        )
+        assert.isTrue(Schema.isSchemaError(oldParameters))
+      }))
+
+    it("does not mutate the original raw JSON Schema tool", () => {
+      const original = Tool.dynamic("TestTool", { parameters: rawParameters })
+      original.setParameters(parameters)
+
+      assert.strictEqual(original.parametersSchema, Schema.Unknown)
+      assert.deepStrictEqual(Tool.getJsonSchema(original), rawParameters)
+    })
+
+    it("updates schema-backed dynamic tools", () => {
+      const original = Tool.dynamic("TestTool", { parameters: Schema.Struct({ query: Schema.String }) })
+      const updated = original.setParameters(parameters)
+
+      assert.isTrue(Tool.isDynamic(updated))
+      assert.strictEqual(updated.parametersSchema, parameters)
+      assert.deepStrictEqual(Tool.getJsonSchema(updated), Tool.getJsonSchemaFromSchema(parameters))
+      assert.deepStrictEqual(Tool.getJsonSchema(original).required, ["query"])
+    })
+
+    it("updates user-defined tools", () => {
+      const original = Tool.make("TestTool", { parameters: Schema.Struct({ query: Schema.String }) })
+      const updated = original.setParameters(parameters)
+
+      assert.isTrue(Tool.isUserDefined(updated))
+      assert.strictEqual(updated.parametersSchema, parameters)
+      assert.deepStrictEqual(Tool.getJsonSchema(updated), Tool.getJsonSchemaFromSchema(parameters))
+      assert.deepStrictEqual(Tool.getJsonSchema(original).required, ["query"])
+    })
+  })
+
   describe("isDynamic", () => {
     it.effect("returns true for dynamic tools with Effect Schema", () =>
       Effect.gen(function*() {
