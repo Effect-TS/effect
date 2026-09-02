@@ -382,7 +382,7 @@ const makeFile = (() => {
     }
 
     writeAll(buffer: Uint8Array) {
-      return this.writeAllChunk(buffer)
+      return buffer.length === 0 ? Effect.void : this.writeAllChunk(buffer)
     }
   }
 
