@@ -12,7 +12,9 @@
  */
 import * as Channel from "../../Channel.ts"
 import * as Chunk from "../../Chunk.ts"
+import * as Clock from "../../Clock.ts"
 import * as Context from "../../Context.ts"
+import * as DateTime from "../../DateTime.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Layer from "../../Layer.ts"
@@ -20,11 +22,12 @@ import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Ref from "../../Ref.ts"
 import * as Schema from "../../Schema.ts"
+import * as Scope from "../../Scope.ts"
 import * as Semaphore from "../../Semaphore.ts"
 import * as Stream from "../../Stream.ts"
 import type { NoExcessProperties } from "../../Types.ts"
-import type { PersistenceError } from "../persistence/Persistence.ts"
-import { BackingPersistence } from "../persistence/Persistence.ts"
+import type { BackingPersistenceStore } from "../persistence/Persistence.ts"
+import { BackingPersistence, PersistenceError, unsafeTtlToExpires } from "../persistence/Persistence.ts"
 import * as AiError from "./AiError.ts"
 import * as IdGenerator from "./IdGenerator.ts"
 import * as LanguageModel from "./LanguageModel.ts"
@@ -408,6 +411,8 @@ export interface Service {
 
 const decodeHistory = Schema.decodeUnknownEffect(Prompt.Prompt)
 const encodeHistory = Schema.encodeUnknownEffect(Prompt.Prompt)
+const encodeMessages = Schema.encodeUnknownEffect(Schema.Array(Prompt.Message))
+const decodeMessages = Schema.decodeUnknownEffect(Schema.Array(Prompt.Message))
 const decodeHistoryJson = Schema.decodeUnknownEffect(Schema.fromJsonString(Prompt.Prompt))
 const encodeHistoryJson = Schema.encodeUnknownEffect(Schema.fromJsonString(Prompt.Prompt))
 
@@ -792,6 +797,389 @@ export interface Persisted extends Service {
 }
 
 /**
+ * Returns the message with its persistence message identifier attached.
+ *
+ * The message is replaced rather than mutated so that a message already handed
+ * to a caller - or already encoded by a previous save - never changes
+ * underneath them.
+ */
+const withMessageId = <M extends Prompt.Message>(message: M, messageId: string): M => ({
+  ...message,
+  options: { ...message.options, [Persistence.key]: { messageId } }
+})
+
+/** The index of the first message at which two histories differ. */
+const divergence = (left: ReadonlyArray<Prompt.Message>, right: ReadonlyArray<Prompt.Message>): number => {
+  const shared = Math.min(left.length, right.length)
+  for (let i = 0; i < shared; i++) {
+    if (left[i] !== right[i]) {
+      return i
+    }
+  }
+  return shared
+}
+
+/** Stamps every message from `start` onwards with `messageId`. */
+const stampMessages = (history: Prompt.Prompt, start: number, messageId: string): Prompt.Prompt => {
+  if (start >= history.content.length) {
+    return history
+  }
+  const content = history.content.slice()
+  for (let i = start; i < content.length; i++) {
+    content[i] = withMessageId(content[i], messageId)
+  }
+  return Prompt.fromMessages(content)
+}
+
+/**
+ * The storage backing a persisted `Chat`.
+ *
+ * **When to use**
+ *
+ * Use to back {@link Persistence} with a store that can append to a chat
+ * instead of rewriting it. Implementations exist for memory and for an
+ * existing `BackingPersistence`; a backend can implement this natively to
+ * append, read ranges, and list chats without loading whole conversations.
+ *
+ * **Details**
+ *
+ * A chat is an ordered list of encoded messages. Values are opaque here:
+ * `Chat` encodes and decodes them, so a store never sees a `Prompt`.
+ *
+ * The interface is deliberately narrow - write, read, list, remove, clean up -
+ * so that every backend can implement all of it. Anything richer, such as
+ * searching message content, belongs in the backend's own client rather than
+ * here, where only some backends could honour it.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export class ChatStore extends Context.Service<ChatStore, {
+  /**
+   * Replaces the messages of a chat from `from` onwards, creating the chat
+   * when it does not exist.
+   *
+   * Appending is `from` equal to the number of messages already stored.
+   * Rewriting history, as summarizing or redacting a conversation does, is a
+   * smaller `from`. A `from` beyond the end of the chat fails rather than
+   * leaving a hole, and so does a `from` that does not match what the caller
+   * last saw, which is how two writers racing on one chat is caught instead of
+   * silently losing one of them.
+   */
+  readonly write: (options: {
+    readonly storeId: string
+    readonly chatId: string
+    readonly from: number
+    readonly messages: ReadonlyArray<unknown>
+    readonly timeToLive: Duration.Duration | undefined
+  }) => Effect.Effect<void, PersistenceError>
+
+  /**
+   * Reads `limit` messages of a chat starting at `from`, or all of them when
+   * `limit` is not given. Returns `undefined` when the chat does not exist,
+   * which is distinct from a chat that exists and has no messages.
+   */
+  readonly read: (options: {
+    readonly storeId: string
+    readonly chatId: string
+    readonly from: number
+    readonly limit: number | undefined
+  }) => Effect.Effect<ReadonlyArray<unknown> | undefined, PersistenceError>
+
+  /**
+   * Reads the last `limit` messages of a chat, oldest first. Returns
+   * `undefined` when the chat does not exist.
+   */
+  readonly readBackwards: (options: {
+    readonly storeId: string
+    readonly chatId: string
+    readonly limit: number
+  }) => Effect.Effect<ReadonlyArray<unknown> | undefined, PersistenceError>
+
+  /**
+   * Lists the chats in a store, most recently written first.
+   */
+  readonly list: (options: {
+    readonly storeId: string
+    readonly after: string | undefined
+    readonly limit: number
+  }) => Effect.Effect<ReadonlyArray<ChatSummary>, PersistenceError>
+
+  readonly remove: (options: {
+    readonly storeId: string
+    readonly chatId: string
+  }) => Effect.Effect<void, PersistenceError>
+
+  /**
+   * Removes chats that have not been written to within `olderThan`.
+   */
+  readonly cleanup: (options: {
+    readonly storeId: string
+    readonly olderThan: Duration.Duration
+  }) => Effect.Effect<void, PersistenceError>
+}>()("effect/ai/Chat/ChatStore") {}
+
+/**
+ * What {@link ChatStore.list} reports about a chat without reading it.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ChatSummary {
+  readonly chatId: string
+  readonly messages: number
+  readonly updatedAt: DateTime.Utc
+}
+
+const outOfRange = (chatId: string, from: number, length: number) =>
+  new PersistenceError({
+    message: `Cannot write chat '${chatId}' from index ${from}; it has ${length} messages`
+  })
+
+interface MemoryChat {
+  messages: Array<unknown>
+  updatedAt: number
+  expiresAt: number | null
+}
+
+/**
+ * Provides an in-memory `ChatStore`. The store is process-local and volatile.
+ *
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerStoreMemory: Layer.Layer<ChatStore> = Layer.effect(ChatStore)(
+  Effect.gen(function*() {
+    const clock = yield* Clock.Clock
+    const stores = new Map<string, Map<string, MemoryChat>>()
+    const storeOf = (storeId: string) => {
+      let store = stores.get(storeId)
+      if (Predicate.isUndefined(store)) {
+        store = new Map()
+        stores.set(storeId, store)
+      }
+      return store
+    }
+    const live = (storeId: string, chatId: string): MemoryChat | undefined => {
+      const store = storeOf(storeId)
+      const chat = store.get(chatId)
+      if (Predicate.isUndefined(chat)) {
+        return undefined
+      }
+      if (chat.expiresAt !== null && chat.expiresAt <= clock.currentTimeMillisUnsafe()) {
+        store.delete(chatId)
+        return undefined
+      }
+      return chat
+    }
+    return ChatStore.of({
+      write: (options) =>
+        Effect.suspend(() => {
+          const now = clock.currentTimeMillisUnsafe()
+          const existing = live(options.storeId, options.chatId)
+          const messages = Predicate.isUndefined(existing) ? [] : existing.messages
+          if (options.from > messages.length) {
+            return Effect.fail(outOfRange(options.chatId, options.from, messages.length))
+          }
+          messages.length = options.from
+          messages.push(...options.messages)
+          storeOf(options.storeId).set(options.chatId, {
+            messages,
+            updatedAt: now,
+            expiresAt: unsafeTtlToExpires(clock, options.timeToLive)
+          })
+          return Effect.void
+        }),
+      read: (options) =>
+        Effect.sync(() => {
+          const chat = live(options.storeId, options.chatId)
+          if (Predicate.isUndefined(chat)) {
+            return undefined
+          }
+          return Predicate.isUndefined(options.limit)
+            ? chat.messages.slice(options.from)
+            : chat.messages.slice(options.from, options.from + options.limit)
+        }),
+      readBackwards: (options) =>
+        Effect.sync(() => {
+          const chat = live(options.storeId, options.chatId)
+          return Predicate.isUndefined(chat)
+            ? undefined
+            : chat.messages.slice(Math.max(0, chat.messages.length - options.limit))
+        }),
+      list: (options) =>
+        Effect.sync(() => {
+          const summaries: Array<ChatSummary & { readonly at: number }> = []
+          for (const chatId of storeOf(options.storeId).keys()) {
+            const chat = live(options.storeId, chatId)
+            if (Predicate.isNotUndefined(chat)) {
+              summaries.push({
+                chatId,
+                messages: chat.messages.length,
+                updatedAt: DateTime.makeUnsafe(chat.updatedAt),
+                at: chat.updatedAt
+              })
+            }
+          }
+          summaries.sort((left, right) => right.at - left.at || left.chatId.localeCompare(right.chatId))
+          const start = Predicate.isUndefined(options.after)
+            ? 0
+            : summaries.findIndex((summary) => summary.chatId === options.after) + 1
+          return summaries.slice(start, start + options.limit)
+        }),
+      remove: (options) =>
+        Effect.sync(() => {
+          storeOf(options.storeId).delete(options.chatId)
+        }),
+      cleanup: (options) =>
+        Effect.sync(() => {
+          const cutoff = clock.currentTimeMillisUnsafe() - Duration.toMillis(options.olderThan)
+          const store = storeOf(options.storeId)
+          for (const [chatId, chat] of store) {
+            if (chat.updatedAt <= cutoff) {
+              store.delete(chatId)
+            }
+          }
+        })
+    })
+  })
+)
+
+interface BackingChat {
+  readonly messages: ReadonlyArray<unknown>
+  readonly updatedAt: number
+}
+
+/**
+ * Provides a `ChatStore` on top of an existing `BackingPersistence`.
+ *
+ * **Details**
+ *
+ * A key/value store cannot append, so every write reads the chat, applies the
+ * change, and writes the whole chat back. This reproduces the cost of storing
+ * a chat as a single value and exists so that an application already using
+ * `BackingPersistence` keeps working; prefer a store that appends natively.
+ *
+ * Listing is served from an index kept alongside the chats, since the backing
+ * interface cannot enumerate keys.
+ *
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerStoreBacking: Layer.Layer<ChatStore, never, BackingPersistence> = Layer.effect(ChatStore)(
+  Effect.gen(function*() {
+    const clock = yield* Clock.Clock
+    const backing = yield* BackingPersistence
+    const scope = yield* Effect.scope
+    const stores = new Map<string, BackingPersistenceStore>()
+    const storeOf = (storeId: string) =>
+      Effect.suspend(() => {
+        const existing = stores.get(storeId)
+        if (Predicate.isNotUndefined(existing)) {
+          return Effect.succeed(existing)
+        }
+        // The store lives as long as the layer, not as long as one call
+        return backing.make(storeId).pipe(
+          Effect.provideService(Scope.Scope, scope),
+          Effect.tap((store) => Effect.sync(() => stores.set(storeId, store)))
+        )
+      })
+    const indexKey = "effect/ai/Chat/index"
+    const readChat = Effect.fnUntraced(function*(storeId: string, chatId: string) {
+      const store = yield* storeOf(storeId)
+      const value = yield* store.get(chatId)
+      return value as BackingChat | undefined
+    })
+    const readIndex = Effect.fnUntraced(function*(storeId: string) {
+      const store = yield* storeOf(storeId)
+      const value = yield* store.get(indexKey)
+      return Predicate.isUndefined(value) ? [] : (value as { readonly chatIds: Array<string> }).chatIds
+    })
+    const writeIndex = Effect.fnUntraced(function*(storeId: string, chatIds: ReadonlyArray<string>) {
+      const store = yield* storeOf(storeId)
+      yield* store.set(indexKey, { chatIds }, undefined)
+    })
+    return ChatStore.of({
+      write: Effect.fnUntraced(function*(options) {
+        const store = yield* storeOf(options.storeId)
+        const existing = yield* readChat(options.storeId, options.chatId)
+        const messages = Predicate.isUndefined(existing) ? [] : existing.messages.slice()
+        if (options.from > messages.length) {
+          return yield* Effect.fail(outOfRange(options.chatId, options.from, messages.length))
+        }
+        messages.length = options.from
+        messages.push(...options.messages)
+        yield* store.set(
+          options.chatId,
+          { messages, updatedAt: clock.currentTimeMillisUnsafe() } satisfies BackingChat,
+          options.timeToLive
+        )
+        const chatIds = yield* readIndex(options.storeId)
+        if (!chatIds.includes(options.chatId)) {
+          yield* writeIndex(options.storeId, [...chatIds, options.chatId])
+        }
+      }),
+      read: Effect.fnUntraced(function*(options) {
+        const chat = yield* readChat(options.storeId, options.chatId)
+        if (Predicate.isUndefined(chat)) {
+          return undefined
+        }
+        return Predicate.isUndefined(options.limit)
+          ? chat.messages.slice(options.from)
+          : chat.messages.slice(options.from, options.from + options.limit)
+      }),
+      readBackwards: Effect.fnUntraced(function*(options) {
+        const chat = yield* readChat(options.storeId, options.chatId)
+        return Predicate.isUndefined(chat)
+          ? undefined
+          : chat.messages.slice(Math.max(0, chat.messages.length - options.limit))
+      }),
+      list: Effect.fnUntraced(function*(options) {
+        const chatIds = yield* readIndex(options.storeId)
+        const summaries: Array<ChatSummary & { readonly at: number }> = []
+        for (const chatId of chatIds) {
+          const chat = yield* readChat(options.storeId, chatId)
+          if (Predicate.isNotUndefined(chat)) {
+            summaries.push({
+              chatId,
+              messages: chat.messages.length,
+              updatedAt: DateTime.makeUnsafe(chat.updatedAt),
+              at: chat.updatedAt
+            })
+          }
+        }
+        summaries.sort((left, right) => right.at - left.at || left.chatId.localeCompare(right.chatId))
+        const start = Predicate.isUndefined(options.after)
+          ? 0
+          : summaries.findIndex((summary) => summary.chatId === options.after) + 1
+        return summaries.slice(start, start + options.limit)
+      }),
+      remove: Effect.fnUntraced(function*(options) {
+        const store = yield* storeOf(options.storeId)
+        yield* store.remove(options.chatId)
+        const chatIds = yield* readIndex(options.storeId)
+        yield* writeIndex(options.storeId, chatIds.filter((chatId) => chatId !== options.chatId))
+      }),
+      cleanup: Effect.fnUntraced(function*(options) {
+        const cutoff = clock.currentTimeMillisUnsafe() - Duration.toMillis(options.olderThan)
+        const store = yield* storeOf(options.storeId)
+        const chatIds = yield* readIndex(options.storeId)
+        const kept: Array<string> = []
+        for (const chatId of chatIds) {
+          const chat = yield* readChat(options.storeId, chatId)
+          if (Predicate.isNotUndefined(chat) && chat.updatedAt > cutoff) {
+            kept.push(chatId)
+          } else {
+            yield* store.remove(chatId)
+          }
+        }
+        yield* writeIndex(options.storeId, kept)
+      })
+    })
+  })
+)
+
+/**
  * Creates a new chat persistence service.
  *
  * **When to use**
@@ -812,14 +1200,27 @@ export interface Persisted extends Service {
 export const makePersisted = Effect.fnUntraced(function*(options: {
   readonly storeId: string
 }) {
-  const persistence = yield* BackingPersistence
-  const store = yield* persistence.make(options.storeId)
+  const store = yield* ChatStore
+  const storeId = options.storeId
 
   const toPersisted = Effect.fnUntraced(
-    function*(chatId: string, chat: Service, ttl: Duration.Input | undefined) {
+    function*(
+      chatId: string,
+      chat: Service,
+      persisted: ReadonlyArray<Prompt.Message>,
+      ttl: Duration.Input | undefined
+    ) {
       const idGenerator = yield* Effect.serviceOption(IdGenerator.IdGenerator).pipe(
         Effect.map(Option.getOrElse(() => IdGenerator.defaultIdGenerator))
       )
+      const timeToLive = Predicate.isNotUndefined(ttl)
+        ? Option.getOrUndefined(Duration.fromInput(ttl))
+        : undefined
+      // The messages the store already holds. Comparing them by identity finds
+      // the first message a save has to write, so an ordinary turn writes only
+      // what it added and a rewritten history writes only from where it
+      // diverged.
+      const stored = yield* Ref.make(persisted)
 
       const saveChat = Effect.fnUntraced(
         function*(prevHistory: Prompt.Prompt) {
@@ -839,24 +1240,23 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
           if (Predicate.isUndefined(messageId)) {
             messageId = yield* idGenerator.generateId()
           }
-          // Mutate the new messages to add the generated message identifier
-          for (let i = prevHistory.content.length; i < history.content.length; i++) {
-            const message = history.content[i]
-            ;(message.options as any)[Persistence.key] = { messageId }
+          // Stamp the messages added since the previous save
+          const stamped = stampMessages(history, prevHistory.content.length, messageId)
+          // Save the stamped history back to the ref
+          yield* Ref.set(chat.history, stamped)
+          // Write only the messages the store does not already hold
+          const previous = yield* Ref.get(stored)
+          const from = divergence(previous, stamped.content)
+          const added = stamped.content.slice(from)
+          if (from < previous.length || added.length > 0) {
+            const messages = yield* Effect.orDie(encodeMessages(added))
+            yield* store.write({ storeId, chatId, from, messages, timeToLive })
+            yield* Ref.set(stored, stamped.content)
           }
-          // Save the mutated history back to the ref
-          yield* Ref.set(chat.history, history)
-          // Export the chat history
-          const exported = yield* Effect.orDie(chat.export)
-          const timeToLive = Predicate.isNotUndefined(ttl)
-            ? Option.getOrUndefined(Duration.fromInput(ttl))
-            : undefined
-          // Save the chat to the backing store
-          yield* store.set(chatId, exported as object, timeToLive)
         }
       )
 
-      const persisted: Persisted = {
+      const persistedChat: Persisted = {
         ...chat,
         id: chatId,
         save: Effect.flatMap(Ref.get(chat.history), saveChat),
@@ -865,7 +1265,7 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
           return yield* chat.generateText(options).pipe(
             Effect.ensuring(Effect.orDie(saveChat(history)))
           )
-        }) as Service["generateText"],
+        }),
         generateObject: Effect.fnUntraced(function*(options) {
           const history = yield* Ref.get(chat.history)
           return yield* chat.generateObject(options).pipe(
@@ -881,42 +1281,35 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
         }, Stream.unwrap) as Service["streamText"]
       }
 
-      return persisted
+      return persistedChat
     }
   )
 
-  const createChat = Effect.fnUntraced(
-    function*(chatId: string, ttl: Duration.Input | undefined) {
-      // Create an empty chat
-      const chat = yield* empty
-      // Export the chat history
-      const history = yield* Effect.orDie(chat.export)
-      // Save the history for the newly created chat
-      const timeToLive = Predicate.isNotUndefined(ttl)
-        ? Option.getOrUndefined(Duration.fromInput(ttl))
-        : undefined
-      yield* store.set(chatId, history as object, timeToLive)
-      // Convert the chat to a persisted chat
-      return yield* toPersisted(chatId, chat, ttl)
-    }
-  )
+  const createChat = Effect.fnUntraced(function*(chatId: string, ttl: Duration.Input | undefined) {
+    const chat = yield* empty
+    const timeToLive = Predicate.isNotUndefined(ttl)
+      ? Option.getOrUndefined(Duration.fromInput(ttl))
+      : undefined
+    // Record the chat so that it can be told apart from one that does not exist
+    yield* store.write({ storeId, chatId, from: 0, messages: [], timeToLive })
+    return yield* toPersisted(chatId, chat, [], ttl)
+  })
 
   const getChat = Effect.fnUntraced(
     function*(chatId: string, ttl: Duration.Input | undefined) {
-      // Create an empty chat
       const chat = yield* empty
-      // Attempt to retrieve the previous history from the store
-      const previousHistory = yield* store.get(chatId)
-      // If the previous history was not found, raise an error
-      if (Predicate.isUndefined(previousHistory)) {
+      // Attempt to retrieve the previous messages from the store
+      const encoded = yield* store.read({ storeId, chatId, from: 0, limit: undefined })
+      // If the chat was not found, raise an error
+      if (Predicate.isUndefined(encoded)) {
         return yield* new ChatNotFoundError({ chatId })
       }
-      // Decode the encoded previous history
-      const history = yield* decodeHistory(previousHistory)
+      // Decode the encoded previous messages
+      const messages = yield* decodeMessages(encoded)
       // Hydrate the chat history
-      yield* Ref.set(chat.history, history)
+      yield* Ref.set(chat.history, Prompt.fromMessages(messages))
       // Convert the chat to a persisted chat
-      return yield* toPersisted(chatId, chat, ttl)
+      return yield* toPersisted(chatId, chat, messages, ttl)
     },
     Effect.catchTag("SchemaError", Effect.die)
   )
@@ -973,4 +1366,4 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
  */
 export const layerPersisted = (options: {
   readonly storeId: string
-}): Layer.Layer<Persistence, never, BackingPersistence> => Layer.effect(Persistence)(makePersisted(options))
+}): Layer.Layer<Persistence, never, ChatStore> => Layer.effect(Persistence)(makePersisted(options))
