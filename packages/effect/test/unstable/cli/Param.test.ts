@@ -133,6 +133,18 @@ describe("Param", () => {
 
         assert.deepStrictEqual(value, Option.some(false))
       }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("supports alternative flags", () =>
+      Effect.gen(function*() {
+        const flag = Flag.string("config").pipe(
+          Flag.orElse(() => Flag.string("config-url")),
+          Flag.optional
+        )
+
+        const [, value] = yield* flag.parse({ flags: { config: ["config.json"] }, arguments: [] })
+
+        assert.deepStrictEqual(value, Option.some("config.json"))
+      }).pipe(Effect.provide(TestLayer)))
   })
 
   describe("withFallbackPrompt", () => {
