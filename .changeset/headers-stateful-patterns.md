@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Match each header independently when redaction patterns use global or sticky regular expressions.
+Fix `Headers.redact` and `Headers.isRedactedName` skipping matches when a redaction pattern is a global or sticky regular expression.
