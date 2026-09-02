@@ -480,10 +480,22 @@ class YamlParser {
     if (style === "|") {
       output = content.join("\n")
     } else {
-      for (let index = 0; index < content.length; index++) {
-        output += content[index]
-        if (index < content.length - 1) {
-          output += content[index].length === 0 || content[index + 1].length === 0 ? "\n" : " "
+      let separator = ""
+      let previousMoreIndented = false
+      for (const line of content) {
+        if (line.startsWith(" ")) {
+          if (separator === " ") separator = "\n"
+          else if (!previousMoreIndented && separator === "\n") separator = "\n\n"
+          output += separator + line
+          separator = "\n"
+          previousMoreIndented = true
+        } else if (line.length === 0) {
+          if (separator === "\n") output += "\n"
+          else separator = "\n"
+        } else {
+          output += separator + line
+          separator = " "
+          previousMoreIndented = false
         }
       }
     }
