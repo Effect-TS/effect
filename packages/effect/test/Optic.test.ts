@@ -1,3 +1,4 @@
+import { assert } from "@effect/vitest"
 import { Optic, Option, Result, Schema, SchemaIssue } from "effect"
 import { describe, it } from "vitest"
 import { assertSuccess, assertTrue, deepStrictEqual, strictEqual, throws } from "./utils/assert.ts"
@@ -490,6 +491,137 @@ Expected a value greater than 0`
 
       deepStrictEqual(optic.replace({ a: "a2", c: false }, { a: "a", b: 1, c: true }), { a: "a2", b: 1, c: false })
     })
+  })
+
+  describe("projection replacement", () => {
+    type Person = { readonly id: string; readonly nickname?: string; readonly active: boolean }
+    const person: Person = Object.freeze({ id: "p1", nickname: "Ada", active: true })
+    const withoutNickname: Person = Object.freeze({ id: "p1", active: true })
+    const empty: Pick<Person, "nickname"> = Object.freeze({})
+    const selected = Symbol("selected")
+    const preserved = Symbol("preserved")
+    type Mixed = {
+      readonly nickname?: string
+      readonly 1?: number
+      readonly [selected]?: string
+      readonly id: string
+      readonly note?: string
+      readonly 2?: number
+      readonly "01"?: number
+      readonly [preserved]?: string
+    }
+    const focused = { nickname: "Ada", 1: 10, [selected]: "selected" }
+    const unfocused = { id: "p1", note: "keep", 2: 20, "01": 11, [preserved]: "preserved" }
+    const mixed: Mixed = Object.freeze({ ...focused, ...unfocused })
+
+    for (const name of ["pick", "omit"] as const) {
+      describe(name, () => {
+        const optic: Optic.Lens<Person, Pick<Person, "nickname">> = name === "pick"
+          ? Optic.id<Person>().pick(["nickname"])
+          : Optic.id<Person>().omit(["id", "active"])
+        const composed = optic.optionalKey("nickname")
+        const required: Optic.Lens<Person, Pick<Person, "id" | "nickname">> = name === "pick"
+          ? Optic.id<Person>().pick(["id", "nickname"])
+          : Optic.id<Person>().omit(["active"])
+        const mixedOptic = name === "pick"
+          ? Optic.id<Mixed>().pick(["nickname", 1, selected] as const)
+          : Optic.id<Mixed>().omit(["id", "note", 2, "01", preserved] as const)
+
+        it("removes an optional field through a composed optionalKey", () => {
+          const out = composed.replace(undefined, person)
+          assert.deepStrictEqual(out, withoutNickname)
+          assert.isFalse(Object.hasOwn(out, "nickname"))
+        })
+
+        it("replaces the complete projection rather than merging optional fields", () => {
+          assert.deepStrictEqual(optic.replace(empty, person), withoutNickname)
+        })
+
+        it("removes optional fields through modify", () => {
+          assert.deepStrictEqual(optic.modify(() => empty)(person), withoutNickname)
+        })
+
+        it("removes optional fields through replaceResult", () => {
+          assert.deepStrictEqual(optic.replaceResult(empty, person), Result.succeed(withoutNickname))
+        })
+
+        it("reads back the replacement projection", () => {
+          assert.deepStrictEqual(optic.get(optic.replace(empty, person)), empty)
+        })
+
+        it("reads back undefined after composed deletion", () => {
+          assert.strictEqual(composed.get(composed.replace(undefined, person)), undefined)
+        })
+
+        it("accepts a complete required-field replacement without optional fields", () => {
+          assert.deepStrictEqual(required.replace({ id: "p2" }, person), { id: "p2", active: true })
+        })
+
+        it("removes focused numeric and symbol keys while preserving the complement", () => {
+          assert.deepStrictEqual(mixedOptic.replace({}, mixed), unfocused)
+        })
+
+        it("preserves ordinary reads, updates and insertion", () => {
+          assert.deepStrictEqual(optic.get(person), { nickname: "Ada" })
+          const updated = { id: "p1", nickname: "Bea", active: true }
+          assert.deepStrictEqual(optic.replace({ nickname: "Bea" }, person), updated)
+          assert.deepStrictEqual(composed.replace("Bea", person), updated)
+          assert.deepStrictEqual(composed.replace("Bea", withoutNickname), updated)
+          assert.deepStrictEqual(required.replace({ id: "p2", nickname: "Bea" }, person), {
+            id: "p2",
+            nickname: "Bea",
+            active: true
+          })
+        })
+
+        it("preserves absent fields and unchanged projections", () => {
+          assert.deepStrictEqual(optic.replace(empty, withoutNickname), withoutNickname)
+          assert.deepStrictEqual(optic.replace(optic.get(person), person), person)
+        })
+
+        it("preserves unfocused optional fields during required-field updates", () => {
+          const id = name === "pick"
+            ? Optic.id<Person>().pick(["id"])
+            : Optic.id<Person>().omit(["nickname", "active"])
+          assert.deepStrictEqual(id.replace({ id: "p2" }, person), { id: "p2", nickname: "Ada", active: true })
+        })
+
+        it("preserves numeric and symbol keys during ordinary reads and updates", () => {
+          assert.deepStrictEqual(mixedOptic.get(mixed), focused)
+          const replacement = Object.freeze({ nickname: "Bea", 1: 100, [selected]: "updated" })
+          assert.deepStrictEqual(mixedOptic.replace(replacement, mixed), { ...unfocused, ...replacement })
+          assert.deepStrictEqual(replacement, { nickname: "Bea", 1: 100, [selected]: "updated" })
+        })
+
+        it("does not mutate frozen sources or replacements", () => {
+          const out = optic.replace(empty, person)
+          assert.notStrictEqual(out, person)
+          assert.deepStrictEqual(person, { id: "p1", nickname: "Ada", active: true })
+          assert.deepStrictEqual(empty, {})
+          mixedOptic.replace({}, mixed)
+          assert.deepStrictEqual(mixed, { ...focused, ...unfocused })
+        })
+
+        it("retains the own-enumerable plain-object copy behavior", () => {
+          type Source = Person & { readonly "__proto__"?: string }
+          const projection = name === "pick"
+            ? Optic.id<Source>().pick(["nickname"])
+            : Optic.id<Source>().omit(["id", "active", "__proto__"])
+          for (const prototype of [null, { inherited: true }]) {
+            const source: Source = Object.freeze(Object.defineProperty(
+              Object.setPrototypeOf({ ...person, ["__proto__"]: "own" }, prototype),
+              "hidden",
+              { value: true, enumerable: false }
+            ))
+            const out = projection.replace({ nickname: "Bea" }, source)
+            assert.strictEqual(Object.getPrototypeOf(out), Object.prototype)
+            assert.deepStrictEqual(out, { id: "p1", active: true, nickname: "Bea", ["__proto__"]: "own" })
+            assert.isFalse(Object.hasOwn(out, "hidden"))
+            assert.isFalse(Object.hasOwn(out, "inherited"))
+          }
+        })
+      })
+    }
   })
 
   describe("forEach", () => {
