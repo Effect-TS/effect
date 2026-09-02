@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Schema } from "effect"
 import { Model } from "effect/unstable/schema"
 import { SqlClient, SqlModel, SqlResolver } from "effect/unstable/sql"
-import { MysqlContainer } from "./utils.ts"
+import { getMysqlContainerAcquisitionCount, MysqlContainer } from "./utils.ts"
 
 class User extends Model.Class<User>("User")({
   id: Schema.Int.pipe(
@@ -224,4 +224,8 @@ describe("SqlModel", () => {
       Effect.provide(MysqlContainer.layerClientWithTransforms),
       Effect.catchTag("ContainerError", () => Effect.void)
     ), { timeout: 60_000 })
+
+  it("acquires one MySQL container for the test file", () => {
+    assert.strictEqual(getMysqlContainerAcquisitionCount(), 1)
+  })
 })
