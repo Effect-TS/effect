@@ -21,7 +21,7 @@ import * as Option from "../../Option.ts"
 import type { Predicate } from "../../Predicate.ts"
 import type { ReadonlyRecord } from "../../Record.ts"
 import { TracerEnabled } from "../../References.ts"
-import { ParentSpan } from "../../Tracer.ts"
+import { nativeTracer, ParentSpan, Tracer } from "../../Tracer.ts"
 import * as Headers from "./Headers.ts"
 import type { CompressionAlgorithm } from "./HttpPlatform.ts"
 import { HttpPlatform } from "./HttpPlatform.ts"
@@ -196,6 +196,12 @@ export const tracer: <E, R>(
     return Effect.onExitPrimitive(httpApp, (exit) => {
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
+      // without a tracing backend (or for unsampled spans) nothing can observe
+      // the span after this point, so skip recording attributes
+      if (!span.sampled || fiber.getRef(Tracer) === nativeTracer) {
+        span.end(endTime, exit)
+        return undefined
+      }
       const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
       fiber.currentDispatcher.scheduleTask(() => {
         let response: HttpServerResponse

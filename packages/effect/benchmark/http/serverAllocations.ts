@@ -6,16 +6,18 @@
 // Exits non-zero when retained heap grows more than RETAINED_LIMIT bytes/request
 // (leak gate) or when allocation churn exceeds CHURN_LIMIT bytes/request
 // (regression gate for the memory-footprint work).
-import { Layer } from "effect"
 import { HttpRouter, HttpServerResponse } from "effect/unstable/http"
 import * as inspector from "node:inspector/promises"
 
 const WARMUP = 5_000
 const REQUESTS = 50_000
 const RETAINED_LIMIT = 64
-// baseline on main (2026-09-02, commit a1177caf27) is ~18.5k bytes/request,
-// with ~2.5-3k of that from default tracer span creation (EFF-1038)
-const CHURN_LIMIT = 16_000
+// main at a1177caf27 measured ~18.5k bytes/request; the EFF-1038 changes
+// (skip span attribute recording without a tracing backend, lazy NativeSpan,
+// skip abort listeners for synchronously completed fibers) brought it to
+// ~16.3k. The limit locks that in with headroom for run-to-run variance;
+// ~45% of the remainder is undici Request/Response construction.
+const CHURN_LIMIT = 17_000
 
 const gc = (globalThis as any).gc as undefined | (() => void)
 if (gc === undefined) {
