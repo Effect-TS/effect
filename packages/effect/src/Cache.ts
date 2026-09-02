@@ -1165,7 +1165,10 @@ export const refresh: {
       }
       entry.fiber.addObserver((exit) => {
         if (effect.exitHasInterrupts(exit)) {
-          if (!existing) MutableHashMap.remove(self.map, key)
+          const current = MutableHashMap.get(self.map, key)
+          if (Option.isSome(current) && current.value === entry) {
+            MutableHashMap.remove(self.map, key)
+          }
           return
         }
         const ttl = self.timeToLive(exit, key)
