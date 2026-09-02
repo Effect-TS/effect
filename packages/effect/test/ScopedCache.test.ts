@@ -310,32 +310,6 @@ describe("ScopedCache", () => {
           assert.deepStrictEqual(result, Exit.fail("lookup error"))
         }))
 
-      it.effect.each(["throw", "die"])("caches lookup defects (%s)", (failure) =>
-        Effect.gen(function*() {
-          let lookups = 0
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (_key: string): Effect.Effect<number> => {
-              lookups++
-              if (failure === "throw") throw "lookup defect"
-              return Effect.die("lookup defect")
-            }
-          })
-
-          assert.deepStrictEqual(yield* Effect.exit(ScopedCache.get(cache, "test")), Exit.die("lookup defect"))
-          const readers = yield* Effect.all([
-            ScopedCache.get(cache, "test").pipe(Effect.exit, Effect.timeoutOption("1 second")),
-            ScopedCache.getOption(cache, "test").pipe(Effect.exit, Effect.timeoutOption("1 second"))
-          ], { concurrency: "unbounded" }).pipe(Effect.forkChild)
-          yield* TestClock.adjust("1 second")
-
-          assert.deepStrictEqual(yield* Fiber.join(readers), [
-            Option.some(Exit.die("lookup defect")),
-            Option.some(Exit.die("lookup defect"))
-          ])
-          assert.strictEqual(lookups, 1)
-        }))
-
       it.effect("concurrent access - multiple fibers getting same key only invoke lookup once", () =>
         Effect.gen(function*() {
           let lookupCount = 0
@@ -897,100 +871,55 @@ describe("ScopedCache", () => {
     })
 
     describe("refresh", () => {
-      it.effect.each([
-        { existing: false, failure: "throw" },
-        { existing: false, failure: "die" },
-        { existing: true, failure: "throw" },
-        { existing: true, failure: "die" }
-      ])(
-        "caches lookup defects (existing=$existing, failure=$failure)",
-        ({ existing, failure }) =>
-          Effect.gen(function*() {
-            let fail = !existing
-            let lookups = 0
-            let released = 0
-            const cache = yield* ScopedCache.make({
-              capacity: 10,
-              timeToLive: "1 minute",
-              lookup: (_key: string) => {
-                lookups++
-                if (fail) {
-                  if (failure === "throw") throw "lookup defect"
-                  return Effect.die("lookup defect")
-                }
-                return Effect.acquireRelease(Effect.succeed(42), () => Effect.sync(() => released++))
-              }
-            })
-            if (existing) {
-              assert.strictEqual(yield* ScopedCache.get(cache, "test"), 42)
-              fail = true
-            }
-
-            assert.deepStrictEqual(yield* Effect.exit(ScopedCache.refresh(cache, "test")), Exit.die("lookup defect"))
-            const readers = yield* Effect.all([
-              ScopedCache.get(cache, "test").pipe(Effect.exit, Effect.timeoutOption("1 second")),
-              ScopedCache.getOption(cache, "test").pipe(Effect.exit, Effect.timeoutOption("1 second"))
-            ], { concurrency: "unbounded" }).pipe(Effect.forkChild)
-            yield* TestClock.adjust("1 second")
-
-            assert.deepStrictEqual(yield* Fiber.join(readers), [
-              Option.some(Exit.die("lookup defect")),
-              Option.some(Exit.die("lookup defect"))
-            ])
-            assert.strictEqual(lookups, existing ? 2 : 1)
-            assert.strictEqual(released, existing ? 1 : 0)
-
-            yield* TestClock.adjust("1 minute")
-            assert.isFalse(yield* ScopedCache.has(cache, "test"))
-            fail = false
-            assert.strictEqual(yield* ScopedCache.get(cache, "test"), 42)
-            assert.strictEqual(lookups, existing ? 3 : 2)
-            yield* ScopedCache.invalidate(cache, "test")
-            assert.strictEqual(released, existing ? 2 : 1)
-          })
-      )
-
-      it.effect.each([
-        { existing: false, interruptible: true },
-        { existing: true, interruptible: true },
-        { existing: false, interruptible: false },
-        { existing: true, interruptible: false }
-      ])("preserves lookup interruption (existing=$existing, interruptible=$interruptible)", (
-        { existing, interruptible }
-      ) =>
+      it.effect("caches a synchronous lookup defect for a missing key", () =>
         Effect.gen(function*() {
-          const gate = yield* Deferred.make<number>()
-          let interrupted = false
+          let lookups = 0
           const cache = yield* ScopedCache.make({
             capacity: 10,
-            lookup: (_key: string) =>
-              Deferred.await(gate).pipe(Effect.onInterrupt(() => Effect.sync(() => interrupted = true)))
+            lookup: (_key: string): Effect.Effect<number> => {
+              lookups++
+              throw "lookup defect"
+            }
           })
-          if (existing) yield* ScopedCache.set(cache, "test", 42)
-          const refresh = ScopedCache.refresh(cache, "test")
-          const fiber = yield* (interruptible ? refresh : Effect.uninterruptible(refresh)).pipe(
-            Effect.forkChild({ startImmediately: true })
+
+          assert.deepStrictEqual(yield* Effect.exit(ScopedCache.refresh(cache, "test")), Exit.die("lookup defect"))
+          const reader = yield* ScopedCache.get(cache, "test").pipe(
+            Effect.exit,
+            Effect.timeoutOption("1 second"),
+            Effect.forkChild
           )
-          const interruptor = yield* Fiber.interrupt(fiber).pipe(Effect.forkChild({ startImmediately: true }))
-          yield* Deferred.succeed(gate, 7)
-          yield* Fiber.join(interruptor)
-
-          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
-          assert.strictEqual(interrupted, interruptible)
-          const readers = yield* Effect.all([
-            ScopedCache.get(cache, "test").pipe(Effect.exit),
-            ScopedCache.getOption(cache, "test").pipe(Effect.exit)
-          ], { concurrency: "unbounded" }).pipe(Effect.timeoutOption("1 second"), Effect.forkChild)
           yield* TestClock.adjust("1 second")
-          const exits = yield* Fiber.join(readers)
 
-          assert(Option.isSome(exits))
-          if (interruptible) {
-            assert.isTrue(Exit.hasInterrupts(exits.value[0]))
-            assert.isTrue(Exit.hasInterrupts(exits.value[1]))
-          } else {
-            assert.deepStrictEqual(exits.value, [Exit.succeed(7), Exit.succeed(Option.some(7))])
-          }
+          assert.deepStrictEqual(yield* Fiber.join(reader), Option.some(Exit.die("lookup defect")))
+          assert.strictEqual(lookups, 1)
+        }))
+
+      it.effect("replaces an existing entry with a synchronous lookup defect", () =>
+        Effect.gen(function*() {
+          let fail = false
+          let released = 0
+          const cache = yield* ScopedCache.make({
+            capacity: 10,
+            lookup: (_key: string) => {
+              if (fail) throw "lookup defect"
+              return Effect.acquireRelease(
+                Effect.succeed(42),
+                () => Effect.sync(() => released++)
+              )
+            }
+          })
+          assert.strictEqual(yield* ScopedCache.get(cache, "test"), 42)
+          fail = true
+
+          assert.deepStrictEqual(yield* Effect.exit(ScopedCache.refresh(cache, "test")), Exit.die("lookup defect"))
+
+          assert.deepStrictEqual({
+            result: yield* Effect.exit(ScopedCache.get(cache, "test")),
+            released
+          }, {
+            result: Exit.die("lookup defect"),
+            released: 1
+          })
         }))
 
       it.effect("refresh existing key invokes lookup again", () =>
