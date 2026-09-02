@@ -135,6 +135,109 @@ describe("Param", () => {
       }).pipe(Effect.provide(TestLayer)))
   })
 
+  describe("variadic defaults", () => {
+    it.effect("uses the default when a required variadic argument is omitted", () =>
+      Effect.gen(function*() {
+        const argument = Argument.string("files").pipe(
+          Argument.atLeast(1),
+          Argument.withDefault(["README.md"])
+        )
+
+        const result = yield* argument.parse({ flags: {}, arguments: [] })
+
+        assert.deepStrictEqual(result, [[], ["README.md"]])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("returns MissingArgument when a required variadic argument is omitted", () =>
+      Effect.gen(function*() {
+        const argument = Argument.string("files").pipe(Argument.atLeast(1))
+
+        const error = yield* Effect.flip(argument.parse({ flags: {}, arguments: [] }))
+
+        assert.instanceOf(error, CliError.MissingArgument)
+        assert.strictEqual(error.argument, "files")
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("preserves provided variadic argument values instead of using the default", () =>
+      Effect.gen(function*() {
+        const argument = Argument.string("files").pipe(
+          Argument.atLeast(1),
+          Argument.withDefault(["README.md"])
+        )
+
+        const result = yield* argument.parse({ flags: {}, arguments: ["src.ts", "test.ts"] })
+
+        assert.deepStrictEqual(result, [[], ["src.ts", "test.ts"]])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("uses the default when a required variadic flag is omitted", () =>
+      Effect.gen(function*() {
+        const flag = Flag.string("files").pipe(
+          Flag.atLeast(1),
+          Flag.withDefault(["README.md"])
+        )
+
+        const result = yield* flag.parse({ flags: {}, arguments: ["tail"] })
+
+        assert.deepStrictEqual(result, [["tail"], ["README.md"]])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("preserves provided variadic flag values instead of using the default", () =>
+      Effect.gen(function*() {
+        const flag = Flag.string("files").pipe(
+          Flag.atLeast(1),
+          Flag.withDefault(["README.md"])
+        )
+
+        const result = yield* flag.parse({
+          flags: { files: ["src.ts", "test.ts"] },
+          arguments: ["tail"]
+        })
+
+        assert.deepStrictEqual(result, [["tail"], ["src.ts", "test.ts"]])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("does not default a nonempty variadic argument below its minimum", () =>
+      Effect.gen(function*() {
+        const argument = Argument.string("files").pipe(
+          Argument.atLeast(2),
+          Argument.withDefault(["README.md", "LICENSE"])
+        )
+
+        const error = yield* Effect.flip(argument.parse({ flags: {}, arguments: ["src.ts"] }))
+
+        assert.instanceOf(error, CliError.InvalidValue)
+        assert.strictEqual(error.option, "files")
+        assert.strictEqual(error.value, "1 values")
+        assert.strictEqual(error.expected, "at least 2 values")
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("does not default a nonempty variadic flag below its minimum", () =>
+      Effect.gen(function*() {
+        const flag = Flag.string("files").pipe(
+          Flag.atLeast(2),
+          Flag.withDefault(["README.md", "LICENSE"])
+        )
+
+        const error = yield* Effect.flip(flag.parse({ flags: { files: ["src.ts"] }, arguments: [] }))
+
+        assert.instanceOf(error, CliError.InvalidValue)
+        assert.strictEqual(error.expected, "at least 2 values")
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("preserves the empty result when the variadic argument minimum is zero", () =>
+      Effect.gen(function*() {
+        const argument = Argument.string("files").pipe(
+          Argument.atLeast(0),
+          Argument.withDefault(["README.md"])
+        )
+
+        const result = yield* argument.parse({ flags: {}, arguments: [] })
+
+        assert.deepStrictEqual(result, [[], []])
+      }).pipe(Effect.provide(TestLayer)))
+  })
+
   describe("withFallbackPrompt", () => {
     it.effect("prompts for missing flag values and preserves remaining args", () =>
       Effect.gen(function*() {
