@@ -43,8 +43,8 @@ const make: Effect.Effect<
       let file = Bun.file(path)
       if (!ByteSize.isZero(start) || end !== undefined) {
         file = file.slice(
-          yield* byteSizeToNumber(start.value),
-          end === undefined ? undefined : yield* byteSizeToNumber(end.value)
+          yield* byteSizeToNumber(start),
+          end === undefined ? undefined : yield* byteSizeToNumber(end)
         )
       }
       return Response.raw(file, { headers, status, statusText })

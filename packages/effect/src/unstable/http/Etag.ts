@@ -84,7 +84,7 @@ const fromFileInfo = (info: FileSystem.File.Info) => {
     onNone: () => "0",
     onSome: (mtime) => mtime.getTime().toString(16)
   })
-  return `${info.size.value.toString(16)}-${mtime}`
+  return `${info.size.toString(16)}-${mtime}`
 }
 
 const fromFileWeb = (file: Body.HttpBody.FileLike) => {

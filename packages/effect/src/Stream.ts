@@ -6166,7 +6166,7 @@ export const limitBytes: {
   onLimitReached: LazyArg<Stream<Uint8Array, E, R>>
 ): Stream<Uint8Array, E, R> =>
   suspend(() => {
-    const limit = ByteSize.fromInputUnsafe(bytes).value
+    const limit = ByteSize.fromInputUnsafe(bytes)
     let size = BigInt(0)
     let limitReached = false
     return concat(

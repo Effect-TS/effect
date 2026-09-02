@@ -521,7 +521,7 @@ export const make = (
       const file = yield* impl.open(path, { flag: "r" })
       const offset = options?.offset === undefined ? undefined : ByteSize.fromInputUnsafe(options.offset)
       if (offset !== undefined) {
-        yield* file.seek(offset.value, "start")
+        yield* file.seek(offset, "start")
       }
       const bytesToRead = options?.bytesToRead === undefined
         ? undefined
@@ -532,11 +532,11 @@ export const make = (
       return Stream.fromPull(Effect.succeed(
         Effect.flatMap(
           Effect.suspend((): Pull.Pull<Option.Option<Uint8Array>, PlatformError> => {
-            if (bytesToRead !== undefined && bytesToRead.value <= totalBytesRead) {
+            if (bytesToRead !== undefined && bytesToRead <= totalBytesRead) {
               return Cause.done()
             }
-            return bytesToRead !== undefined && (bytesToRead.value - totalBytesRead) < BigInt(chunkSize)
-              ? file.readAlloc(Number(bytesToRead.value - totalBytesRead))
+            return bytesToRead !== undefined && (bytesToRead - totalBytesRead) < BigInt(chunkSize)
+              ? file.readAlloc(Number(bytesToRead - totalBytesRead))
               : readChunk
           }),
           Option.match({

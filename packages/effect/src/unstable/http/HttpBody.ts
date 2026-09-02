@@ -499,7 +499,7 @@ const fileContentLength = (
   const available = BI.max(total - offset, BigInt(0))
   const selected = options?.bytesToRead === undefined
     ? available
-    : BI.min(options.bytesToRead.value, available)
+    : BI.min(options.bytesToRead, available)
   return Option.getOrUndefined(BI.toNumber(selected))
 }
 
