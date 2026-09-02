@@ -91,7 +91,7 @@ describe("PartitionedSemaphore", () => {
     }))
 
   for (const key of ["other", "same"]) {
-    it.effect(`repro: interrupting a resumed waiter preserves the next ${key}-key waiter`, () =>
+    it.effect(`interrupting a resumed waiter preserves the next ${key}-key waiter`, () =>
       Effect.gen(function*() {
         const tasks: Array<() => void> = []
         let shouldYield = false
