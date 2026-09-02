@@ -160,6 +160,38 @@ const uvarint = (value: number): Uint8Array => {
 }
 
 describe("RpcSerialization", () => {
+  for (
+    const [name, serialization] of Object.entries({
+      json: RpcSerialization.json,
+      ndjson: RpcSerialization.ndjson,
+      jsonRpc: RpcSerialization.jsonRpc(),
+      ndJsonRpc: RpcSerialization.ndJsonRpc()
+    })
+  ) {
+    describe(`${name} control messages`, () => {
+      for (const _tag of ["Ack", "Interrupt"] as const) {
+        it.each([0, "", 1, "0"])(`roundtrips ${_tag} with requestId %j`, (requestId) => {
+          const message: RpcMessage.AckEncoded | RpcMessage.InterruptEncoded = { _tag, requestId }
+          const parser = serialization.makeUnsafe()
+          const encoded = parser.encode(message)
+
+          assert(typeof encoded === "string")
+          assert.include(encoded, `"requestId":${JSON.stringify(requestId)}`)
+          assert.deepStrictEqual(parser.decode(encoded), [message])
+        })
+      }
+
+      it.each(["Ping", "Pong", "Eof"] as const)("roundtrips %s without a requestId", (_tag) => {
+        const message: RpcMessage.Ping | RpcMessage.Pong | RpcMessage.Eof = { _tag }
+        const parser = serialization.makeUnsafe()
+        const encoded = parser.encode(message)
+
+        assert(typeof encoded === "string")
+        assert.deepStrictEqual(parser.decode(encoded), [message])
+      })
+    })
+  }
+
   describe.sequential("jsonRpc inherited properties", () => {
     afterEach(() => {
       delete objectPrototype["method"]
