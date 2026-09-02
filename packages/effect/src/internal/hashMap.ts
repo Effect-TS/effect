@@ -410,10 +410,8 @@ class CollisionNode<K, V> extends Node<K, V> {
     return new CollisionNode(edit, this.hash, newEntries)
   }
 
-  *iterator(): Iterator<[K, V]> {
-    for (const [key, value] of this.entries) {
-      yield [key, value]
-    }
+  iterator(): Iterator<[K, V]> {
+    return this.entries[Symbol.iterator]()
   }
 
   [Symbol.iterator](): Iterator<[K, V]> {

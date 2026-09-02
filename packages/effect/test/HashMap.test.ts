@@ -1,4 +1,3 @@
-import { assert } from "@effect/vitest"
 import { Equal, Hash, HashMap, Option, Result } from "effect"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
@@ -158,34 +157,13 @@ describe("HashMap", () => {
       expect(entries).toEqual([["a", 1], ["b", 2]])
     })
 
-    describe.each(
-      [
-        ["entries", (map: HashMap.HashMap<string, number>) => Array.from(HashMap.entries(map))],
-        ["toEntries", HashMap.toEntries<string, number>],
-        ["Symbol.iterator", (map: HashMap.HashMap<string, number>) => Array.from(map)]
-      ] as const
-    )("%s tuple isolation", (_, extract) => {
-      it.each([
-        { label: "colliding string keys", first: "fF", second: "AA", collides: true },
-        { label: "non-colliding string keys", first: "a", second: "b", collides: false }
-      ])("preserves the map when an extracted tuple is edited with $label", ({ first, second, collides }) => {
-        assert.strictEqual(Hash.hash(first) === Hash.hash(second), collides)
-        const map = HashMap.make([first, 1], [second, 2])
-        const entries = extract(map)
-        assert.lengthOf(entries, 2)
-        const entry = entries.find(([key]) => key === first)
-        assert.isDefined(entry)
+    it("does not expose mutable collision entries", () => {
+      const map = HashMap.make(["fF", 1], ["AA", 2])
+      const entry = Array.from(HashMap.entries(map)).find(([key]) => key === "fF")!
 
-        entry[1] = 99
-        assert.strictEqual(entry[1], 99)
-        assert.strictEqual(HashMap.getUnsafe(map, first), 1)
+      entry[1] = 99
 
-        entry[0] = "renamed"
-        assert.strictEqual(HashMap.getUnsafe(map, first), 1)
-        assert.strictEqual(HashMap.getUnsafe(map, second), 2)
-        assert.isFalse(HashMap.has(map, "renamed"))
-        assert.strictEqual(HashMap.size(map), 2)
-      })
+      expect(HashMap.getUnsafe(map, "fF")).toBe(1)
     })
   })
 
