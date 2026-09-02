@@ -187,11 +187,6 @@ export interface HttpApiEndpoint<
   readonly error: ReadonlySet<Schema.Top>
   readonly annotations: Context.Context<never>
   readonly middlewares: ReadonlySet<Context.Key<Middleware, any>>
-  /**
-   * Whether the endpoint was declared with `disableCodecs`. When `true` the
-   * schemas above are stored as declared instead of being wrapped in the
-   * automatic request and response codecs.
-   */
   readonly disableCodecs: boolean
 
   /**
@@ -288,10 +283,6 @@ export function getSuccessSchemas(endpoint: Top): [Schema.Top, ...Array<Schema.T
 /** @internal */
 export function getErrorSchemas(endpoint: Top): Array<Schema.Top> {
   const schemas = new Set<Schema.Top>(endpoint.error)
-  // Middleware stores its declared errors as given, because one middleware can be
-  // attached to endpoints with different `disableCodecs` settings. Apply the same
-  // treatment the endpoint gave its own errors, so that declaring one schema on
-  // both sides yields one entry rather than two that only differ by wrapping.
   const transform = endpoint.disableCodecs ? identity : transformResponseSchema
   for (const middleware of endpoint.middlewares) {
     const key = middleware as any as HttpApiMiddleware.AnyService

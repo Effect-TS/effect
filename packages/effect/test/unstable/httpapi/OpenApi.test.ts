@@ -363,6 +363,35 @@ describe("OpenApi", () => {
     })
   })
 
+  it("resolves one shared middleware error per endpoint codec mode", () => {
+    const ApiError = Schema.Struct({ code: Schema.String }).annotate({ identifier: "ApiError" })
+
+    class SharedError extends HttpApiMiddleware.Service<SharedError>()("SharedError", {
+      error: ApiError
+    }) {}
+
+    // The same middleware instance is attached to both endpoints, so its single
+    // error set has to be resolved against each endpoint's `disableCodecs`.
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test")
+        .add(HttpApiEndpoint.get("codecs", "/codecs", { error: ApiError }))
+        .add(HttpApiEndpoint.get("raw", "/raw", { disableCodecs: true, error: ApiError }))
+    ).middleware(SharedError)
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.paths["/codecs"]?.get?.responses[500]?.content, {
+      "application/json": {
+        schema: { $ref: "#/components/schemas/ApiError" }
+      }
+    })
+    assert.deepStrictEqual(spec.paths["/raw"]?.get?.responses[500]?.content, {
+      "application/json": {
+        schema: { $ref: "#/components/schemas/ApiError" }
+      }
+    })
+  })
+
   it("emits an anyOf for a middleware error that differs from the endpoint error", () => {
     const EndpointError = Schema.Struct({ code: Schema.String }).annotate({ identifier: "EndpointError" })
     const MiddlewareError = Schema.Struct({ reason: Schema.String }).annotate({ identifier: "MiddlewareError" })
