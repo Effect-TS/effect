@@ -502,6 +502,14 @@ describe("HttpApiClient", () => {
       )
     })
 
+    it("preserves a base URL pathname", () => {
+      const builder = HttpApiClient.urlBuilder(Api, {
+        baseUrl: "https://api.example.com/v1"
+      })
+
+      strictEqual(builder.users.health(), "https://api.example.com/v1/health")
+    })
+
     it("encodes path parameters", () => {
       const Api = HttpApi.make("Api")
         .add(
