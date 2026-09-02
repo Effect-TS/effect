@@ -520,6 +520,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._yielded = undefined
     this._running = false
     this._deferredInterrupt = false
+    this._parent = undefined
     this.runtimeMetrics?.recordFiberStart(this.context)
   }
 
@@ -536,6 +537,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   _yielded: Exit.Exit<any, any> | (() => void) | undefined
   _running: boolean
   _deferredInterrupt: boolean
+  _parent: FiberImpl<any, any> | undefined
 
   // set in setContext
   context!: Context.Context<never>
@@ -638,6 +640,10 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 
     this._exit = exit
     this.runtimeMetrics?.recordFiberEnd(this.context, this._exit)
+    if (this._parent) {
+      this._parent._children?.delete(this)
+      this._parent = undefined
+    }
     for (let i = 0; i < this._observers.length; i++) {
       this._observers[i](exit)
     }
@@ -1453,11 +1459,24 @@ export const as: {
   <A, E, R, B>(
     self: Effect.Effect<A, E, R>,
     value: B
-  ): Effect.Effect<B, E, R> => {
-    const b = succeed(value)
-    return flatMap(self, (_) => b)
-  }
+  ): Effect.Effect<B, E, R> => new (AsImpl as any)(self, succeed(value))
 )
+
+const AsProto = makePrimitiveProto({
+  op: "As",
+  [evaluate](this: any, fiber: FiberImpl): Primitive {
+    fiber._stack.push(this)
+    return this[args]
+  },
+  [contA](this: any, _value, _fiber) {
+    return this.exit
+  }
+})
+function AsImpl(this: any, self: any, exit: any) {
+  this[args] = self
+  this.exit = exit
+}
+AsImpl.prototype = AsProto
 
 /** @internal */
 export const asSome = <A, E, R>(
@@ -1526,7 +1545,7 @@ export const tap: {
 /** @internal */
 export const asVoid = <A, E, R>(
   self: Effect.Effect<A, E, R>
-): Effect.Effect<void, E, R> => flatMap(self, (_) => exitVoid)
+): Effect.Effect<void, E, R> => new (AsImpl as any)(self, exitVoid)
 
 /** @internal */
 export const sandbox = <A, E, R>(
@@ -1830,8 +1849,24 @@ export const map: {
   <A, E, R, B>(
     self: Effect.Effect<A, E, R>,
     f: (a: A) => B
-  ): Effect.Effect<B, E, R> => flatMap(self, (a) => succeed(internalCall(() => f(a))))
+  ): Effect.Effect<B, E, R> => new (MapImpl as any)(self, f)
 )
+
+const MapProto = makePrimitiveProto({
+  op: "Map",
+  [evaluate](this: any, fiber: FiberImpl): Primitive {
+    fiber._stack.push(this)
+    return this[args]
+  },
+  [contA](this: any, value, _fiber) {
+    return succeed(internalCall(() => this.f(value)))
+  }
+})
+function MapImpl(this: any, self: any, f: any) {
+  this[args] = self
+  this.f = f
+}
+MapImpl.prototype = MapProto
 
 /** @internal */
 export const mapEager: {
@@ -5361,7 +5396,7 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   }
   if (!daemon && !child._exit) {
     parentRuntime.children().add(child)
-    child.addObserver(() => parentRuntime._children!.delete(child))
+    child._parent = parentRuntime
   }
   return child
 }
