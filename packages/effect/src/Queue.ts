@@ -1936,22 +1936,28 @@ const releaseCapacity = <A, E>(self: Dequeue<A, E>): boolean => {
     }
     return false
   }
-  let n = self.capacity - self.messages.length
   for (const entry of self.state.offers) {
-    if (n === 0) break
-    else if (entry._tag === "Single") {
+    // `entry.resume` can run the producer fiber synchronously, which may
+    // reenter this function and mutate `self.state` and `self.messages`, so
+    // remove the entry before resuming and recompute capacity every iteration
+    const state = self.state as Queue.State<A, E>
+    if (state._tag === "Done") {
+      return Pull.isDoneCause(state.exit.cause)
+    }
+    let n = self.capacity - self.messages.length
+    if (n <= 0) break
+    if (entry._tag === "Single") {
       MutableList.append(self.messages, entry.message)
-      n--
+      state.offers.delete(entry)
       entry.resume(exitTrue)
-      self.state.offers.delete(entry)
     } else {
       for (; entry.offset < entry.remaining.length; entry.offset++) {
         if (n === 0) return false
         MutableList.append(self.messages, entry.remaining[entry.offset])
         n--
       }
+      state.offers.delete(entry)
       entry.resume(core.exitSucceed([]))
-      self.state.offers.delete(entry)
     }
   }
   return false

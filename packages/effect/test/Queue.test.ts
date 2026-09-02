@@ -69,6 +69,27 @@ describe("Queue", () => {
       assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed([]))
     }))
 
+  it.effect("resuming a blocked producer does not enqueue its message twice", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number>(1)
+      yield* Queue.offer(queue, 0)
+      const producer = yield* Effect.forkChild(
+        Effect.gen(function*() {
+          yield* Queue.offer(queue, 1)
+          return yield* Queue.take(queue)
+        }),
+        { startImmediately: true }
+      )
+
+      const first = yield* Queue.take(queue)
+      const second = yield* Fiber.join(producer)
+      const remaining = yield* Queue.clear(queue)
+      yield* Queue.shutdown(queue)
+
+      assert.deepStrictEqual([first, second], [0, 1])
+      assert.deepStrictEqual(remaining, [])
+    }))
+
   it.effect("takeN", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number>()
