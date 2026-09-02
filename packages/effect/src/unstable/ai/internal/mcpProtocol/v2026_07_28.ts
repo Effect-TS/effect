@@ -4,14 +4,21 @@
  * @internal
  */
 import * as Arr from "../../../../Array.ts"
+import * as Deferred from "../../../../Deferred.ts"
 import * as Effect from "../../../../Effect.ts"
 import * as Encoding from "../../../../Encoding.ts"
 import * as Match from "../../../../Match.ts"
+import * as Option from "../../../../Option.ts"
 import * as Predicate from "../../../../Predicate.ts"
 import * as PubSub from "../../../../PubSub.ts"
+import * as Queue from "../../../../Queue.ts"
 import * as Schema from "../../../../Schema.ts"
+import { appendPreResponseHandlerUnsafe } from "../../../http/HttpEffect.ts"
+import * as HttpServerRequest from "../../../http/HttpServerRequest.ts"
+import * as HttpServerResponse from "../../../http/HttpServerResponse.ts"
 import type * as Rpc from "../../../rpc/Rpc.ts"
 import type * as RpcMessage from "../../../rpc/RpcMessage.ts"
+import type * as PublicMcpProtocol from "../../McpProtocol.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
@@ -21,6 +28,7 @@ const InputResponses = Schema.Record(Schema.String, Schema.JsonObject)
 const decodeRequestMetadata = Schema.decodeUnknownEffect(McpSchema.RequestMetaObject)
 const decodeCancellation = Schema.decodeUnknownEffect(McpSchema.CancelledNotification.payloadSchema)
 const isJson = Schema.is(Schema.Json)
+const MAX_PENDING_SUBSCRIPTION_NOTIFICATIONS = 64
 
 type ObjectWithUndefined = Readonly<Record<string, unknown>>
 
@@ -32,6 +40,28 @@ const omitUndefined = (value: ObjectWithUndefined): Record<string, unknown> => {
     }
   }
   return result
+}
+
+const parameterHeaderMatches = (header: string | undefined, argument: unknown): boolean => {
+  if (Predicate.isNullish(argument)) {
+    return header === undefined
+  }
+  if (header === undefined) {
+    return false
+  }
+  const decoded = McpProtocol.decodeRoutingHeader(header)
+  if (decoded === undefined) {
+    return false
+  }
+  return Match.value(argument).pipe(
+    Match.when(Match.string, (argument) => decoded === argument),
+    Match.when(Match.boolean, (argument) => decoded === String(argument)),
+    Match.when(
+      Match.number,
+      (argument) => Number.isSafeInteger(argument) && decoded.trim().length > 0 && Number(decoded) === argument
+    ),
+    Match.orElse(() => false)
+  )
 }
 
 /** @internal */
@@ -496,6 +526,34 @@ export const makeHandlers = (
     }, Effect.mapError(projectError)),
     "tools/call": Effect.fnUntraced(function*(request: typeof McpSchema.CallTool.payloadSchema.Type) {
       const invocation = yield* getInputInvocation(request)
+      const tool = (yield* core.tools.list(invocation.protocol)).find((tool) => tool.name === request.name)
+      const httpRequest = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest)
+
+      if (tool !== undefined && Option.isSome(httpRequest) && tool.inputSchema.properties !== undefined) {
+        for (const [argumentName, propertySchema] of Object.entries(tool.inputSchema.properties)) {
+          if (
+            !Predicate.hasProperty(propertySchema, "x-mcp-header") ||
+            !Predicate.isString(propertySchema["x-mcp-header"])
+          ) {
+            continue
+          }
+
+          const headerName = `mcp-param-${propertySchema["x-mcp-header"].toLowerCase()}`
+          const header = httpRequest.value.headers[headerName]
+          const argument = request.arguments?.[argumentName]
+          if (!parameterHeaderMatches(header, argument)) {
+            appendPreResponseHandlerUnsafe(
+              httpRequest.value,
+              (_request, response) => Effect.succeed(HttpServerResponse.setStatus(response, 400))
+            )
+            return yield* new McpProtocol.ProtocolError({
+              code: PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE,
+              message: `${headerName} does not match argument '${argumentName}'`
+            })
+          }
+        }
+      }
+
       const outcome = yield* core.tools.call({ name: request.name, arguments: request.arguments ?? {} }, invocation)
         .pipe(
           Effect.catchTags({

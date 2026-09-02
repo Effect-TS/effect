@@ -127,6 +127,7 @@ export interface SendOptions {
   readonly includeProtocolVersion?: boolean | undefined
   readonly protocolVersion?: string | undefined
   readonly clientCapabilities?: Record<string, unknown> | undefined
+  readonly headers?: HeadersInit | undefined
 }
 
 export interface McpConformanceShape {
@@ -297,7 +298,8 @@ export const layer = (protocol: McpProtocol.ProtocolAdapter) =>
           ? {
             "Mcp-Protocol-Version": options?.protocolVersion ?? session.message.result.protocolVersion
           }
-          : {})
+          : {}),
+        ...options?.headers
       })
 
       const harnessFor = (session: InitializedSession) =>
@@ -311,7 +313,10 @@ export const layer = (protocol: McpProtocol.ProtocolAdapter) =>
           return post(harnessFor(session), body, sessionHeaders(session, options))
         }
         const request = statelessBody(protocol, body, options?.clientCapabilities)
-        return post(harnessFor(session), request, statelessHeaders(protocol, request))
+        return post(harnessFor(session), request, {
+          ...statelessHeaders(protocol, request),
+          ...options?.headers
+        })
       }
 
       const notifyInitialized: McpConformanceShape["notifyInitialized"] = (session, options) =>

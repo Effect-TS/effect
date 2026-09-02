@@ -7,10 +7,8 @@ import type { NonEmptyReadonlyArray } from "../../../Array.ts"
 import * as Cause from "../../../Cause.ts"
 import * as Context from "../../../Context.ts"
 import * as Effect from "../../../Effect.ts"
-import * as Encoding from "../../../Encoding.ts"
 import * as Layer from "../../../Layer.ts"
 import type * as LogLevel from "../../../LogLevel.ts"
-import * as Result from "../../../Result.ts"
 import type * as Headers from "../../http/Headers.ts"
 import { appendPreResponseHandlerUnsafe } from "../../http/HttpEffect.ts"
 import * as HttpServerRequest from "../../http/HttpServerRequest.ts"
@@ -31,8 +29,6 @@ const MCP_NAME_HEADER = "mcp-name"
 const PROTOCOL_VERSION_METADATA_KEY = "io.modelcontextprotocol/protocolVersion"
 const CLIENT_CAPABILITIES_METADATA_KEY = "io.modelcontextprotocol/clientCapabilities"
 const UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE = -32022
-const BASE64_SENTINEL_PREFIX = "=?base64?"
-const BASE64_SENTINEL_SUFFIX = "?="
 
 const asRecord = (input: unknown): Record<string, unknown> | undefined =>
   typeof input === "object" && input !== null ? input as Record<string, unknown> : undefined
@@ -43,20 +39,6 @@ const modernVersionClaim = (input: unknown): { readonly present: boolean; readon
   return metadata !== undefined && PROTOCOL_VERSION_METADATA_KEY in metadata
     ? { present: true, value: metadata[PROTOCOL_VERSION_METADATA_KEY] }
     : { present: false, value: undefined }
-}
-
-const decodeRoutingHeader = (value: string): string | undefined => {
-  const startsWithSentinel = value.startsWith(BASE64_SENTINEL_PREFIX)
-  const endsWithSentinel = value.endsWith(BASE64_SENTINEL_SUFFIX)
-  if (!startsWithSentinel && !endsWithSentinel) {
-    return /^[\x20-\x7e]*$/.test(value) ? value : undefined
-  }
-  if (!startsWithSentinel || !endsWithSentinel) {
-    return undefined
-  }
-  const encoded = value.slice(BASE64_SENTINEL_PREFIX.length, -BASE64_SENTINEL_SUFFIX.length)
-  const decoded = Encoding.decodeBase64String(encoded)
-  return Result.isSuccess(decoded) ? decoded.success : undefined
 }
 
 const routingName = (input: unknown): string | undefined => {
@@ -79,7 +61,7 @@ const requiresRoutingName = (method: unknown): boolean =>
 const headerMismatch = (message: string): HttpAdmission => ({
   _tag: "Rejected",
   status: 400,
-  error: { code: -32020, message }
+  error: { code: PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE, message }
 })
 
 const PingRpcs = RpcGroup.make(PublicMcpSchema.Ping).middleware(PublicMcpSchema.McpServerClientMiddleware)
@@ -355,7 +337,7 @@ export const make = Effect.fnUntraced(function*(
         if (requiresRoutingName(method)) {
           const name = routingName(input)
           const header = headers[MCP_NAME_HEADER]
-          if (name === undefined || header === undefined || decodeRoutingHeader(header) !== name) {
+          if (name === undefined || header === undefined || McpProtocol.decodeRoutingHeader(header) !== name) {
             return headerMismatch("Mcp-Name header does not match request parameters")
           }
         }

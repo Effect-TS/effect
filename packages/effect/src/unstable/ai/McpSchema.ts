@@ -578,6 +578,20 @@ export const INTERNAL_ERROR_CODE = -32603 as const
 export const PARSE_ERROR_CODE = -32700 as const
 
 /**
+ * Represents the MCP error code for HTTP headers that do not match the
+ * corresponding request values.
+ *
+ * **When to use**
+ *
+ * Use when building an MCP error response for missing, malformed, or
+ * mismatched request-routing headers.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const HEADER_MISMATCH_ERROR_CODE = -32020 as const
+
+/**
  * Represents an MCP/JSON-RPC error for invalid JSON that could not be parsed.
  *
  * **When to use**

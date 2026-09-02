@@ -847,14 +847,14 @@ describe("McpServer protocol adapters", () => {
           body: { jsonrpc: "2.0", id: 30, method: "tools/list", params: {} },
           headers: modernHeaders("tools/list"),
           status: 400,
-          code: -32020
+          code: McpSchema.HEADER_MISMATCH_ERROR_CODE
         },
         {
           name: "missing protocol header",
           body: modernRequest(31, "tools/list"),
           headers: { "Mcp-Method": "tools/list" },
           status: 400,
-          code: -32020
+          code: McpSchema.HEADER_MISMATCH_ERROR_CODE
         },
         {
           name: "malformed client identity",
@@ -898,7 +898,7 @@ describe("McpServer protocol adapters", () => {
           },
           headers: modernHeaders("initialize"),
           status: 400,
-          code: -32020
+          code: McpSchema.HEADER_MISMATCH_ERROR_CODE
         }
       ] as const
 
