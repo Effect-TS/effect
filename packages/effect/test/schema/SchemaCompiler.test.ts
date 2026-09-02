@@ -313,6 +313,17 @@ describe("SchemaCompiler", () => {
     deepStrictEqual(decodeCamelCase({ a: 1, b: 2 }), { A: 1, B: 2 })
   })
 
+  it("compiles encoding checks", () => {
+    const checked = Schema.Struct({ value: Schema.String }).pipe(
+      Schema.flip,
+      Schema.check(Schema.makeFilter((input) => input.value.length > 1)),
+      Schema.flip
+    )
+    const decode = SchemaParser.decodeUnknownSync(checked)
+    deepStrictEqual(decode({ value: "valid" }), { value: "valid" })
+    throws(() => decode({ value: "" }))
+  })
+
   it("runs checks against decoded output", () => {
     const decodeString = SchemaParser.decodeUnknownSync(
       Schema.String.check(Schema.isMinLength(2))

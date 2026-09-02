@@ -2109,6 +2109,24 @@
               "size": 32
             },
             {
+              "name": "encoding-checked-struct-valid-effect",
+              "export": "encodingCheckedStructValid",
+              "scenario": "schema-compiler-encoding-checked-struct-valid",
+              "implementation": "effect",
+              "family": "checks",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "encoding-checked-struct-valid-effect-compiled",
+              "export": "encodingCheckedStructValidCompiled",
+              "scenario": "schema-compiler-encoding-checked-struct-valid",
+              "implementation": "effect-compiled",
+              "family": "checks",
+              "path": "valid",
+              "size": 32
+            },
+            {
               "name": "literal-100-valid-last-effect",
               "export": "literal100ValidLast",
               "scenario": "schema-compiler-literal-100-valid-last",

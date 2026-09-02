@@ -134,6 +134,20 @@ export const transformedKeyRecordValidCompiled = validCase(
   transformedKeyRecordOutput
 )
 
+const encodingCheckedStruct = Schema.Struct(
+  Object.fromEntries(Array.from({ length: 32 }, (_, index) => [`field${index}`, Schema.String]))
+).pipe(
+  Schema.flip,
+  Schema.check(Schema.makeFilter((input) => input.field0.length > 0)),
+  Schema.flip
+)
+const encodingCheckedStructInput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field${index}`, `value${index}`])
+)
+
+export const encodingCheckedStructValid = validCase(encodingCheckedStruct, encodingCheckedStructInput, false)
+export const encodingCheckedStructValidCompiled = validCase(encodingCheckedStruct, encodingCheckedStructInput, true)
+
 const literal100 = Schema.Literals(Array.from({ length: 100 }, (_, index) => `value${index}`))
 
 export const literal100ValidLast = validCase(literal100, "value99", false)

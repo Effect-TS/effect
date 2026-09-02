@@ -44,15 +44,14 @@ const canEmitShape = (ast: SchemaAST.AST): boolean => {
     case "TemplateLiteral":
       return true
     case "Arrays":
-      return ast.encodingChecks === undefined
+      return true
     case "Objects":
-      if (ast.encodingChecks !== undefined) return false
       if (ast.indexSignatures.length === 0) {
         return true
       }
       return ast.indexSignatures.every((signature) => canEmitIndexParameter(signature.parameter))
     case "Union":
-      return ast.encodingChecks === undefined
+      return true
     default:
       return false
   }
@@ -169,9 +168,22 @@ const needsOwnProperty = (ast: SchemaAST.AST): boolean => {
 const propertyNeedsOwn = (name: PropertyKey, ast: SchemaAST.AST): boolean =>
   needsOwnProperty(ast) || typeof name === "string" && name in Object.prototype
 
-const failsChecks = (ast: SchemaAST.AST, value: unknown): boolean =>
-  ast.checks !== undefined &&
-  SchemaAST.collectIssues(ast.checks, value, undefined, ast, SchemaAST.defaultParseOptions) !== undefined
+const getEncodingChecks = (ast: SchemaAST.AST): SchemaAST.Checks | undefined => {
+  switch (ast._tag) {
+    case "Arrays":
+    case "Objects":
+    case "Union":
+      return ast.encodingChecks
+    default:
+      return undefined
+  }
+}
+
+const failsChecks = (ast: SchemaAST.AST, value: unknown, encoded = false): boolean => {
+  const checks = encoded ? getEncodingChecks(ast) : ast.checks
+  return checks !== undefined &&
+    SchemaAST.collectIssues(checks, value, undefined, ast, SchemaAST.defaultParseOptions) !== undefined
+}
 
 const matchesTemplateLiteral = (ast: SchemaAST.TemplateLiteral, value: unknown): boolean =>
   typeof value === "string" && ast.matchPart(value, SchemaAST.defaultParseOptions) !== undefined
@@ -201,9 +213,13 @@ function emitDecoded(
   emitter: Emitter
 ): string {
   const output = emitBase(ast, input, statements, emitter)
+  const encodingChecks = getEncodingChecks(ast)
+  const astConstant = ast.checks !== undefined || encodingChecks !== undefined ? constant(emitter, ast) : undefined
+  if (encodingChecks !== undefined) {
+    statements.push(`if(K(${astConstant},${input},1))return I`)
+  }
   if (ast.checks === undefined) return output
   const checked = variable(emitter)
-  const astConstant = constant(emitter, ast)
   statements.push(`const ${checked}=${output}`, `if(K(${astConstant},${checked}))return I`)
   return checked
 }
