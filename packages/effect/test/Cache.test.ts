@@ -732,6 +732,41 @@ describe("Cache", () => {
           assert.strictEqual(result, 1)
         }))
 
+      it.effect("repro: interrupting a missing-key refresh does not remove a newer set value", () =>
+        Effect.gen(function*() {
+          const lookupStarted = yield* Latch.make()
+          const cache = yield* Cache.make<string, number>({
+            capacity: 1,
+            lookup: () => lookupStarted.open.pipe(Effect.andThen(Effect.never))
+          })
+
+          const refresh = yield* Cache.refresh(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+          yield* lookupStarted.await
+          yield* Cache.set(cache, "key", 99)
+          assert.deepStrictEqual(yield* Cache.getSuccess(cache, "key"), Option.some(99))
+
+          yield* Fiber.interrupt(refresh)
+
+          assert.deepStrictEqual(yield* Cache.getSuccess(cache, "key"), Option.some(99))
+        }))
+
+      it.effect("interrupting a missing-key refresh removes its pending entry", () =>
+        Effect.gen(function*() {
+          const lookupStarted = yield* Latch.make()
+          const cache = yield* Cache.make<string, number>({
+            capacity: 1,
+            lookup: () => lookupStarted.open.pipe(Effect.andThen(Effect.never))
+          })
+
+          const refresh = yield* Cache.refresh(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+          yield* lookupStarted.await
+          assert.isTrue(yield* Cache.has(cache, "key"))
+
+          yield* Fiber.interrupt(refresh)
+
+          assert.isFalse(yield* Cache.has(cache, "key"))
+        }))
+
       it.effect("refresh updates TTL", () =>
         Effect.gen(function*() {
           const cache = yield* Cache.make<string, number>({
