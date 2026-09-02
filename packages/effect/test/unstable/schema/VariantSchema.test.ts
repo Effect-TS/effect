@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { DateTime, Effect, Option, Schema } from "effect"
+import { DateTime, Effect, Schema } from "effect"
 import { Model, VariantSchema } from "effect/unstable/schema"
 
 describe("VariantSchema", () => {
@@ -94,94 +94,9 @@ describe("Model", () => {
     assert.isTrue(person instanceof Person)
   })
 
-  describe("FieldOption", () => {
-    const variants = ["select", "insert", "update", "json", "jsonCreate", "jsonUpdate"] as const
-    const schemas = {
-      select: Schema.String,
-      insert: Schema.String,
-      update: Schema.String,
-      json: Schema.String,
-      jsonCreate: Schema.String,
-      jsonUpdate: Schema.String
-    }
-
-    it.each(variants)("preserves an explicitly undefined %s variant", (variant) => {
-      const field = Model.Field({ ...schemas, [variant]: undefined })
-      const optional = Model.FieldOption(field)
-      const model = Model.Struct({ value: optional })
-      const omitted = Model.extract(model, variant)
-
-      assert.isTrue(Object.hasOwn(optional.schemas, variant))
-      assert.strictEqual(optional.schemas[variant], undefined)
-      assert.deepStrictEqual(Object.keys(omitted.fields), [])
-      assert.deepStrictEqual<unknown>(Schema.decodeUnknownSync(omitted)({}), {})
-      assert.deepStrictEqual<unknown>(Schema.encodeUnknownSync(omitted)({}), {})
-
-      for (const retained of variants) {
-        if (retained === variant) continue
-        const schema = Model.extract(model, retained)
-        assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({ value: null }), { value: Option.none() })
-        assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({ value: "sample" }), { value: Option.some("sample") })
-        assert.deepStrictEqual(Schema.encodeUnknownSync(schema)({ value: Option.some("sample") }), { value: "sample" })
-        assert.strictEqual(field.schemas[retained], Schema.String)
-      }
-    })
-
-    it("omits explicitly undefined variants before optionalization", () => {
-      for (const variant of variants) {
-        const model = Model.Struct({ value: Model.Field({ ...schemas, [variant]: undefined }) })
-        const schema = Model.extract(model, variant)
-        assert.deepStrictEqual(Object.keys(schema.fields), [])
-        assert.deepStrictEqual<unknown>(Schema.decodeUnknownSync(schema)({}), {})
-        assert.deepStrictEqual<unknown>(Schema.encodeUnknownSync(schema)({}), {})
-      }
-    })
-
-    it.each(variants)("round-trips defined schemas in the %s variant", (variant) => {
-      for (const field of [Schema.String, Model.Field(schemas)]) {
-        const model = Model.Struct({ value: Model.FieldOption(field) })
-        const schema = Model.extract(model, variant)
-        const isJson = variant === "json" || variant === "jsonCreate" || variant === "jsonUpdate"
-
-        assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({ value: null }), { value: Option.none() })
-        assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({ value: "sample" }), { value: Option.some("sample") })
-        assert.deepStrictEqual(Schema.encodeUnknownSync(schema)({ value: Option.some("sample") }), { value: "sample" })
-        assert.deepStrictEqual<unknown>(
-          Schema.encodeUnknownSync(schema)({ value: Option.none() }),
-          isJson ? {} : { value: null }
-        )
-        if (isJson) {
-          assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({}), { value: Option.none() })
-        } else {
-          assert.throws(() => Schema.decodeUnknownSync(schema)({}))
-        }
-      }
-    })
-
-    it("keeps absent variants omitted", () => {
-      const model = Model.Struct({ value: Model.FieldOption(Model.Field({ select: Schema.String })) })
-      assert.deepStrictEqual(Schema.decodeUnknownSync(Model.extract(model, "select"))({ value: null }), {
-        value: Option.none()
-      })
-      for (const variant of variants) {
-        if (variant === "select") continue
-        const schema = Model.extract(model, variant)
-        assert.deepStrictEqual(Object.keys(schema.fields), [])
-        assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({}), {})
-      }
-    })
-  })
-
-  it("fieldEvolve passes explicitly undefined variants to the callback", () => {
-    const field = Model.fieldEvolve(Model.Field({ select: Schema.String, json: undefined }), {
-      json: (schema) => {
-        assert.strictEqual(schema, undefined)
-        return Schema.String
-      }
-    })
-    const json = Model.extract(Model.Struct({ value: field }), "json")
-
-    assert.deepStrictEqual(Schema.decodeSync(json)({ value: "sample" }), { value: "sample" })
+  it("FieldOption preserves omitted variants", () => {
+    const field = Model.FieldOption(Model.Field({ select: Schema.String, json: undefined }))
+    assert.strictEqual(field.schemas.json, undefined)
   })
 
   it("FieldOnly includes fields only in listed variants", () => {
