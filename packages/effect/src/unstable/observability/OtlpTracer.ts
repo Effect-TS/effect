@@ -108,10 +108,10 @@ export const make: (
     },
     context: options.context ?
       function(primitive, fiber) {
-        if (fiber.currentSpan === undefined) {
+        if (fiber.cache.span === undefined) {
           return primitive["~effect/Effect/evaluate"](fiber)
         }
-        return options.context!(primitive, fiber.currentSpan)
+        return options.context!(primitive, fiber.cache.span)
       } :
       undefined
   })

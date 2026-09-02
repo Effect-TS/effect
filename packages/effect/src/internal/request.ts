@@ -62,7 +62,7 @@ export const requestUnsafe = <A extends Request.Any>(
 ): () => void => {
   const entry = addEntry(options.resolver, self, options.onExit, {
     context: options.context,
-    currentScheduler: Context.get(options.context, Scheduler)
+    cache: { scheduler: Context.get(options.context, Scheduler) }
   })
   return () => removeEntryUnsafe(options.resolver, entry)
 }
@@ -87,7 +87,7 @@ const addEntry = <A extends Request.Any>(
   resume: (exit: Exit<any, any>) => void,
   fiber: {
     readonly context: Context.Context<never>
-    readonly currentScheduler: Scheduler
+    readonly cache: { readonly scheduler: Scheduler }
     readonly id?: number
   }
 ) => {
@@ -162,7 +162,7 @@ const addEntry = <A extends Request.Any>(
       batch = newBatch
     }
     batchMap.set(key, batch)
-    batch.fiber = effect.runForkWith(fiber.context)(batch.delayEffect, { scheduler: fiber.currentScheduler })
+    batch.fiber = effect.runForkWith(fiber.context)(batch.delayEffect, { scheduler: fiber.cache.scheduler })
   }
 
   batch.entrySet.add(entry)
@@ -170,7 +170,7 @@ const addEntry = <A extends Request.Any>(
   if (batch.resolver.collectWhile(batch.entries)) return entry
 
   batch.fiber!.interruptUnsafe(fiber.id)
-  batch.fiber = effect.runForkWith(fiber.context)(runBatch(batch), { scheduler: fiber.currentScheduler })
+  batch.fiber = effect.runForkWith(fiber.context)(runBatch(batch), { scheduler: fiber.cache.scheduler })
   return entry
 }
 
