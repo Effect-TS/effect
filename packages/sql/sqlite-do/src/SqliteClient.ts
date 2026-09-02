@@ -259,7 +259,7 @@ export const make = (
             const iterator = runIterator(sql, params)
             return Stream.fromIteratorSucceed(iterator, 128)
           }).pipe(
-            Stream.catchCauseFilter(Cause.findDie<never>, ({ defect }) =>
+            Stream.catchCauseFilter(Cause.findDefect, (defect) =>
               Stream.fail(
                 new SqlError({
                   reason: classifyError(defect, "Failed to execute statement", "execute")
