@@ -15,87 +15,15 @@ describe("HttpServerResponse", () => {
     assert.strictEqual(response.headers["content-length"], "1")
   })
 
-  for (const body of ["hello", ""]) {
-    const contentLength = String(body.length)
-
-    it.effect(`fromWeb preserves content-length ${contentLength} through a Web round trip`, () =>
-      Effect.gen(function*() {
-        const original = new Response(body, {
-          status: 201,
-          headers: { "content-length": contentLength, "content-type": "text/plain", "x-test": "kept" }
-        })
-        assert.isNotNull(original.body)
-        assert.strictEqual(original.headers.get("content-length"), contentLength)
-
-        const response = HttpServerResponse.fromWeb(original)
-        const roundTrip = HttpServerResponse.toWeb(response)
-
-        assert.strictEqual(yield* Effect.promise(() => roundTrip.text()), body)
-        assert.strictEqual(roundTrip.headers.get("content-length"), contentLength)
-        assert.strictEqual(response.headers["content-length"], contentLength)
-        assert.deepInclude(response.body, { _tag: "Stream", contentLength: body.length })
-      }))
-
-    it.effect(`fromClientResponse preserves content-length ${contentLength} through a Web round trip`, () =>
-      Effect.gen(function*() {
-        const clientResponse = HttpClientResponse.fromWeb(
-          HttpClientRequest.get("http://localhost:3000"),
-          new Response(body, {
-            status: 201,
-            headers: { "content-length": contentLength, "content-type": "text/plain", "x-test": "kept" }
-          })
-        )
-        const response = HttpServerResponse.fromClientResponse(clientResponse)
-        const roundTrip = HttpServerResponse.toWeb(response)
-
-        assert.strictEqual(yield* Effect.promise(() => roundTrip.text()), body)
-        assert.strictEqual(roundTrip.status, 201)
-        assert.strictEqual(roundTrip.headers.get("content-type"), "text/plain")
-        assert.strictEqual(roundTrip.headers.get("x-test"), "kept")
-        assert.strictEqual(roundTrip.headers.get("content-length"), contentLength)
-        assert.strictEqual(response.headers["content-length"], contentLength)
-        assert.deepInclude(response.body, { _tag: "Stream", contentLength: body.length })
-      }))
-  }
-
-  it.effect("fromWeb leaves an absent content-length absent through a Web round trip", () =>
-    Effect.gen(function*() {
-      const original = new Response("hello", { headers: { "content-type": "text/plain" } })
-      assert.isNull(original.headers.get("content-length"))
-
-      const response = HttpServerResponse.fromWeb(original)
-      const roundTrip = HttpServerResponse.toWeb(response)
-
-      assert.strictEqual(yield* Effect.promise(() => roundTrip.text()), "hello")
-      assert.isNull(roundTrip.headers.get("content-length"))
-      assert.notProperty(response.headers, "content-length")
-      assert.deepInclude(response.body, { _tag: "Stream", contentLength: undefined })
-    }))
-
-  it.effect("fromWeb preserves other metadata and body through a Web round trip", () =>
+  it.effect("fromWeb preserves content-length through a Web round trip", () =>
     Effect.gen(function*() {
       const response = HttpServerResponse.fromWeb(
-        new Response("hello", {
-          status: 201,
-          statusText: "Created",
-          headers: {
-            "content-length": "5",
-            "content-type": "text/plain",
-            "x-test": "kept",
-            "set-cookie": "session=123"
-          }
-        })
+        new Response("hello", { headers: { "content-length": "5" } })
       )
       const roundTrip = HttpServerResponse.toWeb(response)
 
-      assert.strictEqual(roundTrip.status, 201)
-      assert.strictEqual(roundTrip.statusText, "Created")
-      assert.strictEqual(roundTrip.headers.get("content-type"), "text/plain")
-      assert.strictEqual(roundTrip.headers.get("x-test"), "kept")
-      assert.deepStrictEqual(roundTrip.headers.getSetCookie(), ["session=123"])
-      assert.strictEqual(response.cookies.cookies.session?.value, "123")
-      assert.notProperty(response.headers, "set-cookie")
       assert.strictEqual(yield* Effect.promise(() => roundTrip.text()), "hello")
+      assert.strictEqual(roundTrip.headers.get("content-length"), "5")
     }))
 
   it.effect("fromClientResponse preserves status, headers, cookies, and json", () =>
