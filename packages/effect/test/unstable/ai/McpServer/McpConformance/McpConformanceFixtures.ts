@@ -175,6 +175,45 @@ const makeContentToolsLayer = Layer.effectDiscard(
   })
 )
 
+const makeHeaderToolLayer = (observations: Ref.Ref<Observations>) =>
+  Layer.effectDiscard(
+    Effect.gen(function*() {
+      const server = yield* McpServer.McpServer
+      yield* server.addTool({
+        tool: new McpSchema.Tool({
+          name: "HeaderTool",
+          inputSchema: {
+            type: "object",
+            properties: {
+              region: {
+                type: "string",
+                "x-mcp-header": "Region"
+              },
+              shard: {
+                type: "integer",
+                "x-mcp-header": "Shard"
+              },
+              dryRun: {
+                type: "boolean",
+                "x-mcp-header": "Dry-Run"
+              }
+            },
+            required: ["region"]
+          }
+        }),
+        annotations: Context.make(
+          McpSchema.EnabledWhen,
+          (client) => client.protocolVersion === "2026-07-28"
+        ),
+        handle: () =>
+          Ref.update(observations, (current) => ({
+            ...current,
+            toolInvocations: current.toolInvocations + 1
+          })).pipe(Effect.as(new McpSchema.CallToolResult({ content: [] })))
+      })
+    })
+  )
+
 const mrtrToolLayer = Layer.effectDiscard(
   Effect.gen(function*() {
     const server = yield* McpServer.McpServer
@@ -315,6 +354,7 @@ export const makeFeaturesServerLayer = (
   Layer.mergeAll(
     makeTestToolkitLayer(observations, protocol.protocolVersion),
     makeContentToolsLayer,
+    makeHeaderToolLayer(observations),
     mrtrToolLayer,
     McpServer.resource({
       uri: "file:///test",

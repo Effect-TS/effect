@@ -432,7 +432,7 @@ export const statelessModernSuite = (
 
     describe("Tools > Modern request headers", () => {
       // SEP-2243: https://modelcontextprotocol.io/seps/2243-http-standardization
-      // The final 2026-07-28 specification assigns HeaderMismatch error code -32020.
+      // The final 2026-07-28 specification assigns the HeaderMismatch error code.
       // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#request-metadata
       it.effect("should reject a tools/call request when its required routing name is missing", () =>
         Effect.gen(function*() {
@@ -447,8 +447,82 @@ export const statelessModernSuite = (
           })
           const error = yield* test.decodeError(response)
 
-          assert.strictEqual(error.error.code, -32020)
+          assert.strictEqual(error.error.code, McpSchema.HEADER_MISMATCH_ERROR_CODE)
           assert.strictEqual((yield* test.observations).toolInvocations, before)
+        }))
+
+      it.effect("should reject a tool call when a required parameter header is missing", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const initialized = yield* test.initialize({ server: "features" })
+          const before = (yield* test.observations).toolInvocations
+          const response = yield* test.send(initialized, {
+            jsonrpc: "2.0",
+            id: "missing-parameter-header",
+            method: "tools/call",
+            params: {
+              name: "HeaderTool",
+              arguments: { region: "eu-central-1" }
+            }
+          })
+
+          assert.strictEqual(response.status, 400)
+          const error = yield* test.decodeError(response)
+          assert.strictEqual(error.id, "missing-parameter-header")
+          assert.strictEqual(error.error.code, McpSchema.HEADER_MISMATCH_ERROR_CODE)
+          assert.strictEqual((yield* test.observations).toolInvocations, before)
+        }))
+
+      it.effect("should validate every supported parameter header representation", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const initialized = yield* test.initialize({ server: "features" })
+          const cases = [
+            {
+              id: "integer-missing",
+              arguments: { region: "eu-central-1", shard: 42 },
+              headers: { "Mcp-Param-Region": "eu-central-1" },
+              status: 400
+            },
+            {
+              id: "integer-mismatch",
+              arguments: { region: "eu-central-1", shard: 42 },
+              headers: { "Mcp-Param-Region": "eu-central-1", "Mcp-Param-Shard": "7" },
+              status: 400
+            },
+            {
+              id: "boolean-mismatch",
+              arguments: { region: "eu-central-1", dryRun: true },
+              headers: { "Mcp-Param-Region": "eu-central-1", "Mcp-Param-Dry-Run": "false" },
+              status: 400
+            },
+            {
+              id: "encoded-string",
+              arguments: { region: "Hello, 世界" },
+              headers: { "Mcp-Param-Region": "=?base64?SGVsbG8sIOS4lueVjA==?=" },
+              status: 200
+            }
+          ] as const
+
+          for (const testCase of cases) {
+            const response = yield* test.send(initialized, {
+              jsonrpc: "2.0",
+              id: testCase.id,
+              method: "tools/call",
+              params: {
+                name: "HeaderTool",
+                arguments: testCase.arguments
+              }
+            }, { headers: testCase.headers })
+
+            assert.strictEqual(response.status, testCase.status)
+            if (testCase.status === 400) {
+              const error = yield* test.decodeError(response)
+              assert.strictEqual(error.error.code, McpSchema.HEADER_MISMATCH_ERROR_CODE)
+            } else {
+              yield* test.decodeResult(response)
+            }
+          }
         }))
     })
 

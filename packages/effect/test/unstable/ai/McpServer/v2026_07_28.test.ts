@@ -194,14 +194,14 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         ] as const
 
         // SEP-2243: https://modelcontextprotocol.io/seps/2243-http-standardization
-        // The final specification assigns HeaderMismatch error code -32020.
+        // The final specification assigns the HeaderMismatch error code.
         // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#request-metadata
         for (const [body, requestHeaders] of cases) {
           const response = yield* test.post(body, requestHeaders)
           const error = yield* decodeError(response)
           assert.strictEqual(response.status, 400)
           assert.strictEqual(error.id, body.id)
-          assert.strictEqual(error.error.code, -32020)
+          assert.strictEqual(error.error.code, McpSchema.HEADER_MISMATCH_ERROR_CODE)
         }
       }))
 

@@ -1,5 +1,6 @@
 import * as Data from "../../../Data.ts"
 import * as Effect from "../../../Effect.ts"
+import * as Encoding from "../../../Encoding.ts"
 import * as Match from "../../../Match.ts"
 import * as Predicate from "../../../Predicate.ts"
 import type * as PubSub from "../../../PubSub.ts"
@@ -11,11 +12,30 @@ import type * as Rpc from "../../rpc/Rpc.ts"
 import * as RpcClient from "../../rpc/RpcClient.ts"
 import type { RpcClientError } from "../../rpc/RpcClientError.ts"
 import type * as RpcGroup from "../../rpc/RpcGroup.ts"
+import type * as RpcMessage from "../../rpc/RpcMessage.ts"
 import type * as PublicMcpProtocol from "../McpProtocol.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
 import * as McpCore from "./mcpCore.ts"
 
 const LEGACY_RESOURCE_NOT_FOUND_ERROR_CODE = -32002
+const BASE64_SENTINEL_PREFIX = "=?base64?"
+const BASE64_SENTINEL_SUFFIX = "?="
+
+/** @internal */
+export const decodeRoutingHeader = (value: string): string | undefined => {
+  const startsWithSentinel = value.startsWith(BASE64_SENTINEL_PREFIX)
+  const endsWithSentinel = value.endsWith(BASE64_SENTINEL_SUFFIX)
+  if (!startsWithSentinel && !endsWithSentinel) {
+    return /^[\x20-\x7e]*$/.test(value) ? value : undefined
+  }
+  if (!startsWithSentinel || !endsWithSentinel) {
+    return undefined
+  }
+  const decoded = Encoding.decodeBase64String(
+    value.slice(BASE64_SENTINEL_PREFIX.length, -BASE64_SENTINEL_SUFFIX.length)
+  )
+  return Result.isSuccess(decoded) ? decoded.success : undefined
+}
 
 /** @internal */
 export const profileFromClient = (
