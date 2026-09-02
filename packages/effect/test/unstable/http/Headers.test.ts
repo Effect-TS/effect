@@ -91,4 +91,16 @@ describe("Headers", () => {
       Headers.isRedactedName("x-secret-two", [pattern])
     ], [true, true])
   })
+
+  it("preserves caller-owned stateful pattern cursors", () => {
+    const redactPattern = /^x-secret/g
+    const namePattern = /^x-secret/y
+    redactPattern.lastIndex = 3
+    namePattern.lastIndex = 4
+
+    Headers.redact(Headers.fromInput({ "x-secret": "value" }), redactPattern)
+    Headers.isRedactedName("x-secret", [namePattern])
+
+    assert.deepStrictEqual([redactPattern.lastIndex, namePattern.lastIndex], [3, 4])
+  })
 })
