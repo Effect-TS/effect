@@ -361,6 +361,83 @@ describe.sequential("Request", () => {
     })
   )
 
+  it.effect("synchronous delays execute a non-empty batch", () =>
+    Effect.gen(function*() {
+      const batches: Array<number> = []
+      const resolver = Resolver.make<GetRequestService>((entries) =>
+        Effect.sync(() => {
+          batches.push(entries.length)
+          for (const entry of entries) entry.completeUnsafe(Exit.succeed("ok"))
+        })
+      ).pipe(Resolver.setDelayEffect(Effect.void))
+
+      const exit = yield* Effect.exit(Effect.request(GetRequestService(), resolver))
+
+      assert.deepStrictEqual(batches, [1])
+      assert.deepStrictEqual(exit, Exit.succeed("ok"))
+    }))
+
+  it.effect("collectWhile preserves synchronous delay side effects across pooled batches", () =>
+    Effect.gen(function*() {
+      const events: Array<string> = []
+      const resolver = Resolver.makeWith<GetRequestService>({
+        batchKey: () => undefined,
+        delay: Effect.andThen(Effect.sync(() => events.push("delay")), Effect.never).pipe(
+          Effect.onInterrupt(() => Effect.sync(() => events.push("interrupt")))
+        ),
+        collectWhile(entries) {
+          events.push(`collect:${entries.size}`)
+          return false
+        },
+        runAll: (entries) =>
+          Effect.sync(() => {
+            events.push(`run:${entries.length}`)
+            for (const entry of entries) entry.completeUnsafe(Exit.succeed("ok"))
+          })
+      })
+
+      for (let i = 0; i < 2; i++) {
+        assert.strictEqual(yield* Effect.request(GetRequestService(), resolver), "ok")
+      }
+      assert.deepStrictEqual(events, [
+        "delay",
+        "collect:1",
+        "interrupt",
+        "run:1",
+        "delay",
+        "collect:1",
+        "interrupt",
+        "run:1"
+      ])
+    }))
+
+  it.effect("synchronous delay callbacks can enqueue requests that fill a batch", () =>
+    Effect.gen(function*() {
+      const context = yield* Effect.context<never>()
+      const batches: Array<number> = []
+      const results: Array<Request.Result<GetRequestService>> = []
+      const resolver = Resolver.make<GetRequestService>((entries) =>
+        Effect.sync(() => {
+          batches.push(entries.length)
+          for (const entry of entries) entry.completeUnsafe(Exit.succeed("ok"))
+        })
+      ).pipe(
+        Resolver.batchN(2),
+        Resolver.setDelayEffect(Effect.andThen(
+          Effect.sync(() => {
+            Effect.requestUnsafe(GetRequestService(), { resolver, context, onExit: (exit) => results.push(exit) })
+          }),
+          Effect.never
+        ))
+      )
+
+      for (let i = 0; i < 2; i++) {
+        assert.strictEqual(yield* Effect.request(GetRequestService(), resolver), "ok")
+      }
+      assert.deepStrictEqual(batches, [2, 2])
+      assert.deepStrictEqual(results, [Exit.succeed("ok"), Exit.succeed("ok")])
+    }))
+
   it.effect(
     "batch fibers use request services for delay effects",
     Effect.fnUntraced(function*() {

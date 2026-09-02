@@ -128,7 +128,11 @@ const addEntry = <A extends Request.Any>(
         entrySet: new Set(),
         entries: new Set(),
         delayEffect: effect.flatMap(
-          effect.suspend(() => newBatch.resolver.delay),
+          effect.suspend(() => {
+            // Delay callbacks can re-enter addEntry before runForkWith returns.
+            newBatch.fiber = effect.getCurrentFiber()!
+            return newBatch.resolver.delay
+          }),
           (_) => runBatch(newBatch)
         ) as Effect<void>,
         run: effect.onExit(
@@ -161,15 +165,21 @@ const addEntry = <A extends Request.Any>(
       batch = newBatch
     }
     batchMap.set(key, batch)
-    batch.fiber = effect.runForkWith(fiber.context)(batch.delayEffect, { scheduler: fiber.currentScheduler })
+    batch.entrySet.add(entry)
+    batch.entries.add(entry)
+    const delayFiber = effect.runForkWith(fiber.context)(batch.delayEffect, { scheduler: fiber.currentScheduler })
+    // A synchronous delay may have already executed and recycled the batch.
+    if (completed || batchMap.get(key) !== batch) return entry
+    batch.fiber = delayFiber
+  } else {
+    batch.entrySet.add(entry)
+    batch.entries.add(entry)
   }
 
-  batch.entrySet.add(entry)
-  batch.entries.add(entry)
   if (batch.resolver.collectWhile(batch.entries)) return entry
 
   batch.fiber!.interruptUnsafe(fiber.id)
-  batch.fiber = effect.runForkWith(fiber.context)(runBatch(batch), { scheduler: fiber.currentScheduler })
+  effect.runForkWith(fiber.context)(runBatch(batch), { scheduler: fiber.currentScheduler })
   return entry
 }
 
