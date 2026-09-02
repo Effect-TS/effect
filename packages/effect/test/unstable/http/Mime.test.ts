@@ -32,5 +32,9 @@ describe("Mime", () => {
   it("exposes reverse lookups at the module level", () => {
     assert.deepStrictEqual(Mime.getExtension("text/html; charset=utf-8"), Option.some("html"))
     assert.deepStrictEqual(Mime.getAllExtensions("text/html"), Option.some(new Set(["html", "htm", "shtml"])))
+    assert.deepStrictEqual(
+      Mime.getAllExtensions("text/html; charset=utf-8"),
+      Option.some(new Set(["html", "htm", "shtml"]))
+    )
   })
 })
