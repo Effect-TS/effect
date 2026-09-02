@@ -579,8 +579,18 @@ export const makeHandlers = (
             Match.value(request).pipe(
               Match.when({ method: "roots/list" }, () =>
                 capabilities.roots === undefined ? { ...required, roots: {} } : required),
-              Match.when({ method: "sampling/createMessage" }, () =>
-                capabilities.sampling === undefined ? { ...required, sampling: {} } : required),
+              Match.when({ method: "sampling/createMessage" }, (request) => {
+                const requiresTools = McpProtocol.samplingRequestRequiresTools(request.params)
+                if (capabilities.sampling === undefined) {
+                  return {
+                    ...required,
+                    sampling: requiresTools ? { ...required.sampling, tools: {} } : required.sampling ?? {}
+                  }
+                }
+                return requiresTools && capabilities.sampling.tools === undefined
+                  ? { ...required, sampling: { ...required.sampling, tools: {} } }
+                  : required
+              }),
               Match.when({ method: "elicitation/create" }, (request) => {
                 const mode = request.params.mode === "url" ? "url" : "form"
                 return capabilities.elicitation?.[mode] === undefined

@@ -8,7 +8,11 @@ import * as BaseProtocolTest from "./McpConformance/BaseProtocolTest.ts"
 import * as CompletionTest from "./McpConformance/CompletionTest.ts"
 import * as LoggingTest from "./McpConformance/LoggingTest.ts"
 import { layer as makeMcpConformanceLayer, McpConformance } from "./McpConformance/McpConformance.ts"
-import { MrtrToolName } from "./McpConformance/McpConformanceFixtures.ts"
+import {
+  MrtrSamplingToolChoiceToolName,
+  MrtrSamplingToolsToolName,
+  MrtrToolName
+} from "./McpConformance/McpConformanceFixtures.ts"
 import * as MultiRoundTripTest from "./McpConformance/MultiRoundTripTest.ts"
 import * as PromptsTest from "./McpConformance/PromptsTest.ts"
 import * as ResourcesTest from "./McpConformance/ResourcesTest.ts"
@@ -416,6 +420,29 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
   })
 
   describe("Multi round-trip request capabilities", () => {
+    // https://modelcontextprotocol.io/specification/2026-07-28/client/sampling#tools-in-sampling
+    it.effect("should reject tool-enabled sampling when the client omits sampling.tools", () =>
+      Effect.gen(function*() {
+        const test = yield* McpConformance
+        const discovered = yield* test.initialize({ server: "features" })
+        const cases = [MrtrSamplingToolsToolName, MrtrSamplingToolChoiceToolName] as const
+        for (const [index, name] of cases.entries()) {
+          const response = yield* test.send(discovered, {
+            jsonrpc: "2.0",
+            id: index + 38,
+            method: "tools/call",
+            params: { name, arguments: {} }
+          }, { clientCapabilities: { sampling: {} } })
+          const error = yield* decodeError(response)
+
+          assert.strictEqual(response.status, 400)
+          assert.strictEqual(error.error.code, -32021)
+          assert.deepStrictEqual(error.error.data, {
+            requiredCapabilities: { sampling: { tools: {} } }
+          })
+        }
+      }))
+
     // https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr#server-requirements-capability-validation
     it.effect("should reject input requests when the client omits their required capabilities", () =>
       Effect.gen(function*() {
