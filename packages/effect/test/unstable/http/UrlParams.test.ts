@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { assertNone, assertSome, deepStrictEqual } from "@effect/vitest/utils"
 import { Schema } from "effect"
 import { UrlParams } from "effect/unstable/http"
@@ -8,6 +8,50 @@ describe("UrlParams", () => {
   describe("fromInput", () => {
     it("coerces null to a string", () => {
       deepStrictEqual(UrlParams.fromInput({ filter: null }).params, [["filter", "null"]])
+    })
+  })
+
+  describe("setAll", () => {
+    it("does not mutate UrlParams overrides", () => {
+      const params = UrlParams.fromInput({ page: 1 })
+      const overrides = UrlParams.fromInput({ sort: "name" })
+
+      const result = UrlParams.setAll(params, overrides)
+
+      assert.strictEqual(UrlParams.toString(result), "sort=name&page=1")
+      assert.strictEqual(UrlParams.toString(params), "page=1")
+      assert.strictEqual(UrlParams.toString(overrides), "sort=name")
+    })
+
+    it("preserves unmentioned parameters when reusing UrlParams overrides", () => {
+      const setOverrides = UrlParams.setAll(UrlParams.fromInput({ sort: "name" }))
+      const first = setOverrides(UrlParams.fromInput({ page: 1 }))
+      const second = setOverrides(UrlParams.fromInput({ page: 2 }))
+
+      assert.strictEqual(UrlParams.toString(first), "sort=name&page=1")
+      assert.strictEqual(UrlParams.toString(second), "sort=name&page=2")
+    })
+
+    it("preserves unmentioned parameters when reusing record overrides", () => {
+      const overrides = { sort: "name" }
+      const setOverrides = UrlParams.setAll(overrides)
+      const first = setOverrides(UrlParams.fromInput({ page: 1 }))
+      const second = setOverrides(UrlParams.fromInput({ page: 2 }))
+
+      assert.strictEqual(UrlParams.toString(first), "sort=name&page=1")
+      assert.strictEqual(UrlParams.toString(second), "sort=name&page=2")
+      assert.deepStrictEqual(overrides, { sort: "name" })
+    })
+
+    it("replaces repeated keys without mutating fully overlapping overrides", () => {
+      const params = UrlParams.fromInput({ sort: ["old", "older"] })
+      const overrides = UrlParams.fromInput({ sort: ["name", "date"] })
+
+      const result = UrlParams.setAll(params, overrides)
+
+      assert.strictEqual(UrlParams.toString(result), "sort=name&sort=date")
+      assert.strictEqual(UrlParams.toString(params), "sort=old&sort=older")
+      assert.strictEqual(UrlParams.toString(overrides), "sort=name&sort=date")
     })
   })
 
