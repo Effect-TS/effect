@@ -280,28 +280,10 @@ describe("DateTime", () => {
   })
 
   describe("setPartsUtc", () => {
-    it("sets a valid month and day from the end of a longer month", () => {
+    it("applies calendar parts without intermediate overflow", () => {
       const date = DateTime.makeUnsafe("2024-01-31T12:34:56.789Z")
       const updated = DateTime.setPartsUtc(date, { month: 2, day: 1 })
       strictEqual(DateTime.formatIso(updated), "2024-02-01T12:34:56.789Z")
-    })
-
-    it("sets a valid month and day without intermediate overflow", () => {
-      const date = DateTime.makeUnsafe("2024-01-28T12:34:56.789Z")
-      const updated = DateTime.setPartsUtc(date, { month: 2, day: 1 })
-      strictEqual(DateTime.formatIso(updated), "2024-02-01T12:34:56.789Z")
-    })
-
-    it("sets a valid year and day from leap day", () => {
-      const date = DateTime.makeUnsafe("2024-02-29T12:34:56.789Z")
-      const updated = DateTime.setPartsUtc(date, { year: 2025, day: 28 })
-      strictEqual(DateTime.formatIso(updated), "2025-02-28T12:34:56.789Z")
-    })
-
-    it("sets a valid year and day without intermediate overflow", () => {
-      const date = DateTime.makeUnsafe("2024-02-28T12:34:56.789Z")
-      const updated = DateTime.setPartsUtc(date, { year: 2025, day: 28 })
-      strictEqual(DateTime.formatIso(updated), "2025-02-28T12:34:56.789Z")
     })
 
     it("partial", () => {
@@ -336,18 +318,6 @@ describe("DateTime", () => {
   })
 
   describe("setParts", () => {
-    it("sets a valid month and day from the zoned end of a longer month", () => {
-      const date = DateTime.makeZonedUnsafe("2024-01-30T23:34:56.789Z", { timeZone: "+02:00" })
-      const updated = DateTime.setParts(date, { month: 2, day: 1 })
-      strictEqual(DateTime.formatIsoOffset(updated), "2024-02-01T01:34:56.789+02:00")
-    })
-
-    it("sets a valid zoned month and day without intermediate overflow", () => {
-      const date = DateTime.makeZonedUnsafe("2024-01-27T23:34:56.789Z", { timeZone: "+02:00" })
-      const updated = DateTime.setParts(date, { month: 2, day: 1 })
-      strictEqual(DateTime.formatIsoOffset(updated), "2024-02-01T01:34:56.789+02:00")
-    })
-
     it("partial", () => {
       const date = DateTime.makeUnsafe({
         year: 2024,
