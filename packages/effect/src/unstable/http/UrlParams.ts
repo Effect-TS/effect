@@ -181,7 +181,7 @@ const fromInputNested = (input: Input): Array<[string | Array<string>, any]> => 
           out.push([key, String(value[i])])
         }
       }
-    } else if (value !== null && typeof value === "object") {
+    } else if (typeof value === "object") {
       const nested = fromInputNested(value as CoercibleRecord)
       for (const [k, v] of nested) {
         out.push([[key, ...(typeof k === "string" ? [k] : k)], v])
