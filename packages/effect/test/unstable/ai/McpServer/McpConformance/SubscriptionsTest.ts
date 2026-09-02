@@ -112,7 +112,7 @@ const makeSseReader = (response: Response) => {
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let pending = ""
-  const take = Effect.fnUntraced(function*() {
+  const takeOrEnd = Effect.fnUntraced(function*() {
     while (true) {
       const boundary = pending.indexOf("\n\n")
       if (boundary !== -1) {
@@ -128,12 +128,29 @@ const makeSseReader = (response: Response) => {
         continue
       }
       const chunk = yield* Effect.promise(() => reader.read())
-      assert.isFalse(chunk.done)
+      if (chunk.done) {
+        return undefined
+      }
       pending += decoder.decode(chunk.value, { stream: true }).replaceAll("\r\n", "\n")
     }
   })
+  const take = Effect.fnUntraced(function*() {
+    const message = yield* takeOrEnd()
+    assert.isDefined(message)
+    return message
+  })
   return {
     take,
+    drain: Effect.fnUntraced(function*() {
+      const messages: Array<JsonRpcMessage> = []
+      while (true) {
+        const message = yield* takeOrEnd()
+        if (message === undefined) {
+          return messages
+        }
+        messages.push(message)
+      }
+    }),
     cancel: Effect.promise(() => reader.cancel())
   }
 }
@@ -610,6 +627,41 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
           assert.strictEqual(notification.method, "notifications/tools/list_changed")
           assert.strictEqual(subscriptionIdOf(notification), id)
           yield* first.cancel
+        }))
+
+      it.effect("should close only the HTTP subscription stream when its pending backlog overflows", () =>
+        Effect.gen(function*() {
+          const { harness, serverReady } = yield* makeHttpSubscriptionHarness(protocol)
+          const response = yield* harness.post(
+            httpListenRequest(protocol, "overflowing-http-subscription"),
+            httpHeaders(protocol)
+          )
+          const server = yield* Deferred.await(serverReady)
+          const subscription = makeSseReader(response)
+          assertAcknowledged(
+            yield* subscription.take(),
+            "overflowing-http-subscription",
+            { toolsListChanged: true }
+          )
+
+          for (let index = 0; index < 1_000; index++) {
+            yield* server.notifications["notifications/tools/list_changed"]({})
+            yield* Effect.yieldNow
+          }
+
+          const remaining = yield* subscription.drain()
+          assert.notInclude(remaining.map((message) => message.method), "notifications/cancelled")
+
+          const discovery = yield* harness.post({
+            jsonrpc: "2.0",
+            id: "server-remains-available",
+            method: "server/discover",
+            params: { _meta: httpMetadata(protocol) }
+          }, {
+            "MCP-Protocol-Version": protocol.protocolVersion,
+            "Mcp-Method": "server/discover"
+          })
+          assert.strictEqual(discovery.status, 200)
         }))
     })
   })

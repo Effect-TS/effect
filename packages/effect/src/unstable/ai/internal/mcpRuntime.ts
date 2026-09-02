@@ -103,6 +103,10 @@ export interface HandlerInstallationOptions {
   readonly core: McpCore.McpCore
   readonly subscribeServerNotifications: McpProtocol.HandlerInstallationContext["subscribeServerNotifications"]
   readonly sendNotification?: NonNullable<McpProtocol.HandlerInstallationContext["sendNotification"]>
+  readonly markSubscriptionCancelled?: NonNullable<
+    McpProtocol.HandlerInstallationContext["markSubscriptionCancelled"]
+  >
+  readonly terminateSubscription?: NonNullable<McpProtocol.HandlerInstallationContext["terminateSubscription"]>
   readonly defaultLogLevel: LogLevel.LogLevel
   readonly serverInfo: {
     readonly name: string
@@ -373,6 +377,12 @@ export const make = Effect.fnUntraced(function*(
       const installationContext: McpProtocol.HandlerInstallationContext = {
         subscribeServerNotifications: options.subscribeServerNotifications,
         ...(options.sendNotification === undefined ? {} : { sendNotification: options.sendNotification }),
+        ...(options.markSubscriptionCancelled === undefined
+          ? {}
+          : { markSubscriptionCancelled: options.markSubscriptionCancelled }),
+        ...(options.terminateSubscription === undefined
+          ? {}
+          : { terminateSubscription: options.terminateSubscription }),
         supportedVersions: protocolVersions,
         serverInfo: options.serverInfo,
         registrationPresence: options.core.registrationPresence
