@@ -2025,11 +2025,10 @@ class BoundedPubSubSingleSubscription<in out A> implements PubSub.BackingSubscri
   }
 
   pollUpTo(n: number): Array<A> {
-    if (Count.normalize(n) < 1) {
+    if (Count.normalize(n) < 1 || this.isEmpty()) {
       return []
     }
-    const elem = this.poll()
-    return elem === MutableList.Empty ? [] : [elem]
+    return [this.poll() as A]
   }
 
   unsubscribe(): void {
