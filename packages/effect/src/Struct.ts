@@ -209,7 +209,8 @@ export const pick: {
 } = dual(
   2,
   <S extends object, const Keys extends ReadonlyArray<keyof S>>(self: S, keys: Keys) => {
-    return buildStruct(self, (k, v) => (keys.includes(k) ? [k, v] : undefined))
+    const selected = normalizePropertyKeys(keys)
+    return buildStruct(self, (k, v) => (selected.has(k) ? [k, v] : undefined))
   }
 )
 
@@ -245,7 +246,8 @@ export const omit: {
 } = dual(
   2,
   <S extends object, Keys extends ReadonlyArray<keyof S>>(self: S, keys: Keys) => {
-    return buildStruct(self, (k, v) => (!keys.includes(k) ? [k, v] : undefined))
+    const selected = normalizePropertyKeys(keys)
+    return buildStruct(self, (k, v) => (!selected.has(k) ? [k, v] : undefined))
   }
 )
 
@@ -762,7 +764,8 @@ export const mapPick: {
     keys: Keys,
     lambda: L
   ) => {
-    return buildStruct(self, (k, v) => [k, keys.includes(k) ? lambda(v) : v])
+    const selected = normalizePropertyKeys(keys)
+    return buildStruct(self, (k, v) => [k, selected.has(k) ? lambda(v) : v])
   }
 )
 
@@ -816,9 +819,18 @@ export const mapOmit: {
     keys: Keys,
     lambda: L
   ) => {
-    return buildStruct(self, (k, v) => [k, !keys.includes(k) ? lambda(v) : v])
+    const selected = normalizePropertyKeys(keys)
+    return buildStruct(self, (k, v) => [k, !selected.has(k) ? lambda(v) : v])
   }
 )
+
+function normalizePropertyKeys(keys: ReadonlyArray<PropertyKey>): Set<PropertyKey> {
+  const normalized = new Set<PropertyKey>()
+  for (const key of keys) {
+    normalized.add(typeof key === "number" ? String(key) : key)
+  }
+  return normalized
+}
 
 /**
  * Walk `source`; for each key decide what to emit via the small callback.
