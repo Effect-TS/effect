@@ -6905,7 +6905,9 @@ export const rechunk: {
             if (chunk.length === 0 && arr.length === target) {
               return Effect.succeed(arr)
             } else if (chunk.length + arr.length < target) {
-              chunk.push(...arr)
+              for (const value of arr) {
+                chunk.push(value)
+              }
               return loop()
             }
             current = arr
