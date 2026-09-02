@@ -165,6 +165,20 @@ describe("Cache", () => {
 
   describe("basic operations", () => {
     describe("get", () => {
+      it.effect("does not retain synchronously interrupted lookups", () =>
+        Effect.gen(function*() {
+          let calls = 0
+          const cache = yield* Cache.make<string, number>({
+            capacity: 1,
+            lookup: () => Effect.suspend(() => ++calls > 1 ? Effect.succeed(42) : Effect.interrupt)
+          })
+
+          yield* Effect.exit(Cache.get(cache, "key"))
+          const second = yield* Effect.exit(Cache.get(cache, "key"))
+
+          assert.deepStrictEqual(second, Exit.succeed(42))
+        }))
+
       it.effect("cache hit - returns existing cached value", () =>
         Effect.gen(function*() {
           const { cache, lookupCount, setLookupResult } = yield* makeTestCache(10)

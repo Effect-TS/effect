@@ -447,7 +447,10 @@ export const get: {
           MutableHashMap.remove(self.map, key)
         }
       })
-      MutableHashMap.set(self.map, key, entry)
+      const exit = entry.fiber.pollUnsafe()
+      if (exit === undefined || !effect.exitHasInterrupts(exit)) {
+        MutableHashMap.set(self.map, key, entry)
+      }
       if (Number.isFinite(self.capacity)) {
         checkCapacity(self)
       }
