@@ -1169,9 +1169,11 @@ export const withCache: {
           const prevComplete = entry.completeUnsafe
           entry.completeUnsafe = function(exit) {
             if (Exit.hasInterrupts(exit)) {
-              const current = MutableHashMap.get(cache, entry.request)
-              if (current._tag === "Some" && current.value === cached) {
-                MutableHashMap.remove(cache, entry.request)
+              if (cached.exit === undefined) {
+                const current = MutableHashMap.get(cache, entry.request)
+                if (current._tag === "Some" && current.value === cached) {
+                  MutableHashMap.remove(cache, entry.request)
+                }
               }
             } else {
               cached.exit = exit as any

@@ -1,11 +1,12 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Array, Context, Data, Deferred, Equal, Fiber, Hash } from "effect"
+import { Array, Context, Data, Deferred, Equal, Fiber, Hash, Schema } from "effect"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { flow, pipe } from "effect/Function"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
+import { Persistable, Persistence } from "effect/unstable/persistence"
 
 class Counter extends Context.Service<Counter, { count: number }>()("Counter") {}
 class Requests extends Context.Service<Requests, { count: number }>()("Requests") {}
@@ -480,6 +481,68 @@ describe.sequential("Request", () => {
       assert.deepStrictEqual(results, [Exit.succeed("Alice")])
       assert.deepStrictEqual(batches, [1])
     }))
+
+  it.effect("withCache preserves the race winner when the losing resolver is interrupted", () =>
+    Effect.gen(function*() {
+      const finished = yield* Deferred.make<void>()
+      let calls = 0
+      let interruptions = 0
+      const fast = Resolver.fromEffect<GetNameById>(() =>
+        Effect.andThen(
+          Effect.yieldNow,
+          Effect.sync(() => {
+            calls++
+            return "Alice"
+          })
+        )
+      )
+      const slow = Resolver.fromEffect<GetNameById>(() =>
+        Effect.never.pipe(Effect.onInterrupt(() =>
+          Effect.sync(() => {
+            interruptions++
+          })
+        ))
+      )
+      const resolver = yield* Resolver.race(fast, slow).pipe(
+        Resolver.around(() => Effect.void, () => Deferred.succeed(finished, undefined)),
+        Resolver.withCache({ capacity: 10 })
+      )
+
+      assert.strictEqual(yield* Effect.request(new GetNameById({ id: 1 }), resolver), "Alice")
+      // Wait for the losing resolver's interruption before reading the cache again.
+      yield* Deferred.await(finished)
+      assert.strictEqual(interruptions, 1)
+      assert.deepStrictEqual(
+        yield* Effect.exit(Effect.request(new GetNameById({ id: 1 }), resolver)),
+        Exit.succeed("Alice")
+      )
+      assert.strictEqual(calls, 1)
+    }))
+
+  it.effect("withCache accepts refreshed results from stale-while-revalidate", () =>
+    Effect.gen(function*() {
+      class GetName extends Persistable.Class()("GetName", {
+        primaryKey: () => "name",
+        success: Schema.String
+      }) {}
+      const store = yield* (yield* Persistence.Persistence).make({ storeId: "names" })
+      yield* store.set(new GetName(), Exit.succeed("Alice"))
+      const finished = yield* Deferred.make<void>()
+      let calls = 0
+      const persisted = yield* Resolver.fromFunction<GetName>(() => {
+        calls++
+        return "Bob"
+      }).pipe(Resolver.persisted({ storeId: "names", staleWhileRevalidate: () => true }))
+      const resolver = yield* persisted.pipe(
+        Resolver.around(() => Effect.void, () => Deferred.succeed(finished, undefined)),
+        Resolver.withCache({ capacity: 10 })
+      )
+
+      assert.strictEqual(yield* Effect.request(new GetName(), resolver), "Alice")
+      yield* Deferred.await(finished)
+      assert.strictEqual(yield* Effect.request(new GetName(), resolver), "Bob")
+      assert.strictEqual(calls, 1)
+    }).pipe(Effect.provide(Persistence.layerMemory)))
 
   it.effect(
     "batching preserves individual & identical requests",
