@@ -992,6 +992,66 @@ describe("ScopedCache", () => {
     })
 
     describe("invalidateAll", () => {
+      it.effect.each([false, true])(
+        "retains ownership of entries refreshed by finalizers (yield: %s)",
+        (yieldBeforeRefresh) =>
+          Effect.gen(function*() {
+            let acquired = 0
+            const released: Array<number> = []
+
+            const cached = yield* Effect.scoped(Effect.gen(function*() {
+              const cache: ScopedCache.ScopedCache<string, number> = yield* ScopedCache.make({
+                capacity: 10,
+                lookup: (_key: string) =>
+                  Effect.acquireRelease(
+                    Effect.sync(() => ++acquired),
+                    (value) =>
+                      Effect.gen(function*() {
+                        released.push(value)
+                        if (value === 1) {
+                          if (yieldBeforeRefresh) {
+                            yield* Effect.yieldNow
+                          }
+                          yield* ScopedCache.refresh(cache, "key")
+                        }
+                      })
+                  )
+              })
+
+              yield* ScopedCache.get(cache, "key")
+              yield* ScopedCache.invalidateAll(cache)
+              assert.deepStrictEqual(released, [1])
+              return yield* ScopedCache.getSuccess(cache, "key")
+            }))
+
+            assert.strictEqual(acquired, 2)
+            assert.deepStrictEqual(released, [1, 2])
+            assert.deepStrictEqual(cached, Option.some(2))
+          })
+      )
+
+      it.effect("removes all entries before running finalizers", () =>
+        Effect.gen(function*() {
+          const observedKeys: Array<Array<string>> = []
+          const cache: ScopedCache.ScopedCache<string, string> = yield* ScopedCache.make({
+            capacity: 10,
+            lookup: (key: string) =>
+              Effect.acquireRelease(
+                Effect.succeed(key),
+                () =>
+                  Effect.gen(function*() {
+                    observedKeys.push(yield* ScopedCache.keys(cache))
+                  })
+              )
+          })
+
+          yield* ScopedCache.get(cache, "first")
+          yield* ScopedCache.get(cache, "second")
+          yield* ScopedCache.invalidateAll(cache)
+
+          assert.deepStrictEqual(observedKeys, [[], []])
+        }))
+
       it.effect("clears all entries", () =>
         Effect.gen(function*() {
           const cache = yield* ScopedCache.make({

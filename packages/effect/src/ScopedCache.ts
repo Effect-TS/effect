@@ -697,11 +697,13 @@ const invalidateAllImpl = <Key, A, E>(
   parent: Fiber.Fiber<unknown, unknown>,
   map: MutableHashMap.MutableHashMap<Key, Entry<A, E>>
 ): Effect.Effect<void> => {
+  // Detach the batch before finalizers can reenter the cache.
+  const entries = Array.from(MutableHashMap.values(map))
+  MutableHashMap.clear(map)
   const fibers = Arr.empty<Fiber.Fiber<unknown, unknown>>()
-  for (const [, entry] of map) {
+  for (const entry of entries) {
     fibers.push(effect.forkUnsafe(parent as any, Scope.close(entry.scope, effect.exitVoid), true, true))
   }
-  MutableHashMap.clear(map)
   return effect.fiberAwaitAll(fibers)
 }
 
