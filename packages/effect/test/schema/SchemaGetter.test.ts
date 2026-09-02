@@ -47,6 +47,81 @@ describe("SchemaGetter", () => {
   })
 
   describe("makeTreeRecord", () => {
+    it("preserves array-valued leaves when merging duplicate paths", () => {
+      assert.deepStrictEqual(
+        SchemaGetter.makeTreeRecord<ReadonlyArray<string>>([
+          ["permissions", ["read"]],
+          ["permissions", ["write"]],
+          ["permissions", ["share"]]
+        ]),
+        { permissions: [["read"], ["write"], ["share"]] }
+      )
+    })
+
+    it("does not mutate array-valued leaves when merging duplicate paths", () => {
+      const first = ["read"]
+      const second = ["write"]
+      SchemaGetter.makeTreeRecord<ReadonlyArray<string>>([
+        ["permissions", first],
+        ["permissions", second]
+      ])
+      assert.deepStrictEqual(first, ["read"])
+      assert.deepStrictEqual(second, ["write"])
+    })
+
+    it("merges frozen array-valued leaves at duplicate paths", () => {
+      assert.deepStrictEqual(
+        SchemaGetter.makeTreeRecord<ReadonlyArray<string>>([
+          ["permissions", Object.freeze(["read"])],
+          ["permissions", Object.freeze(["write"])],
+          ["permissions", Object.freeze(["share"])]
+        ]),
+        { permissions: [["read"], ["write"], ["share"]] }
+      )
+    })
+
+    it("preserves a singleton frozen array-valued leaf", () => {
+      assert.deepStrictEqual(
+        SchemaGetter.makeTreeRecord<ReadonlyArray<string>>([
+          ["permissions", Object.freeze(["read"])]
+        ]),
+        { permissions: ["read"] }
+      )
+    })
+
+    it("merges three scalar leaves at duplicate paths", () => {
+      assert.deepStrictEqual(
+        SchemaGetter.makeTreeRecord<string>([
+          ["permissions", "read"],
+          ["permissions", "write"],
+          ["permissions", "share"]
+        ]),
+        { permissions: ["read", "write", "share"] }
+      )
+    })
+
+    it("merges frozen object-valued leaves at duplicate paths", () => {
+      assert.deepStrictEqual(
+        SchemaGetter.makeTreeRecord<Readonly<{ permission: string }>>([
+          ["permissions", Object.freeze({ permission: "read" })],
+          ["permissions", Object.freeze({ permission: "write" })],
+          ["permissions", Object.freeze({ permission: "share" })]
+        ]),
+        { permissions: [{ permission: "read" }, { permission: "write" }, { permission: "share" }] }
+      )
+    })
+
+    it("preserves frozen array-valued leaves with indexed and append paths", () => {
+      assert.deepStrictEqual(
+        SchemaGetter.makeTreeRecord<ReadonlyArray<string>>([
+          ["permissions[0]", Object.freeze(["read"])],
+          ["permissions[]", Object.freeze(["write"])],
+          ["permissions[]", Object.freeze(["share"])]
+        ]),
+        { permissions: [["read"], ["write"], ["share"]] }
+      )
+    })
+
     it("replaces conflicting leaf values with containers", () => {
       deepStrictEqual(
         SchemaGetter.makeTreeRecord([
