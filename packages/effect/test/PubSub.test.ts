@@ -1,8 +1,49 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Array, Effect, Exit, Fiber, Latch, PubSub, Stream } from "effect"
+import { Array, Effect, Exit, Fiber, Latch, PubSub, Scope, Stream } from "effect"
 import { pipe } from "effect/Function"
 
 describe("PubSub", () => {
+  for (const batch of [false, true]) {
+    it.effect.each([1, 2, 3])(
+      `sliding capacity %s delivers each retained message once per subscriber (batch: ${batch})`,
+      (capacity) =>
+        Effect.gen(function*() {
+          const pubsub = yield* PubSub.sliding<number>(capacity)
+          const first = yield* PubSub.subscribe(pubsub)
+          const second = yield* PubSub.subscribe(pubsub)
+          const values = Array.range(1, capacity + 2)
+          const retained = values.slice(-capacity)
+          yield* PubSub.publishAll(pubsub, values)
+
+          const received = batch
+            ? yield* PubSub.takeAll(first)
+            : yield* Effect.forEach(retained, () => PubSub.take(first))
+          const duplicate = yield* PubSub.takeUpTo(first, capacity)
+          const other = yield* PubSub.takeUpTo(second, capacity)
+
+          assert.deepStrictEqual([received, duplicate, other], [retained, [], retained])
+        })
+    )
+  }
+
+  it.effect.each([1, 2, 3])(
+    "unsubscribing after a slide preserves the other subscriber's messages (capacity: %s)",
+    (capacity) =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.sliding<number>(capacity)
+        const scope = yield* Scope.make()
+        const first = yield* PubSub.subscribe(pubsub).pipe(Scope.provide(scope))
+        const second = yield* PubSub.subscribe(pubsub)
+        const values = Array.range(1, capacity + 2)
+        const retained = values.slice(-capacity)
+        yield* PubSub.publishAll(pubsub, values)
+        yield* PubSub.takeAll(first)
+        yield* Scope.close(scope, Exit.void)
+
+        assert.deepStrictEqual(yield* PubSub.takeUpTo(second, capacity), retained)
+      })
+  )
+
   it.effect("publishAll - capacity 2 (BoundedPubSubPow2)", () => {
     const messages = [1, 2]
     return PubSub.bounded<number>(2).pipe(
@@ -419,6 +460,18 @@ describe("PubSub", () => {
     assert.deepStrictEqual(replay.takeN(1.9), [1])
     assert.deepStrictEqual(replay.takeN(Number.NaN), [])
     assert.deepStrictEqual(replay.takeAll(), [2, 3])
+  })
+
+  it("publishes after a capacity-one subscriber unsubscribes from a slid message", () => {
+    const pubsub = PubSub.makeAtomicBounded<number>(1)
+    const subscription = pubsub.subscribe()
+    pubsub.publish(1)
+    pubsub.slide()
+    subscription.unsubscribe()
+
+    assert.isTrue(pubsub.publish(2))
+    assert.strictEqual(pubsub.size(), 0)
+    assert.isFalse(pubsub.isFull())
   })
 
   describe("replay", () => {
