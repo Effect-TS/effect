@@ -790,6 +790,53 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
 })
 
 it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
+  for (
+    const [name, innerStatus, wrapperStatus, expectedStatus] of [
+      ["wrapper status", undefined, 206, 206],
+      ["wrapper overrides inner status", 201, 206, 206],
+      ["inner status control", 206, undefined, 206],
+      ["matching statuses control", 206, 206, 206],
+      ["default status control", undefined, undefined, 200]
+    ] as const
+  ) {
+    it.effect(`preserves WithHeaders stream status: ${name}`, () =>
+      Effect.gen(function*() {
+        const stream = HttpApiSchema.StreamUint8Array()
+        const wrapped = HttpApiSchema.WithHeaders(
+          innerStatus === undefined ? stream : stream.pipe(HttpApiSchema.status(innerStatus)),
+          { "x-note": Schema.String }
+        )
+        const success = wrapperStatus === undefined ? wrapped : wrapped.pipe(HttpApiSchema.status(wrapperStatus))
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(HttpApiEndpoint.get("download", "/test", { success }))
+        )
+        const GroupLayer = HttpApiBuilder.group(
+          Api,
+          "test",
+          (handlers) =>
+            handlers.handle("download", () =>
+              Effect.succeed(HttpApiSchema.withHeaders({
+                body: Stream.make(new Uint8Array([1, 2])),
+                headers: { "x-note": "test" }
+              })))
+        )
+
+        const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+        const response = yield* client.test.download({ responseMode: "response-only" })
+        const chunks = yield* Stream.runCollect(response.stream)
+
+        assert.strictEqual(response.status, expectedStatus)
+        assert.strictEqual(response.headers["content-type"], "application/octet-stream")
+        assert.strictEqual(response.headers["x-note"], "test")
+        assert.deepStrictEqual(Array.from(chunks, (chunk) => Array.from(chunk)), [[1, 2]])
+
+        const decoded = yield* client.test.download({})
+        const decodedChunks = yield* Stream.runCollect(decoded.body)
+        assert.deepStrictEqual(decoded.headers, { "x-note": "test" })
+        assert.deepStrictEqual(Array.from(decodedChunks, (chunk) => Array.from(chunk)), [[1, 2]])
+      }))
+  }
+
   it.effect("emits StreamUint8Array handler responses as streamed bytes with the declared content type", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
