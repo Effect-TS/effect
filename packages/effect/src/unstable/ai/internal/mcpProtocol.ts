@@ -86,6 +86,21 @@ export const requireCompleteOperation = <A>(
     ? Effect.succeed(outcome.value)
     : Effect.fail(new McpCore.UnsupportedByProtocol({ protocolVersion, feature: "Client input" }))
 
+const isSamplingToolContent = (content: unknown): boolean =>
+  Predicate.isReadonlyObject(content) && (content.type === "tool_use" || content.type === "tool_result")
+
+/** @internal */
+export const samplingRequestRequiresTools = (request: unknown): boolean => {
+  if (!Predicate.isReadonlyObject(request)) return false
+  if (request.tools !== undefined || request.toolChoice !== undefined) return true
+  if (!Array.isArray(request.messages)) return false
+  return request.messages.some((message) => {
+    if (!Predicate.isReadonlyObject(message)) return false
+    const content = message.content
+    return Array.isArray(content) ? content.some(isSamplingToolContent) : isSamplingToolContent(content)
+  })
+}
+
 // NOTE: Keep the two codec assertions below as the single documented
 // existential-schema boundary. Rpc.AnyWithProps intentionally erases each
 // request's payload type, while the runtime schema still performs decoding and

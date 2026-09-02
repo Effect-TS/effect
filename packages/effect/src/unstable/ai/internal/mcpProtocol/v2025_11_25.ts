@@ -52,16 +52,6 @@ const requireCapability = (
     ? Effect.void
     : Effect.fail(unsupported(operation, `Client did not advertise the ${capability} capability`))
 
-const requiresSamplingTools = (request: typeof PublicMcpSchema.CreateMessage.payloadSchema.Type): boolean =>
-  request.tools !== undefined ||
-  request.toolChoice !== undefined ||
-  request.messages.some((message) => {
-    const content = message.content
-    return "type" in content
-      ? content.type === "tool_use" || content.type === "tool_result"
-      : content.some((block) => block.type === "tool_use" || block.type === "tool_result")
-  })
-
 const resultRequiresSamplingTools = (result: typeof McpSchema.CreateMessage.successSchema.Type): boolean =>
   result.stopReason === "toolUse" ||
   ("type" in result.content
@@ -354,7 +344,9 @@ export const protocol = McpProtocol.make({
     }),
     createMessage: Effect.fnUntraced(function*(request) {
       yield* requireCapability(profile, "sampling/createMessage", "sampling")
-      if (requiresSamplingTools(request) && profile.clientCapabilities.sampling?.tools == undefined) {
+      if (
+        McpProtocol.samplingRequestRequiresTools(request) && profile.clientCapabilities.sampling?.tools == undefined
+      ) {
         return yield* unsupported("sampling/createMessage", "Client did not advertise the sampling.tools capability")
       }
       if (
