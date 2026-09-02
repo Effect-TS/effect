@@ -354,7 +354,7 @@ export const redact: {
         }
       } else {
         for (const name in self) {
-          if (key.test(name)) {
+          if (name.search(key) !== -1) {
             out[name] = Redacted.make(self[name])
           }
         }
@@ -393,7 +393,7 @@ export const isRedactedName = (
       if (pattern.toLowerCase() === name.toLowerCase()) {
         return true
       }
-    } else if (pattern.test(name)) {
+    } else if (name.search(pattern) !== -1) {
       return true
     }
   }

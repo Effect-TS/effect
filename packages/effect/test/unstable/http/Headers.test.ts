@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { assertNone, assertSome, deepStrictEqual, doesNotThrow, strictEqual } from "@effect/vitest/utils"
-import { Schema } from "effect"
+import { assertNone, assertSome, assertTrue, deepStrictEqual, doesNotThrow, strictEqual } from "@effect/vitest/utils"
+import { Redacted, Schema } from "effect"
 import { Headers } from "effect/unstable/http"
 import { assertSuccess } from "../../utils/assert.ts"
 
@@ -73,5 +73,35 @@ describe("Headers", () => {
     const headers = Headers.fromInput({ foo: "bar" })
     assertSome(Headers.get(headers, "foo"), "bar")
     assertNone(Headers.get(headers, "missing"))
+  })
+
+  it("redacts each header independently with a global pattern", () => {
+    const result = Headers.redact(
+      Headers.fromInput({ "x-secret-one": "one", "x-secret-two": "two" }),
+      /^x-secret-/g
+    )
+
+    assertTrue(Redacted.isRedacted(result["x-secret-one"]))
+    assertTrue(Redacted.isRedacted(result["x-secret-two"]))
+  })
+
+  it("checks each header independently with a sticky pattern", () => {
+    const pattern = /^x-secret-/y
+
+    assertTrue(Headers.isRedactedName("x-secret-one", [pattern]))
+    assertTrue(Headers.isRedactedName("x-secret-two", [pattern]))
+  })
+
+  it("preserves caller-owned stateful pattern cursors", () => {
+    const redactPattern = /^x-secret/g
+    const namePattern = /^x-secret/y
+    redactPattern.lastIndex = 3
+    namePattern.lastIndex = 4
+
+    Headers.redact(Headers.fromInput({ "x-secret": "value" }), redactPattern)
+    Headers.isRedactedName("x-secret", [namePattern])
+
+    strictEqual(redactPattern.lastIndex, 3)
+    strictEqual(namePattern.lastIndex, 4)
   })
 })
