@@ -159,4 +159,63 @@ describe("Utils", () => {
       }
     }
   })
+
+  it.effect("encodes multipart record payloads as form data", () =>
+    Effect.gen(function*() {
+      const spec: OpenAPISpec = {
+        openapi: "3.1.0",
+        info: { title: "Form API", version: "1.0.0" },
+        components: { schemas: {}, securitySchemes: {} },
+        security: [],
+        tags: [],
+        paths: {
+          "/submit": {
+            post: {
+              operationId: "submit",
+              parameters: [],
+              tags: ["Forms"],
+              security: [],
+              requestBody: {
+                required: true,
+                content: {
+                  "multipart/form-data": {
+                    schema: {
+                      type: "object",
+                      properties: { name: { type: "string" } },
+                      required: ["name"]
+                    }
+                  }
+                }
+              },
+              responses: {
+                "200": {
+                  description: "Success",
+                  content: { "application/json": { schema: { type: "string" } } }
+                }
+              }
+            }
+          }
+        }
+      }
+      const generator = yield* OpenApiGenerator.OpenApiGenerator
+      const source = yield* generator.generate(spec, { name: "TestClient", format: "httpclient" })
+      const requests: Array<HttpClientRequest.HttpClientRequest> = []
+      const httpClient = HttpClient.make((request) => {
+        requests.push(request)
+        return Effect.succeed(HttpClientResponse.fromWeb(
+          request,
+          new Response("\"ok\"", { headers: { "content-type": "application/json" } })
+        ))
+      }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.test")))
+      const client = loadClient(source, httpClient)
+
+      yield* client.submit({ payload: { name: "Ada Lovelace" } })
+
+      assert.strictEqual(requests.length, 1)
+      const request = yield* HttpClientRequest.toWeb(requests[0])
+      const body = yield* Effect.promise(() => request.clone().text())
+      assert.notStrictEqual(body, "[object Object]")
+      const formData = yield* Effect.promise(() => request.formData())
+      assert.deepStrictEqual(Array.from(formData.entries()), [["name", "Ada Lovelace"]])
+    }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
 })
