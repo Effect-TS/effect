@@ -18,6 +18,7 @@ export interface Observations {
 }
 
 export const MrtrToolName = "MrtrTool"
+export const MrtrStateOnlyToolName = "MrtrStateOnlyTool"
 export const mrtrRequestState = "opaque:+/=\u0000é"
 
 const TestTool = Tool.make("TestTool", {
@@ -270,6 +271,18 @@ const mrtrToolLayer = Layer.effectDiscard(
             requestState: mrtrRequestState
           })
         })
+    })
+    yield* server.addTool({
+      tool: new McpSchema.Tool({
+        name: MrtrStateOnlyToolName,
+        description: "Requests a retry without client input",
+        inputSchema: { type: "object" }
+      }),
+      annotations: Context.make(
+        McpSchema.EnabledWhen,
+        (client) => client.protocolVersion === "2026-07-28"
+      ),
+      handle: () => Effect.succeed(new McpSchema.InputRequired({ requestState: mrtrRequestState }))
     })
   })
 )
