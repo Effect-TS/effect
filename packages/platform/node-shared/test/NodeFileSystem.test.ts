@@ -44,6 +44,17 @@ const startWatch = <E, R>(
 describe("FileSystem", () => {
   testLayer(NodeFileSystem.layer)
 
+  it.effect("writeAll accepts an empty buffer", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* fs.makeTempFileScoped()
+      const file = yield* fs.open(path, { flag: "r+" })
+
+      yield* file.writeAll(new Uint8Array(0))
+    }).pipe(
+      Effect.provide(NodeFileSystem.layer)
+    ))
+
   it.effect("watch does not report nested changes when recursive is false", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
