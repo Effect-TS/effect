@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { deepStrictEqual } from "@effect/vitest/utils"
 import { Effect, Schema } from "effect"
-import { Response } from "effect/unstable/ai"
+import { AiError, Response, Toolkit } from "effect/unstable/ai"
 
 describe("Response", () => {
   it.effect("decodes response metadata with omitted optional fields", () =>
@@ -107,5 +107,32 @@ describe("Response", () => {
         }),
         "decoded part"
       )
+    }))
+
+  it.effect("round-trips a tool call error through the schema for all parts", () =>
+    Effect.gen(function*() {
+      // A tool call error names a tool which is not in the toolkit, so the
+      // schema for every part admits it regardless of the toolkit
+      const schema = Response.AllParts(Toolkit.empty)
+      const part = Response.makePart("tool-call-error", {
+        id: "call-unknown",
+        name: "NotATool",
+        params: { city: "Paris" },
+        error: AiError.make({
+          module: "LanguageModel",
+          method: "generateText",
+          reason: new AiError.ToolNotFoundError({ toolName: "NotATool", availableTools: [] })
+        })
+      })
+
+      const encoded = yield* Schema.encodeEffect(schema)(part)
+      const decoded = yield* Schema.decodeEffect(schema)(encoded)
+
+      deepStrictEqual(decoded.type, "tool-call-error")
+      if (decoded.type === "tool-call-error") {
+        deepStrictEqual(decoded.name, "NotATool")
+        deepStrictEqual(decoded.params, { city: "Paris" })
+        deepStrictEqual(decoded.error.reason._tag, "ToolNotFoundError")
+      }
     }))
 })

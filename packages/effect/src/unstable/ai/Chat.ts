@@ -225,7 +225,7 @@ export interface Service {
     <Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<{}>, Options>>(
       options: Options & { readonly toolkit?: undefined } & LanguageModel.GenerateTextOptions<{}>
     ): Effect.Effect<
-      LanguageModel.GenerateTextResponse<{}>,
+      LanguageModel.GenerateTextResponse<{}, "decoded", LanguageModel.ExtractUnknownToolCalls<Options>>,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
     >
@@ -240,7 +240,11 @@ export interface Service {
         readonly toolkit: LanguageModel.ToolkitInput<Tools>
       }
     ): Effect.Effect<
-      LanguageModel.GenerateTextResponse<Tools, LanguageModel.ExtractToolParametersMode<Options>>,
+      LanguageModel.GenerateTextResponse<
+        Tools,
+        LanguageModel.ExtractToolParametersMode<Options>,
+        LanguageModel.ExtractUnknownToolCalls<Options>
+      >,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
     >
@@ -255,7 +259,8 @@ export interface Service {
     ): Effect.Effect<
       LanguageModel.GenerateTextResponse<
         LanguageModel.ExtractTools<Options>,
-        LanguageModel.ExtractToolParametersMode<Options>
+        LanguageModel.ExtractToolParametersMode<Options>,
+        LanguageModel.ExtractUnknownToolCalls<Options>
       >,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
@@ -307,7 +312,7 @@ export interface Service {
     <Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<{}>, Options>>(
       options: Options & { readonly toolkit?: undefined } & LanguageModel.GenerateTextOptions<{}>
     ): Stream.Stream<
-      Response.StreamPart<{}>,
+      Response.StreamPart<{}, "decoded", LanguageModel.ExtractUnknownToolCalls<Options>>,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
     >
@@ -322,7 +327,11 @@ export interface Service {
         readonly toolkit: LanguageModel.ToolkitInput<Tools>
       }
     ): Stream.Stream<
-      Response.StreamPart<Tools, LanguageModel.ExtractToolParametersMode<Options>>,
+      Response.StreamPart<
+        Tools,
+        LanguageModel.ExtractToolParametersMode<Options>,
+        LanguageModel.ExtractUnknownToolCalls<Options>
+      >,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
     >
@@ -337,7 +346,8 @@ export interface Service {
     ): Stream.Stream<
       Response.StreamPart<
         LanguageModel.ExtractTools<Options>,
-        LanguageModel.ExtractToolParametersMode<Options>
+        LanguageModel.ExtractToolParametersMode<Options>,
+        LanguageModel.ExtractUnknownToolCalls<Options>
       >,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
@@ -399,7 +409,8 @@ export interface Service {
     LanguageModel.GenerateObjectResponse<
       LanguageModel.ExtractTools<Options>,
       ObjectSchema["Type"],
-      LanguageModel.ExtractToolParametersMode<Options>
+      LanguageModel.ExtractToolParametersMode<Options>,
+      LanguageModel.ExtractUnknownToolCalls<Options>
     >,
     LanguageModel.ExtractError<Options>,
     LanguageModel.ExtractServices<Options> | ObjectSchema["DecodingServices"] | LanguageModel.LanguageModel
