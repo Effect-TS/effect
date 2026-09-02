@@ -196,8 +196,6 @@ export const tracer: <E, R>(
     return Effect.onExitPrimitive(httpApp, (exit) => {
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
-      // without a tracing backend (or for unsampled spans) nothing can observe
-      // the span after this point, so skip recording attributes
       if (!span.sampled || fiber.getRef(Tracer) === nativeTracer) {
         span.end(endTime, exit)
         return undefined

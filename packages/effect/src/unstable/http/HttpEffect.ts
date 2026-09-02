@@ -259,8 +259,6 @@ export const toWebHandlerWith = <Provided, R = never, ReqR = Exclude<R, Provided
       reqContext = Context.add(reqContext, HttpServerRequest, httpServerRequest)
       ;(httpServerRequest as any)[resolveSymbol] = resolve
       const fiber = Effect.runForkWith(reqContext)(httpApp as any)
-      // a synchronously completed fiber can no longer be interrupted, so the
-      // abort listener would only allocate without effect
       if (fiber.pollUnsafe() === undefined) {
         request.signal?.addEventListener("abort", () => {
           fiber.interruptUnsafe(undefined, ClientAbort.annotation)

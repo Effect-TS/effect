@@ -1,22 +1,9 @@
-// EFF-1038: measures HTTP server per-request allocation churn and retained-heap
-// growth through the in-process web handler path (no sockets, deterministic).
-//
-// Run with: node --expose-gc packages/effect/benchmark/http/serverAllocations.ts
-//
-// Exits non-zero when retained heap grows more than RETAINED_LIMIT bytes/request
-// (leak gate) or when allocation churn exceeds CHURN_LIMIT bytes/request
-// (regression gate for the memory-footprint work).
 import { HttpRouter, HttpServerResponse } from "effect/unstable/http"
 import * as inspector from "node:inspector/promises"
 
 const WARMUP = 5_000
 const REQUESTS = 50_000
 const RETAINED_LIMIT = 64
-// main at a1177caf27 measured ~18.5k bytes/request; the EFF-1038 changes
-// (skip span attribute recording without a tracing backend, lazy NativeSpan,
-// skip abort listeners for synchronously completed fibers) brought it to
-// ~16.3k. The limit locks that in with headroom for run-to-run variance;
-// ~45% of the remainder is undici Request/Response construction.
 const CHURN_LIMIT = 17_000
 
 const gc = (globalThis as any).gc as undefined | (() => void)
@@ -66,8 +53,7 @@ const topFrames = (head: ProfileNode) => {
   }
 }
 
-// repeated gc + macrotask turns let FinalizationRegistry cleanup settle,
-// otherwise pending finalizers show up as phantom retention
+// Allow FinalizationRegistry callbacks to run before measuring retained heap.
 const heapUsed = async () => {
   for (let i = 0; i < 5; i++) {
     gc()
@@ -78,12 +64,10 @@ const heapUsed = async () => {
 
 await run(WARMUP)
 
-// retention phase: no profiler running, so heap deltas reflect the handler only
 const heapBefore = await heapUsed()
 await run(REQUESTS)
 const heapAfter = await heapUsed()
 
-// churn phase: sampled allocation profile including collected objects
 await session.post("HeapProfiler.startSampling", {
   samplingInterval: 16384,
   includeObjectsCollectedByMajorGC: true,

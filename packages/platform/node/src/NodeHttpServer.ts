@@ -208,8 +208,6 @@ export const makeHandler = <
     ) {
       const context = Context.add(services, HttpServerRequest, new ServerRequestImpl(nodeRequest, nodeResponse))
       const fiber = Fiber.runIn(Effect.runForkWith(context as Context.Context<any>)(handled), options.scope)
-      // a synchronously completed fiber can no longer be interrupted, so the
-      // close listener would only allocate without effect
       if (fiber.pollUnsafe() === undefined) {
         nodeResponse.on("close", () => {
           if (!nodeResponse.writableEnded) {
