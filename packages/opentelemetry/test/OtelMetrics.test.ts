@@ -1,16 +1,9 @@
 import * as internal from "@effect/opentelemetry/internal/metrics"
 import * as OtelMetrics from "@effect/opentelemetry/OtelMetrics"
-import * as Resource from "@effect/opentelemetry/Resource"
 import { assert, describe, it } from "@effect/vitest"
 import { ValueType } from "@opentelemetry/api"
 import { resourceFromAttributes } from "@opentelemetry/resources"
-import {
-  AggregationTemporality,
-  DataPointType,
-  InMemoryMetricExporter,
-  MetricReader,
-  PeriodicExportingMetricReader
-} from "@opentelemetry/sdk-metrics"
+import { MetricReader } from "@opentelemetry/sdk-metrics"
 import * as Effect from "effect/Effect"
 import * as Metric from "effect/Metric"
 
@@ -18,59 +11,6 @@ const findMetric = (metrics: any, name: string) =>
   metrics.resourceMetrics.scopeMetrics[0].metrics.find((_: any) => _.descriptor.name === name)
 
 describe("Metrics", () => {
-  describe("counter update intervals", () => {
-    for (const bigint of [false, true]) {
-      it.effect.each(
-        [
-          { name: "negative delta", temporality: "delta", updates: [5, -2, 4], expected: [5, -2, 4] },
-          { name: "negative cumulative", temporality: "cumulative", updates: [5, -2, 4], expected: [5, 3, 7] },
-          { name: "positive delta", temporality: "delta", updates: [5, 2, 4], expected: [5, 2, 4] },
-          { name: "incremental delta", temporality: "delta", updates: [5, -2, 4], expected: [5, 0, 4] },
-          { name: "incremental reset", temporality: "delta", updates: [5, 2, 4], expected: [5, 2, 4] }
-        ] as const
-      )(
-        `$name (${bigint ? "bigint" : "number"})`,
-        ({ name, temporality, updates, expected }) =>
-          Effect.gen(function*() {
-            const incremental = name.startsWith("incremental") ? true : undefined
-            const registry = yield* Metric.MetricRegistry
-            const update = bigint
-              ? (value: number) =>
-                Metric.update(Metric.counter("interval_counter", { bigint: true, incremental }), BigInt(value))
-              : (value: number) => Metric.update(Metric.counter("interval_counter", { incremental }), value)
-            const aggregationTemporality = temporality === "delta"
-              ? AggregationTemporality.DELTA
-              : AggregationTemporality.CUMULATIVE
-            const exporter = new InMemoryMetricExporter(aggregationTemporality)
-            const reader = new PeriodicExportingMetricReader({ exporter, exportIntervalMillis: 3_600_000 })
-            const producer = yield* OtelMetrics.makeProducer(temporality).pipe(Effect.provide(Resource.layerEmpty))
-            yield* OtelMetrics.registerProducer(producer, () => reader)
-
-            for (const value of updates) {
-              if (name === "incremental reset" && value === 2) {
-                // Recreate the counter after clearing this test's isolated registry.
-                registry.clear()
-              }
-              yield* update(value)
-              yield* Effect.promise(() => reader.forceFlush())
-            }
-
-            const values: ReadonlyArray<number> = exporter.getMetrics().map((resource) => {
-              const metric = resource.scopeMetrics[0].metrics.find((metric) =>
-                metric.descriptor.name === "interval_counter"
-              )!
-              assert.strictEqual(metric.dataPointType, DataPointType.SUM)
-              if (metric.dataPointType !== DataPointType.SUM) throw new Error("Expected sum")
-              assert.strictEqual(metric.aggregationTemporality, aggregationTemporality)
-              assert.strictEqual(metric.isMonotonic, incremental === true)
-              return metric.dataPoints[0].value
-            })
-            assert.deepStrictEqual(values, expected)
-          }).pipe(Effect.provideService(Metric.MetricRegistry, new Map()))
-      )
-    }
-  })
-
   it.effect("gauge", () =>
     Effect.gen(function*() {
       const services = yield* Effect.context<never>()

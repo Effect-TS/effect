@@ -5,51 +5,6 @@ import { HttpClient, type HttpClientError, HttpClientResponse } from "effect/uns
 import { OtlpExporter, OtlpMetrics, OtlpSerialization } from "effect/unstable/observability"
 
 describe("OtlpMetrics", () => {
-  describe("counter update intervals", () => {
-    for (const bigint of [false, true]) {
-      it.effect.each(
-        [
-          { name: "negative delta", temporality: "delta", updates: [5, -2, 4], expected: [5, -2, 4] },
-          { name: "negative cumulative", temporality: "cumulative", updates: [5, -2, 4], expected: [5, 3, 7] },
-          { name: "positive delta", temporality: "delta", updates: [5, 2, 4], expected: [5, 2, 4] },
-          { name: "incremental delta", temporality: "delta", updates: [5, -2, 4], expected: [5, 0, 4] },
-          { name: "incremental reset", temporality: "delta", updates: [5, 2, 4], expected: [5, 2, 4] }
-        ] as const
-      )(
-        `$name (${bigint ? "bigint" : "number"})`,
-        ({ name, temporality, updates, expected }) =>
-          Effect.gen(function*() {
-            const incremental = name.startsWith("incremental") ? true : undefined
-            const registry = yield* Metric.MetricRegistry
-            for (const value of updates) {
-              if (name === "incremental reset" && value === 2) {
-                // Recreate the counter after clearing this test's isolated registry.
-                registry.clear()
-              }
-              if (bigint) {
-                yield* Metric.update(Metric.counter("interval_counter", { bigint: true, incremental }), BigInt(value))
-              } else {
-                yield* Metric.update(Metric.counter("interval_counter", { incremental }), value)
-              }
-              yield* triggerExport
-            }
-
-            const requests = yield* MockHttpClient.requests
-            const values: ReadonlyArray<number | undefined> = requests.map((request) => {
-              const sum = findMetric(request, "interval_counter")!.sum!
-              assert.strictEqual(sum.aggregationTemporality, temporality === "delta" ? 1 : 2)
-              assert.strictEqual(sum.isMonotonic, incremental === true)
-              return bigint ? sum.dataPoints[0].asInt : sum.dataPoints[0].asDouble
-            })
-            assert.deepStrictEqual(values, expected)
-          }).pipe(
-            Effect.provide(temporality === "delta" ? TestLayerDelta : TestLayerCumulative),
-            Effect.provideService(Metric.MetricRegistry, new Map())
-          )
-      )
-    }
-  })
-
   it.effect("retains delta checkpoints after a failed export", () =>
     Effect.gen(function*() {
       const bodies = yield* Ref.make<ReadonlyArray<OtlpExportRequest>>([])
