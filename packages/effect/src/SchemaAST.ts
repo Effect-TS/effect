@@ -4657,7 +4657,8 @@ function segmentTemplateLiteralParts(
   return go(0, 0) ? out : undefined
 }
 
-const parameterFromPropertyKey = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+/** @internal */
+export const parameterFromPropertyKey = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
   switch (ast._tag) {
     default:
       return ast

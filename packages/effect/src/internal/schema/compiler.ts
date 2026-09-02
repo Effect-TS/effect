@@ -20,23 +20,9 @@ const hasParseOptions = (ast: SchemaAST.AST): boolean => {
   return annotations?.["parseOptions"] !== undefined
 }
 
-const isCompatible = (ast: SchemaAST.AST): boolean => ast.encoding === undefined && !hasParseOptions(ast)
-
 const isOptional = (ast: SchemaAST.AST): boolean => ast.context?.isOptional ?? false
 
-const canEmitIndexParameter = (ast: SchemaAST.AST): boolean => {
-  if (!isCompatible(ast)) return false
-  switch (ast._tag) {
-    case "String":
-    case "Symbol":
-    case "TemplateLiteral":
-      return true
-    case "Union":
-      return ast.types.every(canEmitIndexParameter)
-    default:
-      return false
-  }
-}
+const canEmitIndexParameter = (ast: SchemaAST.AST): boolean => canEmit(SchemaAST.parameterFromPropertyKey(ast))
 
 const canEmitShape = (ast: SchemaAST.AST): boolean => {
   switch (ast._tag) {
@@ -354,12 +340,19 @@ const emitIndexes = (
       }`
     )
     const loop: Array<string> = [`const ${key}=${keys}[${index}]`]
+    const decodedKey = parameter._tag === "String" && parameter.checks === undefined && parameter.encoding === undefined
+      ? key
+      : emit(SchemaAST.parameterFromPropertyKey(parameter), key, loop, emitter)
     const value = variable(emitter)
     loop.push(`const ${value}=${input}[${key}]`)
     const decoded = emit(signature.type, value, loop, emitter)
     const assign =
-      `if(${key}==="__proto__")Object.defineProperty(${output},${key},{value:${decoded},writable:true,enumerable:true,configurable:true});else ${output}[${key}]=${decoded}`
-    loop.push(fixedKeys === undefined ? assign : `if(!${fixedKeys}.has(${key})){${assign}}`)
+      `if(${decodedKey}==="__proto__")Object.defineProperty(${output},${decodedKey},{value:${decoded},writable:true,enumerable:true,configurable:true});else ${output}[${decodedKey}]=${decoded}`
+    loop.push(
+      fixedKeys === undefined
+        ? assign
+        : `if(!${fixedKeys}.has(${key})&&!${fixedKeys}.has(${decodedKey})){${assign}}`
+    )
     statements.push(`for(let ${index}=0;${index}<${keys}.length;${index}++){${loop.join(";")}}`)
   }
 }

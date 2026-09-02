@@ -1,5 +1,15 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Result, Schema, SchemaCompiler, SchemaGetter, SchemaIssue, SchemaParser } from "effect"
+import {
+  Cause,
+  Effect,
+  Result,
+  Schema,
+  SchemaCompiler,
+  SchemaGetter,
+  SchemaIssue,
+  SchemaParser,
+  SchemaTransformation
+} from "effect"
 import { assertSchemaIssueError, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 const schema = Schema.Struct({
@@ -288,6 +298,19 @@ describe("SchemaCompiler", () => {
       )
     )
     deepStrictEqual(decode({ fixed: "  value  ", other: "other" }), { fixed: "value", other: "other" })
+  })
+
+  it("compiles decoded index keys", () => {
+    const decodeNumbers = SchemaParser.decodeUnknownSync(Schema.Record(Schema.Number, Schema.Number))
+    deepStrictEqual(decodeNumbers({ 1: 1, other: "ignored" }), { 1: 1 })
+
+    const decodeCamelCase = SchemaParser.decodeUnknownSync(
+      Schema.Record(
+        Schema.String.pipe(Schema.decodeTo(Schema.String, SchemaTransformation.toUpperCase())),
+        Schema.Number
+      )
+    )
+    deepStrictEqual(decodeCamelCase({ a: 1, b: 2 }), { A: 1, B: 2 })
   })
 
   it("runs checks against decoded output", () => {

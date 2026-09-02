@@ -1,6 +1,7 @@
 import * as Schema from "effect/Schema"
 import * as SchemaCompiler from "effect/SchemaCompiler"
 import * as SchemaParser from "effect/SchemaParser"
+import * as SchemaTransformation from "effect/SchemaTransformation"
 import assert from "node:assert/strict"
 
 const validCase = (schema, input, compiled, expected = input) => () => {
@@ -100,6 +101,38 @@ const structWithRecordInput = Object.fromEntries(
 
 export const structWithRecordValid = validCase(structWithRecord, structWithRecordInput, false)
 export const structWithRecordValidCompiled = validCase(structWithRecord, structWithRecordInput, true)
+
+const numberRecord = Schema.Record(Schema.Number, Schema.Number)
+const numberRecordInput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [String(index), index])
+)
+
+export const numberRecordValid = validCase(numberRecord, numberRecordInput, false)
+export const numberRecordValidCompiled = validCase(numberRecord, numberRecordInput, true)
+
+const transformedKeyRecord = Schema.Record(
+  Schema.String.pipe(Schema.decodeTo(Schema.String, SchemaTransformation.toUpperCase())),
+  Schema.Number
+)
+const transformedKeyRecordInput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field${index}`, index])
+)
+const transformedKeyRecordOutput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`FIELD${index}`, index])
+)
+
+export const transformedKeyRecordValid = validCase(
+  transformedKeyRecord,
+  transformedKeyRecordInput,
+  false,
+  transformedKeyRecordOutput
+)
+export const transformedKeyRecordValidCompiled = validCase(
+  transformedKeyRecord,
+  transformedKeyRecordInput,
+  true,
+  transformedKeyRecordOutput
+)
 
 const literal100 = Schema.Literals(Array.from({ length: 100 }, (_, index) => `value${index}`))
 

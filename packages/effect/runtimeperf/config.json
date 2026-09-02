@@ -2073,6 +2073,42 @@
               "size": 32
             },
             {
+              "name": "number-record-valid-effect",
+              "export": "numberRecordValid",
+              "scenario": "schema-compiler-number-record-valid",
+              "implementation": "effect",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "number-record-valid-effect-compiled",
+              "export": "numberRecordValidCompiled",
+              "scenario": "schema-compiler-number-record-valid",
+              "implementation": "effect-compiled",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "transformed-key-record-valid-effect",
+              "export": "transformedKeyRecordValid",
+              "scenario": "schema-compiler-transformed-key-record-valid",
+              "implementation": "effect",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "transformed-key-record-valid-effect-compiled",
+              "export": "transformedKeyRecordValidCompiled",
+              "scenario": "schema-compiler-transformed-key-record-valid",
+              "implementation": "effect-compiled",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
               "name": "literal-100-valid-last-effect",
               "export": "literal100ValidLast",
               "scenario": "schema-compiler-literal-100-valid-last",
