@@ -157,7 +157,7 @@ export const make: (options: {
         return HttpServerResponse.empty({
           status: 416,
           headers: {
-            "Content-Range": `bytes */${resolvedFileSize.value}`
+            "Content-Range": `bytes */${resolvedFileSize}`
           }
         })
       }
@@ -177,7 +177,7 @@ export const make: (options: {
       response = HttpServerResponse.setHeader(
         response,
         "Content-Range",
-        `bytes ${parsedRange.start}-${parsedRange.end}/${resolvedFileSize.value}`
+        `bytes ${parsedRange.start}-${parsedRange.end}/${resolvedFileSize}`
       )
 
       return response
@@ -354,8 +354,8 @@ const parseRange = (
       return "unsatisfiable"
     }
     return {
-      start: BI.max(fileSize.value - suffixLength, BigInt(0)),
-      end: fileSize.value - BigInt(1)
+      start: BI.max(fileSize - suffixLength, BigInt(0)),
+      end: fileSize - BigInt(1)
     }
   }
   const start = parseInteger(startPart)
@@ -363,24 +363,24 @@ const parseRange = (
     return undefined
   }
   if (endPart === "") {
-    if (start >= fileSize.value) {
+    if (start >= fileSize) {
       return "unsatisfiable"
     }
     return {
       start,
-      end: fileSize.value - BigInt(1)
+      end: fileSize - BigInt(1)
     }
   }
   const end = parseInteger(endPart)
   if (end === undefined) {
     return undefined
   }
-  if (start > end || start >= fileSize.value) {
+  if (start > end || start >= fileSize) {
     return "unsatisfiable"
   }
   return {
     start,
-    end: BI.min(end, fileSize.value - BigInt(1))
+    end: BI.min(end, fileSize - BigInt(1))
   }
 }
 

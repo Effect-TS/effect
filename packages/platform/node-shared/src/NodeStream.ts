@@ -220,7 +220,7 @@ export const toString = <E = Cause.UnknownError>(
     readonly maxBytes?: ByteSize.Input | undefined
   }
 ): Effect.Effect<string, E> => {
-  const maxBytes = options?.maxBytes !== undefined ? ByteSize.fromInputUnsafe(options.maxBytes).value : undefined
+  const maxBytes = options?.maxBytes !== undefined ? ByteSize.fromInputUnsafe(options.maxBytes) : undefined
   const onError = options?.onError ?? defaultOnError
   const encoding = options?.encoding ?? "utf8"
   return Effect.callback((resume) => {
@@ -272,7 +272,7 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
     readonly maxBytes?: ByteSize.Input | undefined
   }
 ): Effect.Effect<ArrayBuffer, E> => {
-  const maxBytes = options?.maxBytes !== undefined ? ByteSize.fromInputUnsafe(options.maxBytes).value : undefined
+  const maxBytes = options?.maxBytes !== undefined ? ByteSize.fromInputUnsafe(options.maxBytes) : undefined
   const onError = options?.onError ?? defaultOnError
   return Effect.callback((resume) => {
     const stream = readable() as Readable

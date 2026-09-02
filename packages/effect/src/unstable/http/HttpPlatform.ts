@@ -99,10 +99,10 @@ export const make: (impl: {
       const requestedBytesToRead = options?.bytesToRead === undefined
         ? undefined
         : ByteSize.fromInputUnsafe(options.bytesToRead)
-      const startBigInt = BI.min(requestedOffset.value, info.size.value)
-      const available = info.size.value - startBigInt
+      const startBigInt = BI.min(requestedOffset, info.size)
+      const available = info.size - startBigInt
       const contentLengthBigInt = requestedBytesToRead !== undefined
-        ? BI.min(requestedBytesToRead.value, available)
+        ? BI.min(requestedBytesToRead, available)
         : available
       const endBigInt = requestedBytesToRead !== undefined
         ? startBigInt + contentLengthBigInt

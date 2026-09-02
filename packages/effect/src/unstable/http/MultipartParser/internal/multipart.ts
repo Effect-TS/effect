@@ -57,10 +57,10 @@ export function make({
 }: Config) {
   const maxTotalSizeBigInt = maxTotalSize === undefined || maxTotalSize === Infinity
     ? undefined
-    : ByteSize.fromInputUnsafe(maxTotalSize).value
+    : ByteSize.fromInputUnsafe(maxTotalSize)
   const maxPartSizeBigInt = maxPartSize === undefined || maxPartSize === Infinity
     ? undefined
-    : ByteSize.fromInputUnsafe(maxPartSize).value
+    : ByteSize.fromInputUnsafe(maxPartSize)
   const maxFieldSizeNumber = maxFieldSize === Infinity
     ? Infinity
     : Option.getOrElse(ByteSize.toNumber(ByteSize.fromInputUnsafe(maxFieldSize)), () => Infinity)

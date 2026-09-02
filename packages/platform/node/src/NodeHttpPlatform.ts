@@ -85,8 +85,8 @@ export const make = Platform.make({
       if (ByteSize.isZero(contentLength)) {
         stream = Readable.from([])
       } else {
-        const startNumber = yield* byteSizeToNumber(start.value)
-        const endNumber = end === undefined ? undefined : yield* byteSizeToNumber(end.value - BigInt(1))
+        const startNumber = yield* byteSizeToNumber(start)
+        const endNumber = end === undefined ? undefined : yield* byteSizeToNumber(end - BigInt(1))
         stream = Fs.createReadStream(path, { start: startNumber, end: endNumber })
       }
       return ServerResponse.raw(stream, {
