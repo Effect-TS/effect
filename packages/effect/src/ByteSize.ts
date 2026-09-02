@@ -5,19 +5,14 @@
  *
  * @since 4.0.0
  */
-import * as Combiner from "./Combiner.ts"
-import * as Equal from "./Equal.ts"
+import * as BI from "./BigInt.ts"
+import type * as Brand from "./Brand.ts"
+import type * as Combiner from "./Combiner.ts"
 import type * as Equ from "./Equivalence.ts"
 import { dual } from "./Function.ts"
-import * as Hash from "./Hash.ts"
-import type * as Inspectable from "./Inspectable.ts"
-import { NodeInspectSymbol } from "./Inspectable.ts"
 import * as Option from "./Option.ts"
-import * as order from "./Order.ts"
-import type { Pipeable } from "./Pipeable.ts"
-import { pipeArguments } from "./Pipeable.ts"
-import { hasProperty } from "./Predicate.ts"
-import * as Reducer from "./Reducer.ts"
+import type * as order from "./Order.ts"
+import type * as Reducer from "./Reducer.ts"
 
 const TypeId = "~effect/ByteSize"
 
@@ -32,10 +27,7 @@ const binaryBase = BigInt(1024)
  * @category models
  * @since 4.0.0
  */
-export interface ByteSize extends Equal.Equal, Pipeable, Inspectable.Inspectable {
-  readonly [TypeId]: typeof TypeId
-  readonly value: bigint
-}
+export type ByteSize = Brand.Branded<bigint, typeof TypeId>
 
 /**
  * Values accepted by byte-size decoding operations.
@@ -147,33 +139,7 @@ const allUnits = [...decimalUnits, ...binaryUnits.slice(1)]
 const unitsByName = new Map(allUnits.flatMap((unit) => unit.names.map((name) => [name, unit] as const)))
 const unitsBySymbol = new Map(allUnits.map((unit) => [unit.symbol, unit] as const))
 
-const ByteSizeProto: Omit<ByteSize, "value"> = {
-  [TypeId]: TypeId,
-  [Hash.symbol](this: ByteSize) {
-    return Hash.hash(this.value)
-  },
-  [Equal.symbol](this: ByteSize, that: unknown): boolean {
-    return isByteSize(that) && this.value === that.value
-  },
-  toString(this: ByteSize) {
-    return `${this.value} ${this.value === bigint1 ? "byte" : "bytes"}`
-  },
-  toJSON(this: ByteSize) {
-    return { _id: "ByteSize", bytes: `${this.value}` }
-  },
-  [NodeInspectSymbol]() {
-    return this.toJSON()
-  },
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-const make = (value: bigint): ByteSize => {
-  const byteSize = Object.create(ByteSizeProto)
-  byteSize.value = value
-  return byteSize
-}
+const make = (value: bigint): ByteSize => value as ByteSize
 
 /**
  * The byte size containing zero bytes.
@@ -235,8 +201,6 @@ export const fromInputUnsafe = (input: Input): ByteSize => {
       return fromNumber(input)
     case "string":
       return parse(input)
-    case "object":
-      if (isByteSize(input)) return input
   }
   return invalid(`unsupported input ${input}`)
 }
@@ -394,7 +358,7 @@ export const yobibytes = unitConstructor("YiB")
  * @category guards
  * @since 4.0.0
  */
-export const isByteSize = (input: unknown): input is ByteSize => hasProperty(input, TypeId)
+export const isByteSize = (input: unknown): input is ByteSize => typeof input === "bigint" && input >= bigint0
 
 /**
  * Checks whether a byte size is zero.
@@ -402,7 +366,7 @@ export const isByteSize = (input: unknown): input is ByteSize => hasProperty(inp
  * @category predicates
  * @since 4.0.0
  */
-export const isZero = (self: ByteSize): boolean => self.value === bigint0
+export const isZero = (self: ByteSize): boolean => self === bigint0
 
 /**
  * Returns the exact byte count as a bigint.
@@ -410,7 +374,7 @@ export const isZero = (self: ByteSize): boolean => self.value === bigint0
  * @category getters
  * @since 4.0.0
  */
-export const toBigInt = (self: ByteSize): bigint => self.value
+export const toBigInt = (self: ByteSize): bigint => self
 
 /**
  * Converts a byte size to a safe integer, returning `None` when it is too large.
@@ -418,10 +382,7 @@ export const toBigInt = (self: ByteSize): bigint => self.value
  * @category converting
  * @since 4.0.0
  */
-export const toNumber = (self: ByteSize): Option.Option<number> => {
-  const value = Number(self.value)
-  return Number.isSafeInteger(value) ? Option.some(value) : Option.none()
-}
+export const toNumber: (self: ByteSize) => Option.Option<number> = BI.toNumber
 
 /**
  * Converts a byte size to a safe integer and throws when it is too large.
@@ -430,7 +391,7 @@ export const toNumber = (self: ByteSize): Option.Option<number> => {
  * @since 4.0.0
  */
 export const toNumberUnsafe = (self: ByteSize): number =>
-  Option.getOrThrowWith(toNumber(self), () => new Error(`ByteSize exceeds Number.MAX_SAFE_INTEGER: ${self.value}`))
+  Option.getOrThrowWith(toNumber(self), () => new Error(`ByteSize exceeds Number.MAX_SAFE_INTEGER: ${self}`))
 
 /**
  * Converts a byte size to an approximate number of the specified unit.
@@ -441,7 +402,7 @@ export const toNumberUnsafe = (self: ByteSize): number =>
 export const toUnit: {
   (unit: Unit): (self: ByteSize) => number
   (self: ByteSize, unit: Unit): number
-} = dual(2, (self: ByteSize, unit: Unit) => Number(self.value) / Number(unitsBySymbol.get(unit)!.factor))
+} = dual(2, (self: ByteSize, unit: Unit) => Number(self) / Number(unitsBySymbol.get(unit)!.factor))
 
 /**
  * Provides an order for byte sizes.
@@ -449,9 +410,7 @@ export const toUnit: {
  * @category instances
  * @since 4.0.0
  */
-export const Order: order.Order<ByteSize> = order.make((self, that) =>
-  self.value < that.value ? -1 : self.value > that.value ? 1 : 0
-)
+export const Order: order.Order<ByteSize> = BI.Order
 
 /**
  * Provides an equivalence for byte sizes.
@@ -459,7 +418,7 @@ export const Order: order.Order<ByteSize> = order.make((self, that) =>
  * @category instances
  * @since 4.0.0
  */
-export const Equivalence: Equ.Equivalence<ByteSize> = (self, that) => self.value === that.value
+export const Equivalence: Equ.Equivalence<ByteSize> = BI.Equivalence
 
 /**
  * Returns whether a byte size is in an inclusive range.
@@ -470,7 +429,7 @@ export const Equivalence: Equ.Equivalence<ByteSize> = (self, that) => self.value
 export const between: {
   (options: { minimum: ByteSize; maximum: ByteSize }): (self: ByteSize) => boolean
   (self: ByteSize, options: { minimum: ByteSize; maximum: ByteSize }): boolean
-} = order.isBetween(Order)
+} = BI.between
 
 /**
  * Returns the smaller byte size.
@@ -478,10 +437,10 @@ export const between: {
  * @category ordering
  * @since 4.0.0
  */
-export const min: {
+export const min = BI.min as unknown as {
   (that: ByteSize): (self: ByteSize) => ByteSize
   (self: ByteSize, that: ByteSize): ByteSize
-} = order.min(Order)
+}
 
 /**
  * Returns the larger byte size.
@@ -489,10 +448,10 @@ export const min: {
  * @category ordering
  * @since 4.0.0
  */
-export const max: {
+export const max = BI.max as unknown as {
   (that: ByteSize): (self: ByteSize) => ByteSize
   (self: ByteSize, that: ByteSize): ByteSize
-} = order.max(Order)
+}
 
 /**
  * Constrains a byte size to an inclusive range.
@@ -500,10 +459,10 @@ export const max: {
  * @category ordering
  * @since 4.0.0
  */
-export const clamp: {
+export const clamp = BI.clamp as unknown as {
   (options: { minimum: ByteSize; maximum: ByteSize }): (self: ByteSize) => ByteSize
   (self: ByteSize, options: { minimum: ByteSize; maximum: ByteSize }): ByteSize
-} = order.clamp(Order)
+}
 
 /**
  * Checks whether the first byte size is less than the second.
@@ -514,7 +473,7 @@ export const clamp: {
 export const isLessThan: {
   (that: ByteSize): (self: ByteSize) => boolean
   (self: ByteSize, that: ByteSize): boolean
-} = order.isLessThan(Order)
+} = BI.isLessThan
 
 /**
  * Checks whether the first byte size is at most the second.
@@ -525,7 +484,7 @@ export const isLessThan: {
 export const isLessThanOrEqualTo: {
   (that: ByteSize): (self: ByteSize) => boolean
   (self: ByteSize, that: ByteSize): boolean
-} = order.isLessThanOrEqualTo(Order)
+} = BI.isLessThanOrEqualTo
 
 /**
  * Checks whether the first byte size is greater than the second.
@@ -536,7 +495,7 @@ export const isLessThanOrEqualTo: {
 export const isGreaterThan: {
   (that: ByteSize): (self: ByteSize) => boolean
   (self: ByteSize, that: ByteSize): boolean
-} = order.isGreaterThan(Order)
+} = BI.isGreaterThan
 
 /**
  * Checks whether the first byte size is at least the second.
@@ -547,7 +506,7 @@ export const isGreaterThan: {
 export const isGreaterThanOrEqualTo: {
   (that: ByteSize): (self: ByteSize) => boolean
   (self: ByteSize, that: ByteSize): boolean
-} = order.isGreaterThanOrEqualTo(Order)
+} = BI.isGreaterThanOrEqualTo
 
 /**
  * Checks whether two byte sizes contain the same count.
@@ -566,10 +525,10 @@ export const equals: {
  * @category math
  * @since 4.0.0
  */
-export const sum: {
+export const sum = BI.sum as unknown as {
   (that: ByteSize): (self: ByteSize) => ByteSize
   (self: ByteSize, that: ByteSize): ByteSize
-} = dual(2, (self: ByteSize, that: ByteSize) => make(self.value + that.value))
+}
 
 /**
  * Subtracts byte sizes, returning `None` on underflow.
@@ -582,8 +541,7 @@ export const subtract: {
   (self: ByteSize, that: ByteSize): Option.Option<ByteSize>
 } = dual(
   2,
-  (self: ByteSize, that: ByteSize) =>
-    self.value < that.value ? Option.none() : Option.some(make(self.value - that.value))
+  (self: ByteSize, that: ByteSize) => self < that ? Option.none() : Option.some(make(self - that))
 )
 
 /**
@@ -596,8 +554,8 @@ export const subtractUnsafe: {
   (that: ByteSize): (self: ByteSize) => ByteSize
   (self: ByteSize, that: ByteSize): ByteSize
 } = dual(2, (self: ByteSize, that: ByteSize) => {
-  if (self.value < that.value) throw new Error(`ByteSize subtraction underflow: ${self.value} - ${that.value}`)
-  return make(self.value - that.value)
+  if (self < that) throw new Error(`ByteSize subtraction underflow: ${self} - ${that}`)
+  return make(self - that)
 })
 
 const scalar = (input: number | bigint, positive: boolean): bigint | undefined => {
@@ -616,7 +574,7 @@ export const times: {
   (self: ByteSize, multiplier: number | bigint): Option.Option<ByteSize>
 } = dual(2, (self: ByteSize, multiplier: number | bigint) => {
   const value = scalar(multiplier, false)
-  return value === undefined ? Option.none() : Option.some(make(self.value * value))
+  return value === undefined ? Option.none() : Option.some(make(self * value))
 })
 
 /**
@@ -630,7 +588,7 @@ export const divide: {
   (self: ByteSize, divisor: number | bigint): Option.Option<ByteSize>
 } = dual(2, (self: ByteSize, divisor: number | bigint) => {
   const value = scalar(divisor, true)
-  return value === undefined ? Option.none() : Option.some(make(self.value / value))
+  return value === undefined ? Option.none() : Option.some(make(self / value))
 })
 
 const validatePrecision = (precision: number): number => {
@@ -660,19 +618,19 @@ export const format = (self: ByteSize, options: FormatOptions = {}): string => {
   const precision = validatePrecision(options.precision ?? 2)
   const trailingZeros = options.trailingZeros ?? false
   if (options.unit !== undefined) {
-    return formatWithUnit(self.value, unitsBySymbol.get(options.unit)!, precision, trailingZeros)
+    return formatWithUnit(self, unitsBySymbol.get(options.unit)!, precision, trailingZeros)
   }
   const units = options.system === "decimal" ? decimalUnits : binaryUnits
-  if (self.value === bigint0) return "0 B"
+  if (self === bigint0) return "0 B"
   let index = units.length - 1
-  while (index > 0 && self.value < units[index].factor) index--
+  while (index > 0 && self < units[index].factor) index--
   if (index < units.length - 1) {
     const scale = BigInt(10) ** BigInt(precision)
-    const rounded = (self.value * scale * BigInt(2) + units[index].factor) / (units[index].factor * BigInt(2))
+    const rounded = (self * scale * BigInt(2) + units[index].factor) / (units[index].factor * BigInt(2))
     const base = options.system === "decimal" ? decimalBase : binaryBase
     if (rounded >= base * scale) index++
   }
-  return formatWithUnit(self.value, units[index], precision, trailingZeros)
+  return formatWithUnit(self, units[index], precision, trailingZeros)
 }
 
 /**
@@ -681,7 +639,7 @@ export const format = (self: ByteSize, options: FormatOptions = {}): string => {
  * @category math
  * @since 4.0.0
  */
-export const ReducerSum: Reducer.Reducer<ByteSize> = Reducer.make(sum, zero)
+export const ReducerSum = BI.ReducerSum as unknown as Reducer.Reducer<ByteSize>
 
 /**
  * Combiner that keeps the largest byte size.
@@ -689,7 +647,7 @@ export const ReducerSum: Reducer.Reducer<ByteSize> = Reducer.make(sum, zero)
  * @category math
  * @since 4.0.0
  */
-export const CombinerMax: Combiner.Combiner<ByteSize> = Combiner.max(Order)
+export const CombinerMax = BI.CombinerMax as unknown as Combiner.Combiner<ByteSize>
 
 /**
  * Combiner that keeps the smallest byte size.
@@ -697,4 +655,4 @@ export const CombinerMax: Combiner.Combiner<ByteSize> = Combiner.max(Order)
  * @category math
  * @since 4.0.0
  */
-export const CombinerMin: Combiner.Combiner<ByteSize> = Combiner.min(Order)
+export const CombinerMin = BI.CombinerMin as unknown as Combiner.Combiner<ByteSize>

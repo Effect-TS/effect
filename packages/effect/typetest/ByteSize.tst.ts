@@ -23,6 +23,8 @@ describe("ByteSize", () => {
   })
 
   it("infers data-last arithmetic", () => {
+    expect(value).type.toBeAssignableTo<bigint>()
+    expect<bigint>().type.not.toBeAssignableTo<ByteSizeType.ByteSize>()
     expect(ByteSize.sum(value)(value)).type.toBe<ByteSizeType.ByteSize>()
     expect(ByteSize.times(2)(value)).type.toBe<Option.Option<ByteSizeType.ByteSize>>()
   })
