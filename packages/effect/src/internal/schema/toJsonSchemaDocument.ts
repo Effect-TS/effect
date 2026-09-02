@@ -220,10 +220,18 @@ function compileJsonSchema(
 
   function finalizeJsonSchema(schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema {
     if (!hasAliases) return schema
+    // URI-encoded slashes separate pointer tokens; only ~1 represents a slash within a token.
     return rewriteRefs(schema, ($ref) =>
-      $ref.replace(/^#\/\$defs\/([^/]*)/, (match, token) => {
+      $ref.replace(/^#\/\$defs\/((?:(?!%2[fF])[^/])*)/, (match, token) => {
+        try {
+          token = decodeURIComponent(token)
+        } catch {
+          return match
+        }
         const canonical = definitionStates.get(unescapeToken(token))
-        return typeof canonical === "string" ? `#/$defs/${escapeToken(canonical)}` : match
+        return typeof canonical === "string"
+          ? `#/$defs/${encodeURI(escapeToken(canonical)).replace(/#/g, "%23")}`
+          : match
       }))
   }
 
@@ -283,7 +291,7 @@ function compileJsonSchema(
   ): JsonSchema.JsonSchema {
     if (representation._tag === "Reference") {
       const canonical = compileDefinition(representation.$ref, path)
-      return { $ref: `#/$defs/${escapeToken(canonical)}` }
+      return { $ref: `#/$defs/${encodeURI(escapeToken(canonical)).replace(/#/g, "%23")}` }
     }
     const cached = compiledRepresentations.get(representation)
     if (cached !== undefined) return cached
