@@ -889,13 +889,7 @@ const prepareMessages = Effect.fnUntraced(
 
                         const source = isUrlData(part.data)
                           ? { type: "url", url: getUrlString(part.data) } as const
-                          : {
-                            type: "base64",
-                            media_type: mediaType,
-                            data: typeof part.data === "string"
-                              ? part.data.replace(/^data:[^;]+;base64,/, "")
-                              : Encoding.encodeBase64(part.data)
-                          } as const
+                          : { type: "base64", media_type: mediaType, data: Encoding.encodeBase64(part.data) } as const
 
                         content.push({ type: "image", source, cache_control: cacheControl })
                       } else if (part.mediaType === "application/pdf" || part.mediaType === "text/plain") {
