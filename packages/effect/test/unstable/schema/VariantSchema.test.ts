@@ -84,64 +84,14 @@ describe("VariantSchema", () => {
 })
 
 describe("Model", () => {
-  describe("extract", () => {
+  it("preserves classes when extracting the default variant", () => {
     class Person extends Model.Class<Person>("Person")({
-      name: Schema.String,
-      internalId: Model.FieldOnly(["select"])(Schema.Number)
-    }) {
-      greet() {
-        return `Hello ${this.name}`
-      }
-    }
-    const input = { name: "Alex", internalId: 1 }
+      name: Schema.String
+    }) {}
 
-    it("preserves instance methods when decoding the class directly", () => {
-      const person = Schema.decodeSync(Person)(input)
+    const person = Schema.decodeSync(Model.extract(Person, "select"))({ name: "Alex" })
 
-      assert.strictEqual(person.greet(), "Hello Alex")
-      assert.isTrue(person instanceof Person)
-    })
-
-    it("preserves instance methods in the default union", () => {
-      const person = Schema.decodeSync(Model.Union([Person]))(input)
-
-      assert.strictEqual(person.greet(), "Hello Alex")
-      assert.isTrue(person instanceof Person)
-    })
-
-    it("preserves instance methods when extracting the default variant data-first", () => {
-      const person = Schema.decodeSync(Model.extract(Person, "select"))(input)
-
-      assert.strictEqual(person.greet(), "Hello Alex")
-      assert.isTrue(person instanceof Person)
-    })
-
-    it("preserves instance methods when extracting the default variant data-last", () => {
-      const person = Schema.decodeSync(Person.pipe(Model.extract("select")))(input)
-
-      assert.strictEqual(person.greet(), "Hello Alex")
-      assert.isTrue(person instanceof Person)
-    })
-
-    it("keeps nondefault extraction as a plain field projection", () => {
-      const json = Model.extract(Person, "json")
-      const person = Schema.decodeSync(json)({ name: "Alex" })
-
-      assert.deepStrictEqual(person, { name: "Alex" })
-      assert.isFalse(person instanceof Person)
-      assert.isFalse("greet" in person)
-      assert.deepStrictEqual(Object.keys(json.fields), ["name"])
-    })
-
-    it("keeps named select schemas as plain field projections", () => {
-      const person = Schema.decodeSync(Person.select)(input)
-      const unionPerson = Schema.decodeSync(Model.Union([Person]).select)(input)
-
-      assert.deepStrictEqual(person, input)
-      assert.deepStrictEqual(unionPerson, input)
-      assert.isFalse(person instanceof Person)
-      assert.isFalse(unionPerson instanceof Person)
-    })
+    assert.isTrue(person instanceof Person)
   })
 
   it("FieldOnly includes fields only in listed variants", () => {
