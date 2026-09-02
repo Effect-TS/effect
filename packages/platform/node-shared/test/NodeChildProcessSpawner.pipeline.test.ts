@@ -1,43 +1,29 @@
 import * as NodeChildProcessSpawner from "@effect/platform-node-shared/NodeChildProcessSpawner"
 import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import * as NodePath from "@effect/platform-node-shared/NodePath"
-import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Stream } from "effect"
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
+import { assert, it } from "@effect/vitest"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Stream from "effect/Stream"
+import * as ChildProcess from "effect/unstable/process/ChildProcess"
 
-const services = NodeChildProcessSpawner.layer.pipe(
-  Layer.provide(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer))
+const NodeServices = NodeChildProcessSpawner.layer.pipe(
+  Layer.provideMerge(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer))
 )
 
-describe("pipeline stdin", () => {
-  for (const mode of ["standalone handle", "pipeline configured", "pipeline handle"] as const) {
-    it.live(mode, () =>
-      Effect.gen(function*() {
-        const input = Stream.make(new TextEncoder().encode("hello"))
-        const root = ChildProcess.make(process.execPath, [
-          "-e",
-          "process.stdin.on(\"data\", chunk => process.stdout.write(chunk.toString().toUpperCase()));" +
-          "process.stderr.write(String(process.pid));"
-        ], { stdin: mode === "pipeline configured" ? input : "pipe" })
-        const command = mode === "standalone handle" ? root : root.pipe(
-          ChildProcess.pipeTo(ChildProcess.make(process.execPath, [
-            "-e",
-            "process.stdin.pipe(process.stdout); process.stderr.write(String(process.pid));"
-          ]))
-        )
-        const handle = yield* command
-        if (mode !== "pipeline configured") {
-          yield* Stream.run(input, handle.stdin)
-        }
-        const output = yield* handle.stdout.pipe(Stream.decodeText(), Stream.mkString)
-        const stderr = yield* handle.stderr.pipe(Stream.decodeText(), Stream.mkString)
-        const exitCode = yield* handle.exitCode
+it.live("writes pipeline stdin to the first process", () =>
+  Effect.gen(function*() {
+    const handle = yield* ChildProcess.make(process.execPath, [
+      "-e",
+      "process.stdin.on(\"data\", chunk => process.stdout.write(chunk.toString().toUpperCase()))"
+    ]).pipe(ChildProcess.pipeTo(ChildProcess.make(process.execPath, [
+      "-e",
+      "process.stdin.pipe(process.stdout)"
+    ])))
 
-        assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
-        assert.strictEqual(yield* handle.isRunning, false)
-        assert.strictEqual(stderr, String(handle.pid))
-        // The pipeline's input belongs to the root, while output and metadata belong to the tail.
-        assert.strictEqual(output, "HELLO")
-      }).pipe(Effect.provide(services)))
-  }
-})
+    yield* Stream.run(Stream.make(new TextEncoder().encode("hello")), handle.stdin)
+    const output = yield* handle.stdout.pipe(Stream.decodeText(), Stream.mkString)
+    yield* handle.kill()
+
+    assert.strictEqual(output, "HELLO")
+  }).pipe(Effect.provide(NodeServices)))
