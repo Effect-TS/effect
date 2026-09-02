@@ -244,7 +244,7 @@ const Proto = {
         readonly handler: Tool.Handler<any>["handler"]
         readonly decodeParameters: (u: unknown) => Effect.Effect<unknown, Schema.SchemaError>
         readonly decodeResult: (u: unknown) => Effect.Effect<unknown, Schema.SchemaError>
-        readonly encodeResult: (u: unknown) => Effect.Effect<unknown, Schema.SchemaError>
+        readonly encodeResult: (u: unknown, isFailure: boolean) => Effect.Effect<unknown, Schema.SchemaError>
       }>()
 
       const getSchemas = (tool: Tool.Any) => {
@@ -258,7 +258,11 @@ const Proto = {
             ? Schema.decodeUnknownEffect(tool.parametersSchema) as any
             : (u: unknown) => Effect.succeed(u)
           const decodeResult = Schema.decodeUnknownEffect(resultSchema) as any
-          const encodeResult = Schema.encodeUnknownEffect(resultSchema) as any
+          const encodeSuccess = Schema.encodeUnknownEffect(tool.successSchema) as any
+          const encodeFailure = Schema.encodeUnknownEffect(tool.failureSchema) as any
+          const encodeAiError = Schema.encodeUnknownEffect(AiError.AiError)
+          const encodeResult = (u: unknown, isFailure: boolean) =>
+            !isFailure ? encodeSuccess(u) : AiError.isAiError(u) ? encodeAiError(u) : encodeFailure(u)
           schemas = {
             context: handler.context,
             handler: handler.handler,
@@ -294,8 +298,8 @@ const Proto = {
         // Fetch cached schemas / handlers for the tool
         const schemas = getSchemas(tool)
 
-        const encodeResult = (result: any) =>
-          schemas.encodeResult(result).pipe(
+        const encodeResult = (result: any, isFailure: boolean) =>
+          schemas.encodeResult(result, isFailure).pipe(
             Effect.mapError((cause) =>
               AiError.make({
                 module: "Toolkit",
@@ -323,7 +327,7 @@ const Proto = {
             return yield* error
           }
           return Stream.fromEffect(
-            Effect.map(encodeResult(error), (encodedResult) => ({
+            Effect.map(encodeResult(error, true), (encodedResult) => ({
               result: error,
               isFailure: true,
               preliminary: false,
@@ -390,7 +394,7 @@ const Proto = {
               : Stream.succeed({ result: normalizedError, isFailure: true, preliminary: false })
           }),
           Stream.mapEffect(Effect.fnUntraced(function*(output) {
-            const encodedResult = yield* encodeResult(output.result)
+            const encodedResult = yield* encodeResult(output.result, output.isFailure)
             return { ...output, encodedResult }
           })),
           Stream.onEnd(Fiber.interrupt(fiber))
