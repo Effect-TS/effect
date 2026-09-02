@@ -745,7 +745,7 @@ const assert: Assert = (condition, message) => {
 }
 
 function removeDuplicateSlashes(path: string): Router.PathInput {
-  return path.replace(/\/\/+/g, "/") as Router.PathInput
+  return path.indexOf("//") === -1 ? path as Router.PathInput : path.replace(/\/\/+/g, "/") as Router.PathInput
 }
 
 function trimLastSlash(path: string): Router.PathInput {
@@ -849,6 +849,15 @@ function decodeComponentChar(highCharCode: number, lowCharCode: number) {
 }
 
 function safeDecodeURI(path: string) {
+  if (
+    path.indexOf("%", 1) === -1 &&
+    path.indexOf("?", 1) === -1 &&
+    path.indexOf(";", 1) === -1 &&
+    path.indexOf("#", 1) === -1
+  ) {
+    return { path, querystring: "", shouldDecodeParam: false } as const
+  }
+
   let shouldDecode = false
   let shouldDecodeParam = false
 

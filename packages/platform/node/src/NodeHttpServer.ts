@@ -25,6 +25,7 @@ import * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import type * as Path from "effect/Path"
 import type * as Record from "effect/Record"
+import * as References from "effect/References"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Cookies from "effect/unstable/http/Cookies"
@@ -199,15 +200,21 @@ export const makeHandler = <
   never,
   Exclude<Effect.Services<App>, HttpServerRequest | Scope.Scope>
 > => {
-  const handled = HttpEffect.toHandled(httpEffect, handleResponse, options.middleware as any)
   return Effect.withFiber((parent) => {
+    const handled = parent.getRef(References.TracerEnabled)
+      ? HttpEffect.toHandled(httpEffect, handleResponse, options.middleware as any)
+      : HttpEffect.toHandledNoTracer(httpEffect, handleResponse, options.middleware as any)
     const services = parent.context
     return Effect.succeed(function handler(
       nodeRequest: Http.IncomingMessage,
       nodeResponse: Http.ServerResponse
     ) {
-      const context = Context.add(services, HttpServerRequest, new ServerRequestImpl(nodeRequest, nodeResponse))
-      const fiber = Fiber.runIn(Effect.runForkWith(context as Context.Context<any>)(handled), options.scope)
+      const context = Context.addUnsafe(
+        services,
+        HttpServerRequest.key,
+        new ServerRequestImpl(nodeRequest, nodeResponse)
+      )
+      const fiber = Effect.runForkInWith(context as Context.Context<any>, handled, options.scope)
       nodeResponse.on("close", () => {
         if (!nodeResponse.writableEnded) {
           fiber.interruptUnsafe(parent.id, ClientAbort.annotation)
@@ -241,9 +248,12 @@ export const makeUpgradeHandler = <
   never,
   Exclude<Effect.Services<App>, HttpServerRequest | Scope.Scope>
 > => {
-  const handledApp = HttpEffect.toHandled(httpEffect, handleResponse, options.middleware as any)
   return Effect.withFiber((parent) => {
+    const handledApp = parent.getRef(References.TracerEnabled)
+      ? HttpEffect.toHandled(httpEffect, handleResponse, options.middleware as any)
+      : HttpEffect.toHandledNoTracer(httpEffect, handleResponse, options.middleware as any)
     const services = parent.context
+    const runInScope = Fiber.runIn(options.scope)
     return Effect.succeed(function handler(
       nodeRequest: Http.IncomingMessage,
       socket: Duplex,
@@ -281,12 +291,12 @@ export const makeUpgradeHandler = <
             (ws) => Effect.sync(() => ws.close())
           )
       ))
-      const context = Context.add(
+      const context = Context.addUnsafe(
         services,
-        HttpServerRequest,
+        HttpServerRequest.key,
         new ServerRequestImpl(nodeRequest, nodeResponse, upgradeEffect)
       )
-      const fiber = Fiber.runIn(Effect.runForkWith(context as Context.Context<any>)(handledApp), options.scope)
+      const fiber = runInScope(Effect.runForkWith(context as Context.Context<any>, handledApp))
       socket.on("error", () => {})
       socket.on("close", () => {
         if (!socket.writableEnded) {

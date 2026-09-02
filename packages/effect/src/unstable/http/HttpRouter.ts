@@ -13,13 +13,13 @@ import * as Arr from "../../Array.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import { compose, dual, identity } from "../../Function.ts"
+import * as internalEffect from "../../internal/effect.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import type { ReadonlyRecord } from "../../Record.ts"
 import * as Schema from "../../Schema.ts"
 import type { ParseOptions } from "../../SchemaAST.ts"
 import * as Scope from "../../Scope.ts"
-import * as Tracer from "../../Tracer.ts"
 import type * as Types from "../../Types.ts"
 import * as FindMyWay from "./FindMyWay.ts"
 import * as HttpEffect from "./HttpEffect.ts"
@@ -56,7 +56,10 @@ export interface HttpRouter {
     handler:
       | HttpServerResponse.HttpServerResponse
       | Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
-      | ((request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
+      | ((
+        request: HttpServerRequest.HttpServerRequest,
+        params: ReadonlyRecord<string, string | undefined>
+      ) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
     options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ) => Effect.Effect<
     void,
@@ -117,7 +120,14 @@ export const HttpRouter: Context.Service<HttpRouter, HttpRouter> = Context.Servi
  * @since 4.0.0
  */
 export const make = Effect.gen(function*() {
-  const router = FindMyWay.make<Route<any, never>>(yield* RouterConfig)
+  interface RegisteredRoute {
+    readonly route: Route<any, any>
+    readonly handler: Effect.Effect<HttpServerResponse.HttpServerResponse, unknown>
+    readonly handlerFunction: RouteHandler<any, any> | undefined
+    readonly prefix: string | undefined
+  }
+
+  const router = FindMyWay.make<RegisteredRoute>(yield* RouterConfig)
   const middleware = new Set<middleware.Fn>()
 
   const addAll = <const Routes extends ReadonlyArray<Route<any, any>>>(
@@ -141,19 +151,30 @@ export const make = Effect.gen(function*() {
           ...routes[i],
           handler: applyMiddleware(routes[i].handler as Effect.Effect<HttpServerResponse.HttpServerResponse>)
         })
+        const registered: RegisteredRoute = {
+          route,
+          handler: (route.uninterruptible ? route.handler : Effect.interruptible(route.handler)) as Effect.Effect<
+            HttpServerResponse.HttpServerResponse,
+            unknown
+          >,
+          handlerFunction: middleware.length === 0
+            ? (route as any)[RouteHandlerTypeId]
+            : undefined,
+          prefix: Option.getOrUndefined(route.prefix)
+        }
         if (route.method === "*") {
           if (route.path.endsWith("/*")) {
-            router.all(route.path, route as any)
-            router.all(route.path.slice(0, -2) as any, route as any)
+            router.all(route.path, registered)
+            router.all(route.path.slice(0, -2) as any, registered)
           } else {
-            router.all(route.path, route as any)
+            router.all(route.path, registered)
           }
         } else {
           if (route.path.endsWith("/*")) {
-            router.on(route.method, route.path, route as any)
-            router.on(route.method, route.path.slice(0, -2) as any, route as any)
+            router.on(route.method, route.path, registered)
+            router.on(route.method, route.path.slice(0, -2) as any, registered)
           } else {
-            router.on(route.method, route.path, route as any)
+            router.on(route.method, route.path, registered)
           }
         }
       }
@@ -167,20 +188,7 @@ export const make = Effect.gen(function*() {
         ...this,
         prefixed: (newPrefix: string) => this.prefixed(prefixPath(prefix, newPrefix)),
         addAll: (routes) => addAll(routes.map(prefixRoute(prefix))) as any,
-        add: (method, path, handler, options) =>
-          addAll([
-            makeRoute({
-              method,
-              path: prefixPath(path, prefix) as PathInput,
-              handler: HttpServerResponse.isHttpServerResponse(handler) ?
-                Effect.succeed(handler) :
-                Effect.isEffect(handler)
-                ? handler
-                : Effect.flatMap(HttpServerRequest.HttpServerRequest, handler),
-              uninterruptible: options?.uninterruptible ?? false,
-              prefix
-            })
-          ])
+        add: (method, path, handler, options) => addAll([prefixRoute(route(method, path, handler, options), prefix)])
       })
     },
     addAll,
@@ -204,33 +212,37 @@ export const make = Effect.gen(function*() {
             })
           )
         }
-        const route = result.handler
-        if (Option.isSome(route.prefix)) {
-          context = Context.add(
+        const registered = result.handler
+        const route = registered.route
+        const span = fiber.cache.span
+        let routeRequest = request
+        if (registered.prefix !== undefined) {
+          routeRequest = sliceRequestUrl(request, registered.prefix)
+          context = Context.addUnsafe(
             context,
-            HttpServerRequest.HttpServerRequest,
-            sliceRequestUrl(request, route.prefix.value)
+            HttpServerRequest.HttpServerRequest.key,
+            routeRequest
           )
         }
-        context = Context.add(context, HttpServerRequest.ParsedSearchParams, result.searchParams)
-        context = Context.add(context, RouteContext, {
-          route,
-          params: result.params
-        })
+        context = Context.addUnsafe2(
+          context,
+          HttpServerRequest.ParsedSearchParams.key,
+          result.searchParams,
+          RouteContext.key,
+          { route, params: result.params }
+        )
 
-        const span = Context.getOrUndefined(context, Tracer.ParentSpan)
         if (span && span._tag === "Span") {
           span.attribute("http.route", route.path)
         }
-        return Effect.updateContext(
-          (route.uninterruptible ?
-            route.handler :
-            Effect.interruptible(route.handler)) as Effect.Effect<
-              HttpServerResponse.HttpServerResponse,
-              unknown
-            >,
-          () => context
-        )
+        internalEffect.fiberSetContext(fiber, context)
+        if (registered.handlerFunction === undefined) {
+          return registered.handler
+        }
+        const routeEffect = route.uninterruptible
+          ? registered.handlerFunction(routeRequest, result.params)
+          : internalEffect.fiberInterruptibleWith2(fiber, registered.handlerFunction, routeRequest, result.params)
+        return routeEffect as Effect.Effect<HttpServerResponse.HttpServerResponse, unknown>
       })
       if (middleware.size === 0) return handler
       for (const fn of Arr.reverse(middleware)) {
@@ -507,7 +519,10 @@ export const add = <E = never, R = never>(
   handler:
     | HttpServerResponse.HttpServerResponse
     | Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
-    | ((request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
+    | ((
+      request: HttpServerRequest.HttpServerRequest,
+      params: ReadonlyRecord<string, string | undefined>
+    ) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
   options?: {
     readonly uninterruptible?: boolean | undefined
   }
@@ -598,6 +613,12 @@ export const toHttpEffect = <A, E, R>(
   }) as any
 
 const RouteTypeId = "~effect/http/HttpRouter/Route"
+const RouteHandlerTypeId = Symbol.for("effect/http/HttpRouter/Route/handler")
+
+type RouteHandler<E, R> = (
+  request: HttpServerRequest.HttpServerRequest,
+  params: ReadonlyRecord<string, string | undefined>
+) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
 
 /**
  * Description of a registered HTTP route.
@@ -662,8 +683,9 @@ const makeRoute = <E, R>(options: {
  * **Details**
  *
  * The handler may be a static response, an effect that produces a response, or a
- * function from the current request to a response effect. Set `uninterruptible` to
- * prevent the route handler from being made interruptible while it runs.
+ * function receiving the current request and matched path parameters. Set
+ * `uninterruptible` to prevent the route handler from being made interruptible
+ * while it runs.
  *
  * @category routes
  * @since 4.0.0
@@ -674,12 +696,15 @@ export const route = <E = never, R = never>(
   handler:
     | HttpServerResponse.HttpServerResponse
     | Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
-    | ((request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
+    | RouteHandler<E, R>,
   options?: {
     readonly uninterruptible?: boolean | undefined
   }
-): Route<E, Exclude<R, Provided>> =>
-  makeRoute({
+): Route<E, Exclude<R, Provided>> => {
+  const handlerFunction = HttpServerResponse.isHttpServerResponse(handler) || Effect.isEffect(handler)
+    ? undefined
+    : handler
+  const result = makeRoute({
     ...options,
     method,
     path,
@@ -687,9 +712,20 @@ export const route = <E = never, R = never>(
       Effect.succeed(handler) :
       Effect.isEffect(handler)
       ? handler
-      : Effect.flatMap(HttpServerRequest.HttpServerRequest, handler),
+      : Effect.withFiber((fiber) => {
+        const context = fiber.context
+        return handler(
+          Context.getUnsafe(context, HttpServerRequest.HttpServerRequest),
+          Context.getUnsafe(context, RouteContext).params
+        )
+      }),
     uninterruptible: options?.uninterruptible ?? false
   })
+  if (handlerFunction !== undefined) {
+    Object.defineProperty(result, RouteHandlerTypeId, { value: handlerFunction })
+  }
+  return result
+}
 
 /**
  * Path pattern accepted by the router. Routes must use an absolute path
@@ -740,15 +776,21 @@ export const prefixPath: {
 export const prefixRoute: {
   (prefix: string): <E, R>(self: Route<E, R>) => Route<E, R>
   <E, R>(self: Route<E, R>, prefix: string): Route<E, R>
-} = dual(2, <E, R>(self: Route<E, R>, prefix: string): Route<E, R> =>
-  makeRoute({
+} = dual(2, <E, R>(self: Route<E, R>, prefix: string): Route<E, R> => {
+  const result = makeRoute({
     ...self,
     path: prefixPath(self.path, prefix) as PathInput,
     prefix: Option.match(self.prefix, {
       onNone: () => prefix as string,
       onSome: (existingPrefix) => prefixPath(existingPrefix, prefix) as string
     })
-  }))
+  })
+  const handlerFunction = (self as any)[RouteHandlerTypeId]
+  if (handlerFunction !== undefined) {
+    Object.defineProperty(result, RouteHandlerTypeId, { value: handlerFunction })
+  }
+  return result
+})
 
 /**
  * Represents a request-level dependency, that needs to be provided by

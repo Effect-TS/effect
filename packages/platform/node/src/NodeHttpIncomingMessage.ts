@@ -11,6 +11,7 @@
  *
  * @since 4.0.0
  */
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
@@ -21,6 +22,19 @@ import * as IncomingMessage from "effect/unstable/http/HttpIncomingMessage"
 import * as UrlParams from "effect/unstable/http/UrlParams"
 import type * as Http from "node:http"
 import * as NodeStream from "./NodeStream.ts"
+
+const cachedUnsafe = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
+  const deferred = Deferred.makeUnsafe<A, E>()
+  let started = false
+  return Effect.suspend(() => {
+    if (started) return Deferred.await(deferred)
+    started = true
+    return Effect.onExitPrimitive(effect, (exit) => {
+      Deferred.doneUnsafe(deferred, exit)
+      return undefined
+    })
+  })
+}
 
 /**
  * Adapts a Node `IncomingMessage` to Effect HTTP incoming messages.
@@ -76,7 +90,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
     if (this.textEffect) {
       return this.textEffect
     }
-    this.textEffect = Effect.runSync(Effect.cached(
+    this.textEffect = cachedUnsafe(
       Effect.flatMap(
         IncomingMessage.MaxBodySize,
         (maxBodySize) =>
@@ -85,7 +99,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
             maxBytes: maxBodySize
           })
       )
-    ))
+    )
     this.arrayBufferEffect = Effect.map(this.textEffect, (_) => new TextEncoder().encode(_).buffer)
     return this.textEffect
   }
@@ -126,15 +140,12 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
     if (this.arrayBufferEffect) {
       return this.arrayBufferEffect
     }
-    this.arrayBufferEffect = Effect.withFiber((fiber) =>
+    this.arrayBufferEffect = cachedUnsafe(Effect.withFiber((fiber) =>
       NodeStream.toArrayBuffer(() => this.source, {
         onError: this.onError,
         maxBytes: fiber.getRef(IncomingMessage.MaxBodySize)
       })
-    ).pipe(
-      Effect.cached,
-      Effect.runSync
-    )
+    ))
     this.textEffect = Effect.map(this.arrayBufferEffect, (_) => new TextDecoder().decode(_))
     return this.arrayBufferEffect
   }

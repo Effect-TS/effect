@@ -8835,9 +8835,28 @@ export const runFork: <A, E>(effect: Effect<A, E, never>, options?: RunOptions |
  * @category running
  * @since 4.0.0
  */
-export const runForkWith: <R>(
-  context: Context.Context<R>
-) => <A, E>(effect: Effect<A, E, R>, options?: RunOptions | undefined) => Fiber<A, E> = internal.runForkWith
+export const runForkWith: {
+  <R>(context: Context.Context<R>): <A, E>(effect: Effect<A, E, R>, options?: RunOptions | undefined) => Fiber<A, E>
+  <A, E, R>(context: Context.Context<R>, effect: Effect<A, E, R>, options?: RunOptions | undefined): Fiber<A, E>
+} = internal.runForkWith
+
+/**
+ * Runs an effect with the provided services and attaches the resulting fiber to
+ * a scope.
+ *
+ * **When to use**
+ *
+ * Use when an integration starts a background fiber that should be interrupted
+ * and awaited as part of an existing scope's shutdown.
+ *
+ * @category running
+ * @since 4.0.0
+ */
+export const runForkInWith: <A, E, R>(
+  context: Context.Context<R>,
+  effect: Effect<A, E, R>,
+  scope: Scope
+) => Fiber<A, E> = internal.runForkInWith
 
 /**
  * Forks an effect with the provided services, registers `onExit` as a fiber observer, and returns an interruptor.

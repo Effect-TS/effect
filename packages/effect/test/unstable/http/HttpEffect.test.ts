@@ -1,8 +1,8 @@
 import { describe, it, test } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Context, Effect, References, Scope, Stream } from "effect"
+import { Context, Effect, Exit, References, Scope, Stream } from "effect"
 import * as Layer from "effect/Layer"
-import { HttpEffect, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
+import { HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import {
   appendPreResponseHandlerUnsafe,
   requestPreResponseHandlers
@@ -11,6 +11,27 @@ import {
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
 
 describe("HttpEffect", () => {
+  it.effect("passes the response exit to request scope finalizers without tracing", () => {
+    const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
+    const response = HttpServerResponse.empty()
+    let finalizerExit: Exit.Exit<unknown, unknown> | undefined
+    return Effect.gen(function*() {
+      yield* HttpEffect.toHandledNoTracer(
+        Effect.gen(function*() {
+          yield* Effect.addFinalizer((exit) =>
+            Effect.sync(() => {
+              finalizerExit = exit
+            })
+          )
+          return response
+        }),
+        () => Effect.void
+      )
+
+      deepStrictEqual(finalizerExit, Exit.succeed(response))
+    }).pipe(Effect.provideService(HttpServerRequest.HttpServerRequest, request))
+  })
+
   it.effect("restores the request Scope context identity", () => {
     const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
     return Effect.gen(function*() {
@@ -34,6 +55,35 @@ describe("HttpEffect", () => {
       Effect.provideService(References.TracerEnabled, false)
     )
   })
+
+  it.effect("restores route context and interruptibility before handling the response", () =>
+    Effect.gen(function*() {
+      const router = yield* HttpRouter.make
+      const request = HttpServerRequest.fromWeb(new Request("http://localhost/"))
+      let routeInterruptible = false
+      let responseInterruptible = true
+      let responseRouteContext: unknown
+
+      yield* router.add("GET", "/", () =>
+        Effect.withFiber((fiber) => {
+          routeInterruptible = (fiber as any).interruptible
+          return Effect.succeed(HttpServerResponse.empty())
+        }))
+
+      yield* HttpEffect.toHandledNoTracer(
+        router.asHttpEffect(),
+        () =>
+          Effect.withFiber((fiber) => {
+            responseInterruptible = (fiber as any).interruptible
+            responseRouteContext = Context.getOrUndefined(fiber.context, HttpRouter.RouteContext)
+            return Effect.void
+          })
+      ).pipe(Effect.provideService(HttpServerRequest.HttpServerRequest, request))
+
+      strictEqual(routeInterruptible, true)
+      strictEqual(responseInterruptible, false)
+      strictEqual(responseRouteContext, undefined)
+    }))
 
   describe("toWebHandler", () => {
     test("json", async () => {

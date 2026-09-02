@@ -28,6 +28,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Path from "effect/Path"
 import type * as Record from "effect/Record"
+import * as References from "effect/References"
 import * as Scheduler from "effect/Scheduler"
 import type * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
@@ -161,20 +162,24 @@ export const make = Effect.fnUntraced(
         const services = parent.context
         const serveScope = Context.getUnsafe(services, Scope.Scope)
         const scope = Scope.forkUnsafe(serveScope, "parallel")
+        const runInScope = Fiber.runIn(scope)
 
-        const httpEffect = HttpEffect.toHandled(httpApp, (request, response) =>
+        const toHandled = parent.getRef(References.TracerEnabled)
+          ? HttpEffect.toHandled
+          : HttpEffect.toHandledNoTracer
+        const httpEffect = toHandled(httpApp, (request, response) =>
           Effect.sync(() => {
             ;(request as BunServerRequest).resolve(makeResponse(request, response, services, scope))
           }), middleware)
 
         function handler(request: Request, server: BunServer<WebSocketContext>) {
           return new Promise<Response>((resolve, _reject) => {
-            const context = Context.add(
+            const context = Context.addUnsafe(
               services,
-              ServerRequest.HttpServerRequest,
+              ServerRequest.HttpServerRequest.key,
               new BunServerRequest(request, resolve, removeHost(request.url), server, compressionThreshold)
             )
-            const fiber = Fiber.runIn(Effect.runForkWith(context)(httpEffect), scope)
+            const fiber = runInScope(Effect.runForkWith(context, httpEffect))
             request.signal.addEventListener("abort", () => {
               fiber.interruptUnsafe(parent.id, Error.ClientAbort.annotation)
             }, { once: true })

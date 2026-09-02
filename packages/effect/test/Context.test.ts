@@ -18,6 +18,16 @@ describe("Context", () => {
     deepStrictEqual([...result.mapUnsafe], [[A.key, 1], [B.key, 2]])
   })
 
+  it("adds two unsafe services with sequential-add semantics", () => {
+    const source = Context.make(A, 1)
+    const result = Context.addUnsafe2(source, B.key, 2, A.key, 3)
+
+    deepStrictEqual([...source.mapUnsafe], [[A.key, 1]])
+    deepStrictEqual([...result.mapUnsafe], [[A.key, 3], [B.key, 2]])
+    strictEqual(Context.get(result, A), 3)
+    strictEqual(Context.get(result, B), 2)
+  })
+
   it("removes a service with addOrOmit", () => {
     const context = Context.make(A, 1).pipe(Context.addOrOmit(A, Option.none()))
 

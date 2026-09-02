@@ -241,16 +241,22 @@ export const toString = <E = Cause.UnknownError>(
     stream.once("end", () => {
       resume(Effect.succeed(string))
     })
-    stream.on("data", (chunk) => {
-      string += chunk
-      bytes += Buffer.byteLength(chunk)
-      if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
-        if ("closed" in stream && !stream.closed) {
-          stream.destroy()
+    if (maxBytesNumber === undefined) {
+      stream.on("data", (chunk) => {
+        string += chunk
+      })
+    } else {
+      stream.on("data", (chunk) => {
+        string += chunk
+        bytes += Buffer.byteLength(chunk)
+        if (bytes > maxBytesNumber) {
+          if ("closed" in stream && !stream.closed) {
+            stream.destroy()
+          }
+          resume(Effect.fail(onError(new Error("maxBytes exceeded")) as E))
         }
-        resume(Effect.fail(onError(new Error("maxBytes exceeded")) as E))
-      }
-    })
+      })
+    }
     return Effect.sync(() => {
       if ("closed" in stream && !stream.closed) {
         stream.destroy()

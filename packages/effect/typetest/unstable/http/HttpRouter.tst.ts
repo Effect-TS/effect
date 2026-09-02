@@ -1,8 +1,18 @@
 import { Context, Effect, Layer } from "effect"
-import { HttpRouter, type HttpServerError, HttpServerResponse } from "effect/unstable/http"
+import { HttpRouter, type HttpServerError, type HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { describe, expect, it } from "tstyche"
 
 describe("HttpRouter", () => {
+  describe("route", () => {
+    it("types callback request and params", () => {
+      HttpRouter.route("GET", "/users/:id", (request, params) => {
+        expect(request).type.toBe<HttpServerRequest.HttpServerRequest>()
+        expect(params).type.toBe<Readonly<Record<string, string | undefined>>>()
+        return Effect.succeed(HttpServerResponse.text(params.id ?? "missing"))
+      })
+    })
+  })
+
   describe("middleware", () => {
     it("provides handled request errors", () => {
       class MyError {

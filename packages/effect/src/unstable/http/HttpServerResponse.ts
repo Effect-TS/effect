@@ -1324,6 +1324,8 @@ const Proto: Omit<
   }
 }
 
+const headersProto = Object.getPrototypeOf(Headers.empty)
+
 const makeResponse = (options: {
   readonly status: number
   readonly statusText?: string | undefined
@@ -1340,7 +1342,9 @@ const makeResponse = (options: {
     self.body._tag !== "Empty" &&
     (self.body.contentType || self.body.contentLength !== undefined)
   ) {
-    const newHeaders = Headers.fromRecordUnsafe({ ...options.headers }) as any
+    const newHeaders = options.headers === undefined || options.headers === Headers.empty
+      ? Object.create(headersProto)
+      : Headers.fromRecordUnsafe({ ...options.headers }) as any
     if (self.body.contentType && (!preferHeaders || newHeaders["content-type"] === undefined)) {
       newHeaders["content-type"] = self.body.contentType
     }

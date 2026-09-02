@@ -55,6 +55,83 @@ describe("Effect", () => {
     assert.isFalse(Effect.isEffect([0]))
   })
 
+  it("runForkWith supports the uncurried form", () => {
+    const fiber = Effect.runForkWith(Context.make(ATag, "A"), ATag)
+    assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed("A"))
+  })
+
+  describe("runForkInWith", () => {
+    it("does not attach synchronously completed fibers", () => {
+      const scope = Scope.makeUnsafe()
+      const fiber = Effect.runForkInWith(Context.empty(), Effect.succeed("done"), scope)
+
+      assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed("done"))
+      assert.strictEqual(scope.state._tag, "Empty")
+    })
+
+    it.effect("scope close interrupts and awaits the fiber", () =>
+      Effect.gen(function*() {
+        const scope = Scope.makeUnsafe()
+        const interruptStarted = yield* Deferred.make<void>()
+        const interruptFinished = yield* Deferred.make<void>()
+        const fiber = Effect.runForkInWith(
+          Context.empty(),
+          Effect.never.pipe(
+            Effect.onInterrupt(() =>
+              Deferred.succeed(interruptStarted, void 0).pipe(
+                Effect.andThen(Deferred.await(interruptFinished))
+              )
+            )
+          ),
+          scope
+        )
+        const closeFiber = yield* Scope.close(scope, Exit.void).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        assert.isTrue(yield* Deferred.isDone(interruptStarted))
+        assert.isUndefined(closeFiber.pollUnsafe())
+        yield* Deferred.succeed(interruptFinished, void 0)
+        yield* Fiber.join(closeFiber)
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+      }))
+
+    it.effect("interrupts a pending fiber when the scope is already closed", () =>
+      Effect.gen(function*() {
+        const scope = Scope.makeUnsafe()
+        yield* Scope.close(scope, Exit.void)
+
+        const fiber = Effect.runForkInWith(Context.empty(), Effect.never, scope)
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+      }))
+
+    it.effect("interrupts and awaits all fibers attached to a parallel scope", () =>
+      Effect.gen(function*() {
+        const scope = Scope.makeUnsafe("parallel")
+        const release = yield* Deferred.make<void>()
+        let interrupted = 0
+        const effect = Effect.never.pipe(
+          Effect.onInterrupt(() =>
+            Effect.sync(() => {
+              interrupted++
+            }).pipe(Effect.andThen(Deferred.await(release)))
+          )
+        )
+        const first = Effect.runForkInWith(Context.empty(), effect, scope)
+        const second = Effect.runForkInWith(Context.empty(), effect, scope)
+        const closeFiber = yield* Scope.close(scope, Exit.void).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        assert.strictEqual(interrupted, 2)
+        assert.isUndefined(closeFiber.pollUnsafe())
+        yield* Deferred.succeed(release, void 0)
+        yield* Fiber.join(closeFiber)
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(first)))
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(second)))
+      }))
+  })
+
   describe("structural compare", () => {
     it("should pass structural comparison", () => {
       assert.deepEqual(Effect.succeed(0), Effect.succeed(0))
@@ -2958,6 +3035,27 @@ describe("Effect", () => {
         const result = yield* Effect.flip(Effect.catch(Effect.fail("e1" as const), () => Effect.fail("e2" as const)))
         assert.deepStrictEqual(result, "e2")
       }))
+    it.effect("catches the typed failure in a mixed cause", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.catch(
+          Effect.failCause(Cause.combine(Cause.die("defect"), Cause.fail("failure"))),
+          Effect.succeed
+        )
+        assert.strictEqual(result, "failure")
+      }))
+    it.effect("preserves causes without a typed failure", () =>
+      Effect.gen(function*() {
+        const exit = yield* Effect.exit(Effect.catch(Effect.die("defect"), () => Effect.succeed("caught")))
+        assertExitDefect(exit, "defect")
+      }))
+    it.effect("turns a throwing handler into a defect", () =>
+      Effect.gen(function*() {
+        const defect = new Error("boom")
+        const exit = yield* Effect.exit(Effect.catch(Effect.fail("failure"), (): Effect.Effect<never> => {
+          throw defect
+        }))
+        assertExitDefect(exit, defect)
+      }))
   })
 
   describe("firstSuccessOf", () => {
@@ -3436,6 +3534,39 @@ describe("Effect", () => {
         yield* Effect.yieldNow
         yield* TestClock.adjust("2 seconds")
         assert.strictEqual(yield* Fiber.join(secondFiber), 1)
+        assert.strictEqual(count, 1)
+      }))
+  })
+
+  describe("cached", () => {
+    it.effect("runs once for concurrent and subsequent consumers", () =>
+      Effect.gen(function*() {
+        let count = 0
+        const latch = Latch.makeUnsafe()
+        const cached = yield* Effect.cached(
+          latch.await.pipe(
+            Effect.andThen(Effect.sync(() => ++count))
+          )
+        )
+
+        const fibers = yield* Effect.all([cached, cached], { concurrency: "unbounded" }).pipe(Effect.forkChild)
+        yield* Effect.yieldNow
+        latch.openUnsafe()
+
+        assert.deepStrictEqual(yield* Fiber.join(fibers), [1, 1])
+        assert.strictEqual(yield* cached, 1)
+        assert.strictEqual(count, 1)
+      }))
+
+    it.effect("caches failures", () =>
+      Effect.gen(function*() {
+        let count = 0
+        const cached = yield* Effect.cached(
+          Effect.sync(() => ++count).pipe(Effect.andThen(Effect.fail("error")))
+        )
+
+        assertExitFailure(yield* Effect.exit(cached), Cause.fail("error"))
+        assertExitFailure(yield* Effect.exit(cached), Cause.fail("error"))
         assert.strictEqual(count, 1)
       }))
   })

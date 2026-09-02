@@ -16,6 +16,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Path from "effect/Path"
 import type * as Record from "effect/Record"
+import * as References from "effect/References"
 import type * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -110,8 +111,12 @@ export const make = Effect.fnUntraced(function*(
       const services = parent.context
       const serveScope = Context.getUnsafe(services, Scope.Scope)
       const scope = Scope.forkUnsafe(serveScope, "parallel")
+      const runInScope = Fiber.runIn(scope)
 
-      const httpEffect = HttpEffect.toHandled(httpApp, (request, response) => {
+      const toHandled = parent.getRef(References.TracerEnabled)
+        ? HttpEffect.toHandled
+        : HttpEffect.toHandledNoTracer
+      const httpEffect = toHandled(httpApp, (request, response) => {
         const denoRequest = request as DenoServerRequest
         if (denoRequest.upgraded) return cancelResponseBody(response.body)
         return Effect.flatMap(
@@ -125,12 +130,12 @@ export const make = Effect.fnUntraced(function*(
         info: Deno.ServeHandlerInfo<Deno.NetAddr | Deno.UnixAddr>
       ): Promise<Response> {
         return new Promise<Response>((resolve) => {
-          const context = Context.add(
+          const context = Context.addUnsafe(
             services,
-            ServerRequest.HttpServerRequest,
+            ServerRequest.HttpServerRequest.key,
             new DenoServerRequest(request, info.remoteAddr, resolve, removeHost(request.url), websocket)
           )
-          const fiber = Fiber.runIn(Effect.runForkWith(context)(httpEffect), scope)
+          const fiber = runInScope(Effect.runForkWith(context, httpEffect))
           request.signal.addEventListener("abort", () => {
             fiber.interruptUnsafe(parent.id, Error.ClientAbort.annotation)
           }, { once: true })

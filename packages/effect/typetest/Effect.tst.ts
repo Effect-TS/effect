@@ -160,6 +160,28 @@ describe("Effect.tryPromise", () => {
   })
 })
 
+describe("Effect.runForkWith", () => {
+  const context = Context.make(AcquireReleaseDependency, "value")
+
+  it("supports the curried form", () => {
+    expect(Effect.runForkWith(context)(AcquireReleaseDependency)).type.toBe<Fiber.Fiber<string>>()
+  })
+
+  it("supports the uncurried form", () => {
+    expect(Effect.runForkWith(context, AcquireReleaseDependency)).type.toBe<Fiber.Fiber<string>>()
+  })
+})
+
+describe("Effect.runForkInWith", () => {
+  const context = Context.make(AcquireReleaseDependency, "value")
+  const scope = null as any as Scope.Scope
+
+  it("provides context services and preserves the error type", () => {
+    expect(Effect.runForkInWith(context, Effect.andThen(AcquireReleaseDependency, Effect.fail("error")), scope)).type
+      .toBe<Fiber.Fiber<never, string>>()
+  })
+})
+
 describe("Effect.catchReason", () => {
   it("handler receives reason type", () => {
     pipe(

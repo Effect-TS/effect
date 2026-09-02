@@ -808,6 +808,45 @@ export const addUnsafe = <Services, I, S>(
 }
 
 /**
+ * Adds two services by string key to a context in one operation.
+ *
+ * **When to use**
+ *
+ * Use when low-level infrastructure needs to extend a context with two trusted
+ * services while avoiding an intermediate context allocation.
+ *
+ * @category combining
+ * @since 4.0.0
+ */
+export const addUnsafe2 = <Services, I1, S1, I2, S2>(
+  self: Context<Services>,
+  key1: string,
+  service1: Types.NoInfer<S1>,
+  key2: string,
+  service2: Types.NoInfer<S2>
+): Context<Services | I1 | I2> => {
+  const impl = self as ContextImpl<Services>
+  const cacheRoot = cacheKeys.has(key1) || cacheKeys.has(key2) ? undefined : impl.cacheRoot
+  if (impl.depth + 2 > MaxDepth) {
+    const map = new Map(impl.mapUnsafe)
+    map.set(key1, service1)
+    map.set(key2, service2)
+    return makeImpl(cacheRoot, map, undefined, 0)
+  }
+
+  return makeImpl(
+    cacheRoot,
+    impl.base,
+    {
+      key: key2,
+      value: service2,
+      parent: { key: key1, value: service1, parent: impl.overlay }
+    },
+    impl.depth + 2
+  )
+}
+
+/**
  * Adds or removes a service depending on an `Option`.
  *
  * **When to use**

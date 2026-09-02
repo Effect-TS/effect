@@ -46,6 +46,23 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
+  it.effect("caches concurrent and subsequent text body reads", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "POST",
+        "/body",
+        (request) =>
+          Effect.gen(function*() {
+            const [first, second] = yield* Effect.all([request.text, request.text], { concurrency: "unbounded" })
+            const third = yield* request.text
+            return HttpServerResponse.text(`${first}|${second}|${third}`)
+          })
+      ).pipe(HttpRouter.serve, Layer.build)
+
+      const response = yield* HttpClient.post("/body", { body: HttpBody.text("payload") })
+      assert.strictEqual(yield* response.text, "payload|payload|payload")
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
   it.effect("schema", () =>
     Effect.gen(function*() {
       yield* HttpRouter.add(

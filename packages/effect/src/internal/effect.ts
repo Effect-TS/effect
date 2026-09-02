@@ -45,7 +45,7 @@ import type {
   Tags,
   unassigned
 } from "../Types.ts"
-import { internalCall } from "../Utils.ts"
+import { internalCall, internalCall1 } from "../Utils.ts"
 import type { Primitive } from "./core.ts"
 import {
   args,
@@ -497,6 +497,10 @@ const fiberVariance = {
 
 const fiberIdStore = { id: 0 }
 
+interface ScopeObserver {
+  readonly scope: Scope.Scope
+}
+
 /** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
 
@@ -520,6 +524,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._running = false
     this._deferredInterrupt = false
     this._parent = undefined
+    this._attachedScope = undefined
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
   }
 
@@ -529,7 +534,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   interruptible: boolean
   currentOpCount: number
   readonly _stack: Array<Primitive>
-  _observers: Array<(exit: Exit.Exit<A, E>) => void> | undefined
+  _observers: Array<((exit: Exit.Exit<A, E>) => void) | ScopeObserver> | undefined
   _exit: Exit.Exit<A, E> | undefined
   _children: Set<FiberImpl<any, any>> | undefined
   _interruptedCause: Cause.Cause<never> | undefined
@@ -537,6 +542,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   _running: boolean
   _deferredInterrupt: boolean
   _parent: FiberImpl<any, any> | undefined
+  _attachedScope: Scope.Scope | undefined
 
   // set in setContext
   context!: Context.Context<never>
@@ -615,6 +621,10 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 
     this._exit = exit
     this.cache.runtimeMetrics?.recordFiberEnd(this.context, this._exit)
+    if (this._attachedScope !== undefined) {
+      scopeRemoveFinalizerUnsafe(this._attachedScope, this)
+      this._attachedScope = undefined
+    }
     if (this._parent) {
       this._parent._children?.delete(this)
       this._parent = undefined
@@ -623,7 +633,12 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       const observers = this._observers
       this._observers = undefined
       for (let i = 0; i < observers.length; i++) {
-        observers[i](exit)
+        const observer = observers[i]
+        if (typeof observer === "function") {
+          observer(exit)
+        } else {
+          scopeRemoveFinalizerUnsafe(observer.scope, observer)
+        }
       }
     }
     this._stack.length = 0
@@ -1087,13 +1102,13 @@ export const tryPromise = <A, E = Cause.UnknownError>(
   return callbackOptions<A, E>(function(resume, signal) {
     const failWithCatch = (cause: unknown) => {
       try {
-        resume(fail(internalCall(() => catcher(cause)) as E))
+        resume(fail(internalCall1(catcher as (cause: unknown) => E, cause)))
       } catch (err) {
         resume(die(err))
       }
     }
     try {
-      internalCall(() => f(signal!)).then(
+      internalCall1(f, signal!).then(
         (a) => resume(succeed(a)),
         failWithCatch
       )
@@ -1125,19 +1140,20 @@ const callbackOptions: <A, E = never, R = never>(
   const Proto = makePrimitiveProto({
     op: "Async",
     [evaluate](this: any, fiber) {
-      const register = internalCall(() => this.register.bind(fiber.cache.scheduler))
       let resumed = false
       let yielded: boolean | Primitive = false
       const controller = this.withSignal ? new AbortController() : undefined
-      const onCancel = register((effect: Effect.Effect<any, any, any>) => {
-        if (resumed) return
-        resumed = true
-        if (yielded) {
-          fiber.evaluate(effect as any)
-        } else {
-          yielded = effect as any
-        }
-      }, controller?.signal)
+      const onCancel = internalCall(() =>
+        this.register.call(fiber.cache.scheduler, (effect: Effect.Effect<any, any, any>) => {
+          if (resumed) return
+          resumed = true
+          if (yielded) {
+            fiber.evaluate(effect as any)
+          } else {
+            yielded = effect as any
+          }
+        }, controller?.signal)
+      )
       if (yielded !== false) return yielded
       yielded = true
       fiber._yielded = () => {
@@ -1479,15 +1495,15 @@ const returnPayload = function(this: { readonly payload: any }) {
 }
 const mapCont = function(this: { readonly payload: any }, value: any) {
   const f = this.payload
-  return succeed(internalCall(() => f(value)))
+  return succeed(internalCall1(f, value))
 }
 const andThenCont = function(this: { readonly payload: any }, value: any) {
   const f = this.payload
-  return internalCall(() => f(value))
+  return internalCall1(f, value)
 }
 const tapCont = function(this: { readonly payload: any }, value: any) {
   const f = this.payload
-  return new ContImpl(internalCall(() => f(value)), returnPayload, exitSucceed(value))
+  return new ContImpl(internalCall1(f, value), returnPayload, exitSucceed(value))
 }
 const tapEffectCont = function(this: { readonly payload: any }, value: any) {
   return new ContImpl(this.payload, returnPayload, exitSucceed(value))
@@ -2237,6 +2253,31 @@ export const contextWith = <R, A, E, R2>(
   f: (context: Context.Context<R>) => Effect.Effect<A, E, R2>
 ): Effect.Effect<A, E, R | R2> => withFiber((fiber) => f(fiber.context as Context.Context<R>))
 
+const restoreFiberContext = (context: Context.Context<never>): Primitive => restoreFiberContextPrimitive(context)
+const restoreFiberContextPrimitive = makePrimitive({
+  op: "RestoreFiberContext",
+  [contAll](this: any, fiber: FiberImpl) {
+    fiber.setContext(this[args])
+  }
+})
+
+/** @internal */
+export const fiberSetContext = (
+  fiber: Fiber.Fiber<any, any>,
+  context: Context.Context<never>
+): void => {
+  const impl = fiber as FiberImpl
+  const previous = impl.context
+  if (previous === context) return
+  impl.setContext(context)
+  const frame = impl._stack[impl._stack.length - 1] as any
+  if (frame !== undefined && frame[scopedMatchCauseFrame] === true) {
+    frame.appContext ??= previous
+    return
+  }
+  impl._stack.push(restoreFiberContext(previous))
+}
+
 /** @internal */
 export const setContext: {
   <R>(
@@ -2646,8 +2687,21 @@ export const catch_: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (a: NoInfer<E>) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A | B, E2, R | R2> => catchCauseFilter(self, findError as any, (e: any) => f(e)) as any
+  ): Effect.Effect<A | B, E2, R | R2> => new CatchImpl(self, f) as any
 )
+const CatchProto = makePrimitiveProto({
+  op: "Catch",
+  [evaluate]: evaluateCont,
+  [contE](this: any, cause: Cause.Cause<any>) {
+    const error = findError(cause)
+    return Result.isFailure(error) ? failCause(error.failure) : internalCall1(this.payload, error.success)
+  }
+})
+const CatchImpl = function(this: any, self: Effect.Effect<any, any, any>, f: any) {
+  this[args] = self
+  this.payload = f
+} as unknown as PrimitiveCtor<[self: Effect.Effect<any, any, any>, f: any]>
+CatchImpl.prototype = CatchProto
 
 /** @internal */
 export const catchNoSuchElement = <A, E, R>(
@@ -4038,6 +4092,139 @@ export const scoped = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, 
   }) as any
 
 /** @internal */
+export const scopedMatchCauseEffect = <A, E, R, A2, E2, R2, A3, E3, R3>(
+  self: Effect.Effect<A, E, R>,
+  options: {
+    readonly onFailure: (cause: Cause.Cause<E>, fiber: FiberImpl) => Effect.Effect<A2, E2, R2>
+    readonly onSuccess: (value: A, fiber: FiberImpl) => Effect.Effect<A3, E3, R3>
+    readonly onExit: (
+      scope: Scope.Closeable,
+      exit: Exit.Exit<A2 | A3, E2 | E3>,
+      appSuccess: Exit.Exit<A> | undefined
+    ) => Effect.Effect<void> | undefined
+    readonly uninterruptible?: boolean | undefined
+  }
+): Effect.Effect<A2 | A3, E2 | E3, Exclude<R | R2 | R3, Scope.Scope>> =>
+  new (ScopedMatchCauseEffectImpl as any)(self, options) as any
+
+const ScopedMatchCauseEffectProto = makePrimitiveProto({
+  op: "ScopedMatchCauseEffect",
+  [evaluate](this: any, fiber: FiberImpl) {
+    const scope = scopeMakeUnsafe()
+    const previousContext = fiber.context
+    const restoreInterruptible = this.uninterruptible && fiber.interruptible
+    if (restoreInterruptible) {
+      fiber.interruptible = false
+    }
+    fiber.setContext(Context.add(fiber.context, scopeTag, scope))
+    fiber._stack.push(new (ScopedMatchCauseFrame as any)(this, scope, previousContext, restoreInterruptible))
+    return this.effect
+  }
+})
+
+const ScopedMatchCauseEffectImpl = function(this: any, effect: Effect.Effect<any, any, any>, options: any) {
+  this.effect = effect
+  this.onFailure = options.onFailure
+  this.onSuccess = options.onSuccess
+  this.onExit = options.onExit
+  this.uninterruptible = options.uninterruptible === true
+}
+ScopedMatchCauseEffectImpl.prototype = ScopedMatchCauseEffectProto
+
+const scopedMatchCauseFrame = Symbol("effect/Effect/scopedMatchCauseFrame")
+
+const ScopedMatchCauseFrameProto = {
+  [scopedMatchCauseFrame]: true,
+  [contA](this: any, value: any, fiber: FiberImpl, exit: Exit.Exit<any, any> | undefined) {
+    if (this.stage === 0) {
+      scopedMatchCausePrepare(this, fiber)
+      this.stage = 1
+      this.appSuccess = exit ?? exitSucceed(value)
+      fiber._stack.push(this)
+      const handled = this.effect.onSuccess(value, fiber)
+      if (
+        ExitTypeId in handled &&
+        (handled as any)._tag === "Success" &&
+        fiber._stack[fiber._stack.length - 1] === this
+      ) {
+        fiber._stack.pop()
+        return scopedMatchCauseCompleteSuccess(this, fiber, handled as any)
+      }
+      return handled
+    }
+    exit ??= exitSucceed(value)
+    return scopedMatchCauseCompleteSuccess(this, fiber, exit)
+  },
+  [contE](this: any, cause: Cause.Cause<any>, fiber: FiberImpl, exit: Exit.Exit<any, any> | undefined) {
+    if (this.stage === 0) {
+      scopedMatchCausePrepare(this, fiber)
+      this.stage = 2
+      fiber._stack.push(this)
+      return this.effect.onFailure(cause, fiber)
+    }
+    exit ??= exitFailCause(cause)
+    fiber.setContext(this.previousContext)
+    if (this.restoreInterruptible) {
+      fiber._stack.push(setInterruptibleTrue)
+    }
+    const finalizer = this.effect.onExit(this.scope, exit, this.appSuccess)
+    return finalizer ? flatMap(combineFinalizerCause(exit, finalizer), () => exit) : exit
+  }
+}
+
+const ScopedMatchCauseFrame = function(
+  this: any,
+  effect: any,
+  scope: Scope.Closeable,
+  previousContext: Context.Context<never>,
+  restoreInterruptible: boolean
+) {
+  this.effect = effect
+  this.scope = scope
+  this.previousContext = previousContext
+  this.restoreInterruptible = restoreInterruptible
+  this.restoreHandlerInterruptible = false
+  this.appContext = undefined
+  this.stage = 0
+  this.appSuccess = undefined
+}
+ScopedMatchCauseFrame.prototype = ScopedMatchCauseFrameProto
+
+const scopedMatchCausePrepare = (frame: any, fiber: FiberImpl): void => {
+  if (frame.appContext !== undefined) {
+    fiber.setContext(frame.appContext)
+    frame.appContext = undefined
+  }
+  if (frame.restoreHandlerInterruptible) {
+    fiber.interruptible = false
+    frame.restoreHandlerInterruptible = false
+  }
+}
+
+const scopedMatchCauseCompleteSuccess = (
+  frame: any,
+  fiber: FiberImpl,
+  exit: Exit.Exit<any, any>
+): Effect.Effect<any, any, any> | Yield => {
+  fiber.setContext(frame.previousContext)
+  if (frame.restoreInterruptible) {
+    fiber._stack.push(setInterruptibleTrue)
+  }
+  const finalizer = frame.effect.onExit(frame.scope, exit, frame.appSuccess)
+  if (finalizer) {
+    return flatMap(finalizer, () => exit)
+  }
+  if (frame.restoreInterruptible && fiber._stack[fiber._stack.length - 1] === setInterruptibleTrue) {
+    fiber._stack.pop()
+    fiber.interruptible = true
+    if (fiber._interruptedCause) {
+      return failCause(fiber._interruptedCause)
+    }
+  }
+  return fiber._stack.length === 0 ? fiber.yieldWith(exit) : exit
+}
+
+/** @internal */
 export const scopeUse: {
   (
     scope: Scope.Closeable
@@ -4390,7 +4577,23 @@ export const cachedWithTTL: {
 
 /** @internal */
 export const cached = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Effect.Effect<A, E, R>> =>
-  cachedWithTTL(self, Duration.infinity)
+  sync(() => {
+    const latch = makeLatchUnsafe(false)
+    let running = false
+    let exit: Exit.Exit<A, E> | undefined
+    const wait = flatMap(latch.await, () => exit!)
+    return suspend(() => {
+      if (exit !== undefined) return exit
+      if (running) return wait
+      running = true
+      return onExit(self, (exit_) =>
+        sync(() => {
+          running = false
+          exit = exit_
+          latch.openUnsafe()
+        }))
+    })
+  })
 
 // ----------------------------------------------------------------------------
 // interruption
@@ -4410,6 +4613,7 @@ export const uninterruptible = <A, E, R>(
     return self
   })
 
+/** @internal */
 const setInterruptible: (interruptible: boolean) => Primitive = makePrimitive({
   op: "SetInterruptible",
   [contAll](fiber) {
@@ -4426,6 +4630,27 @@ const setFiberInterruptible = (fiber: FiberImpl): Effect.Effect<never> | undefin
   fiber.interruptible = true
   fiber._stack.push(setInterruptibleFalse)
   if (fiber._interruptedCause) return failCause(fiber._interruptedCause)
+}
+
+/** @internal */
+export const fiberInterruptibleWith2 = <A, B, XA, E, R>(
+  fiber: Fiber.Fiber<any, any>,
+  f: (a: A, b: B) => Effect.Effect<XA, E, R>,
+  a: A,
+  b: B
+): Effect.Effect<XA, E, R> => {
+  const impl = fiber as FiberImpl
+  if (impl.interruptible) return f(a, b)
+  const frame = impl._stack[impl._stack.length - 1] as any
+  let interrupted: Effect.Effect<never> | undefined
+  if (frame !== undefined && frame[scopedMatchCauseFrame] === true) {
+    impl.interruptible = true
+    frame.restoreHandlerInterruptible = true
+    interrupted = impl._interruptedCause ? failCause(impl._interruptedCause) : undefined
+  } else {
+    interrupted = setFiberInterruptible(impl)
+  }
+  return interrupted ?? f(a, b)
 }
 
 /** @internal */
@@ -5511,11 +5736,28 @@ export const forkScoped: {
 // ----------------------------------------------------------------------------
 
 /** @internal */
-export const runForkWith = <R>(context: Context.Context<R>) =>
-<A, E>(
+export function runForkWith<R>(context: Context.Context<R>): <A, E>(
   effect: Effect.Effect<A, E, R>,
   options?: Effect.RunOptions | undefined
-): Fiber.Fiber<A, E> => {
+) => Fiber.Fiber<A, E>
+/** @internal */
+export function runForkWith<A, E, R>(
+  context: Context.Context<R>,
+  effect: Effect.Effect<A, E, R>,
+  options?: Effect.RunOptions | undefined
+): Fiber.Fiber<A, E>
+/** @internal */
+export function runForkWith<A, E, R>(
+  context: Context.Context<R>,
+  effect?: Effect.Effect<A, E, R>,
+  options?: Effect.RunOptions | undefined
+):
+  | Fiber.Fiber<A, E>
+  | ((effect: Effect.Effect<A, E, R>, options?: Effect.RunOptions | undefined) => Fiber.Fiber<A, E>)
+{
+  if (effect === undefined) {
+    return (effect, options) => runForkWith(context, effect, options)
+  }
   const fiber = new FiberImpl<A, E>(
     options?.scheduler ? Context.add(context, Scheduler.Scheduler, options.scheduler) : context,
     options?.uninterruptible !== true
@@ -5539,6 +5781,24 @@ export const runForkWith = <R>(context: Context.Context<R>) =>
 }
 
 /** @internal */
+export const runForkInWith = <A, E, R>(
+  context: Context.Context<R>,
+  effect: Effect.Effect<A, E, R>,
+  scope: Scope.Scope
+): Fiber.Fiber<A, E> => {
+  const fiber = new FiberImpl<A, E>(context)
+  fiber.evaluate(effect as any)
+  if (fiber._exit) return fiber
+  if (scope.state._tag === "Closed") {
+    fiber.interruptUnsafe(fiber.id)
+    return fiber
+  }
+  fiber._attachedScope = scope
+  scopeAddFinalizerUnsafe(scope, fiber, () => fiberInterrupt(fiber))
+  return fiber
+}
+
+/** @internal */
 export const fiberRunIn: {
   (scope: Scope.Scope): <A, E>(self: Fiber.Fiber<A, E>) => Fiber.Fiber<A, E>
   <A, E>(
@@ -5555,9 +5815,13 @@ export const fiberRunIn: {
     self.interruptUnsafe(self.id)
     return self
   }
-  const key = {}
-  scopeAddFinalizerUnsafe(scope, key, () => fiberInterrupt(self))
-  self.addObserver(() => scopeRemoveFinalizerUnsafe(scope, key))
+  const observer: ScopeObserver = { scope }
+  scopeAddFinalizerUnsafe(scope, observer, () => fiberInterrupt(self))
+  if (self._observers === undefined) {
+    self._observers = [observer]
+  } else {
+    self._observers.push(observer)
+  }
   return self
 })
 
