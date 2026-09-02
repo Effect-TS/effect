@@ -367,14 +367,7 @@ export const make = (
               } else {
                 const kind = Statement.primitiveKind(value)
                 const type = parameterTypes[kind]
-                req.addParameter(
-                  name,
-                  type,
-                  type === Tedious.TYPES.VarBinary && (kind === "Uint8Array" || kind === "Int8Array") &&
-                    !Buffer.isBuffer(value)
-                    ? Buffer.from(value.buffer, value.byteOffset, value.byteLength)
-                    : value
-                )
+                req.addParameter(name, type, value)
               }
             }
           }
@@ -714,6 +707,17 @@ function numberToParamName(n: number) {
   return `${Math.ceil(n + 1)}`
 }
 
+const byteArrayParameterType: DataType = {
+  ...Tedious.TYPES.VarBinary,
+  validate(value, collation, options) {
+    return Tedious.TYPES.VarBinary.validate(
+      Buffer.isBuffer(value) ? value : Buffer.from(value.buffer, value.byteOffset, value.byteLength),
+      collation,
+      options
+    )
+  }
+}
+
 /**
  * Default mapping from Effect SQL primitive value kinds to Tedious SQL Server parameter data types.
  *
@@ -726,8 +730,8 @@ export const defaultParameterTypes: Record<Statement.PrimitiveKind, DataType> = 
   bigint: Tedious.TYPES.BigInt,
   boolean: Tedious.TYPES.Bit,
   Date: Tedious.TYPES.DateTime,
-  Uint8Array: Tedious.TYPES.VarBinary,
-  Int8Array: Tedious.TYPES.VarBinary,
+  Uint8Array: byteArrayParameterType,
+  Int8Array: byteArrayParameterType,
   null: Tedious.TYPES.Bit
 }
 
