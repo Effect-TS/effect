@@ -423,6 +423,117 @@ describe("HttpApiClient", () => {
       }))
   })
 
+  describe("form responses", () => {
+    const Body = Schema.Struct({ name: Schema.String })
+    const Form = Body.pipe(HttpApiSchema.asFormUrlEncoded())
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("form", "/form", {
+          success: Form,
+          error: Form.pipe(HttpApiSchema.status(400))
+        }),
+        HttpApiEndpoint.get("json", "/json", {
+          success: Body,
+          error: Body.pipe(HttpApiSchema.status(400))
+        })
+      )
+    )
+
+    for (const status of [200, 400]) {
+      it.effect(`preserves escaping and repeated fields in a ${status} form response`, () =>
+        Effect.gen(function*() {
+          const Form = Schema.Struct({ name: Schema.String, tags: Schema.Array(Schema.String) }).pipe(
+            HttpApiSchema.asFormUrlEncoded()
+          )
+          const Api = HttpApi.make("Api").add(
+            HttpApiGroup.make("test").add(
+              HttpApiEndpoint.get("form", "/form", {
+                success: Form,
+                error: Form.pipe(HttpApiSchema.status(400))
+              })
+            )
+          )
+          const client = yield* HttpApiClient.makeWith(Api, {
+            baseUrl: "https://example.test",
+            httpClient: clientFromResponse(() =>
+              new Response("name=Ada+Lovelace&tags=a%2Fb&tags=100%25%2B", {
+                status,
+                headers: { "content-type": "application/x-www-form-urlencoded" }
+              })
+            )
+          })
+          const request = client.test.form({})
+          const value = yield* status === 200 ? request : Effect.flip(request)
+          assert.deepStrictEqual(value, { name: "Ada Lovelace", tags: ["a/b", "100%+"] })
+        }))
+
+      it.effect(`decodes a declared ${status} form response`, () =>
+        Effect.gen(function*() {
+          const client = yield* HttpApiClient.makeWith(Api, {
+            baseUrl: "https://example.test",
+            httpClient: clientFromResponse(() =>
+              new Response("name=Ada", {
+                status,
+                headers: { "content-type": "application/x-www-form-urlencoded" }
+              })
+            )
+          })
+
+          const request = client.test.form({})
+          const value = yield* status === 200 ? request : Effect.flip(request)
+          assert.deepStrictEqual(value, { name: "Ada" })
+        }))
+
+      it.effect(`decodes a declared ${status} JSON response`, () =>
+        Effect.gen(function*() {
+          const client = yield* HttpApiClient.makeWith(Api, {
+            baseUrl: "https://example.test",
+            httpClient: clientFromResponse(() =>
+              new Response(JSON.stringify({ name: "Ada" }), {
+                status,
+                headers: { "content-type": "application/json" }
+              })
+            )
+          })
+
+          const request = client.test.json({})
+          const value = yield* status === 200 ? request : Effect.flip(request)
+          assert.deepStrictEqual(value, { name: "Ada" })
+        }))
+
+      it.effect(`preserves a ${status} form response in response-only mode`, () =>
+        Effect.gen(function*() {
+          const client = yield* HttpApiClient.makeWith(Api, {
+            baseUrl: "https://example.test",
+            httpClient: clientFromResponse(() =>
+              new Response("name=Ada", {
+                status,
+                headers: { "content-type": "application/x-www-form-urlencoded" }
+              })
+            )
+          })
+
+          const response = yield* client.test.form({ responseMode: "response-only" })
+          assert.strictEqual(response.status, status)
+          assert.strictEqual(yield* response.text, "name=Ada")
+        }))
+    }
+
+    it.effect("decodes the same form body with schemaBodyUrlParams", () =>
+      Effect.gen(function*() {
+        const response = HttpClientResponse.fromWeb(
+          HttpClientRequest.get("https://example.test/form"),
+          new Response("name=Ada", {
+            status: 200,
+            headers: { "content-type": "application/x-www-form-urlencoded" }
+          })
+        )
+
+        const value = yield* HttpClientResponse.schemaBodyUrlParams(Body)(response)
+        assert.deepStrictEqual(value, { name: "Ada" })
+      }))
+  })
+
   describe("response headers", () => {
     it.effect("fails response decoding when a declared header is invalid", () =>
       Effect.gen(function*() {
