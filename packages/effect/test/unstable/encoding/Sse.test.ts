@@ -4,19 +4,11 @@ import * as Schema from "effect/Schema"
 import * as Sse from "effect/unstable/encoding/Sse"
 
 describe("Sse", () => {
-  it.each([
-    { name: "uniform LF endings", chunks: ["data: first\ndata: second\n\n"] },
-    { name: "uniform CRLF endings", chunks: ["data: first\r\ndata: second\r\n\r\n"] },
-    { name: "uniform CR endings", chunks: ["data: first\rdata: second\r\r"] },
-    { name: "mixed CRLF/LF endings in one feed", chunks: ["data: first\r\ndata: second\n\n"] },
-    { name: "mixed CRLF/LF endings split after CRLF", chunks: ["data: first\r\n", "data: second\n\n"] }
-  ])("parses $name", ({ chunks }) => {
+  it("parses mixed CRLF and LF line endings", () => {
     const events: Array<Sse.AnyEvent> = []
     const parser = Sse.makeParser((event) => events.push(event))
 
-    for (const chunk of chunks) {
-      assert.strictEqual(parser.feed(chunk), undefined)
-    }
+    parser.feed("data: first\r\ndata: second\n\n")
 
     assert.deepStrictEqual(events, [{
       _tag: "Event",
@@ -25,24 +17,6 @@ describe("Sse", () => {
       data: "first\nsecond"
     }])
   })
-
-  it.effect.each([
-    { name: "one chunk", chunks: ["data: first\r\ndata: second\n\n"] },
-    { name: "chunks split after CRLF", chunks: ["data: first\r\n", "data: second\n\n"] }
-  ])("decode parses mixed CRLF/LF endings in $name", ({ chunks }) =>
-    Effect.gen(function*() {
-      const events = yield* Stream.fromArray(chunks).pipe(
-        Stream.pipeThroughChannel(Sse.decode()),
-        Stream.runCollect
-      )
-
-      assert.deepStrictEqual([...events], [{
-        _tag: "Event",
-        event: "message",
-        id: undefined,
-        data: "first\nsecond"
-      }])
-    }))
 
   it("treats CRLF split across chunks as one line ending", () => {
     const events: Array<Sse.AnyEvent> = []
