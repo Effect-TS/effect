@@ -76,17 +76,8 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
     if (this.textEffect) {
       return this.textEffect
     }
-    this.textEffect = Effect.runSync(Effect.cached(
-      Effect.flatMap(
-        IncomingMessage.MaxBodySize,
-        (maxBodySize) =>
-          NodeStream.toString(() => this.source, {
-            onError: this.onError,
-            maxBytes: maxBodySize
-          })
-      )
-    ))
-    this.arrayBufferEffect = Effect.map(this.textEffect, (_) => new TextEncoder().encode(_).buffer)
+    // Preserve Node's BOM when text is selected first, without re-encoding the raw bytes.
+    this.textEffect = Effect.map(this.arrayBuffer, (_) => Buffer.from(_).toString("utf8"))
     return this.textEffect
   }
 
