@@ -123,7 +123,6 @@ type Emitter = {
   readonly statements: Array<string>
   readonly helpers: Array<string>
   readonly initializers: Array<string>
-  readonly objectHelpers: Map<SchemaAST.Objects, string>
   readonly decoderHelpers: Map<SchemaAST.AST, string>
   readonly unionHelpers: Map<SchemaAST.Union, string>
   readonly constants: Array<unknown>
@@ -299,40 +298,6 @@ const emitUnionHelper = (ast: SchemaAST.Union, emitter: Emitter): string => {
   return name
 }
 
-const emitObjectHelper = (ast: SchemaAST.Objects, emitter: Emitter): string => {
-  const cached = emitter.objectHelpers.get(ast)
-  if (cached !== undefined) return cached
-  const name = `h${emitter.objectHelpers.size}`
-  emitter.objectHelpers.set(ast, name)
-  const statements: Array<string> = []
-  if (ast.propertySignatures.some((property) => isOptional(property.type))) {
-    const output = variable(emitter)
-    statements.push(`const ${output}={}`)
-    for (const property of ast.propertySignatures) {
-      const key = propertyKey(emitter, property.name)
-      const value = variable(emitter)
-      const propertyStatements: Array<string> = [`const ${value}=i[${key}]`]
-      const decoded = emit(property.type, value, propertyStatements, emitter)
-      propertyStatements.push(assignProperty(output, key, decoded, property.name))
-      statements.push(
-        isOptional(property.type)
-          ? `if(Object.hasOwn(i,${key})){${propertyStatements.join(";")}}`
-          : `if(!Object.hasOwn(i,${key}))return I;${propertyStatements.join(";")}`
-      )
-    }
-    emitter.helpers.push(`function ${name}(i){${statements.join(";")};return ${output}}`)
-    return name
-  }
-  const properties = ast.propertySignatures.map((property) => {
-    const key = propertyKey(emitter, property.name)
-    const value = variable(emitter)
-    statements.push(`if(!Object.hasOwn(i,${key}))return I`, `const ${value}=i[${key}]`)
-    return `[${key}]:${emit(property.type, value, statements, emitter)}`
-  })
-  emitter.helpers.push(`function ${name}(i){${statements.join(";")};return{${properties.join(",")}}}`)
-  return name
-}
-
 const emitIndexes = (
   ast: SchemaAST.Objects,
   input: string,
@@ -488,7 +453,7 @@ const emitBase = (
         emitIndexes(ast, input, output, statements, emitter)
         return output
       }
-      const helper = emitObjectHelper(ast, emitter)
+      const fallback = constant(emitter, runtimeDecoder(ast))
       const prototype = variable(emitter)
       const output = variable(emitter)
       statements.push(`const ${prototype}=Object.getPrototypeOf(${input})`)
@@ -522,7 +487,7 @@ const emitBase = (
         plainStatements.push(`${output}={${properties.join(",")}}`)
       }
       statements.push(
-        `let ${output};if(${prototype}!==Object.prototype&&${prototype}!==null){${output}=${helper}(${input});if(${output}===I)return I}else{${
+        `let ${output};if(${prototype}!==Object.prototype&&${prototype}!==null){${output}=${fallback}(${input});if(${output}===I)return I}else{${
           plainStatements.join(";")
         }}`
       )
@@ -585,7 +550,6 @@ const make = (ast: SchemaAST.AST): Decoder | undefined => {
       statements: [],
       helpers: [],
       initializers: [],
-      objectHelpers: new Map(),
       decoderHelpers: new Map(),
       unionHelpers: new Map(),
       constants: [],
