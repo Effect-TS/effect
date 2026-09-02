@@ -1173,7 +1173,10 @@ export const refresh: {
         }
         const ttl = self.timeToLive(exit, key)
         if (Duration.isZero(ttl)) {
-          MutableHashMap.remove(self.map, key)
+          const current = MutableHashMap.get(self.map, key)
+          if (existing || (Option.isSome(current) && current.value === entry)) {
+            MutableHashMap.remove(self.map, key)
+          }
           return effect.void
         }
         entry.expiresAt = Duration.isFinite(ttl)

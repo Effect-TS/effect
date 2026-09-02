@@ -767,6 +767,40 @@ describe("Cache", () => {
           assert.isFalse(yield* Cache.has(cache, "key"))
         }))
 
+      it.effect.each([false, true])(
+        "zero-TTL refresh with replacement (existing: %s)",
+        (existing) =>
+          Effect.gen(function*() {
+            const gate = yield* Deferred.make<number, string>()
+            const cache = yield* Cache.makeWith((_key: string) => Deferred.await(gate), {
+              capacity: 1,
+              timeToLive: (exit) => Exit.isFailure(exit) ? 0 : "1 hour"
+            })
+            if (existing) yield* Cache.set(cache, "key", 1)
+
+            const refresh = yield* Cache.refresh(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+            yield* Cache.set(cache, "key", 99)
+            yield* Deferred.fail(gate, "error")
+
+            assert.deepStrictEqual(yield* Fiber.await(refresh), Exit.fail("error"))
+            assert.deepStrictEqual(
+              yield* Cache.getSuccess(cache, "key"),
+              existing ? Option.none() : Option.some(99)
+            )
+          })
+      )
+
+      it.effect("zero-TTL refresh removes its own entry", () =>
+        Effect.gen(function*() {
+          const cache = yield* Cache.makeWith((_key: string) => Effect.fail("error"), {
+            capacity: 1,
+            timeToLive: () => 0
+          })
+
+          assert.deepStrictEqual(yield* Effect.exit(Cache.refresh(cache, "key")), Exit.fail("error"))
+          assert.isFalse(yield* Cache.has(cache, "key"))
+        }))
+
       it.effect("refresh updates TTL", () =>
         Effect.gen(function*() {
           const cache = yield* Cache.make<string, number>({
