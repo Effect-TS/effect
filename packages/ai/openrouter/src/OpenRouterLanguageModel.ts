@@ -1046,7 +1046,6 @@ const makeResponse = Effect.fnUntraced(
               method: "makeResponse",
               reason: new AiError.ToolParameterValidationError({
                 toolName,
-                toolParams: {},
                 description: `Failed to securely JSON parse tool parameters: ${cause}`
               })
             })

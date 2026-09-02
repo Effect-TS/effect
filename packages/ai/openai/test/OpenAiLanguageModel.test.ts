@@ -1,8 +1,8 @@
 import { type Generated, OpenAiClient, OpenAiLanguageModel, OpenAiSchema, OpenAiTool } from "@effect/ai-openai"
 import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Array, Context, Effect, Layer, Redacted, Ref, Schema, Stream } from "effect"
-import { LanguageModel, Prompt, Response as AiResponse, Tool, Toolkit } from "effect/unstable/ai"
+import { Array, Context, Effect, Layer, Redacted, Ref, Schema, SchemaGetter, Stream } from "effect"
+import { type AiError, LanguageModel, Prompt, Response as AiResponse, Tool, Toolkit } from "effect/unstable/ai"
 import { HttpClient, type HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
 describe("OpenAiLanguageModel", () => {
@@ -968,6 +968,112 @@ describe("OpenAiLanguageModel", () => {
           ])
         ))
 
+      it.effect("routes invalid tool call params through failureMode: return without failing the effect", () =>
+        Effect.gen(function*() {
+          const toolkit = Toolkit.make(ReturnModeTool)
+          const handlers = toolkit.toLayer({
+            ReturnModeTool: ({ input }) => Effect.succeed({ output: `processed: ${input}` })
+          })
+
+          const result = yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provide(handlers)
+          )
+
+          strictEqual(result.toolResults.length, 1)
+          const toolResult = result.toolResults[0]!
+          strictEqual(toolResult.isFailure, true)
+          const failure = toolResult.result as AiError.AiError
+          strictEqual(failure._tag, "AiError")
+          strictEqual(failure.reason._tag, "ToolParameterValidationError")
+        }).pipe(
+          Effect.provide(makeTestLayer({
+            body: { output: [makeFunctionCall("ReturnModeTool", { input: 123 })] }
+          }))
+        ))
+
+      it.effect("converts transformed tool call params to the tool's standard encoded form", () =>
+        Effect.gen(function*() {
+          const received = yield* Ref.make<number | undefined>(undefined)
+          const toolkit = Toolkit.make(TransformParamsTool)
+          const handlers = toolkit.toLayer({
+            TransformParamsTool: ({ input }) =>
+              Ref.set(received, input).pipe(
+                Effect.as({ output: input * 2 })
+              )
+          })
+
+          const result = yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provide(handlers)
+          )
+
+          const toolCall = result.toolCalls[0]!
+          deepStrictEqual(toolCall.params, { input: "21" })
+          strictEqual(yield* Ref.get(received), 21)
+          strictEqual(result.toolResults[0]!.isFailure, false)
+          deepStrictEqual(result.toolResults[0]!.result, { output: 42 })
+        }).pipe(
+          Effect.provide(makeTestLayer({
+            body: { output: [makeFunctionCall("TransformParamsTool", { input: "21" })] }
+          }))
+        ))
+
+      it.effect("provides parameter encoding services to provider normalization", () =>
+        Effect.gen(function*() {
+          const used = yield* Ref.make(false)
+          const toolkit = Toolkit.make(AsymmetricParamsTool)
+          const handlers = toolkit.toLayer({
+            AsymmetricParamsTool: ({ input }) => Effect.succeed({ output: `processed: ${input}` })
+          })
+
+          const result = yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provide(handlers),
+            Effect.provideService(ParamEncodeService, { use: Ref.set(used, true) })
+          )
+
+          strictEqual(yield* Ref.get(used), true)
+          strictEqual(result.toolResults[0]!.isFailure, false)
+          deepStrictEqual(result.toolResults[0]!.result, { output: "processed: hello" })
+        }).pipe(
+          Effect.provide(makeTestLayer({
+            body: { output: [makeFunctionCall("AsymmetricParamsTool", { input: "hello" })] }
+          }))
+        ))
+
+      it.effect("provides parameter encoding services to provider normalization when tool call resolution is disabled", () =>
+        Effect.gen(function*() {
+          const used = yield* Ref.make(false)
+          const toolkit = Toolkit.make(AsymmetricParamsTool)
+
+          const result = yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit,
+            disableToolCallResolution: true
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provideService(ParamEncodeService, { use: Ref.set(used, true) })
+          )
+
+          strictEqual(yield* Ref.get(used), true)
+          const toolCall = result.toolCalls[0]!
+          deepStrictEqual(toolCall.params, { input: "hello" })
+        }).pipe(
+          Effect.provide(makeTestLayer({
+            body: { output: [makeFunctionCall("AsymmetricParamsTool", { input: "hello" })] }
+          }))
+        ))
+
       it.effect("uses canonical OpenAiMcp name for mcp_call", () =>
         Effect.gen(function*() {
           const result = yield* LanguageModel.generateText({
@@ -1371,6 +1477,78 @@ describe("OpenAiLanguageModel", () => {
 
         const toolParamsEnd = parts.find((part) => part.type === "tool-params-end" && part.id === "call_1")
         assert.isDefined(toolParamsEnd)
+      }))
+
+    it.effect("routes invalid tool call params through failureMode: return without failing the stream", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(ReturnModeTool)
+        const handlers = toolkit.toLayer({
+          ReturnModeTool: ({ input }) => Effect.succeed({ output: `processed: ${input}` })
+        })
+
+        const streamEvents = [
+          {
+            type: "response.created",
+            sequence_number: 1,
+            response: makeDefaultResponse({
+              id: "resp_invalid_params",
+              status: "in_progress",
+              output: []
+            })
+          },
+          {
+            type: "response.output_item.added",
+            sequence_number: 2,
+            output_index: 0,
+            item: {
+              type: "function_call",
+              id: "fc_1",
+              call_id: "call_1",
+              name: "ReturnModeTool",
+              arguments: "",
+              status: "in_progress"
+            }
+          },
+          {
+            type: "response.function_call_arguments.done",
+            sequence_number: 3,
+            output_index: 0,
+            item_id: "fc_1",
+            name: "ReturnModeTool",
+            arguments: "{\"input\":123}"
+          },
+          {
+            type: "response.completed",
+            sequence_number: 4,
+            response: makeDefaultResponse({
+              id: "resp_invalid_params",
+              status: "completed",
+              output: []
+            })
+          }
+        ] as unknown as ReadonlyArray<typeof Generated.ResponseStreamEvent.Type>
+
+        const partsChunk = yield* LanguageModel.streamText({
+          prompt: "Use the test tool",
+          toolkit
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(makeStreamTestLayer(streamEvents)),
+          Effect.provide(handlers)
+        )
+
+        const parts = globalThis.Array.from(partsChunk)
+        const toolResults = parts.filter((part) => part.type === "tool-result")
+        strictEqual(toolResults.length, 1)
+        const toolResult = toolResults[0]
+        if (toolResult?.type === "tool-result") {
+          strictEqual(toolResult.isFailure, true)
+          const result = toolResult.result as AiError.AiError
+          strictEqual(result._tag, "AiError")
+          strictEqual(result.reason._tag, "ToolParameterValidationError")
+        }
+        assert.isDefined(parts.find((part) => part.type === "finish"))
       }))
 
     it.effect("waits for the stable streamed web search action before emitting the tool call", () =>
@@ -1909,6 +2087,42 @@ const makeUsage = (
 const TestTool = Tool.make("TestTool", {
   description: "A test tool",
   parameters: Schema.Struct({ input: Schema.String }),
+  success: Schema.Struct({ output: Schema.String })
+})
+
+const ReturnModeTool = Tool.make("ReturnModeTool", {
+  description: "A test tool",
+  failureMode: "return",
+  parameters: Schema.Struct({ input: Schema.String }),
+  success: Schema.Struct({ output: Schema.String }),
+  failure: Schema.Struct({ error: Schema.String })
+})
+
+const TransformParamsTool = Tool.make("TransformParamsTool", {
+  description: "A test tool",
+  parameters: Schema.Struct({ input: Schema.FiniteFromString }),
+  success: Schema.Struct({ output: Schema.Finite })
+})
+
+class ParamEncodeService extends Context.Service<ParamEncodeService, {
+  readonly use: Effect.Effect<void>
+}>()("ParamEncodeService") {}
+
+const AsymmetricParam = Schema.String.pipe(
+  Schema.decodeTo(Schema.String, {
+    decode: SchemaGetter.passthrough(),
+    encode: SchemaGetter.transformOrFail<string, string, ParamEncodeService>((value) =>
+      Effect.service(ParamEncodeService).pipe(
+        Effect.flatMap((service) => service.use),
+        Effect.as(value)
+      )
+    )
+  })
+)
+
+const AsymmetricParamsTool = Tool.make("AsymmetricParamsTool", {
+  description: "A test tool",
+  parameters: Schema.Struct({ input: AsymmetricParam }),
   success: Schema.Struct({ output: Schema.String })
 })
 

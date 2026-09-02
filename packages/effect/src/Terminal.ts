@@ -105,7 +105,7 @@ export interface UserInput {
   readonly key: Key
 }
 
-const QuitErrorTypeId = "effect/platform/Terminal/QuitError"
+const QuitErrorTypeId = "~effect/Terminal/QuitError"
 
 /**
  * Represents an error that occurs when a user attempts to
@@ -163,7 +163,7 @@ export const isQuitError = (u: unknown): u is QuitError => Predicate.hasProperty
  * @category services
  * @since 4.0.0
  */
-export const Terminal: Context.Service<Terminal, Terminal> = Context.Service("effect/platform/Terminal")
+export const Terminal: Context.Service<Terminal, Terminal> = Context.Service("effect/Terminal")
 
 /**
  * Creates a `Terminal` service implementation.

@@ -69,6 +69,95 @@ describe("Queue", () => {
       assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed([]))
     }))
 
+  it.effect("resuming a blocked producer does not enqueue its message twice", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number>(1)
+      yield* Queue.offer(queue, 0)
+      const producer = yield* Effect.forkChild(
+        Effect.gen(function*() {
+          yield* Queue.offer(queue, 1)
+          return yield* Queue.take(queue)
+        }),
+        { startImmediately: true }
+      )
+
+      const first = yield* Queue.take(queue)
+      const second = yield* Fiber.join(producer)
+      const remaining = yield* Queue.clear(queue)
+      yield* Queue.shutdown(queue)
+
+      assert.deepStrictEqual([first, second], [0, 1])
+      assert.deepStrictEqual(remaining, [])
+    }))
+
+  for (const method of ["offer", "offerAll"]) {
+    for (const take of ["take", "takeAll", "clear"]) {
+      it.effect(`zero-capacity ${take} reserves the message before resuming ${method}`, () =>
+        Effect.gen(function*() {
+          const queue = yield* Queue.bounded<number>(0)
+          const producer = yield* Effect.forkChild(
+            Effect.gen(function*() {
+              if (method === "offer") yield* Queue.offer(queue, 1)
+              else yield* Queue.offerAll(queue, [1])
+              return yield* Queue.take(queue)
+            }),
+            { startImmediately: true }
+          )
+
+          const first = take === "take"
+            ? [yield* Queue.take(queue)]
+            : take === "takeAll"
+            ? yield* Queue.takeAll(queue)
+            : yield* Queue.clear(queue)
+          const producerExit = producer.pollUnsafe()
+          yield* Queue.shutdown(queue)
+
+          assert.deepStrictEqual({ first, producerExit }, { first: [1], producerExit: undefined })
+        }))
+    }
+
+    it.effect(`resuming ${method} can shut down the queue without defecting the consumer`, () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.bounded<number>(1)
+        yield* Queue.offer(queue, 0)
+        const producer = yield* Effect.forkChild(
+          Effect.gen(function*() {
+            if (method === "offer") yield* Queue.offer(queue, 1)
+            else yield* Queue.offerAll(queue, [1])
+            yield* Queue.shutdown(queue)
+          }),
+          { startImmediately: true }
+        )
+
+        const exit = yield* Effect.exit(Queue.take(queue))
+        yield* Fiber.join(producer)
+
+        assert.deepStrictEqual(exit, Exit.succeed(0))
+      }))
+
+    it.effect(`resuming ${method} does not overfill the queue with reentrant offers`, () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.bounded<number>(2)
+        yield* Queue.offerAll(queue, [0, 1])
+        yield* Effect.forkChild(
+          Effect.gen(function*() {
+            if (method === "offer") yield* Queue.offer(queue, 2)
+            else yield* Queue.offerAll(queue, [2])
+            yield* Queue.offer(queue, 3)
+          }),
+          { startImmediately: true }
+        )
+        yield* Effect.forkChild(Queue.offer(queue, 4), { startImmediately: true })
+
+        const first = yield* Queue.takeAll(queue)
+        const size = Queue.sizeUnsafe(queue)
+        yield* Queue.shutdown(queue)
+
+        assert.deepStrictEqual(first, [0, 1])
+        assert.isAtMost(size, 2)
+      }))
+  }
+
   it.effect("takeN", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number>()
@@ -367,5 +456,38 @@ describe("Queue", () => {
       yield* Queue.offer(queue, 2)
       result = yield* Fiber.join(fiber)
       assert.strictEqual(result, 2)
+    }))
+
+  it.effect("zero-capacity takeAll consumes buffered messages before pending offers", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number>(0)
+      const waiting = yield* Queue.take(queue).pipe(Effect.forkChild({ startImmediately: true }))
+      const producer = yield* Queue.offerAll(queue, [1, 2]).pipe(Effect.forkChild({ startImmediately: true }))
+
+      const batch = yield* Queue.takeAll(queue)
+      const next = yield* Fiber.join(waiting)
+      yield* Fiber.join(producer)
+
+      assert.deepStrictEqual(batch, [1])
+      assert.strictEqual(next, 2)
+    }))
+
+  it.effect("zero-capacity offerAll drains in order and completes a closing queue", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number, Cause.Done>(0)
+      const producer = yield* Queue.offerAll(queue, [1, 2, 3]).pipe(Effect.forkChild({ startImmediately: true }))
+
+      const first = yield* Queue.takeAll(queue)
+      yield* Queue.end(queue)
+      const second = yield* Queue.clear(queue)
+      const third = yield* Queue.poll(queue)
+      const producerExit = producer.pollUnsafe()
+      const done = yield* Effect.exit(Queue.await(queue))
+
+      assert.deepStrictEqual(first, [1])
+      assert.deepStrictEqual(second, [2])
+      assert.deepStrictEqual(third, Option.some(3))
+      assert.deepStrictEqual(producerExit, Exit.succeed([]))
+      assert.deepStrictEqual(done, Exit.void)
     }))
 })

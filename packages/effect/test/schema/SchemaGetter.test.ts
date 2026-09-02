@@ -47,6 +47,17 @@ describe("SchemaGetter", () => {
   })
 
   describe("makeTreeRecord", () => {
+    it("preserves array-valued leaves at duplicate paths", () => {
+      deepStrictEqual(
+        SchemaGetter.makeTreeRecord([
+          ["permissions", ["read"]],
+          ["permissions", ["write"]],
+          ["permissions", ["share"]]
+        ]),
+        { permissions: [["read"], ["write"], ["share"]] }
+      )
+    })
+
     it("replaces conflicting leaf values with containers", () => {
       deepStrictEqual(
         SchemaGetter.makeTreeRecord([

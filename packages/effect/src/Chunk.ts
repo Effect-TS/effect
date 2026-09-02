@@ -249,7 +249,7 @@ const makeChunk = <A>(backing: Backing<A>): Chunk<A> => {
     }
     case "ISlice": {
       chunk.length = backing.length
-      chunk.depth = backing.chunk.depth + 1
+      chunk.depth = 0
       chunk.left = _empty
       chunk.right = _empty
       break

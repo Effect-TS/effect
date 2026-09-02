@@ -61,7 +61,27 @@ import * as Str from "./String.ts"
  * @category models
  * @since 4.0.0
  */
-export class Getter<out T, in E, R = never> extends Pipeable.Class {
+export interface Getter<out T, in E, R = never> extends Pipeable.Pipeable {
+  readonly run: (
+    input: Option.Option<E>,
+    options: SchemaAST.ParseOptions
+  ) => Effect.Effect<Option.Option<T>, SchemaIssue.Issue, R>
+  map<T2>(f: (t: T) => T2): Getter<T2, E, R>
+  compose<T2, R2>(other: Getter<T2, T, R2>): Getter<T2, E, R | R2>
+}
+
+/**
+ * Constructs a composable schema getter.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const Getter: new<T, E, R = never>(
+  run: (
+    input: Option.Option<E>,
+    options: SchemaAST.ParseOptions
+  ) => Effect.Effect<Option.Option<T>, SchemaIssue.Issue, R>
+) => Getter<T, E, R> = class<out T, in E, R = never> extends Pipeable.Class {
   readonly run: (
     input: Option.Option<E>,
     options: SchemaAST.ParseOptions
@@ -1899,6 +1919,7 @@ export function makeTreeRecord<A>(
 ): Schema.TreeRecord<A> {
   const out: any = {}
   const containers = new WeakSet<object>()
+  const duplicates = new WeakSet<object>()
 
   function getOrCreateContainer(self: any, key: PropertyKey, shouldBeArray: boolean): any {
     const current = Object.hasOwn(self, key) ? self[key] : undefined
@@ -1932,10 +1953,12 @@ export function makeTreeRecord<A>(
         // If we're setting a value at a path that already exists
         // convert it to an array to support multiple values for the same key
         const hasOwn = Object.hasOwn(cur, token)
-        if (hasOwn && Array.isArray(cur[token])) {
+        if (hasOwn && Array.isArray(cur[token]) && (containers.has(cur[token]) || duplicates.has(cur[token]))) {
           cur[token].push(value)
         } else if (hasOwn) {
-          InternalRecord.assignProperty(cur, token, [cur[token], value])
+          const values = [cur[token], value]
+          duplicates.add(values)
+          InternalRecord.assignProperty(cur, token, values)
         } else {
           InternalRecord.assignProperty(cur, token, value)
         }

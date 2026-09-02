@@ -39,6 +39,7 @@ interface Interval {
   readonly maximum: number
 }
 
+/** @internal */
 export interface Compiled {
   readonly minimumLength: number
   readonly generate: (
@@ -823,6 +824,7 @@ function addUnanchoredSurroundings(node: Node, source: string, flags: string): N
  * exact UTF-16 length analysis; no fast-check parser or arbitrary is included.
  * https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/stringMatching.ts
  */
+/** @internal */
 export function compile(pattern: Pattern): Compiled | undefined {
   const { flags, source } = pattern
   // Case folding, multiline assertions, and Unicode sets require dedicated AST semantics. Falling back preserves the

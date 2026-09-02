@@ -2020,29 +2020,22 @@ class BoundedPubSubSingleSubscription<in out A> implements PubSub.BackingSubscri
     if (this.self.subscribers === 0) {
       this.self.value = AbsentValue as unknown as A
     }
-    this.subscriberIndex += 1
+    this.subscriberIndex = this.self.publisherIndex
     return elem
   }
 
   pollUpTo(n: number): Array<A> {
-    n = Count.normalize(n)
-    if (this.isEmpty() || n < 1) {
+    if (Count.normalize(n) < 1 || this.isEmpty()) {
       return []
     }
-    const a = this.self.value
-    this.self.subscribers -= 1
-    if (this.self.subscribers === 0) {
-      this.self.value = AbsentValue as unknown as A
-    }
-    this.subscriberIndex += 1
-    return [a]
+    return [this.poll() as A]
   }
 
   unsubscribe(): void {
     if (!this.unsubscribed) {
       this.unsubscribed = true
       this.self.subscriberCount -= 1
-      if (this.subscriberIndex !== this.self.publisherIndex) {
+      if (this.self.subscribers !== 0 && this.subscriberIndex !== this.self.publisherIndex) {
         this.self.subscribers -= 1
         if (this.self.subscribers === 0) {
           this.self.value = AbsentValue as unknown as A

@@ -1,7 +1,7 @@
 import { OpenAiClient, OpenAiLanguageModel } from "@effect/ai-openai-compat"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Ref, Schema, Stream } from "effect"
-import { LanguageModel, Prompt, Tool, Toolkit } from "effect/unstable/ai"
+import { type AiError, LanguageModel, Prompt, Tool, Toolkit } from "effect/unstable/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
 describe("OpenAiLanguageModel", () => {
@@ -46,6 +46,67 @@ describe("OpenAiLanguageModel", () => {
         const requestBody = yield* getRequestBody(capturedRequest)
         assert.strictEqual(requestBody.model, "gpt-4o-mini")
         assert.strictEqual(requestBody.messages[0]?.content, "hello")
+      }))
+
+    it.effect("routes invalid tool call params through failureMode: return without failing the effect", () =>
+      Effect.gen(function*() {
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(jsonResponse(
+                request,
+                makeChatCompletion({
+                  choices: [{
+                    index: 0,
+                    finish_reason: "tool_calls",
+                    message: {
+                      role: "assistant",
+                      content: null,
+                      tool_calls: [{
+                        id: "call_1",
+                        type: "function",
+                        function: {
+                          name: "ReturnModeTool",
+                          arguments: JSON.stringify({ input: 123 })
+                        }
+                      }]
+                    }
+                  }]
+                })
+              ))
+            )
+          ))
+        )
+
+        const ReturnModeTool = Tool.make("ReturnModeTool", {
+          description: "A test tool",
+          failureMode: "return",
+          parameters: Schema.Struct({ input: Schema.String }),
+          success: Schema.Struct({ output: Schema.String }),
+          failure: Schema.Struct({ error: Schema.String })
+        })
+
+        const toolkit = Toolkit.make(ReturnModeTool)
+        const toolkitLayer = toolkit.toLayer({
+          ReturnModeTool: ({ input }) => Effect.succeed({ output: `processed: ${input}` })
+        })
+
+        const result = yield* LanguageModel.generateText({
+          prompt: "use the tool",
+          toolkit
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(toolkitLayer),
+          Effect.provide(layer)
+        )
+
+        assert.strictEqual(result.toolResults.length, 1)
+        const toolResult = result.toolResults[0]!
+        assert.strictEqual(toolResult.isFailure, true)
+        const failure = toolResult.result as AiError.AiError
+        assert.strictEqual(failure._tag, "AiError")
+        assert.strictEqual(failure.reason._tag, "ToolParameterValidationError")
       }))
 
     it.effect("forwards reasoning config to chat completions request", () =>

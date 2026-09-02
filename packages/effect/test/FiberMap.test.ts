@@ -4,6 +4,44 @@ import { Array, Deferred, Effect, Exit, Fiber, FiberMap, Option, pipe, Ref, Scop
 import { TestClock } from "effect/testing"
 
 describe("FiberMap", () => {
+  it.effect("retains ownership of replacements made by a synchronous finalizer", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const map = yield* FiberMap.make<string>().pipe(Scope.provide(scope))
+      const run = yield* FiberMap.runtime(map)()
+      const fibers: Array<Fiber.Fiber<unknown, unknown>> = []
+      yield* Effect.addFinalizer(() => Fiber.interruptAll(fibers))
+
+      const previous = run(
+        "key",
+        Effect.never.pipe(
+          Effect.ensuring(Effect.sync(() => {
+            fibers.push(run("key", Effect.never))
+          }))
+        )
+      )
+      const replacement = run("key", Effect.never)
+      fibers.push(previous, replacement)
+      assert.strictEqual(fibers.length, 3)
+
+      yield* Scope.close(scope, Exit.void)
+
+      for (const fiber of fibers) {
+        assert.isDefined(fiber.pollUnsafe())
+      }
+    }))
+
+  it.effect("removes a synchronously completed replacement", () =>
+    Effect.gen(function*() {
+      const map = yield* FiberMap.make<string>()
+      const previous = yield* FiberMap.run(map, "key", Effect.never)
+      const replacement = yield* FiberMap.run(map, "key", Effect.succeed("done"))
+
+      assert.deepStrictEqual(yield* Fiber.join(replacement), "done")
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(previous)))
+      assert.strictEqual(yield* FiberMap.size(map), 0)
+    }))
+
   it.effect("interrupts fibers", () =>
     Effect.gen(function*() {
       const ref = yield* Ref.make(0)

@@ -256,7 +256,7 @@ const RecordInsertHelperProto = {
   returning(this: RecordInsertHelper, sql: string | Identifier | Fragment) {
     const self = Object.create(Object.getPrototypeOf(this))
     Object.assign(self, this, {
-      returningIdentifier: sql
+      returningIdentifier: typeof sql === "string" || isFragment(sql) ? sql : fragment([sql])
     })
     return self
   }
@@ -833,7 +833,7 @@ const CompilerProto = {
     withoutTransform = withoutTransform || this.disableTransforms
     const cache = withoutTransform ? this.statementCacheNoTransform : this.statementCache
     const cached = cache.get(statement)
-    if (cached !== undefined) {
+    if (cached !== undefined && placeholderOverride === undefined) {
       return cached
     }
 

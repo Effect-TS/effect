@@ -1564,10 +1564,7 @@ export const takeUnsafe = <A, E>(self: Dequeue<A, E>): Exit<A, E> | undefined =>
     releaseCapacity(self)
     return core.exitSucceed(message)
   } else if (self.capacity <= 0 && self.state.offers.size > 0) {
-    self.capacity = 1
-    releaseCapacity(self)
-    self.capacity = 0
-    const message = MutableList.take(self.messages)!
+    const message = takeOfferUnsafe(self.state.offers)
     releaseCapacity(self)
     return core.exitSucceed(message)
   }
@@ -1872,11 +1869,8 @@ const takeBetweenUnsafe = <A, E>(
     return self.state.exit
   } else if (max <= 0 || min <= 0) {
     return core.exitSucceed([])
-  } else if (self.capacity <= 0 && self.state.offers.size > 0) {
-    self.capacity = 1
-    releaseCapacity(self)
-    self.capacity = 0
-    const messages = [MutableList.take(self.messages)!]
+  } else if (self.capacity <= 0 && self.messages.length === 0 && self.state.offers.size > 0) {
+    const messages = [takeOfferUnsafe(self.state.offers)]
     releaseCapacity(self)
     return core.exitSucceed(messages)
   }
@@ -1923,6 +1917,22 @@ const offerRemainingArray = <A, E>(self: Enqueue<A, E>, remaining: Array<A>) => 
   })
 }
 
+// Reserve a pending message for the consumer before the producer can reenter.
+const takeOfferUnsafe = <A>(offers: Set<Queue.OfferEntry<A>>): A => {
+  const entry = offers.values().next().value!
+  if (entry._tag === "Single") {
+    offers.delete(entry)
+    entry.resume(exitTrue)
+    return entry.message
+  }
+  const message = entry.remaining[entry.offset++]
+  if (entry.offset === entry.remaining.length) {
+    offers.delete(entry)
+    entry.resume(core.exitSucceed([]))
+  }
+  return message
+}
+
 const releaseCapacity = <A, E>(self: Dequeue<A, E>): boolean => {
   if (self.state._tag === "Done") {
     return Pull.isDoneCause(self.state.exit.cause)
@@ -1936,22 +1946,22 @@ const releaseCapacity = <A, E>(self: Dequeue<A, E>): boolean => {
     }
     return false
   }
-  let n = self.capacity - self.messages.length
+  // Resuming a producer can synchronously take, offer, or shut down this queue.
   for (const entry of self.state.offers) {
-    if (n === 0) break
+    let n = self.capacity - self.messages.length
+    if (n <= 0) break
     else if (entry._tag === "Single") {
       MutableList.append(self.messages, entry.message)
-      n--
-      entry.resume(exitTrue)
       self.state.offers.delete(entry)
+      entry.resume(exitTrue)
     } else {
       for (; entry.offset < entry.remaining.length; entry.offset++) {
         if (n === 0) return false
         MutableList.append(self.messages, entry.remaining[entry.offset])
         n--
       }
-      entry.resume(core.exitSucceed([]))
       self.state.offers.delete(entry)
+      entry.resume(core.exitSucceed([]))
     }
   }
   return false
@@ -1976,10 +1986,7 @@ const takeAllUnsafe = <A, E>(self: Dequeue<A, E>) => {
     releaseCapacity(self)
     return messages
   } else if (self.state._tag !== "Done" && self.state.offers.size > 0) {
-    self.capacity = 1
-    releaseCapacity(self)
-    self.capacity = 0
-    const messages = [MutableList.take(self.messages)!]
+    const messages = [takeOfferUnsafe(self.state.offers)]
     releaseCapacity(self)
     return messages
   }

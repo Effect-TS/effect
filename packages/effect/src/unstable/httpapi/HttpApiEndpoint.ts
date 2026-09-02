@@ -15,7 +15,7 @@ import * as Arr from "../../Array.ts"
 import type { Brand } from "../../Brand.ts"
 import * as Context from "../../Context.ts"
 import type { Effect } from "../../Effect.ts"
-import { identity } from "../../Function.ts"
+import { identity, memoize } from "../../Function.ts"
 import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
@@ -187,6 +187,7 @@ export interface HttpApiEndpoint<
   readonly error: ReadonlySet<Schema.Top>
   readonly annotations: Context.Context<never>
   readonly middlewares: ReadonlySet<Context.Key<Middleware, any>>
+  readonly disableCodecs: boolean
 
   /**
    * Add a prefix to the path of the endpoint.
@@ -282,10 +283,11 @@ export function getSuccessSchemas(endpoint: Top): [Schema.Top, ...Array<Schema.T
 /** @internal */
 export function getErrorSchemas(endpoint: Top): Array<Schema.Top> {
   const schemas = new Set<Schema.Top>(endpoint.error)
+  const transform = endpoint.disableCodecs ? identity : transformResponseSchema
   for (const middleware of endpoint.middlewares) {
     const key = middleware as any as HttpApiMiddleware.AnyService
     for (const schema of key.error) {
-      schemas.add(schema)
+      schemas.add(transform(schema))
     }
   }
   return Array.from(schemas)
@@ -833,7 +835,8 @@ const optionsFromEndpoint = (endpoint: Top) => ({
   success: endpoint.success,
   error: endpoint.error,
   annotations: endpoint.annotations,
-  middlewares: endpoint.middlewares
+  middlewares: endpoint.middlewares,
+  disableCodecs: endpoint.disableCodecs
 })
 
 function makeProto<
@@ -860,6 +863,7 @@ function makeProto<
   readonly error: ReadonlySet<Schema.Top>
   readonly annotations: Context.Context<never>
   readonly middlewares: ReadonlySet<Context.Key<Middleware, any>>
+  readonly disableCodecs: boolean
 }): HttpApiEndpoint<
   Identifier,
   Method,
@@ -1090,7 +1094,8 @@ export const make = <Method extends HttpMethod>(method: Method): {
     success: getSuccessResponse(options?.success, method, disableCodecs),
     error: getErrorResponse(options?.error, disableCodecs),
     annotations: Context.empty(),
-    middlewares: new Set()
+    middlewares: new Set(),
+    disableCodecs
   })
 }
 
@@ -1157,7 +1162,7 @@ function getSuccessResponse(
   return new Set(disableCodecs ? schemas : schemas.map(transformResponseSchema))
 }
 
-function transformResponseSchema(schema: Schema.Top): Schema.Top {
+const transformResponseSchema = memoize((schema: Schema.Top): Schema.Top => {
   if (HttpApiSchema.isStreamSchema(schema)) return schema
   if (HttpApiSchema.isWithHeaders(schema)) {
     const inner = HttpApiSchema.isStreamSchema(schema.schema)
@@ -1166,7 +1171,7 @@ function transformResponseSchema(schema: Schema.Top): Schema.Top {
     return HttpApiSchema.rebuildWithHeaders(schema, inner, Schema.toCodecStringTree(schema.headers))
   }
   return transformResponse(schema)
-}
+})
 
 function getErrorResponse(
   error: Schema.Top | ReadonlyArray<Schema.Top> | undefined,

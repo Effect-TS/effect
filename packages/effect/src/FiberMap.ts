@@ -373,10 +373,13 @@ export const setUnsafe: {
     } else if (previous.value === fiber) {
       return
     }
-    previous.value.interruptUnsafe(internalFiberId)
   }
 
+  // Install the replacement before interruption can re-enter the map through a finalizer.
   MutableHashMap.set(self.state.backing, key, fiber)
+  if (previous._tag === "Some") {
+    previous.value.interruptUnsafe(internalFiberId)
+  }
   fiber.addObserver((exit) => {
     if (self.state._tag === "Closed") {
       return

@@ -3,6 +3,53 @@ import { Cause, Data, Deferred, Effect, Exit, Fiber, MutableHashMap, Option, RcM
 import { TestClock } from "effect/testing"
 
 describe("RcMap", () => {
+  describe("lookup defects", () => {
+    for (const throws of [false, true]) {
+      it.effect.each([0, 1000])(
+        `releases capacity after a ${throws ? "throwing" : "dying"} lookup with TTL %s`,
+        (idleTimeToLive) =>
+          Effect.gen(function*() {
+            const map = yield* RcMap.make({
+              lookup: (key: string) => {
+                if (key !== "bad") return Effect.succeed(key)
+                if (throws) throw "boom"
+                return Effect.die("boom")
+              },
+              capacity: 1,
+              idleTimeToLive
+            })
+
+            assert.deepStrictEqual(yield* RcMap.get(map, "bad").pipe(Effect.scoped, Effect.exit), Exit.die("boom"))
+            if (idleTimeToLive > 0) {
+              assert.isTrue(yield* RcMap.has(map, "bad"))
+              yield* TestClock.adjust(idleTimeToLive)
+            }
+            assert.deepStrictEqual(yield* RcMap.get(map, "good").pipe(Effect.exit), Exit.succeed("good"))
+            assert.isFalse(yield* RcMap.has(map, "bad"))
+          })
+      )
+
+      it.effect(`shares a ${throws ? "throwing" : "dying"} lookup's defect with later borrowers`, () =>
+        Effect.gen(function*() {
+          const map = yield* RcMap.make({
+            lookup: (_key: string): Effect.Effect<string> => {
+              if (throws) throw "boom"
+              return Effect.die("boom")
+            }
+          })
+
+          assert.deepStrictEqual(yield* RcMap.get(map, "bad").pipe(Effect.exit), Exit.die("boom"))
+          const borrower = yield* RcMap.getOption(map, "bad").pipe(
+            Effect.exit,
+            Effect.timeoutOption(1000),
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* TestClock.adjust(1000)
+          assert.deepStrictEqual(yield* Fiber.join(borrower), Option.some(Exit.die("boom")))
+        }))
+    }
+  })
+
   describe("invalidate", () => {
     it.effect.each([0, 1000, Infinity])(
       "releases only the invalidated entry with TTL %s",

@@ -49,7 +49,7 @@ import * as SchemaIssue from "./SchemaIssue.ts"
  *   `Middleware<E, T, ...>`.
  *
  * Typically constructed indirectly via `Schema.middlewareDecoding` or
- * `Schema.middlewareEncoding` rather than instantiating this class directly.
+ * `Schema.middlewareEncoding` rather than by using `new Middleware` directly.
  *
  * **Example** (Creating a middleware that falls back on decode failure)
  *
@@ -69,7 +69,35 @@ import * as SchemaIssue from "./SchemaIssue.ts"
  * @category models
  * @since 4.0.0
  */
-export class Middleware<in out T, in out E, RDE, RDT, RET, REE> {
+export interface Middleware<in out T, in out E, RDE, RDT, RET, REE> {
+  readonly _tag: "Middleware"
+  readonly decode: (
+    effect: Effect.Effect<Option.Option<E>, SchemaIssue.Issue, RDE>,
+    options: SchemaAST.ParseOptions
+  ) => Effect.Effect<Option.Option<T>, SchemaIssue.Issue, RDT>
+  readonly encode: (
+    effect: Effect.Effect<Option.Option<T>, SchemaIssue.Issue, RET>,
+    options: SchemaAST.ParseOptions
+  ) => Effect.Effect<Option.Option<E>, SchemaIssue.Issue, REE>
+  flip(): Middleware<E, T, RET, REE, RDE, RDT>
+}
+
+/**
+ * Constructs schema middleware from its decode and encode functions.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const Middleware: new<T, E, RDE, RDT, RET, REE>(
+  decode: (
+    effect: Effect.Effect<Option.Option<E>, SchemaIssue.Issue, RDE>,
+    options: SchemaAST.ParseOptions
+  ) => Effect.Effect<Option.Option<T>, SchemaIssue.Issue, RDT>,
+  encode: (
+    effect: Effect.Effect<Option.Option<T>, SchemaIssue.Issue, RET>,
+    options: SchemaAST.ParseOptions
+  ) => Effect.Effect<Option.Option<E>, SchemaIssue.Issue, REE>
+) => Middleware<T, E, RDE, RDT, RET, REE> = class<in out T, in out E, RDE, RDT, RET, REE> {
   readonly _tag = "Middleware"
   readonly decode: (
     effect: Effect.Effect<Option.Option<E>, SchemaIssue.Issue, RDE>,
@@ -141,7 +169,25 @@ const TypeId = "~effect/SchemaTransformation/Transformation"
  * @category models
  * @since 4.0.0
  */
-export class Transformation<in out T, in out E, RD = never, RE = never> {
+export interface Transformation<in out T, in out E, RD = never, RE = never> {
+  readonly [TypeId]: typeof TypeId
+  readonly _tag: "Transformation"
+  readonly decode: SchemaGetter.Getter<T, E, RD>
+  readonly encode: SchemaGetter.Getter<E, T, RE>
+  flip(): Transformation<E, T, RE, RD>
+  compose<T2, RD2, RE2>(other: Transformation<T2, T, RD2, RE2>): Transformation<T2, E, RD | RD2, RE | RE2>
+}
+
+/**
+ * Constructs a bidirectional schema transformation from its decode and encode getters.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const Transformation: new<T, E, RD = never, RE = never>(
+  decode: SchemaGetter.Getter<T, E, RD>,
+  encode: SchemaGetter.Getter<E, T, RE>
+) => Transformation<T, E, RD, RE> = class<in out T, in out E, RD = never, RE = never> {
   readonly [TypeId] = TypeId
   readonly _tag = "Transformation"
   readonly decode: SchemaGetter.Getter<T, E, RD>
@@ -987,7 +1033,7 @@ export const durationFromString: Transformation<Duration.Duration, string> = tra
         ),
       onSome: Effect.succeed
     }),
-  encode: (duration) => Effect.succeed(globalThis.String(duration))
+  encode: (duration) => Effect.succeed(String(duration))
 })
 
 /**
@@ -1091,7 +1137,7 @@ export const byteSizeFromString: Transformation<ByteSize.ByteSize, string> = tra
         ),
       onSome: Effect.succeed
     }),
-  encode: (byteSize) => Effect.succeed(globalThis.String(byteSize))
+  encode: (byteSize) => Effect.succeed(`${byteSize} ${byteSize === BigInt(1) ? "byte" : "bytes"}`)
 })
 
 /**

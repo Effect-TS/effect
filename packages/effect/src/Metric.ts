@@ -1609,7 +1609,15 @@ export const CurrentMetricAttributes = Context.Reference<Metric.AttributeSet>(Cu
   defaultValue: () => ({})
 })
 
-const MetricRegistryKey = "~effect/Metric/MetricRegistryKey"
+const MetricRegistryKey = "effect/Metric/MetricRegistry"
+
+/**
+ * The registry used to store metric metadata and hooks.
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export type MetricRegistry = Map<string, Metric.Metadata<any, any>>
 
 /**
  * Context reference for the metric registry in the current context.
@@ -1637,7 +1645,7 @@ const MetricRegistryKey = "~effect/Metric/MetricRegistryKey"
  * @category services
  * @since 4.0.0
  */
-export const MetricRegistry = Context.Reference<Map<string, Metric.Metadata<any, any>>>(
+export const MetricRegistry: Context.Reference<MetricRegistry> = Context.Reference<MetricRegistry>(
   MetricRegistryKey,
   { defaultValue: () => new Map() }
 )
@@ -3235,14 +3243,13 @@ const fiberFailures = counter("child_fiber_failures", {
  * ```ts import.meta.vitest
  * import { Metric } from "effect"
  *
- * Metric.FiberRuntimeMetricsKey // => "effect/observability/Metric/FiberRuntimeMetricsKey"
+ * Metric.FiberRuntimeMetricsKey // => "effect/Metric/FiberRuntimeMetrics"
  * ```
  *
  * @category constants
  * @since 4.0.0
  */
-export const FiberRuntimeMetricsKey: "effect/observability/Metric/FiberRuntimeMetricsKey" =
-  InternalMetric.FiberRuntimeMetricsKey
+export const FiberRuntimeMetricsKey: "effect/Metric/FiberRuntimeMetrics" = InternalMetric.FiberRuntimeMetricsKey
 
 /**
  * Interface for the fiber runtime metrics service that tracks fiber lifecycle events.

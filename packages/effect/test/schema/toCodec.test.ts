@@ -2857,7 +2857,7 @@ Expected "Infinity" | "-Infinity" | "NaN"`
     async function assertXmlFailure<T, E, RD>(schema: Schema.Codec<T, E, RD>, value: T, message: string) {
       const serializer = Schema.toEncoderXml(Schema.toCodecStringTree(schema))
       const r = await serializer(value).pipe(
-        Effect.mapError((err) => formatIssue(err.issue)),
+        Effect.mapError(formatIssue),
         Effect.result,
         Effect.runPromise
       )

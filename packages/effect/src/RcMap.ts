@@ -370,7 +370,7 @@ export const get: {
           context.set(key, value)
         })
         context.set(Scope.Scope.key, entry.scope)
-        self.lookup(key).pipe(
+        Effect.suspend(() => self.lookup(key)).pipe(
           Effect.runForkWith(Context.makeUnsafe(context)),
           Fiber.runIn(entry.scope)
         ).addObserver((exit) => Deferred.doneUnsafe(entry.deferred, exit))

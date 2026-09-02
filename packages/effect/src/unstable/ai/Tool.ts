@@ -933,6 +933,19 @@ export type ResultDecodingServices<T> = T extends Tool<
   : never
 
 /**
+ * Extracts the services required to encode tool parameters.
+ *
+ * @category utility types
+ * @since 4.0.0
+ */
+export type ParametersEncodingServices<T> = T extends Tool<
+  infer _Name,
+  infer _Config,
+  infer _Requirements
+> ? _Config["parameters"]["EncodingServices"]
+  : never
+
+/**
  * Represents an `Tool` that has been implemented within the application.
  *
  * @category models

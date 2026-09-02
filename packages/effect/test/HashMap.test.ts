@@ -156,6 +156,15 @@ describe("HashMap", () => {
       const entries = Array.from(map).sort(([a], [b]) => a.localeCompare(b))
       expect(entries).toEqual([["a", 1], ["b", 2]])
     })
+
+    it("does not expose mutable collision entries", () => {
+      const map = HashMap.make(["fF", 1], ["AA", 2])
+      const entry = Array.from(HashMap.entries(map)).find(([key]) => key === "fF")!
+
+      entry[1] = 99
+
+      expect(HashMap.getUnsafe(map, "fF")).toBe(1)
+    })
   })
 
   describe("bulk operations", () => {

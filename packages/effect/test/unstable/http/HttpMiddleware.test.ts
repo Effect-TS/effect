@@ -6,6 +6,7 @@ import * as Exit from "effect/Exit"
 import * as Logger from "effect/Logger"
 import * as References from "effect/References"
 import * as Tracer from "effect/Tracer"
+import * as Headers from "effect/unstable/http/Headers"
 import * as HttpMiddleware from "effect/unstable/http/HttpMiddleware"
 import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
@@ -94,17 +95,22 @@ describe("HttpMiddleware", () => {
             method: "POST",
             headers: {
               "user-agent": "test-agent",
-              "x-request": "request"
+              "x-request": "request",
+              "x-request-secret": "request-secret"
             }
           })
         )
         const response = HttpServerResponse.empty({
           status: 201,
-          headers: { "x-response": "response" }
+          headers: {
+            "x-response": "response",
+            "x-response-secret": "response-secret"
+          }
         })
 
         yield* HttpMiddleware.tracer(Effect.succeed(response)).pipe(
           Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(Headers.CurrentRedactedNames, ["x-request-secret", "x-response-secret"]),
           Effect.provideService(Tracer.Tracer, tracer)
         )
         yield* Effect.yieldNow
@@ -116,8 +122,10 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(serverSpan.attributes.get("url.query"), "foo=bar")
         assert.strictEqual(serverSpan.attributes.get("user_agent.original"), "test-agent")
         assert.strictEqual(serverSpan.attributes.get("http.request.header.x-request"), "request")
+        assert.strictEqual(serverSpan.attributes.get("http.request.header.x-request-secret"), "<redacted>")
         assert.strictEqual(serverSpan.attributes.get("http.response.status_code"), 201)
         assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response"), "response")
+        assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response-secret"), "<redacted>")
       }))
 
     it.effect("skips attributes for unsampled spans", () =>
