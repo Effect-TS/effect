@@ -1587,13 +1587,13 @@ describe("Stream", () => {
 
   it.effect("rechunk preserves large input split across source chunks", () =>
     Effect.gen(function*() {
-      const values = Array.makeBy(200000, (i) => i)
-      const actual = yield* Stream.fromArrays(values.slice(0, 100000), values.slice(100000)).pipe(
-        Stream.rechunk(200001),
+      const values = Array.makeBy(200001, (i) => i)
+      const actual = yield* Stream.fromArrays(values.slice(0, 1), values.slice(1)).pipe(
+        Stream.rechunk(200002),
         Stream.chunks,
         Stream.runCollect
       )
-      assert.deepStrictEqual(actual.map((chunk) => chunk.length), [200000])
+      assert.deepStrictEqual(actual.map((chunk) => chunk.length), [200001])
       assert.deepStrictEqual(actual.flat(), values)
     }))
 
