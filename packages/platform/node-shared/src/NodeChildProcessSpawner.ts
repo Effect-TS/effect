@@ -639,7 +639,7 @@ const make = Effect.gen(function*() {
           exitCode: handle.exitCode,
           isRunning: handle.isRunning,
           kill,
-          stdin: handle.stdin,
+          stdin: handles[0].stdin,
           stdout: handle.stdout,
           stderr: handle.stderr,
           all: handle.all,
