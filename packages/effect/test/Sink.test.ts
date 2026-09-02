@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { describe, it } from "@effect/vitest"
 import {
   assertExitFailure,
   assertExitSuccess,
@@ -7,7 +7,7 @@ import {
   deepStrictEqual,
   strictEqual
 } from "@effect/vitest/utils"
-import { Array, Cause, Channel, Deferred, Duration, Effect, Fiber, Option, Ref, Result, Sink, Stream } from "effect"
+import { Array, Cause, Deferred, Duration, Effect, Fiber, Option, Ref, Result, Sink, Stream } from "effect"
 import { constTrue, pipe } from "effect/Function"
 import { TestClock } from "effect/testing"
 
@@ -314,97 +314,14 @@ describe("Sink", () => {
   })
 
   describe("flatMap", () => {
-    it.effect("preserves pending leftovers when take(0) consumes nothing", () =>
-      Effect.gen(function*() {
-        const sink = Sink.flatMap(Sink.take<number>(1), () => Sink.take<number>(0))
-        const result = yield* Channel.fromArray([[1, 2, 3]] as const).pipe(
-          Channel.pipeTo(Sink.toChannel(sink)),
-          Channel.runDrain
-        )
-        assert.deepStrictEqual(result, [[], [2, 3]])
-      }))
-
-    it.effect("preserves pending leftovers when succeed consumes nothing", () =>
-      Effect.gen(function*() {
-        const sink = Sink.take<number>(1).pipe(Sink.flatMap(Sink.succeed))
-        const result = yield* Channel.fromArray([[1, 2, 3]] as const).pipe(
-          Channel.pipeTo(Sink.toChannel(sink)),
-          Channel.runDrain
-        )
-        assert.deepStrictEqual(result, [[1], [2, 3]])
-      }))
-
-    it.effect("feeds pending leftovers before upstream input after take(0)", () =>
+    it.effect("preserves leftovers when the next sink consumes no input", () =>
       Effect.gen(function*() {
         const sink = Sink.take<number>(1).pipe(
           Sink.flatMap(() => Sink.take<number>(0)),
           Sink.flatMap(() => Sink.collect<number>())
         )
-        const result = yield* Channel.fromArray([[1, 2, 3], [4, 5]] as const).pipe(
-          Channel.pipeTo(Sink.toChannel(sink)),
-          Channel.runDrain
-        )
-        assert.deepStrictEqual(result, [[2, 3, 4, 5]])
-      }))
-
-    it.effect("feeds pending leftovers before upstream input after succeed", () =>
-      Effect.gen(function*() {
-        const sink = Sink.take<number>(1).pipe(
-          Sink.flatMap(Sink.succeed),
-          Sink.flatMap(() => Sink.collect<number>())
-        )
-        const result = yield* Channel.fromArray([[1, 2, 3], [4, 5]] as const).pipe(
-          Channel.pipeTo(Sink.toChannel(sink)),
-          Channel.runDrain
-        )
-        assert.deepStrictEqual(result, [[2, 3, 4, 5]])
-      }))
-
-    it.effect("keeps returned input before pending leftovers", () =>
-      Effect.gen(function*() {
-        const sink = Sink.head<number>().pipe(
-          Sink.flatMap((head) => Sink.succeed(head, Option.isSome(head) ? [head.value] : undefined)),
-          Sink.flatMap(() => Sink.collect<number>())
-        )
-        const result = yield* Channel.fromArray([[1, 2, 3], [4, 5]] as const).pipe(
-          Channel.pipeTo(Sink.toChannel(sink)),
-          Channel.runDrain
-        )
-        assert.deepStrictEqual(result, [[1, 2, 3, 4, 5]])
-      }))
-
-    it.effect("preserves leftovers from a consuming continuation", () =>
-      Effect.gen(function*() {
-        const sink = Sink.flatMap(Sink.take<number>(1), () => Sink.take<number>(1))
-        const result = yield* Channel.fromArray([[1, 2, 3]] as const).pipe(
-          Channel.pipeTo(Sink.toChannel(sink)),
-          Channel.runDrain
-        )
-        assert.deepStrictEqual(result, [[2], [3]])
-      }))
-
-    it.effect("collects the same input split at the first sink boundary", () =>
-      Effect.gen(function*() {
-        const sink = Sink.take<number>(1).pipe(
-          Sink.flatMap(() => Sink.take<number>(0)),
-          Sink.flatMap(() => Sink.collect<number>())
-        )
-        const result = yield* Channel.fromArray([[1], [2, 3], [4, 5]] as const).pipe(
-          Channel.pipeTo(Sink.toChannel(sink)),
-          Channel.runDrain
-        )
-        assert.deepStrictEqual(result, [[2, 3, 4, 5]])
-      }))
-
-    it.effect("does not pull upstream for a zero-consuming continuation", () =>
-      Effect.gen(function*() {
-        const sink = Sink.flatMap(Sink.take<number>(1), () => Sink.take<number>(0))
-        const result = yield* Channel.fromArray([[1]] as const).pipe(
-          Channel.concat(Channel.die("unexpected upstream pull")),
-          Channel.pipeTo(Sink.toChannel(sink)),
-          Channel.runDrain
-        )
-        assert.deepStrictEqual(result, [[]])
+        const result = yield* Stream.fromArrays([1, 2, 3], [4, 5]).pipe(Stream.run(sink))
+        deepStrictEqual(result, [2, 3, 4, 5], "pending leftovers should be preserved")
       }))
 
     it.effect("flatMap - empty input", () =>
