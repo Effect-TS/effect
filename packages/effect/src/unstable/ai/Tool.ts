@@ -933,6 +933,26 @@ export type ResultDecodingServices<T> = T extends Tool<
   : never
 
 /**
+ * A utility type to extract the requirements needed to encode the parameters
+ * of a `Tool` call.
+ *
+ * **Details**
+ *
+ * Provider packages normalize valid tool call parameters into the tool's
+ * standard encoded form before tool call resolution, which requires the
+ * parameter schema's encoding services.
+ *
+ * @category utility types
+ * @since 4.0.0
+ */
+export type ParametersEncodingServices<T> = T extends Tool<
+  infer _Name,
+  infer _Config,
+  infer _Requirements
+> ? _Config["parameters"]["EncodingServices"]
+  : never
+
+/**
  * Represents an `Tool` that has been implemented within the application.
  *
  * @category models

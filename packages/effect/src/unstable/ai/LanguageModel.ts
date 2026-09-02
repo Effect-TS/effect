@@ -590,6 +590,7 @@ type ExtractErrorFromToolkitOption<ToolkitValue, DisableToolCallResolution exten
 type ExtractServicesFromToolkitOption<ToolkitValue> = ToolkitValue extends Toolkit.WithHandler<infer Tools> ?
     | Tool.HandlerServices<Tools[keyof Tools]>
     | Tool.ResultDecodingServices<Tools[keyof Tools]>
+    | Tool.ParametersEncodingServices<Tools[keyof Tools]>
   : ToolkitValue extends Effect.Effect<
     Toolkit.WithHandler<infer Tools>,
     infer _E,
@@ -597,6 +598,7 @@ type ExtractServicesFromToolkitOption<ToolkitValue> = ToolkitValue extends Toolk
   > ?
       | Tool.HandlerServices<Tools[keyof Tools]>
       | Tool.ResultDecodingServices<Tools[keyof Tools]>
+      | Tool.ParametersEncodingServices<Tools[keyof Tools]>
       | R
   : never
 

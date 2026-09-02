@@ -1,4 +1,4 @@
-import { Context, Effect, Schema, type Stream } from "effect"
+import { Context, Effect, Schema, SchemaGetter, type Stream } from "effect"
 import { type AiError, type Chat, LanguageModel, Tool, Toolkit } from "effect/unstable/ai"
 import type * as Response from "effect/unstable/ai/Response"
 import { describe, expect, it } from "tstyche"
@@ -34,6 +34,25 @@ const ToolWithRequestContext = Tool.make("ToolWithRequestContext", {
 const TransformTool = Tool.make("TransformTool", {
   parameters: Schema.FiniteFromString,
   success: Schema.Finite
+})
+
+class ParamEncodeService extends Context.Service<ParamEncodeService, {
+  readonly use: Effect.Effect<void>
+}>()("ParamEncodeService") {}
+
+// Decoding is service-free while encoding requires `ParamEncodeService`
+const AsymmetricParam = Schema.String.pipe(
+  Schema.decodeTo(Schema.String, {
+    decode: SchemaGetter.passthrough(),
+    encode: SchemaGetter.transformOrFail<string, string, ParamEncodeService>((value) =>
+      Effect.as(Effect.service(ParamEncodeService), value)
+    )
+  })
+)
+
+const AsymmetricParamsTool = Tool.make("AsymmetricParamsTool", {
+  parameters: Schema.Struct({ input: AsymmetricParam }),
+  success: Schema.Struct({ output: Schema.String })
 })
 
 describe("LanguageModel", () => {
@@ -115,6 +134,20 @@ describe("LanguageModel", () => {
 
       expect<ProgramRequirements>().type.toBe<
         LanguageModel.LanguageModel | RequestContext | Tool.HandlersFor<Toolkit.Tools<typeof toolkit>>
+      >()
+    })
+
+    it("includes parameter encoding services in the requirements", () => {
+      const toolkit = Toolkit.make(AsymmetricParamsTool)
+      const program = LanguageModel.generateText({
+        prompt: "hello",
+        toolkit
+      })
+
+      type ProgramRequirements = typeof program extends Effect.Effect<any, any, infer R> ? R : never
+
+      expect<ProgramRequirements>().type.toBe<
+        LanguageModel.LanguageModel | ParamEncodeService | Tool.HandlersFor<Toolkit.Tools<typeof toolkit>>
       >()
     })
 

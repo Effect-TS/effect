@@ -1,7 +1,7 @@
 import { type Generated, OpenAiClient, OpenAiLanguageModel, OpenAiSchema, OpenAiTool } from "@effect/ai-openai"
 import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Array, Context, Effect, Layer, Redacted, Ref, Schema, Stream } from "effect"
+import { Array, Context, Effect, Layer, Redacted, Ref, Schema, SchemaGetter, Stream } from "effect"
 import { type AiError, LanguageModel, Prompt, Response as AiResponse, Tool, Toolkit } from "effect/unstable/ai"
 import { HttpClient, type HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
@@ -1022,6 +1022,32 @@ describe("OpenAiLanguageModel", () => {
         }).pipe(
           Effect.provide(makeTestLayer({
             body: { output: [makeFunctionCall("TransformParamsTool", { input: "21" })] }
+          }))
+        ))
+
+      it.effect("provides parameter encoding services to provider normalization", () =>
+        Effect.gen(function*() {
+          const used = yield* Ref.make(false)
+          const toolkit = Toolkit.make(AsymmetricParamsTool)
+          const handlers = toolkit.toLayer({
+            AsymmetricParamsTool: ({ input }) => Effect.succeed({ output: `processed: ${input}` })
+          })
+
+          const result = yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provide(handlers),
+            Effect.provideService(ParamEncodeService, { use: Ref.set(used, true) })
+          )
+
+          strictEqual(yield* Ref.get(used), true)
+          strictEqual(result.toolResults[0]!.isFailure, false)
+          deepStrictEqual(result.toolResults[0]!.result, { output: "processed: hello" })
+        }).pipe(
+          Effect.provide(makeTestLayer({
+            body: { output: [makeFunctionCall("AsymmetricParamsTool", { input: "hello" })] }
           }))
         ))
 
@@ -2053,6 +2079,29 @@ const TransformParamsTool = Tool.make("TransformParamsTool", {
   description: "A test tool",
   parameters: Schema.Struct({ input: Schema.FiniteFromString }),
   success: Schema.Struct({ output: Schema.Finite })
+})
+
+class ParamEncodeService extends Context.Service<ParamEncodeService, {
+  readonly use: Effect.Effect<void>
+}>()("ParamEncodeService") {}
+
+// Decoding is service-free while encoding requires `ParamEncodeService`
+const AsymmetricParam = Schema.String.pipe(
+  Schema.decodeTo(Schema.String, {
+    decode: SchemaGetter.passthrough(),
+    encode: SchemaGetter.transformOrFail<string, string, ParamEncodeService>((value) =>
+      Effect.service(ParamEncodeService).pipe(
+        Effect.flatMap((service) => service.use),
+        Effect.as(value)
+      )
+    )
+  })
+)
+
+const AsymmetricParamsTool = Tool.make("AsymmetricParamsTool", {
+  description: "A test tool",
+  parameters: Schema.Struct({ input: AsymmetricParam }),
+  success: Schema.Struct({ output: Schema.String })
 })
 
 const TestToolkit = Toolkit.make(TestTool)
