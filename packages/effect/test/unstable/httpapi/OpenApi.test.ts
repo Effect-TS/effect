@@ -70,6 +70,110 @@ const makeSecurityApi = (
   )
 
 describe("OpenApi", () => {
+  describe("parameter transforms", () => {
+    const endpoint = HttpApiEndpoint.get("list", "/list", {
+      query: { first: Schema.Literal("first"), second: Schema.Literal("second") }
+    })
+    const reverseParameters = (operation: Record<string, any>) => ({
+      ...operation,
+      parameters: [...operation.parameters].reverse()
+    })
+    const expected: Array<OpenApi.OpenAPISpecParameter> = [
+      { name: "first", in: "query", required: true, schema: { type: "string", enum: ["first"] } },
+      { name: "second", in: "query", required: true, schema: { type: "string", enum: ["second"] } }
+    ]
+
+    it("preserves parameter schemas without a transform", () => {
+      const Api = HttpApi.make("Api").add(HttpApiGroup.make("test").add(endpoint))
+
+      assert.deepStrictEqual(OpenApi.fromApi(Api).paths["/list"]?.get?.parameters, expected)
+    })
+
+    it("preserves parameter schemas when an endpoint transform reverses parameters", () => {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(endpoint.annotate(OpenApi.Transform, reverseParameters))
+      )
+
+      assert.deepStrictEqual(OpenApi.fromApi(Api).paths["/list"]?.get?.parameters, [...expected].reverse())
+    })
+
+    it("preserves parameter schemas when an API transform reverses parameters", () => {
+      const Api = HttpApi.make("Api").add(HttpApiGroup.make("test").add(endpoint)).annotate(
+        OpenApi.Transform,
+        (spec) => ({
+          ...spec,
+          paths: { ...spec.paths, "/list": { get: reverseParameters(spec.paths["/list"].get) } }
+        })
+      )
+
+      assert.deepStrictEqual(OpenApi.fromApi(Api).paths["/list"]?.get?.parameters, [...expected].reverse())
+    })
+
+    it("applies endpoint overrides before the transform", () => {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          endpoint.annotate(OpenApi.Override, { operationId: "overridden", summary: "fixture" }).annotate(
+            OpenApi.Transform,
+            (operation) => ({ ...operation, operationId: `${operation.operationId}.transformed` })
+          )
+        )
+      )
+      const operation = OpenApi.fromApi(Api).paths["/list"]?.get
+
+      assert.strictEqual(operation?.operationId, "overridden.transformed")
+      assert.strictEqual(operation?.summary, "fixture")
+      assert.deepStrictEqual(operation?.parameters, expected)
+    })
+
+    it("rejects duplicate operation identifiers introduced by endpoint transforms", () => {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          endpoint.annotate(OpenApi.Transform, (operation) => ({ ...operation, operationId: "shared" })),
+          HttpApiEndpoint.get("other", "/other").annotate(OpenApi.Identifier, "shared")
+        )
+      )
+
+      assert.throws(() => OpenApi.fromApi(Api), /Duplicate OpenAPI operationId: shared/)
+    })
+
+    it("allows endpoint overrides to remove generated parameters", () => {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          endpoint.annotate(OpenApi.Override, { parameters: [] }).annotate(OpenApi.Transform, (operation) => {
+            assert.deepStrictEqual(operation.parameters, [])
+            return operation
+          })
+        )
+      )
+
+      assert.deepStrictEqual(OpenApi.fromApi(Api).paths["/list"]?.get?.parameters, [])
+    })
+
+    it("finalizes endpoint transforms in declaration order before the API transform", () => {
+      const calls: Array<string> = []
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          endpoint.annotate(OpenApi.Transform, (operation) => {
+            calls.push("list")
+            assert.deepStrictEqual(operation.parameters, expected)
+            return reverseParameters(operation)
+          }),
+          HttpApiEndpoint.get("other", "/other").annotate(OpenApi.Transform, (operation) => {
+            calls.push("other")
+            return operation
+          })
+        )
+      ).annotate(OpenApi.Transform, (spec) => {
+        calls.push("api")
+        assert.deepStrictEqual(spec.paths["/list"].get.parameters, [...expected].reverse())
+        return spec
+      })
+
+      OpenApi.fromApi(Api)
+      assert.deepStrictEqual(calls, ["list", "other", "api"])
+    })
+  })
+
   it("returns fresh spec instances when using the cache", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
