@@ -480,26 +480,25 @@ class YamlParser {
     if (style === "|") {
       output = content.join("\n")
     } else {
-      let separator = ""
-      let previousMoreIndented = false
+      let blankLines = 0
+      let previousMoreIndented: boolean | undefined
       for (const line of content) {
-        if (line.startsWith(" ")) {
-          if (separator === " ") separator = "\n"
-          else if (!previousMoreIndented && separator === "\n") separator = "\n\n"
-          output += separator + line
-          separator = "\n"
-          previousMoreIndented = true
-        } else if (line.length === 0) {
-          if (separator === "\n") output += "\n"
-          else separator = "\n"
+        if (line.length === 0) {
+          blankLines++
         } else {
-          output += separator + line
-          separator = " "
-          previousMoreIndented = false
+          const moreIndented = line.startsWith(" ")
+          const hardBreak = moreIndented || previousMoreIndented === true
+          if (previousMoreIndented === undefined) output += "\n".repeat(blankLines)
+          else if (blankLines === 0) output += hardBreak ? "\n" : " "
+          else output += "\n".repeat(blankLines + (hardBreak ? 1 : 0))
+          output += line
+          blankLines = 0
+          previousMoreIndented = moreIndented
         }
       }
+      output += "\n".repeat(blankLines)
     }
-    if (chomp === "keep") return `${output}\n`
+    if (chomp === "keep") return output.endsWith("\n") ? output : `${output}\n`
     output = output.replace(/\n+$/, "")
     return chomp === "strip" ? output : `${output}\n`
   }
