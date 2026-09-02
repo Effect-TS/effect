@@ -644,7 +644,7 @@ export const refresh: {
         MutableHashMap.set(self.state.map, key, entry)
         yield* checkCapacity(fiber, self.state.map, self.capacity)
       }
-      const exit = yield* effect.exit(restore(Scope.provide(self.lookup(key), scope)))
+      const exit = yield* effect.exit(effect.suspend(() => restore(Scope.provide(self.lookup(key), scope))))
       Deferred.doneUnsafe(deferred, exit)
       // @ts-ignore async gap
       if (self.state._tag === "Closed") {
