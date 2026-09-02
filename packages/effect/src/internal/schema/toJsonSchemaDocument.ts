@@ -16,6 +16,10 @@ type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnn
   SchemaRepresentation.Representation
 >
 
+function formatReferenceToken(token: string): string {
+  return encodeURI(escapeToken(token)).replace(/#/g, "%23")
+}
+
 const jsonSchemaAnnotationExcludedKeys = new Set([
   ...InternalAnnotations.annotationExcludedKeys,
   InternalAnnotations.IDENTIFIER_FALLBACK_KEY,
@@ -226,12 +230,10 @@ function compileJsonSchema(
         try {
           token = decodeURIComponent(token)
         } catch {
-          return match
+          // Keep the raw token so malformed callback references can still be canonicalized.
         }
         const canonical = definitionStates.get(unescapeToken(token))
-        return typeof canonical === "string"
-          ? `#/$defs/${encodeURI(escapeToken(canonical)).replace(/#/g, "%23")}`
-          : match
+        return typeof canonical === "string" ? `#/$defs/${formatReferenceToken(canonical)}` : match
       }))
   }
 
@@ -291,7 +293,7 @@ function compileJsonSchema(
   ): JsonSchema.JsonSchema {
     if (representation._tag === "Reference") {
       const canonical = compileDefinition(representation.$ref, path)
-      return { $ref: `#/$defs/${encodeURI(escapeToken(canonical)).replace(/#/g, "%23")}` }
+      return { $ref: `#/$defs/${formatReferenceToken(canonical)}` }
     }
     const cached = compiledRepresentations.get(representation)
     if (cached !== undefined) return cached

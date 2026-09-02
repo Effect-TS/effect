@@ -196,6 +196,25 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
       })
     }
 
+    it("rewrites callback references containing a bare percent sign", () => {
+      const Content = Schema.String.annotate({ identifier: "Rate%" })
+      const make = () =>
+        Schema.toCodecJson(
+          Schema.String.check(Schema.isMinLength(1)).pipe(
+            Schema.decodeTo(Content, stringIdentityTransformation)
+          )
+        )
+      const callback = Schema.Unknown.check(Schema.makeFilter(() => true, {
+        toJsonSchema: () => ({ $ref: "#/$defs/Rate%Encoded_1" })
+      }))
+      const output = SchemaRepresentation.toJsonSchemaMultiDocument(
+        SchemaRepresentation.toRepresentations([make().ast, make().ast, callback.ast])
+      )
+
+      assert.deepStrictEqual(Object.keys(output.definitions), ["Rate%Encoded"])
+      assert.deepStrictEqual(output.schemas[2], { $ref: "#/$defs/Rate%25Encoded" })
+    })
+
     for (const separator of ["/", "%2F", "%2f", "~1", "%7E1"]) {
       it(`distinguishes pointer separators from escaped slashes in ${separator} callback references`, () => {
         const Content = Schema.String.annotate({ identifier: "Box/properties/value" })
