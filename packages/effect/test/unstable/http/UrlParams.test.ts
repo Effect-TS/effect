@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { assertNone, assertSome, deepStrictEqual } from "@effect/vitest/utils"
 import { Schema } from "effect"
 import { UrlParams } from "effect/unstable/http"
@@ -8,6 +8,18 @@ describe("UrlParams", () => {
   describe("fromInput", () => {
     it("coerces null to a string", () => {
       deepStrictEqual(UrlParams.fromInput({ filter: null }).params, [["filter", "null"]])
+    })
+  })
+
+  describe("setAll", () => {
+    it("does not retain parameters when reusing UrlParams overrides", () => {
+      const overrides = UrlParams.fromInput({ sort: "name" })
+
+      UrlParams.setAll(UrlParams.fromInput({ page: 1 }), overrides)
+      assert.strictEqual(
+        UrlParams.toString(UrlParams.setAll(UrlParams.fromInput({ page: 2 }), overrides)),
+        "sort=name&page=2"
+      )
     })
   })
 
