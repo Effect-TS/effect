@@ -169,28 +169,6 @@ describe("OpenAiLanguageModel", () => {
       })
 
       describe("user messages", () => {
-        it.effect("handles image data URLs", () =>
-          Effect.gen(function*() {
-            const dataUrl = "data:image/png;base64,iVBORw0KGgo="
-            yield* LanguageModel.generateText({
-              prompt: Prompt.make([Prompt.userMessage({
-                content: [Prompt.filePart({ mediaType: "image/png", data: dataUrl })]
-              })])
-            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
-
-            const requests = yield* MockHttpClient.requests
-            const body = yield* getRequestBody(requests[0])
-
-            assert.deepStrictEqual(body.input, [{
-              role: "user",
-              content: [{
-                type: "input_image",
-                image_url: dataUrl,
-                detail: "auto"
-              }]
-            }])
-          }).pipe(Effect.provide(makeTestLayer())))
-
         it.effect("converts text parts to input_text", () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({
@@ -227,6 +205,35 @@ describe("OpenAiLanguageModel", () => {
               type: "input_image",
               image_url: "https://example.com/image.png",
               detail: "auto"
+            }])
+          }).pipe(Effect.provide(makeTestLayer())))
+
+        it.effect("handles image strings", () =>
+          Effect.gen(function*() {
+            const base64 = "iVBORw0KGgo="
+            const dataUrl = `data:image/png;base64,${base64}`
+            const upperCaseDataUrl = `DATA:image/png;base64,${base64}`
+            const url = "https://example.com/image.png"
+
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([Prompt.userMessage({
+                content: [base64, dataUrl, upperCaseDataUrl, url].map((data) =>
+                  Prompt.filePart({ mediaType: "image/png", data })
+                )
+              })])
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+
+            assert.deepStrictEqual(body.input, [{
+              role: "user",
+              content: [
+                { type: "input_image", image_url: `data:image/png;base64,${base64}`, detail: "auto" },
+                { type: "input_image", image_url: dataUrl, detail: "auto" },
+                { type: "input_image", image_url: upperCaseDataUrl, detail: "auto" },
+                { type: "input_image", image_url: url, detail: "auto" }
+              ]
             }])
           }).pipe(Effect.provide(makeTestLayer())))
 

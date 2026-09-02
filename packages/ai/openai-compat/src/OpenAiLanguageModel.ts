@@ -787,20 +787,14 @@ const prepareMessages = Effect.fnUntraced(
 
                   if (typeof part.data === "string" && isFileId(part.data, config)) {
                     content.push({ type: "input_image", file_id: part.data, detail })
-                  } else if (typeof part.data === "string") {
-                    const imageUrl = part.data.startsWith("data:")
+                  } else {
+                    const imageUrl = part.data instanceof URL
+                      ? part.data.toString()
+                      : part.data instanceof Uint8Array
+                      ? `data:${mediaType};base64,${Encoding.encodeBase64(part.data)}`
+                      : /^(data:|https?:\/\/)/i.test(part.data)
                       ? part.data
                       : `data:${mediaType};base64,${part.data}`
-                    content.push({ type: "input_image", image_url: imageUrl, detail })
-                  }
-
-                  if (part.data instanceof URL) {
-                    content.push({ type: "input_image", image_url: part.data.toString(), detail })
-                  }
-
-                  if (part.data instanceof Uint8Array) {
-                    const base64 = Encoding.encodeBase64(part.data)
-                    const imageUrl = `data:${mediaType};base64,${base64}`
                     content.push({ type: "input_image", image_url: imageUrl, detail })
                   }
                 } else if (part.mediaType === "application/pdf") {
