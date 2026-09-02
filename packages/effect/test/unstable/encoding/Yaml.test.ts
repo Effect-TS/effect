@@ -50,6 +50,25 @@ folded: >-
     )
   })
 
+  it("preserves paragraph and indentation breaks in folded block scalars", () => {
+    assert.deepStrictEqual(
+      Yaml.parse(`
+paragraph: >-
+  first
+
+  second
+indented: >-
+  first
+    second
+  third
+`),
+      {
+        paragraph: "first\nsecond",
+        indented: "first\n  second\nthird"
+      }
+    )
+  })
+
   it("resolves aliases", () => {
     assert.deepStrictEqual(
       Yaml.parse(`
