@@ -83,29 +83,26 @@ export const pullIntoWritable = <A, IE, E>(options: {
   options.pull.pipe(
     Effect.flatMap((chunk) => {
       let i = 0
-      return Effect.callback<void, E>((resume) => {
-        let cancelled = false
+      return Effect.callback<void, E>((resume, signal) => {
         const loop = () => {
           for (; i < chunk.length;) {
-            if (cancelled) {
+            if (signal.aborted) {
               return
             }
             const success = options.writable.write(chunk[i++], options.encoding as any)
             if (!success) {
-              if (!cancelled) {
+              if (!signal.aborted) {
                 options.writable.once("drain", loop)
               }
               return
             }
           }
-          if (!cancelled) {
+          if (!signal.aborted) {
             resume(Effect.void)
           }
         }
         loop()
         return Effect.sync(() => {
-          // Removing a listener does not invalidate an in-progress drain dispatch.
-          cancelled = true
           options.writable.off("drain", loop)
         })
       })
