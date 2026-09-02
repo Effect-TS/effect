@@ -71,6 +71,158 @@ describe("ExecutionPlan", () => {
     })
   })
 
+  describe("captureRequirements", () => {
+    class Policy extends Context.Service<Policy, { allow: boolean }>()("ExecutionPlan.test/Policy") {}
+
+    const failOnce = () => {
+      let attempts = 0
+      return Effect.suspend(() => ++attempts === 1 ? Effect.fail("busy") : Effect.succeed("ok"))
+    }
+
+    const policyPlan = ExecutionPlan.make({
+      provide: Context.empty(),
+      attempts: 2,
+      while: (_: string) => Effect.map(Policy, ({ allow }) => allow)
+    })
+
+    it.effect("captures predicate requirements without invoking it before a failure", () =>
+      Effect.gen(function*() {
+        const inputs = Array.empty<string>()
+        let evaluations = 0
+        const plan = ExecutionPlan.make({
+          provide: Context.empty(),
+          attempts: 2,
+          while: (input: string) => {
+            inputs.push(input)
+            return Effect.map(Policy, ({ allow }) => {
+              evaluations++
+              return allow
+            })
+          }
+        })
+        const captured = yield* plan.captureRequirements.pipe(Effect.provideService(Policy, { allow: true }))
+        deepStrictEqual(inputs, [])
+        strictEqual(evaluations, 0)
+
+        const success = yield* Effect.withExecutionPlan(Effect.succeed("first attempt"), captured)
+        strictEqual(success, "first attempt")
+        deepStrictEqual(inputs, [])
+        strictEqual(evaluations, 0)
+
+        const task = Effect.withExecutionPlan(failOnce(), captured)
+        deepStrictEqual(inputs, [])
+        strictEqual(evaluations, 0)
+        const result = yield* task
+        strictEqual(result, "ok")
+        deepStrictEqual(inputs, ["busy"])
+        strictEqual(evaluations, 1)
+      }))
+
+    it.effect("uses captured predicate services instead of conflicting ambient services", () =>
+      Effect.gen(function*() {
+        for (const allow of [true, false]) {
+          const captured = yield* policyPlan.captureRequirements.pipe(Effect.provideService(Policy, { allow }))
+          const result = yield* Effect.withExecutionPlan(failOnce(), captured).pipe(
+            Effect.provideService(Policy, { allow: !allow }),
+            Effect.exit
+          )
+          deepStrictEqual(result, allow ? Exit.succeed("ok") : Exit.fail("busy"), "captured policy takes precedence")
+        }
+      }))
+
+    it.effect("leaves the original plan's predicate requirements unchanged", () =>
+      Effect.gen(function*() {
+        const predicate = policyPlan.steps[0].while
+        yield* policyPlan.captureRequirements.pipe(Effect.provideService(Policy, { allow: true }))
+        strictEqual(policyPlan.steps[0].while, predicate)
+        for (const allow of [true, false]) {
+          const result = yield* Effect.withExecutionPlan(failOnce(), policyPlan).pipe(
+            Effect.provideService(Policy, { allow }),
+            Effect.exit
+          )
+          deepStrictEqual(result, allow ? Exit.succeed("ok") : Exit.fail("busy"), "original plan uses ambient policy")
+        }
+      }))
+
+    it.effect("preserves typed predicate failures", () =>
+      Effect.gen(function*() {
+        const plan = ExecutionPlan.make({
+          provide: Context.empty(),
+          attempts: 2,
+          while: (_: string) => Effect.flatMap(Policy, () => Effect.fail("policy failure"))
+        })
+        const captured = yield* plan.captureRequirements.pipe(Effect.provideService(Policy, { allow: true }))
+        const result = yield* Effect.withExecutionPlan(failOnce(), captured).pipe(Effect.exit)
+        deepStrictEqual(result, Exit.fail("policy failure"), "captured predicate retains its typed failure")
+      }))
+
+    it.effect("preserves effectful predicate defects", () =>
+      Effect.gen(function*() {
+        const plan = ExecutionPlan.make({
+          provide: Context.empty(),
+          attempts: 2,
+          while: (_: string) => Effect.flatMap(Policy, () => Effect.die("policy defect"))
+        })
+        const captured = yield* plan.captureRequirements.pipe(Effect.provideService(Policy, { allow: true }))
+        const result = yield* Effect.withExecutionPlan(failOnce(), captured).pipe(Effect.exit)
+        deepStrictEqual(result, Exit.die("policy defect"), "captured predicate retains its defect")
+      }))
+
+    it.effect("keeps thrown predicate defects deferred until a retry decision", () =>
+      Effect.gen(function*() {
+        const defect = new Error("predicate threw")
+        let calls = 0
+        const captured = yield* ExecutionPlan.make({
+          provide: Context.empty(),
+          attempts: 2,
+          while: (_: string): boolean => {
+            calls++
+            throw defect
+          }
+        }).captureRequirements
+        strictEqual(calls, 0)
+        const success = yield* Effect.withExecutionPlan(Effect.succeed("ok"), captured)
+        strictEqual(success, "ok")
+        strictEqual(calls, 0)
+        const result = yield* Effect.withExecutionPlan(failOnce(), captured).pipe(Effect.exit)
+        deepStrictEqual(result, Exit.die(defect), "thrown predicate errors remain defects")
+        strictEqual(calls, 1)
+      }))
+
+    it.effect("preserves absent, boolean, and service-free effectful predicates", () =>
+      Effect.gen(function*() {
+        for (const predicate of [undefined, () => true, () => Effect.succeed(true)]) {
+          const captured = yield* ExecutionPlan.make({
+            provide: Context.empty(),
+            attempts: 2,
+            while: predicate
+          }).captureRequirements
+          const result = yield* Effect.withExecutionPlan(failOnce(), captured)
+          strictEqual(result, "ok")
+        }
+        const captured = yield* ExecutionPlan.make({
+          provide: Context.empty(),
+          attempts: 2,
+          while: () => false
+        }).captureRequirements
+        const result = yield* Effect.withExecutionPlan(failOnce(), captured).pipe(Effect.exit)
+        deepStrictEqual(result, Exit.fail("busy"), "a false predicate stops retrying")
+      }))
+
+    it.effect("still captures layer requirements alongside predicate requirements", () =>
+      Effect.gen(function*() {
+        class Worker extends Context.Service<Worker, { value: string }>()("ExecutionPlan.test/Worker") {}
+        const captured = yield* ExecutionPlan.make({
+          provide: Layer.effect(Worker, Effect.map(Policy, ({ allow }) => ({ value: allow ? "ok" : "no" }))),
+          attempts: 2,
+          while: (_: string) => Effect.map(Policy, ({ allow }) => allow)
+        }).captureRequirements.pipe(Effect.provideService(Policy, { allow: true }))
+        const task = failOnce().pipe(Effect.andThen(Effect.map(Worker, ({ value }) => value)))
+        const result = yield* Effect.withExecutionPlan(task, captured)
+        strictEqual(result, "ok")
+      }))
+  })
+
   describe("Stream.withExecutionPlan", () => {
     it.effect("limits attempts after partial stream failures", () =>
       Effect.gen(function*() {
