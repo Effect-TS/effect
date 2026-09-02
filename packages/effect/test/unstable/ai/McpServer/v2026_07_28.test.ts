@@ -492,17 +492,12 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         }, { clientCapabilities: {} })
         const error = yield* decodeError(response)
 
+        assert.strictEqual(response.status, 400)
         assert.strictEqual(error.error.code, -32021)
-        const cause = Schema.decodeUnknownSync(Schema.Array(Schema.Struct({
-          _tag: Schema.Literal("Fail"),
-          error: Schema.Struct({
-            data: Schema.Struct({
-              requiredCapabilities: Schema.JsonObject
-            })
-          })
-        })))(error.error.data)
-        assert.lengthOf(cause, 1)
-        assert.deepStrictEqual(cause[0]?.error.data, {
+        const data = Schema.decodeUnknownSync(Schema.Struct({
+          requiredCapabilities: Schema.JsonObject
+        }))(error.error.data)
+        assert.deepStrictEqual(data, {
           requiredCapabilities: {
             elicitation: { form: {} },
             sampling: {},
