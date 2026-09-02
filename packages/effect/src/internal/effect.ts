@@ -513,7 +513,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this.currentOpCount = 0
     this.interruptible = interruptible
     this._stack = []
-    this._observers = []
+    this._observers = undefined
     this._exit = undefined
     this._children = undefined
     this._interruptedCause = undefined
@@ -530,7 +530,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   interruptible: boolean
   currentOpCount: number
   readonly _stack: Array<Primitive>
-  readonly _observers: Array<(exit: Exit.Exit<A, E>) => void>
+  _observers: Array<(exit: Exit.Exit<A, E>) => void> | undefined
   _exit: Exit.Exit<A, E> | undefined
   _children: Set<FiberImpl<any, any>> | undefined
   _interruptedCause: Cause.Cause<never> | undefined
@@ -584,9 +584,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       cb(this._exit)
       return constVoid
     }
-    this._observers.push(cb)
+    if (this._observers === undefined) {
+      this._observers = [cb]
+    } else {
+      this._observers.push(cb)
+    }
     return () => {
-      if (this._exit) return
+      if (this._exit || this._observers === undefined) return
       const index = this._observers.indexOf(cb)
       if (index >= 0) {
         this._observers.splice(index, 1)
@@ -644,10 +648,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       this._parent._children?.delete(this)
       this._parent = undefined
     }
-    for (let i = 0; i < this._observers.length; i++) {
-      this._observers[i](exit)
+    if (this._observers !== undefined) {
+      const observers = this._observers
+      this._observers = undefined
+      for (let i = 0; i < observers.length; i++) {
+        observers[i](exit)
+      }
     }
-    this._observers.length = 0
     this._stack.length = 0
     this._children = undefined
     this.context = Context.empty()
@@ -1245,12 +1252,14 @@ export const gen = <
   [Eff] extends [never] ? never
     : [Eff] extends [Effect.Effect<infer _A, infer _E, infer R>] ? R
     : never
-> =>
-  suspend(() =>
-    fromIteratorUnsafe(
-      args.length === 1 ? args[0]() : (args[1].call(args[0].self) as any)
-    )
-  )
+> => {
+  if (args.length === 1) {
+    const body = args[0]
+    return suspend(() => fromIteratorUnsafe(body()))
+  }
+  const [options, body] = args
+  return suspend(() => fromIteratorUnsafe(body.call(options.self) as any))
+}
 
 /** @internal */
 export const fnUntraced: Effect.fn.Untraced = (
@@ -1514,8 +1523,41 @@ export const andThen: {
     self: Effect.Effect<A, E, R>,
     f: ((a: A) => Effect.Effect<B, E2, R2>) | Effect.Effect<B, E2, R2>
   ): Effect.Effect<B, E | E2, R | R2> =>
-    flatMap(self, (a) => isEffect(f) ? f : internalCall(() => (f as (a: A) => Effect.Effect<B, E2, R2>)(a)))
+    isEffect(f) ? new (AndThenEffectImpl as any)(self, f) : new (AndThenImpl as any)(self, f)
 )
+
+const AndThenProto = makePrimitiveProto({
+  op: "AndThen",
+  [evaluate](this: any, fiber: FiberImpl): Primitive {
+    fiber._stack.push(this)
+    return this[args]
+  },
+  [contA](this: any, value, _fiber) {
+    const f = this.f
+    return internalCall(() => f(value))
+  }
+})
+function AndThenImpl(this: any, self: any, f: any) {
+  this[args] = self
+  this.f = f
+}
+AndThenImpl.prototype = AndThenProto
+
+const AndThenEffectProto = makePrimitiveProto({
+  op: "AndThenEffect",
+  [evaluate](this: any, fiber: FiberImpl): Primitive {
+    fiber._stack.push(this)
+    return this[args]
+  },
+  [contA](this: any, _value, _fiber) {
+    return this.f
+  }
+})
+function AndThenEffectImpl(this: any, self: any, f: any) {
+  this[args] = self
+  this.f = f
+}
+AndThenEffectImpl.prototype = AndThenEffectProto
 
 /** @internal */
 export const tap: {
@@ -1539,8 +1581,41 @@ export const tap: {
     self: Effect.Effect<A, E, R>,
     f: ((a: A) => Effect.Effect<B, E2, R2>) | Effect.Effect<B, E2, R2>
   ): Effect.Effect<A, E | E2, R | R2> =>
-    flatMap(self, (a) => as(isEffect(f) ? f : internalCall(() => (f as (a: A) => Effect.Effect<B, E2, R2>)(a)), a))
+    isEffect(f) ? new (TapEffectImpl as any)(self, f) : new (TapImpl as any)(self, f)
 )
+
+const TapProto = makePrimitiveProto({
+  op: "Tap",
+  [evaluate](this: any, fiber: FiberImpl): Primitive {
+    fiber._stack.push(this)
+    return this[args]
+  },
+  [contA](this: any, value, _fiber) {
+    const f = this.f
+    return new (AsImpl as any)(internalCall(() => f(value)), exitSucceed(value))
+  }
+})
+function TapImpl(this: any, self: any, f: any) {
+  this[args] = self
+  this.f = f
+}
+TapImpl.prototype = TapProto
+
+const TapEffectProto = makePrimitiveProto({
+  op: "TapEffect",
+  [evaluate](this: any, fiber: FiberImpl): Primitive {
+    fiber._stack.push(this)
+    return this[args]
+  },
+  [contA](this: any, value, _fiber) {
+    return new (AsImpl as any)(this.f, exitSucceed(value))
+  }
+})
+function TapEffectImpl(this: any, self: any, f: any) {
+  this[args] = self
+  this.f = f
+}
+TapEffectImpl.prototype = TapEffectProto
 
 /** @internal */
 export const asVoid = <A, E, R>(
