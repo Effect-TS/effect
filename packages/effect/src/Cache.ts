@@ -1188,6 +1188,7 @@ export const refresh: {
           : undefined
         if (existing) {
           MutableHashMap.set(self.map, key, entry)
+          checkCapacity(self)
         }
       })
       return entry.await()

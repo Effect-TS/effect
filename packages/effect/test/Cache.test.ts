@@ -752,17 +752,44 @@ describe("Cache", () => {
           assert.strictEqual(result, 2)
         }))
 
-      it.effect("refresh non-existent key invokes lookup", () =>
+      it.effect("refresh non-existent key invokes lookup and enforces capacity", () =>
         Effect.gen(function*() {
           let counter = 0
           const cache = yield* Cache.make<string, number>({
-            capacity: 10,
+            capacity: 1,
             lookup: (_key) => Effect.sync(() => ++counter)
           })
 
+          yield* Cache.set(cache, "other", 99)
           const result = yield* Cache.refresh(cache, "test")
 
           assert.strictEqual(result, 1)
+          assert.strictEqual(yield* Cache.size(cache), 1)
+          assert.deepStrictEqual(Array.from(yield* Cache.keys(cache)), ["test"])
+        }))
+
+      it.effect("refresh enforces capacity when the existing key is evicted during lookup", () =>
+        Effect.gen(function*() {
+          const started = yield* Deferred.make<void>()
+          const result = yield* Deferred.make<number>()
+          const cache = yield* Cache.make<string, number>({
+            capacity: 1,
+            lookup: () => Deferred.succeed(started, void 0).pipe(Effect.andThen(Deferred.await(result)))
+          })
+
+          yield* Cache.set(cache, "a", 1)
+          const refresh = yield* Cache.refresh(cache, "a").pipe(Effect.forkChild({ startImmediately: true }))
+          yield* Deferred.await(started)
+          yield* Cache.set(cache, "b", 99)
+          assert.isFalse(yield* Cache.has(cache, "a"))
+
+          yield* Deferred.succeed(result, 2)
+          assert.strictEqual(yield* Fiber.join(refresh), 2)
+          assert.deepStrictEqual({
+            size: yield* Cache.size(cache),
+            keys: Array.from(yield* Cache.keys(cache)).sort()
+          }, { size: 1, keys: ["a"] })
+          assert.deepStrictEqual(yield* Cache.getSuccess(cache, "a"), Option.some(2))
         }))
 
       it.effect("repro: interrupting a missing-key refresh does not remove a newer set value", () =>

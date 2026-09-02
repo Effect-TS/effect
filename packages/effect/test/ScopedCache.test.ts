@@ -885,17 +885,59 @@ describe("ScopedCache", () => {
           assert.strictEqual(result, 2)
         }))
 
-      it.effect("refresh non-existent key invokes lookup", () =>
+      it.effect("refresh non-existent key invokes lookup and enforces capacity", () =>
         Effect.gen(function*() {
           let counter = 0
           const cache = yield* ScopedCache.make({
-            capacity: 10,
+            capacity: 1,
             lookup: (_key: string) => Effect.sync(() => ++counter)
           })
 
+          yield* ScopedCache.set(cache, "other", 99)
           const result = yield* ScopedCache.refresh(cache, "test")
 
           assert.strictEqual(result, 1)
+          assert.strictEqual(yield* ScopedCache.size(cache), 1)
+          assert.deepStrictEqual(yield* ScopedCache.keys(cache), ["test"])
+        }))
+
+      it.effect("refresh enforces capacity when the existing key is evicted during lookup", () =>
+        Effect.gen(function*() {
+          const started = yield* Deferred.make<void>()
+          const result = yield* Deferred.make<number>()
+          const released: Array<number> = []
+          const cache = yield* ScopedCache.make({
+            capacity: 1,
+            lookup: (key: string) =>
+              Effect.gen(function*() {
+                const value = key === "a"
+                  ? yield* Deferred.succeed(started, void 0).pipe(Effect.andThen(Deferred.await(result)))
+                  : 99
+                return yield* Effect.acquireRelease(
+                  Effect.succeed(value),
+                  (value) => Effect.sync(() => released.push(value))
+                )
+              })
+          })
+
+          yield* ScopedCache.set(cache, "a", 1)
+          const refresh = yield* ScopedCache.refresh(cache, "a").pipe(Effect.forkChild({ startImmediately: true }))
+          yield* Deferred.await(started)
+          assert.strictEqual(yield* ScopedCache.get(cache, "b"), 99)
+          assert.isFalse(yield* ScopedCache.has(cache, "a"))
+          assert.deepStrictEqual(released, [])
+
+          yield* Deferred.succeed(result, 2)
+          assert.strictEqual(yield* Fiber.join(refresh), 2)
+          assert.deepStrictEqual({
+            size: yield* ScopedCache.size(cache),
+            keys: (yield* ScopedCache.keys(cache)).sort(),
+            released: released.slice()
+          }, { size: 1, keys: ["a"], released: [99] })
+          assert.deepStrictEqual(yield* ScopedCache.getSuccess(cache, "a"), Option.some(2))
+
+          yield* ScopedCache.invalidateAll(cache)
+          assert.deepStrictEqual(released, [99, 2])
         }))
 
       it.effect("refresh updates TTL", () =>
