@@ -1919,6 +1919,7 @@ export function makeTreeRecord<A>(
 ): Schema.TreeRecord<A> {
   const out: any = {}
   const containers = new WeakSet<object>()
+  const duplicates = new WeakSet<object>()
 
   function getOrCreateContainer(self: any, key: PropertyKey, shouldBeArray: boolean): any {
     const current = Object.hasOwn(self, key) ? self[key] : undefined
@@ -1952,10 +1953,12 @@ export function makeTreeRecord<A>(
         // If we're setting a value at a path that already exists
         // convert it to an array to support multiple values for the same key
         const hasOwn = Object.hasOwn(cur, token)
-        if (hasOwn && Array.isArray(cur[token])) {
+        if (hasOwn && Array.isArray(cur[token]) && (containers.has(cur[token]) || duplicates.has(cur[token]))) {
           cur[token].push(value)
         } else if (hasOwn) {
-          InternalRecord.assignProperty(cur, token, [cur[token], value])
+          const values = [cur[token], value]
+          duplicates.add(values)
+          InternalRecord.assignProperty(cur, token, values)
         } else {
           InternalRecord.assignProperty(cur, token, value)
         }
