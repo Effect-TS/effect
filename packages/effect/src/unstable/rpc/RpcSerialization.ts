@@ -38,6 +38,11 @@ export type CodecFor = <S extends Schema.Top>(
 
 const codecForJson = Schema.toCodecJson as CodecFor
 
+// shared by every parser that decodes whole frames, so creating a parser does
+// not pay for a native TextDecoder
+let sharedTextDecoder: TextDecoder | undefined
+const decodeText = (bytes: Uint8Array): string => (sharedTextDecoder ??= new TextDecoder()).decode(bytes)
+
 /**
  * Service that describes how RPC protocol messages are encoded and decoded,
  * including the content type and whether the serialization format provides
@@ -118,16 +123,13 @@ export const json: RpcSerialization["Service"] = RpcSerialization.of({
   contentType: "application/json",
   includesFraming: false,
   codecFor: codecForJson,
-  makeUnsafe: () => {
-    const decoder = new TextDecoder()
-    return {
-      decode: (bytes) => {
-        const decoded = JSON.parse(typeof bytes === "string" ? bytes : decoder.decode(bytes))
-        return Array.isArray(decoded) ? decoded : [decoded]
-      },
-      encode: (response) => JSON.stringify(response)
-    }
-  }
+  makeUnsafe: () => ({
+    decode: (bytes) => {
+      const decoded = JSON.parse(typeof bytes === "string" ? bytes : decodeText(bytes))
+      return Array.isArray(decoded) ? decoded : [decoded]
+    },
+    encode: (response) => JSON.stringify(response)
+  })
 })
 
 /**
@@ -144,7 +146,8 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
     includesFraming: true,
     codecFor: codecForJson,
     makeUnsafe: () => {
-      const decoder = new TextDecoder()
+      // lazily created: string transports never need byte decoding
+      let decoder: TextDecoder | undefined
       let buffer = ""
       const failMaxBufferSize = (maxBufferSize: number): never => {
         buffer = ""
@@ -152,7 +155,7 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
       }
       return ({
         decode: (bytes) => {
-          buffer += typeof bytes === "string" ? bytes : decoder.decode(bytes, { stream: true })
+          buffer += typeof bytes === "string" ? bytes : (decoder ??= new TextDecoder()).decode(bytes, { stream: true })
           let position = 0
           let nlIndex = buffer.indexOf("\n", position)
           const items: Array<unknown> = []
@@ -210,7 +213,6 @@ export const jsonRpc = (options?: {
     includesFraming: false,
     codecFor: codecForJson,
     makeUnsafe: () => {
-      const decoder = new TextDecoder()
       const batches = new Map<string | number, {
         readonly size: number
         readonly responses: Map<string | number, RpcMessage.FromServerEncoded>
@@ -218,7 +220,7 @@ export const jsonRpc = (options?: {
       return {
         decode: (bytes) => {
           const decoded: JsonRpcMessage | Array<JsonRpcMessage> = JSON.parse(
-            typeof bytes === "string" ? bytes : decoder.decode(bytes)
+            typeof bytes === "string" ? bytes : decodeText(bytes)
           )
           return decodeJsonRpcRaw(decoded, batches)
         },
