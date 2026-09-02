@@ -344,6 +344,67 @@ export const makeHandlers = (
           : {})
       }
       const subscriptionMetadata = { "io.modelcontextprotocol/subscriptionId": requestId }
+      const resourceSubscriptions = new Set(honored.resourceSubscriptions)
+      const pending = yield* Queue.dropping<PublicMcpProtocol.ProjectedNotification>(
+        MAX_PENDING_SUBSCRIPTION_NOTIFICATIONS
+      )
+      const overflowed = yield* Deferred.make<void>()
+      yield* Effect.gen(function*() {
+        while (true) {
+          const event = yield* PubSub.take(events)
+          if (event.targetClientId !== undefined && event.targetClientId !== client.id) {
+            continue
+          }
+          const notification = event.notification
+          const projected = Match.value(notification).pipe(
+            Match.tags({
+              ToolsChanged: (notification) =>
+                honored.toolsListChanged === true ?
+                  {
+                    tag: McpSchema.ToolListChangedNotification._tag,
+                    payload: McpSchema.ToolListChangedNotification.payloadSchema.make({
+                      _meta: { ...notification.metadata, ...subscriptionMetadata }
+                    })
+                  } :
+                  undefined,
+              PromptsChanged: (notification) =>
+                honored.promptsListChanged === true ?
+                  {
+                    tag: McpSchema.PromptListChangedNotification._tag,
+                    payload: McpSchema.PromptListChangedNotification.payloadSchema.make({
+                      _meta: { ...notification.metadata, ...subscriptionMetadata }
+                    })
+                  } :
+                  undefined,
+              ResourcesChanged: (notification) =>
+                honored.resourcesListChanged === true ?
+                  {
+                    tag: McpSchema.ResourceListChangedNotification._tag,
+                    payload: McpSchema.ResourceListChangedNotification.payloadSchema.make({
+                      _meta: { ...notification.metadata, ...subscriptionMetadata }
+                    })
+                  } :
+                  undefined,
+              ResourceUpdated: (notification) =>
+                resourceSubscriptions.has(notification.uri) ?
+                  {
+                    tag: McpSchema.ResourceUpdatedNotification._tag,
+                    payload: McpSchema.ResourceUpdatedNotification.payloadSchema.make({
+                      _meta: { ...notification.metadata, ...subscriptionMetadata },
+                      uri: notification.uri
+                    })
+                  } :
+                  undefined
+            }),
+            Match.exhaustive
+          )
+          if (projected !== undefined && !(yield* Queue.offer(pending, projected))) {
+            break
+          }
+        }
+        yield* context.markSubscriptionCancelled?.(client.id, requestId) ?? Effect.void
+        yield* Deferred.succeed(overflowed, undefined)
+      }).pipe(Effect.forkScoped)
       yield* sendNotification(McpSchema.protocolVersion, client.id, {
         tag: McpSchema.SubscriptionsAcknowledgedNotification._tag,
         payload: McpSchema.SubscriptionsAcknowledgedNotification.payloadSchema.make({
@@ -351,58 +412,26 @@ export const makeHandlers = (
           notifications: honored
         })
       })
-      return yield* Effect.forever(Effect.gen(function*() {
-        const event = yield* PubSub.take(events)
-        if (event.targetClientId !== undefined && event.targetClientId !== client.id) {
-          return
-        }
-        const notification = event.notification
-        const projected = Match.value(notification).pipe(
-          Match.tags({
-            ToolsChanged: (notification) =>
-              honored.toolsListChanged === true ?
-                {
-                  tag: McpSchema.ToolListChangedNotification._tag,
-                  payload: McpSchema.ToolListChangedNotification.payloadSchema.make({
-                    _meta: { ...notification.metadata, ...subscriptionMetadata }
-                  })
-                } :
-                undefined,
-            PromptsChanged: (notification) =>
-              honored.promptsListChanged === true ?
-                {
-                  tag: McpSchema.PromptListChangedNotification._tag,
-                  payload: McpSchema.PromptListChangedNotification.payloadSchema.make({
-                    _meta: { ...notification.metadata, ...subscriptionMetadata }
-                  })
-                } :
-                undefined,
-            ResourcesChanged: (notification) =>
-              honored.resourcesListChanged === true ?
-                {
-                  tag: McpSchema.ResourceListChangedNotification._tag,
-                  payload: McpSchema.ResourceListChangedNotification.payloadSchema.make({
-                    _meta: { ...notification.metadata, ...subscriptionMetadata }
-                  })
-                } :
-                undefined,
-            ResourceUpdated: (notification) =>
-              honored.resourceSubscriptions?.includes(notification.uri) === true ?
-                {
-                  tag: McpSchema.ResourceUpdatedNotification._tag,
-                  payload: McpSchema.ResourceUpdatedNotification.payloadSchema.make({
-                    _meta: { ...notification.metadata, ...subscriptionMetadata },
-                    uri: notification.uri
-                  })
-                } :
-                undefined
-          }),
-          Match.exhaustive
+      const deliver = Effect.forever(
+        Queue.take(pending).pipe(
+          Effect.flatMap((notification) => sendNotification(McpSchema.protocolVersion, client.id, notification))
         )
-        if (projected !== undefined) {
-          yield* sendNotification(McpSchema.protocolVersion, client.id, projected)
-        }
-      }))
+      )
+      yield* Effect.race(deliver, Deferred.await(overflowed))
+      yield* context.terminateSubscription?.(
+        McpSchema.protocolVersion,
+        client.id,
+        requestId,
+        "Pending notification limit exceeded"
+      ) ?? Effect.void
+      const encodedServerInfo = yield* Schema.encodeEffect(McpSchema.Implementation)(context.serverInfo)
+      return McpSchema.SubscriptionsListenResult.make({
+        _meta: {
+          ...subscriptionMetadata,
+          "io.modelcontextprotocol/serverInfo": encodedServerInfo
+        },
+        resultType: "complete"
+      })
     }, Effect.mapError(projectError)),
     "server/discover": Effect.fnUntraced(function*(
       _request: typeof McpSchema.Discover.payloadSchema.Type

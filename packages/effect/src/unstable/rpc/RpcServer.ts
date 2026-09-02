@@ -1350,7 +1350,7 @@ export const makeProtocolStdio = Effect.gen(function*() {
   const serialization = yield* RpcSerialization.RpcSerialization
 
   return yield* Protocol.make(Effect.fnUntraced(function*(writeRequest) {
-    const queue = yield* Queue.make<Uint8Array | string, Cause.Done>()
+    const queue = yield* Queue.bounded<Uint8Array | string, Cause.Done>(1)
     const parser = serialization.makeUnsafe()
 
     yield* stdio.stdin.pipe(

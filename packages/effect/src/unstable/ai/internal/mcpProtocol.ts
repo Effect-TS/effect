@@ -308,6 +308,16 @@ export interface HandlerInstallationContext {
     clientId: number,
     notification: PublicMcpProtocol.ProjectedNotification
   ) => Effect.Effect<void>
+  readonly terminateSubscription?: (
+    protocolVersion: string,
+    clientId: number,
+    requestId: RpcMessage.RequestId,
+    reason: string
+  ) => Effect.Effect<void>
+  readonly markSubscriptionCancelled?: (
+    clientId: number,
+    requestId: RpcMessage.RequestId
+  ) => Effect.Effect<void>
   readonly supportedVersions: ReadonlyArray<string>
   readonly serverInfo: {
     readonly name: string

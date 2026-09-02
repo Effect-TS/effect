@@ -5,12 +5,18 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
+import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
 import * as Sink from "effect/Sink"
 import * as Stdio from "effect/Stdio"
 import * as Stream from "effect/Stream"
 import * as AiError from "effect/unstable/ai/AiError"
+import * as McpCore from "effect/unstable/ai/internal/mcpCore"
+import type * as McpProtocolInternal from "effect/unstable/ai/internal/mcpProtocol"
+import * as McpProtocol2026 from "effect/unstable/ai/internal/mcpProtocol/v2026_07_28"
+import * as McpSchema2026 from "effect/unstable/ai/internal/mcpSchema/v2026_07_28"
 import * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
@@ -21,8 +27,10 @@ import * as HttpClient from "effect/unstable/http/HttpClient"
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import * as HttpRouter from "effect/unstable/http/HttpRouter"
 import { RpcSerialization } from "effect/unstable/rpc"
+import * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
 import type * as RpcMessage from "effect/unstable/rpc/RpcMessage"
+import { RequestId } from "effect/unstable/rpc/RpcMessage"
 import * as RpcServer from "effect/unstable/rpc/RpcServer"
 import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
@@ -834,6 +842,159 @@ describe("McpServer", () => {
   })
 
   describe("resource subscriptions", () => {
+    it.effect("should acknowledge before cancellation when the backlog overflows before acknowledgment", () =>
+      Effect.gen(function*() {
+        const core = yield* McpCore.make
+        const events = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
+        const acknowledgmentStarted = yield* Deferred.make<void>()
+        const releaseAcknowledgment = yield* Deferred.make<void>()
+        const sent = yield* Queue.unbounded<"acknowledged" | "cancelled">()
+        const handlers = McpProtocol2026.makeHandlers(core, undefined, {
+          subscribeServerNotifications: PubSub.subscribe(events),
+          sendNotification: (_protocolVersion, _clientId, notification) =>
+            notification.tag === McpSchema2026.SubscriptionsAcknowledgedNotification._tag
+              ? Deferred.succeed(acknowledgmentStarted, undefined).pipe(
+                Effect.andThen(Deferred.await(releaseAcknowledgment)),
+                Effect.andThen(Queue.offer(sent, "acknowledged")),
+                Effect.asVoid
+              )
+              : Effect.void,
+          terminateSubscription: () => Queue.offer(sent, "cancelled").pipe(Effect.asVoid),
+          supportedVersions: [McpSchema2026.protocolVersion],
+          serverInfo: { name: "SubscriptionBacklogTest", version: "1.0.0" },
+          registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false })
+        })
+        yield* handlers["subscriptions/listen"](
+          {
+            notifications: { toolsListChanged: true },
+            _meta: {
+              "io.modelcontextprotocol/protocolVersion": McpSchema2026.protocolVersion,
+              "io.modelcontextprotocol/clientCapabilities": {}
+            }
+          },
+          { client: new Rpc.ServerClient(1), requestId: RequestId("blocked-acknowledgment") }
+        ).pipe(Effect.scoped, Effect.forkScoped)
+        yield* Deferred.await(acknowledgmentStarted)
+
+        for (let index = 0; index <= 64; index++) {
+          yield* PubSub.publish(events, {
+            notification: McpCore.ServerNotification.ToolsChanged({})
+          })
+          yield* Effect.yieldNow
+        }
+        yield* Deferred.succeed(releaseAcknowledgment, undefined)
+
+        assert.strictEqual(yield* Queue.take(sent), "acknowledged")
+        assert.strictEqual(yield* Queue.take(sent), "cancelled")
+      }))
+
+    it.effect("should terminate only the slow subscription when its pending backlog overflows", () =>
+      Effect.gen(function*() {
+        const pendingNotificationLimit = 64
+        const core = yield* McpCore.make
+        const events = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
+        const slowAcknowledged = yield* Deferred.make<void>()
+        const fastAcknowledged = yield* Deferred.make<void>()
+        const slowWriteStarted = yield* Deferred.make<void>()
+        const blockSlowWrite = yield* Deferred.make<void>()
+        const slowSubscriptionReleased = yield* Deferred.make<void>()
+        const fastSubscriptionReleased = yield* Deferred.make<void>()
+        const slowTerminated = yield* Deferred.make<readonly [string, number, RpcMessage.RequestId, string]>()
+        const subscriptionsStarted = yield* Ref.make(0)
+        const fastDeliveries = yield* Ref.make(0)
+        const fastDeliveryCompleted = yield* Queue.unbounded<void>()
+        const handlers = McpProtocol2026.makeHandlers(core, undefined, {
+          subscribeServerNotifications: Effect.acquireRelease(
+            Effect.all([
+              PubSub.subscribe(events),
+              Ref.getAndUpdate(subscriptionsStarted, (count) => count + 1)
+            ]),
+            ([, subscriptionIndex]) =>
+              Deferred.succeed(
+                subscriptionIndex === 0 ? slowSubscriptionReleased : fastSubscriptionReleased,
+                undefined
+              )
+          ).pipe(Effect.map(([subscription]) => subscription)),
+          sendNotification: (_protocolVersion, clientId, notification) => {
+            if (notification.tag === McpSchema2026.SubscriptionsAcknowledgedNotification._tag) {
+              return Deferred.succeed(clientId === 1 ? slowAcknowledged : fastAcknowledged, undefined)
+            }
+            if (clientId === 1) {
+              return Deferred.succeed(slowWriteStarted, undefined).pipe(
+                Effect.andThen(Deferred.await(blockSlowWrite))
+              )
+            }
+            return Ref.update(fastDeliveries, (count) => count + 1).pipe(
+              Effect.andThen(Queue.offer(fastDeliveryCompleted, undefined)),
+              Effect.asVoid
+            )
+          },
+          terminateSubscription: (protocolVersion, clientId, requestId, reason) =>
+            Deferred.succeed(slowTerminated, [protocolVersion, clientId, requestId, reason]),
+          supportedVersions: [McpSchema2026.protocolVersion],
+          serverInfo: { name: "SubscriptionBacklogTest", version: "1.0.0" },
+          registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false })
+        })
+        const listen = (clientId: number, requestId: string) =>
+          handlers["subscriptions/listen"](
+            {
+              notifications: { toolsListChanged: true },
+              _meta: {
+                "io.modelcontextprotocol/protocolVersion": McpSchema2026.protocolVersion,
+                "io.modelcontextprotocol/clientCapabilities": {}
+              }
+            },
+            { client: new Rpc.ServerClient(clientId), requestId: RequestId(requestId) }
+          ).pipe(Effect.scoped, Effect.forkScoped)
+
+        yield* listen(1, "slow-subscription")
+        yield* Deferred.await(slowAcknowledged)
+        yield* listen(2, "responsive-subscription")
+        yield* Deferred.await(fastAcknowledged)
+
+        for (let index = 0; index <= pendingNotificationLimit; index++) {
+          yield* PubSub.publish(events, {
+            notification: McpCore.ServerNotification.PromptsChanged({})
+          })
+        }
+        yield* PubSub.publish(events, {
+          notification: McpCore.ServerNotification.ToolsChanged({})
+        })
+        yield* Deferred.await(slowWriteStarted)
+        yield* Queue.take(fastDeliveryCompleted)
+
+        for (let index = 0; index < pendingNotificationLimit; index++) {
+          yield* PubSub.publish(events, {
+            notification: McpCore.ServerNotification.ToolsChanged({})
+          })
+          yield* Queue.take(fastDeliveryCompleted)
+        }
+        assert.isTrue(Option.isNone(yield* Deferred.poll(slowSubscriptionReleased)))
+        assert.isTrue(Option.isNone(yield* Deferred.poll(slowTerminated)))
+
+        yield* PubSub.publish(events, {
+          notification: McpCore.ServerNotification.ToolsChanged({})
+        })
+        yield* Queue.take(fastDeliveryCompleted)
+
+        assert.deepStrictEqual(yield* Deferred.await(slowTerminated), [
+          McpSchema2026.protocolVersion,
+          1,
+          RequestId("slow-subscription"),
+          "Pending notification limit exceeded"
+        ])
+        yield* Effect.yieldNow
+        assert.isTrue(yield* Deferred.isDone(slowSubscriptionReleased))
+        assert.isTrue(Option.isNone(yield* Deferred.poll(fastSubscriptionReleased)))
+
+        yield* PubSub.publish(events, {
+          notification: McpCore.ServerNotification.ToolsChanged({})
+        })
+        yield* Queue.take(fastDeliveryCompleted)
+        assert.strictEqual(yield* Ref.get(fastDeliveries), pendingNotificationLimit + 3)
+        assert.isTrue(Option.isNone(yield* Deferred.poll(fastSubscriptionReleased)))
+      }))
+
     it.effect("should isolate resource subscriptions and clear disconnected sessions", () =>
       Effect.gen(function*() {
         const clientIds = new Set([1, 2])
@@ -1044,6 +1205,111 @@ describe("McpServer", () => {
           id: 1,
           result: {}
         })
+      }))
+
+    it.effect("should emit correlated cancellation when a STDIO subscription backlog overflows", () =>
+      Effect.gen(function*() {
+        const stdin = yield* Queue.unbounded<Uint8Array>()
+        const stdout = yield* Queue.unbounded<string | Uint8Array>()
+        const blockedWriteStarted = yield* Deferred.make<void>()
+        const releaseBlockedWrite = yield* Deferred.make<void>()
+        const serverReady = yield* Deferred.make<McpServer.McpServer["Service"]>()
+        const encoder = new TextEncoder()
+        const decoder = new TextDecoder()
+        let blocked = false
+        const stdioLayer = Stdio.layerTest({
+          stdin: Stream.fromQueue(stdin),
+          stdout: () =>
+            Sink.forEach((chunk) => {
+              const frame = typeof chunk === "string" ? chunk : decoder.decode(chunk)
+              const message = JSON.parse(frame)
+              if (!blocked && message.method === "notifications/tools/list_changed") {
+                blocked = true
+                return Deferred.succeed(blockedWriteStarted, undefined).pipe(
+                  Effect.andThen(Deferred.await(releaseBlockedWrite))
+                )
+              }
+              return Queue.offer(stdout, chunk)
+            })
+        })
+        yield* Effect.gen(function*() {
+          const context = yield* Layer.build(
+            McpServer.layerStdio({
+              name: "TestServer",
+              version: "1.0.0",
+              protocols: [McpProtocol.v2026_07_28]
+            }).pipe(
+              Layer.provide(stdioLayer),
+              Layer.provideMerge(HttpRouter.layer)
+            )
+          )
+          yield* Deferred.succeed(serverReady, Context.get(context, McpServer.McpServer))
+          return yield* Effect.never
+        }).pipe(Effect.scoped, Effect.forkScoped)
+        const server = yield* Deferred.await(serverReady)
+        yield* server.addTool({
+          tool: new McpSchema.Tool({ name: "subscription-tool", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
+        })
+
+        const metadata = {
+          "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+          "io.modelcontextprotocol/clientCapabilities": {},
+          "io.modelcontextprotocol/clientInfo": { name: "TestClient", version: "1.0.0" }
+        }
+        const write = (message: unknown) => Queue.offer(stdin, encoder.encode(`${JSON.stringify(message)}\n`))
+        const read = Effect.fnUntraced(function*() {
+          const chunk = yield* Queue.take(stdout)
+          return JSON.parse(typeof chunk === "string" ? chunk : decoder.decode(chunk))
+        })
+
+        yield* write({
+          jsonrpc: "2.0",
+          id: 0,
+          method: "initialize",
+          params: {
+            protocolVersion: "2026-07-28",
+            capabilities: {},
+            clientInfo: metadata["io.modelcontextprotocol/clientInfo"]
+          }
+        })
+        yield* read()
+        yield* write({
+          jsonrpc: "2.0",
+          id: "slow-subscription",
+          method: "subscriptions/listen",
+          params: {
+            notifications: { toolsListChanged: true },
+            _meta: metadata
+          }
+        })
+        assert.strictEqual((yield* read()).method, "notifications/subscriptions/acknowledged")
+
+        yield* server.notifications["notifications/tools/list_changed"]({})
+        yield* Deferred.await(blockedWriteStarted)
+        for (let index = 0; index <= 66; index++) {
+          yield* server.notifications["notifications/tools/list_changed"]({})
+          yield* Effect.yieldNow
+        }
+        yield* Deferred.succeed(releaseBlockedWrite, undefined)
+
+        let cancellation = yield* read()
+        while (cancellation.method !== "notifications/cancelled") {
+          cancellation = yield* read()
+        }
+        assert.strictEqual(cancellation.method, "notifications/cancelled")
+        assert.strictEqual(cancellation.params.requestId, "slow-subscription")
+
+        yield* write({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/list",
+          params: { _meta: metadata }
+        })
+        const tools = yield* read()
+        assert.strictEqual(tools.id, 1)
+        assert.isArray(tools.result.tools)
       }))
   })
 })

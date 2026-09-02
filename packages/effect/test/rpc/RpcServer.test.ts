@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Layer, Schema, Stream } from "effect"
+import { Deferred, Effect, Fiber, Layer, Ref, Schema, Sink, Stdio, Stream } from "effect"
 import { HttpRouter } from "effect/unstable/http"
 import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/unstable/rpc"
 import { Socket, SocketServer } from "effect/unstable/socket"
@@ -46,6 +46,57 @@ const producedWithoutReadingFramedBody = Effect.fnUntraced(function*(
 })
 
 describe("RpcServer", () => {
+  it.effect("should backpressure STDIO sends when the output buffer is full", () =>
+    Effect.gen(function*() {
+      const protocolReady = yield* Deferred.make<RpcServer.Protocol["Service"]>()
+      const firstWriteStarted = yield* Deferred.make<void>()
+      const releaseFirstWrite = yield* Deferred.make<void>()
+      const thirdSendCompleted = yield* Deferred.make<void>()
+      const writes = yield* Ref.make(0)
+      const stdio = Stdio.layerTest({
+        stdin: Stream.never,
+        stdout: () =>
+          Sink.forEach(() =>
+            Ref.getAndUpdate(writes, (count) => count + 1).pipe(
+              Effect.flatMap((index) =>
+                index === 0
+                  ? Deferred.succeed(firstWriteStarted, undefined).pipe(
+                    Effect.andThen(Deferred.await(releaseFirstWrite))
+                  )
+                  : Effect.void
+              )
+            )
+          )
+      })
+      yield* Effect.gen(function*() {
+        const protocol = yield* RpcServer.makeProtocolStdio
+        yield* Deferred.succeed(protocolReady, protocol)
+        return yield* protocol.run(() => Effect.void)
+      }).pipe(
+        Effect.provide(stdio),
+        Effect.provide(RpcSerialization.layerJsonRpc()),
+        Effect.forkScoped
+      )
+      const protocol = yield* Deferred.await(protocolReady)
+
+      const first = yield* protocol.send(0, { _tag: "Pong" }).pipe(Effect.forkScoped)
+      yield* Deferred.await(firstWriteStarted)
+      const second = yield* protocol.send(0, { _tag: "Pong" }).pipe(Effect.forkScoped)
+      const third = yield* protocol.send(0, { _tag: "Pong" }).pipe(
+        Effect.andThen(Deferred.succeed(thirdSendCompleted, undefined)),
+        Effect.forkScoped
+      )
+      yield* Effect.yieldNow
+      assert.strictEqual(yield* Ref.get(writes), 1)
+      assert.isFalse(yield* Deferred.isDone(thirdSendCompleted))
+
+      yield* Deferred.succeed(releaseFirstWrite, undefined)
+      yield* Fiber.join(first)
+      yield* Fiber.join(second)
+      yield* Fiber.join(third)
+      assert.strictEqual(yield* Ref.get(writes), 3)
+    }))
+
   it.effect("applies backpressure to framed HTTP responses by default", () =>
     Effect.gen(function*() {
       const produced = yield* producedWithoutReadingFramedBody()

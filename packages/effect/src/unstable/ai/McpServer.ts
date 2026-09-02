@@ -608,6 +608,32 @@ interface ActiveRequest {
   readonly cancelled: boolean
 }
 
+const makeSubscriptionTerminator = (options: {
+  readonly isHttp: boolean
+  readonly cancelRequest: (clientId: number, requestId: RpcMessage.RequestId) => boolean
+  readonly end: (clientId: number) => Effect.Effect<void>
+  readonly sendCancellation: (
+    protocolVersion: string,
+    clientId: number,
+    requestId: RpcMessage.RequestId,
+    reason: string
+  ) => Effect.Effect<void>
+}) =>
+(
+  protocolVersion: string,
+  clientId: number,
+  requestId: RpcMessage.RequestId,
+  reason: string
+): Effect.Effect<void> =>
+  Effect.suspend(() => {
+    if (!options.cancelRequest(clientId, requestId)) {
+      return Effect.void
+    }
+    return options.isHttp
+      ? options.end(clientId)
+      : options.sendCancellation(protocolVersion, clientId, requestId, reason)
+  })
+
 class McpClientKey extends Data.Class<{
   readonly clientId: number
   readonly profile: McpCore.NegotiatedProtocolProfile<string>
@@ -650,57 +676,88 @@ export const run: (options: {
   const runtime = Option.isSome(runtimeOption)
     ? runtimeOption.value
     : yield* McpRuntime.make(options.protocols)
-  return yield* runWithRuntime(options, runtime)
+  return yield* runWithRuntime(options, runtime, "custom")
 })
 
-const runWithRuntime = Effect.fnUntraced(function*(options: {
-  readonly name: string
-  readonly version: string
-  readonly description?: string | undefined
-  readonly websiteUrl?: string | undefined
-  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
-  readonly extensions?: ServerExtensions | undefined
-}, runtime: McpRuntime.ServerRuntimeShape) {
+const runWithRuntime = Effect.fnUntraced(function*(
+  options: {
+    readonly name: string
+    readonly version: string
+    readonly description?: string | undefined
+    readonly websiteUrl?: string | undefined
+    readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
+    readonly extensions?: ServerExtensions | undefined
+  },
+  runtime: McpRuntime.ServerRuntimeShape,
+  transport: "custom" | "http"
+) {
   const protocol = yield* RpcServer.Protocol
   const server = yield* McpServer
   const defaultLogLevel = yield* CurrentLogLevel
-  const isHttp = Option.isSome(yield* Effect.serviceOption(HttpRouter.HttpRouter))
+  const isHttp = transport === "http"
   const clientProtocols = new Map<number, McpProtocol.AnyProtocolAdapter>()
   const activeRequests = new Map<number, Map<string, ActiveRequest>>()
   const clientProfiles = new Map<number, McpCore.NegotiatedProtocolProfile<string>>()
   // A bounded PubSub would let one slow listener block the shared worker and
   // legacy delivery. Each request scope releases its subscription on exit.
   const serverNotifications = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
+  const sendNotification = (
+    protocolVersion: string,
+    clientId: number,
+    notification: McpProtocol.ProjectedNotification
+  ) =>
+    Effect.suspend(() => {
+      const selectedProtocol = runtime.selectProtocol(protocolVersion)
+      const rpc = selectedProtocol.serverNotificationRpcs.requests.get(notification.tag)
+      if (rpc === undefined) {
+        return Effect.die(
+          `MCP protocol ${protocolVersion} does not define server notification ${notification.tag}`
+        )
+      }
+      return selectedProtocol.payloadCodecs(rpc).encode(notification.payload).pipe(
+        Effect.orDie,
+        Effect.flatMap((payload) =>
+          protocol.send(clientId, {
+            _tag: "Request",
+            id: "",
+            tag: notification.tag,
+            payload,
+            headers: [],
+            isNotification: true
+          })
+        )
+      )
+    })
+  const cancelRequest = (clientId: number, requestId: RpcMessage.RequestId) => {
+    const requests = activeRequests.get(clientId)
+    const key = requestKey(requestId)
+    const request = requests?.get(key)
+    if (request === undefined) {
+      return false
+    }
+    requests!.set(key, { ...request, cancelled: true })
+    return true
+  }
+  const terminateSubscription = makeSubscriptionTerminator({
+    isHttp,
+    cancelRequest,
+    end: (clientId) => protocol.end(clientId),
+    sendCancellation: (protocolVersion, clientId, requestId, reason) =>
+      sendNotification(protocolVersion, clientId, {
+        tag: "notifications/cancelled",
+        payload: { requestId, reason }
+      })
+  })
   const handlers = yield* runtime.installHandlers({
     core: internalState.get(server)!.core,
     subscribeServerNotifications: PubSub.subscribe(serverNotifications),
     ...(!protocol.supportsNotifications ? {} : {
-      sendNotification: (
-        protocolVersion: string,
-        clientId: number,
-        notification: McpProtocol.ProjectedNotification
-      ) =>
-        Effect.suspend(() => {
-          const selectedProtocol = runtime.selectProtocol(protocolVersion)
-          const rpc = selectedProtocol.serverNotificationRpcs.requests.get(notification.tag)
-          if (rpc === undefined) {
-            return Effect.die(
-              `MCP protocol ${protocolVersion} does not define server notification ${notification.tag}`
-            )
-          }
-          return selectedProtocol.payloadCodecs(rpc).encode(notification.payload).pipe(
-            Effect.flatMap((payload) =>
-              protocol.send(clientId, {
-                _tag: "Request",
-                id: "",
-                tag: notification.tag,
-                payload,
-                headers: [],
-                isNotification: true
-              })
-            )
-          )
-        }).pipe(Effect.orDie)
+      sendNotification,
+      markSubscriptionCancelled: (clientId: number, requestId: RpcMessage.RequestId) =>
+        Effect.sync(() => {
+          cancelRequest(clientId, requestId)
+        }),
+      terminateSubscription
     }),
     defaultLogLevel,
     serverInfo: options
@@ -1046,7 +1103,9 @@ const runWithRuntime = Effect.fnUntraced(function*(options: {
           case "Interrupt":
             return f(clientId, request)
           case "Eof":
-            activeRequests.delete(clientId)
+            if (!isHttp) {
+              activeRequests.delete(clientId)
+            }
             clientProtocols.delete(clientId)
             clientProfiles.delete(clientId)
             runtime.disconnect(clientId)
@@ -1186,7 +1245,7 @@ export const layer = (options: {
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, RpcServer.Protocol> =>
-  layerWithRuntime(options).pipe(
+  layerWithRuntime(options, "custom").pipe(
     Layer.provide(McpRuntime.layer(options.protocols))
   )
 
@@ -1197,11 +1256,15 @@ const layerWithRuntime = (options: {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
-}): Layer.Layer<McpServer | McpServerClient, never, RpcServer.Protocol | McpRuntime.ServerRuntime> =>
+}, transport: "custom" | "http"): Layer.Layer<
+  McpServer | McpServerClient,
+  never,
+  RpcServer.Protocol | McpRuntime.ServerRuntime
+> =>
   Layer.effectDiscard(
     Effect.gen(function*() {
       const runtime = yield* McpRuntime.ServerRuntime
-      yield* Effect.forkScoped(runWithRuntime(options, runtime))
+      yield* Effect.forkScoped(runWithRuntime(options, runtime, transport))
     })
   ).pipe(
     Layer.provideMerge(McpServer.layer)
@@ -1367,7 +1430,7 @@ export const layerHttp = (options: {
     HttpRouter.add("DELETE", options.path, methodNotAllowed),
     HttpRouter.add("OPTIONS", options.path, methodNotAllowed)
   )
-  return Layer.merge(layerWithRuntime(options), routes).pipe(
+  return Layer.merge(layerWithRuntime(options, "http"), routes).pipe(
     Layer.provide(layerMcpProtocolHttp(options)),
     Layer.provide(runtime),
     Layer.provide(RpcSerialization.layerJsonRpc())
