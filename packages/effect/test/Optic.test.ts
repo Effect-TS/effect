@@ -1,3 +1,4 @@
+import { assert } from "@effect/vitest"
 import { Optic, Option, Result, Schema, SchemaIssue } from "effect"
 import { describe, it } from "vitest"
 import { assertSuccess, assertTrue, deepStrictEqual, strictEqual, throws } from "./utils/assert.ts"
@@ -350,6 +351,134 @@ describe("Optic", () => {
         deepStrictEqual(optic.replace(undefined, [1]), [1])
         deepStrictEqual(optic.modify(f)([1, 2]), [1, 3])
         deepStrictEqual(optic.modify(f)([1]), [1])
+      })
+    })
+
+    describe("string tuple indices", () => {
+      type Pair = readonly [number, number?]
+      const source: Pair = Object.freeze([10, 20])
+      const key: keyof Pair = "1"
+      const optic: Optic.Lens<Pair, number | undefined> = Optic.id<Pair>().optionalKey(key)
+
+      it("splices on replace instead of leaving a hole", () => {
+        const out = optic.replace(undefined, source)
+        assert.deepStrictEqual(out, [10])
+        assert.strictEqual(out.length, 1)
+      })
+
+      it("splices on modify", () => {
+        assert.deepStrictEqual(optic.modify(() => undefined)(source), [10])
+      })
+
+      it("splices on replaceResult", () => {
+        assert.deepStrictEqual(optic.replaceResult(undefined, source), Result.succeed([10]))
+      })
+
+      it("splices on data-first replace", () => {
+        assert.deepStrictEqual(Optic.replace(source, optic, undefined), [10])
+      })
+
+      it("splices on data-last replace", () => {
+        assert.deepStrictEqual(Optic.replace(optic, undefined)(source), [10])
+      })
+
+      it("shifts later elements when removing a middle optional element", () => {
+        type Triple = readonly [number, number?, number?]
+        const triple: Triple = Object.freeze([10, 20, 30])
+        assert.deepStrictEqual(Optic.id<Triple>().optionalKey("1").replace(undefined, triple), [10, 30])
+        assert.deepStrictEqual(triple, [10, 20, 30])
+      })
+
+      it("recognizes the canonical zero index", () => {
+        type OptionalPair = readonly [number?, number?]
+        const pair: OptionalPair = Object.freeze([10, 20])
+        assert.deepStrictEqual(Optic.id<OptionalPair>().optionalKey("0").replace(undefined, pair), [20])
+      })
+
+      it("preserves reads, non-undefined writes and absent-element deletion", () => {
+        assert.strictEqual(optic.get(source), 20)
+        assert.strictEqual(optic.get([10]), undefined)
+        assert.deepStrictEqual(optic.replace(30, source), [10, 30])
+        assert.deepStrictEqual(optic.replace(30, [10]), [10, 30])
+        assert.deepStrictEqual(optic.replace(undefined, [10]), [10])
+      })
+
+      it("does not mutate the frozen source", () => {
+        assert.notStrictEqual(optic.replace(undefined, source), source)
+        assert.deepStrictEqual(source, [10, 20])
+        assert.isTrue(Object.hasOwn(source, "1"))
+      })
+    })
+
+    describe("array index classification", () => {
+      const property = Symbol("property")
+      const nonIndices = [
+        "01",
+        "-1",
+        "1.5",
+        "",
+        "1e0",
+        "+1",
+        "-0",
+        " 1",
+        "NaN",
+        "Infinity",
+        "4294967295",
+        "4294967296",
+        property
+      ] as const
+      type Properties = Partial<Record<(typeof nonIndices)[number], number>>
+
+      for (const key of nonIndices) {
+        it(`does not splice an array for the property ${String(key)}`, () => {
+          type S = ReadonlyArray<number> & Properties
+          const source: S = Object.freeze(Object.assign([10, 20, 30], { [key]: 99 }))
+          const optic = Optic.id<S>().optionalKey(key)
+          assert.strictEqual(optic.get(source), 99)
+          const out = optic.replace(undefined, source)
+          assert.strictEqual(out.length, 3)
+          assert.deepStrictEqual(out.slice(), [10, 20, 30])
+          assert.isFalse(Object.hasOwn(out, key))
+          assert.strictEqual(source[key], 99)
+          assert.deepStrictEqual(source.slice(), [10, 20, 30])
+        })
+      }
+
+      for (
+        const [key, expected] of [
+          [1, [10, 30]],
+          [-1, [10, 20]],
+          [1.5, [10, 30]],
+          [-0, [20, 30]],
+          [NaN, [20, 30]],
+          [Infinity, [10, 20, 30]],
+          [-Infinity, [20, 30]]
+        ] as const
+      ) {
+        it(`preserves existing numeric splice behavior for ${key}`, () => {
+          const source = Object.freeze([10, 20, 30])
+          assert.deepStrictEqual(
+            Optic.id<ReadonlyArray<number>>().optionalKey(key).replace(undefined, source),
+            expected
+          )
+          assert.deepStrictEqual(source, [10, 20, 30])
+        })
+      }
+
+      for (const key of ["1", ...nonIndices] as const) {
+        it(`deletes only the matching property ${String(key)} on an object`, () => {
+          type S = Properties & { readonly "1"?: number; readonly 2: number; readonly keep: string }
+          const source: S = Object.freeze({ [key]: 99, 2: 20, keep: "keep" })
+          assert.deepStrictEqual(Optic.id<S>().optionalKey(key).replace(undefined, source), { 2: 20, keep: "keep" })
+          assert.strictEqual(source[key], 99)
+        })
+      }
+
+      it("does not splice objects with numeric keys", () => {
+        type S = { readonly 1?: number; readonly 2: number; readonly keep: string }
+        const source: S = Object.freeze({ 1: 10, 2: 20, keep: "keep" })
+        assert.deepStrictEqual(Optic.id<S>().optionalKey(1).replace(undefined, source), { 2: 20, keep: "keep" })
+        assert.deepStrictEqual(source, { 1: 10, 2: 20, keep: "keep" })
       })
     })
 

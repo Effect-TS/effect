@@ -1001,8 +1001,13 @@ class OptionalImpl<S, A> implements Optional<S, A> {
           (a, s) => {
             const copy = cloneShallow(s)
             if (a === undefined) {
-              if (Array.isArray(copy) && typeof key === "number") {
-                copy.splice(key, 1)
+              const index = typeof key === "symbol" ? NaN : Number(key)
+              if (
+                Array.isArray(copy) &&
+                (typeof key === "number" ||
+                  (String(index) === key && Number.isInteger(index) && index >= 0 && index < 0xFFFFFFFF))
+              ) {
+                copy.splice(index, 1)
               } else {
                 delete copy[key]
               }
