@@ -537,7 +537,7 @@ const handleResponse = (
   }
 
   if (request.method === "HEAD") {
-    nodeResponse.writeHead(response.status, headers)
+    nodeResponse.writeHead(response.status, response.statusText, headers)
     return Effect.andThen(
       cancelResponseBody(response.body),
       Effect.callback<void>((resume) => {
@@ -556,12 +556,12 @@ const handleResponse = (
   const body = response.body
   switch (body._tag) {
     case "Empty": {
-      nodeResponse.writeHead(response.status, headers)
+      nodeResponse.writeHead(response.status, response.statusText, headers)
       nodeResponse.end()
       return Effect.void
     }
     case "Raw": {
-      nodeResponse.writeHead(response.status, headers)
+      nodeResponse.writeHead(response.status, response.statusText, headers)
       if (
         typeof body.body === "object" && body.body !== null && "pipe" in body.body &&
         typeof body.body.pipe === "function"
@@ -587,7 +587,7 @@ const handleResponse = (
       })
     }
     case "Uint8Array": {
-      nodeResponse.writeHead(response.status, headers)
+      nodeResponse.writeHead(response.status, response.statusText, headers)
       // If the body is less than 1MB, we skip the callback
       if (body.body.length < 1024 * 1024) {
         nodeResponse.end(body.body)
@@ -600,7 +600,7 @@ const handleResponse = (
     case "FormData": {
       return Effect.suspend(() => {
         const r = new globalThis.Response(body.formData)
-        nodeResponse.writeHead(response.status, {
+        nodeResponse.writeHead(response.status, response.statusText, {
           ...headers,
           ...Object.fromEntries(r.headers)
         })
@@ -629,7 +629,7 @@ const handleResponse = (
       })
     }
     case "Stream": {
-      nodeResponse.writeHead(response.status, headers)
+      nodeResponse.writeHead(response.status, response.statusText, headers)
       const drainLatch = Latch.makeUnsafe()
       nodeResponse.on("drain", () => drainLatch.openUnsafe())
       return body.stream.pipe(
@@ -666,7 +666,7 @@ const handleCause = (
   Effect.flatMap(causeResponse(originalCause), ([response, cause]) => {
     const headersSent = nodeResponse.headersSent
     if (!headersSent) {
-      nodeResponse.writeHead(response.status)
+      nodeResponse.writeHead(response.status, response.statusText)
     }
     if (!nodeResponse.writableEnded) {
       nodeResponse.end()
