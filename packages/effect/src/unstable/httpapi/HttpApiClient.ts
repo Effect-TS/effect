@@ -1023,7 +1023,13 @@ function fromArrayBuffer(schema: Schema.Constraint): Schema.Top {
         : UnknownFromArrayBuffer
     }
     case "FormUrlEncoded":
-      return StringFromArrayBuffer.pipe(Schema.decodeTo(Schema.RecordFromUrlParams))
+      return StringFromArrayBuffer.pipe(Schema.decodeTo(
+        Schema.RecordFromUrlParams,
+        SchemaTransformation.transform({
+          decode: (text) => UrlParams.fromInput(new URLSearchParams(text)),
+          encode: UrlParams.toString
+        })
+      ))
     case "Uint8Array":
       return Uint8ArrayFromArrayBuffer
     case "Text":
