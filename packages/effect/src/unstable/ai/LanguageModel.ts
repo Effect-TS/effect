@@ -115,7 +115,7 @@ export interface Service {
     >(
       options: Options & GenerateTextOptions<Tools> & { readonly toolkit: ToolkitInput<Tools> }
     ): Effect.Effect<
-      GenerateTextResponse<Tools, ExtractEncodedToolParameters<Options>>,
+      GenerateTextResponse<Tools, ExtractToolParametersMode<Options>>,
       ExtractError<Options>,
       ExtractServices<Options>
     >
@@ -127,7 +127,7 @@ export interface Service {
     >(
       options: Options & GenerateTextOptions<ExtractTools<Options>> & { readonly toolkit: Options["toolkit"] }
     ): Effect.Effect<
-      GenerateTextResponse<ExtractTools<Options>, ExtractEncodedToolParameters<Options>>,
+      GenerateTextResponse<ExtractTools<Options>, ExtractToolParametersMode<Options>>,
       ExtractError<Options>,
       ExtractServices<Options>
     >
@@ -147,7 +147,7 @@ export interface Service {
   >(
     options: Options & GenerateObjectOptions<Tools, StructuredOutputSchema>
   ) => Effect.Effect<
-    GenerateObjectResponse<Tools, StructuredOutputSchema["Type"], ExtractEncodedToolParameters<Options>>,
+    GenerateObjectResponse<Tools, StructuredOutputSchema["Type"], ExtractToolParametersMode<Options>>,
     ExtractError<Options>,
     ExtractServices<Options> | StructuredOutputSchema["DecodingServices"]
   >
@@ -174,7 +174,7 @@ export interface Service {
     >(
       options: Options & GenerateTextOptions<Tools> & { readonly toolkit: ToolkitInput<Tools> }
     ): Stream.Stream<
-      Response.StreamPart<Tools, ExtractEncodedToolParameters<Options>>,
+      Response.StreamPart<Tools, ExtractToolParametersMode<Options>>,
       ExtractError<Options>,
       ExtractServices<Options>
     >
@@ -186,7 +186,7 @@ export interface Service {
     >(
       options: Options & GenerateTextOptions<ExtractTools<Options>> & { readonly toolkit: Options["toolkit"] }
     ): Stream.Stream<
-      Response.StreamPart<ExtractTools<Options>, ExtractEncodedToolParameters<Options>>,
+      Response.StreamPart<ExtractTools<Options>, ExtractToolParametersMode<Options>>,
       ExtractError<Options>,
       ExtractServices<Options>
     >
@@ -366,11 +366,11 @@ export type ToolChoice<ToolName extends string> =
  */
 export class GenerateTextResponse<
   Tools extends Record<string, Tool.Any>,
-  EncodedToolParameters extends Response.ToolParametersMode = false
+  ParametersMode extends Response.ToolParametersMode = "decoded"
 > {
-  readonly content: Array<Response.Part<Tools, EncodedToolParameters>>
+  readonly content: Array<Response.Part<Tools, ParametersMode>>
 
-  constructor(content: Array<Response.Part<Tools, EncodedToolParameters>>) {
+  constructor(content: Array<Response.Part<Tools, ParametersMode>>) {
     this.content = content
   }
 
@@ -410,7 +410,7 @@ export class GenerateTextResponse<
   /**
    * Returns all tool call parts from the response.
    */
-  get toolCalls(): Array<Response.ToolCallParts<Tools, EncodedToolParameters>> {
+  get toolCalls(): Array<Response.ToolCallParts<Tools, ParametersMode>> {
     return this.content.filter((part) => part.type === "tool-call")
   }
 
@@ -476,14 +476,14 @@ export class GenerateTextResponse<
 export class GenerateObjectResponse<
   Tools extends Record<string, Tool.Any>,
   A,
-  EncodedToolParameters extends Response.ToolParametersMode = false
-> extends GenerateTextResponse<Tools, EncodedToolParameters> {
+  ParametersMode extends Response.ToolParametersMode = "decoded"
+> extends GenerateTextResponse<Tools, ParametersMode> {
   /**
    * The parsed structured object that conforms to the provided schema.
    */
   readonly value: A
 
-  constructor(value: A, content: Array<Response.Part<Tools, EncodedToolParameters>>) {
+  constructor(value: A, content: Array<Response.Part<Tools, ParametersMode>>) {
     super(content)
     this.value = value
   }
@@ -558,15 +558,15 @@ export type ExtractTools<Options> = Options extends {
   : {}
 
 /**
- * Resolves to `true` for encoded parameters when tool call resolution is
+ * Resolves to `"encoded"` when tool call resolution is
  * disabled, otherwise `"opaque"`.
  *
  * @category utility types
  * @since 4.0.0
  */
-export type ExtractEncodedToolParameters<Options> = Options extends {
+export type ExtractToolParametersMode<Options> = Options extends {
   readonly disableToolCallResolution: true
-} ? true
+} ? "encoded"
   : "opaque"
 
 type ExtractErrorFromToolkitOption<ToolkitValue, DisableToolCallResolution extends boolean> = ToolkitValue extends
@@ -877,7 +877,7 @@ export const make: (params: {
   >(
     options: Options & GenerateObjectOptions<Tools, StructuredOutputSchema>
   ): Effect.Effect<
-    GenerateObjectResponse<Tools, StructuredOutputSchema["Type"], ExtractEncodedToolParameters<Options>>,
+    GenerateObjectResponse<Tools, StructuredOutputSchema["Type"], ExtractToolParametersMode<Options>>,
     ExtractError<Options>,
     ExtractServices<Options> | StructuredOutputSchema["DecodingServices"]
   > => {
@@ -1783,7 +1783,7 @@ export const generateText: {
   >(
     options: Options & GenerateTextOptions<Tools> & { readonly toolkit: ToolkitInput<Tools> }
   ): Effect.Effect<
-    GenerateTextResponse<Tools, ExtractEncodedToolParameters<Options>>,
+    GenerateTextResponse<Tools, ExtractToolParametersMode<Options>>,
     ExtractError<Options>,
     LanguageModel | ExtractServices<Options>
   >
@@ -1795,7 +1795,7 @@ export const generateText: {
   >(
     options: Options & GenerateTextOptions<ExtractTools<Options>> & { readonly toolkit: Options["toolkit"] }
   ): Effect.Effect<
-    GenerateTextResponse<ExtractTools<Options>, ExtractEncodedToolParameters<Options>>,
+    GenerateTextResponse<ExtractTools<Options>, ExtractToolParametersMode<Options>>,
     ExtractError<Options>,
     ExtractServices<Options> | LanguageModel
   >
@@ -1864,7 +1864,7 @@ export const generateObject = <
   GenerateObjectResponse<
     ExtractTools<Options>,
     StructuredOutputSchema["Type"],
-    ExtractEncodedToolParameters<Options>
+    ExtractToolParametersMode<Options>
   >,
   ExtractError<Options>,
   ExtractServices<Options> | StructuredOutputSchema["DecodingServices"] | LanguageModel
@@ -1931,7 +1931,7 @@ export const streamText: {
   >(
     options: Options & GenerateTextOptions<Tools> & { readonly toolkit: ToolkitInput<Tools> }
   ): Stream.Stream<
-    Response.StreamPart<Tools, ExtractEncodedToolParameters<Options>>,
+    Response.StreamPart<Tools, ExtractToolParametersMode<Options>>,
     ExtractError<Options>,
     ExtractServices<Options> | LanguageModel
   >
@@ -1943,7 +1943,7 @@ export const streamText: {
   >(
     options: Options & GenerateTextOptions<ExtractTools<Options>> & { readonly toolkit: Options["toolkit"] }
   ): Stream.Stream<
-    Response.StreamPart<ExtractTools<Options>, ExtractEncodedToolParameters<Options>>,
+    Response.StreamPart<ExtractTools<Options>, ExtractToolParametersMode<Options>>,
     ExtractError<Options>,
     ExtractServices<Options> | LanguageModel
   >
