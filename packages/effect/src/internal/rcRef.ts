@@ -149,19 +149,17 @@ export const get = Effect.fnUntraced(function*<A, E>(
     if (state.refCount > 0) {
       return Effect.void
     }
-    if (self.idleTimeToLive === undefined) {
+    if (self.idleTimeToLive === undefined || state.invalidated) {
       if (self.state === state) {
         self.state = stateEmpty
       }
-      return Scope.close(state.scope, Exit.void)
-    } else if (state.invalidated) {
       return Scope.close(state.scope, Exit.void)
     } else if (!isFinite) {
       return Effect.void
     }
     state.fiber = Effect.sleep(self.idleTimeToLive).pipe(
       Effect.flatMap(() => {
-        if (self.state._tag === "Acquired" && self.state.refCount === 0) {
+        if (self.state === state && state.refCount === 0) {
           self.state = stateEmpty
           return Scope.close(state.scope, Exit.void)
         }

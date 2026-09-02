@@ -86,8 +86,8 @@ describe("RcRef", () => {
       yield* Scope.close(scopeC, Exit.void)
 
       assert.deepStrictEqual(
-        { first, replacement, next, releasedAtOwnerClose },
-        { first: 1, replacement: 2, next: 2, releasedAtOwnerClose: [1, 2] }
+        { first, replacement, next, releasedAtOwnerClose, released },
+        { first: 1, replacement: 2, next: 2, releasedAtOwnerClose: [1, 2], released: [1, 2] }
       )
     }))
 
