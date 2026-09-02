@@ -105,8 +105,9 @@ const addEntry = <A extends Request.Any>(
     completeUnsafe(effect) {
       if (completed) return
       completed = true
+      // Removed entries still notify resolver hooks, but not their cancelled callers.
+      if (batch && !batch.entrySet.delete(entry)) return
       resume(effect)
-      batch?.entrySet.delete(entry)
     }
   })
   if (resolver.preCheck !== undefined && !resolver.preCheck(entry)) {
@@ -184,13 +185,17 @@ const removeEntryUnsafe = <A extends Request.Any>(
   const batch = batchMap.get(key)
   if (!batch) return
 
-  batch.entries.delete(entry)
+  if (!batch.entries.delete(entry)) return
   batch.entrySet.delete(entry)
 
+  let fiber: Fiber<void, unknown> | undefined
   if (batch.entries.size === 0) {
     batchMap.delete(key)
-    batch.fiber?.interruptUnsafe()
+    fiber = batch.fiber
   }
+  // Delay finalizers may enqueue new requests, so complete the removed entry first.
+  entry.completeUnsafe(effect.exitInterrupt())
+  fiber?.interruptUnsafe()
 }
 
 const maybeRemoveEntry = <A extends Request.Any>(
