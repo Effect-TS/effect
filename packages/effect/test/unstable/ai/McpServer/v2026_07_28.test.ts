@@ -443,6 +443,42 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         }
       }))
 
+    // https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation#capabilities
+    it.effect("should treat an empty elicitation capability as form support", () =>
+      Effect.gen(function*() {
+        const test = yield* McpConformance
+        const discovered = yield* test.initialize({ server: "features" })
+        const response = yield* test.send(discovered, {
+          jsonrpc: "2.0",
+          id: 39,
+          method: "tools/call",
+          params: { name: MrtrToolName, arguments: {} }
+        }, {
+          clientCapabilities: {
+            elicitation: {},
+            sampling: {},
+            roots: {}
+          }
+        })
+        const message = yield* test.decodeResult(response)
+        const result = Schema.decodeUnknownSync(Schema.Struct({
+          resultType: Schema.Literal("input_required"),
+          inputRequests: Schema.Record(Schema.String, Schema.Unknown)
+        }))(message.result)
+
+        assert.deepStrictEqual(result.inputRequests.approval, {
+          method: "elicitation/create",
+          params: {
+            message: "Approve the operation",
+            requestedSchema: {
+              type: "object",
+              properties: { approved: { type: "boolean" } },
+              required: ["approved"]
+            }
+          }
+        })
+      }))
+
     // https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr#server-requirements-capability-validation
     it.effect("should reject input requests when the client omits their required capabilities", () =>
       Effect.gen(function*() {
