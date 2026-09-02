@@ -3,17 +3,11 @@ import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import { MCP_ENDPOINT } from "../TestUtils/McpHttpHarness.ts"
 import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
-
-const decodeErrorFrame = Schema.decodeUnknownEffect(Schema.Struct({
-  id: Schema.Null,
-  error: McpSchema.McpError
-}))
 
 const jsonRequest = (method: string, body?: unknown, headers?: HeadersInit) => {
   const requestHeaders = new Headers({
@@ -135,9 +129,14 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                 { jsonrpc: "2.0", id: 2, method: "ping", params: {} },
                 { jsonrpc: "2.0", id: 3, method: "ping", params: {} }
               ])
-              const error = yield* fixture.takeFrame.pipe(Effect.flatMap(decodeErrorFrame))
-              assert.strictEqual(error.id, null)
-              assert.strictEqual(error.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+              assert.deepStrictEqual(yield* fixture.takeFrame, {
+                jsonrpc: "2.0",
+                id: null,
+                error: {
+                  code: McpSchema.INVALID_REQUEST_ERROR_CODE,
+                  message: "JSON-RPC batches are not supported"
+                }
+              })
             })
         )
 

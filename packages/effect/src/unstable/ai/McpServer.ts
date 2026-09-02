@@ -1311,7 +1311,7 @@ export const layerStdio = (options: {
 const mcpStdioSerialization = (
   protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
 ): RpcSerialization.RpcSerialization["Service"] => {
-  const serialization = RpcSerialization.jsonRpc({
+  const serialization = mcpJsonRpcSerialization({
     contentType: "application/json-rpc"
   })
   return RpcSerialization.RpcSerialization.of({
@@ -1358,10 +1358,8 @@ const mcpStdioSerialization = (
               jsonrpc: "2.0",
               id: null,
               error: {
-                _tag: "Cause",
                 code: McpSchema.INVALID_REQUEST_ERROR_CODE,
-                message: "JSON-RPC batches are not supported",
-                data: invalidBatchExit.success.exit.cause
+                message: "JSON-RPC batches are not supported"
               }
             }) + "\n"
           }
@@ -1588,7 +1586,7 @@ const layerMcpProtocolHttp = (options: {
   }))
 
 const mcpHttpSerialization: RpcSerialization.RpcSerialization["Service"] = (() => {
-  const serialization = RpcSerialization.jsonRpc()
+  const serialization = mcpJsonRpcSerialization()
   return RpcSerialization.RpcSerialization.of({
     contentType: serialization.contentType,
     includesFraming: true,
@@ -1596,6 +1594,47 @@ const mcpHttpSerialization: RpcSerialization.RpcSerialization["Service"] = (() =
     makeUnsafe: serialization.makeUnsafe
   })
 })()
+
+const isEncodedMcpFailureCause = Schema.is(Schema.Struct({
+  _tag: Schema.Literal("Cause"),
+  data: Schema.Tuple([Schema.Struct({
+    _tag: Schema.Literal("Fail"),
+    error: Schema.toEncoded(McpSchema.McpError)
+  })])
+}))
+
+const normalizeMcpJsonRpcResponse = (response: unknown): unknown => {
+  if (Array.isArray(response)) {
+    return response.map(normalizeMcpJsonRpcResponse)
+  }
+  if (!Predicate.isReadonlyObject(response) || !Predicate.hasProperty(response, "error")) {
+    return response
+  }
+  return isEncodedMcpFailureCause(response.error)
+    ? { ...response, error: response.error.data[0].error }
+    : response
+}
+
+function mcpJsonRpcSerialization(options?: {
+  readonly contentType?: string | undefined
+}): RpcSerialization.RpcSerialization["Service"] {
+  const serialization = RpcSerialization.jsonRpc(options)
+  return RpcSerialization.RpcSerialization.of({
+    ...serialization,
+    makeUnsafe: () => {
+      const parser = serialization.makeUnsafe()
+      return {
+        decode: parser.decode,
+        encode: (response) => {
+          const encoded = parser.encode(response)
+          return typeof encoded !== "string" || !encoded.includes("\"_tag\":\"Cause\"")
+            ? encoded
+            : JSON.stringify(normalizeMcpJsonRpcResponse(JSON.parse(encoded)))
+        }
+      }
+    }
+  })
+}
 
 const toServerSentEvents = (response: HttpServerResponse.HttpServerResponse) => {
   const encoder = new TextEncoder()

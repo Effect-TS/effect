@@ -634,6 +634,12 @@ export const makeHandlers = (
             )
         )
         if (Object.keys(requiredCapabilities).length > 0) {
+          if (Option.isSome(httpRequest)) {
+            appendPreResponseHandlerUnsafe(
+              httpRequest.value,
+              (_request, response) => Effect.succeed(HttpServerResponse.setStatus(response, 400))
+            )
+          }
           return yield* new McpProtocol.ProtocolError({
             code: McpSchema.MISSING_REQUIRED_CLIENT_CAPABILITY,
             message: "The request requires client capabilities that were not declared",
