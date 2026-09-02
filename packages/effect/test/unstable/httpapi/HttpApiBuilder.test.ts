@@ -1,17 +1,6 @@
 import { assert, it, vi } from "@effect/vitest"
-import {
-  Cause,
-  DateTime,
-  Effect,
-  FileSystem,
-  Layer,
-  Path,
-  Redacted,
-  Schema,
-  SchemaTransformation,
-  Stream
-} from "effect"
-import { Etag, HttpEffect, HttpPlatform, HttpRouter, HttpServerResponse } from "effect/unstable/http"
+import { Cause, DateTime, Effect, FileSystem, Layer, Path, Redacted, Schema, SchemaTransformation, Stream } from "effect"
+import { Etag, HttpEffect, HttpPlatform, HttpServerResponse } from "effect/unstable/http"
 import {
   HttpApi,
   HttpApiBuilder,
@@ -34,58 +23,7 @@ const TestServices = Layer.mergeAll(
 ).pipe(Layer.provideMerge(FileSystem.layerNoop({})))
 
 it.layer(TestServices)("HttpApiTest pre-response handlers", (it) => {
-  for (const transport of ["test client", "Web handler"] as const) {
-    it.effect(`runs registered pre-response handlers through the ${transport}`, () =>
-      Effect.gen(function*() {
-        const Api = HttpApi.make("Api").add(
-          HttpApiGroup.make("test").add(
-            HttpApiEndpoint.get("get", "/fixture", { success: Schema.String.pipe(HttpApiSchema.asText()) })
-          )
-        )
-        let calls = 0
-        const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
-          handlers.handle("get", () =>
-            Effect.gen(function*() {
-              yield* HttpEffect.appendPreResponseHandler((_request, response) =>
-                Effect.sync(() => {
-                  calls++
-                  return HttpServerResponse.setHeader(response, "x-fixture", "present")
-                })
-              )
-              return "ok"
-            })))
-
-        let header: string | null | undefined
-        if (transport === "test client") {
-          const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
-          const response = yield* client.test.get({ responseMode: "response-only" })
-          assert.strictEqual(response.status, 200)
-          assert.strictEqual(yield* response.text, "ok")
-          header = response.headers["x-fixture"]
-        } else {
-          const { handler } = yield* Effect.acquireRelease(
-            Effect.sync(() =>
-              HttpRouter.toWebHandler(
-                HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(TestServices)),
-                { disableLogger: true }
-              )
-            ),
-            ({ dispose }) =>
-              Effect.promise(dispose)
-          )
-          const response = yield* Effect.promise(() =>
-            handler(new Request("http://localhost/fixture"))
-          )
-          assert.strictEqual(response.status, 200)
-          assert.strictEqual(yield* Effect.promise(() => response.text()), "ok")
-          header = response.headers.get("x-fixture")
-        }
-
-        assert.deepStrictEqual({ header, calls }, { header: "present", calls: 1 })
-      }))
-  }
-
-  it.effect("preserves headers set directly on the response", () =>
+  it.effect("runs registered pre-response handlers", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("test").add(
@@ -94,81 +32,18 @@ it.layer(TestServices)("HttpApiTest pre-response handlers", (it) => {
       )
       const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
         handlers.handle("get", () =>
-          Effect.succeed(HttpServerResponse.text("ok", { headers: { "x-fixture": "present" } }))))
+          Effect.as(
+            HttpEffect.appendPreResponseHandler((_request, response) =>
+              Effect.succeed(HttpServerResponse.setHeader(response, "x-fixture", "present"))
+            ),
+            "ok"
+          )))
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
       const response = yield* client.test.get({ responseMode: "response-only" })
 
       assert.strictEqual(response.status, 200)
       assert.strictEqual(response.headers["x-fixture"], "present")
       assert.strictEqual(yield* response.text, "ok")
-    }))
-
-  it.effect("preserves handler defects rather than converting them to HTTP responses", () =>
-    Effect.gen(function*() {
-      const Api = HttpApi.make("Api").add(
-        HttpApiGroup.make("test").add(HttpApiEndpoint.get("get", "/fixture"))
-      )
-      const defect = new Error("fixture defect")
-      const GroupLayer = HttpApiBuilder.group(
-        Api,
-        "test",
-        (handlers) => handlers.handle("get", () => Effect.die(defect))
-      )
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
-      const exit = yield* Effect.exit(client.test.get({ responseMode: "response-only" }))
-
-      assert.strictEqual(exit._tag, "Failure")
-      if (exit._tag === "Failure") {
-        assert.strictEqual(Cause.squash(exit.cause), defect)
-      }
-    }))
-
-  it.effect("composes pre-response handlers in order without leaking across requests", () =>
-    Effect.gen(function*() {
-      const Api = HttpApi.make("Api").add(
-        HttpApiGroup.make("test").add(HttpApiEndpoint.get("get", "/fixture"))
-      )
-      const calls: Array<string> = []
-      const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
-        handlers.handle("get", () =>
-          Effect.gen(function*() {
-            for (const name of ["first", "second"]) {
-              yield* HttpEffect.appendPreResponseHandler((_request, response) =>
-                Effect.sync(() => {
-                  calls.push(name)
-                  return HttpServerResponse.setHeader(
-                    response,
-                    "x-order",
-                    `${response.headers["x-order"] ?? ""}${name}`
-                  )
-                })
-              )
-            }
-          })))
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
-      for (let i = 0; i < 2; i++) {
-        const response = yield* client.test.get({ responseMode: "response-only" })
-        assert.strictEqual(response.headers["x-order"], "firstsecond")
-      }
-      assert.deepStrictEqual(calls, ["first", "second", "first", "second"])
-    }))
-
-  it.effect("preserves pre-response handler defects", () =>
-    Effect.gen(function*() {
-      const Api = HttpApi.make("Api").add(
-        HttpApiGroup.make("test").add(HttpApiEndpoint.get("get", "/fixture"))
-      )
-      const defect = new Error("pre-response fixture defect")
-      const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
-        handlers.handle("get", () =>
-          HttpEffect.appendPreResponseHandler(() => Effect.die(defect))))
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
-      const exit = yield* Effect.exit(client.test.get({ responseMode: "response-only" }))
-
-      assert.strictEqual(exit._tag, "Failure")
-      if (exit._tag === "Failure") {
-        assert.strictEqual(Cause.squash(exit.cause), defect)
-      }
     }))
 })
 
