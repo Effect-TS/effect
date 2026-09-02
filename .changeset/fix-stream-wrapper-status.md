@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Honor status annotations on WithHeaders stream responses in HttpApiBuilder, preserving wrapper precedence and preventing response-header encoding failures when the wrapper and inner stream statuses differ.
+Fix `HttpApiBuilder` ignoring the status annotation on a `HttpApiSchema.WithHeaders` wrapper around a streaming success, which defected when the wrapper and inner statuses differed.

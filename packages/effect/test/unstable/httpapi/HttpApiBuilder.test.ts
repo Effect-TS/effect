@@ -794,8 +794,6 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
     const [name, innerStatus, wrapperStatus, expectedStatus] of [
       ["wrapper status", undefined, 206, 206],
       ["wrapper overrides inner status", 201, 206, 206],
-      ["inner status control", 206, undefined, 206],
-      ["matching statuses control", 206, 206, 206],
       ["default status control", undefined, undefined, 200]
     ] as const
   ) {

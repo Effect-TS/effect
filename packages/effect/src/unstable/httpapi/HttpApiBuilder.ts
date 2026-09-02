@@ -978,9 +978,7 @@ function makeStreamEncoder(endpoint: HttpApiEndpoint.Top): StreamEncoder | undef
 
   const streamSchema = successSchema.body
   const hasBuffered = hasBufferedSuccess(endpoint)
-  const status = HttpApiSchema.isWithHeaders(successSchema.schema)
-    ? HttpApiSchema.getStatusSuccessSchema(successSchema.schema)
-    : HttpApiSchema.getStatusStream(streamSchema)
+  const status = HttpApiSchema.getStatusSuccessSchema(successSchema.schema)
   const contentType = streamSchema.contentType
 
   if (HttpApiSchema.isStreamUint8Array(streamSchema)) {
