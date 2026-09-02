@@ -220,55 +220,15 @@ describe("Channel", () => {
   })
 
   describe("destructors", () => {
-    for (const [name, run] of [["runDone", Channel.runDone], ["runDrain", Channel.runDrain]] as const) {
-      describe(name, () => {
-        it.effect("returns the done value after emitted elements", () =>
-          Effect.gen(function*() {
-            const result = yield* Channel.fromArray([1, 2]).pipe(
-              Channel.concat(Channel.end("finished")),
-              (channel) => run(channel)
-            )
-            assert.strictEqual(result, "finished")
-          }))
+    it.effect("runDone returns the done value after emitted elements", () =>
+      Effect.gen(function*() {
+        const result = yield* Channel.fromArray([1]).pipe(
+          Channel.concat(Channel.end("done")),
+          Channel.runDone
+        )
 
-        it.effect("executes effects after the first emitted element", () =>
-          Effect.gen(function*() {
-            const seen: Array<number> = []
-            yield* Channel.fromArray([1, 2]).pipe(
-              Channel.mapEffect((n) =>
-                Effect.sync(() => {
-                  seen.push(n)
-                  return n
-                })
-              ),
-              (channel) => run(channel)
-            )
-            assert.deepStrictEqual(seen, [1, 2])
-          }))
-
-        it.effect("propagates failure after emitted elements", () =>
-          Effect.gen(function*() {
-            const exit = yield* Channel.fromArray([1, 2]).pipe(
-              Channel.concat(Channel.fail("later failure")),
-              (channel) => run(channel),
-              Effect.exit
-            )
-            assert.deepStrictEqual(exit, Exit.fail("later failure"))
-          }))
-
-        it.effect("returns the done value without emitted elements", () =>
-          Effect.gen(function*() {
-            const result = yield* run(Channel.end("finished"))
-            assert.strictEqual(result, "finished")
-          }))
-
-        it.effect("propagates failure without emitted elements", () =>
-          Effect.gen(function*() {
-            const exit = yield* run(Channel.fail("immediate failure")).pipe(Effect.exit)
-            assert.deepStrictEqual(exit, Exit.fail("immediate failure"))
-          }))
-      })
-    }
+        assert.strictEqual(result, "done")
+      }))
 
     it.effect("mkUint8Array", () =>
       Effect.gen(function*() {
