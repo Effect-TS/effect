@@ -3,6 +3,29 @@ import { Schema } from "effect"
 import { Prompt, Response } from "effect/unstable/ai"
 
 describe("Prompt", () => {
+  describe("serialization", () => {
+    it("preserves text parts during serialization", () => {
+      const prompt = Prompt.make([
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "first" },
+            { type: "text", text: "second" }
+          ]
+        },
+        {
+          role: "assistant",
+          content: [{ type: "text", text: "response", options: { test: { cache: "ephemeral" } } }]
+        }
+      ])
+
+      assert.deepStrictEqual(
+        Schema.decodeSync(Prompt.Prompt)(Schema.encodeSync(Prompt.Prompt)(prompt)),
+        prompt
+      )
+    })
+  })
+
   describe("part schemas", () => {
     it("exports schemas for all parts and message-specific parts", () => {
       const parts = {
