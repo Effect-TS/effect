@@ -152,8 +152,26 @@ export function is<S extends Schema.Constraint>(schema: S): <I>(input: I) => inp
 
 /** @internal */
 export function _is<T>(ast: SchemaAST.AST) {
-  const parser = asExit(run<T, never>(SchemaAST.toType(ast)))
+  const typeAST = SchemaAST.toType(ast)
+  const parser = asExit(run<T, never>(typeAST))
+  let decoder: CompilerHook.Decoder | null | undefined
   return <I>(input: I): input is I & T => {
+    if (decoder === undefined) {
+      const compiler = CompilerHook.get()
+      decoder = compiler?.(typeAST) ?? null
+    }
+    if (decoder !== null) {
+      try {
+        return decoder(input) !== CompilerHook.invalid
+      } catch (error) {
+        const cause = error instanceof CompilerHook.DecoderFailure ? error.cause : Cause.die(error)
+        InternalSchemaCause.getSchemaIssueOrThrow(
+          cause,
+          "Type guard adapter can only return false for schema issues"
+        )
+        return false
+      }
+    }
     const exit = parser(input, SchemaAST.defaultParseOptions)
     if (Exit.isSuccess(exit)) {
       return true

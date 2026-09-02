@@ -20,6 +20,7 @@ const schema = Schema.Struct({
 })
 
 const decodeCreatedBeforeEnable = SchemaParser.decodeUnknownSync(schema)
+const isCreatedBeforeEnable = SchemaParser.is(schema)
 
 SchemaCompiler.enable()
 
@@ -42,6 +43,45 @@ describe("SchemaCompiler", () => {
     })
     assert.notStrictEqual(output, input)
     assert.notStrictEqual(output.nested, input.nested)
+  })
+
+  it("reuses the compiled decoder for type guards", () => {
+    strictEqual(
+      isCreatedBeforeEnable({
+        name: "a",
+        count: 1,
+        active: true,
+        nested: { value: "b" }
+      }),
+      true
+    )
+    strictEqual(
+      isCreatedBeforeEnable({
+        name: 1,
+        count: 1,
+        active: true,
+        nested: { value: "b" }
+      }),
+      false
+    )
+
+    const defect = new Error("boom")
+    let reads = 0
+    throws(() =>
+      isCreatedBeforeEnable({
+        get name(): string {
+          reads++
+          throw defect
+        },
+        count: 1,
+        active: true,
+        nested: { value: "b" }
+      }), (error) => {
+      assert(error instanceof Error)
+      strictEqual(error.message, "Type guard adapter can only return false for schema issues")
+      assert(Cause.hasDies(error.cause as Cause.Cause<never>))
+    })
+    strictEqual(reads, 1)
   })
 
   it("replays the interpreter to construct an issue", () => {

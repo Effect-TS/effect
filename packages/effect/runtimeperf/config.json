@@ -1637,6 +1637,49 @@
           ]
         },
         {
+          "file": "suites/moltar-assert-loose/fixtures/effect-compiled.ts",
+          "defaults": {
+            "tier": 3,
+            "implementation": "effect-compiled",
+            "family": "moltar-assert-loose",
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
+            "size": "moltar-object",
+            "operation": "is-compiled"
+          },
+          "cases": [
+            {
+              "name": "valid-effect-compiled",
+              "export": "assertLooseValid",
+              "scenario": "moltar-assert-loose-valid",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-effect-compiled",
+              "export": "assertLooseExtraValid",
+              "scenario": "moltar-assert-loose-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-effect-compiled",
+              "export": "assertLooseInvalid",
+              "scenario": "moltar-assert-loose-invalid",
+              "path": "invalid"
+            },
+            {
+              "name": "initialization-first-use-effect-compiled",
+              "export": "initializationSchema",
+              "scenario": "moltar-assert-loose-effect-initialization",
+              "operation": "schema-compile-and-is",
+              "path": "cold"
+            }
+          ]
+        },
+        {
           "file": "suites/moltar-assert-loose/fixtures/zod.ts",
           "defaults": {
             "tier": 3,

@@ -137,6 +137,7 @@ describe("runtimeperf registry", () => {
 
     assert.deepEqual(implementations("moltar-assert-loose-valid"), [
       "effect",
+      "effect-compiled",
       "zod4",
       "zod4-compiled",
       "zod4-jitless",
@@ -144,6 +145,7 @@ describe("runtimeperf registry", () => {
     ])
     assert.deepEqual(implementations("moltar-assert-loose-extra-valid"), [
       "effect",
+      "effect-compiled",
       "zod4",
       "zod4-compiled",
       "zod4-jitless",
@@ -151,6 +153,7 @@ describe("runtimeperf registry", () => {
     ])
     assert.deepEqual(implementations("moltar-assert-loose-invalid"), [
       "effect",
+      "effect-compiled",
       "zod4-compiled",
       "zod4-validate"
     ])
