@@ -1099,7 +1099,6 @@ const makeResponse = Effect.fnUntraced(
                 method: "makeResponse",
                 reason: new AiError.ToolParameterValidationError({
                   toolName,
-                  toolParams: {},
                   description: `Failed to securely JSON parse tool parameters: ${cause}`
                 })
               })
@@ -1192,7 +1191,6 @@ const makeStreamResponse = Effect.fnUntraced(
                   method: "makeStreamResponse",
                   reason: new AiError.ToolParameterValidationError({
                     toolName: toolCall.name,
-                    toolParams: {},
                     description: `Failed to securely JSON parse tool parameters: ${cause}`
                   })
                 })
@@ -1462,7 +1460,6 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
       method: "makeResponse",
       reason: new AiError.ToolParameterValidationError({
         toolName,
-        toolParams,
         description: formatIssue(error.issue)
       })
     })

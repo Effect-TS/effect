@@ -1045,7 +1045,6 @@ const prepareMessages = Effect.fnUntraced(
                         method: "prepareMessages",
                         reason: new AiError.ToolParameterValidationError({
                           toolName: "local_shell",
-                          toolParams: part.params as Schema.Json,
                           description: error.message
                         })
                       })
@@ -1071,7 +1070,6 @@ const prepareMessages = Effect.fnUntraced(
                         method: "prepareMessages",
                         reason: new AiError.ToolParameterValidationError({
                           toolName: "shell",
-                          toolParams: part.params as Schema.Json,
                           description: error.message
                         })
                       })
@@ -1398,7 +1396,6 @@ const makeResponse = Effect.fnUntraced(
                 method: "makeResponse",
                 reason: new AiError.ToolParameterValidationError({
                   toolName,
-                  toolParams: {},
                   description: `Faled to securely JSON parse tool parameters: ${cause}`
                 })
               })
@@ -2147,7 +2144,6 @@ const makeStreamResponse = Effect.fnUntraced(
                       method: "makeStreamResponse",
                       reason: new AiError.ToolParameterValidationError({
                         toolName,
-                        toolParams: {},
                         description: `Failed securely JSON parse tool parameters: ${cause}`
                       })
                     })
@@ -2450,7 +2446,6 @@ const makeStreamResponse = Effect.fnUntraced(
                     method: "makeStreamResponse",
                     reason: new AiError.ToolParameterValidationError({
                       toolName: toolCall.name,
-                      toolParams: {},
                       description: `Failed securely JSON parse tool parameters: ${cause}`
                     })
                   })
@@ -3104,7 +3099,6 @@ const normalizeMcpToolCall = Effect.fnUntraced(function*<Tools extends ReadonlyA
         method,
         reason: new AiError.ToolParameterValidationError({
           toolName,
-          toolParams,
           description: `Failed to securely JSON parse tool parameters: ${cause}`
         })
       })
@@ -3205,7 +3199,6 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
       method: "makeResponse",
       reason: new AiError.ToolParameterValidationError({
         toolName,
-        toolParams,
         description: formatIssue(error.issue)
       })
     })

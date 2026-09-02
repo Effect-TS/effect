@@ -30,6 +30,15 @@ const TransformToolkitLayer = TransformToolkit.toLayer({
   TransformTool: (value) => Effect.succeed(value * 2)
 })
 
+const ReturnModeTool = Tool.make("ReturnModeTool", {
+  failureMode: "return",
+  parameters: Schema.Struct({ testParam: Schema.String }),
+  success: Schema.Struct({ testSuccess: Schema.String }),
+  failure: Schema.Struct({ testFailure: Schema.String })
+})
+
+const ReturnModeToolkit = Toolkit.make(ReturnModeTool)
+
 const ApprovalTool = Tool.make("ApprovalTool", {
   parameters: Schema.Struct({ action: Schema.String }),
   success: Schema.Struct({ result: Schema.String }),
@@ -669,6 +678,80 @@ describe("LanguageModel", () => {
 
         strictEqual(error._tag, "AiError")
         strictEqual((error as AiError.AiError).reason._tag, "InvalidOutputError")
+        strictEqual(yield* Ref.get(calls), 0)
+      }))
+
+    it.effect("emits a failed tool result and keeps streaming when tool params are invalid and failure mode is return", () =>
+      Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const handlers = ReturnModeToolkit.toLayer({
+          ReturnModeTool: () =>
+            Ref.update(calls, (n) => n + 1).pipe(
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+
+        const parts = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: ReturnModeToolkit
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({
+            streamText: [
+              {
+                type: "tool-call",
+                id: "tool-invalid-params",
+                name: "ReturnModeTool",
+                params: { testParam: 123 }
+              } as any,
+              finishPart
+            ]
+          }),
+          Effect.provide(handlers)
+        )
+
+        const toolResults = parts.filter((part) => part.type === "tool-result")
+        strictEqual(toolResults.length, 1)
+        strictEqual(toolResults[0].isFailure, true)
+        const result = toolResults[0].result as AiError.AiError
+        strictEqual(result._tag, "AiError")
+        strictEqual(result.reason._tag, "ToolParameterValidationError")
+        strictEqual(parts.some((part) => part.type === "finish"), true)
+        strictEqual(yield* Ref.get(calls), 0)
+      }))
+
+    it.effect("fails the stream when tool params are invalid and failure mode is error", () =>
+      Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Ref.update(calls, (n) => n + 1).pipe(
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+
+        const error = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: [
+              {
+                type: "tool-call",
+                id: "tool-invalid-params",
+                name: "MyTool",
+                params: { testParam: 123 }
+              } as any,
+              finishPart
+            ]
+          }),
+          Effect.provide(handlers),
+          Effect.flip
+        )
+
+        strictEqual(error._tag, "AiError")
+        strictEqual((error as AiError.AiError).reason._tag, "ToolParameterValidationError")
         strictEqual(yield* Ref.get(calls), 0)
       }))
 

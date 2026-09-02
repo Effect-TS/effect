@@ -3116,7 +3116,6 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
       method: "makeResponse",
       reason: new AiError.ToolParameterValidationError({
         toolName,
-        toolParams,
         description: formatIssue(error.issue)
       })
     })

@@ -1182,9 +1182,15 @@ export const make: (params: {
     }
 
     // Construct the response schema with the tools from the toolkit, keeping
-    // tool call parameters encoded when tool call resolution is disabled
+    // tool call parameters encoded when tool call resolution is disabled.
+    // When tool call resolution is enabled, tool parameters remain opaque so
+    // their validation happens in Toolkit, which uses the more specific
+    // ToolParameterValidationError and routes failures through the tool's
+    // failure mode.
     const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(
-      options.disableToolCallResolution === true ? makeToolkitWithEncodedParameters(toolkit) : toolkit
+      options.disableToolCallResolution === true
+        ? makeToolkitWithEncodedParameters(toolkit)
+        : makeToolkitWithOpaqueParameters(toolkit)
     )))
 
     // If tool call resolution is disabled, return the response without
@@ -1201,18 +1207,11 @@ export const make: (params: {
       return content as Array<Response.Part<Tools>>
     }
 
-    // Validates the complete response before tool handlers can perform side
-    // effects. Tool parameters remain opaque here so their validation keeps
-    // using Toolkit's more specific ToolParameterValidationError; rawContent
-    // is decoded a second time with ResponseSchema below to produce the
-    // typed response.
-    const PrevalidationSchema = Schema.mutable(
-      Schema.Array(Response.Part(makeToolkitWithOpaqueParameters(toolkit)))
-    )
-
     const rawContent = yield* generateWithNonIncrementalFallback()
 
-    yield* Schema.decodeEffect(PrevalidationSchema)(rawContent)
+    // Validates the complete response before tool handlers can perform side
+    // effects
+    const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
 
     // Resolve the generated tool calls. When the finish reason indicates an
     // incomplete response, handlers do not run and every executable tool call
@@ -1239,8 +1238,6 @@ export const make: (params: {
         ),
         Stream.runCollect
       )
-
-    const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
 
     if (tracker) {
       const responseMetadata = content.find((part) => part.type === "response-metadata")
@@ -1494,9 +1491,15 @@ export const make: (params: {
     }
 
     // Construct the response schema with the tools from the toolkit, keeping
-    // tool call parameters encoded when tool call resolution is disabled
+    // tool call parameters encoded when tool call resolution is disabled.
+    // When tool call resolution is enabled, tool parameters remain opaque so
+    // their validation happens in Toolkit, which uses the more specific
+    // ToolParameterValidationError and routes failures through the tool's
+    // failure mode instead of failing the stream.
     const ResponseSchema = Schema.NonEmptyArray(Response.StreamPart(
-      options.disableToolCallResolution === true ? makeToolkitWithEncodedParameters(toolkit) : toolkit
+      options.disableToolCallResolution === true
+        ? makeToolkitWithEncodedParameters(toolkit)
+        : makeToolkitWithOpaqueParameters(toolkit)
     ))
     const decodeParts = Schema.decodeEffect(ResponseSchema)
 
@@ -1616,7 +1619,7 @@ export const make: (params: {
     yield* streamWithNonIncrementalFallback().pipe(
       Stream.runForEachArray(
         Effect.fnUntraced(function*(chunk) {
-          const parts = yield* decodeParts(chunk)
+          const parts = (yield* decodeParts(chunk)) as ReadonlyArray<Response.StreamPart<Tools>>
           if (tracker) {
             for (const part of parts) {
               if (part.type === "response-metadata" && part.id) {
