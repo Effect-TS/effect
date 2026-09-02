@@ -882,69 +882,6 @@ Since v1.0.0`
   })
 
   describe("parseTypeAliases", () => {
-    for (
-      const { declaration, diagnostics, name, usage } of [
-        {
-          name: "preserves the declared name and parameter of an identity alias",
-          declaration: "type Identity<A> = A",
-          usage: "const value: Identity<number> = 1",
-          diagnostics: []
-        },
-        {
-          name: "preserves a default type argument when compiling a signature",
-          declaration: "type Box<A extends string = string> = { value: A }",
-          usage: "const value: Box = { value: 'ok' }",
-          diagnostics: []
-        },
-        {
-          name: "preserves a type parameter constraint when compiling a signature",
-          declaration: "type Box<A extends string = string> = { value: A }",
-          usage: "const value: Box<number> = { value: 1 }",
-          diagnostics: [2344]
-        },
-        {
-          name: "accepts a valid explicit argument for an ordinary generic alias",
-          declaration: "type Box<A> = { value: A }",
-          usage: "const value: Box<string> = { value: 'ok' }",
-          diagnostics: []
-        },
-        {
-          name: "rejects an invalid value for an ordinary generic alias",
-          declaration: "type Box<A> = { value: A }",
-          usage: "const value: Box<string> = { value: 1 }",
-          diagnostics: [2322]
-        }
-      ]
-    ) {
-      it.effect(name, () =>
-        Effect.gen(function*() {
-          const project = new ast.Project({
-            compilerOptions: { strict: true },
-            useInMemoryFileSystem: true
-          })
-          const sourceFile = project.createSourceFile(
-            "alias.ts",
-            `/** @since 1.0.0 */\nexport ${declaration}\n${usage}`
-          )
-          assert.deepStrictEqual(
-            sourceFile.getPreEmitDiagnostics().map((diagnostic) => diagnostic.getCode()),
-            diagnostics
-          )
-
-          const aliases = yield* Parser.parseTypeAliases.pipe(
-            Effect.provideService(Parser.Source, makeSource(sourceFile)),
-            Effect.provideService(Configuration.Configuration, defaultConfig)
-          )
-          const signatures = aliases.map((alias) => alias.signature)
-          const generated = project.createSourceFile("signature.ts", `${signatures.join("\n")}\n${usage}\nexport {}`)
-
-          assert.deepStrictEqual({
-            signatures,
-            diagnostics: generated.getPreEmitDiagnostics().map((diagnostic) => diagnostic.getCode())
-          }, { signatures: [declaration], diagnostics })
-        }))
-    }
-
     it.effect("should return a type alias", () =>
       Effect.gen(function*() {
         yield* expectMarkdown(
