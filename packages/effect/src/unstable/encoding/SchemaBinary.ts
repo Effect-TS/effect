@@ -5159,7 +5159,7 @@ function bypassPass(
   // says without allocating one per call.
   const run = (
     accept: (input: unknown, options: SchemaAST.ParseOptions) => boolean
-  ): SchemaAST.DeclarationRun =>
+  ): SchemaAST.Declaration["run"] =>
   () =>
   (input, _ast, options) => accept(input, options) ? InternalParserProtocol.sameExit : parse(input, options)
   return Schema.make(
