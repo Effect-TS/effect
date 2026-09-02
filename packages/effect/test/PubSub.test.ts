@@ -11,16 +11,17 @@ describe("PubSub", () => {
           const pubsub = yield* PubSub.sliding<number>(capacity)
           const first = yield* PubSub.subscribe(pubsub)
           const second = yield* PubSub.subscribe(pubsub)
-          const values = Array.range(1, capacity + 1)
+          const values = Array.range(1, capacity + 2)
+          const retained = values.slice(-capacity)
           yield* PubSub.publishAll(pubsub, values)
 
           const received = batch
             ? yield* PubSub.takeAll(first)
-            : yield* Effect.forEach(values.slice(1), () => PubSub.take(first))
+            : yield* Effect.forEach(retained, () => PubSub.take(first))
           const duplicate = yield* PubSub.takeUpTo(first, capacity)
           const other = yield* PubSub.takeUpTo(second, capacity)
 
-          assert.deepStrictEqual([received, duplicate, other], [values.slice(1), [], values.slice(1)])
+          assert.deepStrictEqual([received, duplicate, other], [retained, [], retained])
         })
     )
   }
@@ -33,12 +34,13 @@ describe("PubSub", () => {
         const scope = yield* Scope.make()
         const first = yield* PubSub.subscribe(pubsub).pipe(Scope.provide(scope))
         const second = yield* PubSub.subscribe(pubsub)
-        const values = Array.range(1, capacity + 1)
+        const values = Array.range(1, capacity + 2)
+        const retained = values.slice(-capacity)
         yield* PubSub.publishAll(pubsub, values)
         yield* PubSub.takeAll(first)
         yield* Scope.close(scope, Exit.void)
 
-        assert.deepStrictEqual(yield* PubSub.takeUpTo(second, capacity), values.slice(1))
+        assert.deepStrictEqual(yield* PubSub.takeUpTo(second, capacity), retained)
       })
   )
 
@@ -458,6 +460,18 @@ describe("PubSub", () => {
     assert.deepStrictEqual(replay.takeN(1.9), [1])
     assert.deepStrictEqual(replay.takeN(Number.NaN), [])
     assert.deepStrictEqual(replay.takeAll(), [2, 3])
+  })
+
+  it("publishes after a capacity-one subscriber unsubscribes from a slid message", () => {
+    const pubsub = PubSub.makeAtomicBounded<number>(1)
+    const subscription = pubsub.subscribe()
+    pubsub.publish(1)
+    pubsub.slide()
+    subscription.unsubscribe()
+
+    assert.isTrue(pubsub.publish(2))
+    assert.strictEqual(pubsub.size(), 0)
+    assert.isFalse(pubsub.isFull())
   })
 
   describe("replay", () => {
