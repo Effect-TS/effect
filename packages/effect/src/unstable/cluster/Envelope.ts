@@ -14,7 +14,7 @@ import * as PrimaryKey from "../../PrimaryKey.ts"
 import type { ReadonlyRecord } from "../../Record.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaTransformation from "../../SchemaTransformation.ts"
-import * as Headers from "../http/Headers.ts"
+import type * as Headers from "../http/Headers.ts"
 import type * as Rpc from "../rpc/Rpc.ts"
 import { EntityAddress } from "./EntityAddress.ts"
 import { type Snowflake, SnowflakeFromBigInt } from "./Snowflake.ts"
@@ -133,7 +133,7 @@ export class PartialRequest extends Schema.Opaque<PartialRequest>()(Schema.Struc
   address: EntityAddress,
   tag: Schema.String,
   payload: OpaqueHole,
-  headers: Headers.HeadersSchema,
+  headers: Schema.Headers,
   traceId: Schema.optional(Schema.String),
   spanId: Schema.optional(Schema.String),
   sampled: Schema.optional(Schema.Boolean)

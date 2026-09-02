@@ -351,7 +351,7 @@ export const schemaBodyFormJson = <A, RD>(
 ) => {
   const parseMultipart = Multipart.schemaJson(schema, options)
   return (field: string) => {
-    const parseUrlParams = UrlParams.schemaJsonField(field, options).pipe(
+    const parseUrlParams = Schema.JsonFromUrlParamsField(field, options).pipe(
       Schema.decodeTo(schema),
       Schema.decodeEffect
     )

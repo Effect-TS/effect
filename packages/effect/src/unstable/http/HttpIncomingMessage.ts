@@ -20,7 +20,7 @@ import * as Schema from "../../Schema.ts"
 import type { ParseOptions } from "../../SchemaAST.ts"
 import type * as Stream from "../../Stream.ts"
 import type * as Headers from "./Headers.ts"
-import * as UrlParams from "./UrlParams.ts"
+import type * as UrlParams from "./UrlParams.ts"
 
 /**
  * Type identifier for `HttpIncomingMessage` values.
@@ -102,7 +102,7 @@ export const schemaBodyUrlParams = <
   schema: Schema.ConstraintCodec<A, I, RD, unknown>,
   options?: ParseOptions | undefined
 ) => {
-  const decode = UrlParams.schemaRecord.pipe(
+  const decode = Schema.RecordFromUrlParams.pipe(
     Schema.decodeTo(schema),
     Schema.decodeEffect
   )
