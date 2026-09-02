@@ -56,6 +56,36 @@ const AsymmetricParamsTool = Tool.make("AsymmetricParamsTool", {
 
 describe("LanguageModel", () => {
   describe("generateText", () => {
+    it("exposes tool call errors only when the operation returns invalid tool calls", () => {
+      const toolkit = Toolkit.make(FailureModeErrorTool)
+
+      const strict = LanguageModel.generateText({ prompt: "hello", toolkit })
+      expect<Effect.Success<typeof strict>["toolCallErrors"]>().type.toBe<Array<never>>()
+
+      const explicit = LanguageModel.generateText({ prompt: "hello", toolkit, unknownToolCalls: "error" })
+      expect<Effect.Success<typeof explicit>["toolCallErrors"]>().type.toBe<Array<never>>()
+
+      const returned = LanguageModel.generateText({ prompt: "hello", toolkit, unknownToolCalls: "return" })
+      expect<Effect.Success<typeof returned>["toolCallErrors"]>().type.toBe<Array<Response.ToolCallErrorPart>>()
+
+      // An option which is not statically known keeps the part in the type
+      const unknownToolCalls = null as unknown as "error" | "return"
+      const dynamic = LanguageModel.generateText({ prompt: "hello", toolkit, unknownToolCalls })
+      expect<Effect.Success<typeof dynamic>["toolCallErrors"]>().type.toBe<Array<Response.ToolCallErrorPart>>()
+
+      // An operation without a toolkit can still opt in
+      const withoutToolkit = LanguageModel.generateText({ prompt: "hello", unknownToolCalls: "return" })
+      expect<Effect.Success<typeof withoutToolkit>["toolCallErrors"]>().type.toBe<Array<Response.ToolCallErrorPart>>()
+
+      const streamed = LanguageModel.streamText({ prompt: "hello", toolkit, unknownToolCalls: "return" })
+      type StreamedPart = typeof streamed extends Stream.Stream<infer A, any, any> ? A : never
+      expect<"tool-call-error">().type.toBeAssignableTo<StreamedPart["type"]>()
+
+      const strictStream = LanguageModel.streamText({ prompt: "hello", toolkit })
+      type StrictPart = typeof strictStream extends Stream.Stream<infer A, any, any> ? A : never
+      expect<"tool-call-error">().type.not.toBeAssignableTo<StrictPart["type"]>()
+    })
+
     it("uses encoded tool parameters when tool call resolution is disabled", () => {
       const toolkit = Toolkit.make(TransformTool)
       const program = LanguageModel.generateText({

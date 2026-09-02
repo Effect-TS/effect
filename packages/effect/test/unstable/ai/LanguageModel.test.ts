@@ -3,6 +3,7 @@ import { assertDefined, assertTrue, deepStrictEqual, strictEqual } from "@effect
 import { type Cause, Effect, Fiber, Latch, Option, Queue, Ref, Schema, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import { AiError, LanguageModel, Prompt, Response, ResponseIdTracker, Tool, Toolkit } from "effect/unstable/ai"
+import * as fc from "fast-check"
 import * as TestUtils from "./utils.ts"
 
 const MyTool = Tool.make("MyTool", {
@@ -1998,6 +1999,550 @@ describe("LanguageModel", () => {
         assertDefined(markedParts)
         strictEqual(markedParts, capturedOptions.prompt.content)
         strictEqual(markedResponseId, "resp_next")
+      }))
+  })
+
+  describe("invalid tool calls", () => {
+    const unknownToolCall: Response.ToolCallPartEncoded = {
+      type: "tool-call",
+      id: "call-unknown",
+      name: "NotATool",
+      params: { testParam: "test-param" }
+    }
+
+    it.effect("fails the operation by default when the model calls an unknown tool", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [unknownToolCall, finishPart]
+          }),
+          Effect.provide(MyToolkitLayer),
+          Effect.flip
+        )
+
+        assertDefined(error)
+      }))
+
+    it.effect("returns an unknown tool call to the model when the operation opts in", () =>
+      Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Ref.update(calls, (n) => n + 1).pipe(
+              Effect.as({ testSuccess: "test-success" })
+            )
+        })
+
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit,
+          unknownToolCalls: "return"
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [unknownToolCall, finishPart]
+          }),
+          Effect.provide(handlers)
+        )
+
+        strictEqual(response.toolCallErrors.length, 1)
+        strictEqual(response.toolResults.length, 0)
+        strictEqual(yield* Ref.get(calls), 0)
+
+        const toolCallError = response.toolCallErrors[0]!
+        strictEqual(toolCallError.name, "NotATool")
+        deepStrictEqual<unknown>(toolCallError.params, { testParam: "test-param" })
+        assertTrue(AiError.isAiError(toolCallError.error))
+        strictEqual(toolCallError.error.reason._tag, "ToolNotFoundError")
+      }))
+
+    it.effect("keeps the stream alive when an unknown tool call is returned", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit,
+          unknownToolCalls: "return"
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({
+            streamText: [
+              unknownToolCall,
+              { type: "tool-call", id: "call-known", name: "MyTool", params: { testParam: "test-param" } },
+              finishPart
+            ]
+          }),
+          Effect.provide(MyToolkit.toLayer({
+            MyTool: () => Effect.succeed({ testSuccess: "test-success" })
+          }))
+        )
+
+        const toolCallErrors = parts.filter((part) => part.type === "tool-call-error")
+        const toolResults = parts.filter((part) => part.type === "tool-result")
+
+        strictEqual(toolCallErrors.length, 1)
+        strictEqual(toolCallErrors[0]!.name, "NotATool")
+        // The known tool call still resolves normally
+        strictEqual(toolResults.length, 1)
+        deepStrictEqual<unknown>(toolResults[0]!.result, { testSuccess: "test-success" })
+      }))
+
+    it.effect("returns an unknown tool call when the operation has no toolkit", () =>
+      Effect.gen(function*() {
+        // Without a toolkit every tool call is unknown, so the option still
+        // decides what happens to it
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          unknownToolCalls: "return"
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [unknownToolCall, finishPart]
+          })
+        )
+
+        strictEqual(response.toolCallErrors.length, 1)
+        strictEqual(response.toolCallErrors[0]!.name, "NotATool")
+        strictEqual(response.toolCallErrors[0]!.error.reason._tag, "ToolNotFoundError")
+      }))
+
+    it.effect("returns an unknown tool call when the toolkit is empty", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: Toolkit.empty,
+          unknownToolCalls: "return"
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [unknownToolCall, finishPart]
+          })
+        )
+
+        strictEqual(response.toolCallErrors.length, 1)
+        strictEqual(response.toolCallErrors[0]!.name, "NotATool")
+      }))
+
+    it.effect("still fails by default when the operation has no toolkit", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateText({ prompt: [] }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [unknownToolCall, finishPart]
+          }),
+          Effect.flip
+        )
+
+        assertDefined(error)
+      }))
+
+    it.effect("returns an unknown tool call in a stream without a toolkit", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({
+          prompt: [],
+          unknownToolCalls: "return"
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({
+            streamText: [unknownToolCall, finishPart]
+          })
+        )
+
+        const toolCallErrors = parts.filter((part) => part.type === "tool-call-error")
+        strictEqual(toolCallErrors.length, 1)
+        strictEqual(toolCallErrors[0]!.name, "NotATool")
+      }))
+
+    it.effect("returns an unknown tool call in a stream with an empty toolkit", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: Toolkit.empty,
+          unknownToolCalls: "return"
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({
+            streamText: [unknownToolCall, finishPart]
+          })
+        )
+
+        const toolCallErrors = parts.filter((part) => part.type === "tool-call-error")
+        strictEqual(toolCallErrors.length, 1)
+        strictEqual(toolCallErrors[0]!.name, "NotATool")
+      }))
+
+    it.effect("routes invalid parameters through the tool's failureMode when resolution is disabled", () =>
+      Effect.gen(function*() {
+        // `Toolkit` never runs here, so `LanguageModel` applies the same
+        // per-tool policy `Toolkit` would have applied
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: ReturnModeToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [
+              {
+                type: "tool-call",
+                id: "call-invalid",
+                name: "ReturnModeTool",
+                params: { testParam: { nested: "not-a-string" } }
+              },
+              finishPart
+            ]
+          }),
+          Effect.provide(ReturnModeToolkit.toLayer({
+            ReturnModeTool: () => Effect.succeed({ testSuccess: "test-success" })
+          }))
+        )
+
+        strictEqual(response.toolCallErrors.length, 0)
+        strictEqual(response.toolResults.length, 1)
+        const toolResult = response.toolResults[0]!
+        strictEqual(toolResult.isFailure, true)
+        assertTrue(AiError.isAiError(toolResult.result))
+        strictEqual(toolResult.result.reason._tag, "ToolParameterValidationError")
+      }))
+
+    it.effect("still fails invalid parameters for a tool which did not opt in", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit,
+          disableToolCallResolution: true,
+          unknownToolCalls: "return"
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [
+              {
+                type: "tool-call",
+                id: "call-invalid",
+                name: "MyTool",
+                params: { testParam: { nested: "not-a-string" } }
+              },
+              finishPart
+            ]
+          }),
+          Effect.provide(MyToolkitLayer),
+          Effect.flip
+        )
+
+        // `MyTool` uses the default `failureMode: "error"`, and the operation
+        // option governs unknown tools only
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }))
+
+    it.effect("routes invalid parameters through failureMode in a stream", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: ReturnModeToolkit,
+          disableToolCallResolution: true,
+          unknownToolCalls: "return"
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({
+            streamText: [
+              {
+                type: "tool-call",
+                id: "call-invalid",
+                name: "ReturnModeTool",
+                params: { testParam: { nested: "not-a-string" } }
+              },
+              unknownToolCall,
+              finishPart
+            ]
+          }),
+          Effect.provide(ReturnModeToolkit.toLayer({
+            ReturnModeTool: () => Effect.succeed({ testSuccess: "test-success" })
+          }))
+        )
+
+        const toolResults = parts.filter((part) => part.type === "tool-result")
+        const toolCallErrors = parts.filter((part) => part.type === "tool-call-error")
+
+        // The known tool's own policy answers its call; only the unknown tool
+        // needed the operation to opt in
+        strictEqual(toolResults.length, 1)
+        strictEqual(toolResults[0]!.isFailure, true)
+        strictEqual(toolCallErrors.length, 1)
+        strictEqual(toolCallErrors[0]!.name, "NotATool")
+        strictEqual(parts.filter((part) => part.type === "finish").length, 1)
+      }))
+
+    it.effect("leaves a handler-reachable parameter failure to the tool's failureMode", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: ReturnModeToolkit,
+          unknownToolCalls: "return"
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [
+              {
+                type: "tool-call",
+                id: "call-invalid",
+                name: "ReturnModeTool",
+                params: { testParam: { nested: "not-a-string" } }
+              },
+              finishPart
+            ]
+          }),
+          Effect.provide(ReturnModeToolkit.toLayer({
+            ReturnModeTool: () => Effect.succeed({ testSuccess: "test-success" })
+          }))
+        )
+
+        // `Toolkit` owns calls which reach a handler, so this is a failed tool
+        // result rather than a returned tool call error
+        strictEqual(response.toolCallErrors.length, 0)
+        strictEqual(response.toolResults.length, 1)
+        strictEqual(response.toolResults[0]!.isFailure, true)
+      }))
+
+    it.effect("returns invalid tool calls from generateObject", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateObject({
+          prompt: [],
+          schema: Schema.Struct({ count: Schema.Number }),
+          toolkit: MyToolkit,
+          unknownToolCalls: "return"
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [
+              unknownToolCall,
+              { type: "text", text: "{\"count\":1}" },
+              finishPart
+            ]
+          }),
+          Effect.provide(MyToolkitLayer)
+        )
+
+        deepStrictEqual(response.value, { count: 1 })
+        strictEqual(response.toolCallErrors.length, 1)
+        strictEqual(response.toolCallErrors[0]!.name, "NotATool")
+      }))
+
+    it.effect("honours an unknownToolCalls value which is not statically known", () =>
+      Effect.gen(function*() {
+        const unknownToolCalls = "return" as "error" | "return"
+
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit,
+          unknownToolCalls
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [unknownToolCall, finishPart]
+          }),
+          Effect.provide(MyToolkitLayer)
+        )
+
+        strictEqual(response.toolCallErrors.length, 1)
+        strictEqual(response.toolCallErrors[0]!.error.reason._tag, "ToolNotFoundError")
+      }))
+
+    it.effect("keeps failing a tool call which is malformed beyond its parameters", () =>
+      Effect.gen(function*() {
+        // Valid parameters, but a non-string `id`: the call is not recoverable,
+        // so it must keep failing rather than come back under a parameter error
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit,
+          disableToolCallResolution: true,
+          unknownToolCalls: "return"
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [
+              { type: "tool-call", id: 42 as any, name: "MyTool", params: { testParam: "test-param" } },
+              finishPart
+            ]
+          }),
+          Effect.provide(MyToolkitLayer),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }))
+
+    it.effect("keeps failing a malformed part which is not a tool call", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit,
+          unknownToolCalls: "return"
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [{ type: "text", text: 99 as any }, finishPart]
+          }),
+          Effect.provide(MyToolkitLayer),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }))
+
+    it.effect("does not return a provider-executed call to an unknown tool", () =>
+      Effect.gen(function*() {
+        // Provider-executed calls already ran, so they stay response output
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit,
+          unknownToolCalls: "return"
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [{ ...unknownToolCall, providerExecuted: true }, finishPart]
+          }),
+          Effect.provide(MyToolkitLayer),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }))
+
+    // The hand-written cases above only cover calls which are malformed in ways
+    // that were anticipated. This asserts the invariant itself against
+    // arbitrary junk: a returned part is always a part the schema accepts.
+    it("only ever returns parts which satisfy the response schema", () => {
+      const junk = fc.oneof(
+        fc.string(),
+        fc.integer(),
+        fc.boolean(),
+        fc.constant(null),
+        fc.object(),
+        fc.array(fc.string())
+      )
+      const toolCall = fc.record({
+        type: fc.constant("tool-call"),
+        id: junk,
+        name: fc.oneof(fc.constantFrom("MyTool", "NotATool"), junk),
+        params: junk
+      })
+
+      return fc.assert(
+        fc.asyncProperty(fc.array(toolCall, { maxLength: 4 }), async (parts) => {
+          const result = await Effect.runPromise(
+            LanguageModel.generateText({
+              prompt: [],
+              toolkit: MyToolkit,
+              disableToolCallResolution: true,
+              unknownToolCalls: "return"
+            }).pipe(
+              TestUtils.withLanguageModel({
+                generateText: [...parts, finishPart] as any
+              }),
+              Effect.provide(MyToolkitLayer),
+              Effect.result
+            )
+          )
+
+          if (result._tag === "Failure") return true
+
+          // Nothing unvalidated may reach the caller
+          for (const part of result.success.content) {
+            if (part.type === "tool-call-error") {
+              strictEqual(typeof part.id, "string")
+              strictEqual(typeof part.name, "string")
+              assertTrue(AiError.isAiError(part.error))
+            }
+            if (part.type === "tool-call") {
+              strictEqual(typeof part.id, "string")
+              strictEqual(typeof part.name, "string")
+            }
+          }
+          return true
+        }),
+        { numRuns: 300 }
+      )
+    })
+
+    it.effect("runs no handler when another call in the response is unrecoverable", () =>
+      Effect.gen(function*() {
+        const calls = yield* Ref.make(0)
+        const handlers = MyToolkit.toLayer({
+          MyTool: () => Ref.update(calls, (n) => n + 1).pipe(Effect.as({ testSuccess: "test-success" }))
+        })
+
+        // The malformed call fails the response, so the valid one must not run:
+        // a partially executed response would leave real side effects behind
+        yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit,
+          unknownToolCalls: "return"
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [
+              unknownToolCall,
+              { type: "tool-call", id: 42 as any, name: "MyTool", params: { testParam: "test-param" } },
+              finishPart
+            ]
+          }),
+          Effect.provide(handlers),
+          Effect.flip
+        )
+
+        strictEqual(yield* Ref.get(calls), 0)
+      }))
+
+    it.effect("leaves no tool call unanswered in the resulting history", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit,
+          unknownToolCalls: "return"
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [
+              unknownToolCall,
+              { type: "tool-call", id: "call-known", name: "MyTool", params: { testParam: "test-param" } },
+              { ...finishPart, reason: "tool-calls" }
+            ]
+          }),
+          Effect.provide(MyToolkit.toLayer({
+            MyTool: () => Effect.succeed({ testSuccess: "test-success" })
+          }))
+        )
+
+        // A tool call left without a result is rejected by providers on the
+        // next request, so a returned tool call error must still be answered
+        const callIds: Array<string> = []
+        const resultIds: Array<string> = []
+        for (const message of Prompt.fromResponseParts(response.content).content) {
+          for (const part of message.content as ReadonlyArray<{ readonly type: string; readonly id: string }>) {
+            if (part.type === "tool-call") callIds.push(part.id)
+            if (part.type === "tool-result") resultIds.push(part.id)
+          }
+        }
+
+        deepStrictEqual(callIds.slice().sort(), ["call-known", "call-unknown"])
+        deepStrictEqual(callIds.filter((id) => !resultIds.includes(id)), [])
+      }))
+
+    it.effect("adds a returned tool call error to history as a failed tool result", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit,
+          unknownToolCalls: "return"
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [unknownToolCall, finishPart]
+          }),
+          Effect.provide(MyToolkitLayer)
+        )
+
+        const prompt = Prompt.fromResponseParts(response.content)
+        const assistant = prompt.content.find((message) => message.role === "assistant")
+        const tool = prompt.content.find((message) => message.role === "tool")
+
+        assertDefined(assistant)
+        assertDefined(tool)
+
+        const toolCall = assistant.content.find((part) => part.type === "tool-call")
+        assertDefined(toolCall)
+        strictEqual(toolCall.name, "NotATool")
+
+        const toolResult = tool.content.find((part) => part.type === "tool-result")
+        assertDefined(toolResult)
+        strictEqual(toolResult.isFailure, true)
       }))
   })
 
