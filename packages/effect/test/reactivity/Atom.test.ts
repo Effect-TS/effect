@@ -1251,6 +1251,68 @@ describe.sequential("Atom", () => {
     assert.deepEqual(r.get(count), AsyncResult.success(1))
   })
 
+  for (const target of ["primary", "withFallback", "map"] as const) {
+    it.effect(`withFallback preserves writes through ${target}`, () =>
+      Effect.gen(function*() {
+        const r = yield* Effect.acquireRelease(
+          Effect.sync(() => AtomRegistry.make()),
+          (registry) => Effect.sync(() => registry.dispose())
+        )
+        const success = AsyncResult.success(1, { timestamp: 0 })
+        const fallback = AsyncResult.success(10, { timestamp: 0 })
+        const primary = Atom.make<AsyncResult.AsyncResult<number>>(success)
+        const wrapped = Atom.withFallback(primary, Atom.make(fallback))
+        const writable = target === "primary" ? primary : target === "withFallback" ?
+          wrapped :
+          Atom.map(primary, (result) => result)
+
+        assert.deepEqual(r.get(wrapped), success)
+        r.set(writable, AsyncResult.initial())
+
+        assert.deepEqual({ primary: r.get(primary), wrapped: r.get(wrapped) }, {
+          primary: AsyncResult.initial(),
+          wrapped: AsyncResult.waiting(fallback)
+        })
+      }))
+  }
+
+  it.effect("withFallback preserves custom writes, tracking, and failures", () =>
+    Effect.gen(function*() {
+      const r = yield* Effect.acquireRelease(
+        Effect.sync(() => AtomRegistry.make()),
+        (registry) => Effect.sync(() => registry.dispose())
+      )
+      const failure = AsyncResult.fail("failed")
+      const writes: Array<number | "fail" | "reset"> = []
+      const primary = Atom.writable<AsyncResult.AsyncResult<number, string>, number | "fail" | "reset">(
+        () => AsyncResult.initial(),
+        (ctx, value) => {
+          writes.push(value)
+          if (value === "reset") {
+            ctx.refreshSelf()
+          } else {
+            ctx.setSelf(value === "fail" ? failure : AsyncResult.success(value * 2, { timestamp: 0 }))
+          }
+        }
+      )
+      const fallback = Atom.make(AsyncResult.success(10, { timestamp: 0 }))
+      const wrapped = Atom.withFallback(primary, fallback)
+      assert.deepEqual(r.get(wrapped), AsyncResult.waiting(r.get(fallback)))
+
+      r.set(fallback, AsyncResult.success(20, { timestamp: 0 }))
+      assert.deepEqual(r.get(wrapped), AsyncResult.waiting(r.get(fallback)))
+      r.set(wrapped, 2)
+      assert.deepEqual(r.get(primary), AsyncResult.success(4, { timestamp: 0 }))
+      assert.strictEqual(r.get(wrapped), r.get(primary))
+      r.set(wrapped, "fail")
+      assert.strictEqual(r.get(primary), failure)
+      assert.strictEqual(r.get(wrapped), failure)
+      r.set(wrapped, "reset")
+      assert.deepEqual(r.get(primary), AsyncResult.initial())
+      assert.deepEqual(r.get(wrapped), AsyncResult.waiting(r.get(fallback)))
+      assert.deepEqual(writes, [2, "fail", "reset"])
+    }))
+
   it("failure with previousSuccess", async () => {
     const count = Atom.fn((i: number) => i === 1 ? Effect.fail("fail") : Effect.succeed(i))
     const r = AtomRegistry.make()
