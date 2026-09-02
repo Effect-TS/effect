@@ -1385,7 +1385,9 @@ export const UserMessage: Schema.Struct<{
   ...BaseMessage.fields,
   role: Schema.Literal("user"),
   content: Schema.Union([
-    ContentFromString,
+    ContentFromString.check(
+      Schema.makeFilter((content) => content.length === 1 && Object.keys(content[0].options).length === 0)
+    ),
     Schema.Array(Schema.Union([TextPart, FilePart]))
   ])
 }).annotate({ identifier: "UserMessage" })
@@ -1585,7 +1587,9 @@ export const AssistantMessage: Schema.Struct<{
   ...BaseMessage.fields,
   role: Schema.Literal("assistant"),
   content: Schema.Union([
-    ContentFromString,
+    ContentFromString.check(
+      Schema.makeFilter((content) => content.length === 1 && Object.keys(content[0].options).length === 0)
+    ),
     Schema.Array(Schema.Union([
       TextPart,
       FilePart,
