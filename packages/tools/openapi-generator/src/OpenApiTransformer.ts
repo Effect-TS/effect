@@ -347,7 +347,7 @@ export const make = (
 
     const payloadVarName = "options.payload"
     if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormData(${payloadVarName} as any)`)
+      pipeline.push(`HttpClientRequest.bodyFormDataRecord(${payloadVarName} as any)`)
     } else if (operation.payloadFormUrlEncoded) {
       pipeline.push(`HttpClientRequest.bodyUrlParams(${payloadVarName} as any)`)
     } else if (operation.payload) {
@@ -412,7 +412,7 @@ export const make = (
     }
 
     if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormData(options.payload as any)`)
+      pipeline.push(`HttpClientRequest.bodyFormDataRecord(options.payload as any)`)
     } else if (operation.payloadFormUrlEncoded) {
       pipeline.push(`HttpClientRequest.bodyUrlParams(options.payload as any)`)
     } else if (operation.payload) {
@@ -455,7 +455,7 @@ export const make = (
     }
 
     if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormData(options.payload as any)`)
+      pipeline.push(`HttpClientRequest.bodyFormDataRecord(options.payload as any)`)
     } else if (operation.payloadFormUrlEncoded) {
       pipeline.push(`HttpClientRequest.bodyUrlParams(options.payload as any)`)
     } else if (operation.payload) {
