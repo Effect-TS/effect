@@ -789,8 +789,9 @@ export const reserve: {
         if (self.config.concurrency === 1) return undefined
         for (const poolItem of self.state.items) {
           if (poolItem.exit._tag !== "Success" || poolItem.exit.value !== item) continue
-          self.state.usage += self.config.concurrency - 1
-          reservations.set(poolItem, (reservations.get(poolItem) ?? 0) + 1)
+          const existing = reservations.get(poolItem)
+          if (existing === undefined) self.state.usage += self.config.concurrency - 1
+          reservations.set(poolItem, (existing ?? 0) + 1)
           removeAvailable(self, poolItem)
           return poolItem
         }
@@ -799,20 +800,20 @@ export const reserve: {
       (poolItem) =>
         core.withFiber((fiber) => {
           if (poolItem === undefined) return internal.void
-          self.state.usage -= self.config.concurrency - 1
-          const remaining = reservations.get(poolItem)! - 1
+          const remaining = (reservations.get(poolItem) ?? 1) - 1
           if (remaining > 0) {
             reservations.set(poolItem, remaining)
             return internal.void
           }
           reservations.delete(poolItem)
+          self.state.usage -= self.config.concurrency - 1
           if (
             !self.state.isShuttingDown &&
             self.state.items.has(poolItem) &&
             !self.state.invalidated.has(poolItem) &&
             poolItem.refCount < self.config.concurrency
           ) {
-            addAvailable(self, poolItem)
+            addAvailableFront(self, poolItem)
             wakeWaiters(self, fiber, self.config.concurrency - poolItem.refCount)
           }
           return internal.void
@@ -1000,7 +1001,7 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
           return Effect.undefined
         }
         const item = Iterable.head(
-          Iterable.filter(pool.state.invalidated, (item) => !item.disableReclaim)
+          Iterable.filter(pool.state.invalidated, (item) => !item.disableReclaim && !reservations.has(item))
         )
         if (item._tag === "None") {
           return Effect.undefined

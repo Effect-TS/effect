@@ -338,8 +338,12 @@ describe("Pool", () => {
       yield* Pool.get(pool).pipe(Scope.provide(owner))
       yield* Pool.reserve(pool, "resource").pipe(Scope.provide(first))
       yield* Pool.reserve(pool, "resource").pipe(Scope.provide(second))
+      // One lease plus one reservation; the overlapping reservation must not
+      // count usage again.
+      assert.strictEqual(pool.state.usage, 2)
 
       yield* Scope.close(first, Exit.void)
+      assert.strictEqual(pool.state.usage, 2)
       const next = yield* Pool.use(pool, Effect.succeed).pipe(Effect.forkChild({ startImmediately: true }))
       const beforeRelease = next.pollUnsafe()
       yield* Scope.close(second, Exit.void)
@@ -376,7 +380,7 @@ describe("Pool", () => {
       assert.strictEqual(pool.state.usage, 0)
     }))
 
-  it.effect("usage TTL reclaim preserves a reservation", () =>
+  it.effect("usage TTL reclaim skips reserved items", () =>
     Effect.gen(function*() {
       let acquired = 0
       const pool = yield* Pool.makeWithTTL({
@@ -396,16 +400,15 @@ describe("Pool", () => {
       const first = yield* Pool.get(pool).pipe(Scope.provide(owner))
       yield* TestClock.adjust(0)
       const second = yield* Pool.get(pool).pipe(Scope.provide(owner))
-      const next = yield* Pool.use(pool, Effect.succeed).pipe(Effect.forkChild({ startImmediately: true }))
-      const beforeRelease = next.pollUnsafe()
+      // The invalidated item 1 is still reserved, so reclaim must not
+      // un-invalidate it; the waiter is served by a fresh item instead.
+      const result = yield* Pool.use(pool, Effect.succeed)
       yield* Scope.close(reservation, Exit.void)
-      const result = yield* Fiber.join(next)
       yield* Scope.close(owner, Exit.void)
 
       assert.deepStrictEqual([first, second], [2, 2])
-      assert.isUndefined(beforeRelease)
-      assert.strictEqual(result, 1)
-      assert.strictEqual(acquired, 2)
+      assert.strictEqual(result, 3)
+      assert.strictEqual(acquired, 3)
       assert.strictEqual(pool.state.usage, 0)
     }))
 
