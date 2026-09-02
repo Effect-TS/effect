@@ -537,6 +537,16 @@ describe("Chunk", () => {
   })
 
   describe("concat", () => {
+    it("preserves a sliced chunk when appending after a prefix", () => {
+      const chunk = pipe(
+        Chunk.make(2, 3, 4),
+        Chunk.take(2),
+        Chunk.prependAll(Chunk.of(1)),
+        Chunk.append(5)
+      )
+      deepStrictEqual(Chunk.toArray(chunk), [1, 2, 3, 5])
+    })
+
     describe("Given 2 chunks of the same length", () => {
       const chunk1 = Chunk.fromArrayUnsafe([0, 1])
       const chunk2 = Chunk.fromArrayUnsafe([2, 3])
