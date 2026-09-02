@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { assertNone, assertSome, deepStrictEqual, doesNotThrow, strictEqual } from "@effect/vitest/utils"
 import { Schema } from "effect"
 import { Headers } from "effect/unstable/http"
@@ -50,6 +50,27 @@ describe("Headers", () => {
     const headers = Headers.fromInput({ "Content-Type": "text/plain", "X-Custom": "value", keep: "me" })
     const result = Headers.removeMany(headers, ["Content-Type", "X-CUSTOM"])
     deepStrictEqual({ ...result }, { keep: "me" })
+  })
+
+  describe("isRedactedName", () => {
+    it("matches mixed-case header names against string patterns", () => {
+      assert.strictEqual(Headers.isRedactedName("Authorization", ["authorization"]), true)
+    })
+
+    it("matches lowercase header names against mixed-case string patterns", () => {
+      assert.strictEqual(Headers.isRedactedName("authorization", ["Authorization"]), true)
+    })
+
+    it("returns false when no string pattern matches", () => {
+      assert.strictEqual(Headers.isRedactedName("Authorization", ["cookie"]), false)
+      assert.strictEqual(Headers.isRedactedName("Authorization", []), false)
+    })
+
+    it("tests regular expressions against the original header name", () => {
+      assert.strictEqual(Headers.isRedactedName("Authorization", ["cookie", /^Authorization$/]), true)
+      assert.strictEqual(Headers.isRedactedName("Authorization", [/^authorization$/]), false)
+      assert.strictEqual(Headers.isRedactedName("Authorization", [/^authorization$/i]), true)
+    })
   })
 
   it("works with for..in based headers polyfills", () => {
