@@ -31,7 +31,7 @@ Options:
   --warmup-time <ms>
   --tier <0-3>
   --family <name>
-  --implementation <effect|fast-check-v4|valibot|zod4|zod4-jitless|zod4-validate|zod4-compiled>
+  --implementation <effect|effect-compiled|fast-check-v4|valibot|zod4|zod4-jitless|zod4-validate|zod4-compiled>
 `
 
 const rotate = (items, offset) => items.map((_, index) => items[(index + offset) % items.length])

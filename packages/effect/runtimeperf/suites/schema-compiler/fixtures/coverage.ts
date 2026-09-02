@@ -1,0 +1,89 @@
+import * as Schema from "effect/Schema"
+import * as SchemaCompiler from "effect/SchemaCompiler"
+import * as SchemaParser from "effect/SchemaParser"
+import assert from "node:assert/strict"
+
+const validCase = (schema, input, compiled, expected = input) => () => {
+  const decode = SchemaParser.decodeUnknownSync(schema)
+  if (compiled) SchemaCompiler.enable()
+  return {
+    run: () => decode(input),
+    validate: (result) => assert.deepEqual(result, expected)
+  }
+}
+
+const invalidCase = (schema, input, compiled) => () => {
+  const decode = SchemaParser.decodeUnknownSync(schema)
+  if (compiled) SchemaCompiler.enable()
+  return {
+    run: () => {
+      try {
+        decode(input)
+        return false
+      } catch {
+        return true
+      }
+    },
+    validate: (result) => assert.equal(result, true)
+  }
+}
+
+const array100 = Schema.Array(Schema.String)
+const array100Input = Array.from({ length: 100 }, (_, index) => `value${index}`)
+const array100Invalid = [...array100Input.slice(0, -1), 99]
+
+export const array100Valid = validCase(array100, array100Input, false)
+export const array100ValidCompiled = validCase(array100, array100Input, true)
+export const array100InvalidLast = invalidCase(array100, array100Invalid, false)
+export const array100InvalidLastCompiled = invalidCase(array100, array100Invalid, true)
+
+const tupleRest = Schema.TupleWithRest(
+  Schema.Tuple([Schema.String]),
+  [Schema.Number, Schema.Boolean]
+)
+const tupleRestInput = ["head", ...Array.from({ length: 32 }, (_, index) => index), true]
+
+export const tupleRestValid = validCase(tupleRest, tupleRestInput, false)
+export const tupleRestValidCompiled = validCase(tupleRest, tupleRestInput, true)
+
+const optionalFields = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field${index}`, Schema.optionalKey(Schema.String)])
+)
+const optionalStruct = Schema.Struct(optionalFields)
+const optionalStructInput = Object.fromEntries(
+  Array.from({ length: 16 }, (_, index) => [`field${index * 2}`, `value${index}`])
+)
+
+export const optionalStructValid = validCase(optionalStruct, optionalStructInput, false)
+export const optionalStructValidCompiled = validCase(optionalStruct, optionalStructInput, true)
+
+const record = Schema.Record(
+  Schema.String,
+  Schema.Struct({ text: Schema.String, count: Schema.Number, active: Schema.Boolean })
+)
+const recordInput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [
+    `entry${index}`,
+    { text: `value${index}`, count: index, active: index % 2 === 0 }
+  ])
+)
+
+export const recordValid = validCase(record, recordInput, false)
+export const recordValidCompiled = validCase(record, recordInput, true)
+
+const literal100 = Schema.Literals(Array.from({ length: 100 }, (_, index) => `value${index}`))
+
+export const literal100ValidLast = validCase(literal100, "value99", false)
+export const literal100ValidLastCompiled = validCase(literal100, "value99", true)
+export const literal100Invalid = invalidCase(literal100, "missing", false)
+export const literal100InvalidCompiled = invalidCase(literal100, "missing", true)
+
+const checkedString = Schema.String.check(Schema.isMinLength(2))
+
+export const checkedStringValid = validCase(checkedString, "value", false)
+export const checkedStringValidCompiled = validCase(checkedString, "value", true)
+
+const templateLiteral = Schema.TemplateLiteral(["prefix-", Schema.String])
+
+export const templateLiteralValid = validCase(templateLiteral, "prefix-value", false)
+export const templateLiteralValidCompiled = validCase(templateLiteral, "prefix-value", true)

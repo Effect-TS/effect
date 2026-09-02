@@ -1792,6 +1792,49 @@
           ]
         },
         {
+          "file": "suites/moltar-parse-safe/fixtures/effect-compiled.ts",
+          "defaults": {
+            "tier": 3,
+            "implementation": "effect-compiled",
+            "family": "moltar-parse-safe",
+            "astTags": [
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
+            "size": "moltar-object",
+            "operation": "decode-sync"
+          },
+          "cases": [
+            {
+              "name": "valid-effect-compiled",
+              "export": "parseSafeValid",
+              "scenario": "moltar-parse-safe-valid",
+              "path": "valid"
+            },
+            {
+              "name": "extra-valid-effect-compiled",
+              "export": "parseSafeExtraValid",
+              "scenario": "moltar-parse-safe-extra-valid",
+              "path": "extra-valid"
+            },
+            {
+              "name": "invalid-effect-compiled",
+              "export": "parseSafeInvalid",
+              "scenario": "moltar-parse-safe-invalid",
+              "path": "invalid"
+            },
+            {
+              "name": "initialization-first-use-effect-compiled",
+              "export": "initializationSchema",
+              "scenario": "moltar-parse-safe-effect-initialization",
+              "operation": "schema-and-compile-and-decode",
+              "path": "cold"
+            }
+          ]
+        },
+        {
           "file": "suites/moltar-parse-safe/fixtures/zod.ts",
           "defaults": {
             "tier": 3,
@@ -1887,6 +1930,183 @@
               "implementation": "zod4-compiled",
               "operation": "schema-and-compile",
               "path": "cold"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "schema-compiler",
+      "fixtures": [
+        {
+          "file": "suites/schema-compiler/fixtures/coverage.ts",
+          "defaults": {
+            "tier": 2,
+            "operation": "decode-sync",
+            "astTags": []
+          },
+          "cases": [
+            {
+              "name": "array-100-valid-effect",
+              "export": "array100Valid",
+              "scenario": "schema-compiler-array-100-valid",
+              "implementation": "effect",
+              "family": "arrays",
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "array-100-valid-effect-compiled",
+              "export": "array100ValidCompiled",
+              "scenario": "schema-compiler-array-100-valid",
+              "implementation": "effect-compiled",
+              "family": "arrays",
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "array-100-invalid-last-effect",
+              "export": "array100InvalidLast",
+              "scenario": "schema-compiler-array-100-invalid-last",
+              "implementation": "effect",
+              "family": "arrays",
+              "path": "invalid",
+              "size": 100
+            },
+            {
+              "name": "array-100-invalid-last-effect-compiled",
+              "export": "array100InvalidLastCompiled",
+              "scenario": "schema-compiler-array-100-invalid-last",
+              "implementation": "effect-compiled",
+              "family": "arrays",
+              "path": "invalid",
+              "size": 100
+            },
+            {
+              "name": "tuple-rest-valid-effect",
+              "export": "tupleRestValid",
+              "scenario": "schema-compiler-tuple-rest-valid",
+              "implementation": "effect",
+              "family": "arrays",
+              "path": "valid",
+              "size": 34
+            },
+            {
+              "name": "tuple-rest-valid-effect-compiled",
+              "export": "tupleRestValidCompiled",
+              "scenario": "schema-compiler-tuple-rest-valid",
+              "implementation": "effect-compiled",
+              "family": "arrays",
+              "path": "valid",
+              "size": 34
+            },
+            {
+              "name": "optional-struct-valid-effect",
+              "export": "optionalStructValid",
+              "scenario": "schema-compiler-optional-struct-valid",
+              "implementation": "effect",
+              "family": "objects",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "optional-struct-valid-effect-compiled",
+              "export": "optionalStructValidCompiled",
+              "scenario": "schema-compiler-optional-struct-valid",
+              "implementation": "effect-compiled",
+              "family": "objects",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "record-valid-effect",
+              "export": "recordValid",
+              "scenario": "schema-compiler-record-valid",
+              "implementation": "effect",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "record-valid-effect-compiled",
+              "export": "recordValidCompiled",
+              "scenario": "schema-compiler-record-valid",
+              "implementation": "effect-compiled",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "literal-100-valid-last-effect",
+              "export": "literal100ValidLast",
+              "scenario": "schema-compiler-literal-100-valid-last",
+              "implementation": "effect",
+              "family": "unions",
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "literal-100-valid-last-effect-compiled",
+              "export": "literal100ValidLastCompiled",
+              "scenario": "schema-compiler-literal-100-valid-last",
+              "implementation": "effect-compiled",
+              "family": "unions",
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "literal-100-invalid-effect",
+              "export": "literal100Invalid",
+              "scenario": "schema-compiler-literal-100-invalid",
+              "implementation": "effect",
+              "family": "unions",
+              "path": "invalid",
+              "size": 100
+            },
+            {
+              "name": "literal-100-invalid-effect-compiled",
+              "export": "literal100InvalidCompiled",
+              "scenario": "schema-compiler-literal-100-invalid",
+              "implementation": "effect-compiled",
+              "family": "unions",
+              "path": "invalid",
+              "size": 100
+            },
+            {
+              "name": "checked-string-valid-effect",
+              "export": "checkedStringValid",
+              "scenario": "schema-compiler-checked-string-valid",
+              "implementation": "effect",
+              "family": "checks",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "checked-string-valid-effect-compiled",
+              "export": "checkedStringValidCompiled",
+              "scenario": "schema-compiler-checked-string-valid",
+              "implementation": "effect-compiled",
+              "family": "checks",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "template-literal-valid-effect",
+              "export": "templateLiteralValid",
+              "scenario": "schema-compiler-template-literal-valid",
+              "implementation": "effect",
+              "family": "template-literals",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "template-literal-valid-effect-compiled",
+              "export": "templateLiteralValidCompiled",
+              "scenario": "schema-compiler-template-literal-valid",
+              "implementation": "effect-compiled",
+              "family": "template-literals",
+              "path": "valid",
+              "size": 1
             }
           ]
         }

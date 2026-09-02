@@ -12,6 +12,7 @@ describe("runtimeperf registry", () => {
       assert.ok(
         [
           "effect",
+          "effect-compiled",
           "fast-check-v4",
           "valibot",
           "zod4",
@@ -168,7 +169,7 @@ describe("runtimeperf registry", () => {
         .filter((fixture) => fixture.scenario === scenario)
         .map((fixture) => fixture.implementation)
         .sort()
-    const parsers = ["effect", "zod4", "zod4-compiled", "zod4-jitless"]
+    const parsers = ["effect", "effect-compiled", "zod4", "zod4-compiled", "zod4-jitless"]
 
     assert.deepEqual(implementations("moltar-parse-safe-valid"), parsers)
     assert.deepEqual(implementations("moltar-parse-safe-extra-valid"), parsers)
@@ -178,6 +179,25 @@ describe("runtimeperf registry", () => {
     assert.match(source, /z\.compile\(/)
     assert.match(source, /schema\.parse\(input, \{ jitless: true \}\)/)
     assert.doesNotMatch(source, /passthrough\(/)
+  })
+
+  it("pairs Schema compiler cases through public SchemaParser APIs", async () => {
+    const { fixtures } = loadRegistry()
+    const compiler = fixtures.filter((fixture) => fixture.suite === "schema-compiler")
+    const scenarios = new Map()
+    for (const fixture of compiler) {
+      const implementations = scenarios.get(fixture.scenario) ?? []
+      implementations.push(fixture.implementation)
+      scenarios.set(fixture.scenario, implementations)
+    }
+    for (const implementations of scenarios.values()) {
+      assert.deepEqual(implementations.sort(), ["effect", "effect-compiled"])
+    }
+
+    const source = await readFile(compiler[0].fixturePath, "utf8")
+    assert.match(source, /SchemaParser\.decodeUnknownSync\(/)
+    assert.match(source, /SchemaCompiler\.enable\(\)/)
+    assert.doesNotMatch(source, /internal\/schema/)
   })
 
   it("loads, runs and validates every fixture export", async () => {

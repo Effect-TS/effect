@@ -16,6 +16,7 @@ import * as Exit from "./Exit.ts"
 import { memoize } from "./Function.ts"
 import { effectIsExit } from "./internal/effect.ts"
 import * as InternalSchemaCause from "./internal/schema/cause.ts"
+import * as CompilerHook from "./internal/schema/compilerHook.ts"
 import * as InternalParser from "./internal/schema/parser.ts"
 import * as Option from "./Option.ts"
 import * as Result from "./Result.ts"
@@ -525,7 +526,24 @@ export function decodeUnknownSync<S extends Schema.ConstraintDecoder<unknown>>(
   schema: S,
   options?: SchemaAST.ParseOptions
 ): (input: unknown, options?: SchemaAST.ParseOptions) => S["Type"] {
-  return asSync(decodeUnknownEffect(schema, options))
+  const fallback = asSync(decodeUnknownEffect(schema, options))
+  if (options !== undefined) return fallback
+  let decoder: CompilerHook.Decoder | null | undefined
+  return (input, overrideOptions) => {
+    if (overrideOptions !== undefined) return fallback(input, overrideOptions)
+    if (decoder === undefined) {
+      const compiler = CompilerHook.get()
+      decoder = compiler?.(schema.ast) ?? null
+    }
+    if (decoder === null) return fallback(input)
+    let output: unknown
+    try {
+      output = decoder(input)
+    } catch (error) {
+      return throwSyncDefect(error)
+    }
+    return output === CompilerHook.invalid ? fallback(input) : output as S["Type"]
+  }
 }
 
 /**
@@ -1009,6 +1027,18 @@ function asSync<T, E>(
     const issue = InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, "Sync adapter can only throw schema issues")
     throw new Error("Schema validation failed", { cause: issue })
   }
+}
+
+const throwSyncDefect = (defect: unknown): never => {
+  const exit = Effect.runSyncExit(Effect.die(defect))
+  if (Exit.isFailure(exit)) {
+    const issue = InternalSchemaCause.getSchemaIssueOrThrow(
+      exit.cause,
+      "Sync adapter can only throw schema issues"
+    )
+    throw new Error("Schema validation failed", { cause: issue })
+  }
+  throw new Error("BUG: Effect.die unexpectedly succeeded")
 }
 
 /** @internal */
