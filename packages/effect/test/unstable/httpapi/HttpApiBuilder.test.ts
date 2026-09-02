@@ -1371,3 +1371,34 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
       assert.deepStrictEqual(error, new HandlerFailure({ message: "handler failed" }))
     }))
 })
+
+it.layer(TestServices)("HttpApiBuilder middleware error responses", (it) => {
+  it.effect("encodes a middleware error through the response codec", () =>
+    Effect.gen(function*() {
+      const RateLimited = Schema.Struct({ retryAfter: Schema.BigInt }).pipe(HttpApiSchema.status(429))
+
+      class RateLimit extends HttpApiMiddleware.Service<RateLimit>()("RateLimit", {
+        error: RateLimited
+      }) {}
+
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("limited", "/limited", { success: Schema.String }).middleware(RateLimit)
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) => handlers.handle("limited", () => Effect.succeed("ok"))
+      )
+      const RateLimitLayer = Layer.succeed(RateLimit)(() => Effect.fail({ retryAfter: 30n }))
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(
+        Effect.provide(GroupLayer),
+        Effect.provide(RateLimitLayer)
+      )
+      const error = yield* Effect.flip(client.test.limited())
+
+      assert.deepStrictEqual(error, { retryAfter: 30n })
+    }))
+})
