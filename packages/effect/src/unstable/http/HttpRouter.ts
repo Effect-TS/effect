@@ -219,7 +219,10 @@ export const make = Effect.gen(function*() {
         })
 
         const span = Context.getOrUndefined(context, Tracer.ParentSpan)
-        if (span && span._tag === "Span") {
+        if (
+          span !== undefined && span._tag === "Span" && span.sampled &&
+          fiber.getRef(Tracer.Tracer) !== Tracer.nativeTracer
+        ) {
           span.attribute("http.route", route.path)
         }
         return Effect.updateContext(

@@ -259,9 +259,11 @@ export const toWebHandlerWith = <Provided, R = never, ReqR = Exclude<R, Provided
       reqContext = Context.add(reqContext, HttpServerRequest, httpServerRequest)
       ;(httpServerRequest as any)[resolveSymbol] = resolve
       const fiber = Effect.runForkWith(reqContext)(httpApp as any)
-      request.signal?.addEventListener("abort", () => {
-        fiber.interruptUnsafe(undefined, ClientAbort.annotation)
-      }, { once: true })
+      if (fiber.pollUnsafe() === undefined) {
+        request.signal?.addEventListener("abort", () => {
+          fiber.interruptUnsafe(undefined, ClientAbort.annotation)
+        }, { once: true })
+      }
     })
 }
 
