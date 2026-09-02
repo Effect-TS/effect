@@ -840,7 +840,12 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
 
   get arrayBuffer(): Effect.Effect<ArrayBuffer, HttpServerError> {
-    return Effect.map(this.bytes, (bytes) => bytes.slice().buffer)
+    return Effect.map(
+      this.bytes,
+      // Buffer#slice does not copy, so slice the underlying ArrayBuffer to
+      // guarantee an exact, detached copy for pooled or offset views
+      (bytes) => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+    )
   }
 
   get upgrade(): Effect.Effect<Socket.Socket, HttpServerError> {

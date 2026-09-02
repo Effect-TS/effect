@@ -230,7 +230,9 @@ const makeResponse = (
     case "Empty": {
       return new Response(undefined, fields)
     }
-    case "Uint8Array":
+    case "Uint8Array": {
+      return new Response(body.text ?? body.body as any, fields)
+    }
     case "Raw": {
       if (body.body instanceof Response) {
         for (const [key, value] of fields.headers.entries()) {

@@ -1012,7 +1012,13 @@ export const toWeb = (
         headers
       })
     }
-    case "Uint8Array":
+    case "Uint8Array": {
+      return new Response(body.text ?? body.body as any, {
+        status: response.status,
+        statusText: response.statusText!,
+        headers
+      })
+    }
     case "Raw": {
       if (body.body instanceof Response) {
         for (const [key, value] of headers as any) {
@@ -1245,7 +1251,12 @@ class ServerHttpClientResponse extends Inspectable.Class implements HttpClientRe
   }
 
   get arrayBuffer(): Effect.Effect<ArrayBuffer, HttpClientError.HttpClientError> {
-    return Effect.map(this.bytes, (bytes) => bytes.slice().buffer)
+    return Effect.map(
+      this.bytes,
+      // Buffer#slice does not copy, so slice the underlying ArrayBuffer to
+      // guarantee an exact, detached copy for pooled or offset views
+      (bytes) => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+    )
   }
 
   private decodeError(cause: unknown): HttpClientError.HttpClientError {
@@ -1340,7 +1351,9 @@ const makeResponse = (options: {
     self.body._tag !== "Empty" &&
     (self.body.contentType || self.body.contentLength !== undefined)
   ) {
-    const newHeaders = Headers.fromRecordUnsafe({ ...options.headers }) as any
+    const newHeaders = options.headers === undefined || options.headers === Headers.empty
+      ? Headers.emptyMutableUnsafe() as any
+      : Headers.fromRecordUnsafe({ ...options.headers }) as any
     if (self.body.contentType && (!preferHeaders || newHeaders["content-type"] === undefined)) {
       newHeaders["content-type"] = self.body.contentType
     }

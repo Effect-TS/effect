@@ -4428,6 +4428,37 @@ const setFiberInterruptible = (fiber: FiberImpl): Effect.Effect<never> | undefin
   if (fiber._interruptedCause) return failCause(fiber._interruptedCause)
 }
 
+/**
+ * Makes the current fiber uninterruptible until the enclosing effect
+ * completes, without the cost of an extra effect primitive. Must only be
+ * called from inside a `withFiber` body, before returning the inner effect.
+ *
+ * @internal
+ */
+export const fiberEnterUninterruptibleUnsafe = (fiber: Fiber.Fiber<unknown, unknown>): void => {
+  const impl = fiber as FiberImpl
+  if (!impl.interruptible) return
+  impl.interruptible = false
+  impl._stack.push(setInterruptibleTrue)
+}
+
+/**
+ * Makes the current fiber interruptible until the enclosing effect completes,
+ * without the cost of an extra effect primitive. Must only be called from
+ * inside a `withFiber` body, before returning the inner effect. When a
+ * deferred interruption is pending, the returned effect must be returned
+ * instead of the inner effect.
+ *
+ * @internal
+ */
+export const fiberEnterInterruptibleUnsafe = (
+  fiber: Fiber.Fiber<unknown, unknown>
+): Effect.Effect<never> | undefined => {
+  const impl = fiber as FiberImpl
+  if (impl.interruptible) return undefined
+  return setFiberInterruptible(impl)
+}
+
 /** @internal */
 export const interruptible = <A, E, R>(
   self: Effect.Effect<A, E, R>

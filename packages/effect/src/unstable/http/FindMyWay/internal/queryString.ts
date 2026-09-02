@@ -34,7 +34,17 @@ Empty.prototype = Object.create(null)
  * @category parsing
  * @since 1.0.0
  */
+const emptyResult: Record<string, any> = Object.freeze(new Empty())
+
+/**
+ * @category parsing
+ * @since 1.0.0
+ */
 export function parse(input: string) {
+  if (input === "") {
+    return emptyResult
+  }
+
   // Optimization: Use new Empty() instead of Object.create(null) for performance
   // v8 has a better optimization for initializing functions compared to Object
   const result = new Empty()

@@ -14,12 +14,12 @@ import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import { dual } from "../../Function.ts"
-import { reportCauseUnsafe } from "../../internal/effect.ts"
+import { fiberEnterUninterruptibleUnsafe, reportCauseUnsafe } from "../../internal/effect.ts"
 import * as Layer from "../../Layer.ts"
 import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 import * as HttpBody from "./HttpBody.ts"
-import { type HttpMiddleware, tracer } from "./HttpMiddleware.ts"
+import { type HttpMiddleware, isTracerDisabledFastUnsafe, tracer } from "./HttpMiddleware.ts"
 import { causeResponse, ClientAbort, HttpServerError, InternalError } from "./HttpServerError.ts"
 import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
@@ -87,7 +87,7 @@ export const toHandled = <E, R, EH, RH>(
     E | EH | HttpServerError,
     HttpServerRequest | R | RH
   > = middleware === undefined ?
-    tracer(responded) :
+    responded :
     Effect.matchCauseEffect(tracer(middleware(responded)), {
       onFailure(cause): Effect.Effect<void, EH, RH> {
         const fiber = Fiber.getCurrent()!
@@ -110,10 +110,52 @@ export const toHandled = <E, R, EH, RH>(
       }
     })
 
-  return Effect.uninterruptible(scoped(withMiddleware)) as any
+  // when no explicit middleware is used, the tracer middleware is applied
+  // lazily so it can be skipped entirely when no tracing backend is installed
+  const traced = middleware === undefined
+    ? tracer(withMiddleware as Effect.Effect<HttpServerResponse, E | EH | HttpServerError, HttpServerRequest | R | RH>)
+    : undefined
+
+  return Effect.withFiber((fiber) => {
+    fiberEnterUninterruptibleUnsafe(fiber)
+    const scope = Scope.makeUnsafe()
+    const prevServices = fiber.context
+    fiber.setContext(Context.add(fiber.context, Scope.Scope, scope))
+    const effect = traced === undefined || isTracerDisabledFastUnsafe(fiber)
+      ? withMiddleware
+      : traced
+    return Effect.onExitPrimitive(effect, (exit) => {
+      fiber.setContext(prevServices)
+      if (scopeEjected in scope) return undefined
+      return Scope.closeUnsafe(scope, exit)
+    }, true)
+  }) as any
 }
 
 const handledSymbol = Symbol.for("effect/http/HttpEffect/handled")
+
+/**
+ * Symbol under which an HTTP effect can expose a synchronous lookup for
+ * constant route responses.
+ *
+ * **Details**
+ *
+ * Platform adapters can use the lookup to write responses for constant routes
+ * without running the effect pipeline, when no middleware is installed and no
+ * tracing backend can observe the request.
+ *
+ * @category fast path
+ * @since 4.0.0
+ */
+export const symbolFastPathFind = "~effect/http/HttpEffect/fastPathFind" as const
+
+/**
+ * Synchronous lookup for constant route responses.
+ *
+ * @category fast path
+ * @since 4.0.0
+ */
+export type FastPathFind = (method: string, url: string) => HttpServerResponse | undefined
 
 /**
  * Disables automatic closing for an HTTP request scope.
@@ -156,18 +198,6 @@ export const scopeTransferToStream = (
 }
 
 const scopeEjected = Symbol.for("effect/http/HttpEffect/scopeEjected")
-
-const scoped = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  Effect.withFiber((fiber) => {
-    const scope = Scope.makeUnsafe()
-    const prevServices = fiber.context
-    fiber.setContext(Context.add(fiber.context, Scope.Scope, scope))
-    return Effect.onExitPrimitive(effect, (exit) => {
-      fiber.setContext(prevServices)
-      if (scopeEjected in scope) return undefined
-      return Scope.closeUnsafe(scope, exit)
-    }, true)
-  })
 
 /**
  * Function run with the current request and response just before the response is sent, allowing the response to be replaced or failing with `HttpServerError`.

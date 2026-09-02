@@ -28,6 +28,27 @@ import * as QS from "./queryString.ts"
 const FULL_PATH_REGEXP = /^https?:\/\/.*?\//
 const OPTIONAL_PARAM_REGEXP = /(\/:[^/()]*?)\?(\/?)/
 
+const emptyParamsArray: ReadonlyArray<string> = []
+
+const sharedBrothersNodesStack: Array<BrotherNode> = []
+
+const singleParamArray: Array<string> = [""]
+
+// A path with exactly one parameter, at the start of the final segment, with
+// no wildcard, regex, or static-suffix syntax
+const isCleanSingleTrailingParam = (path: string): boolean => {
+  const colon = path.indexOf(":")
+  return colon > 0 &&
+    path.charCodeAt(colon - 1) === 47 &&
+    colon < path.length - 1 &&
+    path.indexOf(":", colon + 1) === -1 &&
+    path.indexOf("/", colon) === -1 &&
+    path.indexOf("*") === -1 &&
+    path.indexOf("(") === -1 &&
+    path.indexOf("-", colon) === -1 &&
+    path.indexOf(".", colon) === -1
+}
+
 interface Route<A = unknown> {
   readonly method: string
   readonly path: Router.PathInput
@@ -55,6 +76,9 @@ class RouterImpl<A> implements Router.Router<A> {
   readonly options: Router.RouterConfig
   routes: Array<Route> = []
   trees: Record<string, StaticNode> = Object.create(null)
+  staticRoutes: Record<string, Map<string, Handler>> = Object.create(null)
+  singleParamRoutes: Record<string, Array<{ prefix: string; handler: Handler }>> = Object.create(null)
+  singleParamDisabled: Record<string, boolean> = Object.create(null)
 
   on(
     method: string | Iterable<string>,
@@ -253,6 +277,37 @@ class RouterImpl<A> implements Router.Router<A> {
     const route = { method, path, pattern, params, handler }
     this.routes.push(route)
     currentNode.addRoute(route)
+
+    // Routes without parameters or wildcards can be matched with a single map
+    // lookup, using the same normalized form the radix tree stores ("::" is an
+    // escaped ":" and "%" is matched against its encoded "%25" form)
+    if (params.length === 0) {
+      const staticKey = pattern.split("::").join(":").split("%").join("%25")
+      const store = this.staticRoutes[method] ??= new Map()
+      if (!store.has(staticKey)) {
+        store.set(staticKey, currentNode.handlerStorage!.unconstrainedHandler!)
+      }
+    } else if (isCleanSingleTrailingParam(path)) {
+      // Routes shaped like "/prefix/:param" can be matched with a prefix
+      // comparison, skipping the radix tree walk
+      if (this.singleParamDisabled[method] !== true) {
+        let prefix = path.slice(0, path.indexOf(":"))
+        if (!this.options.caseSensitive) {
+          prefix = prefix.toLowerCase()
+        }
+        prefix = prefix.split("%").join("%25")
+        const store = this.singleParamRoutes[method] ??= []
+        if (!store.some((entry) => entry.prefix === prefix)) {
+          store.push({ prefix, handler: currentNode.handlerStorage!.unconstrainedHandler! })
+        }
+      }
+    } else if (/[(*]|[^/]:|:[^/]*[-.]/.test(path)) {
+      // Regex, wildcard, mid-segment, and static-suffix parameters can shadow
+      // plain parametric routes with a higher priority, which the fast path
+      // cannot see, so it is disabled for the whole method
+      this.singleParamDisabled[method] = true
+      delete this.singleParamRoutes[method]
+    }
   }
 
   has(method: string, path: string): boolean {
@@ -310,11 +365,51 @@ class RouterImpl<A> implements Router.Router<A> {
 
     const maxParamLength = this.options.maxParamLength
 
+    const staticStore = this.staticRoutes[method]
+    if (staticStore !== undefined) {
+      const handle = staticStore.get(path)
+      if (handle !== undefined) {
+        return {
+          handler: handle.handler as A,
+          params: handle.createParams(emptyParamsArray),
+          searchParams: QS.parse(querystring)
+        } as const
+      }
+    }
+
+    const singleParamStore = this.singleParamRoutes[method]
+    if (singleParamStore !== undefined) {
+      for (let i = 0; i < singleParamStore.length; i++) {
+        const entry = singleParamStore[i]
+        const prefixLength = entry.prefix.length
+        if (
+          path.length > prefixLength &&
+          path.startsWith(entry.prefix) &&
+          path.indexOf("/", prefixLength) === -1
+        ) {
+          let param = originPath.slice(prefixLength)
+          if (shouldDecodeParam) {
+            param = safeDecodeURIComponent(param)
+          }
+          if (param.length > maxParamLength) break
+          singleParamArray[0] = param
+          return {
+            handler: entry.handler.handler as A,
+            params: entry.handler.createParams(singleParamArray),
+            searchParams: QS.parse(querystring)
+          } as const
+        }
+      }
+    }
+
     let pathIndex = (currentNode as StaticNode).prefix.length
     const params = []
     const pathLen = path.length
 
-    const brothersNodesStack: Array<BrotherNode> = []
+    // `find` is synchronous and never re-entered, so the backtracking stack
+    // can be shared between calls to avoid a per-request allocation
+    const brothersNodesStack = sharedBrothersNodesStack
+    brothersNodesStack.length = 0
 
     while (true) {
       if (pathIndex === pathLen && currentNode.isLeafNode) {
@@ -745,6 +840,9 @@ const assert: Assert = (condition, message) => {
 }
 
 function removeDuplicateSlashes(path: string): Router.PathInput {
+  if (path.indexOf("//") === -1) {
+    return path as Router.PathInput
+  }
   return path.replace(/\/\/+/g, "/") as Router.PathInput
 }
 
@@ -755,10 +853,32 @@ function trimLastSlash(path: string): Router.PathInput {
   return path as Router.PathInput
 }
 
+// Parameter names are route-author controlled, so plain identifier names can
+// be compiled into a static object literal, which V8 turns into a fast-mode
+// object with a shared shape. "__proto__" is excluded because a literal
+// (non-computed) "__proto__" key would set the prototype instead of creating
+// an own property.
+const safeParamName = /^[A-Za-z_$][A-Za-z0-9_$]*$/
+const isCompilableParamName = (name: string): boolean => name !== "__proto__" && safeParamName.test(name)
+
 function compileCreateParams(
   params: ReadonlyArray<string>
 ): (paramsArray: ReadonlyArray<string>) => Record<string, string> {
   const len = params.length
+  if (len === 0) {
+    return () => ({})
+  }
+  if (params.every(isCompilableParamName) && new Set(params).size === len) {
+    try {
+      // eslint-disable-next-line no-new-func
+      return new Function(
+        "a",
+        `return {${params.map((name, i) => `${name}: a[${i}]`).join(",")}}`
+      ) as (paramsArray: ReadonlyArray<string>) => Record<string, string>
+    } catch {
+      // runtimes with a strict CSP disallow Function construction
+    }
+  }
   return function(paramsArray) {
     const paramsObject: Record<string, string> = Object.create(null)
     for (let i = 0; i < len; i++) {

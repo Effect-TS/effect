@@ -25,8 +25,10 @@ import * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import type * as Path from "effect/Path"
 import type * as Record from "effect/Record"
+import { TracerEnabled } from "effect/References"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import * as Tracer from "effect/Tracer"
 import * as Cookies from "effect/unstable/http/Cookies"
 import * as Etag from "effect/unstable/http/Etag"
 import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
@@ -200,12 +202,34 @@ export const makeHandler = <
   Exclude<Effect.Services<App>, HttpServerRequest | Scope.Scope>
 > => {
   const handled = HttpEffect.toHandled(httpEffect, handleResponse, options.middleware as any)
+  const fastPathFind: HttpEffect.FastPathFind | undefined = options.middleware === undefined
+    ? (httpEffect as any)[HttpEffect.symbolFastPathFind]
+    : undefined
   return Effect.withFiber((parent) => {
     const services = parent.context
+    // constant route responses can only skip the pipeline when no tracing
+    // backend could observe the request
+    const fastPath = fastPathFind !== undefined &&
+        (!Context.get(services, TracerEnabled) || Context.get(services, Tracer.Tracer) === Tracer.nativeTracer)
+      ? fastPathFind
+      : undefined
     return Effect.succeed(function handler(
       nodeRequest: Http.IncomingMessage,
       nodeResponse: Http.ServerResponse
     ) {
+      if (fastPath !== undefined) {
+        const response = fastPath(nodeRequest.method!, nodeRequest.url!)
+        if (response !== undefined) {
+          const body = response.body
+          nodeResponse.writeHead(response.status, response.headers)
+          if (body._tag === "Uint8Array") {
+            nodeResponse.end(body.text ?? body.body)
+          } else {
+            nodeResponse.end()
+          }
+          return
+        }
+      }
       const context = Context.add(services, HttpServerRequest, new ServerRequestImpl(nodeRequest, nodeResponse))
       const fiber = Fiber.runIn(Effect.runForkWith(context as Context.Context<any>)(handled), options.scope)
       if (fiber.pollUnsafe() === undefined) {
@@ -363,7 +387,13 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
 
   private cachedMethod: HttpMethod | undefined
   get method(): HttpMethod {
-    return this.cachedMethod ??= this.source.method!.toUpperCase() as HttpMethod
+    if (this.cachedMethod === undefined) {
+      // Node's http parser only produces uppercase methods, so the uppercase
+      // conversion is skipped unless the string starts with a lowercase letter
+      const method = this.source.method!
+      this.cachedMethod = (method.charCodeAt(0) >= 97 ? method.toUpperCase() : method) as HttpMethod
+    }
+    return this.cachedMethod
   }
 
   override get headers(): Headers.Headers {
@@ -589,12 +619,14 @@ const handleResponse = (
     case "Uint8Array": {
       nodeResponse.writeHead(response.status, headers)
       // If the body is less than 1MB, we skip the callback
-      if (body.body.length < 1024 * 1024) {
-        nodeResponse.end(body.body)
+      if (body.contentLength < 1024 * 1024) {
+        // writing the original string lets Node.js flush the headers and the
+        // body in a single socket write
+        nodeResponse.end(body.text ?? body.body)
         return Effect.void
       }
       return Effect.callback<void>((resume) => {
-        nodeResponse.end(body.body, () => resume(Effect.void))
+        nodeResponse.end(body.text ?? body.body, () => resume(Effect.void))
       })
     }
     case "FormData": {

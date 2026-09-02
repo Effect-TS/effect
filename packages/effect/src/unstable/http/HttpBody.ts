@@ -224,19 +224,29 @@ export const raw = (
  */
 export class Uint8Array extends Proto {
   readonly _tag = "Uint8Array"
-  readonly body: globalThis.Uint8Array
   readonly contentType: string
   readonly contentLength: number
+  /**
+   * The original string for bodies created from text, letting platform
+   * adapters write it directly instead of encoding the body up front.
+   */
+  readonly text: string | undefined
+  private _body: globalThis.Uint8Array | undefined
 
   constructor(
-    body: globalThis.Uint8Array,
+    body: globalThis.Uint8Array | undefined,
     contentType: string,
-    contentLength: number
+    contentLength: number,
+    text?: string
   ) {
     super()
-    this.body = body
+    this._body = body
+    this.text = text
     this.contentType = contentType
     this.contentLength = contentLength
+  }
+  get body(): globalThis.Uint8Array {
+    return this._body ??= encodeText(this.text!)
   }
   toJSON(): unknown {
     const toString = this.contentType.startsWith("text/") || this.contentType.endsWith("json")
@@ -265,18 +275,30 @@ export const uint8Array = (body: globalThis.Uint8Array, contentType?: string): U
 
 const encoder = new TextEncoder()
 
+// Buffer.from is significantly faster than TextEncoder.encode on Node.js and
+// Bun, and a Buffer is a Uint8Array
+const encodeText: (body: string) => globalThis.Uint8Array = typeof globalThis.Buffer === "function"
+  ? (body) => globalThis.Buffer.from(body, "utf8")
+  : (body) => encoder.encode(body)
+
 /**
  * Creates a UTF-8 encoded text HTTP body.
  *
  * **Details**
  *
- * The content type defaults to `text/plain`.
+ * The content type defaults to `text/plain`. The bytes are produced lazily, so
+ * platform adapters that can write strings directly avoid the encoding step.
  *
  * @category constructors
  * @since 4.0.0
  */
-export const text = (body: string, contentType?: string): Uint8Array =>
-  uint8Array(encoder.encode(body), contentType ?? "text/plain")
+export const text = (body: string, contentType?: string): Uint8Array => {
+  if (typeof globalThis.Buffer === "function") {
+    return new Uint8Array(undefined, contentType ?? "text/plain", globalThis.Buffer.byteLength(body, "utf8"), body)
+  }
+  const bytes = encoder.encode(body)
+  return new Uint8Array(bytes, contentType ?? "text/plain", bytes.length, body)
+}
 
 /**
  * Creates a JSON HTTP body using `JSON.stringify`, throwing if serialization fails.
