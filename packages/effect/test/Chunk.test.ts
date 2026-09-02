@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { describe, it } from "@effect/vitest"
 import {
   assertEquals,
   assertFalse,
@@ -544,7 +544,7 @@ describe("Chunk", () => {
         Chunk.prependAll(Chunk.of(1)),
         Chunk.append(5)
       )
-      assert.deepStrictEqual(Chunk.toArray(chunk), [1, 2, 3, 5])
+      deepStrictEqual(Chunk.toArray(chunk), [1, 2, 3, 5])
     })
 
     describe("Given 2 chunks of the same length", () => {
