@@ -1,4 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Effect from "effect/Effect"
 import * as Statement from "effect/unstable/sql/Statement"
 
 describe("Statement", () => {
@@ -31,5 +32,27 @@ describe("Statement", () => {
 
     assert.deepStrictEqual(postgres.compile(fragment, false), ["\"value\"$1", [1]])
     assert.deepStrictEqual(sqlite.compile(fragment, false), ["\"value\"?", [1]])
+  })
+
+  it("renumbers a cached returning fragment", () => {
+    const sql = Statement.make(
+      Effect.void as any,
+      Statement.makeCompiler({
+        dialect: "pg",
+        placeholder: (index) => `$${index}`,
+        onIdentifier: Statement.defaultEscape("\""),
+        onRecordUpdate: () => ["", []],
+        onCustom: () => ["", []]
+      }),
+      [],
+      undefined
+    )
+    const returning = sql`${"label"} AS label`
+
+    assert.deepStrictEqual(returning.compile(), ["$1 AS label", ["label"]])
+    assert.deepStrictEqual(
+      sql`INSERT INTO people ${sql.insert({ name: "Ada" }).returning(returning)}, ${"extra"} AS extra`.compile(),
+      ["INSERT INTO people (\"name\") VALUES ($1) RETURNING $2 AS label, $3 AS extra", ["Ada", "label", "extra"]]
+    )
   })
 })
