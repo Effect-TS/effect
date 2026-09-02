@@ -681,15 +681,9 @@ abstract class ASTNodeImpl implements ASTNode {
   }
 }
 
-/**
- * Parser factory carried by a {@link Declaration}.
- *
- * @category models
- * @since 4.0.0
- */
-export type DeclarationRun = (
+type DeclarationRun = (
   typeParameters: ReadonlyArray<AST>
-) => (input: unknown, self: Declaration, options: ParseOptions) => Effect.Effect<any, SchemaIssue.Issue, any>
+) => (input: unknown, self: Declaration, options: ParseOptions) => Effect.Effect<any, SchemaIssue.Issue>
 
 /**
  * AST node for user-defined opaque types with custom parsing logic.
@@ -704,7 +698,8 @@ export type DeclarationRun = (
  * - `typeParameters` — inner schemas this declaration is parameterized over
  *   (e.g. the element type for a custom collection).
  * - `run` — factory that receives `typeParameters` and returns a parser that
- *   validates or transforms raw input.
+ *   validates or transforms raw input. The `Effect` returned by the parser must
+ *   complete synchronously.
  *
  * @see {@link isDeclaration}
  * @category models
