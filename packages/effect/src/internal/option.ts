@@ -91,8 +91,10 @@ export const isSome = <A>(fa: Option.Option<A>): fa is Option.Some<A> => fa._tag
 export const none: Option.Option<never> = Object.create(NoneProto)
 
 /** @internal */
-export const some = <A>(value: A): Option.Option<A> => {
-  const a = Object.create(SomeProto)
-  a.value = value
-  return a
+function SomeImpl(this: any, value: unknown) {
+  this.value = value
 }
+SomeImpl.prototype = SomeProto
+
+/** @internal */
+export const some = <A>(value: A): Option.Option<A> => new (SomeImpl as any)(value)

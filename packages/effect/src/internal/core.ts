@@ -393,12 +393,14 @@ export const makePrimitiveProto = <Op extends string>(options: {
   readonly [contA]?: (
     this: Primitive,
     value: any,
-    fiber: FiberImpl
+    fiber: FiberImpl,
+    exit?: Exit.Exit<any, any>
   ) => Primitive | Effect.Effect<any, any, any> | Yield
   readonly [contE]?: (
     this: Primitive,
     cause: Cause.Cause<any>,
-    fiber: FiberImpl
+    fiber: FiberImpl,
+    exit?: Exit.Exit<any, any>
   ) => Primitive | Effect.Effect<any, any, any> | Yield
   readonly [contAll]?: (
     this: Primitive,

@@ -1162,23 +1162,23 @@ const callbackOptions: <A, E = never, R = never>(
       let resumed = false
       let yielded: boolean | Primitive = false
       const controller = this.withSignal ? new AbortController() : undefined
-    const onCancel = register((effect) => {
-      if (resumed) return
-      resumed = true
-      if (yielded) {
-        fiber.evaluate(effect as any)
-      } else {
-        yielded = effect as any
+      const onCancel = register((effect: Effect.Effect<any, any, any>) => {
+        if (resumed) return
+        resumed = true
+        if (yielded) {
+          fiber.evaluate(effect as any)
+        } else {
+          yielded = effect as any
+        }
+      }, controller?.signal)
+      if (yielded !== false) return yielded
+      yielded = true
+      fiber._yielded = () => {
+        resumed = true
       }
-    }, controller?.signal)
-    if (yielded !== false) return yielded
-    yielded = true
-    fiber._yielded = () => {
-      resumed = true
-    }
-    if (controller === undefined && onCancel === undefined) {
-      return Yield
-    }
+      if (controller === undefined && onCancel === undefined) {
+        return Yield
+      }
       fiber._stack.push(
         asyncFinalizer(() => {
           resumed = true
@@ -1752,8 +1752,7 @@ export const flatMap: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (a: A) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<B, E | E2, R | R2> =>
-    new (OnSuccessImpl as any)(self, f.length !== 1 ? (a: A) => f(a) : f)
+  ): Effect.Effect<B, E | E2, R | R2> => new (OnSuccessImpl as any)(self, f.length !== 1 ? (a: A) => f(a) : f)
 )
 const OnSuccessProto = makePrimitiveProto({
   op: "OnSuccess",
