@@ -11,7 +11,6 @@
  */
 import * as Arr from "../../Array.ts"
 import * as Effect from "../../Effect.ts"
-import * as Encoding from "../../Encoding.ts"
 import { dual } from "../../Function.ts"
 import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
 import * as Predicate from "../../Predicate.ts"
@@ -2123,16 +2122,6 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
           active.options = mergeOptions(active.options, part.metadata)
           assistantParts.push(makePart("reasoning", active))
         }
-        break
-      }
-
-      // File Parts
-      case "file": {
-        assistantParts.push(makePart("file", {
-          data: Encoding.encodeBase64(part.data),
-          mediaType: part.mediaType,
-          options: part.metadata
-        }))
         break
       }
 

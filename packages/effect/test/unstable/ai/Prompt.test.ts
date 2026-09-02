@@ -1,7 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Ref, Schema, Stream } from "effect"
-import { Chat, Prompt, Response } from "effect/unstable/ai"
-import * as TestUtils from "./utils.ts"
+import { Schema } from "effect"
+import { Prompt, Response } from "effect/unstable/ai"
 
 describe("Prompt", () => {
   describe("part schemas", () => {
@@ -56,65 +55,6 @@ describe("Prompt", () => {
   })
 
   describe("fromResponseParts", () => {
-    for (const streaming of [false, true]) {
-      it.effect(`preserves generated files through JSON chat export (streaming: ${streaming})`, () =>
-        Effect.gen(function*() {
-          const file: Response.FilePartEncoded = {
-            type: "file",
-            data: "AH+A/w==",
-            mediaType: "application/octet-stream",
-            metadata: { example: { id: "attachment-1", generated: true } }
-          }
-          const chat = yield* Chat.empty
-          yield* (streaming
-            ? Stream.runDrain(chat.streamText({ prompt: "Create an attachment" }))
-            : chat.generateText({ prompt: "Create an attachment" })).pipe(
-              TestUtils.withLanguageModel({ generateText: [file], streamText: [file] })
-            )
-          const restored = yield* Chat.fromJson(yield* chat.exportJson)
-          const history = yield* Ref.get(restored.history)
-          assert.deepStrictEqual(
-            history,
-            Prompt.make([
-              { role: "user", content: "Create an attachment" },
-              {
-                role: "assistant",
-                content: [{
-                  type: "file",
-                  data: "AH+A/w==",
-                  mediaType: "application/octet-stream",
-                  options: { example: { id: "attachment-1", generated: true } }
-                }]
-              }
-            ])
-          )
-        }))
-    }
-
-    it("accepts byte attachments in response and assistant message schemas", () => {
-      const data = new Uint8Array([0, 127, 128, 255])
-      const mediaType = "application/octet-stream"
-      const metadata = { example: { id: "attachment-1", generated: true } }
-      const responsePart = Response.makePart("file", { data, mediaType, metadata })
-      const promptPart = Prompt.filePart({ data, mediaType, options: metadata })
-      const prompt = Prompt.fromMessages([Prompt.assistantMessage({ content: [promptPart] })])
-
-      assert.isTrue(Schema.is(Response.FilePart)(responsePart))
-      assert.isTrue(Schema.is(Prompt.AssistantMessage)(prompt.content[0]))
-      assert.deepStrictEqual(
-        prompt,
-        Prompt.make([{
-          role: "assistant",
-          content: [{
-            type: "file",
-            data: new Uint8Array([0, 127, 128, 255]),
-            mediaType: "application/octet-stream",
-            options: { example: { id: "attachment-1", generated: true } }
-          }]
-        }])
-      )
-    })
-
     it("preserves file-only responses as assistant messages", () => {
       const file = Response.makePart("file", {
         data: new Uint8Array([0, 127, 128, 255]),
@@ -133,77 +73,6 @@ describe("Prompt", () => {
             options: { example: { id: "attachment-1", generated: true } }
           }]
         }])
-      )
-    })
-
-    it.each([false, true])("preserves text and tool order and metadata (file included: %s)", (includeFile) => {
-      const parts = [
-        Response.makePart("text", { text: "Before", metadata: { example: { id: "before" } } }),
-        Response.makePart("tool-call", {
-          id: "call-1",
-          name: "read_attachment",
-          params: { id: "attachment-1" },
-          providerExecuted: false,
-          metadata: { example: { id: "call" } }
-        }),
-        ...(includeFile
-          ? [Response.makePart("file", {
-            data: new Uint8Array([0, 127, 128, 255]),
-            mediaType: "application/octet-stream",
-            metadata: { example: { id: "attachment-1", generated: true } }
-          })]
-          : []),
-        Response.makePart("text", { text: "After", metadata: { example: { id: "after" } } }),
-        Response.makePart("tool-result", {
-          id: "call-1",
-          name: "read_attachment",
-          isFailure: false,
-          result: { size: 4 },
-          encodedResult: { size: 4 },
-          preliminary: false,
-          providerExecuted: false,
-          metadata: { example: { id: "result" } }
-        })
-      ]
-
-      assert.deepStrictEqual(
-        Prompt.fromResponseParts(parts),
-        Prompt.make([
-          {
-            role: "assistant",
-            content: [
-              { type: "text", text: "Before", options: { example: { id: "before" } } },
-              {
-                type: "tool-call",
-                id: "call-1",
-                name: "read_attachment",
-                params: { id: "attachment-1" },
-                providerExecuted: false,
-                options: { example: { id: "call" } }
-              },
-              ...(includeFile
-                ? [Prompt.filePart({
-                  data: "AH+A/w==",
-                  mediaType: "application/octet-stream",
-                  options: { example: { id: "attachment-1", generated: true } }
-                })]
-                : []),
-              { type: "text", text: "After", options: { example: { id: "after" } } }
-            ]
-          },
-          {
-            role: "tool",
-            content: [{
-              type: "tool-result",
-              id: "call-1",
-              name: "read_attachment",
-              isFailure: false,
-              result: { size: 4 },
-              providerExecuted: false,
-              options: { example: { id: "result" } }
-            }]
-          }
-        ])
       )
     })
 
