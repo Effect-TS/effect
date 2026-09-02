@@ -1273,8 +1273,6 @@ export const optional = <Kind extends ParamKind, A>(
   param: Param<Kind, A>
 ): Param<Kind, Option.Option<A>> => {
   const parse: Parse<Option.Option<A>> = Effect.fnUntraced(function*(args) {
-    getUnderlyingSingleOrThrow(param)
-
     return yield* param.parse(args).pipe(
       Effect.map(([leftover, value]) => [leftover, Option.some(value)] as const),
       // Catch both MissingOption (for flags) and MissingArgument (for positional arguments)
