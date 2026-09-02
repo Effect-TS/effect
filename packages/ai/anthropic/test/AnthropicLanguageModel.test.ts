@@ -1,4 +1,4 @@
-import { AnthropicClient, AnthropicLanguageModel, AnthropicTool } from "@effect/ai-anthropic"
+import { AnthropicClient, AnthropicLanguageModel, AnthropicTool, Generated } from "@effect/ai-anthropic"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Schema, Stream } from "effect"
 import {
@@ -13,6 +13,70 @@ import {
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
 describe("AnthropicLanguageModel", () => {
+  describe("image file data representations", () => {
+    const base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII="
+    const source = { type: "base64", media_type: "image/png", data: base64 }
+    const url = "https://example.com/pixel.png"
+    const cases: ReadonlyArray<readonly [string, Prompt.FilePart["data"], object]> = [
+      ["base64 string", base64, source],
+      ["data-URL string", `data:image/png;base64,${base64}`, source],
+      ["bytes", Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)), source],
+      ["HTTPS URL object", new URL(url), { type: "url", url }],
+      ["HTTPS URL string", url, { type: "url", url }]
+    ]
+
+    for (const [name, data, expected] of cases) {
+      it.effect(`preserves image from ${name}`, () =>
+        Effect.gen(function*() {
+          const response = yield* Schema.decodeUnknownEffect(Generated.BetaMessage)({
+            id: "msg_fixture",
+            type: "message",
+            role: "assistant",
+            model: "fixture-model",
+            content: [],
+            stop_reason: "end_turn",
+            stop_sequence: null,
+            usage: {
+              cache_creation: null,
+              cache_creation_input_tokens: null,
+              cache_read_input_tokens: null,
+              inference_geo: null,
+              input_tokens: 1,
+              output_tokens: 1,
+              service_tier: null
+            }
+          })
+          const requests: Array<HttpClientRequest.HttpClientRequest> = []
+          const layer = AnthropicClient.layer({}).pipe(
+            Layer.provide(Layer.succeed(
+              HttpClient.HttpClient,
+              makeHttpClient((request) => {
+                requests.push(request)
+                return Effect.succeed(jsonResponse(request, response))
+              })
+            ))
+          )
+
+          yield* LanguageModel.generateText({
+            prompt: Prompt.make([Prompt.userMessage({
+              content: [Prompt.filePart({ mediaType: "image/png", data })]
+            })])
+          }).pipe(
+            Effect.provide(AnthropicLanguageModel.model("fixture-model")),
+            Effect.provide(layer)
+          )
+
+          assert.strictEqual(requests.length, 1)
+          const body = yield* getRequestBody(requests[0])
+          yield* Schema.decodeUnknownEffect(Generated.BetaCreateMessageParams)(body)
+          assert.deepStrictEqual(body.messages, [{
+            role: "user",
+            content: [{ type: "image", source: expected, cache_control: null }]
+          }])
+        }))
+    }
+  })
+
   describe("streamText", () => {
     it.effect("decodes tool call params in content_block_stop", () =>
       Effect.gen(function*() {
