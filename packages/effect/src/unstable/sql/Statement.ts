@@ -833,7 +833,7 @@ const CompilerProto = {
     withoutTransform = withoutTransform || this.disableTransforms
     const cache = withoutTransform ? this.statementCacheNoTransform : this.statementCache
     const cached = cache.get(statement)
-    if (cached !== undefined) {
+    if (cached !== undefined && placeholderOverride === undefined) {
       return cached
     }
 
