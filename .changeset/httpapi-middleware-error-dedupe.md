@@ -17,7 +17,11 @@ Two consequences, both fixed:
   field, for example) failed to encode at runtime with
   `Expected a JSON-serializable response body`.
 
-Middleware errors now go through the same response transform as endpoint errors, and
-that transform is memoized on its input schema, so declaring one schema in both places
-yields one instance. Middleware errors that are genuinely new for a status are still
-documented, and two different schemas on one status still produce an `anyOf`.
+`HttpApiEndpoint.getErrorSchemas` now gives a middleware's declared errors the same
+treatment the endpoint gave its own, so a middleware attached to endpoints with
+different `disableCodecs` settings is resolved correctly for each. The transform is
+memoized on its input schema, so declaring one schema in both places yields one
+instance.
+
+Middleware errors that are genuinely new for a status are still documented, and two
+different schemas on one status still produce an `anyOf`.

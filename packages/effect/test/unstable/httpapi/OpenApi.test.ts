@@ -338,6 +338,31 @@ describe("OpenApi", () => {
     })
   })
 
+  it("collapses a repeated middleware error when the endpoint disables codecs", () => {
+    const ApiError = Schema.Struct({ code: Schema.String }).annotate({ identifier: "ApiError" })
+
+    class SameError extends HttpApiMiddleware.Service<SameError>()("SameErrorNoCodecs", {
+      error: ApiError
+    }) {}
+
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("error", "/error", {
+          disableCodecs: true,
+          error: ApiError
+        })
+      )
+    ).middleware(SameError)
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.paths["/error"]?.get?.responses[500]?.content, {
+      "application/json": {
+        schema: { $ref: "#/components/schemas/ApiError" }
+      }
+    })
+  })
+
   it("emits an anyOf for a middleware error that differs from the endpoint error", () => {
     const EndpointError = Schema.Struct({ code: Schema.String }).annotate({ identifier: "EndpointError" })
     const MiddlewareError = Schema.Struct({ reason: Schema.String }).annotate({ identifier: "MiddlewareError" })
