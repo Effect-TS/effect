@@ -366,12 +366,12 @@ export const FieldOption: <Field extends VariantSchema.Field<any> | Schema.Top>(
       }
     > :
   never = fieldEvolve({
-    select: Schema.OptionFromNullOr,
-    insert: Schema.OptionFromNullOr,
-    update: Schema.OptionFromNullOr,
-    json: optionalOption,
-    jsonCreate: optionalOption,
-    jsonUpdate: optionalOption
+    select: (schema: any) => schema === undefined ? schema : Schema.OptionFromNullOr(schema),
+    insert: (schema: any) => schema === undefined ? schema : Schema.OptionFromNullOr(schema),
+    update: (schema: any) => schema === undefined ? schema : Schema.OptionFromNullOr(schema),
+    json: (schema: any) => schema === undefined ? schema : optionalOption(schema),
+    jsonCreate: (schema: any) => schema === undefined ? schema : optionalOption(schema),
+    jsonUpdate: (schema: any) => schema === undefined ? schema : optionalOption(schema)
   }) as any
 
 /**
