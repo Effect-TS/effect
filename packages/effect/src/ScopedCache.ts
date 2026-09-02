@@ -588,6 +588,10 @@ export const invalidateWhen: {
               if (self.state._tag === "Closed") {
                 return effect.succeed(false)
               } else if (f(value)) {
+                const current = MutableHashMap.get(self.state.map, key)
+                if (Option.isNone(current) || current.value !== entry) {
+                  return effect.succeed(false)
+                }
                 MutableHashMap.remove(self.state.map, key)
                 return effect.as(Scope.close(entry.scope, effect.exitVoid), true)
               }

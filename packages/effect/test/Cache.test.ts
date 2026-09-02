@@ -650,6 +650,39 @@ describe("Cache", () => {
     })
 
     describe("invalidateWhen", () => {
+      it.effect.each([Exit.succeed(1), Exit.fail("error")])(
+        "preserves a newer set value after an old lookup completes (%#)",
+        (exit) =>
+          Effect.gen(function*() {
+            const gate = yield* Deferred.make<number, string>()
+            const values: Array<number> = []
+            const cache = yield* Cache.make<string, number, string>({
+              capacity: 1,
+              lookup: () => Deferred.await(gate)
+            })
+            const lookup = yield* Cache.get(cache, "key").pipe(
+              Effect.exit,
+              Effect.forkChild({ startImmediately: true })
+            )
+            const invalidator = yield* Cache.invalidateWhen(cache, "key", (value) => {
+              values.push(value)
+              return value === 1
+            }).pipe(
+              Effect.forkChild({ startImmediately: true })
+            )
+
+            yield* Cache.set(cache, "key", 99)
+            yield* Deferred.done(gate, exit)
+            const original = yield* Fiber.join(lookup)
+            const invalidated = yield* Fiber.join(invalidator)
+
+            assert.deepStrictEqual(original, exit)
+            assert.deepStrictEqual(values, Exit.isSuccess(exit) ? [1] : [])
+            assert.isFalse(invalidated)
+            assert.deepStrictEqual(yield* Cache.getSuccess(cache, "key"), Option.some(99))
+          })
+      )
+
       it.effect("invalidates when predicate matches", () =>
         Effect.gen(function*() {
           const cache = yield* Cache.make<string, number>({
