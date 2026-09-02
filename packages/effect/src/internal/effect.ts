@@ -18,7 +18,6 @@ import * as Iterable from "../Iterable.ts"
 import type * as _Latch from "../Latch.ts"
 import type * as Logger from "../Logger.ts"
 import type * as LogLevel from "../LogLevel.ts"
-import type * as Metric from "../Metric.ts"
 import * as Option from "../Option.ts"
 import * as Order from "../Order.ts"
 import { pipeArguments } from "../Pipeable.ts"
@@ -521,7 +520,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._running = false
     this._deferredInterrupt = false
     this._parent = undefined
-    this.runtimeMetrics?.recordFiberStart(this.context)
+    this.cache.runtimeMetrics?.recordFiberStart(this.context)
   }
 
   readonly [FiberTypeId]: Fiber.Fiber.Variance<A, E>
@@ -541,39 +540,11 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 
   // set in setContext
   context!: Context.Context<never>
-  _ctxCache!: FiberContextCache
-
-  get currentScheduler(): Scheduler.Scheduler {
-    return this._ctxCache.scheduler
-  }
-  get currentTracerContext(): Tracer.Tracer["context"] {
-    return this._ctxCache.tracerContext
-  }
-  get currentSpan(): Tracer.AnySpan | undefined {
-    return this._ctxCache.span
-  }
-  get currentLogLevel(): LogLevel.LogLevel {
-    return this._ctxCache.logLevel
-  }
-  get minimumLogLevel(): LogLevel.LogLevel {
-    return this._ctxCache.minimumLogLevel
-  }
-  get currentStackFrame(): StackFrame | undefined {
-    return this._ctxCache.stackFrame
-  }
-  get runtimeMetrics(): Metric.FiberRuntimeMetricsService | undefined {
-    return this._ctxCache.runtimeMetrics
-  }
-  get maxOpsBeforeYield(): number {
-    return this._ctxCache.maxOpsBeforeYield
-  }
-  get currentPreventYield(): boolean {
-    return this._ctxCache.preventYield
-  }
+  cache!: Fiber.Fiber.Cache
 
   _dispatcher: Scheduler.SchedulerDispatcher | undefined = undefined
   get currentDispatcher(): Scheduler.SchedulerDispatcher {
-    return this._dispatcher ??= this.currentScheduler.makeDispatcher()
+    return this._dispatcher ??= this.cache.scheduler.makeDispatcher()
   }
 
   getRef<X>(ref: Context.Reference<X>): X {
@@ -602,8 +573,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       return
     }
     let cause = causeInterrupt(fiberId)
-    if (this.currentStackFrame) {
-      cause = causeAnnotate(cause, Context.make(CauseStackTrace, this.currentStackFrame))
+    if (this.cache.stackFrame) {
+      cause = causeAnnotate(cause, Context.make(CauseStackTrace, this.cache.stackFrame))
     }
     if (annotations) {
       cause = causeAnnotate(cause, annotations)
@@ -643,7 +614,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
 
     this._exit = exit
-    this.runtimeMetrics?.recordFiberEnd(this.context, this._exit)
+    this.cache.runtimeMetrics?.recordFiberEnd(this.context, this._exit)
     if (this._parent) {
       this._parent._children?.delete(this)
       this._parent = undefined
@@ -676,15 +647,15 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
         this.currentOpCount++
         if (
           !yielding &&
-          !this.currentPreventYield &&
-          this.currentScheduler.shouldYield(this as any)
+          !this.cache.preventYield &&
+          this.cache.scheduler.shouldYield(this as any)
         ) {
           yielding = true
           const prev = current
           current = flatMap(yieldNow, () => prev as any) as any
         }
-        current = this.currentTracerContext
-          ? this.currentTracerContext(current as any, this)
+        current = this.cache.tracerContext
+          ? this.cache.tracerContext(current as any, this)
           : (current as any)[evaluate](this)
         if (current === Yield) {
           const yielded = this._yielded!
@@ -749,30 +720,19 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     // the derived cache object is computed once per root and shared by all
     // fibers running with that root (forked fibers reuse the parent's).
     const root: any = (context as any).cacheRoot
-    const cache: FiberContextCache = root._fiberCache ??= makeFiberContextCache(context)
-    if (this._ctxCache !== undefined && this._ctxCache.scheduler !== cache.scheduler) {
+    const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
+    if (this.cache !== undefined && this.cache.scheduler !== cache.scheduler) {
       this._dispatcher = undefined
     }
-    this._ctxCache = cache
+    this.cache = cache
   }
   get currentSpanLocal(): Tracer.Span | undefined {
-    return this.currentSpan?._tag === "Span" ? this.currentSpan : undefined
+    const span = this.cache.span
+    return span?._tag === "Span" ? span : undefined
   }
 }
 
-interface FiberContextCache {
-  readonly scheduler: Scheduler.Scheduler
-  readonly tracerContext: Tracer.Tracer["context"]
-  readonly span: Tracer.AnySpan | undefined
-  readonly logLevel: LogLevel.LogLevel
-  readonly minimumLogLevel: LogLevel.LogLevel
-  readonly stackFrame: StackFrame | undefined
-  readonly runtimeMetrics: Metric.FiberRuntimeMetricsService | undefined
-  readonly maxOpsBeforeYield: number
-  readonly preventYield: boolean
-}
-
-const makeFiberContextCache = (context: Context.Context<never>): FiberContextCache => {
+const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
   // The string-keyed lookups keep the Tracer key values (and the native
   // tracer behind Tracer.Tracer's default) out of every bundle
   const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
@@ -805,9 +765,9 @@ const fiberMiddleware = {
 }
 
 const fiberStackAnnotations = (fiber: Fiber.Fiber<any, any>) => {
-  if (!fiber.currentStackFrame) return undefined
+  if (!fiber.cache.stackFrame) return undefined
   const annotations = new Map<string, unknown>()
-  annotations.set(InterruptorStackTrace.key, fiber.currentStackFrame)
+  annotations.set(InterruptorStackTrace.key, fiber.cache.stackFrame)
   return Context.makeUnsafe(annotations)
 }
 
@@ -1165,7 +1125,7 @@ const callbackOptions: <A, E = never, R = never>(
   const Proto = makePrimitiveProto({
     op: "Async",
     [evaluate](this: any, fiber) {
-      const register = internalCall(() => this.register.bind(fiber.currentScheduler))
+      const register = internalCall(() => this.register.bind(fiber.cache.scheduler))
       let resumed = false
       let yielded: boolean | Primitive = false
       const controller = this.withSignal ? new AbortController() : undefined
@@ -1471,12 +1431,14 @@ export const as: {
   ): Effect.Effect<B, E, R> => new (AsImpl as any)(self, succeed(value))
 )
 
+const evaluateCont = function(this: any, fiber: FiberImpl): Primitive {
+  fiber._stack.push(this)
+  return this[args]
+}
+
 const AsProto = makePrimitiveProto({
   op: "As",
-  [evaluate](this: any, fiber: FiberImpl): Primitive {
-    fiber._stack.push(this)
-    return this[args]
-  },
+  [evaluate]: evaluateCont,
   [contA](this: any, _value, _fiber) {
     return this.exit
   }
@@ -1528,10 +1490,7 @@ export const andThen: {
 
 const AndThenProto = makePrimitiveProto({
   op: "AndThen",
-  [evaluate](this: any, fiber: FiberImpl): Primitive {
-    fiber._stack.push(this)
-    return this[args]
-  },
+  [evaluate]: evaluateCont,
   [contA](this: any, value, _fiber) {
     const f = this.f
     return internalCall(() => f(value))
@@ -1545,10 +1504,7 @@ AndThenImpl.prototype = AndThenProto
 
 const AndThenEffectProto = makePrimitiveProto({
   op: "AndThenEffect",
-  [evaluate](this: any, fiber: FiberImpl): Primitive {
-    fiber._stack.push(this)
-    return this[args]
-  },
+  [evaluate]: evaluateCont,
   [contA](this: any, _value, _fiber) {
     return this.f
   }
@@ -1586,10 +1542,7 @@ export const tap: {
 
 const TapProto = makePrimitiveProto({
   op: "Tap",
-  [evaluate](this: any, fiber: FiberImpl): Primitive {
-    fiber._stack.push(this)
-    return this[args]
-  },
+  [evaluate]: evaluateCont,
   [contA](this: any, value, _fiber) {
     const f = this.f
     return new (AsImpl as any)(internalCall(() => f(value)), exitSucceed(value))
@@ -1603,10 +1556,7 @@ TapImpl.prototype = TapProto
 
 const TapEffectProto = makePrimitiveProto({
   op: "TapEffect",
-  [evaluate](this: any, fiber: FiberImpl): Primitive {
-    fiber._stack.push(this)
-    return this[args]
-  },
+  [evaluate]: evaluateCont,
   [contA](this: any, value, _fiber) {
     return new (AsImpl as any)(this.f, exitSucceed(value))
   }
@@ -1831,10 +1781,7 @@ export const flatMap: {
 )
 const OnSuccessProto = makePrimitiveProto({
   op: "OnSuccess",
-  [evaluate](this: any, fiber: FiberImpl): Primitive {
-    fiber._stack.push(this)
-    return this[args]
-  }
+  [evaluate]: evaluateCont
 })
 function OnSuccessImpl(this: any, self: any, f: any) {
   this[args] = self
@@ -1928,10 +1875,7 @@ export const map: {
 
 const MapProto = makePrimitiveProto({
   op: "Map",
-  [evaluate](this: any, fiber: FiberImpl): Primitive {
-    fiber._stack.push(this)
-    return this[args]
-  },
+  [evaluate]: evaluateCont,
   [contA](this: any, value, _fiber) {
     return succeed(internalCall(() => this.f(value)))
   }
@@ -2660,10 +2604,7 @@ export const catchCause: {
 )
 const OnFailureProto = makePrimitiveProto({
   op: "OnFailure",
-  [evaluate](this: any, fiber: FiberImpl): Primitive {
-    fiber._stack.push(this as any)
-    return this[args]
-  }
+  [evaluate]: evaluateCont
 })
 function OnFailureImpl(this: any, self: any, f: any) {
   this[args] = self
@@ -3628,10 +3569,7 @@ export const matchCauseEffect: {
 )
 const OnSuccessAndFailureProto = makePrimitiveProto({
   op: "OnSuccessAndFailure",
-  [evaluate](this: any, fiber: FiberImpl): Primitive {
-    fiber._stack.push(this)
-    return this[args]
-  }
+  [evaluate]: evaluateCont
 })
 function OnSuccessAndFailureImpl(this: any, self: any, onSuccess: any, onFailure: any) {
   this[args] = self
@@ -5925,7 +5863,7 @@ export const makeSpanUnsafe = <XA, XE>(
     ? Option.some(options.parent)
     : options?.root
     ? Option.none<Tracer.AnySpan>()
-    : filterDisablePropagation(fiber.currentSpan)
+    : filterDisablePropagation(fiber.cache.span)
 
   let span: Tracer.Span
 
@@ -6573,8 +6511,8 @@ export const logWithLevel = (level?: LogLevel.Severity) =>
     cause = causeEmpty
   }
   return withFiber((fiber) => {
-    const logLevel = level ?? fiber.currentLogLevel
-    if (isLogLevelGreaterThan(fiber.minimumLogLevel, logLevel)) {
+    const logLevel = level ?? fiber.cache.logLevel
+    if (isLogLevelGreaterThan(fiber.cache.minimumLogLevel, logLevel)) {
       return void_
     }
     const clock = fiber.getRef(ClockRef)
@@ -6826,7 +6764,7 @@ export const defaultLogger = loggerMake<unknown, void>(({ cause, date, fiber, lo
 export const tracerLogger = loggerMake<unknown, void>(({ cause, fiber, logLevel, message }) => {
   const clock = fiber.getRef(ClockRef)
   const annotations = fiber.getRef(CurrentLogAnnotations)
-  const span = fiber.currentSpan
+  const span = fiber.cache.span
   if (span === undefined || span._tag === "ExternalSpan") return
   const attributes: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(annotations)) {

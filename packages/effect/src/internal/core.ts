@@ -536,8 +536,8 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
   [evaluate](fiber) {
     let cause = this[args]
     let annotated = false
-    if (fiber.currentStackFrame) {
-      cause = causeAnnotate(cause, { mapUnsafe: new Map([[StackTraceKey.key, fiber.currentStackFrame]]) } as any)
+    if (fiber.cache.stackFrame) {
+      cause = causeAnnotate(cause, { mapUnsafe: new Map([[StackTraceKey.key, fiber.cache.stackFrame]]) } as any)
       annotated = true
     }
     let cont = fiber.getCont(contE)

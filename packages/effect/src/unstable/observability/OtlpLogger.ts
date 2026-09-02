@@ -227,9 +227,9 @@ const makeLogRecord = (options: Logger.Options<unknown>, opts: {
     droppedAttributesCount: 0
   }
 
-  if (options.fiber.currentSpan) {
-    logRecord.traceId = options.fiber.currentSpan.traceId
-    logRecord.spanId = options.fiber.currentSpan.spanId
+  if (options.fiber.cache.span) {
+    logRecord.traceId = options.fiber.cache.span.traceId
+    logRecord.spanId = options.fiber.cache.span.spanId
   }
 
   return logRecord
