@@ -15,7 +15,7 @@ import * as Arr from "../../Array.ts"
 import type { Brand } from "../../Brand.ts"
 import * as Context from "../../Context.ts"
 import type { Effect } from "../../Effect.ts"
-import { identity } from "../../Function.ts"
+import { identity, memoize } from "../../Function.ts"
 import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
@@ -1171,17 +1171,7 @@ function getSuccessResponse(
   return new Set(disableCodecs ? schemas : schemas.map(transformResponseSchema))
 }
 
-const transformedResponseSchemas = new WeakMap<Schema.Top, Schema.Top>()
-
-function transformResponseSchema(schema: Schema.Top): Schema.Top {
-  const cached = transformedResponseSchemas.get(schema)
-  if (cached !== undefined) return cached
-  const transformed = transformResponseSchemaUncached(schema)
-  transformedResponseSchemas.set(schema, transformed)
-  return transformed
-}
-
-function transformResponseSchemaUncached(schema: Schema.Top): Schema.Top {
+const transformResponseSchema = memoize((schema: Schema.Top): Schema.Top => {
   if (HttpApiSchema.isStreamSchema(schema)) return schema
   if (HttpApiSchema.isWithHeaders(schema)) {
     const inner = HttpApiSchema.isStreamSchema(schema.schema)
@@ -1190,7 +1180,7 @@ function transformResponseSchemaUncached(schema: Schema.Top): Schema.Top {
     return HttpApiSchema.rebuildWithHeaders(schema, inner, Schema.toCodecStringTree(schema.headers))
   }
   return transformResponse(schema)
-}
+})
 
 function getErrorResponse(
   error: Schema.Top | ReadonlyArray<Schema.Top> | undefined,
