@@ -87,6 +87,21 @@ describe("Tool", () => {
         ])
       }))
 
+    it.effect("should encode returned failures with the failure schema", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(Tool.make("FailureEncoding", {
+          success: Schema.Number,
+          failure: Schema.NumberFromString,
+          failureMode: "return"
+        }))
+        const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+          FailureEncoding: () => Effect.fail(404)
+        })))
+        const results = yield* handlers.handle("FailureEncoding", {}).pipe(Effect.flatMap(Stream.runCollect))
+
+        strictEqual(results[0].encodedResult, "404")
+      }))
+
     it.effect("should return tool call handler failures with failure mode return using OpenAI transformer", () =>
       Effect.gen(function*() {
         const toolkit = Toolkit.make(FailureModeReturn)
