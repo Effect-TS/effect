@@ -1139,6 +1139,7 @@ export const make: (params: {
     }
 
     // Pre-resolve pending tool approvals before calling the LLM
+    let preResolvedResults: Array<Response.ToolResultPart<string, unknown, unknown>> = []
     if (hasPendingApprovals) {
       for (const approval of approved) {
         if (approval.toolCall && !toolkit.tools[approval.toolCall.name]) {
@@ -1159,12 +1160,12 @@ export const make: (params: {
         concurrency
       )
       const deniedResults = createDenialResults(denied)
-      const preResolvedResults = [...approvedResults, ...deniedResults]
+      preResolvedResults = [...approvedResults, ...deniedResults]
 
       if (preResolvedResults.length > 0) {
         providerOptions.prompt = Prompt.fromMessages([
           ...providerOptions.prompt.content,
-          Prompt.makeMessage("tool", { content: preResolvedResults })
+          ...Prompt.fromResponseParts(preResolvedResults).content
         ])
       }
     }
@@ -1215,7 +1216,7 @@ export const make: (params: {
           tracker.markParts(providerOptions.prompt.content, responseMetadata.id)
         }
       }
-      return content as Array<Response.Part<Tools>>
+      return [...preResolvedResults, ...content] as Array<Response.Part<Tools>>
     }
 
     const rawContent = yield* generateWithNonIncrementalFallback()
@@ -1257,8 +1258,8 @@ export const make: (params: {
       }
     }
 
-    // Return the content merged with the tool call results
-    return [...content, ...toolResults] as Array<Response.Part<Tools>>
+    // Retain pre-resolved results so Chat can recognize completed approvals on later turns.
+    return [...preResolvedResults, ...content, ...toolResults] as Array<Response.Part<Tools>>
   })
 
   const streamContent: <
@@ -1450,15 +1451,14 @@ export const make: (params: {
       if (preResolvedResults.length > 0) {
         providerOptions.prompt = Prompt.fromMessages([
           ...providerOptions.prompt.content,
-          Prompt.makeMessage("tool", { content: preResolvedResults })
+          ...Prompt.fromResponseParts(preResolvedResults).content
         ])
       }
 
       // Emit pre-resolved tool-results as stream parts so Chat.streamText
       // persists them to history. This lets collectToolApprovals find them
       // on subsequent rounds and skip the now-resolved approvals.
-      // Note: r.result is already encoded (from executeApprovedToolCalls /
-      // createDenialResults), so it goes into both result and encodedResult.
+      // Preserve the existing encoded result representation for streaming approvals.
       for (const r of preResolvedResults) {
         preResolvedStreamParts.push(
           Response.makePart("tool-result", {
@@ -1466,8 +1466,8 @@ export const make: (params: {
             name: r.name,
             providerExecuted: false,
             preliminary: false,
-            result: r.result,
-            encodedResult: r.result,
+            result: r.encodedResult,
+            encodedResult: r.encodedResult,
             isFailure: r.isFailure
           }) as Response.StreamPart<Tools>
         )
@@ -2134,7 +2134,7 @@ const executeApprovedToolCalls = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>,
   concurrency: Concurrency
 ): Effect.Effect<
-  Array<Prompt.ToolResultPart>,
+  Array<Response.ToolResultPart<string, unknown, unknown>>,
   Tool.HandlerError<Tools[keyof Tools]> | AiError.AiError,
   Tool.HandlerServices<Tools[keyof Tools]>
 > => {
@@ -2175,11 +2175,10 @@ const executeApprovedToolCalls = <Tools extends Record<string, Tool.Any>>(
       )
     )
 
-    return Prompt.makePart("tool-result", {
+    return Response.makePart("tool-result", {
       id: approval.toolCallId,
       name: toolCall.name,
-      isFailure: terminalResult.isFailure,
-      result: terminalResult.encodedResult,
+      ...terminalResult,
       providerExecuted: false
     })
   })
@@ -2191,16 +2190,18 @@ const executeApprovedToolCalls = <Tools extends Record<string, Tool.Any>>(
 
 const createDenialResults = (
   denials: ReadonlyArray<ApprovalResult>
-): ReadonlyArray<Prompt.ToolResultPart> => {
-  const results: Array<Prompt.ToolResultPart> = []
+): ReadonlyArray<Response.ToolResultPart<string, unknown, unknown>> => {
+  const results: Array<Response.ToolResultPart<string, unknown, unknown>> = []
   for (const denial of denials) {
     if (Predicate.isNotUndefined(denial.toolCall)) {
       results.push(
-        Prompt.makePart("tool-result", {
+        Response.makePart("tool-result", {
           id: denial.toolCallId,
           name: denial.toolCall.name,
           isFailure: true,
           result: { type: "execution-denied", reason: denial.reason },
+          encodedResult: { type: "execution-denied", reason: denial.reason },
+          preliminary: false,
           providerExecuted: false
         })
       )
