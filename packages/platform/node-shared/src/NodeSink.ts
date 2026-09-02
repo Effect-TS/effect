@@ -83,15 +83,31 @@ export const pullIntoWritable = <A, IE, E>(options: {
   options.pull.pipe(
     Effect.flatMap((chunk) => {
       let i = 0
-      return Effect.callback<void, E>(function loop(resume) {
-        for (; i < chunk.length;) {
-          const success = options.writable.write(chunk[i++], options.encoding as any)
-          if (!success) {
-            options.writable.once("drain", () => (loop as any)(resume))
-            return
+      return Effect.callback<void, E>((resume) => {
+        let cancelled = false
+        const loop = () => {
+          for (; i < chunk.length;) {
+            if (cancelled) {
+              return
+            }
+            const success = options.writable.write(chunk[i++], options.encoding as any)
+            if (!success) {
+              if (!cancelled) {
+                options.writable.once("drain", loop)
+              }
+              return
+            }
+          }
+          if (!cancelled) {
+            resume(Effect.void)
           }
         }
-        resume(Effect.void)
+        loop()
+        return Effect.sync(() => {
+          // Removing a listener does not invalidate an in-progress drain dispatch.
+          cancelled = true
+          options.writable.off("drain", loop)
+        })
       })
     }),
     Effect.forever({ disableYield: true }),
