@@ -121,7 +121,11 @@ export const fromCommand = (
       // Omit unlisted subcommands from completion scripts so tab-completion in
       // the shell does not advertise commands that are absent from --help.
       if (subcommand.unlisted) continue
-      subcommands.push(fromCommand(subcommand, sharedFlags))
+      const descriptor = fromCommand(subcommand, sharedFlags)
+      subcommands.push(descriptor)
+      if (subcommand.alias && subcommand.alias !== subcommand.name) {
+        subcommands.push({ ...descriptor, name: subcommand.alias })
+      }
     }
   }
 
