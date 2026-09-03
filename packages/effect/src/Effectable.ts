@@ -42,10 +42,10 @@ export const Prototype = <A extends Effect.Effect<any, any, any>>(options: {
 
 const Base: new<A, E, R>() => Effect.Effect<A, E, R> = (() => {
   const Base = function() {}
-  Base.prototype = Prototype({
+  Base.prototype = Prototype<Class<any, any, any>>({
     label: "Effectable",
     evaluate(_) {
-      return this
+      return this.override
     }
   })
   return Base as any
