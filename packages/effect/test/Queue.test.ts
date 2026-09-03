@@ -514,6 +514,42 @@ describe("Queue", () => {
       yield* Queue.shutdown(queue)
     }))
 
+  it.effect("flush is a no-op after shutdown", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      yield* Queue.shutdown(queue)
+
+      Queue.flushUnsafe(queue)
+      yield* Queue.flush(queue)
+
+      assert.isFalse(yield* Queue.offer(queue, 1))
+    }))
+
+  it.effect("flush keeps a buffered message when no taker is waiting", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      Queue.offerUnsafe(queue, 1)
+
+      yield* Queue.flush(queue)
+
+      assert.strictEqual(yield* Queue.take(queue), 1)
+    }))
+
+  it.effect("flushUnsafe preserves later offers when the queue is empty", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      const first = yield* Queue.take(queue).pipe(Effect.forkChild)
+      const second = yield* Queue.take(queue).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+
+      Queue.flushUnsafe(queue)
+      yield* Queue.offerAll(queue, [1, 2])
+
+      const values = yield* Effect.all([Fiber.join(first), Fiber.join(second)])
+      assert.deepStrictEqual(new Set(values), new Set([1, 2]))
+      yield* Queue.shutdown(queue)
+    }))
+
   it.effect("bounded 0 capacity", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(0)

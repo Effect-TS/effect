@@ -1574,13 +1574,37 @@ export const takeUnsafe = <A, E>(self: Dequeue<A, E>): Exit<A, E> | undefined =>
 /**
  * Manually releases current queue takers synchronously.
  *
+ * **When to use**
+ *
+ * Use when synchronous offers should release waiting consumers immediately
+ * instead of waiting for the scheduled release task.
+ *
  * **Details**
  *
  * This immediately runs the queue's taker-release pass instead of waiting for
  * its scheduled task. It does not complete the queue or resume fibers waiting
  * on `Queue.await`.
  *
- * @category completion
+ * **Example** (Releasing a waiting taker synchronously)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Fiber, Queue } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   const queue = yield* Queue.unbounded<number>()
+ *   const taker = yield* Queue.take(queue).pipe(Effect.forkChild)
+ *   yield* Effect.yieldNow
+ *
+ *   Queue.offerUnsafe(queue, 1)
+ *   Queue.flushUnsafe(queue)
+ *
+ *   return yield* Fiber.join(taker)
+ * })
+ *
+ * await Effect.runPromise(program) // => 1
+ * ```
+ *
+ * @category offering
  * @since 4.0.0
  */
 export const flushUnsafe = <A, E>(self: Enqueue<A, E>): void => releaseTakers(self)
@@ -1588,13 +1612,37 @@ export const flushUnsafe = <A, E>(self: Enqueue<A, E>): void => releaseTakers(se
 /**
  * Manually releases current queue takers.
  *
+ * **When to use**
+ *
+ * Use when synchronous offers should release waiting consumers through an
+ * `Effect` instead of waiting for the scheduled release task.
+ *
  * **Details**
  *
  * This immediately runs the queue's taker-release pass instead of waiting for
  * its scheduled task. It does not complete the queue or resume fibers waiting
  * on `Queue.await`.
  *
- * @category completion
+ * **Example** (Releasing a waiting taker)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Fiber, Queue } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   const queue = yield* Queue.unbounded<number>()
+ *   const taker = yield* Queue.take(queue).pipe(Effect.forkChild)
+ *   yield* Effect.yieldNow
+ *
+ *   Queue.offerUnsafe(queue, 1)
+ *   yield* Queue.flush(queue)
+ *
+ *   return yield* Fiber.join(taker)
+ * })
+ *
+ * await Effect.runPromise(program) // => 1
+ * ```
+ *
+ * @category offering
  * @since 4.0.0
  */
 export const flush = <A, E>(self: Enqueue<A, E>): Effect<void> => internalEffect.sync(() => flushUnsafe(self))
@@ -1867,7 +1915,6 @@ const exitFailDone = core.exitFail(core.Done()) as Failure<never, Done>
 const exitInterrupt = internalEffect.exitInterrupt() as Failure<never, never>
 
 const releaseTakers = <A, E>(self: Enqueue<A, E>) => {
-  self.scheduleRunning = false
   if (self.state._tag === "Done" || self.state.takers.size === 0) {
     return
   }
@@ -1885,7 +1932,10 @@ const scheduleReleaseTaker = <A, E>(self: Enqueue<A, E>) => {
     return
   }
   self.scheduleRunning = true
-  self.dispatcher.scheduleTask(() => releaseTakers(self), 0)
+  self.dispatcher.scheduleTask(() => {
+    self.scheduleRunning = false
+    releaseTakers(self)
+  }, 0)
 }
 
 const takeBetweenUnsafe = <A, E>(
