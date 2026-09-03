@@ -446,7 +446,7 @@ describe("Queue", () => {
       assert.deepStrictEqual(yield* Fiber.join(fiber), Exit.fail("boom"))
     }))
 
-  it.effect("flushUnsafe releases current takers, not awaiters", () =>
+  it.effect("flushUnsafe releases a waiting taker after offerUnsafe without completing the queue", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number>()
       const taker = yield* Queue.take(queue).pipe(Effect.forkChild)
@@ -463,7 +463,7 @@ describe("Queue", () => {
       yield* Queue.shutdown(queue)
     }))
 
-  it.effect("flush releases current takers, not awaiters", () =>
+  it.effect("flush releases a waiting taker after offerUnsafe without completing the queue", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number>()
       const taker = yield* Queue.take(queue).pipe(Effect.forkChild)
