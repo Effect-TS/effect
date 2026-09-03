@@ -295,7 +295,7 @@ const encodeText: (body: string) => globalThis.Uint8Array = buffer !== undefined
  */
 export const text = (body: string, contentType?: string): Uint8Array => {
   if (typeof body !== "string") {
-    // Preserve TextEncoder's input coercion.
+    // Preserve untyped callers that relied on TextEncoder coercion.
     body = body === undefined ? "" : String(body)
   }
   if (buffer !== undefined) {

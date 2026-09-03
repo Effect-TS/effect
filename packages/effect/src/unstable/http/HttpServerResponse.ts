@@ -34,6 +34,7 @@ import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpClientResponse from "./HttpClientResponse.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import type { HttpPlatform } from "./HttpPlatform.ts"
+import * as headersInternal from "./internal/headers.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import * as Template from "./Template.ts"
 import * as UrlParams from "./UrlParams.ts"
@@ -1351,7 +1352,7 @@ const makeResponse = (options: {
     (self.body.contentType || self.body.contentLength !== undefined)
   ) {
     const newHeaders = options.headers === undefined || options.headers === Headers.empty
-      ? Headers.emptyMutableUnsafe() as any
+      ? headersInternal.emptyMutableUnsafe() as any
       : Headers.fromRecordUnsafe({ ...options.headers }) as any
     if (self.body.contentType && (!preferHeaders || newHeaders["content-type"] === undefined)) {
       newHeaders["content-type"] = self.body.contentType

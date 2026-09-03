@@ -130,15 +130,6 @@ export type Input =
 export const empty: Headers = Object.create(Proto)
 
 /**
- * Creates an empty mutable `Headers` object. Add lowercase names and stop
- * mutating before sharing the object.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const emptyMutableUnsafe = (): Mutable<Headers> => Object.create(Proto)
-
-/**
  * Creates `Headers` from a record or iterable of header entries.
  *
  * **Details**

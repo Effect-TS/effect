@@ -30,10 +30,6 @@ const OPTIONAL_PARAM_REGEXP = /(\/:[^/()]*?)\?(\/?)/
 
 const emptyParamsArray: ReadonlyArray<string> = []
 
-const sharedBrothersNodesStack: Array<BrotherNode> = []
-
-const singleParamArray: Array<string> = [""]
-
 // Matches one terminal parameter without wildcard, regex, or static suffix syntax.
 const CLEAN_SINGLE_PARAM_REGEXP = /^[^:*(]*\/:[^/:*(.-]+$/
 const isCleanSingleTrailingParam = (path: string): boolean => CLEAN_SINGLE_PARAM_REGEXP.test(path)
@@ -66,8 +62,10 @@ class RouterImpl<A> implements Router.Router<A> {
   routes: Array<Route> = []
   trees: Record<string, StaticNode> = Object.create(null)
   staticRoutes: Record<string, Map<string, Handler>> = Object.create(null)
-  singleParamRoutes: Record<string, Array<{ prefix: string; handler: Handler }>> = Object.create(null)
+  singleParamRoutes: Record<string, Map<string, Handler>> = Object.create(null)
   singleParamDisabled: Record<string, boolean> = Object.create(null)
+  readonly brothersNodesStack: Array<BrotherNode> = []
+  readonly singleParamArray: Array<string> = [""]
 
   on(
     method: string | Iterable<string>,
@@ -282,9 +280,9 @@ class RouterImpl<A> implements Router.Router<A> {
           prefix = prefix.toLowerCase()
         }
         prefix = prefix.split("%").join("%25")
-        const store = this.singleParamRoutes[method] ??= []
-        if (!store.some((entry) => entry.prefix === prefix)) {
-          store.push({ prefix, handler: currentNode.handlerStorage!.unconstrainedHandler! })
+        const store = this.singleParamRoutes[method] ??= new Map()
+        if (!store.has(prefix)) {
+          store.set(prefix, currentNode.handlerStorage!.unconstrainedHandler!)
         }
       }
     } else if (/[(*]|[^/]:|:[^/]*[-.]/.test(path)) {
@@ -382,23 +380,18 @@ class RouterImpl<A> implements Router.Router<A> {
 
     const singleParamStore = this.singleParamRoutes[method]
     if (singleParamStore !== undefined) {
-      for (let i = 0; i < singleParamStore.length; i++) {
-        const entry = singleParamStore[i]
-        const prefixLength = entry.prefix.length
-        if (
-          path.length > prefixLength &&
-          path.startsWith(entry.prefix) &&
-          path.indexOf("/", prefixLength) === -1
-        ) {
-          let param = originPath.slice(prefixLength)
-          if (shouldDecodeParam) {
-            param = safeDecodeURIComponent(param)
-          }
-          if (param.length > maxParamLength) break
-          singleParamArray[0] = param
+      const prefixLength = path.lastIndexOf("/") + 1
+      const handle = singleParamStore.get(path.slice(0, prefixLength))
+      if (handle !== undefined && path.length > prefixLength) {
+        let param = originPath.slice(prefixLength)
+        if (shouldDecodeParam) {
+          param = safeDecodeURIComponent(param)
+        }
+        if (param.length <= maxParamLength) {
+          this.singleParamArray[0] = param
           return {
-            handler: entry.handler.handler as A,
-            params: entry.handler.createParams(singleParamArray),
+            handler: handle.handler as A,
+            params: handle.createParams(this.singleParamArray),
             searchParams: QS.parse(querystring)
           } as const
         }
@@ -409,8 +402,8 @@ class RouterImpl<A> implements Router.Router<A> {
     const params = []
     const pathLen = path.length
 
-    // Reuse the synchronous find operation's backtracking stack.
-    const brothersNodesStack = sharedBrothersNodesStack
+    // Reuse this router's synchronous backtracking stack.
+    const brothersNodesStack = this.brothersNodesStack
     brothersNodesStack.length = 0
 
     while (true) {
@@ -855,8 +848,8 @@ function trimLastSlash(path: string): Router.PathInput {
   return path as Router.PathInput
 }
 
-// Compile route parameter names into a stable-shape object. Exclude
-// "__proto__" because object literal syntax would change the prototype.
+// Compile safe, unique parameter names into a stable null-prototype shape.
+// Other names and codegen-restricted runtimes use assignment.
 const safeParamName = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 const isCompilableParamName = (name: string): boolean => name !== "__proto__" && safeParamName.test(name)
 
@@ -865,14 +858,14 @@ function compileCreateParams(
 ): (paramsArray: ReadonlyArray<string>) => Record<string, string> {
   const len = params.length
   if (len === 0) {
-    return () => ({})
+    return () => Object.create(null)
   }
   if (params.every(isCompilableParamName) && new Set(params).size === len) {
     try {
       // eslint-disable-next-line no-new-func
       return new Function(
         "a",
-        `return {${params.map((name, i) => `${name}: a[${i}]`).join(",")}}`
+        `return {__proto__:null,${params.map((name, i) => `${name}:a[${i}]`).join(",")}}`
       ) as (paramsArray: ReadonlyArray<string>) => Record<string, string>
     } catch {
       // Use assignment when CSP blocks Function construction.

@@ -20,12 +20,13 @@ import * as Layer from "../../Layer.ts"
 import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 import * as HttpBody from "./HttpBody.ts"
-import { type HttpMiddleware, isTracerDisabledFastUnsafe, tracer } from "./HttpMiddleware.ts"
+import { type HttpMiddleware, tracer } from "./HttpMiddleware.ts"
 import { causeResponse, ClientAbort, HttpServerError, InternalError } from "./HttpServerError.ts"
 import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
 import type { HttpServerResponse } from "./HttpServerResponse.ts"
 import * as Response from "./HttpServerResponse.ts"
+import * as middlewareInternal from "./internal/httpMiddleware.ts"
 import * as preResponseHandler from "./internal/preResponseHandler.ts"
 
 /**
@@ -42,11 +43,10 @@ export const toHandled = <E, R, EH, RH>(
   ) => Effect.Effect<unknown, EH, RH>,
   middleware?: HttpMiddleware | undefined
 ): Effect.Effect<void, never, Exclude<R | RH | HttpServerRequest, Scope.Scope>> => {
-  const handleCause = (cause: Cause.Cause<E | EH | HttpServerError>) =>
+  const handleCause = (request: HttpServerRequest, cause: Cause.Cause<E | EH | HttpServerError>) =>
     Effect.flatMapEager(causeResponse(cause), ([response, cause]) => {
       const fiber = Fiber.getCurrent()!
       reportCauseUnsafe(fiber, cause)
-      const request = Context.getUnsafe(fiber.context, HttpServerRequest)
       const handler = preResponseHandler.requestPreResponseHandlers.get(request.source)
       const cont = cause.reasons.length === 0 ? Effect.succeed(response) : Effect.failCause(cause)
       if (handler === undefined) {
@@ -83,43 +83,45 @@ export const toHandled = <E, R, EH, RH>(
     })
   }
 
-  const responded = Effect.matchCauseEffect(self, {
-    onSuccess: (response) => sendResponse(Context.getUnsafe(Fiber.getCurrent()!.context, HttpServerRequest), response),
-    onFailure: handleCause
-  })
-
-  const withMiddleware: Effect.Effect<
+  const withMiddleware = (request: HttpServerRequest): Effect.Effect<
     unknown,
     E | EH | HttpServerError,
     HttpServerRequest | R | RH
-  > = middleware === undefined ?
-    responded :
-    Effect.matchCauseEffect(tracer(middleware(responded)), {
-      onFailure(cause): Effect.Effect<void, EH, RH> {
-        const fiber = Fiber.getCurrent()!
-        reportCauseUnsafe(fiber, cause)
-        const request = Context.getUnsafe(fiber.context, HttpServerRequest)
-        if (handledSymbol in request) return Effect.void
-        return Effect.matchCauseEffectEager(causeResponse(cause), {
-          onFailure(_) {
-            return handleResponse(request, Response.empty({ status: 500 }))
-          },
-          onSuccess([response]) {
-            return handleResponse(request, response)
-          }
-        })
-      },
-      onSuccess(response): Effect.Effect<void, EH, RH> {
-        const fiber = Fiber.getCurrent()!
-        const request = Context.getUnsafe(fiber.context, Request.HttpServerRequest)
-        return handledSymbol in request ? Effect.void : handleResponse(request, response)
-      }
+  > => {
+    const responded = Effect.matchCauseEffect(self, {
+      onSuccess: (response) => sendResponse(request, response),
+      onFailure: (cause) => handleCause(request, cause)
     })
+    return middleware === undefined ?
+      responded :
+      Effect.matchCauseEffect(tracer(middleware(responded)), {
+        onFailure(cause): Effect.Effect<void, EH, RH> {
+          reportCauseUnsafe(Fiber.getCurrent()!, cause)
+          if (handledSymbol in request) return Effect.void
+          return Effect.matchCauseEffectEager(causeResponse(cause), {
+            onFailure(_) {
+              return handleResponse(request, Response.empty({ status: 500 }))
+            },
+            onSuccess([response]) {
+              return handleResponse(request, response)
+            }
+          })
+        },
+        onSuccess(response): Effect.Effect<void, EH, RH> {
+          return handledSymbol in request ? Effect.void : handleResponse(request, response)
+        }
+      })
+  }
 
-  // Apply tracing lazily so requests without a backend skip tracing middleware.
-  const traced = middleware === undefined
-    ? tracer(withMiddleware as Effect.Effect<HttpServerResponse, E | EH | HttpServerError, HttpServerRequest | R | RH>)
-    : undefined
+  // Apply tracing lazily so disabled requests can use the single-frame path.
+  const traced = (request: HttpServerRequest) =>
+    tracer(
+      withMiddleware(request) as Effect.Effect<
+        HttpServerResponse,
+        E | EH | HttpServerError,
+        HttpServerRequest | R | RH
+      >
+    )
 
   // Handle untraced requests without middleware in one continuation frame.
   // Effectful writes use `finishAfter` to restore state and close the scope.
@@ -155,7 +157,7 @@ export const toHandled = <E, R, EH, RH>(
       return finishAfter(this, fiber, sent)
     }
     [contE](cause: Cause.Cause<E | EH | HttpServerError>, fiber: Fiber.Fiber<unknown, unknown>) {
-      return finishAfter(this, fiber, handleCause(cause))
+      return finishAfter(this, fiber, handleCause(this.request, cause))
     }
   }
 
@@ -164,11 +166,11 @@ export const toHandled = <E, R, EH, RH>(
     const scope = Scope.makeUnsafe()
     const frame = new RequestFrame(scope, fiber.context, Context.getUnsafe(fiber.context, HttpServerRequest))
     fiber.setContext(Context.add(frame.prev, Scope.Scope, scope))
-    if (traced !== undefined && isTracerDisabledFastUnsafe(fiber)) {
+    if (middleware === undefined && middlewareInternal.isTracerDisabledUnsafe(fiber, frame.request)) {
       ;(fiber as any)._stack.push(frame)
       return self
     }
-    return finishAfter(frame, fiber, traced ?? withMiddleware)
+    return finishAfter(frame, fiber, middleware === undefined ? traced(frame.request) : withMiddleware(frame.request))
   }) as any
 }
 
