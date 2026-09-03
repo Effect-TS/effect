@@ -72,5 +72,5 @@ export const getAllExtensions = (type: string): Option.Option<ReadonlySet<string
   if (typeof type !== "string") {
     return Option.none()
   }
-  return Option.fromUndefinedOr(typeToExtensions.get(type.toLowerCase()))
+  return Option.fromUndefinedOr(typeToExtensions.get(type.split(";")[0].trim().toLowerCase()))
 }
