@@ -291,7 +291,6 @@ export const prependAllUnsafe = <A>(self: MutableList<A>, messages: ReadonlyArra
     offset: 0,
     next: self.head
   }
-  if (!self.tail && messages.length > 0) self.tail = self.head
   self.length += self.head.array.length
 }
 
