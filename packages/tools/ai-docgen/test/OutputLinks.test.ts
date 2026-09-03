@@ -27,7 +27,7 @@ describe("generated links", () => {
       assert.strictEqual(child.status, 0, child.stderr)
       const markdown = fs.readFileSync(output, "utf8")
       const href = markdown.match(/\]\(([^)]+)\)/)?.[1]
-      assert.isString(href)
+      if (href === undefined) assert.fail("generated Markdown did not contain a link")
       assert.strictEqual(path.resolve(path.dirname(output), href), source)
     } finally {
       fs.rmSync(fixture, { recursive: true, force: true })

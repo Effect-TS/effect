@@ -32,7 +32,9 @@ const watch = Flag.boolean("watch").pipe(
 Command.make("effect-ai-docgen", { directory, output, watch }).pipe(
   Command.withHandler(Effect.fnUntraced(function*({ directory, output, watch }) {
     const fs = yield* FileSystem.FileSystem
-    const markdown = yield* directoryToMarkdown(directory)
+    const pathService = yield* Path.Path
+    const outputDirectory = pathService.dirname(pathService.resolve(output))
+    const markdown = yield* directoryToMarkdown(directory, outputDirectory)
     yield* fs.writeFileString(output, markdown)
 
     if (!watch) return
@@ -43,7 +45,7 @@ Command.make("effect-ai-docgen", { directory, output, watch }).pipe(
       Stream.debounce(1000),
       Stream.tap(() => Effect.logInfo("Changes detected, regenerating documentation...")),
       Stream.switchMap(() =>
-        directoryToMarkdown(directory).pipe(
+        directoryToMarkdown(directory, outputDirectory).pipe(
           Stream.fromEffect
         )
       ),
@@ -62,7 +64,8 @@ Command.make("effect-ai-docgen", { directory, output, watch }).pipe(
 
 const directoryToMarkdown = Effect.fn("directoryToMarkdown")(
   function*(
-    directory: string
+    directory: string,
+    outputDirectory: string
   ): Effect.fn.Return<string, PlatformError.PlatformError, FileSystem.FileSystem | Path.Path> {
     const pathService = yield* Path.Path
     const fs = yield* FileSystem.FileSystem
@@ -84,7 +87,7 @@ const directoryToMarkdown = Effect.fn("directoryToMarkdown")(
 
         if (stat.type === "Directory") {
           if (basename === "fixtures") return null
-          return `${yield* directoryToMarkdown(filePath)}\n`
+          return `${yield* directoryToMarkdown(filePath, outputDirectory)}\n`
         } else if (/\.tsx?$/.test(file)) {
           const metadata = yield* tsFileMetadata(filePath)
 
@@ -99,7 +102,7 @@ ${metadata.content}
 `
           }
 
-          const relativePath = pathService.relative(process.cwd(), filePath)
+          const relativePath = pathService.relative(outputDirectory, filePath)
           const link = `[${metadata.title}](./${relativePath})`
           let content = ""
 
