@@ -169,7 +169,7 @@ export function format(input: unknown, options?: {
         v["toString"] !== Array.prototype.toString
       ) {
         const s = safeToString(v)
-        output = v instanceof Error && v.cause ? `${s} (cause: ${recur(v.cause, d)})` : s
+        output = v instanceof Error && v.cause !== undefined ? `${s} (cause: ${recur(v.cause, d)})` : s
       } else if (Symbol.iterator in v) {
         output = `${v.constructor.name}(${recur(Array.from(v as any), d)})`
       } else {
