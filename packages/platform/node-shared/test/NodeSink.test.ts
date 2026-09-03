@@ -15,6 +15,46 @@ import * as Tar from "tar"
 const TEST_TARBALL = join(__dirname, "fixtures", "helloworld.tar.gz")
 
 describe("Sink", () => {
+  it.effect("does not resume a selected drain callback after interruption", () =>
+    Effect.gen(function*() {
+      const items: Array<string> = []
+      const entered = yield* Deferred.make<() => void>()
+      const drained = yield* Deferred.make<void>()
+      const controller = new AbortController()
+      const writable = new Writable({
+        highWaterMark: 1,
+        write(chunk, _encoding, callback) {
+          items.push(chunk.toString())
+          if (chunk.toString() === "a") {
+            queueMicrotask(() => Deferred.doneUnsafe(entered, Effect.succeed(callback)))
+          } else {
+            callback()
+          }
+        }
+      })
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          controller.abort()
+          writable.destroy()
+        })
+      )
+      writable.once("drain", () => controller.abort())
+      Effect.runCallback(
+        Stream.make("a", "b").pipe(
+          Stream.run(NodeSink.fromWritable({ evaluate: () => writable, onError: (error) => error }))
+        ),
+        { signal: controller.signal, onExit: () => {} }
+      )
+      const release = yield* Deferred.await(entered)
+      assert.deepEqual(items, ["a"])
+      writable.once("drain", () => {
+        queueMicrotask(() => Deferred.doneUnsafe(drained, Effect.void))
+      })
+      yield* Effect.sync(release)
+      yield* Deferred.await(drained)
+      assert.deepEqual(items, ["a"])
+    }))
+
   it.effect.each(["normal_final", "write_error", "final_error"] as const)(
     "writable lifecycle: %s",
     (mode) =>
