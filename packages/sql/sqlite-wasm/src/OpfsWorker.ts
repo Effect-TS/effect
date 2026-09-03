@@ -29,7 +29,7 @@ const classifyError = (cause: unknown, message: string, operation: string) =>
  * @since 4.0.0
  */
 export interface OpfsWorkerConfig {
-  readonly port: EventTarget & Pick<MessagePort, "postMessage" | "close">
+  readonly port: EventTarget & Pick<MessagePort, "postMessage" | "close"> & Partial<Pick<MessagePort, "start">>
   readonly dbName: string
 }
 
@@ -114,6 +114,7 @@ export const run = (
         }
       }
       options.port.addEventListener("message", onMessage)
+      options.port.start?.()
       options.port.postMessage(["ready", undefined, undefined])
       return Effect.sync(() => {
         options.port.removeEventListener("message", onMessage)
