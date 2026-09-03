@@ -83,26 +83,28 @@ export const pullIntoWritable = <A, IE, E>(options: {
   options.pull.pipe(
     Effect.flatMap((chunk) => {
       let i = 0
-      return Effect.callback<void, E>((resume, signal) => {
+      return Effect.callback<void, E>((resume) => {
+        let cancelled = false
         const loop = () => {
           for (; i < chunk.length;) {
-            if (signal.aborted) {
+            if (cancelled) {
               return
             }
             const success = options.writable.write(chunk[i++], options.encoding as any)
             if (!success) {
-              if (!signal.aborted) {
+              if (!cancelled) {
                 options.writable.once("drain", loop)
               }
               return
             }
           }
-          if (!signal.aborted) {
+          if (!cancelled) {
             resume(Effect.void)
           }
         }
         loop()
         return Effect.sync(() => {
+          cancelled = true
           options.writable.off("drain", loop)
         })
       })
