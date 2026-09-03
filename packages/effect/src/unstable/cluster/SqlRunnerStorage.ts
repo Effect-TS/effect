@@ -427,6 +427,7 @@ export const make = Effect.fnUntraced(function*(options: {
         )
         for (let i = 0; i < takenLocks.length; i++) {
           const lockNum = takenLocks[i][0] as number
+          if (!toAcquire.has(lockNum)) continue
           const shardId = lockNumbersReverse.get(lockNum)
           if (shardId === undefined) continue
           acquiredShardIds.push(shardId)
