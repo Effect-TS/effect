@@ -47,7 +47,10 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Install dependencies
         uses: ./.github/actions/setup
+        with:
+          deno-version: v2.9.4
       - run: pnpm check
+      - run: deno check .
       - run: pnpm test-types --target '>=5.9'
 
   build:
@@ -65,23 +68,6 @@ jobs:
         run: |
           sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json
       - run: pnpm build
-
-  types-deno:
-    name: Types (Deno)
-    runs-on: namespace-profile-linux-small
-    permissions:
-      contents: read
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - name: Install dependencies
-        uses: ./.github/actions/setup
-        with:
-          deno-version: v2.9.4
-      - name: Set strip internals config
-        run: |
-          sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json
-      - run: deno check .
 
   bundle:
     name: Bundle
