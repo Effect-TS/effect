@@ -643,7 +643,7 @@ export const remainder: {
   const selfDecCount = (selfString.split(".")[1] || "").length
   const divisorDecCount = (divisorString.split(".")[1] || "").length
   const decCount = selfDecCount > divisorDecCount ? selfDecCount : divisorDecCount
-  const selfInt = parseInt(self.toFixed(decCount).replace(".", ""))
+  const selfInt = self === 0 ? self : parseInt(self.toFixed(decCount).replace(".", ""))
   const divisorInt = parseInt(divisor.toFixed(decCount).replace(".", ""))
   return (selfInt % divisorInt) / Math.pow(10, decCount)
 })
