@@ -1,4 +1,6 @@
-import { assert, describe, it } from "@effect/vitest"
+import * as OtelMetrics from "@effect/opentelemetry/OtelMetrics"
+import * as Resource from "@effect/opentelemetry/Resource"
+import { assert, describe, it, vi } from "@effect/vitest"
 import { Duration, Fiber, Layer, Metric, Ref, String } from "effect"
 import * as Effect from "effect/Effect"
 import { TestClock } from "effect/testing"
@@ -20,6 +22,37 @@ describe("Metric", () => {
       assert.strictEqual((yield* Metric.value(first)).count, 1)
       assert.strictEqual((yield* Metric.value(second)).count, 10)
     }))
+
+  it.effect.each([
+    { name: "counter", makeUpdate: () => Metric.update(Metric.counter(nextId()), 1) },
+    {
+      name: "histogram",
+      makeUpdate: () => Metric.update(Metric.histogram(nextId(), { boundaries: [1] }), 1)
+    },
+    { name: "frequency", makeUpdate: () => Metric.update(Metric.frequency(nextId()), "value") }
+  ])("uses collection interval starts for delta $name points", ({ makeUpdate }) =>
+    Effect.gen(function*() {
+      const now = yield* Effect.acquireRelease(
+        Effect.sync(() => vi.spyOn(Date, "now").mockReturnValue(1000)),
+        (now) => Effect.sync(() => now.mockRestore())
+      )
+      const producer = yield* OtelMetrics.makeProducer("delta").pipe(Effect.provide(Resource.layerEmpty))
+      const update = makeUpdate()
+      const intervals = []
+
+      for (const time of [2000, 3000]) {
+        now.mockReturnValue(time)
+        yield* update
+        const result = yield* Effect.promise(() => producer.collect())
+        const point = result.resourceMetrics.scopeMetrics[0].metrics[0].dataPoints[0]
+        intervals.push([point.startTime, point.endTime])
+      }
+
+      assert.deepStrictEqual(intervals, [
+        [[1, 0], [2, 0]],
+        [[2, 0], [3, 0]]
+      ])
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
   it.effect("should be referentially transparent", () =>
     Effect.gen(function*() {

@@ -133,7 +133,7 @@ export class MetricProducerImpl implements MetricProducer {
           }
 
           const descriptor = descriptorFromState(state, attributes)
-          const startTime = this.startTimeFor(descriptor.name, intervalStartTime)
+          const startTime = isDelta ? intervalStartTime : this.startTimeFor(descriptor.name, intervalStartTime)
           const dataPoint: DataPoint<number> = {
             startTime,
             endTime: hrTimeNow,
@@ -217,7 +217,7 @@ export class MetricProducerImpl implements MetricProducer {
           }
 
           const descriptor = descriptorFromState(state, attributes)
-          const startTime = this.startTimeFor(descriptor.name, intervalStartTime)
+          const startTime = isDelta ? intervalStartTime : this.startTimeFor(descriptor.name, intervalStartTime)
           const dataPoint: DataPoint<Histogram> = {
             startTime,
             endTime: hrTimeNow,
@@ -263,7 +263,7 @@ export class MetricProducerImpl implements MetricProducer {
             }
 
             const descriptor = descriptorFromState(state, attributes)
-            const startTime = this.startTimeFor(descriptor.name, intervalStartTime)
+            const startTime = isDelta ? intervalStartTime : this.startTimeFor(descriptor.name, intervalStartTime)
             dataPoints.push({
               startTime,
               endTime: hrTimeNow,
