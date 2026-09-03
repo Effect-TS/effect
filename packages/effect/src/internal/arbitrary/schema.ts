@@ -1300,7 +1300,10 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
         return compileArrays(ast, path, constraint)
       case "Objects": {
         const compiled = compileObjects(ast, path, constraint)
-        if (ast.indexSignatures.length === 0) return compiled
+        if (
+          ast.indexSignatures.length === 0 ||
+          (ast.indexSignatures.length === 1 && ast.propertySignatures.length === 0)
+        ) return compiled
         const parse = SchemaParser.run<Record<PropertyKey, any>, never>(
           new SchemaAST.Objects([], ast.indexSignatures)
         )
