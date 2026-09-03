@@ -556,12 +556,15 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         id: "sharded-clock"
       }).pipe(Effect.forkChild({ startImmediately: true }))
 
-      yield* TestClock.adjust(1)
-
-      const envelope = driver.journal.find((envelope) =>
+      let envelope = driver.journal.find((envelope) =>
         envelope._tag === "Request" && envelope.address.entityType === "Workflow/-/DurableClock"
       )
-      assert(envelope)
+      while (envelope === undefined) {
+        yield* Effect.yieldNow
+        envelope = driver.journal.find((envelope) =>
+          envelope._tag === "Request" && envelope.address.entityType === "Workflow/-/DurableClock"
+        )
+      }
       assert.strictEqual(envelope.address.shardId.group, "workflow")
       const deliverAt = driver.requests.get(envelope.requestId)?.deliverAt
       assert.isNumber(deliverAt)
