@@ -330,7 +330,7 @@ function compareTypedArrays(self: Uint8Array, that: Uint8Array): boolean {
     return false
   }
   for (let i = 0; i < self.length; i++) {
-    if (self[i] !== that[i]) {
+    if (self[i] !== that[i] && !(Number.isNaN(self[i]) && Number.isNaN(that[i]))) {
       return false
     }
   }
