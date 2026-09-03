@@ -1785,7 +1785,6 @@ const SelectProto: Omit<
             const isPartial = data.length < chunkSize
             const next = makeSelect({
               ...select,
-              limitValue: limit === undefined ? chunkSize : Math.min(chunkSize, limit - total),
               offsetValue: initialOffset + total
             })
             return [data, isPartial || reachedLimit ? Option.none() : Option.some(next)] as const
