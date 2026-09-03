@@ -3378,6 +3378,10 @@ export function loadJSDocConfig(cwd = process.cwd(), configPath = "jsdocs.config
  * @since 4.0.0
  */
 export function extractJSDocsSync(options: ExtractJSDocsOptions): JSDocModel {
+  // Share caches within an extraction, not across source snapshots.
+  programCache.clear()
+  packageMetadataCache.clear()
+  barrelExportCache.clear()
   const cwd = path.resolve(options.cwd ?? process.cwd())
   const tsconfigPath = path.resolve(cwd, options.tsconfig)
   const entry = getProgram(tsconfigPath)
