@@ -4,7 +4,7 @@
  *
  * @since 4.0.0
  */
-import { compile } from "../../internal/schema/compiler.ts"
+import { compile, compileIs } from "../../internal/schema/compiler.ts"
 import * as CompilerHook from "../../internal/schema/compilerHook.ts"
 
-CompilerHook.install(compile)
+CompilerHook.install({ decode: compile, is: compileIs })

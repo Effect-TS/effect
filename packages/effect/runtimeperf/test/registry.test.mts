@@ -141,6 +141,7 @@ describe("runtimeperf registry", () => {
   it("includes the Moltar assertLoose matrix and isolates the Zod optimization layers", async () => {
     const { fixtures } = loadRegistry()
     const moltar = fixtures.filter((fixture) => fixture.suite === "moltar-assert-loose")
+    assert.equal(moltar.every((fixture) => fixture.batchSize === 256), true)
     const implementations = (scenario) =>
       moltar
         .filter((fixture) => fixture.scenario === scenario)
@@ -179,6 +180,7 @@ describe("runtimeperf registry", () => {
   it("includes the Moltar parseSafe matrix and isolates the Zod compilation layers", async () => {
     const { fixtures } = loadRegistry()
     const moltar = fixtures.filter((fixture) => fixture.suite === "moltar-parse-safe")
+    assert.equal(moltar.every((fixture) => fixture.batchSize === 256), true)
     const implementations = (scenario) =>
       moltar
         .filter((fixture) => fixture.scenario === scenario)

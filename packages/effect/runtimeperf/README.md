@@ -62,6 +62,17 @@ Override measurement settings:
 pnpm runtimeperf object-32-valid --rounds 9 --time 500 --warmup-time 150
 ```
 
+Use one batch size for every implementation in a cross-library scenario:
+
+```sh
+pnpm runtimeperf moltar-parse-safe-valid --batch-size 256
+```
+
+This is useful when generated functions take only a few nanoseconds and V8
+optimizes different loop sizes differently. The report records the fixed batch
+as its calibration mode. The two Moltar suites use a shared batch of 256 by
+default; the command-line option overrides suite configuration.
+
 Compare Effect `HEAD` with the working tree:
 
 ```sh
@@ -133,10 +144,11 @@ adapter family measures the overhead of public APIs that wrap parser issues.
 
 ## Measurement model
 
-Each worker validates the fixture before and after measuring. Calibration finds
-a batch large enough for the configured target duration. Each implementation
-uses its own calibrated batch and executes in a separate process, with rotating
-order within the scenario.
+Each worker validates the fixture before and after measuring. By default,
+calibration finds a batch large enough for the configured target duration.
+Suites can pin one shared batch for a scenario, and `--batch-size` can override
+it. Each implementation executes in a separate process, with rotating order
+within the scenario.
 
 Tinybench measures one synchronous batched task. The primary process result is:
 

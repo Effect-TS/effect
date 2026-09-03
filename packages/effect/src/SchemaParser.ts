@@ -158,7 +158,7 @@ export function _is<T>(ast: SchemaAST.AST) {
   return <I>(input: I): input is I & T => {
     if (decoder === undefined) {
       const compiler = CompilerHook.get()
-      decoder = compiler?.(typeAST) ?? null
+      decoder = compiler?.is(typeAST) ?? null
     }
     if (decoder !== null) {
       try {
@@ -551,7 +551,7 @@ export function decodeUnknownSync<S extends Schema.ConstraintDecoder<unknown>>(
     if (overrideOptions !== undefined) return fallback(input, overrideOptions)
     if (decoder === undefined) {
       const compiler = CompilerHook.get()
-      decoder = compiler?.(schema.ast) ?? null
+      decoder = compiler?.decode(schema.ast) ?? null
     }
     if (decoder === null) return fallback(input)
     let output: unknown

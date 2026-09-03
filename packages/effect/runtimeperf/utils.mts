@@ -62,6 +62,7 @@ export const parseArgs = (args, { compare = false } = {}) => {
     rounds: undefined,
     timeMs: undefined,
     warmupTimeMs: undefined,
+    batchSize: undefined,
     tier: undefined,
     family: undefined,
     implementation: undefined,
@@ -74,6 +75,7 @@ export const parseArgs = (args, { compare = false } = {}) => {
     ["--rounds", "rounds"],
     ["--time", "timeMs"],
     ["--warmup-time", "warmupTimeMs"],
+    ["--batch-size", "batchSize"],
     ["--tier", "tier"],
     ["--family", "family"],
     ["--implementation", "implementation"],
@@ -100,11 +102,18 @@ export const parseArgs = (args, { compare = false } = {}) => {
       throw new Error(`Expected at most one target, got ${options.target} and ${arg}`)
     }
   }
-  for (const key of ["rounds", "timeMs", "warmupTimeMs", "tier"]) {
+  const numericOptions = new Map([
+    ["rounds", "--rounds"],
+    ["timeMs", "--time"],
+    ["warmupTimeMs", "--warmup-time"],
+    ["batchSize", "--batch-size"],
+    ["tier", "--tier"]
+  ])
+  for (const [key, option] of numericOptions) {
     if (options[key] !== undefined) {
       const value = Number(options[key])
       if (!Number.isInteger(value) || value < 0 || (key !== "tier" && value === 0)) {
-        throw new Error(`--${key} must be ${key === "tier" ? "a non-negative" : "a positive"} integer`)
+        throw new Error(`${option} must be ${key === "tier" ? "a non-negative" : "a positive"} integer`)
       }
       options[key] = value
     }
@@ -117,6 +126,7 @@ export const loadRegistry = () => {
   const fixtures = config.suites.flatMap((suite) =>
     suite.fixtures.flatMap((fixtureGroup) =>
       fixtureGroup.cases.map((runtimeCase) => ({
+        batchSize: suite.batchSize,
         ...fixtureGroup.defaults,
         ...runtimeCase,
         suite: suite.name,
@@ -161,6 +171,7 @@ export const resolveDefaults = (config, options) => ({
   rounds: options.rounds ?? config.defaults.rounds,
   timeMs: options.timeMs ?? config.defaults.timeMs,
   warmupTimeMs: options.warmupTimeMs ?? config.defaults.warmupTimeMs,
+  batchSize: options.batchSize ?? null,
   targetBatchTimeNs: config.defaults.targetBatchTimeNs,
   maxBatchSize: config.defaults.maxBatchSize,
   bootstrapIterations: config.defaults.bootstrapIterations,

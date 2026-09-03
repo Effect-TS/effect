@@ -35,7 +35,7 @@ describe("SchemaCompiler", () => {
     assert.notStrictEqual(output.nested, input.nested)
   })
 
-  it("reuses the compiled decoder for type guards", () => {
+  it("compiles type guards", () => {
     strictEqual(
       is({
         name: "a",
@@ -326,6 +326,16 @@ describe("SchemaCompiler", () => {
       Schema.Struct({ value: Schema.String }).check(Schema.isMaxProperties(1))
     )
     deepStrictEqual(decodeObject({ value: "a", extra: true }), { value: "a" })
+  })
+
+  it("runs compiled type guard checks against decoded output", () => {
+    const checked = Schema.Struct({ value: Schema.String }).check(Schema.isMaxProperties(1))
+    const isRoot = SchemaParser.is(checked)
+    const isNested = SchemaParser.is(Schema.Struct({ nested: checked }))
+
+    strictEqual(isRoot({ value: "a", extra: true }), true)
+    strictEqual(isNested({ nested: { value: "a", extra: true }, extra: true }), true)
+    strictEqual(isNested({ nested: { value: 1 } }), false)
   })
 
   it("embeds synchronous Declaration and transformation runtime islands", () => {

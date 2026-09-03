@@ -94,6 +94,8 @@ const decodeUser = SchemaParser.decodeUnknownSync(User)
 decodeUser({ id: 1, name: "Ada" })
 ```
 
+`SchemaParser.is` compiles a validation-only implementation. It skips constructing decoded arrays and objects unless a check needs their decoded value.
+
 Unsupported schemas, calls with explicit parse options, and environments that disallow dynamic code generation use the interpreter instead. This fallback preserves the behavior of `SchemaParser`; importing the compiler changes the execution strategy, not the parsing API or its results.
 
 # Defining Elementary Schemas

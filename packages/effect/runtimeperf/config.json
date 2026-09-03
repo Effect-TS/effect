@@ -1592,6 +1592,7 @@
     },
     {
       "name": "moltar-assert-loose",
+      "batchSize": 256,
       "fixtures": [
         {
           "file": "suites/moltar-assert-loose/fixtures/effect.ts",
@@ -1790,6 +1791,7 @@
     },
     {
       "name": "moltar-parse-safe",
+      "batchSize": 256,
       "fixtures": [
         {
           "file": "suites/moltar-parse-safe/fixtures/effect.ts",

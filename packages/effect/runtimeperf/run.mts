@@ -29,6 +29,7 @@ Options:
   --rounds <n>
   --time <ms>
   --warmup-time <ms>
+  --batch-size <n>      Use the same fixed batch for every selected fixture
   --tier <0-3>
   --family <name>
   --implementation <effect|effect-compiled|fast-check-v4|valibot|zod4|zod4-jitless|zod4-validate|zod4-compiled>
@@ -51,7 +52,17 @@ const main = () => {
   const executionOrder = []
 
   for (const [scenario, group] of groups) {
-    const calibrations = new Map(group.map((fixture) => [fixture, calibrateFixture(fixture, defaults)]))
+    const configuredBatchSizes = [...new Set(group.map((fixture) => fixture.batchSize).filter((size) => size !== undefined))]
+    if (configuredBatchSizes.length > 1) {
+      throw new Error(`Scenario ${scenario} has conflicting fixed batch sizes`)
+    }
+    const fixedBatchSize = defaults.batchSize ?? configuredBatchSizes[0] ?? null
+    const calibrations = new Map(group.map((fixture) => [
+      fixture,
+      fixedBatchSize === null
+        ? calibrateFixture(fixture, defaults)
+        : { ok: true, mode: "fixed", batchSize: fixedBatchSize, warnings: [] }
+    ]))
     const byTarget = new Map(group.map((fixture) => [fixture.target, []]))
 
     for (let round = 0; round < defaults.rounds; round++) {
