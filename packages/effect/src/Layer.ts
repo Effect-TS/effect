@@ -2247,7 +2247,7 @@ type AnyEffectOrStream =
  * Creates a mock layer for testing purposes. You can provide a partial
  * implementation of the service. Any missing members that are `Effect`s,
  * `Stream`s, `Channel`s, or functions returning them will fail with an
- * unimplemented defect when used, except for an omitted member named `then`.
+ * unimplemented defect when used.
  *
  * **Details**
  *
@@ -2255,13 +2255,6 @@ type AnyEffectOrStream =
  * `Stream`, `Channel`, or as a function returning an `Effect`. This lets the
  * mock preserve the shape of common service methods while still failing loudly
  * when an unimplemented member is exercised.
- *
- * **Gotchas**
- *
- * An absent `then` is `undefined` so native Promises do not treat an ordinary
- * mock service as a thenable. If your service has a method named `then`, supply
- * it explicitly. Supplied `then` values are preserved, including functions and
- * `undefined`.
  *
  * **Example** (Mocking services for tests)
  *
