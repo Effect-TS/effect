@@ -446,31 +446,39 @@ describe("Queue", () => {
       assert.deepStrictEqual(yield* Fiber.join(fiber), Exit.fail("boom"))
     }))
 
-  it.effect("flushUnsafe triggers current awaiters without closing the queue", () =>
+  it.effect("flushUnsafe releases current takers, not awaiters", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number>()
-      const fiber = yield* Queue.await(queue).pipe(Effect.forkChild)
+      yield* Queue.take(queue).pipe(Effect.forkChild)
+      yield* Queue.await(queue).pipe(Effect.forkChild)
       yield* Effect.yieldNow
+      const state = queue.state
+      if (state._tag === "Done") return assert.fail("Expected an open queue")
+      assert.strictEqual(state.takers.size, 1)
+      assert.strictEqual(state.awaiters.size, 1)
 
       Queue.flushUnsafe(queue)
 
-      assert.strictEqual(yield* Fiber.join(fiber), void 0)
-      assert.isTrue(yield* Queue.offer(queue, 1))
-      assert.strictEqual(yield* Queue.take(queue), 1)
+      assert.strictEqual(state.takers.size, 0)
+      assert.strictEqual(state.awaiters.size, 1)
+      yield* Queue.shutdown(queue)
     }))
 
-  it.effect("flush triggers current awaiters but not future awaiters", () =>
+  it.effect("flush releases current takers, not awaiters", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number>()
-      const current = yield* Queue.await(queue).pipe(Effect.forkChild)
+      yield* Queue.take(queue).pipe(Effect.forkChild)
+      yield* Queue.await(queue).pipe(Effect.forkChild)
       yield* Effect.yieldNow
+      const state = queue.state
+      if (state._tag === "Done") return assert.fail("Expected an open queue")
+      assert.strictEqual(state.takers.size, 1)
+      assert.strictEqual(state.awaiters.size, 1)
 
       yield* Queue.flush(queue)
 
-      assert.strictEqual(yield* Fiber.join(current), void 0)
-      const future = yield* Queue.await(queue).pipe(Effect.forkChild)
-      yield* Effect.yieldNow
-      assert.isUndefined(future.pollUnsafe())
+      assert.strictEqual(state.takers.size, 0)
+      assert.strictEqual(state.awaiters.size, 1)
       yield* Queue.shutdown(queue)
     }))
 
