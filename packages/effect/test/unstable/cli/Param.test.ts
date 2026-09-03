@@ -135,6 +135,18 @@ describe("Param", () => {
       }).pipe(Effect.provide(TestLayer)))
   })
 
+  it.effect("uses the default when a required variadic argument is omitted", () =>
+    Effect.gen(function*() {
+      const argument = Argument.string("files").pipe(
+        Argument.atLeast(1),
+        Argument.withDefault(["README.md"])
+      )
+
+      const result = yield* argument.parse({ flags: {}, arguments: [] })
+
+      assert.deepStrictEqual(result, [[], ["README.md"]])
+    }).pipe(Effect.provide(TestLayer)))
+
   describe("withFallbackPrompt", () => {
     it.effect("prompts for missing flag values and preserves remaining args", () =>
       Effect.gen(function*() {

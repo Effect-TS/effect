@@ -2008,12 +2008,14 @@ const parsePositionalVariadic: <Kind extends ParamKind, A>(
   }
 
   if (count < minValue) {
-    return yield* new CliError.InvalidValue({
-      option: single.name,
-      value: `${count} values`,
-      expected: `at least ${minValue} value${minValue === 1 ? "" : "s"}`,
-      kind: single.kind
-    })
+    return yield* count === 0
+      ? new CliError.MissingArgument({ argument: single.name })
+      : new CliError.InvalidValue({
+        option: single.name,
+        value: `${count} values`,
+        expected: `at least ${minValue} value${minValue === 1 ? "" : "s"}`,
+        kind: single.kind
+      })
   }
 
   return [currentArgs, results] as const
