@@ -163,6 +163,13 @@ describe("Formatter", () => {
     it("Error", () => {
       strictEqual(format(new Error("a")), `Error: a`)
       strictEqual(format(new Error("a", { cause: "b" })), `Error: a (cause: "b")`)
+      strictEqual(format(new Error("a", { cause: 0 })), `Error: a (cause: 0)`)
+      strictEqual(format(new Error("a", { cause: false })), `Error: a (cause: false)`)
+      strictEqual(format(new Error("a", { cause: "" })), `Error: a (cause: "")`)
+      strictEqual(format(new Error("a", { cause: null })), `Error: a (cause: null)`)
+      strictEqual(format(new Error("a", { cause: 0n })), `Error: a (cause: 0n)`)
+      strictEqual(format(new Error("a", { cause: Number.NaN })), `Error: a (cause: NaN)`)
+      strictEqual(format(new Error("a", { cause: undefined })), `Error: a`)
     })
 
     it("Date", () => {
