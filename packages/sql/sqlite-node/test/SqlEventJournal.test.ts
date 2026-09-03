@@ -27,6 +27,22 @@ describe("SqlEventJournal", () => {
       assert.strictEqual(actual, error)
     }))
 
+  it.effect("preserves remote callback error identity", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      yield* journal.write({
+        event: "Repro",
+        primaryKey: "key",
+        payload: new Uint8Array([1]),
+        effect: () => Effect.void
+      })
+      const error = new Error("callback failed")
+      const actual = yield* Effect.flip(
+        journal.withRemoteUncommited(EventJournal.makeRemoteIdUnsafe(), () => Effect.fail(error))
+      )
+      assert.strictEqual(actual, error)
+    }))
+
   it.effect("commits only after the write callback succeeds", () =>
     Effect.gen(function*() {
       const sql = yield* SqliteClient.make({ filename: ":memory:" })
