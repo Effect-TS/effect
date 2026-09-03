@@ -153,8 +153,8 @@ describe("String", () => {
       strictEqual(S.trim("  hello  "), "hello")
     })
 
-    it("trims tabs and newlines", () => {
-      strictEqual(S.trim("\t\nhello\t\n"), "hello")
+    it("trims ECMAScript whitespace", () => {
+      strictEqual(S.trim("\t\v\f\u00a0hello\u2028\u2029\ufeff"), "hello")
     })
 
     it("handles empty string", () => {
