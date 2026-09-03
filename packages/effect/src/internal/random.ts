@@ -15,7 +15,7 @@ export const Random: Context.Reference<RandomService> = Context.Reference<Random
 })
 
 /** @internal */
-export const nextBetween = (draw: number, min: number, max: number): number => {
+export const nextBetween = (min: number, max: number, draw: number): number => {
   const value = draw * (max - min) + min
   if (value !== max || min >= max || !Number.isFinite(max)) {
     return value

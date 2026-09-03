@@ -252,7 +252,7 @@ export const make = (
     random: Effect.sync(() => nextDoubleUnsafe()),
     randomBoolean: Effect.sync(() => nextDoubleUnsafe() > 0.5),
     randomInt: Effect.sync(() => nextIntUnsafe()),
-    randomBetween: (min, max) => Effect.sync(() => random.nextBetween(nextDoubleUnsafe(), min, max)),
+    randomBetween: (min, max) => Effect.sync(() => random.nextBetween(min, max, nextDoubleUnsafe())),
     randomIntBetween(min, max, options) {
       const extra = options?.halfOpen === true ? 0 : 1
       return Effect.sync(() => {

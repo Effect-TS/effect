@@ -153,7 +153,7 @@ export const nextInt: Effect.Effect<number> = randomWith((r) => r.nextIntUnsafe(
  * @since 4.0.0
  */
 export const nextBetween = (min: number, max: number): Effect.Effect<number> =>
-  randomWith((r) => random.nextBetween(r.nextDoubleUnsafe(), min, max))
+  randomWith((r) => random.nextBetween(min, max, r.nextDoubleUnsafe()))
 
 /**
  * Generates a random integer between `min` and `max`.
