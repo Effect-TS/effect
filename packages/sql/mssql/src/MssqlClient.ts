@@ -311,6 +311,7 @@ export const make = (
         authentication: {
           type: (options.authType as any) ?? "default",
           options: {
+            domain: options.domain,
             userName: options.username,
             password: options.password
               ? Redacted.value(options.password)
