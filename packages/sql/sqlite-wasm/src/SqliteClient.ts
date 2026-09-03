@@ -343,6 +343,9 @@ export const make = (
         }
       }
       port.addEventListener("message", onMessage)
+      if ("start" in port && typeof port.start === "function") {
+        port.start()
+      }
 
       function onError(cause: Event) {
         const exit = Exit.fail(
