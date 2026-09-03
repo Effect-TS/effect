@@ -971,13 +971,14 @@ function makeWithHeadersEncoder(endpoint: HttpApiEndpoint.Top): WithHeadersEncod
 }
 
 function makeStreamEncoder(endpoint: HttpApiEndpoint.Top): StreamEncoder | undefined {
-  const streamSchema = getStreamSuccessSchema(endpoint)
-  if (streamSchema === undefined) {
+  const successSchema = getStreamSuccessSchema(endpoint)
+  if (successSchema === undefined) {
     return undefined
   }
 
+  const streamSchema = successSchema.body
   const hasBuffered = hasBufferedSuccess(endpoint)
-  const status = HttpApiSchema.getStatusStream(streamSchema)
+  const status = HttpApiSchema.getStatusSuccessSchema(successSchema.schema)
   const contentType = streamSchema.contentType
 
   if (HttpApiSchema.isStreamUint8Array(streamSchema)) {
@@ -1021,7 +1022,7 @@ function getStreamSuccessSchema(endpoint: HttpApiEndpoint.Top) {
   for (const schema of endpoint.success) {
     const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
     if (HttpApiSchema.isStreamSchema(body)) {
-      return body
+      return { schema, body }
     }
   }
 }

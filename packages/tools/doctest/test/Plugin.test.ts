@@ -4,6 +4,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { compileFunction } from "node:vm"
 
 describe("Plugin", () => {
   it("configures the doctest runner by default", () => {
@@ -22,7 +23,7 @@ describe("Plugin", () => {
     assert.isUndefined(config.call({} as never, { test: { runner: "./custom-runner.ts" } }, {} as never))
   })
 
-  it("transforms inline assertions in snippet modules", async () => {
+  it("preserves statement boundaries after inline assertions", async () => {
     const root = mkdtempSync(join(tmpdir(), "effect-doctest-plugin-"))
     const file = join(root, "example.ts")
     writeFileSync(
@@ -30,7 +31,8 @@ describe("Plugin", () => {
       [
         "/**",
         " * ```ts import.meta.vitest name=asserted",
-        " * const result = 1 // => 1",
+        " * const result = 1; // => 1",
+        " * [1, 2].forEach(record)",
         " * ```",
         " */"
       ].join("\n")
@@ -58,8 +60,15 @@ describe("Plugin", () => {
       if (typeof resolvedSnippet !== "string") return assert.fail("expected resolved snippet ID")
       const snippet = await load.call(context, resolvedSnippet, {} as never)
       if (typeof snippet !== "string") return assert.fail("expected snippet source")
-      assert.match(snippet, /const result = 1\n__effect_doctest_assert_0\(result, 1\)/)
+      assert.match(snippet, /const result = 1;\n__effect_doctest_assert_0\(result, 1\)/)
       assert.match(snippet, /assertEquals as __effect_doctest_assert_0/)
+
+      const values: Array<number> = []
+      compileFunction(snippet.slice(0, snippet.lastIndexOf("\n\nimport ")), ["__effect_doctest_assert_0", "record"])(
+        (actual: unknown, expected: unknown) => assert.deepStrictEqual(actual, expected),
+        (value: number) => values.push(value)
+      )
+      assert.deepStrictEqual(values, [1, 2])
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

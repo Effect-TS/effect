@@ -155,7 +155,9 @@ export const make = Effect.fnUntraced(
     yield* Scope.addFinalizer(scope, shutdown)
 
     return Server.make({
-      address: { _tag: "TcpAddress", port: server.port!, hostname: server.hostname! },
+      address: "unix" in options && options.unix !== undefined
+        ? { _tag: "UnixAddress", path: options.unix }
+        : { _tag: "TcpAddress", port: server.port!, hostname: server.hostname! },
       serve: Effect.fnUntraced(function*(httpApp, middleware) {
         const parent = yield* Effect.fiber
         const services = parent.context

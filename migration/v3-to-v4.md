@@ -8998,9 +8998,9 @@ Arbitrary.schema(schema)
 
 - `Channel.repeated` -> `Channel.forever`: Use forever for infinite repetition. Channel.repeat takes a Schedule and may terminate, so it is not equivalent.
 
-- `Channel.run` -> `Channel.runDone`: Renamed to runDone for an inputless, outputless channel. Use runDrain if emitted elements should be discarded.
+- `Channel.run` -> `Channel.runDrain`: Use runDrain to consume all emitted elements and return the channel's done value.
 
-- `Channel.runScoped` -> `Channel.toPull`: No direct scoped runner remains. Use toPull in the caller scope and recover Cause.Done; use runDone or runDrain when an internally managed scope is acceptable.
+- `Channel.runScoped` -> `Channel.toPull`: No direct scoped runner remains. Use toPull in the caller scope and recover Cause.Done; use runDrain when an internally managed scope is acceptable.
 
 - `Channel.scopedWith` -> `Channel.unwrap`: Use Channel.unwrap(Effect.map(Effect.scope, (scope) =\> Channel.fromEffect(f(scope)))) so the effect uses the active channel scope.
 

@@ -735,8 +735,8 @@ export function encodeToWithHeaders<
       )
     ).annotate({
       "~httpApiWithHeaders": { body, headers, headersCodec: Schema.toEncoded(headers) },
-      ...(status !== undefined ? { httpApiStatus: status } : undefined),
-      ...(encoding !== undefined ? { "~httpApiEncoding": encoding } : undefined)
+      httpApiStatus: status,
+      "~httpApiEncoding": encoding
     })
   }
 }
@@ -994,11 +994,6 @@ export function getResponseEncodingSchema(schema: Schema.Constraint): ResponseEn
     return getResponseEncoding(schema.schema.ast)
   }
   return getResponseEncoding(schema.ast)
-}
-
-/** @internal */
-export function getStatusStream(self: StreamSchema): number {
-  return getStatusSuccess(self.ast)
 }
 
 /** @internal */

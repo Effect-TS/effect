@@ -255,6 +255,12 @@ describe("SchemaBinary", () => {
     })
   })
 
+  describe("string content", () => {
+    it("preserves a leading U+FEFF in strings", () => {
+      assert.strictEqual(roundtrip(Schema.String, "\uFEFFreport"), "\uFEFFreport")
+    })
+  })
+
   describe("output arena", () => {
     it("keeps an earlier result stable through later encodes and arena rollover", () => {
       const codec = SchemaBinary.toCodec(Schema.String)

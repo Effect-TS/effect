@@ -1001,8 +1001,13 @@ class OptionalImpl<S, A> implements Optional<S, A> {
           (a, s) => {
             const copy = cloneShallow(s)
             if (a === undefined) {
-              if (Array.isArray(copy) && typeof key === "number") {
-                copy.splice(key, 1)
+              const index = typeof key === "symbol" ? NaN : Number(key)
+              if (
+                Array.isArray(copy) &&
+                (typeof key === "number" ||
+                  (String(index) === key && Number.isInteger(index) && index >= 0 && index < 0xFFFFFFFF))
+              ) {
+                copy.splice(index, 1)
               } else {
                 delete copy[key]
               }
@@ -1058,10 +1063,10 @@ class OptionalImpl<S, A> implements Optional<S, A> {
     )
   }
   pick(keys: any) {
-    return this.compose(makeLens(Struct.pick(keys), (p, a) => ({ ...a, ...p })))
+    return this.compose(makeLens(Struct.pick(keys), (p, a) => ({ ...Struct.omit(a, keys), ...p })))
   }
   omit(keys: any) {
-    return this.compose(makeLens(Struct.omit(keys), (o, a) => ({ ...a, ...o })))
+    return this.compose(makeLens(Struct.omit(keys), (o, a) => ({ ...Struct.pick(a, keys), ...o })))
   }
   notUndefined(): any {
     return this.refine(Predicate.isNotUndefined, { expected: "a value other than `undefined`" })

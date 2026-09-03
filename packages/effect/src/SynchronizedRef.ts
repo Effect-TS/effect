@@ -368,7 +368,6 @@ export const modifySome: {
  */
 export const modifySomeEffect: {
   <A, B, R, E>(
-    fallback: B,
     pf: (a: A) => Effect.Effect<readonly [B, Option.Option<A>], E, R>
   ): (self: SynchronizedRef<A>) => Effect.Effect<B, E, R>
   <A, B, R, E>(
