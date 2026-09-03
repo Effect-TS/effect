@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Channel.runDone` to consume all output and return the channel's completion value.
+Remove `Channel.runDone`; use `Channel.runDrain` to consume all output and return the completion value.

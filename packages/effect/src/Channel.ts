@@ -8069,16 +8069,6 @@ export const runCollect = <OutElem, OutErr, OutDone, Env>(
   })
 
 /**
- * Runs a channel and outputs the done value.
- *
- * @category running
- * @since 4.0.0
- */
-export const runDone = <OutElem, OutErr, OutDone, Env>(
-  self: Channel<OutElem, OutErr, OutDone, unknown, unknown, unknown, Env>
-): Effect.Effect<OutDone, OutErr, Env> => runDrain(self)
-
-/**
  * Runs a channel until the first output element is available, returning it in
  * an `Option`.
  *

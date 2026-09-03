@@ -220,11 +220,11 @@ describe("Channel", () => {
   })
 
   describe("destructors", () => {
-    it.effect("runDone returns the done value after emitted elements", () =>
+    it.effect("runDrain returns the done value after emitted elements", () =>
       Effect.gen(function*() {
         const result = yield* Channel.fromArray([1]).pipe(
           Channel.concat(Channel.end("done")),
-          Channel.runDone
+          Channel.runDrain
         )
 
         assert.strictEqual(result, "done")
