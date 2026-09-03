@@ -55,6 +55,24 @@ describe("FileSystem", () => {
       Effect.provide(NodeFileSystem.layer)
     ))
 
+  it.effect("watch reports Create for a new file outside the current directory", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const root = yield* fs.makeTempDirectoryScoped()
+      const name = "created.txt"
+      const path = `${root}/${name}`
+      assert.strictEqual(yield* fs.exists(name), false)
+
+      const fiber = yield* startWatch(fs, root, () => fs.watch(root))
+      yield* fs.writeFileString(path, "")
+
+      const event = yield* Fiber.join(fiber)
+      assert.strictEqual(yield* fs.exists(path), true)
+      assert.deepStrictEqual(event, { _tag: "Create", path: name })
+    }).pipe(
+      Effect.provide(NodeFileSystem.layer)
+    ))
+
   it.effect("watch does not report nested changes when recursive is false", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
