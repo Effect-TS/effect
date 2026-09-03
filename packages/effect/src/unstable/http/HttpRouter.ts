@@ -163,6 +163,7 @@ export const make = Effect.gen(function*() {
   return HttpRouter.of({
     [TypeId]: TypeId,
     prefixed(this: HttpRouter, prefix: string) {
+      prefix = removeTrailingSlash(prefix as PathInput)
       return HttpRouter.of({
         ...this,
         prefixed: (newPrefix: string) => this.prefixed(prefixPath(prefix, newPrefix)),
@@ -748,7 +749,7 @@ export const prefixRoute: {
     ...self,
     path: prefixPath(self.path, prefix) as PathInput,
     prefix: Option.match(self.prefix, {
-      onNone: () => prefix as string,
+      onNone: () => removeTrailingSlash(prefix as PathInput),
       onSome: (existingPrefix) => prefixPath(existingPrefix, prefix) as string
     })
   }))
