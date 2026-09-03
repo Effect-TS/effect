@@ -206,8 +206,9 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
     Effect.retry(effect, {
       while(e) {
         hello = null
-        const error = e instanceof EventLogRemoteError && e.method === "authenticate"
-          ? e.cause
+        const error = Predicate.isTagged(e, "EventLogRemoteError") &&
+            (e as any as EventLogRemoteError).method === "authenticate"
+          ? (e as any as EventLogRemoteError).cause
           : e
         const isForbidden = Predicate.isTagged(error, "EventLogProtocolError") &&
           (error as any as EventLogProtocolError).code === "Forbidden"
