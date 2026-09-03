@@ -20,6 +20,7 @@ import * as NodeStream from "@effect/platform-node/NodeStream"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import * as FiberSet from "effect/FiberSet"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
@@ -145,16 +146,20 @@ export class Rollup extends Context.Service<Rollup>()(
             Stream.broadcast({ capacity: 8, replay: 8 })
           )
 
+          let awaitWrite: Effect.Effect<void, RollupError> = Effect.void
           if (options.outputDirectory) {
             const outputPath = pathService.join(
               options.outputDirectory,
               `${pathService.parse(options.path).name}.min.js`
             )
-            yield* FiberSet.run(
+            const fiber = yield* FiberSet.run(
               fibers,
               stream.pipe(
                 Stream.run(fs.sink(outputPath))
               )
+            )
+            awaitWrite = Fiber.join(fiber).pipe(
+              Effect.mapError((cause) => new RollupError({ cause }))
             )
           }
 
@@ -169,7 +174,7 @@ export class Rollup extends Context.Service<Rollup>()(
             )
           )
 
-          yield* FiberSet.awaitEmpty(fibers)
+          yield* awaitWrite
 
           yield* Effect.log(`Bundled ${options.path}`).pipe(
             Effect.annotateLogs({ size: `${(sizeInBytes / 1000).toFixed(2)} kB` })
