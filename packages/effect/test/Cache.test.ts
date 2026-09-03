@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cache, Context, Data, Deferred, Duration, Effect, Exit, Fiber, Latch, MutableHashMap, Option } from "effect"
 import { TestClock } from "effect/testing"
+import { Persistable, PersistedCache, Persistence } from "effect/unstable/persistence"
 
 describe("Cache", () => {
   describe("constructors", () => {
@@ -1625,6 +1626,30 @@ describe("Cache", () => {
         assert.strictEqual(yield* Cache.get(cache, key3), "test-1") // Uses cached value
       }))
   })
+})
+
+describe("PersistedCache", () => {
+  it.effect("persists synchronous lookup defects", () =>
+    Effect.gen(function*() {
+      class LookupRequest extends Persistable.Class()("LookupRequest", {
+        primaryKey: () => "lookup"
+      }) {}
+
+      let calls = 0
+      const lookup = (_key: LookupRequest): Effect.Effect<void> => {
+        calls++
+        throw new Error("lookup defect")
+      }
+      const options = { storeId: "synchronous-lookup-defect", timeToLive: () => "1 hour" as const }
+      const key = new LookupRequest()
+
+      const cache = yield* PersistedCache.make(lookup, options)
+      yield* Effect.exit(cache.get(key))
+      const recreated = yield* PersistedCache.make(lookup, options)
+      yield* Effect.exit(recreated.get(key))
+
+      assert.strictEqual(calls, 1)
+    }).pipe(Effect.provide(Persistence.layerMemory)))
 })
 
 const makeTestCache = (capacity: number, ttl?: Duration.Input) =>
