@@ -1,6 +1,6 @@
 import * as Arr from "../../Array.ts"
 import * as Equal from "../../Equal.ts"
-import { formatUriFragment, parseUriFragment } from "../../JsonPointer.ts"
+import { decodeUriFragment, formatUriFragmentToken, unescapeToken } from "../../JsonPointer.ts"
 import type * as JsonSchema from "../../JsonSchema.ts"
 import { rewriteRefs } from "../../JsonSchema.ts"
 import * as RegEx from "../../RegExp.ts"
@@ -15,6 +15,10 @@ type Path = ReadonlyArray<string | number>
 type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnnotation<
   SchemaRepresentation.Representation
 >
+
+function formatDefinitionReference(key: string): string {
+  return `#/$defs/${formatUriFragmentToken(key)}`
+}
 
 const jsonSchemaAnnotationExcludedKeys = new Set([
   ...InternalAnnotations.annotationExcludedKeys,
@@ -159,24 +163,6 @@ function appendJsonSchema(
   return { ...left, allOf: members }
 }
 
-function parseJsonSchemaPointer($ref: string, path: Path): ReadonlyArray<string> {
-  const pointer = parseUriFragment($ref)
-  if (pointer === undefined) {
-    throw errorWithPath(
-      `Invalid JSON Schema reference ${JSON.stringify($ref)}: invalid JSON Pointer URI fragment`,
-      path
-    )
-  }
-  return pointer
-}
-
-function validateJsonSchemaReferences(schema: JsonSchema.JsonSchema, path: Path): void {
-  rewriteRefs(schema, ($ref) => {
-    if ($ref.startsWith("#/$defs/")) parseJsonSchemaPointer($ref, path)
-    return $ref
-  })
-}
-
 function compileJsonSchema(
   representations: readonly [
     SchemaRepresentation.Representation,
@@ -190,7 +176,6 @@ function compileJsonSchema(
   const definitionStates = new Map<string, JsonSchema.JsonSchema | string | null>()
   const compiledRepresentations = new WeakMap<SchemaRepresentation.Representation, JsonSchema.JsonSchema>()
   const fallbackDefinitions = new Map<string, Array<string>>()
-  let hasAliases = false
   const referenceKeys = Object.keys(references)
   for (const key of referenceKeys) {
     compileDefinition(key, ["references", key])
@@ -227,7 +212,6 @@ function compileJsonSchema(
         if (candidates === undefined) fallbackDefinitions.set(fallback, [key])
         else candidates.push(key)
       } else {
-        hasAliases = true
         definitionStates.set(key, match)
         return match
       }
@@ -237,16 +221,23 @@ function compileJsonSchema(
   }
 
   function finalizeJsonSchema(schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema {
-    if (!hasAliases) return schema
     return rewriteRefs(schema, ($ref) => {
+      const pointer = decodeUriFragment($ref)
+      if (pointer === undefined) {
+        if (/^#(?:\/|%2f)/i.test($ref)) {
+          throw new Error(`Invalid JSON Pointer URI fragment ${JSON.stringify($ref)}`)
+        }
+        return $ref
+      }
+      if (!pointer.startsWith("/$defs/")) return $ref
+      const separator = pointer.indexOf("/", 7)
+      const canonical = definitionStates.get(unescapeToken(pointer.slice(7, separator < 0 ? undefined : separator)))
+      if (typeof canonical !== "string") return $ref
       // URI-encoded slashes separate pointer tokens; only ~1 represents a slash within a token.
-      const match = /^#\/\$defs\/(?:(?!%2[fF])[^/])*/.exec($ref)
-      if (match === null) return $ref
-      const path = parseJsonSchemaPointer($ref, [])
-      const canonical = definitionStates.get(path[1])
-      return typeof canonical === "string"
-        ? `${formatUriFragment(["$defs", canonical])}${$ref.slice(match[0].length)}`
-        : $ref
+      return $ref.replace(
+        /^#(?:\/|%2f).*?(?:\/|%2f).*?(?=\/|%2f|$)/i,
+        formatDefinitionReference(canonical)
+      )
     })
   }
 
@@ -280,7 +271,6 @@ function compileJsonSchema(
     if (callback !== undefined) {
       const schemas = annotationSchemas(check.representation, [...path, "representation"])
       const fragment = (callback as SchemaRepresentation.ToJsonSchema.Check)({ type, schemas })
-      validateJsonSchemaReferences(fragment, [...path, "annotations", "toJsonSchema"])
       const ordinary = collectJsonSchemaAnnotations(annotations, options)
       const schema = ordinary === undefined ? fragment : { ...fragment, ...ordinary }
       const allowed = ordinary === undefined ? inlineableCheckKeywords : inlineableAnnotatedCheckKeywords
@@ -307,7 +297,7 @@ function compileJsonSchema(
   ): JsonSchema.JsonSchema {
     if (representation._tag === "Reference") {
       const canonical = compileDefinition(representation.$ref, path)
-      return { $ref: formatUriFragment(["$defs", canonical]) }
+      return { $ref: formatDefinitionReference(canonical) }
     }
     const cached = compiledRepresentations.get(representation)
     if (cached !== undefined) return cached

@@ -79,6 +79,25 @@ export function unescapeToken(token: string): string {
   return token.replace(/~1/g, "/").replace(/~0/g, "~")
 }
 
+/** @internal */
+export function formatUriFragmentToken(token: string): string {
+  return encodeURI(escapeToken(token)).replace(/#/g, "%23")
+}
+
+/** @internal */
+export function decodeUriFragment(fragment: string): string | undefined {
+  if (fragment.length === 0 || fragment === "#") return ""
+  if (!fragment.startsWith("#")) return undefined
+  const encoded = fragment.slice(1)
+  try {
+    if (encodeURI(encoded).replace(/%25/g, "%").replace(/#/g, "%23") !== encoded) return undefined
+    const pointer = decodeURIComponent(encoded)
+    return pointer.startsWith("/") && !/~(?:[^01]|$)/.test(pointer) ? pointer : undefined
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * Parses a JSON Pointer URI fragment into decoded path tokens.
  *
@@ -94,8 +113,9 @@ export function unescapeToken(token: string): string {
  *
  * **Gotchas**
  *
- * Returns `undefined` when the input is not a URI fragment, contains invalid
- * percent-encoding, or contains an invalid JSON Pointer escape sequence.
+ * Returns `undefined` when the input is not a URI fragment, contains characters
+ * that require percent-encoding, or contains an invalid JSON Pointer escape
+ * sequence.
  *
  * **Example** (Parsing URI fragments)
  *
@@ -105,6 +125,7 @@ export function unescapeToken(token: string): string {
  * JsonPointer.parseUriFragment("#/users/a~1b") // => ["users", "a/b"]
  * JsonPointer.parseUriFragment("#/caf%C3%A9") // => ["café"]
  * JsonPointer.parseUriFragment("#/%") // => undefined
+ * JsonPointer.parseUriFragment("#/a#b") // => undefined
  * ```
  *
  * @see {@link formatUriFragment} for the inverse operation
@@ -112,16 +133,8 @@ export function unescapeToken(token: string): string {
  * @since 4.0.0
  */
 export function parseUriFragment(fragment: string): ReadonlyArray<string> | undefined {
-  if (fragment.length === 0 || fragment === "#") return []
-  if (!fragment.startsWith("#")) return undefined
-  let pointer: string
-  try {
-    pointer = decodeURIComponent(fragment.slice(1))
-  } catch {
-    return undefined
-  }
-  if (!pointer.startsWith("/") || /~(?:[^01]|$)/.test(pointer)) return undefined
-  return pointer.slice(1).split("/").map(unescapeToken)
+  const pointer = decodeUriFragment(fragment)
+  return pointer === undefined ? undefined : pointer.length === 0 ? [] : pointer.slice(1).split("/").map(unescapeToken)
 }
 
 /**
@@ -153,7 +166,8 @@ export function parseUriFragment(fragment: string): ReadonlyArray<string> | unde
  * @since 4.0.0
  */
 export function formatUriFragment(path: ReadonlyArray<string>): string {
-  return path.length === 0
-    ? "#"
-    : `#/${path.map((token) => encodeURI(escapeToken(token)).replace(/#/g, "%23")).join("/")}`
+  return path.reduce(
+    (fragment, token) => `${fragment}/${formatUriFragmentToken(token)}`,
+    "#"
+  )
 }

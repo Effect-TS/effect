@@ -297,6 +297,11 @@ describe("JsonPointer", () => {
       strictEqual(parseUriFragment("/a"), undefined)
       strictEqual(parseUriFragment("#/%"), undefined)
       strictEqual(parseUriFragment("#/%FF"), undefined)
+      strictEqual(parseUriFragment("#/a b"), undefined)
+      strictEqual(parseUriFragment("#/a#b"), undefined)
+      strictEqual(parseUriFragment("#/a\\b"), undefined)
+      strictEqual(parseUriFragment("#/café"), undefined)
+      strictEqual(parseUriFragment(`#/${String.fromCharCode(0xd800)}`), undefined)
       strictEqual(parseUriFragment("#/a~2b"), undefined)
       strictEqual(parseUriFragment("#/a~"), undefined)
     })
@@ -320,6 +325,7 @@ describe("JsonPointer", () => {
         [""],
         ["$defs", "Rate%"],
         ["a/b", "c~d"],
+        ["!$&'()*+,;=:@?"],
         ["café", "世界", "🚀"]
       ]
       for (const path of paths) {
