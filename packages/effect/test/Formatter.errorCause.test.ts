@@ -64,9 +64,13 @@ describe("Formatter.format Error causes", () => {
   it("preserves the ignoreToString path", () => {
     const error = new Error("outer", { cause: 0 })
     error.stack = "synthetic stack"
+    // Native Error own properties and their order vary between runtimes.
+    const properties = Object.fromEntries(
+      Object.getOwnPropertyNames(error).map((key) => [key, Reflect.get(error, key)])
+    )
     assert.strictEqual(
       Formatter.format(error, { ignoreToString: true }),
-      "Error({\"stack\":\"synthetic stack\",\"message\":\"outer\",\"cause\":0})"
+      `Error(${JSON.stringify(properties)})`
     )
   })
 })
