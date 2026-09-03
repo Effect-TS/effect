@@ -69,7 +69,7 @@ const shared: ViteUserConfig = {
   test: {
     exclude,
     passWithNoTests: true,
-    setupFiles: [path.join(__dirname, "vitest.setup.ts")],
+    setupFiles: [path.join(import.meta.dirname, "vitest.setup.ts")],
     fakeTimers: {
       toFake: undefined
     },
@@ -103,7 +103,7 @@ export default defineConfig({
       ...project("@effect/atom-react", "packages/atom/react", true, {
         test: {
           environment: "jsdom",
-          setupFiles: [path.join(__dirname, "packages/atom/react/vitest.setup.ts")]
+          setupFiles: [path.join(import.meta.dirname, "packages/atom/react/vitest.setup.ts")]
         }
       }),
       ...project("@effect/atom-solid", "packages/atom/solid", true, {
@@ -112,7 +112,7 @@ export default defineConfig({
         },
         test: {
           environment: "jsdom",
-          setupFiles: [path.join(__dirname, "packages/atom/solid/vitest.setup.ts")]
+          setupFiles: [path.join(import.meta.dirname, "packages/atom/solid/vitest.setup.ts")]
         }
       }),
       ...project("@effect/atom-vue", "packages/atom/vue", true, {
@@ -128,7 +128,7 @@ export default defineConfig({
             "--localstorage-file",
             path.resolve(os.tmpdir(), `vitest-${process.pid}.localstorage`)
           ],
-          setupFiles: [path.join(__dirname, "packages/platform/browser/vitest.setup.ts")]
+          setupFiles: [path.join(import.meta.dirname, "packages/platform/browser/vitest.setup.ts")]
         }
       }),
       ...project("@effect/platform-bun", "packages/platform/bun", isBun),
@@ -140,7 +140,9 @@ export default defineConfig({
         isNode && clusterTestsEnabled,
         {
           test: {
-            globalSetup: [path.join(__dirname, "packages/platform/node/test/cluster-integration/globalSetup.ts")],
+            globalSetup: [
+              path.join(import.meta.dirname, "packages/platform/node/test/cluster-integration/globalSetup.ts")
+            ],
             include: ["test/cluster-integration/**/*.test.ts"],
             retry: 0,
             sequence: {
