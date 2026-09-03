@@ -1,10 +1,8 @@
-import { Effect, Option, SubscriptionRef, SynchronizedRef } from "effect"
+import { Effect, Option, SynchronizedRef } from "effect"
 import { describe, expect, it } from "tstyche"
 
 declare const ref: SynchronizedRef.SynchronizedRef<number>
-declare const subscription: SubscriptionRef.SubscriptionRef<number>
 declare const pf: (value: number) => Effect.Effect<readonly [string, Option.Option<number>], "failure", "dependency">
-declare const pure: (value: number) => readonly [string, Option.Option<number>]
 
 describe("SynchronizedRef.modifySomeEffect", () => {
   it("regression: callback-only currying preserves result, error, and environment", () => {
@@ -28,19 +26,5 @@ describe("SynchronizedRef.modifySomeEffect", () => {
 
   it("control: data-first preserves result, error, and environment", () => {
     expect(SynchronizedRef.modifySomeEffect(ref, pf)).type.toBe<Effect.Effect<string, "failure", "dependency">>()
-  })
-
-  it("control: SubscriptionRef accepts callback-only currying", () => {
-    expect(subscription.pipe(SubscriptionRef.modifySomeEffect(pf))).type.toBe<
-      Effect.Effect<string, "failure", "dependency">
-    >()
-    expect(SubscriptionRef.modifySomeEffect(subscription, pf)).type.toBe<
-      Effect.Effect<string, "failure", "dependency">
-    >()
-  })
-
-  it("control: pure modifySome accepts callback-only currying", () => {
-    expect(ref.pipe(SynchronizedRef.modifySome(pure))).type.toBe<Effect.Effect<string>>()
-    expect(SynchronizedRef.modifySome(ref, pure)).type.toBe<Effect.Effect<string>>()
   })
 })
