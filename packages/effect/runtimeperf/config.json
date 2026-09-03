@@ -1296,6 +1296,37 @@
       ]
     },
     {
+      "name": "otlp-tracer",
+      "fixtures": [
+        {
+          "file": "suites/otlp-tracer/fixtures/tracer.ts",
+          "defaults": {
+            "tier": 1,
+            "implementation": "effect",
+            "family": "observability",
+            "astTags": [],
+            "path": "hot"
+          },
+          "cases": [
+            {
+              "name": "unsampled-span",
+              "export": "unsampledSpan",
+              "scenario": "otlp-tracer-unsampled-span",
+              "operation": "create-and-end",
+              "size": 1
+            },
+            {
+              "name": "sampled-span-batch-100",
+              "export": "sampledSpanBatch",
+              "scenario": "otlp-tracer-sampled-span-batch-100",
+              "operation": "create-end-serialize-and-export",
+              "size": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "schema-benchmarks",
       "fixtures": [
         {

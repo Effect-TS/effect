@@ -5,6 +5,7 @@ processes. It supports:
 
 - focused Effect Schema diagnostics;
 - native Arbitrary comparisons against equivalent fast-check v4 arbitraries;
+- OTLP tracer span creation and batched JSON export;
 - the upstream Effect, Valibot and Zod benchmark matrix;
 - paired comparisons between Git revisions or the current working tree.
 
@@ -38,6 +39,7 @@ Select a suite, fixture, shared scenario, tier, family or implementation:
 ```sh
 pnpm runtimeperf schema
 pnpm runtimeperf arbitrary
+pnpm runtimeperf otlp-tracer
 pnpm runtimeperf object-32-valid
 pnpm runtimeperf schema/object-32-valid-effect
 pnpm runtimeperf --family arrays
@@ -85,6 +87,10 @@ template literals, unions, records, transformations, optional properties,
 adapters, recursion and cold paths. The `schema-benchmarks` suite contains the
 complete timing matrices exposed by the upstream Effect, Valibot and Zod
 adapters.
+
+The `otlp-tracer` suite measures the public tracer seam without network I/O. It
+covers the create-and-end cost of an unsampled span and a sampled batch of 100
+spans through JSON serialization and a successful local HTTP client boundary.
 
 The `arbitrary` suite compares the native public API with direct fast-check v4 arbitraries in separate processes. It
 measures derivation through the first recursive sample, steady-state recursive
