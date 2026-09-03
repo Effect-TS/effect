@@ -874,6 +874,37 @@ describe("Arbitrary", () => {
         assert.isTrue(prototypes.has(null))
       }))
 
+    it.effect("validates fixed fields against index signatures during generation and shrinking", () =>
+      Effect.gen(function*() {
+        const schema = Schema.StructWithRest(
+          Schema.Struct({ fixed: Schema.String }),
+          [Schema.Record(Schema.String, Schema.NonEmptyString)]
+        )
+        const exhausted = yield* Effect.result(Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+          count: 1,
+          maxDiscards: 0,
+          seed: "indexed-object-validity",
+          size: 0
+        }))
+        assert.isTrue(Result.isFailure(exhausted))
+
+        const seen: Array<typeof schema.Type> = []
+        const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema), (value) => {
+          seen.push(value)
+          return false
+        }, {
+          runs: 1,
+          maxDiscards: 128,
+          maxShrinks: 64,
+          seed: "indexed-object-validity",
+          size: 4
+        })
+
+        assert.strictEqual(result._tag, "Falsified")
+        assert.isAbove(seen.length, 1)
+        assert.isTrue(seen.every(Schema.is(schema)))
+      }))
+
     it.effect("preserves special Record keys with null-prototype objects", () =>
       Effect.gen(function*() {
         const schema = Schema.Record(Schema.Literal("__proto__"), Schema.Literal("value"))
