@@ -899,7 +899,7 @@ const prepareMessages = Effect.fnUntraced(
             messages.push({
               role: "tool",
               tool_call_id: part.id,
-              content: Predicate.isString(part.result) ? part.result : JSON.stringify(part.result)
+              content: typeof part.result === "string" ? part.result : JSON.stringify(part.result)
             })
           }
 
