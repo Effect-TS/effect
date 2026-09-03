@@ -4,7 +4,7 @@ import { RunnerAddress, ShardId, ShardingConfig, SqlRunnerStorage } from "effect
 import { PgContainer } from "../fixtures/pg-utils.ts"
 
 describe("SqlRunnerStorage.acquire", () => {
-  it.layer(PgContainer.layerClient, { excludeTestServices: true })((it) => {
+  it.layer(PgContainer.layerClient, { timeout: "30 seconds", excludeTestServices: true })((it) => {
     it.effect("returns only the requested shards", () =>
       Effect.gen(function*() {
         const storage = yield* SqlRunnerStorage.make({ prefix: "acquire_requested_shards" })
