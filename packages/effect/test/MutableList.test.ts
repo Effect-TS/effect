@@ -12,6 +12,14 @@ describe("MutableList", () => {
     strictEqual(list.length, 2)
   })
 
+  it("preserves bulk-prepended values when appending to the list", () => {
+    const list = MutableList.make<number>()
+    MutableList.prependAll(list, [1, 2])
+    MutableList.append(list, 3)
+
+    deepStrictEqual(MutableList.toArray(list), [1, 2, 3], "bulk-prepended values should be preserved")
+  })
+
   it("returns an empty snapshot for a negative bound", () => {
     const list = MutableList.make<number>()
     MutableList.append(list, 1)
