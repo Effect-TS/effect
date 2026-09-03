@@ -365,6 +365,20 @@ describe("Layer", () => {
     }))
 
   describe("mock", () => {
+    it.effect("uses inherited methods from supplied implementations", () =>
+      Effect.gen(function*() {
+        class Service extends Context.Service<Service, {
+          read(): Effect.Effect<number>
+        }>()("Service") {}
+        class Implementation {
+          read() {
+            return Effect.succeed(42)
+          }
+        }
+        const service = yield* Service.pipe(Effect.provide(Layer.mock(Service, new Implementation())))
+        assert.strictEqual(yield* service.read(), 42)
+      }))
+
     it.effect("allows passing partial service", () =>
       Effect.gen(function*() {
         class Service1 extends Context.Service<Service1, {
