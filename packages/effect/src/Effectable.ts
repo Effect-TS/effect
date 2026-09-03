@@ -43,10 +43,10 @@ export const Prototype = <A extends Effect.Effect<any, any, any>>(options: {
     [evaluate]: options.evaluate
   }) as any
 
-const proto = Prototype({
+const proto = Prototype<Class<any, any, any>>({
   label: "Effectable",
   evaluate(_) {
-    return (this as any).override
+    return this.override
   }
 })
 
