@@ -11,7 +11,7 @@ import {
   SchemaTransformation,
   Stream
 } from "effect"
-import { Etag, HttpPlatform } from "effect/unstable/http"
+import { Etag, HttpEffect, HttpPlatform, HttpServerResponse } from "effect/unstable/http"
 import {
   HttpApi,
   HttpApiBuilder,
@@ -32,6 +32,31 @@ const TestServices = Layer.mergeAll(
   Etag.layerWeak,
   HttpPlatform.layer
 ).pipe(Layer.provideMerge(FileSystem.layerNoop({})))
+
+it.layer(TestServices)("HttpApiTest pre-response handlers", (it) => {
+  it.effect("runs registered pre-response handlers", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("get", "/fixture", { success: Schema.String.pipe(HttpApiSchema.asText()) })
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
+        handlers.handle("get", () =>
+          Effect.as(
+            HttpEffect.appendPreResponseHandler((_request, response) =>
+              Effect.succeed(HttpServerResponse.setHeader(response, "x-fixture", "present"))
+            ),
+            "ok"
+          )))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+      const response = yield* client.test.get({ responseMode: "response-only" })
+
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(response.headers["x-fixture"], "present")
+      assert.strictEqual(yield* response.text, "ok")
+    }))
+})
 
 it.layer(TestServices)("HttpApiBuilder query parameters", (it) => {
   it.effect("round trips array query parameters with one or more values", () =>
