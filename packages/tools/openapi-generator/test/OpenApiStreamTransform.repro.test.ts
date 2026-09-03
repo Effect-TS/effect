@@ -63,7 +63,7 @@ describe("OpenAPI streamed transformClient reproduction", () => {
           )
         }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.test")))
         const client = ReproClient.make(recordingClient, {
-          transformClient: (httpClient) => {
+          transformClient: (httpClient: HttpClient.HttpClient) => {
             transformCount += 1
             return Effect.succeed(
               httpClient.pipe(HttpClient.mapRequest(HttpClientRequest.setHeader("x-transformed", "yes")))
