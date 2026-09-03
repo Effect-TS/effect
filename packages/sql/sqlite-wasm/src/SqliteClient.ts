@@ -231,7 +231,12 @@ export const makeMemory = (
               }
             }
           }
-          return Stream.suspend(() => Stream.fromIteratorSucceed(stream()[Symbol.iterator]())).pipe(
+          return Stream.suspend(() => {
+            const iterator = stream()
+            return Stream.fromIteratorSucceed(iterator).pipe(
+              Stream.ensuring(Effect.sync(() => iterator.return(undefined)))
+            )
+          }).pipe(
             transformRows
               ? Stream.mapArray((chunk) => transformRows(chunk) as any)
               : identity,
