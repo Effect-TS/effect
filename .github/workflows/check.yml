@@ -120,7 +120,7 @@ jobs:
           if-no-files-found: error
 
   test:
-    name: Test
+    name: Test (${{ matrix.runtime }})
     runs-on: namespace-profile-linux-default
     env:
       EFFECT_INTEGRATION_TESTS: "1"
@@ -132,7 +132,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runtime: [Node, Deno, Bun]
+        include:
+          - runtime: Node
+            deno: ""
+            bun: ""
+            command: pnpm test --max-concurrency=10
+          - runtime: Deno
+            deno: v2.9.4
+            bun: ""
+            command: deno task test --max-concurrency=10
+          - runtime: Bun
+            deno: ""
+            bun: 1.4.0
+            command: bun run --bun vitest run --max-concurrency=10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
@@ -147,29 +159,12 @@ jobs:
           wait
 
       - name: Install dependencies
-        if: matrix.runtime == 'Node'
-        uses: ./.github/actions/setup
-      - name: Test
-        if: matrix.runtime == 'Node'
-        run: pnpm test --max-concurrency=10
-
-      - name: Install dependencies
-        if: matrix.runtime == 'Deno'
         uses: ./.github/actions/setup
         with:
-          deno-version: v2.9.4
+          deno-version: ${{ matrix.deno }}
+          bun-version: ${{ matrix.bun }}
       - name: Test
-        if: matrix.runtime == 'Deno'
-        run: deno task test --max-concurrency=10
-
-      - name: Install dependencies
-        if: matrix.runtime == 'Bun'
-        uses: ./.github/actions/setup
-        with:
-          bun-version: 1.4.0
-      - name: Test
-        if: matrix.runtime == 'Bun'
-        run: bun run --bun vitest run --max-concurrency=10
+        run: ${{ matrix.command }}
 
   doctest:
     name: Test (Documentation)
