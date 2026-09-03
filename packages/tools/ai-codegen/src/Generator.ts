@@ -155,7 +155,7 @@ export const layer: Layer.Layer<
     // Parse all patches, resolving file paths relative to the provider package
     const parsedPatches = yield* Effect.forEach(patchInputs, (input) => {
       // If it looks like a file path and is not absolute, resolve relative to package
-      const resolvedInput = !input.startsWith("[") && !pathService.isAbsolute(input)
+      const resolvedInput = !input.trimStart().startsWith("[") && !pathService.isAbsolute(input)
         ? pathService.join(provider.packagePath, input)
         : input
       return OpenApiPatch.parsePatchInput(resolvedInput).pipe(
