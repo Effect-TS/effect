@@ -103,7 +103,8 @@ ${metadata.content}
           }
 
           const relativePath = pathService.relative(outputDirectory, filePath)
-          const link = `[${metadata.title}](./${relativePath})`
+          const href = relativePath.startsWith(".") ? relativePath : `./${relativePath}`
+          const link = `[${metadata.title}](${href})`
           let content = ""
 
           if (hasInlineFiles && metadata.fileNameWithoutExt.startsWith("10")) {
