@@ -25,10 +25,8 @@ import * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import type * as Path from "effect/Path"
 import type * as Record from "effect/Record"
-import { TracerEnabled } from "effect/References"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import * as Tracer from "effect/Tracer"
 import * as Cookies from "effect/unstable/http/Cookies"
 import * as Etag from "effect/unstable/http/Etag"
 import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
@@ -202,34 +200,12 @@ export const makeHandler = <
   Exclude<Effect.Services<App>, HttpServerRequest | Scope.Scope>
 > => {
   const handled = HttpEffect.toHandled(httpEffect, handleResponse, options.middleware as any)
-  const fastPathFind: HttpEffect.FastPathFind | undefined = options.middleware === undefined
-    ? (httpEffect as any)[HttpEffect.symbolFastPathFind]
-    : undefined
   return Effect.withFiber((parent) => {
     const services = parent.context
-    // constant route responses can only skip the pipeline when no tracing
-    // backend could observe the request
-    const fastPath = fastPathFind !== undefined &&
-        (!Context.get(services, TracerEnabled) || Context.get(services, Tracer.Tracer) === Tracer.nativeTracer)
-      ? fastPathFind
-      : undefined
     return Effect.succeed(function handler(
       nodeRequest: Http.IncomingMessage,
       nodeResponse: Http.ServerResponse
     ) {
-      if (fastPath !== undefined) {
-        const response = fastPath(nodeRequest.method!, nodeRequest.url!)
-        if (response !== undefined) {
-          const body = response.body
-          nodeResponse.writeHead(response.status, response.headers)
-          if (body._tag === "Uint8Array") {
-            nodeResponse.end(body.text ?? body.body)
-          } else {
-            nodeResponse.end()
-          }
-          return
-        }
-      }
       const context = Context.add(services, HttpServerRequest, new ServerRequestImpl(nodeRequest, nodeResponse))
       const fiber = Fiber.runIn(Effect.runForkWith(context as Context.Context<any>)(handled), options.scope)
       if (fiber.pollUnsafe() === undefined) {

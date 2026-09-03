@@ -11,11 +11,8 @@ Improve HTTP server and `HttpRouter` request throughput.
   radix tree walk, route parameter objects are compiled into fast-mode object
   literals, and the per-request backtracking stack and empty query string
   results are no longer allocated.
-- `HttpRouter`: routes registered with a constant `HttpServerResponse` are
-  exposed to platform adapters through a synchronous lookup, letting the Node
-  server write them without running the effect pipeline when no middleware is
-  installed and no tracing backend is configured. Route dispatch also avoids
-  the per-request context restore and interruptibility wrapper primitives.
+- `HttpRouter`: route dispatch avoids the per-request context restore and
+  interruptibility wrapper primitives.
 - `HttpEffect.toHandled`: the request scope and uninterruptibility wrappers
   are fused into a single primitive, and the server tracing middleware is
   skipped entirely when no tracing backend can observe the request.

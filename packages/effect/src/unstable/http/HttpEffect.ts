@@ -135,29 +135,6 @@ export const toHandled = <E, R, EH, RH>(
 const handledSymbol = Symbol.for("effect/http/HttpEffect/handled")
 
 /**
- * Symbol under which an HTTP effect can expose a synchronous lookup for
- * constant route responses.
- *
- * **Details**
- *
- * Platform adapters can use the lookup to write responses for constant routes
- * without running the effect pipeline, when no middleware is installed and no
- * tracing backend can observe the request.
- *
- * @category fast path
- * @since 4.0.0
- */
-export const symbolFastPathFind = "~effect/http/HttpEffect/fastPathFind" as const
-
-/**
- * Synchronous lookup for constant route responses.
- *
- * @category fast path
- * @since 4.0.0
- */
-export type FastPathFind = (method: string, url: string) => HttpServerResponse | undefined
-
-/**
  * Disables automatic closing for an HTTP request scope.
  *
  * **Gotchas**

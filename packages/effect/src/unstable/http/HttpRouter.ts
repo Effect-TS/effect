@@ -12,7 +12,6 @@
 import * as Arr from "../../Array.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
-import * as Exit from "../../Exit.ts"
 import { compose, dual, identity } from "../../Function.ts"
 import { fiberEnterInterruptibleUnsafe } from "../../internal/effect.ts"
 import * as Layer from "../../Layer.ts"
@@ -23,7 +22,6 @@ import type { ParseOptions } from "../../SchemaAST.ts"
 import * as Scope from "../../Scope.ts"
 import * as Tracer from "../../Tracer.ts"
 import type * as Types from "../../Types.ts"
-import * as Cookies from "./Cookies.ts"
 import * as FindMyWay from "./FindMyWay.ts"
 import * as HttpEffect from "./HttpEffect.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
@@ -120,74 +118,8 @@ export const HttpRouter: Context.Service<HttpRouter, HttpRouter> = Context.Servi
  * @since 4.0.0
  */
 export const make = Effect.gen(function*() {
-  const routerConfig = yield* RouterConfig
-  const router = FindMyWay.make<Route<any, never>>(routerConfig)
+  const router = FindMyWay.make<Route<any, never>>(yield* RouterConfig)
   const middleware = new Set<middleware.Fn>()
-
-  // Static routes with a constant, immediately written response, exposed to
-  // platform adapters so they can skip the effect pipeline entirely
-  const caseSensitive = routerConfig.caseSensitive ?? false
-  const constantRoutes = new Map<string, Map<string, HttpServerResponse.HttpServerResponse>>()
-  const registerConstantRoute = (route: Route<any, any>) => {
-    if (
-      route.method === "*" ||
-      route.path.length > 1 && route.path.endsWith("/") ||
-      /[:*%(;#?]|\/\//.test(route.path) ||
-      !Exit.isExit(route.handler) ||
-      route.handler._tag !== "Success" ||
-      !HttpServerResponse.isHttpServerResponse(route.handler.value)
-    ) {
-      return
-    }
-    const response = route.handler.value
-    const body = response.body
-    if (
-      (body._tag !== "Empty" && body._tag !== "Uint8Array") ||
-      !Cookies.isEmpty(response.cookies)
-    ) {
-      return
-    }
-    const path = caseSensitive ? route.path : route.path.toLowerCase()
-    let store = constantRoutes.get(route.method)
-    if (store === undefined) {
-      store = new Map()
-      constantRoutes.set(route.method, store)
-    }
-    if (!store.has(path)) {
-      store.set(path, response)
-    }
-  }
-  const fastPathFind: HttpEffect.FastPathFind = (method, url) => {
-    const store = constantRoutes.get(method)
-    if (store === undefined) return undefined
-    // stored keys never contain query, hash, encoding, or duplicate slash
-    // characters, so an exact hit needs no sanitization
-    const exact = store.get(url)
-    if (exact !== undefined) return exact
-    let end = url.length
-    for (let i = 0; i < end; i++) {
-      const code = url.charCodeAt(i)
-      // "?", ";", "#" terminate the path
-      if (code === 63 || code === 59 || code === 35) {
-        end = i
-        break
-      }
-      // percent encoding, duplicate slashes, and uppercase characters are
-      // left to the full router, which sanitizes them
-      if (
-        code === 37 ||
-        (code === 47 && url.charCodeAt(i + 1) === 47) ||
-        (code >= 65 && code <= 90)
-      ) {
-        return undefined
-      }
-    }
-    // the exact lookup above already missed for the whole url
-    if (end === url.length) return undefined
-    // trailing slashes are also left to the full router
-    if (end > 1 && url.charCodeAt(end - 1) === 47) return undefined
-    return store.get(url.slice(0, end))
-  }
 
   const addAll = <const Routes extends ReadonlyArray<Route<any, any>>>(
     routes: Routes
@@ -224,7 +156,6 @@ export const make = Effect.gen(function*() {
           } else {
             router.on(route.method, route.path, route as any)
           }
-          registerConstantRoute(route)
         }
       }
       return Effect.void
@@ -306,10 +237,7 @@ export const make = Effect.gen(function*() {
           unknown
         >
       })
-      if (middleware.size === 0) {
-        ;(handler as any)[HttpEffect.symbolFastPathFind] = fastPathFind
-        return handler
-      }
+      if (middleware.size === 0) return handler
       for (const fn of Arr.reverse(middleware)) {
         handler = fn(handler as any)
       }
