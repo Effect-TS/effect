@@ -1494,7 +1494,7 @@ const makeStreamResponse = Effect.fnUntraced(
             (detail) => detail.type === "reasoning.encrypted" && detail.data.length > 0
           )
           if (totalToolCalls > 0 && hasEncryptedReasoning && finishReason === "stop") {
-            finishReason = resolveFinishReason("tool-calls")
+            finishReason = "tool-calls"
           }
 
           // Forward any unsent tool calls if finish reason is 'tool-calls'
