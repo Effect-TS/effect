@@ -120,6 +120,18 @@ const nested3Levels = (() => {
   )
 })()
 
+const withCommandAliases = Command.make("tool").pipe(Command.withSubcommands([
+  Command.make("admin").pipe(
+    Command.withAlias("a"),
+    Command.withSubcommands([
+      Command.make("list", {
+        format: Flag.choice("format", ["json", "text"]).pipe(Flag.withAlias("f"))
+      }).pipe(Command.withAlias("ls"), Command.withDescription("List targets")),
+      Command.make("secret").pipe(Command.withAlias("s"), Command.unlisted)
+    ])
+  )
+]))
+
 const emptyCmd = Command.make("noop").pipe(
   Command.withDescription("Does nothing")
 )
@@ -138,6 +150,21 @@ const linesWith = (script: string, needle: string): string =>
 // ---------------------------------------------------------------------------
 
 describe("Bash completions", () => {
+  it("keeps flags and choices in canonical and aliased nested command contexts", () => {
+    const script = Bash.generate("tool", fromCommand(withCommandAliases))
+    for (const parent of ["admin", "a"]) {
+      assert.include(script, `      ${parent})\n        _tool_${parent} "$i"`)
+      for (const child of ["list", "ls"]) {
+        assert.include(script, `      ${child})\n        _tool_${parent}_${child} "$i"`)
+        const body = script.split(`_tool_${parent}_${child}()`)[1]?.split("\n}")[0] ?? ""
+        assert.include(body, "--format|-f)")
+        assert.include(body, `_tool--choices "$cur" "$_comp_word" 'json' 'text'`)
+      }
+    }
+    assert.notInclude(script, "secret")
+    assert.notInclude(script, "      s)")
+  })
+
   it("completes the active positional argument instead of always using the first", () => {
     const descriptor: Completions.CommandDescriptor = {
       name: "tool",
@@ -388,6 +415,21 @@ describe("Bash completions", () => {
 // ---------------------------------------------------------------------------
 
 describe("Zsh completions", () => {
+  it("keeps flags and choices in canonical and aliased nested command contexts", () => {
+    const script = Zsh.generate("tool", fromCommand(withCommandAliases))
+    for (const parent of ["admin", "a"]) {
+      for (const child of ["list", "ls"]) {
+        assert.include(script, `      ${child})`)
+        assert.include(script, `'${child}:List targets'`)
+        const body = script.split(`_tool_${parent}_${child}()`)[1]?.split("\n}")[0] ?? ""
+        assert.include(body, "(--format -f)--format:value:(json text)")
+        assert.include(body, "(--format -f)-f:value:(json text)")
+      }
+    }
+    assert.notInclude(script, "secret")
+    assert.notInclude(script, "      s)")
+  })
+
   it("generates _arguments specs for flags", () => {
     const desc = fromCommand(simpleCmd)
     const script = Zsh.generate("greet", desc)
@@ -549,6 +591,24 @@ describe("Zsh completions", () => {
 // ---------------------------------------------------------------------------
 
 describe("Fish completions", () => {
+  it("keeps flags and choices in canonical and aliased nested command contexts", () => {
+    const script = Fish.generate("tool", fromCommand(withCommandAliases))
+    for (const parent of ["admin", "a"]) {
+      assert.include(script, `-a '${parent}'`)
+      for (const child of ["list", "ls"]) {
+        assert.include(script, `-a '${child}' -d 'List targets'`)
+        const line = script.split("\n").find((line) =>
+          line.includes(`__fish_seen_subcommand_from ${parent}; and __fish_seen_subcommand_from ${child};`) &&
+          line.includes("-l format")
+        ) ?? ""
+        assert.include(line, "-s f")
+        assert.include(line, "-r -f -a 'json text'")
+      }
+    }
+    assert.notInclude(script, "secret")
+    assert.notInclude(script, "-a 's'")
+  })
+
   it("scopes nested completions by the full command path", () => {
     const leaf = (name: string, flag: string): Completions.CommandDescriptor => ({
       name,
