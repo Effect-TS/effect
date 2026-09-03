@@ -427,7 +427,7 @@ export const make = Effect.fnUntraced(function*(options: {
         )
         for (let i = 0; i < takenLocks.length; i++) {
           const lockNum = takenLocks[i][0] as number
-          const shardId = lockNumbersReverse.get(lockNum)
+          const shardId = toAcquire.get(lockNum)
           if (shardId === undefined) continue
           acquiredShardIds.push(shardId)
           toAcquire.delete(lockNum)
@@ -530,7 +530,6 @@ export const make = Effect.fnUntraced(function*(options: {
   })
 
   const lockNumbers = new Map<string, number>()
-  const lockNumbersReverse = new Map<number, string>()
   for (let i = 0; i < availableShardGroups.length; i++) {
     const group = availableShardGroups[i]
     const base = (i + 1) * 1000000
@@ -538,7 +537,6 @@ export const make = Effect.fnUntraced(function*(options: {
       const shardId = ShardId.make(group, shard).toString()
       const lockNum = base + shard
       lockNumbers.set(shardId, lockNum)
-      lockNumbersReverse.set(lockNum, shardId)
     }
   }
 
