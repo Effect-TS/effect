@@ -226,13 +226,16 @@ export const make = (options?: {
           }, { disableChecks: true })
           return yield* Effect.uninterruptibleMask((restore) =>
             restore(effect(entry)).pipe(
-              Effect.tap(insertEntry(toEntryRow(entry))),
+              Effect.tap(
+                insertEntry(toEntryRow(entry)).pipe(
+                  Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "write" }))
+                )
+              ),
               Effect.tap(PubSub.publish(pubsub, entry))
             )
           )
         },
-        withTracerDisabled,
-        Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "write" }))
+        withTracerDisabled
       ),
       writeFromRemote: (options) =>
         writeFromRemote(options).pipe(
@@ -251,13 +254,13 @@ export const make = (options?: {
             ORDER BY timestamp ASC
           `.pipe(
             Effect.flatMap(decodeEntryRows),
-            Effect.map(toEntries)
+            Effect.map(toEntries),
+            Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "withRemoteUncommited" }))
           )
           if (!Arr.isReadonlyArrayNonEmpty(entries)) return yield* Effect.succeedNone
           return yield* Effect.asSome(f(entries))
         },
-        withTracerDisabled,
-        Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "withRemoteUncommited" }))
+        withTracerDisabled
       ),
       nextRemoteSequence: (remoteId) =>
         sql<{ max: number | null }>`SELECT MAX(sequence) AS max FROM ${remotesTableSql} WHERE remote_id = ${remoteId}`

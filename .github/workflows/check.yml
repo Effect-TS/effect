@@ -15,7 +15,7 @@ permissions: {}
 jobs:
   static-checks:
     name: Static
-    runs-on: namespace-profile-linux-default
+    runs-on: namespace-profile-linux-small
     permissions:
       contents: read
     timeout-minutes: 10
@@ -39,7 +39,7 @@ jobs:
 
   types:
     name: Types
-    runs-on: namespace-profile-linux-default
+    runs-on: namespace-profile-linux-small
     permissions:
       contents: read
     timeout-minutes: 10
@@ -53,7 +53,7 @@ jobs:
   build:
     name: Build
     if: github.event_name == 'pull_request'
-    runs-on: namespace-profile-linux-default
+    runs-on: namespace-profile-linux-small
     permissions:
       contents: read
     timeout-minutes: 10
@@ -68,7 +68,7 @@ jobs:
 
   types-deno:
     name: Types (Deno)
-    runs-on: namespace-profile-linux-default
+    runs-on: namespace-profile-linux-small
     permissions:
       contents: read
     timeout-minutes: 10
@@ -86,7 +86,7 @@ jobs:
   bundle:
     name: Bundle
     if: github.event_name == 'pull_request'
-    runs-on: namespace-profile-linux-default
+    runs-on: namespace-profile-linux-small
     permissions:
       contents: read
     timeout-minutes: 10
@@ -173,7 +173,7 @@ jobs:
 
   doctest:
     name: Test (Documentation)
-    runs-on: namespace-profile-linux-default
+    runs-on: namespace-profile-linux-small
     permissions:
       contents: read
     timeout-minutes: 10
