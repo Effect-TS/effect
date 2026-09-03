@@ -95,22 +95,26 @@ export const pullIntoWritable = <A, IE, E>(options: {
       })
     }),
     Effect.forever({ disableYield: true }),
-    Effect.raceFirst(Effect.callback<never, E>((resume) => {
-      const onError = (error: unknown) => resume(Effect.fail(options.onError(error)))
-      options.writable.once("error", onError)
-      return Effect.sync(() => {
-        options.writable.off("error", onError)
-      })
-    })),
     options.endOnDone !== false ?
       Pull.catchDone((_) => {
         if ("closed" in options.writable && options.writable.closed) {
           return Cause.done(_)
         }
         return Effect.callback<never, E | Cause.Done<unknown>>((resume) => {
-          options.writable.once("finish", () => resume(Cause.done(_)))
+          const onFinish = () => resume(Cause.done(_))
+          options.writable.once("finish", onFinish)
           options.writable.end()
+          return Effect.sync(() => {
+            options.writable.off("finish", onFinish)
+          })
         })
       }) :
-      identity
+      identity,
+    Effect.raceFirst(Effect.callback<never, E>((resume) => {
+      const onError = (error: unknown) => resume(Effect.fail(options.onError(error)))
+      options.writable.once("error", onError)
+      return Effect.sync(() => {
+        options.writable.off("error", onError)
+      })
+    }))
   )
