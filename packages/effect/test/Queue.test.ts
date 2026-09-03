@@ -446,6 +446,34 @@ describe("Queue", () => {
       assert.deepStrictEqual(yield* Fiber.join(fiber), Exit.fail("boom"))
     }))
 
+  it.effect("flushUnsafe triggers current awaiters without closing the queue", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      const fiber = yield* Queue.await(queue).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+
+      Queue.flushUnsafe(queue)
+
+      assert.strictEqual(yield* Fiber.join(fiber), void 0)
+      assert.isTrue(yield* Queue.offer(queue, 1))
+      assert.strictEqual(yield* Queue.take(queue), 1)
+    }))
+
+  it.effect("flush triggers current awaiters but not future awaiters", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      const current = yield* Queue.await(queue).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+
+      yield* Queue.flush(queue)
+
+      assert.strictEqual(yield* Fiber.join(current), void 0)
+      const future = yield* Queue.await(queue).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      assert.isUndefined(future.pollUnsafe())
+      yield* Queue.shutdown(queue)
+    }))
+
   it.effect("bounded 0 capacity", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(0)
