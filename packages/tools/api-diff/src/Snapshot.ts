@@ -228,24 +228,24 @@ export const serializeType = (node: ts.TypeNode, context: SerializationContext):
   if (ts.isLiteralTypeNode(node)) {
     const literal = node.literal
     const operand = ts.isPrefixUnaryExpression(literal) ? literal.operand : literal
-    if (ts.isStringLiteralLike(operand) || ts.isNumericLiteral(operand) || ts.isBigIntLiteral(operand)) {
-      const sign = ts.isPrefixUnaryExpression(literal) && literal.operator === ts.SyntaxKind.MinusToken ? "-" : ""
-      return {
-        kind: "literal",
-        literalKind: ts.isStringLiteralLike(operand) ? "string" : ts.isNumericLiteral(operand) ? "number" : "bigint",
-        value: `${sign}${operand.text}`
-      }
-    }
-    if (
-      operand.kind !== ts.SyntaxKind.TrueKeyword && operand.kind !== ts.SyntaxKind.FalseKeyword &&
-      operand.kind !== ts.SyntaxKind.NullKeyword
-    ) {
-      throw new Error(`Unsupported public literal syntax: ${ts.SyntaxKind[operand.kind]}`)
-    }
     return {
       kind: "literal",
-      literalKind: operand.kind === ts.SyntaxKind.NullKeyword ? "null" : "boolean",
-      value: operand.kind === ts.SyntaxKind.NullKeyword ? "null" : operand.kind === ts.SyntaxKind.TrueKeyword
+      literalKind: ts.isStringLiteralLike(operand)
+        ? "string"
+        : ts.isNumericLiteral(operand)
+        ? "number"
+        : ts.isBigIntLiteral(operand)
+        ? "bigint"
+        : operand.kind === ts.SyntaxKind.NullKeyword
+        ? "null"
+        : "boolean",
+      value: literal.kind === ts.SyntaxKind.TrueKeyword
+        ? true
+        : literal.kind === ts.SyntaxKind.FalseKeyword
+        ? false
+        : ts.isPrefixUnaryExpression(literal)
+        ? literal.getText()
+        : Reflect.get(literal, "text") ?? literal.getText()
     }
   }
   if (ts.isTypeReferenceNode(node)) {
