@@ -4521,13 +4521,16 @@ export interface ArrayEnsure<S extends Constraint> extends decodeTo<$Array<toTyp
  * @since 3.10.0
  */
 export function ArrayEnsure<S extends Constraint>(schema: S): ArrayEnsure<S> {
-  return Union([schema, ArraySchema(schema)]).pipe(decodeTo(
-    ArraySchema(toType(schema)),
+  const many = ArraySchema(schema)
+  const to = ArraySchema(toType(schema))
+  const one = decodeTo(
+    Tuple([Unknown]),
     SchemaTransformation.transform({
-      decode: Arr.ensure,
-      encode: (array) => array.length === 1 ? array[0] : array
+      decode: (value) => [value] as const,
+      encode: ([value]) => value
     })
-  ))
+  )(schema)
+  return make(Union([one, many]).pipe(decodeTo(to)).ast, { from: Union([schema, many]), to })
 }
 /**
  * Type-level representation returned by {@link UniqueArray}.
