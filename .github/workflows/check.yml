@@ -120,7 +120,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1/2, 2/2]
         runtime: [Node, Deno]
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -140,7 +139,7 @@ jobs:
         uses: ./.github/actions/setup
       - name: Test
         if: matrix.runtime == 'Node'
-        run: pnpm test --shard ${{ matrix.shard }}
+        run: pnpm test --max-concurrency=10
 
       - name: Install dependencies
         if: matrix.runtime == 'Deno'
@@ -149,7 +148,7 @@ jobs:
           deno-version: v2.9.4
       - name: Test
         if: matrix.runtime == 'Deno'
-        run: deno task test --shard ${{ matrix.shard }}
+        run: deno task test --max-concurrency=10
 
   test-bun:
     name: Test on Bun
