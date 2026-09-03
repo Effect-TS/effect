@@ -296,17 +296,18 @@ class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pi
 
   private formDataBody?: Effect.Effect<FormData, Error.HttpClientError>
   get formData(): Effect.Effect<FormData, Error.HttpClientError> {
-    return this.formDataBody ??= Effect.tryPromise({
-      try: () => this.source.body.formData() as Promise<FormData>,
-      catch: (cause) =>
-        new Error.HttpClientError({
-          reason: new Error.DecodeError({
-            request: this.request,
-            response: this,
-            cause
+    return this.formDataBody ??= Effect.flatMap(this.arrayBuffer, (body) =>
+      Effect.tryPromise({
+        try: () => new globalThis.Response(body, { headers: this.headers }).formData(),
+        catch: (cause) =>
+          new Error.HttpClientError({
+            reason: new Error.DecodeError({
+              request: this.request,
+              response: this,
+              cause
+            })
           })
-        })
-    }).pipe(Effect.cached, Effect.runSync)
+      })).pipe(Effect.cached, Effect.runSync)
   }
 
   private arrayBufferBody?: Effect.Effect<ArrayBuffer, Error.HttpClientError>
