@@ -130,7 +130,6 @@ const observe = (label: string, colliding: boolean, closeBeforeCancel: boolean) 
         interrupts: interrupts.length,
         journal: driver.journal.slice()
       }
-      console.log(JSON.stringify(result))
       yield* Deferred.succeed(releaseAFinalizer, undefined)
       yield* Deferred.succeed(releaseReceiver, undefined)
       yield* Fiber.join(closingA)
