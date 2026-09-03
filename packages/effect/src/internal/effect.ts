@@ -743,7 +743,9 @@ const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cac
   const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
   return {
     scheduler: Context.get(context, Scheduler.Scheduler),
+    tracer: currentTracer,
     tracerContext: currentTracer ? currentTracer["context"] : undefined,
+    tracerEnabled: Context.get(context, TracerEnabled),
     span: Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey),
     logLevel: Context.get(context, CurrentLogLevel),
     minimumLogLevel: Context.get(context, MinimumLogLevel),

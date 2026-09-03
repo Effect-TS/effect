@@ -169,7 +169,9 @@ export declare namespace Fiber {
    */
   export interface Cache {
     readonly scheduler: Scheduler
+    readonly tracer: Tracer | undefined
     readonly tracerContext: Tracer["context"] | undefined
+    readonly tracerEnabled: boolean
     readonly span: AnySpan | undefined
     readonly logLevel: LogLevel
     readonly minimumLogLevel: LogLevel

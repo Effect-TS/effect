@@ -177,8 +177,14 @@ export const logger: <E, R>(
  * @internal
  */
 export const isTracerDisabledFastUnsafe = (fiber: {
-  getRef: <A>(ref: Context.Reference<A>) => A
-}): boolean => fiber.getRef(Tracer) === nativeTracer || !fiber.getRef(TracerEnabled)
+  readonly cache: {
+    readonly tracer: Tracer | undefined
+    readonly tracerEnabled: boolean
+  }
+}): boolean => {
+  const cache = fiber.cache
+  return cache.tracer === undefined || cache.tracer === nativeTracer || !cache.tracerEnabled
+}
 
 /**
  * Middleware that creates a server trace span for each request and records request and response HTTP attributes.
