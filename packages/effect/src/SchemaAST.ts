@@ -2708,7 +2708,6 @@ export const Objects: new(
     }
 
     let properties: Array<ParsedProperty> | undefined
-    let hasAdaptivePropertyLookup = false
     let indexes:
       | Array<{
         readonly is: IndexSignature
@@ -2781,16 +2780,12 @@ export const Objects: new(
 
     const compileMembers = (): Array<ParsedProperty> => {
       if (!properties) {
-        properties = ast.propertySignatures.map((ps) => {
-          const lookup = getPropertyLookup(ps)
-          if (lookup === propertyLookupAdaptive) hasAdaptivePropertyLookup = true
-          return {
-            parser: compileConstructorDefault(ps.type),
-            name: ps.name,
-            type: ps.type,
-            lookup
-          }
-        })
+        properties = ast.propertySignatures.map((ps) => ({
+          parser: compileConstructorDefault(ps.type),
+          name: ps.name,
+          type: ps.type,
+          valueFirst: ps.name !== "__proto__" && !isOptional(ps.type)
+        }))
         indexes = indexCount
           ? ast.indexSignatures.map((is) => ({
             is,
@@ -2820,8 +2815,7 @@ export const Objects: new(
         input: record,
         out,
         issues: undefined as Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
-        options,
-        useOwnPropertyLookup: hasAdaptivePropertyLookup && isPlainPrototype(record)
+        options
       }
       const errorsAllOption = options.errors === "all"
       const onExcessPropertyError = options.onExcessProperty === "error"
@@ -2956,31 +2950,25 @@ export const Objects: new(
       const props = compileMembers()
       const record = input as Record<PropertyKey, unknown>
       const out: Record<PropertyKey, unknown> = {}
-      const useOwnPropertyLookup = hasAdaptivePropertyLookup && isPlainPrototype(record)
-      const state: ObjectParserState = { ast, input: record, out, issues: undefined, options, useOwnPropertyLookup }
+      const state: ObjectParserState = { ast, input: record, out, issues: undefined, options }
       try {
         for (let index = 0; index < props.length; index++) {
           const property = props[index]
           const name = property.name
-          let hasKey: boolean
           let value: unknown
-          if (property.lookup === propertyLookupValueFirst) {
+          if (property.valueFirst) {
             value = record[name]
-            hasKey = value !== undefined || name in record
-            if (!hasKey) value = InternalParser.missing
+            if (value === undefined && !(name in record)) value = InternalParser.missing
           } else {
-            hasKey = property.lookup === propertyLookupHasOwn ||
-                property.lookup === propertyLookupAdaptive && useOwnPropertyLookup
-              ? Object.hasOwn(record, name)
-              : name in record
-            value = hasKey ? record[name] : InternalParser.missing
+            value = hasPropertySignature(record, name) ? record[name] : InternalParser.missing
           }
           const exit = property.parser(value, options)
           if (!effectIsExit(exit)) {
             return resume(state, index, exit)
           }
           if (exit === InternalParser.sameExit) {
-            if (hasKey) InternalRecord.assignProperty(out, name, value)
+            // Missing inputs return `missingExit`, so `sameExit` proves the property was present.
+            InternalRecord.assignProperty(out, name, value)
             continue
           }
           const terminal = stepProperty(state, property, exit)
@@ -3045,7 +3033,6 @@ type ObjectParserState = {
   readonly input: Record<PropertyKey, unknown>
   readonly options: ParseOptions
   readonly out: Record<PropertyKey, unknown>
-  readonly useOwnPropertyLookup: boolean
   issues: Array<SchemaIssue.Issue> | undefined
 }
 
@@ -3053,24 +3040,7 @@ type ParsedProperty = {
   readonly parser: SchemaParser.Parser
   readonly name: PropertyKey
   readonly type: AST
-  readonly lookup: PropertyLookup
-}
-
-const propertyLookupValueFirst = 0
-const propertyLookupHasOwn = 1
-const propertyLookupIn = 2
-const propertyLookupAdaptive = 3
-
-type PropertyLookup =
-  | typeof propertyLookupValueFirst
-  | typeof propertyLookupHasOwn
-  | typeof propertyLookupIn
-  | typeof propertyLookupAdaptive
-
-function getPropertyLookup(property: PropertySignature): PropertyLookup {
-  if (property.name === "__proto__") return propertyLookupHasOwn
-  if (!isOptional(property.type)) return propertyLookupValueFirst
-  return property.name in Object.prototype ? propertyLookupIn : propertyLookupAdaptive
+  readonly valueFirst: boolean
 }
 
 function stepProperty(
@@ -3105,17 +3075,13 @@ function stepProperty(
 const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()({
   onItem(s, p) {
     let value: unknown
-    if (p.lookup === propertyLookupValueFirst) {
+    if (p.valueFirst) {
       value = s.input[p.name]
       if (value === undefined && !(p.name in s.input)) {
         return p.parser(InternalParser.missing, s.options)
       }
     } else {
-      const hasKey = p.lookup === propertyLookupHasOwn ||
-          p.lookup === propertyLookupAdaptive && s.useOwnPropertyLookup
-        ? Object.hasOwn(s.input, p.name)
-        : p.name in s.input
-      if (!hasKey) {
+      if (!hasPropertySignature(s.input, p.name)) {
         return p.parser(InternalParser.missing, s.options)
       }
       value = s.input[p.name]
@@ -3350,11 +3316,6 @@ const emptyCandidates: ReadonlyArray<never> = Object.freeze([])
 
 const hasPropertySignature = (input: object, key: PropertyKey): boolean =>
   key === "__proto__" ? Object.hasOwn(input, key) : key in input
-
-const isPlainPrototype = (input: object): boolean => {
-  const prototype = Object.getPrototypeOf(input)
-  return prototype === null || prototype === Object.prototype
-}
 
 function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
   let index = candidateIndexCache.get(types)
