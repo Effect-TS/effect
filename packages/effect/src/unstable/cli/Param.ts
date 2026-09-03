@@ -1272,8 +1272,8 @@ export const mapTryCatch: {
 export const optional = <Kind extends ParamKind, A>(
   param: Param<Kind, A>
 ): Param<Kind, Option.Option<A>> => {
-  const parse: Parse<Option.Option<A>> = Effect.fnUntraced(function*(args) {
-    return yield* param.parse(args).pipe(
+  const parse: Parse<Option.Option<A>> = (args) =>
+    param.parse(args).pipe(
       Effect.map(([leftover, value]) => [leftover, Option.some(value)] as const),
       // Catch both MissingOption (for flags) and MissingArgument (for positional arguments)
       Effect.catchTags({
@@ -1281,7 +1281,6 @@ export const optional = <Kind extends ParamKind, A>(
         MissingArgument: () => Effect.succeed([args.arguments, Option.none()] as const)
       })
     )
-  })
   return Object.assign(Object.create(Proto), {
     _tag: "Optional",
     kind: param.kind,
