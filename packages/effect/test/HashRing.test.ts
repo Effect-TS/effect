@@ -59,4 +59,22 @@ describe("HashRing", () => {
 
     assert.deepStrictEqual(shards, [[], [], [], [], [node], [node, node]])
   })
+
+  it("getShards considers the first ring entry when excluding allocated nodes", () => {
+    const first = {
+      [PrimaryKey.symbol]() {
+        return "node-10"
+      }
+    }
+    const second = {
+      [PrimaryKey.symbol]() {
+        return "node-29"
+      }
+    }
+    const ring = HashRing.make<typeof first>({ baseWeight: 1 })
+    HashRing.add(ring, first)
+    HashRing.add(ring, second)
+
+    assert.strictEqual(HashRing.getShards(ring, 3)?.includes(first), true)
+  })
 })
