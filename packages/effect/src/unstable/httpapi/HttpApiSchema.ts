@@ -997,11 +997,6 @@ export function getResponseEncodingSchema(schema: Schema.Constraint): ResponseEn
 }
 
 /** @internal */
-export function getStatusStream(self: StreamSchema): number {
-  return getStatusSuccess(self.ast)
-}
-
-/** @internal */
 export function getStatusError(self: SchemaAST.AST): number {
   return resolveHttpApiStatus(self) ?? 500
 }
