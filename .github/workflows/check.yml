@@ -13,8 +13,8 @@ concurrency:
 permissions: {}
 
 jobs:
-  lint:
-    name: Lint
+  static-checks:
+    name: Static Checks
     runs-on: namespace-profile-linux-default
     permissions:
       contents: read
@@ -23,7 +23,19 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: pnpm lint
+      - name: Lint
+        run: pnpm lint
+      - name: Check circular dependencies
+        run: pnpm circular
+      - name: Generate AI documentation
+        run: pnpm ai-docgen
+      - name: Verify AI documentation is up-to-date
+        run: |
+          if [ -n "$(git status --short)" ]; then
+            git status --short
+            echo "Run 'pnpm ai-docgen' and commit generated changes."
+            exit 1
+          fi
 
   types:
     name: Types
@@ -177,36 +189,3 @@ jobs:
         uses: ./.github/actions/setup
       - name: Test Documentation
         run: pnpm doctest
-
-  ai-docgen:
-    name: AI Documentation Generation
-    runs-on: namespace-profile-linux-default
-    permissions:
-      contents: read
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - name: Install dependencies
-        uses: ./.github/actions/setup
-      - name: Generate AI Documentation
-        run: pnpm ai-docgen
-      - name: Verify AI Documentation is up-to-date
-        run: |
-          if [ -n "$(git status --short)" ]; then
-            git status --short
-            echo "Run 'pnpm ai-docgen' and commit generated changes."
-            exit 1
-          fi
-
-  circular:
-    name: Circular Dependencies
-    runs-on: namespace-profile-linux-default
-    permissions:
-      contents: read
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - name: Install dependencies
-        uses: ./.github/actions/setup
-      - name: Check for circular dependencies
-        run: pnpm circular
