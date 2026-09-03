@@ -424,13 +424,107 @@ export const encodeHex: (input: Uint8Array | string) => string = (input) =>
  * @since 4.0.0
  */
 export const randomHex = (length: number): string => {
-  let result = ""
-  for (let i = length >>> 3; i > 0; i--) {
-    const word = (Math.random() * 0x100000000) >>> 0
-    result += byteToHex[word >>> 24] + byteToHex[(word >>> 16) & 0xff] + byteToHex[(word >>> 8) & 0xff] +
-      byteToHex[word & 0xff]
+  switch (length) {
+    case 16:
+      return randomHex16()
+    case 32:
+      return randomHex32()
+    default: {
+      let result = ""
+      for (let i = length >>> 3; i > 0; i--) {
+        result += randomHex8()
+      }
+      return result
+    }
   }
-  return result
+}
+
+const hexCharCodes = new Uint8Array(16)
+for (let i = 0; i < 16; i++) {
+  hexCharCodes[i] = "0123456789abcdef".charCodeAt(i)
+}
+
+const randomWord = (): number => (Math.random() * 0x100000000) >>> 0
+
+// Trace and span identifiers are the common lengths. A single
+// String.fromCharCode call produces a flat string, which avoids rope
+// flattening when the identifier is later serialized.
+const randomHex8 = (): string => {
+  const a = randomWord()
+  return String.fromCharCode(
+    hexCharCodes[a >>> 28],
+    hexCharCodes[(a >>> 24) & 15],
+    hexCharCodes[(a >>> 20) & 15],
+    hexCharCodes[(a >>> 16) & 15],
+    hexCharCodes[(a >>> 12) & 15],
+    hexCharCodes[(a >>> 8) & 15],
+    hexCharCodes[(a >>> 4) & 15],
+    hexCharCodes[a & 15]
+  )
+}
+
+const randomHex16 = (): string => {
+  const a = randomWord()
+  const b = randomWord()
+  return String.fromCharCode(
+    hexCharCodes[a >>> 28],
+    hexCharCodes[(a >>> 24) & 15],
+    hexCharCodes[(a >>> 20) & 15],
+    hexCharCodes[(a >>> 16) & 15],
+    hexCharCodes[(a >>> 12) & 15],
+    hexCharCodes[(a >>> 8) & 15],
+    hexCharCodes[(a >>> 4) & 15],
+    hexCharCodes[a & 15],
+    hexCharCodes[b >>> 28],
+    hexCharCodes[(b >>> 24) & 15],
+    hexCharCodes[(b >>> 20) & 15],
+    hexCharCodes[(b >>> 16) & 15],
+    hexCharCodes[(b >>> 12) & 15],
+    hexCharCodes[(b >>> 8) & 15],
+    hexCharCodes[(b >>> 4) & 15],
+    hexCharCodes[b & 15]
+  )
+}
+
+const randomHex32 = (): string => {
+  const a = randomWord()
+  const b = randomWord()
+  const c = randomWord()
+  const d = randomWord()
+  return String.fromCharCode(
+    hexCharCodes[a >>> 28],
+    hexCharCodes[(a >>> 24) & 15],
+    hexCharCodes[(a >>> 20) & 15],
+    hexCharCodes[(a >>> 16) & 15],
+    hexCharCodes[(a >>> 12) & 15],
+    hexCharCodes[(a >>> 8) & 15],
+    hexCharCodes[(a >>> 4) & 15],
+    hexCharCodes[a & 15],
+    hexCharCodes[b >>> 28],
+    hexCharCodes[(b >>> 24) & 15],
+    hexCharCodes[(b >>> 20) & 15],
+    hexCharCodes[(b >>> 16) & 15],
+    hexCharCodes[(b >>> 12) & 15],
+    hexCharCodes[(b >>> 8) & 15],
+    hexCharCodes[(b >>> 4) & 15],
+    hexCharCodes[b & 15],
+    hexCharCodes[c >>> 28],
+    hexCharCodes[(c >>> 24) & 15],
+    hexCharCodes[(c >>> 20) & 15],
+    hexCharCodes[(c >>> 16) & 15],
+    hexCharCodes[(c >>> 12) & 15],
+    hexCharCodes[(c >>> 8) & 15],
+    hexCharCodes[(c >>> 4) & 15],
+    hexCharCodes[c & 15],
+    hexCharCodes[d >>> 28],
+    hexCharCodes[(d >>> 24) & 15],
+    hexCharCodes[(d >>> 20) & 15],
+    hexCharCodes[(d >>> 16) & 15],
+    hexCharCodes[(d >>> 12) & 15],
+    hexCharCodes[(d >>> 8) & 15],
+    hexCharCodes[(d >>> 4) & 15],
+    hexCharCodes[d & 15]
+  )
 }
 
 /**
