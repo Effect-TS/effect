@@ -11,6 +11,7 @@ import {
   Layer,
   Option,
   Result,
+  Scheduler,
   Schema,
   Tracer
 } from "effect"
@@ -463,7 +464,10 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       expect(yield* Fiber.join(fiber)).toEqual("a:b")
       assert([2, 3].includes(flags.get("two-step-branch-runs") as number))
-    }).pipe(Effect.provide(TestWorkflowLayer)), 20_000)
+    }).pipe(
+      Effect.provide(TestWorkflowLayer),
+      Effect.provideService(Scheduler.MaxOpsBeforeYield, 4)
+    ), 20_000)
 
   it.effect(
     "DurableDeferred.raceAll delivers a completion that lands while a suspension commits",
