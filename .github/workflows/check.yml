@@ -165,8 +165,6 @@ jobs:
   test-bun:
     name: Test (Bun)
     runs-on: namespace-profile-linux-default
-    env:
-      EFFECT_BUN_PLATFORM_TESTS: "0"
     permissions:
       contents: read
     timeout-minutes: 10

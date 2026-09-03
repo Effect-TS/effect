@@ -4,7 +4,6 @@ import { defineConfig, mergeConfig, type ViteUserConfig } from "vitest/config"
 
 const isDeno = process.versions.deno !== undefined
 const isBun = process.versions.bun !== undefined
-const bunPlatformTestsEnabled = process.env.EFFECT_BUN_PLATFORM_TESTS !== "0"
 const isNode = typeof process !== "undefined" &&
   process.release.name === "node" &&
   !isDeno &&
@@ -95,12 +94,7 @@ export default defineConfig({
         "effect",
         "packages/effect",
         true,
-        {
-          test: {
-            // @see https://github.com/denoland/deno/issues/23882
-            exclude: isDeno ? ["test/cluster/**"] : []
-          }
-        },
+        {},
         isBun
           ? [
             ...exclude,
@@ -153,7 +147,7 @@ export default defineConfig({
           setupFiles: [path.join(import.meta.dirname, "packages/platform/browser/vitest.setup.ts")]
         }
       }),
-      ...project("@effect/platform-bun", "packages/platform/bun", isBun && bunPlatformTestsEnabled),
+      ...project("@effect/platform-bun", "packages/platform/bun", isBun),
       ...project("@effect/platform-deno", "packages/platform/deno", isDeno),
       ...project("@effect/platform-node", "packages/platform/node", isNode),
       ...project(
