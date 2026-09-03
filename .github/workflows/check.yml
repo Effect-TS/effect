@@ -14,7 +14,7 @@ permissions: {}
 
 jobs:
   static-checks:
-    name: Static Checks
+    name: Static
     runs-on: namespace-profile-linux-default
     permissions:
       contents: read
@@ -67,7 +67,7 @@ jobs:
       - run: pnpm build
 
   types-deno:
-    name: Types on Deno
+    name: Types (Deno)
     runs-on: namespace-profile-linux-default
     permissions:
       contents: read
@@ -163,7 +163,7 @@ jobs:
         run: deno task test --max-concurrency=10
 
   test-bun:
-    name: Test on Bun
+    name: Test (Bun)
     runs-on: namespace-profile-linux-default
     permissions:
       contents: read
@@ -178,7 +178,7 @@ jobs:
         run: bun node_modules/vitest/vitest.mjs run --project @effect/platform-bun
 
   doctest:
-    name: Documentation Tests
+    name: Test (Documentation)
     runs-on: namespace-profile-linux-default
     permissions:
       contents: read
