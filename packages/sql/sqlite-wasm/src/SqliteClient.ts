@@ -387,7 +387,7 @@ export const make = (
         params: ReadonlyArray<unknown> = [],
         rowMode: "object" | "array" = "object"
       ): Effect.Effect<Array<any>, SqlError, never> => {
-        const rows = Effect.withFiber<[Array<string>, Array<any>], SqlError>((fiber) => {
+        const rows = Effect.withFiber<WorkerResult, SqlError>((fiber) => {
           const id = currentId++
           return send(id, [id, sql, params], fiber.getRef(Transferables))
         })
@@ -471,8 +471,11 @@ function rowToObject(columns: Array<string>, row: Array<any>) {
   }
   return obj
 }
-const extractObject = (rows: [Array<string>, Array<any>]) => rows[1].map((row) => rowToObject(rows[0], row))
-const extractRows = (rows: [Array<string>, Array<any>]) => rows[1]
+type WorkerResult = [columns: Array<string> | undefined, rows: Array<any>, rowColumns?: Array<Array<string>>]
+
+const extractObject = (rows: WorkerResult) =>
+  rows[1].map((row, index) => rowToObject(rows[2]?.[index] ?? rows[0]!, row))
+const extractRows = (rows: WorkerResult) => rows[1]
 
 /**
  * Fiber reference that stores transferables to include with worker-backed SQLite WASM query messages.
