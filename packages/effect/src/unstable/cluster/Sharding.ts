@@ -1613,6 +1613,7 @@ const make = Effect.gen(function*() {
       const runnerAddress = getRunnerAddress()
       if (!runnerAddress || entityManagers.has(entity.type)) return
       const scope = yield* Effect.scope
+      const registrationContext = yield* Effect.context<never>()
       yield* Scope.addFinalizer(
         scope,
         Effect.sync(() => {
@@ -1627,6 +1628,10 @@ const make = Effect.gen(function*() {
         sharding
       }).pipe(
         Effect.provideContext(services.pipe(
+          // Registration overrides construction fallbacks, except for runner-owned services.
+          Context.merge(registrationContext),
+          Context.add(ShardingConfig, config),
+          Context.add(Clock, clock),
           Context.add(EntityReaper, reaper),
           Context.add(Scope.Scope, scope),
           Context.add(Snowflake.Generator, snowflakeGen)
