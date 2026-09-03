@@ -100,7 +100,7 @@ describe("jsdocs", () => {
     }
   })
 
-  it("extracts docs with TypeScript", () => {
+  it("refreshes extracted docs after a source change", () => {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-"))
     fs.mkdirSync(path.join(cwd, "src"), { recursive: true })
     fs.writeFileSync(
@@ -145,6 +145,16 @@ export const makeValue = () => 1
       importDeclaration: "import { Foo } from \"@effect/sample\"",
       usage: "Foo.makeValue"
     })
+
+    const sourcePath = path.join(cwd, "src/Foo.ts")
+    fs.writeFileSync(sourcePath, fs.readFileSync(sourcePath, "utf8").replaceAll("makeValue", "makeUpdatedValue"))
+    const updated = extractJSDocsSync({
+      cwd,
+      tsconfig: "tsconfig.json",
+      include: ["src/**/*.ts"],
+      output: ".data/jsdocs.json"
+    })
+    assert.strictEqual(updated.files[0]?.declarations[0]?.name, "makeUpdatedValue")
   })
 
   it("stores a stable input hash for cache checks", () => {
