@@ -1777,6 +1777,26 @@ export const withFiber: <A, E = never, R = never>(
   evaluate: (fiber: Fiber<unknown, unknown>) => Effect<A, E, R>
 ) => Effect<A, E, R> = core.withFiber
 
+/**
+ * Provides access to the current fiber to synchronously compute a successful value.
+ *
+ * **Example** (Reading the current fiber id)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ *
+ * const program = Effect.withFiberSucceed((fiber) => typeof fiber.id)
+ *
+ * Effect.runSync(program) // => "number"
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const withFiberSucceed: <A, R = never>(
+  evaluate: (fiber: Fiber<unknown, unknown>) => A
+) => Effect<A, never, R> = core.withFiberSucceed
+
 // -----------------------------------------------------------------------------
 // Conversions
 // -----------------------------------------------------------------------------

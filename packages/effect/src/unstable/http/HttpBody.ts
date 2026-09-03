@@ -277,8 +277,14 @@ const encoder = new TextEncoder()
 
 // Buffer.from is significantly faster than TextEncoder.encode on Node.js and
 // Bun, and a Buffer is a Uint8Array
-const encodeText: (body: string) => globalThis.Uint8Array = typeof globalThis.Buffer === "function"
-  ? (body) => globalThis.Buffer.from(body, "utf8")
+const buffer = (globalThis as {
+  readonly Buffer?: {
+    readonly from: (body: string, encoding: "utf8") => globalThis.Uint8Array
+    readonly byteLength: (body: string, encoding: "utf8") => number
+  }
+}).Buffer
+const encodeText: (body: string) => globalThis.Uint8Array = buffer !== undefined
+  ? (body) => buffer.from(body, "utf8")
   : (body) => encoder.encode(body)
 
 /**
@@ -297,8 +303,8 @@ export const text = (body: string, contentType?: string): Uint8Array => {
     // mirrors how TextEncoder coerces non-string input
     body = body === undefined ? "" : String(body)
   }
-  if (typeof globalThis.Buffer === "function") {
-    return new Uint8Array(undefined, contentType ?? "text/plain", globalThis.Buffer.byteLength(body, "utf8"), body)
+  if (buffer !== undefined) {
+    return new Uint8Array(undefined, contentType ?? "text/plain", buffer.byteLength(body, "utf8"), body)
   }
   const bytes = encoder.encode(body)
   return new Uint8Array(bytes, contentType ?? "text/plain", bytes.length, body)

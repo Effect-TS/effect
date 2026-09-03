@@ -578,7 +578,7 @@ export const withFiber: <A, E = never, R = never>(
  *
  * @internal
  */
-export const succeedWithFiber: <A, R = never>(
+export const withFiberSucceed: <A, R = never>(
   evaluate: (fiber: FiberImpl<unknown, unknown>) => A
 ) => Effect.Effect<A, never, R> = makePrimitive({
   op: "SucceedWithFiber",
