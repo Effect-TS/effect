@@ -1312,6 +1312,16 @@ export const toWebHandler = <
     readonly routerConfig?: Partial<FindMyWay.RouterConfig> | undefined
     readonly disableLogger?: boolean | undefined
     /**
+     * Build the router layer immediately instead of on the first request.
+     *
+     * Useful on platforms that evaluate the module before the first request
+     * arrives (e.g. Cloudflare Workers), so the layer cost is paid at startup
+     * rather than on the request path.
+     *
+     * Defaults to `false`.
+     */
+    readonly eager?: boolean | undefined
+    /**
      * Middleware to apply to the HTTP server.
      *
      * **Gotchas**
@@ -1351,6 +1361,7 @@ export const toWebHandler = <
   return HttpEffect.toWebHandlerLayerWith(Layer.provideMerge(appLayer, RouterLayer) as Layer.Layer<A | HttpRouter, E>, {
     toHandler: (s) => Effect.succeed(Context.get(s, HttpRouter).asHttpEffect()),
     middleware,
-    memoMap: options?.memoMap
+    memoMap: options?.memoMap,
+    eager: options?.eager
   })
 }

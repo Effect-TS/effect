@@ -11,7 +11,6 @@
 import * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
 import { hasProperty } from "../../Predicate.ts"
-import * as Schema from "../../Schema.ts"
 import type { HttpServerResponse } from "./HttpServerResponse.ts"
 import * as Response from "./HttpServerResponse.ts"
 
@@ -50,6 +49,12 @@ export const isRespondable = (u: unknown): u is Respondable => hasProperty(u, sy
 const badRequest = Response.empty({ status: 400 })
 const notFound = Response.empty({ status: 404 })
 
+// Checked by type id instead of `Schema.isSchemaError` so that this module does
+// not pull the Schema modules into bundles that never use them.
+const SchemaErrorTypeId = "~effect/Schema/SchemaError"
+const isSchemaError = (u: unknown): boolean =>
+  hasProperty(u, SchemaErrorTypeId) && u[SchemaErrorTypeId] === SchemaErrorTypeId
+
 /**
  * Converts a `Respondable` value into an `HttpServerResponse`.
  *
@@ -86,7 +91,7 @@ export const toResponseOrElse = (u: unknown, orElse: HttpServerResponse): Effect
   } else if (isRespondable(u)) {
     return Effect.catchCause(u[symbol](), () => Effect.succeed(orElse))
     // add support for some commmon types
-  } else if (Schema.isSchemaError(u)) {
+  } else if (isSchemaError(u)) {
     return Effect.succeed(badRequest)
   } else if (Cause.isNoSuchElementError(u)) {
     return Effect.succeed(notFound)

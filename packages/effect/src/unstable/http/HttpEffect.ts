@@ -13,7 +13,7 @@ import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
-import { dual } from "../../Function.ts"
+import { constVoid, dual } from "../../Function.ts"
 import { contA, contE } from "../../internal/core.ts"
 import { effectIsExit, fiberEnterUninterruptibleUnsafe, reportCauseUnsafe } from "../../internal/effect.ts"
 import * as Layer from "../../Layer.ts"
@@ -353,6 +353,16 @@ export const toWebHandlerLayerWith = <
     ) => Effect.Effect<Effect.Effect<HttpServerResponse, E, R>, LE>
     readonly middleware?: HttpMiddleware | undefined
     readonly memoMap?: Layer.MemoMap | undefined
+    /**
+     * Build the layer immediately instead of on the first request.
+     *
+     * Useful on platforms that evaluate the module before the first request
+     * arrives (e.g. Cloudflare Workers), so the layer cost is paid at startup
+     * rather than on the request path.
+     *
+     * Defaults to `false`.
+     */
+    readonly eager?: boolean | undefined
   }
 ): {
   readonly dispose: () => Promise<void>
@@ -374,13 +384,7 @@ export const toWebHandlerLayerWith = <
   let handlerPromise:
     | Promise<(request: Request, context?: Context.Context<ReqR> | undefined) => Promise<globalThis.Response>>
     | undefined
-  function handler(
-    request: Request,
-    context?: Context.Context<ReqR> | undefined
-  ): Promise<globalThis.Response> {
-    if (handlerCache) {
-      return handlerCache(request, context)
-    }
+  const build = () =>
     handlerPromise ??= Effect.runPromise(Effect.gen(function*() {
       const context = yield* (options.memoMap
         ? Layer.buildWithMemoMap(layer, options.memoMap, scope)
@@ -390,7 +394,19 @@ export const toWebHandlerLayerWith = <
         options.middleware
       ) as any
     }))
-    return handlerPromise.then((f) => f(request, context))
+  function handler(
+    request: Request,
+    context?: Context.Context<ReqR> | undefined
+  ): Promise<globalThis.Response> {
+    if (handlerCache) {
+      return handlerCache(request, context)
+    }
+    return build().then((f) => f(request, context))
+  }
+  if (options.eager === true) {
+    // Failures are still surfaced by each request, so avoid an unhandled
+    // rejection at startup.
+    build().catch(constVoid)
   }
   return { dispose, handler: handler as any } as const
 }
@@ -407,6 +423,12 @@ export const toWebHandlerLayer = <E, R, Provided, LE, ReqR = Exclude<R, Provided
   options?: {
     readonly middleware?: HttpMiddleware | undefined
     readonly memoMap?: Layer.MemoMap | undefined
+    /**
+     * Build the layer immediately instead of on the first request.
+     *
+     * Defaults to `false`.
+     */
+    readonly eager?: boolean | undefined
   } | undefined
 ): {
   readonly dispose: () => Promise<void>
