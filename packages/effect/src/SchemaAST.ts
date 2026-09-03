@@ -2954,8 +2954,16 @@ export const Objects: new(
         for (let index = 0; index < props.length; index++) {
           const property = props[index]
           const name = property.name
-          const hasKey = hasPropertySignature(record, name)
-          const value = hasKey ? record[name] : InternalParser.missing
+          let hasKey: boolean
+          let value: unknown
+          if (name === "__proto__") {
+            hasKey = Object.hasOwn(record, name)
+            value = hasKey ? record[name] : InternalParser.missing
+          } else {
+            value = record[name]
+            hasKey = value !== undefined || name in record
+            if (!hasKey) value = InternalParser.missing
+          }
           const exit = property.parser(value, options)
           if (!effectIsExit(exit)) {
             return resume(state, index, exit)
@@ -3066,10 +3074,18 @@ function stepProperty(
 
 const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()({
   onItem(s, p) {
-    if (!hasPropertySignature(s.input, p.name)) {
-      return p.parser(InternalParser.missing, s.options)
+    let value: unknown
+    if (p.name === "__proto__") {
+      if (!Object.hasOwn(s.input, p.name)) {
+        return p.parser(InternalParser.missing, s.options)
+      }
+      value = s.input[p.name]
+    } else {
+      value = s.input[p.name]
+      if (value === undefined && !(p.name in s.input)) {
+        return p.parser(InternalParser.missing, s.options)
+      }
     }
-    const value = s.input[p.name]
     InternalRecord.assignProperty(s.out, p.name, value)
     return p.parser(value, s.options)
   },
