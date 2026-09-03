@@ -161,12 +161,12 @@ export default defineConfig({
       ...project("@effect/sql-libsql", "packages/sql/libsql"),
       ...project("@effect/sql-mssql", "packages/sql/mssql"),
       // MySQL starts a fresh container per integration test suite, so avoid competing
-      // with the other container-backed projects on Deno CI runners.
+      // with the other container-backed projects on integration-test runners.
       ...project(
         "@effect/sql-mysql2",
         "packages/sql/mysql2",
         true,
-        isDeno && integrationTestsEnabled
+        integrationTestsEnabled
           ? {
             test: {
               fileParallelism: false,
