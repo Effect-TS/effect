@@ -1465,7 +1465,9 @@ export const withFallback: {
   return isWritable(self)
     ? writable(
       withFallback,
-      self.write,
+      function(ctx, value) {
+        ctx.set(self, value)
+      },
       self.refresh ?? function(refresh) {
         refresh(self)
       }

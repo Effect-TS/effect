@@ -1251,6 +1251,20 @@ describe.sequential("Atom", () => {
     assert.deepEqual(r.get(count), AsyncResult.success(1))
   })
 
+  it("withFallback forwards writes to the primary atom", () => {
+    const primary = Atom.make<AsyncResult.AsyncResult<number>>(AsyncResult.success(1))
+    const fallback = AsyncResult.success(2)
+    const atom = Atom.withFallback(primary, Atom.make(fallback))
+    const r = AtomRegistry.make()
+
+    r.set(atom, AsyncResult.initial())
+
+    assert.deepEqual([r.get(primary), r.get(atom)], [
+      AsyncResult.initial(),
+      AsyncResult.waiting(fallback)
+    ])
+  })
+
   it("failure with previousSuccess", async () => {
     const count = Atom.fn((i: number) => i === 1 ? Effect.fail("fail") : Effect.succeed(i))
     const r = AtomRegistry.make()
