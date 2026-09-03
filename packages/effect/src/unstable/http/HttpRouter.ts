@@ -1288,7 +1288,9 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
  *
  * The result contains a `handler` function that converts Web `Request` values to
  * Web `Response` values and a `dispose` function for releasing the layer
- * resources.
+ * resources. The layer is built immediately, so the cost is paid when the
+ * handler is created rather than on the first request. If the build fails,
+ * every request rejects with the build error.
  *
  * @category converting
  * @since 4.0.0
@@ -1311,16 +1313,6 @@ export const toWebHandler = <
     readonly memoMap?: Layer.MemoMap | undefined
     readonly routerConfig?: Partial<FindMyWay.RouterConfig> | undefined
     readonly disableLogger?: boolean | undefined
-    /**
-     * Build the router layer immediately instead of on the first request.
-     *
-     * Useful on platforms that evaluate the module before the first request
-     * arrives (e.g. Cloudflare Workers), so the layer cost is paid at startup
-     * rather than on the request path.
-     *
-     * Defaults to `false`.
-     */
-    readonly eager?: boolean | undefined
     /**
      * Middleware to apply to the HTTP server.
      *
@@ -1361,7 +1353,6 @@ export const toWebHandler = <
   return HttpEffect.toWebHandlerLayerWith(Layer.provideMerge(appLayer, RouterLayer) as Layer.Layer<A | HttpRouter, E>, {
     toHandler: (s) => Effect.succeed(Context.get(s, HttpRouter).asHttpEffect()),
     middleware,
-    memoMap: options?.memoMap,
-    eager: options?.eager
+    memoMap: options?.memoMap
   })
 }

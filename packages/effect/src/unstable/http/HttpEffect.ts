@@ -336,6 +336,12 @@ export const toWebHandler: <E>(
 /**
  * Builds a Web `Request` handler from a layer and handler factory, returning the handler with a `dispose` function for the layer scope.
  *
+ * **Details**
+ *
+ * The layer is built immediately, so the cost is paid when the handler is
+ * created rather than on the first request. If the build fails, every request
+ * rejects with the build error.
+ *
  * @category converting
  * @since 4.0.0
  */
@@ -353,16 +359,6 @@ export const toWebHandlerLayerWith = <
     ) => Effect.Effect<Effect.Effect<HttpServerResponse, E, R>, LE>
     readonly middleware?: HttpMiddleware | undefined
     readonly memoMap?: Layer.MemoMap | undefined
-    /**
-     * Build the layer immediately instead of on the first request.
-     *
-     * Useful on platforms that evaluate the module before the first request
-     * arrives (e.g. Cloudflare Workers), so the layer cost is paid at startup
-     * rather than on the request path.
-     *
-     * Defaults to `false`.
-     */
-    readonly eager?: boolean | undefined
   }
 ): {
   readonly dispose: () => Promise<void>
@@ -381,19 +377,18 @@ export const toWebHandlerLayerWith = <
   let handlerCache:
     | ((request: Request, context?: Context.Context<ReqR> | undefined) => Promise<globalThis.Response>)
     | undefined
-  let handlerPromise:
-    | Promise<(request: Request, context?: Context.Context<ReqR> | undefined) => Promise<globalThis.Response>>
-    | undefined
-  const build = () =>
-    handlerPromise ??= Effect.runPromise(Effect.gen(function*() {
-      const context = yield* (options.memoMap
-        ? Layer.buildWithMemoMap(layer, options.memoMap, scope)
-        : Layer.buildWithScope(layer, scope))
-      return handlerCache = toWebHandlerWith<Provided, R>(context)(
-        yield* options.toHandler(context),
-        options.middleware
-      ) as any
-    }))
+  const handlerPromise = Effect.runPromise(Effect.gen(function*() {
+    const context = yield* (options.memoMap
+      ? Layer.buildWithMemoMap(layer, options.memoMap, scope)
+      : Layer.buildWithScope(layer, scope))
+    return handlerCache = toWebHandlerWith<Provided, R>(context)(
+      yield* options.toHandler(context),
+      options.middleware
+    ) as any
+  }))
+  // A failed build must not become an unhandled rejection at startup. Every
+  // request still rejects with the build error below.
+  handlerPromise.catch(constVoid)
   function handler(
     request: Request,
     context?: Context.Context<ReqR> | undefined
@@ -401,18 +396,19 @@ export const toWebHandlerLayerWith = <
     if (handlerCache) {
       return handlerCache(request, context)
     }
-    return build().then((f) => f(request, context))
-  }
-  if (options.eager === true) {
-    // Failures are still surfaced by each request, so avoid an unhandled
-    // rejection at startup.
-    build().catch(constVoid)
+    return handlerPromise.then((f) => f(request, context))
   }
   return { dispose, handler: handler as any } as const
 }
 
 /**
  * Builds a Web `Request` handler for an HTTP server effect using a layer to provide its services, returning the handler with a `dispose` function.
+ *
+ * **Details**
+ *
+ * The layer is built immediately, so the cost is paid when the handler is
+ * created rather than on the first request. If the build fails, every request
+ * rejects with the build error.
  *
  * @category converting
  * @since 4.0.0
@@ -423,12 +419,6 @@ export const toWebHandlerLayer = <E, R, Provided, LE, ReqR = Exclude<R, Provided
   options?: {
     readonly middleware?: HttpMiddleware | undefined
     readonly memoMap?: Layer.MemoMap | undefined
-    /**
-     * Build the layer immediately instead of on the first request.
-     *
-     * Defaults to `false`.
-     */
-    readonly eager?: boolean | undefined
   } | undefined
 ): {
   readonly dispose: () => Promise<void>
