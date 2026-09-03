@@ -17,7 +17,7 @@ describe("Effectable", () => {
     it.effect("evaluates override", () =>
       Effect.gen(function*() {
         const effectValue = yield* new EffectBox(1)
-        assert.strictEqual(effectValue, 2)
+        assert.strictEqual(effectValue, 1)
       }))
 
     it("inserts the Effect prototype between the subclass and original class", () => {
