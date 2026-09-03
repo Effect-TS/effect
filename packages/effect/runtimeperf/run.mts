@@ -52,17 +52,7 @@ const main = () => {
   const executionOrder = []
 
   for (const [scenario, group] of groups) {
-    const configuredBatchSizes = [...new Set(group.map((fixture) => fixture.batchSize).filter((size) => size !== undefined))]
-    if (configuredBatchSizes.length > 1) {
-      throw new Error(`Scenario ${scenario} has conflicting fixed batch sizes`)
-    }
-    const fixedBatchSize = defaults.batchSize ?? configuredBatchSizes[0] ?? null
-    const calibrations = new Map(group.map((fixture) => [
-      fixture,
-      fixedBatchSize === null
-        ? calibrateFixture(fixture, defaults)
-        : { ok: true, mode: "fixed", batchSize: fixedBatchSize, warnings: [] }
-    ]))
+    const calibrations = new Map(group.map((fixture) => [fixture, calibrateFixture(fixture, defaults)]))
     const byTarget = new Map(group.map((fixture) => [fixture.target, []]))
 
     for (let round = 0; round < defaults.rounds; round++) {

@@ -44,16 +44,11 @@ const canEmitShape = (ast: SchemaAST.AST): boolean => {
     case "Symbol":
     case "BigInt":
     case "TemplateLiteral":
-      return true
     case "Arrays":
-      return true
-    case "Objects":
-      if (ast.indexSignatures.length === 0) {
-        return true
-      }
-      return ast.indexSignatures.every((signature) => canEmitIndexParameter(signature.parameter))
     case "Union":
       return true
+    case "Objects":
+      return ast.indexSignatures.every((signature) => canEmitIndexParameter(signature.parameter))
     default:
       return false
   }
@@ -84,7 +79,7 @@ const suspendDecoder = (ast: SchemaAST.Suspend, needsValue: boolean): Decoder =>
   const decoder: Decoder = (input) => {
     if (target === undefined) {
       const targetAST = ast.thunk()
-      target = (needsValue ? compile(targetAST) : compileIs(targetAST)) ?? runtimeDecoder(targetAST)
+      target = (needsValue ? decode(targetAST) : is(targetAST)) ?? runtimeDecoder(targetAST)
     }
     return target(input)
   }
@@ -315,8 +310,7 @@ const emitIndexes = (
   input: string,
   output: string | undefined,
   statements: Array<string>,
-  emitter: Emitter,
-  needsValue: boolean
+  emitter: Emitter
 ): void => {
   const fixedKeys = output === undefined || ast.propertySignatures.length === 0
     ? undefined
@@ -339,7 +333,7 @@ const emitIndexes = (
       : emit(SchemaAST.parameterFromPropertyKey(parameter), key, loop, emitter, true)
     const value = variable(emitter)
     loop.push(`const ${value}=${input}[${key}]`)
-    const decoded = emit(signature.type, value, loop, emitter, needsValue)
+    const decoded = emit(signature.type, value, loop, emitter, output !== undefined)
     if (output !== undefined) {
       const assign =
         `if(${decodedKey}==="__proto__")Object.defineProperty(${output},${decodedKey},{value:${decoded},writable:true,enumerable:true,configurable:true});else ${output}[${decodedKey}]=${decoded}`
@@ -429,41 +423,20 @@ const emitBase = (
         return needsValue ? `[${elements.join(",")}]` : input
       }
       statements.push(`if(${length}<${elementLength + tailLength})return I`)
-      if (!needsValue) {
-        for (let index = 0; index < elementLength; index++) {
-          const value = variable(emitter)
-          statements.push(`const ${value}=${input}[${index}]`)
-          emit(ast.elements[index], value, statements, emitter, false)
-        }
-        const index = variable(emitter)
-        const restStatements: Array<string> = []
-        const value = variable(emitter)
-        restStatements.push(`const ${value}=${input}[${index}]`)
-        emit(ast.rest[0], value, restStatements, emitter, false)
-        statements.push(
-          `for(let ${index}=${elementLength};${index}<${length}-${tailLength};${index}++){${restStatements.join(";")}}`
-        )
-        for (let index = 0; index < tailLength; index++) {
-          const value = variable(emitter)
-          statements.push(`const ${value}=${input}[${length}-${tailLength - index}]`)
-          emit(ast.rest[index + 1], value, statements, emitter, false)
-        }
-        return input
-      }
-      const output = variable(emitter)
-      statements.push(`const ${output}=new Array(${length})`)
+      const output = needsValue ? variable(emitter) : undefined
+      if (output !== undefined) statements.push(`const ${output}=new Array(${length})`)
       for (let index = 0; index < elementLength; index++) {
         const value = variable(emitter)
         statements.push(`const ${value}=${input}[${index}]`)
-        const decoded = emit(ast.elements[index], value, statements, emitter, true)
-        statements.push(`${output}[${index}]=${decoded}`)
+        const decoded = emit(ast.elements[index], value, statements, emitter, needsValue)
+        if (output !== undefined) statements.push(`${output}[${index}]=${decoded}`)
       }
       const index = variable(emitter)
       const restStatements: Array<string> = []
       const value = variable(emitter)
       restStatements.push(`const ${value}=${input}[${index}]`)
-      const decoded = emit(ast.rest[0], value, restStatements, emitter, true)
-      restStatements.push(`${output}[${index}]=${decoded}`)
+      const decoded = emit(ast.rest[0], value, restStatements, emitter, needsValue)
+      if (output !== undefined) restStatements.push(`${output}[${index}]=${decoded}`)
       statements.push(
         `for(let ${index}=${elementLength};${index}<${length}-${tailLength};${index}++){${restStatements.join(";")}}`
       )
@@ -471,10 +444,10 @@ const emitBase = (
         const inputIndex = `${length}-${tailLength - index}`
         const value = variable(emitter)
         statements.push(`const ${value}=${input}[${inputIndex}]`)
-        const decoded = emit(ast.rest[index + 1], value, statements, emitter, true)
-        statements.push(`${output}[${inputIndex}]=${decoded}`)
+        const decoded = emit(ast.rest[index + 1], value, statements, emitter, needsValue)
+        if (output !== undefined) statements.push(`${output}[${inputIndex}]=${decoded}`)
       }
-      return output
+      return output ?? input
     }
     case "Objects": {
       if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
@@ -484,75 +457,43 @@ const emitBase = (
       statements.push(
         `if(typeof ${input}!=="object"||${input}===null||Array.isArray(${input}))return I`
       )
-      if (ast.indexSignatures.length > 0 && ast.propertySignatures.length === 0) {
-        if (!needsValue) {
-          emitIndexes(ast, input, undefined, statements, emitter, false)
-          return input
-        }
+      const hasOptional = ast.propertySignatures.some((property) => isOptional(property.type))
+      if (needsValue && ast.propertySignatures.length > 0 && !hasOptional) {
         const output = variable(emitter)
-        statements.push(`const ${output}={}`)
-        emitIndexes(ast, input, output, statements, emitter, true)
-        return output
-      }
-      if (!needsValue) {
-        for (const property of ast.propertySignatures) {
-          const key = propertyKey(emitter, property.name)
-          const value = variable(emitter)
-          const propertyStatements: Array<string> = [`const ${value}=${input}[${key}]`]
-          emit(property.type, value, propertyStatements, emitter, false)
-          statements.push(
-            isOptional(property.type)
-              ? `if(${propertyPresence(input, key, property.name)}){${propertyStatements.join(";")}}`
-              : `${
-                propertyNeedsPresenceCheck(property.name, property.type)
-                  ? `if(!(${propertyPresence(input, key, property.name)}))return I;`
-                  : ""
-              }${propertyStatements.join(";")}`
-          )
-        }
-        if (ast.indexSignatures.length > 0) {
-          emitIndexes(ast, input, undefined, statements, emitter, false)
-        }
-        return input
-      }
-      const output = variable(emitter)
-      const plainStatements: Array<string> = []
-      if (ast.propertySignatures.some((property) => isOptional(property.type))) {
-        plainStatements.push(`const ${output}={}`)
-        for (const property of ast.propertySignatures) {
-          const key = propertyKey(emitter, property.name)
-          const value = variable(emitter)
-          const propertyStatements: Array<string> = [`const ${value}=${input}[${key}]`]
-          const decoded = emit(property.type, value, propertyStatements, emitter, true)
-          propertyStatements.push(assignProperty(output, key, decoded, property.name))
-          plainStatements.push(
-            isOptional(property.type)
-              ? `if(${propertyPresence(input, key, property.name)}){${propertyStatements.join(";")}}`
-              : `${
-                propertyNeedsPresenceCheck(property.name, property.type)
-                  ? `if(!(${propertyPresence(input, key, property.name)}))return I;`
-                  : ""
-              }${propertyStatements.join(";")}`
-          )
-        }
-      } else {
         const properties = ast.propertySignatures.map((property) => {
           const key = propertyKey(emitter, property.name)
           const outputKey = typeof property.name === "string" && property.name !== "__proto__" ? key : `[${key}]`
           const value = variable(emitter)
           if (propertyNeedsPresenceCheck(property.name, property.type)) {
-            plainStatements.push(`if(!(${propertyPresence(input, key, property.name)}))return I`)
+            statements.push(`if(!(${propertyPresence(input, key, property.name)}))return I`)
           }
-          plainStatements.push(`const ${value}=${input}[${key}]`)
-          return `${outputKey}:${emit(property.type, value, plainStatements, emitter, true)}`
+          statements.push(`const ${value}=${input}[${key}]`)
+          return `${outputKey}:${emit(property.type, value, statements, emitter, true)}`
         })
-        plainStatements.push(`const ${output}={${properties.join(",")}}`)
+        statements.push(`const ${output}={${properties.join(",")}}`)
+        if (ast.indexSignatures.length > 0) emitIndexes(ast, input, output, statements, emitter)
+        return output
       }
-      statements.push(...plainStatements)
-      if (ast.indexSignatures.length > 0) {
-        emitIndexes(ast, input, output, statements, emitter, true)
+      const output = needsValue ? variable(emitter) : undefined
+      if (output !== undefined) statements.push(`const ${output}={}`)
+      for (const property of ast.propertySignatures) {
+        const key = propertyKey(emitter, property.name)
+        const value = variable(emitter)
+        const propertyStatements: Array<string> = [`const ${value}=${input}[${key}]`]
+        const decoded = emit(property.type, value, propertyStatements, emitter, needsValue)
+        if (output !== undefined) propertyStatements.push(assignProperty(output, key, decoded, property.name))
+        statements.push(
+          isOptional(property.type)
+            ? `if(${propertyPresence(input, key, property.name)}){${propertyStatements.join(";")}}`
+            : `${
+              propertyNeedsPresenceCheck(property.name, property.type)
+                ? `if(!(${propertyPresence(input, key, property.name)}))return I;`
+                : ""
+            }${propertyStatements.join(";")}`
+        )
       }
-      return output
+      if (ast.indexSignatures.length > 0) emitIndexes(ast, input, output, statements, emitter)
+      return output ?? input
     }
     case "Union": {
       const memberValues = ast.types.map(lookupMemberValues)
@@ -633,20 +574,20 @@ const make = (ast: SchemaAST.AST, needsValue: boolean): Decoder | undefined => {
   }
 }
 
-/** @internal */
-export const compile = (ast: SchemaAST.AST): Decoder | undefined => {
+const compileCached = (
+  ast: SchemaAST.AST,
+  cache: WeakMap<SchemaAST.AST, Decoder | null>,
+  needsValue: boolean
+): Decoder | undefined => {
   const cached = cache.get(ast)
   if (cached !== undefined) return cached ?? undefined
-  const decoder = make(ast, true)
+  const decoder = make(ast, needsValue)
   cache.set(ast, decoder ?? null)
   return decoder
 }
 
 /** @internal */
-export const compileIs = (ast: SchemaAST.AST): Decoder | undefined => {
-  const cached = isCache.get(ast)
-  if (cached !== undefined) return cached ?? undefined
-  const decoder = make(ast, false)
-  isCache.set(ast, decoder ?? null)
-  return decoder
-}
+export const decode = (ast: SchemaAST.AST): Decoder | undefined => compileCached(ast, cache, true)
+
+/** @internal */
+export const is = (ast: SchemaAST.AST): Decoder | undefined => compileCached(ast, isCache, false)

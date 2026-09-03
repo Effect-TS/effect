@@ -11,11 +11,6 @@ export interface Decoder {
 }
 
 /** @internal */
-export interface DecoderCompiler {
-  (ast: SchemaAST.AST): Decoder | undefined
-}
-
-/** @internal */
 export class DecoderFailure {
   readonly cause: Cause.Cause<SchemaIssue.Issue>
   constructor(cause: Cause.Cause<SchemaIssue.Issue>) {
@@ -25,8 +20,8 @@ export class DecoderFailure {
 
 /** @internal */
 export interface Compiler {
-  readonly decode: DecoderCompiler
-  readonly is: DecoderCompiler
+  readonly decode: (ast: SchemaAST.AST) => Decoder | undefined
+  readonly is: (ast: SchemaAST.AST) => Decoder | undefined
 }
 
 let current: Compiler | undefined

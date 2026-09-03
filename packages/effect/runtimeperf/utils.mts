@@ -126,9 +126,9 @@ export const loadRegistry = () => {
   const fixtures = config.suites.flatMap((suite) =>
     suite.fixtures.flatMap((fixtureGroup) =>
       fixtureGroup.cases.map((runtimeCase) => ({
-        batchSize: suite.batchSize,
         ...fixtureGroup.defaults,
         ...runtimeCase,
+        batchSize: suite.batchSize,
         suite: suite.name,
         target: `${suite.name}/${runtimeCase.name}`,
         fixturePath: resolve(runtimeperfDir, runtimeCase.file ?? fixtureGroup.file)
@@ -197,19 +197,23 @@ export const runWorker = (workerArgs) => {
   }
 }
 
-export const calibrateFixture = (fixture, defaults, fixturePath = fixture.fixturePath) =>
-  runWorker([
-    "--mode",
-    "calibrate",
-    "--fixture",
-    fixturePath,
-    "--export",
-    fixture.export,
-    "--target-batch-time-ns",
-    String(defaults.targetBatchTimeNs),
-    "--max-batch-size",
-    String(defaults.maxBatchSize)
-  ])
+export const calibrateFixture = (fixture, defaults, fixturePath = fixture.fixturePath) => {
+  const batchSize = defaults.batchSize ?? fixture.batchSize ?? null
+  return batchSize === null
+    ? runWorker([
+      "--mode",
+      "calibrate",
+      "--fixture",
+      fixturePath,
+      "--export",
+      fixture.export,
+      "--target-batch-time-ns",
+      String(defaults.targetBatchTimeNs),
+      "--max-batch-size",
+      String(defaults.maxBatchSize)
+    ])
+    : { ok: true, mode: "fixed", batchSize, warnings: [] }
+}
 
 export const measureFixture = (fixture, defaults, batchSize, fixturePath = fixture.fixturePath) =>
   runWorker([

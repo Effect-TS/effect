@@ -147,13 +147,8 @@ const main = () => {
       const headFixturePath = headRoot === repoRoot
         ? fixture.fixturePath
         : materializeFixture(headRoot, fixture)
-      const fixedBatchSize = defaults.batchSize ?? fixture.batchSize ?? null
-      const baseCalibration = fixedBatchSize === null
-        ? calibrateFixture(fixture, defaults, baseFixturePath)
-        : { ok: true, mode: "fixed", batchSize: fixedBatchSize, warnings: [] }
-      const headCalibration = fixedBatchSize === null
-        ? calibrateFixture(fixture, defaults, headFixturePath)
-        : { ok: true, mode: "fixed", batchSize: fixedBatchSize, warnings: [] }
+      const baseCalibration = calibrateFixture(fixture, defaults, baseFixturePath)
+      const headCalibration = calibrateFixture(fixture, defaults, headFixturePath)
       const batchSize = Math.max(baseCalibration.batchSize, headCalibration.batchSize)
       const baseMeasurements = []
       const headMeasurements = []
