@@ -220,6 +220,16 @@ describe("Channel", () => {
   })
 
   describe("destructors", () => {
+    it.effect("runDrain returns the done value after emitted elements", () =>
+      Effect.gen(function*() {
+        const result = yield* Channel.fromArray([1]).pipe(
+          Channel.concat(Channel.end("done")),
+          Channel.runDrain
+        )
+
+        assert.strictEqual(result, "done")
+      }))
+
     it.effect("mkUint8Array", () =>
       Effect.gen(function*() {
         const bytes = yield* Channel.fromArray(
