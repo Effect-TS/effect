@@ -1289,8 +1289,10 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
  * The result contains a `handler` function that converts Web `Request` values to
  * Web `Response` values and a `dispose` function for releasing the layer
  * resources. The layer is built immediately, so the cost is paid when the
- * handler is created rather than on the first request. If the build fails,
- * every request rejects with the build error.
+ * handler is created rather than on the first request. A layer that performs
+ * asynchronous work while building may still be in progress when the first
+ * request arrives, in which case that request waits for the build to finish.
+ * If the build fails, every request rejects with the build error.
  *
  * @category converting
  * @since 4.0.0

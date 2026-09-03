@@ -339,8 +339,10 @@ export const toWebHandler: <E>(
  * **Details**
  *
  * The layer is built immediately, so the cost is paid when the handler is
- * created rather than on the first request. If the build fails, every request
- * rejects with the build error.
+ * created rather than on the first request. A layer that performs asynchronous
+ * work while building may still be in progress when the first request arrives,
+ * in which case that request waits for the build to finish. If the build fails,
+ * every request rejects with the build error.
  *
  * @category converting
  * @since 4.0.0
@@ -407,8 +409,10 @@ export const toWebHandlerLayerWith = <
  * **Details**
  *
  * The layer is built immediately, so the cost is paid when the handler is
- * created rather than on the first request. If the build fails, every request
- * rejects with the build error.
+ * created rather than on the first request. A layer that performs asynchronous
+ * work while building may still be in progress when the first request arrives,
+ * in which case that request waits for the build to finish. If the build fails,
+ * every request rejects with the build error.
  *
  * @category converting
  * @since 4.0.0

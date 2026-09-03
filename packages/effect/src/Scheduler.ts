@@ -80,26 +80,16 @@ export const Scheduler: Context.Reference<Scheduler> = Context.Reference<Schedul
   defaultValue: () => new MixedScheduler()
 })
 
-// Some runtimes (e.g. Cloudflare Workers) throw when a timer is set in global
-// scope. Fall back to a microtask so effects can still run at module load.
 const setImmediate = "setImmediate" in globalThis
   ? (f: () => void) => {
-    try {
-      // @ts-ignore
-      const timer = globalThis.setImmediate(f)
-      // @ts-ignore
-      return (): void => globalThis.clearImmediate(timer)
-    } catch {
-      return setMicrotask(f)
-    }
+    // @ts-ignore
+    const timer = globalThis.setImmediate(f)
+    // @ts-ignore
+    return (): void => globalThis.clearImmediate(timer)
   }
   : (f: () => void) => {
-    try {
-      const timer = setTimeout(f, 0)
-      return (): void => clearTimeout(timer)
-    } catch {
-      return setMicrotask(f)
-    }
+    const timer = setTimeout(f, 0)
+    return (): void => clearTimeout(timer)
   }
 
 const setMicrotask = (f: () => void) => {
