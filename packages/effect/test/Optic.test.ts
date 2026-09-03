@@ -351,6 +351,13 @@ describe("Optic", () => {
         deepStrictEqual(optic.modify(f)([1, 2]), [1, 3])
         deepStrictEqual(optic.modify(f)([1]), [1])
       })
+
+      it("string index", () => {
+        type S = readonly [number, number?, number?]
+        const optic = Optic.id<S>().optionalKey("1")
+
+        deepStrictEqual(optic.replace(undefined, [1, 2, 3]), [1, 3])
+      })
     })
 
     it("Array", () => {
