@@ -1264,11 +1264,18 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
       }
       case "TemplateLiteral": {
         const parts = ast.parts.map((part, index) => recur(part, [...path, index], finiteNumberConstraint))
+        const encode = SchemaParser.run<string, never>(SchemaAST.flip(ast.asTemplateLiteralParser()))
+        const parse = SchemaParser.run<string, never>(ast)
+        const stringify = (parts: ReadonlyArray<any>) =>
+          Model.flatMapComputation(
+            optionComputation(encode(parts)),
+            (encoded) => Option.isNone(encoded) ? encoded : optionComputation(parse(encoded.value))
+          )
         return Model.makeCompiled(
           parts,
           () => sumCosts(parts.map((part) => part.minCost)),
           (state) =>
-            Model.mapComputation(generateSamples(parts, state), (generated) => {
+            Model.flatMapComputation(generateSamples(parts, state), (generated) => {
               if (generated === undefined) return Model.discarded
               const sample = arraySample(generated, {
                 fixedCount: generated.length,
@@ -1277,7 +1284,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
                 tailCount: 0,
                 minimum: generated.length
               }, state.shrinks)
-              return Model.mapSample(sample, (parts) => parts.map(globalThis.String).join(""))
+              return Model.filterMapGeneration(sample, stringify)
             })
         )
       }
