@@ -1,12 +1,13 @@
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import * as Codegen from "@effect/utils/Codegen"
+import * as Glob from "@effect/utils/Glob"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as path from "node:path"
 
-const MainLayer = Codegen.layer.pipe(Layer.provideMerge(NodeServices.layer))
+const MainLayer = Codegen.layer.pipe(Layer.provide(Glob.layer), Layer.provideMerge(NodeServices.layer))
 
 describe("BarrelGenerator", () => {
   it.effect("discovers a barrel from an absolute pattern", () =>
