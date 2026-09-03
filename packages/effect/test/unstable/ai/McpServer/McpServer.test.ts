@@ -212,6 +212,28 @@ describe("McpServer", () => {
         assert.strictEqual(error, failure)
       }))
 
+    it.effect("should pass decoded values to prompt handlers", () =>
+      Effect.gen(function*() {
+        const server = yield* McpServer.McpServer.make
+        yield* McpServer.registerPrompt({
+          name: "count",
+          parameters: { count: Schema.FiniteFromString },
+          completion: { count: () => Effect.succeed([13]) },
+          content: ({ count }) => Effect.succeed(count.toFixed(0))
+        }).pipe(Effect.provideService(McpServer.McpServer, server))
+
+        const result = yield* server.getPromptResult({ name: "count", arguments: { count: "12" } }).pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient)
+        )
+        const completion = yield* server.completion({
+          ref: { type: "ref/prompt", name: "count" },
+          argument: { name: "count", value: "1" }
+        }).pipe(Effect.provideService(McpSchema.McpServerClient, directClient))
+
+        assert.deepStrictEqual(result.messages, [{ role: "user", content: { type: "text", text: "12" } }])
+        assert.deepStrictEqual(completion.completion.values, ["13"])
+      }))
+
     it.effect("should pass undefined to a low-level tool handler when arguments are omitted", () =>
       Effect.gen(function*() {
         const server = yield* McpServer.McpServer.make
