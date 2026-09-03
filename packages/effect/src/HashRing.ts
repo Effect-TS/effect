@@ -420,7 +420,7 @@ function getIndexForInput<A extends PrimaryKey.PrimaryKey>(
     return [a, distA]
   }
   const range = Math.max(lo, len - lo)
-  for (let i = 1; i < range; i++) {
+  for (let i = 1; i <= range; i++) {
     let index = lo - i
     if (index >= 0 && index < len && !exclude.has(ring[index][1])) {
       return [index, Math.abs(ring[index][0] - hash)]
