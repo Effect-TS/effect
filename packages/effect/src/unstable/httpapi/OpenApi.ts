@@ -329,6 +329,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
   > = []
   const pathOperations = new Set<string>()
   const operationIds = new Set<string>()
+  const finalizeOperations: Array<() => void> = []
 
   processAnnotation(api.annotations, Title, (title) => {
     spec.info.title = title
@@ -379,7 +380,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
       if (Context.get(mergedAnnotations, Exclude)) {
         return
       }
-      let op: OpenAPISpecOperation = {
+      const op: OpenAPISpecOperation = {
         tags: [Context.getOrElse(group.annotations, Title, () => group.identifier)],
         operationId: Context.getOrElse(
           endpoint.annotations,
@@ -619,32 +620,35 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         () => "Error"
       )
 
-      processAnnotation(endpoint.annotations, Override, (override) => {
-        // OpenAPI documents are JSON, so symbol keys are intentionally ignored.
-        for (const [key, value] of Object.entries(override)) {
-          InternalRecord.assignProperty(op as any, key, value)
-        }
-      })
-      processAnnotation(endpoint.annotations, Transform, (transformFn) => {
-        op = transformFn(op) as OpenAPISpecOperation
-      })
-
       const pathOperation = `${method} ${path.replace(/\{[^}]+\}/g, "{}")}`
       if (pathOperations.has(pathOperation)) {
         throw new globalThis.Error(`Duplicate OpenAPI operation for ${endpoint.method} ${path}`)
-      }
-      const operationId = op.operationId
-      if (operationId !== undefined) {
-        if (operationIds.has(operationId)) {
-          throw new globalThis.Error(`Duplicate OpenAPI operationId: ${operationId}`)
-        }
-        operationIds.add(operationId)
       }
       pathOperations.add(pathOperation)
       if (!Object.hasOwn(spec.paths, path)) {
         InternalRecord.assignProperty(spec.paths, path, {})
       }
       spec.paths[path][method] = op
+      finalizeOperations.push(() => {
+        let op = spec.paths[path][method]!
+        processAnnotation(endpoint.annotations, Override, (override) => {
+          // OpenAPI documents are JSON, so symbol keys are intentionally ignored.
+          for (const [key, value] of Object.entries(override)) {
+            InternalRecord.assignProperty(op as any, key, value)
+          }
+        })
+        processAnnotation(endpoint.annotations, Transform, (transformFn) => {
+          op = transformFn(op) as OpenAPISpecOperation
+        })
+        const operationId = op.operationId
+        if (operationId !== undefined) {
+          if (operationIds.has(operationId)) {
+            throw new globalThis.Error(`Duplicate OpenAPI operationId: ${operationId}`)
+          }
+          operationIds.add(operationId)
+        }
+        spec.paths[path][method] = op
+      })
     }
   })
 
@@ -697,6 +701,10 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
     })
 
     spec = JsonPatch.apply(patchOps, spec as any) as any
+  }
+
+  for (const finalize of finalizeOperations) {
+    finalize()
   }
 
   Object.keys(spec.components.schemas).forEach((key) => {
