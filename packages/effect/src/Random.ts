@@ -153,7 +153,21 @@ export const nextInt: Effect.Effect<number> = randomWith((r) => r.nextIntUnsafe(
  * @since 4.0.0
  */
 export const nextBetween = (min: number, max: number): Effect.Effect<number> =>
-  randomWith((r) => r.nextDoubleUnsafe() * (max - min) + min)
+  randomWith((r) => {
+    const value = r.nextDoubleUnsafe() * (max - min) + min
+    if (value !== max || min >= max || !Number.isFinite(max) || !Number.isFinite(max - min)) {
+      return value
+    }
+    // Rounding can reach the excluded endpoint even for a draw below 1.
+    // Return its immediate predecessor, which is at least min for finite min < max.
+    if (max === 0) {
+      return -Number.MIN_VALUE
+    }
+    const view = new DataView(new ArrayBuffer(8))
+    view.setFloat64(0, max)
+    view.setBigUint64(0, view.getBigUint64(0) + BigInt(max > 0 ? -1 : 1))
+    return view.getFloat64(0)
+  })
 
 /**
  * Generates a random integer between `min` and `max`.
