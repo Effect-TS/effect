@@ -496,6 +496,22 @@ describe("Channel", () => {
       readonly message: string
     }> {}
 
+    it.effect("catchDefect", () =>
+      Effect.gen(function*() {
+        const defect = new Error("boom")
+        const recovered = yield* Channel.fromEffect(Effect.die(defect)).pipe(
+          Channel.catchDefect((caught) => Channel.succeed(caught)),
+          Channel.runCollect
+        )
+        const failed = yield* Channel.fail("failure").pipe(
+          Channel.catchDefect(() => Channel.succeed("recovered")),
+          Channel.runCollect,
+          Effect.exit
+        )
+        assert.deepStrictEqual(recovered, [defect])
+        assertExitFailure(failed, Cause.fail("failure"))
+      }))
+
     it.effect("catchIf with refinement", () =>
       Effect.gen(function*() {
         const exit = yield* (Channel.fail(new ValidationError({ field: "email" })) as Channel.Channel<

@@ -4698,6 +4698,46 @@ export const catchCause: {
   ))
 
 /**
+ * Recovers from defects using the provided function.
+ *
+ * **Details**
+ *
+ * Typed failures and interruptions are not caught.
+ *
+ * **Example** (Recovering from a defect)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Stream } from "effect"
+ *
+ * const stream = Stream.die("boom").pipe(
+ *   Stream.catchDefect((defect) => Stream.succeed(`recovered: ${defect}`))
+ * )
+ *
+ * const result = Effect.runSync(Stream.runCollect(stream))
+ * result // => ["recovered: boom"]
+ * ```
+ *
+ * @category error handling
+ * @since 4.0.0
+ */
+export const catchDefect: {
+  <A2, E2, R2>(
+    f: (defect: unknown) => Stream<A2, E2, R2>
+  ): <A, E, R>(self: Stream<A, E, R>) => Stream<A | A2, E | E2, R | R2>
+  <A, E, R, A2, E2, R2>(
+    self: Stream<A, E, R>,
+    f: (defect: unknown) => Stream<A2, E2, R2>
+  ): Stream<A | A2, E | E2, R | R2>
+} = dual(2, <A, E, R, A2, E2, R2>(
+  self: Stream<A, E, R>,
+  f: (defect: unknown) => Stream<A2, E2, R2>
+): Stream<A | A2, E | E2, R | R2> =>
+  self.channel.pipe(
+    Channel.catchDefect((defect) => f(defect).channel),
+    fromChannel
+  ))
+
+/**
  * Runs an effect when the stream fails without changing its values or error,
  * unless the tap effect itself fails.
  *
