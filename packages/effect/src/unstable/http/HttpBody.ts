@@ -226,10 +226,7 @@ export class Uint8Array extends Proto {
   readonly _tag = "Uint8Array"
   readonly contentType: string
   readonly contentLength: number
-  /**
-   * The original string for bodies created from text, letting platform
-   * adapters write it directly instead of encoding the body up front.
-   */
+  /** Original text retained for adapters that can skip encoding. */
   readonly text: string | undefined
   private _body: globalThis.Uint8Array | undefined
 
@@ -275,8 +272,7 @@ export const uint8Array = (body: globalThis.Uint8Array, contentType?: string): U
 
 const encoder = new TextEncoder()
 
-// Buffer.from is significantly faster than TextEncoder.encode on Node.js and
-// Bun, and a Buffer is a Uint8Array
+// Buffer encodes UTF-8 faster than TextEncoder when available.
 const buffer = (globalThis as {
   readonly Buffer?: {
     readonly from: (body: string, encoding: "utf8") => globalThis.Uint8Array
@@ -292,15 +288,14 @@ const encodeText: (body: string) => globalThis.Uint8Array = buffer !== undefined
  *
  * **Details**
  *
- * The content type defaults to `text/plain`. The bytes are produced lazily, so
- * platform adapters that can write strings directly avoid the encoding step.
+ * The content type defaults to `text/plain`. Text bodies are encoded lazily.
  *
  * @category constructors
  * @since 4.0.0
  */
 export const text = (body: string, contentType?: string): Uint8Array => {
   if (typeof body !== "string") {
-    // mirrors how TextEncoder coerces non-string input
+    // Preserve TextEncoder's input coercion.
     body = body === undefined ? "" : String(body)
   }
   if (buffer !== undefined) {

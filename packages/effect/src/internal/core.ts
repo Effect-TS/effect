@@ -572,9 +572,8 @@ export const withFiber: <A, E = never, R = never>(
 })
 
 /**
- * A variant of `withFiber` for synchronously computed success values, which
- * continues directly with the result instead of evaluating a `succeed` exit
- * as a separate operation.
+ * Accesses the current fiber to compute a value without a separate `succeed`
+ * operation.
  *
  * @internal
  */

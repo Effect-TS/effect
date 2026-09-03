@@ -645,8 +645,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
           current = failCause(this._interruptedCause!) as any
         }
         this.currentOpCount++
-        // `cache` is re-read every iteration, as an evaluated primitive can
-        // replace the fiber context
+        // Refresh the cache because a primitive can replace the fiber context.
         const cache = this.cache
         if (
           !yielding &&
@@ -4436,9 +4435,8 @@ const setFiberInterruptible = (fiber: FiberImpl): Effect.Effect<never> | undefin
 }
 
 /**
- * Makes the current fiber uninterruptible until the enclosing effect
- * completes, without the cost of an extra effect primitive. Must only be
- * called from inside a `withFiber` body, before returning the inner effect.
+ * Makes the current fiber uninterruptible for the returned effect without an
+ * extra primitive. Call only within `withFiber`.
  *
  * @internal
  */
@@ -4450,11 +4448,9 @@ export const fiberEnterUninterruptibleUnsafe = (fiber: Fiber.Fiber<unknown, unkn
 }
 
 /**
- * Makes the current fiber interruptible until the enclosing effect completes,
- * without the cost of an extra effect primitive. Must only be called from
- * inside a `withFiber` body, before returning the inner effect. When a
- * deferred interruption is pending, the returned effect must be returned
- * instead of the inner effect.
+ * Makes the current fiber interruptible for the returned effect without an
+ * extra primitive. Call only within `withFiber` and return any pending
+ * interruption it produces.
  *
  * @internal
  */

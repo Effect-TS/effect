@@ -30,10 +30,6 @@ const plusRegex = /\+/g
 const Empty: new() => Record<string, any> = function() {} as any
 Empty.prototype = Object.create(null)
 
-/**
- * @category parsing
- * @since 1.0.0
- */
 const emptyResult: Record<string, any> = Object.freeze(new Empty())
 
 /**

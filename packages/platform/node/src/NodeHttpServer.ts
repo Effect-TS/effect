@@ -364,8 +364,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   private cachedMethod: HttpMethod | undefined
   get method(): HttpMethod {
     if (this.cachedMethod === undefined) {
-      // Node's http parser only produces uppercase methods, so the uppercase
-      // conversion is skipped unless the string starts with a lowercase letter
+      // Node's parser already uppercases standard methods.
       const method = this.source.method!
       this.cachedMethod = (method.charCodeAt(0) >= 97 ? method.toUpperCase() : method) as HttpMethod
     }
@@ -596,8 +595,7 @@ const handleResponse = (
       nodeResponse.writeHead(response.status, headers)
       // If the body is less than 1MB, we skip the callback
       if (body.contentLength < 1024 * 1024) {
-        // writing the original string lets Node.js flush the headers and the
-        // body in a single socket write
+        // Writing text directly lets Node flush headers and body together.
         nodeResponse.end(body.text ?? body.body)
         return Effect.void
       }

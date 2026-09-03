@@ -111,17 +111,13 @@ export const toHandled = <E, R, EH, RH>(
       }
     })
 
-  // when no explicit middleware is used, the tracer middleware is applied
-  // lazily so it can be skipped entirely when no tracing backend is installed
+  // Apply tracing lazily so requests without a backend skip tracing middleware.
   const traced = middleware === undefined
     ? tracer(withMiddleware as Effect.Effect<HttpServerResponse, E | EH | HttpServerError, HttpServerRequest | R | RH>)
     : undefined
 
-  // Fast-path continuation frame, replacing the matchCauseEffect + onExit
-  // pair with a single stack frame when no middleware or tracing backend is
-  // involved. `finishAfter` restores the state through the generic onExit
-  // machinery for effectful (pre-response handler, streaming, or failed)
-  // response writes.
+  // Handle untraced requests without middleware in one continuation frame.
+  // Effectful writes use `finishAfter` to restore state and close the scope.
   const finishAfter = (
     frame: RequestFrame,
     fiber: Fiber.Fiber<unknown, unknown>,
@@ -148,7 +144,7 @@ export const toHandled = <E, R, EH, RH>(
       if (handler === undefined) {
         ;(request as any)[handledSymbol] = true
         const sent = handleResponse(request, response)
-        // responses are usually written synchronously
+        // Most response writes complete synchronously.
         if (effectIsExit(sent) && sent._tag === "Success") {
           fiber.setContext(this.prev)
           const exit = Exit.succeed(response)

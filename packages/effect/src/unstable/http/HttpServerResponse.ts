@@ -1253,8 +1253,7 @@ class ServerHttpClientResponse extends Inspectable.Class implements HttpClientRe
   get arrayBuffer(): Effect.Effect<ArrayBuffer, HttpClientError.HttpClientError> {
     return Effect.map(
       this.bytes,
-      // Buffer#slice does not copy, so slice the underlying ArrayBuffer to
-      // guarantee an exact, detached copy for pooled or offset views
+      // Copy this view because Buffer views may share a larger ArrayBuffer.
       (bytes) => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
     )
   }

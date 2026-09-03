@@ -172,18 +172,13 @@ export const logger: <E, R>(
 )
 
 /**
- * Returns `true` when the current fiber cannot produce an observable server
- * span: tracing is disabled, or the native tracer is active and so no tracing
- * backend is installed. Used by the server runtime to skip the `tracer`
- * middleware entirely on the request hot path.
+ * Returns whether server tracing is unobservable for the current fiber.
  *
  * @internal
  */
 export const isTracerDisabledFastUnsafe = (fiber: {
   getRef: <A>(ref: Context.Reference<A>) => A
-}): boolean =>
-  // the tracer reference is fiber cached, so it is checked first
-  fiber.getRef(Tracer) === nativeTracer || !fiber.getRef(TracerEnabled)
+}): boolean => fiber.getRef(Tracer) === nativeTracer || !fiber.getRef(TracerEnabled)
 
 /**
  * Middleware that creates a server trace span for each request and records request and response HTTP attributes.

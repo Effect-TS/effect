@@ -225,8 +225,7 @@ export const make = Effect.gen(function*() {
             span.attribute("http.route", route.path)
           }
         }
-        // the request fiber's context is reset by the enclosing request
-        // wrappers on exit, so it does not need to be restored here
+        // The enclosing request restores the fiber context on exit.
         fiber.setContext(context)
         if (!route.uninterruptible) {
           const interrupted = fiberEnterInterruptibleUnsafe(fiber)

@@ -34,8 +34,7 @@ const sharedBrothersNodesStack: Array<BrotherNode> = []
 
 const singleParamArray: Array<string> = [""]
 
-// A path with exactly one parameter, at the start of the final segment, with
-// no wildcard, regex, or static-suffix syntax
+// Matches one terminal parameter without wildcard, regex, or static suffix syntax.
 const isCleanSingleTrailingParam = (path: string): boolean => {
   const colon = path.indexOf(":")
   return colon > 0 &&
@@ -278,9 +277,7 @@ class RouterImpl<A> implements Router.Router<A> {
     this.routes.push(route)
     currentNode.addRoute(route)
 
-    // Routes without parameters or wildcards can be matched with a single map
-    // lookup, using the same normalized form the radix tree stores ("::" is an
-    // escaped ":" and "%" is matched against its encoded "%25" form)
+    // Cache static routes by normalized path for direct lookup.
     if (params.length === 0) {
       const staticKey = pattern.split("::").join(":").split("%").join("%25")
       const store = this.staticRoutes[method] ??= new Map()
@@ -288,8 +285,7 @@ class RouterImpl<A> implements Router.Router<A> {
         store.set(staticKey, currentNode.handlerStorage!.unconstrainedHandler!)
       }
     } else if (isCleanSingleTrailingParam(path)) {
-      // Routes shaped like "/prefix/:param" can be matched with a prefix
-      // comparison, skipping the radix tree walk
+      // Cache "/prefix/:param" routes for direct prefix matching.
       if (this.singleParamDisabled[method] !== true) {
         let prefix = path.slice(0, path.indexOf(":"))
         if (!this.options.caseSensitive) {
@@ -302,9 +298,7 @@ class RouterImpl<A> implements Router.Router<A> {
         }
       }
     } else if (/[(*]|[^/]:|:[^/]*[-.]/.test(path)) {
-      // Regex, wildcard, mid-segment, and static-suffix parameters can shadow
-      // plain parametric routes with a higher priority, which the fast path
-      // cannot see, so it is disabled for the whole method
+      // Complex parameters may shadow a cached single-parameter route.
       this.singleParamDisabled[method] = true
       delete this.singleParamRoutes[method]
     }
@@ -331,9 +325,7 @@ class RouterImpl<A> implements Router.Router<A> {
     let querystring = ""
     let shouldDecodeParam = false
 
-    // Lowercase paths without a query, encoding, duplicate slashes, or a
-    // trailing slash are already in canonical form and skip the sanitization
-    // pipeline below
+    // Skip normalization for canonical lowercase paths.
     let clean = path.charCodeAt(0) === 47 &&
       (path.length === 1 || path.charCodeAt(path.length - 1) !== 47)
     if (clean) {
@@ -427,8 +419,7 @@ class RouterImpl<A> implements Router.Router<A> {
     const params = []
     const pathLen = path.length
 
-    // `find` is synchronous and never re-entered, so the backtracking stack
-    // can be shared between calls to avoid a per-request allocation
+    // Reuse the synchronous find operation's backtracking stack.
     const brothersNodesStack = sharedBrothersNodesStack
     brothersNodesStack.length = 0
 
@@ -874,11 +865,8 @@ function trimLastSlash(path: string): Router.PathInput {
   return path as Router.PathInput
 }
 
-// Parameter names are route-author controlled, so plain identifier names can
-// be compiled into a static object literal, which V8 turns into a fast-mode
-// object with a shared shape. "__proto__" is excluded because a literal
-// (non-computed) "__proto__" key would set the prototype instead of creating
-// an own property.
+// Compile route parameter names into a stable-shape object. Exclude
+// "__proto__" because object literal syntax would change the prototype.
 const safeParamName = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 const isCompilableParamName = (name: string): boolean => name !== "__proto__" && safeParamName.test(name)
 
@@ -897,7 +885,7 @@ function compileCreateParams(
         `return {${params.map((name, i) => `${name}: a[${i}]`).join(",")}}`
       ) as (paramsArray: ReadonlyArray<string>) => Record<string, string>
     } catch {
-      // runtimes with a strict CSP disallow Function construction
+      // Use assignment when CSP blocks Function construction.
     }
   }
   return function(paramsArray) {

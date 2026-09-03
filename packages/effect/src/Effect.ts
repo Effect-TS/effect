@@ -1778,9 +1778,9 @@ export const withFiber: <A, E = never, R = never>(
 ) => Effect<A, E, R> = core.withFiber
 
 /**
- * Provides access to the current fiber to synchronously compute a successful value.
+ * Accesses the current fiber to compute a successful value.
  *
- * **Example** (Reading the current fiber id)
+ * **Example** (Computing a value from the current fiber)
  *
  * ```ts import.meta.vitest
  * import { Effect } from "effect"
