@@ -951,9 +951,8 @@ export const layer = <
  *
  * const writes: Array<string> = []
  * const file = {
- *   write: (buffer: Uint8Array) => Effect.sync(() => {
+ *   writeAll: (buffer: Uint8Array) => Effect.sync(() => {
  *     writes.push(new TextDecoder().decode(buffer).trim())
- *     return FileSystem.Size(buffer.length)
  *   })
  * } as unknown as FileSystem.File
  * const fileSystem = FileSystem.makeNoop({ open: () => Effect.succeed(file) })
@@ -977,9 +976,8 @@ export const layer = <
  *
  * const writes: Array<string> = []
  * const file = {
- *   write: (buffer: Uint8Array) => Effect.sync(() => {
+ *   writeAll: (buffer: Uint8Array) => Effect.sync(() => {
  *     writes.push(new TextDecoder().decode(buffer).trim())
- *     return FileSystem.Size(buffer.length)
  *   })
  * } as unknown as FileSystem.File
  * const fileSystem = FileSystem.makeNoop({ open: () => Effect.succeed(file) })
@@ -1030,7 +1028,7 @@ export const toFile = dual<
       const encoder = new TextEncoder()
       return yield* batched(self, {
         window: options?.batchWindow ?? 1000,
-        flush: (output) => effect.ignore(logFile.write(encoder.encode(output.join("\n") + "\n")))
+        flush: (output) => effect.ignore(logFile.writeAll(encoder.encode(output.join("\n") + "\n")))
       })
     })
 )
