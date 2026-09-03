@@ -367,10 +367,10 @@ export const setUnsafe: {
 
   const previous = MutableHashMap.get(self.state.backing, key)
   if (previous._tag === "Some") {
-    if (options?.onlyIfMissing === true) {
-      fiber.interruptUnsafe(internalFiberId)
+    if (previous.value === fiber) {
       return
-    } else if (previous.value === fiber) {
+    } else if (options?.onlyIfMissing === true) {
+      fiber.interruptUnsafe(internalFiberId)
       return
     }
   }
