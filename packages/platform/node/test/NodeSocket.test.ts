@@ -1,6 +1,6 @@
 import { NodeSocket, NodeSocketServer } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Queue, Redacted } from "effect"
+import { Deferred, Effect, Option, Queue, Redacted } from "effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Scope from "effect/Scope"
@@ -535,6 +535,54 @@ describe("Socket", () => {
           WS.clean()
         })
     )
+
+    it.live("receives messages after handing a paused WebSocket to the reader", () =>
+      Effect.gen(function*() {
+        const serverScope = yield* Scope.make()
+        const connections = new Set<NodeSocket.NodeWS.WebSocket>()
+        yield* Effect.addFinalizer(() =>
+          Effect.gen(function*() {
+            for (const connection of connections) connection.terminate()
+            yield* Scope.close(serverScope, Exit.void)
+          })
+        )
+        const received = yield* Deferred.make<ReadonlyArray<Uint8Array | string>>()
+        const server = yield* NodeSocketServer.makeWebSocket({ host: "127.0.0.1", port: 0 }).pipe(
+          Scope.provide(serverScope)
+        )
+        assert.strictEqual(server.address._tag, "TcpAddress")
+        if (server.address._tag !== "TcpAddress") return
+
+        yield* server.run((socket) =>
+          Effect.gen(function*() {
+            const native = Option.getOrThrow(yield* Effect.serviceOption(Socket.WebSocket))
+            if (native instanceof NodeSocket.NodeWS.WebSocket) connections.add(native)
+            const { pull } = yield* socket.reader
+            const writer = yield* socket.writer
+            yield* writer.write("reader-ready")
+            yield* Deferred.succeed(received, yield* pull)
+          }).pipe(Effect.scoped)
+        ).pipe(Effect.forkIn(serverScope))
+
+        const client = new NodeSocket.NodeWS.WebSocket(`ws://127.0.0.1:${server.address.port}`)
+        connections.add(client)
+        const open = new Promise<void>((resolve, reject) => {
+          client.once("open", resolve)
+          client.once("error", reject)
+        })
+        const ready = new Promise<string>((resolve) => {
+          client.once("message", (data) => resolve(data.toString()))
+        })
+
+        yield* Effect.promise(() => open).pipe(Effect.timeout("1 second"))
+        assert.strictEqual(yield* Effect.promise(() => ready).pipe(Effect.timeout("1 second")), "reader-ready")
+        client.send("after-ready")
+
+        assert.deepStrictEqual(
+          yield* Deferred.await(received).pipe(Effect.timeout("1 second")),
+          ["after-ready"]
+        )
+      }))
 
     it.effect("passes headers to the opening handshake", () =>
       Effect.gen(function*() {
