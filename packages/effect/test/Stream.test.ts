@@ -959,6 +959,22 @@ describe("Stream", () => {
         assertExitFailure(exit, Cause.die(defect))
       }))
 
+    it.effect("catchDefect", () =>
+      Effect.gen(function*() {
+        const defect = new Error("boom")
+        const recovered = yield* Stream.die(defect).pipe(
+          Stream.catchDefect((caught) => Stream.succeed(caught)),
+          Stream.runCollect
+        )
+        const failed = yield* Stream.fail("failure").pipe(
+          Stream.catchDefect(() => Stream.succeed("recovered")),
+          Stream.runCollect,
+          Effect.exit
+        )
+        assert.deepStrictEqual(recovered, [defect])
+        assertExitFailure(failed, Cause.fail("failure"))
+      }))
+
     it.effect("catchIf with refinement", () =>
       Effect.gen(function*() {
         interface ErrorA {
