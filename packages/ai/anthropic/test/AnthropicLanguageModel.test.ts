@@ -510,6 +510,51 @@ describe("AnthropicLanguageModel", () => {
         assert.strictEqual(toolResult.content, "PLAIN_TEXT_SENTINEL\n")
       }))
 
+    it.effect("preserves base64 image string payloads", () =>
+      Effect.gen(function*() {
+        const base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII="
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model: "claude-sonnet-4-20250514",
+                content: [{ type: "text", text: "Done" }],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: null,
+                  cache_read_input_tokens: null,
+                  inference_geo: null,
+                  input_tokens: 1,
+                  output_tokens: 1,
+                  service_tier: null
+                }
+              }))
+            })
+          ))
+        )
+
+        yield* LanguageModel.generateText({
+          prompt: Prompt.make([Prompt.userMessage({
+            content: [Prompt.filePart({ mediaType: "image/png", data: base64 })]
+          })])
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer)
+        )
+
+        assert.isDefined(capturedRequest)
+        const body = yield* getRequestBody(capturedRequest)
+        assert.strictEqual(body.messages[0].content[0].source.data, base64)
+      }))
+
     it.effect("encodes dynamic tools", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
