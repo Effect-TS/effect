@@ -1572,40 +1572,32 @@ export const takeUnsafe = <A, E>(self: Dequeue<A, E>): Exit<A, E> | undefined =>
 }
 
 /**
- * Manually triggers all current queue awaiters synchronously.
+ * Manually releases current queue takers synchronously.
  *
  * **Details**
  *
- * This resumes all fibers currently waiting for the queue to complete. The queue
- * remains open, and fibers that call `Queue.await` afterward wait for a later
- * flush or for the queue to complete.
+ * This immediately runs the queue's taker-release pass instead of waiting for
+ * its scheduled task. It does not complete the queue or resume fibers waiting
+ * on `Queue.await`.
  *
  * @category completion
  * @since 4.0.0
  */
-export const flushUnsafe = <A, E>(self: Dequeue<A, E>): void => {
-  if (self.state._tag === "Done") {
-    return
-  }
-  for (const awaiter of self.state.awaiters) {
-    awaiter(internalEffect.exitVoid)
-  }
-  self.state.awaiters.clear()
-}
+export const flushUnsafe = <A, E>(self: Enqueue<A, E>): void => releaseTakers(self)
 
 /**
- * Manually triggers all current queue awaiters.
+ * Manually releases current queue takers.
  *
  * **Details**
  *
- * This resumes all fibers currently waiting for the queue to complete. The queue
- * remains open, and fibers that call `Queue.await` afterward wait for a later
- * flush or for the queue to complete.
+ * This immediately runs the queue's taker-release pass instead of waiting for
+ * its scheduled task. It does not complete the queue or resume fibers waiting
+ * on `Queue.await`.
  *
  * @category completion
  * @since 4.0.0
  */
-export const flush = <A, E>(self: Dequeue<A, E>): Effect<void> => internalEffect.sync(() => flushUnsafe(self))
+export const flush = <A, E>(self: Enqueue<A, E>): Effect<void> => internalEffect.sync(() => flushUnsafe(self))
 
 const await_ = <A, E>(self: Dequeue<A, E>): Effect<void, Exclude<E, Done>> =>
   internalEffect.callback<void, Exclude<E, Done>>((resume) => {

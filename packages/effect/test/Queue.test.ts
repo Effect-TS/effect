@@ -449,36 +449,34 @@ describe("Queue", () => {
   it.effect("flushUnsafe releases current takers, not awaiters", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number>()
-      yield* Queue.take(queue).pipe(Effect.forkChild)
-      yield* Queue.await(queue).pipe(Effect.forkChild)
+      const taker = yield* Queue.take(queue).pipe(Effect.forkChild)
+      const awaiter = yield* Queue.await(queue).pipe(Effect.forkChild)
       yield* Effect.yieldNow
-      const state = queue.state
-      if (state._tag === "Done") return assert.fail("Expected an open queue")
-      assert.strictEqual(state.takers.size, 1)
-      assert.strictEqual(state.awaiters.size, 1)
+
+      Queue.offerUnsafe(queue, 1)
+      assert.isUndefined(taker.pollUnsafe())
 
       Queue.flushUnsafe(queue)
 
-      assert.strictEqual(state.takers.size, 0)
-      assert.strictEqual(state.awaiters.size, 1)
+      assert.deepStrictEqual(taker.pollUnsafe(), Exit.succeed(1))
+      assert.isUndefined(awaiter.pollUnsafe())
       yield* Queue.shutdown(queue)
     }))
 
   it.effect("flush releases current takers, not awaiters", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number>()
-      yield* Queue.take(queue).pipe(Effect.forkChild)
-      yield* Queue.await(queue).pipe(Effect.forkChild)
+      const taker = yield* Queue.take(queue).pipe(Effect.forkChild)
+      const awaiter = yield* Queue.await(queue).pipe(Effect.forkChild)
       yield* Effect.yieldNow
-      const state = queue.state
-      if (state._tag === "Done") return assert.fail("Expected an open queue")
-      assert.strictEqual(state.takers.size, 1)
-      assert.strictEqual(state.awaiters.size, 1)
+
+      Queue.offerUnsafe(queue, 1)
+      assert.isUndefined(taker.pollUnsafe())
 
       yield* Queue.flush(queue)
 
-      assert.strictEqual(state.takers.size, 0)
-      assert.strictEqual(state.awaiters.size, 1)
+      assert.deepStrictEqual(taker.pollUnsafe(), Exit.succeed(1))
+      assert.isUndefined(awaiter.pollUnsafe())
       yield* Queue.shutdown(queue)
     }))
 
