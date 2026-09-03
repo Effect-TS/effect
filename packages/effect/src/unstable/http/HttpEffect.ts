@@ -14,7 +14,8 @@ import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import { dual } from "../../Function.ts"
-import { fiberEnterUninterruptibleUnsafe, reportCauseUnsafe } from "../../internal/effect.ts"
+import { contA, contE } from "../../internal/core.ts"
+import { effectIsExit, fiberEnterUninterruptibleUnsafe, reportCauseUnsafe } from "../../internal/effect.ts"
 import * as Layer from "../../Layer.ts"
 import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
@@ -116,15 +117,73 @@ export const toHandled = <E, R, EH, RH>(
     ? tracer(withMiddleware as Effect.Effect<HttpServerResponse, E | EH | HttpServerError, HttpServerRequest | R | RH>)
     : undefined
 
+  // Fast-path continuation frame, replacing the matchCauseEffect + onExit
+  // pair with a single stack frame when no middleware or tracing backend is
+  // involved. `finishAfter` restores the state through the generic onExit
+  // machinery for effectful (pre-response handler, streaming, or failed)
+  // response writes.
+  const finishAfter = (
+    frame: RequestFrame,
+    fiber: Fiber.Fiber<unknown, unknown>,
+    effect: Effect.Effect<unknown, unknown, unknown>
+  ) =>
+    Effect.onExitPrimitive(effect, (exit) => {
+      fiber.setContext(frame.prev)
+      if (scopeEjected in frame.scope) return undefined
+      return Scope.closeUnsafe(frame.scope, exit)
+    }, true)
+
+  class RequestFrame {
+    readonly scope: Scope.Closeable
+    readonly prev: Context.Context<never>
+    readonly request: HttpServerRequest
+    constructor(scope: Scope.Closeable, prev: Context.Context<never>, request: HttpServerRequest) {
+      this.scope = scope
+      this.prev = prev
+      this.request = request
+    }
+    [contA](response: HttpServerResponse, fiber: Fiber.Fiber<unknown, unknown>) {
+      const request = this.request
+      const handler = preResponseHandler.requestPreResponseHandlers.get(request.source)
+      if (handler === undefined) {
+        ;(request as any)[handledSymbol] = true
+        const sent = handleResponse(request, response)
+        // responses are usually written synchronously
+        if (effectIsExit(sent) && sent._tag === "Success") {
+          fiber.setContext(this.prev)
+          const exit = Exit.succeed(response)
+          if (scopeEjected in this.scope) return exit
+          const closed = Scope.closeUnsafe(this.scope, exit)
+          return closed === undefined ? exit : Effect.flatMap(closed, () => exit)
+        }
+        return finishAfter(this, fiber, Effect.mapEager(sent, () => response))
+      }
+      return finishAfter(
+        this,
+        fiber,
+        Effect.flatMapEager(handler(request, response), (sentResponse) => {
+          ;(request as any)[handledSymbol] = true
+          return Effect.mapEager(handleResponse(request, sentResponse), () => response)
+        })
+      )
+    }
+    [contE](cause: Cause.Cause<E | EH | HttpServerError>, fiber: Fiber.Fiber<unknown, unknown>) {
+      return finishAfter(this, fiber, handleCause(cause))
+    }
+  }
+
   return Effect.withFiber((fiber) => {
     fiberEnterUninterruptibleUnsafe(fiber)
     const scope = Scope.makeUnsafe()
     const prevServices = fiber.context
     fiber.setContext(Context.add(fiber.context, Scope.Scope, scope))
-    const effect = traced === undefined || isTracerDisabledFastUnsafe(fiber)
-      ? withMiddleware
-      : traced
-    return Effect.onExitPrimitive(effect, (exit) => {
+    if (traced !== undefined && isTracerDisabledFastUnsafe(fiber)) {
+      ;(fiber as any)._stack.push(
+        new RequestFrame(scope, prevServices, Context.getUnsafe(prevServices, HttpServerRequest))
+      )
+      return self
+    }
+    return Effect.onExitPrimitive(traced ?? withMiddleware, (exit) => {
       fiber.setContext(prevServices)
       if (scopeEjected in scope) return undefined
       return Scope.closeUnsafe(scope, exit)

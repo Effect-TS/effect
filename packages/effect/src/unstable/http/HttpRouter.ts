@@ -13,6 +13,7 @@ import * as Arr from "../../Array.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import { compose, dual, identity } from "../../Function.ts"
+import { succeedWithFiber } from "../../internal/core.ts"
 import { fiberEnterInterruptibleUnsafe } from "../../internal/effect.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
@@ -298,9 +299,7 @@ export const params: Effect.Effect<
   ReadonlyRecord<string, string | undefined>,
   never,
   RouteContext
-> = Effect.withFiber((fiber) =>
-  Effect.succeed(Context.getUnsafe(fiber.context as Context.Context<RouteContext>, RouteContext).params)
-)
+> = succeedWithFiber((fiber) => Context.getUnsafe(fiber.context as Context.Context<RouteContext>, RouteContext).params)
 
 /**
  * Decodes a schema from the current request and its JSON body.

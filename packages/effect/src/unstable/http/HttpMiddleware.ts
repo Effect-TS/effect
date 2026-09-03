@@ -181,7 +181,9 @@ export const logger: <E, R>(
  */
 export const isTracerDisabledFastUnsafe = (fiber: {
   getRef: <A>(ref: Context.Reference<A>) => A
-}): boolean => !fiber.getRef(TracerEnabled) || fiber.getRef(Tracer) === nativeTracer
+}): boolean =>
+  // the tracer reference is fiber cached, so it is checked first
+  fiber.getRef(Tracer) === nativeTracer || !fiber.getRef(TracerEnabled)
 
 /**
  * Middleware that creates a server trace span for each request and records request and response HTTP attributes.

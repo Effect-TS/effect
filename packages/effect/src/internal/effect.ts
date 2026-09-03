@@ -645,17 +645,20 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
           current = failCause(this._interruptedCause!) as any
         }
         this.currentOpCount++
+        // `cache` is re-read every iteration, as an evaluated primitive can
+        // replace the fiber context
+        const cache = this.cache
         if (
           !yielding &&
-          !this.cache.preventYield &&
-          this.cache.scheduler.shouldYield(this as any)
+          !cache.preventYield &&
+          cache.scheduler.shouldYield(this as any)
         ) {
           yielding = true
           const prev = current
           current = flatMap(yieldNow, () => prev as any) as any
         }
-        current = this.cache.tracerContext
-          ? this.cache.tracerContext(current as any, this)
+        current = cache.tracerContext
+          ? cache.tracerContext(current as any, this)
           : (current as any)[evaluate](this)
         if (current === Yield) {
           const yielded = this._yielded!
@@ -692,10 +695,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     while (true) {
       const op = this._stack.pop()
       if (!op) return undefined
-      const cont = op[contAll] && op[contAll](this)
-      if (cont) {
-        ;(cont as any)[symbol] = cont
-        return cont as any
+      const all = op[contAll]
+      if (all !== undefined) {
+        const cont = all.call(op, this)
+        if (cont) {
+          ;(cont as any)[symbol] = cont
+          return cont as any
+        }
       }
       if (op[symbol]) return op as any
     }
@@ -1802,7 +1808,8 @@ export const matchCauseEffectEager: {
 )
 
 /** @internal */
-export const effectIsExit = <A, E, R>(effect: Effect.Effect<A, E, R>): effect is Exit.Exit<A, E> => ExitTypeId in effect
+export const effectIsExit = <A, E, R>(effect: Effect.Effect<A, E, R>): effect is Exit.Exit<A, E> =>
+  (effect as any)[ExitTypeId] !== undefined
 
 /** @internal */
 export const flatMapEager: {

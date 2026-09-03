@@ -293,6 +293,10 @@ const encodeText: (body: string) => globalThis.Uint8Array = typeof globalThis.Bu
  * @since 4.0.0
  */
 export const text = (body: string, contentType?: string): Uint8Array => {
+  if (typeof body !== "string") {
+    // mirrors how TextEncoder coerces non-string input
+    body = body === undefined ? "" : String(body)
+  }
   if (typeof globalThis.Buffer === "function") {
     return new Uint8Array(undefined, contentType ?? "text/plain", globalThis.Buffer.byteLength(body, "utf8"), body)
   }

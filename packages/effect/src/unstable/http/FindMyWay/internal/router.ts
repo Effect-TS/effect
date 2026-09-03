@@ -328,38 +328,59 @@ class RouterImpl<A> implements Router.Router<A> {
     let currentNode: Node | undefined = this.trees[method]
     if (currentNode === undefined) return undefined
 
-    if (path.charCodeAt(0) !== 47) {
-      // 47 is '/'
-      path = path.replace(FULL_PATH_REGEXP, "/")
+    let querystring = ""
+    let shouldDecodeParam = false
+
+    // Lowercase paths without a query, encoding, duplicate slashes, or a
+    // trailing slash are already in canonical form and skip the sanitization
+    // pipeline below
+    let clean = path.charCodeAt(0) === 47 &&
+      (path.length === 1 || path.charCodeAt(path.length - 1) !== 47)
+    if (clean) {
+      for (let i = 1; i < path.length; i++) {
+        const code = path.charCodeAt(i)
+        if (
+          code === 37 || code === 63 || code === 59 || code === 35 ||
+          (code >= 65 && code <= 90) ||
+          (code === 47 && path.charCodeAt(i - 1) === 47)
+        ) {
+          clean = false
+          break
+        }
+      }
     }
 
-    // This must be run before sanitizeUrl as the resulting function
-    // .sliceParameter must be constructed with same URL string used
-    // throughout the rest of this function.
-    if (this.options.ignoreDuplicateSlashes) {
-      path = removeDuplicateSlashes(path)
-    }
+    if (!clean) {
+      if (path.charCodeAt(0) !== 47) {
+        // 47 is '/'
+        path = path.replace(FULL_PATH_REGEXP, "/")
+      }
 
-    let sanitizedUrl
-    let querystring
-    let shouldDecodeParam
+      // This must be run before sanitizeUrl as the resulting function
+      // .sliceParameter must be constructed with same URL string used
+      // throughout the rest of this function.
+      if (this.options.ignoreDuplicateSlashes) {
+        path = removeDuplicateSlashes(path)
+      }
 
-    try {
-      sanitizedUrl = safeDecodeURI(path)
-      path = sanitizedUrl.path
-      querystring = sanitizedUrl.querystring
-      shouldDecodeParam = sanitizedUrl.shouldDecodeParam
-    } catch (error) {
-      return undefined
-    }
+      let sanitizedUrl
+      try {
+        sanitizedUrl = safeDecodeURI(path)
+        path = sanitizedUrl.path
+        querystring = sanitizedUrl.querystring
+        shouldDecodeParam = sanitizedUrl.shouldDecodeParam
+      } catch (error) {
+        return undefined
+      }
 
-    if (this.options.ignoreTrailingSlash) {
-      path = trimLastSlash(path)
+      if (this.options.ignoreTrailingSlash) {
+        path = trimLastSlash(path)
+      }
     }
 
     const originPath = path
 
-    if (this.options.caseSensitive === false) {
+    if (!clean && this.options.caseSensitive === false) {
       path = path.toLowerCase()
     }
 
