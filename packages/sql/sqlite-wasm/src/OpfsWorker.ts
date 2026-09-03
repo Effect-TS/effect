@@ -114,9 +114,6 @@ export const run = (
         }
       }
       options.port.addEventListener("message", onMessage)
-      if ("start" in options.port && typeof options.port.start === "function") {
-        options.port.start()
-      }
       options.port.postMessage(["ready", undefined, undefined])
       return Effect.sync(() => {
         options.port.removeEventListener("message", onMessage)
