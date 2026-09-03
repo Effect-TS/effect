@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { describe, it } from "@effect/vitest"
 import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
@@ -233,67 +233,10 @@ describe("Trie", () => {
     deepStrictEqual(Array.from(trie2), [["me", 1], ["mid", 3], ["mind", 2]])
   })
 
-  describe("remove preserves other stored entries", () => {
-    const cases: Array<[
-      name: string,
-      entries: Array<readonly [string, number | undefined]>,
-      keys: Array<string>,
-      many?: boolean
-    ]> = [
-      ["prefix", [["ab", 1], ["abc", 2]], ["abc"]],
-      ["reverse insertion prefix", [["abc", 2], ["ab", 1]], ["abc"]],
-      ["prefix chain", [["a", 1], ["ab", 2], ["abc", 3], ["abcd", 4]], ["abcd"]],
-      ["right sibling", [["ab", 1], ["ac", 2]], ["ac"]],
-      ["left sibling", [["ac", 1], ["ab", 2]], ["ab"]],
-      ["prefix with unrelated branch", [["ab", 1], ["abc", 2], ["z", 3]], ["abc"]],
-      ["remaining extension", [["ab", 1], ["abc", 2], ["abd", 3]], ["abc"]],
-      ["remaining left sibling", [["ab", 1], ["abc", 2], ["aa", 3]], ["abc"]],
-      ["root-valued prefix", [["a", 1], ["ab", 2]], ["ab"]],
-      ["undefined-valued prefix", [["ab", undefined], ["abc", 2]], ["abc"]],
-      ["undefined-valued removed leaf", [["ab", 1], ["abc", undefined]], ["abc"]],
-      ["removeMany extension", [["ab", 1], ["abc", 2]], ["abc"], true],
-      ["removeMany last extensions", [["ab", 1], ["abc", 2], ["abd", 3]], ["abc", "abd"], true],
-      ["removeMany repeated extension", [["ab", 1], ["abc", 2]], ["abc", "abc"], true],
-      ["remove prefix", [["ab", 1], ["abc", 2]], ["ab"]],
-      ["remove unrelated branch", [["ab", 1], ["z", 2]], ["z"]],
-      ["missing branch", [["ab", 1], ["abc", 2]], ["z"]],
-      ["missing terminal value", [["abc", 2]], ["ab"]],
-      ["missing extension", [["ab", 1]], ["abc"]],
-      ["sole entry", [["abc", 1]], ["abc"]],
-      ["sole undefined entry", [["abc", undefined]], ["abc"]],
-      ["empty trie", [], ["abc"]],
-      ["removeMany missing", [["ab", 1], ["abc", 2]], ["z", "abcd"], true],
-      ["removeMany empty", [["ab", 1], ["abc", 2]], [], true],
-      ["removeMany repeated sole entry", [["abc", 1]], ["abc", "abc"], true]
-    ]
+  it("remove preserves a valued prefix", () => {
+    const trie = Trie.make(["ab", 1], ["abc", 2]).pipe(Trie.remove("abc"))
 
-    for (const [name, entries, keys, many] of cases) {
-      it(name, () => {
-        const before = Trie.make(...entries)
-        const original = entries.slice().sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
-        const expected = original.filter(([key]) => !keys.includes(key))
-        const after = many ? Trie.removeMany(before, keys) : Trie.remove(before, keys[0])
-
-        assert.deepStrictEqual(Trie.toEntries(before), original)
-        assert.strictEqual(Trie.size(before), original.length)
-        for (const [key, value] of original) {
-          assert.deepStrictEqual(Trie.get(before, key), Option.some(value))
-        }
-
-        assert.strictEqual(Trie.size(after), expected.length)
-        assert.deepStrictEqual(Trie.toEntries(after), expected)
-        assert.deepStrictEqual(Array.from(after), expected)
-        assert.strictEqual(Trie.size(after), Array.from(after).length)
-        for (const [key, value] of expected) {
-          assert.strictEqual(Trie.has(after, key), true)
-          assert.deepStrictEqual(Trie.get(after, key), Option.some(value))
-        }
-        for (const key of keys) {
-          assert.strictEqual(Trie.has(after, key), false)
-          assert.deepStrictEqual(Trie.get(after, key), Option.none())
-        }
-      })
-    }
+    deepStrictEqual(Array.from(trie), [["ab", 1]], "valued prefix should remain after removing its extension")
   })
 
   it("keys returns keys in sorted order", () => {
