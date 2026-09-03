@@ -4530,14 +4530,7 @@ export function ArrayEnsure<S extends Constraint>(schema: S): ArrayEnsure<S> {
       encode: ([value]) => value
     })
   )(schema)
-  const nonSingleton = many.pipe(decodeTo(ArraySchema(Unknown), {
-    decode: SchemaGetter.passthrough(),
-    encode: SchemaGetter.checkEffect((array) =>
-      Effect.succeed(array.length !== 1 || "Expected an array with a length other than 1")
-    )
-  }))
-  const normalized = Union([one, nonSingleton]).pipe(decodeTo(to))
-  return make(normalized.ast, { from: Union([schema, many]), to })
+  return make(Union([one, many]).pipe(decodeTo(to)).ast, { from: Union([schema, many]), to })
 }
 /**
  * Type-level representation returned by {@link UniqueArray}.
