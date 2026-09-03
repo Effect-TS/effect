@@ -2149,9 +2149,9 @@ const makeUriMatcher = <A>() => {
     caseSensitive: true
   })
   const add = (uri: string, value: A) => {
-    router.on("GET", `/${uri}`, value)
+    router.on("GET", uri as any, value)
   }
-  const find = (uri: string) => router.find("GET", `/${uri}`)
+  const find = (uri: string) => router.find("GET", uri)
 
   return { add, find } as const
 }
