@@ -296,6 +296,7 @@ describe("remainder", () => {
   it("preserves the dividend sign, including negative zero", () => {
     assert.strictEqual(N.remainder(-5, 2), -1)
     assertNegativeZero(N.remainder(-4, 2))
+    assertNegativeZero(N.remainder(-0, 2))
   })
 
   it("preserves the dividend sign with negative divisors", () => {
