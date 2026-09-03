@@ -9,3 +9,17 @@ it("does not type a service removed with addOrOmit as present", () => {
   expect(Context.get).type.not.toBeCallableWith(context, Service)
   expect(Context.get).type.not.toBeCallableWith(dataFirst, Service)
 })
+
+it("infers services for a saved curried getter", () => {
+  const Port = Context.Service<{ readonly PORT: number }>("Port")
+  const Host = Context.Service<{ readonly HOST: string }>("Host")
+  const portContext = Context.make(Port, { PORT: 8080 })
+  const both = Context.add(portContext, Host, { HOST: "localhost" })
+  const getPort = Context.get(Port)
+
+  expect(getPort).type.toBeCallableWith(portContext)
+  expect(getPort).type.toBeCallableWith(both)
+  expect(getPort(portContext)).type.toBe<{ readonly PORT: number }>()
+  expect(getPort).type.not.toBeCallableWith(Context.empty())
+  expect(getPort).type.not.toBeCallableWith(Context.make(Host, { HOST: "localhost" }))
+})
