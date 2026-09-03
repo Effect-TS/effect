@@ -19,7 +19,6 @@ import type { SchemaError } from "../../Schema.ts"
 import type { Mutable, Simplify } from "../../Types.ts"
 import type * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
-import type { HttpClientResponse } from "../http/HttpClientResponse.ts"
 import type * as HttpApi from "../httpapi/HttpApi.ts"
 import * as HttpApiClient from "../httpapi/HttpApiClient.ts"
 import * as HttpApiEndpoint from "../httpapi/HttpApiEndpoint.ts"
@@ -82,7 +81,7 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
           readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
         }
       >,
-      ResponseByMode<Extract<_Success, Schema.Top>["Type"], ResponseMode>,
+      ResponseByMode<Endpoint, ResponseMode>,
       ErrorByMode<_Error, _Middleware, ResponseMode>
     >
     : never
@@ -140,7 +139,7 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
     >
   ] ? Atom.Atom<
       AsyncResult.AsyncResult<
-        ResponseByMode<Extract<_Success, Schema.Top>["Type"], ResponseMode>,
+        ResponseByMode<Endpoint, ResponseMode>,
         ErrorByMode<_Error, _Middleware, ResponseMode>
       >
     >
@@ -342,10 +341,15 @@ interface QueryKey {
   serializationKey: string | undefined
 }
 
-type ResponseByMode<Success, ResponseMode extends HttpApiEndpoint.ClientResponseMode> = [ResponseMode] extends
-  ["decoded-and-response"] ? [Success, HttpClientResponse]
-  : [ResponseMode] extends ["response-only"] ? HttpClientResponse
-  : Success
+type ResponseByMode<
+  Endpoint extends HttpApiEndpoint.Constraint,
+  ResponseMode extends HttpApiEndpoint.ClientResponseMode
+> = HttpApiClient.Client.Response<
+  Effect.Success<
+    ReturnType<HttpApiClient.Client.Method<Extract<Endpoint, HttpApiEndpoint.ConstraintRequest>, never, never>>
+  >,
+  ResponseMode
+>
 
 type ErrorByMode<
   Error extends Schema.Constraint,
