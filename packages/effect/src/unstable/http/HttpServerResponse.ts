@@ -928,7 +928,7 @@ export const setBody: {
 } = dual(
   2,
   (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse =>
-    makeResponse({ ...self, headers: bodyInternal.updateHeaders(self.headers, body), body })
+    makeResponse({ ...self, body }, bodyInternal.updateHeaders(self.headers, body))
 )
 
 /**
@@ -1337,8 +1337,8 @@ const makeResponse = (options: {
   readonly body?: Body.HttpBody | undefined
 }, ownedHeaders?: Headers.Headers) => {
   // ownedHeaders is a freshly created map that nothing else references, so it
-  // can be completed in place instead of copied. Explicit content headers in it
-  // take precedence over body-derived ones.
+  // can be completed in place instead of copied. It supersedes options.headers,
+  // and explicit content headers in it take precedence over body-derived ones.
   const self = Object.create(Proto) as Mutable<HttpServerResponse>
   self.status = options.status
   self.statusText = options.statusText
