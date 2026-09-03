@@ -62,6 +62,18 @@ describe("Client", () => {
       assert.strictEqual(raw.meta.rows_read, native.meta.rows_read)
     }).pipe(Effect.provide(D1Miniflare.layerClient)))
 
+  it.effect("raw preserves returned rows and metadata for INSERT RETURNING", () =>
+    Effect.gen(function*() {
+      const sql = yield* D1Client.D1Client
+      yield* sql`CREATE TABLE raw_returning_test (id INTEGER PRIMARY KEY, name TEXT)`
+      const raw = assertD1Result(
+        yield* sql`INSERT INTO raw_returning_test (name) VALUES (${"effect"}) RETURNING *`.raw
+      )
+      assert.deepStrictEqual(raw.results, [{ id: 1, name: "effect" }])
+      assert.strictEqual(raw.meta.changes, 1)
+      assert.strictEqual(raw.meta.last_row_id, 1)
+    }).pipe(Effect.provide(D1Miniflare.layerClient)))
+
   it.effect("keeps prepared and unprepared row and positional results", () =>
     Effect.gen(function*() {
       const sql = yield* D1Client.D1Client
