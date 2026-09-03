@@ -400,3 +400,98 @@ export const makeEmptyReply = (request: Message.OutgoingRequest<any>) => {
     rpc: request.rpc
   })
 }
+
+describe("clearAddress control envelopes", () => {
+  it.effect.each([1, 2])("removes an unread Interrupt after %i clears", (clears) =>
+    Effect.gen(function*() {
+      const storage = yield* MessageStorage.MessageStorage
+      const snowflake = yield* Snowflake.Generator
+      const target = yield* makeRequest({ entityId: "target" })
+      const keep = yield* makeRequest({ entityId: "keep" })
+      yield* storage.saveRequest(target)
+      yield* storage.saveRequest(keep)
+      yield* storage.saveEnvelope(Message.OutgoingEnvelope.interrupt({
+        address: target.envelope.address,
+        requestId: target.envelope.requestId,
+        id: snowflake.nextUnsafe()
+      }))
+      for (let i = 0; i < clears; i++) {
+        yield* storage.clearAddress(target.envelope.address)
+      }
+      const messages = yield* storage.unprocessedMessages([target.envelope.address.shardId])
+      const actual = messages.map(({ envelope }) => [envelope._tag, String(envelope.requestId)])
+      const expected = [["Request", String(keep.envelope.requestId)]]
+      console.log(JSON.stringify({ witness: "memory-interrupt", clears, actual, expected }))
+      assert.deepStrictEqual(
+        messages.filter(({ envelope }) => envelope._tag === "Request").map(({ envelope }) => envelope.requestId),
+        [keep.envelope.requestId]
+      )
+      assert.deepStrictEqual(actual, expected)
+    }).pipe(Effect.provide(MemoryLayer)))
+
+  it.effect("clears requests without controls and remains idempotent", () =>
+    Effect.gen(function*() {
+      const storage = yield* MessageStorage.MessageStorage
+      const target = yield* makeRequest({ entityId: "target" })
+      const keep = yield* makeRequest({ entityId: "keep" })
+      yield* storage.saveRequest(target)
+      yield* storage.saveRequest(keep)
+      yield* storage.clearAddress(target.envelope.address)
+      yield* storage.clearAddress(target.envelope.address)
+      const messages = yield* storage.unprocessedMessages([target.envelope.address.shardId])
+      assert.deepStrictEqual(messages.map(({ envelope }) => envelope.requestId), [keep.envelope.requestId])
+    }).pipe(Effect.provide(MemoryLayer)))
+
+  it.effect("removes AckChunk while preserving unrelated requests controls and replies", () =>
+    Effect.gen(function*() {
+      const storage = yield* MessageStorage.MessageStorage
+      const snowflake = yield* Snowflake.Generator
+      const target = yield* makeRequest({
+        rpc: StreamRpc,
+        entityId: "target",
+        payload: StreamRpc.payloadSchema.make({ id: 123 })
+      })
+      const keep = yield* makeRequest({
+        rpc: StreamRpc,
+        entityId: "keep",
+        payload: StreamRpc.payloadSchema.make({ id: 123 })
+      })
+      yield* storage.saveRequest(target)
+      yield* storage.saveRequest(keep)
+      const targetChunk = yield* makeChunkReply(target, 0)
+      const keepChunk = yield* makeChunkReply(keep, 0)
+      yield* storage.saveReply(targetChunk)
+      yield* storage.saveReply(keepChunk)
+      const targetAck = yield* makeAckChunk(target, targetChunk)
+      const keepAck = yield* makeAckChunk(keep, keepChunk)
+      const keepInterrupt = Message.OutgoingEnvelope.interrupt({
+        address: keep.envelope.address,
+        requestId: keep.envelope.requestId,
+        id: snowflake.nextUnsafe()
+      })
+      yield* storage.saveEnvelope(targetAck)
+      yield* storage.saveEnvelope(keepAck)
+      yield* storage.saveEnvelope(keepInterrupt)
+      const keepReplies = yield* storage.repliesForUnfiltered([keep.envelope.requestId])
+      assert.strictEqual(keepReplies.length, 1)
+      assert.strictEqual((yield* storage.repliesForUnfiltered([target.envelope.requestId])).length, 1)
+      yield* storage.clearAddress(target.envelope.address)
+      yield* storage.clearAddress(target.envelope.address)
+      assert.deepStrictEqual(yield* storage.repliesForUnfiltered([target.envelope.requestId]), [])
+      assert.deepStrictEqual(yield* storage.repliesForUnfiltered([keep.envelope.requestId]), keepReplies)
+      const messages = yield* storage.unprocessedMessages([target.envelope.address.shardId])
+      const actual = messages.map(({ envelope }) => [envelope._tag, String(envelope.requestId)])
+      const expected = ["Request", "AckChunk", "Interrupt"].map((tag) => [tag, String(keep.envelope.requestId)])
+      console.log(JSON.stringify({ witness: "memory-ack", actual, expected }))
+      assert.deepStrictEqual(
+        actual.filter(([, requestId]) => requestId === String(keep.envelope.requestId)),
+        expected
+      )
+      assert.deepStrictEqual(actual, expected)
+      yield* storage.resetShards([target.envelope.address.shardId])
+      const reread = yield* storage.unprocessedMessages([target.envelope.address.shardId])
+      assert.deepStrictEqual(reread.map(({ envelope }) => [envelope._tag, envelope.requestId]), [
+        ["Request", keep.envelope.requestId]
+      ])
+    }).pipe(Effect.provide(MemoryLayer)))
+})

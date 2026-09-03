@@ -1105,12 +1105,14 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             const envelope = journal[i]
             const sameAddress = address.entityType === envelope.address.entityType &&
               address.entityId === envelope.address.entityId
-            if (!sameAddress || envelope._tag !== "Request") {
+            if (!sameAddress) {
               continue
             }
             unprocessed.delete(envelope)
             lastRead.delete(envelope)
-            requests.delete(envelope.requestId)
+            if (envelope._tag === "Request") {
+              requests.delete(envelope.requestId)
+            }
             journal.splice(i, 1)
           }
         }),
