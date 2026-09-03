@@ -8,7 +8,10 @@ import * as Scope from "effect/Scope"
 import * as HttpServer from "effect/unstable/http/HttpServer"
 import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
+import { mkdtemp, rm } from "node:fs/promises"
 import * as Net from "node:net"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 const fetchText = (url: string) =>
   Effect.promise(() => fetch(url, { headers: { connection: "close" } }).then((response) => response.text()))
@@ -108,6 +111,18 @@ const makeWebSocketServer = Effect.fnUntraced(function*(payload: string, compres
 })
 
 describe("BunHttpServer", () => {
+  it.effect("formats Unix socket addresses", () =>
+    Effect.gen(function*() {
+      const directory = yield* Effect.acquireRelease(
+        Effect.promise(() => mkdtemp(join(tmpdir(), "bun-http-"))),
+        (directory) => Effect.promise(() => rm(directory, { recursive: true, force: true }))
+      )
+      const path = join(directory, "server.sock")
+      const server = yield* BunHttpServer.make({ unix: path })
+
+      assert.strictEqual(HttpServer.formatAddress(server.address), `unix://${path}`)
+    }))
+
   it.effect("closing an older serve scope keeps the newer handler active", () =>
     Effect.gen(function*() {
       const ownerScope = yield* Effect.scope
