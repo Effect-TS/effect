@@ -123,7 +123,7 @@ export const fromCommand = (
       if (subcommand.unlisted) continue
       const descriptor = fromCommand(subcommand, sharedFlags)
       subcommands.push(descriptor)
-      if (subcommand.alias !== undefined && subcommand.alias !== subcommand.name) {
+      if (subcommand.alias && subcommand.alias !== subcommand.name) {
         subcommands.push({ ...descriptor, name: subcommand.alias })
       }
     }
