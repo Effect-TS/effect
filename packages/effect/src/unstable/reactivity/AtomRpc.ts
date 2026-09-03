@@ -275,7 +275,7 @@ export const Service = <Self>() =>
         ? Headers.fromInput(options.headers)
         : undefined,
       reactivityKeys: options?.reactivityKeys,
-      timeToLive: options?.timeToLive
+      timeToLive: options?.timeToLive !== undefined
         ? Duration.fromInputUnsafe(options.timeToLive)
         : undefined,
       serializationKey: options?.serializationKey

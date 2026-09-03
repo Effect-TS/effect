@@ -312,7 +312,7 @@ export const Service =
         headers: request.headers,
         responseMode: request.responseMode ?? "decoded-only",
         reactivityKeys: request.reactivityKeys,
-        timeToLive: request.timeToLive
+        timeToLive: request.timeToLive !== undefined
           ? Duration.fromInputUnsafe(request.timeToLive)
           : undefined,
         serializationKey: request.serializationKey
