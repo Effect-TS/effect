@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Option, Result, Schema, SchemaGetter, SchemaIssue, SchemaParser } from "effect"
-import { assertSchemaIssueError, assertTrue, strictEqual, throws } from "../utils/assert.ts"
+import { assertSchemaIssueError, assertTrue, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 describe("SchemaParser", () => {
   const makeMixedCause = () =>
@@ -56,6 +56,86 @@ describe("SchemaParser", () => {
   })
 
   describe("decodeUnknownSync / encodeUnknownSync", () => {
+    it("decodes inherited struct properties", () => {
+      const schema = Schema.Struct({
+        required: Schema.String,
+        optional: Schema.optionalKey(Schema.String),
+        defaulted: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("default"))),
+        own: Schema.String
+      })
+      const input = Object.assign(
+        Object.create({
+          required: "required",
+          optional: "optional",
+          defaulted: "inherited"
+        }),
+        { own: "own" }
+      )
+
+      const output = SchemaParser.decodeUnknownSync(schema)(input)
+
+      deepStrictEqual(output, {
+        required: "required",
+        optional: "optional",
+        defaulted: "inherited",
+        own: "own"
+      })
+      for (const key of ["required", "optional", "defaulted", "own"]) {
+        assertTrue(Object.hasOwn(output, key))
+      }
+
+      const encoded = SchemaParser.encodeUnknownSync(Schema.Struct({ required: Schema.String }))(
+        Object.create({ required: "required" })
+      )
+      deepStrictEqual(encoded, { required: "required" })
+      assertTrue(Object.hasOwn(encoded, "required"))
+
+      deepStrictEqual(SchemaParser.decodeUnknownSync(schema)({ required: "required", own: "own" }), {
+        required: "required",
+        defaulted: "default",
+        own: "own"
+      })
+    })
+
+    it("distinguishes an inherited undefined property from a missing property", () => {
+      const schema = Schema.Struct({
+        value: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("default")))
+      })
+      const decode = SchemaParser.decodeUnknownSync(schema)
+
+      deepStrictEqual(decode({}), { value: "default" })
+      throws(() => decode(Object.create({ value: undefined })), (error) => {
+        assertSchemaIssueError(error, `Expected string\n  at ["value"]`)
+      })
+    })
+
+    it("selects union members using inherited discriminants", () => {
+      const schema = Schema.Union([
+        Schema.Struct({ _tag: Schema.Literal("A"), value: Schema.String }),
+        Schema.Struct({ _tag: Schema.Literal("B"), value: Schema.Number })
+      ])
+      const input = Object.assign(Object.create({ _tag: "A" }), { value: "value" })
+
+      const output = SchemaParser.decodeUnknownSync(schema)(input)
+
+      deepStrictEqual(output, { _tag: "A", value: "value" })
+      assertTrue(Object.hasOwn(output, "_tag"))
+    })
+
+    it("decodes inherited Object.prototype properties", () => {
+      const output = SchemaParser.decodeUnknownSync(Schema.Struct({ toString: Schema.Unknown }))({})
+
+      strictEqual(output.toString, Object.prototype.toString)
+      assertTrue(Object.hasOwn(output, "toString"))
+    })
+
+    it("keeps dynamic record properties own-only", () => {
+      const input = Object.assign(Object.create({ inherited: 1 }), { own: 2 })
+      const output = SchemaParser.decodeUnknownSync(Schema.Record(Schema.String, Schema.Number))(input)
+
+      deepStrictEqual(output, { own: 2 })
+    })
+
     it("should throw an error when the input is invalid", () => {
       const schema = Schema.String
       throws(() => SchemaParser.decodeUnknownSync(schema)(null), (e) => {

@@ -2474,7 +2474,9 @@ export function getIndexSignatureKeys(
  *
  * Pairs a `name` (any `PropertyKey`) with a `type` ({@link AST}). The
  * property's optionality and mutability are determined by the `type`'s
- * {@link Context}.
+ * {@link Context}. During object parsing, a property is present when its name
+ * exists anywhere on the input's prototype chain. The special `__proto__`
+ * property must be an own property.
  *
  * @see {@link Objects}
  * @category models
@@ -2952,7 +2954,7 @@ export const Objects: new(
         for (let index = 0; index < props.length; index++) {
           const property = props[index]
           const name = property.name
-          const hasKey = Object.hasOwn(record, name)
+          const hasKey = hasPropertySignature(record, name)
           const value = hasKey ? record[name] : InternalParser.missing
           const exit = property.parser(value, options)
           if (!effectIsExit(exit)) {
@@ -3064,7 +3066,7 @@ function stepProperty(
 
 const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()({
   onItem(s, p) {
-    if (!Object.hasOwn(s.input, p.name)) {
+    if (!hasPropertySignature(s.input, p.name)) {
       return p.parser(InternalParser.missing, s.options)
     }
     const value = s.input[p.name]
@@ -3296,6 +3298,9 @@ type SentinelIndex = Map<PropertyKey, SentinelEntry>
 const candidateIndexCache = new WeakMap<ReadonlyArray<AST>, CandidateIndex>()
 const emptyCandidates: ReadonlyArray<never> = Object.freeze([])
 
+const hasPropertySignature = (input: object, key: PropertyKey): boolean =>
+  key === "__proto__" ? Object.hasOwn(input, key) : key in input
+
 function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
   let index = candidateIndexCache.get(types)
   if (index) return index
@@ -3353,7 +3358,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
     }
     index = (input, isConstructor) => {
       if (Predicate.isObjectKeyword(input)) {
-        const value = Object.hasOwn(input, key) ? (input as any)[key] : undefined
+        const value = hasPropertySignature(input, key) ? (input as any)[key] : undefined
         if (value !== undefined) return candidates.get(value) ?? emptyCandidates
         if (isConstructor) return types
       }
@@ -3385,7 +3390,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       // discriminated candidate.
       if (commonSentinel) {
         const [key, [byValue]] = commonSentinel
-        const hasKey = Object.hasOwn(input, key)
+        const hasKey = hasPropertySignature(input, key)
         const value = hasKey ? (input as any)[key] : undefined
         if (hasKey && (!isConstructor || value !== undefined)) {
           const match = byValue.get(value)
@@ -3399,7 +3404,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       // absent and undefined keys as unconstrained and therefore selects every candidate that owns the key.
       if (directKey === undefined) {
         for (const [key, [byValue, all]] of bySentinel) {
-          const hasKey = Object.hasOwn(input, key)
+          const hasKey = hasPropertySignature(input, key)
           const value = hasKey ? (input as any)[key] : undefined
           if (hasKey && (!isConstructor || value !== undefined)) {
             const match = byValue.get(value)
@@ -3414,7 +3419,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       // Missing keys are neutral. An observed key rejects only selected candidates that own it and do not match.
       for (const [key, [byValue, all]] of bySentinel) {
         if (key === directKey) continue
-        const hasKey = Object.hasOwn(input, key)
+        const hasKey = hasPropertySignature(input, key)
         const value = hasKey ? (input as any)[key] : undefined
         if (hasKey && (!isConstructor || value !== undefined)) {
           const match = byValue.get(value)

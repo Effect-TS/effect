@@ -145,47 +145,6 @@ describe("SchemaCompiler", () => {
     )
   })
 
-  it("preserves own-property semantics for custom prototypes", () => {
-    let reads = 0
-    const prototype = { name: "inherited" }
-    const input = Object.assign(Object.create(prototype), {
-      count: 1,
-      active: true,
-      nested: { value: "b" }
-    })
-    Object.defineProperty(input, "name", {
-      configurable: true,
-      enumerable: true,
-      get() {
-        reads++
-        return "own"
-      }
-    })
-
-    deepStrictEqual(decodeCreatedBeforeEnable(input), {
-      name: "own",
-      count: 1,
-      active: true,
-      nested: { value: "b" }
-    })
-    strictEqual(reads, 1)
-
-    delete input.name
-    throws(() => decodeCreatedBeforeEnable(input), (error) => {
-      assertSchemaIssueError(error, `Missing key\n  at ["name"]`)
-    })
-  })
-
-  it("preserves own-property semantics for Object.prototype names", () => {
-    const decode = SchemaParser.decodeUnknownSync(Schema.Struct({ toString: Schema.ObjectKeyword }))
-    throws(() => decode({}), (error) => {
-      assertSchemaIssueError(error, `Missing key\n  at ["toString"]`)
-    })
-
-    const toString = () => "value"
-    strictEqual(decode({ toString }).toString, toString)
-  })
-
   it("compiles symbol-keyed Struct properties", () => {
     const key = Symbol("key")
     const decode = SchemaParser.decodeUnknownSync(Schema.Struct({

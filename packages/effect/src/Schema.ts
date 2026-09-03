@@ -3336,6 +3336,11 @@ function makeStruct<const Fields extends Struct.Fields>(ast: SchemaAST.Objects, 
  *
  * The resulting schema's `Type` is a readonly object type with the fields'
  * decoded types. The `Encoded` form mirrors the field schemas' encoded types.
+ * A declared field is present when its key exists anywhere on the input's
+ * prototype chain. The special `__proto__` field must be an own property.
+ * Parsing copies inherited field values to own properties on the output.
+ * Dynamic {@link Record} index signatures continue to select own properties
+ * only.
  *
  * **Example** (Defining a basic struct)
  *

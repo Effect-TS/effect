@@ -135,6 +135,9 @@ const variable = (emitter: Emitter): string => `v${emitter.next++}`
 const propertyKey = (emitter: Emitter, key: PropertyKey): string =>
   typeof key === "string" ? JSON.stringify(key) : constant(emitter, key)
 
+const propertyPresence = (input: string, key: string, name: PropertyKey): string =>
+  name === "__proto__" ? `Object.hasOwn(${input},${key})` : `${key} in ${input}`
+
 const assignProperty = (output: string, key: string, value: string, name: PropertyKey): string =>
   name === "__proto__"
     ? `Object.defineProperty(${output},${key},{value:${value},writable:true,enumerable:true,configurable:true})`
@@ -149,7 +152,7 @@ const constant = (emitter: Emitter, value: unknown): string => {
   return `C[${index}]`
 }
 
-const needsOwnProperty = (ast: SchemaAST.AST): boolean => {
+const needsPresenceCheck = (ast: SchemaAST.AST): boolean => {
   if (!canEmit(ast)) return true
   switch (ast._tag) {
     case "Undefined":
@@ -158,14 +161,14 @@ const needsOwnProperty = (ast: SchemaAST.AST): boolean => {
     case "Unknown":
       return true
     case "Union":
-      return ast.types.some(needsOwnProperty)
+      return ast.types.some(needsPresenceCheck)
     default:
       return false
   }
 }
 
-const propertyNeedsOwn = (name: PropertyKey, ast: SchemaAST.AST): boolean =>
-  needsOwnProperty(ast) || typeof name === "string" && name in Object.prototype
+const propertyNeedsPresenceCheck = (name: PropertyKey, ast: SchemaAST.AST): boolean =>
+  name === "__proto__" || needsPresenceCheck(ast)
 
 const getEncodingChecks = (ast: SchemaAST.AST): SchemaAST.Checks | undefined => {
   switch (ast._tag) {
@@ -468,9 +471,11 @@ const emitBase = (
           propertyStatements.push(assignProperty(output, key, decoded, property.name))
           plainStatements.push(
             isOptional(property.type)
-              ? `if(Object.hasOwn(${input},${key})){${propertyStatements.join(";")}}`
+              ? `if(${propertyPresence(input, key, property.name)}){${propertyStatements.join(";")}}`
               : `${
-                propertyNeedsOwn(property.name, property.type) ? `if(!Object.hasOwn(${input},${key}))return I;` : ""
+                propertyNeedsPresenceCheck(property.name, property.type)
+                  ? `if(!(${propertyPresence(input, key, property.name)}))return I;`
+                  : ""
               }${propertyStatements.join(";")}`
           )
         }
@@ -478,8 +483,8 @@ const emitBase = (
         const properties = ast.propertySignatures.map((property) => {
           const key = propertyKey(emitter, property.name)
           const value = variable(emitter)
-          if (propertyNeedsOwn(property.name, property.type)) {
-            plainStatements.push(`if(!Object.hasOwn(${input},${key}))return I`)
+          if (propertyNeedsPresenceCheck(property.name, property.type)) {
+            plainStatements.push(`if(!(${propertyPresence(input, key, property.name)}))return I`)
           }
           plainStatements.push(`const ${value}=${input}[${key}]`)
           return `[${key}]:${emit(property.type, value, plainStatements, emitter)}`
