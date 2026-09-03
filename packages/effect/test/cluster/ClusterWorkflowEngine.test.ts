@@ -26,7 +26,11 @@ import {
   ShardingConfig
 } from "effect/unstable/cluster"
 import { Activity, DurableClock, DurableDeferred, Workflow } from "effect/unstable/workflow"
-import { WorkflowEngine, WorkflowInstance } from "effect/unstable/workflow/WorkflowEngine"
+import {
+  makeUnsafe as makeWorkflowEngineUnsafe,
+  WorkflowEngine,
+  WorkflowInstance
+} from "effect/unstable/workflow/WorkflowEngine"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
   it.effect("executes, resumes, deduplicates, and polls a suspended workflow", () =>
@@ -559,6 +563,10 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.isTrue(flags.get("parent-end"))
       assert.isTrue(flags.get("child-end"))
     }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  for (const [id, threshold] of [["number", 0], ["bigint", 0n]] as const) {
+    it.effect(`DurableClock.sleep preserves an explicit ${id} zero threshold`, () => verifyZeroThreshold(id, threshold))
+  }
 
   it.effect("routes fractional millisecond durable clock wakeups to the workflow shard group", () =>
     Effect.gen(function*() {
@@ -1363,6 +1371,45 @@ const ChildWorkflowLayer = ChildWorkflow.toLayer(Effect.fnUntraced(function*() {
   yield* DurableDeferred.await(ChildDeferred)
   flags.set("child-end", true)
 }))
+
+const ZeroThresholdWorkflow = Workflow.make("DurableClock/ZeroThreshold", {
+  payload: { id: Schema.String },
+  idempotencyKey: ({ id }) => id
+})
+
+const verifyZeroThreshold = Effect.fn(function*(id: string, inMemoryThreshold: 0 | 0n) {
+  const instance = WorkflowInstance.initial(ZeroThresholdWorkflow, `execution/${id}`)
+  const calls: Array<string> = []
+  const unexpected = () => Effect.die("unexpected engine operation")
+  const engine = makeWorkflowEngineUnsafe({
+    register: unexpected,
+    execute: unexpected,
+    poll: unexpected,
+    interrupt: unexpected,
+    interruptUnsafe: unexpected,
+    resume: unexpected,
+    deferredDone: unexpected,
+    activityExecute: () =>
+      Effect.sync(() => {
+        calls.push("activityExecute")
+        return new Workflow.Complete({ exit: Exit.void })
+      }),
+    scheduleClock: () =>
+      Effect.sync(() => {
+        calls.push("scheduleClock")
+      }),
+    deferredResult: () =>
+      Effect.sync(() => {
+        calls.push("deferredResult")
+        return Option.some(Exit.void)
+      })
+  })
+  yield* DurableClock.sleep({ name: `clock/${id}`, duration: 10, inMemoryThreshold }).pipe(
+    Effect.provideService(WorkflowEngine, engine),
+    Effect.provideService(WorkflowInstance, instance)
+  )
+  assert.deepStrictEqual(calls, ["scheduleClock", "deferredResult"])
+})
 
 const ShardedClockWorkflow = Workflow.make("ShardedClockWorkflow", {
   payload: {
