@@ -1058,10 +1058,10 @@ class OptionalImpl<S, A> implements Optional<S, A> {
     )
   }
   pick(keys: any) {
-    return this.compose(makeLens(Struct.pick(keys), (p, a) => ({ ...Struct.omit(a, keys), ...p })))
+    return this.compose(makeLens(Struct.pick(keys), (p, a) => ({ ...a, ...p })))
   }
   omit(keys: any) {
-    return this.compose(makeLens(Struct.omit(keys), (o, a) => ({ ...Struct.pick(a, keys), ...o })))
+    return this.compose(makeLens(Struct.omit(keys), (o, a) => ({ ...a, ...o })))
   }
   notUndefined(): any {
     return this.refine(Predicate.isNotUndefined, { expected: "a value other than `undefined`" })
