@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Ensure PostgreSQL shard acquisition returns only the requested shards.
+Ensure PostgreSQL shard acquisition and refresh return only the requested shards.
