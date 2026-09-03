@@ -456,13 +456,10 @@ const emitBase = (
         emitIndexes(ast, input, output, statements, emitter)
         return output
       }
-      const fallback = constant(emitter, runtimeDecoder(ast))
-      const prototype = variable(emitter)
       const output = variable(emitter)
-      statements.push(`const ${prototype}=Object.getPrototypeOf(${input})`)
       const plainStatements: Array<string> = []
       if (ast.propertySignatures.some((property) => isOptional(property.type))) {
-        plainStatements.push(`${output}={}`)
+        plainStatements.push(`const ${output}={}`)
         for (const property of ast.propertySignatures) {
           const key = propertyKey(emitter, property.name)
           const value = variable(emitter)
@@ -489,13 +486,9 @@ const emitBase = (
           plainStatements.push(`const ${value}=${input}[${key}]`)
           return `[${key}]:${emit(property.type, value, plainStatements, emitter)}`
         })
-        plainStatements.push(`${output}={${properties.join(",")}}`)
+        plainStatements.push(`const ${output}={${properties.join(",")}}`)
       }
-      statements.push(
-        `let ${output};if(${prototype}!==Object.prototype&&${prototype}!==null){${output}=${fallback}(${input});if(${output}===I)return I}else{${
-          plainStatements.join(";")
-        }}`
-      )
+      statements.push(...plainStatements)
       if (ast.indexSignatures.length > 0) {
         emitIndexes(ast, input, output, statements, emitter)
       }
