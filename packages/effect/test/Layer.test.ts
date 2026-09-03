@@ -6,7 +6,9 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Latch from "effect/Latch"
 import * as Layer from "effect/Layer"
+import * as ManagedRuntime from "effect/ManagedRuntime"
 import * as Scope from "effect/Scope"
+import { setImmediate } from "node:timers/promises"
 
 describe("Layer", () => {
   it.effect("layers can be acquired in parallel", () =>
@@ -365,6 +367,158 @@ describe("Layer", () => {
     }))
 
   describe("mock", () => {
+    describe("Promise assimilation", () => {
+      const Api = Context.Service<{ read(): Effect.Effect<number> }>("mock/promise/Api")
+      const implementation = { read: () => Effect.succeed(42) }
+
+      const observe = <A>(promise: Promise<A>) => {
+        const result: {
+          current:
+            | { readonly _tag: "Pending" }
+            | { readonly _tag: "Resolved"; readonly value: A }
+            | { readonly _tag: "Rejected"; readonly error: unknown }
+        } = { current: { _tag: "Pending" } }
+        void promise.then(
+          (value) => {
+            result.current = { _tag: "Resolved", value }
+          },
+          (error) => {
+            result.current = { _tag: "Rejected", error }
+          }
+        )
+        return result
+      }
+
+      it("does not synthesize a callable absent then", async () => {
+        const exit = await Effect.runPromiseExit(Api.pipe(Effect.provide(Layer.mock(Api, implementation))))
+        assert.strictEqual(exit._tag, "Success")
+        if (exit._tag === "Success") {
+          assert.strictEqual(await Effect.runPromise(exit.value.read()), 42)
+          assert.isUndefined(Reflect.get(exit.value, "then"))
+        }
+        const EffectfulThen = Context.Service<{ then(): Effect.Effect<number> }>("mock/promise/OmittedThen")
+        const omitted = await Effect.runPromiseExit(EffectfulThen.pipe(Effect.provide(Layer.mock(EffectfulThen, {}))))
+        assert.strictEqual(omitted._tag, "Success")
+        if (omitted._tag === "Success") {
+          assert.isUndefined(omitted.value.then, "a method named then must be supplied explicitly")
+        }
+      })
+
+      it("returns a mocked service through runPromise and ManagedRuntime", async () => {
+        const layer = Layer.mock(Api, implementation)
+        await using runtime = ManagedRuntime.make(layer)
+        await using controlRuntime = ManagedRuntime.make(Layer.succeed(Api, implementation))
+        const completed = await Effect.runPromiseExit(Api.pipe(Effect.provide(layer)))
+        assert.strictEqual(completed._tag, "Success")
+        const actual = observe(Effect.runPromise(Api.pipe(Effect.provide(layer))))
+        const control = observe(Effect.runPromise(Api.pipe(Effect.provide(Layer.succeed(Api, implementation)))))
+        const managed = observe(runtime.runPromise(Api))
+        const managedControl = observe(controlRuntime.runPromise(Api))
+        // No clocks or elapsed-time threshold: native Promise jobs precede this next turn.
+        // Both programs are synchronous; the control distinguishes a broken observation fixture.
+        await setImmediate()
+        assert.strictEqual(control.current._tag, "Resolved", "Layer.succeed control must resolve")
+        assert.strictEqual(managedControl.current._tag, "Resolved", "ManagedRuntime control must resolve")
+        assert.strictEqual(actual.current._tag, "Resolved", "Layer.mock must not create a pending thenable")
+        assert.strictEqual(managed.current._tag, "Resolved", "ManagedRuntime must return the mocked service")
+        if (actual.current._tag === "Resolved") {
+          assert.strictEqual(actual.current.value.read, implementation.read)
+        }
+        if (managed.current._tag === "Resolved") {
+          assert.strictEqual(managed.current.value.read, implementation.read)
+          assert.strictEqual(await Effect.runPromise(managed.current.value.read()), 42)
+        }
+      })
+
+      it("control: runPromiseExit succeeds and a mocked method resolves", async () => {
+        const layer = Layer.mock(Api, implementation)
+        const exit = await Effect.runPromiseExit(Api.pipe(Effect.provide(layer)))
+        assert.strictEqual(exit._tag, "Success")
+        if (exit._tag === "Success") {
+          assert.strictEqual(exit.value.read, implementation.read)
+        }
+        assert.strictEqual(await Effect.runPromise(Api.use((api) => api.read()).pipe(Effect.provide(layer))), 42)
+      })
+
+      it("control: explicit then undefined does not trigger assimilation", async () => {
+        // oxlint-disable-next-line unicorn/no-thenable -- Promise protocol control
+        const supplied = { ...implementation, then: undefined }
+        const result = observe(Effect.runPromise(Api.pipe(Effect.provide(Layer.mock(Api, supplied)))))
+        await setImmediate()
+        assert.strictEqual(result.current._tag, "Resolved")
+        if (result.current._tag === "Resolved") {
+          assert.isUndefined(Reflect.get(result.current.value, "then"))
+          assert.strictEqual(result.current.value.read, supplied.read)
+        }
+      })
+
+      it("control: a supplied then receives its receiver and controls resolution", async () => {
+        const Thenable = Context.Service<{
+          readonly answer: number
+          then(resolve: (value: number) => void): void
+        }>("mock/promise/Thenable")
+        let resolveValue: ((value: number) => void) | undefined
+        let receiver: unknown
+        let calls = 0
+        const supplied = {
+          answer: 42,
+          // oxlint-disable-next-line unicorn/no-thenable -- Intentional thenable control
+          then(resolve: (value: number) => void) {
+            calls++
+            // oxlint-disable-next-line typescript/no-this-alias -- Verify the native Promise callback receiver
+            receiver = this
+            resolveValue = resolve
+          }
+        }
+        const layer = Layer.mock(Thenable, supplied)
+        const exit = await Effect.runPromiseExit(Thenable.pipe(Effect.provide(layer)))
+        assert.strictEqual(exit._tag, "Success")
+        assert.strictEqual(calls, 0, "Exit boxes the value without assimilating it")
+        // Native assimilation can replace the service with the supplied callback's value.
+        const result = observe<unknown>(Effect.runPromise(Thenable.pipe(Effect.provide(layer))))
+        await setImmediate()
+        assert.strictEqual(calls, 1)
+        assert.strictEqual(result.current._tag, "Pending", "only the supplied callback can settle this promise")
+        if (exit._tag === "Success") {
+          assert.strictEqual(exit.value.then, supplied.then)
+          assert.strictEqual(receiver, exit.value)
+        }
+        assert.isDefined(resolveValue)
+        resolveValue!(42)
+        await setImmediate()
+        assert.deepStrictEqual(result.current, { _tag: "Resolved", value: 42 })
+      })
+
+      it("control: a supplied then can explicitly reject", async () => {
+        const Thenable = Context.Service<{
+          then(resolve: (value: number) => void, reject: (error: unknown) => void): void
+        }>("mock/promise/RejectingThenable")
+        let rejectValue: ((error: unknown) => void) | undefined
+        const supplied = {
+          // oxlint-disable-next-line unicorn/no-thenable -- Intentional thenable control
+          then(_resolve: (value: number) => void, reject: (error: unknown) => void) {
+            rejectValue = reject
+          }
+        }
+        const result = observe(Effect.runPromise(Thenable.pipe(Effect.provide(Layer.mock(Thenable, supplied)))))
+        await setImmediate()
+        assert.isDefined(rejectValue)
+        assert.strictEqual(result.current._tag, "Pending")
+        const error = new Error("supplied rejection")
+        rejectValue!(error)
+        await setImmediate()
+        assert.deepStrictEqual(result.current, { _tag: "Rejected", error })
+      })
+
+      it.effect("control: an explicitly supplied effectful method named then works", () =>
+        Effect.gen(function*() {
+          const Api = Context.Service<{ then(): Effect.Effect<number> }>("mock/promise/EffectfulThen")
+          // oxlint-disable-next-line unicorn/no-thenable -- A supplied method named then must not be discarded
+          const service = yield* Api.pipe(Effect.provide(Layer.mock(Api, { then: () => Effect.succeed(42) })))
+          assert.strictEqual(yield* service.then(), 42)
+        }))
+    })
+
     it.effect("allows passing partial service", () =>
       Effect.gen(function*() {
         class Service1 extends Context.Service<Service1, {
