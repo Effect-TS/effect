@@ -130,12 +130,13 @@ describe("jsdocs", () => {
 export const makeValue = () => 1
 `
     )
-    const model = extractJSDocsSync({
+    const options = {
       cwd,
       tsconfig: "tsconfig.json",
       include: ["src/**/*.ts"],
       output: ".data/jsdocs.json"
-    })
+    }
+    const model = extractJSDocsSync(options)
     assert.strictEqual(model.version, 2)
     assert.strictEqual(model.files.length, 1)
     assert.strictEqual(model.files[0]?.declarations[0]?.name, "makeValue")
@@ -148,12 +149,7 @@ export const makeValue = () => 1
 
     const sourcePath = path.join(cwd, "src/Foo.ts")
     fs.writeFileSync(sourcePath, fs.readFileSync(sourcePath, "utf8").replaceAll("makeValue", "makeUpdatedValue"))
-    const updated = extractJSDocsSync({
-      cwd,
-      tsconfig: "tsconfig.json",
-      include: ["src/**/*.ts"],
-      output: ".data/jsdocs.json"
-    })
+    const updated = extractJSDocsSync(options)
     assert.strictEqual(updated.files[0]?.declarations[0]?.name, "makeUpdatedValue")
   })
 
