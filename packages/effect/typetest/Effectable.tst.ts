@@ -7,11 +7,11 @@ describe("Effectable.Mixin", () => {
   }
 
   class EffectBox extends Effectable.Mixin(Box) {
-    override = Effect.succeed(this.value.toString())
+    override override = Effect.succeed(this.value.toString())
   }
 
   class FullEffectBox extends Effectable.Mixin(Box) {
-    override = undefined as unknown as Effect.Effect<"success", "error", "service">
+    override override = undefined as unknown as Effect.Effect<"success", "error", "service">
   }
 
   it("preserves constructor parameters", () => {
