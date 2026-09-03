@@ -909,6 +909,18 @@ export const isReadonlyArrayNonEmpty: <A>(self: ReadonlyArray<A>) => self is Non
  */
 export const length = <A>(self: ReadonlyArray<A>): number => self.length
 
+/**
+ * Checks whether a string represents a JavaScript array index: a non-negative
+ * integer below `2 ** 32 - 1`, written without leading zeroes, a sign, or
+ * exponent notation.
+ *
+ * @internal
+ */
+export function isCanonicalArrayIndex(key: string): boolean {
+  const index = Number(key)
+  return String(index) === key && Number.isInteger(index) && index >= 0 && index < 2 ** 32 - 1
+}
+
 /** @internal */
 export function isOutOfBounds<A>(i: number, as: ReadonlyArray<A>): boolean {
   return !Number.isFinite(i) || i < 0 || i >= as.length

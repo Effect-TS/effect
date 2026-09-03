@@ -118,6 +118,19 @@ describe("SchemaGetter", () => {
         { a: [{ b: 1 }] }
       )
     })
+
+    it("preserves invalid array index segments as object keys", () => {
+      assert.deepStrictEqual(
+        SchemaGetter.makeTreeRecord([
+          ["leading[01]", "a"],
+          ["overflow[4294967295]", "b"]
+        ]),
+        {
+          leading: { "01": "a" },
+          overflow: { "4294967295": "b" }
+        }
+      )
+    })
   })
 
   describe("decodeFormData / encodeFormData", () => {
