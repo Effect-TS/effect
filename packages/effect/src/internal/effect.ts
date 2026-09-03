@@ -3913,10 +3913,11 @@ const scopeCloseFinalizers = fnUntraced(function*<A, E>(
   const parent = getCurrentFiber()!
   for (let i = arr.length - 1; i >= 0; i--) {
     const finalizer = arr[i]
+    const finalizerEffect = suspend(() => finalizer(exit_))
     if (self.strategy === "sequential") {
-      exits.push(yield* exit(finalizer(exit_)))
+      exits.push(yield* exit(finalizerEffect))
     } else {
-      fibers.push(forkUnsafe(parent, finalizer(exit_), true, true, "inherit"))
+      fibers.push(forkUnsafe(parent, finalizerEffect, true, true, "inherit"))
     }
   }
   if (fibers.length > 0) {
