@@ -1418,6 +1418,11 @@ describe.sequential("IndexedDbQueryBuilder", () => {
       )
       assert.equal(data3.length, 10)
       assert.equal(data3[0].id, 51)
+
+      const data4 = yield* api.from("todo").select().limit(3).stream({ chunkSize: 2 }).pipe(
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(data4.map((row) => row.id), [1, 2, 3])
     }).pipe(provideDb(Db))
   })
 
