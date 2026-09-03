@@ -9,6 +9,7 @@
  * @since 4.0.0
  */
 
+import * as Arr from "./Array.ts"
 import * as Context from "./Context.ts"
 import * as Data from "./Data.ts"
 import * as Effect from "./Effect.ts"
@@ -958,8 +959,6 @@ function buildEnvTrie(env: Record<string, string | undefined>): EnvTrieNode {
   return trie
 }
 
-const NUMERIC_INDEX = /^(0|[1-9][0-9]*)$/
-
 function nodeAtEnv(
   trie: EnvTrieNode,
   env: Record<string, string | undefined>,
@@ -976,7 +975,7 @@ function nodeAtEnv(
     return leafValue === undefined ? undefined : makeValue(leafValue)
   }
 
-  const allNumeric = children.every((k) => NUMERIC_INDEX.test(k))
+  const allNumeric = children.every(Arr.isCanonicalArrayIndex)
   if (allNumeric) {
     const length = Math.max(...children.map((k) => parseInt(k, 10))) + 1
     return makeArray(length, leafValue)

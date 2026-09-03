@@ -11,6 +11,7 @@
  *
  * @since 4.0.0
  */
+import * as Arr from "./Array.ts"
 import * as DateTime from "./DateTime.ts"
 import * as Effect from "./Effect.ts"
 import * as Encoding from "./Encoding.ts"
@@ -1850,8 +1851,6 @@ export function encodeURLSearchParams(): Getter<URLSearchParams, unknown> {
   })
 }
 
-const INDEX_REGEXP = /^\d+$/
-
 function bracketPathToTokens(bracketPath: string): Array<string | number> {
   // real empty path (from append("", value))
   if (bracketPath === "") {
@@ -1865,7 +1864,7 @@ function bracketPathToTokens(bracketPath: string): Array<string | number> {
 
   return parts
     .slice(start)
-    .map((part) => (INDEX_REGEXP.test(part) ? globalThis.Number(part) : part))
+    .map((part) => (Arr.isCanonicalArrayIndex(part) ? globalThis.Number(part) : part))
 }
 
 /**
@@ -1889,6 +1888,8 @@ function bracketPathToTokens(bracketPath: string): Array<string | number> {
  *   - `"foo[0]"` → array index `{ foo: [value] }`
  *   - `"foo[]"` → append to array `foo`
  *   - `""` → real empty key
+ * - Numeric bracket segments become array indices only when they are valid
+ *   JavaScript array-index strings; otherwise they remain object keys.
  * - Duplicate keys for the same path are merged into arrays.
  * - If a structural path conflicts with a previous leaf or a different container
  *   type, the later structural path replaces the conflicting value.

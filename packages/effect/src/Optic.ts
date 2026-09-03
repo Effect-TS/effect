@@ -12,6 +12,7 @@
  * @since 4.0.0
  */
 
+import * as Arr from "./Array.ts"
 import { dual, identity } from "./Function.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as Option from "./Option.ts"
@@ -1001,13 +1002,11 @@ class OptionalImpl<S, A> implements Optional<S, A> {
           (a, s) => {
             const copy = cloneShallow(s)
             if (a === undefined) {
-              const index = typeof key === "symbol" ? NaN : Number(key)
               if (
                 Array.isArray(copy) &&
-                (typeof key === "number" ||
-                  (String(index) === key && Number.isInteger(index) && index >= 0 && index < 0xFFFFFFFF))
+                (typeof key === "number" || (typeof key === "string" && Arr.isCanonicalArrayIndex(key)))
               ) {
-                copy.splice(index, 1)
+                copy.splice(Number(key), 1)
               } else {
                 delete copy[key]
               }

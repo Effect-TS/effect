@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import {
   Array as Arr,
@@ -32,6 +32,13 @@ class HashCollision implements Equal.Equal {
 }
 
 describe("Array", () => {
+  it("isCanonicalArrayIndex", () => {
+    assert.isTrue(Arr.isCanonicalArrayIndex("0"))
+    assert.isTrue(Arr.isCanonicalArrayIndex("4294967294"))
+    assert.isFalse(Arr.isCanonicalArrayIndex("01"))
+    assert.isFalse(Arr.isCanonicalArrayIndex("4294967295"))
+  })
+
   it("of", () => {
     deepStrictEqual(Arr.of(1), [1])
   })
