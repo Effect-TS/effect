@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Random.nextBetween` returning its exclusive upper bound when floating-point arithmetic rounds up.
+Fix `Random.nextBetween` and `Crypto.randomBetween` returning their exclusive upper bound when floating-point arithmetic rounds up.
