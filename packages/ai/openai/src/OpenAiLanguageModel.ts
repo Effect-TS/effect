@@ -1193,7 +1193,7 @@ const prepareMessages = Effect.fnUntraced(
             messages.push({
               type: "function_call_output",
               call_id: part.id,
-              output: JSON.stringify(part.result),
+              output: Predicate.isString(part.result) ? part.result : JSON.stringify(part.result),
               ...(Predicate.isNotNull(status) ? { status } : {})
             })
           }
