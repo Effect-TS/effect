@@ -109,6 +109,20 @@ describe("SchemaParser", () => {
       })
     })
 
+    it("distinguishes required properties containing undefined from missing properties", () => {
+      const decode = SchemaParser.decodeUnknownSync(Schema.Struct({ value: Schema.String }))
+
+      throws(() => decode({}), (error) => {
+        assertSchemaIssueError(error, `Missing key\n  at ["value"]`)
+      })
+      throws(() => decode({ value: undefined }), (error) => {
+        assertSchemaIssueError(error, `Expected string\n  at ["value"]`)
+      })
+      throws(() => decode(Object.create({ value: undefined })), (error) => {
+        assertSchemaIssueError(error, `Expected string\n  at ["value"]`)
+      })
+    })
+
     it("selects union members using inherited discriminants", () => {
       const schema = Schema.Union([
         Schema.Struct({ _tag: Schema.Literal("A"), value: Schema.String }),
