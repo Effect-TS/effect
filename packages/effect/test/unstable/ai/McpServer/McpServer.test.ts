@@ -191,6 +191,22 @@ describe("McpServer", () => {
         assert.strictEqual(error.message, "Resource 'file:///unknown' not found")
       }))
 
+    it.effect("should resolve an HTTP resource template", () =>
+      Effect.gen(function*() {
+        const server = yield* McpServer.McpServer.make
+        yield* McpServer.registerResource`https://example.test/docs/${Schema.String}`({
+          name: "document",
+          content: (_uri, name) => Effect.succeed(name)
+        }).pipe(Effect.provideService(McpServer.McpServer, server))
+
+        const uri = "https://example.test/docs/alice"
+        const result = yield* server.findResource(uri).pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient)
+        )
+
+        assert.deepStrictEqual(result.contents, [{ uri, text: "alice" }])
+      }))
+
     it.effect("should preserve a registered resource handler's typed failure", () =>
       Effect.gen(function*() {
         const server = yield* McpServer.McpServer.make
