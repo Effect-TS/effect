@@ -15,7 +15,7 @@ permissions: {}
 jobs:
   static-checks:
     name: Static
-    runs-on: namespace-profile-linux-small
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     timeout-minutes: 10
@@ -56,7 +56,7 @@ jobs:
   build:
     name: Build
     if: github.event_name == 'pull_request'
-    runs-on: namespace-profile-linux-small
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     timeout-minutes: 10
