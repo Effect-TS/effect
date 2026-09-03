@@ -55,6 +55,45 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(response.headers.get("vary"), expected)
       }))
 
+    it.effect("preserves both Vary dimensions for preflight requests", () =>
+      Effect.gen(function*() {
+        const handler = HttpEffect.toWebHandler(
+          Effect.succeed(HttpServerResponse.empty()).pipe(HttpMiddleware.cors({
+            allowedOrigins: ["https://client.example", "https://other.example"]
+          }))
+        )
+        const response = yield* Effect.promise(() =>
+          handler(
+            new Request("http://localhost/", {
+              method: "OPTIONS",
+              headers: {
+                Origin: "https://client.example",
+                "Access-Control-Request-Headers": "X-Test"
+              }
+            })
+          )
+        )
+        const vary = response.headers.get("vary")?.split(",").map((member) => member.trim().toLowerCase()).sort()
+        assert.deepStrictEqual(vary, ["access-control-request-headers", "origin"])
+      }))
+
+    it.effect("varies by Origin when the request origin is rejected", () =>
+      Effect.gen(function*() {
+        const handler = HttpEffect.toWebHandler(
+          Effect.succeed(HttpServerResponse.empty()).pipe(HttpMiddleware.cors({
+            allowedOrigins: ["https://client.example", "https://other.example"]
+          }))
+        )
+        const response = yield* Effect.promise(() =>
+          handler(
+            new Request("http://localhost/", {
+              headers: { Origin: "https://rejected.example" }
+            })
+          )
+        )
+        assert.strictEqual(response.headers.get("vary"), "Origin")
+      }))
+
     it.effect("preserves Vary when allowing all origins", () =>
       Effect.gen(function*() {
         const handler = HttpEffect.toWebHandler(
