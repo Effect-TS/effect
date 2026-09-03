@@ -1266,7 +1266,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
         const parts = ast.parts.map((part, index) => recur(part, [...path, index], finiteNumberConstraint))
         const encode = SchemaParser.run<string, never>(SchemaAST.flip(ast.asTemplateLiteralParser()))
         const parse = SchemaParser.run<string, never>(ast)
-        const stringify = (parts: ReadonlyArray<any>) =>
+        const stringify = (parts: ReadonlyArray<unknown>) =>
           Model.flatMapComputation(
             optionComputation(encode(parts)),
             (encoded) => Option.isNone(encoded) ? encoded : optionComputation(parse(encoded.value))
