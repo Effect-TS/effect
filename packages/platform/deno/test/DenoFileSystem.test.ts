@@ -11,6 +11,17 @@ describe("FileSystem", () =>
   }))
 
 describe.skipIf(Deno.build.os === "windows")("writeFile", () => {
+  it.effect("applies the mode when creating a file", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const directory = yield* fs.makeTempDirectoryScoped()
+      const path = `${directory}/created`
+
+      yield* fs.writeFileString(path, "content", { mode: 0o600 })
+
+      assert.strictEqual((yield* fs.stat(path)).mode & 0o777, 0o600)
+    }).pipe(Effect.provide(DenoFileSystem.layer)))
+
   it.effect("preserves the mode of an existing file", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
