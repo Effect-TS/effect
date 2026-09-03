@@ -2,6 +2,25 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Option } from "effect"
 import { HttpRouter, type HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 
+const echoUrl = (request: HttpServerRequest.HttpServerRequest) => Effect.succeed(HttpServerResponse.text(request.url))
+
+const layerPrefixed = (prefix: string) =>
+  Layer.effect(
+    HttpRouter.HttpRouter,
+    Effect.map(HttpRouter.HttpRouter, (router) => router.prefixed(prefix))
+  )
+
+const fetchText = (app: Layer.Layer<never, never, HttpRouter.HttpRouter>, path: string) =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => HttpRouter.toWebHandler(app, { disableLogger: true })),
+    ({ handler }) =>
+      Effect.promise(async () => {
+        const response = await handler(new Request(`http://localhost${path}`))
+        return await response.text()
+      }),
+    ({ dispose }) => Effect.promise(dispose)
+  )
+
 describe("HttpRouter", () => {
   it("normalizes the prefix stored by prefixRoute", () => {
     const route = HttpRouter.prefixRoute(
@@ -37,23 +56,34 @@ describe("HttpRouter", () => {
   ) {
     it.effect(`preserves the local URL for the ${prefix} prefix`, () =>
       Effect.gen(function*() {
-        const routes = HttpRouter.use((router) =>
-          router.prefixed(prefix).add("GET", "/users", (request: HttpServerRequest.HttpServerRequest) =>
-            Effect.succeed(HttpServerResponse.text(request.url)))
-        )
-        const body = yield* Effect.acquireUseRelease(
-          Effect.sync(() =>
-            HttpRouter.toWebHandler(routes, { disableLogger: true })
-          ),
-          ({ handler }) =>
-            Effect.flatMap(
-              Effect.promise(() => handler(new Request(`http://localhost${requestUrl}`))),
-              (response) => Effect.promise(() => response.text())
-            ),
-          ({ dispose }) => Effect.promise(dispose)
-        )
+        const routes = HttpRouter.use((router) => router.prefixed(prefix).add("GET", "/users", echoUrl))
+
+        const body = yield* fetchText(routes, requestUrl)
 
         assert.strictEqual(body, "/users")
       }))
   }
+
+  it.effect("nests a prefixed sub-router beneath a prefixed parent router", () =>
+    Effect.gen(function*() {
+      const routes = HttpRouter.use((router) => router.prefixed("/app").add("GET", "/users", echoUrl)).pipe(
+        Layer.provide(layerPrefixed("/api"))
+      )
+
+      const body = yield* fetchText(routes, "/api/app/users")
+
+      assert.strictEqual(body, "/users")
+    }))
+
+  it.effect("nests a prefixRoute prefix beneath a prefixed parent router", () =>
+    Effect.gen(function*() {
+      const users = HttpRouter.prefixRoute(HttpRouter.route("GET", "/users", echoUrl), "/app")
+      const routes = HttpRouter.use((router) => router.addAll([users])).pipe(
+        Layer.provide(layerPrefixed("/api"))
+      )
+
+      const body = yield* fetchText(routes, "/api/app/users")
+
+      assert.strictEqual(body, "/users")
+    }))
 })

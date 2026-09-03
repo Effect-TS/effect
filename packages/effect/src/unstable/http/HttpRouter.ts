@@ -167,7 +167,7 @@ export const make = Effect.gen(function*() {
       prefix = removeTrailingSlash(prefix as PathInput)
       return HttpRouter.of({
         ...this,
-        prefixed: (newPrefix: string) => this.prefixed(prefixPath(prefix, newPrefix)),
+        prefixed: (newPrefix: string) => this.prefixed(prefixPath(newPrefix, prefix)),
         addAll: (routes) => addAll(routes.map(prefixRoute(prefix))) as any,
         add: (method, path, handler, options) =>
           addAll([
