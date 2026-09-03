@@ -1,5 +1,16 @@
 import { assert, it, vi } from "@effect/vitest"
-import { Cause, DateTime, Effect, FileSystem, Layer, Path, Redacted, Schema, SchemaTransformation, Stream } from "effect"
+import {
+  Cause,
+  DateTime,
+  Effect,
+  FileSystem,
+  Layer,
+  Path,
+  Redacted,
+  Schema,
+  SchemaTransformation,
+  Stream
+} from "effect"
 import { Etag, HttpEffect, HttpPlatform, HttpServerResponse } from "effect/unstable/http"
 import {
   HttpApi,
