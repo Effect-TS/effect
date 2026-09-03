@@ -59,8 +59,8 @@ export declare namespace ToJsonSchema {
    * **Gotchas**
    *
    * Treat the input schemas as immutable. The returned value must be a valid JSON Schema object graph and must not be
-   * mutated after this function returns. Return a new object graph to produce different output during a later
-   * compilation.
+   * mutated after this function returns. Local `$defs` references must use valid JSON Pointer URI fragments. Return a
+   * new object graph to produce different output during a later compilation.
    *
    * @category models
    * @since 4.0.0
@@ -2398,6 +2398,7 @@ export function toMultiDocument(document: Document): MultiDocument {
  *   must treat their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must
  *   not be mutated after the callback returns.
  * - Local definition references returned by callbacks are resolved together with compiler-generated references.
+ *   Invalid JSON Pointer URI fragments throw an `Error`.
  * - Effect decoding may discard excess object properties by default. Use `onExcessProperty: "error"` when comparing
  *   validation semantics with the emitted JSON Schema.
  *
@@ -2427,7 +2428,7 @@ export function toJsonSchemaDocument(
  * - Every definition is compiled, including definitions that are not reachable from a root. Check callbacks must treat
  *   their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must not be
  *   mutated after the callback returns. Local definition references returned by callbacks are resolved together with
- *   compiler-generated references.
+ *   compiler-generated references. Invalid JSON Pointer URI fragments throw an `Error`.
  *
  * @see {@link toJsonSchemaDocument} for a single root
  *
