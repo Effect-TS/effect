@@ -381,15 +381,34 @@ export const toWebHandlerLayerWith = <
     if (handlerCache) {
       return handlerCache(request, context)
     }
-    handlerPromise ??= Effect.runPromise(Effect.gen(function*() {
-      const context = yield* (options.memoMap
-        ? Layer.buildWithMemoMap(layer, options.memoMap, scope)
-        : Layer.buildWithScope(layer, scope))
-      return handlerCache = toWebHandlerWith<Provided, R>(context)(
-        yield* options.toHandler(context),
-        options.middleware
-      ) as any
-    }))
+    if (handlerPromise === undefined) {
+      const promise = handlerPromise = Effect.runPromise(Effect.gen(function*() {
+        const context = yield* (options.memoMap
+          ? Layer.buildWithMemoMap(layer, options.memoMap, scope)
+          : Layer.buildWithScope(layer, scope))
+        return handlerCache = toWebHandlerWith<Provided, R>(context)(
+          yield* options.toHandler(context),
+          options.middleware
+        ) as any
+      }))
+      // Forget the memoized build if it fails, or if the request that started
+      // it is aborted before the build completes, so a later request retries
+      // the build. On some runtimes (e.g. Cloudflare workerd) a promise created
+      // inside an aborted request never settles, which would otherwise leave
+      // every subsequent request waiting on it forever.
+      const forget = () => {
+        if (handlerCache === undefined && handlerPromise === promise) {
+          handlerPromise = undefined
+        }
+      }
+      promise.catch(forget)
+      if (request.signal?.aborted) {
+        forget()
+      } else {
+        request.signal?.addEventListener("abort", forget, { once: true })
+      }
+      return promise.then((f) => f(request, context))
+    }
     return handlerPromise.then((f) => f(request, context))
   }
   return { dispose, handler: handler as any } as const
