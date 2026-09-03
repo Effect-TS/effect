@@ -1135,7 +1135,7 @@ function interpolate(envValue: string, parsed: Record<string, string>): string {
       : defaultValue ?? ""
 
     return interpolate(
-      envValue.replace(group, value),
+      envValue.replace(group, () => value),
       parsed
     )
   }
