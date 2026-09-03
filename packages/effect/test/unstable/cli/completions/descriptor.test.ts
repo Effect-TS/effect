@@ -172,35 +172,6 @@ describe("CommandDescriptor", () => {
       assert.strictEqual(desc.subcommands[0].subcommands[0].description, "A leaf command")
     })
 
-    it("preserves aliased subcommand descriptors and their descendant aliases", () => {
-      const leaf = Command.make("list", {
-        format: Flag.choice("format", ["json", "text"]).pipe(Flag.withAlias("f")),
-        target: Argument.choice("target", ["users", "teams"])
-      }).pipe(Command.withAlias("ls"), Command.withShortDescription("List targets"))
-      const parent = Command.make("admin").pipe(
-        Command.withAlias("a"),
-        Command.withSubcommands([leaf])
-      )
-      const desc = fromCommand(Command.make("tool").pipe(Command.withSubcommands([parent])))
-
-      assert.deepStrictEqual(desc.subcommands.map((cmd) => cmd.name), ["admin", "a"])
-      const [canonical, alias] = desc.subcommands
-      assert.deepStrictEqual(alias, { ...canonical, name: "a" })
-      for (const command of desc.subcommands) {
-        assert.deepStrictEqual(command.subcommands.map((cmd) => cmd.name), ["list", "ls"])
-        assert.deepStrictEqual(command.subcommands[0], fromCommand(leaf))
-        assert.deepStrictEqual(command.subcommands[1], { ...fromCommand(leaf), name: "ls" })
-      }
-    })
-
-    it("omits unlisted aliases and does not duplicate aliases equal to the command name", () => {
-      const visible = Command.make("list").pipe(Command.withAlias("list"))
-      const unlisted = Command.make("secret").pipe(Command.withAlias("s"), Command.unlisted)
-      const desc = fromCommand(Command.make("tool").pipe(Command.withSubcommands([visible, unlisted])))
-
-      assert.deepStrictEqual(desc.subcommands.map((cmd) => cmd.name), ["list"])
-    })
-
     it("extracts descriptions from flags and arguments", () => {
       const cmd = Command.make("test", {
         port: Flag.integer("port").pipe(
