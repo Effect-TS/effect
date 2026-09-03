@@ -919,7 +919,9 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
 
       function push(data: Uint8Array | string) {
         buffer.push(data)
-        bufferSize += typeof data === "string" ? data.length : data.byteLength
+        if (highWaterMark !== undefined) {
+          bufferSize += typeof data === "string" ? encoder.encode(data).byteLength : data.byteLength
+        }
         if (waiter !== undefined) {
           if (!flushScheduled) {
             flushScheduled = true
