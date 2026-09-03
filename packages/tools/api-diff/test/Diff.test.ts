@@ -1,7 +1,17 @@
 import { diffSnapshots } from "@effect/api-diff/Diff"
 import type { ApiDiff, ApiEntity, ApiSnapshot, DeclarationModel } from "@effect/api-diff/Model"
 import { renderMarkdownReport } from "@effect/api-diff/Report"
+import { Snapshotter } from "@effect/api-diff/Snapshot"
+import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
+import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
+import * as Layer from "effect/Layer"
+import { writeFixturePackage } from "./utils.ts"
+
+const MainLayer = Snapshotter.layer.pipe(
+  Layer.provideMerge(NodeServices.layer)
+)
 
 const entity = (
   module: string,
@@ -35,6 +45,30 @@ const snapshot = (ref: string, entities: ReadonlyArray<ApiEntity>): ApiSnapshot 
 })
 
 describe("snapshot diff", () => {
+  it.effect("detects changes between numeric and string literal types", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const snapshotter = yield* Snapshotter
+      const extract = (repoRoot: string, ref: string) =>
+        snapshotter.extract({
+          repoRoot,
+          ref,
+          sha: ref.repeat(40),
+          modules: ["@fixture/sample/Value"]
+        })
+      const baseRoot = yield* fs.makeTempDirectoryScoped({ prefix: "api-diff-literal-base-" })
+      const headRoot = yield* fs.makeTempDirectoryScoped({ prefix: "api-diff-literal-head-" })
+      yield* writeFixturePackage(baseRoot, { "Value.d.ts": "export type Value = 1\n" })
+      yield* writeFixturePackage(headRoot, { "Value.d.ts": "export type Value = \"1\"\n" })
+
+      assert.deepStrictEqual(
+        diffSnapshots(yield* extract(baseRoot, "a"), yield* extract(headRoot, "b")).changes.map((change) =>
+          change.classification
+        ),
+        ["structural-change"]
+      )
+    }).pipe(Effect.provide(MainLayer)))
+
   it("matches renames, classifies signature changes, and separates suggestions", () => {
     const base = snapshot("a", [
       entity("old/A", "changed", {
