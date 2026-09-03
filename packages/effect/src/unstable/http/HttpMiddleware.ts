@@ -340,8 +340,8 @@ export const cors = (options?: {
     : (origin: string) => (opts.allowedOrigins as ReadonlyArray<string>).includes(origin)
 
   const allowOrigin = typeof opts.allowedOrigins === "function" || opts.allowedOrigins.length > 1
-    ? ((originHeader: string) => {
-      if (!isAllowedOrigin(originHeader)) return undefined
+    ? ((originHeader: string): ReadonlyRecord<string, string> => {
+      if (!isAllowedOrigin(originHeader)) return { vary: "Origin" }
       return {
         "access-control-allow-origin": originHeader,
         vary: "Origin"
@@ -403,18 +403,36 @@ export const cors = (options?: {
   const headersFromRequestOptions = (request: HttpServerRequest) => {
     const origin = request.headers["origin"]
     const accessControlRequestHeaders = request.headers["access-control-request-headers"]
-    return Headers.fromRecordUnsafe({
+    const headers = Headers.fromRecordUnsafe({
       ...allowOrigin(origin),
       ...allowCredentials,
       ...exposeHeaders,
       ...allowMethods,
-      ...allowHeaders(accessControlRequestHeaders),
       ...maxAge
     })
+    const accessControlHeaders = allowHeaders(accessControlRequestHeaders)
+    if (accessControlHeaders === undefined) return headers
+    const vary = accessControlHeaders["vary"]
+    return Headers.setAll(
+      headers,
+      vary === undefined
+        ? accessControlHeaders
+        : {
+          ...accessControlHeaders,
+          vary: compressionInternal.varyWith(headers, vary)
+        }
+    )
   }
 
-  const preResponseHandler = (request: HttpServerRequest, response: HttpServerResponse) =>
-    Effect.succeed(Response.setHeaders(response, headersFromRequest(request)))
+  const preResponseHandler = (request: HttpServerRequest, response: HttpServerResponse) => {
+    const headers = headersFromRequest(request)
+    return Effect.succeed(Response.setHeaders(
+      response,
+      headers["vary"] === undefined
+        ? headers
+        : Headers.set(headers, "vary", compressionInternal.varyWith(response.headers, "Origin"))
+    ))
+  }
 
   return <E, R>(
     httpApp: Effect.Effect<HttpServerResponse, E, R>
@@ -566,8 +584,8 @@ export const compression = (
 }
 
 const withVary = (response: HttpServerResponse): HttpServerResponse => {
-  const vary = compressionInternal.varyAcceptEncoding(response.headers)
-  return vary === undefined ? response : Response.setHeader(response, "vary", vary)
+  const vary = compressionInternal.varyWith(response.headers, "Accept-Encoding")
+  return Response.setHeader(response, "vary", vary)
 }
 
 const defaultAlgorithms: ReadonlyArray<CompressionAlgorithm> = ["br", "gzip", "deflate"]

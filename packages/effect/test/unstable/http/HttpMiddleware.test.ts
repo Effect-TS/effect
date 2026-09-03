@@ -7,11 +7,112 @@ import * as Logger from "effect/Logger"
 import * as References from "effect/References"
 import * as Tracer from "effect/Tracer"
 import * as Headers from "effect/unstable/http/Headers"
+import * as HttpEffect from "effect/unstable/http/HttpEffect"
 import * as HttpMiddleware from "effect/unstable/http/HttpMiddleware"
 import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
 
 describe("HttpMiddleware", () => {
+  describe("cors", () => {
+    it.effect.each([
+      {
+        name: "adds Origin when Vary is absent",
+        vary: undefined,
+        expected: "Origin"
+      },
+      {
+        name: "preserves existing Vary dimensions when adding Origin",
+        vary: "Accept-Language",
+        expected: "Accept-Language, Origin"
+      },
+      {
+        name: "preserves other dimensions without duplicating a mixed-case Origin",
+        vary: "Accept-Language, oRiGiN",
+        expected: "Accept-Language, oRiGiN"
+      },
+      {
+        name: "preserves wildcard Vary",
+        vary: "*",
+        expected: "*"
+      }
+    ])("$name", ({ expected, vary }) =>
+      Effect.gen(function*() {
+        const handler = HttpEffect.toWebHandler(
+          Effect.succeed(HttpServerResponse.text("hello", {
+            headers: vary === undefined ? {} : { Vary: vary }
+          })).pipe(HttpMiddleware.cors({
+            allowedOrigins: ["https://client.example", "https://other.example"]
+          }))
+        )
+        const response = yield* Effect.promise(() =>
+          handler(
+            new Request("http://localhost/", {
+              headers: { Origin: "https://client.example" }
+            })
+          )
+        )
+        assert.strictEqual(response.headers.get("access-control-allow-origin"), "https://client.example")
+        assert.strictEqual(response.headers.get("vary"), expected)
+      }))
+
+    it.effect("preserves both Vary dimensions for preflight requests", () =>
+      Effect.gen(function*() {
+        const handler = HttpEffect.toWebHandler(
+          Effect.succeed(HttpServerResponse.empty()).pipe(HttpMiddleware.cors({
+            allowedOrigins: ["https://client.example", "https://other.example"]
+          }))
+        )
+        const response = yield* Effect.promise(() =>
+          handler(
+            new Request("http://localhost/", {
+              method: "OPTIONS",
+              headers: {
+                Origin: "https://client.example",
+                "Access-Control-Request-Headers": "X-Test"
+              }
+            })
+          )
+        )
+        const vary = response.headers.get("vary")?.split(",").map((member) => member.trim().toLowerCase()).sort()
+        assert.deepStrictEqual(vary, ["access-control-request-headers", "origin"])
+      }))
+
+    it.effect("varies by Origin when the request origin is rejected", () =>
+      Effect.gen(function*() {
+        const handler = HttpEffect.toWebHandler(
+          Effect.succeed(HttpServerResponse.empty()).pipe(HttpMiddleware.cors({
+            allowedOrigins: ["https://client.example", "https://other.example"]
+          }))
+        )
+        const response = yield* Effect.promise(() =>
+          handler(
+            new Request("http://localhost/", {
+              headers: { Origin: "https://rejected.example" }
+            })
+          )
+        )
+        assert.strictEqual(response.headers.get("vary"), "Origin")
+      }))
+
+    it.effect("preserves Vary when allowing all origins", () =>
+      Effect.gen(function*() {
+        const handler = HttpEffect.toWebHandler(
+          Effect.succeed(HttpServerResponse.text("hello", {
+            headers: { Vary: "Accept-Language" }
+          })).pipe(HttpMiddleware.cors())
+        )
+        const response = yield* Effect.promise(() =>
+          handler(
+            new Request("http://localhost/", {
+              headers: { Origin: "https://client.example" }
+            })
+          )
+        )
+        assert.strictEqual(response.headers.get("access-control-allow-origin"), "*")
+        assert.strictEqual(response.headers.get("vary"), "Accept-Language")
+      }))
+  })
+
   describe("logger", () => {
     it.effect("annotates method, path, and status without query or hash", () =>
       Effect.gen(function*() {
