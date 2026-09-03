@@ -1,27 +1,63 @@
-import type { Context, Effect, Layer, LayerMap, Option, Scope } from "effect"
+import { Context, Effect, Layer, LayerMap, type Option, type Scope } from "effect"
 import { describe, expect, it } from "tstyche"
-import {
-  type BuildError,
-  type DependencyError,
-  type DependencyInput,
-  Dynamic,
-  explicit,
-  FalsePreload,
-  get,
-  type instance,
-  Lazy,
-  type Needed,
-  optional,
-  Preloaded,
-  read,
-  type record,
-  type Remaining,
-  Success,
-  type Value
-} from "./LayerMap.preload.producer.ts"
+
+class Value extends Context.Service<Value, number>()("R5/MapValue") {}
+class Needed extends Context.Service<Needed, number>()("R5/MapNeeded") {}
+class Remaining extends Context.Service<Remaining, number>()("R5/MapRemaining") {}
+class DependencyInput extends Context.Service<DependencyInput, number>()("R5/MapDependencyInput") {}
+class BuildError {
+  readonly _tag = "BuildError"
+}
+class DependencyError {
+  readonly _tag = "DependencyError"
+}
+
+const resource = Layer.effect(
+  Value,
+  Effect.gen(function*() {
+    yield* Needed
+    yield* Remaining
+    return yield* Effect.fail(new BuildError())
+  })
+)
+const dependency = Layer.effect(
+  Needed,
+  Effect.gen(function*() {
+    yield* DependencyInput
+    return yield* Effect.fail(new DependencyError())
+  })
+)
+const layers = { one: resource, two: resource }
+
+class Preloaded extends LayerMap.Service<Preloaded>()("R5/MapPreloaded", {
+  layers,
+  preload: true,
+  dependencies: [dependency],
+  idleTimeToLive: Infinity
+}) {}
+class Lazy extends LayerMap.Service<Lazy>()("R5/MapLazy", { layers }) {}
+class FalsePreload extends LayerMap.Service<FalsePreload>()("R5/MapFalse", { layers, preload: false }) {}
+class Success extends LayerMap.Service<Success>()("R5/MapSuccess", {
+  layers: { one: Layer.succeed(Value, 1) },
+  preload: true
+}) {}
+class Dynamic extends LayerMap.Service<Dynamic>()("R5/MapDynamic", {
+  lookup: (_key: "one" | "two") => resource,
+  preloadKeys: ["one"],
+  dependencies: [dependency]
+}) {}
+const record = LayerMap.fromRecord(layers, { preload: true })
+const explicit = LayerMap.Service<Lazy>()<"R5/MapExplicit", { layers: typeof layers }>(
+  "R5/MapExplicit",
+  { layers }
+)
+const get = Preloaded.get("one")
+const read = Preloaded.contextEffect("two")
+const optional = Preloaded.contextEffectOption("one")
+const instance = Effect.map(Preloaded, (map) => map)
 
 describe("LayerMap preload keeps future acquisition errors", () => {
-  it("public calls and inferred producer outputs", () => {
+  it("public calls and inferred outputs", () => {
     expect(get).type.toBe<Layer.Layer<Value, BuildError, Preloaded>>()
     expect(read).type.toBe<Effect.Effect<Context.Context<Value>, BuildError, Scope.Scope | Preloaded>>()
     expect(optional).type.toBe<
