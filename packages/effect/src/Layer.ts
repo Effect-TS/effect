@@ -2312,7 +2312,7 @@ export const mock: {
 
 const mockImpl = <I, S extends object>(service: Context.Key<I, S>, implementation: PartialEffectful<S>): Layer<I> =>
   succeed(service)(
-    new Proxy({ ...implementation as object } as S, {
+    new Proxy(Object.setPrototypeOf({ ...implementation as object }, Object.getPrototypeOf(implementation)) as S, {
       get(target, prop, _receiver) {
         if (prop in target) {
           return target[prop as keyof S]

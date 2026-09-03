@@ -365,6 +365,128 @@ describe("Layer", () => {
     }))
 
   describe("mock", () => {
+    describe("inherited implementation", () => {
+      const Api = Context.Service<{ read(): Effect.Effect<number> }>("mock/inherited/Api")
+      class Stub {
+        read() {
+          return Effect.succeed(42)
+        }
+      }
+
+      it.effect("uses a supplied prototype method", () =>
+        Effect.gen(function*() {
+          const implementation = new Stub() satisfies Layer.PartialEffectful<Context.Service.Shape<typeof Api>>
+          assert.isFalse(Object.hasOwn(implementation, "read"))
+          assert.strictEqual(
+            yield* Api.use((api) => api.read()).pipe(Effect.provide(Layer.succeed(Api, implementation))),
+            42
+          )
+          assert.strictEqual(
+            yield* Api.use((api) => api.read()).pipe(Effect.provide(Layer.mock(Api, implementation))),
+            42
+          )
+        }))
+
+      it.effect("uses a supplied prototype method in curried form", () =>
+        Effect.gen(function*() {
+          assert.strictEqual(
+            yield* Api.use((api) => api.read()).pipe(Effect.provide(Layer.mock(Api)(new Stub()))),
+            42
+          )
+        }))
+
+      it.effect("control: Layer.succeed uses the identical instance", () =>
+        Effect.gen(function*() {
+          const implementation = new Stub()
+          const service = yield* Api.pipe(Effect.provide(Layer.succeed(Api, implementation)))
+          assert.strictEqual(service, implementation)
+          assert.strictEqual(yield* service.read(), 42)
+        }))
+
+      it.effect("control: an own method works", () =>
+        Effect.gen(function*() {
+          const service = yield* Api.pipe(Effect.provide(Layer.mock(Api, { read: () => Effect.succeed(42) })))
+          assert.strictEqual(yield* service.read(), 42)
+        }))
+
+      it.effect("control: an own override takes precedence", () =>
+        Effect.gen(function*() {
+          const implementation = Object.assign(new Stub(), { read: () => Effect.succeed(43) })
+          const service = yield* Api.pipe(Effect.provide(Layer.mock(Api, implementation)))
+          assert.strictEqual(yield* service.read(), 43)
+        }))
+
+      it.effect("control: a genuinely omitted method fails", () =>
+        Effect.gen(function*() {
+          const defect = yield* Api.use((api) => api.read()).pipe(
+            Effect.provide(Layer.mock(Api, {})),
+            Effect.catchDefect(Effect.fail),
+            Effect.flip
+          )
+          assert(defect instanceof Error)
+          assert.strictEqual(defect.name, "UnimplementedError")
+          assert.strictEqual(defect.message, "mock/inherited/Api: Unimplemented method \"read\"")
+        }))
+
+      const Counter = Context.Service<{
+        count: number
+        read(): Effect.Effect<number>
+        increment(): Effect.Effect<void>
+        unused(): Effect.Effect<void>
+      }>("mock/inherited/Counter")
+
+      class CounterStub {
+        count = 41
+        read() {
+          return Effect.sync(() => this.count)
+        }
+        increment() {
+          return Effect.sync(() => {
+            this.count++
+          })
+        }
+      }
+
+      it.effect("prototype methods use the mock's public instance state", () =>
+        Effect.gen(function*() {
+          const implementation = new CounterStub() satisfies Layer.PartialEffectful<
+            Context.Service.Shape<typeof Counter>
+          >
+          const layer = Layer.mock(Counter, implementation)
+          implementation.count = 99
+          const service = yield* Counter.pipe(Effect.provide(layer))
+          // Preserve the existing own-property snapshot, not original-instance binding.
+          assert.strictEqual(service.count, 41)
+          assert.strictEqual(yield* service.read(), 41)
+          yield* service.increment()
+          assert.strictEqual(yield* service.read(), 42)
+          assert.strictEqual(service.count, 42)
+          assert.strictEqual(implementation.count, 99)
+        }))
+
+      it.effect("control: unbound prototype methods supplied as own properties use the mock's state", () =>
+        Effect.gen(function*() {
+          const instance = new CounterStub()
+          const implementation = {
+            count: instance.count,
+            read: instance.read,
+            increment: instance.increment
+          }
+          const layer = Layer.mock(Counter, implementation)
+          implementation.count = 99
+          const service = yield* Counter.pipe(Effect.provide(layer))
+          assert.strictEqual(yield* service.read(), 41)
+          yield* service.increment()
+          assert.strictEqual(yield* service.read(), 42)
+          assert.strictEqual(service.count, 42)
+          assert.strictEqual(implementation.count, 99)
+          assert.strictEqual(instance.count, 41)
+          const defect = yield* service.unused().pipe(Effect.catchDefect(Effect.fail), Effect.flip)
+          assert(defect instanceof Error)
+          assert.strictEqual(defect.name, "UnimplementedError")
+        }))
+    })
+
     it.effect("allows passing partial service", () =>
       Effect.gen(function*() {
         class Service1 extends Context.Service<Service1, {
