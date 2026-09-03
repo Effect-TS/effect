@@ -11,7 +11,7 @@ describe("Effectable", () => {
     }
 
     class EffectBox extends Effectable.Mixin(Box) {
-      override = Effect.succeed(this.value)
+      override override = Effect.succeed(this.value)
     }
 
     it.effect("evaluates override", () =>
