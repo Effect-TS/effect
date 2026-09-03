@@ -239,6 +239,7 @@ export type StreamSseMode = "events" | "data"
  * `error` is omitted, it defaults to `Schema.Never`. When `StreamSse` is
  * constructed from `data`, handlers and clients expose raw data values while
  * the server and client still use an SSE event schema internally.
+ * `decodeOptions` configures the native SSE decoder used by generated clients.
  *
  * **Gotchas**
  *
@@ -274,6 +275,7 @@ export interface StreamSse<
   readonly mode: "sse"
   readonly sseMode: StreamSseMode
   readonly contentType: string
+  readonly decodeOptions: Sse.DecodeOptions | undefined
   readonly events: Events
   readonly error: Error
   readonly "~Value"?: Value | undefined
@@ -350,16 +352,19 @@ const streamSchema = Schema.declare(Stream.isStream)
 export const StreamSse: {
   <Events extends Sse.EventCodec, Error extends Schema.Constraint = Schema.Never>(options: {
     readonly contentType?: string | undefined
+    readonly decodeOptions?: Sse.DecodeOptions | undefined
     readonly events: Events
     readonly error?: Error | undefined
   }): StreamSse<Events, Error, Events["Type"]>
   <Data extends Schema.Constraint, Error extends Schema.Constraint = Schema.Never>(options: {
     readonly contentType?: string | undefined
+    readonly decodeOptions?: Sse.DecodeOptions | undefined
     readonly data: Data
     readonly error?: Error | undefined
   }): StreamSse<SseEventFromData<Data>, Error, Data["Type"]>
 } = (options: {
   readonly contentType?: string | undefined
+  readonly decodeOptions?: Sse.DecodeOptions | undefined
   readonly events?: Sse.EventCodec | undefined
   readonly data?: Schema.Constraint | undefined
   readonly error?: Schema.Constraint | undefined
@@ -378,6 +383,7 @@ export const StreamSse: {
     mode: "sse",
     sseMode: options.events === undefined ? "data" : "events",
     contentType: options.contentType ?? defaultStreamContentType("sse"),
+    decodeOptions: options.decodeOptions,
     events,
     error: options.error ?? Schema.Never
   })

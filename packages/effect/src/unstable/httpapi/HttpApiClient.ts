@@ -910,7 +910,7 @@ function makeSseDecoder(
     }),
     declaration.events
   ])
-  return Sse.decodeSchema(Event)
+  return Sse.decodeSchema(Event, declaration.decodeOptions)
 }
 
 function decodeSseStream(
