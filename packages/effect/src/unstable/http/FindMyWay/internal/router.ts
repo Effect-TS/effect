@@ -35,18 +35,8 @@ const sharedBrothersNodesStack: Array<BrotherNode> = []
 const singleParamArray: Array<string> = [""]
 
 // Matches one terminal parameter without wildcard, regex, or static suffix syntax.
-const isCleanSingleTrailingParam = (path: string): boolean => {
-  const colon = path.indexOf(":")
-  return colon > 0 &&
-    path.charCodeAt(colon - 1) === 47 &&
-    colon < path.length - 1 &&
-    path.indexOf(":", colon + 1) === -1 &&
-    path.indexOf("/", colon) === -1 &&
-    path.indexOf("*") === -1 &&
-    path.indexOf("(") === -1 &&
-    path.indexOf("-", colon) === -1 &&
-    path.indexOf(".", colon) === -1
-}
+const CLEAN_SINGLE_PARAM_REGEXP = /^[^:*(]*\/:[^/:*(.-]+$/
+const isCleanSingleTrailingParam = (path: string): boolean => CLEAN_SINGLE_PARAM_REGEXP.test(path)
 
 interface Route<A = unknown> {
   readonly method: string

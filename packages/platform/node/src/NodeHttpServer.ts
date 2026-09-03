@@ -363,12 +363,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
 
   private cachedMethod: HttpMethod | undefined
   get method(): HttpMethod {
-    if (this.cachedMethod === undefined) {
-      // Node's parser already uppercases standard methods.
-      const method = this.source.method!
-      this.cachedMethod = (method.charCodeAt(0) >= 97 ? method.toUpperCase() : method) as HttpMethod
-    }
-    return this.cachedMethod
+    return this.cachedMethod ??= this.source.method!.toUpperCase() as HttpMethod
   }
 
   override get headers(): Headers.Headers {

@@ -580,7 +580,7 @@ export const withFiber: <A, E = never, R = never>(
 export const withFiberSucceed: <A, R = never>(
   evaluate: (fiber: FiberImpl<unknown, unknown>) => A
 ) => Effect.Effect<A, never, R> = makePrimitive({
-  op: "SucceedWithFiber",
+  op: "WithFiberSucceed",
   [evaluate](fiber) {
     const value = this[args](fiber)
     const cont = fiber.getCont(contA)
