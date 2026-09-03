@@ -44,7 +44,6 @@ const boundedTransaction = <A, E, R>(sql: SqliteClient.SqliteClient, body: Effec
     yield* TestClock.adjust("1 second")
     const result = yield* Fiber.join(fiber)
     if (Exit.isFailure(result)) {
-      console.log("bounded transaction failure", Cause.pretty(result.cause))
       assert.match(Cause.pretty(result.cause), /TimeoutError/)
     }
     return result
@@ -107,7 +106,6 @@ describe.skipIf(!isBun)("native Bun transaction export", () => {
       const { result, sql } = yield* Effect.scoped(Effect.gen(function*() {
         const sql = yield* fixture
         const result = yield* boundedTransaction(sql, sql.export)
-        console.log("transaction export exit", result._tag)
         // These controls execute even on base after timeout, before the final assertion.
         assert.deepStrictEqual(yield* sql`SELECT value FROM marker`, [{ VALUE: 1 }])
         checkSnapshot(yield* sql.export, 1)
@@ -117,7 +115,6 @@ describe.skipIf(!isBun)("native Bun transaction export", () => {
       }))
       assert.isTrue(Exit.isFailure(yield* sql`SELECT value FROM marker`.pipe(Effect.exit)))
       assert.isTrue(Exit.isFailure(yield* sql.export.pipe(Effect.exit)))
-      console.log("recovery queries, subsequent transaction, exports, and closed-database checks passed")
       assert.isTrue(Exit.isSuccess(result))
       if (Exit.isSuccess(result)) checkSnapshot(result.value, 1)
     }).pipe(Effect.provide(Reactivity.layer)))
