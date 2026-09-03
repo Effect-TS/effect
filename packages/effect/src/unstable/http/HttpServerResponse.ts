@@ -1384,7 +1384,8 @@ export const fromWeb = (response: Response): HttpServerResponse => {
           evaluate: () => response.body!,
           onError: (e) => e
         }),
-        contentType ?? undefined
+        contentType ?? undefined,
+        bodyInternal.parseContentLength(response.headers.get("content-length"))
       )
     )
   }
