@@ -2136,7 +2136,7 @@ const configError = (message: string, cause?: unknown): SqlError =>
 const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError> =>
   Effect.suspend(() => {
     const parsed: EffectResult.Result<UrlConfig, SqlError> = options.url !== undefined
-      ? parseUrl(Redacted.value(options.url))
+      ? parseUrl(Redacted.value(options.url), options.ssl !== undefined)
       : EffectResult.succeed({})
     if (EffectResult.isFailure(parsed)) return Effect.fail(parsed.failure)
     const url = parsed.success
@@ -2187,7 +2187,7 @@ const parsePort = (value: string, what: string): EffectResult.Result<number, Sql
     : EffectResult.succeed(port)
 }
 
-const parseUrl = (raw: string): EffectResult.Result<UrlConfig, SqlError> => {
+const parseUrl = (raw: string, hasExplicitSsl: boolean): EffectResult.Result<UrlConfig, SqlError> => {
   let url: URL
   try {
     url = new URL(raw)
@@ -2270,6 +2270,7 @@ const parseUrl = (raw: string): EffectResult.Result<UrlConfig, SqlError> => {
             break
           case "prefer":
           case "allow":
+            if (hasExplicitSsl) break
             return EffectResult.fail(
               configError(`sslmode "${value}" is not supported: set ssl explicitly to true or false`)
             )
