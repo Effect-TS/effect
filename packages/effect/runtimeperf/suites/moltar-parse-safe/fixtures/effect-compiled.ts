@@ -1,10 +1,9 @@
 import * as Schema from "effect/Schema"
 import * as SchemaParser from "effect/SchemaParser"
-import * as SchemaCompiler from "effect/unstable/schema/SchemaCompiler"
+// oxlint-disable-next-line no-unassigned-import
+import "effect/unstable/schema/SchemaCompiler"
 import assert from "node:assert/strict"
 import { invalidData, validData, validDataWithExtras } from "./data.ts"
-
-SchemaCompiler.enable()
 
 const makeSchema = () =>
   Schema.Struct({

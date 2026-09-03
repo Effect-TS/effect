@@ -25,7 +25,10 @@
     "concurrency",
     "observability"
   ],
-  "sideEffects": [],
+  "sideEffects": [
+    "./src/unstable/schema/SchemaCompiler.ts",
+    "./dist/unstable/schema/SchemaCompiler.js"
+  ],
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",

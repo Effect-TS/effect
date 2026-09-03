@@ -121,7 +121,7 @@ export const loadRegistry = () => {
         ...runtimeCase,
         suite: suite.name,
         target: `${suite.name}/${runtimeCase.name}`,
-        fixturePath: resolve(runtimeperfDir, fixtureGroup.file)
+        fixturePath: resolve(runtimeperfDir, runtimeCase.file ?? fixtureGroup.file)
       }))
     )
   )

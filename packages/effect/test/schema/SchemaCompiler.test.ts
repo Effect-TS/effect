@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Result, Schema, SchemaGetter, SchemaIssue, SchemaParser, SchemaTransformation } from "effect"
-import { SchemaCompiler } from "effect/unstable/schema"
+// oxlint-disable-next-line no-unassigned-import
+import "effect/unstable/schema/SchemaCompiler"
 import { assertSchemaIssueError, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 const schema = Schema.Struct({
@@ -10,13 +11,11 @@ const schema = Schema.Struct({
   nested: Schema.Struct({ value: Schema.String })
 })
 
-const decodeCreatedBeforeEnable = SchemaParser.decodeUnknownSync(schema)
-const isCreatedBeforeEnable = SchemaParser.is(schema)
-
-SchemaCompiler.enable()
+const decode = SchemaParser.decodeUnknownSync(schema)
+const is = SchemaParser.is(schema)
 
 describe("SchemaCompiler", () => {
-  it("compiles a decoder lazily after enable", () => {
+  it("compiles a decoder lazily after import", () => {
     const input = {
       name: "a",
       count: 1,
@@ -24,7 +23,7 @@ describe("SchemaCompiler", () => {
       nested: { value: "b", extra: true },
       extra: true
     }
-    const output = decodeCreatedBeforeEnable(input)
+    const output = decode(input)
 
     deepStrictEqual(output, {
       name: "a",
@@ -38,7 +37,7 @@ describe("SchemaCompiler", () => {
 
   it("reuses the compiled decoder for type guards", () => {
     strictEqual(
-      isCreatedBeforeEnable({
+      is({
         name: "a",
         count: 1,
         active: true,
@@ -47,7 +46,7 @@ describe("SchemaCompiler", () => {
       true
     )
     strictEqual(
-      isCreatedBeforeEnable({
+      is({
         name: 1,
         count: 1,
         active: true,
@@ -59,7 +58,7 @@ describe("SchemaCompiler", () => {
     const defect = new Error("boom")
     let reads = 0
     throws(() =>
-      isCreatedBeforeEnable({
+      is({
         get name(): string {
           reads++
           throw defect
@@ -87,7 +86,7 @@ describe("SchemaCompiler", () => {
       nested: { value: "b" }
     }
 
-    throws(() => decodeCreatedBeforeEnable(input), (error) => {
+    throws(() => decode(input), (error) => {
       assertSchemaIssueError(error, `Expected string\n  at ["name"]`)
     })
     strictEqual(reads, 2)
@@ -106,7 +105,7 @@ describe("SchemaCompiler", () => {
       nested: { value: "b" }
     }
 
-    throws(() => decodeCreatedBeforeEnable(input), (error) => {
+    throws(() => decode(input), (error) => {
       assert(error instanceof Error)
       strictEqual(error.message, "Sync adapter can only throw schema issues")
       assert(Cause.hasDies(error.cause as Cause.Cause<never>))
@@ -116,7 +115,7 @@ describe("SchemaCompiler", () => {
 
   it("uses the interpreter for explicit ParseOptions", () => {
     assert.deepStrictEqual(
-      decodeCreatedBeforeEnable(
+      decode(
         {
           name: "a",
           count: 1,

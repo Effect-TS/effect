@@ -1,21 +1,18 @@
 import * as Schema from "effect/Schema"
 import * as SchemaParser from "effect/SchemaParser"
 import * as SchemaTransformation from "effect/SchemaTransformation"
-import * as SchemaCompiler from "effect/unstable/schema/SchemaCompiler"
 import assert from "node:assert/strict"
 
-const validCase = (schema, input, compiled, expected = input) => () => {
+const validCase = (schema, input, expected = input) => () => {
   const decode = SchemaParser.decodeUnknownSync(schema)
-  if (compiled) SchemaCompiler.enable()
   return {
     run: () => decode(input),
     validate: (result) => assert.deepEqual(result, expected)
   }
 }
 
-const invalidCase = (schema, input, compiled) => () => {
+const invalidCase = (schema, input) => () => {
   const decode = SchemaParser.decodeUnknownSync(schema)
-  if (compiled) SchemaCompiler.enable()
   return {
     run: () => {
       try {
@@ -33,10 +30,8 @@ const array100 = Schema.Array(Schema.String)
 const array100Input = Array.from({ length: 100 }, (_, index) => `value${index}`)
 const array100Invalid = [...array100Input.slice(0, -1), 99]
 
-export const array100Valid = validCase(array100, array100Input, false)
-export const array100ValidCompiled = validCase(array100, array100Input, true)
-export const array100InvalidLast = invalidCase(array100, array100Invalid, false)
-export const array100InvalidLastCompiled = invalidCase(array100, array100Invalid, true)
+export const array100Valid = validCase(array100, array100Input)
+export const array100InvalidLast = invalidCase(array100, array100Invalid)
 
 const tupleRest = Schema.TupleWithRest(
   Schema.Tuple([Schema.String]),
@@ -44,8 +39,7 @@ const tupleRest = Schema.TupleWithRest(
 )
 const tupleRestInput = ["head", ...Array.from({ length: 32 }, (_, index) => index), true]
 
-export const tupleRestValid = validCase(tupleRest, tupleRestInput, false)
-export const tupleRestValidCompiled = validCase(tupleRest, tupleRestInput, true)
+export const tupleRestValid = validCase(tupleRest, tupleRestInput)
 
 const optionalFields = Object.fromEntries(
   Array.from({ length: 32 }, (_, index) => [`field${index}`, Schema.optionalKey(Schema.String)])
@@ -55,8 +49,7 @@ const optionalStructInput = Object.fromEntries(
   Array.from({ length: 16 }, (_, index) => [`field${index * 2}`, `value${index}`])
 )
 
-export const optionalStructValid = validCase(optionalStruct, optionalStructInput, false)
-export const optionalStructValidCompiled = validCase(optionalStruct, optionalStructInput, true)
+export const optionalStructValid = validCase(optionalStruct, optionalStructInput)
 
 const record = Schema.Record(
   Schema.String,
@@ -69,8 +62,7 @@ const recordInput = Object.fromEntries(
   ])
 )
 
-export const recordValid = validCase(record, recordInput, false)
-export const recordValidCompiled = validCase(record, recordInput, true)
+export const recordValid = validCase(record, recordInput)
 
 const templateRecord = Schema.Record(
   Schema.TemplateLiteral(["data-", Schema.String]),
@@ -86,8 +78,7 @@ const templateRecordOutput = Object.fromEntries(
   Array.from({ length: 32 }, (_, index) => [`data-${index * 2}`, index * 2])
 )
 
-export const templateRecordValid = validCase(templateRecord, templateRecordInput, false, templateRecordOutput)
-export const templateRecordValidCompiled = validCase(templateRecord, templateRecordInput, true, templateRecordOutput)
+export const templateRecordValid = validCase(templateRecord, templateRecordInput, templateRecordOutput)
 
 const structWithRecord = Schema.StructWithRest(
   Schema.Struct(
@@ -99,16 +90,14 @@ const structWithRecordInput = Object.fromEntries(
   Array.from({ length: 32 }, (_, index) => [`field${index}`, index])
 )
 
-export const structWithRecordValid = validCase(structWithRecord, structWithRecordInput, false)
-export const structWithRecordValidCompiled = validCase(structWithRecord, structWithRecordInput, true)
+export const structWithRecordValid = validCase(structWithRecord, structWithRecordInput)
 
 const numberRecord = Schema.Record(Schema.Number, Schema.Number)
 const numberRecordInput = Object.fromEntries(
   Array.from({ length: 32 }, (_, index) => [String(index), index])
 )
 
-export const numberRecordValid = validCase(numberRecord, numberRecordInput, false)
-export const numberRecordValidCompiled = validCase(numberRecord, numberRecordInput, true)
+export const numberRecordValid = validCase(numberRecord, numberRecordInput)
 
 const transformedKeyRecord = Schema.Record(
   Schema.String.pipe(Schema.decodeTo(Schema.String, SchemaTransformation.toUpperCase())),
@@ -124,13 +113,6 @@ const transformedKeyRecordOutput = Object.fromEntries(
 export const transformedKeyRecordValid = validCase(
   transformedKeyRecord,
   transformedKeyRecordInput,
-  false,
-  transformedKeyRecordOutput
-)
-export const transformedKeyRecordValidCompiled = validCase(
-  transformedKeyRecord,
-  transformedKeyRecordInput,
-  true,
   transformedKeyRecordOutput
 )
 
@@ -145,15 +127,12 @@ const encodingCheckedStructInput = Object.fromEntries(
   Array.from({ length: 32 }, (_, index) => [`field${index}`, `value${index}`])
 )
 
-export const encodingCheckedStructValid = validCase(encodingCheckedStruct, encodingCheckedStructInput, false)
-export const encodingCheckedStructValidCompiled = validCase(encodingCheckedStruct, encodingCheckedStructInput, true)
+export const encodingCheckedStructValid = validCase(encodingCheckedStruct, encodingCheckedStructInput)
 
 const literal100 = Schema.Literals(Array.from({ length: 100 }, (_, index) => `value${index}`))
 
-export const literal100ValidLast = validCase(literal100, "value99", false)
-export const literal100ValidLastCompiled = validCase(literal100, "value99", true)
-export const literal100Invalid = invalidCase(literal100, "missing", false)
-export const literal100InvalidCompiled = invalidCase(literal100, "missing", true)
+export const literal100ValidLast = validCase(literal100, "value99")
+export const literal100Invalid = invalidCase(literal100, "missing")
 
 const taggedUnion100 = Schema.Union(
   Array.from({ length: 100 }, (_, index) =>
@@ -166,33 +145,19 @@ const taggedUnion100 = Schema.Union(
 const taggedUnion100Input = { kind: "value99", text: "value", count: 99, extra: true }
 const taggedUnion100Output = { kind: "value99", text: "value", count: 99 }
 
-export const taggedUnion100ValidLast = validCase(taggedUnion100, taggedUnion100Input, false, taggedUnion100Output)
-export const taggedUnion100ValidLastCompiled = validCase(
-  taggedUnion100,
-  taggedUnion100Input,
-  true,
-  taggedUnion100Output
-)
+export const taggedUnion100ValidLast = validCase(taggedUnion100, taggedUnion100Input, taggedUnion100Output)
 export const taggedUnion100Invalid = invalidCase(
   taggedUnion100,
-  { kind: "missing", text: "value", count: 99 },
-  false
-)
-export const taggedUnion100InvalidCompiled = invalidCase(
-  taggedUnion100,
-  { kind: "missing", text: "value", count: 99 },
-  true
+  { kind: "missing", text: "value", count: 99 }
 )
 
 const checkedString = Schema.String.check(Schema.isMinLength(2))
 
-export const checkedStringValid = validCase(checkedString, "value", false)
-export const checkedStringValidCompiled = validCase(checkedString, "value", true)
+export const checkedStringValid = validCase(checkedString, "value")
 
 const templateLiteral = Schema.TemplateLiteral(["prefix-", Schema.String])
 
-export const templateLiteralValid = validCase(templateLiteral, "prefix-value", false)
-export const templateLiteralValidCompiled = validCase(templateLiteral, "prefix-value", true)
+export const templateLiteralValid = validCase(templateLiteral, "prefix-value")
 
 const transformationFields = Object.fromEntries(
   Array.from({ length: 32 }, (_, index) => [`field${index}`, Schema.FiniteFromString])
@@ -208,20 +173,11 @@ const transformationStructOutput = Object.fromEntries(
 export const transformationStructValid = validCase(
   transformationStruct,
   transformationStructInput,
-  false,
-  transformationStructOutput
-)
-export const transformationStructValidCompiled = validCase(
-  transformationStruct,
-  transformationStructInput,
-  true,
   transformationStructOutput
 )
 
-export const transformationRootValid = validCase(Schema.FiniteFromString, "123", false, 123)
-export const transformationRootValidCompiled = validCase(Schema.FiniteFromString, "123", true, 123)
-export const transformationRootInvalid = invalidCase(Schema.FiniteFromString, "invalid", false)
-export const transformationRootInvalidCompiled = invalidCase(Schema.FiniteFromString, "invalid", true)
+export const transformationRootValid = validCase(Schema.FiniteFromString, "123", 123)
+export const transformationRootInvalid = invalidCase(Schema.FiniteFromString, "invalid")
 
 interface RecursiveNode {
   readonly value: string
@@ -238,5 +194,4 @@ const makeRecursiveNode = (depth: number): RecursiveNode => ({
 })
 const recursiveNodeInput = makeRecursiveNode(4)
 
-export const recursiveNodeValid = validCase(recursiveNode, recursiveNodeInput, false)
-export const recursiveNodeValidCompiled = validCase(recursiveNode, recursiveNodeInput, true)
+export const recursiveNodeValid = validCase(recursiveNode, recursiveNodeInput)

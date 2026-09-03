@@ -2001,6 +2001,7 @@
             {
               "name": "array-100-valid-effect-compiled",
               "export": "array100ValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-array-100-valid",
               "implementation": "effect-compiled",
               "family": "arrays",
@@ -2019,6 +2020,7 @@
             {
               "name": "array-100-invalid-last-effect-compiled",
               "export": "array100InvalidLastCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-array-100-invalid-last",
               "implementation": "effect-compiled",
               "family": "arrays",
@@ -2037,6 +2039,7 @@
             {
               "name": "tuple-rest-valid-effect-compiled",
               "export": "tupleRestValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-tuple-rest-valid",
               "implementation": "effect-compiled",
               "family": "arrays",
@@ -2055,6 +2058,7 @@
             {
               "name": "optional-struct-valid-effect-compiled",
               "export": "optionalStructValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-optional-struct-valid",
               "implementation": "effect-compiled",
               "family": "objects",
@@ -2073,6 +2077,7 @@
             {
               "name": "record-valid-effect-compiled",
               "export": "recordValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-record-valid",
               "implementation": "effect-compiled",
               "family": "records",
@@ -2091,6 +2096,7 @@
             {
               "name": "template-record-valid-effect-compiled",
               "export": "templateRecordValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-template-record-valid",
               "implementation": "effect-compiled",
               "family": "records",
@@ -2109,6 +2115,7 @@
             {
               "name": "struct-with-record-valid-effect-compiled",
               "export": "structWithRecordValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-struct-with-record-valid",
               "implementation": "effect-compiled",
               "family": "records",
@@ -2127,6 +2134,7 @@
             {
               "name": "number-record-valid-effect-compiled",
               "export": "numberRecordValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-number-record-valid",
               "implementation": "effect-compiled",
               "family": "records",
@@ -2145,6 +2153,7 @@
             {
               "name": "transformed-key-record-valid-effect-compiled",
               "export": "transformedKeyRecordValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-transformed-key-record-valid",
               "implementation": "effect-compiled",
               "family": "records",
@@ -2163,6 +2172,7 @@
             {
               "name": "encoding-checked-struct-valid-effect-compiled",
               "export": "encodingCheckedStructValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-encoding-checked-struct-valid",
               "implementation": "effect-compiled",
               "family": "checks",
@@ -2181,6 +2191,7 @@
             {
               "name": "literal-100-valid-last-effect-compiled",
               "export": "literal100ValidLastCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-literal-100-valid-last",
               "implementation": "effect-compiled",
               "family": "unions",
@@ -2199,6 +2210,7 @@
             {
               "name": "literal-100-invalid-effect-compiled",
               "export": "literal100InvalidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-literal-100-invalid",
               "implementation": "effect-compiled",
               "family": "unions",
@@ -2217,6 +2229,7 @@
             {
               "name": "tagged-union-100-valid-last-effect-compiled",
               "export": "taggedUnion100ValidLastCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-tagged-union-100-valid-last",
               "implementation": "effect-compiled",
               "family": "unions",
@@ -2235,6 +2248,7 @@
             {
               "name": "tagged-union-100-invalid-effect-compiled",
               "export": "taggedUnion100InvalidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-tagged-union-100-invalid",
               "implementation": "effect-compiled",
               "family": "unions",
@@ -2253,6 +2267,7 @@
             {
               "name": "checked-string-valid-effect-compiled",
               "export": "checkedStringValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-checked-string-valid",
               "implementation": "effect-compiled",
               "family": "checks",
@@ -2271,6 +2286,7 @@
             {
               "name": "template-literal-valid-effect-compiled",
               "export": "templateLiteralValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-template-literal-valid",
               "implementation": "effect-compiled",
               "family": "template-literals",
@@ -2289,6 +2305,7 @@
             {
               "name": "transformation-struct-valid-effect-compiled",
               "export": "transformationStructValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-transformation-struct-valid",
               "implementation": "effect-compiled",
               "family": "transformations",
@@ -2307,6 +2324,7 @@
             {
               "name": "transformation-root-valid-effect-compiled",
               "export": "transformationRootValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-transformation-root-valid",
               "implementation": "effect-compiled",
               "family": "transformations",
@@ -2325,6 +2343,7 @@
             {
               "name": "transformation-root-invalid-effect-compiled",
               "export": "transformationRootInvalidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-transformation-root-invalid",
               "implementation": "effect-compiled",
               "family": "transformations",
@@ -2343,6 +2362,7 @@
             {
               "name": "recursive-node-valid-effect-compiled",
               "export": "recursiveNodeValidCompiled",
+              "file": "suites/schema-compiler/fixtures/coverage-compiled.ts",
               "scenario": "schema-compiler-recursive-node-valid",
               "implementation": "effect-compiled",
               "family": "recursion",

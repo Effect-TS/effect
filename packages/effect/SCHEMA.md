@@ -72,21 +72,17 @@ means that the library does not provide that benchmark.
 
 ### Runtime compilation
 
-`SchemaCompiler` is an experimental, opt-in runtime compiler for synchronous Schema decoders and type guards. Enable it during application startup, before the first execution of the parsers that should use it:
+`SchemaCompiler` is an experimental, opt-in runtime compiler for synchronous Schema decoders and type guards. Import it for its side effect during application startup, before the first execution of the parsers that should use it:
 
 ```ts
-import { SchemaCompiler } from "effect/unstable/schema"
-
-SchemaCompiler.enable()
+import "effect/unstable/schema/SchemaCompiler"
 ```
 
-The call installs the compiler globally and there is no corresponding disable operation, but it does not compile schemas immediately. The first execution of a supported parser compiles and caches an optimized implementation for its AST. Applications continue to create and run parsers through the normal `SchemaParser` APIs:
+The import installs the compiler globally, but it does not compile schemas immediately. The first execution of a supported parser compiles and caches an optimized implementation for its AST. Applications continue to create and run parsers through the normal `SchemaParser` APIs:
 
 ```ts
+import "effect/unstable/schema/SchemaCompiler"
 import { Schema, SchemaParser } from "effect"
-import { SchemaCompiler } from "effect/unstable/schema"
-
-SchemaCompiler.enable()
 
 const User = Schema.Struct({
   id: Schema.Number,
@@ -98,7 +94,7 @@ const decodeUser = SchemaParser.decodeUnknownSync(User)
 decodeUser({ id: 1, name: "Ada" })
 ```
 
-Unsupported schemas, calls with explicit parse options, and environments that disallow dynamic code generation use the interpreter instead. This fallback preserves the behavior of `SchemaParser`; enabling the compiler changes the execution strategy, not the parsing API or its results.
+Unsupported schemas, calls with explicit parse options, and environments that disallow dynamic code generation use the interpreter instead. This fallback preserves the behavior of `SchemaParser`; importing the compiler changes the execution strategy, not the parsing API or its results.
 
 # Defining Elementary Schemas
 

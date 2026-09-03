@@ -209,10 +209,14 @@ describe("runtimeperf registry", () => {
       assert.deepEqual(implementations.sort(), ["effect", "effect-compiled"])
     }
 
-    const source = await readFile(compiler[0].fixturePath, "utf8")
-    assert.match(source, /SchemaParser\.decodeUnknownSync\(/)
-    assert.match(source, /SchemaCompiler\.enable\(\)/)
-    assert.doesNotMatch(source, /internal\/schema/)
+    const interpreted = compiler.find((fixture) => fixture.implementation === "effect")
+    const compiled = compiler.find((fixture) => fixture.implementation === "effect-compiled")
+    const interpretedSource = await readFile(interpreted.fixturePath, "utf8")
+    const compiledSource = await readFile(compiled.fixturePath, "utf8")
+    assert.match(interpretedSource, /SchemaParser\.decodeUnknownSync\(/)
+    assert.doesNotMatch(interpretedSource, /SchemaCompiler/)
+    assert.match(compiledSource, /import "effect\/unstable\/schema\/SchemaCompiler"/)
+    assert.doesNotMatch(compiledSource, /internal\/schema/)
   })
 
   it("loads, runs and validates every fixture export", async () => {
