@@ -341,7 +341,7 @@ export const cors = (options?: {
 
   const allowOrigin = typeof opts.allowedOrigins === "function" || opts.allowedOrigins.length > 1
     ? ((originHeader: string) => {
-      if (!isAllowedOrigin(originHeader)) return undefined
+      if (!isAllowedOrigin(originHeader)) return { vary: "Origin" }
       return {
         "access-control-allow-origin": originHeader,
         vary: "Origin"
@@ -403,28 +403,35 @@ export const cors = (options?: {
   const headersFromRequestOptions = (request: HttpServerRequest) => {
     const origin = request.headers["origin"]
     const accessControlRequestHeaders = request.headers["access-control-request-headers"]
-    return Headers.fromRecordUnsafe({
+    const headers = Headers.fromRecordUnsafe({
       ...allowOrigin(origin),
       ...allowCredentials,
       ...exposeHeaders,
       ...allowMethods,
-      ...allowHeaders(accessControlRequestHeaders),
       ...maxAge
     })
+    const accessControlHeaders = allowHeaders(accessControlRequestHeaders)
+    if (accessControlHeaders === undefined) return headers
+    const vary = accessControlHeaders["vary"]
+    return Headers.setAll(
+      headers,
+      vary === undefined
+        ? accessControlHeaders
+        : {
+          ...accessControlHeaders,
+          vary: compressionInternal.varyWith(headers, vary)
+        }
+    )
   }
 
   const preResponseHandler = (request: HttpServerRequest, response: HttpServerResponse) => {
-    let headers = headersFromRequest(request)
-    const vary = response.headers["vary"]
-    if (headers["vary"] !== undefined && vary !== undefined) {
-      const members = vary.split(",").map((member) => member.trim().toLowerCase())
-      headers = Headers.set(
-        headers,
-        "vary",
-        members.includes("*") || members.includes("origin") ? vary : `${vary}, Origin`
-      )
-    }
-    return Effect.succeed(Response.setHeaders(response, headers))
+    const headers = headersFromRequest(request)
+    return Effect.succeed(Response.setHeaders(
+      response,
+      headers["vary"] === undefined
+        ? headers
+        : Headers.set(headers, "vary", compressionInternal.varyWith(response.headers, "Origin"))
+    ))
   }
 
   return <E, R>(
@@ -577,8 +584,8 @@ export const compression = (
 }
 
 const withVary = (response: HttpServerResponse): HttpServerResponse => {
-  const vary = compressionInternal.varyAcceptEncoding(response.headers)
-  return vary === undefined ? response : Response.setHeader(response, "vary", vary)
+  const vary = compressionInternal.varyWith(response.headers, "Accept-Encoding")
+  return Response.setHeader(response, "vary", vary)
 }
 
 const defaultAlgorithms: ReadonlyArray<CompressionAlgorithm> = ["br", "gzip", "deflate"]

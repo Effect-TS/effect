@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve existing `Vary` values when CORS adds `Origin`.
+Fix `HttpMiddleware.cors` to preserve `Origin` and other required `Vary` dimensions.
