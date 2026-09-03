@@ -50,14 +50,17 @@ const makeExporter = (
     Effect.provide(OtlpExporter.layerFlusher)
   )
 
-const makeExporterRaw = (maxBatchSize: number | "disabled" = 1) =>
+const makeExporterRaw = (
+  maxBatchSize: number | "disabled" = 1,
+  body: (data: Array<any>) => HttpBody.HttpBody = () => HttpBody.empty
+) =>
   OtlpExporter.make({
     label: "OtlpExporterTest",
     url: "http://localhost:4318/v1/logs",
     headers: undefined,
     exportInterval: "1 hour",
     maxBatchSize,
-    body: () => [HttpBody.empty, Effect.void],
+    body: (data) => [body(data), Effect.void],
     shutdownTimeout: "1 second"
   })
 
@@ -345,6 +348,53 @@ describe("OtlpExporter", () => {
             Effect.provide(OtlpExporter.layerFlusher)
           )
         )
+      }))
+
+    it.effect("does not export empty payloads when batching is disabled", () =>
+      Effect.gen(function*() {
+        const { httpClient } = yield* makeStatusHttpClient(200)
+        const payloads: Array<ReadonlyArray<unknown>> = []
+
+        yield* Effect.scoped(
+          Effect.gen(function*() {
+            yield* makeExporterRaw("disabled", (items) => {
+              payloads.push(items)
+              return HttpBody.empty
+            })
+            const flusher = yield* OtlpExporter.Flusher
+            yield* flusher.flush
+          }).pipe(
+            Effect.provideService(HttpClient.HttpClient, httpClient),
+            Effect.provide(OtlpExporter.layerFlusher)
+          )
+        )
+
+        assert.deepStrictEqual(payloads, [])
+      }))
+
+    it.effect("exports buffered items once when batching is disabled", () =>
+      Effect.gen(function*() {
+        const { httpClient } = yield* makeStatusHttpClient(200)
+        const payloads: Array<ReadonlyArray<unknown>> = []
+
+        yield* Effect.scoped(
+          Effect.gen(function*() {
+            const exporter = yield* makeExporterRaw("disabled", (items) => {
+              payloads.push(items)
+              return HttpBody.empty
+            })
+            const flusher = yield* OtlpExporter.Flusher
+
+            exporter.push({ value: 1 })
+            yield* flusher.flush
+            yield* flusher.flush
+          }).pipe(
+            Effect.provideService(HttpClient.HttpClient, httpClient),
+            Effect.provide(OtlpExporter.layerFlusher)
+          )
+        )
+
+        assert.deepStrictEqual(payloads, [[{ value: 1 }]])
       }))
 
     it.effect("shares one registry across traces, logs and metrics", () =>
