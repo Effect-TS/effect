@@ -145,12 +145,14 @@ describe("OtlpExporter", () => {
       assert.isFalse(yield* Deferred.isDone(started[1]))
 
       yield* Deferred.succeed(releases[0], undefined)
+      exporter.push({ value: 2 })
       yield* TestClock.adjust("1 second")
       yield* Deferred.await(started[1])
 
+      exporter.push({ value: 3 })
       const closeFiber = yield* Effect.forkChild(Scope.close(scope, Exit.void))
-      yield* Deferred.await(started[2])
       yield* Deferred.succeed(releases[1], undefined)
+      yield* Deferred.await(started[2])
       yield* Deferred.succeed(releases[2], undefined)
       yield* Fiber.join(closeFiber)
     }))
@@ -471,10 +473,11 @@ describe("OtlpExporter", () => {
         const flusher = yield* OtlpExporter.Flusher
         const scope = yield* Scope.make()
 
-        yield* makeExporterRaw("disabled").pipe(
+        const exporter = yield* makeExporterRaw("disabled").pipe(
           Effect.provideService(HttpClient.HttpClient, httpClient),
           Effect.provideService(Scope.Scope, scope)
         )
+        exporter.push({ value: 1 })
 
         yield* Scope.close(scope, Exit.void)
         assert.strictEqual(yield* Ref.get(attempts), 1)
