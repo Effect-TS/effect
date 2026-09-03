@@ -625,6 +625,18 @@ describe("Stream", () => {
           assert.deepStrictEqual(result, ["a", "b", "c"])
         }))
 
+      it.effect("emits a carriage-return-terminated line before pulling upstream again", () =>
+        Effect.gen(function*() {
+          const result = yield* Stream.succeed("a\r").pipe(
+            Stream.concat(Stream.fail("boom")),
+            Stream.splitLines,
+            Stream.take(1),
+            Stream.runCollect,
+            Effect.result
+          )
+          assert.deepStrictEqual(result, Result.succeed(["a"]))
+        }))
+
       it.effect("emits the final line when the stream does not end with a newline", () =>
         Effect.gen(function*() {
           const result = yield* splitLines(["a\nb\nc\n", "d\ne"])

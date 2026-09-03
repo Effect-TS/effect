@@ -6515,9 +6515,8 @@ export const splitLines = <Err, Done>(): Channel<
       // Accumulates text that has not yet been terminated by a line break.
       // Content is carried across chunks until a terminator is found.
       let stringBuilder = ""
-      // Set when a chunk ends with \r so the next chunk can check whether
-      // the following character is \n (completing a \r\n pair) or not
-      // (standalone \r, which is itself a line terminator).
+      // A trailing \r completes the line immediately. Remember it only to
+      // suppress a leading \n in the next nonempty string.
       let midCRLF = false
       // Remembers the upstream Done value after the first time the upstream
       // signals completion, so subsequent pulls return Done immediately
@@ -6544,11 +6543,8 @@ export const splitLines = <Err, Done>(): Channel<
             let indexOfLF = str.indexOf("\n")
             if (midCRLF) {
               if (indexOfLF === 0) {
-                pushLine("")
                 from = 1
                 indexOfLF = str.indexOf("\n", from)
-              } else {
-                pushLine("")
               }
               midCRLF = false
             }
@@ -6558,18 +6554,19 @@ export const splitLines = <Err, Done>(): Channel<
                 from = indexOfLF + 1
                 indexOfLF = str.indexOf("\n", from)
               } else {
+                pushLine(str.substring(from, indexOfCR))
                 if (str.length === indexOfCR + 1) {
                   midCRLF = true
+                  from = str.length
                   indexOfCR = -1
                 } else {
-                  pushLine(str.substring(from, indexOfCR))
                   from = indexOfCR + (indexOfLF === indexOfCR + 1 ? 2 : 1)
                   indexOfCR = str.indexOf("\r", from)
                   indexOfLF = str.indexOf("\n", from)
                 }
               }
             }
-            stringBuilder = stringBuilder + str.substring(from, str.length - (midCRLF ? 1 : 0))
+            stringBuilder = stringBuilder + str.substring(from)
           }
         }
         return Arr.isReadonlyArrayNonEmpty(chunkBuilder) ? chunkBuilder : null
@@ -6584,7 +6581,7 @@ export const splitLines = <Err, Done>(): Channel<
           onFailure: Effect.failCause,
           onDone: (leftover) => {
             done = Option.some(leftover)
-            if (stringBuilder.length > 0 || midCRLF) {
+            if (stringBuilder.length > 0) {
               const last = stringBuilder
               stringBuilder = ""
               midCRLF = false
