@@ -203,8 +203,9 @@ describe("OpenAiLanguageModel", () => {
         })
       }))
 
-    it.effect("preserves multimodal user content order in chat payload", () =>
+    it.effect("preserves URL and base64 images in multimodal content order", () =>
       Effect.gen(function*() {
+        const base64 = "iVBORw0KGgo="
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
 
         const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
@@ -238,6 +239,8 @@ describe("OpenAiLanguageModel", () => {
                 mediaType: "image/png",
                 data: new URL("https://example.com/image.png")
               }),
+              Prompt.filePart({ mediaType: "image/png", data: "https://example.com/string-image.png" }),
+              Prompt.filePart({ mediaType: "image/png", data: base64 }),
               Prompt.textPart({ text: "second text" })
             ]
           }])
@@ -263,6 +266,20 @@ describe("OpenAiLanguageModel", () => {
             type: "image_url",
             image_url: {
               url: "https://example.com/image.png",
+              detail: "auto"
+            }
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: "https://example.com/string-image.png",
+              detail: "auto"
+            }
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:image/png;base64,${base64}`,
               detail: "auto"
             }
           },
