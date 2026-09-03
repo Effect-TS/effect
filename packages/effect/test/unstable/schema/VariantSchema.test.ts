@@ -94,6 +94,11 @@ describe("Model", () => {
     assert.isTrue(person instanceof Person)
   })
 
+  it("FieldOption preserves omitted variants", () => {
+    const field = Model.FieldOption(Model.Field({ select: Schema.String, json: undefined }))
+    assert.strictEqual(field.schemas.json, undefined)
+  })
+
   it("FieldOnly includes fields only in listed variants", () => {
     const InsertOnly = Model.Struct({
       value: Model.FieldOnly(["insert"])(Schema.String)
