@@ -534,6 +534,46 @@ describe("OpenAiLanguageModel", () => {
             strictEqual(toolOutput.output, JSON.stringify({ output: "result" }))
           }).pipe(Effect.provide([makeTestLayer(), TestToolkitLayer])))
 
+        it.effect("preserves string tool results", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                { role: "user", content: "Use the tool" },
+                {
+                  role: "assistant",
+                  content: [
+                    Prompt.toolCallPart({
+                      id: "call_text",
+                      name: "TestTool",
+                      params: { input: "test" },
+                      providerExecuted: false
+                    })
+                  ]
+                },
+                {
+                  role: "tool",
+                  content: [
+                    Prompt.toolResultPart({
+                      id: "call_text",
+                      name: "TestTool",
+                      isFailure: false,
+                      result: "PLAIN_TEXT_SENTINEL\n",
+                      providerExecuted: false
+                    })
+                  ]
+                }
+              ]),
+              toolkit: TestToolkit
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const toolOutput = body.input.find((item: any) => item.type === "function_call_output")
+
+            assert.isDefined(toolOutput)
+            strictEqual(toolOutput.output, "PLAIN_TEXT_SENTINEL\n")
+          }).pipe(Effect.provide([makeTestLayer(), TestToolkitLayer])))
+
         it.effect("emits only the specialized output for apply_patch results", () =>
           Effect.gen(function*() {
             const toolkit = Toolkit.make(OpenAiTool.ApplyPatch({}))
