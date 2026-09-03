@@ -156,7 +156,7 @@ export const make: (options: {
               if (typeof currentCount === "bigint" && typeof previousCount === "bigint") {
                 reportValue = currentCount - previousCount
                 // Handle reset: if current < previous, report current value
-                if (reportValue < BigInt(0)) {
+                if (state.state.incremental && reportValue < BigInt(0)) {
                   reportValue = currentCount
                 }
               } else {
@@ -164,7 +164,7 @@ export const make: (options: {
                 const prev = Number(previousCount)
                 reportValue = curr - prev
                 // Handle reset
-                if (reportValue < 0) {
+                if (state.state.incremental && reportValue < 0) {
                   reportValue = curr
                 }
               }

@@ -1,7 +1,9 @@
 import * as Core from "@effect/docgen/Core"
+import * as Parser from "@effect/docgen/Parser"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as ast from "ts-morph"
 
 const assertFencedCode = (
   markdown: string,
@@ -12,6 +14,23 @@ const assertFencedCode = (
 }
 
 describe("Core", () => {
+  it.effect("preserves a type alias name and declared type parameters", () => {
+    const sourceFile = new ast.Project({ useInMemoryFileSystem: true }).createSourceFile(
+      "Identity.ts",
+      `/**
+       * A boxed value.
+       *
+       * @since 1.0.0
+       */
+      export type Identity<A extends string = string> = A`
+    )
+
+    return Parser.parseTypeAliases.pipe(
+      Effect.provideService(Parser.Source, { path: ["Identity.ts"], sourceFile }),
+      Effect.map(([alias]) => assert.strictEqual(alias?.signature, "type Identity<A extends string = string> = A"))
+    )
+  })
+
   describe("[internal] extractFencedCode", () => {
     it("should extract fenced code blocks from markdown (backticks)", () => {
       assertFencedCode("a\n\n```ts\nconst a = 1\n```\n\nb", ["const a = 1"], [])

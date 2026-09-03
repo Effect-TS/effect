@@ -133,7 +133,31 @@ describe("Param", () => {
 
         assert.deepStrictEqual(value, Option.some(false))
       }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("supports alternative flags", () =>
+      Effect.gen(function*() {
+        const flag = Flag.string("config").pipe(
+          Flag.orElse(() => Flag.string("config-url")),
+          Flag.optional
+        )
+
+        const [, value] = yield* flag.parse({ flags: { config: ["config.json"] }, arguments: [] })
+
+        assert.deepStrictEqual(value, Option.some("config.json"))
+      }).pipe(Effect.provide(TestLayer)))
   })
+
+  it.effect("uses the default when a required variadic argument is omitted", () =>
+    Effect.gen(function*() {
+      const argument = Argument.string("files").pipe(
+        Argument.atLeast(1),
+        Argument.withDefault(["README.md"])
+      )
+
+      const result = yield* argument.parse({ flags: {}, arguments: [] })
+
+      assert.deepStrictEqual(result, [[], ["README.md"]])
+    }).pipe(Effect.provide(TestLayer)))
 
   describe("withFallbackPrompt", () => {
     it.effect("prompts for missing flag values and preserves remaining args", () =>

@@ -89,6 +89,24 @@ describe("BrowserHttpClient", () => {
       }]
     }))))
 
+  it.effect("readers in ArrayBuffer mode", () =>
+    Effect.gen(function*() {
+      const response = yield* HttpClient.get("http://localhost:8080/my/url").pipe(
+        BrowserHttpClient.withXHRArrayBuffer
+      )
+      assert.strictEqual(yield* response.text, "{ \"message\": \"café\" }")
+      assert.deepStrictEqual(yield* response.json, { message: "café" })
+      assert.strictEqual(
+        yield* response.stream.pipe(Stream.decodeText(), Stream.mkString),
+        "{ \"message\": \"café\" }"
+      )
+    }).pipe(Effect.provide(layer({
+      get: ["http://localhost:8080/my/url", {
+        headers: { "Content-Type": "application/json" },
+        body: "{ \"message\": \"café\" }"
+      }]
+    }))))
+
   it.effect("decodes an XHR response as FormData", () =>
     Effect.gen(function*() {
       const formData = yield* HttpClient.get("http://localhost/form").pipe(

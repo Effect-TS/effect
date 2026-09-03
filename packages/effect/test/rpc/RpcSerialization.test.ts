@@ -160,6 +160,24 @@ const uvarint = (value: number): Uint8Array => {
 }
 
 describe("RpcSerialization", () => {
+  it.each(
+    [
+      ["Ack", 0],
+      ["Ack", ""],
+      ["Interrupt", 0],
+      ["Interrupt", ""]
+    ] as const
+  )("jsonRpc preserves %s requestId %j", (_tag, requestId) => {
+    const parser = RpcSerialization.jsonRpc().makeUnsafe()
+    const encoded = JSON.stringify({
+      jsonrpc: "2.0",
+      method: `@effect/rpc/${_tag}`,
+      params: { requestId }
+    })
+
+    assert.deepStrictEqual(parser.decode(encoded), [{ _tag, requestId }])
+  })
+
   describe.sequential("jsonRpc inherited properties", () => {
     afterEach(() => {
       delete objectPrototype["method"]

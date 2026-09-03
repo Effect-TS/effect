@@ -645,17 +645,19 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
           current = failCause(this._interruptedCause!) as any
         }
         this.currentOpCount++
+        // Refresh the cache because a primitive can replace the fiber context.
+        const cache = this.cache
         if (
           !yielding &&
-          !this.cache.preventYield &&
-          this.cache.scheduler.shouldYield(this as any)
+          !cache.preventYield &&
+          cache.scheduler.shouldYield(this as any)
         ) {
           yielding = true
           const prev = current
           current = flatMap(yieldNow, () => prev as any) as any
         }
-        current = this.cache.tracerContext
-          ? this.cache.tracerContext(current as any, this)
+        current = cache.tracerContext
+          ? cache.tracerContext(current as any, this)
           : (current as any)[evaluate](this)
         if (current === Yield) {
           const yielded = this._yielded!
@@ -692,10 +694,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     while (true) {
       const op = this._stack.pop()
       if (!op) return undefined
-      const cont = op[contAll] && op[contAll](this)
-      if (cont) {
-        ;(cont as any)[symbol] = cont
-        return cont as any
+      const all = op[contAll]
+      if (all !== undefined) {
+        const cont = all.call(op, this)
+        if (cont) {
+          ;(cont as any)[symbol] = cont
+          return cont as any
+        }
       }
       if (op[symbol]) return op as any
     }
@@ -738,7 +743,9 @@ const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cac
   const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
   return {
     scheduler: Context.get(context, Scheduler.Scheduler),
+    tracer: currentTracer,
     tracerContext: currentTracer ? currentTracer["context"] : undefined,
+    tracerEnabled: Context.get(context, TracerEnabled),
     span: Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey),
     logLevel: Context.get(context, CurrentLogLevel),
     minimumLogLevel: Context.get(context, MinimumLogLevel),
@@ -1802,7 +1809,8 @@ export const matchCauseEffectEager: {
 )
 
 /** @internal */
-export const effectIsExit = <A, E, R>(effect: Effect.Effect<A, E, R>): effect is Exit.Exit<A, E> => ExitTypeId in effect
+export const effectIsExit = <A, E, R>(effect: Effect.Effect<A, E, R>): effect is Exit.Exit<A, E> =>
+  (effect as any)[ExitTypeId] !== undefined
 
 /** @internal */
 export const flatMapEager: {
@@ -4426,6 +4434,34 @@ const setFiberInterruptible = (fiber: FiberImpl): Effect.Effect<never> | undefin
   fiber.interruptible = true
   fiber._stack.push(setInterruptibleFalse)
   if (fiber._interruptedCause) return failCause(fiber._interruptedCause)
+}
+
+/**
+ * Makes the current fiber uninterruptible for the returned effect without an
+ * extra primitive. Call only within `withFiber`.
+ *
+ * @internal
+ */
+export const fiberEnterUninterruptibleUnsafe = (fiber: Fiber.Fiber<unknown, unknown>): void => {
+  const impl = fiber as FiberImpl
+  if (!impl.interruptible) return
+  impl.interruptible = false
+  impl._stack.push(setInterruptibleTrue)
+}
+
+/**
+ * Makes the current fiber interruptible for the returned effect without an
+ * extra primitive. Call only within `withFiber` and return any pending
+ * interruption it produces.
+ *
+ * @internal
+ */
+export const fiberEnterInterruptibleUnsafe = (
+  fiber: Fiber.Fiber<unknown, unknown>
+): Effect.Effect<never> | undefined => {
+  const impl = fiber as FiberImpl
+  if (impl.interruptible) return undefined
+  return setFiberInterruptible(impl)
 }
 
 /** @internal */

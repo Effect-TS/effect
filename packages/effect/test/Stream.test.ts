@@ -625,6 +625,18 @@ describe("Stream", () => {
           assert.deepStrictEqual(result, ["a", "b", "c"])
         }))
 
+      it.effect("emits a carriage-return-terminated line before pulling upstream again", () =>
+        Effect.gen(function*() {
+          const result = yield* Stream.succeed("a\r").pipe(
+            Stream.concat(Stream.fail("boom")),
+            Stream.splitLines,
+            Stream.take(1),
+            Stream.runCollect,
+            Effect.result
+          )
+          assert.deepStrictEqual(result, Result.succeed(["a"]))
+        }))
+
       it.effect("emits the final line when the stream does not end with a newline", () =>
         Effect.gen(function*() {
           const result = yield* splitLines(["a\nb\nc\n", "d\ne"])
@@ -945,6 +957,22 @@ describe("Stream", () => {
           Effect.exit
         )
         assertExitFailure(exit, Cause.die(defect))
+      }))
+
+    it.effect("catchDefect", () =>
+      Effect.gen(function*() {
+        const defect = new Error("boom")
+        const recovered = yield* Stream.die(defect).pipe(
+          Stream.catchDefect((caught) => Stream.succeed(caught)),
+          Stream.runCollect
+        )
+        const failed = yield* Stream.fail("failure").pipe(
+          Stream.catchDefect(() => Stream.succeed("recovered")),
+          Stream.runCollect,
+          Effect.exit
+        )
+        assert.deepStrictEqual(recovered, [defect])
+        assertExitFailure(failed, Cause.fail("failure"))
       }))
 
     it.effect("catchIf with refinement", () =>
@@ -1568,6 +1596,34 @@ describe("Stream", () => {
       assert.deepStrictEqual(actual, grouped(expected, size))
     })
   )
+
+  it.effect.each([
+    { size: 200001, lengths: [200000] },
+    { size: 200000, lengths: [200000] },
+    { size: 199999, lengths: [199999, 1] }
+  ])("rechunk preserves a large source chunk with target $size", ({ lengths, size }) =>
+    Effect.gen(function*() {
+      const values = Array.makeBy(200000, (i) => i)
+      const actual = yield* Stream.fromArray(values).pipe(
+        Stream.rechunk(size),
+        Stream.chunks,
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(actual.map((chunk) => chunk.length), lengths)
+      assert.deepStrictEqual(actual.flat(), values)
+    }))
+
+  it.effect("rechunk preserves large input split across source chunks", () =>
+    Effect.gen(function*() {
+      const values = Array.makeBy(200001, (i) => i)
+      const actual = yield* Stream.fromArrays(values.slice(0, 1), values.slice(1)).pipe(
+        Stream.rechunk(200002),
+        Stream.chunks,
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(actual.map((chunk) => chunk.length), [200001])
+      assert.deepStrictEqual(actual.flat(), values)
+    }))
 
   it.effect("rechunk and grouped normalize their chunk size", () =>
     Effect.gen(function*() {

@@ -1159,6 +1159,18 @@ Expected no excess property
     await encoding.succeed([1, 2], ["1", "2"])
   })
 
+  it("ArrayEnsure roundtrips array-valued elements", () => {
+    const schema = Schema.ArrayEnsure(Schema.Tuple([Schema.Number, Schema.Number]))
+    const encoded = Schema.encodeSync(schema)([[1, 2]])
+    deepStrictEqual(encoded, [1, 2])
+    deepStrictEqual(Schema.decodeSync(schema)(encoded), [[1, 2]])
+  })
+
+  it("ArrayEnsure preserves outer-array encoding", () => {
+    const schema = Schema.ArrayEnsure(Schema.fromJsonString(Schema.Unknown))
+    deepStrictEqual(Schema.encodeSync(schema)([1, 2]), ["1", "2"])
+  })
+
   describe("NonEmptyArray", () => {
     it("should expose the element schema via .value", () => {
       const schema = Schema.NonEmptyArray(Schema.String)

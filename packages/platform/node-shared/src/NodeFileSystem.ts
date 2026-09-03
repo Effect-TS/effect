@@ -382,7 +382,7 @@ const makeFile = (() => {
     }
 
     writeAll(buffer: Uint8Array) {
-      return this.writeAllChunk(buffer)
+      return buffer.length === 0 ? Effect.void : this.writeAllChunk(buffer)
     }
   }
 
@@ -550,17 +550,18 @@ const utimes = (() => {
 
 // == watch
 
-const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
+const watchNode = (path: string, info: FileSystem.File.Info, options?: FileSystem.WatchOptions) =>
   Stream.callback<FileSystem.WatchEvent, Error.PlatformError>((queue) =>
     Effect.acquireRelease(
       Effect.sync(() => {
+        const directory = info.type === "Directory" ? path : Path.dirname(path)
         const watcher = NFS.watch(path, {
           recursive: options?.recursive ?? false
         }, (event, path) => {
           if (!path) return
           switch (event) {
             case "rename": {
-              Effect.runFork(Effect.matchEffect(stat(path), {
+              Effect.runFork(Effect.matchEffect(stat(Path.resolve(directory, path)), {
                 onSuccess: (_) => Queue.offer(queue, { _tag: "Create", path }),
                 onFailure: (_) => Queue.offer(queue, { _tag: "Remove", path })
               }))
@@ -604,7 +605,7 @@ const watch = (
     Effect.map((stat) =>
       backend.pipe(
         Option.flatMap((_) => _.register(path, stat, options)),
-        Option.getOrElse(() => watchNode(path, options))
+        Option.getOrElse(() => watchNode(path, stat, options))
       )
     ),
     Stream.unwrap

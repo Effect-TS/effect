@@ -429,13 +429,12 @@ export const makeCompiler = (
     onCustom(type, placeholder, withoutTransform) {
       switch (type.kind) {
         case "PgJson": {
+          const value = withoutTransform || transformValue === undefined
+            ? type.paramA
+            : transformValue(type.paramA)
           return [
             placeholder(undefined),
-            [
-              withoutTransform || transformValue === undefined
-                ? type.paramA
-                : transformValue(type.paramA)
-            ]
+            [typeof value === "string" ? JSON.stringify(value) : value]
           ]
         }
       }

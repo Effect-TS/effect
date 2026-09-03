@@ -208,6 +208,35 @@ describe("OpenAiLanguageModel", () => {
             }])
           }).pipe(Effect.provide(makeTestLayer())))
 
+        it.effect("handles image strings", () =>
+          Effect.gen(function*() {
+            const base64 = "iVBORw0KGgo="
+            const dataUrl = `data:image/png;base64,${base64}`
+            const upperCaseDataUrl = `DATA:image/png;base64,${base64}`
+            const url = "https://example.com/image.png"
+
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([Prompt.userMessage({
+                content: [base64, dataUrl, upperCaseDataUrl, url].map((data) =>
+                  Prompt.filePart({ mediaType: "image/png", data })
+                )
+              })])
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+
+            assert.deepStrictEqual(body.input, [{
+              role: "user",
+              content: [
+                { type: "input_image", image_url: `data:image/png;base64,${base64}`, detail: "auto" },
+                { type: "input_image", image_url: dataUrl, detail: "auto" },
+                { type: "input_image", image_url: upperCaseDataUrl, detail: "auto" },
+                { type: "input_image", image_url: url, detail: "auto" }
+              ]
+            }])
+          }).pipe(Effect.provide(makeTestLayer())))
+
         it.effect("handles image with custom detail level", () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({
@@ -503,6 +532,46 @@ describe("OpenAiLanguageModel", () => {
             assert.isDefined(toolOutput)
             strictEqual(toolOutput.call_id, "call_abc")
             strictEqual(toolOutput.output, JSON.stringify({ output: "result" }))
+          }).pipe(Effect.provide([makeTestLayer(), TestToolkitLayer])))
+
+        it.effect("preserves string tool results", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                { role: "user", content: "Use the tool" },
+                {
+                  role: "assistant",
+                  content: [
+                    Prompt.toolCallPart({
+                      id: "call_text",
+                      name: "TestTool",
+                      params: { input: "test" },
+                      providerExecuted: false
+                    })
+                  ]
+                },
+                {
+                  role: "tool",
+                  content: [
+                    Prompt.toolResultPart({
+                      id: "call_text",
+                      name: "TestTool",
+                      isFailure: false,
+                      result: "PLAIN_TEXT_SENTINEL\n",
+                      providerExecuted: false
+                    })
+                  ]
+                }
+              ]),
+              toolkit: TestToolkit
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const toolOutput = body.input.find((item: any) => item.type === "function_call_output")
+
+            assert.isDefined(toolOutput)
+            strictEqual(toolOutput.output, "PLAIN_TEXT_SENTINEL\n")
           }).pipe(Effect.provide([makeTestLayer(), TestToolkitLayer])))
 
         it.effect("emits only the specialized output for apply_patch results", () =>

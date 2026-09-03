@@ -42,7 +42,6 @@ export const fromReadable = <A = Uint8Array, E = Cause.UnknownError>(options: {
   readonly evaluate: LazyArg<Readable | NodeJS.ReadableStream>
   readonly onError?: (error: unknown) => E
   readonly chunkSize?: number | undefined
-  readonly bufferSize?: number | undefined
   readonly closeOnDone?: boolean | undefined
 }): Stream.Stream<A, E> => Stream.fromChannel(fromReadableChannel<A, E>(options))
 
@@ -85,7 +84,6 @@ export const fromDuplex = <IE, I = Uint8Array, O = Uint8Array, E = Cause.Unknown
     readonly evaluate: LazyArg<Duplex>
     readonly onError?: (error: unknown) => E
     readonly chunkSize?: number | undefined
-    readonly bufferSize?: number | undefined
     readonly endOnDone?: boolean | undefined
     readonly encoding?: BufferEncoding | undefined
   }
@@ -133,7 +131,6 @@ export const pipeThroughDuplex: {
       readonly evaluate: LazyArg<Duplex>
       readonly onError?: (error: unknown) => E2
       readonly chunkSize?: number | undefined
-      readonly bufferSize?: number | undefined
       readonly endOnDone?: boolean | undefined
       readonly encoding?: BufferEncoding | undefined
     }
@@ -144,7 +141,6 @@ export const pipeThroughDuplex: {
       readonly evaluate: LazyArg<Duplex>
       readonly onError?: (error: unknown) => E2
       readonly chunkSize?: number | undefined
-      readonly bufferSize?: number | undefined
       readonly endOnDone?: boolean | undefined
       readonly encoding?: BufferEncoding | undefined
     }
@@ -155,7 +151,6 @@ export const pipeThroughDuplex: {
     readonly evaluate: LazyArg<Duplex>
     readonly onError?: (error: unknown) => E2
     readonly chunkSize?: number | undefined
-    readonly bufferSize?: number | undefined
     readonly endOnDone?: boolean | undefined
     readonly encoding?: BufferEncoding | undefined
   }

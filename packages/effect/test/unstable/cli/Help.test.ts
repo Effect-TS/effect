@@ -575,6 +575,28 @@ describe("Command help output", () => {
       expect(chatHelp.some((line) => String(line).includes("--topic"))).toBe(true)
     }).pipe(Effect.provide(TestLayer)))
 
+  it.effect("includes inherited shared flags in subcommand completions", () =>
+    Effect.gen(function*() {
+      const root = Command.make("tool").pipe(
+        Command.withSharedFlags({
+          workspace: Flag.string("workspace").pipe(Flag.withAlias("w"))
+        }),
+        Command.withSubcommands([
+          Command.make("chat", {
+            topic: Flag.string("topic").pipe(Flag.withAlias("t"))
+          })
+        ])
+      )
+      const runRoot = Command.runWith(root, { version: "1.0.0" })
+
+      yield* runRoot(["--completions", "bash"])
+
+      const completionScript = (yield* TestConsole.logLines).join("\n")
+      const chatCompletions = completionScript.slice(completionScript.indexOf("_tool_chat()"))
+      expect(chatCompletions).toContain(`_filtered_flags+=" --topic -t"`)
+      expect(chatCompletions).toContain(`_filtered_flags+=" --workspace -w"`)
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("renders grouped subcommands", () =>
     Effect.gen(function*() {
       const ungrouped = Command.make("ungrouped").pipe(
@@ -668,5 +690,20 @@ describe("Command help output", () => {
         SUBCOMMANDS
           plan, p    Draft a plan in your editor"
       `)
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("keeps subcommand flags in aliased completion contexts", () =>
+    Effect.gen(function*() {
+      const list = Command.make("list", {
+        format: Flag.choice("format", ["json", "text"])
+      }).pipe(Command.withAlias("ls"))
+      const root = Command.make("ctl").pipe(Command.withSubcommands([list]))
+      const runRoot = Command.runWith(root, { version: "1.0.0" })
+
+      yield* runRoot(["--completions", "bash"])
+
+      const completion = (yield* TestConsole.logLines).join("\n")
+      const aliasContext = completion.split("_ctl_ls()")[1]?.split("\n}")[0] ?? ""
+      expect(aliasContext).toContain("--format")
     }).pipe(Effect.provide(TestLayer)))
 })

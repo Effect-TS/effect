@@ -34,6 +34,7 @@ import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpClientResponse from "./HttpClientResponse.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import type { HttpPlatform } from "./HttpPlatform.ts"
+import * as headersInternal from "./internal/headers.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import * as Template from "./Template.ts"
 import * as UrlParams from "./UrlParams.ts"
@@ -1012,7 +1013,13 @@ export const toWeb = (
         headers
       })
     }
-    case "Uint8Array":
+    case "Uint8Array": {
+      return new Response(body.text ?? body.body as any, {
+        status: response.status,
+        statusText: response.statusText!,
+        headers
+      })
+    }
     case "Raw": {
       if (body.body instanceof Response) {
         for (const [key, value] of headers as any) {
@@ -1245,7 +1252,11 @@ class ServerHttpClientResponse extends Inspectable.Class implements HttpClientRe
   }
 
   get arrayBuffer(): Effect.Effect<ArrayBuffer, HttpClientError.HttpClientError> {
-    return Effect.map(this.bytes, (bytes) => bytes.slice().buffer)
+    return Effect.map(
+      this.bytes,
+      // Copy this view because Buffer views may share a larger ArrayBuffer.
+      (bytes) => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+    )
   }
 
   private decodeError(cause: unknown): HttpClientError.HttpClientError {
@@ -1340,7 +1351,9 @@ const makeResponse = (options: {
     self.body._tag !== "Empty" &&
     (self.body.contentType || self.body.contentLength !== undefined)
   ) {
-    const newHeaders = Headers.fromRecordUnsafe({ ...options.headers }) as any
+    const newHeaders = options.headers === undefined || options.headers === Headers.empty
+      ? headersInternal.emptyMutableUnsafe() as any
+      : Headers.fromRecordUnsafe({ ...options.headers }) as any
     if (self.body.contentType && (!preferHeaders || newHeaders["content-type"] === undefined)) {
       newHeaders["content-type"] = self.body.contentType
     }
@@ -1384,7 +1397,8 @@ export const fromWeb = (response: Response): HttpServerResponse => {
           evaluate: () => response.body!,
           onError: (e) => e
         }),
-        contentType ?? undefined
+        contentType ?? undefined,
+        bodyInternal.parseContentLength(response.headers.get("content-length"))
       )
     )
   }

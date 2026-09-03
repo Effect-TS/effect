@@ -15,6 +15,17 @@ describe("HttpServerResponse", () => {
     assert.strictEqual(response.headers["content-length"], "1")
   })
 
+  it.effect("fromWeb preserves content-length through a Web round trip", () =>
+    Effect.gen(function*() {
+      const response = HttpServerResponse.fromWeb(
+        new Response("hello", { headers: { "content-length": "5" } })
+      )
+      const roundTrip = HttpServerResponse.toWeb(response)
+
+      assert.strictEqual(yield* Effect.promise(() => roundTrip.text()), "hello")
+      assert.strictEqual(roundTrip.headers.get("content-length"), "5")
+    }))
+
   it.effect("fromClientResponse preserves status, headers, cookies, and json", () =>
     Effect.gen(function*() {
       const request = HttpClientRequest.get("http://localhost:3000/todos/1")

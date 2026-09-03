@@ -564,6 +564,14 @@ describe("ConfigProvider", () => {
       await assertSuccess(provider, ["A", 1], ConfigProvider.makeValue("value2"))
     })
 
+    it("array: values outside the JavaScript array index range yield a Record", async () => {
+      const env = { A_4294967295: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeRecord(new Set(["4294967295"])))
+      await assertSuccess(provider, ["A", "4294967295"], ConfigProvider.makeValue("value1"))
+    })
+
     it("root path exposes top-level keys", async () => {
       const env = { A: "value1", B_C: "value2" }
       const provider = ConfigProvider.fromEnv({ env })

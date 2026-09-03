@@ -123,7 +123,8 @@ export const make = Effect.sync(() => {
     })
     return () => {
       for (let i = 0; i < resolvedKeys.length; i++) {
-        const set = handlers.get(resolvedKeys[i])!
+        const set = handlers.get(resolvedKeys[i])
+        if (set === undefined) continue
         set.delete(handler)
         if (set.size === 0) {
           handlers.delete(resolvedKeys[i])

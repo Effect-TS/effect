@@ -204,6 +204,19 @@ describe("Socket", () => {
         assert.strictEqual(ws.resumeCount, 1)
       }))
 
+    it.effect("counts text frames toward the highWaterMark by UTF-8 byte length", () =>
+      Effect.gen(function*() {
+        const ws = new TestWebSocket(Latch.makeUnsafe(false))
+        ws.readyState = 1
+        const socket = yield* Socket.fromWebSocket(Effect.succeed(ws), { highWaterMark: 3 })
+        const { pull } = yield* socket.reader
+
+        ws.dispatch("message", { data: "€" })
+
+        assert.strictEqual(ws.pauseCount, 1)
+        assert.deepStrictEqual(yield* pull, ["€"])
+      }))
+
     it.effect("uses the default highWaterMark for pausable sockets", () =>
       Effect.gen(function*() {
         const ws = new TestWebSocket(Latch.makeUnsafe(false))

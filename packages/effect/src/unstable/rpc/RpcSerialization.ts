@@ -306,7 +306,7 @@ function decodeJsonRpcMessage(decoded: JsonRpcMessage): RpcMessage.FromClientEnc
         | RpcMessage.FromServerEncoded["_tag"]
         | Exclude<RpcMessage.FromClientEncoded["_tag"], "Request">
       const requestId = (request as any).params?.requestId
-      return requestId ?
+      return requestId !== undefined ?
         {
           _tag: tag,
           requestId

@@ -1,7 +1,11 @@
-import { assert, describe, it } from "@effect/vitest"
-import { Duration, Fiber, Metric, String } from "effect"
+import * as OtelMetrics from "@effect/opentelemetry/OtelMetrics"
+import * as Resource from "@effect/opentelemetry/Resource"
+import { assert, describe, it, vi } from "@effect/vitest"
+import { Duration, Fiber, Layer, Metric, Ref, String } from "effect"
 import * as Effect from "effect/Effect"
 import { TestClock } from "effect/testing"
+import { HttpClient, type HttpClientError, HttpClientResponse } from "effect/unstable/http"
+import { OtlpExporter, OtlpMetrics, OtlpSerialization } from "effect/unstable/observability"
 
 const attributes = { x: "a", y: "b" }
 
@@ -18,6 +22,37 @@ describe("Metric", () => {
       assert.strictEqual((yield* Metric.value(first)).count, 1)
       assert.strictEqual((yield* Metric.value(second)).count, 10)
     }))
+
+  it.effect.each([
+    { name: "counter", makeUpdate: () => Metric.update(Metric.counter(nextId()), 1) },
+    {
+      name: "histogram",
+      makeUpdate: () => Metric.update(Metric.histogram(nextId(), { boundaries: [1] }), 1)
+    },
+    { name: "frequency", makeUpdate: () => Metric.update(Metric.frequency(nextId()), "value") }
+  ])("uses collection interval starts for delta $name points", ({ makeUpdate }) =>
+    Effect.gen(function*() {
+      const now = yield* Effect.acquireRelease(
+        Effect.sync(() => vi.spyOn(Date, "now").mockReturnValue(1000)),
+        (now) => Effect.sync(() => now.mockRestore())
+      )
+      const producer = yield* OtelMetrics.makeProducer("delta").pipe(Effect.provide(Resource.layerEmpty))
+      const update = makeUpdate()
+      const intervals = []
+
+      for (const time of [2000, 3000]) {
+        now.mockReturnValue(time)
+        yield* update
+        const result = yield* Effect.promise(() => producer.collect())
+        const point = result.resourceMetrics.scopeMetrics[0].metrics[0].dataPoints[0]
+        intervals.push([point.startTime, point.endTime])
+      }
+
+      assert.deepStrictEqual(intervals, [
+        [[1, 0], [2, 0]],
+        [[2, 0], [3, 0]]
+      ])
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
   it.effect("should be referentially transparent", () =>
     Effect.gen(function*() {
@@ -99,6 +134,62 @@ describe("Metric", () => {
   })
 
   describe("Counter", () => {
+    it.effect("exports negative updates as deltas", () =>
+      Effect.gen(function*() {
+        type ExportRequest = {
+          readonly resourceMetrics: ReadonlyArray<{
+            readonly scopeMetrics: ReadonlyArray<{
+              readonly metrics: ReadonlyArray<{
+                readonly name: string
+                readonly sum?: {
+                  readonly dataPoints: ReadonlyArray<{ readonly asDouble?: number }>
+                }
+              }>
+            }>
+          }>
+        }
+
+        const requests = yield* Ref.make<ReadonlyArray<ExportRequest>>([])
+        const client = HttpClient.makeWith(
+          Effect.fnUntraced(function*(requestEffect) {
+            const request = yield* requestEffect
+            if (request.body._tag === "Uint8Array") {
+              const body = JSON.parse(new TextDecoder().decode(request.body.body)) as ExportRequest
+              yield* Ref.update(requests, (requests) => [...requests, body])
+            }
+            return HttpClientResponse.fromWeb(request, new Response())
+          }),
+          Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
+        )
+        const layer = OtlpMetrics.layer({
+          url: "http://localhost:4318/v1/metrics",
+          resource: { serviceName: "test" },
+          temporality: "delta",
+          exportInterval: "1 hour"
+        }).pipe(
+          Layer.provide(OtlpSerialization.layerJson),
+          Layer.provideMerge(Layer.succeed(HttpClient.HttpClient, client))
+        )
+
+        const values = yield* Effect.gen(function*() {
+          const counter = Metric.counter("counter_delta")
+          const flusher = yield* OtlpExporter.Flusher
+          for (const update of [5, -2, 4]) {
+            yield* Metric.update(counter, update)
+            yield* flusher.flush
+          }
+          return (yield* Ref.get(requests)).map((request) =>
+            request.resourceMetrics[0].scopeMetrics[0].metrics.find((metric) => metric.name === "counter_delta")
+              ?.sum?.dataPoints[0].asDouble
+          )
+        }).pipe(
+          Effect.provide(layer),
+          Effect.provideService(Metric.MetricRegistry, new Map())
+        )
+
+        assert.deepStrictEqual(values, [5, -2, 4])
+      }))
+
     it.effect("custom increment with value", () =>
       Effect.gen(function*() {
         const id = nextId()

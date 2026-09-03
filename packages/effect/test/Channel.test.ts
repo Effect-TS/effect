@@ -220,6 +220,16 @@ describe("Channel", () => {
   })
 
   describe("destructors", () => {
+    it.effect("runDrain returns the done value after emitted elements", () =>
+      Effect.gen(function*() {
+        const result = yield* Channel.fromArray([1]).pipe(
+          Channel.concat(Channel.end("done")),
+          Channel.runDrain
+        )
+
+        assert.strictEqual(result, "done")
+      }))
+
     it.effect("mkUint8Array", () =>
       Effect.gen(function*() {
         const bytes = yield* Channel.fromArray(
@@ -485,6 +495,22 @@ describe("Channel", () => {
     class OtherError extends Data.TaggedError("OtherError")<{
       readonly message: string
     }> {}
+
+    it.effect("catchDefect", () =>
+      Effect.gen(function*() {
+        const defect = new Error("boom")
+        const recovered = yield* Channel.fromEffect(Effect.die(defect)).pipe(
+          Channel.catchDefect((caught) => Channel.succeed(caught)),
+          Channel.runCollect
+        )
+        const failed = yield* Channel.fail("failure").pipe(
+          Channel.catchDefect(() => Channel.succeed("recovered")),
+          Channel.runCollect,
+          Effect.exit
+        )
+        assert.deepStrictEqual(recovered, [defect])
+        assertExitFailure(failed, Cause.fail("failure"))
+      }))
 
     it.effect("catchIf with refinement", () =>
       Effect.gen(function*() {

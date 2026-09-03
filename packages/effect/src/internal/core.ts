@@ -571,6 +571,23 @@ export const withFiber: <A, E = never, R = never>(
   }
 })
 
+/**
+ * Accesses the current fiber to compute a value without a separate `succeed`
+ * operation.
+ *
+ * @internal
+ */
+export const withFiberSucceed: <A, R = never>(
+  evaluate: (fiber: FiberImpl<unknown, unknown>) => A
+) => Effect.Effect<A, never, R> = makePrimitive({
+  op: "WithFiberSucceed",
+  [evaluate](fiber) {
+    const value = this[args](fiber)
+    const cont = fiber.getCont(contA)
+    return cont ? cont[contA](value, fiber) : fiber.yieldWith(exitSucceed(value))
+  }
+})
+
 /** @internal */
 export const YieldableError: new(
   message?: string,

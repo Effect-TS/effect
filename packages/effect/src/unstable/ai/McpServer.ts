@@ -1939,7 +1939,7 @@ export const registerPrompt = <
     readonly [K in keyof Params]?: (
       input: string,
       context: CompletionContext
-    ) => Effect.Effect<Array<Params[K]>, any, any>
+    ) => Effect.Effect<Array<Params[K]["Type"]>, any, any>
   } = {}
 >(
   options: {
@@ -1947,7 +1947,9 @@ export const registerPrompt = <
     readonly description?: string | undefined
     readonly parameters?: Params | undefined
     readonly completion?: ValidateCompletions<Completions, Extract<keyof Params, string>> | undefined
-    readonly content: (params: Params) => Effect.Effect<Array<typeof PromptMessage.Type> | string, E, R>
+    readonly content: (
+      params: Schema.Struct.Type<Params>
+    ) => Effect.Effect<Array<typeof PromptMessage.Type> | string, E, R>
     readonly annotations?: Context.Context<never> | undefined
   }
 ): Effect.Effect<void, never, Exclude<Schema.Struct.DecodingServices<Params> | R, McpServerClient> | McpServer> => {
@@ -2149,9 +2151,9 @@ const makeUriMatcher = <A>() => {
     caseSensitive: true
   })
   const add = (uri: string, value: A) => {
-    router.on("GET", uri as any, value)
+    router.on("GET", `/${uri}`, value)
   }
-  const find = (uri: string) => router.find("GET", uri)
+  const find = (uri: string) => router.find("GET", `/${uri}`)
 
   return { add, find } as const
 }

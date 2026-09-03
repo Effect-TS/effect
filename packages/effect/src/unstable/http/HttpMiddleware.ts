@@ -14,13 +14,13 @@ import { Clock } from "../../Clock.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
+import type * as Fiber from "../../Fiber.ts"
 import { constant, constFalse } from "../../Function.ts"
 import * as internalEffect from "../../internal/effect.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import type { Predicate } from "../../Predicate.ts"
 import type { ReadonlyRecord } from "../../Record.ts"
-import { TracerEnabled } from "../../References.ts"
 import { nativeTracer, ParentSpan, Tracer } from "../../Tracer.ts"
 import * as Headers from "./Headers.ts"
 import type { CompressionAlgorithm } from "./HttpPlatform.ts"
@@ -171,6 +171,12 @@ export const logger: <E, R>(
   })
 )
 
+/** @internal */
+export const isTracerDisabledUnsafe = (
+  fiber: Fiber.Fiber<unknown, unknown>,
+  request: HttpServerRequest
+): boolean => !fiber.cache.tracerEnabled || fiber.getRef(TracerDisabledWhen)(request)
+
 /**
  * Middleware that creates a server trace span for each request and records request and response HTTP attributes.
  *
@@ -182,8 +188,7 @@ export const tracer: <E, R>(
 ) => Effect.Effect<HttpServerResponse, E, HttpServerRequest | R> = make((httpApp) =>
   Effect.withFiber((fiber) => {
     const request = Context.getUnsafe(fiber.context, HttpServerRequest)
-    const disabled = !fiber.getRef(TracerEnabled) || fiber.getRef(TracerDisabledWhen)(request)
-    if (disabled) {
+    if (isTracerDisabledUnsafe(fiber, request)) {
       return httpApp
     }
     const nameGenerator = fiber.getRef(SpanNameGenerator)
@@ -340,8 +345,8 @@ export const cors = (options?: {
     : (origin: string) => (opts.allowedOrigins as ReadonlyArray<string>).includes(origin)
 
   const allowOrigin = typeof opts.allowedOrigins === "function" || opts.allowedOrigins.length > 1
-    ? ((originHeader: string) => {
-      if (!isAllowedOrigin(originHeader)) return undefined
+    ? ((originHeader: string): ReadonlyRecord<string, string> => {
+      if (!isAllowedOrigin(originHeader)) return { vary: "Origin" }
       return {
         "access-control-allow-origin": originHeader,
         vary: "Origin"
@@ -403,18 +408,36 @@ export const cors = (options?: {
   const headersFromRequestOptions = (request: HttpServerRequest) => {
     const origin = request.headers["origin"]
     const accessControlRequestHeaders = request.headers["access-control-request-headers"]
-    return Headers.fromRecordUnsafe({
+    const headers = Headers.fromRecordUnsafe({
       ...allowOrigin(origin),
       ...allowCredentials,
       ...exposeHeaders,
       ...allowMethods,
-      ...allowHeaders(accessControlRequestHeaders),
       ...maxAge
     })
+    const accessControlHeaders = allowHeaders(accessControlRequestHeaders)
+    if (accessControlHeaders === undefined) return headers
+    const vary = accessControlHeaders["vary"]
+    return Headers.setAll(
+      headers,
+      vary === undefined
+        ? accessControlHeaders
+        : {
+          ...accessControlHeaders,
+          vary: compressionInternal.varyWith(headers, vary)
+        }
+    )
   }
 
-  const preResponseHandler = (request: HttpServerRequest, response: HttpServerResponse) =>
-    Effect.succeed(Response.setHeaders(response, headersFromRequest(request)))
+  const preResponseHandler = (request: HttpServerRequest, response: HttpServerResponse) => {
+    const headers = headersFromRequest(request)
+    return Effect.succeed(Response.setHeaders(
+      response,
+      headers["vary"] === undefined
+        ? headers
+        : Headers.set(headers, "vary", compressionInternal.varyWith(response.headers, "Origin"))
+    ))
+  }
 
   return <E, R>(
     httpApp: Effect.Effect<HttpServerResponse, E, R>
@@ -566,8 +589,8 @@ export const compression = (
 }
 
 const withVary = (response: HttpServerResponse): HttpServerResponse => {
-  const vary = compressionInternal.varyAcceptEncoding(response.headers)
-  return vary === undefined ? response : Response.setHeader(response, "vary", vary)
+  const vary = compressionInternal.varyWith(response.headers, "Accept-Encoding")
+  return Response.setHeader(response, "vary", vary)
 }
 
 const defaultAlgorithms: ReadonlyArray<CompressionAlgorithm> = ["br", "gzip", "deflate"]

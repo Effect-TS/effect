@@ -347,7 +347,7 @@ export const make = (
 
     const payloadVarName = "options.payload"
     if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormData(${payloadVarName} as any)`)
+      pipeline.push(`HttpClientRequest.bodyFormDataRecord(${payloadVarName} as any)`)
     } else if (operation.payloadFormUrlEncoded) {
       pipeline.push(`HttpClientRequest.bodyUrlParams(${payloadVarName} as any)`)
     } else if (operation.payload) {
@@ -412,7 +412,9 @@ export const make = (
     }
 
     if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormData(options.payload as any)`)
+      pipeline.push(`HttpClientRequest.bodyFormDataRecord(options.payload as any)`)
+    } else if (operation.payloadFormUrlEncoded) {
+      pipeline.push(`HttpClientRequest.bodyUrlParams(options.payload as any)`)
     } else if (operation.payload) {
       pipeline.push(`HttpClientRequest.bodyJsonUnsafe(options.payload)`)
     }
@@ -453,7 +455,9 @@ export const make = (
     }
 
     if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormData(options.payload as any)`)
+      pipeline.push(`HttpClientRequest.bodyFormDataRecord(options.payload as any)`)
+    } else if (operation.payloadFormUrlEncoded) {
+      pipeline.push(`HttpClientRequest.bodyUrlParams(options.payload as any)`)
     } else if (operation.payload) {
       pipeline.push(`HttpClientRequest.bodyJsonUnsafe(options.payload)`)
     }
@@ -778,6 +782,8 @@ export const make = (
     const payloadAccessor = "options.payload"
     if (operation.payloadFormData) {
       pipeline.push(`HttpClientRequest.bodyFormDataRecord(${payloadAccessor} as any)`)
+    } else if (operation.payloadFormUrlEncoded) {
+      pipeline.push(`HttpClientRequest.bodyUrlParams(${payloadAccessor} as any)`)
     } else if (operation.payload) {
       pipeline.push(`HttpClientRequest.bodyJsonUnsafe(${payloadAccessor})`)
     }
@@ -840,6 +846,8 @@ export const make = (
 
     if (operation.payloadFormData) {
       pipeline.push(`HttpClientRequest.bodyFormDataRecord(options.payload as any)`)
+    } else if (operation.payloadFormUrlEncoded) {
+      pipeline.push(`HttpClientRequest.bodyUrlParams(options.payload as any)`)
     } else if (operation.payload) {
       pipeline.push(`HttpClientRequest.bodyJsonUnsafe(options.payload)`)
     }
@@ -881,6 +889,8 @@ export const make = (
 
     if (operation.payloadFormData) {
       pipeline.push(`HttpClientRequest.bodyFormDataRecord(options.payload as any)`)
+    } else if (operation.payloadFormUrlEncoded) {
+      pipeline.push(`HttpClientRequest.bodyUrlParams(options.payload as any)`)
     } else if (operation.payload) {
       pipeline.push(`HttpClientRequest.bodyJsonUnsafe(options.payload)`)
     }

@@ -185,7 +185,9 @@ export class Rollup extends Context.Service<Rollup>()(
           return yield* Effect.forEach(
             options.paths,
             (path) => bundle({ path, visualize: options.visualize, outputDirectory: options.outputDirectory }),
-            { concurrency: options.paths.length }
+            // Rollup retains a module graph for each active bundle, so unbounded
+            // concurrency can exhaust the Node.js heap on CI runners.
+            { concurrency: 4 }
           )
         }
       )

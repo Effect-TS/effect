@@ -16,7 +16,7 @@ import {
 } from "effect"
 import { TestClock } from "effect/testing"
 import { KeyValueStore } from "effect/unstable/persistence"
-import { AsyncResult, Atom, AtomRegistry, Hydration } from "effect/unstable/reactivity"
+import { AsyncResult, Atom, AtomRegistry, Hydration, Reactivity } from "effect/unstable/reactivity"
 
 declare const global: any
 
@@ -1251,6 +1251,20 @@ describe.sequential("Atom", () => {
     assert.deepEqual(r.get(count), AsyncResult.success(1))
   })
 
+  it("withFallback forwards writes to the primary atom", () => {
+    const primary = Atom.make<AsyncResult.AsyncResult<number>>(AsyncResult.success(1))
+    const fallback = AsyncResult.success(2)
+    const atom = Atom.withFallback(primary, Atom.make(fallback))
+    const r = AtomRegistry.make()
+
+    r.set(atom, AsyncResult.initial())
+
+    assert.deepEqual([r.get(primary), r.get(atom)], [
+      AsyncResult.initial(),
+      AsyncResult.waiting(fallback)
+    ])
+  })
+
   it("failure with previousSuccess", async () => {
     const count = Atom.fn((i: number) => i === 1 ? Effect.fail("fail") : Effect.succeed(i))
     const r = AtomRegistry.make()
@@ -2433,6 +2447,13 @@ describe.sequential("Atom", () => {
   })
 
   describe("Reactivity", () => {
+    it.effect("cleans up queries with duplicate keys", () =>
+      Effect.gen(function*() {
+        const reactivity = yield* Reactivity.make
+        const results = yield* reactivity.query(["todos", "todos"], Effect.succeed(42))
+        assert.strictEqual(yield* Queue.take(results), 42)
+      }).pipe(Effect.scoped))
+
     it("does not broadcast mutations across registries", () => {
       let reads = 0
       const query = Atom.make(() => ++reads).pipe(

@@ -13,9 +13,9 @@ concurrency:
 permissions: {}
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
+  static-checks:
+    name: Static
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10
@@ -23,11 +23,23 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: pnpm lint
+      - name: Lint
+        run: pnpm lint
+      - name: Check circular dependencies
+        run: pnpm circular
+      - name: Generate AI documentation
+        run: pnpm ai-docgen
+      - name: Verify AI documentation is up-to-date
+        run: |
+          if [ -n "$(git status --short)" ]; then
+            git status --short
+            echo "Run 'pnpm ai-docgen' and commit generated changes."
+            exit 1
+          fi
 
   types:
     name: Types
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10
@@ -41,7 +53,7 @@ jobs:
   build:
     name: Build
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10
@@ -55,8 +67,8 @@ jobs:
       - run: pnpm build
 
   types-deno:
-    name: Types on Deno
-    runs-on: ubuntu-latest
+    name: Types (Deno)
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10
@@ -74,7 +86,7 @@ jobs:
   bundle:
     name: Bundle
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10
@@ -93,9 +105,10 @@ jobs:
           sed -i 's/"stripInternal": false/"stripInternal": true/' base/tsconfig.base.json
       - name: Build
         run: |
-          pnpm build &
-          cd base && pnpm install && pnpm build &
-          wait
+          pnpm build
+          cd base
+          pnpm install
+          pnpm build
       - name: Compare bundle size
         run: node ./packages/tools/bundle/src/bin.ts compare --base-dir base/packages/tools/bundle/fixtures
       - name: Upload stats artifact
@@ -108,23 +121,23 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     env:
       EFFECT_INTEGRATION_TESTS: "1"
+      # The ephemeral runner provides cleanup without a Ryuk sidecar.
+      TESTCONTAINERS_RYUK_DISABLED: "true"
     permissions:
       contents: read
-    timeout-minutes: 10
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        shard: [1/2, 2/2]
-        runtime: [Node, Deno]
+        runtime: [Node, Deno, Bun]
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Pre-pull test container images
         run: |
-          docker pull testcontainers/ryuk:0.14.0 &
           docker pull ghcr.io/tursodatabase/libsql-server:main &
           docker pull postgres:alpine &
           docker pull mysql:lts &
@@ -138,7 +151,7 @@ jobs:
         uses: ./.github/actions/setup
       - name: Test
         if: matrix.runtime == 'Node'
-        run: pnpm test --shard ${{ matrix.shard }}
+        run: pnpm test --max-concurrency=10
 
       - name: Install dependencies
         if: matrix.runtime == 'Deno'
@@ -147,26 +160,20 @@ jobs:
           deno-version: v2.9.4
       - name: Test
         if: matrix.runtime == 'Deno'
-        run: deno task test --shard ${{ matrix.shard }}
+        run: deno task test --max-concurrency=10
 
-  test-bun:
-    name: Test on Bun
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v6
       - name: Install dependencies
+        if: matrix.runtime == 'Bun'
         uses: ./.github/actions/setup
         with:
-          bun-version: 1.3.13
+          bun-version: 1.4.0
       - name: Test
-        run: bun node_modules/vitest/vitest.mjs run --project @effect/platform-bun
+        if: matrix.runtime == 'Bun'
+        run: bun run --bun vitest run --max-concurrency=10
 
   doctest:
-    name: Documentation Tests
-    runs-on: ubuntu-latest
+    name: Test (Documentation)
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10
@@ -176,36 +183,3 @@ jobs:
         uses: ./.github/actions/setup
       - name: Test Documentation
         run: pnpm doctest
-
-  ai-docgen:
-    name: AI Documentation Generation
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - name: Install dependencies
-        uses: ./.github/actions/setup
-      - name: Generate AI Documentation
-        run: pnpm ai-docgen
-      - name: Verify AI Documentation is up-to-date
-        run: |
-          if [ -n "$(git status --short)" ]; then
-            git status --short
-            echo "Run 'pnpm ai-docgen' and commit generated changes."
-            exit 1
-          fi
-
-  circular:
-    name: Circular Dependencies
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - name: Install dependencies
-        uses: ./.github/actions/setup
-      - name: Check for circular dependencies
-        run: pnpm circular

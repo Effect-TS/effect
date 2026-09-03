@@ -437,6 +437,124 @@ describe("AnthropicLanguageModel", () => {
   })
 
   describe("generateText", () => {
+    it.effect("preserves string tool results", () =>
+      Effect.gen(function*() {
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model: "claude-sonnet-4-20250514",
+                content: [{ type: "text", text: "Done" }],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: null,
+                  cache_read_input_tokens: null,
+                  inference_geo: null,
+                  input_tokens: 10,
+                  output_tokens: 5,
+                  service_tier: null
+                }
+              }))
+            })
+          ))
+        )
+
+        yield* LanguageModel.generateText({
+          prompt: Prompt.make([
+            { role: "user", content: "Use the tool" },
+            {
+              role: "assistant",
+              content: [Prompt.toolCallPart({
+                id: "call_text",
+                name: "text_tool",
+                params: {},
+                providerExecuted: false
+              })]
+            },
+            {
+              role: "tool",
+              content: [Prompt.toolResultPart({
+                id: "call_text",
+                name: "text_tool",
+                result: "PLAIN_TEXT_SENTINEL\n",
+                isFailure: false,
+                providerExecuted: false
+              })]
+            }
+          ]),
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer)
+        )
+
+        assert.isDefined(capturedRequest)
+        if (capturedRequest === undefined) {
+          return
+        }
+
+        const body = yield* getRequestBody(capturedRequest)
+        const toolResult = body.messages
+          .flatMap((message: any) => Array.isArray(message.content) ? message.content : [])
+          .find((block: any) => block.type === "tool_result")
+
+        assert.isDefined(toolResult)
+        assert.strictEqual(toolResult.content, "PLAIN_TEXT_SENTINEL\n")
+      }))
+
+    it.effect("preserves base64 image string payloads", () =>
+      Effect.gen(function*() {
+        const base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII="
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model: "claude-sonnet-4-20250514",
+                content: [{ type: "text", text: "Done" }],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: null,
+                  cache_read_input_tokens: null,
+                  inference_geo: null,
+                  input_tokens: 1,
+                  output_tokens: 1,
+                  service_tier: null
+                }
+              }))
+            })
+          ))
+        )
+
+        yield* LanguageModel.generateText({
+          prompt: Prompt.make([Prompt.userMessage({
+            content: [Prompt.filePart({ mediaType: "image/png", data: base64 })]
+          })])
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer)
+        )
+
+        assert.isDefined(capturedRequest)
+        const body = yield* getRequestBody(capturedRequest)
+        assert.strictEqual(body.messages[0].content[0].source.data, base64)
+      }))
+
     it.effect("encodes dynamic tools", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined

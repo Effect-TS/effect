@@ -1,6 +1,6 @@
 import { describe, it, test } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Context, Effect, References, Scope, Stream } from "effect"
+import { Context, Effect, Option, References, Scope, Stream, Tracer } from "effect"
 import * as Layer from "effect/Layer"
 import { HttpEffect, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import {
@@ -36,6 +36,33 @@ describe("HttpEffect", () => {
   })
 
   describe("toWebHandler", () => {
+    test("skips the server span with the default tracer", async () => {
+      let hasParentSpan = false
+      const handler = HttpEffect.toWebHandler(Effect.gen(function*() {
+        hasParentSpan = Option.isSome(yield* Effect.serviceOption(Tracer.ParentSpan))
+        return HttpServerResponse.empty()
+      }))
+
+      await handler(new Request("http://localhost:3000/"))
+
+      strictEqual(hasParentSpan, false)
+    })
+
+    test("provides a parent span with a configured tracer", async () => {
+      let hasParentSpan = false
+      const tracer = Tracer.make({
+        span: (options) => new Tracer.NativeSpan(options)
+      })
+      const handler = HttpEffect.toWebHandler(Effect.gen(function*() {
+        hasParentSpan = Option.isSome(yield* Effect.serviceOption(Tracer.ParentSpan))
+        return HttpServerResponse.empty()
+      }))
+
+      await handler(new Request("http://localhost:3000/"), Context.make(Tracer.Tracer, tracer))
+
+      strictEqual(hasParentSpan, true)
+    })
+
     test("json", async () => {
       const handler = HttpEffect.toWebHandler(HttpServerResponse.json({ foo: "bar" }))
       const response = await handler(new Request("http://localhost:3000/"))
@@ -106,6 +133,22 @@ describe("HttpEffect", () => {
       const response = await handler(new Request("http://localhost:3000/"))
       strictEqual(await response.text(), "foobar")
       strictEqual(streamFinalized < handlerFinalized, true)
+    })
+
+    test("streaming HEAD closes the request scope", async () => {
+      let finalized = false
+      const handler = HttpEffect.toWebHandler(Effect.gen(function*() {
+        yield* Effect.addFinalizer(() =>
+          Effect.sync(() => {
+            finalized = true
+          })
+        )
+        return HttpServerResponse.stream(Stream.make("body").pipe(Stream.encodeText))
+      }))
+
+      await handler(new Request("http://localhost:3000/", { method: "HEAD" }))
+
+      strictEqual(finalized, true)
     })
 
     test("stream runtime", async () => {

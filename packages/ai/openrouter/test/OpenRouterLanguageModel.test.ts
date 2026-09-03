@@ -171,6 +171,42 @@ describe("OpenRouterLanguageModel", () => {
             }])
           }).pipe(Effect.provide(makeTestLayer())))
       })
+
+      it.effect("preserves string tool results", () =>
+        Effect.gen(function*() {
+          yield* LanguageModel.generateText({
+            prompt: Prompt.make([
+              { role: "user", content: "Use the tool" },
+              {
+                role: "assistant",
+                content: [Prompt.toolCallPart({
+                  id: "call_text",
+                  name: "text_tool",
+                  params: {},
+                  providerExecuted: false
+                })]
+              },
+              {
+                role: "tool",
+                content: [Prompt.toolResultPart({
+                  id: "call_text",
+                  name: "text_tool",
+                  result: "PLAIN_TEXT_SENTINEL\n",
+                  isFailure: false,
+                  providerExecuted: false
+                })]
+              }
+            ]),
+            disableToolCallResolution: true
+          }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")))
+
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+          const toolResult = body.messages.find((message: any) => message.role === "tool")
+
+          assert.isDefined(toolResult)
+          strictEqual(toolResult.content, "PLAIN_TEXT_SENTINEL\n")
+        }).pipe(Effect.provide(makeTestLayer())))
     })
 
     describe("tool preparation", () => {
