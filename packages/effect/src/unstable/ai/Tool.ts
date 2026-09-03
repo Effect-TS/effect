@@ -1064,7 +1064,7 @@ const Proto = {
     return clone(this)
   },
   setParameters(this: Any, parametersSchema: Schema.Constraint) {
-    return clone(this, { parametersSchema })
+    return clone(this, { parametersSchema, jsonSchema: undefined })
   },
   setSuccess(this: Any, successSchema: Schema.Constraint) {
     return clone(this, { successSchema })

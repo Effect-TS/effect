@@ -1181,6 +1181,18 @@ describe("setNeedsApproval", () => {
 })
 
 describe("Dynamic", () => {
+  it("setParameters replaces a raw JSON Schema", () => {
+    const tool = Tool.dynamic("TestTool", {
+      parameters: {
+        type: "object",
+        properties: { query: { type: "string" } },
+        required: ["query"]
+      }
+    }).setParameters(Schema.Struct({ count: Schema.Number }))
+
+    deepStrictEqual(Tool.getJsonSchema(tool).required, ["count"], "expected the replacement schema")
+  })
+
   describe("isDynamic", () => {
     it.effect("returns true for dynamic tools with Effect Schema", () =>
       Effect.gen(function*() {
