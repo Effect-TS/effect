@@ -1126,6 +1126,8 @@ describe.concurrent("Sharding active teardowns", () => {
       assert.strictEqual(journalInterrupts(driver), 0)
     }).pipe(Effect.provide(ActiveTeardownSharding({ entityMaxIdleTime: 1 }))))
 
+  // TestClock-driven reassignment can exhaust the wall-clock timeout when
+  // this test competes with the rest of this file in CI.
   it.effect("swallows persisted interrupts when the caller's shard is released", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
@@ -1175,7 +1177,7 @@ describe.concurrent("Sharding active teardowns", () => {
 
         assert.strictEqual(journalInterrupts(driver), 0)
       }).pipe(Effect.provide(layer), Effect.scoped)
-    }))
+    }), { concurrent: false })
 
   it.effect("treats node shutdown interrupts as transient via isShutdown", () =>
     Effect.gen(function*() {
