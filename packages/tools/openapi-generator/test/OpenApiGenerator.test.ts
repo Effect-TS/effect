@@ -898,6 +898,7 @@ export const TestClientError = <Tag extends string, E>(
           `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: typeof StreamEvents200Sse.Type }, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
           `"streamEventsSse": () => HttpClientRequest.get(\`/events\`).pipe(`,
           `sseRequest(StreamEvents200Sse)`,
+          `executeStreamRequest(request).pipe(`,
           `schema: Schema.ConstraintDecoder<Type, DecodingServices>`
         ]
       ))
@@ -959,6 +960,7 @@ export const TestClientError = <Tag extends string, E>(
           `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("effect/httpapi/stream/failure"), "data": Schema.String`,
           `readonly "streamEventsSse": () => Stream.Stream<typeof StreamEvents200Sse.Type, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
           `sseEventRequest(StreamEvents200Sse)`,
+          `executeStreamRequest(request).pipe(`,
           `Stream.pipeThroughChannel(Sse.decodeSchema(schema))`
         ]
       ))
