@@ -48,6 +48,7 @@ import * as InternalToFormatter from "./internal/schema/toFormatter.ts"
 import * as InternalToIso from "./internal/schema/toIso.ts"
 import * as InternalToJsonSchemaDocument from "./internal/schema/toJsonSchemaDocument.ts"
 import * as InternalToRepresentation from "./internal/schema/toRepresentation.ts"
+import { isSchemaError as isSchemaErrorInternal, SchemaErrorTypeId } from "./internal/schemaError.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "./internal/stackTraceLimit.ts"
 import type * as JsonPatch from "./JsonPatch.ts"
 import type * as JsonSchema from "./JsonSchema.ts"
@@ -1125,7 +1126,6 @@ export interface Optic<out T, out Iso> extends Schema<T> {
   readonly "EncodingServices": never
   readonly "Rebuild": Optic<T, Iso>
 }
-const SchemaErrorTypeId = "~effect/Schema/SchemaError"
 /**
  * Error thrown or returned when schema decoding or encoding fails.
  *
@@ -1197,7 +1197,7 @@ export class SchemaError extends Data.TaggedError("SchemaError")<{
  * @since 4.0.0
  */
 export function isSchemaError(u: unknown): u is SchemaError {
-  return Predicate.hasProperty(u, SchemaErrorTypeId) && u[SchemaErrorTypeId] === SchemaErrorTypeId
+  return isSchemaErrorInternal(u)
 }
 
 function fromIssueEffect<A, R>(

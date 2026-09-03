@@ -204,6 +204,54 @@ describe("HttpEffect", () => {
     })
   })
 
+  describe("toWebHandlerLayer", () => {
+    test("builds the layer when the handler is created", async () => {
+      let builds = 0
+      const { dispose, handler } = HttpEffect.toWebHandlerLayer(
+        Effect.map(TestValue, (value) => HttpServerResponse.text(String(value))),
+        Layer.effect(
+          TestValue,
+          Effect.sync(() => {
+            builds++
+            return 420
+          })
+        )
+      )
+      strictEqual(builds, 1)
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(await response.text(), "420")
+      strictEqual(builds, 1)
+      await dispose()
+    })
+
+    test("a failing layer rejects every request without an unhandled rejection", async () => {
+      const unhandled: Array<unknown> = []
+      const onUnhandled = (reason: unknown) => {
+        unhandled.push(reason)
+      }
+      process.on("unhandledRejection", onUnhandled)
+      try {
+        const error = new Error("boom")
+        const { handler } = HttpEffect.toWebHandlerLayer(
+          Effect.succeed(HttpServerResponse.empty()),
+          Layer.effectDiscard(Effect.fail(error))
+        )
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        for (let i = 0; i < 2; i++) {
+          const rejected = await handler(new Request("http://localhost:3000/")).then(
+            () => undefined,
+            (cause) => cause
+          )
+          strictEqual(rejected, error)
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        deepStrictEqual(unhandled, [])
+      } finally {
+        process.off("unhandledRejection", onUnhandled)
+      }
+    })
+  })
+
   describe("fromWebHandler", () => {
     test("basic GET request", async () => {
       const webHandler = async (request: Request) => {
