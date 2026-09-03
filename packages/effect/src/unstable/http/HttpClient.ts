@@ -1548,36 +1548,43 @@ export const followRedirects: {
   makeWith(
     (request) => {
       const loop = (
-        request: HttpClientRequest.HttpClientRequest,
+        request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>,
         redirects: number
       ): Effect.Effect<HttpClientResponse.HttpClientResponse, E, R> =>
-        Effect.flatMap(
-          self.postprocess(Effect.succeed(request)),
-          (response) => {
-            if (
-              response.status < 300 || response.status >= 400 || !response.headers.location ||
-              redirects >= (maxRedirects ?? 10)
-            ) {
-              return Effect.succeed(response)
+        Effect.suspend(() => {
+          let currentRequest: HttpClientRequest.HttpClientRequest | undefined
+          return Effect.flatMap(
+            self.postprocess(Effect.map(request, (request) => {
+              currentRequest = request
+              return request
+            })),
+            (response) => {
+              if (
+                response.status < 300 || response.status >= 400 || !response.headers.location ||
+                redirects >= (maxRedirects ?? 10)
+              ) {
+                return Effect.succeed(response)
+              }
+              const url = new URL(response.headers.location, response.request.url)
+              const request = currentRequest ?? response.request
+              let nextRequest = request
+              if (
+                ((response.status === 301 || response.status === 302) && request.method === "POST") ||
+                (response.status === 303 && request.method !== "GET" && request.method !== "HEAD")
+              ) {
+                nextRequest = HttpClientRequest.setMethod(nextRequest, "GET")
+                nextRequest = HttpClientRequest.setBody(nextRequest, HttpBody.empty)
+              }
+              if (url.origin !== new URL(response.request.url).origin) {
+                nextRequest = HttpClientRequest.removeHeader(nextRequest, "authorization")
+                nextRequest = HttpClientRequest.removeHeader(nextRequest, "proxy-authorization")
+                nextRequest = HttpClientRequest.removeHeader(nextRequest, "cookie")
+              }
+              return loop(Effect.succeed(HttpClientRequest.setUrl(nextRequest, url)), redirects + 1)
             }
-            const url = new URL(response.headers.location, response.request.url)
-            let nextRequest = request
-            if (
-              ((response.status === 301 || response.status === 302) && request.method === "POST") ||
-              (response.status === 303 && request.method !== "GET" && request.method !== "HEAD")
-            ) {
-              nextRequest = HttpClientRequest.setMethod(nextRequest, "GET")
-              nextRequest = HttpClientRequest.setBody(nextRequest, HttpBody.empty)
-            }
-            if (url.origin !== new URL(response.request.url).origin) {
-              nextRequest = HttpClientRequest.removeHeader(nextRequest, "authorization")
-              nextRequest = HttpClientRequest.removeHeader(nextRequest, "proxy-authorization")
-              nextRequest = HttpClientRequest.removeHeader(nextRequest, "cookie")
-            }
-            return loop(HttpClientRequest.setUrl(nextRequest, url), redirects + 1)
-          }
-        )
-      return Effect.flatMap(request, (request) => loop(request, 0))
+          )
+        })
+      return loop(request, 0)
     },
     self.preprocess
   ))
