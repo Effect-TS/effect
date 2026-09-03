@@ -735,8 +735,8 @@ export function encodeToWithHeaders<
       )
     ).annotate({
       "~httpApiWithHeaders": { body, headers, headersCodec: Schema.toEncoded(headers) },
-      ...(status !== undefined ? { httpApiStatus: status } : undefined),
-      ...(encoding !== undefined ? { "~httpApiEncoding": encoding } : undefined)
+      httpApiStatus: status,
+      "~httpApiEncoding": encoding
     })
   }
 }
