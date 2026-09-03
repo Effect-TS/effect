@@ -254,6 +254,33 @@ export const uncapitalize = <T extends string>(self: T): Uncapitalize<T> => {
 export const replace = (searchValue: string | RegExp, replaceValue: string) => (self: string): string =>
   self.replace(searchValue, replaceValue)
 
+type TrimWhitespace =
+  | "\u0009"
+  | "\u000a"
+  | "\u000b"
+  | "\u000c"
+  | "\u000d"
+  | "\u0020"
+  | "\u00a0"
+  | "\u1680"
+  | "\u2000"
+  | "\u2001"
+  | "\u2002"
+  | "\u2003"
+  | "\u2004"
+  | "\u2005"
+  | "\u2006"
+  | "\u2007"
+  | "\u2008"
+  | "\u2009"
+  | "\u200a"
+  | "\u2028"
+  | "\u2029"
+  | "\u202f"
+  | "\u205f"
+  | "\u3000"
+  | "\ufeff"
+
 /**
  * Type-level representation of trimming whitespace from both ends of a string.
  *
@@ -305,7 +332,7 @@ export const trim = <A extends string>(self: A): Trim<A> => self.trim() as Trim<
  * @category models
  * @since 2.0.0
  */
-export type TrimStart<A extends string> = A extends `${" " | "\n" | "\t" | "\r"}${infer B}` ? TrimStart<B> : A
+export type TrimStart<A extends string> = A extends `${TrimWhitespace}${infer B}` ? TrimStart<B> : A
 
 /**
  * Removes whitespace from the start of a string.
@@ -340,7 +367,7 @@ export const trimStart = <A extends string>(self: A): TrimStart<A> => self.trimS
  * @category models
  * @since 2.0.0
  */
-export type TrimEnd<A extends string> = A extends `${infer B}${" " | "\n" | "\t" | "\r"}` ? TrimEnd<B> : A
+export type TrimEnd<A extends string> = A extends `${infer B}${TrimWhitespace}` ? TrimEnd<B> : A
 
 /**
  * Removes whitespace from the end of a string.
