@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Fiber, Option, Queue, Stream } from "effect"
+import * as Scheduler from "effect/Scheduler"
 
 describe("Queue", () => {
   it.effect("isEnqueue type guard", () =>
@@ -477,6 +478,39 @@ describe("Queue", () => {
 
       assert.deepStrictEqual(taker.pollUnsafe(), Exit.succeed(1))
       assert.isUndefined(awaiter.pollUnsafe())
+      yield* Queue.shutdown(queue)
+    }))
+
+  it.effect("flushUnsafe coalesces scheduled releases across repeated offers", () =>
+    Effect.gen(function*() {
+      const tasks: Array<() => void> = []
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "async",
+        makeDispatcher() {
+          return {
+            scheduleTask(task, _priority) {
+              tasks.push(task)
+            },
+            flush() {
+            }
+          }
+        },
+        shouldYield: () => false
+      }
+      const queue = yield* Queue.unbounded<number>().pipe(
+        Effect.provideService(Scheduler.Scheduler, scheduler)
+      )
+      for (let i = 0; i < 10; i++) {
+        yield* Queue.take(queue).pipe(Effect.forkChild)
+      }
+      yield* Effect.yieldNow
+
+      for (let i = 0; i < 8; i++) {
+        Queue.offerUnsafe(queue, i)
+        Queue.flushUnsafe(queue)
+      }
+
+      assert.lengthOf(tasks, 1)
       yield* Queue.shutdown(queue)
     }))
 
