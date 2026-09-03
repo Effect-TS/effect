@@ -243,7 +243,6 @@ const Proto = {
         readonly context: Context.Context<never>
         readonly handler: Tool.Handler<any>["handler"]
         readonly decodeParameters: (u: unknown) => Effect.Effect<unknown, Schema.SchemaError>
-        readonly decodeResult: (u: unknown) => Effect.Effect<unknown, Schema.SchemaError>
         readonly encodeResult: (u: unknown, isFailure: boolean) => Effect.Effect<unknown, Schema.SchemaError>
       }>()
 
@@ -251,13 +250,9 @@ const Proto = {
         let schemas = schemasCache.get(tool)
         if (Predicate.isUndefined(schemas)) {
           const handler = services.mapUnsafe.get(tool.id)! as Tool.Handler<any>
-          const resultSchema = tool.failureMode === "return"
-            ? Schema.Union([tool.successSchema, tool.failureSchema, AiError.AiError])
-            : tool.successSchema
           const decodeParameters = Schema.isSchema(tool.parametersSchema)
             ? Schema.decodeUnknownEffect(tool.parametersSchema) as any
             : (u: unknown) => Effect.succeed(u)
-          const decodeResult = Schema.decodeUnknownEffect(resultSchema) as any
           const encodeSuccess = Schema.encodeUnknownEffect(tool.successSchema) as any
           const encodeFailure = Schema.encodeUnknownEffect(tool.failureSchema) as any
           const encodeAiError = Schema.encodeUnknownEffect(AiError.AiError)
@@ -267,7 +262,6 @@ const Proto = {
             context: handler.context,
             handler: handler.handler,
             decodeParameters,
-            decodeResult,
             encodeResult
           }
           schemasCache.set(tool, schemas)
