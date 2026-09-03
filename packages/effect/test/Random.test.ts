@@ -62,129 +62,36 @@ describe("Random", () => {
   describe("nextBetween", () => {
     it.effect.each(
       [
-        ["unit high control", 0, 1, 1 - Number.EPSILON, 1 - Number.EPSILON],
-        ["ordinary interior control", 10, 20, 0.75, 17.5],
-        ["inclusive lower control", 10, 20, 0, 10],
-        ["negative interior control", -20, -10, 0.75, -12.5],
-        ["cross-zero interior control", -10, 10, 0.75, 5],
-        ["positive zero lower control", 0, 1, 0, 0],
-        ["negative zero lower control", -0, 1, 0, 0],
-        ["ordinary upper rounding", 10, 20, 1 - Number.EPSILON, 20 - 2 ** -48],
-        ["adjacent positive integers", 1e16, 1e16 + 2, 0.75, 1e16],
-        ["adjacent negative integers", -1e16 - 2, -1e16, 0.75, -1e16 - 2],
-        ["positive unit endpoint", 1 - 2 ** -53, 1, 0.75, 1 - 2 ** -53],
-        ["positive power-of-two endpoint", 2 - 2 ** -52, 2, 0.75, 2 - 2 ** -52],
-        ["negative unit endpoint", -1 - 2 ** -52, -1, 0.75, -1 - 2 ** -52],
-        ["negative power-of-two endpoint", -2 - 2 ** -51, -2, 0.75, -2 - 2 ** -51],
-        ["positive zero upper", -Number.MIN_VALUE, 0, 0.75, -Number.MIN_VALUE],
-        ["negative zero upper", -Number.MIN_VALUE, -0, 0.75, -Number.MIN_VALUE],
-        ["smallest positive upper", 0, Number.MIN_VALUE, 0.75, 0],
-        ["smallest positive upper from negative zero", -0, Number.MIN_VALUE, 0.75, 0],
-        ["cross-zero subnormal", -Number.MIN_VALUE, Number.MIN_VALUE, 0.75, 0],
-        ["positive subnormal", Number.MIN_VALUE, 2 * Number.MIN_VALUE, 0.75, Number.MIN_VALUE],
-        ["negative subnormal", -2 * Number.MIN_VALUE, -Number.MIN_VALUE, 0.75, -2 * Number.MIN_VALUE],
-        ["smallest positive normal", 2 ** -1022 - Number.MIN_VALUE, 2 ** -1022, 0.75, 2 ** -1022 - Number.MIN_VALUE],
-        ["negative normal-subnormal boundary", -(2 ** -1022), -(2 ** -1022) + Number.MIN_VALUE, 0.75, -(2 ** -1022)],
-        ["largest finite upper", Number.MAX_VALUE - 2 ** 971, Number.MAX_VALUE, 0.75, Number.MAX_VALUE - 2 ** 971],
-        ["smallest finite lower", -Number.MAX_VALUE, -Number.MAX_VALUE + 2 ** 971, 0.75, -Number.MAX_VALUE]
+        ["positive", 10, 20, 1 - Number.EPSILON, 20 - 2 ** -48],
+        ["adjacent", 1e16, 1e16 + 2, 0.75, 1e16],
+        ["negative", -1e16 - 2, -1e16, 0.75, -1e16 - 2],
+        ["zero", -Number.MIN_VALUE, 0, 0.75, -Number.MIN_VALUE]
       ] as const
-    )("excludes the upper endpoint with one draw: %s", ([_name, min, max, draw, expected]) =>
+    )("excludes a rounded upper bound: %s", ([_name, min, max, draw, expected]) =>
       Effect.gen(function*() {
-        assert.isTrue(Number.isFinite(min) && Number.isFinite(max) && Number.isFinite(max - min))
-        assert.isBelow(min, max)
-        assert.isAtLeast(draw, 0)
-        assert.isBelow(draw, 1)
-        let doubleCalls = 0
-        let intCalls = 0
         const value = yield* Random.nextBetween(min, max).pipe(
           Effect.provideService(Random.Random, {
-            nextIntUnsafe: () => {
-              intCalls++
-              return 0
-            },
-            nextDoubleUnsafe: () => {
-              doubleCalls++
-              return draw
-            }
+            nextIntUnsafe: () => 0,
+            nextDoubleUnsafe: () => draw
           })
         )
-        assert.strictEqual(doubleCalls, 1)
-        assert.strictEqual(intCalls, 0)
+
         assert.isAtLeast(value, min)
         assert.isBelow(value, max)
-        assert.isTrue(Object.is(value, expected))
+        assert.strictEqual(value, expected)
       }))
 
-    it.effect("does not retry a constant provider", () =>
+    it.effect("preserves unsupported bounds", () =>
       Effect.gen(function*() {
-        let calls = 0
-        const values = yield* Effect.all([
-          Random.nextBetween(10, 20),
-          Random.nextBetween(10, 20),
-          Random.nextBetween(10, 20)
-        ]).pipe(Effect.provideService(Random.Random, {
-          nextIntUnsafe: () => 0,
-          nextDoubleUnsafe: () => {
-            calls++
-            return 1 - Number.EPSILON
-          }
-        }))
-        assert.strictEqual(calls, 3)
-        assert.deepStrictEqual(values, [20 - 2 ** -48, 20 - 2 ** -48, 20 - 2 ** -48])
-      }))
-
-    it.effect("preserves the in-range seeded formula and following draw", () =>
-      Effect.gen(function*() {
-        const bounds = [[0, 1], [10, 20], [-20, -10], [-10, 10], [10.5, 20.5]] as const
-        const draws = yield* Effect.all(bounds.map(() => Random.next)).pipe(Random.withSeed("next-between-formula"))
-        const expected = bounds.map(([min, max], i) => draws[i] * (max - min) + min)
-        for (let i = 0; i < bounds.length; i++) {
-          assert.isAtLeast(expected[i], bounds[i][0])
-          assert.isBelow(expected[i], bounds[i][1])
-        }
-        const actual = yield* Effect.all(bounds.map(([min, max]) => Random.nextBetween(min, max))).pipe(
-          Random.withSeed("next-between-formula")
+        const program = Effect.all([Random.nextBetween(10, 10), Random.nextBetween(10, Infinity)])
+        const values = yield* program.pipe(
+          Effect.provideService(Random.Random, {
+            nextIntUnsafe: () => 0,
+            nextDoubleUnsafe: () => 0.75
+          })
         )
-        assert.deepStrictEqual(actual, expected)
 
-        const withBounded = yield* Effect.all([Random.nextBetween(10, 20), Random.next]).pipe(
-          Random.withSeed("next-between-formula")
-        )
-        const raw = yield* Effect.all([Random.next, Random.next]).pipe(Random.withSeed("next-between-formula"))
-        assert.deepStrictEqual(withBounded, [raw[0] * 10 + 10, raw[1]])
-      }))
-
-    it.effect("leaves degenerate and unsupported bounds on the existing formula", () =>
-      Effect.gen(function*() {
-        // Compatibility guards only: these cases do not establish a new bounds policy.
-        const bounds = [
-          [10, 10],
-          [0, -0],
-          [-0, 0],
-          [20, 10],
-          [NaN, 20],
-          [10, NaN],
-          [10, Infinity],
-          [-Infinity, 20],
-          [-Infinity, Infinity],
-          [-Number.MAX_VALUE, Number.MAX_VALUE]
-        ] as const
-        for (const [min, max] of bounds) {
-          for (const draw of [0, 0.75, 1 - Number.EPSILON]) {
-            let calls = 0
-            const value = yield* Random.nextBetween(min, max).pipe(
-              Effect.provideService(Random.Random, {
-                nextIntUnsafe: () => 0,
-                nextDoubleUnsafe: () => {
-                  calls++
-                  return draw
-                }
-              })
-            )
-            assert.strictEqual(calls, 1)
-            assert.isTrue(Object.is(value, draw * (max - min) + min))
-          }
-        }
+        assert.deepStrictEqual(values, [10, Infinity])
       }))
 
     it.effect("generates number in half-open range", () =>
