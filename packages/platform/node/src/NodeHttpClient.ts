@@ -275,18 +275,7 @@ class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pi
     if (this.textBody) {
       return this.textBody
     }
-    this.textBody = Effect.tryPromise({
-      try: () => this.source.body.text(),
-      catch: (cause) =>
-        new Error.HttpClientError({
-          reason: new Error.DecodeError({
-            request: this.request,
-            response: this,
-            cause
-          })
-        })
-    }).pipe(Effect.cached, Effect.runSync)
-    this.arrayBufferBody = Effect.map(this.textBody, (_) => new TextEncoder().encode(_).buffer)
+    this.textBody = Effect.map(this.arrayBuffer, (_) => new TextDecoder().decode(_))
     return this.textBody
   }
 
