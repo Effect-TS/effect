@@ -741,7 +741,7 @@ export const make = (
     }, Stream.unwrap),
     sink: (path, options) =>
       pipe(
-        impl.open(path, { flag: "w", ...options }),
+        impl.open(path, { ...options, flag: options?.flag ?? "w" }),
         Effect.map((file) => Sink.forEach((_: Uint8Array) => file.writeAll(_))),
         Sink.unwrap
       ),
