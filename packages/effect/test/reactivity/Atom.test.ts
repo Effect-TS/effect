@@ -16,7 +16,7 @@ import {
 } from "effect"
 import { TestClock } from "effect/testing"
 import { KeyValueStore } from "effect/unstable/persistence"
-import { AsyncResult, Atom, AtomRegistry, Hydration } from "effect/unstable/reactivity"
+import { AsyncResult, Atom, AtomRegistry, Hydration, Reactivity } from "effect/unstable/reactivity"
 
 declare const global: any
 
@@ -2447,6 +2447,13 @@ describe.sequential("Atom", () => {
   })
 
   describe("Reactivity", () => {
+    it.effect("cleans up queries with duplicate keys", () =>
+      Effect.gen(function*() {
+        const reactivity = yield* Reactivity.make
+        const results = yield* reactivity.query(["todos", "todos"], Effect.succeed(42))
+        assert.strictEqual(yield* Queue.take(results), 42)
+      }).pipe(Effect.scoped))
+
     it("does not broadcast mutations across registries", () => {
       let reads = 0
       const query = Atom.make(() => ++reads).pipe(
