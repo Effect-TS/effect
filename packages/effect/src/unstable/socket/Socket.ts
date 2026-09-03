@@ -876,7 +876,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       ) => void
 
       let open = ws.readyState === 1
-      let paused = false
+      let paused = pausable && "isPaused" in ws && ws.isPaused === true
       let buffer: Array<Uint8Array | string> = []
       let bufferSize = 0
       let error: SocketError | undefined
@@ -1038,6 +1038,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
         open = true
       }
 
+      if (error === undefined && bufferSize < highWaterMark!) resumeWebSocket()
       currentWS = ws
       latch.openUnsafe()
 
