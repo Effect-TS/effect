@@ -36,7 +36,7 @@ describe("HttpEffect", () => {
   })
 
   describe("toWebHandler", () => {
-    test("provides a parent span with the default tracer", async () => {
+    test("skips the server span with the default tracer", async () => {
       let hasParentSpan = false
       const handler = HttpEffect.toWebHandler(Effect.gen(function*() {
         hasParentSpan = Option.isSome(yield* Effect.serviceOption(Tracer.ParentSpan))
@@ -44,6 +44,21 @@ describe("HttpEffect", () => {
       }))
 
       await handler(new Request("http://localhost:3000/"))
+
+      strictEqual(hasParentSpan, false)
+    })
+
+    test("provides a parent span with a configured tracer", async () => {
+      let hasParentSpan = false
+      const tracer = Tracer.make({
+        span: (options) => new Tracer.NativeSpan(options)
+      })
+      const handler = HttpEffect.toWebHandler(Effect.gen(function*() {
+        hasParentSpan = Option.isSome(yield* Effect.serviceOption(Tracer.ParentSpan))
+        return HttpServerResponse.empty()
+      }))
+
+      await handler(new Request("http://localhost:3000/"), Context.make(Tracer.Tracer, tracer))
 
       strictEqual(hasParentSpan, true)
     })

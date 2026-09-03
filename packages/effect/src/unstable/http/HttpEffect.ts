@@ -19,6 +19,7 @@ import { effectIsExit, fiberEnterUninterruptibleUnsafe, reportCauseUnsafe } from
 import * as Layer from "../../Layer.ts"
 import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
+import { nativeTracer } from "../../Tracer.ts"
 import * as HttpBody from "./HttpBody.ts"
 import { type HttpMiddleware, isTracerDisabledUnsafe, tracer } from "./HttpMiddleware.ts"
 import { causeResponse, ClientAbort, HttpServerError, InternalError } from "./HttpServerError.ts"
@@ -165,7 +166,12 @@ export const toHandled = <E, R, EH, RH>(
     const scope = Scope.makeUnsafe()
     const frame = new RequestFrame(scope, fiber.context, Context.getUnsafe(fiber.context, HttpServerRequest))
     fiber.setContext(Context.add(frame.prev, Scope.Scope, scope))
-    if (middleware === undefined && isTracerDisabledUnsafe(fiber, frame.request)) {
+    // The native tracer has no backend, so its spans are unobservable.
+    const currentTracer = fiber.cache.tracer
+    if (
+      middleware === undefined &&
+      (currentTracer === undefined || currentTracer === nativeTracer || isTracerDisabledUnsafe(fiber, frame.request))
+    ) {
       ;(fiber as any)._stack.push(frame)
       return self
     }
