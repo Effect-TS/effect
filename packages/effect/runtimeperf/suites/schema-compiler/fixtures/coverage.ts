@@ -1,7 +1,7 @@
 import * as Schema from "effect/Schema"
-import * as SchemaCompiler from "effect/SchemaCompiler"
 import * as SchemaParser from "effect/SchemaParser"
 import * as SchemaTransformation from "effect/SchemaTransformation"
+import * as SchemaCompiler from "effect/unstable/schema/SchemaCompiler"
 import assert from "node:assert/strict"
 
 const validCase = (schema, input, compiled, expected = input) => () => {

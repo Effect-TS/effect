@@ -4,8 +4,8 @@
  *
  * @since 4.0.0
  */
-import { compile } from "./internal/schema/compiler.ts"
-import * as CompilerHook from "./internal/schema/compilerHook.ts"
+import { compile } from "../../internal/schema/compiler.ts"
+import * as CompilerHook from "../../internal/schema/compilerHook.ts"
 
 /**
  * Enables lazy compilation of supported schema decoders and type guards.

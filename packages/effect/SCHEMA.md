@@ -70,6 +70,36 @@ means that the library does not provide that benchmark.
 | Encode unknown input                  |    **0.3472** |          — |          — |
 | Decode unknown input                  |    **0.3637** |          — |          — |
 
+### Runtime compilation
+
+`SchemaCompiler` is an experimental, opt-in runtime compiler for synchronous Schema decoders and type guards. Enable it during application startup, before the first execution of the parsers that should use it:
+
+```ts
+import { SchemaCompiler } from "effect/unstable/schema"
+
+SchemaCompiler.enable()
+```
+
+The call installs the compiler globally and there is no corresponding disable operation, but it does not compile schemas immediately. The first execution of a supported parser compiles and caches an optimized implementation for its AST. Applications continue to create and run parsers through the normal `SchemaParser` APIs:
+
+```ts
+import { Schema, SchemaParser } from "effect"
+import { SchemaCompiler } from "effect/unstable/schema"
+
+SchemaCompiler.enable()
+
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String
+})
+
+const decodeUser = SchemaParser.decodeUnknownSync(User)
+
+decodeUser({ id: 1, name: "Ada" })
+```
+
+Unsupported schemas, calls with explicit parse options, and environments that disallow dynamic code generation use the interpreter instead. This fallback preserves the behavior of `SchemaParser`; enabling the compiler changes the execution strategy, not the parsing API or its results.
+
 # Defining Elementary Schemas
 
 Schema provides built-in schemas for all common TypeScript types. These schemas represent a single value — like a string or a number — and they are the building blocks you combine into more complex shapes.

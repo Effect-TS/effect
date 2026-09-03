@@ -1,15 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import {
-  Cause,
-  Effect,
-  Result,
-  Schema,
-  SchemaCompiler,
-  SchemaGetter,
-  SchemaIssue,
-  SchemaParser,
-  SchemaTransformation
-} from "effect"
+import { Cause, Effect, Result, Schema, SchemaGetter, SchemaIssue, SchemaParser, SchemaTransformation } from "effect"
+import { SchemaCompiler } from "effect/unstable/schema"
 import { assertSchemaIssueError, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 const schema = Schema.Struct({
