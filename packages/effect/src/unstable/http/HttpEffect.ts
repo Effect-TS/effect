@@ -20,13 +20,12 @@ import * as Layer from "../../Layer.ts"
 import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 import * as HttpBody from "./HttpBody.ts"
-import { type HttpMiddleware, tracer } from "./HttpMiddleware.ts"
+import { type HttpMiddleware, isTracerDisabledUnsafe, tracer } from "./HttpMiddleware.ts"
 import { causeResponse, ClientAbort, HttpServerError, InternalError } from "./HttpServerError.ts"
 import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
 import type { HttpServerResponse } from "./HttpServerResponse.ts"
 import * as Response from "./HttpServerResponse.ts"
-import * as middlewareInternal from "./internal/httpMiddleware.ts"
 import * as preResponseHandler from "./internal/preResponseHandler.ts"
 
 /**
@@ -166,7 +165,7 @@ export const toHandled = <E, R, EH, RH>(
     const scope = Scope.makeUnsafe()
     const frame = new RequestFrame(scope, fiber.context, Context.getUnsafe(fiber.context, HttpServerRequest))
     fiber.setContext(Context.add(frame.prev, Scope.Scope, scope))
-    if (middleware === undefined && middlewareInternal.isTracerDisabledUnsafe(fiber, frame.request)) {
+    if (middleware === undefined && isTracerDisabledUnsafe(fiber, frame.request)) {
       ;(fiber as any)._stack.push(frame)
       return self
     }
