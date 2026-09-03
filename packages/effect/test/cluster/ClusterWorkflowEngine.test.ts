@@ -1,5 +1,19 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Cause, Context, DateTime, Duration, Effect, Exit, Fiber, Layer, Option, Result, Schema, Tracer } from "effect"
+import {
+  Cause,
+  Context,
+  DateTime,
+  Duration,
+  Effect,
+  Exit,
+  Fiber,
+  Latch,
+  Layer,
+  Option,
+  Result,
+  Schema,
+  Tracer
+} from "effect"
 import { TestClock } from "effect/testing"
 import {
   ClusterSchema,
@@ -550,13 +564,14 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     Effect.gen(function*() {
       const driver = yield* MessageStorage.MemoryDriver
       const sharding = yield* Sharding.Sharding
+      const scheduled = yield* ShardedClockScheduled
       const startedAt = yield* DateTime.now
 
       const fiber = yield* ShardedClockWorkflow.execute({
         id: "sharded-clock"
       }).pipe(Effect.forkChild({ startImmediately: true }))
 
-      yield* TestClock.adjust(1)
+      yield* scheduled.await
 
       const envelope = driver.journal.find((envelope) =>
         envelope._tag === "Request" && envelope.address.entityType === "Workflow/-/DurableClock"
@@ -1358,12 +1373,26 @@ const ShardedClockWorkflow = Workflow.make("ShardedClockWorkflow", {
   }
 }).annotate(ClusterSchema.ShardGroup, () => "workflow")
 
+class ShardedClockScheduled extends Context.Service<ShardedClockScheduled>()("ShardedClockScheduled", {
+  make: Latch.make()
+}) {
+  static readonly layer = Layer.effect(ShardedClockScheduled, this.make)
+}
+
 const ShardedClockWorkflowLayer = ShardedClockWorkflow.toLayer(Effect.fnUntraced(function*() {
-  yield* DurableClock.sleep({
+  const engine = yield* WorkflowEngine
+  const instance = yield* WorkflowInstance
+  const scheduled = yield* ShardedClockScheduled
+  const clock = DurableClock.make({
     name: "ShardedClock",
-    duration: 10000.5,
-    inMemoryThreshold: Duration.zero
+    duration: 10000.5
   })
+  yield* engine.scheduleClock(instance.workflow, {
+    executionId: instance.executionId,
+    clock
+  })
+  yield* scheduled.open
+  yield* DurableDeferred.await(clock.deferred)
 }))
 
 const ShardedDeferred = DurableDeferred.make("ShardedDeferred")
@@ -1478,5 +1507,6 @@ const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(CatchWorkflowLayer),
   Layer.merge(ErrorDefectWorkflowLayer),
   Layer.provideMerge(Flags.layer),
+  Layer.provideMerge(ShardedClockScheduled.layer),
   Layer.provideMerge(TestWorkflowEngine)
 )
