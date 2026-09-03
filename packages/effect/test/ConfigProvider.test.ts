@@ -849,12 +849,12 @@ DB_PASS=\${PASSWORD}
     it("expands referenced values as literal data", async () => {
       const provider = ConfigProvider.fromDotEnvContents(
         `
-SOURCE=$&
+SOURCE=a$&b$'c$\`d
 TARGET=\${SOURCE}
 `,
         { expandVariables: true }
       )
-      await assertSuccess(provider, ["TARGET"], ConfigProvider.makeValue("$&"))
+      await assertSuccess(provider, ["TARGET"], ConfigProvider.makeValue("a$&b$'c$`d"))
     })
 
     it("expansion defaults are used only for empty or unset variables", async () => {
