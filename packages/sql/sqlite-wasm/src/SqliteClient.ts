@@ -471,10 +471,9 @@ function rowToObject(columns: Array<string>, row: Array<any>) {
   }
   return obj
 }
-type WorkerResult = [columns: Array<string> | undefined, rows: Array<any>, rowColumns?: Array<Array<string>>]
+type WorkerResult = [columns: Array<Array<string>>, rows: Array<any>]
 
-const extractObject = (rows: WorkerResult) =>
-  rows[1].map((row, index) => rowToObject(rows[2]?.[index] ?? rows[0]!, row))
+const extractObject = (rows: WorkerResult) => rows[1].map((row, index) => rowToObject(rows[0][index], row))
 const extractRows = (rows: WorkerResult) => rows[1]
 
 /**

@@ -100,7 +100,6 @@ const settled = <A, E>(effect: Effect.Effect<A, E>) =>
     yield* TestClock.adjust("100 millis")
     return yield* Fiber.join(fiber)
   })
-
 describe("Client", () => {
   it.effect("should work", () => Effect.void)
 

@@ -94,24 +94,18 @@ export const run = (
               const [id, sql, params] = message
               messageId = id
               const results: Array<any> = []
-              const rowColumns: Array<Array<string>> = []
-              let columns: Array<string> | undefined
+              const columns: Array<Array<string>> = []
               for (const stmt of sqlite3.statements(db, sql)) {
                 let statementColumns: Array<string> | undefined
                 sqlite3.bind_collection(stmt, params as any)
                 while (sqlite3.step(stmt) === WaSqlite.SQLITE_ROW) {
                   statementColumns = statementColumns ?? sqlite3.column_names(stmt)
-                  columns = columns ?? statementColumns
                   const row = sqlite3.row(stmt)
                   results.push(row)
-                  rowColumns.push(statementColumns)
+                  columns.push(statementColumns)
                 }
               }
-              // Preserve the legacy fields; newer clients can use each row's columns.
-              const result = rowColumns.some((names) => names !== columns)
-                ? [columns, results, rowColumns]
-                : [columns, results]
-              options.port.postMessage([id, undefined, result])
+              options.port.postMessage([id, undefined, [columns, results]])
               return
             }
           }
