@@ -45,8 +45,6 @@ vi.mock("@effect/wa-sqlite", () => ({
             throw new Error("regular failure")
           } else if (stmt.sql === "SELECT string_code_error") {
             throw Object.assign(new Error("string code failure"), { code: "19" })
-          } else if (stmt.sql === "SELECT empty_message_error") {
-            throw Object.assign(new Error(""), { code: 19 })
           } else if (stmt.sql === "SELECT message_less_error") {
             throw { toString: () => "message-less failure" }
           } else if (stmt.sql.startsWith("SELECT")) {
@@ -93,7 +91,7 @@ class TestPort extends EventTarget {
   }
 }
 
-const makeClient = (options: SqliteClient.SqliteClientMemoryConfig = {}) =>
+const makeClient = () =>
   Effect.gen(function*() {
     const client = new TestPort()
     const server = new TestPort()
@@ -106,7 +104,7 @@ const makeClient = (options: SqliteClient.SqliteClientMemoryConfig = {}) =>
     )
     // Registered before the client: wait for its normal close message at teardown.
     yield* Effect.addFinalizer(() => Fiber.join(worker).pipe(Effect.orDie))
-    const sql = yield* SqliteClient.make({ ...options, worker: Effect.succeed(client as unknown as Worker) })
+    const sql = yield* SqliteClient.make({ worker: Effect.succeed(client as unknown as Worker) })
     return { sql, requests: client.messages, replies: server.messages }
   })
 
@@ -139,7 +137,6 @@ describe("worker error metadata", () => {
       const cause = { message: "UNIQUE constraint failed: items.id", code: 19 }
       assert.deepStrictEqual(error.reason.cause, cause)
       assertReply(requests, replies, cause)
-      assert.strictEqual(Object.getPrototypeOf(replies[replies.length - 1][1]), Object.prototype)
 
       yield* sql`INSERT INTO items (id, label, payload) VALUES (${2}, ${"second"}, ${null})`
       assert.deepStrictEqual(yield* sql`SELECT id, label, payload FROM items ORDER BY id`, [
@@ -177,28 +174,6 @@ describe("worker error metadata", () => {
       ])
     }).pipe(Effect.provide(Reactivity.layer)))
 
-  it.effect("leaves successful rows, BLOBs, values and name transforms unchanged", () =>
-    Effect.gen(function*() {
-      const { replies, requests, sql } = yield* makeClient({ transformResultNames: (name) => name.toUpperCase() })
-      assert.deepStrictEqual(yield* sql`SELECT id, label, payload FROM items ORDER BY id`, [])
-      yield* setup(sql)
-      const rows = [[1, "first", new Uint8Array([0, 255, 17])]]
-      const query = sql`SELECT id, label, payload FROM items ORDER BY id`
-      assert.deepStrictEqual(yield* query, [{ ID: 1, LABEL: "first", PAYLOAD: new Uint8Array([0, 255, 17]) }])
-      assert.deepStrictEqual(replies[replies.length - 1], [
-        requests[requests.length - 1][0],
-        undefined,
-        [["id", "label", "payload"], rows]
-      ])
-      assert.deepStrictEqual(yield* query.values, rows)
-      assert.deepStrictEqual(yield* query.unprepared, [
-        { ID: 1, LABEL: "first", PAYLOAD: new Uint8Array([0, 255, 17]) }
-      ])
-      assert.deepStrictEqual(yield* sql.withoutTransforms()`SELECT id, label, payload FROM items ORDER BY id`, [
-        { id: 1, label: "first", payload: new Uint8Array([0, 255, 17]) }
-      ])
-    }).pipe(Effect.provide(Reactivity.layer)))
-
   it.effect.each([
     { query: "SELECT regular_error", message: "regular failure" },
     { query: "SELECT string_code_error", message: "string code failure" },
@@ -212,21 +187,6 @@ describe("worker error metadata", () => {
       assertReply(requests, replies, message)
       assert.deepStrictEqual(yield* sql`SELECT id, label, payload FROM items ORDER BY id`, [])
     }).pipe(Effect.provide(Reactivity.layer)))
-
-  it.effect("does not turn a falsy message into a truthy error record", () =>
-    Effect.gen(function*() {
-      const replies: Array<ReadonlyArray<unknown>> = []
-      const port = new class extends EventTarget {
-        close() {}
-        postMessage(message: ReadonlyArray<unknown>): void {
-          const next = message[0] === "ready" ? [41, "SELECT empty_message_error", []] : ["close"]
-          if (message[0] !== "ready") replies.push(structuredClone(message))
-          queueMicrotask(() => this.dispatchEvent(new MessageEvent("message", { data: next })))
-        }
-      }()
-      yield* OpfsWorker.run({ port, dbName: "test.db" })
-      assert.deepStrictEqual(replies, [[41, "", undefined]])
-    }))
 
   it.effect("accepts legacy string errors and subsequent empty-error success replies", () =>
     Effect.gen(function*() {

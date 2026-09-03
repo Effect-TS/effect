@@ -109,7 +109,7 @@ export const run = (
           }
         } catch (e: any) {
           const message = "message" in e ? e.message : String(e)
-          const error = message && typeof e.code === "number" ? { message, code: e.code } : message
+          const error = typeof e.code === "number" ? { message, code: e.code } : message
           options.port.postMessage([messageId!, error, undefined])
         }
       }

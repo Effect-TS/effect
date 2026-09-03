@@ -334,7 +334,7 @@ export const make = (
           if (error) {
             resume(
               Exit.fail(
-                new SqlError({ reason: classifyError(error as string, "Failed to execute statement", "execute") })
+                new SqlError({ reason: classifyError(error, "Failed to execute statement", "execute") })
               )
             )
           } else {
