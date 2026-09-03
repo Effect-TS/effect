@@ -132,7 +132,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runtime: [Node, Deno]
+        runtime: [Node, Deno, Bun]
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
@@ -162,20 +162,14 @@ jobs:
         if: matrix.runtime == 'Deno'
         run: deno task test --max-concurrency=10
 
-  test-bun:
-    name: Test (Bun)
-    runs-on: namespace-profile-linux-default
-    permissions:
-      contents: read
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v6
       - name: Install dependencies
+        if: matrix.runtime == 'Bun'
         uses: ./.github/actions/setup
         with:
-          bun-version: 1.3.13
+          bun-version: 1.4.0
       - name: Test
-        run: bun node_modules/vitest/vitest.mjs run --max-concurrency=10
+        if: matrix.runtime == 'Bun'
+        run: bun run --bun vitest run --max-concurrency=10
 
   doctest:
     name: Test (Documentation)

@@ -1,4 +1,3 @@
-import { transformSync } from "@babel/core"
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import * as Utils from "@effect/openapi-generator/Utils"
 import { assert, describe, expect, it } from "@effect/vitest"
@@ -12,7 +11,7 @@ import * as HttpClientError from "effect/unstable/http/HttpClientError"
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import type { OpenAPISpec } from "effect/unstable/httpapi/OpenApi"
-import { stripTypeScriptTypes } from "node:module"
+import { rolldown } from "rolldown"
 
 const modules = {
   "effect/Data": Data,
@@ -26,13 +25,20 @@ const modules = {
   "effect/unstable/http/HttpClientResponse": HttpClientResponse
 }
 
-function loadClient(source: string, httpClient: HttpClient.HttpClient) {
-  const compiled = transformSync(stripTypeScriptTypes(source), {
-    babelrc: false,
-    configFile: false,
-    plugins: ["@babel/plugin-transform-modules-commonjs"]
+async function loadClient(source: string, httpClient: HttpClient.HttpClient) {
+  const bundle = await rolldown({
+    input: "client.ts",
+    external: (id) => id !== "client.ts",
+    plugins: [{
+      name: "generated-client",
+      resolveId: (id) => id === "client.ts" ? id : undefined,
+      load: (id) => id === "client.ts" ? source : undefined
+    }]
   })
-  assert.isString(compiled?.code)
+  const { output } = await bundle.generate({ format: "cjs" })
+  await bundle.close()
+  const compiled = output[0]
+  assert.strictEqual(compiled.type, "chunk")
   const exports = {} as {
     make: (httpClient: HttpClient.HttpClient) => {
       submit: (options: { payload: { name: string } }) => Effect.Effect<unknown, unknown>
@@ -40,7 +46,7 @@ function loadClient(source: string, httpClient: HttpClient.HttpClient) {
       submitStream: (options: { payload: { name: string } }) => Stream.Stream<unknown, unknown>
     }
   }
-  new Function("require", "exports", compiled!.code!)(
+  new Function("require", "exports", compiled.code)(
     (id: keyof typeof modules) => {
       assert.property(modules, id)
       return modules[id]
@@ -137,7 +143,7 @@ describe("Utils", () => {
                 })
               ))
             }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.test")))
-            const client = loadClient(source, httpClient)
+            const client = yield* Effect.promise(() => loadClient(source, httpClient))
             const options = { payload: { name: "Ada Lovelace" } }
             if (method === "submit") {
               yield* client.submit(options)
@@ -207,7 +213,7 @@ describe("Utils", () => {
           new Response("\"ok\"", { headers: { "content-type": "application/json" } })
         ))
       }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.test")))
-      const client = loadClient(source, httpClient)
+      const client = yield* Effect.promise(() => loadClient(source, httpClient))
 
       yield* client.submit({ payload: { name: "Ada Lovelace" } })
 

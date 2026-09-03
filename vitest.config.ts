@@ -207,14 +207,7 @@ export default defineConfig({
       ...project("@effect/doctest", "packages/tools/doctest"),
       ...project("@effect/docgen", "packages/tools/docgen"),
       ...project("@effect/jsdocs", "packages/tools/jsdocs"),
-      ...project(
-        "@effect/openapi-generator",
-        "packages/tools/openapi-generator",
-        true,
-        {},
-        // Uses stripTypeScriptTypes from node:module.
-        isBun ? [...exclude, "test/Utils.test.ts"] : undefined
-      ),
+      ...project("@effect/openapi-generator", "packages/tools/openapi-generator"),
       ...project("@effect/oxc", "packages/tools/oxc")
     ]
   }

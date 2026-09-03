@@ -72,6 +72,7 @@
     "@types/swagger2openapi": "^7.0.4",
     "effect": "workspace:^",
     "json-schema-typed": "^8.0.2",
-    "openapi-typescript": "^7.13.0"
+    "openapi-typescript": "^7.13.0",
+    "rolldown": "^1.2.6"
   }
 }
