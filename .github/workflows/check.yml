@@ -93,9 +93,10 @@ jobs:
           sed -i 's/"stripInternal": false/"stripInternal": true/' base/tsconfig.base.json
       - name: Build
         run: |
-          pnpm build &
-          cd base && pnpm install && pnpm build &
-          wait
+          pnpm build
+          cd base
+          pnpm install
+          pnpm build
       - name: Compare bundle size
         run: node ./packages/tools/bundle/src/bin.ts compare --base-dir base/packages/tools/bundle/fixtures
       - name: Upload stats artifact
