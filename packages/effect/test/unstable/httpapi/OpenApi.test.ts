@@ -70,6 +70,24 @@ const makeSecurityApi = (
   )
 
 describe("OpenApi", () => {
+  it("preserves parameter schemas when an endpoint transform reorders parameters", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("list", "/list", {
+          query: { first: Schema.Literal("first"), second: Schema.Literal("second") }
+        }).annotate(OpenApi.Transform, (operation: Record<string, any>) => ({
+          ...operation,
+          parameters: [...operation.parameters].reverse()
+        }))
+      )
+    )
+
+    assert.deepStrictEqual(OpenApi.fromApi(Api).paths["/list"]?.get?.parameters, [
+      { name: "second", in: "query", required: true, schema: { type: "string", enum: ["second"] } },
+      { name: "first", in: "query", required: true, schema: { type: "string", enum: ["first"] } }
+    ])
+  })
+
   it("returns fresh spec instances when using the cache", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(

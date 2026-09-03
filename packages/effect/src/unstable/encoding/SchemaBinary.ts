@@ -921,7 +921,7 @@ const BIGINT_U32_MASK = BigInt(0xFFFFFFFF)
 const BIGINT_THIRTY_TWO = BigInt(32)
 
 const utf8Encode = new TextEncoder()
-const utf8DecodeFatal = new TextDecoder("utf-8", { fatal: true })
+const utf8DecodeFatal = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 
 // General numbers use up to seven varint bytes, a varint mantissa with a
 // decimal scale byte, or an eight-byte f64.

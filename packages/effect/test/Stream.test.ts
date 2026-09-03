@@ -1569,6 +1569,34 @@ describe("Stream", () => {
     })
   )
 
+  it.effect.each([
+    { size: 200001, lengths: [200000] },
+    { size: 200000, lengths: [200000] },
+    { size: 199999, lengths: [199999, 1] }
+  ])("rechunk preserves a large source chunk with target $size", ({ lengths, size }) =>
+    Effect.gen(function*() {
+      const values = Array.makeBy(200000, (i) => i)
+      const actual = yield* Stream.fromArray(values).pipe(
+        Stream.rechunk(size),
+        Stream.chunks,
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(actual.map((chunk) => chunk.length), lengths)
+      assert.deepStrictEqual(actual.flat(), values)
+    }))
+
+  it.effect("rechunk preserves large input split across source chunks", () =>
+    Effect.gen(function*() {
+      const values = Array.makeBy(200001, (i) => i)
+      const actual = yield* Stream.fromArrays(values.slice(0, 1), values.slice(1)).pipe(
+        Stream.rechunk(200002),
+        Stream.chunks,
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(actual.map((chunk) => chunk.length), [200001])
+      assert.deepStrictEqual(actual.flat(), values)
+    }))
+
   it.effect("rechunk and grouped normalize their chunk size", () =>
     Effect.gen(function*() {
       const counts = [Number.NaN, 0.5, 1.9, 2.9]

@@ -687,9 +687,20 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
         const queryInput = request?.query === undefined
           ? undefined
           : (encodeQuery === undefined ? request.query : encodeQuery(request.query)) as UrlParams.Input
-        const query = queryInput === undefined ? "" : UrlParams.toString(UrlParams.fromInput(queryInput))
-        const url = query === "" ? path : `${path}?${query}`
-        return options?.baseUrl === undefined ? url : new URL(url, options.baseUrl.toString()).toString()
+        const urlParams = queryInput === undefined ? UrlParams.empty : UrlParams.fromInput(queryInput)
+        if (options?.baseUrl === undefined) {
+          const query = UrlParams.toString(urlParams)
+          return query === "" ? path : `${path}?${query}`
+        }
+        const url = new URL(
+          HttpClientRequest.prependUrl(HttpClientRequest.get(path), options.baseUrl.toString()).url
+        )
+        for (const [key, value] of urlParams.params) {
+          if (value !== undefined) {
+            url.searchParams.append(key, value)
+          }
+        }
+        return url.toString()
       }
       InternalRecord.assignProperty(
         group.topLevel ? builder : builder[group.identifier],
@@ -1023,7 +1034,13 @@ function fromArrayBuffer(schema: Schema.Constraint): Schema.Top {
         : UnknownFromArrayBuffer
     }
     case "FormUrlEncoded":
-      return StringFromArrayBuffer.pipe(Schema.decodeTo(Schema.RecordFromUrlParams))
+      return StringFromArrayBuffer.pipe(Schema.decodeTo(
+        Schema.RecordFromUrlParams,
+        SchemaTransformation.transform({
+          decode: (text) => UrlParams.fromInput(new URLSearchParams(text)),
+          encode: UrlParams.toString
+        })
+      ))
     case "Uint8Array":
       return Uint8ArrayFromArrayBuffer
     case "Text":

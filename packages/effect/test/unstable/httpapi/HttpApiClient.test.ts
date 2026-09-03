@@ -423,6 +423,30 @@ describe("HttpApiClient", () => {
       }))
   })
 
+  it.effect("decodes form-urlencoded responses", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("form", "/form", {
+            success: Schema.Struct({ name: Schema.String }).pipe(HttpApiSchema.asFormUrlEncoded())
+          })
+        )
+      )
+      const client = yield* HttpApiClient.makeWith(Api, {
+        baseUrl: "https://example.test",
+        httpClient: clientFromResponse(() =>
+          new Response("name=Ada", {
+            status: 200,
+            headers: { "content-type": "application/x-www-form-urlencoded" }
+          })
+        )
+      })
+
+      const value = yield* client.test.form({})
+
+      assert.deepStrictEqual(value, { name: "Ada" })
+    }))
+
   describe("response headers", () => {
     it.effect("fails response decoding when a declared header is invalid", () =>
       Effect.gen(function*() {
@@ -500,6 +524,14 @@ describe("HttpApiClient", () => {
         }),
         "https://api.example.com/users/123?page=1&tags=1&tags=2"
       )
+    })
+
+    it("preserves a base URL pathname", () => {
+      const builder = HttpApiClient.urlBuilder(Api, {
+        baseUrl: "https://api.example.com/v1"
+      })
+
+      strictEqual(builder.users.health(), "https://api.example.com/v1/health")
     })
 
     it("encodes path parameters", () => {

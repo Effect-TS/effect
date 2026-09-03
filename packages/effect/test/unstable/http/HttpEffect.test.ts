@@ -120,6 +120,22 @@ describe("HttpEffect", () => {
       strictEqual(streamFinalized < handlerFinalized, true)
     })
 
+    test("streaming HEAD closes the request scope", async () => {
+      let finalized = false
+      const handler = HttpEffect.toWebHandler(Effect.gen(function*() {
+        yield* Effect.addFinalizer(() =>
+          Effect.sync(() => {
+            finalized = true
+          })
+        )
+        return HttpServerResponse.stream(Stream.make("body").pipe(Stream.encodeText))
+      }))
+
+      await handler(new Request("http://localhost:3000/", { method: "HEAD" }))
+
+      strictEqual(finalized, true)
+    })
+
     test("stream runtime", async () => {
       const handler = Effect.succeed(HttpServerResponse.stream(
         Stream.fromEffect(TestValue).pipe(Stream.map(String), Stream.encodeText)

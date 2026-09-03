@@ -16,6 +16,10 @@ type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnn
   SchemaRepresentation.Representation
 >
 
+function formatReferenceToken(token: string): string {
+  return encodeURI(escapeToken(token)).replace(/#/g, "%23")
+}
+
 const jsonSchemaAnnotationExcludedKeys = new Set([
   ...InternalAnnotations.annotationExcludedKeys,
   InternalAnnotations.IDENTIFIER_FALLBACK_KEY,
@@ -220,10 +224,16 @@ function compileJsonSchema(
 
   function finalizeJsonSchema(schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema {
     if (!hasAliases) return schema
+    // URI-encoded slashes separate pointer tokens; only ~1 represents a slash within a token.
     return rewriteRefs(schema, ($ref) =>
-      $ref.replace(/^#\/\$defs\/([^/]*)/, (match, token) => {
+      $ref.replace(/^#\/\$defs\/((?:(?!%2[fF])[^/])*)/, (match, token) => {
+        try {
+          token = decodeURIComponent(token)
+        } catch {
+          // Keep the raw token so malformed callback references can still be canonicalized.
+        }
         const canonical = definitionStates.get(unescapeToken(token))
-        return typeof canonical === "string" ? `#/$defs/${escapeToken(canonical)}` : match
+        return typeof canonical === "string" ? `#/$defs/${formatReferenceToken(canonical)}` : match
       }))
   }
 
@@ -283,7 +293,7 @@ function compileJsonSchema(
   ): JsonSchema.JsonSchema {
     if (representation._tag === "Reference") {
       const canonical = compileDefinition(representation.$ref, path)
-      return { $ref: `#/$defs/${escapeToken(canonical)}` }
+      return { $ref: `#/$defs/${formatReferenceToken(canonical)}` }
     }
     const cached = compiledRepresentations.get(representation)
     if (cached !== undefined) return cached

@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { type JsonSchema, Schema, SchemaAST, SchemaRepresentation } from "effect"
+import { JsonSchema, Schema, SchemaAST, SchemaRepresentation } from "effect"
 import { throws } from "../../utils/assert.ts"
 
 function expectError(thunk: () => void, expected: string | Error): void {
@@ -36,6 +36,36 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
   function compile(representation: SchemaRepresentation.Representation) {
     return SchemaRepresentation.toJsonSchemaDocument({ representation, references: {} }).schema
   }
+
+  describe("local reference round trips", () => {
+    for (
+      const [key, token] of [
+        ["Rate", "Rate"],
+        ["id~a/b", "id~0a~1b"],
+        ["Rate%", "Rate%25"],
+        ["id~a/b%25", "id~0a~1b%2525"]
+      ]
+    ) {
+      it(`preserves the definition named ${key}`, () => {
+        const input = JsonSchema.fromSchemaDraft2020_12({
+          $ref: `#/$defs/${token}`,
+          $defs: { [key]: { type: "string" } }
+        })
+        const imported = SchemaRepresentation.fromJsonSchemaDocument(input)
+        assert.strictEqual(Schema.is(imported)("value"), true)
+        assert.strictEqual(Schema.is(imported)(1), false)
+
+        const output = SchemaRepresentation.toJsonSchemaDocument(
+          SchemaRepresentation.toRepresentation(imported.ast)
+        )
+        assert.deepStrictEqual(Object.keys(output.definitions), [key])
+        const restored = SchemaRepresentation.fromJsonSchemaDocument(output)
+        assert.strictEqual(Schema.is(restored)("value"), true)
+        assert.strictEqual(Schema.is(restored)(1), false)
+        assert.strictEqual(output.schema.$ref, input.schema.$ref)
+      })
+    }
+  })
 
   describe("representation nodes", () => {
     const keywords = [
