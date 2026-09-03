@@ -55,6 +55,7 @@ describe("BrowserRuntime", () => {
       assert.lengthOf(addEventListener.mock.calls, 1)
       assert.lengthOf(removeEventListener.mock.calls, 1)
       assert.strictEqual(removeEventListener.mock.calls[0][1], addEventListener.mock.calls[0][1])
+      assert.isBelow(addEventListener.mock.invocationCallOrder[0], removeEventListener.mock.invocationCallOrder[0])
     } finally {
       removeEventListener.mockRestore()
       addEventListener.mockRestore()
