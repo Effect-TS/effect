@@ -81,17 +81,28 @@ describe("Random", () => {
         assert.strictEqual(value, expected)
       }))
 
-    it.effect("preserves unsupported bounds", () =>
+    it.effect("preserves degenerate bounds", () =>
       Effect.gen(function*() {
-        const program = Effect.all([Random.nextBetween(10, 10), Random.nextBetween(10, Infinity)])
-        const values = yield* program.pipe(
+        const value = yield* Random.nextBetween(10, 10).pipe(
           Effect.provideService(Random.Random, {
             nextIntUnsafe: () => 0,
             nextDoubleUnsafe: () => 0.75
           })
         )
 
-        assert.deepStrictEqual(values, [10, Infinity])
+        assert.strictEqual(value, 10)
+      }))
+
+    it.effect("documents current behavior for unsupported bounds", () =>
+      Effect.gen(function*() {
+        const value = yield* Random.nextBetween(10, Infinity).pipe(
+          Effect.provideService(Random.Random, {
+            nextIntUnsafe: () => 0,
+            nextDoubleUnsafe: () => 0.75
+          })
+        )
+
+        assert.strictEqual(value, Infinity)
       }))
 
     it.effect("generates number in half-open range", () =>
