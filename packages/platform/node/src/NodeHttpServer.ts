@@ -589,12 +589,13 @@ const handleResponse = (
     case "Uint8Array": {
       nodeResponse.writeHead(response.status, response.statusText, headers)
       // If the body is less than 1MB, we skip the callback
-      if (body.body.length < 1024 * 1024) {
-        nodeResponse.end(body.body)
+      if (body.contentLength < 1024 * 1024) {
+        // Writing text directly lets Node flush headers and body together.
+        nodeResponse.end(body.text ?? body.body)
         return Effect.void
       }
       return Effect.callback<void>((resume) => {
-        nodeResponse.end(body.body, () => resume(Effect.void))
+        nodeResponse.end(body.text ?? body.body, () => resume(Effect.void))
       })
     }
     case "FormData": {

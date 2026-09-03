@@ -13,6 +13,7 @@ import * as Arr from "../../Array.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import { compose, dual, identity } from "../../Function.ts"
+import { fiberEnterInterruptibleUnsafe } from "../../internal/effect.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import type { ReadonlyRecord } from "../../Record.ts"
@@ -219,22 +220,22 @@ export const make = Effect.gen(function*() {
           params: result.params
         })
 
-        const span = Context.getOrUndefined(context, Tracer.ParentSpan)
-        if (
-          span !== undefined && span._tag === "Span" && span.sampled &&
-          fiber.getRef(Tracer.Tracer) !== Tracer.nativeTracer
-        ) {
-          span.attribute("http.route", route.path)
+        if (fiber.getRef(Tracer.Tracer) !== Tracer.nativeTracer) {
+          const span = Context.getOrUndefined(context, Tracer.ParentSpan)
+          if (span !== undefined && span._tag === "Span" && span.sampled) {
+            span.attribute("http.route", route.path)
+          }
         }
-        return Effect.updateContext(
-          (route.uninterruptible ?
-            route.handler :
-            Effect.interruptible(route.handler)) as Effect.Effect<
-              HttpServerResponse.HttpServerResponse,
-              unknown
-            >,
-          () => context
-        )
+        // The enclosing request restores the fiber context on exit.
+        fiber.setContext(context)
+        if (!route.uninterruptible) {
+          const interrupted = fiberEnterInterruptibleUnsafe(fiber)
+          if (interrupted !== undefined) return interrupted
+        }
+        return route.handler as Effect.Effect<
+          HttpServerResponse.HttpServerResponse,
+          unknown
+        >
       })
       if (middleware.size === 0) return handler
       for (const fn of Arr.reverse(middleware)) {
@@ -297,7 +298,9 @@ export const params: Effect.Effect<
   ReadonlyRecord<string, string | undefined>,
   never,
   RouteContext
-> = Effect.map(RouteContext, (_) => _.params)
+> = Effect.withFiberSucceed((fiber) =>
+  Context.getUnsafe(fiber.context as Context.Context<RouteContext>, RouteContext).params
+)
 
 /**
  * Decodes a schema from the current request and its JSON body.

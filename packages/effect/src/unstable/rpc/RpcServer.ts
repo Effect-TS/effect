@@ -1154,7 +1154,9 @@ export const makeProtocolWithHttpEffect: (
 
     if (!includesFraming) {
       const responses = yield* Queue.collect(queue)
-      return HttpServerResponse.text(parser.encode(responses) as string, {
+      // Notification-only batches encode without a response body.
+      const encoded = parser.encode(responses)
+      return HttpServerResponse.text(encoded === undefined ? "" : encoded as string, {
         contentType: serialization.contentType
       })
     }

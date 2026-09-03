@@ -14,13 +14,13 @@ import { Clock } from "../../Clock.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
+import type * as Fiber from "../../Fiber.ts"
 import { constant, constFalse } from "../../Function.ts"
 import * as internalEffect from "../../internal/effect.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import type { Predicate } from "../../Predicate.ts"
 import type { ReadonlyRecord } from "../../Record.ts"
-import { TracerEnabled } from "../../References.ts"
 import { nativeTracer, ParentSpan, Tracer } from "../../Tracer.ts"
 import * as Headers from "./Headers.ts"
 import type { CompressionAlgorithm } from "./HttpPlatform.ts"
@@ -171,6 +171,12 @@ export const logger: <E, R>(
   })
 )
 
+/** @internal */
+export const isTracerDisabledUnsafe = (
+  fiber: Fiber.Fiber<unknown, unknown>,
+  request: HttpServerRequest
+): boolean => !fiber.cache.tracerEnabled || fiber.getRef(TracerDisabledWhen)(request)
+
 /**
  * Middleware that creates a server trace span for each request and records request and response HTTP attributes.
  *
@@ -182,8 +188,7 @@ export const tracer: <E, R>(
 ) => Effect.Effect<HttpServerResponse, E, HttpServerRequest | R> = make((httpApp) =>
   Effect.withFiber((fiber) => {
     const request = Context.getUnsafe(fiber.context, HttpServerRequest)
-    const disabled = !fiber.getRef(TracerEnabled) || fiber.getRef(TracerDisabledWhen)(request)
-    if (disabled) {
+    if (isTracerDisabledUnsafe(fiber, request)) {
       return httpApp
     }
     const nameGenerator = fiber.getRef(SpanNameGenerator)
