@@ -65,6 +65,7 @@ const toPlatformError = (
 
 type ExitCodeWithSignal = readonly [code: number | null, signal: NodeJS.Signals | null]
 type ExitSignal = Deferred.Deferred<ExitCodeWithSignal>
+type CloseSignal = Deferred.Deferred<ExitCodeWithSignal>
 
 const taskkill = (
   childProcess: NodeChildProcess.ChildProcess,
@@ -336,10 +337,11 @@ const make = Effect.gen(function*() {
     spawnOptions: NodeChildProcess.SpawnOptions
   ) =>
     Effect.callback<
-      readonly [NodeChildProcess.ChildProcess, ExitSignal],
+      readonly [NodeChildProcess.ChildProcess, ExitSignal, CloseSignal],
       PlatformError.PlatformError
     >((resume) => {
-      const deferred = Deferred.makeUnsafe<ExitCodeWithSignal>()
+      const exitSignal = Deferred.makeUnsafe<ExitCodeWithSignal>()
+      const closeSignal = Deferred.makeUnsafe<ExitCodeWithSignal>()
       const handle = NodeChildProcess.spawn(
         command.command,
         command.args,
@@ -349,10 +351,13 @@ const make = Effect.gen(function*() {
         resume(Effect.fail(toPlatformError("spawn", error, command)))
       })
       handle.on("exit", (...args) => {
-        Deferred.doneUnsafe(deferred, Exit.succeed(args))
+        Deferred.doneUnsafe(exitSignal, Exit.succeed(args))
+      })
+      handle.on("close", (...args) => {
+        Deferred.doneUnsafe(closeSignal, Exit.succeed(args))
       })
       handle.on("spawn", () => {
-        resume(Effect.succeed([handle, deferred]))
+        resume(Effect.succeed([handle, exitSignal, closeSignal]))
       })
       return Effect.sync(() => {
         handle.kill("SIGTERM")
@@ -481,14 +486,14 @@ const make = Effect.gen(function*() {
         const env = resolveEnvironment(cmd.options)
         const stdio = buildStdioArray(stdinConfig, stdoutConfig, stderrConfig, resolvedAdditionalFds)
 
-        const [childProcess, exitSignal] = yield* Effect.acquireRelease(
+        const [childProcess, exitSignal, closeSignal] = yield* Effect.acquireRelease(
           spawn(cmd, buildSpawnOptions(cmd.options, { cwd, env, stdio }, process.platform)),
-          Effect.fnUntraced(function*([childProcess, exitSignal]) {
-            const exited = yield* Deferred.isDone(exitSignal)
+          Effect.fnUntraced(function*([childProcess, , closeSignal]) {
+            const closed = yield* Deferred.isDone(closeSignal)
             const killWithTimeout = withTimeout(childProcess, cmd, cmd.options)
-            if (exited) {
-              // Process already exited, check if children need cleanup
-              const [code] = yield* Deferred.await(exitSignal)
+            if (closed) {
+              // Process and inherited stdio already closed; check whether the process group needs cleanup
+              const [code] = yield* Deferred.await(closeSignal)
               if (code !== 0 && Predicate.isNotNull(code)) {
                 // Non-zero exit code ,attempt to clean up process group
                 return yield* Effect.ignore(killWithTimeout(killProcessGroup))
@@ -498,11 +503,11 @@ const make = Effect.gen(function*() {
             if (!isReferenced) {
               return yield* Effect.void
             }
-            // Process is still running, kill it
+            // Process or inherited stdio is still open; terminate the process group
             return yield* killWithTimeout((command, childProcess, signal) =>
               killProcessGroup(command, childProcess, signal).pipe(
                 Effect.catch(() => killProcess(command, childProcess, signal)),
-                Effect.andThen(Deferred.await(exitSignal))
+                Effect.andThen(Deferred.await(closeSignal))
               )
             ).pipe(
               Effect.ignore
@@ -548,7 +553,7 @@ const make = Effect.gen(function*() {
           return killWithTimeout((command, childProcess, signal) =>
             killProcessGroup(command, childProcess, signal).pipe(
               Effect.catch(() => killProcess(command, childProcess, signal)),
-              Effect.andThen(Deferred.await(exitSignal))
+              Effect.andThen(Deferred.await(closeSignal))
             )
           ).pipe(
             Effect.asVoid
