@@ -7,7 +7,7 @@ permissions: {}
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     timeout-minutes: 30
     env:
       EFFECT_CLUSTER_TESTS: "1"

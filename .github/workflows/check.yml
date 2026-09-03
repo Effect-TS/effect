@@ -15,7 +15,7 @@ permissions: {}
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10
@@ -27,7 +27,7 @@ jobs:
 
   types:
     name: Types
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10
@@ -41,7 +41,7 @@ jobs:
   build:
     name: Build
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10
@@ -56,7 +56,7 @@ jobs:
 
   types-deno:
     name: Types on Deno
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10
@@ -74,7 +74,7 @@ jobs:
   bundle:
     name: Bundle
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10
@@ -108,7 +108,7 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     env:
       EFFECT_INTEGRATION_TESTS: "1"
     permissions:
@@ -151,7 +151,7 @@ jobs:
 
   test-bun:
     name: Test on Bun
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10
@@ -166,7 +166,7 @@ jobs:
 
   doctest:
     name: Documentation Tests
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10
@@ -179,7 +179,7 @@ jobs:
 
   ai-docgen:
     name: AI Documentation Generation
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10
@@ -199,7 +199,7 @@ jobs:
 
   circular:
     name: Circular Dependencies
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     permissions:
       contents: read
     timeout-minutes: 10

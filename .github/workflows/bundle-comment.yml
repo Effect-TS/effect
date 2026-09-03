@@ -15,7 +15,7 @@ jobs:
   comment:
     name: Bundle
     if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-default
     permissions:
       actions: read
       pull-requests: write
