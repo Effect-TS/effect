@@ -4398,7 +4398,22 @@ export const cachedWithTTL: {
 
 /** @internal */
 export const cached = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Effect.Effect<A, E, R>> =>
-  cachedWithTTL(self, Duration.infinity)
+  sync(() => {
+    const latch = makeLatchUnsafe(false)
+    let started = false
+    let exit: Exit.Exit<A, E> | undefined
+    const wait = flatMap(latch.await, () => exit!)
+    return suspend(() => {
+      if (exit !== undefined) return exit
+      if (started) return wait
+      started = true
+      return onExit(self, (result) =>
+        sync(() => {
+          exit = result
+          latch.openUnsafe()
+        }))
+    })
+  })
 
 // ----------------------------------------------------------------------------
 // interruption

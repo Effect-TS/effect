@@ -667,18 +667,12 @@ class StaticNode extends ParentNode {
   private setPrefix(prefix: string) {
     this.prefix = prefix
 
+    // Child selection already matched the first character.
     if (prefix.length === 1) {
       this.matchPrefix = (_path, _pathIndex) => true
     } else {
-      const len = prefix.length
-      this.matchPrefix = function(path, pathIndex) {
-        for (let i = 1; i < len; i++) {
-          if (path.charCodeAt(pathIndex + i) !== this.prefix.charCodeAt(i)) {
-            return false
-          }
-        }
-        return true
-      }
+      const tail = prefix.slice(1)
+      this.matchPrefix = (path, pathIndex) => path.startsWith(tail, pathIndex + 1)
     }
   }
 
