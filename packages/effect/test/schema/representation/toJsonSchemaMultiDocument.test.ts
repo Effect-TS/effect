@@ -196,7 +196,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
       })
     }
 
-    it("rewrites callback references containing a bare percent sign", () => {
+    it("rejects bare percent signs in callback reference URI fragments", () => {
       const Content = Schema.String.annotate({ identifier: "Rate%" })
       const make = () =>
         Schema.toCodecJson(
@@ -207,12 +207,14 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
       const callback = Schema.Unknown.check(Schema.makeFilter(() => true, {
         toJsonSchema: () => ({ $ref: "#/$defs/Rate%Encoded_1" })
       }))
-      const output = SchemaRepresentation.toJsonSchemaMultiDocument(
-        SchemaRepresentation.toRepresentations([make().ast, make().ast, callback.ast])
+      expectError(
+        () =>
+          SchemaRepresentation.toJsonSchemaMultiDocument(
+            SchemaRepresentation.toRepresentations([make().ast, make().ast, callback.ast])
+          ),
+        `Invalid JSON Schema reference "#/$defs/Rate%Encoded_1": invalid JSON Pointer URI fragment
+  at ["representations"][2]["checks"][0]["annotations"]["toJsonSchema"]`
       )
-
-      assert.deepStrictEqual(Object.keys(output.definitions), ["Rate%Encoded"])
-      assert.deepStrictEqual(output.schemas[2], { $ref: "#/$defs/Rate%25Encoded" })
     })
 
     for (const separator of ["/", "%2F", "%2f", "~1", "%7E1"]) {

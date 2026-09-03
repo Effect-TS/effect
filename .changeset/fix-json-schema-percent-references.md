@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix JSON Schema reference encoding for definition names containing percent signs.
+Add `JsonPointer.parseUriFragment` and `JsonPointer.formatUriFragment` for converting RFC 6901 URI fragments, and use them to preserve percent-encoded definition names in exported JSON Schema references. JSON Schema compilation now rejects malformed local definition references returned by `toJsonSchema` hooks. Such hooks must encode literal percent signs as `%25`.

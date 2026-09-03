@@ -1,8 +1,8 @@
 /**
- * Helpers for escaping and unescaping JSON Pointer path segments. JSON Pointer
- * uses `/` to separate path tokens inside a JSON document, so token text must
- * encode literal `~` and `/` characters. This module provides the two RFC 6901
- * token conversions used by JSON Patch and related path handling.
+ * Helpers for escaping JSON Pointer path segments and converting JSON Pointer
+ * URI fragments. JSON Pointer uses `/` to separate path tokens inside a JSON
+ * document, so token text must encode literal `~` and `/` characters. URI
+ * fragments additionally apply percent-encoding after JSON Pointer escaping.
  *
  * @since 4.0.0
  */
@@ -77,4 +77,83 @@ export function escapeToken(token: string): string {
  */
 export function unescapeToken(token: string): string {
   return token.replace(/~1/g, "/").replace(/~0/g, "~")
+}
+
+/**
+ * Parses a JSON Pointer URI fragment into decoded path tokens.
+ *
+ * **When to use**
+ *
+ * Use when you need to resolve a URI fragment against a JSON document.
+ *
+ * **Details**
+ *
+ * Percent-encoding is decoded before the pointer is split into tokens, then
+ * each token is decoded with {@link unescapeToken}. The empty string and `#`
+ * both represent the document root.
+ *
+ * **Gotchas**
+ *
+ * Returns `undefined` when the input is not a URI fragment, contains invalid
+ * percent-encoding, or contains an invalid JSON Pointer escape sequence.
+ *
+ * **Example** (Parsing URI fragments)
+ *
+ * ```ts import.meta.vitest
+ * import { JsonPointer } from "effect"
+ *
+ * JsonPointer.parseUriFragment("#/users/a~1b") // => ["users", "a/b"]
+ * JsonPointer.parseUriFragment("#/caf%C3%A9") // => ["café"]
+ * JsonPointer.parseUriFragment("#/%") // => undefined
+ * ```
+ *
+ * @see {@link formatUriFragment} for the inverse operation
+ * @category decoding
+ * @since 4.0.0
+ */
+export function parseUriFragment(fragment: string): ReadonlyArray<string> | undefined {
+  if (fragment.length === 0 || fragment === "#") return []
+  if (!fragment.startsWith("#")) return undefined
+  let pointer: string
+  try {
+    pointer = decodeURIComponent(fragment.slice(1))
+  } catch {
+    return undefined
+  }
+  if (!pointer.startsWith("/") || /~(?:[^01]|$)/.test(pointer)) return undefined
+  return pointer.slice(1).split("/").map(unescapeToken)
+}
+
+/**
+ * Formats path tokens as a JSON Pointer URI fragment.
+ *
+ * **When to use**
+ *
+ * Use when you need a URI fragment that identifies a value in a JSON document.
+ *
+ * **Details**
+ *
+ * Each token is encoded with {@link escapeToken} before URI percent-encoding
+ * is applied. An empty path is formatted as `#`.
+ *
+ * **Gotchas**
+ *
+ * Throws a `URIError` when a token contains an unpaired surrogate.
+ *
+ * **Example** (Formatting a URI fragment)
+ *
+ * ```ts import.meta.vitest
+ * import { JsonPointer } from "effect"
+ *
+ * JsonPointer.formatUriFragment(["users", "a/b", "Rate%"]) // => "#/users/a~1b/Rate%25"
+ * ```
+ *
+ * @see {@link parseUriFragment} for the inverse operation
+ * @category encoding
+ * @since 4.0.0
+ */
+export function formatUriFragment(path: ReadonlyArray<string>): string {
+  return path.length === 0
+    ? "#"
+    : `#/${path.map((token) => encodeURI(escapeToken(token)).replace(/#/g, "%23")).join("/")}`
 }
