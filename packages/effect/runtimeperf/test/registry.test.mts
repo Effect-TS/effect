@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import { describe, it } from "node:test"
 import { pathToFileURL } from "node:url"
-import { loadRegistry } from "../utils.mts"
+import { loadRegistry, selectFixtures } from "../utils.mts"
 
 describe("runtimeperf registry", () => {
   it("uses unique fixture targets and valid implementations", () => {
@@ -22,6 +22,18 @@ describe("runtimeperf registry", () => {
         ].includes(fixture.implementation)
       )
     }
+  })
+
+  it("selects Effect implementation variants for comparisons", () => {
+    const { fixtures } = loadRegistry()
+    const selected = selectFixtures(
+      fixtures,
+      { target: "moltar-parse-safe/valid-effect-compiled" },
+      { effectOnly: true }
+    )
+
+    assert.equal(selected.length, 1)
+    assert.equal(selected[0].implementation, "effect-compiled")
   })
 
   it("pairs every Arbitrary scenario across the native and fast-check implementations", () => {

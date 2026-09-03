@@ -147,7 +147,9 @@ export const selectFixtures = (fixtures, options, { effectOnly = false } = {}) =
     selected = selected.filter((fixture) => fixture.implementation === options.implementation)
   }
   if (effectOnly) {
-    selected = selected.filter((fixture) => fixture.implementation === "effect")
+    selected = selected.filter((fixture) =>
+      fixture.implementation === "effect" || fixture.implementation.startsWith("effect-")
+    )
   }
   if (selected.length === 0) {
     throw new Error("No runtimeperf fixtures matched the selection")
