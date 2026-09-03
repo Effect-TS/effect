@@ -3,7 +3,7 @@ import { Context, Effect, Effectable, Exit, Fiber } from "effect"
 
 // A single immediate snapshot of finite programs, not a polling window. Always
 // interrupt and await even when the assertion in the caller will fail.
-const snapshot = async <A, E>(id: string, effect: Effect.Effect<A, E>) => {
+const snapshot = async <A, E>(effect: Effect.Effect<A, E>) => {
   const fiber = Effect.runFork(effect)
   let sampled: Exit.Exit<A, E> | undefined
   try {
@@ -12,7 +12,6 @@ const snapshot = async <A, E>(id: string, effect: Effect.Effect<A, E>) => {
   } finally {
     fiber.interruptUnsafe()
     const terminal = await Effect.runPromise(Fiber.await(fiber))
-    console.log(JSON.stringify({ id, sampled: sampled ?? null, terminal, cleanup: fiber.pollUnsafe() !== undefined }))
     assert.isDefined(fiber.pollUnsafe())
     if (sampled === undefined) assert.isTrue(Exit.hasInterrupts(terminal))
     else assert.strictEqual(terminal, sampled)
@@ -36,26 +35,26 @@ class ServiceAnswer extends Effectable.Class<number, never, AnswerService> {
 describe("Effectable.Class R5", () => {
   it("E01 finite success delegates to override", async () => {
     const answer: Effect.Effect<number> = new Answer()
-    assert.deepEqual(await snapshot("E01", answer), Exit.succeed(42))
+    assert.deepEqual(await snapshot(answer), Exit.succeed(42))
   })
 
   it("E02 finite typed failure delegates to override", async () => {
     const failed: Effect.Effect<never, string> = new Failed()
-    assert.deepEqual(await snapshot("E02", failed), Exit.fail("expected"))
+    assert.deepEqual(await snapshot(failed), Exit.fail("expected"))
   })
 
   it("E03 Effect.gen yields the class success", async () => {
     const program = Effect.gen(function*() {
       return (yield* new Answer()) + 1
     })
-    assert.deepEqual(await snapshot("E03", program), Exit.succeed(43))
+    assert.deepEqual(await snapshot(program), Exit.succeed(43))
   })
 
   it("E04 Effect.gen yields the class failure", async () => {
     const program = Effect.gen(function*() {
       return yield* new Failed()
     })
-    assert.deepEqual(await snapshot("E04", program), Exit.fail("expected"))
+    assert.deepEqual(await snapshot(program), Exit.fail("expected"))
   })
 
   it("E05 getter stays lazy and reads this on every run", async () => {
@@ -69,11 +68,10 @@ describe("Effectable.Class R5", () => {
     }
     const answer = new GetterAnswer()
     assert.strictEqual(answer.reads, 0)
-    const first = await snapshot("E05.first", answer)
+    const first = await snapshot(answer)
     const readsAfterFirst = answer.reads
     answer.answer = 43
-    const second = await snapshot("E05.second", answer)
-    console.log(JSON.stringify({ id: "E05.reads", readsAfterFirst, readsAfterSecond: answer.reads }))
+    const second = await snapshot(answer)
     assert.strictEqual(readsAfterFirst, 1)
     assert.strictEqual(answer.reads, 2)
     assert.deepEqual(first, Exit.succeed(42))
@@ -86,9 +84,8 @@ describe("Effectable.Class R5", () => {
       readonly override = Effect.sync(() => ++this.value)
     }
     const counter = new Counter()
-    const first = await snapshot("E06.first", counter)
-    const second = await snapshot("E06.second", counter)
-    console.log(JSON.stringify({ id: "E06.receiver", value: counter.value }))
+    const first = await snapshot(counter)
+    const second = await snapshot(counter)
     assert.deepEqual(first, Exit.succeed(42))
     assert.deepEqual(second, Exit.succeed(43))
     assert.strictEqual(counter.value, 43)
@@ -96,20 +93,20 @@ describe("Effectable.Class R5", () => {
 
   it("E07 delegates with the provided service on each run", async () => {
     const answer: Effect.Effect<number, never, AnswerService> = new ServiceAnswer()
-    const first = await snapshot("E07.first", Effect.provideService(answer, AnswerService, { answer: 42 }))
-    const second = await snapshot("E07.second", Effect.provideService(answer, AnswerService, { answer: 43 }))
+    const first = await snapshot(Effect.provideService(answer, AnswerService, { answer: 42 }))
+    const second = await snapshot(Effect.provideService(answer, AnswerService, { answer: 43 }))
     assert.deepEqual(first, Exit.succeed(42))
     assert.deepEqual(second, Exit.succeed(43))
   })
 
   it("EC01 direct finite overrides finish", async () => {
-    assert.deepEqual(await snapshot("EC01.success", new Answer().override), Exit.succeed(42))
-    assert.deepEqual(await snapshot("EC01.failure", new Failed().override), Exit.fail("expected"))
+    assert.deepEqual(await snapshot(new Answer().override), Exit.succeed(42))
+    assert.deepEqual(await snapshot(new Failed().override), Exit.fail("expected"))
   })
 
   it("EC02 direct service override finishes", async () => {
     const direct = Effect.provideService(new ServiceAnswer().override, AnswerService, { answer: 42 })
-    assert.deepEqual(await snapshot("EC02", direct), Exit.succeed(42))
+    assert.deepEqual(await snapshot(direct), Exit.succeed(42))
   })
 
   it("EC03 finite Prototype evaluator preserves its receiver and API", async () => {
@@ -122,8 +119,8 @@ describe("Effectable.Class R5", () => {
       }),
       { answer: 42 }
     )
-    assert.deepEqual(await snapshot("EC03.first", prototype), Exit.succeed(42))
+    assert.deepEqual(await snapshot(prototype), Exit.succeed(42))
     prototype.answer = 43
-    assert.deepEqual(await snapshot("EC03.second", prototype), Exit.succeed(43))
+    assert.deepEqual(await snapshot(prototype), Exit.succeed(43))
   })
 })
