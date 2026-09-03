@@ -1,7 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Fiber, Metric, String } from "effect"
+import { Duration, Fiber, Layer, Metric, Ref, String } from "effect"
 import * as Effect from "effect/Effect"
 import { TestClock } from "effect/testing"
+import { HttpClient, type HttpClientError, HttpClientResponse } from "effect/unstable/http"
+import { OtlpExporter, OtlpMetrics, OtlpSerialization } from "effect/unstable/observability"
 
 const attributes = { x: "a", y: "b" }
 
@@ -99,6 +101,62 @@ describe("Metric", () => {
   })
 
   describe("Counter", () => {
+    it.effect("exports negative updates as deltas", () =>
+      Effect.gen(function*() {
+        type ExportRequest = {
+          readonly resourceMetrics: ReadonlyArray<{
+            readonly scopeMetrics: ReadonlyArray<{
+              readonly metrics: ReadonlyArray<{
+                readonly name: string
+                readonly sum?: {
+                  readonly dataPoints: ReadonlyArray<{ readonly asDouble?: number }>
+                }
+              }>
+            }>
+          }>
+        }
+
+        const requests = yield* Ref.make<ReadonlyArray<ExportRequest>>([])
+        const client = HttpClient.makeWith(
+          Effect.fnUntraced(function*(requestEffect) {
+            const request = yield* requestEffect
+            if (request.body._tag === "Uint8Array") {
+              const body = JSON.parse(new TextDecoder().decode(request.body.body)) as ExportRequest
+              yield* Ref.update(requests, (requests) => [...requests, body])
+            }
+            return HttpClientResponse.fromWeb(request, new Response())
+          }),
+          Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
+        )
+        const layer = OtlpMetrics.layer({
+          url: "http://localhost:4318/v1/metrics",
+          resource: { serviceName: "test" },
+          temporality: "delta",
+          exportInterval: "1 hour"
+        }).pipe(
+          Layer.provide(OtlpSerialization.layerJson),
+          Layer.provideMerge(Layer.succeed(HttpClient.HttpClient, client))
+        )
+
+        const values = yield* Effect.gen(function*() {
+          const counter = Metric.counter("counter_delta")
+          const flusher = yield* OtlpExporter.Flusher
+          for (const update of [5, -2, 4]) {
+            yield* Metric.update(counter, update)
+            yield* flusher.flush
+          }
+          return (yield* Ref.get(requests)).map((request) =>
+            request.resourceMetrics[0].scopeMetrics[0].metrics.find((metric) => metric.name === "counter_delta")
+              ?.sum?.dataPoints[0].asDouble
+          )
+        }).pipe(
+          Effect.provide(layer),
+          Effect.provideService(Metric.MetricRegistry, new Map())
+        )
+
+        assert.deepStrictEqual(values, [5, -2, 4])
+      }))
+
     it.effect("custom increment with value", () =>
       Effect.gen(function*() {
         const id = nextId()
