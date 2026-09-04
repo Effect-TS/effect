@@ -1,7 +1,14 @@
-import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Layer, Schema } from "effect"
+import { assert, describe, expectTypeOf, it } from "@effect/vitest"
+import { type Cause, Deferred, Effect, Layer, Schema } from "effect"
 import { AsyncResult, Atom, AtomRegistry, AtomRpc, Hydration } from "effect/unstable/reactivity"
-import { Rpc, RpcClient, RpcGroup, RpcMiddleware, type RpcSerialization } from "effect/unstable/rpc"
+import {
+  Rpc,
+  RpcClient,
+  type RpcClientError,
+  RpcGroup,
+  RpcMiddleware,
+  type RpcSerialization
+} from "effect/unstable/rpc"
 
 const Group = RpcGroup.make(
   Rpc.make("getUser", {
@@ -28,6 +35,10 @@ class ClientMiddleware extends RpcMiddleware.Service<ClientMiddleware, {
 const ClientMiddlewareGroup = RpcGroup.make(
   Rpc.make("getUser", {
     success: Schema.String
+  }).middleware(ClientMiddleware),
+  Rpc.make("stream", {
+    success: Schema.String,
+    stream: true
   }).middleware(ClientMiddleware)
 )
 
@@ -50,6 +61,24 @@ const makeClientMiddlewareProtocol = (
   )
 
 describe("AtomRpc", () => {
+  it("includes client middleware errors in atom failure types", () => {
+    const Client = AtomRpc.Service()("MiddlewareClient", {
+      group: ClientMiddlewareGroup,
+      protocol: Layer.empty,
+      makeEffect: Effect.die("unused")
+    })
+
+    const mutation = Client.mutation("getUser")
+    const query = Client.query("getUser", undefined)
+    const stream = Client.query("stream", undefined)
+
+    expectTypeOf<Atom.Failure<typeof mutation>>().toEqualTypeOf<RpcClientError.RpcClientError | ClientFailure>()
+    expectTypeOf<Atom.Failure<typeof query>>().toEqualTypeOf<RpcClientError.RpcClientError | ClientFailure>()
+    expectTypeOf<Atom.Failure<typeof stream>>().toEqualTypeOf<
+      RpcClientError.RpcClientError | ClientFailure | Cause.NoSuchElementError
+    >()
+  })
+
   it.effect("query creates a serializable atom with reactivity and retention", () =>
     Effect.gen(function*() {
       const Client = AtomRpc.Service()("Client", {
