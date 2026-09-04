@@ -6445,7 +6445,7 @@ export const annotateLogsScoped: {
       const next = { ...current }
       for (let i = 0; i < entries.length; i++) {
         const [key, value] = entries[i]
-        if (current[key] !== value) continue
+        if (current[key] !== value && !Object.is(current[key], value)) continue
         if (Object.hasOwn(prev, key)) {
           InternalRecord.assignProperty(next, key, prev[key])
         } else {
