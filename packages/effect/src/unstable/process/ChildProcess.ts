@@ -248,7 +248,13 @@ export interface KillOptions {
    * The duration of time to wait after the child process has been terminated
    * before forcefully killing the child process by sending it the `"SIGKILL"`
    * signal. Defaults to `undefined`, which means that no timeout will be
-   * enforced by default.
+   * enforced by default and `"SIGKILL"` is never sent.
+   *
+   * **Details**
+   *
+   * Termination signals the child's process group and waits for the child to
+   * exit. Without a timeout, remaining members of the process group are then
+   * given one second to exit before termination completes.
    */
   readonly forceKillAfter?: Duration.Input | undefined
 }
