@@ -1,5 +1,13 @@
 # effect
 
+## 3.22.2
+
+### Patch Changes
+
+- [#6233](https://github.com/Effect-TS/effect/pull/6233) [`291d5a9`](https://github.com/Effect-TS/effect/commit/291d5a9bf2ead7b766d613b880831f5d687fd44f) Thanks @mvanhorn! - Fix TMap.remove and removeAll erroneously clearing entire bucket on hash collision.
+
+- [#7170](https://github.com/Effect-TS/effect/pull/7170) [`7c6e1e5`](https://github.com/Effect-TS/effect/commit/7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae) Thanks @thewilkybarkid! - Fix use of Schema.NonEmptyArrayEnsure with strings
+
 ## 3.22.1
 
 ### Patch Changes

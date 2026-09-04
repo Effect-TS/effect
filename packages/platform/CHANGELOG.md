@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.97.2
+
+### Patch Changes
+
+- [#7998](https://github.com/Effect-TS/effect/pull/7998) [`2e471d9`](https://github.com/Effect-TS/effect/commit/2e471d9cec31889cd6548aa5423b64c2b85238be) Thanks @bun-unsafe! - Fix multipart limit failures being silently ignored.
+
+- Updated dependencies [[`291d5a9`](https://github.com/Effect-TS/effect/commit/291d5a9bf2ead7b766d613b880831f5d687fd44f), [`7c6e1e5`](https://github.com/Effect-TS/effect/commit/7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae)]:
+  - effect@3.22.2
+
 ## 0.97.1
 
 ### Patch Changes

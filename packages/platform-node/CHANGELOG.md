@@ -1,5 +1,15 @@
 # @effect/platform-node
 
+## 0.108.2
+
+### Patch Changes
+
+- [#7457](https://github.com/Effect-TS/effect/pull/7457) [`365156a`](https://github.com/Effect-TS/effect/commit/365156a741806e9b5ebb8a0369c4934e368c1b17) Thanks @musawirali! - Prevent NodeHttpServer from writing the route's HTTP response onto a connection that was upgraded to a WebSocket connection because stricter clients will interpret those bytes as WebSocket frames, logging "Invalid frame header" and failing the connection with an untyped 1006 error instead of the actual close code that the server sent.
+
+- Updated dependencies [[`291d5a9`](https://github.com/Effect-TS/effect/commit/291d5a9bf2ead7b766d613b880831f5d687fd44f), [`2e471d9`](https://github.com/Effect-TS/effect/commit/2e471d9cec31889cd6548aa5423b64c2b85238be), [`7c6e1e5`](https://github.com/Effect-TS/effect/commit/7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae)]:
+  - effect@3.22.2
+  - @effect/platform@0.97.2
+
 ## 0.108.1
 
 ### Patch Changes
