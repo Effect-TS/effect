@@ -51,6 +51,16 @@ declare const mixedEffect: Effect.Effect<string, AiError | OtherError>
 declare const simpleEffect: Effect.Effect<string, SimpleError>
 declare const noSuchOrOther: Effect.Effect<string, Cause.NoSuchElementError | OtherError>
 declare const onlyNoSuch: Effect.Effect<number, Cause.NoSuchElementError>
+declare const consumeSimple: (effect: Effect.Effect<number, SimpleError>) => void
+declare const tryInput:
+  | (() => number)
+  | { readonly try: () => number; readonly catch: (error: unknown) => SimpleError }
+declare const tryPromiseInput:
+  | ((signal: AbortSignal) => PromiseLike<number>)
+  | {
+    readonly try: (signal: AbortSignal) => PromiseLike<number>
+    readonly catch: (error: unknown) => SimpleError
+  }
 
 declare const string: Effect.Effect<string, "err-1", "dep-1">
 declare const number: Effect.Effect<number, "err-2", "dep-2">
@@ -125,22 +135,55 @@ describe("Types", () => {
 })
 
 describe("Effect.try", () => {
-  it("supports direct-thunk form", () => {
+  it("infers UnknownError for the direct-thunk form", () => {
     const result = Effect.try(() => 1)
     expect(result).type.toBe<Effect.Effect<number, Cause.UnknownError>>()
   })
 
-  it("supports options form with typed error mapping", () => {
+  it("retains UnknownError when the success type is explicit", () => {
+    const result = Effect.try<number>(() => 1)
+    expect(result).type.toBe<Effect.Effect<number, Cause.UnknownError>>()
+  })
+
+  it("rejects a narrower return annotation for the direct-thunk form", () => {
+    function load(): Effect.Effect<number, SimpleError> {
+      // @ts-expect-error is not assignable to type
+      return Effect.try(() => 1)
+    }
+    expect(load).type.toBe<() => Effect.Effect<number, SimpleError>>()
+  })
+
+  it("rejects the direct-thunk form in a narrower argument position", () => {
+    // @ts-expect-error is not assignable to parameter
+    consumeSimple(Effect.try(() => 1))
+  })
+
+  it("infers the mapped error from the options form", () => {
     const result = Effect.try({
       try: () => 1,
       catch: () => new SimpleError({ code: 1 })
     })
     expect(result).type.toBe<Effect.Effect<number, SimpleError>>()
   })
+
+  it("includes UnknownError when both type parameters are explicit for the direct-thunk form", () => {
+    const result = Effect.try<number, SimpleError>(() => 1)
+    expect(result).type.toBe<Effect.Effect<number, SimpleError | Cause.UnknownError>>()
+  })
+
+  it("includes UnknownError for a union input", () => {
+    const result = Effect.try(tryInput)
+    expect(result).type.toBe<Effect.Effect<number, SimpleError | Cause.UnknownError>>()
+  })
+
+  it("supports a generic direct-thunk wrapper", () => {
+    const wrap = <A>(thunk: () => A): Effect.Effect<A, Cause.UnknownError> => Effect.try(thunk)
+    expect(wrap(() => "value")).type.toBe<Effect.Effect<string, Cause.UnknownError>>()
+  })
 })
 
 describe("Effect.tryPromise", () => {
-  it("supports direct-thunk form", () => {
+  it("infers UnknownError for the direct-thunk form", () => {
     const result = Effect.tryPromise((signal) => {
       expect(signal).type.toBe<AbortSignal>()
       return Promise.resolve(1)
@@ -148,7 +191,25 @@ describe("Effect.tryPromise", () => {
     expect(result).type.toBe<Effect.Effect<number, Cause.UnknownError>>()
   })
 
-  it("supports options form with typed error mapping", () => {
+  it("retains UnknownError when the success type is explicit", () => {
+    const result = Effect.tryPromise<number>(() => Promise.resolve(1))
+    expect(result).type.toBe<Effect.Effect<number, Cause.UnknownError>>()
+  })
+
+  it("rejects a narrower return annotation for the direct-thunk form", () => {
+    function load(): Effect.Effect<number, SimpleError> {
+      // @ts-expect-error is not assignable to type
+      return Effect.tryPromise(() => Promise.resolve(1))
+    }
+    expect(load).type.toBe<() => Effect.Effect<number, SimpleError>>()
+  })
+
+  it("rejects the direct-thunk form in a narrower argument position", () => {
+    // @ts-expect-error is not assignable to parameter
+    consumeSimple(Effect.tryPromise(() => Promise.resolve(1)))
+  })
+
+  it("infers the mapped error from the options form", () => {
     const result = Effect.tryPromise({
       try: (signal) => {
         expect(signal).type.toBe<AbortSignal>()
@@ -157,6 +218,22 @@ describe("Effect.tryPromise", () => {
       catch: () => new SimpleError({ code: 1 })
     })
     expect(result).type.toBe<Effect.Effect<number, SimpleError>>()
+  })
+
+  it("includes UnknownError when both type parameters are explicit for the direct-thunk form", () => {
+    const result = Effect.tryPromise<number, SimpleError>(() => Promise.resolve(1))
+    expect(result).type.toBe<Effect.Effect<number, SimpleError | Cause.UnknownError>>()
+  })
+
+  it("includes UnknownError for a union input", () => {
+    const result = Effect.tryPromise(tryPromiseInput)
+    expect(result).type.toBe<Effect.Effect<number, SimpleError | Cause.UnknownError>>()
+  })
+
+  it("supports a generic direct-thunk wrapper", () => {
+    const wrap = <A>(thunk: (signal: AbortSignal) => PromiseLike<A>): Effect.Effect<A, Cause.UnknownError> =>
+      Effect.tryPromise(thunk)
+    expect(wrap(() => Promise.resolve("value"))).type.toBe<Effect.Effect<string, Cause.UnknownError>>()
   })
 })
 
