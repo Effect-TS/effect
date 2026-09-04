@@ -33,6 +33,12 @@ const decodeByteStream = Effect.fnUntraced(
   }
 )
 
+const liveSleep = (millis: number) =>
+  Effect.callback<void>((resume) => {
+    const timer = setTimeout(() => resume(Effect.void), millis)
+    return Effect.sync(() => clearTimeout(timer))
+  })
+
 export const suite = (
   name: string,
   layer: Layer.Layer<ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path>,
@@ -491,16 +497,12 @@ export const suite = (
                 TestClock.withLive
               )
 
-              const completed = yield* handle.kill({
-                killSignal: "SIGTERM",
-                forceKillAfter: "50 millis"
-              }).pipe(
-                Effect.as(true),
-                Effect.timeoutOrElse({
-                  duration: "1 second",
-                  orElse: () => Effect.succeed(false)
-                }),
-                TestClock.withLive
+              const completed = yield* Effect.raceFirst(
+                handle.kill({
+                  killSignal: "SIGTERM",
+                  forceKillAfter: "50 millis"
+                }).pipe(Effect.as(true)),
+                liveSleep(1_000).pipe(Effect.as(false))
               )
 
               assert.isTrue(completed)
