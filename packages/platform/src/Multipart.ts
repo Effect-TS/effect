@@ -336,7 +336,9 @@ export const makeChannel = <IE>(
           exit = Option.some(Exit.fail(convertError(error_)))
         },
         onDone() {
-          exit = Option.some(Exit.void)
+          if (Option.isNone(exit)) {
+            exit = Option.some(Exit.void)
+          }
         }
       })
 
