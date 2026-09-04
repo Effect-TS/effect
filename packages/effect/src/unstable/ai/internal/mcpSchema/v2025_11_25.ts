@@ -325,17 +325,17 @@ export const LegacyTitledEnumSchema = Schema.Struct({
 
 /** @internal */
 export const EnumSchema = Schema.Union([
+  LegacyTitledEnumSchema,
   SingleSelectEnumSchema,
-  MultiSelectEnumSchema,
-  LegacyTitledEnumSchema
+  MultiSelectEnumSchema
 ])
 
 /** @internal */
 export const PrimitiveSchemaDefinition = Schema.Union([
+  EnumSchema,
   StringSchema,
   NumberSchema,
-  BooleanSchema,
-  EnumSchema
+  BooleanSchema
 ])
 
 /** @internal */

@@ -256,7 +256,15 @@ const mrtrToolLayer = Layer.effectDiscard(
                   message: "Approve the operation",
                   requestedSchema: {
                     type: "object",
-                    properties: { approved: { type: "boolean" } },
+                    properties: {
+                      approved: { type: "boolean" },
+                      color: { type: "string", enum: ["red", "blue"] },
+                      titled: {
+                        type: "string",
+                        oneOf: [{ const: "red", title: "Red" }, { const: "blue", title: "Blue" }]
+                      },
+                      legacy: { type: "string", enum: ["red", "blue"], enumNames: ["Red", "Blue"] }
+                    },
                     required: ["approved"]
                   }
                 }

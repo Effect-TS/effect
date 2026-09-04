@@ -2500,9 +2500,9 @@ export class LegacyTitledEnum extends Schema.Class<LegacyTitledEnum>(
  * @since 4.0.0
  */
 export const ElicitationEnum = Schema.Union([
+  LegacyTitledEnum,
   SingleSelectEnum,
-  MultiSelectEnum,
-  LegacyTitledEnum
+  MultiSelectEnum
 ])
 
 /**
@@ -2520,10 +2520,10 @@ export type ElicitationEnum = typeof ElicitationEnum.Type
  * @since 4.0.0
  */
 export const PrimitiveSchemaDefinition = Schema.Union([
+  ElicitationEnum,
   ElicitationString,
   ElicitationNumber,
-  ElicitationBoolean,
-  ElicitationEnum
+  ElicitationBoolean
 ])
 
 /**

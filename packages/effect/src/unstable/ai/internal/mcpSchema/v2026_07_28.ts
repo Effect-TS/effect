@@ -269,10 +269,10 @@ export const EnumSchema = Schema.Union([
 ])
 /** @internal */
 export const PrimitiveSchemaDefinition = Schema.Union([
+  EnumSchema,
   StringSchema,
   NumberSchema,
-  BooleanSchema,
-  EnumSchema
+  BooleanSchema
 ])
 /** @internal */
 export const RequestedSchema = Schema.Struct({
