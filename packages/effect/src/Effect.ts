@@ -4609,21 +4609,8 @@ export const timeoutOption: {
 } = internal.timeoutOption
 
 /**
- * Applies a timeout to an effect, with a fallback effect executed if the timeout is reached.
- *
- * **When to use**
- *
- * Use when a timeout of an `Effect` should switch to a fallback effect.
- *
- * **Details**
- *
- * The fallback effect is created lazily by `orElse` and may introduce its own
- * success, failure, and requirement types.
- *
- * **Gotchas**
- *
- * If the timeout wins, the source effect is interrupted before the fallback is
- * run.
+ * Applies a timeout to an effect, lazily evaluating `orElse` after interrupting
+ * the source if the timeout is reached.
  *
  * **Example** (Falling back on timeout)
  *
