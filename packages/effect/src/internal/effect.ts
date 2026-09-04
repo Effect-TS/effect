@@ -4315,7 +4315,7 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
   uninterruptibleMask((restore) =>
     flatMap(acquire, (a) =>
       onExitPrimitive(
-        restore(use(a)),
+        restore(suspend(() => use(a))),
         (exit) => release(a, exit),
         true
       ))
@@ -6062,7 +6062,10 @@ export const useSpan: {
     const span = makeSpanUnsafe(fiber, name, options)
     const clock = fiber.getRef(ClockRef)
     const timingEnabled = fiber.getRef(TracerTimingEnabled)
-    return onExit(internalCall(() => evaluate(span)), (exit) => endSpan(span, exit, clock, timingEnabled))
+    return onExit(
+      suspend(() => internalCall(() => evaluate(span))),
+      (exit) => endSpan(span, exit, clock, timingEnabled)
+    )
   })
 }
 
