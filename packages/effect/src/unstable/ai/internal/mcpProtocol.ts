@@ -55,7 +55,7 @@ export const invocationFromClient = (
     protocolVersion: request.protocolVersion,
     clientCapabilities: request.clientCapabilities,
     clientInfo: request.clientInfo,
-    requestMetadata: request.initializePayload._meta
+    requestMetadata: request.requestMetadata
   }),
   serverClient: request
 })
