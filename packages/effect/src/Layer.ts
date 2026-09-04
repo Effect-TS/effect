@@ -1737,21 +1737,24 @@ export const tap: {
  * @since 2.0.0
  */
 export const tapError: {
-  <E, XE extends E, RIn2, E2, X>(
-    f: (e: XE) => Effect<X, E2, RIn2>
+  <E, _XE extends E, RIn2, E2, X>(
+    f: (e: Types.NoInfer<E>) => Effect<X, E2, RIn2>
   ): <RIn, ROut>(self: Layer<ROut, E, RIn>) => Layer<ROut, E | E2, RIn | Exclude<RIn2, Scope.Scope>>
-  <RIn, E, XE extends E, ROut, RIn2, E2, X>(
+  <E, RIn2, E2, X>(
+    f: (e: E) => Effect<X, E2, RIn2>
+  ): <RIn, ROut, E1 extends E = E>(self: Layer<ROut, E1, RIn>) => Layer<ROut, E1 | E2, RIn | Exclude<RIn2, Scope.Scope>>
+  <RIn, E, _XE extends E, ROut, RIn2, E2, X>(
     self: Layer<ROut, E, RIn>,
-    f: (e: XE) => Effect<X, E2, RIn2>
+    f: (e: Types.NoInfer<E>) => Effect<X, E2, RIn2>
   ): Layer<ROut, E | E2, RIn | Exclude<RIn2, Scope.Scope>>
-} = dual(2, <RIn, E, XE extends E, ROut, RIn2, E2, X>(
+} = dual(2, <RIn, E, ROut, RIn2, E2, X>(
   self: Layer<ROut, E, RIn>,
-  f: (e: XE) => Effect<X, E2, RIn2>
+  f: (e: E) => Effect<X, E2, RIn2>
 ): Layer<ROut, E | E2, RIn | Exclude<RIn2, Scope.Scope>> =>
   fromBuild((memoMap, scope) =>
     internalEffect.catch_(
       self.build(memoMap, scope),
-      (error) => Scope.provide(internalEffect.andThen(f(error as XE), internalEffect.fail(error)), scope)
+      (error) => Scope.provide(internalEffect.andThen(f(error), internalEffect.fail(error)), scope)
     )
   ))
 
@@ -1777,22 +1780,24 @@ export const tapError: {
  * @since 4.0.0
  */
 export const tapCause: {
-  <E, XE extends E, RIn2, E2, X>(
-    f: (cause: Cause.Cause<XE>) => Effect<X, E2, RIn2>
+  <E, _XE extends E, RIn2, E2, X>(
+    f: (cause: Cause.Cause<Types.NoInfer<E>>) => Effect<X, E2, RIn2>
   ): <RIn, ROut>(self: Layer<ROut, E, RIn>) => Layer<ROut, E | E2, RIn | Exclude<RIn2, Scope.Scope>>
-  <RIn, E, XE extends E, ROut, RIn2, E2, X>(
+  <E, RIn2, E2, X>(
+    f: (cause: Cause.Cause<E>) => Effect<X, E2, RIn2>
+  ): <RIn, ROut, E1 extends E = E>(self: Layer<ROut, E1, RIn>) => Layer<ROut, E1 | E2, RIn | Exclude<RIn2, Scope.Scope>>
+  <RIn, E, _XE extends E, ROut, RIn2, E2, X>(
     self: Layer<ROut, E, RIn>,
-    f: (cause: Cause.Cause<XE>) => Effect<X, E2, RIn2>
+    f: (cause: Cause.Cause<Types.NoInfer<E>>) => Effect<X, E2, RIn2>
   ): Layer<ROut, E | E2, RIn | Exclude<RIn2, Scope.Scope>>
-} = dual(2, <RIn, E, XE extends E, ROut, RIn2, E2, X>(
+} = dual(2, <RIn, E, ROut, RIn2, E2, X>(
   self: Layer<ROut, E, RIn>,
-  f: (cause: Cause.Cause<XE>) => Effect<X, E2, RIn2>
+  f: (cause: Cause.Cause<E>) => Effect<X, E2, RIn2>
 ): Layer<ROut, E | E2, RIn | Exclude<RIn2, Scope.Scope>> =>
   fromBuild((memoMap, scope) =>
     internalEffect.catchCause(
       self.build(memoMap, scope),
-      (cause) =>
-        Scope.provide(internalEffect.andThen(f(cause as Cause.Cause<XE>), internalEffect.failCause(cause)), scope)
+      (cause) => Scope.provide(internalEffect.andThen(f(cause), internalEffect.failCause(cause)), scope)
     )
   ))
 
@@ -2675,7 +2680,7 @@ export const withSpan: {
             (span) => internalEffect.addFinalizer((exit) => options.onEnd!(span, exit))
           )
           : internalEffect.makeSpanScoped(name, options),
-        (span) => withParentSpan(self, span)
+        (span) => withParentSpan(self, span, options)
       )
     )
   }
@@ -2688,7 +2693,7 @@ export const withSpan: {
             (span) => internalEffect.addFinalizer((exit) => options.onEnd!(span, exit))
           )
           : internalEffect.makeSpanScoped(name, options),
-        (span) => withParentSpan(self, span)
+        (span) => withParentSpan(self, span, options)
       )
     )
 } as any

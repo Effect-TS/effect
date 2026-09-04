@@ -17,7 +17,7 @@ import type * as Duration from "./Duration.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import { constTrue, dual, identity } from "./Function.ts"
-import { exitFail, exitSucceed } from "./internal/core.ts"
+import { exitSucceed } from "./internal/core.ts"
 import * as Count from "./internal/count.ts"
 import * as effect from "./internal/effect.ts"
 import * as internal from "./internal/request.ts"
@@ -533,7 +533,7 @@ export const fromEffectTagged = <A extends Request.Any & { readonly _tag: string
             onFailure: (cause) => {
               for (let i = 0; i < requests.length; i++) {
                 const entry = requests[i]
-                entry.completeUnsafe(exitFail(cause) as any)
+                entry.completeUnsafe(Exit.failCause(cause) as any)
               }
             },
             onSuccess: (res) => {

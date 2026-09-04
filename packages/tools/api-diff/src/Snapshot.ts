@@ -397,11 +397,14 @@ const serializeClassMember = (
       kind: "property",
       name: nameText(node.name),
       type: node.type === undefined ? { kind: "unknown" } : serializeType(node.type, context),
-      modifiers: visibility
+      modifiers: node.questionToken === undefined ? visibility : [...(visibility ?? []), "optional"].sort()
     }
   }
   if (ts.isMethodDeclaration(node)) {
-    return serializeSignature(node, context, "method", nameText(node.name))
+    return {
+      ...serializeSignature(node, context, "method", nameText(node.name)),
+      modifiers: node.questionToken === undefined ? visibility : [...(visibility ?? []), "optional"].sort()
+    }
   }
   if (ts.isConstructorDeclaration(node)) {
     return serializeSignature(node, context, "constructor", "constructor")
@@ -846,7 +849,14 @@ const extractSnapshot = (
 export const snapshotCacheKey = (
   sha: string,
   modules?: ReadonlyArray<string>
-): string => fingerprint(["snapshot-v4", sha, ts.version, modules === undefined ? "all" : [...modules].sort()])
+): string =>
+  fingerprint([
+    "snapshot-v4",
+    "class-member-optionality-v1",
+    sha,
+    ts.version,
+    modules === undefined ? "all" : [...modules].sort()
+  ])
 
 export class Snapshotter extends Context.Service<Snapshotter, {
   readonly extract: (options: ExtractSnapshotOptions) => Effect.Effect<

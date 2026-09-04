@@ -305,7 +305,8 @@ const isInternalInterruption = Filter.toPredicate(Filter.compose(
  *
  * When the fiber completes, it is removed from the map. If the key already has
  * a fiber, that previous fiber is interrupted unless `onlyIfMissing` is set;
- * in that case the new fiber is interrupted and the existing entry is kept.
+ * in that case a different new fiber is interrupted and the existing entry is
+ * kept, while re-registering the existing fiber is a no-op.
  *
  * **Example** (Adding a fiber unsafely)
  *
@@ -367,10 +368,10 @@ export const setUnsafe: {
 
   const previous = MutableHashMap.get(self.state.backing, key)
   if (previous._tag === "Some") {
-    if (options?.onlyIfMissing === true) {
-      fiber.interruptUnsafe(internalFiberId)
+    if (previous.value === fiber) {
       return
-    } else if (previous.value === fiber) {
+    } else if (options?.onlyIfMissing === true) {
+      fiber.interruptUnsafe(internalFiberId)
       return
     }
   }
@@ -408,7 +409,8 @@ export const setUnsafe: {
  *
  * When the fiber completes, it is removed from the map. If the key already has
  * a fiber, that previous fiber is interrupted unless `onlyIfMissing` is set;
- * in that case the new fiber is interrupted and the existing entry is kept.
+ * in that case a different new fiber is interrupted and the existing entry is
+ * kept, while re-registering the existing fiber is a no-op.
  *
  * This is the Effect-wrapped version of `setUnsafe`.
  *

@@ -11,6 +11,7 @@
  */
 import * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
+import * as random from "./internal/random.ts"
 import * as Uuid from "./internal/uuid.ts"
 import * as PlatformError from "./PlatformError.ts"
 
@@ -251,7 +252,7 @@ export const make = (
     random: Effect.sync(() => nextDoubleUnsafe()),
     randomBoolean: Effect.sync(() => nextDoubleUnsafe() > 0.5),
     randomInt: Effect.sync(() => nextIntUnsafe()),
-    randomBetween: (min, max) => Effect.sync(() => nextDoubleUnsafe() * (max - min) + min),
+    randomBetween: (min, max) => Effect.sync(() => random.nextBetween(min, max, nextDoubleUnsafe())),
     randomIntBetween(min, max, options) {
       const extra = options?.halfOpen === true ? 0 : 1
       return Effect.sync(() => {

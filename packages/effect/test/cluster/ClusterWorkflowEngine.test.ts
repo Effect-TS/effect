@@ -26,7 +26,11 @@ import {
   ShardingConfig
 } from "effect/unstable/cluster"
 import { Activity, DurableClock, DurableDeferred, Workflow } from "effect/unstable/workflow"
-import { WorkflowEngine, WorkflowInstance } from "effect/unstable/workflow/WorkflowEngine"
+import {
+  makeUnsafe as makeWorkflowEngineUnsafe,
+  WorkflowEngine,
+  WorkflowInstance
+} from "effect/unstable/workflow/WorkflowEngine"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
   it.effect("executes, resumes, deduplicates, and polls a suspended workflow", () =>
@@ -434,13 +438,14 @@ describe.concurrent("ClusterWorkflowEngine", () => {
   it.effect("DurableDeferred.raceAll re-runs a multi-await branch once per completion", () =>
     Effect.gen(function*() {
       const flags = yield* Flags
+      const branchControl = yield* TwoStepBranchControl
       const sharding = yield* Sharding.Sharding
       const executionId = yield* TwoStepWorkflow.executionId({ id: "two-step" })
       const fiber = yield* TwoStepWorkflow.execute({ id: "two-step" }).pipe(
         Effect.forkChild({ startImmediately: true })
       )
 
-      yield* TestClock.adjust(1)
+      yield* branchControl.entered.await
       const tokenA = DurableDeferred.tokenFromExecutionId(TwoStepGateA, {
         workflow: TwoStepWorkflow,
         executionId
@@ -448,9 +453,11 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       yield* DurableDeferred.succeed(TwoStepGateA, { token: tokenA, value: "a" })
       yield* sharding.pollStorage
       yield* TestClock.adjust("1 second")
+      yield* branchControl.release.open
+      yield* branchControl.started.await
 
-      // The run parks on the second gate, usually after one wake replay;
-      // under load the first completion can be read directly (1 run).
+      // The run parks on the second gate after reading the first completion
+      // directly or replaying once while the completion is committed.
       assert([1, 2].includes(flags.get("two-step-branch-runs") as number))
 
       const tokenB = DurableDeferred.tokenFromExecutionId(TwoStepGateB, {
@@ -559,6 +566,10 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.isTrue(flags.get("parent-end"))
       assert.isTrue(flags.get("child-end"))
     }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  for (const [id, threshold] of [["number", 0], ["bigint", 0n]] as const) {
+    it.effect(`DurableClock.sleep preserves an explicit ${id} zero threshold`, () => verifyZeroThreshold(id, threshold))
+  }
 
   it.effect("routes fractional millisecond durable clock wakeups to the workflow shard group", () =>
     Effect.gen(function*() {
@@ -1243,6 +1254,16 @@ const TwoStepGateB = DurableDeferred.make("TwoStepGateB", {
   success: Schema.String
 })
 
+class TwoStepBranchControl extends Context.Service<TwoStepBranchControl>()("TwoStepBranchControl", {
+  make: Effect.all({
+    entered: Latch.make(),
+    release: Latch.make(),
+    started: Latch.make()
+  })
+}) {
+  static readonly layer = Layer.effect(TwoStepBranchControl, this.make)
+}
+
 const TwoStepWorkflowLayer = TwoStepWorkflow.toLayer(() =>
   DurableDeferred.raceAll({
     name: "two-step",
@@ -1251,8 +1272,12 @@ const TwoStepWorkflowLayer = TwoStepWorkflow.toLayer(() =>
     effects: [
       Effect.gen(function*() {
         const flags = yield* Flags
+        const branchControl = yield* TwoStepBranchControl
+        branchControl.entered.openUnsafe()
+        yield* branchControl.release.await
         const runs = flags.get("two-step-branch-runs")
         flags.set("two-step-branch-runs", typeof runs === "number" ? runs + 1 : 1)
+        branchControl.started.openUnsafe()
         const a = yield* DurableDeferred.await(TwoStepGateA)
         const b = yield* DurableDeferred.await(TwoStepGateB)
         return `${a}:${b}`
@@ -1363,6 +1388,45 @@ const ChildWorkflowLayer = ChildWorkflow.toLayer(Effect.fnUntraced(function*() {
   yield* DurableDeferred.await(ChildDeferred)
   flags.set("child-end", true)
 }))
+
+const ZeroThresholdWorkflow = Workflow.make("DurableClock/ZeroThreshold", {
+  payload: { id: Schema.String },
+  idempotencyKey: ({ id }) => id
+})
+
+const verifyZeroThreshold = Effect.fn(function*(id: string, inMemoryThreshold: 0 | 0n) {
+  const instance = WorkflowInstance.initial(ZeroThresholdWorkflow, `execution/${id}`)
+  const calls: Array<string> = []
+  const unexpected = () => Effect.die("unexpected engine operation")
+  const engine = makeWorkflowEngineUnsafe({
+    register: unexpected,
+    execute: unexpected,
+    poll: unexpected,
+    interrupt: unexpected,
+    interruptUnsafe: unexpected,
+    resume: unexpected,
+    deferredDone: unexpected,
+    activityExecute: () =>
+      Effect.sync(() => {
+        calls.push("activityExecute")
+        return new Workflow.Complete({ exit: Exit.void })
+      }),
+    scheduleClock: () =>
+      Effect.sync(() => {
+        calls.push("scheduleClock")
+      }),
+    deferredResult: () =>
+      Effect.sync(() => {
+        calls.push("deferredResult")
+        return Option.some(Exit.void)
+      })
+  })
+  yield* DurableClock.sleep({ name: `clock/${id}`, duration: 10, inMemoryThreshold }).pipe(
+    Effect.provideService(WorkflowEngine, engine),
+    Effect.provideService(WorkflowInstance, instance)
+  )
+  assert.deepStrictEqual(calls, ["scheduleClock", "deferredResult"])
+})
 
 const ShardedClockWorkflow = Workflow.make("ShardedClockWorkflow", {
   payload: {
@@ -1507,6 +1571,7 @@ const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(CatchWorkflowLayer),
   Layer.merge(ErrorDefectWorkflowLayer),
   Layer.provideMerge(Flags.layer),
+  Layer.provideMerge(TwoStepBranchControl.layer),
   Layer.provideMerge(ShardedClockScheduled.layer),
   Layer.provideMerge(TestWorkflowEngine)
 )

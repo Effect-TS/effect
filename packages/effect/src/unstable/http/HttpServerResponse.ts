@@ -532,10 +532,7 @@ export const setHeader: {
 } = dual(
   3,
   (self: HttpServerResponse, key: string, value: string): HttpServerResponse =>
-    makeResponse({
-      ...self,
-      headers: Headers.set(self.headers, key, value)
-    }, true)
+    makeResponse(self, Headers.set(self.headers, key, value))
 )
 
 /**
@@ -568,10 +565,7 @@ export const setHeaders: {
 } = dual(
   2,
   (self: HttpServerResponse, input: Headers.Input): HttpServerResponse =>
-    makeResponse({
-      ...self,
-      headers: Headers.setAll(self.headers, input)
-    }, true)
+    makeResponse(self, Headers.setAll(self.headers, input))
 )
 
 /**
@@ -934,7 +928,7 @@ export const setBody: {
 } = dual(
   2,
   (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse =>
-    makeResponse({ ...self, headers: bodyInternal.updateHeaders(self.headers, body), body })
+    makeResponse({ ...self, body }, bodyInternal.updateHeaders(self.headers, body))
 )
 
 /**
@@ -1341,7 +1335,10 @@ const makeResponse = (options: {
   readonly headers?: Headers.Headers | undefined
   readonly cookies?: Cookies.Cookies | undefined
   readonly body?: Body.HttpBody | undefined
-}, preferHeaders = false) => {
+}, ownedHeaders?: Headers.Headers) => {
+  // ownedHeaders is a freshly created map that nothing else references, so it
+  // can be completed in place instead of copied. It supersedes options.headers,
+  // and explicit content headers in it take precedence over body-derived ones.
   const self = Object.create(Proto) as Mutable<HttpServerResponse>
   self.status = options.status
   self.statusText = options.statusText
@@ -1351,18 +1348,21 @@ const makeResponse = (options: {
     self.body._tag !== "Empty" &&
     (self.body.contentType || self.body.contentLength !== undefined)
   ) {
-    const newHeaders = options.headers === undefined || options.headers === Headers.empty
+    const owned = ownedHeaders !== undefined
+    const newHeaders = owned
+      ? ownedHeaders as any
+      : options.headers === undefined || options.headers === Headers.empty
       ? headersInternal.emptyMutableUnsafe() as any
       : Headers.fromRecordUnsafe({ ...options.headers }) as any
-    if (self.body.contentType && (!preferHeaders || newHeaders["content-type"] === undefined)) {
+    if (self.body.contentType && (!owned || newHeaders["content-type"] === undefined)) {
       newHeaders["content-type"] = self.body.contentType
     }
-    if (self.body.contentLength !== undefined && (!preferHeaders || newHeaders["content-length"] === undefined)) {
+    if (self.body.contentLength !== undefined && (!owned || newHeaders["content-length"] === undefined)) {
       newHeaders["content-length"] = self.body.contentLength.toString()
     }
     self.headers = newHeaders
   } else {
-    self.headers = options.headers ?? Headers.empty
+    self.headers = ownedHeaders ?? options.headers ?? Headers.empty
   }
   return self
 }

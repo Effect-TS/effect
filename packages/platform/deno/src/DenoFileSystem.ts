@@ -441,12 +441,11 @@ const watch = (
 
 const writeFile: FileSystem.FileSystem["writeFile"] = (path, data, options) => {
   const flag = options?.flag ?? "w"
-  if (flag === "w" || flag === "wx" || flag === "a" || flag === "ax") {
+  if (options?.mode === undefined && (flag === "w" || flag === "wx" || flag === "a" || flag === "ax")) {
     return tryPromise("writeFile", path, (signal) =>
       Deno.writeFile(path, data, {
         append: flag.startsWith("a"),
         createNew: flag.includes("x"),
-        ...(options?.mode === undefined ? {} : { mode: options.mode }),
         signal
       }))
   }

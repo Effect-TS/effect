@@ -61,6 +61,34 @@ class FakeWorker extends EventTarget {
   }
 }
 
+// A MessagePort only delivers queued messages once `start()` is called.
+class GatedPort extends EventTarget {
+  private queued: Array<ReadonlyArray<unknown>> = []
+  private started = false
+
+  start(): void {
+    this.started = true
+    for (const data of this.queued.splice(0)) {
+      this.dispatchEvent(new MessageEvent("message", { data }))
+    }
+  }
+
+  deliver(data: ReadonlyArray<unknown>): void {
+    if (this.started) this.dispatchEvent(new MessageEvent("message", { data }))
+    else this.queued.push(data)
+  }
+
+  postMessage(): void {}
+  close(): void {}
+}
+
+const settled = <A, E>(effect: Effect.Effect<A, E>) =>
+  Effect.gen(function*() {
+    const fiber = yield* effect.pipe(Effect.exit, Effect.timeoutOption("100 millis"), Effect.forkChild)
+    yield* TestClock.adjust("100 millis")
+    return yield* Fiber.join(fiber)
+  })
+
 describe("Client", () => {
   it.effect("should work", () => Effect.void)
 
@@ -86,4 +114,24 @@ describe("Client", () => {
       assert(Option.isSome(result), "the request remained pending after worker replacement")
       assert(Exit.isFailure(result.value))
     }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("starts a MessagePort transport so the ready message arrives", () =>
+    Effect.gen(function*() {
+      const port = new GatedPort()
+      port.deliver(["ready", undefined, undefined])
+      const fiber = yield* Effect.forkChild(SqliteClient.make({ worker: Effect.succeed(port as unknown as Worker) }))
+      const result = yield* settled(Fiber.join(fiber))
+      assert(Option.isSome(result), "the ready message was never delivered")
+      assert(Exit.isSuccess(result.value))
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("starts a MessagePort port so worker requests are consumed", () =>
+    Effect.gen(function*() {
+      const port = new GatedPort()
+      port.deliver(["close"])
+      const fiber = yield* Effect.forkChild(OpfsWorker.run({ port, dbName: "test.db" }))
+      const result = yield* settled(Fiber.join(fiber))
+      assert(Option.isSome(result), "the queued request was never consumed")
+      assert(Exit.isSuccess(result.value))
+    }))
 })

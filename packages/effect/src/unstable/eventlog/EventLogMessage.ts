@@ -188,7 +188,7 @@ export class ChunkedMessage
    * @since 4.0.0
    */
   static split(id: number, data: Uint8Array): NonEmptyReadonlyArray<ChunkedMessage> {
-    const parts = Math.ceil(data.byteLength / ChunkedMessage.chunkSize)
+    const parts = Math.max(1, Math.ceil(data.byteLength / ChunkedMessage.chunkSize))
     const result: NonEmptyArray<ChunkedMessage> = new Array(parts) as any
     for (let i = 0; i < parts; i++) {
       const start = i * ChunkedMessage.chunkSize

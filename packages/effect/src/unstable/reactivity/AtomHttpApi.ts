@@ -227,7 +227,8 @@ export const Service =
       }>()(
         Effect.fnUntraced(function*(opts) {
           const client = (yield* self) as any
-          const effect = catchErrors(client[group][endpoint]({
+          const groupClient = groups[group].topLevel ? client : client[group]
+          const effect = catchErrors(groupClient[endpoint]({
             ...opts,
             responseMode
           }) as Effect.Effect<any>)
@@ -261,7 +262,8 @@ export const Service =
     const queryFamily = Atom.family((opts: QueryKey) => {
       let atom = self.runtime.atom(self.use((client_) => {
         const client = client_ as any
-        return catchErrors(client[opts.group][opts.endpoint](opts) as Effect.Effect<
+        const groupClient = groups[opts.group].topLevel ? client : client[opts.group]
+        return catchErrors(groupClient[opts.endpoint](opts) as Effect.Effect<
           any,
           HttpClientError.HttpClientError | SchemaError
         >)

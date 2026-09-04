@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Ref, Schema } from "effect"
+import { Effect, Exit, Layer, Ref, Schema } from "effect"
 import { HttpClient, HttpClientResponse } from "effect/unstable/http"
 import type * as HttpClientError from "effect/unstable/http/HttpClientError"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi"
@@ -18,7 +18,46 @@ const Api = HttpApi.make("api").add(
   )
 )
 
+const TopLevelApi = HttpApi.make("top-level-api").add(
+  HttpApiGroup.make("group", { topLevel: true }).add(
+    HttpApiEndpoint.get("query", "/query"),
+    HttpApiEndpoint.post("mutation", "/mutation")
+  )
+)
+
 describe("AtomHttpApi", () => {
+  it.effect("dispatches queries and mutations for top-level groups", () =>
+    Effect.gen(function*() {
+      const requests: Array<string> = []
+      const httpClient = HttpClient.makeWith(
+        Effect.fnUntraced(function*(requestEffect) {
+          const request = yield* requestEffect
+          requests.push(request.url)
+          return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
+        }),
+        Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
+      )
+      const Client = AtomHttpApi.Service()("TopLevelClient", {
+        api: TopLevelApi,
+        httpClient: Layer.succeed(HttpClient.HttpClient, httpClient)
+      })
+      const registry = AtomRegistry.make()
+      const query = Client.query("group", "query", {})
+      const mutation = Client.mutation("group", "mutation")
+
+      yield* AtomRegistry.mount(registry, query)
+      yield* AtomRegistry.mount(registry, mutation)
+      registry.set(mutation, {})
+
+      const queryExit = yield* Effect.exit(AtomRegistry.getResult(registry, query, { suspendOnWaiting: true }))
+      const mutationExit = yield* Effect.exit(AtomRegistry.getResult(registry, mutation, { suspendOnWaiting: true }))
+
+      assert.deepStrictEqual(
+        { mutation: mutationExit, query: queryExit, requests },
+        { mutation: Exit.succeed(undefined), query: Exit.succeed(undefined), requests: ["/query", "/mutation"] }
+      )
+    }).pipe(Effect.scoped))
+
   it.effect("query creates a serializable atom with reactivity and retention that encodes the request", () =>
     Effect.gen(function*() {
       const requestRef = yield* Ref.make<
