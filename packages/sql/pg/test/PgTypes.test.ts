@@ -278,6 +278,35 @@ describe("PgTypes", () => {
     })
   })
 
+  it("uses canonical PostgreSQL wire bytes for equivalent IPv6 CIDR text", () => {
+    const expected = bytes("0320011020010db8000000000000000000000000")
+    assert.deepStrictEqual(
+      PgTypes.encode("2001:0DB8:0000:0000:0000:0000:0000:0000/32", PgTypes.OID.cidr),
+      expected
+    )
+    assert.strictEqual(PgTypes.decode(expected, PgTypes.OID.cidr, 1), "2001:db8::/32")
+  })
+
+  it("uses shared canonical parsing for inet and cidr", () => {
+    assert.deepStrictEqual(
+      PgTypes.encode("10.1.2.3", PgTypes.OID.cidr),
+      bytes("022001040a010203")
+    )
+    const inet = bytes("0380001020010db8000000000000000000000001")
+    assert.deepStrictEqual(
+      PgTypes.encode("2001:0DB8:0000:0000:0000:0000:0000:0001", PgTypes.OID.inet),
+      inet
+    )
+    assert.strictEqual(PgTypes.decode(inet, PgTypes.OID.inet, 1), "2001:db8::1")
+    assertThrowsTagged("PgTypesCodecError", () => PgTypes.encode("010.1.2.3", PgTypes.OID.inet))
+  })
+
+  it("preserves inet host bits alongside the prefix", () => {
+    for (const value of ["10.1.2.3/8", "2001:db8::1/32"]) {
+      assert.strictEqual(PgTypes.decode(PgTypes.encode(value, PgTypes.OID.inet), PgTypes.OID.inet, 1), value)
+    }
+  })
+
   describe("errors", () => {
     it("rejects the text format", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.decode(bytes("31"), PgTypes.OID.int4, 0))
