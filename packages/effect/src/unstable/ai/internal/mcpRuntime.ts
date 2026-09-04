@@ -375,7 +375,7 @@ export const make = Effect.fnUntraced(function*(
     disconnect: (clientId) => stateful?.disconnect(clientId),
     deliveryClientIds: () => stateful?.initializedClientIds() ?? [],
     canDeliver: (clientId, headers, notification, fallback) =>
-      stateful?.canDeliver(clientId, headers, notification, fallback) ?? false,
+      stateful?.canDeliver(clientId, headers, notification, fallback) ?? true,
     installHandlers: Effect.fnUntraced(function*(options) {
       const contextMap = new Map<string, unknown>()
       const installationContext: McpProtocol.HandlerInstallationContext = {
