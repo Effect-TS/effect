@@ -30,7 +30,7 @@ import {
   Authenticate,
   ChangesRpc,
   ChunkedMessage,
-  type EventLogProtocolError,
+  EventLogProtocolError,
   EventLogRemoteRpcs,
   type HelloResponse,
   type StoreId,
@@ -218,8 +218,7 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
         const error = EventLogRemoteError.is(e) && e.method === "authenticate"
           ? e.cause
           : e
-        const isForbidden = Predicate.isTagged(error, "EventLogProtocolError") &&
-          (error as any as EventLogProtocolError).code === "Forbidden"
+        const isForbidden = EventLogProtocolError.is(error) && error.code === "Forbidden"
         return Cache.invalidate(authCache, options.identity.publicKey).pipe(
           Effect.as(isForbidden)
         )

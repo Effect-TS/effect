@@ -10,6 +10,7 @@
  */
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "../../Array.ts"
 import type { Brand } from "../../Brand.ts"
+import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaBinary from "../encoding/SchemaBinary.ts"
 import * as Rpc from "../rpc/Rpc.ts"
@@ -71,7 +72,16 @@ export class EventLogProtocolError extends Schema.TaggedError<EventLogProtocolEr
   storeId: Schema.optional(StoreId),
   code: Schema.Literals(["Unauthorized", "Forbidden", "NotFound", "InvalidRequest", "InternalServerError"]),
   message: Schema.String
-}) {}
+}) {
+  /**
+   * Returns `true` when the value is an `EventLogProtocolError`.
+   *
+   * @since 4.0.0
+   */
+  static is(u: unknown): u is EventLogProtocolError {
+    return Predicate.isTagged(u, "EventLogProtocolError")
+  }
+}
 
 /**
  * RPC middleware that authenticates event-log requests and provides the client
