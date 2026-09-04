@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Honor `captureStackTrace` in both forms of `Layer.withSpan` when attaching diagnostic stack frames to layer construction. Disabling capture or supplying a custom lazy stack trace now also applies to layer acquisition failures.
+Honor `captureStackTrace` in both forms of `Layer.withSpan`. Layer construction diagnostics previously reported a location inside `Layer.ts` instead of the `withSpan` call site, and ignored `captureStackTrace: false` or a supplied lazy stack.
