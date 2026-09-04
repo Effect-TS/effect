@@ -305,7 +305,8 @@ const isInternalInterruption = Filter.toPredicate(Filter.compose(
  *
  * When the fiber completes, it is removed from the map. If the key already has
  * a fiber, that previous fiber is interrupted unless `onlyIfMissing` is set;
- * in that case the new fiber is interrupted and the existing entry is kept.
+ * in that case a different new fiber is interrupted and the existing entry is
+ * kept, while re-registering the existing fiber is a no-op.
  *
  * **Example** (Adding a fiber unsafely)
  *
@@ -408,7 +409,8 @@ export const setUnsafe: {
  *
  * When the fiber completes, it is removed from the map. If the key already has
  * a fiber, that previous fiber is interrupted unless `onlyIfMissing` is set;
- * in that case the new fiber is interrupted and the existing entry is kept.
+ * in that case a different new fiber is interrupted and the existing entry is
+ * kept, while re-registering the existing fiber is a no-op.
  *
  * This is the Effect-wrapped version of `setUnsafe`.
  *
