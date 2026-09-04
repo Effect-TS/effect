@@ -42,10 +42,10 @@ export const Prototype = <A extends Effect.Effect<any, any, any>>(options: {
 
 const Base: new<A, E, R>() => Effect.Effect<A, E, R> = (() => {
   const Base = function() {}
-  Base.prototype = Prototype({
+  Base.prototype = Prototype<Class<any, any, any>>({
     label: "Effectable",
     evaluate(_) {
-      return this
+      return this.asEffect()
     }
   })
   return Base as any
@@ -64,5 +64,5 @@ const Base: new<A, E, R>() => Effect.Effect<A, E, R> = (() => {
  * @since 2.0.0
  */
 export abstract class Class<A, E = never, R = never> extends Base<A, E, R> {
-  abstract override: Effect.Effect<A, E, R>
+  abstract asEffect(): Effect.Effect<A, E, R>
 }
