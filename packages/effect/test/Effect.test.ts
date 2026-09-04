@@ -3318,6 +3318,23 @@ describe("Effect", () => {
         assertExitFailure(exit, Cause.fail(new AiError({ reason })))
       }))
 
+    it.effect("preserves the cause for a non-matching reason", () =>
+      Effect.gen(function*() {
+        const error = new AiError({ reason: new QuotaExceededError({ limit: 100 }) })
+        const result = yield* Effect.gen(function*() {
+          yield* Effect.addFinalizer(() => Effect.die("finalizer failure"))
+          return yield* Effect.fail(error)
+        }).pipe(
+          Effect.scoped,
+          Effect.catchReason("AiError", "RateLimitError", () => Effect.succeed("no")),
+          Effect.exit
+        )
+        assert.deepStrictEqual(
+          result,
+          Exit.failCause(Cause.combine(Cause.fail(error), Cause.die("finalizer failure")))
+        )
+      }))
+
     it.effect("ignores non-matching parent tag", () =>
       Effect.gen(function*() {
         const error = new OtherError({ message: "test" })
@@ -3390,6 +3407,25 @@ describe("Effect", () => {
           Effect.exit
         )
         assertExitFailure(exit, Cause.fail(new AiError({ reason })))
+      }))
+
+    it.effect("preserves the cause for an unhandled reason", () =>
+      Effect.gen(function*() {
+        const error = new AiError({ reason: new QuotaExceededError({ limit: 100 }) })
+        const result = yield* Effect.gen(function*() {
+          yield* Effect.addFinalizer(() => Effect.die("finalizer failure"))
+          return yield* Effect.fail(error)
+        }).pipe(
+          Effect.scoped,
+          Effect.catchReasons("AiError", {
+            RateLimitError: () => Effect.succeed("handled")
+          }),
+          Effect.exit
+        )
+        assert.deepStrictEqual(
+          result,
+          Exit.failCause(Cause.combine(Cause.fail(error), Cause.die("finalizer failure")))
+        )
       }))
   })
 

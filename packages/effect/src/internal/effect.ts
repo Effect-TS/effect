@@ -3184,7 +3184,10 @@ export const catchReason: {
   > =>
     catchIf(
       self,
-      ((e: any) => isTagged(e, errorTag) && hasProperty(e, "reason")) as any,
+      ((e: any) =>
+        isTagged(e, errorTag) &&
+        hasProperty(e, "reason") &&
+        (orElse !== undefined || isTagged(e.reason, reasonTag))) as any,
       (e: any): Effect.Effect<A2 | A3, E | E2 | E3, R2 | R3> => {
         const reason = e.reason as any
         if (isTagged(reason, reasonTag)) return f(reason as any, e)
@@ -3284,7 +3287,8 @@ export const catchReasons: {
       isTagged(e, errorTag) &&
       hasProperty(e, "reason") &&
       hasProperty(e.reason, "_tag") &&
-      isString(e.reason._tag)) as any,
+      isString(e.reason._tag) &&
+      (orElse !== undefined || (keys ??= Object.keys(cases)).includes(e.reason._tag))) as any,
     (e: any) => {
       const reason = e.reason
       keys ??= Object.keys(cases)
