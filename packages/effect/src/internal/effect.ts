@@ -4315,7 +4315,7 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
   uninterruptibleMask((restore) =>
     flatMap(acquire, (a) =>
       onExitPrimitive(
-        restore(suspend(() => use(a))),
+        suspend(() => restore(use(a))),
         (exit) => release(a, exit),
         true
       ))
