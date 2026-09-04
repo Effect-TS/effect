@@ -3792,7 +3792,7 @@ export const timeoutOrElse: {
   ): Effect.Effect<A | A2, E | E2, R | R2> =>
     flatMap(
       timeoutOption(self, options.duration),
-      (option): Effect.Effect<A | A2, E2, R2> => Option.isNone(option) ? suspend(options.orElse) : succeed(option.value)
+      (option): Effect.Effect<A | A2, E2, R2> => Option.isNone(option) ? options.orElse() : succeed(option.value)
     )
 )
 
