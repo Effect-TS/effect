@@ -1177,4 +1177,16 @@ export type ExcludeReason<E, K extends string> = E extends { readonly reason: in
  * @category utility types
  * @since 4.0.0
  */
-export type RequiredKeys<T> = { [K in keyof T]-?: {} extends Pick<T, K> ? never : K }[keyof T]
+export type RequiredKeys<T> = RequiredKeysFrom<
+  [T] extends [ReadonlyArray<unknown>] ? T
+    : string extends keyof T ? WithoutIndexSignature<T>
+    : number extends keyof T ? WithoutIndexSignature<T>
+    : symbol extends keyof T ? WithoutIndexSignature<T>
+    : T
+>
+
+type RequiredKeysFrom<T> = { [K in keyof T]-?: {} extends Pick<T, K> ? never : K }[keyof T]
+
+type WithoutIndexSignature<T> = {
+  [K in keyof T as string extends K ? never : number extends K ? never : symbol extends K ? never : K]: T[K]
+}
