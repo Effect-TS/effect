@@ -164,7 +164,7 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
         })
       }
     }
-    const decoded = Schema.decodeUnknownResult(ProtocolErrorFields)(error)
+    const decoded = decodeProtocolErrorFields(error)
     return Result.isSuccess(decoded)
       ? new ProtocolError(decoded.success)
       : new ProtocolError({
@@ -180,12 +180,17 @@ const ProtocolErrorFields = Schema.Struct({
   data: Schema.optionalKey(Schema.Unknown)
 })
 
+const decodeProtocolErrorFields = Schema.decodeUnknownResult(ProtocolErrorFields)
+
+const isReverseOperationUnsupported = (cause: unknown): cause is PublicMcpSchema.McpReverseOperationUnsupported =>
+  Predicate.isTagged(cause, "McpReverseOperationUnsupported")
+
 /** @internal */
 export const reverseError = (
   operation: PublicMcpSchema.McpReverseOperationError["operation"]
 ) =>
 (cause: unknown) =>
-  cause instanceof PublicMcpSchema.McpReverseOperationUnsupported
+  isReverseOperationUnsupported(cause)
     ? cause
     : new PublicMcpSchema.McpReverseOperationError({ operation, cause })
 

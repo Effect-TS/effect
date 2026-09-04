@@ -199,3 +199,20 @@ describe("MCP v2025-06-18 schema", () => {
     assert.notProperty(capabilities, "extensions")
   })
 })
+
+describe("McpProtocol errors", () => {
+  it("should preserve tagged unsupported errors without requiring the local class prototype", () => {
+    const unsupported = {
+      _tag: "McpReverseOperationUnsupported",
+      operation: "roots/list",
+      protocolVersion: "2025-06-18",
+      reason: "Client did not advertise roots"
+    }
+    assert.strictEqual<unknown>(McpProtocol.reverseError("roots/list")(unsupported), unsupported)
+
+    const cause = new Error("Transport failed")
+    const wrapped = McpProtocol.reverseError("roots/list")(cause)
+    assert.strictEqual(wrapped._tag, "McpReverseOperationError")
+    assert.propertyVal(wrapped, "cause", cause)
+  })
+})

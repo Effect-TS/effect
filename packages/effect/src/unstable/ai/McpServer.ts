@@ -1124,8 +1124,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
                       _tag: "Failure",
                       cause: [{
                         _tag: "Fail",
-                        error: error instanceof McpProtocolInternal.ProtocolError
-                          ? error
+                        error: Predicate.isTagged(error, "ProtocolError")
+                          ? McpProtocolInternal.ProtocolError.fromFeature(error)
                           : new InvalidParams({ message: "Invalid request metadata" })
                       }]
                     }
@@ -1656,10 +1656,8 @@ const mcpHttpSerialization: RpcSerialization.RpcSerialization["Service"] = (() =
   })
 })()
 
-const isEncodedMcpFailureCause = Schema.is(Schema.Struct({
-  _tag: Schema.Literal("Cause"),
-  data: Schema.Tuple([Schema.Struct({
-    _tag: Schema.Literal("Fail"),
+const isEncodedMcpFailureCause = Schema.is(Schema.TaggedStruct("Cause", {
+  data: Schema.Tuple([Schema.TaggedStruct("Fail", {
     error: Schema.toEncoded(McpSchema.McpError)
   })])
 }))
