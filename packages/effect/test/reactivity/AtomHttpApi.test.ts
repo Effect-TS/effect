@@ -1,8 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Layer, Ref, Schema } from "effect"
+import { Duration, Effect, Exit, Layer, Ref, Schema, Stream } from "effect"
+import { Sse } from "effect/unstable/encoding"
 import { HttpClient, HttpClientResponse } from "effect/unstable/http"
 import type * as HttpClientError from "effect/unstable/http/HttpClientError"
-import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi"
+import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
 import { Atom, AtomHttpApi, AtomRegistry, Hydration } from "effect/unstable/reactivity"
 
 const Api = HttpApi.make("api").add(
@@ -22,6 +23,12 @@ const TopLevelApi = HttpApi.make("top-level-api").add(
   HttpApiGroup.make("group", { topLevel: true }).add(
     HttpApiEndpoint.get("query", "/query"),
     HttpApiEndpoint.post("mutation", "/mutation")
+  )
+)
+
+const StreamApi = HttpApi.make("StreamApi").add(
+  HttpApiGroup.make("events").add(
+    HttpApiEndpoint.get("watch", "/watch", { success: HttpApiSchema.StreamSse({ data: Schema.String }) })
   )
 )
 
@@ -161,4 +168,33 @@ describe("AtomHttpApi", () => {
 
       unmount()
     }))
+
+  it.effect("returns generated SSE stream failures from queries", () =>
+    Effect.gen(function*() {
+      const Client = AtomHttpApi.Service()("StreamClient", {
+        api: StreamApi,
+        baseUrl: "https://example.test",
+        httpClient: Layer.succeed(
+          HttpClient.HttpClient,
+          HttpClient.make((request) =>
+            Effect.succeed(HttpClientResponse.fromWeb(
+              request,
+              new Response("retry: 1000\n\n", {
+                headers: { "content-type": "text/event-stream" }
+              })
+            ))
+          )
+        )
+      })
+      const registry = AtomRegistry.make()
+      const atom = Client.query("events", "watch", {})
+      yield* AtomRegistry.mount(registry, atom)
+      const stream = yield* AtomRegistry.getResult(registry, atom)
+      const error = yield* Effect.flip(Stream.runCollect(stream))
+
+      assert.deepStrictEqual(
+        error,
+        new Sse.Retry({ duration: Duration.millis(1000), lastEventId: undefined })
+      )
+    }).pipe(Effect.scoped))
 })
