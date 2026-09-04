@@ -15,16 +15,11 @@
  * process at a time, wiring the selected source stream (`stdout`, `stderr`,
  * `all`, or `fdN`) to the destination `stdin` or `fdN`.
  *
- * Scoped release and `kill` signal the child's process group and then wait
- * for the leader to exit and for the rest of the group to terminate. Without
- * `forceKillAfter` that wait is bounded to one second and `SIGKILL` is never
- * sent. With `forceKillAfter` the group receives `SIGKILL` once the timeout
- * elapses, followed by a final one second wait, so `kill` can take up to
- * `forceKillAfter` plus one second. Group membership is checked with
- * `kill(-pgid, 0)`, which also counts zombies: when descendants reparent to a
- * PID 1 that does not reap them, every release pays the full wait. On Windows
- * the process tree is terminated with `taskkill` and only the leader's exit is
- * awaited.
+ * Scoped release and `kill` wait for the signalled process group. Without
+ * `forceKillAfter`, the wait is limited to one second and never escalates.
+ * With it, cleanup may take the configured duration plus a final one-second
+ * wait after `SIGKILL`. Zombie descendants can consume either full bound. On
+ * Windows, `taskkill` terminates the tree and only the leader's exit is awaited.
  *
  * @since 4.0.0
  */
@@ -78,7 +73,6 @@ const toPlatformError = (
 type ExitCodeWithSignal = readonly [code: number | null, signal: NodeJS.Signals | null]
 type ExitSignal = Deferred.Deferred<ExitCodeWithSignal>
 
-/** How long release and `kill` wait for the process group after signalling it. */
 const processGroupGraceMillis = 1_000
 const processGroupPollIntervalMillis = 10
 
@@ -94,7 +88,6 @@ const isProcessGroupAlive = (childProcess: NodeChildProcess.ChildProcess): boole
   }
 }
 
-/** The leader has not exited, or a member of its process group still exists. */
 const isProcessAlive = (childProcess: NodeChildProcess.ChildProcess, exitSignal: ExitSignal): boolean =>
   !Deferred.isDoneUnsafe(exitSignal) || isProcessGroupAlive(childProcess)
 
@@ -445,13 +438,7 @@ const make = Effect.gen(function*() {
       return Effect.void
     })
 
-  /**
-   * Resolves once the leader has exited and no member of its process group
-   * exists, or once `timeoutMillis` has elapsed. The leader's `exit` event
-   * wakes the check immediately so an ordinary release does not wait for the
-   * next poll. Uses native timers so that process cleanup is not governed by
-   * the Effect clock (for example a `TestClock`).
-   */
+  /** Waits for the leader and its process group, bounded by native time. */
   const awaitProcessExit = (
     childProcess: NodeChildProcess.ChildProcess,
     exitSignal: ExitSignal,
@@ -473,21 +460,12 @@ const make = Effect.gen(function*() {
         }
         timer = setTimeout(poll, processGroupPollIntervalMillis)
       }
-      // The listener completing exitSignal was registered in spawn, so it runs first
+      // spawn's exit listener completes exitSignal before this listener runs
       childProcess.on("exit", poll)
       poll()
       return Effect.sync(stop)
     })
 
-  /**
-   * Signals the child's process group (falling back to the leader), then waits
-   * for the leader to exit and for the rest of the group to terminate.
-   *
-   * Without `forceKillAfter` the wait is bounded by `processGroupGraceMillis`
-   * and never escalates to `SIGKILL`. With `forceKillAfter` the group receives
-   * `SIGKILL` once the timeout elapses, followed by a final bounded wait. Both
-   * deadlines use native time so escalation cannot stall under a `TestClock`.
-   */
   const terminateProcessGroup = (
     command: ChildProcess.StandardCommand,
     childProcess: NodeChildProcess.ChildProcess,
@@ -570,10 +548,8 @@ const make = Effect.gen(function*() {
           Effect.fnUntraced(function*([childProcess, exitSignal]) {
             const exited = yield* Deferred.isDone(exitSignal)
             if (exited) {
-              // Process already exited, check if children need cleanup
               const [code] = yield* Deferred.await(exitSignal)
               if (code !== 0 && Predicate.isNotNull(code)) {
-                // Non-zero exit code, attempt to clean up process group
                 return yield* Effect.ignore(
                   killProcessGroup(cmd, childProcess, cmd.options.killSignal ?? "SIGTERM")
                 )
@@ -583,7 +559,6 @@ const make = Effect.gen(function*() {
             if (!isReferenced) {
               return yield* Effect.void
             }
-            // Process is still running, terminate it and its process group
             return yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
           })
         )

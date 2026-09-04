@@ -98,7 +98,7 @@ it.live("kills every process in a pipeline", () =>
 
 const processGroupFixture = join(__dirname, "fixtures", "process-group.ts")
 
-// Native timers so the helpers behave the same under a TestClock
+// Use native timers under TestClock.
 const liveSleep = (millis: number) =>
   Effect.callback<void>((resume) => {
     const timer = setTimeout(() => resume(Effect.void), millis)
@@ -137,9 +137,7 @@ const killDescendant = (pid: number) =>
   Effect.sync(() => {
     try {
       process.kill(pid, "SIGKILL")
-    } catch {
-      // already gone
-    }
+    } catch {}
   })
 
 const assertHeartbeatStopped = (marker: string) =>
