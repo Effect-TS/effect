@@ -3503,7 +3503,8 @@ function makeHooks<Input, State>(
 }
 
 function serializeAttributes(attributes: Metric.Attributes): string {
-  return JSON.stringify(Array.isArray(attributes) ? attributes : Object.entries(attributes))
+  const entries = Array.isArray(attributes) ? attributes : Object.entries(attributes)
+  return JSON.stringify(Arr.sortWith(entries, (entry) => entry[0], _String.Order))
 }
 
 function mergeAttributes(
