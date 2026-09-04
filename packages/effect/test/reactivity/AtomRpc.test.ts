@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Schema } from "effect"
+import { Deferred, Effect, Layer, Schema } from "effect"
 import { AsyncResult, Atom, AtomRegistry, AtomRpc, Hydration } from "effect/unstable/reactivity"
 import { Rpc, RpcClient, RpcGroup, RpcMiddleware, type RpcSerialization } from "effect/unstable/rpc"
 
@@ -14,6 +14,40 @@ const Group = RpcGroup.make(
     })
   })
 )
+
+class ClientFailure extends Schema.Error<ClientFailure>("ClientFailure")({
+  _tag: Schema.tag("ClientFailure")
+}) {}
+
+class ClientMiddleware extends RpcMiddleware.Service<ClientMiddleware, {
+  clientError: ClientFailure
+}>()("ClientMiddleware", {
+  requiredForClient: true
+}) {}
+
+const ClientMiddlewareGroup = RpcGroup.make(
+  Rpc.make("getUser", {
+    success: Schema.String
+  }).middleware(ClientMiddleware)
+)
+
+const makeClientMiddlewareProtocol = (
+  middleware: RpcMiddleware.RpcMiddlewareClient<never, ClientFailure, never>
+) =>
+  Layer.mergeAll(
+    Layer.effect(
+      RpcClient.Protocol,
+      RpcClient.Protocol.make(() =>
+        Effect.succeed({
+          send: () => Effect.die("unexpected request"),
+          supportsAck: false,
+          supportsTransferables: false,
+          codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+        })
+      )
+    ),
+    RpcMiddleware.layerClient(ClientMiddleware, middleware)
+  )
 
 describe("AtomRpc", () => {
   it.effect("query creates a serializable atom with reactivity and retention", () =>
@@ -99,41 +133,9 @@ describe("AtomRpc", () => {
 
   it.effect("dehydrates the rest of the registry when client middleware fails", () =>
     Effect.gen(function*() {
-      class ClientFailure extends Schema.Error<ClientFailure>("ClientFailure")({
-        _tag: Schema.tag("ClientFailure")
-      }) {}
-
-      class ClientMiddleware extends RpcMiddleware.Service<ClientMiddleware, {
-        clientError: ClientFailure
-      }>()("ClientMiddleware", {
-        requiredForClient: true
-      }) {}
-
-      const group = RpcGroup.make(
-        Rpc.make("getUser", {
-          success: Schema.String
-        }).middleware(ClientMiddleware)
-      )
-      const protocol = Layer.mergeAll(
-        Layer.effect(
-          RpcClient.Protocol,
-          RpcClient.Protocol.make(() =>
-            Effect.succeed({
-              send: () => Effect.die("unexpected request"),
-              supportsAck: false,
-              supportsTransferables: false,
-              codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
-            })
-          )
-        ),
-        RpcMiddleware.layerClient(
-          ClientMiddleware,
-          () => Effect.fail(new ClientFailure({}))
-        )
-      )
       const Client = AtomRpc.Service()("ClientWithMiddleware", {
-        group,
-        protocol
+        group: ClientMiddlewareGroup,
+        protocol: makeClientMiddlewareProtocol(() => Effect.fail(new ClientFailure({})))
       })
       const failedAtom = Client.query("getUser", undefined, {
         serializationKey: "failed"
@@ -152,9 +154,51 @@ describe("AtomRpc", () => {
 
       assert(AsyncResult.isFailure(registry.get(failedAtom)))
       const dehydrated = Hydration.toValues(Hydration.dehydrate(registry))
+      assert.isUndefined(dehydrated.find((entry) => entry.key === "AtomRpc:getUser:failed"))
       assert.strictEqual(dehydrated.find((entry) => entry.key === "unaffected")?.value, 42)
 
       unmountUnaffected()
+      unmountFailed()
+    }))
+
+  it.effect("settles promise dehydration when client middleware later fails", () =>
+    Effect.gen(function*() {
+      const failMiddleware = yield* Deferred.make<void>()
+      const Client = AtomRpc.Service()("ClientWithDeferredMiddleware", {
+        group: ClientMiddlewareGroup,
+        protocol: makeClientMiddlewareProtocol(() =>
+          Deferred.await(failMiddleware).pipe(
+            Effect.andThen(Effect.fail(new ClientFailure({})))
+          )
+        )
+      })
+      const failedAtom = Client.query("getUser", undefined, {
+        serializationKey: "deferred-failure"
+      })
+      const registry = AtomRegistry.make()
+      const unmountFailed = registry.mount(failedAtom)
+
+      assert(AsyncResult.isInitial(registry.get(failedAtom)))
+      const dehydrated = Hydration.toValues(Hydration.dehydrate(registry, {
+        encodeInitialAs: "promise"
+      }))
+      const resultPromise = dehydrated.find((entry) => entry.key === "AtomRpc:getUser:deferred-failure")
+        ?.resultPromise
+      assert.isDefined(resultPromise)
+
+      let notifications = 0
+      const unsubscribe = registry.subscribe(failedAtom, () => notifications++)
+      const hydratedRegistry = AtomRegistry.make()
+      Hydration.hydrate(hydratedRegistry, dehydrated)
+
+      yield* Deferred.succeed(failMiddleware, undefined)
+      yield* Effect.promise(() => resultPromise).pipe(Effect.timeout("1 second"))
+
+      assert.strictEqual(notifications, 1)
+      const unmountHydrated = hydratedRegistry.mount(failedAtom)
+
+      unmountHydrated()
+      unsubscribe()
       unmountFailed()
     }))
 })
