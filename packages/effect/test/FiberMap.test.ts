@@ -3,6 +3,20 @@ import { assertFalse, assertTrue, strictEqual } from "@effect/vitest/utils"
 import { Array, Deferred, Effect, Exit, Fiber, FiberMap, Option, pipe, Ref, Scope } from "effect"
 import { TestClock } from "effect/testing"
 
+const makeWorker = Effect.gen(function*() {
+  const ready = yield* Deferred.make<void>()
+  const cleanups = yield* Ref.make(0)
+  const fiber = yield* Effect.forkScoped(
+    Deferred.succeed(ready, undefined).pipe(
+      Effect.andThen(Effect.never),
+      Effect.ensuring(Ref.update(cleanups, (n) => n + 1))
+    ),
+    { startImmediately: true }
+  )
+  yield* Deferred.await(ready)
+  return { fiber, cleanups }
+})
+
 describe("FiberMap", () => {
   it.effect("retains ownership of replacements made by a synchronous finalizer", () =>
     Effect.gen(function*() {
@@ -146,6 +160,34 @@ describe("FiberMap", () => {
       assertTrue(Exit.hasInterrupts(yield* Fiber.await(fiberC)))
       strictEqual(fiberA.pollUnsafe(), undefined)
     }))
+
+  it.effect("onlyIfMissing keeps the same registered fiber", () =>
+    Effect.gen(function*() {
+      const map = yield* FiberMap.make<string>()
+      const worker = yield* makeWorker
+      FiberMap.setUnsafe(map, "key", worker.fiber)
+      FiberMap.setUnsafe(map, "key", worker.fiber, { onlyIfMissing: true })
+
+      strictEqual(Option.getOrUndefined(FiberMap.getUnsafe(map, "key")), worker.fiber)
+      strictEqual(worker.fiber.pollUnsafe(), undefined)
+      strictEqual(yield* Ref.get(worker.cleanups), 0)
+    }))
+
+  for (const propagateInterruption of [false, true]) {
+    it.effect(`same-fiber registration preserves propagateInterruption: ${propagateInterruption}`, () =>
+      Effect.gen(function*() {
+        const map = yield* FiberMap.make<string>()
+        const worker = yield* makeWorker
+        FiberMap.setUnsafe(map, "key", worker.fiber, { propagateInterruption })
+        FiberMap.setUnsafe(map, "key", worker.fiber, {
+          onlyIfMissing: true,
+          propagateInterruption: !propagateInterruption
+        })
+
+        yield* Fiber.interrupt(worker.fiber)
+        strictEqual(yield* Deferred.isDone(map.deferred), propagateInterruption)
+      }))
+  }
 
   it.effect("runtime onlyIfMissing", () =>
     Effect.gen(function*() {
