@@ -52,15 +52,15 @@ declare const simpleEffect: Effect.Effect<string, SimpleError>
 declare const noSuchOrOther: Effect.Effect<string, Cause.NoSuchElementError | OtherError>
 declare const onlyNoSuch: Effect.Effect<number, Cause.NoSuchElementError>
 declare const consumeSimple: (effect: Effect.Effect<number, SimpleError>) => void
-declare const tryInput:
-  | (() => number)
-  | { readonly try: () => number; readonly catch: (error: unknown) => SimpleError }
+type TryOptions<A, E> = { readonly try: () => A; readonly catch: (error: unknown) => E }
+type TryPromiseOptions<A, E> = {
+  readonly try: (signal: AbortSignal) => PromiseLike<A>
+  readonly catch: (error: unknown) => E
+}
+declare const tryInput: (() => number) | TryOptions<number, SimpleError>
 declare const tryPromiseInput:
   | ((signal: AbortSignal) => PromiseLike<number>)
-  | {
-    readonly try: (signal: AbortSignal) => PromiseLike<number>
-    readonly catch: (error: unknown) => SimpleError
-  }
+  | TryPromiseOptions<number, SimpleError>
 
 declare const string: Effect.Effect<string, "err-1", "dep-1">
 declare const number: Effect.Effect<number, "err-2", "dep-2">
@@ -166,19 +166,22 @@ describe("Effect.try", () => {
     expect(result).type.toBe<Effect.Effect<number, SimpleError>>()
   })
 
-  it("includes UnknownError when both type parameters are explicit for the direct-thunk form", () => {
-    const result = Effect.try<number, SimpleError>(() => 1)
-    expect(result).type.toBe<Effect.Effect<number, SimpleError | Cause.UnknownError>>()
+  it("rejects an explicit error type for the direct-thunk form", () => {
+    // @ts-expect-error is not assignable to parameter
+    Effect.try<number, SimpleError>(() => 1)
   })
 
-  it("includes UnknownError for a union input", () => {
-    const result = Effect.try(tryInput)
-    expect(result).type.toBe<Effect.Effect<number, SimpleError | Cause.UnknownError>>()
+  it("rejects a union of direct and mapped inputs", () => {
+    // @ts-expect-error No overload matches this call
+    Effect.try(tryInput)
   })
 
-  it("supports a generic direct-thunk wrapper", () => {
-    const wrap = <A>(thunk: () => A): Effect.Effect<A, Cause.UnknownError> => Effect.try(thunk)
-    expect(wrap(() => "value")).type.toBe<Effect.Effect<string, Cause.UnknownError>>()
+  it("rejects a generic alias that erases UnknownError", () => {
+    // @ts-expect-error is not assignable to type
+    const tryAs: <A, E>(options: (() => A) | TryOptions<A, E>) => Effect.Effect<A, E> = Effect.try
+    expect(tryAs<number, SimpleError>).type.toBe<
+      (options: (() => number) | TryOptions<number, SimpleError>) => Effect.Effect<number, SimpleError>
+    >()
   })
 })
 
@@ -220,20 +223,28 @@ describe("Effect.tryPromise", () => {
     expect(result).type.toBe<Effect.Effect<number, SimpleError>>()
   })
 
-  it("includes UnknownError when both type parameters are explicit for the direct-thunk form", () => {
-    const result = Effect.tryPromise<number, SimpleError>(() => Promise.resolve(1))
-    expect(result).type.toBe<Effect.Effect<number, SimpleError | Cause.UnknownError>>()
+  it("rejects an explicit error type for the direct-thunk form", () => {
+    // @ts-expect-error is not assignable to parameter
+    Effect.tryPromise<number, SimpleError>(() => Promise.resolve(1))
   })
 
-  it("includes UnknownError for a union input", () => {
-    const result = Effect.tryPromise(tryPromiseInput)
-    expect(result).type.toBe<Effect.Effect<number, SimpleError | Cause.UnknownError>>()
+  it("rejects a union of direct and mapped inputs", () => {
+    // @ts-expect-error No overload matches this call
+    Effect.tryPromise(tryPromiseInput)
   })
 
-  it("supports a generic direct-thunk wrapper", () => {
-    const wrap = <A>(thunk: (signal: AbortSignal) => PromiseLike<A>): Effect.Effect<A, Cause.UnknownError> =>
-      Effect.tryPromise(thunk)
-    expect(wrap(() => Promise.resolve("value"))).type.toBe<Effect.Effect<string, Cause.UnknownError>>()
+  it("rejects a generic alias that erases UnknownError", () => {
+    // @ts-expect-error is not assignable to type
+    const tryPromiseAs: <A, E>(
+      options: ((signal: AbortSignal) => PromiseLike<A>) | TryPromiseOptions<A, E>
+    ) => Effect.Effect<A, E> = Effect.tryPromise
+    expect(tryPromiseAs<number, SimpleError>).type.toBe<
+      (
+        options:
+          | ((signal: AbortSignal) => PromiseLike<number>)
+          | TryPromiseOptions<number, SimpleError>
+      ) => Effect.Effect<number, SimpleError>
+    >()
   })
 })
 
