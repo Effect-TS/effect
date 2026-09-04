@@ -550,7 +550,7 @@ const getModuleMarkdownOutputPath = (module: Domain.Module) => {
     return path.normalize(path.join(
       config.outDir,
       "modules",
-      `${module.path.slice(1).join(path.sep)}.md`
+      `${path.relative(config.srcDir, module.path.join(path.sep))}.md`
     ))
   })
 }
