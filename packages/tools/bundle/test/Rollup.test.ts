@@ -10,6 +10,7 @@ import { execFile } from "node:child_process"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
 import { gzipSync } from "node:zlib"
 import type * as RollupModule from "rollup"
@@ -50,6 +51,7 @@ vi.mock("rollup", async (importOriginal) => {
 })
 
 const root = mkdtempSync(join(tmpdir(), "effect-bundle-rollup-test-"))
+const cli = fileURLToPath(new URL("../src/bin.ts", import.meta.url))
 afterAll(() => rmSync(root, { recursive: true, force: true }))
 const fixture = (name = "entry.ts") => {
   const directory = mkdtempSync(join(root, "case-"))
@@ -155,12 +157,12 @@ describe("Rollup output contract", () => {
         Effect.promise(async () => {
           try {
             const value = await promisify(execFile)(process.execPath, [
-              "packages/tools/bundle/src/bin.ts",
+              cli,
               "visualize-selected",
               "--output-dir",
               outputDirectory,
               input
-            ], { cwd: process.cwd(), timeout: 20_000 })
+            ], { timeout: 20_000 })
             return { code: 0, ...value }
           } catch (error) {
             const failure = error as Error & { code: number; stdout: string; stderr: string }
@@ -169,8 +171,6 @@ describe("Rollup output contract", () => {
         })
       const success = yield* run(good.input, good.outputDirectory)
       const failure = yield* run(blocked.input, blocked.outputDirectory)
-      writeFileSync(join(good.outputDirectory, "cli.json"), JSON.stringify(success, null, 2))
-      writeFileSync(join(blocked.outputDirectory, "cli.json"), JSON.stringify(failure, null, 2))
       assert.strictEqual(success.code, 0)
       assert.include(success.stdout, "Generated Bundle")
       assert.isAbove(statSync(good.output).size, 0)

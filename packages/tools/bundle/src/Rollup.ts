@@ -20,8 +20,6 @@ import * as NodeStream from "@effect/platform-node/NodeStream"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
-import * as FiberSet from "effect/FiberSet"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
@@ -132,8 +130,6 @@ export class Rollup extends Context.Service<Rollup>()(
             }),
             (bundle) => Effect.promise(() => bundle.close())
           )
-          const fibers = yield* FiberSet.make()
-
           const { output } = yield* Effect.tryPromise({
             try: () => bundle.generate({ format: "esm" }),
             catch: (cause) => new RollupError({ cause })
@@ -146,35 +142,29 @@ export class Rollup extends Context.Service<Rollup>()(
             Stream.broadcast({ capacity: 8, replay: 8 })
           )
 
-          let awaitWrite: Effect.Effect<void, RollupError> = Effect.void
-          if (options.outputDirectory) {
-            const outputPath = pathService.join(
-              options.outputDirectory,
-              `${pathService.parse(options.path).name}.min.js`
-            )
-            const fiber = yield* FiberSet.run(
-              fibers,
-              stream.pipe(
-                Stream.run(fs.sink(outputPath))
-              )
-            )
-            awaitWrite = Fiber.join(fiber).pipe(
+          const writeOutput = options.outputDirectory
+            ? stream.pipe(
+              Stream.run(fs.sink(pathService.join(
+                options.outputDirectory,
+                `${pathService.parse(options.path).name}.min.js`
+              ))),
               Effect.mapError((cause) => new RollupError({ cause }))
             )
-          }
+            : Effect.void
 
-          const sizeInBytes = yield* stream.pipe(
-            NodeStream.pipeThroughDuplex({
-              evaluate: () => createGzip({ level: 9 }),
-              onError: (cause) => new RollupError({ cause })
-            }),
-            Stream.runFold(
-              () => 0,
-              (totalBytes, chunkBytes) => chunkBytes.length + totalBytes
+          const [, sizeInBytes] = yield* Effect.all([
+            writeOutput,
+            stream.pipe(
+              NodeStream.pipeThroughDuplex({
+                evaluate: () => createGzip({ level: 9 }),
+                onError: (cause) => new RollupError({ cause })
+              }),
+              Stream.runFold(
+                () => 0,
+                (totalBytes, chunkBytes) => chunkBytes.length + totalBytes
+              )
             )
-          )
-
-          yield* awaitWrite
+          ], { concurrency: 2 })
 
           yield* Effect.log(`Bundled ${options.path}`).pipe(
             Effect.annotateLogs({ size: `${(sizeInBytes / 1000).toFixed(2)} kB` })
