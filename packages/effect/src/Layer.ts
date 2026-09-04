@@ -2680,7 +2680,7 @@ export const withSpan: {
             (span) => internalEffect.addFinalizer((exit) => options.onEnd!(span, exit))
           )
           : internalEffect.makeSpanScoped(name, options),
-        (span) => withParentSpan(self, span)
+        (span) => withParentSpan(self, span, options)
       )
     )
   }
@@ -2693,7 +2693,7 @@ export const withSpan: {
             (span) => internalEffect.addFinalizer((exit) => options.onEnd!(span, exit))
           )
           : internalEffect.makeSpanScoped(name, options),
-        (span) => withParentSpan(self, span)
+        (span) => withParentSpan(self, span, options)
       )
     )
 } as any
