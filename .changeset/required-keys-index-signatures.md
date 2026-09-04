@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Types.RequiredKeys` to retain named required properties on types with index signatures, including generic records. For example, `{ a: number; [key: string]: number }` now yields `"a"` instead of `never`. This more accurate result can tighten annotations derived from `RequiredKeys`; update those annotations to include the named required keys. Runtime behavior is unchanged.
+Fix `Types.RequiredKeys` to retain named required properties on indexed object types, including intersections and unions whose members share the same required key. This can tighten annotations derived from `RequiredKeys`; update them to include those named keys. Runtime behavior is unchanged.
