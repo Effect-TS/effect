@@ -113,6 +113,20 @@ const makeUserResolverTagged = Effect.gen(function*() {
   return { allNames, getIds, getNameById } as const
 })
 
+const iterableResults: ReadonlyArray<
+  readonly [
+    name: string,
+    make: (values: Array<string>) => Iterable<string>
+  ]
+> = [
+  ["array", (values) => values],
+  ["array iterator", (values) => values.values()],
+  ["generator", (values) =>
+    (function*() {
+      yield* values
+    })()]
+]
+
 const processRequest = (entry: Request.Entry<UserRequest>): Effect.Effect<void> => {
   switch (entry.request._tag) {
     case "GetAllIds": {
@@ -239,6 +253,22 @@ describe.sequential("Request", () => {
 
       assert.isTrue(Exit.hasInterrupts(exit))
     }))
+
+  for (const [name, makeIterable] of iterableResults) {
+    it.effect(`fromEffectTagged resolves requests from ${name} results`, () =>
+      Effect.gen(function*() {
+        const resolver = Resolver.fromEffectTagged<GetNameById>()({
+          GetNameById: (requests) => Effect.succeed(makeIterable(requests.map(({ request }) => String(request.id))))
+        })
+        const names = yield* Effect.forEach(
+          [1, 2, 3],
+          (id) => Effect.request(new GetNameById({ id }), resolver),
+          { concurrency: "unbounded" }
+        )
+
+        assert.deepStrictEqual(names, ["1", "2", "3"])
+      }))
+  }
 
   it.effect(
     "requests don't break interruption",
