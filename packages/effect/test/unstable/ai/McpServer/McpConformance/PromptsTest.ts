@@ -30,7 +30,11 @@ const getPromptWire = (name: string) =>
     return yield* test.decodeResult(response)
   })
 
-export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
+export const suite = (
+  protocol: McpProtocol.ProtocolAdapter,
+  layer: McpConformanceLayer,
+  options?: { readonly additionalPromptNames?: ReadonlyArray<string> }
+) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Prompts", () => {
       // Shared capability contract; each dated entrypoint owns its normative specification revision.
@@ -76,7 +80,8 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                 "EmbeddedResourcePrompt",
                 "ImagePrompt",
                 "NoArgumentPrompt",
-                "TestPrompt"
+                "TestPrompt",
+                ...(options?.additionalPromptNames ?? [])
               ].sort()
               assert.deepStrictEqual(result.prompts.map((prompt) => prompt.name).sort(), expected)
             })

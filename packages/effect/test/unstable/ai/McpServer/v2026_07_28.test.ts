@@ -9,6 +9,7 @@ import * as CompletionTest from "./McpConformance/CompletionTest.ts"
 import * as LoggingTest from "./McpConformance/LoggingTest.ts"
 import { layer as makeMcpConformanceLayer, McpConformance } from "./McpConformance/McpConformance.ts"
 import {
+  MrtrInvalidStateToolName,
   MrtrSamplingToolChoiceToolName,
   MrtrSamplingToolsToolName,
   MrtrToolName
@@ -63,7 +64,7 @@ UtilitiesTest.statelessModernSuite(protocol, testLayer)
 ToolsTest.suite(protocol, testLayer)
 ToolsTest.statelessModernSuite(protocol, testLayer)
 ResourcesTest.suite(protocol, testLayer)
-PromptsTest.suite(protocol, testLayer)
+PromptsTest.suite(protocol, testLayer, { additionalPromptNames: ["MrtrPrompt"] })
 CompletionTest.suite(protocol, testLayer)
 LoggingTest.statelessModernSuite(protocol, testLayer)
 MultiRoundTripTest.suite(protocol, testLayer)
@@ -97,27 +98,14 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         assert.isNull(first.headers.get("Mcp-Session-Id"))
       }))
 
-    it.effect("should reject initialize when no stateful protocol is configured", () =>
+    it.effect("should return method not found when the removed initialize method is requested", () =>
       Effect.gen(function*() {
         const test = yield* McpConformance
-        const response = yield* test.post({
-          jsonrpc: "2.0",
-          id: 10,
-          method: "initialize",
-          params: {
-            protocolVersion: protocol.protocolVersion,
-            capabilities: {},
-            clientInfo: { name: "legacy-client", version: "1.0.0" }
-          }
-        })
-        const message = yield* test.decodeError(response)
+        const response = yield* test.post(request(10, "initialize"), headers("initialize"))
+        const message = yield* decodeError(response)
 
-        assert.strictEqual(response.status, 200)
-        assert.strictEqual(message.error.code, -32022)
-        assert.strictEqual(
-          message.error.message,
-          `initialize is not supported by the configured MCP protocols (requested '${protocol.protocolVersion}')`
-        )
+        assert.strictEqual(response.status, 404)
+        assert.strictEqual(message.error.code, McpSchema.METHOD_NOT_FOUND_ERROR_CODE)
       }))
 
     it.effect("should accept cancellation notifications without request metadata", () =>
@@ -183,6 +171,19 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
           headers("resources/read", encodedName)
         )
         assert.strictEqual(encoded.status, 200)
+      }))
+
+    // Conformance: http-header-validation
+    it.effect("should treat an unmatched Base64 wrapper as a literal when routing a request", () =>
+      Effect.gen(function*() {
+        const test = yield* McpConformance
+        const value = "=?base64?SGVsbG8="
+        const response = yield* test.post(
+          request(5, "tools/call", { name: "HeaderTool", arguments: { region: value } }),
+          { ...headers("tools/call", "HeaderTool"), "Mcp-Param-region": value }
+        )
+
+        assert.strictEqual(response.status, 200)
       }))
 
     it.effect("should reject routing headers when they are missing, malformed, or mismatched", () =>
@@ -261,21 +262,36 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
   })
 
   describe("Request metadata", () => {
-    it.effect("should reject requests when required protocol metadata is missing", () =>
+    it.effect("should return InvalidParams when required request metadata is missing", () =>
       Effect.gen(function*() {
         const test = yield* McpConformance
         const body = request(20, "tools/list")
-        const response = yield* test.post({
-          ...body,
-          params: {
-            _meta: { "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion }
+        const cases = [
+          { ...body, params: {} },
+          {
+            ...body,
+            params: {
+              _meta: {
+                "io.modelcontextprotocol/clientCapabilities": {},
+                "io.modelcontextprotocol/clientInfo": metadata["io.modelcontextprotocol/clientInfo"]
+              }
+            }
+          },
+          {
+            ...body,
+            params: {
+              _meta: { "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion }
+            }
           }
-        }, headers("tools/list"))
-        const error = yield* decodeError(response)
+        ]
 
-        assert.strictEqual(response.status, 400)
-        assert.strictEqual(error.id, body.id)
-        assert.strictEqual(error.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+        for (const requestBody of cases) {
+          const response = yield* test.post(requestBody, headers("tools/list"))
+          const error = yield* decodeError(response)
+          assert.strictEqual(response.status, 400)
+          assert.strictEqual(error.id, body.id)
+          assert.strictEqual(error.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+        }
       }))
 
     it.effect("should accept a request when optional client identity is omitted", () =>
@@ -330,6 +346,21 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
   })
 
   describe("Result envelopes", () => {
+    // Conformance: sep-2164-resource-not-found
+    it.effect("should include the requested URI when a resource is not found", () =>
+      Effect.gen(function*() {
+        const test = yield* McpConformance
+        const uri = "test://nonexistent-resource-for-conformance-testing"
+        const response = yield* test.post(
+          request(29, "resources/read", { uri }),
+          headers("resources/read", uri)
+        )
+        const error = yield* decodeError(response)
+
+        assert.strictEqual(error.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+        assert.deepStrictEqual(error.error.data, { uri })
+      }))
+
     // SEP-2322 requires every successful result to declare its result type.
     // SEP-2549 requires cache metadata on discovery, list, and resource-read results.
     it.effect("should attach modern result and cache metadata to every cacheable operation", () =>
@@ -420,6 +451,28 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
   })
 
   describe("Multi round-trip request capabilities", () => {
+    // Conformance: input-required-result-tampered-state
+    it.effect("should return InvalidParams when a resumed tool rejects its requestState", () =>
+      Effect.gen(function*() {
+        const test = yield* McpConformance
+        const discovered = yield* test.initialize({ server: "features" })
+        const response = yield* test.send(discovered, {
+          jsonrpc: "2.0",
+          id: 37,
+          method: "tools/call",
+          params: {
+            name: MrtrInvalidStateToolName,
+            arguments: {},
+            inputResponses: { approval: { action: "accept", content: { approved: true } } },
+            requestState: "tampered"
+          }
+        })
+        const error = yield* decodeError(response)
+
+        assert.strictEqual(response.status, 200)
+        assert.strictEqual(error.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+      }))
+
     // https://modelcontextprotocol.io/specification/2026-07-28/client/sampling#tools-in-sampling
     it.effect("should reject tool-enabled sampling when the client omits sampling.tools", () =>
       Effect.gen(function*() {

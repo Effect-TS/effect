@@ -105,6 +105,12 @@ export class InvalidToolInput extends Data.TaggedError("InvalidToolInput")<{
 }> {}
 
 /** @internal */
+export class InvalidToolContinuation extends Data.TaggedError("InvalidToolContinuation")<{
+  readonly name: string
+  readonly message: string
+}> {}
+
+/** @internal */
 export class ToolExecutionError extends Data.TaggedError("ToolExecutionError")<{
   readonly name: string
   readonly message: string
@@ -120,6 +126,7 @@ export class UnsupportedByProtocol extends Data.TaggedError("UnsupportedByProtoc
 export type ToolError =
   | ToolNotFound
   | InvalidToolInput
+  | InvalidToolContinuation
   | ToolExecutionError
 
 /** @internal */
@@ -133,7 +140,7 @@ export interface ToolRegistration {
     invocation: McpInvocation
   ) => Effect.Effect<
     OperationOutcome<McpSchema.CallToolResult>,
-    InvalidToolInput | ToolExecutionError,
+    InvalidToolInput | InvalidToolContinuation | ToolExecutionError,
     never
   >
 }
@@ -204,7 +211,7 @@ export interface PromptRegistration {
   readonly get: (
     args: Readonly<Record<string, string>>,
     invocation: McpInvocation
-  ) => Effect.Effect<McpSchema.GetPromptResult, McpSchema.InvalidParams | McpSchema.InternalError>
+  ) => Effect.Effect<OperationOutcome<McpSchema.GetPromptResult>, McpSchema.InvalidParams | McpSchema.InternalError>
 }
 
 /** @internal */
@@ -218,7 +225,7 @@ export interface Prompts {
     args: Readonly<Record<string, string>>,
     invocation: McpInvocation
   ) => Effect.Effect<
-    McpSchema.GetPromptResult,
+    OperationOutcome<McpSchema.GetPromptResult>,
     PromptNotFound | McpSchema.InvalidParams | McpSchema.InternalError
   >
 }

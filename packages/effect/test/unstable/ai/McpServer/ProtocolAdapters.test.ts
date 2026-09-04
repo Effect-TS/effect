@@ -837,7 +837,7 @@ describe("McpServer protocol adapters", () => {
       )
     }))
 
-  it.effect("should keep malformed modern requests out of legacy routing", () =>
+  it.effect("should keep requests out of legacy routing when modern metadata is malformed", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
       const unsupportedVersion = "2099-01-01"
@@ -847,7 +847,7 @@ describe("McpServer protocol adapters", () => {
           body: { jsonrpc: "2.0", id: 30, method: "tools/list", params: {} },
           headers: modernHeaders("tools/list"),
           status: 400,
-          code: McpSchema.HEADER_MISMATCH_ERROR_CODE
+          code: McpSchema.INVALID_PARAMS_ERROR_CODE
         },
         {
           name: "missing protocol header",
@@ -897,8 +897,8 @@ describe("McpServer protocol adapters", () => {
             }
           },
           headers: modernHeaders("initialize"),
-          status: 400,
-          code: McpSchema.HEADER_MISMATCH_ERROR_CODE
+          status: 404,
+          code: McpSchema.METHOD_NOT_FOUND_ERROR_CODE
         }
       ] as const
 

@@ -277,7 +277,7 @@ export class McpServer extends Context.Service<McpServer, {
     >
     readonly handle: (
       params: Record<string, string>
-    ) => Effect.Effect<GetPromptResult, InternalError | InvalidParams, McpRequestContext>
+    ) => Effect.Effect<GetPromptResult | McpSchema.InputRequired, InternalError | InvalidParams, McpRequestContext>
   }) => Effect.Effect<void>
   readonly getPromptResult: (
     request: typeof GetPrompt.payloadSchema.Type
@@ -391,7 +391,10 @@ export class McpServer extends Context.Service<McpServer, {
                     ),
                   InvalidParams: (error) =>
                     Effect.fail(
-                      new McpCore.InvalidToolInput({
+                      new (invocation.requestContext.requestState === undefined &&
+                          invocation.requestContext.inputResponses === undefined
+                        ? McpCore.InvalidToolInput
+                        : McpCore.InvalidToolContinuation)({
                         name: options.tool.name,
                         message: error.message
                       })
@@ -538,7 +541,14 @@ export class McpServer extends Context.Service<McpServer, {
                 clientInfo: profile.clientInfo
               })
             },
-            get: (params, invocation) => provideInvocationContext(options.handle(params), invocation)
+            get: (params, invocation) =>
+              provideInvocationContext(options.handle(params), invocation).pipe(
+                Effect.map((result) =>
+                  Predicate.isTagged(result, "InputRequired")
+                    ? McpCore.OperationOutcome.InputRequired(result)
+                    : McpCore.OperationOutcome.Complete(result)
+                )
+              )
           })
           for (const [param, handle] of Object.entries(options.completions)) {
             yield* internalCore.completions.register(
@@ -558,13 +568,16 @@ export class McpServer extends Context.Service<McpServer, {
         }),
       getPromptResult: Effect.fnUntraced(function*({ arguments: params, name }) {
         const client = yield* McpServerClient
-        return yield* internalCore.prompts.get(
+        const outcome = yield* internalCore.prompts.get(
           name,
           params ?? {},
           McpProtocolInternal.invocationFromClient(client)
         ).pipe(
           Effect.catchTag("PromptNotFound", () => new InvalidParams({ message: `Prompt '${name}' not found` }))
         )
+        return outcome._tag === "Complete"
+          ? outcome.value
+          : yield* new InvalidParams({ message: "Client input is not supported by this MCP protocol" })
       }),
       completion: Effect.fnUntraced(function*(complete) {
         const client = yield* McpServerClient

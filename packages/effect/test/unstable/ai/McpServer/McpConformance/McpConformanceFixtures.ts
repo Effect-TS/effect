@@ -19,6 +19,8 @@ export interface Observations {
 
 export const MrtrToolName = "MrtrTool"
 export const MrtrStateOnlyToolName = "MrtrStateOnlyTool"
+export const MrtrInvalidStateToolName = "MrtrInvalidStateTool"
+export const MrtrPromptName = "MrtrPrompt"
 export const MrtrSamplingToolsToolName = "MrtrSamplingToolsTool"
 export const MrtrSamplingToolChoiceToolName = "MrtrSamplingToolChoiceTool"
 export const mrtrRequestState = "opaque:+/=\u0000é"
@@ -286,6 +288,18 @@ const mrtrToolLayer = Layer.effectDiscard(
       ),
       handle: () => Effect.succeed(new McpSchema.InputRequired({ requestState: mrtrRequestState }))
     })
+    yield* server.addTool({
+      tool: new McpSchema.Tool({
+        name: MrtrInvalidStateToolName,
+        description: "Rejects an invalid continuation state",
+        inputSchema: { type: "object" }
+      }),
+      annotations: Context.make(
+        McpSchema.EnabledWhen,
+        (client) => client.protocolVersion === "2026-07-28"
+      ),
+      handle: () => Effect.fail(new McpSchema.InvalidParams({ message: "requestState integrity check failed" }))
+    })
     const samplingToolRequests = [
       [
         MrtrSamplingToolsToolName,
@@ -325,6 +339,39 @@ const mrtrToolLayer = Layer.effectDiscard(
           )
       })
     }
+    yield* server.addPrompt({
+      prompt: new McpSchema.Prompt({
+        name: MrtrPromptName,
+        description: "Requests client input before returning a prompt"
+      }),
+      annotations: Context.make(
+        McpSchema.EnabledWhen,
+        (client) => client.protocolVersion === "2026-07-28"
+      ),
+      completions: {},
+      handle: () =>
+        McpSchema.McpRequestContext.useSync((context) =>
+          context.inputResponses?.userContext === undefined
+            ? new McpSchema.InputRequired({
+              inputRequests: {
+                userContext: {
+                  method: "elicitation/create",
+                  params: {
+                    message: "What context should the prompt use?",
+                    requestedSchema: {
+                      type: "object",
+                      properties: { context: { type: "string" } },
+                      required: ["context"]
+                    }
+                  }
+                }
+              }
+            })
+            : new McpSchema.GetPromptResult({
+              messages: [{ role: "user", content: { type: "text", text: "Prompt completed" } }]
+            })
+        )
+    })
   })
 )
 
