@@ -1,6 +1,4 @@
 import { assert, describe, it } from "@effect/vitest"
-import * as Clock from "effect/Clock"
-import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
@@ -34,9 +32,6 @@ const decodeByteStream = Effect.fnUntraced(
     return new TextDecoder().decode(result).trim()
   }
 )
-
-const nativeClock = Clock.Clock.defaultValue()
-const liveSleep = (millis: number) => nativeClock.sleep(Duration.millis(millis))
 
 export const suite = (
   name: string,
@@ -501,7 +496,7 @@ export const suite = (
                   killSignal: "SIGTERM",
                   forceKillAfter: "50 millis"
                 }).pipe(Effect.as(true)),
-                liveSleep(1_000).pipe(Effect.as(false))
+                Effect.sleep("1 second").pipe(TestClock.withLive, Effect.as(false))
               )
 
               assert.isTrue(completed)
