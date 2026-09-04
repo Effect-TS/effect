@@ -14959,6 +14959,9 @@ export declare namespace Effectify {
     : never
 }
 
+type EffectifyArgs<F extends (...args: Array<any>) => any> = Parameters<F> extends [...infer Args, any] ? Args
+  : Parameters<F>
+
 /**
  * Converts an error-first callback API into a function that returns an
  * `Effect`.
@@ -15015,12 +15018,12 @@ export const effectify: {
   <F extends (...args: Array<any>) => any>(fn: F): Effectify.Effectify<F, Effectify.EffectifyError<F>>
   <F extends (...args: Array<any>) => any, E>(
     fn: F,
-    onError: (error: Effectify.EffectifyError<F>, args: Parameters<F>) => E
+    onError: (error: Effectify.EffectifyError<F>, args: EffectifyArgs<F>) => E
   ): Effectify.Effectify<F, E>
   <F extends (...args: Array<any>) => any, E, E2>(
     fn: F,
-    onError: (error: Effectify.EffectifyError<F>, args: Parameters<F>) => E,
-    onSyncError: (error: unknown, args: Parameters<F>) => E2
+    onError: (error: Effectify.EffectifyError<F>, args: EffectifyArgs<F>) => E,
+    onSyncError: (error: unknown, args: EffectifyArgs<F>) => E2
   ): Effectify.Effectify<F, E | E2>
 } =
   (<A>(fn: Function, onError?: (e: any, args: any) => any, onSyncError?: (e: any, args: any) => any) =>
