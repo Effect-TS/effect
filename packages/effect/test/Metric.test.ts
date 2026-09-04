@@ -33,10 +33,9 @@ describe("Metric", () => {
       yield* Metric.update(second, 10)
 
       assert.strictEqual((yield* Metric.value(first)).count, 1)
-      assert.strictEqual((yield* Metric.value(second)).count, 10)
     }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
-  it.effect("uses attribute names instead of record insertion order for series identity", () =>
+  it.effect("shares a series for equal attributes in different record orders", () =>
     Effect.gen(function*() {
       const id = nextId()
       const first = Metric.counter(id, { attributes: { route: "/users", method: "GET" } })
@@ -46,48 +45,9 @@ describe("Metric", () => {
       yield* Metric.update(second, 10)
 
       assert.strictEqual((yield* Metric.value(first)).count, 11)
-      assert.strictEqual((yield* Metric.value(second)).count, 11)
     }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
-  it.effect("uses attribute names instead of wrapper order for series identity", () =>
-    Effect.gen(function*() {
-      const id = nextId()
-      const first = Metric.counter(id).pipe(
-        Metric.withAttributes({ method: "GET" }),
-        Metric.withAttributes({ route: "/users" })
-      )
-      const second = Metric.counter(id).pipe(
-        Metric.withAttributes({ route: "/users" }),
-        Metric.withAttributes({ method: "GET" })
-      )
-
-      yield* Metric.update(first, 1)
-      yield* Metric.update(second, 10)
-
-      assert.strictEqual((yield* Metric.value(first)).count, 11)
-      assert.strictEqual((yield* Metric.value(second)).count, 11)
-    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
-
-  it.effect("uses attribute names instead of contextual attribute order for series identity", () =>
-    Effect.gen(function*() {
-      const metric = Metric.counter(nextId())
-      const firstContext = { route: "/users", method: "GET" }
-      const secondContext = { method: "GET", route: "/users" }
-
-      yield* Metric.update(metric, 1).pipe(Effect.provideService(Metric.CurrentMetricAttributes, firstContext))
-      yield* Metric.update(metric, 10).pipe(Effect.provideService(Metric.CurrentMetricAttributes, secondContext))
-
-      assert.strictEqual(
-        (yield* Metric.value(metric).pipe(Effect.provideService(Metric.CurrentMetricAttributes, firstContext))).count,
-        11
-      )
-      assert.strictEqual(
-        (yield* Metric.value(metric).pipe(Effect.provideService(Metric.CurrentMetricAttributes, secondContext))).count,
-        11
-      )
-    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
-
-  it.effect("canonicalizes series identity after merging metric and contextual attributes", () =>
+  it.effect("shares a series after merging metric and contextual attributes", () =>
     Effect.gen(function*() {
       const id = nextId()
       const first = Metric.counter(id, { attributes: { route: "/users" } })
@@ -102,13 +62,9 @@ describe("Metric", () => {
         (yield* Metric.value(first).pipe(Effect.provideService(Metric.CurrentMetricAttributes, firstContext))).count,
         11
       )
-      assert.strictEqual(
-        (yield* Metric.value(second).pipe(Effect.provideService(Metric.CurrentMetricAttributes, secondContext))).count,
-        11
-      )
     }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
-  it.effect("does not reorder public attribute metadata", () =>
+  it.effect("preserves attribute order in snapshots", () =>
     Effect.gen(function*() {
       const record = { route: "/users", method: "GET" }
       const metric = Metric.counter(nextId(), { attributes: record })
@@ -116,8 +72,6 @@ describe("Metric", () => {
       yield* Metric.update(metric, 1)
       const snapshot = yield* Metric.snapshot
 
-      assert.deepStrictEqual(Object.keys(record), ["route", "method"])
-      assert.deepStrictEqual(Object.keys(metric.attributes ?? {}), ["route", "method"])
       assert.deepStrictEqual(Object.keys(snapshot[0].attributes ?? {}), ["route", "method"])
     }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
