@@ -1660,8 +1660,9 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
   declare readonly Input: Contravariant<Input>
   declare readonly State: Covariant<State>
 
-  readonly #metadataCache = new WeakMap<Metric.Attributes, Metric.Metadata<Input, State>>()
+  #metadataCache = new WeakMap<Metric.Attributes, Metric.Metadata<Input, State>>()
   #metadata: Metric.Metadata<Input, State> | undefined
+  #registry: MetricRegistry | undefined
 
   readonly id: string
   readonly description: string | undefined
@@ -1692,6 +1693,12 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
   abstract createHooks(): Metric.Hooks<Input, State>
 
   hook(context: Context.Context<never>): Metric.Hooks<Input, State> {
+    const registry = Context.get(context, MetricRegistry)
+    if (this.#registry !== registry) {
+      this.#registry = registry
+      this.#metadata = undefined
+      this.#metadataCache = new WeakMap()
+    }
     const extraAttributes = Context.get(context, CurrentMetricAttributes)
     if (Object.keys(extraAttributes).length === 0) {
       if (Predicate.isNotUndefined(this.#metadata)) {
