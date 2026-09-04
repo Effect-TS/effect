@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Schema } from "effect"
-import { Atom, AtomRegistry, AtomRpc, Hydration } from "effect/unstable/reactivity"
-import { Rpc, RpcGroup } from "effect/unstable/rpc"
+import { AsyncResult, Atom, AtomRegistry, AtomRpc, Hydration } from "effect/unstable/reactivity"
+import { Rpc, RpcClient, RpcGroup, RpcMiddleware, type RpcSerialization } from "effect/unstable/rpc"
 
 const Group = RpcGroup.make(
   Rpc.make("getUser", {
@@ -95,5 +95,66 @@ describe("AtomRpc", () => {
       assert.strictEqual(dehydrated[0]!.key, key)
 
       unmount()
+    }))
+
+  it.effect("dehydrates the rest of the registry when client middleware fails", () =>
+    Effect.gen(function*() {
+      class ClientFailure extends Schema.Error<ClientFailure>("ClientFailure")({
+        _tag: Schema.tag("ClientFailure")
+      }) {}
+
+      class ClientMiddleware extends RpcMiddleware.Service<ClientMiddleware, {
+        clientError: ClientFailure
+      }>()("ClientMiddleware", {
+        requiredForClient: true
+      }) {}
+
+      const group = RpcGroup.make(
+        Rpc.make("getUser", {
+          success: Schema.String
+        }).middleware(ClientMiddleware)
+      )
+      const protocol = Layer.mergeAll(
+        Layer.effect(
+          RpcClient.Protocol,
+          RpcClient.Protocol.make(() =>
+            Effect.succeed({
+              send: () => Effect.die("unexpected request"),
+              supportsAck: false,
+              supportsTransferables: false,
+              codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+            })
+          )
+        ),
+        RpcMiddleware.layerClient(
+          ClientMiddleware,
+          () => Effect.fail(new ClientFailure({}))
+        )
+      )
+      const Client = AtomRpc.Service()("ClientWithMiddleware", {
+        group,
+        protocol
+      })
+      const failedAtom = Client.query("getUser", undefined, {
+        serializationKey: "failed"
+      })
+      const unaffectedAtom = Atom.make(42).pipe(
+        Atom.serializable({
+          key: "unaffected",
+          schema: Schema.Number
+        })
+      )
+      const registry = AtomRegistry.make()
+      const unmountFailed = registry.mount(failedAtom)
+      const unmountUnaffected = registry.mount(unaffectedAtom)
+      yield* Effect.yieldNow
+      yield* Effect.yieldNow
+
+      assert(AsyncResult.isFailure(registry.get(failedAtom)))
+      const dehydrated = Hydration.toValues(Hydration.dehydrate(registry))
+      assert.strictEqual(dehydrated.find((entry) => entry.key === "unaffected")?.value, 42)
+
+      unmountUnaffected()
+      unmountFailed()
     }))
 })
