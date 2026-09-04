@@ -966,11 +966,17 @@ export const promise: <A>(
  * @category constructors
  * @since 2.0.0
  */
-export const tryPromise: <A, E = Cause.UnknownError>(
-  options:
-    | { readonly try: (signal: AbortSignal) => PromiseLike<A>; readonly catch: (error: unknown) => E }
-    | ((signal: AbortSignal) => PromiseLike<A>)
-) => Effect<A, E> = internal.tryPromise
+export const tryPromise: {
+  <A>(options: (signal: AbortSignal) => PromiseLike<A>): Effect<A, Cause.UnknownError>
+  <A, E = Cause.UnknownError>(
+    options: { readonly try: (signal: AbortSignal) => PromiseLike<A>; readonly catch: (error: unknown) => E }
+  ): Effect<A, E>
+  <A, E = Cause.UnknownError>(
+    options:
+      | { readonly try: (signal: AbortSignal) => PromiseLike<A>; readonly catch: (error: unknown) => E }
+      | ((signal: AbortSignal) => PromiseLike<A>)
+  ): Effect<A, E | Cause.UnknownError>
+} = internal.tryPromise
 
 /**
  * Creates an `Effect` that always succeeds with a given value.
@@ -1635,12 +1641,19 @@ export const failCauseSync: <E>(
  */
 export const die: (defect: unknown) => Effect<never> = internal.die
 
-const try_: <A, E = Cause.UnknownError>(
-  options: {
+const try_: {
+  <A>(options: LazyArg<A>): Effect<A, Cause.UnknownError>
+  <A, E = Cause.UnknownError>(options: {
     readonly try: LazyArg<A>
     readonly catch: (error: unknown) => E
-  } | LazyArg<A>
-) => Effect<A, E> = internal.try
+  }): Effect<A, E>
+  <A, E = Cause.UnknownError>(
+    options: {
+      readonly try: LazyArg<A>
+      readonly catch: (error: unknown) => E
+    } | LazyArg<A>
+  ): Effect<A, E | Cause.UnknownError>
+} = internal.try
 
 export {
   /**
