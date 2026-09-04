@@ -26,6 +26,21 @@ describe("Metric", () => {
       assert.deepStrictEqual(valueB, { count: 10, incremental: false })
     }))
 
+  it.effect("keeps attributed metrics scoped to the active registry", () =>
+    Effect.gen(function*() {
+      const counter = Metric.counter(nextId()).pipe(Metric.withAttributes(attributes))
+      const registryA: Metric.MetricRegistry = new Map()
+      const registryB: Metric.MetricRegistry = new Map()
+
+      yield* Metric.update(counter, 1).pipe(Effect.provideService(Metric.MetricRegistry, registryA))
+      yield* Metric.update(counter, 10).pipe(Effect.provideService(Metric.MetricRegistry, registryB))
+
+      const valueA = yield* Metric.value(counter).pipe(Effect.provideService(Metric.MetricRegistry, registryA))
+      const valueB = yield* Metric.value(counter).pipe(Effect.provideService(Metric.MetricRegistry, registryB))
+      assert.strictEqual(valueA.count, 1)
+      assert.strictEqual(valueB.count, 10)
+    }))
+
   it.effect("keeps distinct attribute sets in separate series", () =>
     Effect.gen(function*() {
       const id = nextId()
