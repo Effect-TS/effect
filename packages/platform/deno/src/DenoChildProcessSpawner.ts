@@ -8,6 +8,7 @@
  * @since 4.0.0
  */
 import type * as Arr from "effect/Array"
+import * as Clock from "effect/Clock"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -28,6 +29,8 @@ import {
   makeHandle,
   ProcessId
 } from "effect/unstable/process/ChildProcessSpawner"
+
+const nativeClock = Clock.Clock.defaultValue()
 
 const commandString = (command: ChildProcess.Command): string => {
   const { commands } = flattenCommand(command)
@@ -198,16 +201,6 @@ const make = Effect.gen(function*() {
       catch: (cause) => toPlatformError("kill", cause, command)
     })
 
-  const nativeSleep = (duration: Duration.Input): Effect.Effect<void> => {
-    const millis = Duration.toMillis(duration)
-    if (millis === Infinity) return Effect.never
-    if (millis <= 0) return Effect.void
-    return Effect.callback<void>((resume) => {
-      const timer = setTimeout(() => resume(Effect.void), millis)
-      return Effect.sync(() => clearTimeout(timer))
-    })
-  }
-
   const withTimeout = (
     childProcess: Deno.ChildProcess,
     command: ChildProcess.StandardCommand,
@@ -225,7 +218,9 @@ const make = Effect.gen(function*() {
       ? kill(command, childProcess, killSignal)
       : Effect.raceFirst(
         kill(command, childProcess, killSignal),
-        nativeSleep(options.forceKillAfter).pipe(Effect.andThen(kill(command, childProcess, "SIGKILL")))
+        nativeClock.sleep(Duration.fromInputUnsafe(options.forceKillAfter)).pipe(
+          Effect.andThen(kill(command, childProcess, "SIGKILL"))
+        )
       )
   }
 

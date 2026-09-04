@@ -1,4 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Clock from "effect/Clock"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
@@ -33,11 +35,8 @@ const decodeByteStream = Effect.fnUntraced(
   }
 )
 
-const liveSleep = (millis: number) =>
-  Effect.callback<void>((resume) => {
-    const timer = setTimeout(() => resume(Effect.void), millis)
-    return Effect.sync(() => clearTimeout(timer))
-  })
+const nativeClock = Clock.Clock.defaultValue()
+const liveSleep = (millis: number) => nativeClock.sleep(Duration.millis(millis))
 
 export const suite = (
   name: string,
