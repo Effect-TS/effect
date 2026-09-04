@@ -1,6 +1,6 @@
 import { Effect, Layer, Schema, type Stream } from "effect"
 import type { Sse } from "effect/unstable/encoding"
-import { HttpClient, type HttpClientError } from "effect/unstable/http"
+import { HttpClient, type HttpClientError, type HttpClientResponse } from "effect/unstable/http"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema } from "effect/unstable/httpapi"
 import { type Atom, AtomHttpApi } from "effect/unstable/reactivity"
 import { describe, expect, it } from "tstyche"
@@ -80,6 +80,14 @@ describe("AtomHttpApi", () => {
     const query = Client.query("group", "sse", {})
 
     expect<Atom.Success<typeof query>>().type.toBe<SseStream>()
+  })
+
+  it("should pair the stream with the response in decoded-and-response mode", () => {
+    const mutation = Client.mutation("group", "sse", { responseMode: "decoded-and-response" })
+
+    expect<Atom.Success<typeof mutation>>().type.toBe<
+      [SseStream, HttpClientResponse.HttpClientResponse]
+    >()
   })
 
   it("should expose generated binary stream errors from mutations", () => {
