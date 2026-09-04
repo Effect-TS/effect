@@ -28,6 +28,7 @@ const InputResponses = Schema.Record(Schema.String, Schema.JsonObject)
 const decodeRequestMetadata = Schema.decodeUnknownEffect(McpSchema.RequestMetaObject)
 const decodeCancellation = Schema.decodeUnknownEffect(McpSchema.CancelledNotification.payloadSchema)
 const isJson = Schema.is(Schema.Json)
+const encodeImplementation = Schema.encodeEffect(McpSchema.Implementation)
 const MAX_PENDING_SUBSCRIPTION_NOTIFICATIONS = 64
 
 type ObjectWithUndefined = Readonly<Record<string, unknown>>
@@ -104,7 +105,7 @@ export const projectCallToolOutcome = Effect.fnUntraced(function*(
   outcome: McpCore.OperationOutcome<ObjectWithUndefined>,
   serverInfo: typeof McpSchema.Implementation.Type
 ) {
-  const encodedServerInfo = yield* Schema.encodeEffect(McpSchema.Implementation)(serverInfo)
+  const encodedServerInfo = yield* encodeImplementation(serverInfo)
   if (outcome._tag === "Complete") {
     return yield* decodeCallToolOutcome({
       ...omitUndefined(outcome.value),
@@ -217,7 +218,7 @@ const projectCompleteResult = Effect.fnUntraced(function*(
   value: ObjectWithUndefined,
   serverInfo: typeof McpSchema.Implementation.Type
 ) {
-  const encodedServerInfo = yield* Schema.encodeEffect(McpSchema.Implementation)(serverInfo)
+  const encodedServerInfo = yield* encodeImplementation(serverInfo)
   return {
     ...omitUndefined(value),
     _meta: resultMetadata(value, encodedServerInfo),
@@ -494,7 +495,7 @@ export const makeHandlers = (
         requestId,
         "Pending notification limit exceeded"
       ) ?? Effect.void
-      const encodedServerInfo = yield* Schema.encodeEffect(McpSchema.Implementation)(context.serverInfo)
+      const encodedServerInfo = yield* encodeImplementation(context.serverInfo)
       return McpSchema.SubscriptionsListenResult.make({
         _meta: {
           ...subscriptionMetadata,
@@ -585,7 +586,7 @@ export const makeHandlers = (
       const outcome = yield* core.prompts.get(request.name, request.arguments ?? {}, invocation)
       if (outcome._tag === "InputRequired") {
         yield* validateInputRequestCapabilities(outcome, invocation.protocol.clientCapabilities)
-        const encodedServerInfo = yield* Schema.encodeEffect(McpSchema.Implementation)(context.serverInfo)
+        const encodedServerInfo = yield* encodeImplementation(context.serverInfo)
         return yield* decodePromptOutcome({
           _meta: { "io.modelcontextprotocol/serverInfo": encodedServerInfo },
           resultType: "input_required",
