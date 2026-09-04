@@ -17,9 +17,24 @@ vi.mock("@effect/wa-sqlite/src/examples/AccessHandlePoolVFS.js", () => ({
   }
 }))
 vi.mock("@effect/wa-sqlite", () => ({
+  SQLITE_ROW: 100,
   Factory: () => ({
+    bind_collection() {},
     close() {},
+    column_names: (statement: { readonly columns: ReadonlyArray<string> }) => statement.columns,
     open_v2: () => 1,
+    row: (statement: { readonly index: number; readonly rows: ReadonlyArray<ReadonlyArray<number>> }) =>
+      statement.rows[statement.index],
+    *statements(_db: number, sql: string) {
+      if (sql !== "SELECT 1 AS first; SELECT 2 AS second, 3 AS third") {
+        throw new Error(`Unexpected SQL: ${sql}`)
+      }
+      yield { columns: ["first"], index: -1, rows: [[1]] }
+      yield { columns: ["second", "third"], index: -1, rows: [[2, 3]] }
+    },
+    step(statement: { index: number; readonly rows: ReadonlyArray<ReadonlyArray<number>> }) {
+      return ++statement.index < statement.rows.length ? 100 : 101
+    },
     vfs_register() {}
   })
 }))
@@ -97,6 +112,18 @@ describe("Client", () => {
       yield* OpfsWorker.run({ port: new FakePort(), dbName: "test.db" })
       assert.strictEqual(state.vfsCloseCalls, 1)
     }))
+
+  it.effect("keeps columns scoped to each statement", () =>
+    Effect.gen(function*() {
+      const channel = new MessageChannel()
+      yield* Effect.addFinalizer(() => Effect.sync(() => channel.port2.close()))
+      yield* Effect.forkChild(OpfsWorker.run({ port: channel.port1, dbName: "test.db" }))
+      const sql = yield* SqliteClient.make({ worker: Effect.succeed(channel.port2) })
+
+      const rows = yield* sql`SELECT 1 AS first; SELECT 2 AS second, 3 AS third`
+
+      assert.deepStrictEqual(rows, [{ first: 1 }, { second: 2, third: 3 }])
+    }).pipe(Effect.provide(Reactivity.layer)))
 
   it.effect("settles an in-flight query when the worker errors and reconnects", () =>
     Effect.gen(function*() {

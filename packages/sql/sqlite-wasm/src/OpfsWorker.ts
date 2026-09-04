@@ -94,13 +94,15 @@ export const run = (
               const [id, sql, params] = message
               messageId = id
               const results: Array<any> = []
-              let columns: Array<string> | undefined
+              const columns: Array<Array<string>> = []
               for (const stmt of sqlite3.statements(db, sql)) {
+                let statementColumns: Array<string> | undefined
                 sqlite3.bind_collection(stmt, params as any)
                 while (sqlite3.step(stmt) === WaSqlite.SQLITE_ROW) {
-                  columns = columns ?? sqlite3.column_names(stmt)
+                  statementColumns = statementColumns ?? sqlite3.column_names(stmt)
                   const row = sqlite3.row(stmt)
                   results.push(row)
+                  columns.push(statementColumns)
                 }
               }
               options.port.postMessage([id, undefined, [columns, results]])
