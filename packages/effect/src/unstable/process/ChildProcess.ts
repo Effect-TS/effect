@@ -247,8 +247,10 @@ export interface KillOptions {
   /**
    * The duration of time to wait after the child process has been terminated
    * before forcefully killing the child process by sending it the `"SIGKILL"`
-   * signal. Defaults to `undefined`, which means that no timeout will be
-   * enforced by default.
+   * signal. Defaults to `undefined`, so `"SIGKILL"` is never sent.
+   *
+   * The spawner decides whether to terminate descendants and how long to wait.
+   * See its platform module documentation, such as `NodeChildProcessSpawner`.
    */
   readonly forceKillAfter?: Duration.Input | undefined
 }
