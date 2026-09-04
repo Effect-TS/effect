@@ -87,6 +87,8 @@ describe("AtomRpc", () => {
           serializable: true
         }
       )
+      assert.strictEqual(Client.query("getUser", { id: 2 }, { timeToLive: 0 }).idleTTL, 0)
+      assert.strictEqual(Client.query("getUser", { id: 3 }, { timeToLive: 0n }).idleTTL, 0)
       const keepAliveAtom = Client.query("getUser", { id: 2 }, {
         reactivityKeys: ["users"],
         timeToLive: "Infinity",

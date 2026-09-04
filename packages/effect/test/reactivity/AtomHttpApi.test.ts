@@ -102,6 +102,14 @@ describe("AtomHttpApi", () => {
           serializable: true
         }
       )
+      assert.strictEqual(
+        Client.query("group", "get", { params: { id: 2 }, query: { page: 3 }, timeToLive: 0 }).idleTTL,
+        0
+      )
+      assert.strictEqual(
+        Client.query("group", "get", { params: { id: 3 }, query: { page: 4 }, timeToLive: 0n }).idleTTL,
+        0
+      )
       const keepAliveAtom = Client.query("group", "get", {
         params: { id: 2 },
         query: { page: 3 },
