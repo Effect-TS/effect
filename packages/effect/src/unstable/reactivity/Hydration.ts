@@ -10,6 +10,7 @@
  *
  * @since 4.0.0
  */
+import * as Schema from "../../Schema.ts"
 import * as AsyncResult from "./AsyncResult.ts"
 import * as Atom from "./Atom.ts"
 import type * as AtomRegistry from "./AtomRegistry.ts"
@@ -49,9 +50,10 @@ export interface DehydratedAtomValue extends DehydratedAtom {
  *
  * **Details**
  *
- * Only atoms marked with `Atom.serializable` are included. `encodeInitialAs`
- * controls whether `AsyncResult.Initial` values are ignored, encoded as values, or
- * represented by promises that resolve when the atom leaves the initial state.
+ * Only atoms marked with `Atom.serializable` whose current values can be encoded
+ * are included. `encodeInitialAs` controls whether `AsyncResult.Initial` values
+ * are ignored, encoded as values, or represented by promises that resolve when
+ * the atom leaves the initial state.
  *
  * @category dehydration
  * @since 4.0.0
@@ -74,7 +76,13 @@ export const dehydrate = (
     const value = node.value()
     const isInitial = AsyncResult.isAsyncResult(value) && AsyncResult.isInitial(value)
     if (encodeInitialResultMode === "ignore" && isInitial) return
-    const encodedValue = atom[Atom.SerializableTypeId].encode(value)
+    let encodedValue: unknown
+    try {
+      encodedValue = atom[Atom.SerializableTypeId].encode(value)
+    } catch (error) {
+      if (Schema.isSchemaError(error)) return
+      throw error
+    }
 
     // Create a promise that resolves when the atom moves out of Initial state
     let resultPromise: Promise<unknown> | undefined
