@@ -971,11 +971,6 @@ export const tryPromise: {
   <A, E = Cause.UnknownError>(
     options: { readonly try: (signal: AbortSignal) => PromiseLike<A>; readonly catch: (error: unknown) => E }
   ): Effect<A, E>
-  <A, E = Cause.UnknownError>(
-    options:
-      | { readonly try: (signal: AbortSignal) => PromiseLike<A>; readonly catch: (error: unknown) => E }
-      | ((signal: AbortSignal) => PromiseLike<A>)
-  ): Effect<A, E | Cause.UnknownError>
 } = internal.tryPromise
 
 /**
@@ -1647,12 +1642,6 @@ const try_: {
     readonly try: LazyArg<A>
     readonly catch: (error: unknown) => E
   }): Effect<A, E>
-  <A, E = Cause.UnknownError>(
-    options: {
-      readonly try: LazyArg<A>
-      readonly catch: (error: unknown) => E
-    } | LazyArg<A>
-  ): Effect<A, E | Cause.UnknownError>
 } = internal.try
 
 export {
