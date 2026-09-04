@@ -10,6 +10,22 @@ import { OtlpExporter, OtlpMetrics, OtlpSerialization } from "effect/unstable/ob
 const attributes = { x: "a", y: "b" }
 
 describe("Metric", () => {
+  it.effect("keeps shared metrics scoped to the active registry", () =>
+    Effect.gen(function*() {
+      const counter = Metric.counter(nextId())
+      const registryA: Metric.MetricRegistry = new Map()
+      const registryB: Metric.MetricRegistry = new Map()
+
+      yield* Metric.update(counter, 1).pipe(Effect.provideService(Metric.MetricRegistry, registryA))
+      yield* Metric.update(counter, 10).pipe(Effect.provideService(Metric.MetricRegistry, registryB))
+      yield* Metric.update(counter, 2).pipe(Effect.provideService(Metric.MetricRegistry, registryA))
+
+      const valueA = yield* Metric.value(counter).pipe(Effect.provideService(Metric.MetricRegistry, registryA))
+      const valueB = yield* Metric.value(counter).pipe(Effect.provideService(Metric.MetricRegistry, registryB))
+      assert.deepStrictEqual(valueA, { count: 3, incremental: false })
+      assert.deepStrictEqual(valueB, { count: 10, incremental: false })
+    }))
+
   it.effect("keeps distinct attribute sets in separate series", () =>
     Effect.gen(function*() {
       const id = nextId()
