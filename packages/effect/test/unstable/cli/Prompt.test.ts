@@ -50,6 +50,16 @@ const toRawFrames = (lines: ReadonlyArray<unknown>) =>
 const findFrame = (frames: ReadonlyArray<string>, text: string) => frames.find((frame) => frame.includes(text))
 
 describe("Prompt.date", () => {
+  const dateComponents = (value: Date) => [
+    value.getFullYear(),
+    value.getMonth(),
+    value.getDate(),
+    value.getHours(),
+    value.getMinutes(),
+    value.getSeconds(),
+    value.getMilliseconds()
+  ]
+
   it.effect("renders two-digit years, teen ordinals, and noon meridiem correctly", () =>
     Effect.gen(function*() {
       const initial = DateTime.toDateUtc(DateTime.makeZonedUnsafe(
@@ -62,6 +72,158 @@ describe("Prompt.date", () => {
       const output = (yield* MockTerminal.displayLines).map(String).join("\n")
 
       assert.include(output, "24 11th PM")
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("starts a fresh typed buffer when Tab advances to the next field", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 1, 12, 0, 0, 0)
+      assert.deepStrictEqual(yield* MockTerminal.displayLines, [])
+      yield* MockTerminal.inputText("1")
+      yield* MockTerminal.inputKey("tab")
+      yield* MockTerminal.inputText("5")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "MM-DD" }))
+
+      assert.deepStrictEqual(dateComponents(result), [2024, 0, 5, 12, 0, 0, 0])
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("starts a fresh typed buffer when Tab wraps to the first field", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 1, 12, 0, 0, 0)
+      assert.deepStrictEqual(yield* MockTerminal.displayLines, [])
+      yield* MockTerminal.inputKey("tab")
+      yield* MockTerminal.inputText("1")
+      yield* MockTerminal.inputKey("tab")
+      yield* MockTerminal.inputText("5")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "DD-MM" }))
+
+      assert.deepStrictEqual(dateComponents(result), [2024, 0, 5, 12, 0, 0, 0])
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("starts a fresh typed buffer when Right advances to the next field", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 1, 12, 0, 0, 0)
+      assert.deepStrictEqual(yield* MockTerminal.displayLines, [])
+      yield* MockTerminal.inputText("1")
+      yield* MockTerminal.inputKey("right")
+      yield* MockTerminal.inputText("5")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "MM-DD" }))
+
+      assert.deepStrictEqual(dateComponents(result), [2024, 0, 5, 12, 0, 0, 0])
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("starts a fresh typed buffer when Left returns to the previous field", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 1, 12, 0, 0, 0)
+      assert.deepStrictEqual(yield* MockTerminal.displayLines, [])
+      yield* MockTerminal.inputKey("right")
+      yield* MockTerminal.inputText("1")
+      yield* MockTerminal.inputKey("left")
+      yield* MockTerminal.inputText("5")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "DD-MM" }))
+
+      assert.deepStrictEqual(dateComponents(result), [2024, 0, 5, 12, 0, 0, 0])
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("accepts input after Tab moves with an empty typed buffer", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 1, 12, 0, 0, 0)
+      assert.deepStrictEqual(yield* MockTerminal.displayLines, [])
+      yield* MockTerminal.inputKey("tab")
+      yield* MockTerminal.inputText("5")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "MM-DD" }))
+
+      assert.deepStrictEqual(dateComponents(result), [2024, 0, 5, 12, 0, 0, 0])
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("accumulates multiple digits while staying in the same field", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 1, 12, 0, 0, 0)
+      assert.deepStrictEqual(yield* MockTerminal.displayLines, [])
+      yield* MockTerminal.inputText("15")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "DD" }))
+
+      assert.deepStrictEqual(dateComponents(result), [2024, 0, 15, 12, 0, 0, 0])
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("keeps an empty typed buffer across repeated Tab navigation", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 1, 12, 0, 0, 0)
+      assert.deepStrictEqual(yield* MockTerminal.displayLines, [])
+      yield* MockTerminal.inputKey("tab")
+      yield* MockTerminal.inputKey("tab")
+      yield* MockTerminal.inputKey("tab")
+      yield* MockTerminal.inputText("5")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "MM-DD" }))
+
+      assert.deepStrictEqual(dateComponents(result), [2024, 0, 5, 12, 0, 0, 0])
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("resets the next field after Tab on a validation retry", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 1, 12, 0, 0, 0)
+      const attempts: Array<Array<number>> = []
+      assert.deepStrictEqual(yield* MockTerminal.displayLines, [])
+      yield* MockTerminal.inputText("1")
+      yield* MockTerminal.inputKey("enter")
+      yield* MockTerminal.inputKey("tab")
+      yield* MockTerminal.inputText("5")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.date({
+        message: "When",
+        initial,
+        dateMask: "MM-DD",
+        validate: (value) => {
+          attempts.push(dateComponents(value))
+          return attempts.length === 1 ? Effect.fail("Try again") : Effect.succeed(value)
+        }
+      }))
+
+      assert.deepStrictEqual(dateComponents(result), [2024, 0, 5, 12, 0, 0, 0])
+      assert.deepStrictEqual(attempts, [[2024, 0, 1, 12, 0, 0, 0], [2024, 0, 5, 12, 0, 0, 0]])
+      assert.include((yield* MockTerminal.displayLines).join("\n"), "Try again")
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("starts a fresh typed buffer when Tab wraps a single editable field", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 1, 12, 0, 0, 0)
+      assert.deepStrictEqual(yield* MockTerminal.displayLines, [])
+      yield* MockTerminal.inputText("1")
+      yield* MockTerminal.inputKey("tab")
+      yield* MockTerminal.inputText("5")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "DD" }))
+
+      assert.deepStrictEqual(dateComponents(result), [2024, 0, 5, 12, 0, 0, 0])
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("starts seconds independently after Tab from minutes", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 1, 12, 0, 0, 0)
+      assert.deepStrictEqual(yield* MockTerminal.displayLines, [])
+      yield* MockTerminal.inputText("1")
+      yield* MockTerminal.inputKey("tab")
+      yield* MockTerminal.inputText("5")
+      yield* MockTerminal.inputKey("enter")
+
+      const result = yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "mm:ss" }))
+
+      assert.deepStrictEqual(dateComponents(result), [2024, 0, 1, 12, 1, 5, 0])
     }).pipe(Effect.provide(TestLayer)))
 })
 
