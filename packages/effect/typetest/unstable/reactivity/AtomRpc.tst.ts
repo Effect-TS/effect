@@ -1,5 +1,5 @@
 import { Context, Effect, Layer, Schema } from "effect"
-import { Atom, AtomRpc } from "effect/unstable/reactivity"
+import { type Atom, AtomRpc } from "effect/unstable/reactivity"
 import { Rpc, RpcGroup, RpcMiddleware } from "effect/unstable/rpc"
 import { describe, expect, it } from "tstyche"
 
