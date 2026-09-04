@@ -90,7 +90,7 @@ export class Dispatcher extends Context.Service<Dispatcher, Undici.Dispatcher>()
   "@effect/platform-node/NodeHttpClient/Dispatcher"
 ) {}
 
-const loadUndici = Effect.promise(() => import("./Undici.ts")).pipe(Effect.cached, Effect.runSync)
+const loadUndici = Effect.promise(() => import("./Undici.ts"))
 
 /**
  * Acquires a new Undici `Agent` dispatcher and destroys it when the enclosing
