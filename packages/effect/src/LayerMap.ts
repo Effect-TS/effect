@@ -423,7 +423,7 @@ export const Service = <Self>() =>
     : Options extends { readonly layers: infer Layers } ? keyof Layers
     : never,
   Service.Success<Options>,
-  Options extends { readonly preload: true } ? never : Service.Error<Options>,
+  Service.Error<Options>,
   Service.Services<Options>,
   Options extends { readonly preload: true } ? Service.Error<Options>
     : Options extends { readonly preloadKeys: Iterable<any> } ? Service.Error<Options>

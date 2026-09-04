@@ -334,7 +334,7 @@ export const make = (
           if (error) {
             resume(
               Exit.fail(
-                new SqlError({ reason: classifyError(error as string, "Failed to execute statement", "execute") })
+                new SqlError({ reason: classifyError(error, "Failed to execute statement", "execute") })
               )
             )
           } else {
@@ -343,6 +343,9 @@ export const make = (
         }
       }
       port.addEventListener("message", onMessage)
+      if ("start" in port) {
+        port.start()
+      }
 
       function onError(cause: Event) {
         const exit = Exit.fail(
@@ -362,7 +365,7 @@ export const make = (
       yield* Scope.addFinalizer(
         scope,
         Effect.sync(() => {
-          worker.removeEventListener("message", onMessage)
+          port.removeEventListener("message", onMessage)
           worker.removeEventListener("error", onError)
         })
       )

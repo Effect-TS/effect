@@ -1018,8 +1018,13 @@ const splitByWhitespaces = (template: string, rawTemplate: string): {
         rawIndex += 1
       } else if (nextRawCharacter === "u" && rawTemplate[rawIndex + 2] === "{") {
         // Handle variable-length unicode escape sequences (i.e. `\u{1F600}`) by:
+        // - Advancing the template index an extra code unit for astral code points
         // - Advancing the raw template index past the unicode escape sequence
-        rawIndex = rawTemplate.indexOf("}", rawIndex + 3)
+        const end = rawTemplate.indexOf("}", rawIndex + 3)
+        if (parseInt(rawTemplate.slice(rawIndex + 3, end), 16) > 0xffff) {
+          templateIndex += 1
+        }
+        rawIndex = end
       } else {
         // Advance raw template index past fixed-length escape sequences:
         // - \n    → 2 chars (backslash + n)
