@@ -9,6 +9,7 @@
  */
 import type * as Arr from "effect/Array"
 import * as Deferred from "effect/Deferred"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
@@ -197,6 +198,16 @@ const make = Effect.gen(function*() {
       catch: (cause) => toPlatformError("kill", cause, command)
     })
 
+  const nativeSleep = (duration: Duration.Input): Effect.Effect<void> => {
+    const millis = Duration.toMillis(duration)
+    if (millis === Infinity) return Effect.never
+    if (millis <= 0) return Effect.void
+    return Effect.callback<void>((resume) => {
+      const timer = setTimeout(() => resume(Effect.void), millis)
+      return Effect.sync(() => clearTimeout(timer))
+    })
+  }
+
   const withTimeout = (
     childProcess: Deno.ChildProcess,
     command: ChildProcess.StandardCommand,
@@ -212,10 +223,10 @@ const make = Effect.gen(function*() {
     const killSignal = options?.killSignal ?? "SIGTERM"
     return options?.forceKillAfter === undefined
       ? kill(command, childProcess, killSignal)
-      : Effect.timeoutOrElse(kill(command, childProcess, killSignal), {
-        duration: options.forceKillAfter,
-        orElse: () => kill(command, childProcess, "SIGKILL")
-      })
+      : Effect.raceFirst(
+        kill(command, childProcess, killSignal),
+        nativeSleep(options.forceKillAfter).pipe(Effect.andThen(kill(command, childProcess, "SIGKILL")))
+      )
   }
 
   const getSourceStream = (
