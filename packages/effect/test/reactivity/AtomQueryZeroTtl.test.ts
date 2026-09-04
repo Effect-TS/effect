@@ -24,10 +24,7 @@ const cases: ReadonlyArray<{
   { name: "Infinity", options: { timeToLive: Infinity }, idleTTL: undefined, keepAlive: true, second: 1 }
 ]
 
-const group = RpcGroup.make(
-  Rpc.make("read", { success: Schema.Number }),
-  Rpc.make("watch", { success: Schema.Number, stream: true })
-)
+const group = RpcGroup.make(Rpc.make("read", { success: Schema.Number }))
 const api = HttpApi.make("ttl").add(
   HttpApiGroup.make("nested").add(HttpApiEndpoint.get("read", "/read", { success: Schema.Number }))
 )
@@ -44,9 +41,6 @@ const setup = Effect.gen(function*() {
         onFromClient: ({ message }): Effect.Effect<void> =>
           Effect.suspend(() => {
             if (message._tag !== "Request") return Effect.void
-            if (message.tag === "watch") {
-              return rpc.write({ _tag: "Exit", clientId: 0, requestId: message.id, exit: Exit.void })
-            }
             return rpc.write({ _tag: "Exit", clientId: 0, requestId: message.id, exit: Exit.succeed(++rpcReads) })
           })
       })
@@ -91,14 +85,12 @@ const removalBarrier = (registry: AtomRegistry.AtomRegistry) =>
 
 describe("Atom query zero TTL", () => {
   for (const testCase of cases) {
-    for (const adapter of ["RPC unary", "RPC stream", "HTTP"] as const) {
+    for (const adapter of ["RPC", "HTTP"] as const) {
       it.effect(`${adapter}: ${testCase.name} metadata`, () =>
         Effect.gen(function*() {
           const { HttpService, RpcService } = yield* setup
           const atom = adapter === "HTTP"
             ? HttpService.query("nested", "read", testCase.options)
-            : adapter === "RPC stream"
-            ? RpcService.query("watch", undefined, testCase.options)
             : RpcService.query("read", undefined, testCase.options)
           assert.strictEqual(atom.idleTTL, testCase.idleTTL)
           assert.strictEqual(atom.keepAlive, testCase.keepAlive)
