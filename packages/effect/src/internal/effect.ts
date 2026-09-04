@@ -3790,9 +3790,9 @@ export const timeoutOrElse: {
       readonly orElse: LazyArg<Effect.Effect<A2, E2, R2>>
     }
   ): Effect.Effect<A | A2, E | E2, R | R2> =>
-    raceFirst(
-      self,
-      flatMap(sleep(options.duration), options.orElse)
+    flatMap(
+      timeoutOption(self, options.duration),
+      (option): Effect.Effect<A | A2, E2, R2> => Option.isNone(option) ? suspend(options.orElse) : succeed(option.value)
     )
 )
 
