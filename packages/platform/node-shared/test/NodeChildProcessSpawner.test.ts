@@ -108,13 +108,12 @@ const liveSleep = (millis: number) =>
 const liveTimeout = (millis: number) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   Effect.raceFirst(effect, liveSleep(millis).pipe(Effect.andThen(Effect.die(new Error("timed out")))))
 
-const startProcessGroup = (
-  scope: Scope.Scope,
-  mode: "exit-on-signal" | "ignore-signal",
-  marker: string,
-  options?: ChildProcess.CommandOptions
-) =>
+const startProcessGroup = (mode: "exit-on-signal" | "ignore-signal", options?: ChildProcess.CommandOptions) =>
   Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const directory = yield* fs.makeTempDirectoryScoped()
+    const marker = `${directory}/marker`
+    const scope = yield* Scope.make()
     const handle = yield* Scope.provide(scope)(ChildProcess.make(
       process.execPath,
       [processGroupFixture, "leader", mode, marker],
@@ -130,7 +129,7 @@ const startProcessGroup = (
       Effect.forkScoped
     )
     const descendantPid = yield* Deferred.await(ready).pipe(liveTimeout(5_000))
-    return { handle, descendantPid }
+    return { handle, descendantPid, marker, scope }
   })
 
 const killDescendant = (pid: number) =>
@@ -160,10 +159,7 @@ describe.skipIf(process.platform === "win32")("process group cleanup", () => {
   it.live("scope release waits for descendants that outlive the leader", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
-      const directory = yield* fs.makeTempDirectoryScoped()
-      const marker = `${directory}/descendant-exited`
-      const scope = yield* Scope.make()
-      const { handle } = yield* startProcessGroup(scope, "exit-on-signal", marker)
+      const { handle, marker, scope } = yield* startProcessGroup("exit-on-signal")
 
       yield* Scope.close(scope, Exit.void)
 
@@ -173,11 +169,7 @@ describe.skipIf(process.platform === "win32")("process group cleanup", () => {
 
   it.live("scope release force kills descendants that ignore the kill signal", () =>
     Effect.gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      const directory = yield* fs.makeTempDirectoryScoped()
-      const marker = `${directory}/heartbeat`
-      const scope = yield* Scope.make()
-      yield* startProcessGroup(scope, "ignore-signal", marker, { forceKillAfter: "200 millis" })
+      const { marker, scope } = yield* startProcessGroup("ignore-signal", { forceKillAfter: "200 millis" })
 
       yield* Scope.close(scope, Exit.void)
 
@@ -186,11 +178,7 @@ describe.skipIf(process.platform === "win32")("process group cleanup", () => {
 
   it.live("kill force kills descendants that ignore the kill signal", () =>
     Effect.gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      const directory = yield* fs.makeTempDirectoryScoped()
-      const marker = `${directory}/heartbeat`
-      const scope = yield* Scope.make()
-      const { handle } = yield* startProcessGroup(scope, "ignore-signal", marker)
+      const { handle, marker, scope } = yield* startProcessGroup("ignore-signal")
 
       yield* handle.kill({ forceKillAfter: "200 millis" })
 
@@ -201,11 +189,7 @@ describe.skipIf(process.platform === "win32")("process group cleanup", () => {
 
   it.effect("forceKillAfter escalation does not depend on the Effect clock", () =>
     Effect.gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      const directory = yield* fs.makeTempDirectoryScoped()
-      const marker = `${directory}/heartbeat`
-      const scope = yield* Scope.make()
-      yield* startProcessGroup(scope, "ignore-signal", marker, { forceKillAfter: "200 millis" })
+      const { marker, scope } = yield* startProcessGroup("ignore-signal", { forceKillAfter: "200 millis" })
 
       const releaseMillis = yield* timed(Scope.close(scope, Exit.void))
 
@@ -215,11 +199,7 @@ describe.skipIf(process.platform === "win32")("process group cleanup", () => {
 
   it.live("scope release returns when a descendant holds the inherited pipe without forceKillAfter", () =>
     Effect.gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      const directory = yield* fs.makeTempDirectoryScoped()
-      const marker = `${directory}/heartbeat`
-      const scope = yield* Scope.make()
-      const { descendantPid, handle } = yield* startProcessGroup(scope, "ignore-signal", marker)
+      const { descendantPid, handle, scope } = yield* startProcessGroup("ignore-signal")
 
       yield* Effect.gen(function*() {
         const releaseMillis = yield* timed(Scope.close(scope, Exit.void))

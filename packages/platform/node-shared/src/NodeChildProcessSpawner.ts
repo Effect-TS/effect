@@ -76,7 +76,11 @@ type ExitSignal = Deferred.Deferred<ExitCodeWithSignal>
 const processGroupGraceMillis = 1_000
 const processGroupPollIntervalMillis = 10
 
-const isProcessGroupAlive = (childProcess: NodeChildProcess.ChildProcess): boolean => {
+/** The leader has not exited, or a member of its process group still exists. */
+const isProcessAlive = (childProcess: NodeChildProcess.ChildProcess, exitSignal: ExitSignal): boolean => {
+  if (!Deferred.isDoneUnsafe(exitSignal)) {
+    return true
+  }
   if (globalThis.process.platform === "win32") {
     return false
   }
@@ -87,9 +91,6 @@ const isProcessGroupAlive = (childProcess: NodeChildProcess.ChildProcess): boole
     return false
   }
 }
-
-const isProcessAlive = (childProcess: NodeChildProcess.ChildProcess, exitSignal: ExitSignal): boolean =>
-  !Deferred.isDoneUnsafe(exitSignal) || isProcessGroupAlive(childProcess)
 
 const taskkill = (
   childProcess: NodeChildProcess.ChildProcess,
@@ -466,35 +467,28 @@ const make = Effect.gen(function*() {
       return Effect.sync(stop)
     })
 
-  const terminateProcessGroup = (
+  const terminateProcessGroup = Effect.fnUntraced(function*(
     command: ChildProcess.StandardCommand,
     childProcess: NodeChildProcess.ChildProcess,
     exitSignal: ExitSignal,
     options: ChildProcess.KillOptions | undefined
-  ) => {
-    const killSignal = options?.killSignal ?? "SIGTERM"
-    const forceKillAfter = Predicate.isUndefined(options?.forceKillAfter)
-      ? undefined
-      : Duration.toMillis(options.forceKillAfter)
+  ) {
     const signalGroup = (signal: NodeJS.Signals) =>
       killProcessGroup(command, childProcess, signal).pipe(
         Effect.catch(() => killProcess(command, childProcess, signal))
       )
-    return signalGroup(killSignal).pipe(
-      Effect.andThen(awaitProcessExit(childProcess, exitSignal, forceKillAfter ?? processGroupGraceMillis)),
-      Effect.andThen(
-        Effect.suspend(() =>
-          Predicate.isUndefined(forceKillAfter) || !isProcessAlive(childProcess, exitSignal)
-            ? Effect.void
-            : signalGroup("SIGKILL").pipe(
-              Effect.andThen(awaitProcessExit(childProcess, exitSignal, processGroupGraceMillis))
-            )
-        )
-      ),
-      Effect.andThen(Deferred.await(exitSignal)),
-      Effect.asVoid
-    )
-  }
+    yield* signalGroup(options?.killSignal ?? "SIGTERM")
+    if (Predicate.isUndefined(options?.forceKillAfter)) {
+      yield* awaitProcessExit(childProcess, exitSignal, processGroupGraceMillis)
+    } else {
+      yield* awaitProcessExit(childProcess, exitSignal, Duration.toMillis(options.forceKillAfter))
+      if (isProcessAlive(childProcess, exitSignal)) {
+        yield* signalGroup("SIGKILL")
+        yield* awaitProcessExit(childProcess, exitSignal, processGroupGraceMillis)
+      }
+    }
+    yield* Deferred.await(exitSignal)
+  })
 
   /**
    * Get the appropriate source stream from a process handle based on the
@@ -550,16 +544,14 @@ const make = Effect.gen(function*() {
             if (exited) {
               const [code] = yield* Deferred.await(exitSignal)
               if (code !== 0 && Predicate.isNotNull(code)) {
-                return yield* Effect.ignore(
-                  killProcessGroup(cmd, childProcess, cmd.options.killSignal ?? "SIGTERM")
-                )
+                yield* Effect.ignore(killProcessGroup(cmd, childProcess, cmd.options.killSignal ?? "SIGTERM"))
               }
-              return yield* Effect.void
+              return
             }
             if (!isReferenced) {
-              return yield* Effect.void
+              return
             }
-            return yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
+            yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
           })
         )
 
