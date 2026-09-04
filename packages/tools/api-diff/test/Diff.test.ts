@@ -76,6 +76,30 @@ describe("snapshot diff", () => {
       }
     }).pipe(Effect.provide(MainLayer)))
 
+  it.effect("detects changes between numeric and string literal types", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const snapshotter = yield* Snapshotter
+      const extract = (repoRoot: string, ref: string) =>
+        snapshotter.extract({
+          repoRoot,
+          ref,
+          sha: ref.repeat(40),
+          modules: ["@fixture/sample/Value"]
+        })
+      const baseRoot = yield* fs.makeTempDirectoryScoped({ prefix: "api-diff-literal-base-" })
+      const headRoot = yield* fs.makeTempDirectoryScoped({ prefix: "api-diff-literal-head-" })
+      yield* writeFixturePackage(baseRoot, { "Value.d.ts": "export type Value = 1\n" })
+      yield* writeFixturePackage(headRoot, { "Value.d.ts": "export type Value = \"1\"\n" })
+
+      assert.deepStrictEqual(
+        diffSnapshots(yield* extract(baseRoot, "a"), yield* extract(headRoot, "b")).changes.map((change) =>
+          change.classification
+        ),
+        ["structural-change"]
+      )
+    }).pipe(Effect.provide(MainLayer)))
+
   it("matches renames, classifies signature changes, and separates suggestions", () => {
     const base = snapshot("a", [
       entity("old/A", "changed", {

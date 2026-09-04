@@ -227,8 +227,18 @@ export const serializeType = (node: ts.TypeNode, context: SerializationContext):
   }
   if (ts.isLiteralTypeNode(node)) {
     const literal = node.literal
+    const operand = ts.isPrefixUnaryExpression(literal) ? literal.operand : literal
     return {
       kind: "literal",
+      literalKind: ts.isStringLiteralLike(operand)
+        ? "string"
+        : ts.isNumericLiteral(operand)
+        ? "number"
+        : ts.isBigIntLiteral(operand)
+        ? "bigint"
+        : operand.kind === ts.SyntaxKind.NullKeyword
+        ? "null"
+        : "boolean",
       value: literal.kind === ts.SyntaxKind.TrueKeyword
         ? true
         : literal.kind === ts.SyntaxKind.FalseKeyword
@@ -853,6 +863,7 @@ export const snapshotCacheKey = (
   fingerprint([
     "snapshot-v4",
     "class-member-optionality-v1",
+    "literal-type-category-v1",
     sha,
     ts.version,
     modules === undefined ? "all" : [...modules].sort()
