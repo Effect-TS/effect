@@ -123,6 +123,49 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
   })
 
   describe("Transports", () => {
+    // Required headers must produce HeaderMismatch even when body metadata is also absent.
+    // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#server-validation
+    it.effect("should return HeaderMismatch when a July-only request omits headers and metadata", () =>
+      Effect.gen(function*() {
+        const test = yield* McpConformance
+        const response = yield* test.post({ jsonrpc: "2.0", id: "missing", method: "tools/list", params: {} })
+        assert.strictEqual(response.status, 400)
+        const error = yield* decodeError(response)
+        assert.strictEqual(error.id, "missing")
+        assert.strictEqual(error.error.code, McpSchema.HEADER_MISMATCH_ERROR_CODE)
+      }))
+
+    // Nested properties may mirror parameters; missing or mismatched headers must prevent execution.
+    // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#server-behavior-for-custom-headers
+    it.effect("should validate nested mirrored parameters before executing a tool", () =>
+      Effect.gen(function*() {
+        const test = yield* McpConformance
+        const initialized = yield* test.initialize({ server: "features" })
+        for (const header of [undefined, "us", "eu", "=?base64?ZXU=?="]) {
+          yield* test.resetObservations
+          const response = yield* test.send(initialized, {
+            jsonrpc: "2.0",
+            id: "nested",
+            method: "tools/call",
+            params: { name: "HeaderTool", arguments: { region: "eu", routing: { region: "eu" } } }
+          }, {
+            headers: {
+              "Mcp-Param-Region": "eu",
+              ...(header === undefined ? {} : { "Mcp-Param-Nested-Region": header })
+            }
+          })
+          if (header === undefined || header === "us") {
+            assert.strictEqual((yield* test.observations).toolInvocations, 0)
+            assert.strictEqual(response.status, 400)
+            const error = yield* decodeError(response)
+            assert.strictEqual(error.error.code, McpSchema.HEADER_MISMATCH_ERROR_CODE)
+          } else {
+            assert.strictEqual((yield* test.observations).toolInvocations, 1)
+            assert.strictEqual(response.status, 200)
+          }
+        }
+      }))
+
     // SEP-2567: https://modelcontextprotocol.io/seps/2567-remove-sessions
     it.effect("should exchange self-contained newline-delimited requests over stdio", () =>
       Effect.gen(function*() {

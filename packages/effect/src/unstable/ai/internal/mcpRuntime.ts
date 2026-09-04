@@ -294,7 +294,10 @@ export const make = Effect.fnUntraced(function*(
       const isCancellationNotification = inputRecord?.jsonrpc === "2.0" &&
         inputRecord.method === "notifications/cancelled" && id === undefined
       const isStatelessRequest = claim.present || (!isInitialize &&
-        statelessProtocol !== undefined && protocolVersion === statelessProtocol.protocolVersion)
+        statelessProtocol !== undefined &&
+        (protocolVersion === statelessProtocol.protocolVersion ||
+          (stateful === undefined && inputRecord?.jsonrpc === "2.0" &&
+            typeof inputRecord.method === "string" && (typeof id === "string" || typeof id === "number"))))
       if (isStatelessRequest) {
         if (protocolVersion === undefined) {
           return headerMismatch("MCP-Protocol-Version header is required")

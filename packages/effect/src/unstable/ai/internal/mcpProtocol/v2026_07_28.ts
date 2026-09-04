@@ -646,49 +646,54 @@ export const makeHandlers = (
       const tool = (yield* core.tools.list(invocation.protocol)).find((tool) => tool.name === request.name)
       const httpRequest = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest)
 
-      if (tool !== undefined && Option.isSome(httpRequest) && tool.inputSchema.properties !== undefined) {
-        for (const [argumentName, propertySchema] of Object.entries(tool.inputSchema.properties)) {
-          if (
-            !Predicate.hasProperty(propertySchema, "x-mcp-header") ||
-            !Predicate.isString(propertySchema["x-mcp-header"])
-          ) {
-            continue
+      if (tool !== undefined && Option.isSome(httpRequest)) {
+        const pending: Array<{ readonly schema: unknown; readonly argument: unknown; readonly path: string }> = [
+          { schema: tool.inputSchema, argument: request.arguments, path: "" }
+        ]
+        // Only properties paths may mirror headers; composition, arrays, and references do not qualify.
+        while (pending.length > 0) {
+          const { schema, argument, path } = pending.pop()!
+          if (!Predicate.isReadonlyObject(schema)) continue
+          const annotation = schema["x-mcp-header"]
+          if (typeof annotation === "string") {
+            const headerName = `mcp-param-${annotation.toLowerCase()}`
+            if (!parameterHeaderMatches(httpRequest.value.headers[headerName], argument)) {
+              appendPreResponseHandlerUnsafe(
+                httpRequest.value,
+                (_request, response) => Effect.succeed(HttpServerResponse.setStatus(response, 400))
+              )
+              return yield* new McpProtocol.ProtocolError({
+                code: PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE,
+                message: `${headerName} does not match argument '${path}'`
+              })
+            }
           }
-
-          const headerName = `mcp-param-${propertySchema["x-mcp-header"].toLowerCase()}`
-          const header = httpRequest.value.headers[headerName]
-          const argument = request.arguments?.[argumentName]
-          if (!parameterHeaderMatches(header, argument)) {
-            appendPreResponseHandlerUnsafe(
-              httpRequest.value,
-              (_request, response) => Effect.succeed(HttpServerResponse.setStatus(response, 400))
-            )
-            return yield* new McpProtocol.ProtocolError({
-              code: PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE,
-              message: `${headerName} does not match argument '${argumentName}'`
-            })
+          if (Predicate.isReadonlyObject(schema.properties)) {
+            for (const [name, property] of Object.entries(schema.properties)) {
+              pending.push({
+                schema: property,
+                argument: Predicate.isReadonlyObject(argument) ? argument[name] : undefined,
+                path: path === "" ? name : `${path}.${name}`
+              })
+            }
           }
         }
       }
 
       const outcome = yield* core.tools.call({ name: request.name, arguments: request.arguments ?? {} }, invocation)
         .pipe(
-          Effect.catchTag(
-            "ToolExecutionError",
-            (error) =>
+          Effect.catchTags({
+            ToolExecutionError: (error) =>
+              Effect.succeed(McpCore.OperationOutcome.Complete(PublicMcpSchema.CallToolResult.make({
+                content: [PublicMcpSchema.TextContent.make({ type: "text", text: error.message })],
+                isError: true
+              }))),
+            InvalidToolInput: (error) =>
               Effect.succeed(McpCore.OperationOutcome.Complete(PublicMcpSchema.CallToolResult.make({
                 content: [PublicMcpSchema.TextContent.make({ type: "text", text: error.message })],
                 isError: true
               })))
-          ),
-          Effect.catchTag(
-            "InvalidToolInput",
-            (error) =>
-              Effect.succeed(McpCore.OperationOutcome.Complete(PublicMcpSchema.CallToolResult.make({
-                content: [PublicMcpSchema.TextContent.make({ type: "text", text: error.message })],
-                isError: true
-              })))
-          )
+          })
         )
       if (outcome._tag === "InputRequired") {
         yield* validateInputRequestCapabilities(outcome, invocation.protocol.clientCapabilities)
