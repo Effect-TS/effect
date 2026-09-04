@@ -1,4 +1,4 @@
-import { NodeClusterSocket } from "@effect/platform-node"
+import { NodeClusterSocket, NodeSocketServer } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import { BigDecimal, Cause, Deferred, Effect, Exit, Fiber, Layer, Option, PrimaryKey, Schema } from "effect"
 import type { Sharding } from "effect/unstable/cluster"
@@ -13,6 +13,9 @@ import {
   SocketRunner
 } from "effect/unstable/cluster"
 import { Rpc, RpcSerialization } from "effect/unstable/rpc"
+import * as SocketServer from "effect/unstable/socket/SocketServer"
+
+const HOST = "127.0.0.1"
 
 class TestPayload extends Schema.Class<TestPayload>("TestPayload")({
   id: Schema.String,
@@ -36,7 +39,6 @@ const TestEntity = Entity
   ])
   .annotateRpcs(ClusterSchema.Uninterruptible, true)
 
-const RUNNER_PORT = 50_123
 // Build shared storage instances once, so runner and client see the same state.
 // MessageStorage.layerMemory requires ShardingConfig, so we provide a minimal one.
 const SharedStorage = Layer.mergeAll(
@@ -49,15 +51,16 @@ const SharedStorage = Layer.mergeAll(
 const makeRunnerLayer = (
   port: number,
   entities: Layer.Layer<never, never, Sharding.Sharding>,
+  socketServer: SocketServer.SocketServer["Service"],
   serialization: Layer.Layer<RpcSerialization.RpcSerialization> = RpcSerialization.layerSchemaBinary()
 ) =>
   entities.pipe(
     Layer.provideMerge(SocketRunner.layer),
     Layer.provide(RunnerHealth.layerNoop),
-    Layer.provide(NodeClusterSocket.layerSocketServer),
+    Layer.provide(Layer.succeed(SocketServer.SocketServer, socketServer)),
     Layer.provide(NodeClusterSocket.layerClientProtocol),
     Layer.provide(ShardingConfig.layer({
-      runnerAddress: Option.some(RunnerAddress.make("localhost", port)),
+      runnerAddress: Option.some(RunnerAddress.make(HOST, port)),
       entityTerminationTimeout: 0,
       entityMessagePollInterval: 5000,
       sendRetryInterval: 100
@@ -65,12 +68,25 @@ const makeRunnerLayer = (
     Layer.provide(serialization)
   )
 
+const startRunner = Effect.fnUntraced(function*(
+  entities: Layer.Layer<never, never, Sharding.Sharding>,
+  serialization: Layer.Layer<RpcSerialization.RpcSerialization> = RpcSerialization.layerSchemaBinary()
+) {
+  const socketServer = yield* NodeSocketServer.make({ host: HOST, port: 0 })
+  if (socketServer.address._tag !== "TcpAddress") {
+    return yield* Effect.die("Expected a TCP socket server")
+  }
+  const port = socketServer.address.port
+  yield* Layer.build(makeRunnerLayer(port, entities, socketServer, serialization))
+  return port
+})
+
 const makeClientLayer = (port: number) =>
   SocketRunner.layerClientOnly.pipe(
     Layer.provide(NodeClusterSocket.layerClientProtocol),
     Layer.provide(ShardingConfig.layer({
-      runnerAddress: Option.some(RunnerAddress.make("localhost", port)),
-      runnerListenAddress: Option.some(RunnerAddress.make("localhost", port)),
+      runnerAddress: Option.some(RunnerAddress.make(HOST, port)),
+      runnerListenAddress: Option.some(RunnerAddress.make(HOST, port)),
       entityTerminationTimeout: 0,
       entityMessagePollInterval: 5000,
       sendRetryInterval: 100
@@ -89,8 +105,8 @@ const makeConfiguredClientLayer = (
     ...(serialization === undefined ? undefined : { serialization }),
     ...(serializationMaxBufferSize === undefined ? undefined : { serializationMaxBufferSize }),
     shardingConfig: {
-      runnerAddress: Option.some(RunnerAddress.make("localhost", port)),
-      runnerListenAddress: Option.some(RunnerAddress.make("localhost", port)),
+      runnerAddress: Option.some(RunnerAddress.make(HOST, port)),
+      runnerListenAddress: Option.some(RunnerAddress.make(HOST, port)),
       entityTerminationTimeout: 0,
       entityMessagePollInterval: 5000,
       sendRetryInterval: 100
@@ -110,17 +126,14 @@ const SerializationEntityLayer = SerializationEntity.toLayer(
 )
 
 const assertSerialization = (
-  port: number,
   serverSerialization: Layer.Layer<RpcSerialization.RpcSerialization>,
   clientSerialization?: "binary" | "ndjson"
 ) =>
   Effect.gen(function*() {
-    yield* Layer.launch(makeRunnerLayer(port, SerializationEntityLayer, serverSerialization)).pipe(Effect.forkScoped)
-    yield* Effect.sleep("2 seconds")
+    const port = yield* startRunner(SerializationEntityLayer, serverSerialization)
 
     const result = yield* Effect.gen(function*() {
       const makeClient = yield* SerializationEntity.client
-      yield* Effect.sleep("3 seconds")
       return yield* makeClient("serialization-entity").Ping()
     }).pipe(
       Effect.provide(makeConfiguredClientLayer(port, clientSerialization)),
@@ -145,15 +158,6 @@ const IsolationEntity = Entity
   ])
   .annotateRpcs(ClusterSchema.Persisted, false)
 
-const IsolationEntityLayer = IsolationEntity.toLayer(
-  Effect.succeed({
-    BadReply: () => Effect.succeed(1.5),
-    Slow: () => Effect.as(Effect.sleep("2 seconds"), "done")
-  })
-)
-
-const ISOLATION_PORT = 50_124
-
 // BigDecimal.normalize creates a circular `normalized` self-reference.
 // When a persisted message is sent with discard: true, the notify path in Runners.makeRpc
 // passes the raw envelope (with circular BigDecimal payload) to the runner,
@@ -164,13 +168,13 @@ const ISOLATION_PORT = 50_124
 describe("SocketRunner", () => {
   it.live(
     "uses SchemaBinary by default for TCP connections",
-    () => assertSerialization(50_120, RpcSerialization.layerSchemaBinary()),
+    () => assertSerialization(RpcSerialization.layerSchemaBinary()),
     15_000
   )
 
   it.live(
     "preserves an explicit binary selection",
-    () => assertSerialization(50_121, RpcSerialization.layerSchemaBinary(), "binary"),
+    () => assertSerialization(RpcSerialization.layerSchemaBinary(), "binary"),
     15_000
   )
 
@@ -178,21 +182,14 @@ describe("SocketRunner", () => {
     "applies serializationMaxBufferSize to the default SchemaBinary parser",
     () =>
       Effect.gen(function*() {
-        yield* Layer.launch(
-          makeRunnerLayer(
-            50_122,
-            SerializationEntityLayer,
-            RpcSerialization.layerSchemaBinary()
-          )
-        ).pipe(Effect.forkScoped)
-        yield* Effect.sleep("2 seconds")
+        const port = yield* startRunner(SerializationEntityLayer)
 
         const exit = yield* Effect.gen(function*() {
           const makeClient = yield* SerializationEntity.client
           yield* Effect.sleep("3 seconds")
           return yield* makeClient("serialization-limit-entity").Ping().pipe(Effect.timeout("1 second"))
         }).pipe(
-          Effect.provide(makeConfiguredClientLayer(50_122, undefined, 1)),
+          Effect.provide(makeConfiguredClientLayer(port, undefined, 1)),
           Effect.scoped,
           Effect.exit
         )
@@ -219,20 +216,14 @@ describe("SocketRunner", () => {
         )
 
         // Start the runner (with socket server and entity handler)
-        yield* Layer.launch(makeRunnerLayer(RUNNER_PORT, TestEntityLayer)).pipe(Effect.forkScoped)
-
-        // Give the runner time to start and acquire shards
-        yield* Effect.sleep("2 seconds")
+        const port = yield* startRunner(TestEntityLayer)
         yield* Effect.log("Before starting the client")
 
         // Send a message from the client with discard: true.
         // The BigDecimal is normalized to trigger the circular `normalized` self-reference.
         yield* Effect.gen(function*() {
           yield* Effect.log("Starting the client")
-          yield* Effect.sleep("2 seconds")
           const makeClient = yield* TestEntity.client
-          // Give the client time to discover the runner
-          yield* Effect.sleep("3 seconds")
           const client = makeClient("entity-1")
 
           const amount = BigDecimal.fromStringUnsafe("123.45")
@@ -256,7 +247,7 @@ describe("SocketRunner", () => {
           )
           yield* Deferred.succeed(releaseVolatile, void 0)
         }).pipe(
-          Effect.provide(makeClientLayer(RUNNER_PORT)),
+          Effect.provide(makeClientLayer(port)),
           Effect.scoped
         )
       }).pipe(Effect.provide(
@@ -269,20 +260,31 @@ describe("SocketRunner", () => {
     "a reply serialization failure fails only its own request",
     () =>
       Effect.gen(function*() {
-        // Start the runner hosting the entities
-        yield* Layer.launch(makeRunnerLayer(ISOLATION_PORT, IsolationEntityLayer)).pipe(Effect.forkScoped)
-        yield* Effect.sleep("2 seconds")
+        const slowStarted = yield* Deferred.make<void>()
+        const releaseSlow = yield* Deferred.make<void>()
+        const IsolationEntityLayer = IsolationEntity.toLayer(
+          Effect.succeed({
+            BadReply: () => Effect.succeed(1.5),
+            Slow: () =>
+              Deferred.succeed(slowStarted, void 0).pipe(
+                Effect.andThen(Deferred.await(releaseSlow)),
+                Effect.as("done")
+              )
+          })
+        )
+        const port = yield* startRunner(IsolationEntityLayer)
 
         yield* Effect.gen(function*() {
           const makeClient = yield* IsolationEntity.client
-          // Give the client time to discover the runner
-          yield* Effect.sleep("3 seconds")
 
           // a sibling request in flight on the same runner-to-runner connection
           const slowFiber = yield* makeClient("slow-entity").Slow().pipe(Effect.forkChild)
-          yield* Effect.sleep("300 millis")
+          yield* Deferred.await(slowStarted)
 
-          const badExit = yield* makeClient("bad-entity").BadReply({ id: 1 }).pipe(Effect.exit)
+          const badExit = yield* makeClient("bad-entity").BadReply({ id: 1 }).pipe(
+            Effect.exit,
+            Effect.ensuring(Deferred.succeed(releaseSlow, void 0))
+          )
           assert.isTrue(Exit.isFailure(badExit), "the unencodable reply must fail the request")
           const failure = Exit.isFailure(badExit) ? String(Cause.squash(badExit.cause)) : ""
           assert.include(failure, "MalformedMessage", "the caller must receive the real encode error")
@@ -301,7 +303,7 @@ describe("SocketRunner", () => {
             assert.strictEqual(slowExit.value, "done")
           }
         }).pipe(
-          Effect.provide(makeClientLayer(ISOLATION_PORT)),
+          Effect.provide(makeClientLayer(port)),
           Effect.scoped
         )
       }).pipe(Effect.provide(
