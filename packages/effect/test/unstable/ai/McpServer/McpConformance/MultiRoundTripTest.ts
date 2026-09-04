@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
-import { mrtrRequestState, MrtrStateOnlyToolName, MrtrToolName } from "./McpConformanceFixtures.ts"
+import { MrtrPromptName, mrtrRequestState, MrtrStateOnlyToolName, MrtrToolName } from "./McpConformanceFixtures.ts"
 
 const decodeInputRequired = Schema.decodeUnknownEffect(Schema.Struct({
   resultType: Schema.Literal("input_required"),
@@ -32,9 +32,92 @@ const inputResponses = {
 
 export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
+    // SEP-2322: https://modelcontextprotocol.io/seps/2322-MRTR
+    // https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr
     describe("Multi round-trip requests", () => {
-      // SEP-2322: https://modelcontextprotocol.io/seps/2322-MRTR
+      // Conformance: input-required-result-non-tool-request
+      it.effect("should return input_required and then complete when prompts/get is retried with client input", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const initialized = yield* test.initialize({ server: "features" })
+          const firstResponse = yield* test.send(initialized, {
+            jsonrpc: "2.0",
+            id: 30,
+            method: "prompts/get",
+            params: { name: MrtrPromptName, arguments: {} }
+          })
+          const first = yield* test.decodeResult(firstResponse).pipe(
+            Effect.flatMap((message) =>
+              Schema.decodeUnknownEffect(Schema.Struct({
+                resultType: Schema.Literal("input_required"),
+                inputRequests: Schema.Record(Schema.String, Schema.Unknown)
+              }))(message.result)
+            )
+          )
+          assert.deepStrictEqual(first.inputRequests.userContext, {
+            method: "elicitation/create",
+            params: {
+              message: "What context should the prompt use?",
+              requestedSchema: {
+                type: "object",
+                properties: { context: { type: "string" } },
+                required: ["context"]
+              }
+            }
+          })
+
+          const completedResponse = yield* test.send(initialized, {
+            jsonrpc: "2.0",
+            id: 31,
+            method: "prompts/get",
+            params: {
+              name: MrtrPromptName,
+              arguments: {},
+              inputResponses: {
+                userContext: { action: "accept", content: { context: "test context" } }
+              }
+            }
+          })
+          const completed = yield* test.decodeResult(completedResponse).pipe(
+            Effect.flatMap((message) =>
+              Schema.decodeUnknownEffect(Schema.Struct({
+                resultType: Schema.Literal("complete"),
+                messages: Schema.Array(Schema.Struct({
+                  role: Schema.Literal("user"),
+                  content: Schema.Struct({
+                    type: Schema.Literal("text"),
+                    text: Schema.String
+                  })
+                }))
+              }))(message.result)
+            )
+          )
+          assert.deepStrictEqual(completed.messages, [{
+            role: "user",
+            content: { type: "text", text: "Prompt completed" }
+          }])
+        }))
+
       // https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr#server-requirements-basic-workflow
+      it.effect("should reject prompt input requests when the client omits their required capabilities", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const initialized = yield* test.initialize({ server: "features" })
+          const response = yield* test.send(initialized, {
+            jsonrpc: "2.0",
+            id: 32,
+            method: "prompts/get",
+            params: { name: MrtrPromptName, arguments: {} }
+          }, { clientCapabilities: {} })
+          const error = yield* test.decodeError(response)
+
+          assert.strictEqual(response.status, 400)
+          assert.strictEqual(error.error.code, -32021)
+          assert.deepStrictEqual(error.error.data, {
+            requiredCapabilities: { elicitation: { form: {} } }
+          })
+        }))
+
       it.effect("should return supported keyed input requests and resume when matching responses are supplied", () =>
         Effect.gen(function*() {
           const test = yield* McpConformance

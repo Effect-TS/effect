@@ -299,13 +299,20 @@ export const make = Effect.fnUntraced(function*(
         if (protocolVersion === undefined) {
           return headerMismatch("MCP-Protocol-Version header is required")
         }
-        if (
-          (!isCancellationNotification || claim.present) &&
-          (typeof claim.value !== "string" || claim.value !== protocolVersion)
-        ) {
+        const metadata = asRecord(asRecord(asRecord(input)?.params)?._meta)
+        if (!isCancellationNotification && (metadata === undefined || typeof claim.value !== "string")) {
+          return {
+            _tag: "Rejected",
+            status: 400,
+            error: {
+              code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
+              message: "Required request metadata is missing"
+            }
+          }
+        }
+        if ((!isCancellationNotification || claim.present) && claim.value !== protocolVersion) {
           return headerMismatch("MCP-Protocol-Version header does not match request metadata")
         }
-        const metadata = asRecord(asRecord(asRecord(input)?.params)?._meta)
         if (!isCancellationNotification && asRecord(metadata?.[CLIENT_CAPABILITIES_METADATA_KEY]) === undefined) {
           return {
             _tag: "Rejected",
@@ -332,9 +339,6 @@ export const make = Effect.fnUntraced(function*(
         }
         const request = asRecord(input)
         const method = request?.method
-        if (method === "initialize") {
-          return headerMismatch("initialize is not supported by stateless MCP protocols")
-        }
         if (typeof method !== "string" || headers[MCP_METHOD_HEADER] !== method) {
           return headerMismatch("Mcp-Method header does not match request method")
         }

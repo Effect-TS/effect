@@ -232,9 +232,18 @@ export const protocol = McpProtocol.make({
           ),
       "prompts/get": Effect.fnUntraced(function*({ arguments: args, name }) {
         const request = yield* PublicMcpSchema.McpServerClient
-        const result = yield* core.prompts.get(name, args ?? {}, McpProtocol.invocationFromClient(request)).pipe(
+        const outcome = yield* core.prompts.get(name, args ?? {}, McpProtocol.invocationFromClient(request)).pipe(
           Effect.mapError(McpProtocol.ProtocolError.fromFeature)
         )
+        if (outcome._tag === "InputRequired") {
+          return yield* McpProtocol.ProtocolError.fromFeature(
+            new McpCore.UnsupportedByProtocol({
+              protocolVersion: McpSchema.protocolVersion,
+              feature: "prompt input requirements"
+            })
+          )
+        }
+        const result = outcome.value
         const messages = yield* Effect.forEach(result.messages, (message) =>
           projectContent(message.content).pipe(
             Effect.map((content) => ({ role: message.role, content })),

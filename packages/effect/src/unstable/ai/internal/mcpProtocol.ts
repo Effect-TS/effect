@@ -25,11 +25,8 @@ const BASE64_SENTINEL_SUFFIX = "?="
 export const decodeRoutingHeader = (value: string): string | undefined => {
   const startsWithSentinel = value.startsWith(BASE64_SENTINEL_PREFIX)
   const endsWithSentinel = value.endsWith(BASE64_SENTINEL_SUFFIX)
-  if (!startsWithSentinel && !endsWithSentinel) {
-    return /^[\x20-\x7e]*$/.test(value) ? value : undefined
-  }
   if (!startsWithSentinel || !endsWithSentinel) {
-    return undefined
+    return /^[\x20-\x7e]*$/.test(value) ? value : undefined
   }
   const decoded = Encoding.decodeBase64String(
     value.slice(BASE64_SENTINEL_PREFIX.length, -BASE64_SENTINEL_SUFFIX.length)
@@ -144,6 +141,7 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
       ),
       Match.tags({
         InvalidToolInput: (error) => error.message,
+        InvalidToolContinuation: (error) => error.message,
         ToolExecutionError: (error) => error.message
       }),
       Match.exhaustive
