@@ -139,6 +139,48 @@ it.effect("uses the URL username for two-argument AUTH", () =>
     )
   }))
 
+it.effect("decodes URL authority credentials once", () =>
+  Effect.gen(function*() {
+    const listener = yield* makeListener
+    const server = yield* Effect.gen(function*() {
+      const connection = yield* accept(listener)
+      const request = yield* read(connection)
+      yield* write(connection, "+OK\r\n")
+      return request
+    }).pipe(Effect.forkChild)
+
+    const port = (listener.addr as Deno.NetAddr).port
+    yield* Layer.build(DenoRedis.layer({
+      url: `redis://app%3A%2540:p%40ss%2525@127.0.0.1:${port}`
+    }))
+
+    assert.strictEqual(
+      yield* Fiber.join(server),
+      "*3\r\n$4\r\nAUTH\r\n$7\r\napp:%40\r\n$7\r\np@ss%25\r\n"
+    )
+  }))
+
+it.effect("does not decode a query-string password twice", () =>
+  Effect.gen(function*() {
+    const listener = yield* makeListener
+    const server = yield* Effect.gen(function*() {
+      const connection = yield* accept(listener)
+      const request = yield* read(connection)
+      yield* write(connection, "+OK\r\n")
+      return request
+    }).pipe(Effect.forkChild)
+
+    const port = (listener.addr as Deno.NetAddr).port
+    yield* Layer.build(DenoRedis.layer({
+      url: `redis://alice@127.0.0.1:${port}/?password=p%2540ss`
+    }))
+
+    assert.strictEqual(
+      yield* Fiber.join(server),
+      "*3\r\n$4\r\nAUTH\r\n$5\r\nalice\r\n$6\r\np%40ss\r\n"
+    )
+  }))
+
 it.effect("prefers explicit credentials over URL credentials", () =>
   Effect.gen(function*() {
     const listener = yield* makeListener
