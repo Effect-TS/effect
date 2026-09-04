@@ -7,16 +7,10 @@ import { describe, expect, test } from "tstyche"
 class Foo extends Context.Service<Foo, "foo">()("Foo") {}
 class Bar extends Context.Service<Bar, "bar">()("Bar") {}
 
-type CoreRstestReexport = Rstest extends CoreRstest ? true : false
-type EffectMethodsNamespace = Vitest.Methods
-
-const coreRstestReexport: CoreRstestReexport = true
-const effectMethodsNamespace: EffectMethodsNamespace = it
-
 describe("re-exports", () => {
   test("re-exports the core Rstest type without shadowing it", () => {
-    expect(coreRstestReexport).type.toBe<true>()
-    expect(effectMethodsNamespace).type.toBe<EffectMethodsNamespace>()
+    expect<Rstest>().type.toBe<CoreRstest>()
+    expect(it).type.toBeAssignableTo<Vitest.Methods>()
   })
 })
 

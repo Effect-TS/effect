@@ -45,19 +45,10 @@ export const addEqualityTesters = () => {
 }
 
 /** @internal */
-const testOptions = (timeout?: number | Rstest.Vitest.TestOptions): Rs.TestOptions => {
-  if (typeof timeout === "number") {
-    return { timeout }
-  }
-  if (timeout === undefined) {
-    return {}
-  }
-  const { fails: _fails, ...options } = timeout
-  return options
-}
+const testOptions = (timeout?: number | Rstest.Vitest.TestOptions): Rs.TestOptions =>
+  typeof timeout === "number" ? { timeout } : timeout ?? {}
 
-// Rstest only reads `timeout`, `retry`, `repeats` and `meta` from the options
-// object; `fails` is only honoured through the `it.fails` modifier.
+// rstest ignores `fails` in the options object, it only honours the `it.fails` modifier
 const testApi = (it: Rs.TestAPIs, timeout?: number | Rstest.Vitest.TestOptions): Rs.TestAPIs["fails"] =>
   typeof timeout === "object" && timeout.fails === true ? it.fails : it
 
@@ -142,36 +133,34 @@ const makeTester = <R>(
   mapEffect: <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, never>,
   it: Rs.TestAPIs = Rs.it
 ): Rstest.Vitest.Tester<R> => {
-  // Rstest test callbacks must return `MaybePromise<void>`, so the value
-  // produced by the test effect is discarded (vitest ignored it as well).
+  // rstest test callbacks must return `MaybePromise<void>`
   const run = <A, E, TestArgs extends Array<unknown>>(
     ctx: Rs.TestContext & object,
     args: TestArgs,
     self: Rstest.Vitest.TestFunction<A, E, R, TestArgs>
-  ): Promise<any> => pipe(Effect.suspend(() => self(...args)), mapEffect, runTest(ctx))
+  ) => pipe(Effect.suspend(() => self(...args)), mapEffect, Effect.asVoid, runTest(ctx))
 
   const f: Rstest.Vitest.Test<R> = (name, self, timeout) =>
     testApi(it, timeout)(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   const skip: Rstest.Vitest.Tester<R>["only"] = (name, self, timeout) =>
-    it.skip(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+    testApi(it, timeout).skip(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
-  // Rstest types `skipIf` / `runIf` conditions as `boolean`, while the public
-  // Effect API accepts `unknown` like `@effect/vitest`.
+  // rstest types the condition as `boolean`, `@effect/vitest` accepts `unknown`
   const skipIf: Rstest.Vitest.Tester<R>["skipIf"] = (condition) => (name, self, timeout) =>
-    it.skipIf(Boolean(condition))(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+    testApi(it, timeout).skipIf(Boolean(condition))(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   const runIf: Rstest.Vitest.Tester<R>["runIf"] = (condition) => (name, self, timeout) =>
-    it.runIf(Boolean(condition))(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+    testApi(it, timeout).runIf(Boolean(condition))(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   const only: Rstest.Vitest.Tester<R>["only"] = (name, self, timeout) =>
-    it.only(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+    testApi(it, timeout).only(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   const each: Rstest.Vitest.Tester<R>["each"] = (cases) => (name, self, timeout) =>
-    it.for(cases)(
+    testApi(it, timeout).for(cases)(
       name,
       testOptions(timeout),
-      (args, ctx) => run(ctx, [args], self) as any
+      (args, ctx) => run(ctx, [args], self)
     )
 
   const fails: Rstest.Vitest.Tester<R>["fails"] = (name, self, timeout) =>
@@ -298,12 +287,8 @@ export const layer = <R, E>(
   }
 
   if (args.length === 1) {
-    // Rstest has no `getCurrentSuite()`, so the tests of an unnamed block
-    // cannot be enumerated the way `@effect/vitest` does. An empty nested
-    // suite is used as the lifecycle boundary instead: Rstest omits empty
-    // suite names from test paths, while its `beforeAll` / `afterAll` hooks
-    // build the layer before the block and release it before later tests in
-    // the enclosing suite run.
+    // rstest has no `getCurrentSuite()` to enumerate the block's tests, so an empty
+    // suite (omitted from test paths) scopes the layer lifecycle instead
     return Rs.describe("", () => register(args[0]))
   }
 

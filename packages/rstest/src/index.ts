@@ -1,9 +1,6 @@
 /**
- * Helpers for testing Effect code with [Rstest](https://rstest.rs).
- *
- * This module mirrors the `@effect/vitest` API on top of the Rstest runner: an
- * enhanced `it` with `effect`, `live`, `layer`, `prop` and `flakyTest`, plus
- * `addEqualityTesters` and `describeWrapped`.
+ * Helpers for testing Effect code with [Rstest](https://rstest.rs), mirroring
+ * the `@effect/vitest` API.
  *
  * @since 4.0.0
  */
@@ -17,9 +14,6 @@ import type * as Arbitrary from "effect/unstable/arbitrary/Arbitrary"
 import * as internal from "./internal/internal.ts"
 
 /**
- * Re-exports everything from `@rstest/core` (`describe`, `expect`, `assert`,
- * hooks, `rs`, ...).
- *
  * @since 4.0.0
  */
 export * from "@rstest/core"
@@ -30,8 +24,7 @@ export * from "@rstest/core"
 export type API = Rs.TestAPIs
 
 /**
- * Type namespace shared with `@effect/vitest` so that test files can move
- * between the two runners without changing their type imports.
+ * Named `Vitest` for source compatibility with `@effect/vitest`.
  *
  * @since 4.0.0
  */
@@ -44,8 +37,7 @@ export namespace Vitest {
   }
 
   /**
-   * Rstest test options extended with `fails`, which `@effect/rstest` maps to
-   * the `it.fails` modifier because Rstest ignores it in the options object.
+   * Rstest test options plus `fails`, which is applied through the `it.fails` modifier.
    *
    * @since 4.0.0
    */
@@ -134,8 +126,7 @@ export namespace Vitest {
   export interface MethodsNonLive<R = never> extends API {
     readonly effect: Vitest.Tester<R | Scope.Scope>
     /**
-     * Rstest's `it` does not expose `describe`, so the enhanced API attaches
-     * the runner's `describe` to keep `it.describe.each(...)` working.
+     * Rstest's `it` has no `describe`, so it is attached here to keep `it.describe.each(...)` working.
      *
      * @since 4.0.0
      */
@@ -297,8 +288,7 @@ export const it: Vitest.Methods = internal.makeMethods(Rs.it)
 export const makeMethods: (it: Rs.TestAPIs) => Vitest.Methods = internal.makeMethods
 
 /**
- * Unlike `@effect/vitest`, this returns `void` because Rstest's `describe`
- * does not return a `SuiteCollector`.
+ * Returns `void` because Rstest's `describe` does not return a `SuiteCollector`.
  *
  * @since 4.0.0
  */
