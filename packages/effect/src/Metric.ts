@@ -1660,8 +1660,7 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
   declare readonly Input: Contravariant<Input>
   declare readonly State: Covariant<State>
 
-  readonly #metadataCache = new WeakMap<Metric.Attributes, Metric.Metadata<Input, State>>()
-  #metadata: Metric.Metadata<Input, State> | undefined
+  readonly #metadata = new WeakMap<MetricRegistry, Metric.Metadata<Input, State>>()
 
   readonly id: string
   readonly description: string | undefined
@@ -1693,20 +1692,15 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
 
   hook(context: Context.Context<never>): Metric.Hooks<Input, State> {
     const extraAttributes = Context.get(context, CurrentMetricAttributes)
-    if (Object.keys(extraAttributes).length === 0) {
-      if (Predicate.isNotUndefined(this.#metadata)) {
-        return this.#metadata.hooks
-      }
-      this.#metadata = this.getOrCreate(context, this.attributes)
-      return this.#metadata.hooks
+    if (Object.keys(extraAttributes).length > 0) {
+      return this.getOrCreate(context, mergeAttributes(this.attributes, extraAttributes)).hooks
     }
-    const mergedAttributes = mergeAttributes(this.attributes, extraAttributes)
-    let metadata = this.#metadataCache.get(mergedAttributes)
-    if (Predicate.isNotUndefined(metadata)) {
-      return metadata.hooks
+    const registry = Context.get(context, MetricRegistry)
+    let metadata = this.#metadata.get(registry)
+    if (Predicate.isUndefined(metadata)) {
+      metadata = this.getOrCreate(context, this.attributes)
+      this.#metadata.set(registry, metadata)
     }
-    metadata = this.getOrCreate(context, mergedAttributes)
-    this.#metadataCache.set(mergedAttributes, metadata)
     return metadata.hooks
   }
 
