@@ -529,7 +529,7 @@ export const fromEffectTagged = <A extends Request.Any & { readonly _tag: string
       return Effect.forEach(
         grouped,
         ([tag, requests]) =>
-          Effect.matchCause((fns[tag] as any)(requests) as Effect.Effect<Array<any>, unknown, unknown>, {
+          Effect.matchCause((fns[tag] as any)(requests) as Effect.Effect<Iterable<any>, unknown, unknown>, {
             onFailure: (cause) => {
               for (let i = 0; i < requests.length; i++) {
                 const entry = requests[i]
@@ -537,9 +537,10 @@ export const fromEffectTagged = <A extends Request.Any & { readonly _tag: string
               }
             },
             onSuccess: (res) => {
-              for (let i = 0; i < res.length; i++) {
-                const entry = requests[i]
-                entry.completeUnsafe(exitSucceed(res[i]) as any)
+              let i = 0
+              for (const result of res) {
+                const entry = requests[i++]
+                entry.completeUnsafe(exitSucceed(result) as any)
               }
             }
           }),
