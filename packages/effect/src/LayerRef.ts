@@ -350,10 +350,16 @@ export const Service = <Self>() =>
   Deps[number]
 > => {
   const Err = globalThis.Error as any
+  // A limit of 0 cannot carry a frame, so the capture is skipped. Constructing
+  // the Error is costly on some runtimes regardless of the limit, and this runs
+  // once for every definition.
   const limit = getStackTraceLimit()
-  setStackTraceLimit(2)
-  const creationError = new Err()
-  setStackTraceLimit(limit)
+  let creationError: globalThis.Error | undefined
+  if (limit !== 0) {
+    setStackTraceLimit(2)
+    creationError = new Err()
+    setStackTraceLimit(limit)
+  }
 
   function TagClass() {}
   const TagClass_ = TagClass as any as Mutable<TagClass<Self, Id, any, any, any, any, any>>
@@ -361,7 +367,7 @@ export const Service = <Self>() =>
   TagClass.key = id
   Object.defineProperty(TagClass, "stack", {
     get() {
-      return creationError.stack
+      return creationError?.stack
     }
   })
 

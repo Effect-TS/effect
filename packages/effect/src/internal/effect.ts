@@ -1261,10 +1261,16 @@ export const fn: typeof Effect.fn = function() {
   const name = nameFirst ? arguments[0] : "Effect.fn"
   const spanOptions = nameFirst ? arguments[1] : undefined
 
+  // A limit of 0 cannot carry a frame, so the capture is skipped. Constructing
+  // the Error is costly on some runtimes regardless of the limit, and this runs
+  // once for every definition.
   const prevLimit = getStackTraceLimit()
-  setStackTraceLimit(2)
-  const defError = new globalThis.Error()
-  setStackTraceLimit(prevLimit)
+  let defError: Error | undefined
+  if (prevLimit !== 0) {
+    setStackTraceLimit(2)
+    defError = new globalThis.Error()
+    setStackTraceLimit(prevLimit)
+  }
 
   if (nameFirst) {
     return (body: Function | { readonly self: any }, ...pipeables: Array<Function>) =>
@@ -1284,7 +1290,7 @@ export const fn: typeof Effect.fn = function() {
 const makeFn = (
   name: string,
   bodyOrOptions: Function | { readonly self: any },
-  defError: Error,
+  defError: Error | undefined,
   pipeables: Array<Function>,
   addSpan: boolean,
   spanOptions: Tracer.SpanOptionsNoTrace | undefined
@@ -1304,10 +1310,14 @@ const makeFn = (
     if (!isEffect(result)) {
       return result
     }
+    // A limit of 0 cannot carry a frame, so the capture is skipped.
     const prevLimit = getStackTraceLimit()
-    setStackTraceLimit(2)
-    const callError = new globalThis.Error()
-    setStackTraceLimit(prevLimit)
+    let callError: Error | undefined
+    if (prevLimit !== 0) {
+      setStackTraceLimit(2)
+      callError = new globalThis.Error()
+      setStackTraceLimit(prevLimit)
+    }
     return updateService(
       addSpan ?
         useSpan(name, spanOptions!, (span) => provideParentSpan(result, span)) :
@@ -1315,10 +1325,10 @@ const makeFn = (
       CurrentStackFrame,
       (prev) => ({
         name,
-        stack: fnStackCleaner(() => callError.stack),
+        stack: fnStackCleaner(() => callError?.stack),
         parent: {
           name: `${name} (definition)`,
-          stack: fnStackCleaner(() => defError.stack),
+          stack: fnStackCleaner(() => defError?.stack),
           parent: prev
         }
       })
