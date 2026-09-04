@@ -72,7 +72,7 @@ jobs:
   bundle:
     name: Bundle
     if: github.event_name == 'pull_request'
-    runs-on: namespace-profile-linux-small
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     timeout-minutes: 10

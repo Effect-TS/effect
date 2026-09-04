@@ -461,6 +461,7 @@ export const make: (options: {
     url: options.url,
     headers: options.headers,
     maxBatchSize: "disabled",
+    exportEmpty: true,
     exportInterval: options.exportInterval ?? Duration.seconds(10),
     body: snapshot,
     shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)

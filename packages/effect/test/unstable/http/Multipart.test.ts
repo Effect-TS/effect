@@ -20,13 +20,14 @@ describe("Multipart", () => {
       deepStrictEqual(decoded, { value: "revived" })
     }))
 
-  it.effect("parses fields and streams file content", () =>
+  it.effect("parses fields and streams file content as stream parts", () =>
     Effect.gen(function*() {
       const data = new globalThis.FormData()
       data.append("foo", "bar")
       data.append("test", "ing")
       data.append("file", new globalThis.File(["A".repeat(1024 * 1024)], "foo.txt", { type: "text/plain" }))
       const response = new Response(data)
+      const streamed: Array<Multipart.Part> = []
 
       const parts = yield* Stream.fromReadableStream({
         evaluate: () => response.body!,
@@ -34,6 +35,7 @@ describe("Multipart", () => {
       }).pipe(
         Stream.pipeThroughChannel(Multipart.makeChannel(Object.fromEntries(response.headers))),
         Stream.mapEffect((part) => {
+          streamed.push(part)
           return Unify.unify(
             part._tag === "File" ?
               Effect.zip(
@@ -51,6 +53,10 @@ describe("Multipart", () => {
         ["test", "ing"],
         ["foo.txt", "A".repeat(1024 * 1024)]
       ])
+      deepStrictEqual(
+        streamed.map((part) => [Multipart.isPart(part), Multipart.isStreamPart(part)]),
+        [[true, true], [true, true], [true, true]]
+      )
     }))
 
   it.effect("collects file content across pulls and a split trailing boundary", () =>
@@ -352,7 +358,7 @@ describe("Multipart", () => {
     deepStrictEqual(errors, [])
   })
 
-  it.effect("returns distinct persisted file paths for files with the same client filename", () =>
+  it.effect("returns distinct persisted file paths as non-stream parts", () =>
     Effect.gen(function*() {
       const formData = new FormData()
       formData.append("first", new File(["one"], "same.txt"))
@@ -375,6 +381,9 @@ describe("Multipart", () => {
       )
       const first = (persisted.first as Array<Multipart.PersistedFile>)[0]
       const second = (persisted.second as Array<Multipart.PersistedFile>)[0]
+      strictEqual(Multipart.isPersistedFile(first), true)
+      strictEqual(Multipart.isPart(first), true)
+      strictEqual(Multipart.isStreamPart(first), false)
       strictEqual(first.path, "/tmp/audit/same.txt")
       notStrictEqual(first.path, second.path)
       deepStrictEqual(writes, [first.path, second.path])

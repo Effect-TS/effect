@@ -7,6 +7,7 @@ import {
   Deferred,
   Duration,
   Effect,
+  Effectable,
   Exit,
   Fiber,
   type Filter,
@@ -53,6 +54,35 @@ describe("Effect", () => {
   it("isEffect", () => {
     assert.isTrue(Effect.isEffect(Effect.succeed(0)))
     assert.isFalse(Effect.isEffect([0]))
+  })
+
+  describe("Effectable.Class", () => {
+    it.effect("runs using asEffect", () =>
+      Effect.gen(function*() {
+        class Answer extends Effectable.Class<number> {
+          asEffect() {
+            return Effect.succeed(42)
+          }
+        }
+
+        assert.strictEqual(yield* new Answer(), 42)
+      }))
+
+    it.effect("evaluates asEffect on every execution", () =>
+      Effect.gen(function*() {
+        class Answer extends Effectable.Class<number> {
+          value = 1
+
+          asEffect() {
+            return Effect.succeed(this.value)
+          }
+        }
+
+        const answer = new Answer()
+        assert.strictEqual(yield* answer, 1)
+        answer.value = 2
+        assert.strictEqual(yield* answer, 2)
+      }))
   })
 
   describe("structural compare", () => {
@@ -3408,6 +3438,78 @@ describe("Effect", () => {
           Effect.exit
         )
         assertExitFailure(exit, Cause.fail(error))
+      }))
+  })
+
+  describe("cached", () => {
+    it.effect("runs the effect once for concurrent callers", () =>
+      Effect.gen(function*() {
+        const release = yield* Deferred.make<void>()
+        let count = 0
+        const cached = yield* Effect.cached(
+          Effect.gen(function*() {
+            count++
+            yield* Deferred.await(release)
+            return count
+          })
+        )
+
+        const fibers = yield* Effect.forEach([1, 2, 3], () => cached.pipe(Effect.forkChild({ startImmediately: true })))
+        assert.strictEqual(count, 1)
+
+        yield* Deferred.succeed(release, void 0)
+        assert.deepStrictEqual(yield* Fiber.awaitAll(fibers), [Exit.succeed(1), Exit.succeed(1), Exit.succeed(1)])
+      }))
+
+    it.effect("replays failures", () =>
+      Effect.gen(function*() {
+        let count = 0
+        const cached = yield* Effect.cached(
+          Effect.sync(() => count++).pipe(Effect.andThen(Effect.fail("boom")))
+        )
+
+        assert.deepStrictEqual(yield* Effect.exit(cached), Exit.fail("boom"))
+        assert.deepStrictEqual(yield* Effect.exit(cached), Exit.fail("boom"))
+        assert.strictEqual(count, 1)
+      }))
+
+    it.effect("interrupting a waiter leaves the owner running", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const cached = yield* Effect.cached(
+          Deferred.succeed(started, void 0).pipe(
+            Effect.andThen(Deferred.await(release)),
+            Effect.as(42)
+          )
+        )
+
+        const owner = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Deferred.await(started)
+        const waiter = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(waiter)
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(waiter)))
+
+        yield* Deferred.succeed(release, void 0)
+        assert.strictEqual(yield* Fiber.join(owner), 42)
+        assert.strictEqual(yield* cached, 42)
+      }))
+
+    it.effect("replays the owner's interrupted exit", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const cached = yield* Effect.cached(
+          Deferred.succeed(started, void 0).pipe(Effect.andThen(Effect.never))
+        )
+
+        const owner = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Deferred.await(started)
+        yield* Fiber.interrupt(owner)
+        const ownerExit = yield* Fiber.await(owner)
+        const replayedExit = yield* Effect.exit(cached)
+
+        assert.isTrue(Exit.hasInterrupts(ownerExit))
+        assert.deepStrictEqual(replayedExit, ownerExit)
       }))
   })
 

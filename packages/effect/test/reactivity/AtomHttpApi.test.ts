@@ -1,8 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Ref, Schema } from "effect"
+import { Duration, Effect, Exit, Layer, Ref, Schema, Stream } from "effect"
+import { Sse } from "effect/unstable/encoding"
 import { HttpClient, HttpClientResponse } from "effect/unstable/http"
 import type * as HttpClientError from "effect/unstable/http/HttpClientError"
-import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi"
+import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
 import { Atom, AtomHttpApi, AtomRegistry, Hydration } from "effect/unstable/reactivity"
 
 const Api = HttpApi.make("api").add(
@@ -18,7 +19,52 @@ const Api = HttpApi.make("api").add(
   )
 )
 
+const TopLevelApi = HttpApi.make("top-level-api").add(
+  HttpApiGroup.make("group", { topLevel: true }).add(
+    HttpApiEndpoint.get("query", "/query"),
+    HttpApiEndpoint.post("mutation", "/mutation")
+  )
+)
+
+const StreamApi = HttpApi.make("StreamApi").add(
+  HttpApiGroup.make("events").add(
+    HttpApiEndpoint.get("watch", "/watch", { success: HttpApiSchema.StreamSse({ data: Schema.String }) })
+  )
+)
+
 describe("AtomHttpApi", () => {
+  it.effect("dispatches queries and mutations for top-level groups", () =>
+    Effect.gen(function*() {
+      const requests: Array<string> = []
+      const httpClient = HttpClient.makeWith(
+        Effect.fnUntraced(function*(requestEffect) {
+          const request = yield* requestEffect
+          requests.push(request.url)
+          return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
+        }),
+        Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
+      )
+      const Client = AtomHttpApi.Service()("TopLevelClient", {
+        api: TopLevelApi,
+        httpClient: Layer.succeed(HttpClient.HttpClient, httpClient)
+      })
+      const registry = AtomRegistry.make()
+      const query = Client.query("group", "query", {})
+      const mutation = Client.mutation("group", "mutation")
+
+      yield* AtomRegistry.mount(registry, query)
+      yield* AtomRegistry.mount(registry, mutation)
+      registry.set(mutation, {})
+
+      const queryExit = yield* Effect.exit(AtomRegistry.getResult(registry, query, { suspendOnWaiting: true }))
+      const mutationExit = yield* Effect.exit(AtomRegistry.getResult(registry, mutation, { suspendOnWaiting: true }))
+
+      assert.deepStrictEqual(
+        { mutation: mutationExit, query: queryExit, requests },
+        { mutation: Exit.succeed(undefined), query: Exit.succeed(undefined), requests: ["/query", "/mutation"] }
+      )
+    }).pipe(Effect.scoped))
+
   it.effect("query creates a serializable atom with reactivity and retention that encodes the request", () =>
     Effect.gen(function*() {
       const requestRef = yield* Ref.make<
@@ -62,6 +108,14 @@ describe("AtomHttpApi", () => {
           idleTTL: 60_000,
           serializable: true
         }
+      )
+      assert.strictEqual(
+        Client.query("group", "get", { params: { id: 2 }, query: { page: 3 }, timeToLive: 0 }).idleTTL,
+        0
+      )
+      assert.strictEqual(
+        Client.query("group", "get", { params: { id: 3 }, query: { page: 4 }, timeToLive: 0n }).idleTTL,
+        0
       )
       const keepAliveAtom = Client.query("group", "get", {
         params: { id: 2 },
@@ -114,4 +168,33 @@ describe("AtomHttpApi", () => {
 
       unmount()
     }))
+
+  it.effect("returns generated SSE stream failures from queries", () =>
+    Effect.gen(function*() {
+      const Client = AtomHttpApi.Service()("StreamClient", {
+        api: StreamApi,
+        baseUrl: "https://example.test",
+        httpClient: Layer.succeed(
+          HttpClient.HttpClient,
+          HttpClient.make((request) =>
+            Effect.succeed(HttpClientResponse.fromWeb(
+              request,
+              new Response("retry: 1000\n\n", {
+                headers: { "content-type": "text/event-stream" }
+              })
+            ))
+          )
+        )
+      })
+      const registry = AtomRegistry.make()
+      const atom = Client.query("events", "watch", {})
+      yield* AtomRegistry.mount(registry, atom)
+      const stream = yield* AtomRegistry.getResult(registry, atom)
+      const error = yield* Effect.flip(Stream.runCollect(stream))
+
+      assert.deepStrictEqual(
+        error,
+        new Sse.Retry({ duration: Duration.millis(1000), lastEventId: undefined })
+      )
+    }).pipe(Effect.scoped))
 })

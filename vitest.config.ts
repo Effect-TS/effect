@@ -202,12 +202,14 @@ export default defineConfig({
       ...project("@effect/sql-sqlite-node", "packages/sql/sqlite-node", isNode),
       ...project("@effect/sql-sqlite-react-native", "packages/sql/sqlite-react-native"),
       ...project("@effect/sql-sqlite-wasm", "packages/sql/sqlite-wasm"),
+      ...project("@effect/ai-codegen", "packages/tools/ai-codegen", isNode),
       ...project("@effect/api-diff", "packages/tools/api-diff"),
       ...project("@effect/bundle", "packages/tools/bundle"),
       ...project("@effect/doctest", "packages/tools/doctest"),
       ...project("@effect/docgen", "packages/tools/docgen"),
       ...project("@effect/jsdocs", "packages/tools/jsdocs"),
       ...project("@effect/openapi-generator", "packages/tools/openapi-generator"),
+      ...project("@effect/utils", "packages/tools/utils", isNode),
       ...project("@effect/oxc", "packages/tools/oxc")
     ]
   }

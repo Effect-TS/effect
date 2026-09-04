@@ -98,12 +98,23 @@ export interface Field extends Part.Proto {
 }
 
 /**
- * Returns `true` when a value is a multipart `Part`.
+ * Returns `true` when a value has the multipart part type identifier.
+ *
+ * This includes `Field`, `File`, and `PersistedFile` values. Use
+ * `isStreamPart` to identify only parsed, streamed parts.
  *
  * @category guards
  * @since 4.0.0
  */
 export const isPart = (u: unknown): u is Part => Predicate.hasProperty(u, TypeId)
+
+/**
+ * Returns `true` when a value is a multipart text `Field` or streamed `File`.
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export const isStreamPart = (u: unknown): u is Part => isPart(u) && (u._tag === "Field" || u._tag === "File")
 
 /**
  * Returns `true` when a value is a multipart text `Field`.

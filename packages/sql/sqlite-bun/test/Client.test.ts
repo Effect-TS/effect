@@ -44,6 +44,24 @@ describe("Client", () => {
       )
     }).pipe(Effect.provide(Reactivity.layer)))
 
+  it.effect.skipIf(!isBun)("exports inside transactions", () =>
+    Effect.gen(function*() {
+      const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
+      const { Database } = yield* Effect.promise(() => import("bun:sqlite"))
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY)`
+
+      const bytes = yield* sql.withTransaction(
+        sql`INSERT INTO test DEFAULT VALUES`.pipe(Effect.andThen(sql.export))
+      )
+      const snapshot = Database.deserialize(bytes)
+      try {
+        assert.deepStrictEqual(snapshot.query("SELECT * FROM test").all(), [{ id: 1 }])
+      } finally {
+        snapshot.close()
+      }
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it.effect.skipIf(!isBun)("readonly clients reject writes", () =>
     Effect.gen(function*() {
       const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))

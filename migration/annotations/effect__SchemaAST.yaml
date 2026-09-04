@@ -1,6 +1,6 @@
 "effect/SchemaAST#Annotated":
-  replacement: "SchemaAST.Base"
-  note: "All v4 AST nodes extend Base, which owns annotations, checks, encoding, and context."
+  replacement: "SchemaAST.AST"
+  note: "The public base type was removed. Use the AST union; every variant still exposes annotations, checks, encoding, and context."
 "effect/SchemaAST#annotations":
   replacement: "SchemaAST.annotate"
   note: "Use the v4 annotation helper and string-keyed Schema.Annotations."
@@ -43,6 +43,9 @@
 "effect/SchemaAST#Compiler":
   replacement: "none"
   note: "The generic AST compiler abstraction was removed; traverse the discriminated SchemaAST.AST union directly or use a higher-level Schema derivation API."
+"effect/SchemaAST#pick":
+  replacement: "none"
+  note: "The low-level AST picker was removed. Keep field selection at the Schema.Struct level with mapFields and Struct.pick, or discriminate and rebuild custom AST nodes explicitly."
 "effect/SchemaAST#composeTransformation":
   replacement: "SchemaAST.Encoding"
   note: "V4 transformations are SchemaAST.Link values in an encoding chain; compose by adding links with SchemaAST.decodeTo."

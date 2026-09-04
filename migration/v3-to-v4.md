@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`7c6e1e5d2ac9dfe00649a65fa80a61dcc14d55ae`)
 
-Head: `origin/main` (`53843f6490f4eebaf1eeb91fdcc5f1c542b0e132`)
+Head: `origin/main` (`a9d1ee3d4d51e97ea33440fe6100935d5fd5aada`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -6192,7 +6192,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform-bun/BunStream`
 
-- `BunStream.FromReadableOptions` -> `Pick<Parameters<typeof BunStream.fromReadable>[0], "chunkSize" | "closeOnDone">`: The named interface was inlined into the constructor options; chunkSize is now a number and the full options also contain evaluate, onError, and bufferSize.
+- `BunStream.FromReadableOptions` -> `Pick<Parameters<typeof BunStream.fromReadable>[0], "chunkSize" | "closeOnDone">`: The named interface was inlined into the constructor options; chunkSize is now a number and the full options also contain evaluate and onError. The ignored bufferSize option was removed.
 
 - `BunStream.FromWritableOptions` -> `Pick<Parameters<typeof BunSink.fromWritable>[0], "endOnDone" | "encoding">`: The named interface was inlined into BunSink.fromWritable and duplex constructor options.
 
@@ -6528,9 +6528,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Headers.remove` -> `Headers.remove / Headers.removeMany`: Use remove for one name or removeMany for an iterable; RegExp removal requires enumerating matching names.
 
-- `Headers.schema` -> `Headers.HeadersSchema`: The encoded-record and self schemas were consolidated into HeadersSchema.
+- `Headers.schema` -> `Schema.Headers`: The encoded-record and self schemas were consolidated and moved to effect/Schema as Schema.Headers.
 
-- `Headers.schemaFromSelf` -> `Headers.HeadersSchema`: The encoded-record and self schemas were consolidated into HeadersSchema.
+- `Headers.schemaFromSelf` -> `Schema.Headers`: The encoded-record and self schemas were consolidated and moved to effect/Schema as Schema.Headers.
 
 - `Headers.unsafeFromRecord` -> `Headers.fromRecordUnsafe`: Renamed to put Unsafe last; it still skips name normalization.
 
@@ -6557,6 +6557,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `HttpApiBuilder.Handlers.ValidateReturn` -> `effect/unstable/httpapi/HttpApiBuilder#Handlers.ValidateReturn`: The validator remains and now checks the endpoint map against handled identifiers.
 
 - `HttpApiBuilder.HandlersTypeId` -> `none`: The exported symbol was removed; do not inspect or construct the private Handlers marker.
+
+- `HttpApiBuilder.Middleware` -> `none`: The API-specific middleware service tag was removed. Declared HttpApiMiddleware services are applied while routes are built; use HttpRouter.middleware for additional global middleware.
 
 - `HttpApiBuilder.MiddlewareFn` -> `effect/unstable/http/HttpRouter#middleware.Fn`: HTTP apps are Effects in v4; use the router middleware function type or infer it through HttpRouter.middleware.
 
@@ -7318,6 +7320,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `OpenApiJsonSchema.Array` -> `effect/JsonSchema#JsonSchema`: The narrow node interfaces were consolidated into the general object model.
 
+- `OpenApiJsonSchema.Boolean` -> `effect/JsonSchema#JsonSchema`: The narrow boolean interface was consolidated into the open, dialect-neutral JSON Schema object model.
+
 - `OpenApiJsonSchema.Empty` -> `effect/JsonSchema#JsonSchema`: The narrow node interfaces and special id shapes were removed.
 
 - `OpenApiJsonSchema.Enum` -> `effect/JsonSchema#JsonSchema`: The narrow node interfaces were consolidated into the general object model.
@@ -7328,6 +7332,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `OpenApiJsonSchema.JsonSchema` -> `effect/JsonSchema#JsonSchema`: Use the dialect-neutral open JSON Schema object model.
 
+- `OpenApiJsonSchema.Never` -> `effect/JsonSchema#JsonSchema`: The special never-schema interface was consolidated into the open JSON Schema object model; represent it with a not constraint.
+
+- `OpenApiJsonSchema.Number` -> `effect/JsonSchema#JsonSchema`: The narrow number interface was consolidated into the open, dialect-neutral JSON Schema object model.
+
 - `OpenApiJsonSchema.Numeric` -> `effect/JsonSchema#JsonSchema`: The narrow numeric interfaces were consolidated into the general object model.
 
 - `OpenApiJsonSchema.Object` -> `effect/JsonSchema#JsonSchema`: The narrow node interfaces were consolidated into the general object model.
@@ -7336,7 +7344,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `OpenApiJsonSchema.Root` -> `effect/JsonSchema#MultiDocument`: OpenAPI generation keeps roots in schemas and shared components in definitions; the inline-definitions root model is gone.
 
+- `OpenApiJsonSchema.String` -> `effect/JsonSchema#JsonSchema`: The narrow string interface was consolidated into the open, dialect-neutral JSON Schema object model.
+
 - `OpenApiJsonSchema.Unknown`: TODO: needs guidance
+
+- `OpenApiJsonSchema.Void` -> `effect/JsonSchema#JsonSchema`: The special void-schema interface was consolidated into the open JSON Schema object model.
 
 - `OpenApiJsonSchema.make` -> `effect/Schema#toJsonSchemaDocument + effect/JsonSchema#toMultiDocumentOpenApi3_1`: Generate Draft 2020-12, wrap the root in a multi-document, then convert references and definitions to OpenAPI 3.1.
 
@@ -7424,19 +7436,21 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `UrlParams.Input` -> `UrlParams.Input`: Retained and broadened to include UrlParams itself.
 
+- `UrlParams.UrlParams` -> `UrlParams.UrlParams`: Import UrlParams from effect/unstable/http. It is now a branded iterable object with a params field rather than a ReadonlyArray; construct it with UrlParams.make or UrlParams.fromInput.
+
 - `UrlParams.makeUrl` -> `Url.make`: Moved to Url, returns Result, and takes string | undefined for the hash.
 
-- `UrlParams.schemaFromSelf` -> `UrlParams.UrlParamsSchema`: Renamed to the declaration schema for the v4 wrapper.
+- `UrlParams.schemaFromSelf` -> `Schema.UrlParams`: The declaration schema for the v4 wrapper moved to effect/Schema.
 
-- `UrlParams.schemaFromString` -> `Schema.String.pipe(Schema.decodeTo(UrlParams.UrlParamsSchema, { decode: SchemaGetter.transform((s) => UrlParams.fromInput(new URLSearchParams(s))), encode: SchemaGetter.transform(UrlParams.toString) }))`: No prebuilt string codec remains; recreate it by transforming between a query string and UrlParams.
+- `UrlParams.schemaFromString` -> `Schema.String.pipe(Schema.decodeTo(Schema.UrlParams, { decode: SchemaGetter.transform((s) => UrlParams.fromInput(new URLSearchParams(s))), encode: SchemaGetter.transform(UrlParams.toString) }))`: No prebuilt string codec remains; recreate it by transforming between a query string and UrlParams.
 
-- `UrlParams.schemaJson` -> `UrlParams.schemaJsonField(field).pipe(Schema.decodeTo(schema), Schema.decodeEffect)`: Compose the field codec with the target schema, then decode it.
+- `UrlParams.schemaJson` -> `Schema.JsonFromUrlParamsField(field).pipe(Schema.decodeTo(schema), Schema.decodeEffect)`: The field codec moved to effect/Schema. Compose it with the target schema, then decode it.
 
-- `UrlParams.schemaParse` -> `UrlParamsFromString.pipe(Schema.decodeTo(UrlParams.schemaRecord.pipe(Schema.decodeTo(schema))))`: Recreate the removed helper by composing the string, record, and target codecs.
+- `UrlParams.schemaParse` -> `UrlParamsFromString.pipe(Schema.decodeTo(Schema.RecordFromUrlParams.pipe(Schema.decodeTo(schema))))`: Recreate the removed helper by composing the string, record, and target codecs.
 
-- `UrlParams.schemaRecord` -> `UrlParams.schemaRecord.pipe(Schema.decodeTo(schema))`: schemaRecord is now a base codec value; compose it with the target schema.
+- `UrlParams.schemaRecord` -> `Schema.RecordFromUrlParams.pipe(Schema.decodeTo(schema))`: RecordFromUrlParams is a base codec in effect/Schema; compose it with the target schema.
 
-- `UrlParams.schemaStruct` -> `UrlParams.schemaRecord.pipe(Schema.decodeTo(schema), Schema.decodeEffect)`: Compose the record codec with the target schema and decode it.
+- `UrlParams.schemaStruct` -> `Schema.RecordFromUrlParams.pipe(Schema.decodeTo(schema), Schema.decodeEffect)`: Compose the record codec from effect/Schema with the target schema and decode it.
 
 - `UrlParams.toString` -> `UrlParams.toString`: Retained and broadened to accept any UrlParams.Input.
 
@@ -11148,9 +11162,9 @@ FastCheck.uuid({ version: 4 })
 
 - `Graph.Graph` -> `Graph.Graph`: The immutable type remains, but storage is opaque; replace field access with Graph nodes, edges, count, lookup, neighbor, and acyclicity APIs.
 
-- `Graph.MutableGraph` -> `Graph.MutableGraph`: The mutable type remains but no longer extends Graph.Proto; obtain it through Graph.mutate or Graph.beginMutation and use public mutation/query functions.
+- `Graph.MutableGraph` -> `Graph.MutableGraph`: The mutable type remains but no longer shares a public base interface with immutable Graph; obtain it through Graph.mutate or Graph.beginMutation and use public mutation/query functions.
 
-- `Graph.Proto` -> `Graph.Proto`: The name remains as the opaque immutable graph protocol; it no longer exposes storage and is no longer the base of MutableGraph.
+- `Graph.Proto` -> `none`: The common graph protocol was removed. Use Graph.Graph or Graph.MutableGraph as appropriate and replace storage-field access with public graph query and mutation functions.
 
 - `Graph.SearchConfig` -> `Graph.SearchConfig`: The type remains; direction is now Graph.TraversalDirection and also accepts undirected, while radius limits traversal depth.
 
@@ -11673,7 +11687,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Logger.withMinimumLogLevel` -> `Effect.provideService(effect, References.MinimumLogLevel, level)`: Replace the FiberRef-local helper with reference provisioning.
 
-- `Logger.withSpanAnnotations` -> `custom Logger.make wrapper using options.fiber.currentSpan`: No transparent generic equivalent remains. Read span identity from options.fiber.currentSpan and add it to custom output as needed.
+- `Logger.withSpanAnnotations` -> `custom Logger.make wrapper using options.fiber.cache.span`: No transparent generic equivalent remains. Read span identity from options.fiber.cache.span and add it to custom output as needed.
 
 - `Logger.zip` -> `Logger.make(options => [left.log(options), right.log(options)])`: No named combinator remains; invoke both loggers and return their output tuple.
 
@@ -12661,6 +12675,8 @@ SchemaIssue.makeFormatterStandardSchemaV1()(error.issue).issues
 
 - `ParseResult.ArrayFormatterIssue` -> `StandardSchemaV1.FailureResult["issues"][number]`: Use the Standard Schema issue shape returned by makeFormatterStandardSchemaV1.
 
+- `ParseResult.Composite` -> `SchemaIssue.Composite`: Composite parse failures moved to SchemaIssue. The v4 constructor takes the failing AST and an array of nested issues; input is retained only when reportInput is enabled.
+
 - `ParseResult.DeclarationDecodeUnknown` -> `SchemaGetter.Getter`: Custom declaration decoding now uses SchemaGetter values and Schema.declare annotations.
 
 - `ParseResult.DecodeUnknown` -> `Schema.decodeUnknownEffect`: Use the function type returned by Schema.decodeUnknownEffect.
@@ -12677,9 +12693,13 @@ SchemaIssue.makeFormatterStandardSchemaV1()(error.issue).issues
 
 - `ParseResult.ParseResultFormatter` -> `SchemaIssue.Formatter`: Issue formatter types moved to SchemaIssue.
 
+- `ParseResult.Pointer` -> `SchemaIssue.Pointer`: Path-qualified failures moved to SchemaIssue. Construct them with the property path and nested issue; rejected input belongs to the nested issue when reportInput is enabled.
+
 - `ParseResult.Refinement` -> `SchemaIssue.Filter`: Refinement failures are represented as filter issues in v4.
 
 - `ParseResult.SingleOrNonEmpty` -> `ReadonlyArray`: This ParseResult helper type was removed; use an explicit value-or-non-empty-array type when still needed.
+
+- `ParseResult.Transformation` -> `SchemaIssue.Encoding`: Transformation-stage failures are Encoding issues in v4. They retain the failing AST and nested issue; the old Encoded, Transformation, and Type kind discriminator was removed.
 
 #### `ParseResult.TreeFormatter`
 
@@ -14783,7 +14803,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.AST` -> `SchemaAST.AST`: The name remains, but its constructor and fields changed in the v4 Base/check/context/encoding model.
 
-- `SchemaAST.Annotated` -> `SchemaAST.Base`: All v4 AST nodes extend Base, which owns annotations, checks, encoding, and context.
+- `SchemaAST.Annotated` -> `SchemaAST.AST`: The public base type was removed. Use the AST union; every variant still exposes annotations, checks, encoding, and context.
 
 - `SchemaAST.AnyKeyword` -> `SchemaAST.Any`: The v4 SchemaAST redesign renamed this primitive, collection, or guard while preserving its role.
 
@@ -15060,6 +15080,8 @@ Schema.toFormatter(schema)
 - `SchemaAST.omit` -> `Schema.mapFields + Struct.omit`: Object projection moved to schema field transforms.
 
 - `SchemaAST.partial` -> `Schema.mapFields + Struct.map(Schema.optional)`: Partial object transforms moved to schema field transforms.
+
+- `SchemaAST.pick` -> `none`: The low-level AST picker was removed. Keep field selection at the Schema.Struct level with mapFields and Struct.pick, or discriminate and rebuild custom AST nodes explicitly.
 
 - `SchemaAST.required` -> `Schema.mapFields + Struct.map(Schema.requiredKey)`: Required object transforms moved to schema field transforms.
 
@@ -15828,9 +15850,9 @@ switch (strategy) {
 
 ### `effect/SynchronizedRef`
 
-- `SynchronizedRef.SynchronizedRef` -> `SynchronizedRef.SynchronizedRef`: The model remains, now extends the v4 Ref model, and is read or updated through explicit SynchronizedRef operations.
+- `SynchronizedRef.SynchronizedRef` -> `SynchronizedRef.SynchronizedRef`: The model remains but no longer extends Ref; read and update it through explicit SynchronizedRef operations. The curried v4 modifySomeEffect takes only the callback, which returns an Effect of [result, Option\<newValue\>]; remove the v3 fallback and outer Option.
 
-- `SynchronizedRef.SynchronizedRef.Variance` -> `Ref.Ref.Variance`: SynchronizedRef now inherits Ref variance instead of declaring a separate public variance marker.
+- `SynchronizedRef.SynchronizedRef.Variance` -> `none`: The public nested variance marker was removed. SynchronizedRef uses an internal brand in v4, so do not refer to a variance interface directly.
 
 - `SynchronizedRef.SynchronizedRefTypeId` -> `none`: The SynchronizedRef type id is internal in v4; do not inspect or construct the brand directly.
 

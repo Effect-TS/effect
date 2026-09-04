@@ -64,6 +64,15 @@ describe("Crypto", () => {
       assert.deepStrictEqual(randomShuffle, [1, 2, 3])
     }).pipe(Effect.provideService(Crypto.Crypto, testCrypto)))
 
+  it.effect("randomBetween excludes the upper bound when the result rounds up", () =>
+    Effect.gen(function*() {
+      const value = yield* makeCrypto((1n << 53n) - 2n).randomBetween(10, 20)
+
+      assert.isAtLeast(value, 10)
+      assert.isBelow(value, 20)
+      assert.strictEqual(value, 20 - 2 ** -48)
+    }))
+
   it("maps adjacent random values to adjacent safe integers", () => {
     assert.strictEqual(makeCrypto(0n).nextIntUnsafe(), Number.MIN_SAFE_INTEGER)
     assert.strictEqual(makeCrypto(1n).nextIntUnsafe(), Number.MIN_SAFE_INTEGER + 1)

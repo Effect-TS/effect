@@ -162,7 +162,7 @@ export const make: Effect.Effect<
               delay,
               limit: options.limit,
               remaining: options.limit - count,
-              resetAfter: Duration.times(window, Math.ceil(ttl / windowMillis))
+              resetAfter: Duration.millis(ttl)
             })
           }
         )
