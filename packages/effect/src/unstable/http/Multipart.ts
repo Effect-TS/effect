@@ -103,7 +103,9 @@ export interface Field extends Part.Proto {
  * @category guards
  * @since 4.0.0
  */
-export const isPart = (u: unknown): u is Part => Predicate.hasProperty(u, TypeId)
+export const isPart = (u: unknown): u is Part =>
+  Predicate.hasProperty(u, TypeId) &&
+  (Predicate.isTagged(u, "Field") || Predicate.isTagged(u, "File"))
 
 /**
  * Returns `true` when a value is a multipart text `Field`.
