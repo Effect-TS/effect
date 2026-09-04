@@ -1122,6 +1122,32 @@ describe("all", () => {
   })
 })
 
+describe("Effect.repeatOrElse", () => {
+  const source = null as unknown as Effect.Effect<string, "source-error", "source-service">
+  const schedule = null as unknown as Schedule.Schedule<number, string, "schedule-error", "schedule-service">
+  const fallback = null as unknown as Effect.Effect<number, "fallback-error", "fallback-service">
+
+  it("passes the previous schedule metadata to the direct fallback", () => {
+    Effect.repeatOrElse(source, schedule, (_error, previous) => {
+      expect(previous).type.toBe<Option.Option<Schedule.Metadata<number, string>>>()
+      return fallback
+    })
+  })
+
+  it("passes the previous schedule metadata to the curried fallback", () => {
+    source.pipe(Effect.repeatOrElse(schedule, (_error, previous) => {
+      expect(previous).type.toBe<Option.Option<Schedule.Metadata<number, string>>>()
+      return fallback
+    }))
+  })
+
+  it("rejects an output-only annotation", () => {
+    const outputOnly = (_error: "source-error" | "schedule-error", _previous: Option.Option<number>) => fallback
+    expect(Effect.repeatOrElse).type.not.toBeCallableWith(source, schedule, outputOnly)
+    expect(Effect.repeatOrElse).type.not.toBeCallableWith(schedule, outputOnly)
+  })
+})
+
 describe("Effect.retry", () => {
   it("while refinement narrows error type without times", () => {
     const result = Effect.retry(mixedEffect, {
