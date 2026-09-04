@@ -34,6 +34,7 @@ describe("Multipart", () => {
       }).pipe(
         Stream.pipeThroughChannel(Multipart.makeChannel(Object.fromEntries(response.headers))),
         Stream.mapEffect((part) => {
+          strictEqual(Multipart.isPart(part), true)
           return Unify.unify(
             part._tag === "File" ?
               Effect.zip(
@@ -375,6 +376,8 @@ describe("Multipart", () => {
       )
       const first = (persisted.first as Array<Multipart.PersistedFile>)[0]
       const second = (persisted.second as Array<Multipart.PersistedFile>)[0]
+      strictEqual(Multipart.isPersistedFile(first), true)
+      strictEqual(Multipart.isPart(first), false)
       strictEqual(first.path, "/tmp/audit/same.txt")
       notStrictEqual(first.path, second.path)
       deepStrictEqual(writes, [first.path, second.path])
