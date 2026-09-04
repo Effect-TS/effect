@@ -2848,6 +2848,7 @@ export class McpServerClient extends Context.Service<McpServerClient, {
   readonly clientCapabilities: ClientCapabilities
   readonly clientInfo: Implementation
   readonly initializePayload: typeof Initialize.payloadSchema["Type"]
+  readonly requestMetadata?: Schema.JsonObject | undefined
   readonly getClient: Effect.Effect<
     McpReverseClient,
     never,

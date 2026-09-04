@@ -867,6 +867,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
             clientCapabilities: profile.clientCapabilities,
             clientInfo: profile.clientInfo,
             initializePayload,
+            requestMetadata: Predicate.isReadonlyObject(payload) && Predicate.isReadonlyObject(payload._meta)
+              ? payload._meta as Schema.JsonObject
+              : undefined,
             getClient: RcMap.get(
               clients,
               new McpClientKey({

@@ -1058,7 +1058,8 @@ describe("McpServer protocol adapters", () => {
       }
     }))
 
-  it.effect("should preserve initialize metadata when creating the public request context", () =>
+  // Conformance: tools-call-with-progress
+  it.effect("should expose current request metadata when invoking a handler", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
       for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18"] as const) {
@@ -1079,7 +1080,10 @@ describe("McpServer protocol adapters", () => {
           jsonrpc: "2.0",
           id: 2,
           method: "tools/call",
-          params: { name: "initialize-metadata" }
+          params: {
+            name: "initialize-metadata",
+            _meta: { progressToken: `call-${protocolVersion}` }
+          }
         }, {
           "Mcp-Protocol-Version": protocolVersion,
           "Mcp-Session-Id": sessionId
@@ -1087,7 +1091,7 @@ describe("McpServer protocol adapters", () => {
         const body = yield* Effect.promise<unknown>(() => toolResponse.json()).pipe(
           Effect.flatMap(decodeJsonRpcResponse)
         )
-        assert.strictEqual(textResult(body), JSON.stringify({ progressToken: protocolVersion }))
+        assert.strictEqual(textResult(body), JSON.stringify({ progressToken: `call-${protocolVersion}` }))
       }
     }))
 
