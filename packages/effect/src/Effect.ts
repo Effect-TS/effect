@@ -7681,10 +7681,10 @@ export const repeat: {
  * const program = Effect.repeatOrElse(
  *   task,
  *   Schedule.recurs(3),
- *   (error, attempts) =>
+ *   (error, previous) =>
  *     Effect.sync(() => { output.push(
  *       `Final failure: ${error}, after ${
- *         Option.getOrElse(attempts, () => 0)
+ *         Option.isSome(previous) ? previous.value.attempt : 0
  *       } attempts`
  *     ) }).pipe(Effect.map(() => 0))
  * )
