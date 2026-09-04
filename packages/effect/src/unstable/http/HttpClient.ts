@@ -316,9 +316,9 @@ const catch_: {
   <E, E2, R2>(
     f: (e: E) => Effect.Effect<HttpClientResponse.HttpClientResponse, E2, R2>
   ): <R>(self: HttpClient.With<E, R>) => HttpClient.With<E2, R2 | R>
-  <E, R, A2 extends HttpClientResponse.HttpClientResponse, E2, R2>(
+  <E, R, E2, R2>(
     self: HttpClient.With<E, R>,
-    f: (e: E) => Effect.Effect<A2, E2, R2>
+    f: (e: E) => Effect.Effect<HttpClientResponse.HttpClientResponse, E2, R2>
   ): HttpClient.With<E2, R | R2>
 } = dual(
   2,
