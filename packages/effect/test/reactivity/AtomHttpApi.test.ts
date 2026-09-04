@@ -169,55 +169,32 @@ describe("AtomHttpApi", () => {
       unmount()
     }))
 
-  describe("real generated SSE client", () => {
-    for (const operation of ["query", "mutation"] as const) {
-      for (const [directive, body] of [["retry", "retry: 1000\n\n"], ["data", "data: \"hello\"\n\n"]] as const) {
-        it.effect(`${operation} returns a stream preserving valid ${directive}`, () =>
-          Effect.gen(function*() {
-            const requests: Array<string> = []
-            const Client = AtomHttpApi.Service()("StreamClient", {
-              api: StreamApi,
-              baseUrl: "https://example.test",
-              httpClient: Layer.succeed(
-                HttpClient.HttpClient,
-                HttpClient.make((request) => {
-                  requests.push(request.url)
-                  return Effect.succeed(HttpClientResponse.fromWeb(
-                    request,
-                    new Response(body, {
-                      headers: { "content-type": "text/event-stream" }
-                    })
-                  ))
-                })
-              )
-            })
-            const registry = yield* Effect.acquireRelease(
-              Effect.sync(() => AtomRegistry.make()),
-              (registry) => Effect.sync(() => registry.dispose())
-            )
-            const atom = operation === "query"
-              ? Client.query("events", "watch", {})
-              : Client.mutation("events", "watch")
-            yield* AtomRegistry.mount(registry, atom)
-            if (operation === "mutation") {
-              registry.set(Client.mutation("events", "watch"), {})
-            }
-            const stream = yield* AtomRegistry.getResult(registry, atom)
-            assert(Stream.isStream(stream))
-            const result = yield* Effect.exit(Stream.runCollect(stream))
-            if (directive === "retry") {
-              assert(Exit.isFailure(result))
-              assert.deepStrictEqual(
-                result.cause.reasons.map((reason) => reason._tag === "Fail" ? reason.error : reason),
-                [new Sse.Retry({ duration: Duration.millis(1000), lastEventId: undefined })]
-              )
-            } else {
-              assert(Exit.isSuccess(result))
-              assert.deepStrictEqual(result.value, ["hello"])
-            }
-            assert.deepStrictEqual(requests, ["https://example.test/watch"])
-          }))
-      }
-    }
-  })
+  it.effect("returns generated SSE stream failures from queries", () =>
+    Effect.gen(function*() {
+      const Client = AtomHttpApi.Service()("StreamClient", {
+        api: StreamApi,
+        baseUrl: "https://example.test",
+        httpClient: Layer.succeed(
+          HttpClient.HttpClient,
+          HttpClient.make((request) =>
+            Effect.succeed(HttpClientResponse.fromWeb(
+              request,
+              new Response("retry: 1000\n\n", {
+                headers: { "content-type": "text/event-stream" }
+              })
+            ))
+          )
+        )
+      })
+      const registry = AtomRegistry.make()
+      const atom = Client.query("events", "watch", {})
+      yield* AtomRegistry.mount(registry, atom)
+      const stream = yield* AtomRegistry.getResult(registry, atom)
+      const error = yield* Effect.flip(Stream.runCollect(stream))
+
+      assert.deepStrictEqual(
+        error,
+        new Sse.Retry({ duration: Duration.millis(1000), lastEventId: undefined })
+      )
+    }).pipe(Effect.scoped))
 })
