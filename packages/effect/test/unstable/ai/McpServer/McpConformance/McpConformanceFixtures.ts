@@ -198,6 +198,10 @@ const makeHeaderToolLayer = (observations: Ref.Ref<Observations>) =>
                 type: "integer",
                 "x-mcp-header": "Shard"
               },
+              routing: {
+                type: "object",
+                properties: { region: { type: "string", "x-mcp-header": "Nested-Region" } }
+              },
               dryRun: {
                 type: "boolean",
                 "x-mcp-header": "Dry-Run"
