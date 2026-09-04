@@ -79,6 +79,22 @@ describe.concurrent("Sharding", () => {
       expect(durable).toEqual("none")
     }).pipe(Effect.provide(ContextBleedSharding)))
 
+  it.effect("uses services provided when registering an entity", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      yield* sharding.registerEntity(RegistrationContextEntity, RegistrationContextHandlers).pipe(
+        Effect.provideService(RegistrationContext, "registration")
+      )
+      yield* TestClock.adjust(1)
+
+      const client = (yield* RegistrationContextEntity.client)("1")
+      expect(yield* client.Read()).toEqual("registration")
+    }).pipe(
+      Effect.provide(TestSharding),
+      Effect.provideService(RegistrationContext, "construction"),
+      Effect.scoped
+    ))
+
   it.effect("persists durable requests until the entity replies", () =>
     Effect.gen(function*() {
       yield* TestClock.adjust(1)
@@ -1970,6 +1986,19 @@ const otherRunner = Runner.make({
   groups: ["default"],
   weight: 1
 })
+
+class RegistrationContext extends Context.Service<RegistrationContext, string>()(
+  "effect/test/cluster/RegistrationContext"
+) {}
+
+const RegistrationContextEntity = Entity.make("RegistrationContextEntity", [
+  Rpc.make("Read", { success: Schema.String }).annotate(ClusterSchema.Persisted, false)
+])
+
+const RegistrationContextHandlers = Effect.map(
+  RegistrationContext,
+  (value) => RegistrationContextEntity.of({ Read: () => Effect.succeed(value) })
+)
 
 const testConfigDefaults: Partial<ShardingConfig.ShardingConfig["Service"]> = {
   entityMailboxCapacity: 10,
